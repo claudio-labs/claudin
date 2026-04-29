@@ -13,6 +13,8 @@
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
+    "setup": "bun install && bun run build && bun link",
+    "link": "bun link",
     "dev": "bun run build && node dist/cli.mjs",
     "dev:grpc": "bun run scripts/start-grpc.ts",
     "dev:grpc:cli": "bun run scripts/grpc-cli.ts",

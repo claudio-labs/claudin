@@ -157,6 +157,53 @@ export function restoreCostStateForSession(sessionId: string): boolean {
 }
 
 /**
+ * Walk a list of resumed messages and replay each assistant turn's `usage`
+ * through `addToTotalSessionCost`, so the in-memory totals (input/output/
+ * cache tokens, cost) reflect the full conversation. Used as a fallback
+ * when `restoreCostStateForSession` returns false — that path only restores
+ * the most-recently-saved session (project config has a single slot keyed
+ * by `lastSessionId`), but per-turn usage is preserved in every session's
+ * .jsonl, so older sessions can be reconstructed.
+ *
+ * Tolerates messages with missing/partial usage fields (compaction zeroes
+ * stale entries; older transcripts predate cache fields). Resets state
+ * first so callers don't have to.
+ */
+export function recomputeCostStateFromMessages(
+  messages: ReadonlyArray<unknown>,
+): void {
+  resetCostState()
+  for (const raw of messages) {
+    const msg = raw as {
+      type?: string
+      message?: { model?: string; usage?: Partial<Usage> }
+    } | null
+    if (!msg || msg.type !== 'assistant') continue
+    const inner = msg.message
+    if (!inner) continue
+    const usage = inner.usage
+    const model = inner.model
+    if (!usage || !model) continue
+    const normalized: Usage = {
+      input_tokens: usage.input_tokens ?? 0,
+      output_tokens: usage.output_tokens ?? 0,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+      cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+    } as Usage
+    if (
+      normalized.input_tokens === 0 &&
+      normalized.output_tokens === 0 &&
+      normalized.cache_creation_input_tokens === 0 &&
+      normalized.cache_read_input_tokens === 0
+    ) {
+      continue
+    }
+    const cost = calculateUSDCost(model, normalized)
+    addToTotalSessionCost(cost, normalized, model)
+  }
+}
+
+/**
  * Saves the current session's costs to project config.
  * Call this before switching sessions to avoid losing accumulated costs.
  */

@@ -10,7 +10,7 @@ import {
   switchSession,
 } from '../bootstrap/state.js'
 import { clearSystemPromptSections } from '../constants/systemPromptSections.js'
-import { restoreCostStateForSession } from '../cost-tracker.js'
+import { recomputeCostStateFromMessages, restoreCostStateForSession } from '../cost-tracker.js'
 import type { AppState } from '../state/AppState.js'
 import type { AgentColorName } from '../tools/AgentTool/agentColorManager.js'
 import {
@@ -447,7 +447,14 @@ export async function processResumedConversation(
       // getSessionRecordingPaths() can discover it during /share
       await renameRecordingForSession()
       await resetSessionFilePointer()
-      restoreCostStateForSession(sid)
+      // Fast path: project config still holds totals for this session.
+      // Slow path (older sessions / config wiped): walk the .jsonl messages
+      // we just loaded and re-sum each assistant turn's usage. The first
+      // path saves CPU; the fallback ensures the indicator and /cost are
+      // honest for any session, not just the most-recent one.
+      if (!restoreCostStateForSession(sid)) {
+        recomputeCostStateFromMessages(result.messages)
+      }
     }
   } else if (result.contentReplacements?.length) {
     // --fork-session keeps the fresh startup session ID. useLogMessages will

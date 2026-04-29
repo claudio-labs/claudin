@@ -36,29 +36,17 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('renders a "Not configured" banner when no provider profile exists', async () => {
-    const { buildStartupBannerLines, STARTUP_BANNER_WIDTH } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     const text = stripAnsi(lines.join('\n'))
 
-    expect(text).toContain('Provider')
+    expect(text).toContain('Claudio')
+    expect(text).toContain('vtest-version')
     expect(text).toContain('Not configured')
-    expect(text).toContain('Model')
     expect(text).toContain('claude-sonnet-4-6')
-    expect(text).toContain('Endpoint')
-    expect(text).toContain('Ready')
-    expect(text).toContain('/help')
-
-    // Box rows must stay exactly STARTUP_BANNER_WIDTH cells wide so the
-    // border doesn't break with the placeholder values.
-    for (const line of lines) {
-      const stripped = stripAnsi(line)
-      if (stripped.startsWith('│') && stripped.endsWith('│')) {
-        expect(stripped.length).toBe(STARTUP_BANNER_WIDTH)
-      }
-    }
   })
 
-  it('renders an em-dash placeholder for endpoint and model when nothing is configured', async () => {
+  it('uses the em-dash placeholder for the model when nothing is configured', async () => {
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
@@ -68,7 +56,7 @@ describe('buildStartupBannerLines', () => {
     expect(text).not.toContain('api.anthropic.com')
   })
 
-  it('renders the OpenAI provider with a custom endpoint', async () => {
+  it('renders the OpenAI provider with model name', async () => {
     resolvedOverride = {
       transport: 'openai_compat',
       baseUrl: 'https://api.openai.com/v1',
@@ -80,13 +68,11 @@ describe('buildStartupBannerLines', () => {
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
-    expect(text).toContain('Provider')
     expect(text).toContain('OpenAI')
     expect(text).toContain('gpt-4o')
-    expect(text).toContain('https://api.openai.com/v1')
   })
 
-  it('marks local provider URLs as local (not cloud)', async () => {
+  it('still resolves local providers without crashing', async () => {
     resolvedOverride = {
       transport: 'openai_compat',
       baseUrl: 'http://localhost:11434/v1',
@@ -98,19 +84,28 @@ describe('buildStartupBannerLines', () => {
     const text = stripAnsi(lines.join('\n'))
 
     expect(text).toContain('llama3')
-    // The status row swaps "cloud" → "local" when isLocalProviderUrl matches.
-    expect(text).toContain('local')
-    expect(text).not.toContain('cloud  ')
+  })
+
+  it('includes the current working directory', async () => {
+    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const lines = buildStartupBannerLines()
+    const text = stripAnsi(lines.join('\n'))
+
+    // cwd is rendered as ~/... when under home, or absolute otherwise.
+    // Either way, the path string must appear.
+    const home = (await import('os')).homedir()
+    const cwd = process.cwd()
+    const expected = cwd === home || cwd.startsWith(home + '/')
+      ? '~' + cwd.slice(home.length)
+      : cwd
+    expect(text).toContain(expected)
   })
 
   it('returns a stable line count for snapshot-style assertions', async () => {
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
-    // Banner shape (1 + 13 logo block + 1 + 1 tagline + 1 + 1 top + 3 info
-    // rows + 1 separator + 1 status row + 1 bottom + 1 version + 1 trailer
-    // = 26 lines). Hard-coded so visual changes require an explicit test
-    // update.
-    expect(lines.length).toBe(26)
+    // Banner shape: leading blank + 5 logo rows + trailing blank = 7 lines.
+    expect(lines.length).toBe(7)
   })
 })
 
@@ -127,9 +122,8 @@ describe('<StartupBanner />', () => {
     const { StartupBanner } = await import('./StartupBanner.js')
     const output = await renderToString(<StartupBanner modelOverride="claude-sonnet-4-6" />, 100)
 
-    expect(output).toContain('Provider')
+    expect(output).toContain('Claudio')
     expect(output).toContain('Not configured')
     expect(output).toContain('claude-sonnet-4-6')
-    expect(output).toContain('Ready')
   })
 })

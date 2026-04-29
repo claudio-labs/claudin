@@ -347,8 +347,11 @@ export type Styles = {
 
   /**
    * Add text within the border. Only applies to top or bottom borders.
+   * Pass an array to embed multiple segments (e.g. left + right) on the
+   * same border line — entries are placed in order; later entries that
+   * would overlap an earlier one are dropped.
    */
-  readonly borderText?: BorderTextOptions
+  readonly borderText?: BorderTextOptions | readonly BorderTextOptions[]
 
   /**
    * Background color for the box. Fills the interior with background-colored

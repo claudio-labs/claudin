@@ -34,6 +34,7 @@ import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { useTypeahead } from '../../hooks/useTypeahead.js';
 import type { BorderTextOptions } from '../../ink/render-border.js';
 import { stringWidth } from '../../ink/stringWidth.js';
+import { getBranch } from '../../utils/git.js';
 import { Box, type ClickEvent, type Key, Text, useInput } from '../../ink.js';
 import { useOptionalKeybindingContext } from '../../keybindings/KeybindingContext.js';
 import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js';
@@ -2002,6 +2003,7 @@ function PromptInput({
   const fastModeCooldown = isFastModeEnabled() ? isFastModeCooldown() : false;
   const showFastIcon = isFastModeEnabled() ? isFastMode && (isFastModeAvailable() || fastModeCooldown) : false;
   const showFastIconHint = useShowFastIconHint(showFastIcon ?? false);
+  const cwdBranchSegment = useCwdBranchSegment();
 
   // Show effort notification on startup and when effort changes.
   // Suppressed in brief/assistant mode — the value reflects the local
@@ -2303,7 +2305,7 @@ function PromptInput({
             </Box>
           </Box>
           <Text color={swarmBanner.bgColor}>{'─'.repeat(columns)}</Text>
-        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%" borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown)}>
+        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%" borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdBranchSegment)}>
           <PromptInputModeIndicator mode={mode} isLoading={isLoading} viewingAgentName={viewingAgentName} viewingAgentColor={viewingAgentColor} />
           <Box flexGrow={1} flexShrink={1} onClick={handleInputClick}>
             {textInputElement}
@@ -2363,14 +2365,89 @@ function getInitialPasteId(messages: Message[]): number {
   }
   return maxId + 1;
 }
-function buildBorderText(showFastIcon: boolean, showFastIconHint: boolean, fastModeCooldown: boolean): BorderTextOptions | undefined {
-  if (!showFastIcon) return undefined;
-  const fastSeg = showFastIconHint ? `${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')}` : getFastIconString(true, fastModeCooldown);
-  return {
-    content: ` ${fastSeg} `,
-    position: 'top',
-    align: 'end',
-    offset: 0
-  };
+function buildBorderText(
+  showFastIcon: boolean,
+  showFastIconHint: boolean,
+  fastModeCooldown: boolean,
+  cwdBranchSegment: string,
+): BorderTextOptions | BorderTextOptions[] | undefined {
+  const segments: BorderTextOptions[] = [];
+
+  if (cwdBranchSegment) {
+    segments.push({
+      content: ` ${cwdBranchSegment} `,
+      position: 'top',
+      align: 'start',
+      offset: 0,
+    });
+  }
+
+  if (showFastIcon) {
+    const fastSeg = showFastIconHint
+      ? `${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')}`
+      : getFastIconString(true, fastModeCooldown);
+    segments.push({
+      content: ` ${fastSeg} `,
+      position: 'top',
+      align: 'end',
+      offset: 0,
+    });
+  }
+
+  if (segments.length === 0) return undefined;
+  return segments.length === 1 ? segments[0] : segments;
 }
+
+/**
+ * Returns the pre-rendered "cwd  branch" text shown on the top border of
+ * the input box. Empty string when not in a git repo or before the branch
+ * lookup resolves (avoids flashing a partial segment on first paint).
+ *
+ * Branch glyph is the Powerline branch () — requires a Nerd Font.
+ * Terminals without one will see a missing-glyph box; that's a deliberate
+ * trade for matching the rest of the dev-tooling ecosystem.
+ */
+function useCwdBranchSegment(): string {
+  const cwd = getCwd();
+  const [branch, setBranch] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Poll the cached branch every 2s. The git watcher under getBranch()
+    // marks its cache dirty when .git/HEAD changes (branch switch, rebase,
+    // detach, etc.) — so most calls are instant cache hits, and re-reads
+    // happen only after a real switch. Polling instead of subscribing
+    // because the watcher doesn't expose an event API.
+    const refresh = () => {
+      getBranch()
+        .then(b => {
+          if (cancelled) return;
+          setBranch(prev => (prev === (b ?? '') ? prev : (b ?? '')));
+        })
+        .catch(() => {
+          if (!cancelled) setBranch('');
+        });
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [cwd]);
+
+  const home = process.env.HOME || '';
+  const displayCwd =
+    cwd === home
+      ? '~'
+      : home && cwd.startsWith(home + '/')
+        ? '~' + cwd.slice(home.length)
+        : cwd;
+
+  if (!branch) return chalk.dim(displayCwd);
+  return `${chalk.dim(displayCwd)}  ${chalk.dim(' ' + branch)}`;
+}
+
 export default React.memo(PromptInput);

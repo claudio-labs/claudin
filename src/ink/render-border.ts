@@ -79,6 +79,99 @@ function styleBorderLine(
   return styled
 }
 
+/**
+ * Embed multiple text segments into a border line, then style the remaining
+ * border characters. Earlier entries win on overlap — later segments that
+ * would collide with a placed segment are skipped silently.
+ */
+function buildBorderWithTexts(
+  borderLine: string,
+  items: readonly BorderTextOptions[],
+  borderChar: string,
+  borderColor: Color | undefined,
+  dimBorderColor: boolean | undefined,
+): string {
+  if (items.length === 0) {
+    return styleBorderLine(borderLine, borderColor, dimBorderColor)
+  }
+
+  type Placement = { start: number; end: number; content: string }
+  const placements: Placement[] = []
+  for (const item of items) {
+    const len = stringWidth(item.content)
+    if (len >= borderLine.length - 2) {
+      // Too wide to fit alongside anything — fall back to single-segment behaviour.
+      const [before, text, after] = embedTextInBorder(
+        borderLine,
+        item.content,
+        item.align,
+        item.offset,
+        borderChar,
+      )
+      return (
+        styleBorderLine(before, borderColor, dimBorderColor) +
+        text +
+        styleBorderLine(after, borderColor, dimBorderColor)
+      )
+    }
+    let start: number
+    if (item.align === 'center') {
+      start = Math.floor((borderLine.length - len) / 2)
+    } else if (item.align === 'start') {
+      start = (item.offset ?? 0) + 1
+    } else {
+      start = borderLine.length - len - (item.offset ?? 0) - 1
+    }
+    start = Math.max(1, Math.min(start, borderLine.length - len - 1))
+    const end = start + len
+
+    // Skip if this placement overlaps an existing one.
+    const overlaps = placements.some(
+      p => !(end <= p.start || start >= p.end),
+    )
+    if (overlaps) continue
+
+    placements.push({ start, end, content: item.content })
+  }
+
+  if (placements.length === 0) {
+    return styleBorderLine(borderLine, borderColor, dimBorderColor)
+  }
+
+  placements.sort((a, b) => a.start - b.start)
+
+  let out = ''
+  let cursor = 0
+  for (const p of placements) {
+    if (p.start > cursor) {
+      out += styleBorderLine(
+        borderLine.substring(cursor, p.start),
+        borderColor,
+        dimBorderColor,
+      )
+    }
+    out += p.content
+    cursor = p.end
+  }
+  if (cursor < borderLine.length) {
+    out += styleBorderLine(
+      borderLine.substring(cursor),
+      borderColor,
+      dimBorderColor,
+    )
+  }
+  return out
+}
+
+function getBorderTextsForPosition(
+  borderText: BorderTextOptions | readonly BorderTextOptions[] | undefined,
+  position: 'top' | 'bottom',
+): readonly BorderTextOptions[] {
+  if (!borderText) return []
+  const arr = Array.isArray(borderText) ? borderText : [borderText as BorderTextOptions]
+  return arr.filter(t => t.position === position)
+}
+
 const renderBorder = (
   x: number,
   y: number,
@@ -130,23 +223,14 @@ const renderBorder = (
         (showRightBorder ? box.topRight : '')
       : ''
 
-    // Handle text in top border
+    // Handle text in top border (supports single value or array)
     let topBorder: string | undefined
-    if (showTopBorder && node.style.borderText?.position === 'top') {
-      const [before, text, after] = embedTextInBorder(
+    if (showTopBorder) {
+      const topTexts = getBorderTextsForPosition(node.style.borderText, 'top')
+      topBorder = buildBorderWithTexts(
         topBorderLine,
-        node.style.borderText.content,
-        node.style.borderText.align,
-        node.style.borderText.offset,
+        topTexts,
         box.top,
-      )
-      topBorder =
-        styleBorderLine(before, topBorderColor, dimTopBorderColor) +
-        text +
-        styleBorderLine(after, topBorderColor, dimTopBorderColor)
-    } else if (showTopBorder) {
-      topBorder = styleBorderLine(
-        topBorderLine,
         topBorderColor,
         dimTopBorderColor,
       )
@@ -186,23 +270,14 @@ const renderBorder = (
         (showRightBorder ? box.bottomRight : '')
       : ''
 
-    // Handle text in bottom border
+    // Handle text in bottom border (supports single value or array)
     let bottomBorder: string | undefined
-    if (showBottomBorder && node.style.borderText?.position === 'bottom') {
-      const [before, text, after] = embedTextInBorder(
+    if (showBottomBorder) {
+      const bottomTexts = getBorderTextsForPosition(node.style.borderText, 'bottom')
+      bottomBorder = buildBorderWithTexts(
         bottomBorderLine,
-        node.style.borderText.content,
-        node.style.borderText.align,
-        node.style.borderText.offset,
+        bottomTexts,
         box.bottom,
-      )
-      bottomBorder =
-        styleBorderLine(before, bottomBorderColor, dimBottomBorderColor) +
-        text +
-        styleBorderLine(after, bottomBorderColor, dimBottomBorderColor)
-    } else if (showBottomBorder) {
-      bottomBorder = styleBorderLine(
-        bottomBorderLine,
         bottomBorderColor,
         dimBottomBorderColor,
       )
