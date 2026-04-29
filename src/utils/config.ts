@@ -500,6 +500,12 @@ export type GlobalConfig = {
   // Fullscreen in-app text selection behavior
   copyOnSelect?: boolean // Auto-copy to clipboard on mouse-up (undefined → true; lets cmd+c "work" via no-op)
 
+  // Whether the auto-memory extractor surfaces a "Saved N memory" system
+  // notice in the chat after each save. undefined/false → silent (default in
+  // Claudio because the message fired on nearly every turn). Set to true to
+  // restore upstream's behaviour.
+  notifyMemorySaved?: boolean
+
   // Flicker-free fullscreen mode (equivalent to CLAUDE_CODE_NO_FLICKER=1 env var).
   // When true, enables alt-screen + virtualized scroll for all users.
   // Env var still takes precedence: =0 always off, =1 always on.

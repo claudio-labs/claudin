@@ -49,6 +49,7 @@ import {
   runForkedAgent,
 } from '../../utils/forkedAgent.js'
 import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
+import { getGlobalConfig } from '../../utils/config.js'
 import {
   createMemorySavedMessage,
   createUserMessage,
@@ -487,7 +488,7 @@ export function initExtractMemories(): void {
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
-      if (memoryPaths.length > 0) {
+      if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
         const msg = createMemorySavedMessage(memoryPaths)
         if (feature('TEAMMEM')) {
           msg.teamCount = teamCount

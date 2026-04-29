@@ -353,6 +353,33 @@ export const hasUnpushedCommits = async (): Promise<boolean> => {
   return code === 0 && parseInt(stdout.trim(), 10) > 0
 }
 
+/**
+ * Counts commits ahead/behind the upstream tracking branch in a single
+ * git invocation. Returns { ahead: 0, behind: 0 } if the branch has no
+ * upstream, isn't a git repo, or git fails — callers can treat null-ish
+ * upstream the same as "in sync" without needing a separate check.
+ */
+export const getAheadBehind = async (): Promise<{
+  ahead: number
+  behind: number
+}> => {
+  const { stdout, code } = await execFileNoThrow(
+    gitExe(),
+    ['rev-list', '--left-right', '--count', '@{u}...HEAD'],
+    { preserveOutputOnError: false },
+  )
+  if (code !== 0) return { ahead: 0, behind: 0 }
+  // Output format: "<behind>\t<ahead>" — left side is upstream, right is HEAD
+  const parts = stdout.trim().split(/\s+/)
+  if (parts.length !== 2) return { ahead: 0, behind: 0 }
+  const behind = parseInt(parts[0], 10)
+  const ahead = parseInt(parts[1], 10)
+  return {
+    ahead: Number.isFinite(ahead) ? ahead : 0,
+    behind: Number.isFinite(behind) ? behind : 0,
+  }
+}
+
 export const getIsClean = async (options?: {
   ignoreUntracked?: boolean
 }): Promise<boolean> => {

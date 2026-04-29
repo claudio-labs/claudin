@@ -17,7 +17,11 @@ import { useStalledAnimation } from './useStalledAnimation.js';
 import { interpolateColor, toRGBColor } from './utils.js';
 const SEP_WIDTH = stringWidth(' · ');
 const THINKING_BARE_WIDTH = stringWidth('thinking');
-const SHOW_TOKENS_AFTER_MS = 30_000;
+// Claudio: upstream waits 30s before surfacing the timer + token count, so on
+// short responses the spinner never shows them. Drop to ~3s — still skips the
+// pre-stream warmup, but every multi-second turn surfaces "(Ns · ↓ Nk tokens
+// · thinking)" the way users expect.
+const SHOW_TOKENS_AFTER_MS = 3_000;
 
 // Thinking shimmer constants. Previously lived in a separate ThinkingShimmerText
 // component with its own useAnimationFrame(50) — inlined here to reuse our

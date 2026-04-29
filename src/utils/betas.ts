@@ -160,11 +160,14 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
 export function modelSupportsAutoMode(model: string): boolean {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     const m = getCanonicalName(model)
-    // External: firstParty-only at launch (PI probes not wired for
-    // Bedrock/Vertex/Foundry yet). Checked before allowModels so the GB
-    // override can't enable auto mode on unsupported providers.
-    if (process.env.USER_TYPE !== 'ant' && getAPIProvider() !== 'firstParty') {
-      return false
+    // Claudio: upstream restricts auto mode to firstParty + a narrow model
+    // allowlist because the PI-probe classifier is wired only for Anthropic
+    // direct. We don't ship the probe infra anyway, so gate on the local
+    // classifier being usable for any model the user has configured.
+    // The `disableAutoMode` setting remains the opt-out for users who want
+    // to keep approval prompts strict.
+    if (process.env.USER_TYPE !== 'ant') {
+      return true
     }
     // GrowthBook override: tengu_auto_mode_config.allowModels force-enables
     // auto mode for listed models, bypassing the denylist/allowlist below.

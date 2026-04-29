@@ -26,6 +26,7 @@ import { logEvent } from '../analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from '../../memdir/paths.js'
 import { isAutoDreamEnabled } from './config.js'
+import { getGlobalConfig } from '../../utils/config.js'
 import { getProjectDir } from '../../utils/sessionStorage.js'
 import {
   getOriginalCwd,
@@ -239,7 +240,8 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}`
       if (
         appendSystemMessage &&
         isDreamTask(dreamState) &&
-        dreamState.filesTouched.length > 0
+        dreamState.filesTouched.length > 0 &&
+        getGlobalConfig().notifyMemorySaved === true
       ) {
         appendSystemMessage({
           ...createMemorySavedMessage(dreamState.filesTouched),

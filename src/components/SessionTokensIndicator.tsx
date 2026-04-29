@@ -62,20 +62,19 @@ export function SessionTokensIndicator(): React.ReactNode {
     return () => clearInterval(interval);
   }, []);
 
-  const hasUsage =
-    totals.input > 0 ||
-    totals.output > 0 ||
-    totals.cacheRead > 0 ||
-    totals.cacheWrite > 0;
-  if (!hasUsage) return null;
+  const grandTotal =
+    totals.input + totals.output + totals.cacheRead + totals.cacheWrite;
+  if (grandTotal === 0) return null;
 
   const cache = totals.cacheRead + totals.cacheWrite;
+  const breakdown =
+    `↑ ${formatTokens(totals.input)}  ↓ ${formatTokens(totals.output)}` +
+    (cache > 0 ? `  ⊙ ${formatTokens(cache)}` : '');
 
   return (
     <Box>
       <Text dimColor wrap="truncate">
-        {`↑ ${formatTokens(totals.input)}  ↓ ${formatTokens(totals.output)}`}
-        {cache > 0 ? `  ⊙ ${formatTokens(cache)}` : ''}
+        {`${breakdown} · ${formatTokens(grandTotal)} tokens`}
       </Text>
     </Box>
   );
