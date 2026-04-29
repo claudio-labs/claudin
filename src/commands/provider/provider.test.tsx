@@ -1,0 +1,173 @@
+import { PassThrough } from 'node:stream'
+
+import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+import React from 'react'
+import stripAnsi from 'strip-ansi'
+
+import { render } from '../../ink.js'
+import { AppStateProvider } from '../../state/AppState.js'
+import { buildProviderManagerCompletion } from './provider.js'
+
+const SYNC_START = '\x1B[?2026h'
+const SYNC_END = '\x1B[?2026l'
+
+const realGithubModelsCredentials = await import(
+  '../../utils/githubModelsCredentials.js'
+)
+
+afterAll(() => {
+  mock.module(
+    '../../utils/githubModelsCredentials.js',
+    () => realGithubModelsCredentials,
+  )
+})
+
+function extractLastFrame(output: string): string {
+  let lastFrame: string | null = null
+  let cursor = 0
+
+  while (cursor < output.length) {
+    const start = output.indexOf(SYNC_START, cursor)
+    if (start === -1) {
+      break
+    }
+
+    const contentStart = start + SYNC_START.length
+    const end = output.indexOf(SYNC_END, contentStart)
+    if (end === -1) {
+      break
+    }
+
+    const frame = output.slice(contentStart, end)
+    if (frame.trim().length > 0) {
+      lastFrame = frame
+    }
+    cursor = end + SYNC_END.length
+  }
+
+  return lastFrame ?? output
+}
+
+async function renderFinalFrame(node: React.ReactNode): Promise<string> {
+  const { stdout, stdin, getOutput } = createTestStreams()
+
+  const instance = await render(node, {
+    stdout: stdout as unknown as NodeJS.WriteStream,
+    stdin: stdin as unknown as NodeJS.ReadStream,
+    patchConsole: false,
+  })
+
+  await Promise.race([
+    instance.waitUntilExit(),
+    new Promise<void>(resolve => setTimeout(resolve, 3000)),
+  ])
+  return stripAnsi(extractLastFrame(getOutput()))
+}
+
+function createTestStreams(): {
+  stdout: PassThrough
+  stdin: PassThrough & {
+    isTTY: boolean
+    setRawMode: (mode: boolean) => void
+    ref: () => void
+    unref: () => void
+  }
+  getOutput: () => string
+} {
+  let output = ''
+  const stdout = new PassThrough()
+  const stdin = new PassThrough() as PassThrough & {
+    isTTY: boolean
+    setRawMode: (mode: boolean) => void
+    ref: () => void
+    unref: () => void
+  }
+  stdin.isTTY = true
+  stdin.setRawMode = () => {}
+  stdin.ref = () => {}
+  stdin.unref = () => {}
+  ;(stdout as unknown as { columns: number }).columns = 120
+  stdout.on('data', chunk => {
+    output += chunk.toString()
+  })
+
+  return {
+    stdout,
+    stdin,
+    getOutput: () => output,
+  }
+}
+
+afterEach(() => {
+  mock.restore()
+})
+
+test('buildProviderManagerCompletion records provider switch event and model-visible reminder', () => {
+  const completion = buildProviderManagerCompletion({
+    action: 'activated',
+    activeProviderName: 'Sadaf Provider',
+    activeProviderModel: 'sadaf-model',
+    message: 'Provider switched to Sadaf Provider (sadaf-model)',
+  })
+
+  expect(completion.message).toBe(
+    'Provider switched to Sadaf Provider (sadaf-model)',
+  )
+  expect(completion.metaMessages).toEqual([
+    '<system-reminder>Provider switched mid-session to Sadaf Provider using model sadaf-model. Use this provider/model for subsequent requests unless the user switches again.</system-reminder>',
+  ])
+})
+
+test('buildProviderManagerCompletion skips provider reminder when manager is cancelled', () => {
+  const completion = buildProviderManagerCompletion({
+    action: 'cancelled',
+    message: 'Provider manager closed',
+  })
+
+  expect(completion.message).toBe('Provider manager closed')
+  expect(completion.metaMessages).toBeUndefined()
+})
+
+test('GithubDeviceFlowStep renders setup menu when no stored token exists', async () => {
+  mock.module('../../utils/githubModelsCredentials.js', () => ({
+    ...realGithubModelsCredentials,
+    readGithubModelsToken: () => undefined,
+  }))
+
+  const { GithubDeviceFlowStep } = await import(
+    // @ts-expect-error cache-busting query string for Bun module mocks
+    './GithubDeviceFlowStep.js?no-token'
+  )
+
+  const output = await renderFinalFrame(
+    <AppStateProvider>
+      <GithubDeviceFlowStep onDone={() => {}} onBack={() => {}} />
+    </AppStateProvider>,
+  )
+
+  expect(output).toContain('GitHub Copilot setup')
+  expect(output).toContain('Sign in with browser')
+  expect(output).toContain('Back to /provider menu')
+})
+
+test('GithubDeviceFlowStep renders already-authed screen when a token is stored', async () => {
+  mock.module('../../utils/githubModelsCredentials.js', () => ({
+    ...realGithubModelsCredentials,
+    readGithubModelsToken: () => 'stored-copilot-token',
+  }))
+
+  const { GithubDeviceFlowStep } = await import(
+    // @ts-expect-error cache-busting query string for Bun module mocks
+    './GithubDeviceFlowStep.js?already-authed'
+  )
+
+  const output = await renderFinalFrame(
+    <AppStateProvider>
+      <GithubDeviceFlowStep onDone={() => {}} onBack={() => {}} />
+    </AppStateProvider>,
+  )
+
+  expect(output).toContain('You are already signed in to GitHub Copilot.')
+  expect(output).toContain('Sign in again')
+  expect(output).toContain('Back to /provider menu')
+})

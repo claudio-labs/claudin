@@ -1,0 +1,29 @@
+import type { Command } from '../../commands.js'
+import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { isPolicyAllowed } from '../../services/policyLimits/index.js'
+import { isEnvTruthy } from '../../utils/envUtils.js'
+import { isEssentialTrafficOnly } from '../../utils/privacyLevel.js'
+
+const feedback = {
+  aliases: ['bug'],
+  type: 'local-jsx',
+  name: 'feedback',
+  description: `Submit feedback about Claude Code`,
+  argumentHint: '[report]',
+  isEnabled: () => {
+    const transport = tryGetActiveProvider()?.transport
+    return !(
+      transport === 'bedrock' ||
+      transport === 'vertex' ||
+      transport === 'foundry' ||
+      isEnvTruthy(process.env.DISABLE_FEEDBACK_COMMAND) ||
+      isEnvTruthy(process.env.DISABLE_BUG_COMMAND) ||
+      isEssentialTrafficOnly() ||
+      process.env.USER_TYPE === 'ant' ||
+      !isPolicyAllowed('allow_product_feedback')
+    )
+  },
+  load: () => import('./feedback.js'),
+} satisfies Command
+
+export default feedback
