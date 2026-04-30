@@ -36,12 +36,10 @@ function applyColor(c: ChalkInstance, raw: string, type: 'fg' | 'bg'): ChalkInst
 /**
  * Builds a Powerline-style ANSI string for use as borderText content.
  *
- * Path has a vibrant filled background (suggestion); branch has NO background
- * (terminal default) with muted text (inactive). The filled cap arrow U+E0B0
- * closes the path segment, transitioning suggestion → terminal default.
+ *   [suggestion bg, bold inverseText: ~/path ][►][faint bg, inactive: ⎇ branch (↑N) ][►]
  *
- *   [suggestion bg, bold inverseText: ~/path ][►][inactive fg: ⎇ branch (↑N) ]
- *
+ * Path: vibrant suggestion bg with dark bold text.
+ * Branch: very faint messageActionsBackground with muted inactive text.
  * Colors are resolved from the active Claudio theme.
  */
 export function buildBranchBorderSegment(
@@ -51,29 +49,33 @@ export function buildBranchBorderSegment(
   behind: number,
   theme: Theme,
 ): string {
-  const cwdBg = theme.suggestion     // vibrant filled background for path only
-  const cwdFg = theme.inverseText    // dark bold text on vibrant path bg
-  const branchFg = theme.inactive    // muted text for branch (no background)
+  const cwdBg = theme.suggestion              // vibrant bg for path
+  const branchBg = theme.messageActionsBackground // very faint bg for branch
+  const cwdFg = theme.inverseText             // dark bold text on path
+  const branchFg = theme.inactive             // muted text on branch
 
-  // Path segment: vibrant bg + dark bold text
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
-  // Cap arrow: suggestion color as fg, no bg — closes the path segment
-  const capChalk = applyColor(chalk, cwdBg, 'fg')
-  // Branch text: muted color, no background fill
-  const branchChalk = applyColor(chalk, branchFg, 'fg')
+  const sepChalk = applyColor(applyColor(chalk, cwdBg, 'fg'), branchBg, 'bg')
+  const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
+  const endChalk = applyColor(chalk, branchBg, 'fg')
+  const cwdEndChalk = applyColor(chalk, cwdBg, 'fg')
 
   let seg = cwdChalk(` ${displayCwd} `)
-  seg += capChalk(SEP)
 
   if (branch) {
+    seg += sepChalk(SEP)
     seg += branchChalk(` ${BRANCH_ICON} ${branch}`)
     if (ahead > 0 || behind > 0) {
       seg += branchChalk(' (')
-      if (ahead > 0) seg += applyColor(chalk, theme.success, 'fg')(`↑${ahead}`)
+      if (ahead > 0) seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.success, 'fg')(`↑${ahead}`)
       if (ahead > 0 && behind > 0) seg += branchChalk(' ')
-      if (behind > 0) seg += applyColor(chalk, theme.warning, 'fg')(`↓${behind}`)
+      if (behind > 0) seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.warning, 'fg')(`↓${behind}`)
       seg += branchChalk(')')
     }
+    seg += branchChalk(' ')
+    seg += endChalk(SEP)
+  } else {
+    seg += cwdEndChalk(SEP)
   }
 
   return seg
