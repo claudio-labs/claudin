@@ -50,7 +50,14 @@ export function buildBranchBorderSegment(
   theme: Theme,
 ): string {
   const cwdBg = theme.suggestion              // vibrant bg for path
-  const branchBg = theme.messageActionsBackground // very faint bg for branch
+  // In light-ansi, messageActionsBackground = 'ansi:white' which equals the
+  // terminal default — the entire branch segment (bg + cap arrow) would be
+  // invisible. Fall back to theme.inactive (a contrasting gray) for that case.
+  const rawBranchBg = theme.messageActionsBackground
+  const branchBg =
+    rawBranchBg === 'ansi:white' || rawBranchBg === 'ansi:whiteBright'
+      ? theme.inactive
+      : rawBranchBg
   const cwdFg = theme.inverseText             // dark bold text on path
   const branchFg = theme.suggestion           // theme blue on branch (same as path bg — cohesive)
 
