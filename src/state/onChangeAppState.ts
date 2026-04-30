@@ -9,7 +9,7 @@ import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
 import { toError } from '../utils/errors.js'
 import { logError } from '../utils/log.js'
 import { applyConfigEnvironmentVariables } from '../utils/managedEnv.js'
-import { persistActiveProviderProfileModel } from '../utils/providerProfiles.js'
+import { clearActiveProviderProfileModel, persistActiveProviderProfileModel } from '../utils/providerProfiles.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
@@ -101,6 +101,9 @@ export function onChangeAppState({
     // Remove from settings
     updateSettingsForSource('userSettings', { model: undefined })
     setMainLoopModelOverride(null)
+    // Also clear the active provider profile model so the subscription-aware
+    // system default (e.g. Opus for Max users) is used on next startup.
+    clearActiveProviderProfileModel()
   }
 
   // mainLoopModel: add it to settings?

@@ -211,7 +211,7 @@ export function getProviderPresetDefaults(
         provider: 'anthropic',
         name: 'Anthropic',
         baseUrl: 'https://api.anthropic.com',
-        model: 'claude-sonnet-4-6',
+        model: '',
         apiKey: '',
         requiresApiKey: true,
       }
@@ -587,6 +587,30 @@ export function persistActiveProviderProfileModel(
     return null
   }
   return resolvedProfile
+}
+
+/**
+ * Clear the active provider profile's model field so the system default is
+ * used. Called when the user selects "Default" in the model picker.
+ */
+export function clearActiveProviderProfileModel(): void {
+  const activeProfile = getActiveProviderProfile()
+  if (!activeProfile) return
+
+  saveGlobalConfig(current => {
+    const currentProfiles = getProviderProfiles(current)
+    const profileIndex = currentProfiles.findIndex(
+      profile => profile.id === activeProfile.id,
+    )
+    if (profileIndex < 0) return current
+
+    const currentProfile = currentProfiles[profileIndex]
+    if (!currentProfile.model) return current
+
+    const nextProfiles = [...currentProfiles]
+    nextProfiles[profileIndex] = { ...currentProfile, model: '' }
+    return { ...current, providerProfiles: nextProfiles }
+  })
 }
 
 /**
