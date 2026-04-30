@@ -1,7 +1,8 @@
 import chalk, { type ChalkInstance } from 'chalk'
 import type { Theme } from './theme.js'
 
-const SEP = '\uE0B0' // Powerline right-arrow filled (requires Nerd Font)
+const SEP = '\uE0B0'      // Powerline right-arrow filled (hard separator, fg=left bg, bg=right bg)
+const SOFT_SEP = '\uE0B1' // Powerline right-arrow outline (soft separator, same bg both sides)
 const BRANCH_ICON = '\uE0A0' // Powerline branch glyph
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 
@@ -35,11 +36,13 @@ function applyColor(c: ChalkInstance, raw: string, type: 'fg' | 'bg'): ChalkInst
 
 /**
  * Builds a Powerline-style ANSI string for use as borderText content.
- * Two segments separated by triangle glyphs (U+E0B0):
- *   [suggestion bg + inverseText: ~/path ][►][selectionBg + text: ⎇ branch (↑N) ][►]
  *
- * Path uses a vibrant bg (suggestion) with dark text (inverseText) so it pops.
- * Branch uses a muted dark bg (selectionBg) with light text (text) for contrast.
+ * Both segments share the same bg (suggestion — lavender-blue in dark theme)
+ * so the branch feels light ("clarinho"). They're separated by the soft outline
+ * arrow U+E0B1 instead of the filled U+E0B0 (which requires a bg color change).
+ *
+ *   [suggestion bg, bold inverseText: ~/path ][›][suggestion bg, inactive: ⎇ branch ][►]
+ *
  * Colors are resolved from the active Claudio theme.
  */
 export function buildBranchBorderSegment(
@@ -49,37 +52,37 @@ export function buildBranchBorderSegment(
   behind: number,
   theme: Theme,
 ): string {
-  const cwdBg = theme.suggestion       // vibrant: lavender-blue in dark, medium blue in light
-  const branchBg = theme.selectionBg   // muted: dark navy in dark, light blue in light
-  const cwdFg = theme.inverseText      // dark text on vibrant path bg
-  const branchFg = theme.text          // light text on dark branch bg
+  const bg = theme.suggestion        // same bg for both segments (light lavender in dark theme)
+  const cwdFg = theme.inverseText    // dark bold text on vibrant path segment
+  const branchFg = theme.inactive    // muted/dim text on branch segment (matches image style)
 
-  const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
-  const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
-  const sepChalk = applyColor(applyColor(chalk, cwdBg, 'fg'), branchBg, 'bg')
-  const endChalk = applyColor(chalk, branchBg, 'fg')
-  const cwdEndChalk = applyColor(chalk, cwdBg, 'fg')
+  const cwdChalk = applyColor(applyColor(chalk, bg, 'bg'), cwdFg, 'fg').bold
+  const branchChalk = applyColor(applyColor(chalk, bg, 'bg'), branchFg, 'fg')
+  // Soft separator: same bg, branch-text color fg — a subtle outline arrow between segments
+  const softSepChalk = applyColor(applyColor(chalk, bg, 'bg'), branchFg, 'fg')
+  // End cap: filled arrow, segment bg as fg against terminal default
+  const endChalk = applyColor(chalk, bg, 'fg')
 
   let seg = cwdChalk(` ${displayCwd} `)
 
   if (branch) {
-    seg += sepChalk(SEP)
+    seg += softSepChalk(SOFT_SEP)
     seg += branchChalk(` ${BRANCH_ICON} ${branch}`)
     if (ahead > 0 || behind > 0) {
       seg += branchChalk(' (')
       if (ahead > 0) {
-        seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.success, 'fg')(`↑${ahead}`)
+        seg += applyColor(applyColor(chalk, bg, 'bg'), theme.success, 'fg')(`↑${ahead}`)
       }
       if (ahead > 0 && behind > 0) seg += branchChalk(' ')
       if (behind > 0) {
-        seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.warning, 'fg')(`↓${behind}`)
+        seg += applyColor(applyColor(chalk, bg, 'bg'), theme.warning, 'fg')(`↓${behind}`)
       }
       seg += branchChalk(')')
     }
     seg += branchChalk(' ')
     seg += endChalk(SEP)
   } else {
-    seg += cwdEndChalk(SEP)
+    seg += endChalk(SEP)
   }
 
   return seg
