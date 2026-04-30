@@ -36,10 +36,11 @@ function applyColor(c: ChalkInstance, raw: string, type: 'fg' | 'bg'): ChalkInst
 /**
  * Builds a Powerline-style ANSI string for use as borderText content.
  * Two segments separated by triangle glyphs (U+E0B0):
- *   [userMessageBackground: ~/path ][►][planMode: ⎇ branch (↑N) ][►]
+ *   [suggestion bg + inverseText: ~/path ][►][selectionBg + text: ⎇ branch (↑N) ][►]
  *
- * Colors are resolved from the active Claudio theme so the segments match
- * the rest of the UI and respect the user's theme and terminal palette.
+ * Path uses a vibrant bg (suggestion) with dark text (inverseText) so it pops.
+ * Branch uses a muted dark bg (selectionBg) with light text (text) for contrast.
+ * Colors are resolved from the active Claudio theme.
  */
 export function buildBranchBorderSegment(
   displayCwd: string,
@@ -48,12 +49,13 @@ export function buildBranchBorderSegment(
   behind: number,
   theme: Theme,
 ): string {
-  const cwdBg = theme.userMessageBackground
-  const branchBg = theme.selectionBg
-  const fg = theme.text
+  const cwdBg = theme.suggestion       // vibrant: lavender-blue in dark, medium blue in light
+  const branchBg = theme.selectionBg   // muted: dark navy in dark, light blue in light
+  const cwdFg = theme.inverseText      // dark text on vibrant path bg
+  const branchFg = theme.text          // light text on dark branch bg
 
-  const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), fg, 'fg').bold
-  const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), fg, 'fg')
+  const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
+  const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
   const sepChalk = applyColor(applyColor(chalk, cwdBg, 'fg'), branchBg, 'bg')
   const endChalk = applyColor(chalk, branchBg, 'fg')
   const cwdEndChalk = applyColor(chalk, cwdBg, 'fg')
