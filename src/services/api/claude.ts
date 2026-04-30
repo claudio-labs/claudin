@@ -1283,6 +1283,11 @@ async function* queryModel(
   // Apply stable stubs to tool_result blocks whose ids are in the per-session
   // clipped set. No-op when the set is empty. Bytes are deterministic across
   // turns so the prompt cache prefix stays stable after the first clip.
+  //
+  // Invariant: applyStableStubs MUST run after ensureToolResultPairing
+  // (so tool_use_ids are valid) and BEFORE addCacheBreakpoints places
+  // the cache_control marker. The stable bytes need to live inside the
+  // cached prefix.
   messagesForAPI = applyStableStubs(messagesForAPI)
 
   // Strip advisor blocks — the API rejects them without the beta header.

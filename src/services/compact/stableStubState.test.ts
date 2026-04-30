@@ -1,21 +1,29 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test'
 import {
+  _getClippedIdsMapSizeForTesting,
+  _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
   buildClipStub,
   getClippedIds,
   resetClippedIds,
 } from './stableStubState.js'
+import {
+  getSessionId,
+  regenerateSessionId,
+  switchSession,
+} from '../../bootstrap/state.js'
+import type { SessionId } from '../../types/ids.js'
 
 type Block = Record<string, unknown>
 type Msg = { role?: string; message?: { role?: string; content?: unknown }; content?: unknown }
 
 beforeEach(() => {
-  resetClippedIds()
+  _resetAllClippedIdsForTesting()
 })
 
 afterEach(() => {
-  resetClippedIds()
+  _resetAllClippedIdsForTesting()
 })
 
 function userToolResult(id: string, content: unknown, extra: Block = {}): Msg {
@@ -129,9 +137,9 @@ test('stub bytes are deterministic across "turns" for the same input', () => {
   expect(JSON.stringify(turn1)).toBe(JSON.stringify(turn2))
 })
 
-test('array content with image collapses to string stub (image bytes dropped)', () => {
+test('SKIPS clipping for tool_results whose array content carries an image', () => {
   const arrayContent = [
-    { type: 'text', text: 'some text part' },
+    { type: 'text', text: 'caption text' },
     {
       type: 'image',
       source: { type: 'base64', media_type: 'image/png', data: 'aGVsbG8=' },
@@ -144,8 +152,9 @@ test('array content with image collapses to string stub (image bytes dropped)', 
   addClippedIds(['toolu_img'])
   const result = applyStableStubs(messages)
   const block = (result[1].content as Block[])[0] as { content: unknown }
-  expect(typeof block.content).toBe('string')
-  expect(block.content).toMatch(/^\[clipped: /)
+  // Vision content survives — the array is preserved untouched
+  expect(Array.isArray(block.content)).toBe(true)
+  expect(block.content).toEqual(arrayContent)
 })
 
 test('stub label includes a token count near the original size', () => {
@@ -165,9 +174,10 @@ test('stub label includes a token count near the original size', () => {
   expect(tokens).toBeLessThan(2_000)
 })
 
-test('buildClipStub format is the documented one', () => {
-  expect(buildClipStub('Read', 1_234)).toBe('[clipped: ~1200 tokens from Read]')
+test('buildClipStub uses raw token count (no bucket rounding)', () => {
+  expect(buildClipStub('Read', 1_234)).toBe('[clipped: ~1234 tokens from Read]')
   expect(buildClipStub('Bash', 0)).toBe('[clipped: ~0 tokens from Bash]')
+  expect(buildClipStub('Grep', 17)).toBe('[clipped: ~17 tokens from Grep]')
 })
 
 test('falls back to "tool" when the tool name is unknown', () => {
@@ -177,4 +187,84 @@ test('falls back to "tool" when the tool name is unknown', () => {
   const result = applyStableStubs(messages)
   const block = (result[0].content as Block[])[0] as { content: string }
   expect(block.content).toMatch(/from tool\]$/)
+})
+
+// ===========================================================================
+// Per-session / per-agent isolation
+// ===========================================================================
+
+test('sub-agent (different agentId) has its own isolated clipped set', async () => {
+  // Use teammateContext.runWithTeammateContext (AsyncLocalStorage) to flip
+  // getAgentId() under the hood. This is the actual mechanism in-process
+  // teammates use (utils/swarm/inProcessRunner) and exercises the real
+  // currentKey() composition.
+  const { runWithTeammateContext } = await import('../../utils/teammateContext.js')
+
+  // Parent adds ids
+  addClippedIds(['parent_a', 'parent_b'])
+  expect(getClippedIds().size).toBe(2)
+
+  // Sub-agent context — different agentId yields a fresh isolated set
+  const ctx = {
+    agentId: 'agent-1',
+    agentName: 'test-agent',
+    teamName: 'team-1',
+    planModeRequired: false,
+    parentSessionId: 'parent-session',
+    isInProcess: true as const,
+    abortController: new AbortController(),
+  }
+  await runWithTeammateContext(ctx, async () => {
+      expect(getClippedIds().size).toBe(0)
+      addClippedIds(['child_x'])
+      expect(getClippedIds().size).toBe(1)
+
+    // Sub-agent reset (mirrors inProcessRunner.ts:1107 post-autocompact)
+    resetClippedIds()
+    expect(getClippedIds().size).toBe(0)
+  })
+
+  // Parent's set is INTACT — sub-agent's reset did not wipe it
+  expect(getClippedIds().size).toBe(2)
+  expect(getClippedIds().has('parent_a')).toBe(true)
+})
+
+test('regenerateSessionId drops the outgoing session entry', () => {
+  addClippedIds(['toolu_old'])
+  expect(getClippedIds().size).toBe(1)
+  const before = _getClippedIdsMapSizeForTesting()
+  expect(before).toBeGreaterThanOrEqual(1)
+
+  regenerateSessionId()
+
+  // New session sees an empty set
+  expect(getClippedIds().size).toBe(0)
+  // And the old session's entry was reclaimed by the listener
+  expect(_getClippedIdsMapSizeForTesting()).toBe(0)
+})
+
+test('switchSession (/resume) drops the outgoing session entry', () => {
+  const original = getSessionId()
+  addClippedIds(['toolu_a', 'toolu_b'])
+  expect(getClippedIds().size).toBe(2)
+
+  // Simulate /resume
+  switchSession('resumed-session-id-xxxx' as SessionId)
+
+  expect(getClippedIds().size).toBe(0)
+  expect(_getClippedIdsMapSizeForTesting()).toBe(0)
+
+  // Restore the original session id so other tests aren't affected
+  switchSession(original)
+})
+
+test('Map size stays bounded across many switchSession calls', () => {
+  const original = getSessionId()
+  for (let i = 0; i < 50; i++) {
+    addClippedIds([`tool_${i}`])
+    switchSession(`session_${i}` as SessionId)
+  }
+  // Listener drops outgoing entries → at most 1-2 active
+  expect(_getClippedIdsMapSizeForTesting()).toBeLessThanOrEqual(2)
+  switchSession(original)
 })

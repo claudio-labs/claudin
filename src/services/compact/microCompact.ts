@@ -23,9 +23,9 @@ import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
 } from './compactWarningState.js'
+import { tryGetActiveProvider } from '../api/activeProvider.js'
 import {
   addClippedIds,
-  applyStableStubs,
   getClippedIds,
   resetClippedIds,
 } from './stableStubState.js'
@@ -215,10 +215,19 @@ export async function microcompactMessages(
     estimatedTokens > SIZE_BASED_THRESHOLD * effectiveWindow
   ) {
     const compactableIds = collectCompactableToolIds(messages)
-    const candidateIds =
-      compactableIds.length > SIZE_BASED_KEEP_RECENT
-        ? compactableIds.slice(0, -SIZE_BASED_KEEP_RECENT)
-        : []
+    // Small-history dead zone fix: when threshold is breached but
+    // compactableIds.length <= SIZE_BASED_KEEP_RECENT, we'd otherwise leave
+    // candidateIds empty and sit on hands until autoCompact's hard 92% gate.
+    // Always leave at least one most-recent block intact, but allow clipping
+    // when there are >= 2 candidates total.
+    let candidateIds: string[] = []
+    if (compactableIds.length >= 2) {
+      const keepRecent = Math.max(
+        1,
+        Math.min(SIZE_BASED_KEEP_RECENT, compactableIds.length - 1),
+      )
+      candidateIds = compactableIds.slice(0, -keepRecent)
+    }
     const clipped = getClippedIds()
     const newOnes = candidateIds.filter(id => !clipped.has(id))
 
@@ -232,16 +241,42 @@ export async function microcompactMessages(
       })
       // Notify the cache-break detector ONCE per clip event: the next
       // turn's bytes diverge from the cached prefix at the clipped ids,
-      // which would otherwise be flagged as a regression.
-      if (feature('PROMPT_CACHE_BREAK_DETECTION') && querySource) {
+      // which would otherwise be flagged as a regression. Gated to
+      // first-party transports (anthropic / bedrock / vertex) — the
+      // OpenAI/Codex shim paths don't feed the same detector state, so
+      // calling it there is a no-op write we'd rather skip.
+      if (
+        feature('PROMPT_CACHE_BREAK_DETECTION') &&
+        querySource &&
+        isFirstPartyTransport()
+      ) {
         notifyCacheDeletion(querySource)
       }
     }
   }
 
-  // Always pass through applyStableStubs — it's a no-op when the set is
-  // empty, and idempotent when blocks already carry the stub bytes.
-  return { messages: applyStableStubs(messages) }
+  // applyStableStubs is NOT called here. The native (claude.ts) and shim
+  // (openaiShim.ts / codexShim.ts) request paths each call it themselves
+  // right before the wire — that's the boundary that actually needs the
+  // stubs. Calling it here as well would be an idempotent walk over every
+  // message on every turn for no behavioral change. Other consumers of
+  // microcompactMessages (analyzeContext, /context, /compact) operate on
+  // stub-free messages for analysis and don't need the rewrite.
+  return { messages }
+}
+
+function isFirstPartyTransport(): boolean {
+  try {
+    const provider = tryGetActiveProvider()
+    if (!provider) return false
+    return (
+      provider.transport === 'anthropic' ||
+      provider.transport === 'bedrock' ||
+      provider.transport === 'vertex'
+    )
+  } catch {
+    return false
+  }
 }
 
 /**

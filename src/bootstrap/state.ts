@@ -439,6 +439,10 @@ export function regenerateSessionId(
   // null so getTranscriptPath() derives from originalCwd.
   STATE.sessionId = randomUUID() as SessionId
   STATE.sessionProjectDir = null
+  // Emit on the same signal switchSession uses — listeners (concurrentSessions
+  // PID file, stableStubState per-session map) treat both transitions
+  // uniformly. Without this, /clear and /resume drift apart.
+  sessionSwitched.emit(STATE.sessionId)
   return STATE.sessionId
 }
 

@@ -208,6 +208,32 @@ describe('size-driven stable-stub trigger', () => {
     expect(getClippedIds().size).toBe(before)
   })
 
+  test('small-history dead zone: 3 compactable ids → clips 1, keeps 2', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { getClippedIds } = await import('./stableStubState.js')
+    // 3 huge results, threshold breached. Without the fix, candidateIds
+    // would be empty (3 > 2 → slice(0,-2) leaves [0]), so it actually clips
+    // 1. Test the EDGE case where ids count == keepRecent: 2 results.
+    mockSizeState.effectiveWindow = 5_000
+    const messages = buildHeavyHistory(2, 5_000)
+    await microcompactMessages(messages)
+    const clipped = getClippedIds()
+    // 2 ids → keepRecent collapses to 1, candidate = [toolu_0]
+    expect(clipped.size).toBe(1)
+    expect(clipped.has('toolu_0')).toBe(true)
+    expect(clipped.has('toolu_1')).toBe(false)
+  })
+
+  test('single compactable id below dead zone: no clipping', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { getClippedIds } = await import('./stableStubState.js')
+    // Only 1 compactable id — keep at least 1 most-recent → 0 candidates.
+    mockSizeState.effectiveWindow = 5_000
+    const messages = buildHeavyHistory(1, 10_000)
+    await microcompactMessages(messages)
+    expect(getClippedIds().size).toBe(0)
+  })
+
   test('resetMicrocompactState clears the clipped set', async () => {
     const { resetMicrocompactState } = await import('./microCompact.js')
     const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
