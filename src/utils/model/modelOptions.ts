@@ -28,6 +28,7 @@ import {
   getUserSpecifiedModelSetting,
   isOpus1mMergeEnabled,
   getOpus46PricingSuffix,
+  parseUserSpecifiedModel,
   renderDefaultModelSetting,
   type ModelSetting,
 } from './model.js'
@@ -716,7 +717,18 @@ export function getModelOptions(fastMode = false): ModelOption[] {
   } else if (initialMainLoopModel !== null) {
     customModel = initialMainLoopModel
   }
-  if (customModel === null || options.some(opt => opt.value === customModel)) {
+  if (customModel === null || options.some(opt => {
+    if (opt.value === customModel) return true
+    if (opt.value === null) return false
+    try {
+      return (
+        getCanonicalName(parseUserSpecifiedModel(String(opt.value))) ===
+        getCanonicalName(parseUserSpecifiedModel(customModel))
+      )
+    } catch {
+      return false
+    }
+  })) {
     return filterModelOptionsByAllowlist(options)
   } else if (customModel === 'opusplan') {
     return filterModelOptionsByAllowlist([...options, getOpusPlanOption()])

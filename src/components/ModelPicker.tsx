@@ -9,7 +9,7 @@ import { Box, Text } from '../ink.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
 import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, modelSupportsEffort, modelSupportsMaxEffort, resolvePickerEffortPersistence, toPersistableEffort } from '../utils/effort.js';
-import { getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from '../utils/model/model.js';
+import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from '../utils/model/model.js';
 import { getModelOptions } from '../utils/model/modelOptions.js';
 import { getSettingsForSource, updateSettingsForSource } from '../utils/settings/settings.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
@@ -76,7 +76,14 @@ export function ModelPicker(t0) {
   const modelOptions = t3;
   let t4;
   bb0: {
-    if (initial !== null && !modelOptions.some(opt => opt.value === initial)) {
+    if (initial !== null && !modelOptions.some(opt => {
+      if (opt.value === initial) return true;
+      if (opt.value === null) return false;
+      try {
+        return getCanonicalName(parseUserSpecifiedModel(String(opt.value))) ===
+               getCanonicalName(parseUserSpecifiedModel(initial));
+      } catch { return false; }
+    })) {
       let t5;
       if ($[4] !== initial) {
         t5 = modelDisplayString(initial);
@@ -124,7 +131,14 @@ export function ModelPicker(t0) {
   const selectOptions = t5;
   let t6;
   if ($[14] !== initialValue || $[15] !== selectOptions) {
-    t6 = selectOptions.some(_ => _.value === initialValue) ? initialValue : selectOptions[0]?.value ?? undefined;
+    t6 = selectOptions.find(_ => {
+      if (_.value === initialValue) return true;
+      if (initialValue === NO_PREFERENCE || _.value === null) return false;
+      try {
+        return getCanonicalName(parseUserSpecifiedModel(String(_.value))) ===
+               getCanonicalName(parseUserSpecifiedModel(String(initialValue)));
+      } catch { return false; }
+    })?.value ?? selectOptions[0]?.value ?? undefined;
     $[14] = initialValue;
     $[15] = selectOptions;
     $[16] = t6;
