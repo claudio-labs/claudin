@@ -52,7 +52,7 @@ export function buildBranchBorderSegment(
   const cwdBg = theme.suggestion              // vibrant bg for path
   const branchBg = theme.messageActionsBackground // very faint bg for branch
   const cwdFg = theme.inverseText             // dark bold text on path
-  const branchFg = theme.inactive             // muted text on branch
+  const branchFg = theme.suggestion           // theme blue on branch (same as path bg — cohesive)
 
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
   const sepChalk = applyColor(applyColor(chalk, cwdBg, 'fg'), branchBg, 'bg')
