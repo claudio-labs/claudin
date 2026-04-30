@@ -46,7 +46,6 @@ const featureFlags: Record<string, boolean> = {
 
   // ── Enabled: new activations ────────────────────────────────────────
   DUMP_SYSTEM_PROMPT: true,           // --dump-system-prompt CLI flag for debugging
-  CACHED_MICROCOMPACT: true,          // Cache-aware tool result truncation optimization
   AWAY_SUMMARY: true,                 // "While you were away" recap after 5min blur
   TRANSCRIPT_CLASSIFIER: true,        // Auto-approval classifier for safe tool uses
   ULTRATHINK: true,                   // Deep thinking mode — type "ultrathink" to boost reasoning

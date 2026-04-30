@@ -554,18 +554,6 @@ function logAPISuccess({
         } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
       : {}),
     fastMode,
-    // Log cache_deleted_input_tokens for cache editing analysis. Casts needed
-    // because the field is intentionally not on NonNullableUsage (excluded from
-    // external builds). Set by updateUsage() when cache editing is active.
-    ...(feature('CACHED_MICROCOMPACT') &&
-    ((usage as unknown as { cache_deleted_input_tokens?: number })
-      .cache_deleted_input_tokens ?? 0) > 0
-      ? {
-          cacheDeletedInputTokens: (
-            usage as unknown as { cache_deleted_input_tokens: number }
-          ).cache_deleted_input_tokens,
-        }
-      : {}),
     ...(previousRequestId
       ? {
           previousRequestId:
