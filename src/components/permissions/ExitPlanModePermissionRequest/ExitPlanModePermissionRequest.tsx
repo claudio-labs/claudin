@@ -49,8 +49,10 @@ import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
 import type { BorderTextOptions } from '../../../ink/render-border.js';
 import { getCwd } from '../../../utils/cwd.js';
+import { useTheme } from '../../design-system/ThemeProvider.js';
 import { buildBranchBorderSegment } from '../../../utils/format-branch.js';
 import { getAheadBehind, getBranch } from '../../../utils/git.js';
+import { getTheme } from '../../../utils/theme.js';
 type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
 
 /**
@@ -536,6 +538,7 @@ export function ExitPlanModePermissionRequest({
   // Poll cwd/branch so it stays visible on the sticky footer border during plan mode,
   // matching the PromptInput top-border display (same info, same format).
   const cwd = getCwd();
+  const [themeName] = useTheme();
   const [cwdBranchBorderText, setCwdBranchBorderText] = useState<BorderTextOptions | undefined>(undefined);
   const useStickyFooter = !isEmpty && !!setStickyFooter;
   useEffect(() => {
@@ -547,7 +550,7 @@ export function ExitPlanModePermissionRequest({
         cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd;
       void Promise.all([getBranch(), getAheadBehind()]).then(([branch, ab]) => {
         if (cancelled) return;
-        const seg = buildBranchBorderSegment(displayCwd, branch, ab.ahead, ab.behind);
+        const seg = buildBranchBorderSegment(displayCwd, branch, ab.ahead, ab.behind, getTheme(themeName));
         setCwdBranchBorderText(prev =>
           prev?.content === seg ? prev : { content: seg, position: 'top', align: 'start', offset: 0 },
         );
@@ -559,7 +562,7 @@ export function ExitPlanModePermissionRequest({
       cancelled = true;
       clearInterval(t);
     };
-  }, [useStickyFooter, cwd]);
+  }, [useStickyFooter, cwd, themeName]);
 
   useLayoutEffect(() => {
     if (!useStickyFooter) return;

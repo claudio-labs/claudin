@@ -1,6 +1,8 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
+import { useTheme } from '../design-system/ThemeProvider.js';
 import { buildBranchBorderSegment } from '../../utils/format-branch.js';
+import { getTheme } from '../../utils/theme.js';
 import * as path from 'path';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -2431,6 +2433,7 @@ function colorizePrNumber(state: PrReviewState | null | undefined): (s: string) 
 
 function useCwdBranchSegment(isLoading: boolean): string {
   const cwd = getCwd();
+  const [themeName] = useTheme();
   const [branch, setBranch] = useState<string>('');
   const [aheadBehind, setAheadBehind] = useState<{ ahead: number; behind: number }>({
     ahead: 0,
@@ -2491,7 +2494,7 @@ function useCwdBranchSegment(isLoading: boolean): string {
         ? '~' + cwd.slice(home.length)
         : cwd;
 
-  let segment = buildBranchBorderSegment(displayCwd, branch, aheadBehind.ahead, aheadBehind.behind);
+  let segment = buildBranchBorderSegment(displayCwd, branch, aheadBehind.ahead, aheadBehind.behind, getTheme(themeName));
   if (pr.number !== null && pr.url !== null) {
     const colorize = colorizePrNumber(pr.reviewState);
     segment += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number);
