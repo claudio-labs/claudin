@@ -547,12 +547,17 @@ test('blocks already cleared by microCompact are NOT re-compressed', () => {
   const result = compressToolHistory(messages, 'gpt-4o')
   const resultMsgs = getResultMessages(result)
 
-  // Already-cleared marker survives untouched (no double processing)
+  // Already-cleared output marker survives untouched (no double processing
+  // — we don't want `[Read args={} → 33 chars omitted]` over the canonical
+  // `[Old tool result content cleared]`).
   expect(getResultText(resultMsgs[0])).toBe('[Old tool result content cleared]')
 
-  // Corresponding tool_use.input also left alone — not stubbed
+  // Corresponding tool_use.input IS stubbed: with the output already a tiny
+  // marker, the input (Edit `new_string` / Write `content` payloads in real
+  // sessions) is dead weight and gets the same `_stub` collapse as any other
+  // compressed compactable tool.
   const clearedUseBlock = (result[1].content as Block[]).find((b: any) => b.type === 'tool_use')
-  expect((clearedUseBlock?.input as any)?._stub).toBeUndefined()
+  expect(clearedUseBlock?.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
 })
 
 // ---------- tool_use.input compression ----------
@@ -730,12 +735,12 @@ test('wrapped assistant message: tool_use.input stubbed via message.content (not
   expect(useBlock.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
 })
 
-test('orphan tool_use (no matching tool_result) input left untouched even in old-tier position', () => {
-  // Build a conversation where the very first assistant message has a tool_use
-  // with no corresponding tool_result anywhere. Pad with 20 normal exchanges to
-  // push it deep into old-tier position, but buildOldTierToolUseIds only adds
-  // ids that appear in old-tier tool_result messages, so the orphan id is never
-  // added to the set.
+test('orphan tool_use in old-tier position has its input stubbed', () => {
+  // Orphan = tool_use with no paired tool_result anywhere. The dedicated
+  // collectOrphanInputIds pre-pass tiers orphans by their position in the
+  // assistant-message stream, so an orphan deep in old-tier position now gets
+  // the same `_stub` collapse as any compactable tool_use whose tool_result
+  // was compressed.
   const orphanInput = { file_path: '/orphan.ts' }
   const messages: Msg[] = [
     { role: 'user', content: 'start' },
@@ -750,7 +755,7 @@ test('orphan tool_use (no matching tool_result) input left untouched even in old
         },
       ],
     },
-    // No user message with tool_result for toolu_orphan here — it is orphaned.
+    // No user message with tool_result for toolu_orphan — it is orphaned.
     ...buildConversation(20, 5_000).slice(1),
   ]
   const result = compressToolHistory(messages, 'gpt-4o')
@@ -759,8 +764,7 @@ test('orphan tool_use (no matching tool_result) input left untouched even in old
   const useBlock = getUseBlocks(orphanAssistant)[0]
 
   expect(typeof useBlock.input).toBe('object')
-  expect((useBlock.input as any).file_path).toBe('/orphan.ts')
-  expect((useBlock.input as any)._stub).toBeUndefined()
+  expect(useBlock.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
 })
 
 // ---------- mid-tier tool_use.input compression ----------
@@ -924,9 +928,11 @@ test('wrapped assistant message: mid-tier tool_use.input stubbed via message.con
   expect(useBlock.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
 })
 
-test('orphan mid-tier tool_use (no matching tool_result): input untouched', () => {
-  // An orphan tool_use has no tool_result to pull its id into buildMidTierToolUseIds,
-  // so even deep in mid-tier position its input must survive intact.
+test('orphan tool_use in mid-tier position has its input stubbed', () => {
+  // Mid- and old-tier are indistinguishable for the input-stub decision —
+  // collectOrphanInputIds adds any orphan whose assistant-message position is
+  // ≥ tiers.recent from the end. This test sits the orphan inside the mid-tier
+  // window and confirms parity with the old-tier case above.
   const orphanInput = { file_path: '/mid-orphan.ts' }
   const messages: Msg[] = [
     { role: 'user', content: 'start' },
@@ -953,8 +959,119 @@ test('orphan mid-tier tool_use (no matching tool_result): input untouched', () =
   const useBlock = getUseBlocks(orphanAssistant)[0]
 
   expect(typeof useBlock.input).toBe('object')
-  expect((useBlock.input as any).file_path).toBe('/mid-orphan.ts')
+  expect(useBlock.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
+})
+
+// ---------- input-stubbing for already-cleared / orphan blocks ----------
+
+test('already-cleared + non-compactable tool: input never stubbed', () => {
+  // 100k → recent=5, mid=10. The cleared Agent exchange sits at index 0,
+  // 20 padding exchanges push it old-tier. isInputStubbable rejects Agent
+  // via the same compactable allowlist used everywhere else, so its input
+  // (the user-visible task prompt) survives intact.
+  const messages: Msg[] = [
+    { role: 'user', content: 'start' },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'tool_use', id: 'agent_cleared', name: 'Agent', input: { task: 'do X' } },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'agent_cleared',
+          content: '[Old tool result content cleared]', // microCompact's marker
+        },
+      ],
+    },
+    ...buildConversation(20, 100).slice(1),
+  ]
+  const result = compressToolHistory(messages, 'gpt-4o')
+  const resultMsgs = getResultMessages(result)
+
+  // Output marker still survives (output path uses the conservative predicate)
+  expect(getResultText(resultMsgs[0])).toBe('[Old tool result content cleared]')
+
+  const useBlock = (result[1].content as Block[]).find((b: any) => b.type === 'tool_use')
+  expect((useBlock?.input as any).task).toBe('do X')
+  expect((useBlock?.input as any)._stub).toBeUndefined()
+})
+
+test('orphan tool_use in recent tier: input preserved', () => {
+  // Recent boundary guard: an orphan whose assistant-message position is
+  // < tiers.recent from the end stays untouched.
+  const orphanInput = { file_path: '/recent-orphan.ts' }
+  const messages: Msg[] = [
+    ...buildConversation(20, 100),
+    {
+      role: 'assistant',
+      content: [
+        { type: 'tool_use', id: 'toolu_recent_orphan', name: 'Read', input: orphanInput },
+      ],
+    },
+  ]
+  const result = compressToolHistory(messages, 'gpt-4o')
+  const orphanMsg = (result as Msg[])[result.length - 1]
+  const useBlock = getUseBlocks(orphanMsg)[0]
+
+  expect((useBlock.input as any).file_path).toBe('/recent-orphan.ts')
   expect((useBlock.input as any)._stub).toBeUndefined()
+})
+
+test('orphan Agent tool_use in old-tier position: input preserved', () => {
+  // Allowlist still wins for orphans — Task/Agent inputs carry the user-
+  // facing prompt and must never be stubbed regardless of position.
+  const messages: Msg[] = [
+    { role: 'user', content: 'start' },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'tool_use', id: 'agent_orphan', name: 'Agent', input: { task: 'plan A' } },
+      ],
+    },
+    // No paired tool_result — orphaned.
+    ...buildConversation(20, 5_000).slice(1),
+  ]
+  const result = compressToolHistory(messages, 'gpt-4o')
+
+  const orphanAssistant = (result as Msg[])[1]
+  const useBlock = getUseBlocks(orphanAssistant)[0]
+
+  expect((useBlock.input as any).task).toBe('plan A')
+  expect((useBlock.input as any)._stub).toBeUndefined()
+})
+
+test('orphan tool_use boundary: assistant index = tiers.recent → stubbed; index < tiers.recent → preserved', () => {
+  // Off-by-one guard for collectOrphanInputIds. 100k → recent=5, mid=10.
+  // Build a stream of 11 assistant messages, each containing one orphan
+  // tool_use. From the end: positions 0..4 are recent (preserved), position
+  // 5 is the first mid-tier slot (must be stubbed), positions 6..10 are
+  // deeper mid (stubbed). Tests both sides of the < tiers.recent boundary.
+  const messages: Msg[] = [{ role: 'user', content: 'start' }]
+  for (let n = 0; n < 11; n++) {
+    messages.push({
+      role: 'assistant',
+      content: [
+        { type: 'tool_use', id: `orphan_${n}`, name: 'Read', input: { file_path: `/o${n}.ts` } },
+      ],
+    })
+    // Pad with a non-tool_result user turn so positions stay one-per-assistant.
+    messages.push({ role: 'user', content: 'noop' })
+  }
+  const result = compressToolHistory(messages, 'gpt-4o')
+
+  const useMsgs = (result as Msg[]).filter(m =>
+    Array.isArray(m.content) && (m.content as Block[]).some((b: any) => b.type === 'tool_use'),
+  )
+  const stubbedAtBoundary = getUseBlocks(useMsgs[useMsgs.length - 1 - 5])[0]
+  const preservedAtBoundary = getUseBlocks(useMsgs[useMsgs.length - 1 - 4])[0]
+
+  expect(stubbedAtBoundary.input).toMatchObject({ _stub: expect.stringContaining('chars omitted') })
+  expect((preservedAtBoundary.input as any).file_path).toBe('/o6.ts') // 11 - 1 - 4 = 6
+  expect((preservedAtBoundary.input as any)._stub).toBeUndefined()
 })
 
 // ---------- mid-tier tool_use.input compression: savings ----------

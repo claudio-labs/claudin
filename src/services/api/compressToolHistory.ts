@@ -155,21 +155,38 @@ function indexToolUses(messages: AnyMessage[]): Map<string, ToolUseBlock> {
   return map
 }
 
-function indexToolResultMessages(messages: AnyMessage[]): number[] {
+// `toolUseCount` lets the caller cheaply detect "no orphans possible" via
+// `toolUseCount === resultIds.size`, skipping collectOrphanInputIds on the
+// fast path (paired-tool sessions).
+function scanToolResults(messages: AnyMessage[]): {
+  indices: number[]
+  resultIds: Set<string>
+  toolUseCount: number
+} {
   const indices: number[] = []
+  const resultIds = new Set<string>()
+  let toolUseCount = 0
   for (let i = 0; i < messages.length; i++) {
     const inner = getInner(messages[i])
     const role = inner.role ?? messages[i].role
     const content = inner.content
-    if (
-      role === 'user' &&
-      Array.isArray(content) &&
-      content.some((b: { type?: string }) => b?.type === 'tool_result')
-    ) {
-      indices.push(i)
+    if (!Array.isArray(content)) continue
+    if (role === 'assistant') {
+      for (const b of content as Array<{ type?: string }>) {
+        if (b?.type === 'tool_use') toolUseCount++
+      }
+      continue
     }
+    if (role !== 'user') continue
+    let sawToolResult = false
+    for (const b of content as Array<{ type?: string; tool_use_id?: string }>) {
+      if (b?.type !== 'tool_result') continue
+      sawToolResult = true
+      if (b.tool_use_id) resultIds.add(b.tool_use_id)
+    }
+    if (sawToolResult) indices.push(i)
   }
-  return indices
+  return { indices, resultIds, toolUseCount }
 }
 
 function rewriteMessage<T extends AnyMessage>(
@@ -206,46 +223,54 @@ function shouldCompressBlock(
   return isCompactableTool(toolUse.name)
 }
 
-function buildOldTierToolUseIds(
-  messages: AnyMessage[],
-  positionByIndex: Map<number, number>,
-  tiers: Tiers,
-  total: number,
+// Looser sibling of shouldCompressBlock used purely for the input-stub
+// decision. We DO want to stub bulky tool_use.input even when the paired
+// tool_result has already been collapsed by microCompact (TOOL_RESULT_CLEARED_
+// MESSAGE) — the output marker stays untouched, only the bulky input
+// (think Edit `new_string`, Write `content`) gets dropped. The compactable
+// allowlist still wins so Task/Agent inputs are never stubbed.
+function isInputStubbable(
+  block: ToolResultBlock,
   toolUsesById: Map<string, ToolUseBlock>,
-): Set<string> {
-  const ids = new Set<string>()
-  for (const [msgIdx, pos] of positionByIndex) {
-    const fromEnd = total - 1 - pos
-    if (fromEnd < tiers.recent + tiers.mid) continue
-    const content = getInner(messages[msgIdx]).content
-    if (!Array.isArray(content)) continue
-    for (const block of content as ToolResultBlock[]) {
-      if (block?.type !== 'tool_result' || !block.tool_use_id) continue
-      if (!shouldCompressBlock(block, toolUsesById)) continue
-      ids.add(block.tool_use_id)
-    }
-  }
-  return ids
+): boolean {
+  const toolUse = toolUsesById.get(block.tool_use_id ?? '')
+  if (!toolUse?.name) return true
+  return isCompactableTool(toolUse.name)
 }
 
-function buildMidTierToolUseIds(
+// Orphan tool_use blocks (no paired tool_result) are invisible to the
+// tool_result tier sets, so they get their own pass. We tier them by their
+// position in the assistant-message stream — same intuition as the
+// tool_result tiering, applied to the parallel stream. Pure-text assistant
+// turns also count toward the stream length, which is a deliberate
+// simplification: interleaving the two streams would double the tier-math
+// complexity for marginal benefit. Don't try to "fix" this without measuring.
+function collectOrphanInputIds(
   messages: AnyMessage[],
-  positionByIndex: Map<number, number>,
+  toolResultIds: Set<string>,
   tiers: Tiers,
-  total: number,
-  toolUsesById: Map<string, ToolUseBlock>,
 ): Set<string> {
   const ids = new Set<string>()
-  for (const [msgIdx, pos] of positionByIndex) {
-    const fromEnd = total - 1 - pos
-    if (fromEnd < tiers.recent) continue               // recent → skip
-    if (fromEnd >= tiers.recent + tiers.mid) continue  // old → skip
-    const content = getInner(messages[msgIdx]).content
-    if (!Array.isArray(content)) continue
-    for (const block of content as ToolResultBlock[]) {
-      if (block?.type !== 'tool_result' || !block.tool_use_id) continue
-      if (!shouldCompressBlock(block, toolUsesById)) continue
-      ids.add(block.tool_use_id)
+  const assistantIndices: number[] = []
+  for (let i = 0; i < messages.length; i++) {
+    const inner = getInner(messages[i])
+    const role = inner.role ?? messages[i].role
+    if (role === 'assistant' && Array.isArray(inner.content)) {
+      assistantIndices.push(i)
+    }
+  }
+  const totalA = assistantIndices.length
+  for (let p = 0; p < totalA; p++) {
+    const fromEnd = totalA - 1 - p
+    if (fromEnd < tiers.recent) continue
+    const content = getInner(messages[assistantIndices[p]]).content as unknown[]
+    for (const block of content as ToolUseBlock[]) {
+      if (block?.type !== 'tool_use' || !block.id) continue
+      if (toolResultIds.has(block.id)) continue
+      // Respect the same allowlist used elsewhere — Task/Agent inputs
+      // carry the user-visible prompt and must survive intact.
+      if (block.name && !isCompactableTool(block.name)) continue
+      ids.add(block.id)
     }
   }
   return ids
@@ -261,11 +286,18 @@ export function compressToolHistory<T extends AnyMessage>(
 
   const tiers = getTiers(getEffectiveContextWindowSize(model))
 
-  const toolResultIndices = indexToolResultMessages(messages)
+  const { indices: toolResultIndices, resultIds: toolResultIds, toolUseCount } =
+    scanToolResults(messages)
   const total = toolResultIndices.length
-  // If every tool-result fits in the recent tier, no boundary crosses; return
-  // the same reference for the same copy-elision reason.
-  if (total <= tiers.recent) return messages
+
+  // Skip the orphan pre-pass entirely when every tool_use has a paired
+  // tool_result — the common case. Preserves the old fast-path cost.
+  const hasOrphans = toolUseCount > toolResultIds.size
+  const inputStubIds = hasOrphans
+    ? new Set<string>(collectOrphanInputIds(messages, toolResultIds, tiers))
+    : new Set<string>()
+
+  if (total <= tiers.recent && inputStubIds.size === 0) return messages
 
   // O(1) lookup: messageIndex → tool-result position (0 = oldest). Replaces
   // the naive Array.indexOf(i) that was O(n²) across the .map below.
@@ -289,6 +321,13 @@ export function compressToolHistory<T extends AnyMessage>(
       const b = block as { type?: string }
       if (b?.type !== 'tool_result') return block
       const tr = block as ToolResultBlock
+
+      // Input-stub decision is looser than the output one: cleared blocks
+      // qualify here (their bulky input is dead weight) but not above.
+      if (tr.tool_use_id && isInputStubbable(tr, toolUsesById)) {
+        inputStubIds.add(tr.tool_use_id)
+      }
+
       if (!shouldCompressBlock(tr, toolUsesById)) return block
       return inMidWindow
         ? truncateBlock(tr, MID_MAX_CHARS)
@@ -298,9 +337,7 @@ export function compressToolHistory<T extends AnyMessage>(
     return rewriteMessage(msg, newContent)
   })
 
-  const oldTierIds = buildOldTierToolUseIds(messages, positionByIndex, tiers, total, toolUsesById)
-  const midTierIds = buildMidTierToolUseIds(messages, positionByIndex, tiers, total, toolUsesById)
-  if (oldTierIds.size === 0 && midTierIds.size === 0) return firstPass
+  if (inputStubIds.size === 0) return firstPass
 
   return firstPass.map(msg => {
     const inner = getInner(msg)
@@ -310,7 +347,7 @@ export function compressToolHistory<T extends AnyMessage>(
     if (!Array.isArray(content)) return msg
     let changed = false
     const newContent = (content as ToolUseBlock[]).map(block => {
-      if (block?.type !== 'tool_use' || !block.id || (!oldTierIds.has(block.id) && !midTierIds.has(block.id))) return block
+      if (block?.type !== 'tool_use' || !block.id || !inputStubIds.has(block.id)) return block
       changed = true
       const charCount = JSON.stringify(block.input ?? {}).length
       return { ...block, input: { _stub: `input: ${charCount} chars omitted` } }
