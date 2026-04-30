@@ -141,6 +141,45 @@ describe('stripOldThinkingBlocks', () => {
     expect(hasToolUse).toBe(true)
   })
 
+  test('keeps thinking in recent turns with tool_use (reasoning_content continuity)', () => {
+    // Providers like Moonshot/DeepSeek need reasoning_content on recent
+    // assistant tool-call messages. stripOldThinkingBlocks must preserve
+    // thinking blocks in the last N turns so the shim can re-attach them.
+    const withThinkingAndTool = (text: string) =>
+      createAssistantMessage({
+        content: [
+          { type: 'thinking', thinking: text, signature: 'sig' } as any,
+          { type: 'tool_use', id: `toolu_${text}`, name: 'Bash', input: { command: 'echo' } } as any,
+        ],
+      })
+
+    const msgs = [
+      userMsg(),
+      withThinkingAndTool('old1'),
+      userMsg(),
+      withThinkingAndTool('old2'),
+      userMsg(),
+      withThinkingAndTool('recent1'),
+      userMsg(),
+      withThinkingAndTool('recent2'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+
+    // Old turns (indices 1, 3) — thinking stripped, tool_use kept
+    for (const i of [1, 3]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'thinking')).toBe(false)
+      expect(msg.message.content.some((b: any) => b.type === 'tool_use')).toBe(true)
+    }
+
+    // Recent turns (indices 5, 7) — both thinking and tool_use intact
+    for (const i of [5, 7]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'thinking')).toBe(true)
+      expect(msg.message.content.some((b: any) => b.type === 'tool_use')).toBe(true)
+    }
+  })
+
   test('user messages are never modified', () => {
     const user1 = userMsg('first')
     const user2 = userMsg('second')
@@ -156,5 +195,17 @@ describe('stripOldThinkingBlocks', () => {
     // User messages at indices 0, 2, 4 must be identical references
     expect(result[0]).toBe(user1)
     expect(result[2]).toBe(user2)
+  })
+
+  test('passthrough when fewer thinking turns than keepRecentTurns', () => {
+    // Only 1 thinking turn, keepRecentTurns=2 → nothing stripped
+    const msgs = [
+      userMsg(),
+      assistantWithThinking('only-one'),
+      userMsg(),
+      assistantTextOnly('no-thinking'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+    expect(result).toBe(msgs)
   })
 })

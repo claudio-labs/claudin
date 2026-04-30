@@ -541,6 +541,10 @@ function convertMessages(
           const thinkingText = (thinkingBlock as { thinking?: string } | undefined)?.thinking
           if (typeof thinkingText === 'string' && thinkingText.trim().length > 0) {
             assistantMsg.reasoning_content = thinkingText
+          } else {
+            // Thinking block was stripped by stripOldThinkingBlocks — set empty
+            // string so Moonshot/DeepSeek don't 400 on missing reasoning_content.
+            assistantMsg.reasoning_content = ''
           }
         }
 

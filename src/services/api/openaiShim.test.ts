@@ -3366,6 +3366,72 @@ test('Moonshot: echoes reasoning_content on assistant tool-call messages', async
   )
 })
 
+test('Moonshot: sets empty reasoning_content when thinking block was stripped', async () => {
+  // After stripOldThinkingBlocks removes old thinking blocks, assistant
+  // messages with tool_use lack a thinking block. Moonshot requires
+  // reasoning_content on every assistant tool-call message — empty string
+  // prevents the 400 "reasoning_content is missing" error.
+  process.env.OPENAI_BASE_URL = 'https://api.moonshot.ai/v1'
+  process.env.OPENAI_API_KEY = 'sk-moonshot-test'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'kimi-k2.6',
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model: 'kimi-k2.6',
+    system: 'you are kimi',
+    messages: [
+      { role: 'user', content: 'check the logs' },
+      {
+        role: 'assistant',
+        content: [
+          // No thinking block — it was stripped by stripOldThinkingBlocks
+          { type: 'text', text: '[thinking omitted]' },
+          {
+            type: 'tool_use',
+            id: 'call_bash_1',
+            name: 'Bash',
+            input: { command: 'cat /tmp/app.log' },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'call_bash_1',
+            content: 'log line 1\nlog line 2',
+          },
+        ],
+      },
+    ],
+    max_tokens: 256,
+    stream: false,
+  })
+
+  const messages = requestBody?.messages as Array<Record<string, unknown>>
+  const assistantWithToolCall = messages.find(
+    m => m.role === 'assistant' && Array.isArray(m.tool_calls),
+  )
+  expect(assistantWithToolCall).toBeDefined()
+  expect(assistantWithToolCall?.reasoning_content).toBe('')
+})
+
 test('DeepSeek echoes reasoning_content on assistant tool-call messages', async () => {
   process.env.OPENAI_BASE_URL = 'https://api.deepseek.com/v1'
   process.env.OPENAI_API_KEY = 'sk-deepseek'

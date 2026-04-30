@@ -261,7 +261,7 @@ export type GlobalConfig = {
   hasUsedBackslashReturn?: boolean
   autoCompactEnabled: boolean // Controls whether auto-compact is enabled
   toolHistoryCompressionEnabled: boolean // Compress old tool_result content for small-context providers
-  thinkingHistoryRedactionEnabled: boolean // Strip old thinking blocks before API call for Bedrock/Vertex
+  thinkingHistoryRedactionEnabled: boolean // Strip old thinking blocks before API call
   toolResultSummarizerEnabled: boolean // Summarize oversized Bash/Grep/WebFetch outputs as they enter history
   showTurnDuration: boolean // Controls whether to show turn duration message (e.g., "Cooked for 1m 6s")
   // Controls whether to show per-query cache hit/miss stats at the end of each turn.

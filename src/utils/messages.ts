@@ -5625,7 +5625,8 @@ export function stripAdvisorBlocks(
  * `redacted_thinking` blocks are never stripped — the API requires them to be
  * echoed back verbatim and stripping them causes a 400.
  *
- * Used for Bedrock/Vertex where there is no server-side thinking-clear mechanism.
+ * Used across all providers to keep token estimation accurate and prevent
+ * premature auto-compact from inflated local message arrays.
  */
 export function stripOldThinkingBlocks(
   messages: (UserMessage | AssistantMessage)[],

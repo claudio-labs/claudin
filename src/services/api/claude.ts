@@ -1317,18 +1317,11 @@ async function* queryModel(
     messagesForAPI = stripAdvisorBlocks(messagesForAPI)
   }
 
-  // Client-side thinking history redaction for Bedrock/Vertex.
-  // These providers have no server-side clear_thinking mechanism, so we strip
-  // old thinking blocks before sending to prevent unbounded token growth.
-  // 1P Anthropic uses the server-side mechanism; 3P shim drops thinking in convertContentBlocks.
-  {
-    const provider = getAPIProvider()
-    if (
-      getGlobalConfig().thinkingHistoryRedactionEnabled &&
-      (provider === 'bedrock' || provider === 'vertex')
-    ) {
-      messagesForAPI = stripOldThinkingBlocks(messagesForAPI, 2)
-    }
+  // Client-side thinking history redaction. Strips old thinking blocks
+  // to prevent inflated token estimation and premature auto-compact.
+  // 1P Anthropic also has server-side clear_thinking; this is additive.
+  if (getGlobalConfig().thinkingHistoryRedactionEnabled) {
+    messagesForAPI = stripOldThinkingBlocks(messagesForAPI, 2)
   }
 
   // Strip excess media items before making the API call.
