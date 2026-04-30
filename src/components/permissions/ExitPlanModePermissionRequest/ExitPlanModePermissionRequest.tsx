@@ -47,9 +47,9 @@ import type { PastedContent } from '../../../utils/config.js';
 import type { ImageDimensions } from '../../../utils/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.js';
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
-import chalk from 'chalk';
 import type { BorderTextOptions } from '../../../ink/render-border.js';
 import { getCwd } from '../../../utils/cwd.js';
+import { buildBranchBorderSegment } from '../../../utils/format-branch.js';
 import { getAheadBehind, getBranch } from '../../../utils/git.js';
 type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
 
@@ -547,18 +547,9 @@ export function ExitPlanModePermissionRequest({
         cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd;
       void Promise.all([getBranch(), getAheadBehind()]).then(([branch, ab]) => {
         if (cancelled) return;
-        let seg = chalk.dim(displayCwd);
-        if (branch) {
-          seg += '  ' + chalk.dim('\uE0A0 ' + branch);
-          if (ab.ahead > 0 || ab.behind > 0) {
-            const parts: string[] = [];
-            if (ab.ahead > 0) parts.push(chalk.green('↑' + ab.ahead));
-            if (ab.behind > 0) parts.push(chalk.yellow('↓' + ab.behind));
-            seg += ' ' + chalk.dim('(') + parts.join(' ') + chalk.dim(')');
-          }
-        }
+        const seg = buildBranchBorderSegment(displayCwd, branch, ab.ahead, ab.behind);
         setCwdBranchBorderText(prev =>
-          prev?.content === seg ? prev : { content: `  ${seg}  `, position: 'top', align: 'start', offset: 2 },
+          prev?.content === seg ? prev : { content: seg, position: 'top', align: 'start', offset: 0 },
         );
       });
     };

@@ -1,5 +1,6 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
+import { buildBranchBorderSegment } from '../../utils/format-branch.js';
 import * as path from 'path';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -2377,10 +2378,10 @@ function buildBorderText(
 
   if (cwdBranchSegment) {
     segments.push({
-      content: `  ${cwdBranchSegment}  `,
+      content: cwdBranchSegment,
       position: 'top',
       align: 'start',
-      offset: 2,
+      offset: 0,
     });
   }
 
@@ -2490,16 +2491,7 @@ function useCwdBranchSegment(isLoading: boolean): string {
         ? '~' + cwd.slice(home.length)
         : cwd;
 
-  let segment = chalk.dim(displayCwd);
-  if (branch) {
-    segment += '  ' + chalk.dim(' ' + branch);
-    if (aheadBehind.ahead > 0 || aheadBehind.behind > 0) {
-      const parts: string[] = [];
-      if (aheadBehind.ahead > 0) parts.push(chalk.green('↑' + aheadBehind.ahead));
-      if (aheadBehind.behind > 0) parts.push(chalk.yellow('↓' + aheadBehind.behind));
-      segment += ' ' + chalk.dim('(') + parts.join(' ') + chalk.dim(')');
-    }
-  }
+  let segment = buildBranchBorderSegment(displayCwd, branch, aheadBehind.ahead, aheadBehind.behind);
   if (pr.number !== null && pr.url !== null) {
     const colorize = colorizePrNumber(pr.reviewState);
     segment += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number);
