@@ -10,6 +10,12 @@ import type { UUID } from 'crypto'
 import type { z } from 'zod/v4'
 import type { Command } from './commands.js'
 import type { CanUseToolFn } from './hooks/useCanUseTool.js'
+import {
+  getCached,
+  isCacheDisabled,
+  isCacheableTool,
+  setCached,
+} from './services/tools/toolResultCache.js'
 import type { ThinkingConfig } from './utils/thinking.js'
 
 export type ToolInputJSONSchema = {
@@ -797,9 +803,41 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
   // The runtime spread is straightforward; the `as` bridges the gap between
   // the structural-any constraint and the precise BuiltTool<D> return. The
   // type semantics are proven by the 0-error typecheck across all 60+ tools.
+  const wrappedDef =
+    isCacheableTool(def.name) && def.call
+      ? { ...def, call: wrapCallWithCache(def.name, def.call.bind(def)) }
+      : def
   return {
     ...TOOL_DEFAULTS,
     userFacingName: () => def.name,
-    ...def,
+    ...wrappedDef,
   } as BuiltTool<D>
+}
+
+/**
+ * Wraps a tool.call with the local result cache. Bypasses on:
+ *   - CLAUDIO_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
+ *   - newMessages or contextModifier present (declared side effects)
+ * Hit replay returns a fresh ToolResult with the cached data + mcpMeta;
+ * tool_use_id is reapplied at the mapToolResultToToolResultBlockParam
+ * call site, so byte-identity rules per-provider are unchanged.
+ */
+function wrapCallWithCache<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Fn extends (...args: any[]) => Promise<ToolResult<unknown>>,
+>(toolName: string, origCall: Fn): Fn {
+  const wrapped = async (...args: Parameters<Fn>): Promise<ToolResult<unknown>> => {
+    if (isCacheDisabled()) return origCall(...args)
+    const input = args[0]
+    const hit = getCached(toolName, input)
+    if (hit) {
+      return { data: hit.data, mcpMeta: hit.mcpMeta }
+    }
+    const result = await origCall(...args)
+    if (!result.newMessages?.length && !result.contextModifier) {
+      setCached(toolName, input, result.data, result.mcpMeta)
+    }
+    return result
+  }
+  return wrapped as Fn
 }

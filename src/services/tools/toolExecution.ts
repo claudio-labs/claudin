@@ -44,6 +44,7 @@ import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from '../../tools/NotebookEditTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
 import { SKILL_TOOL_NAME } from '../../tools/SkillTool/constants.js'
+import { invalidateAll, invalidateForPath } from './toolResultCache.js'
 import { parseGitCommitId } from '../../tools/shared/gitOperationTracking.js'
 import {
   isDeferredTool,
@@ -1256,6 +1257,14 @@ async function checkPermissionsAndCallTool(
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
 
+    // Invalidate the local tool-result cache for any successful write. Reads
+    // (Read/Glob/Grep/LSP) are populated by the buildTool wrapper; this side
+    // clears stale entries when their underlying state changes.
+    // Use callInput (the model's original path) rather than processedInput
+    // (backfill-expanded) so the key matches what the Read/Glob/Grep cache
+    // stored when the model called those tools with the same path string.
+    invalidateCacheForWrite(tool.name, callInput as Record<string, unknown>)
+
     // Log tool content/output as span event if enabled
     if (result.data && typeof result.data === 'object') {
       const contentAttributes: Record<string, string | number | boolean> = {}
@@ -1784,5 +1793,29 @@ async function checkPermissionsAndCallTool(
     if (decisionInfo) {
       toolUseContext.toolDecisions?.delete(toolUseID)
     }
+  }
+}
+
+/**
+ * Drop cached read-only tool results that may have been invalidated by a
+ * write. File-targeted writes invalidate by path; shell-style writes (Bash,
+ * PowerShell) clear everything because the command can touch any path.
+ */
+function invalidateCacheForWrite(
+  toolName: string,
+  input: Record<string, unknown>,
+): void {
+  if (toolName === FILE_EDIT_TOOL_NAME || toolName === FILE_WRITE_TOOL_NAME) {
+    const p = input.file_path
+    if (typeof p === 'string') invalidateForPath(p)
+    return
+  }
+  if (toolName === NOTEBOOK_EDIT_TOOL_NAME) {
+    const p = input.notebook_path
+    if (typeof p === 'string') invalidateForPath(p)
+    return
+  }
+  if (toolName === BASH_TOOL_NAME || toolName === POWERSHELL_TOOL_NAME) {
+    invalidateAll()
   }
 }
