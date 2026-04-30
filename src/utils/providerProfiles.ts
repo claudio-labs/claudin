@@ -139,7 +139,11 @@ function sanitizeProfile(profile: ProviderProfile): ProviderProfile | null {
   const baseUrl = normalizeBaseUrl(profile.baseUrl)
   const model = trimValue(profile.model)
 
-  if (!id || !name || !baseUrl || !model) {
+  // Anthropic resolves the model via subscription-aware defaults in
+  // getDefaultMainLoopModelSetting(), so an empty model is valid for it.
+  // Other providers need a model to make API calls.
+  const needsModel = provider !== 'anthropic'
+  if (!id || !name || !baseUrl || (needsModel && !model)) {
     return null
   }
 
