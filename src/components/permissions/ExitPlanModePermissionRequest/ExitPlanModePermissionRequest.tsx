@@ -47,7 +47,11 @@ import type { PastedContent } from '../../../utils/config.js';
 import type { ImageDimensions } from '../../../utils/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.js';
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
-type ResponseValue = 'yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
+import chalk from 'chalk';
+import type { BorderTextOptions } from '../../../ink/render-border.js';
+import { getCwd } from '../../../utils/cwd.js';
+import { getAheadBehind, getBranch } from '../../../utils/git.js';
+type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
 
 /**
  * Build permission updates for plan approval, including prompt-based rules if provided.
@@ -529,10 +533,46 @@ export function ExitPlanModePermissionRequest({
     onReject();
     toolUseConfirm.onReject();
   };
+  // Poll cwd/branch so it stays visible on the sticky footer border during plan mode,
+  // matching the PromptInput top-border display (same info, same format).
+  const cwd = getCwd();
+  const [cwdBranchBorderText, setCwdBranchBorderText] = useState<BorderTextOptions | undefined>(undefined);
   const useStickyFooter = !isEmpty && !!setStickyFooter;
+  useEffect(() => {
+    if (!useStickyFooter) return;
+    let cancelled = false;
+    const refresh = () => {
+      const home = process.env.HOME || '';
+      const displayCwd =
+        cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd;
+      void Promise.all([getBranch(), getAheadBehind()]).then(([branch, ab]) => {
+        if (cancelled) return;
+        let seg = chalk.dim(displayCwd);
+        if (branch) {
+          seg += '  ' + chalk.dim('\uE0A0 ' + branch);
+          if (ab.ahead > 0 || ab.behind > 0) {
+            const parts: string[] = [];
+            if (ab.ahead > 0) parts.push(chalk.green('↑' + ab.ahead));
+            if (ab.behind > 0) parts.push(chalk.yellow('↓' + ab.behind));
+            seg += ' ' + chalk.dim('(') + parts.join(' ') + chalk.dim(')');
+          }
+        }
+        setCwdBranchBorderText(prev =>
+          prev?.content === seg ? prev : { content: `  ${seg}  `, position: 'top', align: 'start', offset: 2 },
+        );
+      });
+    };
+    refresh();
+    const t = setInterval(refresh, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [useStickyFooter, cwd]);
+
   useLayoutEffect(() => {
     if (!useStickyFooter) return;
-    setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderBottom={false} paddingX={1}>
+    setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderBottom={false} paddingX={1} borderText={cwdBranchBorderText}>
         <Text dimColor>Would you like to proceed?</Text>
         <Box marginTop={1}>
           <Select options={options} onChange={v => void handleResponseRef.current(v)} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
@@ -552,7 +592,7 @@ export function ExitPlanModePermissionRequest({
     return () => setStickyFooter(null);
     // onImagePaste/onRemoveImage are stable (useCallback/useRef-backed above)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useStickyFooter, setStickyFooter, options, pastedContents, editorName, isV2, planFilePath, showSaveMessage]);
+  }, [useStickyFooter, setStickyFooter, options, pastedContents, editorName, isV2, planFilePath, showSaveMessage, cwdBranchBorderText]);
 
   // Simplified UI for empty plans
   if (isEmpty) {

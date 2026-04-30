@@ -338,8 +338,9 @@ export async function getRepoRemoteHash(): Promise<string | null> {
 }
 
 export const getIsHeadOnRemote = async (): Promise<boolean> => {
-  const { code } = await execFileNoThrow(gitExe(), ['rev-parse', '@{u}'], {
+  const { code } = await execFileNoThrow(gitExe(), ['--no-optional-locks', 'rev-parse', '@{u}'], {
     preserveOutputOnError: false,
+    useCwd: true,
   })
   return code === 0
 }
@@ -347,8 +348,8 @@ export const getIsHeadOnRemote = async (): Promise<boolean> => {
 export const hasUnpushedCommits = async (): Promise<boolean> => {
   const { stdout, code } = await execFileNoThrow(
     gitExe(),
-    ['rev-list', '--count', '@{u}..HEAD'],
-    { preserveOutputOnError: false },
+    ['--no-optional-locks', 'rev-list', '--count', '@{u}..HEAD'],
+    { preserveOutputOnError: false, useCwd: true },
   )
   return code === 0 && parseInt(stdout.trim(), 10) > 0
 }
@@ -365,8 +366,8 @@ export const getAheadBehind = async (): Promise<{
 }> => {
   const { stdout, code } = await execFileNoThrow(
     gitExe(),
-    ['rev-list', '--left-right', '--count', '@{u}...HEAD'],
-    { preserveOutputOnError: false },
+    ['--no-optional-locks', 'rev-list', '--left-right', '--count', '@{u}...HEAD'],
+    { preserveOutputOnError: false, useCwd: true },
   )
   if (code !== 0) return { ahead: 0, behind: 0 }
   // Output format: "<behind>\t<ahead>" — left side is upstream, right is HEAD

@@ -2477,7 +2477,10 @@ function useCwdBranchSegment(isLoading: boolean): string {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [cwd]);
+    // isLoading: trigger an immediate refresh whenever a tool (e.g. git push)
+    // finishes so the ahead/behind indicator updates right away instead of
+    // waiting up to 2s for the next polling tick.
+  }, [cwd, isLoading]);
 
   const home = process.env.HOME || '';
   const displayCwd =
