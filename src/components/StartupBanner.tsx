@@ -1,13 +1,16 @@
 import React, { useMemo } from 'react'
 import { Box, RawAnsi } from '../ink.js'
+import { useMainLoopModel } from '../hooks/useMainLoopModel.js'
 import { eagerParseCliFlag } from '../utils/cliArgs.js'
 import { buildStartupBannerLines, STARTUP_BANNER_WIDTH } from './StartupScreen.js'
 
 type Props = {
   /**
    * Optional --model flag override threaded through to provider detection.
-   * When omitted, the component falls back to `eagerParseCliFlag('--model')`
-   * so the rendered banner stays consistent with `printStartupScreen`.
+   * When omitted, the component falls back to the in-session `/model`
+   * selection (AppState.mainLoopModelForSession ?? mainLoopModel) and
+   * finally to `eagerParseCliFlag('--model')`, so the banner stays in sync
+   * with what the agent loop actually uses.
    */
   modelOverride?: string
 }
@@ -24,10 +27,17 @@ type Props = {
  * sees a single leaf with constant-time measure.
  */
 export function StartupBanner({ modelOverride }: Props): React.ReactNode {
+  // Use the same resolution the agent loop uses (subscription default,
+  // /model selection, session override, --model flag) so the banner stays
+  // in sync. Without this, the banner would show the active provider
+  // profile's `model` field, which can lag behind the effective default —
+  // e.g. Max users get Opus by default but the profile may still hold the
+  // "claude-sonnet-4-6" value from initial setup.
+  const liveModel = useMainLoopModel()
   const lines = useMemo(() => {
-    const override = modelOverride ?? eagerParseCliFlag('--model')
+    const override = modelOverride ?? eagerParseCliFlag('--model') ?? liveModel
     return buildStartupBannerLines(override)
-  }, [modelOverride])
+  }, [modelOverride, liveModel])
   return (
     <Box flexDirection="column" flexShrink={0}>
       <RawAnsi lines={lines} width={STARTUP_BANNER_WIDTH} />

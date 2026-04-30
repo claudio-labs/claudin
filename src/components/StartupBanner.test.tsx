@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
+import { AppStateProvider } from '../state/AppState.js'
 import { renderToString } from '../utils/staticRender.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
@@ -120,7 +121,12 @@ describe('<StartupBanner />', () => {
 
   it('renders the banner content when mounted in the Ink tree', async () => {
     const { StartupBanner } = await import('./StartupBanner.js')
-    const output = await renderToString(<StartupBanner modelOverride="claude-sonnet-4-6" />, 100)
+    const output = await renderToString(
+      <AppStateProvider>
+        <StartupBanner modelOverride="claude-sonnet-4-6" />
+      </AppStateProvider>,
+      100,
+    )
 
     expect(output).toContain('Claudio')
     expect(output).toContain('Not configured')
