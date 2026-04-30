@@ -159,13 +159,27 @@ function getOpus41Option(): ModelOption {
   }
 }
 
-function getOpus46Option(fastMode = false): ModelOption {
+function getOpus47Option(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
+  // On 1P, 'opus' alias resolves to 4.7 (default). On 3P, the alias still
+  // resolves to 4.6 (since 4.7 may not be available on Bedrock/Vertex/Foundry
+  // yet), so pin to the 4.7 model string explicitly.
   return {
-    value: is3P ? getModelStrings().opus46 : 'opus',
+    value: is3P ? getModelStrings().opus47 : 'opus',
     label: 'Opus',
-    description: `Opus 4.6 · Most capable for complex work${getOpus46PricingSuffix(fastMode)}`,
-    descriptionForModel: 'Opus 4.6 - most capable for complex work',
+    description: `Opus 4.7 · Most capable for complex work${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel: 'Opus 4.7 - most capable for complex work',
+  }
+}
+
+// 4.6 entry — pinned to the explicit model string on both providers since
+// 'opus' alias on 1P now resolves to 4.7. Used as a legacy / opt-in option.
+function getOpus46Option(fastMode = false): ModelOption {
+  return {
+    value: getModelStrings().opus46,
+    label: 'Opus 4.6',
+    description: `Opus 4.6 · Previous Opus${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel: 'Opus 4.6 - previous Opus version',
   }
 }
 
@@ -180,14 +194,24 @@ export function getSonnet46_1MOption(): ModelOption {
   }
 }
 
-export function getOpus46_1MOption(fastMode = false): ModelOption {
+export function getOpus47_1MOption(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: is3P ? getModelStrings().opus46 + '[1m]' : 'opus[1m]',
+    value: is3P ? getModelStrings().opus47 + '[1m]' : 'opus[1m]',
     label: 'Opus (1M context)',
-    description: `Opus 4.6 for long sessions${getOpus46PricingSuffix(fastMode)}`,
+    description: `Opus 4.7 for long sessions${getOpus46PricingSuffix(fastMode)}`,
     descriptionForModel:
-      'Opus 4.6 with 1M context window - for long sessions with large codebases',
+      'Opus 4.7 with 1M context window - for long sessions with large codebases',
+  }
+}
+
+export function getOpus46_1MOption(fastMode = false): ModelOption {
+  return {
+    value: getModelStrings().opus46 + '[1m]',
+    label: 'Opus 4.6 (1M context)',
+    description: `Opus 4.6 with 1M context · Previous Opus${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel:
+      'Opus 4.6 with 1M context - previous Opus version',
   }
 }
 
@@ -241,7 +265,7 @@ function getMaxOpusOption(fastMode = false): ModelOption {
   return {
     value: 'opus',
     label: 'Opus',
-    description: `Opus 4.6 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`,
+    description: `Opus 4.7 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`,
   }
 }
 
@@ -260,18 +284,18 @@ export function getMaxOpus46_1MOption(fastMode = false): ModelOption {
   return {
     value: 'opus[1m]',
     label: 'Opus (1M context)',
-    description: `Opus 4.6 with 1M context${billingInfo}${getOpus46PricingSuffix(fastMode)}`,
+    description: `Opus 4.7 with 1M context${billingInfo}${getOpus46PricingSuffix(fastMode)}`,
   }
 }
 
 function getMergedOpus1MOption(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: is3P ? getModelStrings().opus46 + '[1m]' : 'opus[1m]',
+    value: is3P ? getModelStrings().opus47 + '[1m]' : 'opus[1m]',
     label: 'Opus (1M context)',
-    description: `Opus 4.6 with 1M context · Most capable for complex work${!is3P && fastMode ? getOpus46PricingSuffix(fastMode) : ''}`,
+    description: `Opus 4.7 with 1M context · Most capable for complex work${!is3P && fastMode ? getOpus46PricingSuffix(fastMode) : ''}`,
     descriptionForModel:
-      'Opus 4.6 with 1M context - most capable for complex work',
+      'Opus 4.7 with 1M context - most capable for complex work',
   }
 }
 
@@ -291,7 +315,7 @@ function getOpusPlanOption(): ModelOption {
   return {
     value: 'opusplan',
     label: 'Opus Plan Mode',
-    description: 'Use Opus 4.6 in plan mode, Sonnet 4.6 otherwise',
+    description: 'Use Opus 4.7 in plan mode, Sonnet 4.6 otherwise',
   }
 }
 
@@ -457,6 +481,9 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
         premiumOptions.push(getMaxSonnet46_1MOption())
       }
 
+      // Previous Opus generation (4.6) as legacy / opt-in entry
+      premiumOptions.push(getOpus46Option(fastMode))
+
       premiumOptions.push(MaxHaiku45Option)
       return premiumOptions
     }
@@ -475,6 +502,9 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
         standardOptions.push(getMaxOpus46_1MOption(fastMode))
       }
     }
+
+    // Previous Opus generation (4.6) as legacy / opt-in entry
+    standardOptions.push(getOpus46Option(fastMode))
 
     standardOptions.push(MaxHaiku45Option)
     return standardOptions
@@ -501,7 +531,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet) + Sonnet 1M + Opus 4.6 + Opus 1M + Haiku
+  // PAYG 1P API: Default (Sonnet) + Sonnet 1M + Opus 4.7 + Opus 1M + Opus 4.6 (legacy) + Haiku
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     if (checkSonnet1mAccess()) {
@@ -510,11 +540,13 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     if (isOpus1mMergeEnabled()) {
       payg1POptions.push(getMergedOpus1MOption(fastMode))
     } else {
-      payg1POptions.push(getOpus46Option(fastMode))
+      payg1POptions.push(getOpus47Option(fastMode))
       if (checkOpus1mAccess()) {
-        payg1POptions.push(getOpus46_1MOption(fastMode))
+        payg1POptions.push(getOpus47_1MOption(fastMode))
       }
     }
+    // Previous Opus generation (4.6) as legacy / opt-in entry
+    payg1POptions.push(getOpus46Option(fastMode))
     payg1POptions.push(getHaiku45Option())
     payg1POptions.push(...profileModelOptions)
     return payg1POptions
@@ -543,9 +575,11 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (customOpus !== undefined) {
     payg3pOptions.push(customOpus)
   } else {
-    // Add Opus 4.1, Opus 4.6 and Opus 4.6 1M
-    payg3pOptions.push(getOpus41Option()) // This is the default opus
+    // Add Opus 4.1, Opus 4.6 (current 3P default), Opus 4.7 (new), and Opus 4.6 1M.
+    // 4.7 may not be available on all 3P providers yet — added as opt-in.
+    payg3pOptions.push(getOpus41Option()) // legacy
     payg3pOptions.push(getOpus46Option(fastMode))
+    payg3pOptions.push(getOpus47Option(fastMode))
     if (checkOpus1mAccess()) {
       payg3pOptions.push(getOpus46_1MOption(fastMode))
     }
