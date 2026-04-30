@@ -49,7 +49,7 @@ export function buildBranchBorderSegment(
   theme: Theme,
 ): string {
   const cwdBg = theme.userMessageBackground
-  const branchBg = theme.planMode
+  const branchBg = theme.selectionBg
   const fg = theme.text
 
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), fg, 'fg').bold
