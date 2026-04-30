@@ -119,17 +119,15 @@ import {
   getAfkModeHeaderLatched,
   getCacheEditingHeaderLatched,
   getFastModeHeaderLatched,
+  getLargeSystemPromptDetected,
   getLastApiCompletionTimestamp,
-  getPromptCache1hAllowlist,
-  getPromptCache1hEligible,
   getSessionId,
   getThinkingClearLatched,
   setAfkModeHeaderLatched,
   setCacheEditingHeaderLatched,
   setFastModeHeaderLatched,
+  setLargeSystemPromptDetected,
   setLastMainRequestId,
-  setPromptCache1hAllowlist,
-  setPromptCache1hEligible,
   setThinkingClearLatched,
 } from 'src/bootstrap/state.js'
 import {
@@ -391,61 +389,61 @@ export function getCacheControl({
 /**
  * Determines if 1h TTL should be used for prompt caching.
  *
- * Only applied when:
- * 1. User is eligible (ant or subscriber within rate limits)
- * 2. The query source matches a pattern in the GrowthBook allowlist
+ * Default-on for firstParty/vertex when the session's system prompt is
+ * detected as large (>8k tokens via chars/4 heuristic, latched once in
+ * buildSystemPromptBlocks). The latch keeps the TTL session-stable so the
+ * server-side prompt cache isn't busted mid-session (~20K tokens per flip).
  *
- * GrowthBook config shape: { allowlist: string[] }
- * Patterns support trailing '*' for prefix matching.
- * Examples:
- * - { allowlist: ["repl_main_thread*", "sdk"] } — main thread + SDK only
- * - { allowlist: ["repl_main_thread*", "sdk", "agent:*"] } — also subagents
- * - { allowlist: ["*"] } — all sources
+ * Bedrock stays opt-in via ENABLE_PROMPT_CACHING_1H_BEDROCK env var because
+ * Bedrock surcharges cache writes (+25%); 3P users manage their own billing.
  *
- * The allowlist is cached in STATE for session stability — prevents mixed
- * TTLs when GrowthBook's disk cache updates mid-request.
+ * Other providers (openai-compat, gemini, etc.) don't reach here — the outer
+ * getPromptCachingEnabled gate already filters them out.
  */
-function should1hCacheTTL(querySource?: QuerySource): boolean {
-  // 3P Bedrock users get 1h TTL when opted in via env var — they manage their own billing
-  // No GrowthBook gating needed since 3P users don't have GrowthBook configured
+const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000
+
+/**
+ * Latches whether the session has ever seen a system prompt large enough
+ * (>8k tokens via chars/4 heuristic) to justify 1h cache TTL on
+ * firstParty/vertex. High-water mark: once latched `true`, stays `true` for
+ * the session so the cache_control TTL is stable and the server-side prompt
+ * cache isn't busted mid-run.
+ *
+ * High-water rather than first-call-wins because `buildSystemPromptBlocks`
+ * is shared between the main agent and `queryHaiku`. Haiku queries
+ * (sessionTitle, generateSessionName, shell prefix, etc.) often fire first
+ * with tiny system prompts; latching first-only would freeze the decision
+ * to `false` and disable 1h TTL for the rest of the session. It also
+ * handles late prompt growth (MCP servers connecting, /memory edits).
+ *
+ * Exported so tests can drive it directly without the splitSysPromptPrefix
+ * dependency tree of buildSystemPromptBlocks.
+ */
+export function detectLargeSystemPromptOnce(
+  systemPrompt: ReadonlyArray<string>,
+): void {
+  if (getLargeSystemPromptDetected() === true) return
+  let totalChars = 0
+  for (const s of systemPrompt) totalChars += s.length
+  // chars/4 ≈ tokens (BPE heuristic, ~10-15% error vs real tokenizer).
+  // 8k threshold ≈ ~32k chars: comfortably above Anthropic's 1024-token
+  // minimum cacheable size, and roughly the break-even where 1h's 2× write
+  // surcharge pays back vs 5m's 1.25× across a typical pause-heavy session.
+  setLargeSystemPromptDetected(totalChars >> 2 > LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD)
+}
+
+function should1hCacheTTL(_querySource?: QuerySource): boolean {
+  const provider = getAPIProvider()
+
   if (
-    getAPIProvider() === 'bedrock' &&
+    provider === 'bedrock' &&
     isEnvTruthy(process.env.ENABLE_PROMPT_CACHING_1H_BEDROCK)
   ) {
     return true
   }
 
-  // Latch eligibility in bootstrap state for session stability — prevents
-  // mid-session overage flips from changing the cache_control TTL, which
-  // would bust the server-side prompt cache (~20K tokens per flip).
-  let userEligible = getPromptCache1hEligible()
-  if (userEligible === null) {
-    userEligible =
-      process.env.USER_TYPE === 'ant' ||
-      (isClaudeAISubscriber() && !currentLimits.isUsingOverage)
-    setPromptCache1hEligible(userEligible)
-  }
-  if (!userEligible) return false
-
-  // Cache allowlist in bootstrap state for session stability — prevents mixed
-  // TTLs when GrowthBook's disk cache updates mid-request
-  let allowlist = getPromptCache1hAllowlist()
-  if (allowlist === null) {
-    const config = getFeatureValue_CACHED_MAY_BE_STALE<{
-      allowlist?: string[]
-    }>('tengu_prompt_cache_1h_config', {})
-    allowlist = config.allowlist ?? []
-    setPromptCache1hAllowlist(allowlist)
-  }
-
-  return (
-    querySource !== undefined &&
-    allowlist.some(pattern =>
-      pattern.endsWith('*')
-        ? querySource.startsWith(pattern.slice(0, -1))
-        : querySource === pattern,
-    )
-  )
+  if (provider !== 'firstParty' && provider !== 'vertex') return false
+  return getLargeSystemPromptDetected() === true
 }
 
 /**
@@ -3254,6 +3252,8 @@ export function buildSystemPromptBlocks(
     querySource?: QuerySource
   },
 ): TextBlockParam[] {
+  detectLargeSystemPromptOnce(systemPrompt)
+
   // IMPORTANT: Do not add any more blocks for caching or you will get a 400
   return splitSysPromptPrefix(systemPrompt, {
     skipGlobalCacheForSystemPrompt: options?.skipGlobalCacheForSystemPrompt,

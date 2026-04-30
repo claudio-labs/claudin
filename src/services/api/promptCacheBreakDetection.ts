@@ -47,8 +47,9 @@ type PreviousState = {
   /** AFK_MODE_BETA_HEADER presence — should NOT break cache anymore
    *  (sticky-on latched in claude.ts). Tracked to verify the fix. */
   autoModeActive: boolean
-  /** Overage state flip — should NOT break cache anymore (eligibility is
-   *  latched session-stable in should1hCacheTTL). Tracked to verify the fix. */
+  /** Overage state flip — no longer affects cache TTL (subscriber-eligibility
+   *  gate was removed from should1hCacheTTL; TTL now keys off latched
+   *  large-system-prompt detection). Tracked for diagnostics only. */
   isUsingOverage: boolean
   /** Cache-editing beta header presence — should NOT break cache anymore
    *  (sticky-on latched in claude.ts). Tracked to verify the fix. */

@@ -217,12 +217,12 @@ type State = {
   hasDevChannels: boolean
   // Dir containing the session's `.jsonl`; null = derive from originalCwd.
   sessionProjectDir: string | null
-  // Cached prompt cache 1h TTL allowlist from GrowthBook (session-stable)
-  promptCache1hAllowlist: string[] | null
-  // Cached 1h TTL user eligibility (session-stable). Latched on first
-  // evaluation so mid-session overage flips don't change the cache_control
-  // TTL, which would bust the server-side prompt cache.
-  promptCache1hEligible: boolean | null
+  // Sticky latch: true once the session's system prompt is detected as
+  // large enough (>8k tokens, chars/4 heuristic) to justify 1h cache TTL on
+  // firstParty/vertex. Latched on first request from buildSystemPromptBlocks
+  // so mid-session prompt size jitter doesn't flip the cache_control TTL,
+  // which would bust the server-side prompt cache (~20K tokens per flip).
+  largeSystemPromptDetected: boolean | null
   // Sticky-on latch for AFK_MODE_BETA_HEADER. Once auto mode is first
   // activated, keep sending the header for the rest of the session so
   // Shift+Tab toggles don't bust the ~50-70K token prompt cache.
@@ -406,10 +406,8 @@ function getInitialState(): State {
     hasDevChannels: false,
     // Session project dir (null = derive from originalCwd)
     sessionProjectDir: null,
-    // Prompt cache 1h allowlist (null = not yet fetched from GrowthBook)
-    promptCache1hAllowlist: null,
-    // Prompt cache 1h eligibility (null = not yet evaluated)
-    promptCache1hEligible: null,
+    // Large-system-prompt detection latch (null = not yet evaluated)
+    largeSystemPromptDetected: null,
     // Beta header latches (null = not yet triggered)
     afkModeHeaderLatched: null,
     fastModeHeaderLatched: null,
@@ -1653,20 +1651,12 @@ export function setHasDevChannels(value: boolean): void {
   STATE.hasDevChannels = value
 }
 
-export function getPromptCache1hAllowlist(): string[] | null {
-  return STATE.promptCache1hAllowlist
+export function getLargeSystemPromptDetected(): boolean | null {
+  return STATE.largeSystemPromptDetected
 }
 
-export function setPromptCache1hAllowlist(allowlist: string[] | null): void {
-  STATE.promptCache1hAllowlist = allowlist
-}
-
-export function getPromptCache1hEligible(): boolean | null {
-  return STATE.promptCache1hEligible
-}
-
-export function setPromptCache1hEligible(eligible: boolean | null): void {
-  STATE.promptCache1hEligible = eligible
+export function setLargeSystemPromptDetected(v: boolean | null): void {
+  STATE.largeSystemPromptDetected = v
 }
 
 export function getAfkModeHeaderLatched(): boolean | null {
