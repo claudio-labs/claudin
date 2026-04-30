@@ -2382,7 +2382,7 @@ function buildBorderText(
     segments.push({
       content: cwdBranchSegment,
       position: 'top',
-      align: 'start',
+      align: 'end',
       offset: 0,
     });
   }
