@@ -7,6 +7,7 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import { VERTEX_COUNT_TOKENS_ALLOWED_BETAS } from '../constants/betas.js'
 import type { Attachment } from '../utils/attachments.js'
 import { getModelBetas } from '../utils/betas.js'
+import { estimateImageTokens } from '../utils/imageTokenEstimator.js'
 import { getVertexRegionForModel, isEnvTruthy } from '../utils/envUtils.js'
 import { tryGetActiveProvider } from './api/activeProvider.js'
 import { logError } from '../utils/log.js'
@@ -540,17 +541,16 @@ function roughTokenCountEstimationForBlock(
   if (block.type === 'text') {
     return roughTokenCountEstimation(block.text)
   }
-  if (block.type === 'image' || block.type === 'document') {
-    // https://platform.claude.com/docs/en/build-with-claude/vision#calculate-image-costs
-    // tokens = (width px * height px)/750
-    // Images are resized to max 2000x2000 (5333 tokens). Use a conservative
-    // estimate that matches microCompact's IMAGE_MAX_TOKEN_SIZE to avoid
-    // underestimating and triggering auto-compact too late.
-    //
-    // document: base64 PDF in source.data.  Must NOT reach the
-    // jsonStringify catch-all — a 1MB PDF is ~1.33M base64 chars →
-    // ~325k estimated tokens, vs the ~2000 the API actually charges.
-    // Same constant as microCompact's calculateToolResultTokens.
+  if (block.type === 'image') {
+    // Per-provider vision pricing — see utils/imageTokenEstimator.ts. Falls
+    // back to the legacy 2000 when the source is a URL, the header cannot be
+    // parsed, or the provider has no documented vision formula.
+    return estimateImageTokens(block.source)
+  }
+  if (block.type === 'document') {
+    // base64 PDF in source.data. Must NOT reach the jsonStringify catch-all —
+    // a 1MB PDF is ~1.33M base64 chars → ~325k estimated tokens, vs the
+    // ~2000 the API actually charges. Page-accurate sizing is out of scope.
     return 2000
   }
   if (block.type === 'tool_result') {

@@ -11,6 +11,7 @@ import { WEB_FETCH_TOOL_NAME } from '../../tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from '../../tools/WebSearchTool/prompt.js'
 import type { Message } from '../../types/message.js'
 import { logForDebugging } from '../../utils/debug.js'
+import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
 import { getMainLoopModel } from '../../utils/model/model.js'
 import { SHELL_TOOL_NAMES } from '../../utils/shell/shellToolUtils.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
@@ -35,7 +36,10 @@ import {
 // Drift is caught by a test asserting equality with the source-of-truth.
 export const TIME_BASED_MC_CLEARED_MESSAGE = '[Old tool result content cleared]'
 
-const IMAGE_MAX_TOKEN_SIZE = 2000
+// Per-provider image sizing lives in utils/imageTokenEstimator.ts. Document
+// (PDF) blocks still fall back to this conservative cap since page-accurate
+// sizing is out of scope.
+const DOCUMENT_TOKEN_FALLBACK = 2000
 
 // Only compact these built-in tools (MCP tools are also compactable via prefix match)
 export const COMPACTABLE_TOOLS = new Set<string>([
@@ -154,9 +158,10 @@ function calculateToolResultTokens(block: ToolResultBlockParam): number {
   return block.content.reduce((sum, item) => {
     if (item.type === 'text') {
       return sum + roughTokenCountEstimation(item.text)
-    } else if (item.type === 'image' || item.type === 'document') {
-      // Images/documents are approximately 2000 tokens regardless of format
-      return sum + IMAGE_MAX_TOKEN_SIZE
+    } else if (item.type === 'image') {
+      return sum + estimateImageTokens(item.source)
+    } else if (item.type === 'document') {
+      return sum + DOCUMENT_TOKEN_FALLBACK
     }
     return sum
   }, 0)
@@ -184,8 +189,10 @@ export function estimateMessageTokens(messages: Message[]): number {
         totalTokens += roughTokenCountEstimation(block.text)
       } else if (block.type === 'tool_result') {
         totalTokens += calculateToolResultTokens(block)
-      } else if (block.type === 'image' || block.type === 'document') {
-        totalTokens += IMAGE_MAX_TOKEN_SIZE
+      } else if (block.type === 'image') {
+        totalTokens += estimateImageTokens(block.source)
+      } else if (block.type === 'document') {
+        totalTokens += DOCUMENT_TOKEN_FALLBACK
       } else if (block.type === 'thinking') {
         // Match roughTokenCountEstimationForBlock: count only the thinking
         // text, not the JSON wrapper or signature (signature is metadata,
