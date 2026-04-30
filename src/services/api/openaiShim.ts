@@ -1510,6 +1510,9 @@ class OpenAIShimMessages {
     params: ShimCreateParams,
     options?: { signal?: AbortSignal; headers?: Record<string, string> },
   ): Promise<Response> {
+    // applyStableStubs runs at the API boundary so the stable bytes are
+    // what goes on the wire. No ensureToolResultPairing analogue exists
+    // here — convertMessages handles orphan tool_results downstream.
     const compressedMessages = applyStableStubs(
       params.messages as Array<{
         role: string

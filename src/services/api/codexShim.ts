@@ -478,6 +478,10 @@ export async function performCodexRequest(options: {
   defaultHeaders: Record<string, string>
   signal?: AbortSignal
 }): Promise<Response> {
+  // applyStableStubs runs at the API boundary so the stable bytes are
+  // what goes on the wire. No ensureToolResultPairing analogue exists
+  // here — convertAnthropicMessagesToResponsesInput handles orphan
+  // tool_results downstream.
   const compressedMessages = applyStableStubs(
     options.params.messages as Array<{
       role?: string

@@ -230,6 +230,11 @@ test('sub-agent (different agentId) has its own isolated clipped set', async () 
 })
 
 test('regenerateSessionId drops the outgoing session entry', () => {
+  // Prime the lazy lastSeenSessionId — see FIX-2 in stableStubState.ts.
+  // The first sessionSwitched fire is a no-op (no prior session to drop
+  // entries for); from the second fire on, the listener cleans up.
+  switchSession(getSessionId())
+
   addClippedIds(['toolu_old'])
   expect(getClippedIds().size).toBe(1)
   const before = _getClippedIdsMapSizeForTesting()
@@ -255,6 +260,80 @@ test('switchSession (/resume) drops the outgoing session entry', () => {
   expect(_getClippedIdsMapSizeForTesting()).toBe(0)
 
   // Restore the original session id so other tests aren't affected
+  switchSession(original)
+})
+
+test('skips empty/null/empty-array content (no zero-byte → ~30-byte stub)', () => {
+  const messages: Msg[] = [
+    assistantToolUse('toolu_null', 'Read'),
+    userToolResult('toolu_null', null),
+    assistantToolUse('toolu_empty_str', 'Read'),
+    userToolResult('toolu_empty_str', ''),
+    assistantToolUse('toolu_empty_arr', 'Read'),
+    userToolResult('toolu_empty_arr', []),
+  ]
+  addClippedIds(['toolu_null', 'toolu_empty_str', 'toolu_empty_arr'])
+
+  const result = applyStableStubs(messages)
+
+  // Each block should be byte-identical to its input — no stub rewrite.
+  const inputBlocks = messages.map(m => (m.content as Block[])[0])
+  const resultBlocks = result.map(m => (m.content as Block[])[0])
+  expect(resultBlocks[1]).toBe(inputBlocks[1])
+  expect(resultBlocks[3]).toBe(inputBlocks[3])
+  expect(resultBlocks[5]).toBe(inputBlocks[5])
+  // And the original `content` values are preserved verbatim
+  expect((resultBlocks[1] as { content: unknown }).content).toBeNull()
+  expect((resultBlocks[3] as { content: unknown }).content).toBe('')
+  expect((resultBlocks[5] as { content: unknown }).content).toEqual([])
+})
+
+test('clipped set with no matching tool_use_ids: blocks reference-equal input', () => {
+  // Distinct from the size===0 fast path: set is non-empty, but no block
+  // in the messages references any clipped id, so we should walk without
+  // allocating a new block.
+  const messages: Msg[] = [
+    assistantToolUse('toolu_A', 'Read'),
+    userToolResult('toolu_A', 'A'.repeat(2_000)),
+    assistantToolUse('toolu_B', 'Bash'),
+    userToolResult('toolu_B', 'B'.repeat(2_000)),
+  ]
+  addClippedIds(['toolu_X', 'toolu_Y'])
+
+  const result = applyStableStubs(messages)
+
+  // Each tool_result block in the result must reference-equal the input
+  // block: no allocation when the id-set doesn't intersect.
+  const inResult = (result[1].content as Block[])[0]
+  const inInput = (messages[1].content as Block[])[0]
+  expect(inResult).toBe(inInput)
+  const inResult2 = (result[3].content as Block[])[0]
+  const inInput2 = (messages[3].content as Block[])[0]
+  expect(inResult2).toBe(inInput2)
+})
+
+test('first switchSession fire after reset is a no-op (lazy lastSeenSessionId)', () => {
+  // After _resetAllClippedIdsForTesting + module already loaded, the
+  // lastSeenSessionId may have been seeded to the current session by a
+  // prior listener fire from another test. To exercise the lazy-init
+  // contract here we simply confirm: switchSession to a new id does not
+  // throw and ends with an empty Map; subsequent addClippedIds + switch
+  // drops the stale entry as expected.
+  const original = getSessionId()
+
+  // First fire — should be safe whether or not lastSeenSessionId was
+  // already populated.
+  expect(() => switchSession('lazy-init-session-1' as SessionId)).not.toThrow()
+  expect(_getClippedIdsMapSizeForTesting()).toBe(0)
+
+  // Now under the new session, add an id and switch again — listener
+  // must drop the outgoing entry.
+  addClippedIds(['toolu_lazy'])
+  expect(getClippedIds().size).toBe(1)
+  switchSession('lazy-init-session-2' as SessionId)
+  expect(getClippedIds().size).toBe(0)
+  expect(_getClippedIdsMapSizeForTesting()).toBe(0)
+
   switchSession(original)
 })
 

@@ -96,9 +96,9 @@ export function _getClippedIdsMapSizeForTesting(): number {
 // Drop the outgoing session's entries when sessionSwitched fires. We delete
 // every key that starts with the OLD sessionId so sub-agent entries for that
 // session are reclaimed too. Subscribed once at module load.
-let lastSeenSessionId = getSessionId()
+let lastSeenSessionId: string | undefined
 onSessionSwitch(newId => {
-  const old = lastSeenSessionId
+  const old = lastSeenSessionId ?? newId
   lastSeenSessionId = newId
   if (old === newId) return
   for (const k of perKeyClippedIds.keys()) {
@@ -240,6 +240,13 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
       if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) {
         return block
       }
+
+      // Don't stub empty/null content — replacing zero bytes with ~30 bytes
+      // of stub label is a compression that ADDS bytes. Skip and leave the
+      // id in the set; if a future turn replaces this with real content,
+      // it'll be stubbed normally.
+      if (existing == null || existing === '') return block
+      if (Array.isArray(existing) && existing.length === 0) return block
 
       // Skip image-bearing array content — preserves vision context. The id
       // stays in the clipped set so a future text-only replacement will stub

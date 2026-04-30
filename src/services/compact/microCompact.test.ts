@@ -234,6 +234,19 @@ describe('size-driven stable-stub trigger', () => {
     expect(getClippedIds().size).toBe(0)
   })
 
+  test('effective window 0: no clipping (degrades gracefully)', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { getClippedIds } = await import('./stableStubState.js')
+    // Provider returns 0 / unknown context window — the size-driven
+    // trigger is gated behind `effectiveWindow > 0` so we should not
+    // clip even with a heavy history that would otherwise breach the
+    // threshold under any reasonable window.
+    mockSizeState.effectiveWindow = 0
+    const messages = buildHeavyHistory(20, 10_000)
+    await microcompactMessages(messages)
+    expect(getClippedIds().size).toBe(0)
+  })
+
   test('resetMicrocompactState clears the clipped set', async () => {
     const { resetMicrocompactState } = await import('./microCompact.js')
     const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
