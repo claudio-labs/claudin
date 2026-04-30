@@ -552,7 +552,7 @@ export function ExitPlanModePermissionRequest({
         if (cancelled) return;
         const seg = buildBranchBorderSegment(displayCwd, branch, ab.ahead, ab.behind, getTheme(themeName));
         setCwdBranchBorderText(prev =>
-          prev?.content === seg ? prev : { content: seg, position: 'top', align: 'end', offset: 0 },
+          prev?.content === seg ? prev : { content: seg, position: 'top', align: 'start', offset: 0 },
         );
       });
     };
