@@ -102,6 +102,7 @@ import {
   extractQuotaStatusFromHeaders,
 } from '../claudeAiLimits.js'
 import { getAPIContextManagement } from '../compact/apiMicrocompact.js'
+import { applyStableStubs } from '../compact/stableStubState.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
@@ -1278,6 +1279,11 @@ async function* queryModel(
   // remote/teleport sessions. Inserts synthetic error tool_results for orphaned
   // tool_uses and strips orphaned tool_results referencing non-existent tool_uses.
   messagesForAPI = ensureToolResultPairing(messagesForAPI)
+
+  // Apply stable stubs to tool_result blocks whose ids are in the per-session
+  // clipped set. No-op when the set is empty. Bytes are deterministic across
+  // turns so the prompt cache prefix stays stable after the first clip.
+  messagesForAPI = applyStableStubs(messagesForAPI)
 
   // Strip advisor blocks — the API rejects them without the beta header.
   if (!betas.includes(ADVISOR_BETA_HEADER)) {

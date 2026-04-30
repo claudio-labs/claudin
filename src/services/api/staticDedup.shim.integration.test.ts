@@ -41,7 +41,6 @@ const realConfig_staticDedup = { ...(await import('../../utils/config.js')) }
 mock.module('../../utils/config.js', () => ({
   ...realConfig_staticDedup,
   getGlobalConfig: () => ({
-    toolHistoryCompressionEnabled: false,
     autoCompactEnabled: false,
   }),
 }))

@@ -14,13 +14,21 @@ import { logForDebugging } from '../../utils/debug.js'
 import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
 import { SHELL_TOOL_NAMES } from '../../utils/shell/shellToolUtils.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
+import { getMainLoopModel } from '../../utils/model/model.js'
 import { logEvent } from '../analytics/index.js'
 import { notifyCacheDeletion } from '../api/promptCacheBreakDetection.js'
 import { roughTokenCountEstimation } from '../tokenEstimation.js'
+import { getEffectiveContextWindowSize } from './autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
 } from './compactWarningState.js'
+import {
+  addClippedIds,
+  applyStableStubs,
+  getClippedIds,
+  resetClippedIds,
+} from './stableStubState.js'
 import {
   getTimeBasedMCConfig,
   type TimeBasedMCConfig,
@@ -56,9 +64,10 @@ export function isCompactableTool(name: string): boolean {
 }
 
 export function resetMicrocompactState(): void {
-  // No persistent state to reset — kept as a public no-op so callers
-  // (REPL clear, /clear slash, swarm cleanup, postCompactCleanup) don't
-  // need to know whether a stateful microcompact path is active.
+  // The stable-stub set is per-session monotonic — clearing it on /clear,
+  // swarm cleanup, postCompactCleanup, etc. is correct because the message
+  // history those callers wipe is the same one that referenced the ids.
+  resetClippedIds()
 }
 
 // Helper to calculate tool result tokens
@@ -166,6 +175,18 @@ function isMainThreadSource(querySource: QuerySource | undefined): boolean {
   return !querySource || querySource.startsWith('repl_main_thread')
 }
 
+// Mirrors the time-based path's keepRecent default: keep the most recent two
+// compactable tool results untouched. The cache_control marker tail typically
+// sits on the last user message, so leaving the tail alone also avoids
+// invalidating the marker placement.
+const SIZE_BASED_KEEP_RECENT = 2
+
+// Fire the size-driven stable-stub trigger when estimated message tokens
+// exceed this fraction of the effective context window. autoCompact takes
+// over at 92%; staying well below that gives the stub clipping room to
+// stabilize before the hard compact lands.
+const SIZE_BASED_THRESHOLD = 0.5
+
 export async function microcompactMessages(
   messages: Message[],
   toolUseContext?: ToolUseContext,
@@ -183,8 +204,44 @@ export async function microcompactMessages(
     return timeBasedResult
   }
 
-  // No further compaction here — autocompact handles context pressure.
-  return { messages }
+  // Size-driven stable-stub trigger. Once the conversation crosses the
+  // threshold, freeze old compactable tool_result ids into the per-session
+  // clipped set. From that point on every turn rewrites those blocks to the
+  // same deterministic stub bytes — prefix cache stays warm.
+  const estimatedTokens = estimateMessageTokens(messages)
+  const effectiveWindow = getEffectiveContextWindowSize(getMainLoopModel())
+  if (
+    effectiveWindow > 0 &&
+    estimatedTokens > SIZE_BASED_THRESHOLD * effectiveWindow
+  ) {
+    const compactableIds = collectCompactableToolIds(messages)
+    const candidateIds =
+      compactableIds.length > SIZE_BASED_KEEP_RECENT
+        ? compactableIds.slice(0, -SIZE_BASED_KEEP_RECENT)
+        : []
+    const clipped = getClippedIds()
+    const newOnes = candidateIds.filter(id => !clipped.has(id))
+
+    if (newOnes.length > 0) {
+      addClippedIds(newOnes)
+      logEvent('tengu_stable_stub_clip', {
+        added: newOnes.length,
+        totalClipped: getClippedIds().size,
+        estimatedTokens,
+        effectiveWindow,
+      })
+      // Notify the cache-break detector ONCE per clip event: the next
+      // turn's bytes diverge from the cached prefix at the clipped ids,
+      // which would otherwise be flagged as a regression.
+      if (feature('PROMPT_CACHE_BREAK_DETECTION') && querySource) {
+        notifyCacheDeletion(querySource)
+      }
+    }
+  }
+
+  // Always pass through applyStableStubs — it's a no-op when the set is
+  // empty, and idempotent when blocks already carry the stub bytes.
+  return { messages: applyStableStubs(messages) }
 }
 
 /**

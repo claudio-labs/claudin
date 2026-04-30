@@ -283,24 +283,6 @@ export function Config({
       });
     }
   }, {
-    id: 'toolHistoryCompressionEnabled',
-    label: 'Tool history compression',
-    value: globalConfig.toolHistoryCompressionEnabled,
-    type: 'boolean' as const,
-    onChange(toolHistoryCompressionEnabled: boolean) {
-      saveGlobalConfig(current => ({
-        ...current,
-        toolHistoryCompressionEnabled
-      }));
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        toolHistoryCompressionEnabled
-      });
-      logEvent('tengu_tool_history_compression_setting_changed', {
-        enabled: toolHistoryCompressionEnabled
-      });
-    }
-  }, {
     id: 'thinkingHistoryRedactionEnabled',
     label: 'Thinking history redaction',
     value: globalConfig.thinkingHistoryRedactionEnabled,
@@ -1241,9 +1223,6 @@ export function Config({
     }
     if (globalConfig.autoCompactEnabled !== initialConfig.current.autoCompactEnabled) {
       formattedChanges.push(`${globalConfig.autoCompactEnabled ? 'Enabled' : 'Disabled'} auto-compact`);
-    }
-    if (globalConfig.toolHistoryCompressionEnabled !== initialConfig.current.toolHistoryCompressionEnabled) {
-      formattedChanges.push(`${globalConfig.toolHistoryCompressionEnabled ? 'Enabled' : 'Disabled'} tool history compression`);
     }
     if (globalConfig.thinkingHistoryRedactionEnabled !== initialConfig.current.thinkingHistoryRedactionEnabled) {
       formattedChanges.push(`${globalConfig.thinkingHistoryRedactionEnabled ? 'Enabled' : 'Disabled'} thinking history redaction`);

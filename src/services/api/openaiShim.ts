@@ -48,7 +48,7 @@ import {
 } from './codexShim.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
-import { compressToolHistory } from './compressToolHistory.js'
+import { applyStableStubs } from '../compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
 import {
   getLocalProviderRetryBaseUrls,
@@ -1510,13 +1510,12 @@ class OpenAIShimMessages {
     params: ShimCreateParams,
     options?: { signal?: AbortSignal; headers?: Record<string, string> },
   ): Promise<Response> {
-    const compressedMessages = compressToolHistory(
+    const compressedMessages = applyStableStubs(
       params.messages as Array<{
         role: string
         message?: { role?: string; content?: unknown }
         content?: unknown
       }>,
-      request.resolvedModel,
     )
     const openaiMessages = convertMessages(compressedMessages, params.system, {
       // Moonshot/Kimi Code requires every assistant tool-call message to carry

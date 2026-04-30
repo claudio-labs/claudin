@@ -1,6 +1,6 @@
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
-import { compressToolHistory } from './compressToolHistory.js'
+import { applyStableStubs } from '../compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
 import { stableStringify } from '../../utils/stableStringify.js'
 import type {
@@ -478,13 +478,12 @@ export async function performCodexRequest(options: {
   defaultHeaders: Record<string, string>
   signal?: AbortSignal
 }): Promise<Response> {
-  const compressedMessages = compressToolHistory(
+  const compressedMessages = applyStableStubs(
     options.params.messages as Array<{
       role?: string
       message?: { role?: string; content?: unknown }
       content?: unknown
     }>,
-    options.request.resolvedModel,
   )
   const input = convertAnthropicMessagesToResponsesInput(compressedMessages)
   const body: Record<string, unknown> = {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 import type { Message } from '../../types/message.js'
 import { createAssistantMessage, createUserMessage } from '../../utils/messages.js'
@@ -124,4 +124,101 @@ describe('microCompact MCP tool compaction', () => {
     expect(result).toBeDefined()
     expect(result.messages.length).toBe(messages.length)
   })
+})
+
+// ============================================================================
+// Size-driven stable-stub trigger
+// ============================================================================
+
+const mockSizeState = {
+  effectiveWindow: 100_000,
+}
+
+const realAutoCompact = { ...(await import('./autoCompact.js')) }
+const realModel = { ...(await import('../../utils/model/model.js')) }
+
+mock.module('./autoCompact.js', () => ({
+  ...realAutoCompact,
+  getEffectiveContextWindowSize: () => mockSizeState.effectiveWindow,
+}))
+
+mock.module('../../utils/model/model.js', () => ({
+  ...realModel,
+  getMainLoopModel: () => 'claude-sonnet-4',
+}))
+
+describe('size-driven stable-stub trigger', () => {
+  beforeEach(async () => {
+    const { resetClippedIds } = await import('./stableStubState.js')
+    resetClippedIds()
+    mockSizeState.effectiveWindow = 100_000
+  })
+
+  afterEach(async () => {
+    const { resetClippedIds } = await import('./stableStubState.js')
+    resetClippedIds()
+  })
+
+  function buildHeavyHistory(numExchanges: number, perResultChars: number): Message[] {
+    const out: Message[] = []
+    for (let i = 0; i < numExchanges; i++) {
+      out.push(assistantWithToolUse('Read', `toolu_${i}`))
+      out.push(userWithToolResult(`toolu_${i}`, 'A'.repeat(perResultChars)))
+    }
+    return out
+  }
+
+  test('below threshold: no new clipped ids', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { getClippedIds } = await import('./stableStubState.js')
+    // Tiny conversation, far below 50% of 100k tokens
+    const messages = buildHeavyHistory(2, 100)
+    await microcompactMessages(messages)
+    expect(getClippedIds().size).toBe(0)
+  })
+
+  test('above threshold: clips all but the last 2 compactable ids', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { getClippedIds } = await import('./stableStubState.js')
+    // 10 exchanges × ~5k chars each → ~12k tokens (×4/3 padding ≈ 16k).
+    // Drop the window so we cross the 50% threshold easily.
+    mockSizeState.effectiveWindow = 20_000
+    const messages = buildHeavyHistory(10, 5_000)
+    await microcompactMessages(messages)
+    const clipped = getClippedIds()
+    // 10 ids total minus the last 2 kept-recent
+    expect(clipped.size).toBe(8)
+    for (let i = 0; i < 8; i++) {
+      expect(clipped.has(`toolu_${i}`)).toBe(true)
+    }
+    expect(clipped.has('toolu_8')).toBe(false)
+    expect(clipped.has('toolu_9')).toBe(false)
+  })
+
+  test('threshold met but everything already clipped: no change', async () => {
+    const { microcompactMessages } = await import('./microCompact.js')
+    const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
+    mockSizeState.effectiveWindow = 20_000
+    const messages = buildHeavyHistory(10, 5_000)
+    // Pre-populate: keep-recent leaves out the last 2, so the candidate set is 0..7.
+    const preClipped = ['toolu_0', 'toolu_1', 'toolu_2', 'toolu_3', 'toolu_4', 'toolu_5', 'toolu_6', 'toolu_7']
+    addClippedIds(preClipped)
+    const before = getClippedIds().size
+    await microcompactMessages(messages)
+    expect(getClippedIds().size).toBe(before)
+  })
+
+  test('resetMicrocompactState clears the clipped set', async () => {
+    const { resetMicrocompactState } = await import('./microCompact.js')
+    const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
+    addClippedIds(['toolu_x', 'toolu_y'])
+    expect(getClippedIds().size).toBe(2)
+    resetMicrocompactState()
+    expect(getClippedIds().size).toBe(0)
+  })
+})
+
+afterAll(() => {
+  mock.module('./autoCompact.js', () => realAutoCompact)
+  mock.module('../../utils/model/model.js', () => realModel)
 })

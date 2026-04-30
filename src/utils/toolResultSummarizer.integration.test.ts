@@ -9,8 +9,7 @@
  * Mock strategy: narrow local mocks of `./config.js` (only `getGlobalConfig`,
  * driven by `harnessState`) plus analytics stubs. Bun's `mock.module` is
  * process-global, so OTHER tests running before this file can replace
- * `./config.js` with their own stubs that lack `toolResultSummarizerEnabled`
- * (e.g. `compressToolHistory.test.ts` mocks it for `toolHistoryCompressionEnabled`).
+ * `./config.js` with their own stubs that lack `toolResultSummarizerEnabled`.
  * Re-mocking it here guarantees the summarizer always sees the flag we set.
  *
  * `../bootstrap/state.js`, `./sessionStorage.js`, and analytics/growthbook
