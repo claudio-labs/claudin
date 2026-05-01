@@ -25,7 +25,6 @@ import {
 } from '../utils/model/model.js'
 import { jsonStringify } from '../utils/slowOperations.js'
 import { isToolReferenceBlock } from '../utils/toolSearch.js'
-import { getAPIMetadata, getExtraBodyParams } from './api/claude.js'
 import { getAnthropicClient } from './api/client.js'
 import { withTokenCountVCR } from './vcr.js'
 
@@ -420,15 +419,15 @@ export async function countTokensViaHaikuFallback(
       ? betas.filter(b => VERTEX_COUNT_TOKENS_ALLOWED_BETAS.has(b))
       : betas
 
-  // biome-ignore lint/plugin: token counting needs specialized parameters (thinking, betas) that sideQuery doesn't support
-  const response = await anthropic.beta.messages.create({
+  // Use countTokens (free) instead of messages.create (charges real tokens).
+  // countTokens supports the same thinking/tools/betas params we need.
+  // Returns only `input_tokens` (cache_creation/cache_read are folded in
+  // server-side); matches the primary path in countMessagesTokensWithAPI.
+  const response = await anthropic.beta.messages.countTokens({
     model: normalizeModelStringForAPI(model),
-    max_tokens: containsThinking ? TOKEN_COUNT_MAX_TOKENS : 1,
     messages: messagesToSend,
     tools: tools.length > 0 ? tools : undefined,
     ...(filteredBetas.length > 0 && { betas: filteredBetas }),
-    metadata: getAPIMetadata(),
-    ...getExtraBodyParams(),
     // Enable thinking if messages contain thinking blocks
     ...(containsThinking && {
       thinking: {
@@ -438,12 +437,11 @@ export async function countTokensViaHaikuFallback(
     }),
   })
 
-  const usage = response.usage
-  const inputTokens = usage.input_tokens
-  const cacheCreationTokens = usage.cache_creation_input_tokens || 0
-  const cacheReadTokens = usage.cache_read_input_tokens || 0
+  if (typeof response.input_tokens !== 'number') {
+    return null
+  }
 
-  return inputTokens + cacheCreationTokens + cacheReadTokens
+  return response.input_tokens
 }
 
 export function roughTokenCountEstimationForMessages(

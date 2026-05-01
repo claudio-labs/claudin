@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, mock } from 'bun:test'
 
 import {
   __resetMemoizedRatiosForTests,
+  countTokensViaHaikuFallback,
   getActiveModelBytesPerToken,
   getTokenizerConfig,
   roughTokenCountEstimation,
@@ -9,6 +10,8 @@ import {
 } from './tokenEstimation.js'
 
 const realModel = { ...(await import('../utils/model/model.js')) }
+const realClient = { ...(await import('./api/client.js')) }
+const realActiveProvider = { ...(await import('./api/activeProvider.js')) }
 
 function setActiveModel(name: string): void {
   mock.module('../utils/model/model.js', () => ({
@@ -32,6 +35,8 @@ function restoreModelModule(): void {
 
 afterEach(() => {
   restoreModelModule()
+  mock.module('./api/client.js', () => realClient)
+  mock.module('./api/activeProvider.js', () => realActiveProvider)
   __resetMemoizedRatiosForTests()
 })
 
@@ -162,6 +167,39 @@ describe('getTokenizerConfig — word boundary matching', () => {
   it('gemma does not collide with gemini', () => {
     expect(getTokenizerConfig('gemma-3-27b').modelFamily).toBe('gemma')
     expect(getTokenizerConfig('gemini-2.5-flash').modelFamily).toBe('gemini')
+  })
+})
+
+describe('countTokensViaHaikuFallback — uses free countTokens, not paid messages.create', () => {
+  it('calls beta.messages.countTokens (free) and never beta.messages.create (paid)', async () => {
+    const countTokensSpy = mock(async () => ({ input_tokens: 42 }))
+    const createSpy = mock(async () => {
+      throw new Error('messages.create must NOT be called for token counting')
+    })
+    mock.module('./api/client.js', () => ({
+      getAnthropicClient: async () => ({
+        beta: {
+          messages: {
+            countTokens: countTokensSpy,
+            create: createSpy,
+          },
+        },
+      }),
+    }))
+    mock.module('./api/activeProvider.js', () => ({
+      ...realActiveProvider,
+      tryGetActiveProvider: () => ({ transport: 'anthropic' }),
+      getAPIProvider: () => 'anthropic',
+    }))
+
+    const result = await countTokensViaHaikuFallback(
+      [{ role: 'user', content: 'hello' }],
+      [],
+    )
+
+    expect(result).toBe(42)
+    expect(countTokensSpy).toHaveBeenCalledTimes(1)
+    expect(createSpy).not.toHaveBeenCalled()
   })
 })
 

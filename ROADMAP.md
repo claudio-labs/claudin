@@ -6,13 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (6 itens)
-
-### 1.8 — `countTokensViaHaikuFallback` paga tokens reais
-- **Esforço:** M
-- **Estado:** `tokenEstimation.ts:524` chama `anthropic.beta.messages.create` em vez de `messages.countTokens`. Custo real em fallbacks.
-- **Ganho:** Para de gastar tokens só para contar tokens. Bug de custo.
-- **Arquivos:** `src/services/tokenEstimation.ts:474+524`
+## Ativos (5 itens)
 
 ### 2.4 — Gerenciamento de memória em sessões longas
 - **Esforço:** M
@@ -47,6 +41,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 1.8 — `countTokensViaHaikuFallback` agora usa `countTokens` (free)
+`anthropic.beta.messages.create` (cobrava input + 1 output token por chamada de fallback) trocado por `anthropic.beta.messages.countTokens`, que é gratuito e suporta os mesmos parâmetros (thinking, tools, betas) que precisávamos. Test em `tokenEstimation.test.ts` garante que `create` nunca é chamado nesse caminho.
 
 ### 1.7 — Remover dead code de ContentType / compression ratios (54ce9a9)
 `ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~95 linhas) deletados; único caller em `staticDedup.integration.test.ts` agora chama `roughTokenCountEstimation(s, 2)` direto.
@@ -111,4 +108,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**6 ativos** (1× P0, 5× P2) + **8 concluídos**.
+**5 ativos** (1× P0, 4× P2) + **9 concluídos**.
