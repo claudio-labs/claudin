@@ -446,8 +446,8 @@ export async function* withRetry<T>(
       }
 
       // For other errors, proceed with normal retry logic
-      // Get retry-after header if available
-      const retryAfter = getRetryAfter(error)
+      // Get retry-after hint (ms) if available
+      const retryAfterMs = getRetryAfterMs(error)
       let delayMs: number
       if (persistent && error instanceof APIError && error.status === 429) {
         persistentAttempt++
@@ -459,7 +459,7 @@ export async function* withRetry<T>(
           Math.min(
             getRetryDelay(
               persistentAttempt,
-              retryAfter,
+              retryAfterMs,
               PERSISTENT_MAX_BACKOFF_MS,
             ),
             PERSISTENT_RESET_CAP_MS,
@@ -472,13 +472,13 @@ export async function* withRetry<T>(
         delayMs = Math.min(
           getRetryDelay(
             persistentAttempt,
-            retryAfter,
+            retryAfterMs,
             PERSISTENT_MAX_BACKOFF_MS,
           ),
           PERSISTENT_RESET_CAP_MS,
         )
       } else {
-        delayMs = getRetryDelay(attempt, retryAfter)
+        delayMs = getRetryDelay(attempt, retryAfterMs)
       }
 
       // In persistent mode the for-loop `attempt` is clamped at maxRetries+1;
@@ -535,27 +535,90 @@ export async function* withRetry<T>(
   throw new CannotRetryError(lastError, retryContext)
 }
 
-function getRetryAfter(error: unknown): string | null {
-  return (
-    ((error as { headers?: { 'retry-after'?: string } }).headers?.[
-      'retry-after'
-    ] ||
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      ((error as APIError).headers as Headers)?.get?.('retry-after')) ??
-    null
-  )
+function readHeader(error: unknown, name: string): string | null {
+  const headers = (error as { headers?: unknown }).headers
+  if (!headers) return null
+  // Headers can be either a plain object (some SDK error shapes) or a Fetch
+  // Headers instance. Try both forms — same strategy as the legacy reader.
+  const plain = (headers as Record<string, string | undefined>)[name]
+  if (typeof plain === 'string' && plain !== '') return plain
+  // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+  const got = (headers as Headers).get?.(name)
+  return typeof got === 'string' && got !== '' ? got : null
+}
+
+/**
+ * Parse a Retry-After header value into milliseconds.
+ *
+ * Accepts:
+ *   - integer seconds: "5" → 5000
+ *   - decimal seconds: "0.5" → 500
+ *   - HTTP-date (RFC 7231): "Wed, 21 Oct 2099 07:28:00 GMT" → ms until that
+ *     instant (clamped at 0 for past dates)
+ *
+ * Returns null for empty/invalid input. Result is capped at
+ * PERSISTENT_RESET_CAP_MS so a pathological server header can't pin us
+ * waiting for hours.
+ */
+export function parseRetryAfterValue(
+  value: string | null | undefined,
+): number | null {
+  if (value == null) return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+
+  // Numeric path covers both integer and decimal seconds. parseFloat tolerates
+  // leading whitespace already trimmed; reject if any non-numeric tail.
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    const seconds = Number(trimmed)
+    if (!Number.isFinite(seconds) || seconds < 0) return null
+    return Math.min(Math.round(seconds * 1000), PERSISTENT_RESET_CAP_MS)
+  }
+
+  // HTTP-date fallback. Date.parse returns NaN for unrecognized formats.
+  const target = Date.parse(trimmed)
+  if (!Number.isFinite(target)) return null
+  const delta = target - Date.now()
+  if (delta <= 0) return 0
+  return Math.min(delta, PERSISTENT_RESET_CAP_MS)
+}
+
+/**
+ * Parse the millisecond-precision `retry-after-ms` extension. Value is
+ * already in ms — no second→ms conversion. Returns null for invalid input.
+ */
+function parseRetryAfterMsValue(
+  value: string | null | undefined,
+): number | null {
+  if (value == null) return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  if (!/^\d+(?:\.\d+)?$/.test(trimmed)) return null
+  const ms = Number(trimmed)
+  if (!Number.isFinite(ms) || ms < 0) return null
+  return Math.min(Math.round(ms), PERSISTENT_RESET_CAP_MS)
+}
+
+/**
+ * Read Retry-After hint from the error and return milliseconds.
+ *
+ * Prefers `retry-after-ms` (millisecond-precision extension used by
+ * Anthropic and OpenAI) over `retry-after` (RFC 7231) when both are
+ * present — the ms variant is more precise.
+ */
+export function getRetryAfterMs(error: unknown): number | null {
+  const ms = parseRetryAfterMsValue(readHeader(error, 'retry-after-ms'))
+  if (ms !== null) return ms
+  return parseRetryAfterValue(readHeader(error, 'retry-after'))
 }
 
 export function getRetryDelay(
   attempt: number,
-  retryAfterHeader?: string | null,
+  retryAfterMs?: number | null,
   maxDelayMs = 32000,
 ): number {
-  if (retryAfterHeader) {
-    const seconds = parseInt(retryAfterHeader, 10)
-    if (!isNaN(seconds)) {
-      return seconds * 1000
-    }
+  if (retryAfterMs != null && retryAfterMs >= 0) {
+    return retryAfterMs
   }
 
   const baseDelay = Math.min(
@@ -819,17 +882,6 @@ function getMaxRetries(options: RetryOptions): number {
 const DEFAULT_FAST_MODE_FALLBACK_HOLD_MS = 30 * 60 * 1000 // 30 minutes
 const SHORT_RETRY_THRESHOLD_MS = 20 * 1000 // 20 seconds
 const MIN_COOLDOWN_MS = 10 * 60 * 1000 // 10 minutes
-
-function getRetryAfterMs(error: APIError): number | null {
-  const retryAfter = getRetryAfter(error)
-  if (retryAfter) {
-    const seconds = parseInt(retryAfter, 10)
-    if (!isNaN(seconds)) {
-      return seconds * 1000
-    }
-  }
-  return null
-}
 
 /**
  * Parse OpenAI-style relative duration strings into milliseconds.

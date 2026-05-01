@@ -57,6 +57,12 @@ async function importFreshWithRetryModule(
   mock.module('src/utils/model/providers.js', () => ({
     getAPIProvider: () => provider,
     getAPIProviderForStatsig: () => provider,
+    // Other consumers in the dependency graph (claude.ts, client.ts) import
+    // these symbols transitively. Stub them to keep the module load graph
+    // resolvable when withRetry.ts is fresh-imported.
+    isGithubNativeAnthropicMode: () => false,
+    isFirstPartyAnthropicBaseUrl: () => provider === 'firstParty',
+    usesAnthropicAccountFlow: () => false,
   }))
   return import(`./withRetry.js?ts=${Date.now()}-${Math.random()}`)
 }
@@ -188,5 +194,155 @@ describe('getRateLimitResetDelayMs - providers without reset headers', () => {
       await importFreshWithRetryModule('vertex')
     const error = makeError({})
     expect(getRateLimitResetDelayMs(error)).toBeNull()
+  })
+})
+
+// --- parseRetryAfterValue ---
+describe('parseRetryAfterValue', () => {
+  test('parses integer seconds', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    expect(parseRetryAfterValue('5')).toBe(5000)
+  })
+
+  test('parses decimal seconds', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    expect(parseRetryAfterValue('0.5')).toBe(500)
+  })
+
+  test('parses zero as zero ms', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    expect(parseRetryAfterValue('0')).toBe(0)
+  })
+
+  test('parses HTTP-date in the future as ms delta', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    // ~30 seconds in the future; allow a small tolerance for test latency.
+    const future = new Date(Date.now() + 30_000).toUTCString()
+    const ms = parseRetryAfterValue(future)
+    expect(ms).not.toBeNull()
+    expect(ms!).toBeGreaterThan(28_000)
+    expect(ms!).toBeLessThanOrEqual(30_000)
+  })
+
+  test('returns 0 for HTTP-date in the past (no negative waits)', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    const past = new Date(Date.now() - 60_000).toUTCString()
+    expect(parseRetryAfterValue(past)).toBe(0)
+  })
+
+  test('returns null for garbage input', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    expect(parseRetryAfterValue('not-a-number')).toBeNull()
+  })
+
+  test('returns null for null/undefined/empty', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    expect(parseRetryAfterValue(null)).toBeNull()
+    expect(parseRetryAfterValue(undefined)).toBeNull()
+    expect(parseRetryAfterValue('')).toBeNull()
+    expect(parseRetryAfterValue('   ')).toBeNull()
+  })
+
+  test('does not produce negative waits for malformed negative input', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    // "-5" fails the seconds regex; Date.parse may interpret it (year -5)
+    // as a past instant. Either way, the contract is "never wait a negative
+    // amount" — accept null OR 0, but never <0.
+    const result = parseRetryAfterValue('-5')
+    expect(result === null || result === 0).toBe(true)
+  })
+
+  test('caps absurd values at PERSISTENT_RESET_CAP_MS (6h)', async () => {
+    const { parseRetryAfterValue } = await importFreshWithRetryModule()
+    const SIX_HOURS = 6 * 60 * 60 * 1000
+    // 99999999999 seconds → would be ~3170 years; must be clamped.
+    expect(parseRetryAfterValue('99999999999')).toBe(SIX_HOURS)
+  })
+})
+
+// --- getRetryAfterMs ---
+describe('getRetryAfterMs', () => {
+  test('reads retry-after-ms (millisecond extension)', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const error = makeError({ 'retry-after-ms': '1500' })
+    expect(getRetryAfterMs(error)).toBe(1500)
+  })
+
+  test('falls back to retry-after seconds when ms absent', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const error = makeError({ 'retry-after': '5' })
+    expect(getRetryAfterMs(error)).toBe(5000)
+  })
+
+  test('prefers retry-after-ms over retry-after when both present', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const error = makeError({
+      'retry-after-ms': '100',
+      'retry-after': '1',
+    })
+    // ms wins because it's more precise.
+    expect(getRetryAfterMs(error)).toBe(100)
+  })
+
+  test('parses retry-after as HTTP-date', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const future = new Date(Date.now() + 10_000).toUTCString()
+    const error = makeError({ 'retry-after': future })
+    const ms = getRetryAfterMs(error)
+    expect(ms).not.toBeNull()
+    expect(ms!).toBeGreaterThan(8_000)
+    expect(ms!).toBeLessThanOrEqual(10_000)
+  })
+
+  test('returns null when no retry headers present', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const error = makeError({})
+    expect(getRetryAfterMs(error)).toBeNull()
+  })
+
+  test('reads from plain object headers (not just Headers instance)', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    // Mimic SDK error shapes that expose headers as a plain record.
+    const error = {
+      headers: { 'retry-after-ms': '750' },
+      status: 429,
+      message: 'rate limit',
+      name: 'APIError',
+    } as unknown as APIError
+    expect(getRetryAfterMs(error)).toBe(750)
+  })
+
+  test('returns null on invalid header value (falls through to backoff)', async () => {
+    const { getRetryAfterMs } = await importFreshWithRetryModule()
+    const error = makeError({ 'retry-after': 'garbage' })
+    expect(getRetryAfterMs(error)).toBeNull()
+  })
+})
+
+// --- getRetryDelay ---
+describe('getRetryDelay', () => {
+  test('honors retry-after ms directly', async () => {
+    const { getRetryDelay } = await importFreshWithRetryModule()
+    expect(getRetryDelay(1, 1500)).toBe(1500)
+  })
+
+  test('honors zero as zero (no backoff override)', async () => {
+    const { getRetryDelay } = await importFreshWithRetryModule()
+    expect(getRetryDelay(1, 0)).toBe(0)
+  })
+
+  test('falls back to backoff when retryAfterMs is null', async () => {
+    const { getRetryDelay } = await importFreshWithRetryModule()
+    // attempt 1 → BASE_DELAY_MS (500) + jitter ≤ 25%
+    const delay = getRetryDelay(1, null)
+    expect(delay).toBeGreaterThanOrEqual(500)
+    expect(delay).toBeLessThanOrEqual(625)
+  })
+
+  test('falls back to backoff when retryAfterMs undefined', async () => {
+    const { getRetryDelay } = await importFreshWithRetryModule()
+    const delay = getRetryDelay(1)
+    expect(delay).toBeGreaterThanOrEqual(500)
+    expect(delay).toBeLessThanOrEqual(625)
   })
 })
