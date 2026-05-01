@@ -53,6 +53,7 @@ const _openBuildDefaults = {
   'tengu_sedge_lantern': true,  // AWAY_SUMMARY — "while you were away" recap (upstream: false)
   'tengu_passport_quail': true, // EXTRACT_MEMORIES — enable memory extraction (upstream: false)
   'tengu_coral_fern': true,     // EXTRACT_MEMORIES — enable memory search in past context (upstream: false)
+  'tengu_bramble_lintel': 5,    // EXTRACT_MEMORIES throttle — fire every 5 eligible turns instead of every turn (upstream: null → 1). Cuts fork-agent token cost ~5x; preserves parent prompt cache.
 };
 
 /* ── Known runtime feature keys (reference only) ───────────────────────
