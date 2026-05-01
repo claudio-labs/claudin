@@ -31,7 +31,7 @@ import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermi
 import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from '../../../utils/planModeV2.js';
 import { getPlan, getPlanFilePath } from '../../../utils/plans.js';
 import { editFileInEditor, editPromptInEditor } from '../../../utils/promptEditor.js';
-import { getCurrentSessionTitle, getTranscriptPath, saveAgentName, saveCustomTitle } from '../../../utils/sessionStorage.js';
+import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from '../../../utils/sessionStorage.js';
 import { getSettings_DEPRECATED } from '../../../utils/settings/settings.js';
 import { type OptionWithDescription, Select } from '../../CustomSelect/index.js';
 import { Markdown } from '../../Markdown.js';
@@ -86,7 +86,7 @@ export function buildPermissionUpdates(mode: PermissionMode, allowedPrompts?: Al
  * if they haven't already named it via /rename or --name. Fire-and-forget.
  * Mirrors /rename: kebab-case name, updates the prompt-border badge.
  */
-export function autoNameSessionFromPlan(plan: string, setAppState: (updater: (prev: AppState) => AppState) => void, isClearContext: boolean): void {
+export function autoNameSessionFromPlan(plan: string, isClearContext: boolean): void {
   if (isSessionPersistenceDisabled() || getSettings_DEPRECATED()?.cleanupPeriodDays === 0) {
     return;
   }
@@ -108,17 +108,11 @@ export function autoNameSessionFromPlan(plan: string, setAppState: (updater: (pr
     const sessionId = getSessionId() as UUID;
     const fullPath = getTranscriptPath();
     await saveCustomTitle(sessionId, name, fullPath, 'auto');
-    await saveAgentName(sessionId, name, fullPath, 'auto');
-    setAppState(prev => {
-      if (prev.standaloneAgentContext?.name === name) return prev;
-      return {
-        ...prev,
-        standaloneAgentContext: {
-          ...prev.standaloneAgentContext,
-          name
-        }
-      };
-    });
+    // Intentionally NOT calling saveAgentName / setting standaloneAgentContext.name:
+    // those would swap the prompt-input top border (cwd + branch chip) for a swarm
+    // banner showing the auto-generated slug, hiding cwd/branch info and persisting
+    // across restarts (session restore rebuilds standaloneAgentContext from the
+    // saved agent name). Title is enough for /resume.
   }).catch(logError);
 }
 export function ExitPlanModePermissionRequest({
@@ -341,7 +335,7 @@ export function ExitPlanModePermissionRequest({
     const isResumeAutoOption = feature('TRANSCRIPT_CLASSIFIER') ? value === 'yes-resume-auto-mode' : false;
     const isKeepContextOption = value === 'yes-accept-edits-keep-context' || value === 'yes-default-keep-context' || isResumeAutoOption;
     if (value !== 'no') {
-      autoNameSessionFromPlan(currentPlan, setAppState, !isKeepContextOption);
+      autoNameSessionFromPlan(currentPlan, !isKeepContextOption);
     }
     if (value !== 'no' && !isKeepContextOption) {
       // Determine the permission mode based on the selected option

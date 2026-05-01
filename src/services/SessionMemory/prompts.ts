@@ -1,6 +1,9 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { roughTokenCountEstimation } from '../../services/tokenEstimation.js'
+import {
+  getActiveModelBytesPerToken,
+  roughTokenCountEstimation,
+} from '../../services/tokenEstimation.js'
 import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
 import { getErrnoCode, toError } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
@@ -258,7 +261,11 @@ export function truncateSessionMemoryForCompact(content: string): {
   wasTruncated: boolean
 } {
   const lines = content.split('\n')
-  const maxCharsPerSection = MAX_SECTION_LENGTH * 4 // roughTokenCountEstimation uses length/4
+  // Mirror the bytes/token ratio used by roughTokenCountEstimation downstream
+  // so this section cap stays consistent (Gemini ~4, Claude ~3.5, etc).
+  const maxCharsPerSection = Math.floor(
+    MAX_SECTION_LENGTH * getActiveModelBytesPerToken(),
+  )
   const outputLines: string[] = []
   let currentSectionLines: string[] = []
   let currentSectionHeader = ''

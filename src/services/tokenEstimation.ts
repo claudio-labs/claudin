@@ -202,11 +202,60 @@ export async function countMessagesTokensWithAPI(
   })
 }
 
+/**
+ * Module-level memoized ratios per model name. `roughTokenCountEstimation`
+ * is invoked 1000-3000× per turn from microCompact/analyzeContext/tokens.ts,
+ * so we avoid re-running `getBytesPerTokenForModel` (which walks the family
+ * regex table) on every call. Keyed by model name so sub-agent code paths
+ * using a different model (e.g. small-fast) coexist without thrashing the
+ * cache. Bounded in practice — only a handful of model names per session.
+ */
+const memoizedRatios = new Map<string, number>()
+
+/**
+ * Returns the bytes-per-token ratio for the active main-loop model, or 4
+ * if no provider is initialised (early bootstrap, offline scripts, tests
+ * without a mocked provider).
+ *
+ * Exported so callers that need the raw ratio (e.g. SessionMemory section
+ * sizing) don't have to round-trip through `roughTokenCountEstimation`.
+ */
+export function getActiveModelBytesPerToken(): number {
+  try {
+    const model = getMainLoopModel()
+    const cached = memoizedRatios.get(model)
+    if (cached !== undefined) return cached
+    const ratio = getBytesPerTokenForModel(model)
+    memoizedRatios.set(model, ratio)
+    return ratio
+  } catch {
+    return 4
+  }
+}
+
+/**
+ * Test-only: clear the model-ratio cache. Production code never needs this —
+ * cache is keyed by model name so it self-invalidates on `/provider` switch.
+ */
+export function __resetMemoizedRatiosForTests(): void {
+  memoizedRatios.clear()
+}
+
+/**
+ * Estimate token count for a string. When `bytesPerToken` is omitted the
+ * ratio is resolved from the active main-loop model via
+ * `MODEL_TOKENIZER_CONFIGS`, so estimates calibrate to the provider in use
+ * (Claude/Gemini/DeepSeek/etc.) instead of always assuming 4 bytes/token.
+ *
+ * Pass an explicit ratio for content-type-specific overrides (e.g. JSON=2
+ * via `roughTokenCountEstimationForFileType`).
+ */
 export function roughTokenCountEstimation(
   content: string,
-  bytesPerToken: number = 4,
+  bytesPerToken?: number,
 ): number {
-  return Math.round(content.length / bytesPerToken)
+  const ratio = bytesPerToken ?? getActiveModelBytesPerToken()
+  return Math.round(content.length / ratio)
 }
 
 /**
@@ -236,28 +285,57 @@ export interface ModelTokenizerConfig {
   supportsCode: boolean
 }
 
+// Ratios sourced from official tokenizer docs / public empirical analyses
+// (snapshot 2026-04). Under-estimating is worse than over-estimating —
+// autoCompact fires late — so values are rounded up conservatively when
+// sources disagree.
 export const MODEL_TOKENIZER_CONFIGS: ModelTokenizerConfig[] = [
   { modelFamily: 'claude', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  { modelFamily: 'gpt-5', bytesPerToken: 4, supportsJson: true, supportsCode: true },
   { modelFamily: 'gpt-4', bytesPerToken: 4, supportsJson: true, supportsCode: true },
   { modelFamily: 'gpt-3.5', bytesPerToken: 4, supportsJson: true, supportsCode: true },
-  { modelFamily: 'gemini', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  // Gemini SentencePiece Unigram (256k vocab): ~4 chars/token oficial Google,
+  // 4.2 empírico. Antes era 3.5 — subestimava contexto em ~14%.
+  { modelFamily: 'gemini', bytesPerToken: 4, supportsJson: true, supportsCode: true },
   { modelFamily: 'llama', bytesPerToken: 3.8, supportsJson: true, supportsCode: true },
+  { modelFamily: 'mistral', bytesPerToken: 3.8, supportsJson: true, supportsCode: true },
+  // Devstral is Mistral's coding model — same tokenizer family.
+  { modelFamily: 'devstral', bytesPerToken: 3.8, supportsJson: true, supportsCode: true },
   { modelFamily: 'deepseek', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  { modelFamily: 'qwen', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  { modelFamily: 'glm', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  // Grok (xAI) — proprietary tokenizer, ~4 chars/token typical for English BPE.
+  { modelFamily: 'grok', bytesPerToken: 4, supportsJson: true, supportsCode: true },
+  // Cohere Command — proprietary tokenizer (~4 chars/token per docs).
+  { modelFamily: 'command', bytesPerToken: 4, supportsJson: true, supportsCode: true },
+  { modelFamily: 'cohere', bytesPerToken: 4, supportsJson: true, supportsCode: true },
+  // Gemma (Google open-weights) — shares tokenizer with Gemini (~4 chars/token).
+  { modelFamily: 'gemma', bytesPerToken: 4, supportsJson: true, supportsCode: true },
+  // Phi (Microsoft) — uses tiktoken cl100k variants, ~4 chars/token.
+  { modelFamily: 'phi', bytesPerToken: 4, supportsJson: true, supportsCode: true },
+  // Moonshot/Kimi (kimi-k2, kimi-for-coding) — proprietary tokenizer, ~3.5 empirical.
+  { modelFamily: 'kimi', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
+  { modelFamily: 'moonshot', bytesPerToken: 3.5, supportsJson: true, supportsCode: true },
   { modelFamily: 'minimax', bytesPerToken: 3.2, supportsJson: true, supportsCode: true },
 ]
 
 /**
- * Get tokenizer config for a model.
+ * Get tokenizer config for a model. Matches the family name as a token
+ * boundary (non-alphanumeric on either side, or string edge), so short
+ * names like `phi` / `command` / `glm` don't accidentally match
+ * `morpheus`, `slash-command`, or `algorithm`.
  */
 export function getTokenizerConfig(model: string): ModelTokenizerConfig {
   const lower = model.toLowerCase()
-  
+
   for (const config of MODEL_TOKENIZER_CONFIGS) {
-    if (lower.includes(config.modelFamily)) {
+    const escaped = config.modelFamily.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`)
+    if (re.test(lower)) {
       return config
     }
   }
-  
+
   return { modelFamily: 'unknown', bytesPerToken: 4, supportsJson: true, supportsCode: true }
 }
 
