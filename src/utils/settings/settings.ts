@@ -14,7 +14,7 @@ import { logForDebugging } from '../debug.js'
 import { logForDiagnosticsNoPII } from '../diagLogs.js'
 import { getClaudioConfigHomeDir, isEnvTruthy } from '../envUtils.js'
 import { getErrnoCode, isENOENT } from '../errors.js'
-import { writeFileSyncAndFlush_DEPRECATED } from '../file.js'
+import { writeFileSyncAndFlush } from '../file.js'
 import { readFileSync } from '../fileRead.js'
 import { getFsImplementation, safeResolvePath } from '../fsOperations.js'
 import { addFileGlobRuleToGitignore } from '../git/gitignore.js'
@@ -497,7 +497,7 @@ export function updateSettingsForSource(
     // Mark this as an internal write before writing the file
     markInternalWrite(filePath)
 
-    writeFileSyncAndFlush_DEPRECATED(
+    writeFileSyncAndFlush(
       filePath,
       jsonStringify(updatedSettings, null, 2) + '\n',
     )

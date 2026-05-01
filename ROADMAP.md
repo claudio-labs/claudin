@@ -6,13 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (8 itens)
-
-### 1.7 — Remover dead code de ContentType / compression ratios
-- **Esforço:** S
-- **Estado:** `ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~150 linhas) só usadas em `tokenModelCompression.test.ts` (que testa o próprio código morto).
-- **Ganho:** Reduz ruído cognitivo + tira ~150 linhas do bundle.
-- **Arquivos:** `src/services/tokenEstimation.ts:292-465`, `src/services/tokenModelCompression.test.ts`
+## Ativos (6 itens)
 
 ### 1.8 — `countTokensViaHaikuFallback` paga tokens reais
 - **Esforço:** M
@@ -50,15 +44,15 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Estado:** `SentryErrorBoundary` ainda existe (4 callsites) e renderiza `null` silenciosamente em crash. Sem mensagem, sem recovery, sem log.
 - **Ganho:** Crashes na TUI deixam de ser invisíveis.
 
-### 4.8 — Remover `writeFileSyncAndFlush_DEPRECATED`
-- **Esforço:** S
-- **Estado:** Marcada como deprecated; 8 usos em 4 arquivos.
-- **Ganho:** Limpeza pequena, fecha pendência antiga.
-- **Arquivos:** `src/utils/file.ts:362`
-
 ---
 
 ## Concluídos ✅
+
+### 1.7 — Remover dead code de ContentType / compression ratios
+`ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~95 linhas) deletados; único caller em `staticDedup.integration.test.ts` agora chama `roughTokenCountEstimation(s, 2)` direto.
+
+### 4.8 — Renomeado `writeFileSyncAndFlush_DEPRECATED` → `writeFileSyncAndFlush`
+A deprecação era aspiracional — os 3 callers (config writes, settings writes, file edit writes) são sync por design. Renomear + atualizar jsdoc remove o marcador enganoso sem refactor M-L de propagar async.
 
 ### 1.1 — Strip progressivo de thinking blocks (de7b67d)
 `stripOldThinkingBlocks()` agora roda em todos os providers, não só Bedrock/Vertex.
@@ -117,4 +111,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**8 ativos** (1× P0, 1× P1, 6× P2) + **6 concluídos**.
+**6 ativos** (1× P0, 5× P2) + **8 concluídos**.
