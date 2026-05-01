@@ -95,6 +95,7 @@ export function writeTextContent(
   }
 
   writeFileSyncAndFlush(filePath, toWrite, { encoding })
+  fileReadCache.invalidate(filePath)
 }
 
 export function detectFileEncoding(filePath: string): BufferEncoding {

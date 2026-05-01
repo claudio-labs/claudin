@@ -1,18 +1,18 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-01 | ROI honesto, sem itens marginais
+> Última auditoria: 2026-05-02 | ROI honesto, sem itens marginais
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (4 itens)
+## Ativos (3 itens)
 
 ### 2.4 — Gerenciamento de memória em sessões longas
 - **Esforço:** M
-- **Estado:** `fileReadCache` sem TTL/eviction; listeners desbalanceados (221 attach vs 98 detach).
-- **Ganho:** Estabilidade real em sessões longas (horas).
-- **Arquivos:** `src/utils/file.ts`, `src/screens/REPL.tsx`
+- **Estado:** `fileReadCache` sem check de tamanho por entrada (1000 × ficheiros grandes = >1 GB); `invalidate()` nunca chamado após writes — coerência depende só de mtime granularity. Listeners em REPL.tsx estão corretos (2 on + 2 off balanceados).
+- **Ganho:** Cap de memória previsível em sessões longas; elimina risco de stale read em writes rápidos.
+- **Arquivos:** `src/utils/fileReadCache.ts`, `src/utils/file.ts`
 
 ### 3.12 — Wildcard permission rules (last-match-wins)
 - **Esforço:** M (~80 LoC + revisão de UX `/permissions`)
@@ -27,11 +27,6 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Estado:** Sem testes em `QueryEngine.ts` (core agent loop), `coordinator/`, `grpc/server.ts`, `tools/AgentTool/`, `main.tsx`, `screens/REPL.tsx`, `bridge/`.
 - **Ganho:** Reduz risco de regressão silenciosa no core.
 
-### 4.4 — Error boundary real (substituir SentryErrorBoundary)
-- **Esforço:** M
-- **Estado:** `SentryErrorBoundary` ainda existe (4 callsites) e renderiza `null` silenciosamente em crash. Sem mensagem, sem recovery, sem log.
-- **Ganho:** Crashes na TUI deixam de ser invisíveis.
-
 ---
 
 ## Concluídos ✅
@@ -44,6 +39,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ### 1.7 — Remover dead code de ContentType / compression ratios (54ce9a9)
 `ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~95 linhas) deletados; único caller em `staticDedup.integration.test.ts` agora chama `roughTokenCountEstimation(s, 2)` direto.
+
+### 4.4 — Error boundary real (substituir SentryErrorBoundary) (61d8e5b)
+`SentryErrorBoundary` substituído por `ErrorBoundary` real com fallback visível + `logError` em crash. `SentryErrorBoundary.ts` virou re-export de `ErrorBoundary` para manter os 4 callsites sem mudança. Testes em `ErrorBoundary.test.tsx`.
 
 ### 4.8 — Renomeado `writeFileSyncAndFlush_DEPRECATED` → `writeFileSyncAndFlush` (9ec5c63)
 A deprecação era aspiracional — os 3 callers (config writes, settings writes, file edit writes) são sync por design. Renomear + atualizar jsdoc remove o marcador enganoso sem refactor M-L de propagar async.
@@ -105,4 +103,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**4 ativos** (1× P0, 3× P2) + **10 concluídos**.
+**3 ativos** (1× P0, 2× P2) + **11 concluídos**.

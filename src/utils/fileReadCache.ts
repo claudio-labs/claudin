@@ -14,6 +14,10 @@ type CachedFileData = {
 class FileReadCache {
   private cache = new Map<string, CachedFileData>()
   private readonly maxCacheSize = 1000
+  // 256 KB limit per entry — aligned with MAX_OUTPUT_SIZE in file.ts.
+  // Uses content.length (UTF-16 code units), which is a loose byte approximation
+  // for multi-byte characters, but is acceptable for a memory cap.
+  private readonly maxEntryBytes = 256 * 1024
 
   /**
    * Reads a file with caching. Returns both content and encoding.
@@ -22,15 +26,15 @@ class FileReadCache {
   readFile(filePath: string): { content: string; encoding: BufferEncoding } {
     const fs = getFsImplementation()
 
-    // Get file stats for cache invalidation
-    let stats
-    try {
-      stats = fs.statSync(filePath)
-    } catch (error) {
-      // File was deleted, remove from cache and re-throw
-      this.cache.delete(filePath)
-      throw error
-    }
+    // Get file stats for cache invalidation; on error the file was deleted
+    const stats = (() => {
+      try {
+        return fs.statSync(filePath)
+      } catch (error: unknown) {
+        this.cache.delete(filePath)
+        throw error
+      }
+    })()
 
     const cacheKey = filePath
     const cachedData = this.cache.get(cacheKey)
@@ -49,18 +53,20 @@ class FileReadCache {
       .readFileSync(filePath, { encoding })
       .replaceAll('\r\n', '\n')
 
-    // Update cache
-    this.cache.set(cacheKey, {
-      content,
-      encoding,
-      mtime: stats.mtimeMs,
-    })
+    // Only cache entries within the size limit; large files are returned but not stored.
+    if (content.length <= this.maxEntryBytes) {
+      this.cache.set(cacheKey, {
+        content,
+        encoding,
+        mtime: stats.mtimeMs,
+      })
 
-    // Evict oldest entries if cache is too large
-    if (this.cache.size > this.maxCacheSize) {
-      const firstKey = this.cache.keys().next().value
-      if (firstKey) {
-        this.cache.delete(firstKey)
+      // Evict oldest entries if cache is too large
+      if (this.cache.size > this.maxCacheSize) {
+        const firstKey = this.cache.keys().next().value
+        if (firstKey) {
+          this.cache.delete(firstKey)
+        }
       }
     }
 
