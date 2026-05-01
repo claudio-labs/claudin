@@ -199,7 +199,7 @@ export function Notifications(t0) {
   }
   let t14;
   if ($[31] !== t11 || $[32] !== t13) {
-    t14 = <SentryErrorBoundary><Box flexDirection="column" alignItems={t11} flexShrink={0} overflowX="hidden">{t13}</Box></SentryErrorBoundary>;
+    t14 = <SentryErrorBoundary fallback={<Box><Text color="warning" wrap="truncate">⚠ status unavailable</Text></Box>}><Box flexDirection="column" alignItems={t11} flexShrink={0} overflowX="hidden">{t13}</Box></SentryErrorBoundary>;
     $[31] = t11;
     $[32] = t13;
     $[33] = t14;
