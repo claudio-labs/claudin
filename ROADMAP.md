@@ -6,19 +6,13 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (5 itens)
+## Ativos (4 itens)
 
 ### 2.4 — Gerenciamento de memória em sessões longas
 - **Esforço:** M
 - **Estado:** `fileReadCache` sem TTL/eviction; listeners desbalanceados (221 attach vs 98 detach).
 - **Ganho:** Estabilidade real em sessões longas (horas).
 - **Arquivos:** `src/utils/file.ts`, `src/screens/REPL.tsx`
-
-### 3.6 — Keep-alive por provider
-- **Esforço:** S
-- **Estado:** `disableKeepAlive` em `src/utils/proxy.ts:27` é flag global. Um ECONNRESET no DeepSeek desabilita keep-alive da Anthropic na mesma sessão.
-- **Ganho:** Bug confirmado; trocar `let keepAliveDisabled` por `Map<provider, boolean>`.
-- **Arquivos:** `src/utils/proxy.ts:27`
 
 ### 3.12 — Wildcard permission rules (last-match-wins)
 - **Esforço:** M (~80 LoC + revisão de UX `/permissions`)
@@ -41,6 +35,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 3.6 — Keep-alive por provider (não global)
+`let keepAliveDisabled` → `Map<string, boolean>` em `proxy.ts`. `disableKeepAlive(provider)` e `getProxyFetchOptions({ provider })` agora são scoped por provider. Callers atualizados: `withRetry.ts` passa `getAPIProvider()`, `openaiShim.ts` passa a variável `provider` local, `codexShim.ts` passa `'codex'`, `client.ts` passa `'anthropic'`. Test isolado garante que ECONNRESET no DeepSeek não afeta o Anthropic.
 
 ### 1.8 — `countTokensViaHaikuFallback` agora usa `countTokens` (free)
 `anthropic.beta.messages.create` (cobrava input + 1 output token por chamada de fallback) trocado por `anthropic.beta.messages.countTokens`, que é gratuito e suporta os mesmos parâmetros (thinking, tools, betas) que precisávamos. Test em `tokenEstimation.test.ts` garante que `create` nunca é chamado nesse caminho.
@@ -108,4 +105,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**5 ativos** (1× P0, 4× P2) + **9 concluídos**.
+**4 ativos** (1× P0, 3× P2) + **10 concluídos**.

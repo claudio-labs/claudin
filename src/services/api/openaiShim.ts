@@ -1852,6 +1852,7 @@ class OpenAIShimMessages {
         response = await fetchWithProxyRetry(
           chatCompletionsUrl,
           buildFetchInit(),
+          { provider },
         )
       } catch (error) {
         const isAbortError =
@@ -1977,7 +1978,7 @@ class OpenAIShimMessages {
               headers,
               body: stableStringify(responsesBody),
               signal: options?.signal,
-            })
+            }, { provider })
           } catch (error) {
             throwClassifiedTransportError(error, responsesUrl)
           }

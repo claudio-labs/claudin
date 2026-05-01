@@ -24,14 +24,21 @@ import {
 // Works under Bun (native fetch respects keepalive:false for pooling).
 // Under Node/undici, keepalive is a no-op for pooling, but undici
 // naturally evicts dead sockets from the pool on ECONNRESET.
-let keepAliveDisabled = false
+//
+// Keyed by provider so an ECONNRESET from DeepSeek/OpenAI-compat providers
+// does not disable keep-alive for the Anthropic client in the same session.
+const keepAliveDisabled = new Map<string, boolean>()
 
-export function disableKeepAlive(): void {
-  keepAliveDisabled = true
+export function disableKeepAlive(provider: string): void {
+  keepAliveDisabled.set(provider, true)
 }
 
-export function _resetKeepAliveForTesting(): void {
-  keepAliveDisabled = false
+export function _resetKeepAliveForTesting(provider?: string): void {
+  if (provider !== undefined) {
+    keepAliveDisabled.delete(provider)
+  } else {
+    keepAliveDisabled.clear()
+  }
 }
 
 /**
@@ -287,14 +294,17 @@ export function getWebSocketProxyUrl(url: string): string | undefined {
  *   requests get misrouted to api.anthropic.com. Only the Anthropic SDK client
  *   should pass `true` here.
  */
-export function getProxyFetchOptions(opts?: { forAnthropicAPI?: boolean }): {
+export function getProxyFetchOptions(opts?: { forAnthropicAPI?: boolean; provider?: string }): {
   tls?: TLSConfig
   dispatcher?: undici.Dispatcher
   proxy?: string
   unix?: string
   keepalive?: false
 } {
-  const base = keepAliveDisabled ? ({ keepalive: false } as const) : {}
+  const providerKey = opts?.provider ?? 'unknown'
+  const base = keepAliveDisabled.get(providerKey)
+    ? ({ keepalive: false } as const)
+    : {}
 
   // ANTHROPIC_UNIX_SOCKET tunnels through the `claude ssh` auth proxy, which
   // hardcodes the upstream to the Anthropic API. Scope to the Anthropic API

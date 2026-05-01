@@ -374,7 +374,7 @@ async function runCodexWebSearch(
     },
     body: JSON.stringify(body),
     signal,
-  })
+  }, { provider: 'codex' })
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error')

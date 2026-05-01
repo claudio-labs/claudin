@@ -568,6 +568,7 @@ export async function performCodexRequest(options: {
       body: stableStringify(body),
       signal: options.signal,
     },
+    { provider: 'codex' },
   )
 
   if (!response.ok) {

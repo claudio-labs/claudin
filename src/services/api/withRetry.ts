@@ -235,7 +235,7 @@ export async function* withRetry<T>(
         logForDebugging(
           'Stale connection (ECONNRESET/EPIPE) — disabling keep-alive for retry',
         )
-        disableKeepAlive()
+        disableKeepAlive(getAPIProvider())
       }
 
       if (
