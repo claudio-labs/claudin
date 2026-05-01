@@ -133,6 +133,13 @@ describe('FileReadCache.readFile', () => {
     expect(fileReadCache.getStats().size).toBe(1)
   })
 
+  test('normalizes CRLF line endings to LF in returned content', () => {
+    fakeContent = 'line1\r\nline2\r\nline3'
+    const result = fileReadCache.readFile('/tmp/crlf.ts')
+    expect(result.content).toBe('line1\nline2\nline3')
+  })
+
+
   test('evicts oldest entry when cache exceeds 1000 entries', () => {
     for (let i = 0; i < 1001; i++) {
       fileReadCache.readFile(`/tmp/file-${i}.ts`)

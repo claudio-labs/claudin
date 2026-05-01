@@ -16,10 +16,8 @@ class FileReadCache {
   private cache = new Map<string, CachedFileData>()
   private readonly maxCacheSize = 1000
   // 256 KB limit per entry — aligned with MAX_OUTPUT_SIZE in file.ts.
-  // Uses stats.size (bytes on disk) as a pre-read guard and content.length
-  // (UTF-16 code units) as the post-read check; the pre-read check is
-  // conservative (stats.size >= content.length for UTF-8), so no valid
-  // entry is ever silently rejected.
+  // Compared against stats.size (bytes on disk); for UTF-8 files,
+  // content.length <= stats.size, so this is a conservative bound.
   private readonly maxEntryBytes = 256 * 1024
 
   /**
@@ -45,21 +43,12 @@ class FileReadCache {
     }
 
     const encoding = detectFileEncoding(filePath)
-
-    // Skip allocation for files that can't fit in cache (stats.size >= content.length for UTF-8)
-    if (stats.size > this.maxEntryBytes) {
-      return {
-        content: fs.readFileSync(filePath, { encoding }).replaceAll('\r\n', '\n'),
-        encoding,
-      }
-    }
-
     const content = fs
       .readFileSync(filePath, { encoding })
       .replaceAll('\r\n', '\n')
 
     // Only cache entries within the size limit; large files are returned but not stored.
-    if (content.length <= this.maxEntryBytes) {
+    if (stats.size <= this.maxEntryBytes) {
       this.cache.set(filePath, { content, encoding, mtime: stats.mtimeMs })
 
       if (this.cache.size > this.maxCacheSize) {
