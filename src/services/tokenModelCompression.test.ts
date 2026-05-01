@@ -2,9 +2,6 @@ import { describe, expect, it } from 'bun:test'
 import {
   getTokenizerConfig,
   getBytesPerTokenForModel,
-  detectContentType,
-  getCompressionRatio,
-  estimateWithBounds,
 } from './tokenEstimation.js'
 
 describe('Model Tokenizers', () => {
@@ -55,63 +52,3 @@ describe('Model Tokenizers', () => {
   })
 })
 
-describe('Content Type Detection', () => {
-  describe('detectContentType', () => {
-    it('detects JSON', () => {
-      expect(detectContentType('{"key": "value"}')).toBe('json')
-      expect(detectContentType('[1, 2, 3]')).toBe('json')
-    })
-
-    it('detects code', () => {
-      expect(detectContentType('function test() { return 1 + 2; }')).toBe('code')
-      expect(detectContentType('const x = () => {}')).toBe('code')
-    })
-
-    it('detects prose', () => {
-      expect(detectContentType('This is a natural language response.')).toBe('prose')
-      expect(detectContentType('Hello world how are you?')).toBe('prose')
-    })
-
-    it('detects code-like technical', () => {
-      // Has both code chars and technical - higher code char ratio wins
-      expect(detectContentType('margin: 10px; padding: 5px;')).toBe('code')
-    })
-
-    it('detects list', () => {
-      expect(detectContentType('- item 1\n- item 2')).toBe('list')
-      expect(detectContentType('1. first\n2. second')).toBe('list')
-    })
-
-    it('detects prose by default', () => {
-      // Single column with newlines = prose
-      expect(detectContentType('a b c\n1 2 3')).toBe('prose')
-    })
-  })
-})
-
-describe('Compression Ratio', () => {
-  describe('getCompressionRatio', () => {
-    it('returns appropriate ratios', () => {
-      expect(getCompressionRatio('{"a":1}').ratio).toBe(2)
-      expect(getCompressionRatio('code here {} []').ratio).toBe(3.5)
-      expect(getCompressionRatio('Hello world').ratio).toBe(4)
-    })
-  })
-
-  describe('estimateWithBounds', () => {
-    it('returns estimate with bounds', () => {
-      const result = estimateWithBounds('Hello world')
-      
-      expect(result.min).toBeLessThanOrEqual(result.estimate)
-      expect(result.max).toBeGreaterThanOrEqual(result.estimate)
-      expect(result.min).toBeLessThan(result.max)
-    })
-
-    it('handles JSON with tighter bounds', () => {
-      const result = estimateWithBounds('{"key": "value"}')
-      
-      // JSON has smaller ratio range
-      expect(result.max).toBeLessThan(10)
-    })
-  })
-})

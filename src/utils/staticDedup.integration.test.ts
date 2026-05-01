@@ -24,7 +24,7 @@
  * breaks the dedup path.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { estimateWithBounds } from '../services/tokenEstimation.js'
+import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from './api.js'
 import {
   getClaudeMdDelta,
@@ -82,9 +82,9 @@ function serialize(attachments: Array<Record<string, unknown>>): number {
 
 /**
  * Estimated token count of a serialized attachment list, using the
- * project's `estimateWithBounds` helper with `type='json'` — the
- * attachment payload is always JSON on the wire, so this ratio
- * (1.5-2.5 chars/token) matches what a tokenizer would produce.
+ * JSON typical compression ratio of 2 chars/token — the attachment
+ * payload is always JSON on the wire, so this matches what a tokenizer
+ * would produce.
  *
  * Byte length (from `serialize`) is what the provider bills for
  * payload-cost providers (Copilot); token estimate is what the plan's
@@ -92,7 +92,7 @@ function serialize(attachments: Array<Record<string, unknown>>): number {
  * both closes the gap between the two units.
  */
 function estimateTokens(attachments: Array<Record<string, unknown>>): number {
-  return estimateWithBounds(stableStringify(attachments), 'json').estimate
+  return roughTokenCountEstimation(stableStringify(attachments), 2)
 }
 
 function repeat(n: number): string {
@@ -400,9 +400,9 @@ describe('static-dedup integration: combined 3-turn session', () => {
     expect(byteSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
 
     // Token-level savings — matches the unit the Fase 2 plan targets.
-    // estimateWithBounds uses the project's `json` compression ratio
-    // (~2 chars/token), so the number reflects what a tokenizer would
-    // produce on the wire, not a hardcoded char-per-token guess.
+    // Uses the JSON typical compression ratio (~2 chars/token), so the
+    // number reflects what a tokenizer would produce on the wire, not
+    // a hardcoded char-per-token guess.
     const baselineTokensTurns23 =
       estimateTokens([
         baselineClaudeMd(claudeMdContent),
@@ -757,7 +757,7 @@ describe('static-dedup integration: production injection functions', () => {
       const combined = stableStringify({ systemOut, userOut })
       return {
         bytes: combined.length,
-        tokens: estimateWithBounds(combined, 'json').estimate,
+        tokens: roughTokenCountEstimation(combined, 2),
       }
     }
 
