@@ -48,10 +48,10 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ## Concluídos ✅
 
-### 1.7 — Remover dead code de ContentType / compression ratios
+### 1.7 — Remover dead code de ContentType / compression ratios (54ce9a9)
 `ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~95 linhas) deletados; único caller em `staticDedup.integration.test.ts` agora chama `roughTokenCountEstimation(s, 2)` direto.
 
-### 4.8 — Renomeado `writeFileSyncAndFlush_DEPRECATED` → `writeFileSyncAndFlush`
+### 4.8 — Renomeado `writeFileSyncAndFlush_DEPRECATED` → `writeFileSyncAndFlush` (9ec5c63)
 A deprecação era aspiracional — os 3 callers (config writes, settings writes, file edit writes) são sync por design. Renomear + atualizar jsdoc remove o marcador enganoso sem refactor M-L de propagar async.
 
 ### 1.1 — Strip progressivo de thinking blocks (de7b67d)
