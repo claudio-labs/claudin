@@ -1,17 +1,19 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 
-// Controllable fake fs — tests override these per-describe as needed
+// Controllable fake fs — tests mutate these per-test via beforeEach
 let fakeStatMtime = 1000
+let fakeStatSize = 100
 let fakeContent = 'hello world'
-let readFileSyncCallCount = 0
+const readFileSyncSpy = mock((_path: string, _opts: unknown): string => fakeContent)
 
 mock.module('./fsOperations.js', () => ({
   getFsImplementation: () => ({
-    statSync: (_path: string) => ({ mtimeMs: fakeStatMtime, mode: 0o644 }),
-    readFileSync: (_path: string, _opts: unknown) => {
-      readFileSyncCallCount++
-      return fakeContent
-    },
+    statSync: (_path: string) => ({
+      mtimeMs: fakeStatMtime,
+      size: fakeStatSize,
+      mode: 0o644,
+    }),
+    readFileSync: readFileSyncSpy,
     readlinkSync: (_path: string) => {
       throw Object.assign(new Error('EINVAL'), { code: 'EINVAL' })
     },
@@ -64,13 +66,11 @@ const { fileReadCache } = await import('./fileReadCache.js')
 
 beforeEach(() => {
   fileReadCache.clear()
-  readFileSyncCallCount = 0
+  readFileSyncSpy.mockReset()
+  readFileSyncSpy.mockImplementation((_path: string, _opts: unknown) => fakeContent)
   fakeStatMtime = 1000
+  fakeStatSize = 100
   fakeContent = 'hello world'
-})
-
-afterEach(() => {
-  mock.restore()
 })
 
 describe('FileReadCache.readFile', () => {
@@ -82,38 +82,53 @@ describe('FileReadCache.readFile', () => {
 
   test('returns cache hit when mtime unchanged (no second readFileSync)', () => {
     fileReadCache.readFile('/tmp/test.ts')
-    expect(readFileSyncCallCount).toBe(1)
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(1)
 
     fileReadCache.readFile('/tmp/test.ts')
-    expect(readFileSyncCallCount).toBe(1) // still 1 — served from cache
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(1) // still 1 — served from cache
   })
 
   test('re-reads file when mtime changes (stale cache)', () => {
     fileReadCache.readFile('/tmp/test.ts')
-    expect(readFileSyncCallCount).toBe(1)
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(1)
 
     fakeStatMtime = 2000
     fakeContent = 'updated content'
     const result = fileReadCache.readFile('/tmp/test.ts')
-    expect(readFileSyncCallCount).toBe(2)
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(2)
     expect(result.content).toBe('updated content')
   })
 
   test('does NOT cache files above maxEntryBytes (256KB)', () => {
-    fakeContent = 'x'.repeat(256 * 1024 + 1) // 1 byte over limit
+    fakeStatSize = 256 * 1024 + 1
+    fakeContent = 'x'.repeat(256 * 1024 + 1)
     fileReadCache.readFile('/tmp/large.ts')
     expect(fileReadCache.getStats().size).toBe(0)
   })
 
   test('large files are still returned correctly even without caching', () => {
     const bigContent = 'x'.repeat(256 * 1024 + 1)
+    fakeStatSize = bigContent.length
     fakeContent = bigContent
     const result = fileReadCache.readFile('/tmp/large.ts')
     expect(result.content).toBe(bigContent)
   })
 
+  test('large files skip the readFileSync allocation via stats.size pre-check', () => {
+    fakeStatSize = 256 * 1024 + 1
+    fakeContent = 'x'.repeat(256 * 1024 + 1)
+    fileReadCache.readFile('/tmp/large.ts')
+    // readFileSync called once (to return content), but not cached
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(1)
+    expect(fileReadCache.getStats().size).toBe(0)
+    // second read also hits disk (no cache entry)
+    fileReadCache.readFile('/tmp/large.ts')
+    expect(readFileSyncSpy).toHaveBeenCalledTimes(2)
+  })
+
   test('caches files exactly at the limit (256KB)', () => {
-    fakeContent = 'x'.repeat(256 * 1024) // exactly at limit
+    fakeStatSize = 256 * 1024
+    fakeContent = 'x'.repeat(256 * 1024)
     fileReadCache.readFile('/tmp/exact.ts')
     expect(fileReadCache.getStats().size).toBe(1)
   })

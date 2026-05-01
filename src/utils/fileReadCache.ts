@@ -1,3 +1,4 @@
+import type { Stats } from 'node:fs'
 import { detectFileEncoding } from './file.js'
 import { getFsImplementation } from './fsOperations.js'
 
@@ -15,8 +16,10 @@ class FileReadCache {
   private cache = new Map<string, CachedFileData>()
   private readonly maxCacheSize = 1000
   // 256 KB limit per entry — aligned with MAX_OUTPUT_SIZE in file.ts.
-  // Uses content.length (UTF-16 code units), which is a loose byte approximation
-  // for multi-byte characters, but is acceptable for a memory cap.
+  // Uses stats.size (bytes on disk) as a pre-read guard and content.length
+  // (UTF-16 code units) as the post-read check; the pre-read check is
+  // conservative (stats.size >= content.length for UTF-8), so no valid
+  // entry is ever silently rejected.
   private readonly maxEntryBytes = 256 * 1024
 
   /**
@@ -27,41 +30,38 @@ class FileReadCache {
     const fs = getFsImplementation()
 
     // Get file stats for cache invalidation; on error the file was deleted
-    const stats = (() => {
-      try {
-        return fs.statSync(filePath)
-      } catch (error: unknown) {
-        this.cache.delete(filePath)
-        throw error
-      }
-    })()
+    let stats: Stats
+    try {
+      stats = fs.statSync(filePath)
+    } catch (error: unknown) {
+      this.cache.delete(filePath)
+      throw error
+    }
 
-    const cacheKey = filePath
-    const cachedData = this.cache.get(cacheKey)
+    const cachedData = this.cache.get(filePath)
 
-    // Check if we have valid cached data
     if (cachedData && cachedData.mtime === stats.mtimeMs) {
+      return { content: cachedData.content, encoding: cachedData.encoding }
+    }
+
+    const encoding = detectFileEncoding(filePath)
+
+    // Skip allocation for files that can't fit in cache (stats.size >= content.length for UTF-8)
+    if (stats.size > this.maxEntryBytes) {
       return {
-        content: cachedData.content,
-        encoding: cachedData.encoding,
+        content: fs.readFileSync(filePath, { encoding }).replaceAll('\r\n', '\n'),
+        encoding,
       }
     }
 
-    // Cache miss or stale data - read the file
-    const encoding = detectFileEncoding(filePath)
     const content = fs
       .readFileSync(filePath, { encoding })
       .replaceAll('\r\n', '\n')
 
     // Only cache entries within the size limit; large files are returned but not stored.
     if (content.length <= this.maxEntryBytes) {
-      this.cache.set(cacheKey, {
-        content,
-        encoding,
-        mtime: stats.mtimeMs,
-      })
+      this.cache.set(filePath, { content, encoding, mtime: stats.mtimeMs })
 
-      // Evict oldest entries if cache is too large
       if (this.cache.size > this.maxCacheSize) {
         const firstKey = this.cache.keys().next().value
         if (firstKey) {
