@@ -1,11 +1,10 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import axios from 'axios'
 import { execa } from 'execa'
 import capitalize from 'lodash-es/capitalize.js'
 import memoize from 'lodash-es/memoize.js'
 import { createConnection } from 'net'
-import * as os from 'os'
-import { basename, join, sep as pathSeparator, resolve } from 'path'
+import { basename, dirname, join, sep as pathSeparator, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getIsScrollDraining, getOriginalCwd } from '../bootstrap/state.js'
 import { callIdeRpc } from '../services/mcp/client.js'
@@ -292,7 +291,7 @@ export function getTerminalIdeType(): IdeType | null {
 }
 
 /**
- * Gets sorted IDE lockfiles from ~/.claude/ide directory
+ * Gets sorted IDE lockfiles from ~/.claudio/ide directory
  * @returns Array of full lockfile paths sorted by modification time (newest first)
  */
 export async function getSortedIdeLockfiles(): Promise<string[]> {
@@ -474,7 +473,7 @@ export async function getIdeLockfilesPaths(): Promise<string[]> {
   if (windowsHome) {
     const converter = new WindowsToWSLConverter(process.env.WSL_DISTRO_NAME)
     const wslPath = converter.toLocalPath(windowsHome)
-    paths.push(resolve(wslPath, '.claude', 'ide'))
+    paths.push(resolve(wslPath, '.claudio', 'ide'))
   }
 
   // Construct the path based on the standard Windows WSL locations
@@ -499,7 +498,7 @@ export async function getIdeLockfilesPaths(): Promise<string[]> {
       ) {
         continue // Skip system directories
       }
-      paths.push(join(usersDir, user.name, '.claude', 'ide'))
+      paths.push(join(usersDir, user.name, '.claudio', 'ide'))
     }
   } catch (error: unknown) {
     if (isFsInaccessible(error)) {
@@ -844,10 +843,17 @@ export function hasAccessToIDEExtensionDiffFeature(
   )
 }
 
-const EXTENSION_ID =
-  process.env.USER_TYPE === 'ant'
-    ? 'anthropic.claude-code-internal'
-    : 'anthropic.claude-code'
+const EXTENSION_ID = 'devnull-bootloader.claudio-vscode'
+
+const LEGACY_EXTENSION_IDS = ['anthropic.claude-code', 'anthropic.claude-code-internal']
+
+declare const MACRO: { IDE_EXTENSION_VERSION: string }
+
+function getBundledIdeExtensionVsixPath(): string {
+  // dist/cli.mjs has dist/claudio-vscode.vsix as a sibling after a release build.
+  const cliDir = dirname(fileURLToPath(import.meta.url))
+  return join(cliDir, 'claudio-vscode.vsix')
+}
 
 export async function isIDEExtensionInstalled(
   ideType: IdeType,
@@ -881,17 +887,25 @@ async function installIDEExtension(ideType: IdeType): Promise<string | null> {
     const command = await getVSCodeIDECommand(ideType)
 
     if (command) {
-      if (process.env.USER_TYPE === 'ant') {
-        return await installFromArtifactory(command)
-      }
+      const bundledVersion = MACRO.IDE_EXTENSION_VERSION
       let version = await getInstalledVSCodeExtensionVersion(command)
-      // If it's not installed or the version is older than the one we have bundled,
-      if (!version || lt(version, getClaudeCodeVersion())) {
+      // Install the bundled vsix if missing or older than what we ship.
+      if (!version || lt(version, bundledVersion)) {
+        const vsixPath = getBundledIdeExtensionVsixPath()
+        const vsixExists = await getFsImplementation()
+          .stat(vsixPath)
+          .then(() => true, () => false)
+        if (!vsixExists) {
+          throw new Error(
+            `Bundled IDE extension not found at ${vsixPath}. ` +
+              `Run "bun run build:release" to package the vsix.`,
+          )
+        }
         // `code` may crash when invoked too quickly in succession
         await sleep(500)
         const result = await execFileNoThrowWithCwd(
           command,
-          ['--force', '--install-extension', 'anthropic.claude-code'],
+          ['--force', '--install-extension', vsixPath],
           {
             env: getInstallationEnv(),
           },
@@ -899,7 +913,18 @@ async function installIDEExtension(ideType: IdeType): Promise<string | null> {
         if (result.code !== 0) {
           throw new Error(`${result.code}: ${result.error} ${result.stderr}`)
         }
-        version = getClaudeCodeVersion()
+        version = bundledVersion
+        // Best-effort: remove the upstream Anthropic extension if present so
+        // the two MCP-IDE servers don't compete for the same workspace's CLI.
+        for (const legacyId of LEGACY_EXTENSION_IDS) {
+          await execFileNoThrowWithCwd(
+            command,
+            ['--uninstall-extension', legacyId],
+            { env: getInstallationEnv() },
+          ).catch(() => {
+            /* not installed — fine */
+          })
+        }
       }
       return version
     }
@@ -924,10 +949,6 @@ function getInstallationEnv(): NodeJS.ProcessEnv | undefined {
   return undefined
 }
 
-function getClaudeCodeVersion() {
-  return MACRO.VERSION
-}
-
 async function getInstalledVSCodeExtensionVersion(
   command: string,
 ): Promise<string | null> {
@@ -941,7 +962,7 @@ async function getInstalledVSCodeExtensionVersion(
   const lines = stdout?.split('\n') || []
   for (const line of lines) {
     const [extensionId, version] = line.split('@')
-    if (extensionId === 'anthropic.claude-code' && version) {
+    if (extensionId === EXTENSION_ID && version) {
       return version
     }
   }
@@ -1389,108 +1410,3 @@ const detectHostIP = memoize(
   (isIdeRunningInWindows, port) => `${isIdeRunningInWindows}:${port}`,
 )
 
-async function installFromArtifactory(command: string): Promise<string> {
-  const artifactoryBaseUrl =
-    process.env.CLAUDE_CODE_INTERNAL_ARTIFACTORY_BASE_URL
-  if (!artifactoryBaseUrl) {
-    throw new Error('Internal artifactory base URL is not configured')
-  }
-  const npmrcAuthPrefix = `//${artifactoryBaseUrl.replace(/^https?:\/\//, '')}/api/npm/npm-all/:_authToken=`
-  // Read auth token from ~/.npmrc
-  const npmrcPath = join(os.homedir(), '.npmrc')
-  let authToken: string | null = null
-  const fs = getFsImplementation()
-
-  try {
-    const npmrcContent = await fs.readFile(npmrcPath, {
-      encoding: 'utf8',
-    })
-    const lines = npmrcContent.split('\n')
-    for (const line of lines) {
-      // Look for the artifactory auth token line
-      if (line.startsWith(npmrcAuthPrefix)) {
-        authToken = line.slice(npmrcAuthPrefix.length).trim()
-        break
-      }
-    }
-  } catch (error) {
-    logError(error as Error)
-    throw new Error(`Failed to read npm authentication: ${error}`)
-  }
-
-  if (!authToken) {
-    throw new Error('No artifactory auth token found in ~/.npmrc')
-  }
-
-  // Fetch the version from artifactory
-  const versionUrl = `${artifactoryBaseUrl}/armorcode-claude-code-internal/claude-vscode-releases/stable`
-
-  try {
-    const versionResponse = await axios.get(versionUrl, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    })
-
-    const version = versionResponse.data.trim()
-    if (!version) {
-      throw new Error('No version found in artifactory response')
-    }
-
-    // Download the .vsix file from artifactory
-    const vsixUrl = `${artifactoryBaseUrl}/armorcode-claude-code-internal/claude-vscode-releases/${version}/claude-code.vsix`
-    const tempVsixPath = join(
-      os.tmpdir(),
-      `claude-code-${version}-${Date.now()}.vsix`,
-    )
-
-    try {
-      const vsixResponse = await axios.get(vsixUrl, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-        responseType: 'stream',
-      })
-
-      // Write the downloaded file to disk
-      const writeStream = getFsImplementation().createWriteStream(tempVsixPath)
-      await new Promise<void>((resolve, reject) => {
-        vsixResponse.data.pipe(writeStream)
-        writeStream.on('finish', resolve)
-        writeStream.on('error', reject)
-      })
-
-      // Install the .vsix file
-      // Add delay to prevent code command crashes
-      await sleep(500)
-
-      const result = await execFileNoThrowWithCwd(
-        command,
-        ['--force', '--install-extension', tempVsixPath],
-        {
-          env: getInstallationEnv(),
-        },
-      )
-
-      if (result.code !== 0) {
-        throw new Error(`${result.code}: ${result.error} ${result.stderr}`)
-      }
-
-      return version
-    } finally {
-      // Clean up the temporary file
-      try {
-        await fs.unlink(tempVsixPath)
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(
-        `Failed to fetch extension version from artifactory: ${error.message}`,
-      )
-    }
-    throw error
-  }
-}

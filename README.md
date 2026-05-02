@@ -221,7 +221,8 @@ node dist/cli.mjs
 
 Helpful commands:
 
-- `bun run dev`
+- `bun run dev` — quick CLI-only rebuild + run (skips the VS Code extension)
+- `bun run build:release` — full release build: bundles the vendored VS Code extension into `dist/claudio-vscode.vsix` and then bundles the CLI. Required when iterating on the IDE integration or before `npm publish` (the `prepack` script invokes it)
 - `bun test`
 - `bun run test:coverage`
 - `bun run security:pr-scan -- --base origin/main`

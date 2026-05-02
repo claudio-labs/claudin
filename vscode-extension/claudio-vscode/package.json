@@ -7,6 +7,9 @@
   "engines": {
     "vscode": "^1.95.0"
   },
+  "extensionKind": [
+    "workspace"
+  ],
   "categories": [
     "Themes",
     "Other"
@@ -30,10 +33,12 @@
   "files": [
     "README.md",
     "media/**",
+    "node_modules/ws/**",
     "src/extension.js",
     "src/presentation.js",
     "src/state.js",
     "src/chat/**",
+    "src/mcp/**",
     "themes/**"
   ],
   "contributes": {
@@ -160,9 +165,9 @@
     ]
   },
   "scripts": {
-    "test": "node --test ./src/*.test.js",
+    "test": "bun test ./src/",
     "lint": "node scripts/lint.js",
-    "package": "npx @vscode/vsce package --no-dependencies"
+    "package": "npx --yes @vscode/vsce@^3 package"
   },
   "keywords": [
     "claudio",
@@ -171,5 +176,8 @@
     "cli",
     "llm"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
 }

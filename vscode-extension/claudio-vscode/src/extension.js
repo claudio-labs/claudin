@@ -15,6 +15,7 @@ const { buildControlCenterViewModel } = require('./presentation');
 const { ChatController, ClaudioChatViewProvider, ClaudioChatPanelManager } = require('./chat/chatProvider');
 const { SessionManager } = require('./chat/sessionManager');
 const { DiffContentProvider, SCHEME: DIFF_SCHEME } = require('./chat/diffController');
+const { IdeServer } = require('./mcp/ideServer');
 
 const CLAUDIO_REPO_URL = '';
 const CLAUDIO_SETUP_URL = '';
@@ -1073,6 +1074,15 @@ function activate(context) {
     diffProvider,
   );
 
+  // ── MCP IDE server ──
+  // Lets the claudio CLI's MCP client connect to this extension via the
+  // ws-ide transport. Phase 1 only completes the handshake — no tools
+  // advertised yet. Failures are logged but never block extension activation.
+  const ideServer = new IdeServer();
+  ideServer.start().catch(err => {
+    console.error('Claudio MCP IDE server failed to start:', err);
+  });
+
   // ── Status bar ──
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
@@ -1223,6 +1233,7 @@ function activate(context) {
     { dispose: () => chatController.dispose() },
     { dispose: () => chatPanelManager.dispose() },
     { dispose: () => diffProvider.dispose() },
+    { dispose: () => { void ideServer.stop(); } },
   );
 }
 

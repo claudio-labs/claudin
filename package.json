@@ -9,6 +9,7 @@
   "files": [
     "bin/",
     "dist/cli.mjs",
+    "dist/claudio-vscode.vsix",
     "README.md"
   ],
   "scripts": {
@@ -27,6 +28,8 @@
     "smoke": "bun run build && node dist/cli.mjs --version",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
+    "build:extension": "mkdir -p dist && cd vscode-extension/claudio-vscode && bun install --frozen-lockfile && npx --yes @vscode/vsce@^3 package --out ../../dist/claudio-vscode.vsix",
+    "build:release": "bun run build:extension && bun run build",
     "test:provider": "bun test src/services/api/*.test.ts src/utils/context.test.ts",
     "profile": "bun run scripts/profile/run-all.ts",
     "profile:streaming": "bun run scripts/profile/streaming-bench.ts --compare",
@@ -34,7 +37,7 @@
     "profile:cold-start": "bun run scripts/profile/cold-start-bench.ts",
     "profile:memory": "bun run scripts/profile/memory-bench.ts",
     "profile:transcript": "bun run scripts/profile/transcript-bench.ts --with-code",
-    "prepack": "npm run build"
+    "prepack": "npm run build:release"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "0.3.0",

@@ -15,6 +15,11 @@ import { noTelemetryPlugin } from './no-telemetry-plugin'
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 const version = pkg.version
 
+const ideExtensionPkg = JSON.parse(
+  readFileSync('./vscode-extension/claudio-vscode/package.json', 'utf-8'),
+)
+const ideExtensionVersion = ideExtensionPkg.version
+
 // Feature flags for the open build.
 // Most Anthropic-internal features stay off; open-build features can be
 // selectively enabled here when their full source exists in the mirror.
@@ -164,6 +169,7 @@ const result = await Bun.build({
       JSON.stringify('report the issue at https://github.com/anthropics/claude-code/issues'),
     'MACRO.PACKAGE_URL': JSON.stringify('@viudes/claudio'),
     'MACRO.NATIVE_PACKAGE_URL': 'undefined',
+    'MACRO.IDE_EXTENSION_VERSION': JSON.stringify(ideExtensionVersion),
   },
   plugins: [
     noTelemetryPlugin,
