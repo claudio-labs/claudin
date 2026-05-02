@@ -12,6 +12,7 @@ import {
   type AutoModeRules,
   buildDefaultExternalSystemPrompt,
   getDefaultExternalAutoModeRules,
+  isClassifierBundled,
 } from '../../utils/permissions/yoloClassifier.js'
 import { getAutoModeConfig } from '../../utils/settings/settings.js'
 import { sideQuery } from '../../utils/sideQuery.js'
@@ -21,7 +22,17 @@ function writeRules(rules: AutoModeRules): void {
   process.stdout.write(jsonStringify(rules, null, 2) + '\n')
 }
 
+const CLASSIFIER_NOT_BUNDLED_MSG =
+  'Auto-mode classifier prompts are not bundled in this build.\n' +
+  'Effective behavior at runtime: auto-allow for non-allowlisted tools.\n' +
+  'Add prompt templates at src/utils/permissions/yolo-classifier-prompts/ ' +
+  'and rebuild to enable.\n'
+
 export function autoModeDefaultsHandler(): void {
+  if (!isClassifierBundled()) {
+    process.stdout.write(CLASSIFIER_NOT_BUNDLED_MSG)
+    return
+  }
   writeRules(getDefaultExternalAutoModeRules())
 }
 
@@ -33,6 +44,10 @@ export function autoModeDefaultsHandler(): void {
  * falls through to defaults).
  */
 export function autoModeConfigHandler(): void {
+  if (!isClassifierBundled()) {
+    process.stdout.write(CLASSIFIER_NOT_BUNDLED_MSG)
+    return
+  }
   const config = getAutoModeConfig()
   const defaults = getDefaultExternalAutoModeRules()
   writeRules({
@@ -73,6 +88,10 @@ const CRITIQUE_SYSTEM_PROMPT =
 export async function autoModeCritiqueHandler(options: {
   model?: string
 }): Promise<void> {
+  if (!isClassifierBundled()) {
+    process.stdout.write(CLASSIFIER_NOT_BUNDLED_MSG)
+    return
+  }
   const config = getAutoModeConfig()
   const hasCustomRules =
     (config?.allow?.length ?? 0) > 0 ||

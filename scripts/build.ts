@@ -8,7 +8,7 @@
  * - src/ path aliases
  */
 
-import { readFileSync, readdirSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { noTelemetryPlugin } from './no-telemetry-plugin'
 
@@ -57,6 +57,32 @@ const featureFlags: Record<string, boolean> = {
   FORK_SUBAGENT: false,               // Disabled: forces ALL Agent dispatches async via <task-notification>, adding 1-2 extra parent round-trips per spawn (~15-30k tokens per "research X, review Y, compare Z" wave). Re-enable to opt back into the unified async/fork experiment.
   PROMPT_CACHE_BREAK_DETECTION: true, // Detect & log unexpected prompt cache invalidations
   HOOK_PROMPTS: true,                 // Allow tools to request interactive user prompts
+  BASH_CLASSIFIER: true,              // AI matching for Bash(prompt:'description') rules — paired with auto-mode
+}
+
+// ── Auto-mode classifier prompt files: warn if missing ──────────────
+// yoloClassifier.ts requires three .txt templates at runtime. The bundler
+// stubs missing .txt imports to '' silently (see onResolve below), which
+// would 400 every classifier API call. Warn here so it's visible.
+checkAutoModeClassifierPrompts()
+
+function checkAutoModeClassifierPrompts(): void {
+  if (!featureFlags.TRANSCRIPT_CLASSIFIER) return
+  const promptDir = join(
+    __dirname,
+    '..',
+    'src/utils/permissions/yolo-classifier-prompts',
+  )
+  const required = ['auto_mode_system_prompt.txt', 'permissions_external.txt']
+  const missing = required.filter(f => !existsSync(join(promptDir, f)))
+  if (missing.length === 0) return
+  console.warn(
+    '\n[build] auto-mode classifier prompts missing:\n' +
+      missing.map(f => '  - src/utils/permissions/yolo-classifier-prompts/' + f).join('\n') +
+      '\nAuto-mode will fall back to auto-allow at runtime ' +
+      '(see isClassifierBundled() in yoloClassifier.ts).\n' +
+      'Set TRANSCRIPT_CLASSIFIER:false above to silence, or add the files.\n',
+  )
 }
 
 // ── Pre-process: replace feature() calls with boolean literals ──────
@@ -306,17 +332,40 @@ export const SeverityNumber = {};
           }),
         )
 
-        // Resolve .md and .txt file imports to empty string stubs
-        build.onResolve({ filter: /\.(md|txt)$/ }, (args) => ({
-          path: args.path,
-          namespace: 'text-stub',
-        }))
+        // Resolve .md and .txt file imports.
+        // - If the file exists, inline its contents as the default export.
+        // - If it doesn't, stub to ''. This keeps optional internal-only
+        //   templates (which the fork mirrors selectively) from breaking
+        //   the build, while letting the prompt files we DO ship reach
+        //   runtime non-empty.
+        build.onResolve({ filter: /\.(md|txt)$/ }, (args) => {
+          const fs2 = require('fs')
+          const pathMod2 = require('path')
+          const resolved = pathMod2.isAbsolute(args.path)
+            ? args.path
+            : pathMod2.resolve(args.resolveDir, args.path)
+          return {
+            path: fs2.existsSync(resolved) ? resolved : args.path,
+            namespace: 'text-stub',
+          }
+        })
         build.onLoad(
           { filter: /.*/, namespace: 'text-stub' },
-          () => ({
-            contents: `export default '';`,
-            loader: 'js',
-          }),
+          (args) => {
+            const fs2 = require('fs')
+            if (fs2.existsSync(args.path)) {
+              const text: string = fs2.readFileSync(args.path, 'utf-8')
+              return {
+                contents:
+                  'export default ' + JSON.stringify(text) + ';',
+                loader: 'js',
+              }
+            }
+            return {
+              contents: `export default '';`,
+              loader: 'js',
+            }
+          },
         )
 
         // Pre-scan: find all missing modules that need stubbing

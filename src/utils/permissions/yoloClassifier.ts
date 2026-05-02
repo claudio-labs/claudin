@@ -51,14 +51,14 @@ function txtRequire(mod: string | { default: string }): string {
   return typeof mod === 'string' ? mod : mod.default
 }
 
-const BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
+let BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
   ? txtRequire(require('./yolo-classifier-prompts/auto_mode_system_prompt.txt'))
   : ''
 
 // External template is loaded separately so it's available for
 // `claude auto-mode defaults` even in ant builds. Ant builds use
 // permissions_anthropic.txt at runtime but should dump external defaults.
-const EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
+let EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
   ? txtRequire(require('./yolo-classifier-prompts/permissions_external.txt'))
   : ''
 
@@ -70,6 +70,60 @@ const ANTHROPIC_PERMISSIONS_TEMPLATE: string =
 
 const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
 const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
+
+// Whether the classifier prompt templates were bundled. When false (e.g. forks
+// without the .txt files), classifyYoloAction short-circuits to allow rather
+// than send an empty system prompt that the API rejects with
+// "cache_control cannot be set for empty text blocks".
+let CLASSIFIER_PROMPTS_BUNDLED = BASE_PROMPT.length > 0
+
+/**
+ * @internal Test-only override for the bundled-state and prompt content.
+ * `bun test` runs source files without the build-time preprocessor, so
+ * BASE_PROMPT loads as '' and classifyYoloAction always early-returns. The
+ * live calibration suite uses this to inject the on-disk prompt content and
+ * exercise the real classification path.
+ *
+ * Pass `null` to restore production behavior.
+ */
+export function __setClassifierPromptsForTests(
+  override: { basePrompt: string; externalTemplate: string } | null,
+): void {
+  if (override === null) {
+    BASE_PROMPT = feature('TRANSCRIPT_CLASSIFIER')
+      ? // eslint-disable-next-line custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports
+        txtRequire(require('./yolo-classifier-prompts/auto_mode_system_prompt.txt'))
+      : ''
+    EXTERNAL_PERMISSIONS_TEMPLATE = feature('TRANSCRIPT_CLASSIFIER')
+      ? // eslint-disable-next-line custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports
+        txtRequire(require('./yolo-classifier-prompts/permissions_external.txt'))
+      : ''
+  } else {
+    BASE_PROMPT = override.basePrompt
+    EXTERNAL_PERMISSIONS_TEMPLATE = override.externalTemplate
+  }
+  CLASSIFIER_PROMPTS_BUNDLED = BASE_PROMPT.length > 0
+  warnedClassifierDisabled = false
+}
+let warnedClassifierDisabled = false
+function warnClassifierDisabledOnce(): void {
+  if (warnedClassifierDisabled) return
+  warnedClassifierDisabled = true
+  process.stderr.write(
+    'claudio: auto-mode classifier prompts are not bundled in this build. ' +
+      'Falling back to auto-allow for non-allowlisted tools. ' +
+      'safetyCheck (sensitive paths) and your permissions.deny rules still apply.\n',
+  )
+}
+
+/**
+ * Whether the auto-mode classifier prompts were bundled at build time.
+ * Read by `claude auto-mode {defaults,config,critique}` to print a useful
+ * message instead of empty JSON, and by tests to skip when unavailable.
+ */
+export function isClassifierBundled(): boolean {
+  return CLASSIFIER_PROMPTS_BUNDLED
+}
 
 function isUsingExternalPermissions(): boolean {
   if (process.env.USER_TYPE !== 'ant') return true
@@ -1134,6 +1188,20 @@ export async function classifyYoloAction(
   context: ToolPermissionContext,
   signal: AbortSignal,
 ): Promise<YoloClassifierResult> {
+  // Classifier prompts not bundled (open-source fork without the .txt
+  // templates). Skip the API call — it would 400 on the empty system block —
+  // and auto-allow. Caller already gated this on TRANSCRIPT_CLASSIFIER, the
+  // safe-tool allowlist, and the acceptEdits fast-path, so what reaches here
+  // is the same set the user expected the classifier to evaluate.
+  if (!CLASSIFIER_PROMPTS_BUNDLED) {
+    warnClassifierDisabledOnce()
+    return {
+      shouldBlock: false,
+      reason: 'Classifier prompts not bundled — auto-allowed',
+      model: getClassifierModel(),
+    }
+  }
+
   const lookup = buildToolLookup(tools)
   const actionCompact = toCompact(action, lookup)
   // '' = "no security relevance" (Tool.toAutoClassifierInput contract). Without

@@ -177,6 +177,10 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
   }
 
   const normalizedModel = normalizeModelStringForAPI(model)
+  // Anthropic deprecated `temperature` for Opus 4.7 (the API rejects it with
+  // 400 invalid_request_error). Strip it for that family rather than push the
+  // gate into every caller.
+  const acceptsTemperature = !/claude-opus-4-7/i.test(normalizedModel)
   const start = Date.now()
   // biome-ignore lint/plugin: this IS the wrapper that handles OAuth attribution
   const response = await client.beta.messages.create(
@@ -188,7 +192,8 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
       ...(tools && { tools }),
       ...(tool_choice && { tool_choice }),
       ...(output_format && { output_config: { format: output_format } }),
-      ...(temperature !== undefined && { temperature }),
+      ...(temperature !== undefined &&
+        acceptsTemperature && { temperature }),
       ...(stop_sequences && { stop_sequences }),
       ...(thinkingConfig && { thinking: thinkingConfig }),
       ...(betas.length > 0 && { betas }),
