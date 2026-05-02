@@ -25,7 +25,11 @@ Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, A
 npm install -g @viudes/claudio@latest
 ```
 
-Or build from source — see [Source Build And Local Development](#source-build-and-local-development).
+Works on Linux, macOS, and Windows (Node 20+). Or build from source — see [Source Build And Local Development](#source-build-and-local-development).
+
+**Platform-specific guides:**
+- [Quick Start — macOS / Linux](docs/quick-start-mac-linux.md)
+- [Quick Start — Windows](docs/quick-start-windows.md)
 
 If the install later reports `ripgrep not found`, install ripgrep system-wide and confirm `rg --version` works in the same terminal before starting Claudio.
 
