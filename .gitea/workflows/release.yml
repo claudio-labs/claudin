@@ -57,6 +57,13 @@ jobs:
           curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
+      - name: Install jq
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq jq
+          fi
+          jq --version
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -118,13 +125,21 @@ jobs:
 
       - name: Commit (when bumped), tag, push
         run: |
+          TAG="${{ steps.bump.outputs.tag }}"
           if [ "${{ inputs.bump }}" != "none" ]; then
             git add package.json
-            git commit -m "chore(release): ${{ steps.bump.outputs.tag }}"
+            git commit -m "chore(release): ${TAG}"
             git push origin HEAD:refs/heads/main
           fi
-          git tag "${{ steps.bump.outputs.tag }}"
-          git push origin "refs/tags/${{ steps.bump.outputs.tag }}"
+          # Idempotent tag: skip if already on remote (release.yml may have
+          # failed mid-flow on a previous attempt and we want to retry without
+          # manual cleanup).
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "Tag ${TAG} already exists on remote, skipping push"
+          else
+            git tag "${TAG}"
+            git push origin "refs/tags/${TAG}"
+          fi
 
       - name: Create Gitea release
         id: create_release
