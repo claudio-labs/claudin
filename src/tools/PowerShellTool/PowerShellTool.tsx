@@ -715,6 +715,12 @@ async function* runPowerShellCommand({
   let backgroundShellId: string | undefined = undefined;
   let interruptBackgroundingStarted = false;
   let assistantAutoBackgrounded = false;
+  // Single-flight gate over startBackgrounding — covers timeout, interrupt,
+  // kairos. Closes the timeout+interrupt double-spawn race where two
+  // .then handlers both call setAppState→registerTask with the same
+  // shellCommand.taskOutput.taskId, the second silently overwriting the
+  // first. Mirrors BashTool.
+  let backgroundingInitiated = false;
 
   // Progress signal: resolved when backgroundShellId is set in the async
   // .then() path, waking the generator's Promise.race immediately instead of
@@ -724,6 +730,14 @@ async function* runPowerShellCommand({
     return new Promise<null>(resolve => {
       resolveProgress = () => resolve(null);
     });
+  }
+  // Centralizes the null-check + clear-then-call dance used in 4+ places.
+  // Matches BashTool helper.
+  function wakeProgressSignal(): void {
+    const resolve = resolveProgress;
+    if (resolve === null) return;
+    resolveProgress = null;
+    resolve();
   }
   const shouldAutoBackground = !isBackgroundTasksDisabled && isAutobackgroundingAllowed(command);
   const powershellPath = await getCachedPowerShellPath();
@@ -795,14 +809,21 @@ async function* runPowerShellCommand({
 
   // Helper to start backgrounding with logging
   function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+    // Single-flight: any prior caller already kicked off backgrounding.
+    if (backgroundingInitiated) {
+      return;
+    }
+
     // If a foreground task is already registered (via registerForeground in the
     // progress loop), background it in-place instead of re-spawning. Re-spawning
     // would overwrite tasks[taskId], emit a duplicate task_started SDK event,
     // and leak the first cleanup callback.
     if (foregroundTaskId) {
       if (!backgroundExistingForegroundTask(foregroundTaskId, shellCommand, description || command, setAppState, toolUseId)) {
+        // Failed (status no longer 'running'). Leave the flag clear.
         return;
       }
+      backgroundingInitiated = true;
       backgroundShellId = foregroundTaskId;
       logEvent(eventName, {
         command_type: getCommandTypeForLogging(command)
@@ -811,25 +832,31 @@ async function* runPowerShellCommand({
       return;
     }
 
-    // No foreground task registered — spawn a new background task
-    // Note: spawn is essentially synchronous despite being async
-    void spawnBackgroundTask().then(shellId => {
+    // No foreground task registered — spawn a new background task.
+    // Set the flag synchronously: the .then below is queued on the
+    // microtask queue and another caller could execute before it resolves.
+    backgroundingInitiated = true;
+    spawnBackgroundTask().then(shellId => {
       backgroundShellId = shellId;
-
       // Wake the generator's Promise.race so it sees backgroundShellId.
       // Without this, the generator waits for the current setTimeout to fire
       // (up to ~1s) before noticing the backgrounding. Matches BashTool.
-      const resolve = resolveProgress;
-      if (resolve) {
-        resolveProgress = null;
-        resolve();
-      }
+      wakeProgressSignal();
       logEvent(eventName, {
         command_type: getCommandTypeForLogging(command)
       });
       if (backgroundFn) {
         backgroundFn(shellId);
       }
+    }).catch(err => {
+      // spawnBackgroundTask is essentially-sync; a real failure here means
+      // something pathological. Don't swallow — log, kill the underlying
+      // shell so resultPromise resolves with SIGKILL (otherwise the loop
+      // spins on progressSignal forever, since #abortHandler NO-OPs on
+      // 'interrupt'), and wake the loop. Matches BashTool.
+      logError(err);
+      shellCommand.kill();
+      wakeProgressSignal();
     });
   }
 
@@ -845,7 +872,10 @@ async function* runPowerShellCommand({
   // coordinating instead of waiting. The command keeps running — no state loss.
   if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
     setTimeout(() => {
-      if (shellCommand.status === 'running' && backgroundShellId === undefined) {
+      // Gate on !backgroundingInitiated: avoid setting
+      // assistantAutoBackgrounded:true when startBackgrounding's
+      // single-flight gate will no-op. Matches BashTool.
+      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
         assistantAutoBackgrounded = true;
         startBackgrounding('tengu_powershell_command_assistant_auto_backgrounded');
       }
@@ -872,6 +902,17 @@ async function* runPowerShellCommand({
   // Start polling the output file for progress
   TaskOutput.startPolling(shellCommand.taskOutput.taskId);
 
+  // One-shot wake-on-abort: an interrupt firing during the first iteration's
+  // ~2s setTimeout (or any later iteration's ~1s tick) would otherwise sit
+  // unobserved until the timer expires. Resolve the in-flight progressSignal
+  // immediately so the loop body's interrupt branch runs without delay.
+  // `{ once: true }` auto-removes after firing — subsequent iterations rely
+  // on natural ticks, which is fine because the first abort flips
+  // interruptBackgroundingStarted=true and the loop returns shortly after.
+  if (!abortController.signal.aborted) {
+    abortController.signal.addEventListener('abort', wakeProgressSignal, { once: true });
+  }
+
   // Set up progress yielding with periodic checks
   const startTime = Date.now();
   let nextProgressTime = startTime + PROGRESS_THRESHOLD_MS;
@@ -885,6 +926,21 @@ async function* runPowerShellCommand({
       const now = Date.now();
       const timeUntilNextProgress = Math.max(0, nextProgressTime - now);
       const progressSignal = createProgressSignal();
+      // If an `'interrupt'` abort already fired before this iteration
+      // starts, wake progressSignal synchronously so the interrupt branch
+      // runs immediately instead of waiting up to ~1s for the next natural
+      // tick. Reason gate is critical: non-interrupt aborts (e.g.
+      // 'user-cancel') trigger ShellCommand.#abortHandler's kill, which
+      // resolves resultPromise naturally — waking for those would
+      // tight-spin (interrupt branch's reason check fails so the flag
+      // never flips). Matches BashTool.
+      if (
+        abortController.signal.aborted &&
+        abortController.signal.reason === 'interrupt' &&
+        !interruptBackgroundingStarted
+      ) {
+        wakeProgressSignal();
+      }
       const result = await Promise.race([resultPromise, new Promise<null>(resolve => setTimeout(r => r(null), timeUntilNextProgress, resolve).unref()), progressSignal]);
       if (result !== null) {
         // Race: backgrounding fired (15s timer / onTimeout / Ctrl+B) but the
@@ -968,7 +1024,13 @@ async function* runPowerShellCommand({
       const elapsedSeconds = Math.floor(elapsed / 1000);
 
       // Show backgrounding UI hint after threshold
-      if (!isBackgroundTasksDisabled && backgroundShellId === undefined && elapsedSeconds >= PROGRESS_THRESHOLD_MS / 1000 && setToolJSX) {
+      // Skip when an interrupt has already started backgrounding: the async
+      // spawnBackgroundTask().then() path may not have set backgroundShellId
+      // yet, but registering a foreground task here would race — the .then
+      // spawns a fresh task with the same taskOutput.taskId, overwriting the
+      // foreground entry in state.tasks via registerTask and leaking its
+      // unregisterCleanup callback. Matches BashTool.
+      if (!isBackgroundTasksDisabled && backgroundShellId === undefined && !interruptBackgroundingStarted && elapsedSeconds >= PROGRESS_THRESHOLD_MS / 1000 && setToolJSX) {
         if (!foregroundTaskId) {
           foregroundTaskId = registerForeground({
             command,

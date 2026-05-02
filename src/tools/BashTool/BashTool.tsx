@@ -8,6 +8,7 @@ import { z } from 'zod/v4';
 import { getKairosActive } from '../../bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from '../../constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
+import { logError } from '../../utils/log.js';
 import { notifyVscodeFileUpdated } from '../../services/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from '../../Tool.js';
 import { buildTool, type ToolDef } from '../../Tool.js';
@@ -832,7 +833,9 @@ export const BashTool = buildTool({
     return isOutputLineTruncated(output.stdout) || isOutputLineTruncated(output.stderr);
   }
 } satisfies ToolDef<InputSchema, Out, BashProgress>);
-async function* runShellCommand({
+// Exported for tests in runShellCommand.test.ts; not part of the agent-facing
+// API. Encapsulates the foreground/background lifecycle of a single bash run.
+export async function* runShellCommand({
   input,
   abortController,
   setAppState,
@@ -873,6 +876,17 @@ async function* runShellCommand({
   let lastTotalBytes = 0;
   let backgroundShellId: string | undefined = undefined;
   let assistantAutoBackgrounded = false;
+  let interruptBackgroundingStarted = false;
+  // Single gate over startBackgrounding — covers timeout, interrupt, kairos,
+  // and any future caller. Without this, a fast timeout (e.g.
+  // `timeout: 100`) firing during the initial 2s wait can spawn one bg task
+  // while the polling loop's interrupt branch concurrently spawns a second:
+  // both `.then`s call setAppState→registerTask with the same
+  // shellCommand.taskOutput.taskId, the second silently overwrites the
+  // first, leaking its registerCleanup callback and emitting a duplicate
+  // SDK task_started event. The race is microtask-ordering-narrow today
+  // but trivially closeable.
+  let backgroundingInitiated = false;
 
   // Progress signal: resolved by onProgress callback from the shared poller,
   // waking the generator to yield a progress update.
@@ -881,6 +895,17 @@ async function* runShellCommand({
     return new Promise<null>(resolve => {
       resolveProgress = () => resolve(null);
     });
+  }
+  // Wake whatever progressSignal is currently in flight, if any. Centralized
+  // because (a) the same null-check + clear-then-call dance is needed in 4+
+  // places, and (b) TS's loop-body control-flow narrowing trips on the
+  // inline pattern (TS2349 "Type 'never' has no call signatures") even
+  // though the closure-scoped versions compile fine.
+  function wakeProgressSignal(): void {
+    const resolve = resolveProgress;
+    if (resolve === null) return;
+    resolveProgress = null;
+    resolve();
   }
 
   // Determine if auto-backgrounding should be enabled
@@ -931,14 +956,25 @@ async function* runShellCommand({
 
   // Helper to start backgrounding with optional logging
   function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+    // Single-flight: any prior caller (timeout / interrupt / kairos /
+    // explicit) already kicked off backgrounding. The flag is set here, at
+    // entry, so concurrent callers see it set even before either spawn path
+    // commits — closing the timeout+interrupt double-spawn race.
+    if (backgroundingInitiated) {
+      return;
+    }
+
     // If a foreground task is already registered (via registerForeground in the
     // progress loop), background it in-place instead of re-spawning. Re-spawning
     // would overwrite tasks[taskId], emit a duplicate task_started SDK event,
     // and leak the first cleanup callback.
     if (foregroundTaskId) {
       if (!backgroundExistingForegroundTask(foregroundTaskId, shellCommand, description || command, setAppState, toolUseId)) {
+        // Failed (status no longer 'running' — process exited). Leave the
+        // flag clear so the loop's natural completion path can take over.
         return;
       }
+      backgroundingInitiated = true;
       backgroundShellId = foregroundTaskId;
       logEvent(eventName, {
         command_type: getCommandTypeForLogging(command)
@@ -947,27 +983,39 @@ async function* runShellCommand({
       return;
     }
 
-    // No foreground task registered — spawn a new background task
-    // Note: spawn is essentially synchronous despite being async
-    void spawnBackgroundTask().then(shellId => {
+    // No foreground task registered — spawn a new background task.
+    // Set the flag synchronously: the .then below is queued on the
+    // microtask queue and another caller (e.g. interrupt branch) could
+    // execute before it resolves.
+    backgroundingInitiated = true;
+    spawnBackgroundTask().then(shellId => {
       backgroundShellId = shellId;
-
       // Wake the generator's Promise.race so it sees backgroundShellId.
       // Without this, if the poller has stopped ticking for this task
       // (no output + shared-poller race with sibling stopPolling calls)
-      // and the process is hung on I/O, the race at line ~1357 never
-      // resolves and the generator deadlocks despite being backgrounded.
-      const resolve = resolveProgress;
-      if (resolve) {
-        resolveProgress = null;
-        resolve();
-      }
+      // and the process is hung on I/O, the race never resolves and the
+      // generator deadlocks despite being backgrounded.
+      wakeProgressSignal();
       logEvent(eventName, {
         command_type: getCommandTypeForLogging(command)
       });
       if (backgroundFn) {
         backgroundFn(shellId);
       }
+    }).catch(err => {
+      // spawnBackgroundTask is essentially-sync (its async ops are
+      // setAppState + module-level registration), so a real failure here
+      // means something pathological. Don't swallow:
+      //   1) Log the error (logError is the codebase convention).
+      //   2) Kill the underlying shell. With ShellCommand.#abortHandler
+      //      NO-OPing on `'interrupt'`, an unkilled spawn-failure path
+      //      leaves the process running and the loop spinning on
+      //      progressSignal forever — kill makes resultPromise resolve
+      //      with SIGKILL, breaking the loop on the next iteration.
+      //   3) Wake any in-flight progressSignal.
+      logError(err);
+      shellCommand.kill();
+      wakeProgressSignal();
     });
   }
 
@@ -984,7 +1032,12 @@ async function* runShellCommand({
   // coordinating instead of waiting. The command keeps running — no state loss.
   if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
     setTimeout(() => {
-      if (shellCommand.status === 'running' && backgroundShellId === undefined) {
+      // Gate on !backgroundingInitiated too: if timeout/interrupt already
+      // started backgrounding, this kairos timer firing would set
+      // assistantAutoBackgrounded:true even though startBackgrounding's
+      // single-flight gate would no-op. The result returned later (via the
+      // backgroundShellId branch) would carry a falsely-true flag.
+      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
         assistantAutoBackgrounded = true;
         startBackgrounding('tengu_bash_command_assistant_auto_backgrounded');
       }
@@ -1013,10 +1066,27 @@ async function* runShellCommand({
   const startTime = Date.now();
   let foregroundTaskId: string | undefined = undefined;
   {
+    // Race the result + a 2s timer + an abort observer. The abort observer
+    // means an `'interrupt'` arriving during the 2s threshold drops out of
+    // the race immediately instead of sitting blocked until the timer fires
+    // (~2s wasted before the polling loop's interrupt branch could even run).
+    // ShellCommand.#abortHandler NO-OPs on `'interrupt'`, so resultPromise
+    // never resolves on its own from this signal.
+    const initialAbortPromise = new Promise<null>(resolve => {
+      if (abortController.signal.aborted) {
+        resolve(null);
+        return;
+      }
+      abortController.signal.addEventListener(
+        'abort',
+        () => resolve(null),
+        { once: true }
+      );
+    });
     const initialResult = await Promise.race([resultPromise, new Promise<null>(resolve => {
       const t = setTimeout((r: (v: null) => void) => r(null), PROGRESS_THRESHOLD_MS, resolve);
       t.unref();
-    })]);
+    }), initialAbortPromise]);
     if (initialResult !== null) {
       shellCommand.cleanup();
       return initialResult;
@@ -1037,11 +1107,44 @@ async function* runShellCommand({
   // onProgress every second, which resolves progressSignal below.
   TaskOutput.startPolling(shellCommand.taskOutput.taskId);
 
+  // One-shot wake-on-abort: if the abort fires while the polling loop is
+  // mid-Promise.race, immediately resolve whatever progressSignal is in
+  // flight so the loop body's interrupt/kill branch runs without waiting
+  // up to ~1s for the next natural progress tick. `{ once: true }` auto-
+  // removes after firing; subsequent iterations don't need it because the
+  // first abort flips interruptBackgroundingStarted=true and the loop
+  // resolves to a return shortly thereafter.
+  if (!abortController.signal.aborted) {
+    abortController.signal.addEventListener('abort', wakeProgressSignal, { once: true });
+  }
+
   // Progress loop: wake is driven by the shared poller calling onProgress,
   // which resolves the progressSignal.
   try {
     while (true) {
       const progressSignal = createProgressSignal();
+      // If an `'interrupt'` abort already fired before this iteration starts
+      // (e.g., interrupt landed during the initial 2s wait, where the
+      // wake-on-abort listener block below was skipped because signal was
+      // already aborted), wake progressSignal synchronously so the interrupt
+      // branch runs immediately instead of waiting up to ~1s for the next
+      // natural tick. Gated on:
+      //   - reason === 'interrupt': non-interrupt aborts (e.g. 'user-cancel')
+      //     trigger ShellCommand.#abortHandler's kill path, which makes
+      //     resultPromise resolve naturally. Waking here for those reasons
+      //     would tight-spin (the interrupt branch's reason check fails so
+      //     interruptBackgroundingStarted never flips, and the loop would
+      //     wake itself every iteration).
+      //   - !interruptBackgroundingStarted: don't re-wake after the
+      //     interrupt branch has already done its work and we're awaiting
+      //     backgroundShellId.
+      if (
+        abortController.signal.aborted &&
+        abortController.signal.reason === 'interrupt' &&
+        !interruptBackgroundingStarted
+      ) {
+        wakeProgressSignal();
+      }
       const result = await Promise.race([resultPromise, progressSignal]);
       if (result !== null) {
         // Race: backgrounding fired (15s timer / onTimeout / Ctrl+B) but the
@@ -1086,13 +1189,36 @@ async function* runShellCommand({
       // Check if command was backgrounded (either via old mechanism or new backgroundAll)
       if (backgroundShellId) {
         return {
-          stdout: '',
+          // On interrupt-backgrounding, surface the partial output so the
+          // model sees what ran before the new user message arrived.
+          stdout: interruptBackgroundingStarted ? fullOutput : '',
           stderr: '',
           code: 0,
           interrupted: false,
           backgroundTaskId: backgroundShellId,
           assistantAutoBackgrounded
         };
+      }
+
+      // User submitted a new message mid-execution. ShellCommand.#abortHandler
+      // intentionally NO-OPs on `'interrupt'` so the caller can background the
+      // process instead of killing it — without this branch the bash subprocess
+      // keeps running untracked and the foreground LocalShellTaskState lingers
+      // in state.tasks (invisible to the BackgroundTasksDialog because
+      // isBackgroundTask filters out isBackgrounded:false). Mirrors
+      // PowerShellTool.tsx:938-950.
+      if (abortController.signal.aborted && abortController.signal.reason === 'interrupt' && !interruptBackgroundingStarted) {
+        interruptBackgroundingStarted = true;
+        if (!isBackgroundTasksDisabled) {
+          startBackgrounding('tengu_bash_command_interrupt_backgrounded');
+          // Reloop so the backgroundShellId check above catches the sync
+          // foregroundTaskId→background path. Without `continue`, we'd fall
+          // through to the Ctrl+B check below, which matches
+          // status === 'backgrounded' and would incorrectly mark this as
+          // backgroundedByUser:true (PowerShell bugs 020/021).
+          continue;
+        }
+        shellCommand.kill();
       }
 
       // Check if this foreground task was backgrounded via backgroundAll()
@@ -1116,7 +1242,14 @@ async function* runShellCommand({
 
       // Show minimal backgrounding UI if available
       // Skip if background tasks are disabled
-      if (!isBackgroundTasksDisabled && backgroundShellId === undefined && elapsedSeconds >= PROGRESS_THRESHOLD_MS / 1000 && setToolJSX) {
+      // Also skip when an interrupt has already started backgrounding: the
+      // async spawnBackgroundTask().then() path may not have set
+      // backgroundShellId yet, but we know the loop is about to return with
+      // a backgroundTaskId. Registering a foreground task here would race —
+      // the .then() spawns a fresh task with the same taskOutput.taskId,
+      // overwriting the foreground entry in state.tasks via registerTask
+      // and leaking its unregisterCleanup callback.
+      if (!isBackgroundTasksDisabled && backgroundShellId === undefined && !interruptBackgroundingStarted && elapsedSeconds >= PROGRESS_THRESHOLD_MS / 1000 && setToolJSX) {
         // Register this command as a foreground task so it can be backgrounded via Ctrl+B
         if (!foregroundTaskId) {
           foregroundTaskId = registerForeground({
