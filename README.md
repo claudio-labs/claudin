@@ -81,6 +81,12 @@ Claudio stores credentials, settings, and OAuth tokens under `~/.claudio/`. On f
 
 Override the location with `CLAUDIO_CONFIG_DIR=/path/to/dir`.
 
+`bin/claudio` enables Node's V8 compile cache at `~/.claudio/v8cache/` (~5 MB), saving ~250 ms on every warm launch. The cache is invalidated on each rebuild, so the first run after `bun run build` pays a small penalty to repopulate. Disable with `NODE_DISABLE_COMPILE_CACHE=1`.
+
+### Performance flags
+
+- `CLAUDIO_DEFER_HIGHLIGHT=1` (opt-in) skips syntax highlighting on a fenced code block while it's still streaming, then runs one final pass when the fence closes. Cuts ~85 % of cumulative streaming-render CPU on responses with code blocks. Trade-off: plain monospace mid-stream and a one-shot color flash when the fence closes. See `scripts/profile/README.md` for the harness that measured this.
+
 ### Using Ollama's launch command
 
 If you have [Ollama](https://ollama.com) installed and prefer a one-shot command, the launch helper points Claudio at your local model and starts the REPL:

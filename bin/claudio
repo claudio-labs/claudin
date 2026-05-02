@@ -7,12 +7,35 @@
  * Otherwise, tell the user to build first or use `bun run dev`.
  */
 
-import { existsSync } from 'fs'
+import { existsSync, mkdirSync } from 'fs'
+import * as module from 'module'
+import { homedir } from 'os'
 import { join, dirname } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distPath = join(__dirname, '..', 'dist', 'cli.mjs')
+
+// V8 bytecode cache for the 21 MB bundle. ~250 ms saved on every warm launch
+// (measured); first run after each build pays ~120 ms to populate. Must be
+// enabled before the dynamic import below so V8 reuses cached bytecode for
+// the bundle. NODE_COMPILE_CACHE env var only applies at process startup, so
+// we use the programmatic API (Node ≥22.8 / ≥20.18). Pre-existing env var
+// or NODE_DISABLE_COMPILE_CACHE=1 are respected.
+if (
+  typeof module.enableCompileCache === 'function' &&
+  process.env.NODE_DISABLE_COMPILE_CACHE !== '1' &&
+  !process.env.NODE_COMPILE_CACHE
+) {
+  const cacheRoot = process.env.CLAUDIO_CONFIG_DIR || join(homedir(), '.claudio')
+  const v8Cache = join(cacheRoot, 'v8cache')
+  try {
+    mkdirSync(v8Cache, { recursive: true })
+    module.enableCompileCache(v8Cache)
+  } catch {
+    // Non-fatal: launcher continues without cache.
+  }
+}
 
 if (existsSync(distPath)) {
   await import(pathToFileURL(distPath).href)

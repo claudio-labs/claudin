@@ -1,0 +1,45 @@
+{
+  "withCode": true,
+  "results": [
+    {
+      "count": 50,
+      "iters": 5,
+      "withCode": true,
+      "meanMs": 10.953098,
+      "p50Ms": 10.856716000000006,
+      "maxMs": 12.545861999999943,
+      "perMsgMs": 0.2171343200000001,
+      "totalChars": 10313
+    },
+    {
+      "count": 200,
+      "iters": 5,
+      "withCode": true,
+      "meanMs": 38.293382599999994,
+      "p50Ms": 37.09915999999998,
+      "maxMs": 42.496759,
+      "perMsgMs": 0.1854957999999999,
+      "totalChars": 41473
+    },
+    {
+      "count": 500,
+      "iters": 5,
+      "withCode": true,
+      "meanMs": 84.76038319999998,
+      "p50Ms": 83.96309199999996,
+      "maxMs": 90.74736300000018,
+      "perMsgMs": 0.16792618399999992,
+      "totalChars": 104038
+    },
+    {
+      "count": 1000,
+      "iters": 5,
+      "withCode": true,
+      "meanMs": 162.6705468,
+      "p50Ms": 163.23379,
+      "maxMs": 167.7254499999999,
+      "perMsgMs": 0.16323379,
+      "totalChars": 208313
+    }
+  ]
+}

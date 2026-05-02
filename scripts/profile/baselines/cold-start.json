@@ -1,0 +1,53 @@
+{
+  "cliPath": "/home/viudes/projects/claudio/dist/cli.mjs",
+  "results": [
+    {
+      "invocation": "--version (direct)",
+      "args": [
+        "--version"
+      ],
+      "runs": 8,
+      "exitedCleanly": true,
+      "meanMs": 541.176158625,
+      "p50Ms": 553.4051849999998,
+      "p95Ms": 565.8262909999999,
+      "maxMs": 565.8262909999999
+    },
+    {
+      "invocation": "--help (direct)",
+      "args": [
+        "--help"
+      ],
+      "runs": 8,
+      "exitedCleanly": true,
+      "meanMs": 792.0199077499999,
+      "p50Ms": 796.0060279999998,
+      "p95Ms": 855.5276329999997,
+      "maxMs": 855.5276329999997
+    },
+    {
+      "invocation": "--version (launcher)",
+      "args": [
+        "--version"
+      ],
+      "runs": 8,
+      "exitedCleanly": true,
+      "meanMs": 285.9557391249998,
+      "p50Ms": 285.6805519999998,
+      "p95Ms": 298.2137810000004,
+      "maxMs": 298.2137810000004
+    },
+    {
+      "invocation": "--help (launcher)",
+      "args": [
+        "--help"
+      ],
+      "runs": 8,
+      "exitedCleanly": true,
+      "meanMs": 533.2507828749995,
+      "p50Ms": 529.9273690000009,
+      "p95Ms": 584.9112849999983,
+      "maxMs": 584.9112849999983
+    }
+  ]
+}

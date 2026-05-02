@@ -1,0 +1,279 @@
+# Performance profile harness
+
+Reproducible benchmarks for the user-perceived hot paths in claudio. Three
+dimensions of latency are covered today; each one writes a JSON baseline to
+`baselines/` so changes can be A/B compared with real numbers.
+
+## Why this exists
+
+Repeated rounds of "perf optimization" by code inspection were debunked
+because nobody had measured. This harness produces numbers, so future
+proposals can be validated empirically before being implemented.
+
+## TL;DR — what was found
+
+```
+COLD START          (every launch)                                ~525 ms direct
+  • paid every time `claudio` is invoked
+  • biggest absolute number of any path measured
+  • dominated by V8 parse of the 21 MB bundle, not Node boot
+  • bin/claudio enables NODE_COMPILE_CACHE → ~282 ms warm (−243 ms)
+
+STREAMING RENDER    (per code block in assistant output)         ~27–40 ms
+  • ~85% of the work is cli-highlight re-tokenizing the growing fence
+  • defer-fence cuts cumulative work by ~85% (8× speedup, measured)
+  • per-snapshot cost is sub-frame — user does not perceive a hitch
+  • the win is CPU/battery, not visible smoothness
+  • UX trade-off: plain monospace mid-stream, color flash on fence close
+  • opt-in via CLAUDIO_DEFER_HIGHLIGHT=1
+
+INPUT LATENCY       (per keystroke, even at 10 KB buffer)        <0.5 ms
+  • not the bottleneck; well under one frame
+
+MEMORY SCAN         (200 files)                                   <3 ms
+TRANSCRIPT RENDER   (1000 messages, un-cached path)              ~150 ms
+  • bounded — only paid on /resume + cache eviction
+```
+
+Run `bun run profile` for the unified summary.
+
+## The benchmarks
+
+| Script                  | What it measures                                                       | npm script              |
+| ----------------------- | ---------------------------------------------------------------------- | ----------------------- |
+| `streaming-bench.ts`    | Streaming markdown render path (`marked.lexer` + `formatToken` + `cli-highlight`) | `bun run profile:streaming` |
+| `input-bench.ts`        | Keystroke latency through `Cursor.fromText` + `MeasuredText` + `cursor.render` | `bun run profile:input`     |
+| `cold-start-bench.ts`   | Wall time for the bundled CLI to launch + handle `--version` / `--help` and exit | `bun run profile:cold-start` |
+| `memory-bench.ts`       | `scanMemoryFiles` cost across N=10/50/100/200 synthetic memory files   | `bun run profile:memory`     |
+| `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
+| `run-all.ts`            | All five back-to-back with a unified summary + verdict                 | `bun run profile`           |
+
+## Usage
+
+```bash
+# Unified summary (recommended starting point)
+bun run profile
+
+# Individual benchmarks
+bun run profile:streaming      # streaming-bench --compare (FORCE_COLOR=3 set internally)
+bun run profile:input
+bun run profile:cold-start     # requires `bun run build` first
+
+# Direct invocations with flags
+bun run scripts/profile/streaming-bench.ts --help
+bun run scripts/profile/streaming-bench.ts --compare --fixture=py50
+bun run scripts/profile/input-bench.ts --sizes=100,1000,10000 --iters=1000
+bun run scripts/profile/cold-start-bench.ts --runs=20
+
+# Machine-readable
+bun run profile --json > /tmp/before.json
+
+# CPU profile (Bun → Chrome DevTools)
+bun --cpu-prof scripts/profile/streaming-bench.ts --runs=20
+# → cpu-*.cpuprofile, open in Chrome DevTools › Performance
+```
+
+## Streaming bench
+
+Drives a deterministic line-by-line streaming sequence through the actual
+production code path (minus React/Ink reconciliation). Three strategies:
+
+| Strategy      | What it does                                                                |
+| ------------- | --------------------------------------------------------------------------- |
+| `status-quo`  | Highlight every snapshot, every code token (current production code)        |
+| `defer-fence` | Skip highlight while a fence is open; final pass once it closes             |
+| `lru-text`    | LRU cache keyed by `(lang, hash(text))` — verifies the round-3 hit-rate claim |
+
+Three fixtures: `ts50`, `py50` (typical 50-line code blocks), `prose` (no
+code, control case).
+
+Baseline (FORCE_COLOR=3, 10 runs after 3 warmup, **memoization modeled** —
+see "What this measures" below):
+
+```
+ts50 (1578 chars, 58 snapshots):
+  status-quo   27.2 ms  56 hl calls  43 KB chars highlighted
+  defer-fence   3.4 ms   3 hl calls   4 KB chars highlighted   (8.0× faster)
+  lru-text     23.8 ms  53 hl calls  38 KB chars highlighted   (1.1×, 5.4% hit rate)
+
+py50 (1225 chars, 46 snapshots):
+  status-quo   40.1 ms  44 hl calls
+  defer-fence   5.1 ms   3 hl calls                             (7.9× faster)
+
+prose (no code):  ~3 ms in all strategies
+```
+
+### What this measures
+
+The harness simulates `StreamingMarkdown` (`src/components/Markdown.tsx:186-235`):
+on every line-buffered snapshot it lexes only the unstable suffix and renders
+both `<Markdown>{stablePrefix}</Markdown>` + `<Markdown>{unstableSuffix}</Markdown>`.
+By default it **models the React Compiler memoization** that
+`MarkdownBody` (`Markdown.tsx:133`) gets in production: when `stablePrefix`
+doesn't change between snapshots, the cached output is reused (zero
+`formatToken` work). Pass `--no-memo` to disable this and recover the
+un-memoized harness behavior.
+
+Memoization saves a small amount (~10%) in this fixture because the
+expensive work — re-highlighting the growing unstable code block on every
+line — happens regardless of memoization. The unstable suffix changes every
+snapshot, so it's re-rendered every snapshot in both modes. What
+memoization actually saves is the redundant `marked.lexer` + `formatToken`
+traversal of the prose `stablePrefix`, which has no code tokens to
+highlight.
+
+### Interpretation
+
+- Streaming render is dominated by syntax highlighting (~85–95% of total
+  time, depending on memoization mode).
+- 28× redundant work: 1.5 KB of source produces 43 KB of cumulative
+  highlight work because each line re-highlights the entire growing block.
+- **Per-snapshot p95 is ~0.9–1.7 ms — well under Ink's 16 ms throttle, so
+  no frame is dropped.** The win is cumulative CPU/battery savings over a
+  streaming session, not a visible hitch the user perceives as "smoother".
+- `lru-text` confirms the round-3 prediction: 5–7% hit rate. Caching by
+  full text doesn't work when text grows monotonically.
+- `defer-fence` cuts cumulative highlight work by ~85%. Real-world per-block
+  saving: ~24 ms (ts50) / ~35 ms (py50). For a session with 10 code blocks,
+  that's ~240–350 ms of CPU saved over the session, not a felt latency win.
+- **UX trade-off**: with defer-fence on, the user sees plain monospace code
+  during streaming and a one-shot color flash when the fence closes.
+- The defer-fence path is wired into production behind the
+  `CLAUDIO_DEFER_HIGHLIGHT=1` env var (off by default). With the flag on,
+  `--strategy=status-quo` in this harness reproduces the `defer-fence`
+  numbers — production code matches the harness's measured win exactly.
+
+## Input bench
+
+Measures one keystroke at the end of a buffer of varying size. Each iter is a
+full `Cursor.fromText` + `MeasuredText` (which calls `text.normalize('NFC')`)
++ `cursor.render(...)` (lazy `wrapAnsi` + grapheme segmentation).
+
+Baseline:
+
+```
+buffer size  p50 ms   p95 ms   p99 ms
+        100   0.01    0.01    0.01
+        500   0.02    0.02    0.03
+       2000   0.07    0.08    0.08
+       5000   0.14    0.15    0.27
+      10000   0.22    0.25    0.26
+```
+
+All sizes are well under the 16 ms frame budget. **Input is not the
+bottleneck** — the round-2 finding ("memoize Cursor.fromText") would save
+sub-ms and is not user-visible.
+
+## Cold-start bench
+
+Spawns the bundled CLI with `--version` (fast path in `cli.tsx`) and `--help`
+(Commander parse + `commands.ts` registration), measures wall ms end-to-end.
+
+Baseline:
+
+```
+invocation     p50 ms   p95 ms   max ms
+--version       475      493      493
+--help          682      688      688
+delta          ~207                       ← lower bound for everything past
+                                            the version short-circuit
+```
+
+The `--version` time is what the user pays even on the fastest possible
+launch path. `--help` adds Commander parse + command-table registration but
+still doesn't load tools, MCP, providers, or memory — so the real REPL
+launch is _at least_ the `--help` number, almost certainly more.
+
+This is the largest absolute number any benchmark measured. **Worth a
+dedicated investigation with `node --cpu-prof` on a real launch.**
+
+## Memory bench
+
+Builds N synthetic memory `.md` files in `/tmp`, runs the real
+`scanMemoryFiles` against them. Models the cost of `findRelevantMemories`
+(once per turn) and `extractMemories` (every ~15 turns).
+
+Baseline:
+
+```
+ files   p50 ms   p95 ms   ms/file
+    10    0.21    0.42      0.021
+    50    0.74    1.24      0.015
+   100    1.33    1.81      0.013
+   200    2.77    3.40      0.014
+```
+
+Per-file cost is flat (~0.014 ms/file). Even a heavy user with 200 memory
+files pays <3 ms per scan. **Not a bottleneck** — the round-1 finding
+("scanMemoryFiles concurrency cap") was correctly debunked; on modern SSDs
+the readdir+frontmatter-parse cost is invisible.
+
+## Transcript bench
+
+Drives `applyMarkdown` across N synthetic messages of mixed shape
+(headings, lists, tables, prose, plus optional `--with-code` for
+TypeScript code blocks every 5th message). Measures the cost of the
+un-cached path that fires on `/resume` first paint or when scrolling back
+past `Markdown.tsx`'s LRU(500) tokenCache.
+
+Baseline (`--with-code`):
+
+```
+ messages   total ms   per-msg ms
+       50      10.3       0.206
+      200      36.9       0.184
+      500      76.8       0.154
+     1000     151.2       0.151
+```
+
+Per-message cost is ~0.15 ms; a 1000-message transcript pays ~150 ms once
+on cold paint. Bounded and one-time. **Not a bottleneck**, but a useful
+canary if someone changes `applyMarkdown` and accidentally regresses
+per-message cost.
+
+## Caveats
+
+- **React/Ink reconciliation** is not measured here. Worth a separate harness
+  if someone wants to verify there's no re-render storm, but unlikely to
+  dwarf the numbers above.
+- **Terminal redraw cost** of writing N more KB of ANSI codes to the screen
+  (status-quo emits ~19 KB extra ANSI vs defer-fence per ts50 run). On a
+  slow terminal this could add user-visible cost; not measured here.
+- **Network/model TTFB.** Streaming chunks arrive at whatever rate the
+  provider produces them; the streaming bench assumes the per-line snapshot
+  rate is the correct unit (matches `REPL.tsx:1506`'s line-buffered display).
+- **Cold-start bench measures the bundled binary**, so it includes Bun's TS
+  source loader cost when run via `bun run`. We use `node` to spawn for
+  consistency. `dist/cli.mjs` must exist (run `bun run build` first).
+
+## Comparing changes
+
+```bash
+# Capture before
+bun run profile --json > /tmp/before.json
+
+# Make your change
+
+# Capture after
+bun run profile --json > /tmp/after.json
+
+# Eyeball the diff
+diff <(jq '.streaming.ts50.results[].summary.median.totalMs' /tmp/before.json) \
+     <(jq '.streaming.ts50.results[].summary.median.totalMs' /tmp/after.json)
+```
+
+The committed `baselines/*.json` are reference points — overwrite them when
+production behavior changes meaningfully so future contributors see the
+post-change numbers.
+
+## Adding a new benchmark
+
+Pattern is the same:
+
+1. Read the production code path you want to measure.
+2. Drive it with deterministic input that mirrors the real call shape.
+3. Use `performance.now()` around the unit of work, run N+warmup iterations.
+4. Emit human + JSON output controlled by a `--json` flag.
+5. Wire it into `run-all.ts`, the npm scripts in `package.json`, and the
+   table at the top of this README.
+6. Save a baseline in `baselines/`.
