@@ -141,7 +141,7 @@ jobs:
             git push origin "refs/tags/${TAG}"
           fi
 
-      - name: Create Gitea release
+      - name: Create or fetch Gitea release (idempotent)
         id: create_release
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
@@ -159,23 +159,54 @@ jobs:
             -d "$PAYLOAD")
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           if [ -z "$RELEASE_ID" ]; then
-            echo "Failed to create release:"
-            echo "$RESPONSE"
-            exit 1
+            # Probably already exists — fetch it by tag.
+            EXISTING=$(curl -sS \
+              "$GITEA_API_BASE/releases/tags/$TAG" \
+              -H "Authorization: token $GITEA_TOKEN")
+            RELEASE_ID=$(echo "$EXISTING" | jq -r '.id // empty')
+            if [ -z "$RELEASE_ID" ]; then
+              echo "Failed to create or fetch release:"
+              echo "$RESPONSE"
+              echo "$EXISTING"
+              exit 1
+            fi
+            echo "Reusing existing Gitea release id=$RELEASE_ID for $TAG"
+          else
+            echo "Created Gitea release id=$RELEASE_ID"
           fi
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
-          echo "Created Gitea release id=$RELEASE_ID"
 
       - name: Attach bundle as release asset
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
         run: |
+          # Skip silently if asset already attached (retry-friendly).
           curl -sS -X POST \
             "$GITEA_API_BASE/releases/$RELEASE_ID/assets?name=cli.mjs" \
             -H "Authorization: token $GITEA_TOKEN" \
             -F "attachment=@dist/cli.mjs" \
-            | jq -r '.browser_download_url // .'
+            | jq -r '.browser_download_url // .message // .'
+
+      - name: Set up Node for npm publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Idempotent: skip if this version is already published.
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version >/dev/null 2>&1; then
+            echo "${PKG_NAME}@${PKG_VERSION} already on npm, skipping publish"
+          else
+            npm publish --access public
+            echo "Published ${PKG_NAME}@${PKG_VERSION}"
+          fi
 
       - name: Release summary
         run: |
@@ -185,6 +216,6 @@ jobs:
             echo "- Tag: ${{ steps.bump.outputs.tag }}"
             echo "- Version: ${{ steps.bump.outputs.version }}"
             echo "- Release page: ${GITEA_REPO_URL}/releases/tag/${{ steps.bump.outputs.tag }}"
-            echo
-            echo "A esteira **Publish to npm** será disparada automaticamente assim que o release for publicado."
+            echo "- npm: https://www.npmjs.com/package/@viudes/claudio"
+            echo "- install: \`npm install -g @viudes/claudio@${{ steps.bump.outputs.version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
