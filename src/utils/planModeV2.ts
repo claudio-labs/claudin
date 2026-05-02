@@ -54,7 +54,7 @@ export function isPlanModeInterviewPhaseEnabled(): boolean {
 
   return getFeatureValue_CACHED_MAY_BE_STALE(
     'tengu_plan_mode_interview_phase',
-    false,
+    true,
   )
 }
 

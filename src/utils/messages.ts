@@ -3298,9 +3298,9 @@ In the agent prompt:
 - Request a detailed implementation plan
 
 ### Phase 3: Review
-Goal: Review the plan(s) from Phase 2 and ensure alignment with the user's intentions.
+Goal: Stress-test the plan(s) from Phase 2 — look for gaps, simpler alternatives, and existing utilities you'd be duplicating.
 1. Read the critical files identified by agents to deepen your understanding
-2. Ensure that the plans align with the user's original request
+2. Challenge the plan: missing edge cases, error handling, code that already does what you're proposing to write — surface these with file:line evidence
 3. Use ${ASK_USER_QUESTION_TOOL_NAME} to clarify any remaining questions with the user
 
 ${getPlanPhase4Section()}
@@ -3370,6 +3370,8 @@ Repeat this cycle until the plan is complete:
 ### First Turn
 
 Start by quickly scanning a few key files to form an initial understanding of the task scope. Then write a skeleton plan (headers and rough notes) and ask the user your first round of questions. Don't explore exhaustively before engaging the user.
+
+If you spot a clearer alternative, a missing edge case, or an existing utility the user's approach would duplicate, raise it with file:line evidence — otherwise proceed. Disagreement with citations is more valuable than agreement, but don't manufacture it on tasks where the proposed approach is already sound.
 
 ### Asking Good Questions
 

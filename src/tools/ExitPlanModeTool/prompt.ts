@@ -21,6 +21,9 @@ Ensure your plan is complete and unambiguous:
 
 **Important:** Do NOT use ${ASK_USER_QUESTION_TOOL_NAME} to ask "Is this plan okay?" or "Should I proceed?" - that's exactly what THIS tool does. ExitPlanMode inherently requests user approval of your plan.
 
+## Parameters
+- \`filesToEdit\`: list every absolute path you intend to create or modify. Files you Read during planning that are listed here get their full content forwarded to the implementer's dossier (so they skip the re-Read); listed files you didn't open get an explicit re-Read marker; unlisted files appear as references only. Listing maximizes the dossier's value — omitting wastes tokens.
+
 ## Examples
 
 1. Initial task: "Search for and understand the implementation of vim mode in the codebase" - Do not use the exit plan mode tool because you are not planning the implementation steps of a task.

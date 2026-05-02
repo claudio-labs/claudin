@@ -93,7 +93,7 @@ const inputSchema = lazySchema(() =>
         .array(z.string())
         .optional()
         .describe(
-          'Files that will be modified or created when implementing this plan. Used to build a research dossier so sub-agents inherit your exploration.',
+          'Strongly recommended. List every absolute path you intend to create or modify. Files Read during planning that are listed here have their full content prioritized in the implementer\'s dossier (so the implementer skips re-Reading); listed files you didn\'t Read get an explicit re-Read marker; unlisted files are surfaced as references only.',
         ),
     })
     .passthrough(),

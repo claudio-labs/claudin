@@ -41,6 +41,11 @@ export type ReadEntry = {
   range?: { startLine: number; endLine: number; totalLines: number }
   reason?: string
   isStale?: boolean
+  // File listed in filesToEdit but never Read during planning. Distinct from
+  // isNew (file doesn't exist) — file exists on disk, just wasn't opened.
+  // Without this, renderReadEntryFull emits an empty body and the implementer
+  // assumes the file is empty rather than re-reading it.
+  isUnread?: boolean
 }
 
 export type GrepEntry = {
@@ -395,7 +400,7 @@ export async function buildDossierFromMessages(
       mtime,
       capturedAt,
       kind: detectKindFromPath(path),
-      ...(isNew && { isNew: true }),
+      ...(isNew ? { isNew: true } : { isUnread: true }),
     })
   }
 
@@ -540,6 +545,9 @@ function renderReadEntryFull(entry: ReadEntry): string {
   if (entry.isNew) {
     return `[NEW FILE: ${entry.path} — to be created]`
   }
+  if (entry.isUnread) {
+    return `[UNREAD: ${entry.path} — listed in filesToEdit but not opened during planning. Read it before editing.]`
+  }
   if (entry.isNonText) {
     return `[NON-TEXT: ${entry.path} (${entry.kind ?? 'binary'}) — re-read if you need its bytes]`
   }
@@ -555,6 +563,9 @@ function renderEntryReference(entry: DossierEntry): string {
       return `- ${entry.path} (Read, STALE — re-read if needed)`
     }
     if (entry.isNew) return `- ${entry.path} (Read, NEW FILE)`
+    if (entry.isUnread) {
+      return `- ${entry.path} (Read, UNREAD — read before editing)`
+    }
     if (entry.isNonText) {
       return `- ${entry.path} (Read, ${entry.kind ?? 'non-text'} — re-read if needed)`
     }
