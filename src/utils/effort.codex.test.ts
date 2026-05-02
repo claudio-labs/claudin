@@ -16,6 +16,7 @@ async function importFreshEffortModule(options: {
   }))
   mock.module('../services/api/providerConfig.js', () => ({
     supportsCodexReasoningEffort: () => options.supportsCodexReasoningEffort,
+    isOpenAICodexShortcut: () => false,
   }))
 
   return import(`./effort.js?ts=${Date.now()}-${Math.random()}`)

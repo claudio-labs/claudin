@@ -25,6 +25,7 @@ async function importHookChainsModule(options?: {
 
   mock.module('../services/analytics/index.js', () => ({
     logEvent: () => {},
+    stripProtoFields: <T,>(m: T) => m,
   }))
 
   mock.module('./telemetry/events.js', () => ({

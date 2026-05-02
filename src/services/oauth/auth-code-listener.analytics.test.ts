@@ -17,6 +17,7 @@ test('custom error responses log the error redirect analytics event', async () =
     ) => {
       events.push({ name, metadata })
     },
+    stripProtoFields: <T,>(m: T) => m,
   }))
 
   const { AuthCodeListener } = await import(
@@ -69,6 +70,7 @@ test('custom handlers that do not end the response are closed automatically and 
     ) => {
       events.push({ name, metadata })
     },
+    stripProtoFields: <T,>(m: T) => m,
   }))
 
   mock.module('../../utils/log.js', () => ({
@@ -127,6 +129,7 @@ test('custom handlers that throw are logged, converted to a fallback response, a
     ) => {
       events.push({ name, metadata })
     },
+    stripProtoFields: <T,>(m: T) => m,
   }))
 
   mock.module('../../utils/log.js', () => ({

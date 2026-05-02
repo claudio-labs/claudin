@@ -4,6 +4,7 @@ import {
   resetSentBashGitInstructions,
   suppressNextBashGitInstructions,
 } from './attachments.js'
+import { enableConfigs } from './config.js'
 import type { ToolUseContext } from '../Tool.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
 
@@ -32,6 +33,9 @@ describe('getBashGitInstructionsAttachment', () => {
   beforeEach(() => {
     // Bypass the NODE_ENV=test early return so we exercise the real branches.
     process.env.NODE_ENV = 'production'
+    // Allow config reads now that we've left NODE_ENV=test mode; otherwise
+    // getConfig() throws "Config accessed before allowed".
+    enableConfigs()
     delete process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
     process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = 'false'
     delete process.env.USER_TYPE
