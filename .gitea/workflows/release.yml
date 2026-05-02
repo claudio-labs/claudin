@@ -117,10 +117,10 @@ jobs:
           if [ "${{ inputs.bump }}" != "none" ]; then
             git add package.json
             git commit -m "chore(release): ${{ steps.bump.outputs.tag }}"
-            git push origin HEAD
+            git push origin HEAD:refs/heads/main
           fi
           git tag "${{ steps.bump.outputs.tag }}"
-          git push origin "${{ steps.bump.outputs.tag }}"
+          git push origin "refs/tags/${{ steps.bump.outputs.tag }}"
 
       - name: Create Gitea release
         id: create_release
