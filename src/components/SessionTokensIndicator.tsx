@@ -1,80 +1,118 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
+  getTotalCacheCreationInputTokens,
+  getTotalCacheReadInputTokens,
   getTotalInputTokens,
   getTotalOutputTokens,
-  getTotalCacheReadInputTokens,
-  getTotalCacheCreationInputTokens,
 } from '../cost-tracker.js';
 import { Box, Text } from '../ink.js';
+import { tryGetActiveProvider } from '../services/api/activeProvider.js';
+import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
 import { formatTokens } from '../utils/format.js';
+import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
 
-type Totals = {
+type Snapshot = {
   input: number;
   output: number;
   cacheRead: number;
-  cacheWrite: number;
+  cacheCreation: number;
+  supportsCache: boolean;
 };
 
 const POLL_INTERVAL_MS = 2000;
+const ICON_CREATED = '\u{F0193}'; // nf-md-content_save — cache write
+const ICON_CACHED = '\u{F1C0}';   // nf-fa-database — cache read
+const ICON_TOTAL = '\u{F0AA8}';   // nf-md-sigma — sum
 
-function readTotals(): Totals {
+/**
+ * Whether the active provider is one we expect to report cache fields. Drives
+ * which layout the indicator picks, independently of the historical counters
+ * — so a provider switch (e.g. Anthropic → Ollama via /provider) flips the
+ * display to the no-cache layout immediately, instead of latching on the
+ * leftover non-zero `cacheCreation` from the previous provider.
+ *
+ * `copilot` and `ollama` are hard-wired unsupported in `extractCacheMetrics`;
+ * `self-hosted` is heuristic (private URL) and treated as unsupported here.
+ */
+function activeProviderSupportsCache(): boolean {
+  const profile = tryGetActiveProvider();
+  if (!profile) return false;
+  const cacheProvider = resolveCacheProvider(getAPIProvider(), {
+    githubNativeAnthropic: isGithubNativeAnthropicMode(),
+    openAiBaseUrl: profile.baseUrl,
+  });
+  return cacheProvider !== 'copilot' && cacheProvider !== 'ollama' && cacheProvider !== 'self-hosted';
+}
+
+function readSnapshot(): Snapshot {
   return {
     input: getTotalInputTokens(),
     output: getTotalOutputTokens(),
     cacheRead: getTotalCacheReadInputTokens(),
-    cacheWrite: getTotalCacheCreationInputTokens(),
+    cacheCreation: getTotalCacheCreationInputTokens(),
+    supportsCache: activeProviderSupportsCache(),
   };
 }
 
-function totalsEqual(a: Totals, b: Totals): boolean {
+function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
   return (
     a.input === b.input &&
     a.output === b.output &&
     a.cacheRead === b.cacheRead &&
-    a.cacheWrite === b.cacheWrite
+    a.cacheCreation === b.cacheCreation &&
+    a.supportsCache === b.supportsCache
   );
 }
 
 /**
  * Compact session-wide token totals shown in the right-side notification
- * row. Numbers are pulled from `cost-tracker` (which already sums every
- * turn's usage and persists totals into the project config on save/exit),
- * so this component is read-only — no extra state, no extra writes.
+ * row. The layout is decided by the *current* active provider, not by the
+ * historical counters — providers that report cache fields (Anthropic,
+ * Bedrock, Vertex, Foundry, Gemini, Codex, Kimi, DeepSeek, Copilot-Claude,
+ * plain OpenAI) show `cached · created · total`; providers that don't
+ * (Ollama, vanilla Copilot, self-hosted OpenAI-compatible) show the legacy
+ * `↑ input  ↓ output · total` so input/output stay visible.
  *
- * Polled every 2s instead of subscribed because the underlying state lives
- * outside React (bootstrap/state.ts) and exposes no event API. Polling is
- * cheap: each getter is a property read, no I/O.
+ * Cache groups (`cached`, `created`) are individually omitted while their
+ * counter is zero so the row doesn't grow placeholders during a cold start.
  *
- * Renders nothing until at least one counter has moved off zero so the
- * footer doesn't grow a "0 0 0" placeholder before the first turn.
+ * Polled every 2s; underlying state lives in cost-tracker (no event API).
  */
 export function SessionTokensIndicator(): React.ReactNode {
-  const [totals, setTotals] = useState<Totals>(() => readTotals());
+  const [snapshot, setSnapshot] = useState<Snapshot>(() => readSnapshot());
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTotals(prev => {
-        const next = readTotals();
-        return totalsEqual(prev, next) ? prev : next;
+      setSnapshot(prev => {
+        const next = readSnapshot();
+        return snapshotEqual(prev, next) ? prev : next;
       });
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 
   const grandTotal =
-    totals.input + totals.output + totals.cacheRead + totals.cacheWrite;
+    snapshot.input + snapshot.output + snapshot.cacheRead + snapshot.cacheCreation;
   if (grandTotal === 0) return null;
 
-  const cache = totals.cacheRead + totals.cacheWrite;
-  const breakdown =
-    `↑ ${formatTokens(totals.input)}  ↓ ${formatTokens(totals.output)}` +
-    (cache > 0 ? `  ⊙ ${formatTokens(cache)}` : '');
+  const parts: string[] = [];
+  if (snapshot.supportsCache) {
+    if (snapshot.cacheRead > 0) {
+      parts.push(`${ICON_CACHED} ${formatTokens(snapshot.cacheRead)} cached`);
+    }
+    if (snapshot.cacheCreation > 0) {
+      parts.push(`${ICON_CREATED} ${formatTokens(snapshot.cacheCreation)} created`);
+    }
+  } else {
+    parts.push(`↑ ${formatTokens(snapshot.input)}  ↓ ${formatTokens(snapshot.output)}`);
+  }
+  parts.push(`${ICON_TOTAL} ${formatTokens(grandTotal)} tokens`);
 
   return (
     <Box>
       <Text dimColor wrap="truncate">
-        {`${breakdown} · ${formatTokens(grandTotal)} tokens`}
+        {parts.join(' · ')}
       </Text>
     </Box>
   );
