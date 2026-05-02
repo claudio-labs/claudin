@@ -43,8 +43,22 @@ jobs:
       - name: Smoke check
         run: bun run smoke
 
-      - name: Full unit test suite
-        run: bun test --max-concurrency=1
+      - name: Full unit test suite (isolated per-file to avoid mock.module leaks)
+        run: |
+          set -u
+          fail=0
+          total=0
+          for f in $(find src -name '*.test.ts' -not -name '*.skip.test.ts' | sort); do
+            total=$((total+1))
+            echo "::group::$f"
+            if ! bun test "$f" --max-concurrency=1; then
+              fail=$((fail+1))
+              echo "FAIL: $f"
+            fi
+            echo "::endgroup::"
+          done
+          echo "Total: $total files, $fail failed"
+          test "$fail" -eq 0
 
       - name: Provider tests
         run: bun run test:provider
