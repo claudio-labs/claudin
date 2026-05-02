@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        env:
+          GITHUB_SERVER_URL: http://git.house.server:3000
         with:
           fetch-depth: 0
 
