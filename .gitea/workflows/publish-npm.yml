@@ -1,11 +1,18 @@
 name: Publish to npm
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag a publicar (ex: v0.1.1)'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
-  group: publish-npm-${{ github.event.release.tag_name }}
+  group: publish-npm-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -13,13 +20,24 @@ env:
 
 jobs:
   publish:
-    name: Publish ${{ github.event.release.tag_name }} to npm
+    name: Publish ${{ inputs.tag || github.ref_name }} to npm
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          if [ -z "$TAG" ]; then
+            echo "No tag resolved (inputs.tag and github.ref_name both empty)"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG"
+
       - name: Checkout release tag
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cd "$GITHUB_WORKSPACE"
@@ -75,7 +93,7 @@ jobs:
       - name: Publish summary
         run: |
           {
-            echo "## Published ${{ github.event.release.tag_name }}"
+            echo "## Published ${{ steps.tag.outputs.tag }}"
             echo
             echo "- npm: https://www.npmjs.com/package/@viudes/claudio"
             echo "- install: \`npm install -g @viudes/claudio\`"
