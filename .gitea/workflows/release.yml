@@ -18,6 +18,11 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  GITEA_BASE_URL: http://git.house.server:3000
+  GITEA_REPO_URL: http://git.house.server:3000/${{ github.repository }}
+  GITEA_API_BASE: http://git.house.server:3000/api/v1/repos/${{ github.repository }}
+
 jobs:
   release:
     name: Bump, tag, and create Gitea release
@@ -28,13 +33,12 @@ jobs:
       - name: Checkout
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          REPO_URL: http://git.house.server:3000/${{ github.repository }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cd "$GITHUB_WORKSPACE"
           rm -rf .git
           git init -q
-          git remote add origin "http://oauth2:${GITEA_TOKEN}@git.house.server:3000/${{ github.repository }}"
+          git remote add origin "http://oauth2:${GITEA_TOKEN}@${GITEA_BASE_URL#http://}/${{ github.repository }}"
           git fetch -q --tags origin
           git checkout -q "${{ github.sha }}"
 
@@ -126,7 +130,6 @@ jobs:
         id: create_release
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          API_BASE: http://git.house.server:3000/api/v1/repos/${{ github.repository }}
           BODY: ${{ steps.changelog.outputs.body }}
           TAG: ${{ steps.bump.outputs.tag }}
         run: |
@@ -135,7 +138,7 @@ jobs:
             --arg name "$TAG" \
             --arg body "$BODY" \
             '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}')
-          RESPONSE=$(curl -sS -X POST "$API_BASE/releases" \
+          RESPONSE=$(curl -sS -X POST "$GITEA_API_BASE/releases" \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD")
@@ -151,11 +154,10 @@ jobs:
       - name: Attach bundle as release asset
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          API_BASE: http://git.house.server:3000/api/v1/repos/${{ github.repository }}
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
         run: |
           curl -sS -X POST \
-            "$API_BASE/releases/$RELEASE_ID/assets?name=cli.mjs" \
+            "$GITEA_API_BASE/releases/$RELEASE_ID/assets?name=cli.mjs" \
             -H "Authorization: token $GITEA_TOKEN" \
             -F "attachment=@dist/cli.mjs" \
             | jq -r '.browser_download_url // .'
@@ -167,7 +169,7 @@ jobs:
             echo
             echo "- Tag: ${{ steps.bump.outputs.tag }}"
             echo "- Version: ${{ steps.bump.outputs.version }}"
-            echo "- Release page: http://git.house.server:3000/${{ github.repository }}/releases/tag/${{ steps.bump.outputs.tag }}"
+            echo "- Release page: ${GITEA_REPO_URL}/releases/tag/${{ steps.bump.outputs.tag }}"
             echo
             echo "A esteira **Publish to npm** será disparada automaticamente assim que o release for publicado."
           } >> "$GITHUB_STEP_SUMMARY"
