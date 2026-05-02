@@ -7,7 +7,7 @@ This guide covers source builds, multi-profile workflows, custom headers, OAuth 
 ### Option A: npm
 
 ```bash
-npm install -g @gitlawb/claudio
+npm install -g @viudes/claudio
 ```
 
 ### Option B: From source with Bun

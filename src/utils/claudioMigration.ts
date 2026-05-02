@@ -316,22 +316,11 @@ function isAlreadyMigrated(): { migrated: boolean; at?: string } {
   if (typeof current === 'string' && current.length > 0) {
     return { migrated: true, at: current }
   }
-  const legacy = config.claudeToOpenclaudeMigratedAt
-  if (typeof legacy === 'string' && legacy.length > 0) {
-    saveGlobalConfig(prev => {
-      const { claudeToOpenclaudeMigratedAt: _drop, ...rest } = prev
-      return { ...rest, claudeToClaudioMigratedAt: legacy }
-    })
-    return { migrated: true, at: legacy }
-  }
   return { migrated: false }
 }
 
 function markMigrated(at: string): void {
-  saveGlobalConfig(prev => {
-    const { claudeToOpenclaudeMigratedAt: _drop, ...rest } = prev
-    return { ...rest, claudeToClaudioMigratedAt: at }
-  })
+  saveGlobalConfig(prev => ({ ...prev, claudeToClaudioMigratedAt: at }))
 }
 
 export type MigrationOptions = {
@@ -517,7 +506,6 @@ export function legacyGlobalConfigExists(home: string = homedir()): boolean {
 export function shouldShowMigrationBanner(home: string = homedir()): boolean {
   const config = getGlobalConfig()
   if (config.claudeToClaudioMigratedAt) return false
-  if (config.claudeToOpenclaudeMigratedAt) return false
   if (config.legacyMigrationSkipped === true) return false
   return legacyClaudeDirExists(home) || legacyGlobalConfigExists(home)
 }

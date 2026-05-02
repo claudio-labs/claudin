@@ -1,34 +1,15 @@
 /**
  * Startup-time legacy migrations applied before the REPL mounts.
  *
- * - `migrateLegacyHomePaths`: relocates `~/.openclaude.json` and
- *   `~/.openclaude-model-cache/` into the new in-dir layout
- *   (`<configDir>/config.json` and `<configDir>/model-cache/`).
- * - `migrateLegacyOpenclaudeProfile`: copies `~/.openclaude-profile.json`
- *   (single-profile legacy file) into `providerProfiles[]` and deletes it.
+ * - `migrateLegacyClaudioProfile`: copies `.claudio-profile.json` (single-profile
+ *   sidecar) into `providerProfiles[]` and deletes it.
  * - `rescueProviderEnvVars`: when no profile exists but the user still has
  *   `CLAUDE_CODE_USE_*` exports in their shell, derive a profile so they get
  *   a `/provider` entry instead of silently breaking. When a profile already
  *   exists, just log a warning that the envs are now ignored.
  *
- * All three run idempotently and are intentionally side-effect-bounded.
+ * All run idempotently and are intentionally side-effect-bounded.
  */
-import {
-  copyFileSync,
-  cpSync,
-  existsSync,
-  mkdirSync,
-  renameSync,
-  unlinkSync,
-} from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { fileSuffixForOauthConfig } from '../constants/oauth.js'
-import {
-  _setGlobalConfigCacheForTesting,
-  getGlobalConfig,
-  saveGlobalConfig,
-} from './config.js'
 import {
   DEFAULT_GEMINI_BASE_URL,
   DEFAULT_GEMINI_MODEL,
@@ -58,163 +39,6 @@ export type StartupMigrationsResult = {
   rescueEnvAdoptedAs?: string
   envsIgnored: string[]
   notices: string[]
-  homePathsMoved: string[]
-}
-
-const LEGACY_MODEL_CACHE_DIR_NAME = '.openclaude-model-cache'
-const NEW_MODEL_CACHE_DIR_NAME = 'model-cache'
-
-type HomePathsContext = {
-  configDir: string
-  legacyHome: string
-}
-
-function resolveHomePathsContext(
-  env: NodeJS.ProcessEnv,
-  homeDirOverride?: string,
-): HomePathsContext {
-  const home = homeDirOverride ?? homedir()
-  const envOverride = env.CLAUDIO_CONFIG_DIR
-  return {
-    configDir: envOverride ?? join(home, '.openclaude'),
-    legacyHome: envOverride ?? home,
-  }
-}
-
-function moveInPlace(src: string, dst: string, configDir: string): boolean {
-  if (!existsSync(src)) return false
-  // dst-wins is intentional: if the new in-dir file already exists, the user
-  // (or a prior partial migration) populated it — keeping it untouched is the
-  // safe default. The shim in env.ts:getGlobalClaudeFile still falls back to
-  // the legacy sibling path when the new file is empty/absent, so a no-op
-  // here doesn't strand the user.
-  if (existsSync(dst)) return false
-  mkdirSync(configDir, { recursive: true })
-  try {
-    renameSync(src, dst)
-    return true
-  } catch {
-    // EXDEV (cross-device) — fall back to copy + unlink. Only the global
-    // config file is small enough for a simple copy; for the cache dir we
-    // leave it alone (rare enough to ignore; user can clear it manually).
-    try {
-      copyFileSync(src, dst)
-      unlinkSync(src)
-      return true
-    } catch {
-      return false
-    }
-  }
-}
-
-export function migrateLegacyHomePaths(options?: {
-  processEnv?: NodeJS.ProcessEnv
-  homeDir?: string
-  log?: (message: string) => void
-}): string[] {
-  const env = options?.processEnv ?? process.env
-  const log = options?.log ?? defaultLog
-  const ctx = resolveHomePathsContext(env, options?.homeDir)
-  const moved: string[] = []
-
-  const suffix = fileSuffixForOauthConfig()
-  const oldConfig = join(ctx.legacyHome, `.openclaude${suffix}.json`)
-  const newConfig = join(ctx.configDir, `config${suffix}.json`)
-  if (oldConfig !== newConfig && moveInPlace(oldConfig, newConfig, ctx.configDir)) {
-    moved.push(`${oldConfig} → ${newConfig}`)
-    log(`moved legacy global config: ${oldConfig} → ${newConfig}`)
-  }
-
-  const oldCache = join(options?.homeDir ?? homedir(), LEGACY_MODEL_CACHE_DIR_NAME)
-  const newCache = join(ctx.configDir, NEW_MODEL_CACHE_DIR_NAME)
-  if (
-    oldCache !== newCache &&
-    existsSync(oldCache) &&
-    !existsSync(newCache)
-  ) {
-    mkdirSync(ctx.configDir, { recursive: true })
-    try {
-      renameSync(oldCache, newCache)
-      moved.push(`${oldCache} → ${newCache}`)
-      log(`moved model cache: ${oldCache} → ${newCache}`)
-    } catch (e: unknown) {
-      // Cross-device dir rename — leave it; cache is regenerable. We don't
-      // copy it (potentially large, no value lost). Surface a debug log so
-      // users who care can clean it up manually with `rm -rf <oldCache>`.
-      void import('./debug.js').then(({ logForDebugging }) => {
-        logForDebugging(
-          `model cache rename ${oldCache} → ${newCache} failed (${e instanceof Error ? e.message : String(e)}); leaving legacy dir in place — safe to remove with: rm -rf ${oldCache}`,
-        )
-      })
-    }
-  }
-
-  return moved
-}
-
-const LEGACY_OPENCLAUDE_DIR_NAME = '.openclaude'
-const CLAUDIO_DIR_NAME = '.claudio'
-
-export function migrateOpenclaudeToClaudio(options?: {
-  homeDir?: string
-  log?: (message: string) => void
-}): boolean {
-  const log = options?.log ?? defaultLog
-  const config = getGlobalConfig()
-  if (
-    typeof config.openclaudeToClaudioMigratedAt === 'string' &&
-    config.openclaudeToClaudioMigratedAt.length > 0
-  ) {
-    return false
-  }
-
-  const home = options?.homeDir ?? homedir()
-  const legacyDir = join(home, LEGACY_OPENCLAUDE_DIR_NAME)
-  const newDir = join(home, CLAUDIO_DIR_NAME)
-
-  if (!existsSync(legacyDir)) {
-    markOpenclaudeToClaudioMigrated()
-    return false
-  }
-
-  if (existsSync(newDir)) {
-    log(
-      `kept ${newDir} (canonical), legacy ${legacyDir} retained — remove manually if confirmed migrated`,
-    )
-    markOpenclaudeToClaudioMigrated()
-    return false
-  }
-
-  try {
-    renameSync(legacyDir, newDir)
-    log(`moved legacy config dir: ${legacyDir} → ${newDir}`)
-    // Invalidate the in-memory globalConfig cache so the next read picks up
-    // the freshly relocated config.json instead of the empty defaults the
-    // earlier `getGlobalConfig()` call cached when the new dir didn't exist.
-    _setGlobalConfigCacheForTesting(null)
-    markOpenclaudeToClaudioMigrated()
-    return true
-  } catch (e: unknown) {
-    try {
-      cpSync(legacyDir, newDir, { recursive: true })
-      log(
-        `copied legacy config dir: ${legacyDir} → ${newDir} (${e instanceof Error ? e.message : String(e)}); safe to remove with: rm -rf ${legacyDir}`,
-      )
-      _setGlobalConfigCacheForTesting(null)
-      markOpenclaudeToClaudioMigrated()
-      return true
-    } catch (copyErr: unknown) {
-      log(
-        `failed to migrate ${legacyDir} → ${newDir}: ${copyErr instanceof Error ? copyErr.message : String(copyErr)}`,
-      )
-      return false
-    }
-  }
-}
-
-function markOpenclaudeToClaudioMigrated(): void {
-  const at = new Date().toISOString()
-  saveGlobalConfig(prev => ({ ...prev, openclaudeToClaudioMigratedAt: at }))
 }
 
 const PROVIDER_USE_ENVS = [
@@ -415,28 +239,9 @@ export function runClaudioStartupMigrations(options?: {
     legacyProfileMigrated: false,
     envsIgnored: [],
     notices: [],
-    homePathsMoved: [],
   }
 
-  // 1.2 — rebrand: relocate the entire ~/.openclaude/ dir to ~/.claudio/.
-  // Runs before everything else so subsequent reads (global config, legacy
-  // profile loader) hit the new dir.
-  migrateOpenclaudeToClaudio({
-    homeDir: options?.homeDir,
-    log,
-  })
-
-  // 1.3 — relocate ~/.openclaude.json + ~/.openclaude-model-cache/ into
-  // the new in-dir layout. Must run before any consumer reads the global
-  // config (e.g. getActiveProviderProfile() below) — those calls will hit
-  // the new path and silently see a missing file otherwise.
-  result.homePathsMoved = migrateLegacyHomePaths({
-    processEnv: env,
-    homeDir: options?.homeDir,
-    log,
-  })
-
-  // 1.4 — legacy ~/.openclaude-profile.json -> providerProfiles[]
+  // legacy .claudio-profile.json -> providerProfiles[]
   const legacy = loadProfileFile()
   if (legacy) {
     const input = profileFromLegacyFile(legacy)
@@ -445,7 +250,7 @@ export function runClaudioStartupMigrations(options?: {
       if (saved) {
         result.legacyProfileMigrated = true
         const notice =
-          'migrated legacy ~/.openclaude-profile.json to providerProfiles[]'
+          'migrated legacy .claudio-profile.json to providerProfiles[]'
         result.notices.push(notice)
         log(notice)
       }
@@ -455,7 +260,7 @@ export function runClaudioStartupMigrations(options?: {
     deleteProfileFile()
   }
 
-  // 1.5 — rescue CLAUDE_CODE_USE_* envs
+  // rescue CLAUDE_CODE_USE_* envs
   const presentEnvs = listPresentProviderEnvs(env)
   if (presentEnvs.length > 0) {
     const active = getActiveProviderProfile()
@@ -488,5 +293,5 @@ export function runClaudioStartupMigrations(options?: {
 function defaultLog(message: string): void {
   // Yellow channel — matches existing managedEnv warning style without
   // pulling chalk into hot startup imports.
-  process.stderr.write(`[33m${message}[0m\n`)
+  process.stderr.write(`\x1b[33m${message}\x1b[0m\n`)
 }

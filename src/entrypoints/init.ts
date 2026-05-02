@@ -68,23 +68,6 @@ export const init = memoize(async (): Promise<void> => {
     })
     profileCheckpoint('init_configs_enabled')
 
-    // Rebrand: relocate ~/.openclaude/ → ~/.claudio/ before any other startup
-    // code writes to ~/.claudio/. recordFirstStartTime() and
-    // populateOAuthAccountInfoIfNeeded() (later in init()) both create
-    // ~/.claudio/, which would block the legacy rename. Must run AFTER
-    // enableConfigs() so getGlobalConfig() is allowed.
-    try {
-      const { migrateOpenclaudeToClaudio } = await import(
-        '../utils/claudioStartupMigrations.js'
-      )
-      migrateOpenclaudeToClaudio()
-    } catch (err) {
-      logForDebugging(
-        `[openclaude-to-claudio] failed: ${err instanceof Error ? err.message : String(err)}`,
-      )
-    }
-    profileCheckpoint('init_after_openclaude_to_claudio')
-
     // Apply only safe environment variables before trust dialog
     // Full environment variables are applied after trust is established
     const envVarsStart = Date.now()

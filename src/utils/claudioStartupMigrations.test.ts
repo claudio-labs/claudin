@@ -115,7 +115,7 @@ mock.module('./providerProfile.js', () => ({
   deleteProfileFile: () => {
     legacyFileState.deleted = true
     legacyFileState.file = null
-    return '/tmp/.openclaude-profile.json'
+    return '/tmp/.claudio-profile.json'
   },
 }))
 
@@ -147,17 +147,14 @@ function presetActive(profile: ProviderProfile): void {
   store.active = profile
 }
 
-// Each test gets an isolated tmp home so migrateLegacyHomePaths can run
-// without touching the developer's real ~/.claudio.json. The home dir
-// is plumbed into runClaudioStartupMigrations via the new homeDir
-// option.
+// Each test gets an isolated tmp home so migrations can run without
+// touching the developer's real ~/.claudio.json. The home dir is plumbed
+// into runClaudioStartupMigrations via the homeDir option.
 let tmpHome = ''
 
 function clearMigrationFlags(): void {
   const cfg = getGlobalConfig() as unknown as Record<string, unknown>
-  delete cfg.openclaudeToClaudioMigratedAt
   delete cfg.claudeToClaudioMigratedAt
-  delete cfg.claudeToOpenclaudeMigratedAt
 }
 
 beforeEach(() => {
@@ -187,7 +184,7 @@ function callRun(
   })
 }
 
-describe('runClaudioStartupMigrations — legacy ~/.openclaude-profile.json', () => {
+describe('runClaudioStartupMigrations — legacy .claudio-profile.json', () => {
   test('migrates openai-shaped legacy file into providerProfiles[]', () => {
     legacyFileState.file = legacy('openai', {
       OPENAI_BASE_URL: 'https://api.example.com/v1',
@@ -593,220 +590,5 @@ describe('runClaudioStartupMigrations — full-run idempotency', () => {
     expect(store.profiles).toHaveLength(1)
     expect(store.profiles[0].name).toBe('OpenAI (legacy)')
     expect(legacyFileState.deleted).toBe(true)
-  })
-})
-
-describe('migrateLegacyHomePaths', () => {
-  test('relocates $HOME/.openclaude.json into $HOME/.openclaude/config.json', async () => {
-    const fs = await import('node:fs')
-    const newDir = join(tmpHome, '.openclaude')
-    fs.writeFileSync(join(tmpHome, '.openclaude.json'), '{"userID":"abc"}')
-
-    const moved = (
-      await import('./claudioStartupMigrations.js')
-    ).migrateLegacyHomePaths({
-      processEnv: {},
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved.length).toBe(1)
-    expect(fs.existsSync(join(tmpHome, '.openclaude.json'))).toBe(false)
-    expect(fs.existsSync(join(newDir, 'config.json'))).toBe(true)
-    expect(fs.readFileSync(join(newDir, 'config.json'), 'utf8')).toBe(
-      '{"userID":"abc"}',
-    )
-  })
-
-  test('honors CLAUDIO_CONFIG_DIR when set: $X/.openclaude.json -> $X/config.json', async () => {
-    const fs = await import('node:fs')
-    const customDir = join(tmpHome, 'custom')
-    fs.mkdirSync(customDir, { recursive: true })
-    fs.writeFileSync(join(customDir, '.openclaude.json'), '{"userID":"x"}')
-
-    const moved = (
-      await import('./claudioStartupMigrations.js')
-    ).migrateLegacyHomePaths({
-      processEnv: { CLAUDIO_CONFIG_DIR: customDir },
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved.length).toBe(1)
-    expect(fs.existsSync(join(customDir, '.openclaude.json'))).toBe(false)
-    expect(fs.existsSync(join(customDir, 'config.json'))).toBe(true)
-  })
-
-  test('relocates $HOME/.openclaude-model-cache/ into $HOME/.openclaude/model-cache/', async () => {
-    const fs = await import('node:fs')
-    const newDir = join(tmpHome, '.openclaude')
-    fs.mkdirSync(join(tmpHome, '.openclaude-model-cache'), { recursive: true })
-    fs.writeFileSync(
-      join(tmpHome, '.openclaude-model-cache', 'openai.json'),
-      '{}',
-    )
-
-    const moved = (
-      await import('./claudioStartupMigrations.js')
-    ).migrateLegacyHomePaths({
-      processEnv: {},
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved.length).toBe(1)
-    expect(fs.existsSync(join(tmpHome, '.openclaude-model-cache'))).toBe(false)
-    expect(fs.existsSync(join(newDir, 'model-cache', 'openai.json'))).toBe(true)
-  })
-
-  test('skips relocation when new path already exists (idempotent)', async () => {
-    const fs = await import('node:fs')
-    const newDir = join(tmpHome, '.openclaude')
-    fs.mkdirSync(newDir, { recursive: true })
-    fs.writeFileSync(join(tmpHome, '.openclaude.json'), '{"old":true}')
-    fs.writeFileSync(join(newDir, 'config.json'), '{"new":true}')
-
-    const moved = (
-      await import('./claudioStartupMigrations.js')
-    ).migrateLegacyHomePaths({
-      processEnv: {},
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved).toEqual([])
-    // Old file is preserved when new already exists.
-    expect(fs.existsSync(join(tmpHome, '.openclaude.json'))).toBe(true)
-    expect(fs.readFileSync(join(newDir, 'config.json'), 'utf8')).toBe(
-      '{"new":true}',
-    )
-  })
-
-  test('returns empty when neither legacy path exists', async () => {
-    const moved = (
-      await import('./claudioStartupMigrations.js')
-    ).migrateLegacyHomePaths({
-      processEnv: {},
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved).toEqual([])
-  })
-})
-
-describe('migrateOpenclaudeToClaudio', () => {
-  test('renames ~/.openclaude/ → ~/.claudio/ and records flag (legacy-only)', async () => {
-    const fs = await import('node:fs')
-    const legacyDir = join(tmpHome, '.openclaude')
-    const newDir = join(tmpHome, '.claudio')
-    fs.mkdirSync(legacyDir, { recursive: true })
-    fs.writeFileSync(join(legacyDir, 'config.json'), '{"userID":"abc"}')
-    fs.writeFileSync(join(legacyDir, '.credentials.json'), '{"token":"x"}')
-
-    const { migrateOpenclaudeToClaudio } = await import(
-      './claudioStartupMigrations.js'
-    )
-    const moved = migrateOpenclaudeToClaudio({
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-
-    expect(moved).toBe(true)
-    expect(fs.existsSync(legacyDir)).toBe(false)
-    expect(fs.existsSync(newDir)).toBe(true)
-    expect(fs.readFileSync(join(newDir, 'config.json'), 'utf8')).toBe(
-      '{"userID":"abc"}',
-    )
-    expect(fs.readFileSync(join(newDir, '.credentials.json'), 'utf8')).toBe(
-      '{"token":"x"}',
-    )
-    expect(typeof getGlobalConfig().openclaudeToClaudioMigratedAt).toBe(
-      'string',
-    )
-
-    fs.mkdirSync(legacyDir, { recursive: true })
-    fs.writeFileSync(join(legacyDir, 'should-not-move'), 'still-here')
-    const second = migrateOpenclaudeToClaudio({
-      homeDir: tmpHome,
-      log: silentLog,
-    })
-    expect(second).toBe(false)
-    expect(fs.existsSync(join(legacyDir, 'should-not-move'))).toBe(true)
-  })
-
-  test('keeps both dirs untouched when ~/.claudio/ already exists, emits warning', async () => {
-    const fs = await import('node:fs')
-    const legacyDir = join(tmpHome, '.openclaude')
-    const newDir = join(tmpHome, '.claudio')
-    fs.mkdirSync(legacyDir, { recursive: true })
-    fs.writeFileSync(join(legacyDir, 'config.json'), '{"legacy":true}')
-    fs.mkdirSync(newDir, { recursive: true })
-    fs.writeFileSync(join(newDir, 'config.json'), '{"current":true}')
-
-    const notices: string[] = []
-    const { migrateOpenclaudeToClaudio } = await import(
-      './claudioStartupMigrations.js'
-    )
-    const moved = migrateOpenclaudeToClaudio({
-      homeDir: tmpHome,
-      log: msg => notices.push(msg),
-    })
-
-    expect(moved).toBe(false)
-    expect(fs.readFileSync(join(legacyDir, 'config.json'), 'utf8')).toBe(
-      '{"legacy":true}',
-    )
-    expect(fs.readFileSync(join(newDir, 'config.json'), 'utf8')).toBe(
-      '{"current":true}',
-    )
-    expect(
-      notices.some(m => m.includes('kept') && m.includes('canonical')),
-    ).toBe(true)
-    expect(typeof getGlobalConfig().openclaudeToClaudioMigratedAt).toBe(
-      'string',
-    )
-  })
-
-  test('falls back to cpSync on EXDEV and keeps legacy dir intact', async () => {
-    const fs = await import('node:fs')
-    const legacyDir = join(tmpHome, '.openclaude')
-    const newDir = join(tmpHome, '.claudio')
-    fs.mkdirSync(legacyDir, { recursive: true })
-    fs.writeFileSync(join(legacyDir, 'config.json'), '{"a":1}')
-    fs.mkdirSync(join(legacyDir, 'plugins'), { recursive: true })
-    fs.writeFileSync(join(legacyDir, 'plugins', 'manifest.json'), '{}')
-
-    exdevTrigger.legacy = legacyDir
-    exdevTrigger.dst = newDir
-    try {
-      const notices: string[] = []
-      const { migrateOpenclaudeToClaudio } = await import(
-        './claudioStartupMigrations.js'
-      )
-      const moved = migrateOpenclaudeToClaudio({
-        homeDir: tmpHome,
-        log: (msg: string) => notices.push(msg),
-      })
-
-      expect(moved).toBe(true)
-      expect(fs.existsSync(legacyDir)).toBe(true)
-      expect(fs.existsSync(newDir)).toBe(true)
-      expect(fs.readFileSync(join(newDir, 'config.json'), 'utf8')).toBe(
-        '{"a":1}',
-      )
-      expect(
-        fs.readFileSync(join(newDir, 'plugins', 'manifest.json'), 'utf8'),
-      ).toBe('{}')
-      expect(
-        notices.some(m => m.includes('safe to remove') || m.includes('copied')),
-      ).toBe(true)
-      expect(typeof getGlobalConfig().openclaudeToClaudioMigratedAt).toBe(
-        'string',
-      )
-    } finally {
-      exdevTrigger.legacy = null
-      exdevTrigger.dst = null
-    }
   })
 })

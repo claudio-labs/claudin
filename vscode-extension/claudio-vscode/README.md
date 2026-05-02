@@ -28,7 +28,7 @@ A practical VS Code companion for Claudio with a project-aware **Control Center*
 ## Requirements
 
 - VS Code `1.95+`
-- `claudio` available in your terminal PATH (`npm install -g @gitlawb/claudio`)
+- `claudio` available in your terminal PATH (`npm install -g @viudes/claudio`)
 
 ## Commands
 

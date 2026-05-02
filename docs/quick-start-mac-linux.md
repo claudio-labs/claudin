@@ -18,7 +18,7 @@ npm --version
 ## 2. Install Claudio
 
 ```bash
-npm install -g @gitlawb/claudio
+npm install -g @viudes/claudio
 ```
 
 ## 3. Run Claudio
@@ -76,13 +76,13 @@ Run `/provider doctor` from inside the REPL. It reports reachability, auth, and 
 ## 8. Updating Claudio
 
 ```bash
-npm install -g @gitlawb/claudio@latest
+npm install -g @viudes/claudio@latest
 ```
 
 ## 9. Uninstalling Claudio
 
 ```bash
-npm uninstall -g @gitlawb/claudio
+npm uninstall -g @viudes/claudio
 ```
 
 Claudio config lives in `~/.claudio/`. Remove that directory to wipe all saved profiles, tokens, and settings.

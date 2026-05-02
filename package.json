@@ -1,5 +1,5 @@
 {
-  "name": "@gitlawb/claudio",
+  "name": "@viudes/claudio",
   "version": "0.1.0",
   "description": "Claudio — Claude Code opened to any LLM (OpenAI, Gemini, DeepSeek, Ollama, and 200+ models)",
   "type": "module",

@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "@gitlawb/claudio",
+      "package-name": "@viudes/claudio",
       "bump-minor-pre-major": true,
       "include-v-in-tag": true
     }

@@ -229,27 +229,6 @@ describe('migrateLegacyClaudeDir', () => {
 
     expect(report.errors).toEqual([])
     expect(typeof testConfigState.claudeToClaudioMigratedAt).toBe('string')
-    expect(testConfigState.claudeToOpenclaudeMigratedAt).toBeUndefined()
-  })
-
-  test('honors legacy claudeToOpenclaudeMigratedAt flag and carries it forward', async () => {
-    mkdirSync(dirs.legacy, { recursive: true })
-    writeFileSync(
-      join(dirs.legacy, '.credentials.json'),
-      JSON.stringify({ access: 'a' }),
-    )
-    const legacyTimestamp = '2026-04-20T00:00:00.000Z'
-    testConfigState = { claudeToOpenclaudeMigratedAt: legacyTimestamp }
-
-    const report = await migrateLegacyClaudeDir({
-      homeDir: dirs.home,
-      newDir: dirs.next,
-    })
-
-    expect(report.alreadyMigrated).toBe(true)
-    expect(report.migratedAt).toBe(legacyTimestamp)
-    expect(testConfigState.claudeToClaudioMigratedAt).toBe(legacyTimestamp)
-    expect(testConfigState.claudeToOpenclaudeMigratedAt).toBeUndefined()
   })
 
   test('is idempotent — running twice does not duplicate files or errors', async () => {
@@ -682,14 +661,6 @@ describe('shouldShowMigrationBanner', () => {
   test('hides after a migration has been recorded', () => {
     mkdirSync(dirs.legacy, { recursive: true })
     testConfigState = { claudeToClaudioMigratedAt: new Date().toISOString() }
-    expect(shouldShowMigrationBanner(dirs.home)).toBe(false)
-  })
-
-  test('hides when legacy claudeToOpenclaudeMigratedAt flag is present (pre-rebrand user)', () => {
-    mkdirSync(dirs.legacy, { recursive: true })
-    testConfigState = {
-      claudeToOpenclaudeMigratedAt: new Date().toISOString(),
-    }
     expect(shouldShowMigrationBanner(dirs.home)).toBe(false)
   })
 

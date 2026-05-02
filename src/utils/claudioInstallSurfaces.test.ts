@@ -49,7 +49,7 @@ test('install command displays claudio.exe path on Windows', async () => {
 test('cleanupNpmInstallations removes both claudio and legacy claude local install dirs', async () => {
   const removedPaths: string[] = []
   ;(globalThis as Record<string, unknown>).MACRO = {
-    PACKAGE_URL: '@gitlawb/claudio',
+    PACKAGE_URL: '@viudes/claudio',
   }
 
   mock.module('fs/promises', () => ({

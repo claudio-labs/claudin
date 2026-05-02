@@ -816,7 +816,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   }
 
   function clearPersistedCodexOAuthProfile(): void {
-    // Removes the legacy ~/.openclaude-profile.json sidecar if present;
+    // Removes the legacy .claudio-profile.json sidecar if present;
     // current profiles live in providerProfiles[] inside settings.
     deleteProfileFile()
   }

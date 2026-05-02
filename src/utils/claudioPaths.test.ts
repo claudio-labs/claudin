@@ -51,13 +51,4 @@ describe('Claudio paths', () => {
     expect(getClaudioConfigHomeDir()).toBe(join(homedir(), '.claudio'))
   })
 
-  test('legacy OPENCLAUDE_CONFIG_DIR has no effect', async () => {
-    delete process.env.CLAUDIO_CONFIG_DIR
-    process.env.OPENCLAUDE_CONFIG_DIR = '/tmp/should-be-ignored'
-    const { getClaudioConfigHomeDir, readConfigDirEnv } =
-      await importFreshEnvUtils()
-
-    expect(readConfigDirEnv()).toBeUndefined()
-    expect(getClaudioConfigHomeDir()).toBe(join(homedir(), '.claudio'))
-  })
 })

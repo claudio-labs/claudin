@@ -640,13 +640,6 @@ export type GlobalConfig = {
   // banner won't show again afterwards. Independent from migrationVersion
   // because it's a one-shot user action, not a schema migration.
   claudeToClaudioMigratedAt?: string
-  // Legacy flag from the pre-rebrand era when the destination was
-  // ~/.openclaude/. Read once at startup; carried forward into
-  // claudeToClaudioMigratedAt and then removed.
-  claudeToOpenclaudeMigratedAt?: string
-  // ~/.openclaude/ -> ~/.claudio/ one-shot directory migration. Set after
-  // the rebrand moves the legacy config dir; idempotent on subsequent runs.
-  openclaudeToClaudioMigratedAt?: string
   // Set when the user explicitly skips the legacy /provider migration banner
   // ("Skip — start fresh"). Suppresses the banner for future sessions.
   legacyMigrationSkipped?: boolean

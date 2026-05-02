@@ -57,7 +57,7 @@ To reconfigure later from inside the REPL:
 
 ### Configuration directory
 
-Claudio stores credentials, settings, and OAuth tokens under `~/.claudio/`. On first run, `/provider` detects a legacy `~/.claude/` directory (or `~/.openclaude/` from earlier builds) and offers to migrate tokens, settings, theme, plugins, and keybindings. You can also rerun the migration manually with `/provider migrate`.
+Claudio stores credentials, settings, and OAuth tokens under `~/.claudio/`. On first run, `/provider` detects a legacy `~/.claude/` directory and offers to migrate tokens, settings, theme, plugins, and keybindings. You can also rerun the migration manually with `/provider migrate`.
 
 Override the location with `CLAUDIO_CONFIG_DIR=/path/to/dir`.
 

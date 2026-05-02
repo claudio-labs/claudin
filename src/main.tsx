@@ -947,9 +947,9 @@ async function run(): Promise<CommanderCommand> {
     runMigrations();
     profileCheckpoint('preAction_after_migrations');
 
-    // Copy ~/.openclaude-profile.json into providerProfiles[] (one-shot,
-    // idempotent), then rescue CLAUDE_CODE_USE_* envs into /provider when no
-    // active profile is set.
+    // Copy legacy .claudio-profile.json sidecar into providerProfiles[]
+    // (one-shot, idempotent), then rescue CLAUDE_CODE_USE_* envs into
+    // /provider when no active profile is set.
     try {
       const { runClaudioStartupMigrations } = require('./utils/claudioStartupMigrations.js') as typeof import('./utils/claudioStartupMigrations.js');
       runClaudioStartupMigrations();
