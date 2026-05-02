@@ -53,7 +53,7 @@ const _openBuildDefaults = {
   'tengu_sedge_lantern': true,  // AWAY_SUMMARY — "while you were away" recap (upstream: false)
   'tengu_passport_quail': true, // EXTRACT_MEMORIES — enable memory extraction (upstream: false)
   'tengu_coral_fern': true,     // EXTRACT_MEMORIES — enable memory search in past context (upstream: false)
-  'tengu_bramble_lintel': 5,    // EXTRACT_MEMORIES throttle — fire every 5 eligible turns instead of every turn (upstream: null → 1). Cuts fork-agent token cost ~5x; preserves parent prompt cache.
+  'tengu_bramble_lintel': 15,   // EXTRACT_MEMORIES throttle — fire every 15 eligible turns (upstream: null → 1). Real per-fire cost is ~2-4k effective tokens (mostly cache_read at 10%) so amortized to ~130-270 tokens/turn. Inline-write architecture rejected: 3-5x overstated savings, agent follow-through not validated, this throttle bump captures ~99% of the win at zero code risk.
 };
 
 /* ── Known runtime feature keys (reference only) ───────────────────────
