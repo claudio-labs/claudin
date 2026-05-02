@@ -1,31 +1,13 @@
 # Claudio
 
-Claudio is an open-source coding-agent CLI for cloud and local model providers.
+Claudio is a coding-agent CLI for cloud and local model providers.
 
 Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, Atomic Chat, and other supported backends while keeping one terminal-first workflow: prompts, tools, agents, MCP, slash commands, and streaming output.
 
 [![Security Policy](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 [![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
 
-[Quick Start](#quick-start) | [Setup Guides](#setup-guides) | [Providers](#supported-providers) | [Source Build](#source-build-and-local-development) | [VS Code Extension](#vs-code-extension) | [Sponsors](#sponsors) | [Community](#community)
-
-## Sponsors
-
-<p align="center">
-  <a href="https://gitlawb.com">
-    <img src="https://gitlawb.com/logo.png" alt="GitLawb logo" width="96">
-  </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://bankr.bot">
-    <img src="https://bankr.bot/favicon.svg" alt="Bankr.bot logo" width="96">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://gitlawb.com"><strong>GitLawb</strong></a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://bankr.bot"><strong>Bankr.bot</strong></a>
-</p>
+[Quick Start](#quick-start) | [Setup Guides](#setup-guides) | [Providers](#supported-providers) | [Source Build](#source-build-and-local-development) | [VS Code Extension](#vs-code-extension)
 
 ## Why Claudio
 
@@ -39,9 +21,7 @@ Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, A
 
 ### Install
 
-```bash
-npm install -g @gitlawb/claudio
-```
+Build from source — see [Source Build And Local Development](#source-build-and-local-development).
 
 If the install later reports `ripgrep not found`, install ripgrep system-wide and confirm `rg --version` works in the same terminal before starting Claudio.
 
@@ -77,7 +57,7 @@ To reconfigure later from inside the REPL:
 
 ### Configuration directory
 
-Claudio stores credentials, settings, and OAuth tokens under `~/.claudio/`. On first run, `/provider` detects a legacy `~/.claude/` from Claude Code (or `~/.openclaude/` from earlier builds) and offers to migrate tokens, settings, theme, plugins, and keybindings. You can also rerun the migration manually with `/provider migrate`.
+Claudio stores credentials, settings, and OAuth tokens under `~/.claudio/`. On first run, `/provider` detects a legacy `~/.claude/` directory (or `~/.openclaude/` from earlier builds) and offers to migrate tokens, settings, theme, plugins, and keybindings. You can also rerun the migration manually with `/provider migrate`.
 
 Override the location with `CLAUDIO_CONFIG_DIR=/path/to/dir`.
 
@@ -291,8 +271,6 @@ If you believe you found a security issue, see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Contributions are welcome.
-
 For larger changes, open an issue first so the scope is clear before implementation. Helpful validation commands include:
 
 - `bun run build`
@@ -303,7 +281,7 @@ For larger changes, open an issue first so the scope is clear before implementat
 
 ## Disclaimer
 
-Claudio is an independent community project and is not affiliated with, endorsed by, or sponsored by Anthropic.
+Claudio is an independent project and is not affiliated with, endorsed by, or sponsored by Anthropic.
 
 Claudio originated from the Claude Code codebase and has since been substantially modified to support multiple providers and open use. "Claude" and "Claude Code" are trademarks of Anthropic PBC. See [LICENSE](LICENSE) for details.
 
