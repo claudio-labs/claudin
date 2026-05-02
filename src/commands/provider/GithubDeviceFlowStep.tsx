@@ -16,11 +16,57 @@ import {
 } from '../../utils/githubModelsCredentials.js'
 import {
   addProviderProfile,
-  getActiveProviderProfile,
+  getProviderProfiles,
+  setActiveProviderProfile,
+  updateProviderProfile,
 } from '../../utils/providerProfiles.js'
 
 const GITHUB_DEFAULT_MODEL = 'github:copilot'
 const GITHUB_DEFAULT_BASE_URL = 'https://api.githubcopilot.com'
+
+// Match across all profiles, not just the active one — re-signing in while a
+// non-Copilot profile is active would otherwise create a duplicate. Refreshing
+// in place also keeps `extras.githubToken` (consumed by the shim) in sync with
+// the secure-storage token after a token refresh.
+export function persistCopilotProfile(
+  token: string,
+  model: string = GITHUB_DEFAULT_MODEL,
+): { mode: 'updated' | 'created' } {
+  const existing = getProviderProfiles().find(
+    profile =>
+      profile.provider === 'openai' &&
+      profile.extras?.githubToken !== undefined,
+  )
+  if (existing) {
+    updateProviderProfile(existing.id, {
+      provider: 'openai',
+      name: existing.name,
+      baseUrl: existing.baseUrl,
+      model: existing.model || model,
+      apiKey: token,
+      extras: {
+        ...existing.extras,
+        githubToken: token,
+      },
+    })
+    setActiveProviderProfile(existing.id)
+    return { mode: 'updated' }
+  }
+  addProviderProfile(
+    {
+      provider: 'openai',
+      name: 'GitHub Copilot',
+      baseUrl: GITHUB_DEFAULT_BASE_URL,
+      model,
+      apiKey: token,
+      extras: {
+        githubToken: token,
+      },
+    },
+    { makeActive: true },
+  )
+  return { mode: 'created' }
+}
 
 type Step = 'menu' | 'already-authed' | 'device-busy' | 'error'
 
@@ -55,29 +101,7 @@ export function GithubDeviceFlowStep({
         setStep('error')
         return
       }
-      // Create or activate a provider profile that flows through the
-      // github_copilot transport. The Copilot access token also lives in
-      // secure storage, but profile.extras.githubToken is what /provider's
-      // resolver surfaces to the shim.
-      const active = getActiveProviderProfile()
-      const alreadyConfigured =
-        active?.provider === 'openai' &&
-        active.extras?.githubToken !== undefined
-      if (!alreadyConfigured) {
-        addProviderProfile(
-          {
-            provider: 'openai',
-            name: 'GitHub Copilot',
-            baseUrl: GITHUB_DEFAULT_BASE_URL,
-            model,
-            apiKey: token,
-            extras: {
-              githubToken: token,
-            },
-          },
-          { makeActive: true },
-        )
-      }
+      persistCopilotProfile(token, model)
       onChangeAPIKey?.()
       onDone(
         'GitHub Copilot onboard complete. Copilot token stored in secure storage and as the active /provider profile.',

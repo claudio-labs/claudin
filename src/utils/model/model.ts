@@ -30,6 +30,7 @@ import { LIGHTNING_BOLT } from '../../constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
 import { capitalize } from '../stringUtils.js'
+import { COPILOT_DISPLAY_NAMES } from './copilotModels.js'
 
 export type ModelShortName = string
 export type ModelName = string
@@ -523,33 +524,8 @@ export function renderModelSetting(setting: ModelName | ModelAlias): string {
 export function getPublicModelDisplayName(model: ModelName): string | null {
   // For OpenAI/Gemini/Codex/GitHub providers, show the actual model name not a Claude alias
   if (getAPIProvider() === 'openai' || getAPIProvider() === 'gemini' || getAPIProvider() === 'codex' || getAPIProvider() === 'github') {
-    // Return display names for known GitHub Copilot models
-    const copilotModelNames: Record<string, string> = {
-      'gpt-5.5': 'GPT-5.5',
-      'gpt-5.5-mini': 'GPT-5.5 mini',
-      'gpt-5.4': 'GPT-5.4',
-      'gpt-5.4-mini': 'GPT-5.4 mini',
-      'gpt-5.3-codex': 'GPT-5.3 Codex',
-      'gpt-5.2-codex': 'GPT-5.2 Codex',
-      'gpt-5.2': 'GPT-5.2',
-      'gpt-5.1-codex': 'GPT-5.1 Codex',
-      'gpt-5.1-codex-max': 'GPT-5.1 Codex max',
-      'gpt-5.1-codex-mini': 'GPT-5.1 Codex mini',
-      'gpt-4o': 'GPT-4o',
-      'gpt-4.1': 'GPT-4.1',
-      'claude-opus-4.7': 'Claude Opus 4.7',
-      'claude-opus-4.6': 'Claude Opus 4.6',
-      'claude-opus-4.5': 'Claude Opus 4.5',
-      'claude-sonnet-4.6': 'Claude Sonnet 4.6',
-      'claude-sonnet-4.5': 'Claude Sonnet 4.5',
-      'claude-haiku-4.5': 'Claude Haiku 4.5',
-      'gemini-3.1-pro-preview': 'Gemini 3.1 Pro Preview',
-      'gemini-3-flash-preview': 'Gemini 3 Flash',
-      'gemini-2.5-pro': 'Gemini 2.5 Pro',
-      'grok-code-fast-1': 'Grok Code Fast 1',
-    }
-    if (copilotModelNames[model]) {
-      return copilotModelNames[model]
+    if (COPILOT_DISPLAY_NAMES[model]) {
+      return COPILOT_DISPLAY_NAMES[model]
     }
     return null
   }

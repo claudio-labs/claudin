@@ -24,11 +24,7 @@ import {
   type ProviderProfileInput,
   updateProviderProfile,
 } from '../utils/providerProfiles.js'
-import {
-  clearGithubModelsToken,
-  hydrateGithubModelsTokenFromSecureStorage,
-  readGithubModelsTokenAsync,
-} from '../utils/githubModelsCredentials.js'
+import { clearGithubModelsToken } from '../utils/githubModelsCredentials.js'
 import {
   probeAtomicChatReadiness,
   probeOllamaGenerationReadiness,
@@ -150,14 +146,8 @@ const FORM_STEPS: Array<{
   },
 ]
 
-const GITHUB_PROVIDER_ID = '__github_models__'
-const GITHUB_PROVIDER_LABEL = 'GitHub Copilot'
-const GITHUB_PROVIDER_DEFAULT_MODEL = 'github:copilot'
-const GITHUB_PROVIDER_DEFAULT_BASE_URL = 'https://models.github.ai/inference'
 const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
 const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
-
-type GithubCredentialSource = 'stored' | 'env' | 'none'
 
 function toDraft(profile: ProviderProfile): ProviderDraft {
   return {
@@ -278,41 +268,6 @@ function profileSummary(profile: ProviderProfile, isActive: boolean): string {
       ? models.join(', ')
       : `${models[0]}, ${models[1]} + ${models.length - 2} more`
   return `${providerKind} · ${profile.baseUrl} · ${modelDisplay} · ${keyInfo}${activeSuffix}`
-}
-
-function getGithubCredentialSourceFromEnv(): GithubCredentialSource {
-  return 'none'
-}
-
-async function resolveGithubCredentialSource(): Promise<GithubCredentialSource> {
-  if (await readGithubModelsTokenAsync()) {
-    return 'stored'
-  }
-  return 'none'
-}
-
-function isGithubProviderAvailable(
-  credentialSource: GithubCredentialSource,
-): boolean {
-  return credentialSource !== 'none'
-}
-
-function getGithubProviderModel(): string {
-  return GITHUB_PROVIDER_DEFAULT_MODEL
-}
-
-function getGithubProviderSummary(
-  isActive: boolean,
-  credentialSource: GithubCredentialSource,
-): string {
-  const credentialSummary =
-    credentialSource === 'stored'
-      ? 'token stored'
-      : credentialSource === 'env'
-        ? 'token via env'
-        : 'no token found'
-  const activeSuffix = isActive ? ' (active)' : ''
-  return `github-models · ${GITHUB_PROVIDER_DEFAULT_BASE_URL} · ${getGithubProviderModel()} · ${credentialSummary}${activeSuffix}`
 }
 
 function describeAtomicChatSelectionIssue(
@@ -460,9 +415,6 @@ function CodexOAuthSetup({
 
 export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   const setAppState = useSetAppState()
-  const initialGithubCredentialSource = getGithubCredentialSourceFromEnv()
-  const initialIsGithubActive = false
-  const initialHasGithubCredential = initialGithubCredentialSource !== 'none'
 
   // Deferred initialization: useState initializers run synchronously during
   // render, so getProviderProfiles() and getActiveProviderProfile() would block
@@ -470,16 +422,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   // asynchronously in useEffect with queueMicrotask to keep UI responsive.
   const [profiles, setProfiles] = React.useState<ProviderProfile[]>([])
   const [activeProfileId, setActiveProfileId] = React.useState<string | undefined>()
-  const [githubProviderAvailable, setGithubProviderAvailable] = React.useState(
-    () => isGithubProviderAvailable(initialGithubCredentialSource),
-  )
-  const [githubCredentialSource, setGithubCredentialSource] = React.useState<GithubCredentialSource>(
-    () => initialGithubCredentialSource,
-  )
-  const [isGithubActive, setIsGithubActive] = React.useState(() => initialIsGithubActive)
-  const [isGithubCredentialSourceResolved, setIsGithubCredentialSourceResolved] =
-    React.useState(() => initialHasGithubCredential || initialIsGithubActive)
-  const githubRefreshEpochRef = React.useRef(0)
   const codexRefreshEpochRef = React.useRef(0)
   const [screen, setScreen] = React.useState<Screen>(
     mode === 'first-run' ? 'select-preset' : 'menu',
@@ -556,7 +498,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   // the select menu. Without this, each arrow key press creates a new options
   // array reference, causing Select to re-render and feel sluggish.
   const hasProfiles = profiles.length > 0
-  const hasSelectableProviders = hasProfiles || githubProviderAvailable
+  const hasSelectableProviders = hasProfiles
   const menuOptions = React.useMemo(
     () => [
       {
@@ -615,22 +557,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     ],
   )
 
-  const refreshGithubProviderState = React.useCallback((): void => {
-    setIsGithubCredentialSourceResolved(false)
-    const refreshEpoch = ++githubRefreshEpochRef.current
-    void (async () => {
-      const credentialSource = await resolveGithubCredentialSource()
-      if (refreshEpoch !== githubRefreshEpochRef.current) {
-        return
-      }
-
-      setGithubCredentialSource(credentialSource)
-      setGithubProviderAvailable(isGithubProviderAvailable(credentialSource))
-      setIsGithubActive(false)
-      setIsGithubCredentialSourceResolved(true)
-    })()
-  }, [])
-
   const refreshCodexOAuthCredentialState = React.useCallback((): void => {
     if (isBareMode()) {
       codexRefreshEpochRef.current += 1
@@ -659,14 +585,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   }, [])
 
   React.useEffect(() => {
-    refreshGithubProviderState()
     refreshCodexOAuthCredentialState()
 
     return () => {
-      githubRefreshEpochRef.current += 1
       codexRefreshEpochRef.current += 1
     }
-  }, [refreshCodexOAuthCredentialState, refreshGithubProviderState])
+  }, [refreshCodexOAuthCredentialState])
 
   React.useEffect(() => {
     if (screen !== 'select-ollama-model') {
@@ -761,7 +685,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       const nextProfiles = getProviderProfiles()
       setProfiles(nextProfiles)
       setActiveProfileId(getActiveProviderProfile()?.id)
-      refreshGithubProviderState()
       refreshCodexOAuthCredentialState()
       isRefreshingRef.current = false
     })
@@ -830,39 +753,11 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
     try {
       // Defer sync I/O to next microtask - UI renders loading state first.
-      // setActiveProviderProfile(), activateGithubProvider(), and
-      // clearStartupProviderOverrideFromUserSettings() all perform sync file writes
-      // (saveGlobalConfig, saveProfileFile, updateSettingsForSource) which can
-      // block the main thread on Windows (antivirus, disk cache, NTFS metadata).
+      // setActiveProviderProfile() and clearStartupProviderOverrideFromUserSettings()
+      // perform sync file writes (saveGlobalConfig, saveProfileFile,
+      // updateSettingsForSource) which can block the main thread on Windows
+      // (antivirus, disk cache, NTFS metadata).
       await new Promise<void>(resolve => queueMicrotask(resolve))
-
-      if (profileId === GITHUB_PROVIDER_ID) {
-        providerLabel = GITHUB_PROVIDER_LABEL
-        const githubError = activateGithubProvider()
-        if (githubError) {
-          setErrorMessage(`Could not activate GitHub provider: ${githubError}`)
-          setIsActivating(false)
-          returnToMenu()
-          return
-        }
-
-        setAppState(prev => ({
-          ...prev,
-          mainLoopModel: GITHUB_PROVIDER_DEFAULT_MODEL,
-          mainLoopModelForSession: null,
-        }))
-        refreshProfiles()
-        setStatusMessage(`Active provider: ${GITHUB_PROVIDER_LABEL}`)
-        setIsActivating(false)
-        onDone({
-          action: 'activated',
-          activeProviderName: GITHUB_PROVIDER_LABEL,
-          activeProviderModel: GITHUB_PROVIDER_DEFAULT_MODEL,
-          message: `Provider switched to ${GITHUB_PROVIDER_LABEL} (${GITHUB_PROVIDER_DEFAULT_MODEL})`,
-        })
-        returnToMenu()
-        return
-      }
 
       const active = setActiveProviderProfile(profileId)
       if (!active) {
@@ -935,22 +830,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
   function closeWithCancelled(message: string): void {
     onDone({ action: 'cancelled', message })
-  }
-
-  function activateGithubProvider(): string | null {
-    // GitHub Copilot is a real preset profile (provider: 'openai' +
-    // extras.githubToken), so any user reaching this path already has a real
-    // profile via GithubDeviceFlowStep — nothing to flip here.
-    hydrateGithubModelsTokenFromSecureStorage()
-    return null
-  }
-
-  function deleteGithubProvider(): string | null {
-    const cleared = clearGithubModelsToken()
-    if (!cleared.success) {
-      return cleared.warning ?? 'Could not clear GitHub credentials.'
-    }
-    return null
   }
 
   function startCreateFromPreset(preset: ProviderPreset): void {
@@ -1786,7 +1665,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   function renderMenu(): React.ReactNode {
     // Use memoized menuOptions from component scope
     const hasProfiles = profiles.length > 0
-    const hasSelectableProviders = hasProfiles || githubProviderAvailable
+    const hasSelectableProviders = hasProfiles
 
     return (
       <Box flexDirection="column" gap={1}>
@@ -1798,29 +1677,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         </Text>
         {statusMessage && <Text>{statusMessage}</Text>}
         <Box flexDirection="column">
-          {profiles.length === 0 && !githubProviderAvailable ? (
-            isGithubCredentialSourceResolved ? (
-              <Text dimColor>No provider profiles configured yet.</Text>
-            ) : (
-              <Text dimColor>Checking GitHub Copilot credentials...</Text>
-            )
+          {profiles.length === 0 ? (
+            <Text dimColor>No provider profiles configured yet.</Text>
           ) : (
-            <>
-              {profiles.map(profile => (
-                <Text key={profile.id} dimColor>
-                  - {profile.name}: {profileSummary(profile, profile.id === activeProfileId)}
-                </Text>
-              ))}
-              {githubProviderAvailable ? (
-                <Text dimColor>
-                  - {GITHUB_PROVIDER_LABEL}:{' '}
-                  {getGithubProviderSummary(
-                    isGithubActive,
-                    githubCredentialSource,
-                  )}
-                </Text>
-              ) : null}
-            </>
+            profiles.map(profile => (
+              <Text key={profile.id} dimColor>
+                - {profile.name}: {profileSummary(profile, profile.id === activeProfileId)}
+              </Text>
+            ))
           )}
         </Box>
         <Select
@@ -1917,9 +1781,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     title: string,
     emptyMessage: string,
     onSelect: (profileId: string) => void,
-    options?: { includeGithub?: boolean },
   ): React.ReactNode {
-    const includeGithub = options?.includeGithub ?? false
     const selectOptions = profiles.map(profile => ({
       value: profile.id,
       label:
@@ -1928,16 +1790,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
           : profile.name,
       description: `${profile.provider === 'anthropic' ? 'anthropic' : 'openai-compatible'} · ${profile.baseUrl} · ${profile.model}`,
     }))
-
-    if (includeGithub && githubProviderAvailable) {
-      selectOptions.push({
-        value: GITHUB_PROVIDER_ID,
-        label: isGithubActive
-          ? `${GITHUB_PROVIDER_LABEL} (active)`
-          : GITHUB_PROVIDER_LABEL,
-        description: `github-models · ${GITHUB_PROVIDER_DEFAULT_BASE_URL} · ${getGithubProviderModel()}`,
-      })
-    }
 
     if (selectOptions.length === 0) {
       return (
@@ -2103,7 +1955,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         profileId => {
           void activateSelectedProvider(profileId)
         },
-        { includeGithub: true },
       )
       break
     case 'select-edit':
@@ -2120,18 +1971,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         'Delete provider',
         'No providers available. Add one first.',
         profileId => {
-          if (profileId === GITHUB_PROVIDER_ID) {
-            const githubDeleteError = deleteGithubProvider()
-            if (githubDeleteError) {
-              setErrorMessage(`Could not delete GitHub provider: ${githubDeleteError}`)
-            } else {
-              refreshProfiles()
-              setStatusMessage('GitHub provider deleted')
-            }
-            returnToMenu()
-            return
-          }
-
+          const targetProfile = profiles.find(p => p.id === profileId)
+          const deletedCopilotProfile =
+            targetProfile?.provider === 'openai' &&
+            targetProfile?.extras?.githubToken !== undefined
           const deletedCodexOAuthProfile =
             findCodexOAuthProfile(
               profiles,
@@ -2141,31 +1984,45 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
           if (!result.removed) {
             setErrorMessage('Could not delete provider.')
           } else {
+            const warnings: string[] = []
             if (deletedCodexOAuthProfile) {
               const cleared = clearCodexCredentials()
               if (!cleared.success) {
-                setErrorMessage(
+                warnings.push(
                   cleared.warning ??
-                    'Provider deleted, but Codex OAuth credentials could not be cleared.',
+                    'could not clear Codex OAuth credentials',
                 )
               } else {
                 setStoredCodexOAuthProfileId(undefined)
               }
               clearPersistedCodexOAuthProfile()
             }
+            if (deletedCopilotProfile) {
+              const cleared = clearGithubModelsToken()
+              if (!cleared.success) {
+                warnings.push(
+                  cleared.warning ??
+                    'could not clear GitHub Copilot token',
+                )
+              }
+            }
             const settingsOverrideError = result.activeProfileId
               ? clearStartupProviderOverrideFromUserSettings()
               : null
+            if (settingsOverrideError) {
+              warnings.push(
+                `could not clear startup provider override (${settingsOverrideError})`,
+              )
+            }
             refreshProfiles()
             setStatusMessage(
-              settingsOverrideError
-                ? `Provider deleted. Warning: could not clear startup provider override (${settingsOverrideError}).`
+              warnings.length > 0
+                ? `Provider deleted. Warning: ${warnings.join('; ')}.`
                 : 'Provider deleted',
             )
           }
           returnToMenu()
         },
-        { includeGithub: true },
       )
       break
     case 'menu':

@@ -6,6 +6,7 @@ import stripAnsi from 'strip-ansi'
 
 import { render } from '../../ink.js'
 import { AppStateProvider } from '../../state/AppState.js'
+import type { ProviderProfile } from '../../utils/config.js'
 import { buildProviderManagerCompletion } from './provider.js'
 
 const SYNC_START = '\x1B[?2026h'
@@ -170,4 +171,137 @@ test('GithubDeviceFlowStep renders already-authed screen when a token is stored'
   expect(output).toContain('You are already signed in to GitHub Copilot.')
   expect(output).toContain('Sign in again')
   expect(output).toContain('Back to /provider menu')
+})
+
+const realProviderProfilesForFinalize = await import(
+  '../../utils/providerProfiles.js'
+)
+
+afterAll(() => {
+  mock.module(
+    '../../utils/providerProfiles.js',
+    () => realProviderProfilesForFinalize,
+  )
+})
+
+function mockProviderProfilesForFinalize(options: {
+  profiles: ProviderProfile[]
+}): {
+  addProviderProfile: ReturnType<typeof mock>
+  updateProviderProfile: ReturnType<typeof mock>
+  setActiveProviderProfile: ReturnType<typeof mock>
+} {
+  const addProviderProfile = mock(() => null)
+  const updateProviderProfile = mock(() => null)
+  const setActiveProviderProfile = mock(() => null)
+  mock.module('../../utils/providerProfiles.js', () => ({
+    ...realProviderProfilesForFinalize,
+    getProviderProfiles: () => options.profiles,
+    addProviderProfile,
+    updateProviderProfile,
+    setActiveProviderProfile,
+  }))
+  return { addProviderProfile, updateProviderProfile, setActiveProviderProfile }
+}
+
+test('persistCopilotProfile updates existing Copilot profile when re-signing in with a non-Copilot active profile', async () => {
+  const copilotProfile = {
+    id: 'profile_copilot',
+    name: 'GitHub Copilot',
+    provider: 'openai' as const,
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'github:copilot',
+    apiKey: 'old-token',
+    extras: { githubToken: 'old-token' },
+  }
+  const anthropicProfile = {
+    id: 'profile_anthropic',
+    name: 'Anthropic',
+    provider: 'anthropic' as const,
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-6',
+  }
+  const mocks = mockProviderProfilesForFinalize({
+    profiles: [anthropicProfile, copilotProfile],
+  })
+
+  const { persistCopilotProfile } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-update-non-active'
+  )
+
+  const result = persistCopilotProfile('new-token', 'github:copilot')
+
+  expect(result).toEqual({ mode: 'updated' })
+  expect(mocks.addProviderProfile).not.toHaveBeenCalled()
+  expect(mocks.updateProviderProfile).toHaveBeenCalledTimes(1)
+  expect(mocks.updateProviderProfile).toHaveBeenCalledWith(
+    'profile_copilot',
+    expect.objectContaining({
+      apiKey: 'new-token',
+      extras: expect.objectContaining({ githubToken: 'new-token' }),
+    }),
+  )
+  expect(mocks.setActiveProviderProfile).toHaveBeenCalledWith('profile_copilot')
+})
+
+test('persistCopilotProfile updates the active Copilot profile in place', async () => {
+  const copilotProfile = {
+    id: 'profile_copilot',
+    name: 'GitHub Copilot',
+    provider: 'openai' as const,
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'github:copilot',
+    apiKey: 'old-token',
+    extras: { githubToken: 'old-token' },
+  }
+  const mocks = mockProviderProfilesForFinalize({ profiles: [copilotProfile] })
+
+  const { persistCopilotProfile } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-update-active'
+  )
+
+  persistCopilotProfile('refreshed-token')
+
+  expect(mocks.addProviderProfile).not.toHaveBeenCalled()
+  expect(mocks.updateProviderProfile).toHaveBeenCalledTimes(1)
+  expect(mocks.updateProviderProfile.mock.calls[0]?.[1]).toMatchObject({
+    apiKey: 'refreshed-token',
+    extras: { githubToken: 'refreshed-token' },
+  })
+})
+
+test('persistCopilotProfile creates a new Copilot profile when none exists', async () => {
+  const anthropicProfile = {
+    id: 'profile_anthropic',
+    name: 'Anthropic',
+    provider: 'anthropic' as const,
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-6',
+  }
+  const mocks = mockProviderProfilesForFinalize({
+    profiles: [anthropicProfile],
+  })
+
+  const { persistCopilotProfile } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-create'
+  )
+
+  persistCopilotProfile('fresh-token')
+
+  expect(mocks.updateProviderProfile).not.toHaveBeenCalled()
+  expect(mocks.setActiveProviderProfile).not.toHaveBeenCalled()
+  expect(mocks.addProviderProfile).toHaveBeenCalledTimes(1)
+  expect(mocks.addProviderProfile.mock.calls[0]?.[0]).toMatchObject({
+    provider: 'openai',
+    name: 'GitHub Copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    apiKey: 'fresh-token',
+    extras: { githubToken: 'fresh-token' },
+  })
+  expect(mocks.addProviderProfile.mock.calls[0]?.[1]).toEqual({
+    makeActive: true,
+  })
 })

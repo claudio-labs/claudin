@@ -85,5 +85,5 @@ test('GitHub provider exposes default + all Copilot models in /model options', a
 
   expect(nonDefault.length).toBeGreaterThan(1)
   expect(nonDefault.some((o: { value: unknown }) => o.value === 'gpt-4o')).toBe(true)
-  expect(nonDefault.some((o: { value: unknown }) => o.value === 'gpt-5.3-codex')).toBe(true)
+  expect(nonDefault.some((o: { value: unknown }) => o.value === 'gpt-5.2-codex')).toBe(true)
 })

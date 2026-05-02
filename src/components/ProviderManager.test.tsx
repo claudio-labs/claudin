@@ -145,17 +145,6 @@ async function navigateToPreset(
   }
 }
 
-function createDeferred<T>(): {
-  promise: Promise<T>
-  resolve: (value: T) => void
-} {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>(r => {
-    resolve = r
-  })
-  return { promise, resolve }
-}
-
 // Spread into plain objects so we hold a SNAPSHOT, not a live ESM namespace.
 // Bun's `await import` returns live bindings that mutate when the module is
 // re-mocked, so `() => realProviderProfilesForPm` would otherwise hand back
@@ -238,8 +227,6 @@ function mockProviderProfilesModule(options?: {
 }
 
 function mockProviderManagerDependencies(
-  githubSyncRead: () => string | undefined,
-  githubAsyncRead: () => Promise<string | undefined>,
   options?: {
     addProviderProfile?: (...args: unknown[]) => unknown
     applySavedProfileToCurrentSession?: (...args: unknown[]) => Promise<string | null>
@@ -301,10 +288,6 @@ function mockProviderManagerDependencies(
 
   mock.module('../utils/githubModelsCredentials.js', () => ({
     clearGithubModelsToken: () => ({ success: true }),
-    GITHUB_MODELS_HYDRATED_ENV_MARKER: 'CLAUDE_CODE_GITHUB_TOKEN_HYDRATED',
-    hydrateGithubModelsTokenFromSecureStorage: () => {},
-    readGithubModelsToken: githubSyncRead,
-    readGithubModelsTokenAsync: githubAsyncRead,
   }))
 
   mock.module('../utils/codexCredentials.js', () => ({
@@ -458,75 +441,40 @@ afterAll(() => {
   mock.module('../utils/providerProfiles.js', () => realProviderProfilesForPm)
 })
 
-test('ProviderManager resolves GitHub virtual provider from async storage without sync reads in render flow', async () => {
+test('ProviderManager renders the GitHub Copilot profile exactly once when a real Copilot profile exists', async () => {
+  // Regression: previously a synthetic "__github_models__" virtual entry was
+  // injected whenever the secure-storage Copilot token existed, which double-
+  // listed Copilot once GithubDeviceFlowStep started creating real profiles.
   delete process.env.CLAUDE_CODE_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  const syncRead = mock(() => {
-    throw new Error('sync credential read should not run in ProviderManager render flow')
-  })
-  const asyncRead = mock(async () => 'stored-token')
+  const copilotProfile = {
+    id: 'profile_copilot',
+    name: 'GitHub Copilot',
+    provider: 'openai' as const,
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'github:copilot',
+    apiKey: 'gh-token',
+    extras: { githubToken: 'gh-token' },
+  }
 
-  mockProviderManagerDependencies(syncRead, asyncRead)
+  mockProviderManagerDependencies({
+    getProviderProfiles: () => [copilotProfile],
+    getActiveProviderProfile: () => copilotProfile,
+  })
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
   const output = await renderProviderManagerFrame(ProviderManager, {
     waitForOutput: frame =>
-      frame.includes('Provider manager') &&
-      frame.includes('GitHub Copilot') &&
-      frame.includes('token stored'),
+      frame.includes('Provider manager') && frame.includes('GitHub Copilot'),
   })
 
-  expect(output).toContain('Provider manager')
-  expect(output).toContain('GitHub Copilot')
-  expect(output).toContain('token stored')
-  expect(output).not.toContain('No provider profiles configured yet.')
-
-  expect(syncRead).not.toHaveBeenCalled()
-  expect(asyncRead).toHaveBeenCalled()
-})
-
-test('ProviderManager avoids first-frame false negative while stored-token lookup is pending', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
-  delete process.env.GITHUB_TOKEN
-  delete process.env.GH_TOKEN
-
-  const syncRead = mock(() => {
-    throw new Error('sync credential read should not run in ProviderManager render flow')
-  })
-  const deferredStoredToken = createDeferred<string | undefined>()
-  const asyncRead = mock(async () => deferredStoredToken.promise)
-
-  mockProviderManagerDependencies(syncRead, asyncRead)
-
-  const nonce = `${Date.now()}-${Math.random()}`
-  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
-  const mounted = await mountProviderManager(ProviderManager)
-
-  const firstFrame = await waitForFrameOutput(
-    mounted.getOutput,
-    frame => frame.includes('Provider manager'),
-  )
-
-  expect(firstFrame).toContain('Checking GitHub Copilot credentials...')
-  expect(firstFrame).not.toContain('No provider profiles configured yet.')
-
-  deferredStoredToken.resolve('stored-token')
-
-  const resolvedFrame = await waitForFrameOutput(
-    mounted.getOutput,
-    frame => frame.includes('GitHub Copilot') && frame.includes('token stored'),
-  )
-
-  expect(resolvedFrame).toContain('GitHub Copilot')
-  expect(resolvedFrame).toContain('token stored')
-
-  await mounted.dispose()
-
-  expect(syncRead).not.toHaveBeenCalled()
-  expect(asyncRead).toHaveBeenCalled()
+  const copilotMatches = output.match(/GitHub Copilot/g) ?? []
+  expect(copilotMatches.length).toBe(1)
+  expect(output).not.toContain('github-models · https://models.github.ai/inference')
+  expect(output).not.toContain('Checking GitHub Copilot credentials...')
 })
 
 test('ProviderManager preset list includes GitHub Copilot entry positioned after Codex OAuth', async () => {
@@ -535,10 +483,7 @@ test('ProviderManager preset list includes GitHub Copilot entry positioned after
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-  )
+  mockProviderManagerDependencies()
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -578,10 +523,7 @@ test('ProviderManager first-run Ollama preset auto-detects installed models', as
     apiKey: payload.apiKey,
   }))
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    {
+  mockProviderManagerDependencies({
       addProviderProfile,
       probeOllamaGenerationReadiness: async () => ({
         state: 'ready',
@@ -667,10 +609,7 @@ test('ProviderManager activating a multi-model provider sets the session model t
   const setActiveProviderProfile = mock(() => multiModelProfile)
   const appStateChanges: Array<{ newState: any; oldState: any }> = []
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    {
+  mockProviderManagerDependencies({
       getProviderProfiles: () => [multiModelProfile],
       setActiveProviderProfile,
     },
@@ -749,10 +688,7 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
   const updateProviderProfile = mock(() => multiModelProfile)
   const appStateChanges: Array<{ newState: any; oldState: any }> = []
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    {
+  mockProviderManagerDependencies({
       getActiveProviderProfile: () => multiModelProfile,
       getProviderProfiles: () => [multiModelProfile],
       updateProviderProfile,
@@ -854,8 +790,6 @@ test('ProviderManager resolves Codex OAuth state from async storage without sync
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  const githubSyncRead = mock(() => undefined)
-  const githubAsyncRead = mock(async () => undefined)
   const codexSyncRead = mock(() => {
     throw new Error('sync codex credential read should not run in ProviderManager render flow')
   })
@@ -864,7 +798,7 @@ test('ProviderManager resolves Codex OAuth state from async storage without sync
     refreshToken: 'codex-refresh-token',
   }))
 
-  mockProviderManagerDependencies(githubSyncRead, githubAsyncRead, {
+  mockProviderManagerDependencies({
     codexSyncRead,
     codexAsyncRead,
   })
@@ -889,10 +823,7 @@ test('ProviderManager hides Codex OAuth setup in bare mode', async () => {
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  const githubSyncRead = mock(() => undefined)
-  const githubAsyncRead = mock(async () => undefined)
-
-  mockProviderManagerDependencies(githubSyncRead, githubAsyncRead)
+  mockProviderManagerDependencies()
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -929,11 +860,9 @@ test('ProviderManager Bedrock preset collects awsRegion before form', async () =
     extras: payload.extras,
   }))
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    { addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown },
-  )
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown,
+  })
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -1003,11 +932,9 @@ test('ProviderManager Vertex preset collects gcpProject and gcpRegion', async ()
     extras?: Record<string, unknown>
   }) => ({ id: 'provider_vertex', ...payload }))
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    { addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown },
-  )
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown,
+  })
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -1072,11 +999,9 @@ test('ProviderManager Foundry preset collects azureResource', async () => {
     extras?: Record<string, unknown>
   }) => ({ id: 'provider_foundry', ...payload }))
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-    { addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown },
-  )
+  mockProviderManagerDependencies({
+    addProviderProfile: addProviderProfile as unknown as (...args: unknown[]) => unknown,
+  })
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -1129,10 +1054,7 @@ test('ProviderManager Anthropic preset shows OAuth vs API-key choice', async () 
   delete process.env.GH_TOKEN
 
   const onDone = mock(() => {})
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-  )
+  mockProviderManagerDependencies()
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -1166,10 +1088,7 @@ test('ProviderManager Anthropic API-key path leads to form', async () => {
   delete process.env.GH_TOKEN
 
   const onDone = mock(() => {})
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-  )
+  mockProviderManagerDependencies()
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
@@ -1208,10 +1127,7 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-  )
+  mockProviderManagerDependencies()
 
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
@@ -1239,10 +1155,7 @@ test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is abse
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
-  mockProviderManagerDependencies(
-    () => undefined,
-    async () => undefined,
-  )
+  mockProviderManagerDependencies()
 
   mock.module('../utils/claudioMigration.js', () => ({
     ...realClaudioMigrationForPm,
