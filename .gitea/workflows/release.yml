@@ -26,12 +26,17 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
         env:
-          GITHUB_SERVER_URL: http://git.house.server:3000
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITEA_TOKEN }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          REPO_URL: http://git.house.server:3000/${{ github.repository }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE"
+          rm -rf .git
+          git init -q
+          git remote add origin "http://oauth2:${GITEA_TOKEN}@git.house.server:3000/${{ github.repository }}"
+          git fetch -q --tags origin
+          git checkout -q "${{ github.sha }}"
 
       - name: Configure git identity
         run: |

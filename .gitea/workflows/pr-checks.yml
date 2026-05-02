@@ -15,11 +15,17 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
         env:
-          GITHUB_SERVER_URL: http://git.house.server:3000
-        with:
-          fetch-depth: 0
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          REPO_URL: http://git.house.server:3000/${{ github.repository }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE"
+          rm -rf .git
+          git init -q
+          git remote add origin "$REPO_URL"
+          git -c http.extraheader="AUTHORIZATION: bearer $GITEA_TOKEN" fetch -q --no-tags origin
+          git checkout -q "${{ github.sha }}"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

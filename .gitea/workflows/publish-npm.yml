@@ -14,12 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
         env:
-          GITHUB_SERVER_URL: http://git.house.server:3000
-        with:
-          ref: ${{ github.event.release.tag_name }}
-          fetch-depth: 0
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          REPO_URL: http://git.house.server:3000/${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE"
+          rm -rf .git
+          git init -q
+          git remote add origin "$REPO_URL"
+          git -c http.extraheader="AUTHORIZATION: bearer $GITEA_TOKEN" fetch -q --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG"
+          git checkout -q "$TAG"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
