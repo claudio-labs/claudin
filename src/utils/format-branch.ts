@@ -3,7 +3,17 @@ import type { Theme } from './theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE0A0' // Powerline branch glyph
+const SEP_LEFT = ''    // Powerline left-arrow filled — opens pill from default bg
+const PR_ICON = ''     // Nerd Font octicon git-pull-request
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
+
+function resolveBranchBg(theme: Theme): string {
+  const raw = theme.messageActionsBackground
+  // In light-ansi, messageActionsBackground = 'ansi:white' which equals the
+  // terminal default — the segment bg + cap arrows would be invisible.
+  // Fall back to theme.inactive (a contrasting gray) for that case.
+  return raw === 'ansi:white' || raw === 'ansi:whiteBright' ? theme.inactive : raw
+}
 
 /**
  * Compose a theme Color string (rgb/hex/ansi:/ansi256) onto a chalk instance,
@@ -86,4 +96,89 @@ export function buildBranchBorderSegment(
   }
 
   return seg
+}
+
+/**
+ * Standalone cwd Powerline pill: `[◄ ~/path ►]`. Same colours as the cwd half
+ * of `buildBranchBorderSegment`; caps on both sides so it can sit anywhere on
+ * a border (start, end, or adjacent to other pills).
+ */
+export function buildCwdPill(displayCwd: string, theme: Theme): string {
+  const cwdBg = theme.suggestion
+  const cwdFg = theme.inverseText
+  const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
+  const capChalk = applyColor(chalk, cwdBg, 'fg')
+  return capChalk(SEP_LEFT) + cwdChalk(` ${displayCwd} `) + capChalk(SEP)
+}
+
+/**
+ * Standalone branch Powerline pill: `[◄ ⎇ branch (↑N ↓M) ►]`. Caps on both
+ * sides so it can be placed independently of the cwd pill (e.g. on the
+ * top-right border of the prompt input).
+ */
+export function buildBranchPill(
+  branch: string,
+  ahead: number,
+  behind: number,
+  theme: Theme,
+): string {
+  if (!branch) return ''
+  const branchBg = resolveBranchBg(theme)
+  const branchFg = theme.suggestion
+  const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
+  const capChalk = applyColor(chalk, branchBg, 'fg')
+
+  let seg = capChalk(SEP_LEFT)
+  seg += branchChalk(` ${BRANCH_ICON} ${branch}`)
+  if (ahead > 0 || behind > 0) {
+    seg += branchChalk(' (')
+    if (ahead > 0)
+      seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.success, 'fg')(`↑${ahead}`)
+    if (ahead > 0 && behind > 0) seg += branchChalk(' ')
+    if (behind > 0)
+      seg += applyColor(applyColor(chalk, branchBg, 'bg'), theme.warning, 'fg')(`↓${behind}`)
+    seg += branchChalk(')')
+  }
+  seg += branchChalk(' ')
+  seg += capChalk(SEP)
+  return seg
+}
+
+export type PrPillState =
+  | 'approved'
+  | 'changes_requested'
+  | 'pending'
+  | 'merged'
+  | 'draft'
+  | 'closed'
+  | null
+  | undefined
+
+/**
+ * Standalone PR Powerline pill: `[◄ PR #n ►]`. Shares the branch pill's
+ * background for visual cohesion; the `#n` is coloured by review state.
+ */
+export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme): string {
+  const branchBg = resolveBranchBg(theme)
+  const numberFg =
+    state === 'approved'
+      ? theme.success
+      : state === 'changes_requested'
+        ? theme.error
+        : state === 'pending'
+          ? theme.warning
+          : state === 'merged'
+            ? theme.merged
+            : theme.inactive
+  const labelChalk = applyColor(applyColor(chalk, branchBg, 'bg'), theme.inactive, 'fg')
+  const numChalk = applyColor(applyColor(chalk, branchBg, 'bg'), numberFg, 'fg')
+  const capChalk = applyColor(chalk, branchBg, 'fg')
+
+  return (
+    capChalk(SEP_LEFT) +
+    labelChalk(` ${PR_ICON} `) +
+    numChalk(`#${prNumber}`) +
+    labelChalk(' ') +
+    capChalk(SEP)
+  )
 }

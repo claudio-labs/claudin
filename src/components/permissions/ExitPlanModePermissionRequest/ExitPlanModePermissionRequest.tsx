@@ -528,7 +528,7 @@ export function ExitPlanModePermissionRequest({
   // Show cwd/branch on the sticky footer border during plan mode, matching the
   // PromptInput bottom-border display (same info, same format).
   const useStickyFooter = !isEmpty && !!setStickyFooter;
-  const cwdBranchSegment = useCwdBranchSegment({ enabled: useStickyFooter });
+  const { combined: cwdBranchSegment } = useCwdBranchSegment({ enabled: useStickyFooter });
   // Memoize to preserve object identity when the segment string is unchanged —
   // the useLayoutEffect below has cwdBranchBorderText in its deps, so a fresh
   // literal each render would re-run setStickyFooter on every parent render.

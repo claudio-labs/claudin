@@ -2003,7 +2003,7 @@ function PromptInput({
   const fastModeCooldown = isFastModeEnabled() ? isFastModeCooldown() : false;
   const showFastIcon = isFastModeEnabled() ? isFastMode && (isFastModeAvailable() || fastModeCooldown) : false;
   const showFastIconHint = useShowFastIconHint(showFastIcon ?? false);
-  const cwdBranchSegment = useCwdBranchSegment({ isLoading, withPr: true });
+  const { cwd: cwdSegment, branch: branchSegment, pr: prSegment } = useCwdBranchSegment({ isLoading, withPr: true });
 
   // Show effort notification on startup and when effort changes.
   // Suppressed in brief/assistant mode — the value reflects the local
@@ -2305,7 +2305,7 @@ function PromptInput({
             </Box>
           </Box>
           <Text color={swarmBanner.bgColor}>{'─'.repeat(columns)}</Text>
-        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderTop={false} borderBottom width="100%" paddingY={1} borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdBranchSegment)}>
+        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderTop={false} borderBottom width="100%" paddingY={1} borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdSegment, branchSegment, prSegment)}>
           <PromptInputModeIndicator mode={mode} isLoading={isLoading} viewingAgentName={viewingAgentName} viewingAgentColor={viewingAgentColor} />
           <Box flexGrow={1} flexShrink={1} onClick={handleInputClick}>
             {textInputElement}
@@ -2369,25 +2369,24 @@ function buildBorderText(
   showFastIcon: boolean,
   showFastIconHint: boolean,
   fastModeCooldown: boolean,
-  cwdBranchSegment: string,
+  cwdSegment: string,
+  branchSegment: string,
+  prSegment: string,
 ): BorderTextOptions | BorderTextOptions[] | undefined {
   const segments: BorderTextOptions[] = [];
 
-  if (cwdBranchSegment) {
+  // Bottom-right: fast-icon (when active) + cwd pill + branch pill + PR pill,
+  // composed as one content string so the pieces stay adjacent and anchored
+  // to the right edge. Order: [fast] [cwd][branch][PR] — PR is rightmost.
+  const fastSeg = showFastIcon
+    ? showFastIconHint
+      ? ` ${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')} `
+      : ` ${getFastIconString(true, fastModeCooldown)} `
+    : '';
+  const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
+  if (bottomRight) {
     segments.push({
-      content: cwdBranchSegment,
-      position: 'bottom',
-      align: 'start',
-      offset: 0,
-    });
-  }
-
-  if (showFastIcon) {
-    const fastSeg = showFastIconHint
-      ? `${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')}`
-      : getFastIconString(true, fastModeCooldown);
-    segments.push({
-      content: ` ${fastSeg} `,
+      content: bottomRight,
       position: 'bottom',
       align: 'end',
       offset: 0,

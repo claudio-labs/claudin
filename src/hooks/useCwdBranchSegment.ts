@@ -2,7 +2,12 @@ import chalk from 'chalk'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../components/design-system/ThemeProvider.js'
 import { getCwd } from '../utils/cwd.js'
-import { buildBranchBorderSegment } from '../utils/format-branch.js'
+import {
+  buildBranchBorderSegment,
+  buildBranchPill,
+  buildCwdPill,
+  buildPrPill,
+} from '../utils/format-branch.js'
 import { type PrReviewState } from '../utils/ghPrStatus.js'
 import { getAheadBehind, getBranch } from '../utils/git.js'
 import { getTheme } from '../utils/theme.js'
@@ -11,11 +16,28 @@ import { usePrStatus } from './usePrStatus.js'
 export interface UseCwdBranchSegmentOptions {
   /** When a tool finishes (e.g. git push), trigger an immediate refresh. */
   isLoading?: boolean
-  /** Skip polling entirely and return an empty string. Defaults to true. */
+  /** Skip polling entirely and return empty segments. Defaults to true. */
   enabled?: boolean
-  /** Append PR badge (number + review-state color) when available. */
+  /** Compute PR badge (number + review-state color) when available. */
   withPr?: boolean
 }
+
+export interface CwdBranchSegments {
+  /** Standalone cwd pill `[ ~/path ►]`. */
+  cwd: string
+  /** Standalone branch pill `[◄ ⎇ branch (↑N) ►]`. Empty if no branch. */
+  branch: string
+  /** Standalone PR pill `[◄ PR #n ►]`. Empty if no PR or `withPr: false`. */
+  pr: string
+  /**
+   * Legacy combined segment: cwd + branch + (PR text appended). Kept for
+   * back-compat with callers (e.g. plan-mode sticky footer) that still want
+   * the single pre-split rendering.
+   */
+  combined: string
+}
+
+const EMPTY_SEGMENTS: CwdBranchSegments = { cwd: '', branch: '', pr: '', combined: '' }
 
 function colorizePrNumber(state: PrReviewState | null | undefined): (s: string) => string {
   switch (state) {
@@ -33,16 +55,16 @@ function colorizePrNumber(state: PrReviewState | null | undefined): (s: string) 
 }
 
 /**
- * Returns the pre-rendered Powerline-style "cwd  branch [PR #n]" segment used
- * on the bottom border of the prompt input box and the plan-mode sticky footer.
+ * Returns the Powerline-style cwd / branch / PR segments used on the prompt
+ * input border (and the plan-mode sticky footer via the `combined` field).
  *
  * Polls cwd/branch/ahead-behind every 2s (cache-hit fast path under getBranch);
  * PR status polled separately by `usePrStatus` only when `withPr` is true.
  *
- * Returns empty string while disabled or before the first branch lookup
+ * Returns all-empty segments while disabled or before the first branch lookup
  * resolves — callers can use that to skip rendering and avoid a partial flash.
  */
-export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): string {
+export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): CwdBranchSegments {
   const { isLoading = false, enabled = true, withPr = false } = opts
   const cwd = getCwd()
   const [themeName] = useTheme()
@@ -86,22 +108,31 @@ export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): stri
     }
   }, [cwd, isLoading, enabled])
 
-  if (!enabled) return ''
+  if (!enabled) return EMPTY_SEGMENTS
 
   const home = process.env.HOME || ''
   const displayCwd =
     cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd
+  const theme = getTheme(themeName)
 
-  let segment = buildBranchBorderSegment(
+  const cwdPill = buildCwdPill(displayCwd, theme)
+  const branchPill = buildBranchPill(branch, aheadBehind.ahead, aheadBehind.behind, theme)
+  const prPill =
+    withPr && branch && pr.number !== null && pr.url !== null
+      ? buildPrPill(pr.number, pr.reviewState, theme)
+      : ''
+
+  let combined = buildBranchBorderSegment(
     displayCwd,
     branch,
     aheadBehind.ahead,
     aheadBehind.behind,
-    getTheme(themeName),
+    theme,
   )
   if (withPr && pr.number !== null && pr.url !== null) {
     const colorize = colorizePrNumber(pr.reviewState)
-    segment += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number)
+    combined += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number)
   }
-  return segment
+
+  return { cwd: cwdPill, branch: branchPill, pr: prPill, combined }
 }
