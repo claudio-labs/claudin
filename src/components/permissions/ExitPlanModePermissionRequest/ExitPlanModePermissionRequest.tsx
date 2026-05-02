@@ -48,11 +48,7 @@ import type { ImageDimensions } from '../../../utils/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.js';
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
 import type { BorderTextOptions } from '../../../ink/render-border.js';
-import { getCwd } from '../../../utils/cwd.js';
-import { useTheme } from '../../design-system/ThemeProvider.js';
-import { buildBranchBorderSegment } from '../../../utils/format-branch.js';
-import { getAheadBehind, getBranch } from '../../../utils/git.js';
-import { getTheme } from '../../../utils/theme.js';
+import { useCwdBranchSegment } from '../../../hooks/useCwdBranchSegment.js';
 type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
 
 /**
@@ -529,38 +525,24 @@ export function ExitPlanModePermissionRequest({
     onReject();
     toolUseConfirm.onReject();
   };
-  // Poll cwd/branch so it stays visible on the sticky footer border during plan mode,
-  // matching the PromptInput top-border display (same info, same format).
-  const cwd = getCwd();
-  const [themeName] = useTheme();
-  const [cwdBranchBorderText, setCwdBranchBorderText] = useState<BorderTextOptions | undefined>(undefined);
+  // Show cwd/branch on the sticky footer border during plan mode, matching the
+  // PromptInput bottom-border display (same info, same format).
   const useStickyFooter = !isEmpty && !!setStickyFooter;
-  useEffect(() => {
-    if (!useStickyFooter) return;
-    let cancelled = false;
-    const refresh = () => {
-      const home = process.env.HOME || '';
-      const displayCwd =
-        cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd;
-      void Promise.all([getBranch(), getAheadBehind()]).then(([branch, ab]) => {
-        if (cancelled) return;
-        const seg = buildBranchBorderSegment(displayCwd, branch, ab.ahead, ab.behind, getTheme(themeName));
-        setCwdBranchBorderText(prev =>
-          prev?.content === seg ? prev : { content: seg, position: 'top', align: 'start', offset: 0 },
-        );
-      });
-    };
-    refresh();
-    const t = setInterval(refresh, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [useStickyFooter, cwd, themeName]);
+  const cwdBranchSegment = useCwdBranchSegment({ enabled: useStickyFooter });
+  // Memoize to preserve object identity when the segment string is unchanged —
+  // the useLayoutEffect below has cwdBranchBorderText in its deps, so a fresh
+  // literal each render would re-run setStickyFooter on every parent render.
+  const cwdBranchBorderText = useMemo<BorderTextOptions | undefined>(
+    () =>
+      cwdBranchSegment
+        ? { content: cwdBranchSegment, position: 'bottom', align: 'start', offset: 0 }
+        : undefined,
+    [cwdBranchSegment],
+  );
 
   useLayoutEffect(() => {
     if (!useStickyFooter) return;
-    setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderBottom={false} paddingX={1} borderText={cwdBranchBorderText}>
+    setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderTop={false} paddingX={1} borderText={cwdBranchBorderText}>
         <Text dimColor>Would you like to proceed?</Text>
         <Box marginTop={1}>
           <Select options={options} onChange={v => void handleResponseRef.current(v)} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />

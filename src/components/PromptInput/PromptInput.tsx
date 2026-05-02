@@ -1,8 +1,5 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
-import { useTheme } from '../design-system/ThemeProvider.js';
-import { buildBranchBorderSegment } from '../../utils/format-branch.js';
-import { getTheme } from '../../utils/theme.js';
 import * as path from 'path';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -37,9 +34,7 @@ import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { useTypeahead } from '../../hooks/useTypeahead.js';
 import type { BorderTextOptions } from '../../ink/render-border.js';
 import { stringWidth } from '../../ink/stringWidth.js';
-import { getAheadBehind, getBranch } from '../../utils/git.js';
-import { usePrStatus } from '../../hooks/usePrStatus.js';
-import type { PrReviewState } from '../../utils/ghPrStatus.js';
+import { useCwdBranchSegment } from '../../hooks/useCwdBranchSegment.js';
 import { Box, type ClickEvent, type Key, Text, useInput } from '../../ink.js';
 import { useOptionalKeybindingContext } from '../../keybindings/KeybindingContext.js';
 import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js';
@@ -2008,7 +2003,7 @@ function PromptInput({
   const fastModeCooldown = isFastModeEnabled() ? isFastModeCooldown() : false;
   const showFastIcon = isFastModeEnabled() ? isFastMode && (isFastModeAvailable() || fastModeCooldown) : false;
   const showFastIconHint = useShowFastIconHint(showFastIcon ?? false);
-  const cwdBranchSegment = useCwdBranchSegment(isLoading);
+  const cwdBranchSegment = useCwdBranchSegment({ isLoading, withPr: true });
 
   // Show effort notification on startup and when effort changes.
   // Suppressed in brief/assistant mode — the value reflects the local
@@ -2310,7 +2305,7 @@ function PromptInput({
             </Box>
           </Box>
           <Text color={swarmBanner.bgColor}>{'─'.repeat(columns)}</Text>
-        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%" paddingY={1} borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdBranchSegment)}>
+        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderTop={false} borderBottom width="100%" paddingY={1} borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdBranchSegment)}>
           <PromptInputModeIndicator mode={mode} isLoading={isLoading} viewingAgentName={viewingAgentName} viewingAgentColor={viewingAgentColor} />
           <Box flexGrow={1} flexShrink={1} onClick={handleInputClick}>
             {textInputElement}
@@ -2381,7 +2376,7 @@ function buildBorderText(
   if (cwdBranchSegment) {
     segments.push({
       content: cwdBranchSegment,
-      position: 'top',
+      position: 'bottom',
       align: 'start',
       offset: 0,
     });
@@ -2393,7 +2388,7 @@ function buildBorderText(
       : getFastIconString(true, fastModeCooldown);
     segments.push({
       content: ` ${fastSeg} `,
-      position: 'top',
+      position: 'bottom',
       align: 'end',
       offset: 0,
     });
@@ -2402,105 +2397,5 @@ function buildBorderText(
   if (segments.length === 0) return undefined;
   return segments.length === 1 ? segments[0] : segments;
 }
-
-/**
- * Returns the pre-rendered "cwd  branch" text shown on the top border of
- * the input box. Empty string when not in a git repo or before the branch
- * lookup resolves (avoids flashing a partial segment on first paint).
- *
- * Branch glyph is the Powerline branch () — requires a Nerd Font.
- * Terminals without one will see a missing-glyph box; that's a deliberate
- * trade for matching the rest of the dev-tooling ecosystem.
- */
-/**
- * Map a PR review state to a chalk colorizer matching `PrBadge`'s palette,
- * so the inline border PR badge reads the same as the footer one used to.
- */
-function colorizePrNumber(state: PrReviewState | null | undefined): (s: string) => string {
-  switch (state) {
-    case 'approved':
-      return chalk.green;
-    case 'changes_requested':
-      return chalk.red;
-    case 'pending':
-      return chalk.yellow;
-    case 'merged':
-      return chalk.magenta;
-    default:
-      return chalk.dim;
-  }
-}
-
-function useCwdBranchSegment(isLoading: boolean): string {
-  const cwd = getCwd();
-  const [themeName] = useTheme();
-  const [branch, setBranch] = useState<string>('');
-  const [aheadBehind, setAheadBehind] = useState<{ ahead: number; behind: number }>({
-    ahead: 0,
-    behind: 0,
-  });
-  // PR badge data — same hook the footer used. Polls `gh pr view` every
-  // 60s while the session is active.
-  const pr = usePrStatus(isLoading, true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Poll the cached branch every 2s. The git watcher under getBranch()
-    // marks its cache dirty when .git/HEAD changes (branch switch, rebase,
-    // detach, etc.) — so most calls are instant cache hits, and re-reads
-    // happen only after a real switch. Polling instead of subscribing
-    // because the watcher doesn't expose an event API.
-    const refresh = () => {
-      getBranch()
-        .then(b => {
-          if (cancelled) return;
-          setBranch(prev => (prev === (b ?? '') ? prev : (b ?? '')));
-        })
-        .catch(() => {
-          if (!cancelled) setBranch('');
-        });
-      // ahead/behind: forks `git rev-list` so it's slower than getBranch().
-      // Reuse the same 2s tick — fine in practice since the call is cheap on
-      // small repos and bounded by git's own caching.
-      getAheadBehind()
-        .then(ab => {
-          if (cancelled) return;
-          setAheadBehind(prev =>
-            prev.ahead === ab.ahead && prev.behind === ab.behind ? prev : ab,
-          );
-        })
-        .catch(() => {
-          if (!cancelled) setAheadBehind({ ahead: 0, behind: 0 });
-        });
-    };
-
-    refresh();
-    const interval = setInterval(refresh, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-    // isLoading: trigger an immediate refresh whenever a tool (e.g. git push)
-    // finishes so the ahead/behind indicator updates right away instead of
-    // waiting up to 2s for the next polling tick.
-  }, [cwd, isLoading]);
-
-  const home = process.env.HOME || '';
-  const displayCwd =
-    cwd === home
-      ? '~'
-      : home && cwd.startsWith(home + '/')
-        ? '~' + cwd.slice(home.length)
-        : cwd;
-
-  let segment = buildBranchBorderSegment(displayCwd, branch, aheadBehind.ahead, aheadBehind.behind, getTheme(themeName));
-  if (pr.number !== null && pr.url !== null) {
-    const colorize = colorizePrNumber(pr.reviewState);
-    segment += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number);
-  }
-  return segment;
-}
-
 
 export default React.memo(PromptInput);
