@@ -85,7 +85,7 @@ Override the location with `CLAUDIO_CONFIG_DIR=/path/to/dir`.
 
 ### Performance flags
 
-- `CLAUDIO_DEFER_HIGHLIGHT=1` (opt-in) skips syntax highlighting on a fenced code block while it's still streaming, then runs one final pass when the fence closes. Cuts ~85 % of cumulative streaming-render CPU on responses with code blocks. Trade-off: plain monospace mid-stream and a one-shot color flash when the fence closes. See `scripts/profile/README.md` for the harness that measured this.
+- Streaming-highlight deferral is **on by default**: syntax highlighting on a fenced code block is skipped while the fence is still open, then a final pass runs once the fence closes. Cuts ~85 % of cumulative streaming-render CPU on responses with code blocks. Trade-off: plain monospace mid-stream and a one-shot color flash when the fence closes. Set `CLAUDIO_DEFER_HIGHLIGHT=0` to restore the always-highlight behavior. See `scripts/profile/README.md` for the harness that measured this.
 
 ### Using Ollama's launch command
 

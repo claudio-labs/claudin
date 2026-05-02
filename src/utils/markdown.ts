@@ -16,15 +16,15 @@ import type { ThemeName } from './theme.js'
 // causing styled text to shift right.
 const EOL = '\n'
 
-// Opt-in: skip syntax highlighting while a fenced code block is still
-// streaming (raw doesn't end with closing ```). One final highlight pass
-// runs once the fence closes. Measured ~8× lower cumulative cost during
-// streaming render in scripts/profile/streaming-bench.ts (~27 ms → ~3 ms
-// for a 50-line TypeScript block). Per-snapshot cost is sub-frame in both
-// modes, so the gain is CPU/battery, not perceived smoothness.
-// Trade-off: user sees plain monospace code mid-stream and a one-shot
-// color flash on fence close. Off by default until UX is validated.
-const DEFER_OPEN_FENCE_HIGHLIGHT = process.env.CLAUDIO_DEFER_HIGHLIGHT === '1'
+// Skip syntax highlighting while a fenced code block is still streaming
+// (raw doesn't end with closing ```). One final highlight pass runs once
+// the fence closes. Measured ~8× lower cumulative cost during streaming
+// render in scripts/profile/streaming-bench.ts (~27 ms → ~3 ms for a
+// 50-line TypeScript block). Per-snapshot cost is sub-frame in both modes,
+// so the gain is CPU/battery, not perceived smoothness. Trade-off: user
+// sees plain monospace code mid-stream and a one-shot color flash on
+// fence close. Set CLAUDIO_DEFER_HIGHLIGHT=0 to restore the old behavior.
+const DEFER_OPEN_FENCE_HIGHLIGHT = process.env.CLAUDIO_DEFER_HIGHLIGHT !== '0'
 
 function isOpenFence(rawText: string): boolean {
   return !rawText.trimEnd().endsWith('```')

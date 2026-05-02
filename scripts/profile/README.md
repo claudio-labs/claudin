@@ -25,7 +25,7 @@ STREAMING RENDER    (per code block in assistant output)         ~27–40 ms
   • per-snapshot cost is sub-frame — user does not perceive a hitch
   • the win is CPU/battery, not visible smoothness
   • UX trade-off: plain monospace mid-stream, color flash on fence close
-  • opt-in via CLAUDIO_DEFER_HIGHLIGHT=1
+  • on by default; opt out via CLAUDIO_DEFER_HIGHLIGHT=0
 
 INPUT LATENCY       (per keystroke, even at 10 KB buffer)        <0.5 ms
   • not the bottleneck; well under one frame
@@ -138,10 +138,11 @@ highlight.
   that's ~240–350 ms of CPU saved over the session, not a felt latency win.
 - **UX trade-off**: with defer-fence on, the user sees plain monospace code
   during streaming and a one-shot color flash when the fence closes.
-- The defer-fence path is wired into production behind the
-  `CLAUDIO_DEFER_HIGHLIGHT=1` env var (off by default). With the flag on,
-  `--strategy=status-quo` in this harness reproduces the `defer-fence`
-  numbers — production code matches the harness's measured win exactly.
+- The defer-fence path is the production default. Set
+  `CLAUDIO_DEFER_HIGHLIGHT=0` to fall back to status-quo (always-highlight).
+  In this harness, `--strategy=status-quo` reproduces the opt-out behavior
+  and `--strategy=defer-fence` reproduces the default — production code
+  matches the harness's measured win exactly.
 
 ## Input bench
 
