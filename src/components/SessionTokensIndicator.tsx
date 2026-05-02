@@ -1,6 +1,7 @@
 import type * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  getModelUsage,
   getTotalCacheCreationInputTokens,
   getTotalCacheReadInputTokens,
   getTotalInputTokens,
@@ -9,8 +10,10 @@ import {
 import { Box, Text } from '../ink.js';
 import { tryGetActiveProvider } from '../services/api/activeProvider.js';
 import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
+import { useAppState } from '../state/AppState.js';
 import { formatTokens } from '../utils/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
+import { parseModelList } from '../utils/providerModels.js';
 
 type Snapshot = {
   input: number;
@@ -45,14 +48,64 @@ function activeProviderSupportsCache(): boolean {
   return cacheProvider !== 'copilot' && cacheProvider !== 'ollama' && cacheProvider !== 'self-hosted';
 }
 
-function readSnapshot(): Snapshot {
-  return {
-    input: getTotalInputTokens(),
-    output: getTotalOutputTokens(),
-    cacheRead: getTotalCacheReadInputTokens(),
-    cacheCreation: getTotalCacheCreationInputTokens(),
-    supportsCache: activeProviderSupportsCache(),
-  };
+/**
+ * Reads token totals scoped to the *active provider's* configured models, so
+ * switching providers via /provider doesn't leak counters across the boundary
+ * (e.g. Anthropic's cacheRead/cacheCreation bleeding into Ollama's `total`).
+ *
+ * `STATE.modelUsage` is already keyed by model name and tracks input/output/
+ * cacheRead/cacheCreation per model (see addToTotalModelUsage in
+ * cost-tracker.ts). We sum only the entries whose model names belong to the
+ * active profile's configured list, plus any extra models passed in
+ * (typically `appState.mainLoopModel` / `mainLoopModelForSession`) so that
+ * `/model` switches to a sibling model that isn't in the profile's static
+ * list still get counted. When no provider is active yet (cold first-run
+ * path), fall back to the global totals so the indicator still works.
+ *
+ * Caveat: `modelUsage` is keyed by model name, not by profile id, so two
+ * profiles sharing a model name (e.g. "claude-3-5-sonnet" in both an
+ * Anthropic-native and a Bedrock profile) will share that bucket. Acceptable
+ * trade-off — the alternative (per-profile-id bucketing) would require
+ * threading the active profile through every usage-recording call site.
+ */
+export function readSnapshot(extraModels: readonly (string | null)[] = []): Snapshot {
+  const profile = tryGetActiveProvider();
+  const supportsCache = activeProviderSupportsCache();
+
+  if (!profile) {
+    return {
+      input: getTotalInputTokens(),
+      output: getTotalOutputTokens(),
+      cacheRead: getTotalCacheReadInputTokens(),
+      cacheCreation: getTotalCacheCreationInputTokens(),
+      supportsCache,
+    };
+  }
+
+  // Orphan-during-stream caveat: if /provider switches mid-response, in-flight
+  // usage chunks keep landing under the *old* mainLoopModel, which is no
+  // longer in profile.model nor in the new extraModels — those tokens become
+  // invisible here for the rest of the session. They still flow into /cost
+  // (they live in modelUsage), so this is a display gap, not a data loss.
+  const models = new Set<string>(parseModelList(profile.model));
+  for (const m of extraModels) {
+    if (m && m.length > 0) models.add(m);
+  }
+  const usage = getModelUsage();
+  let input = 0;
+  let output = 0;
+  let cacheRead = 0;
+  let cacheCreation = 0;
+  for (const model of models) {
+    const entry = usage[model];
+    if (!entry) continue;
+    input += entry.inputTokens;
+    output += entry.outputTokens;
+    cacheRead += entry.cacheReadInputTokens;
+    cacheCreation += entry.cacheCreationInputTokens;
+  }
+
+  return { input, output, cacheRead, cacheCreation, supportsCache };
 }
 
 function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
@@ -80,12 +133,22 @@ function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
  * Polled every 2s; underlying state lives in cost-tracker (no event API).
  */
 export function SessionTokensIndicator(): React.ReactNode {
-  const [snapshot, setSnapshot] = useState<Snapshot>(() => readSnapshot());
+  // Pull the runtime-active model(s) from app state so `/model` switches to a
+  // sibling model not listed in `profile.model` still get counted. Stored in
+  // a ref so the polling effect doesn't have to be torn down on every change.
+  const mainLoopModel = useAppState(s => s.mainLoopModel);
+  const mainLoopModelForSession = useAppState(s => s.mainLoopModelForSession);
+  const extraModelsRef = useRef<readonly (string | null)[]>([]);
+  extraModelsRef.current = [mainLoopModel, mainLoopModelForSession];
+
+  const [snapshot, setSnapshot] = useState<Snapshot>(() =>
+    readSnapshot(extraModelsRef.current),
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
       setSnapshot(prev => {
-        const next = readSnapshot();
+        const next = readSnapshot(extraModelsRef.current);
         return snapshotEqual(prev, next) ? prev : next;
       });
     }, POLL_INTERVAL_MS);
