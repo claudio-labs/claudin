@@ -220,20 +220,21 @@ describe('readSnapshot — per-provider scoping', () => {
     expect(snap.cacheCreation).toBe(300);
   });
 
-  test('resolved mainLoopModel ([1m] suffix) is counted even when profile.model lacks it', () => {
+  test('resolved mainLoopModel is counted even when profile.model differs from the recorded key', () => {
     // Reproduces the bug where the indicator went blank: cost-tracker keys
-    // usage by the *resolved* model name (e.g. `claude-opus-4-7[1m]`), but
-    // profile.model often holds the unresolved form (no suffix), and
-    // appState.mainLoopModel can be the user alias (`opus[1m]`) or null.
-    // getMainLoopModel() is the only source for the resolved name.
+    // usage by the *resolved* model name, but profile.model can hold a raw
+    // unresolved form and appState.mainLoopModel can be a user alias or
+    // null. getMainLoopModel() is the only source for the resolved name.
+    // The exact shape of the divergence is provider-specific (e.g. variant
+    // suffixes, alias expansion), so the model strings here are arbitrary.
     setUsage({
-      'claude-opus-4-7[1m]': {
+      'resolved-model-name': {
         inputTokens: 12, outputTokens: 8,
         cacheReadInputTokens: 116000, cacheCreationInputTokens: 63800,
       },
     });
-    setProfile({ id: 'anthropic-1', model: 'claude-opus-4-7', baseUrl: 'https://api.anthropic.com' });
-    setResolvedMainLoopModel('claude-opus-4-7[1m]');
+    setProfile({ id: 'p', model: 'unresolved-model-name', baseUrl: 'https://example' });
+    setResolvedMainLoopModel('resolved-model-name');
 
     const snap = readSnapshot();
 

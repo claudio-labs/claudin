@@ -89,11 +89,10 @@ export function readSnapshot(extraModels: readonly (string | null)[] = []): Snap
   // invisible here for the rest of the session. They still flow into /cost
   // (they live in modelUsage), so this is a display gap, not a data loss.
   const models = new Set<string>(parseModelList(profile.model));
-  // The cost-tracker keys usage by the *resolved* model name (e.g.
-  // `claude-opus-4-7[1m]`), while `profile.model` and `appState.mainLoopModel`
-  // often hold the unresolved form (no `[1m]` suffix) or just the user alias
-  // (`opus[1m]`, or `null` for the default). Include the resolved current
-  // model so its bucket is always counted.
+  // cost-tracker keys usage by the *resolved* model name, which can differ
+  // from `profile.model` (raw config) and `appState.mainLoopModel` (which
+  // may be a user alias or null). Folding in the resolved current model
+  // guarantees the active bucket is always counted, regardless of provider.
   try {
     const resolved = getMainLoopModel();
     if (resolved) models.add(resolved);
