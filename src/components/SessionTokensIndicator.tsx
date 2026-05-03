@@ -123,7 +123,7 @@ function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
  * row. The layout is decided by the *current* active provider, not by the
  * historical counters — providers that report cache fields (Anthropic,
  * Bedrock, Vertex, Foundry, Gemini, Codex, Kimi, DeepSeek, Copilot-Claude,
- * plain OpenAI) show `cached · created · total`; providers that don't
+ * plain OpenAI) show `created · cached · total`; providers that don't
  * (Ollama, vanilla Copilot, self-hosted OpenAI-compatible) show the legacy
  * `↑ input  ↓ output · total` so input/output stay visible.
  *
@@ -161,11 +161,11 @@ export function SessionTokensIndicator(): React.ReactNode {
 
   const parts: string[] = [];
   if (snapshot.supportsCache) {
-    if (snapshot.cacheRead > 0) {
-      parts.push(`${ICON_CACHED} ${formatTokens(snapshot.cacheRead)} cached`);
-    }
     if (snapshot.cacheCreation > 0) {
       parts.push(`${ICON_CREATED} ${formatTokens(snapshot.cacheCreation)} created`);
+    }
+    if (snapshot.cacheRead > 0) {
+      parts.push(`${ICON_CACHED} ${formatTokens(snapshot.cacheRead)} cached`);
     }
   } else {
     parts.push(`↑ ${formatTokens(snapshot.input)}  ↓ ${formatTokens(snapshot.output)}`);
