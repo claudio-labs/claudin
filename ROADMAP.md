@@ -27,13 +27,13 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Abordagem:** auditoria estática primeiro (eviction? cleanup hook? scoped per-session?). Se algum aparecer suspeito → adicionar exerciser ao `long-session-bench.ts`.
 - **Arquivos:** dependentes da triagem.
 
-### 5.1 — Code-splitting de provider SDKs
-- **Esforço:** L (1-2 dias)
-- **Prioridade:** P2
-- **Estado:** Bundle = 21 MB, parseia em ~80-150 MB de heap V8 antes do primeiro turn. Claudio empacota Anthropic SDK + Bedrock + Vertex + Foundry + AWS SDK + lodash-es + GrowthBook (stubs) + Ink + Yoga TS port + React + RxJS + Highlight.js + Pyright LSP polyfills + libs OAuth/keychain. Claude Code oficial (440 MB residente) empacota só o path Anthropic; Claudio idle fica ~1.4 GB → delta de ~1 GB é estrutural.
-- **Ganho:** Único caminho real para fechar o delta de ~1 GB vs Claude oficial. Reduz tempo de cold start, RSS residente e pressão sobre o heap-pressure trigger (5.2).
-- **Abordagem:** Lazy-load via `import()` dinâmico nos shims que não pertencem ao provider ativo. Bedrock e Vertex já são parcialmente deferidos (`src/utils/tokens.ts:3-5`); estender para Foundry, AWS extras, Codex, Gemini.
-- **Arquivos:** `src/services/api/client.ts`, `src/services/api/providerConfig.ts`, `src/services/api/{bedrock,vertex,foundry,codex,gemini}*.ts`
+### 5.1b — Code-splitting follow-up: codexShim + openaiShim helpers
+- **Esforço:** M
+- **Prioridade:** P3 (ganho marginal, ~50-80 KB)
+- **Estado:** A 5.1 cobriu os SDKs grandes (Bedrock/Vertex/Foundry externalizados). `codexShim.ts` (972 LoC) e helpers (`geminiAuth`, `geminiCredentials`, `githubModelsCredentials`, `codexCredentials`) ainda são imports estáticos de `openaiShim.ts:24-78`. Complicação: `convertAnthropicMessagesToResponsesInput`/`convertToolsToResponsesTools` do codexShim são usados também no fallback `/responses` do GitHub Copilot (`openaiShim.ts:1931,1962`), não só em `transport==='codex_responses'`. Splitting requer um getter lazy memoizado.
+- **Ganho:** Bundles para usuários puramente OpenAI/Mistral diminuem ~50-80 KB. Marginal.
+- **Abordagem:** `const getCodex = lazy(() => import('./codexShim.js'))` com await nos 6 call sites. Idem para gemini/github helpers gated por mode flags.
+- **Arquivos:** `src/services/api/openaiShim.ts`
 
 ### 5.2 — Auditoria de lodash `memoize` por escape de closure
 - **Esforço:** S-M (meio dia)
@@ -59,6 +59,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.1 — Code-splitting de provider SDKs (Anthropic family externalizados)
+Bun estava deduplicando os 3 SDKs Anthropic (`@anthropic-ai/{bedrock,vertex,foundry}-sdk`, ~3.6 MB combinados) em um único shared chunk de 6.1 MB — pulled por todos os branches de dynamic-import em `client.ts`. Externalizados em `scripts/build.ts:541-553` (junto com `@aws-sdk/*`, `@azure/identity`, `google-auth-library` que já eram external). Agora são resolvidos em runtime de `node_modules` em vez de bundlados; nenhum chunk contém mais as classes `AnthropicBedrock|AnthropicVertex|AnthropicFoundry`. Sessões puramente Anthropic native nunca parseiam código de bedrock/vertex/foundry. Guard test em `scripts/provider-sdks-external.test.ts` previne regressão (assert no `external` array + scan dos chunks). Verificado: bundle pré 63 MB / 412 chunks → pós 62 MB / 408 chunks (delta de disco modesto, mas mais relevante: 3.6 MB de código de provider sai do hot-path V8 parse). Smoke + 459 provider tests + verify:privacy passam.
 
 ### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
 Sweep lazy de entradas com `mtime > CLAUDIO_V8CACHE_TTL_DAYS` (default 14d) em `scripts/v8cache-gc.mjs`, disparado async pelo `bin/claudio` após `enableCompileCache`. Subdirs de fingerprint (`vNN-x64-<hash>-<uid>`) ficam vazios depois da varredura e também são removidos. Opt-out via `CLAUDIO_V8CACHE_GC=0`. Verificado empiricamente: 14 MB / 622 entradas / 2 fingerprint dirs → 628 KB / 1 dir após uma execução com TTL agressivo. 6 testes em `scripts/v8cache-gc.test.mjs` cobrem TTL boundary, dir cleanup, missing dir, stray files, injeção de `now` para determinismo.
@@ -170,4 +173,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**6 ativos** (1× P0: 4.1; 1× P2: 5.1; 3× P3: 5.5/5.2/5.3b; +3.12 sem prio) + **14 concluídos**.
+**6 ativos** (1× P0: 4.1; 4× P3: 5.5/5.2/5.3b/5.1b; +3.12 sem prio) + **15 concluídos**.

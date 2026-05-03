@@ -544,6 +544,13 @@ ${exports}
     '@aws-sdk/credential-providers',
     '@azure/identity',
     'google-auth-library',
+    // Anthropic provider SDKs (loaded via dynamic import in client.ts;
+    // externalising prevents Bun from co-mingling all three into one shared
+    // chunk, so a session that only uses Anthropic native never parses
+    // bedrock/vertex/foundry code)
+    '@anthropic-ai/bedrock-sdk',
+    '@anthropic-ai/vertex-sdk',
+    '@anthropic-ai/foundry-sdk',
   ],
 })
 
