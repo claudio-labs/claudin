@@ -99,6 +99,38 @@ const MAX_TOOL_PROGRESS_TRACKING_ENTRIES = 100
 const TOOL_PROGRESS_THROTTLE_MS = 30000
 const toolProgressLastSentTime = new Map<string, number>()
 
+/**
+ * Insert a tool progress key with FIFO eviction at the cap. Extracted from
+ * the bash/powershell progress branch so the cap invariant is testable
+ * without spinning up the full progress pipeline (which is gated behind
+ * CLAUDE_CODE_REMOTE / CLAUDE_CODE_CONTAINER_ID env vars).
+ */
+function recordToolProgress(key: string, now: number): void {
+  if (toolProgressLastSentTime.size >= MAX_TOOL_PROGRESS_TRACKING_ENTRIES) {
+    const firstKey = toolProgressLastSentTime.keys().next().value
+    if (firstKey !== undefined) {
+      toolProgressLastSentTime.delete(firstKey)
+    }
+  }
+  toolProgressLastSentTime.set(key, now)
+}
+
+/** Test-only accessor for the toolProgressLastSentTime map size. */
+export function __TEST_ONLY_getToolProgressMapSize(): number {
+  return toolProgressLastSentTime.size
+}
+
+/** Test-only insertion for cacheBoundsInvariants test. Same code path as
+ * the production callsite below. */
+export function __TEST_ONLY_recordToolProgress(key: string): void {
+  recordToolProgress(key, Date.now())
+}
+
+/** Test-only reset. */
+export function __TEST_ONLY_resetToolProgressMap(): void {
+  toolProgressLastSentTime.clear()
+}
+
 export function* normalizeMessage(message: Message): Generator<SDKMessage> {
   switch (message.type) {
     case 'assistant':
@@ -175,17 +207,7 @@ export function* normalizeMessage(message: Message): Generator<SDKMessage> {
 
         // Send if at least 30 seconds have passed since last update
         if (timeSinceLastSent >= TOOL_PROGRESS_THROTTLE_MS) {
-          // Remove oldest entry if we're at capacity (LRU eviction)
-          if (
-            toolProgressLastSentTime.size >= MAX_TOOL_PROGRESS_TRACKING_ENTRIES
-          ) {
-            const firstKey = toolProgressLastSentTime.keys().next().value
-            if (firstKey !== undefined) {
-              toolProgressLastSentTime.delete(firstKey)
-            }
-          }
-
-          toolProgressLastSentTime.set(trackingKey, now)
+          recordToolProgress(trackingKey, now)
           yield {
             type: 'tool_progress',
             tool_use_id: message.toolUseID,

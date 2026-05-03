@@ -71,12 +71,31 @@ async function main(): Promise<void> {
     console.error('cold-start-bench skipped:', (e as Error).message)
   }
 
+  console.log('Running long-session-bench...')
+  let longSession: any = null
+  try {
+    // long-session-bench needs --expose-gc; runJson invokes plain `bun run`
+    // which doesn't pass it through. Use a separate spawn with the flag.
+    const res = spawnSync(
+      'bun',
+      ['--expose-gc', 'run', resolve(HERE, 'long-session-bench.ts'), '--json'],
+      { encoding: 'utf-8', env: { ...process.env, FORCE_COLOR: '3' } },
+    )
+    if (res.status !== 0) {
+      throw new Error(`long-session-bench failed:\n${res.stderr}`)
+    }
+    longSession = JSON.parse(res.stdout)
+  } catch (e) {
+    console.error('long-session-bench skipped:', (e as Error).message)
+  }
+
   const combined = {
     streaming: { ts50: streamingTs, py50: streamingPy, prose: streamingProse },
     input,
     memory,
     transcript,
     coldStart,
+    longSession,
   }
 
   if (args.json) {
@@ -150,6 +169,25 @@ async function main(): Promise<void> {
   const tr1k = transcript.results.find((r: any) => r.count === 1000)?.p50Ms ?? 0
   console.log(`  → ${tr1k < 250 ? 'bounded — only paid on /resume + cache eviction' : 'investigate — long-transcript paint exceeds 250 ms'}`)
   console.log('')
+
+  // Long session memory bounds — invariant guard, not a perf number
+  if (longSession) {
+    console.log(
+      `LONG SESSION MEMORY (cache bounds across ${longSession.cycles} cycles, gc=${longSession.gcEnabled ? 'on' : 'off'})`,
+    )
+    for (const r of longSession.results) {
+      const ok = r.passed ? 'PASS' : 'FAIL'
+      const deltaMB = (r.heapDeltaBytes / 1024 / 1024).toFixed(2)
+      console.log(
+        `  ${r.name.padEnd(46)} cap=${String(r.declaredCap).padStart(4)}  size=${String(r.observedSize).padStart(4)}  +${deltaMB} MB  ${ok}`,
+      )
+    }
+    const totalMB = (longSession.totalHeapDeltaBytes / 1024 / 1024).toFixed(1)
+    console.log(
+      `  → ${longSession.allPassed ? `all caps respected; total heap delta ${totalMB} MB` : 'cap exceeded — investigate'}`,
+    )
+    console.log('')
+  }
 
   // Verdict
   console.log('═══ Verdict — biggest offenders to attack first ═══')

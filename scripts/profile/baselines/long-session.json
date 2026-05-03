@@ -1,0 +1,192 @@
+{
+  "cycles": 10000,
+  "turns": 2000,
+  "mode": "both",
+  "gcEnabled": true,
+  "allPassed": true,
+  "totalHeapDeltaBytes": 5442249,
+  "totalHeapDeltaMB": 5.190133094787598,
+  "results": [
+    {
+      "name": "fileReadCache",
+      "declaredCap": 1000,
+      "observedSize": 1000,
+      "heapDeltaBytes": 3576103,
+      "heapDeltaBytesPerCycle": 357.6103,
+      "wallMs": 168.098342,
+      "passed": true
+    },
+    {
+      "name": "Markdown.tokenCache",
+      "declaredCap": 500,
+      "observedSize": 500,
+      "heapDeltaBytes": 1227825,
+      "heapDeltaBytesPerCycle": 122.7825,
+      "wallMs": 283.72122399999995,
+      "passed": true
+    },
+    {
+      "name": "queryHelpers.toolProgressLastSentTime",
+      "declaredCap": 100,
+      "observedSize": 100,
+      "heapDeltaBytes": 0,
+      "heapDeltaBytesPerCycle": 0,
+      "wallMs": 5.839365999999927,
+      "passed": true
+    },
+    {
+      "name": "imageStore.storedImagePaths",
+      "declaredCap": 200,
+      "observedSize": 200,
+      "heapDeltaBytes": 115593,
+      "heapDeltaBytesPerCycle": 11.5593,
+      "wallMs": 9.298815999999988,
+      "passed": true
+    },
+    {
+      "name": "LSPDiagnosticRegistry.deliveredDiagnostics",
+      "declaredCap": 500,
+      "observedSize": 500,
+      "heapDeltaBytes": 522728,
+      "heapDeltaBytesPerCycle": 52.2728,
+      "wallMs": 14.582379000000174,
+      "passed": true
+    }
+  ],
+  "mixed": {
+    "turns": 2000,
+    "totalFileReads": 10000,
+    "totalMarkdownRenders": 6000,
+    "totalDiagnostics": 4000,
+    "totalProgress": 4000,
+    "totalImages": 40,
+    "baselineHeapBytes": 33189230,
+    "finalHeapBytes": 34698929,
+    "finalHeapDeltaBytes": 1509699,
+    "finalHeapDeltaMB": 1.4397611618041992,
+    "wallMs": 543.833226,
+    "snapshots": [
+      {
+        "turn": 200,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 4,
+          "deliveredDiagnostics": 400,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 400,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 8,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 600,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 12,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 800,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 16,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 1000,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 20,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 1200,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 24,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 1400,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 28,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 1600,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 32,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 1800,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 36,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      },
+      {
+        "turn": 2000,
+        "heapUsedBytes": 33189230,
+        "heapDeltaBytes": 0,
+        "caches": {
+          "tokenCache": 500,
+          "toolProgress": 100,
+          "storedImagePaths": 40,
+          "deliveredDiagnostics": 500,
+          "fileReadCache": 1000
+        }
+      }
+    ],
+    "saturated": true
+  }
+}

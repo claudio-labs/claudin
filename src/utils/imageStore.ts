@@ -112,6 +112,11 @@ export function clearStoredImagePaths(): void {
   storedImagePaths.clear()
 }
 
+/** Test-only accessor for storedImagePaths size. */
+export function __TEST_ONLY_getStoredImagePathsSize(): number {
+  return storedImagePaths.size
+}
+
 function evictOldestIfAtCap(): void {
   while (storedImagePaths.size >= MAX_STORED_IMAGE_PATHS) {
     const oldest = storedImagePaths.keys().next().value

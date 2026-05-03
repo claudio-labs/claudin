@@ -219,6 +219,20 @@ export function _resetFileWaitersForTesting(): void {
 }
 
 /**
+ * Test-only: inspect the deliveredDiagnostics LRU size. Used by
+ * cacheBoundsInvariants.test.ts to assert the cap (MAX_DELIVERED_FILES)
+ * is respected after many distinct file URIs.
+ */
+export function _getDeliveredDiagnosticsCountForTesting(): number {
+  return deliveredDiagnostics.size
+}
+
+/** Test-only: clear the deliveredDiagnostics LRU. */
+export function _resetDeliveredDiagnosticsForTesting(): void {
+  deliveredDiagnostics.clear()
+}
+
+/**
  * Test-only: inspect waiter map size for a URI (or all). Returns 0 when empty.
  */
 export function _getFileWaiterCountForTesting(fileUri?: string): number {

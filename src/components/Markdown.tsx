@@ -4,71 +4,15 @@ import React, { Suspense, use, useMemo, useRef } from 'react';
 import { useSettings } from '../hooks/useSettings.js';
 import { Ansi, Box, useTheme } from '../ink.js';
 import { type CliHighlight, getCliHighlightPromise } from '../utils/cliHighlight.js';
-import { hashContent } from '../utils/hash.js';
 import { configureMarked, formatToken } from '../utils/markdown.js';
 import { stripPromptXMLTags } from '../utils/messages.js';
+import { cachedLexer } from './markdownTokenCache.js';
 import { MarkdownTable } from './MarkdownTable.js';
 type Props = {
   children: string;
   /** When true, render all text content as dim */
   dimColor?: boolean;
 };
-
-// Module-level token cache — marked.lexer is the hot cost on virtual-scroll
-// remounts (~3ms per message). useMemo doesn't survive unmount→remount, so
-// scrolling back to a previously-visible message re-parses. Messages are
-// immutable in history; same content → same tokens. Keyed by hash to avoid
-// retaining full content strings (turn50→turn99 RSS regression, #24180).
-const TOKEN_CACHE_MAX = 500;
-const tokenCache = new Map<string, Token[]>();
-
-// Characters that indicate markdown syntax. If none are present, skip the
-// ~3ms marked.lexer call entirely — render as a single paragraph. Covers
-// the majority of short assistant responses and user prompts that are
-// plain sentences. Checked via indexOf (not regex) for speed.
-// Single regex: matches any MD marker or ordered-list start (N. at line start).
-// One pass instead of 10× includes scans.
-const MD_SYNTAX_RE = /[#*`|[>\-_~]|\n\n|^\d+\. |\n\d+\. /;
-function hasMarkdownSyntax(s: string): boolean {
-  // Sample first 500 chars — if markdown exists it's usually early (headers,
-  // code fence, list). Long tool outputs are mostly plain text tails.
-  return MD_SYNTAX_RE.test(s.length > 500 ? s.slice(0, 500) : s);
-}
-function cachedLexer(content: string): Token[] {
-  // Fast path: plain text with no markdown syntax → single paragraph token.
-  // Skips marked.lexer's full GFM parse (~3ms on long content). Not cached —
-  // reconstruction is a single object allocation, and caching would retain
-  // 4× content in raw/text fields plus the hash key for zero benefit.
-  if (!hasMarkdownSyntax(content)) {
-    return [{
-      type: 'paragraph',
-      raw: content,
-      text: content,
-      tokens: [{
-        type: 'text',
-        raw: content,
-        text: content
-      }]
-    } as Token];
-  }
-  const key = hashContent(content);
-  const hit = tokenCache.get(key);
-  if (hit) {
-    // Promote to MRU — without this the eviction is FIFO (scrolling back to
-    // an early message evicts the very item you're looking at).
-    tokenCache.delete(key);
-    tokenCache.set(key, hit);
-    return hit;
-  }
-  const tokens = marked.lexer(content);
-  if (tokenCache.size >= TOKEN_CACHE_MAX) {
-    // LRU-ish: drop oldest. Map preserves insertion order.
-    const first = tokenCache.keys().next().value;
-    if (first !== undefined) tokenCache.delete(first);
-  }
-  tokenCache.set(key, tokens);
-  return tokens;
-}
 
 /**
  * Renders markdown content using a hybrid approach:

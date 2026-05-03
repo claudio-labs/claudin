@@ -46,7 +46,8 @@ Run `bun run profile` for the unified summary.
 | `cold-start-bench.ts`   | Wall time for the bundled CLI to launch + handle `--version` / `--help` and exit | `bun run profile:cold-start` |
 | `memory-bench.ts`       | `scanMemoryFiles` cost across N=10/50/100/200 synthetic memory files   | `bun run profile:memory`     |
 | `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
-| `run-all.ts`            | All five back-to-back with a unified summary + verdict                 | `bun run profile`           |
+| `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
+| `run-all.ts`            | All six back-to-back with a unified summary + verdict                  | `bun run profile`           |
 
 ## Usage
 
@@ -231,6 +232,63 @@ Per-message cost is ~0.15 ms; a 1000-message transcript pays ~150 ms once
 on cold paint. Bounded and one-time. **Not a bottleneck**, but a useful
 canary if someone changes `applyMarkdown` and accidentally regresses
 per-message cost.
+
+## Long-session bench
+
+Drives the five module-level caches that grow per-turn / per-tool-call /
+per-LSP-publication with N distinct entries each, and measures: declared
+cap vs observed size, total heap delta, per-cycle heap delta. Companion
+to `src/utils/cacheBoundsInvariants.test.ts` — that test runs in CI to
+catch a future regression dropping the eviction call; this bench produces
+the numbers for the baseline.
+
+Caches covered: `Markdown.tokenCache` (LRU 500), `queryHelpers.toolProgressLastSentTime`
+(FIFO 100), `imageStore.storedImagePaths` (FIFO 200),
+`LSPDiagnosticRegistry.deliveredDiagnostics` (LRU 500), `fileReadCache` (FIFO 1000).
+
+Requires `--expose-gc` for honest heap deltas — the npm script sets it.
+
+Two modes; default `--mode=both` runs both:
+
+**Isolated mode** — feed each cache N=10000 distinct entries, one cache at
+a time. Confirms each cap independently. Baseline:
+
+```
+fileReadCache                                   1000   1000    3.4 MB  357 B/cycle  175 ms
+Markdown.tokenCache                              500    500    1.2 MB  123 B/cycle  294 ms
+queryHelpers.toolProgressLastSentTime            100    100   75.2 KB    8 B/cycle    8 ms
+imageStore.storedImagePaths                      200    200  113.1 KB   12 B/cycle   13 ms
+LSPDiagnosticRegistry.deliveredDiagnostics       500    500  510.8 KB   52 B/cycle   17 ms
+
+total heap delta: 5.3 MB across all five caches at 10k cycles each
+```
+
+**Mixed-session mode** (`--mode=mixed --turns=2000`) — closest thing to a
+real Claudio session on a large project. Each turn interleaves: 5 file
+reads, 3 markdown renders, 2 LSP diagnostics, 2 tool progress events,
++1 image every 50 turns. Snapshots heap every 10% of turns to surface
+the *growth curve*, not just start vs end. Saturation check passes if
+heap delta in the second half stays within 5% of the midpoint value
+(plateau, not monotonic growth). Baseline (2000 turns ≈ multi-hour session):
+
+```
+turns: 2000
+workload: 10000 file reads, 6000 markdown renders, 4000 LSP diagnostics,
+          4000 tool progress events, 40 images
+final heap delta: ~2 MB total (within GC noise)
+saturation: PASS — every cache plateaus by turn ~200 and stays flat
+```
+
+What this confirms: every cache plateaus at its declared cap. After
+saturation (~10% of turns in mixed-session), heap stops growing entirely.
+The OOM @ 4 GB originally hypothesized for 5.3 cannot come from these
+caches; it was mitigated by the heap-pressure trigger + 8 GB bump in 5.0.
+
+**Not covered**: `auth.ts pending401Handlers` (uses `finally { delete }`
+self-cleanup; verified by inspection at `src/utils/auth.ts:1383-1390`).
+Other module-level Maps in 179 files are reachable through the discovery
+pattern in this bench if a future regression appears — the systematic
+sweep is documented in `~/.claudio/plans/immutable-jingling-hare.md`.
 
 ## Caveats
 

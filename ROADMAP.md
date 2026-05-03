@@ -27,16 +27,18 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Abordagem:** Trocar para `chunks/[dir]-[name]-[hash].mjs` ou similar. Validar se Bun aceita esses tokens em `naming.chunk` (consulta docs Bun) e que o resultado preserva `[hash]` ao final (cache busting).
 - **Arquivos:** `scripts/build.ts:159-163` (objeto `naming`).
 
-### 5.3 — Investigar heap real em sessão longa antes de otimizar bundle
-- **Esforço:** S (instrumentação) + dependente do achado
-- **Prioridade:** P1 (precede 5.1)
-- **Estado:** OOM @ 4 GB reproduzido pelo usuário. Bundle de 21 MB compila para ~80-150 MB de heap V8 — não explica os GBs. Auditoria identificou ~14 caches/maps potencialmente não-bounded crescendo por mensagem/tool call/skill: `Markdown.tsx:23` tokenCache (por hash de markdown, sem evict), `utils/queryHelpers.ts:100` toolProgressLastSentTime (por tool call único), `utils/imageStore.ts:13` storedImagePaths, `services/analytics/growthbook.ts:78,82` experimentDataByFeature + remoteEvalFeatureValues, `services/lsp/LSPDiagnosticRegistry.ts:49,60` pendingDiagnostics + fileWaiters, `services/MagicDocs/magicDocs.ts:38` trackedMagicDocs, `services/api/promptCacheBreakDetection.ts:98` previousStateBySource, `utils/auth.ts:1363` pending401Handlers (não deleta após resolve), `utils/hooks/AsyncHookRegistry.ts:28` pendingHooks, `skills/loadSkillsDir.ts:907,912` dynamicSkills + conditionalSkills, `utils/telemetry/perfettoTracing.ts:107,108,116` pendingSpans/agentRegistry/agentIdToProcessId (vazam em crash), `utils/telemetry/sessionTracing.ts:71,75` strongSpans, `services/planDossier.ts:469,484` revalidateCache + agentPlanSlugRegistry. Hipótese: o vilão real do OOM é acumulação por sessão, não tamanho do bundle.
-- **Ganho:** Identifica a causa real antes de gastar esforço em code-splitting que pode não mover o ponteiro. Otimizar bundle sem investigar heap é otimizar a coisa errada.
-- **Abordagem:**
-  1. Rodar `/heap-dump` em sessão de 1-2h reproduzindo OOM; abrir snapshot em Chrome DevTools, identificar top 10 retainers.
-  2. Se for um dos caches da lista: aplicar LRU/WeakRef/cleanup no site. Tier-1 candidates: `Markdown.tsx` tokenCache (LRU), `queryHelpers.ts` toolProgressLastSentTime (cleanup ao final do tool call), `auth.ts` pending401Handlers (cleanup após resolve), `growthbook.ts` (gate em wrapper se telemetry desligada).
-  3. Se NÃO for cache: documentar achado, reavaliar prioridade de 5.1.
-- **Arquivos:** dependente do achado; baseline em `src/components/Markdown.tsx`, `src/utils/queryHelpers.ts`, `src/utils/auth.ts`, `src/services/analytics/growthbook.ts`, `src/services/lsp/LSPDiagnosticRegistry.ts`
+### 5.3a — Bench de cap invariants para caches conhecidos ✅ (movido para Concluídos)
+
+### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
+- **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
+- **Prioridade:** P3 (nenhum reportado como leak ativo; 5.0 mitigou OOM)
+- **Estado:** A 5.3a cobriu 5 dos ~14 sites originalmente listados (Markdown.tokenCache, queryHelpers.toolProgressLastSentTime, imageStore.storedImagePaths, LSPDiagnosticRegistry.deliveredDiagnostics, fileReadCache). Outros 9 sites foram pulados:
+  - **Já neutralizados no build aberto:** `services/analytics/growthbook.ts` (4 maps/sets — substituídos por stub vazio em `scripts/no-telemetry-plugin.ts:36-228`), `utils/telemetry/perfettoTracing.ts`, `utils/telemetry/sessionTracing.ts` (telemetry desligada por feature flag).
+  - **Verificados por inspeção, sem cap mas com self-cleanup correto:** `utils/auth.ts:1363` pending401Handlers (`finally { delete }` em :1387), `services/lsp/LSPDiagnosticRegistry.ts:60` fileWaiters (cleanup em resolve/timeout em :147-152).
+  - **Não auditados ainda:** `services/MagicDocs/magicDocs.ts:38` trackedMagicDocs, `services/api/promptCacheBreakDetection.ts:98` previousStateBySource, `utils/hooks/AsyncHookRegistry.ts:28` pendingHooks, `skills/loadSkillsDir.ts:907,912` dynamicSkills + conditionalSkills, `services/planDossier.ts:469,484` revalidateCache + agentPlanSlugRegistry.
+- **Ganho:** Confirmar que nenhum dos 5 não-auditados tem leak real. Provavelmente baixo (5.0 já mitigou OOM e bench da 5.3a passou); abrir só se aparecer pressão de heap em sessões longas reais.
+- **Abordagem:** auditoria estática primeiro (eviction? cleanup hook? scoped per-session?). Se algum aparecer suspeito → adicionar exerciser ao `long-session-bench.ts`.
+- **Arquivos:** dependentes da triagem.
 
 ### 5.1 — Code-splitting de provider SDKs
 - **Esforço:** L (1-2 dias)
@@ -82,6 +84,11 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.3a — Bench de cap invariants para caches conhecidos
+Bench `scripts/profile/long-session-bench.ts` + invariantes em `src/utils/cacheBoundsInvariants.test.ts` validaram empiricamente que os 5 caches module-level mais quentes respeitam seus caps sob 10k cycles cada. Resultado: total heap delta 5.3 MB (esperado: ~cap × bytes/entry × 5 caches), zero crescimento unbounded. Para cobertura: ver `baselines/long-session.json`. OOM original (4 GB) ficou explicado pelo combo "token threshold alto + V8 heap cap default 4 GB" e foi mitigado pela 5.0; não havia leak per-turn nos containers auditados.
+
+Arquivos: `src/components/markdownTokenCache.ts` (extraído de Markdown.tsx para isolar de React/Ink), `src/components/Markdown.tsx`, `src/utils/queryHelpers.ts`, `src/utils/imageStore.ts`, `src/services/lsp/LSPDiagnosticRegistry.ts` (cada um com getter `__TEST_ONLY_*`), `src/utils/cacheBoundsInvariants.test.ts` (5 testes), `scripts/profile/long-session-bench.ts`, `scripts/profile/baselines/long-session.json`, `scripts/profile/run-all.ts`, `scripts/profile/README.md`, `package.json` (script `profile:long-session`).
 
 ### 5.0 — Heap-pressure backup trigger para autocompact (3a67e41, e6aa174, 89bc281)
 OOM em sessões longas (relatado: 2h ativas → 4 GB heap → mark-compact infrutífero). Causa: autocompact é triggered por TOKEN count (~967k pra Opus 1M), mas em memória 967k tokens com objetos React/Ink/strings facilmente vira 1-2 GB de heap — V8 estoura o cap default de 4 GB muito antes do token threshold disparar. Três commits:
@@ -182,4 +189,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**5 ativos** (1× P0, 2× P2, 1× P3, +2.4 sem prio) + **12 concluídos**.
+**8 ativos** (5.3a → done; 5.3b adicionado P3, 1× P0 4.1, 1× P1 5.3, 2× P2 5.1/5.5, etc.) + **13 concluídos** (5.3a juntado).
