@@ -61,6 +61,21 @@ if (
   } catch {
     // Non-fatal: launcher continues without cache.
   }
+
+  // Lazy GC of stale entries. Node's enableCompileCache never reclaims old
+  // entries, and after code-splitting the cache accumulates hundreds of
+  // chunks per build. Sweep async after enabling cache (V8 only touches
+  // entries matching current bundle hash; stale ones are orphans).
+  // Opt out via CLAUDIO_V8CACHE_GC=0; tune via CLAUDIO_V8CACHE_TTL_DAYS.
+  if (process.env.CLAUDIO_V8CACHE_GC !== '0') {
+    const ttlDays = Number(process.env.CLAUDIO_V8CACHE_TTL_DAYS) || 14
+    if (ttlDays > 0) {
+      const gcUrl = pathToFileURL(join(__dirname, '..', 'scripts', 'v8cache-gc.mjs')).href
+      import(gcUrl)
+        .then(m => m.gcV8Cache(v8Cache, { ttlDays }))
+        .catch(() => {}) // Non-fatal.
+    }
+  }
 }
 
 if (existsSync(distPath)) {

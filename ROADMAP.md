@@ -6,18 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (7 itens)
-
-### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
-- **Esforço:** S (~30 min)
-- **Prioridade:** P3
-- **Estado:** Após code-splitting (commit pendente em `experiment/splitting-measure`), `dist/chunks/[name]-[hash].mjs` produz 412 chunks com hash novo a cada build. `bin/claudio:51` chama `module.enableCompileCache(~/.claudio/v8cache)` e Node persiste uma entrada por arquivo+mtime, mas **não** faz GC de entradas órfãs. Em desenvolvimento ativo (várias rebuilds/dia), o cache cresce ilimitadamente. Estado atual aqui: ~11 MB já (CLAUDE.md documentava ~5 MB pré-splitting).
-- **Ganho:** Previne crescimento ilimitado de `~/.claudio/v8cache/` em devs ativos. Não-bloqueador, mas vai morder em semanas.
-- **Abordagem:** Opções (escolher uma):
-  1. Cleanup periódico em `bin/claudio` (ex: deletar entradas com mtime > 30 dias antes de chamar `enableCompileCache`).
-  2. Limpar `v8cache/` no início do `build.ts` (mais agressivo, perde ganho em rebuilds incrementais).
-  3. Aceitar e documentar comando `bun run clean:cache` para limpeza manual.
-- **Arquivos:** `bin/claudio` (opção 1), `scripts/build.ts` (opção 2), `package.json` scripts (opção 3).
+## Ativos (6 itens)
 
 ### 5.5 — Naming de chunks com diretório para legibilidade de stack traces
 - **Esforço:** XS (1 linha + teste)
@@ -70,6 +59,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
+Sweep lazy de entradas com `mtime > CLAUDIO_V8CACHE_TTL_DAYS` (default 14d) em `scripts/v8cache-gc.mjs`, disparado async pelo `bin/claudio` após `enableCompileCache`. Subdirs de fingerprint (`vNN-x64-<hash>-<uid>`) ficam vazios depois da varredura e também são removidos. Opt-out via `CLAUDIO_V8CACHE_GC=0`. Verificado empiricamente: 14 MB / 622 entradas / 2 fingerprint dirs → 628 KB / 1 dir após uma execução com TTL agressivo. 6 testes em `scripts/v8cache-gc.test.mjs` cobrem TTL boundary, dir cleanup, missing dir, stray files, injeção de `now` para determinismo.
 
 ### 2.4 — Gerenciamento de memória em sessões longas (a629290, ff4ee09, f86cca9)
 `fileReadCache` ganhou `maxEntryBytes = 256 * 1024` (`src/utils/fileReadCache.ts:21,51`) — alinhado com `MAX_OUTPUT_SIZE` em `file.ts`. Worst-case RSS do cache: ~250 MB em vez de unbounded. `writeTextContent()` (`src/utils/file.ts:98`) chama `fileReadCache.invalidate(filePath)` após cada write, eliminando o risco de stale read entre FileEditTool/FileWriteTool/NotebookEditTool e o próximo Read no mesmo segundo. 11 testes em `fileReadCache.test.ts` cobrem hit/miss/eviction/size-guard/invalidate/clear. Claim original sobre listeners imbalanceados em REPL.tsx era falsa (corrigido na descrição original).
@@ -178,4 +170,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**7 ativos** (1× P0: 4.1; 2× P2: 5.1; 4× P3: 5.4/5.5/5.2/5.3b; +3.12 sem prio) + **13 concluídos** (2.4 estava duplicado nos ativos, movido pra cá).
+**6 ativos** (1× P0: 4.1; 1× P2: 5.1; 3× P3: 5.5/5.2/5.3b; +3.12 sem prio) + **14 concluídos**.
