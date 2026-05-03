@@ -62,6 +62,14 @@ mock.module('../utils/model/providers.js', () => ({
   isGithubNativeAnthropicMode: () => false,
 }));
 
+let resolvedMainLoopModel: string | undefined;
+function setResolvedMainLoopModel(name: string | undefined) {
+  resolvedMainLoopModel = name;
+}
+mock.module('../utils/model/model.js', () => ({
+  getMainLoopModel: () => resolvedMainLoopModel,
+}));
+
 mock.module('../ink.js', () => ({
   Box: () => null,
   Text: () => null,
@@ -81,6 +89,7 @@ afterEach(() => {
   setUsage({});
   setProfile(undefined);
   setCacheProvider('anthropic');
+  setResolvedMainLoopModel(undefined);
 });
 
 describe('readSnapshot — per-provider scoping', () => {
@@ -209,6 +218,29 @@ describe('readSnapshot — per-provider scoping', () => {
     expect(snap.output).toBe(200);
     expect(snap.cacheRead).toBe(1000);
     expect(snap.cacheCreation).toBe(300);
+  });
+
+  test('resolved mainLoopModel ([1m] suffix) is counted even when profile.model lacks it', () => {
+    // Reproduces the bug where the indicator went blank: cost-tracker keys
+    // usage by the *resolved* model name (e.g. `claude-opus-4-7[1m]`), but
+    // profile.model often holds the unresolved form (no suffix), and
+    // appState.mainLoopModel can be the user alias (`opus[1m]`) or null.
+    // getMainLoopModel() is the only source for the resolved name.
+    setUsage({
+      'claude-opus-4-7[1m]': {
+        inputTokens: 12, outputTokens: 8,
+        cacheReadInputTokens: 116000, cacheCreationInputTokens: 63800,
+      },
+    });
+    setProfile({ id: 'anthropic-1', model: 'claude-opus-4-7', baseUrl: 'https://api.anthropic.com' });
+    setResolvedMainLoopModel('claude-opus-4-7[1m]');
+
+    const snap = readSnapshot();
+
+    expect(snap.input).toBe(12);
+    expect(snap.output).toBe(8);
+    expect(snap.cacheRead).toBe(116000);
+    expect(snap.cacheCreation).toBe(63800);
   });
 
   test('extraModels deduplicates against profile.model (no double-count)', () => {
