@@ -8,7 +8,7 @@
  * - src/ path aliases
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { noTelemetryPlugin } from './no-telemetry-plugin'
 
@@ -135,6 +135,16 @@ function restoreModifiedFiles() {
   modifiedFiles.clear()
 }
 
+// Wipe stale build artifacts before rebuilding. With splitting:true, chunks
+// carry hashed names ([name]-[hash].mjs) and Bun.build() does NOT remove
+// outputs from previous runs whose hashes have since changed. Without this,
+// `dist/chunks/` accumulates duplicates across rebuilds and `npm pack`
+// publishes orphans alongside fresh chunks.
+const distDir = join(import.meta.dir, '..', 'dist')
+for (const stale of ['cli.mjs', 'cli.mjs.map', 'chunks']) {
+  rmSync(join(distDir, stale), { recursive: true, force: true })
+}
+
 preProcessFeatureFlags(join(import.meta.dir, '..', 'src'))
 const numModified = modifiedFiles.size
 
@@ -153,10 +163,14 @@ const result = await Bun.build({
   outdir: './dist',
   target: 'node',
   format: 'esm',
-  splitting: false,
+  splitting: true,
   sourcemap: 'external',
   minify: false,
-  naming: 'cli.mjs',
+  naming: {
+    entry: 'cli.mjs',
+    chunk: 'chunks/[name]-[hash].mjs',
+    asset: 'assets/[name]-[hash][ext]',
+  },
   define: {
     // Inline USER_TYPE so Bun constant-folds and tree-shakes every
     // `process.env.USER_TYPE === 'ant'` branch. USER_TYPE is an
@@ -540,6 +554,11 @@ if (!result.success) {
   }
   process.exitCode = 1
 } else {
+  // Emit dist/.npmignore so `npm pack` excludes sourcemaps from the published
+  // tarball. A root-level .npmignore does NOT apply to directories listed in
+  // package.json `files` — npm only honours .npmignore *inside* the directory.
+  // Without this, ~90 MB of .map files ship to every npm install.
+  writeFileSync(join(distDir, '.npmignore'), '**/*.map\n')
   console.log(`✓ Built claudio v${version} → dist/cli.mjs`)
 }
 

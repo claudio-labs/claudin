@@ -6,7 +6,37 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (5 itens)
+## Ativos (8 itens)
+
+### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
+- **Esforço:** S (~30 min)
+- **Prioridade:** P3
+- **Estado:** Após code-splitting (commit pendente em `experiment/splitting-measure`), `dist/chunks/[name]-[hash].mjs` produz 412 chunks com hash novo a cada build. `bin/claudio:51` chama `module.enableCompileCache(~/.claudio/v8cache)` e Node persiste uma entrada por arquivo+mtime, mas **não** faz GC de entradas órfãs. Em desenvolvimento ativo (várias rebuilds/dia), o cache cresce ilimitadamente. Estado atual aqui: ~11 MB já (CLAUDE.md documentava ~5 MB pré-splitting).
+- **Ganho:** Previne crescimento ilimitado de `~/.claudio/v8cache/` em devs ativos. Não-bloqueador, mas vai morder em semanas.
+- **Abordagem:** Opções (escolher uma):
+  1. Cleanup periódico em `bin/claudio` (ex: deletar entradas com mtime > 30 dias antes de chamar `enableCompileCache`).
+  2. Limpar `v8cache/` no início do `build.ts` (mais agressivo, perde ganho em rebuilds incrementais).
+  3. Aceitar e documentar comando `bun run clean:cache` para limpeza manual.
+- **Arquivos:** `bin/claudio` (opção 1), `scripts/build.ts` (opção 2), `package.json` scripts (opção 3).
+
+### 5.5 — Naming de chunks com diretório para legibilidade de stack traces
+- **Esforço:** XS (1 linha + teste)
+- **Prioridade:** P3 (cosmético)
+- **Estado:** Após code-splitting, `naming.chunk: 'chunks/[name]-[hash].mjs'` produz 198 chunks chamados `cli-XXXX.mjs` quando o `[name]` deriva de fontes ambíguas (`cli.tsx`, vários `index.ts`). Stack traces ficam ilegíveis: "qual `cli-q4kjxz12` é esse?".
+- **Ganho:** Debug mais fácil em produção sem inflar tamanho.
+- **Abordagem:** Trocar para `chunks/[dir]-[name]-[hash].mjs` ou similar. Validar se Bun aceita esses tokens em `naming.chunk` (consulta docs Bun) e que o resultado preserva `[hash]` ao final (cache busting).
+- **Arquivos:** `scripts/build.ts:159-163` (objeto `naming`).
+
+### 5.3 — Investigar heap real em sessão longa antes de otimizar bundle
+- **Esforço:** S (instrumentação) + dependente do achado
+- **Prioridade:** P1 (precede 5.1)
+- **Estado:** OOM @ 4 GB reproduzido pelo usuário. Bundle de 21 MB compila para ~80-150 MB de heap V8 — não explica os GBs. Auditoria identificou ~14 caches/maps potencialmente não-bounded crescendo por mensagem/tool call/skill: `Markdown.tsx:23` tokenCache (por hash de markdown, sem evict), `utils/queryHelpers.ts:100` toolProgressLastSentTime (por tool call único), `utils/imageStore.ts:13` storedImagePaths, `services/analytics/growthbook.ts:78,82` experimentDataByFeature + remoteEvalFeatureValues, `services/lsp/LSPDiagnosticRegistry.ts:49,60` pendingDiagnostics + fileWaiters, `services/MagicDocs/magicDocs.ts:38` trackedMagicDocs, `services/api/promptCacheBreakDetection.ts:98` previousStateBySource, `utils/auth.ts:1363` pending401Handlers (não deleta após resolve), `utils/hooks/AsyncHookRegistry.ts:28` pendingHooks, `skills/loadSkillsDir.ts:907,912` dynamicSkills + conditionalSkills, `utils/telemetry/perfettoTracing.ts:107,108,116` pendingSpans/agentRegistry/agentIdToProcessId (vazam em crash), `utils/telemetry/sessionTracing.ts:71,75` strongSpans, `services/planDossier.ts:469,484` revalidateCache + agentPlanSlugRegistry. Hipótese: o vilão real do OOM é acumulação por sessão, não tamanho do bundle.
+- **Ganho:** Identifica a causa real antes de gastar esforço em code-splitting que pode não mover o ponteiro. Otimizar bundle sem investigar heap é otimizar a coisa errada.
+- **Abordagem:**
+  1. Rodar `/heap-dump` em sessão de 1-2h reproduzindo OOM; abrir snapshot em Chrome DevTools, identificar top 10 retainers.
+  2. Se for um dos caches da lista: aplicar LRU/WeakRef/cleanup no site. Tier-1 candidates: `Markdown.tsx` tokenCache (LRU), `queryHelpers.ts` toolProgressLastSentTime (cleanup ao final do tool call), `auth.ts` pending401Handlers (cleanup após resolve), `growthbook.ts` (gate em wrapper se telemetry desligada).
+  3. Se NÃO for cache: documentar achado, reavaliar prioridade de 5.1.
+- **Arquivos:** dependente do achado; baseline em `src/components/Markdown.tsx`, `src/utils/queryHelpers.ts`, `src/utils/auth.ts`, `src/services/analytics/growthbook.ts`, `src/services/lsp/LSPDiagnosticRegistry.ts`
 
 ### 5.1 — Code-splitting de provider SDKs
 - **Esforço:** L (1-2 dias)

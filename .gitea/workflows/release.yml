@@ -180,12 +180,17 @@ jobs:
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+          TAG: ${{ steps.bump.outputs.tag }}
         run: |
-          # Skip silently if asset already attached (retry-friendly).
+          # With code-splitting, dist/cli.mjs is a 10 KB facade that imports
+          # 412 chunks from dist/chunks/. Shipping cli.mjs alone would yield
+          # a broken binary, so we tar the whole dist/ (excluding sourcemaps).
+          TARBALL="dist-${TAG}.tar.gz"
+          tar --exclude='*.map' -czf "$TARBALL" -C dist .
           curl -sS -X POST \
-            "$GITEA_API_BASE/releases/$RELEASE_ID/assets?name=cli.mjs" \
+            "$GITEA_API_BASE/releases/$RELEASE_ID/assets?name=${TARBALL}" \
             -H "Authorization: token $GITEA_TOKEN" \
-            -F "attachment=@dist/cli.mjs" \
+            -F "attachment=@${TARBALL}" \
             | jq -r '.browser_download_url // .message // .'
 
       - name: Set up Node for npm publish

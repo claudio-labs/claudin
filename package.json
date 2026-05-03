@@ -8,8 +8,7 @@
   },
   "files": [
     "bin/",
-    "dist/cli.mjs",
-    "dist/claudio-vscode.vsix",
+    "dist/",
     "README.md"
   ],
   "scripts": {
@@ -25,7 +24,7 @@
     "test:coverage:ui": "bun run scripts/render-coverage-heatmap.ts",
     "security:pr-scan": "bun run scripts/pr-intent-scan.ts",
     "typecheck": "tsc --noEmit",
-    "smoke": "bun run build && node dist/cli.mjs --version",
+    "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
     "build:extension": "mkdir -p dist && cd vscode-extension/claudio-vscode && bun install --frozen-lockfile && npx --yes @vscode/vsce@^3 package --out ../../dist/claudio-vscode.vsix",
