@@ -63,7 +63,20 @@ class FileReadCache {
   }
 
   /**
-   * Clears the entire cache. Useful for testing or memory management.
+   * Clears the entire cache.
+   *
+   * Heap reclaim semantics: Map.clear() drops the JS-level references
+   * synchronously, but JSC sweeps the orphaned string contents lazily —
+   * a synchronous gc() right after clear() typically leaves used_heap_size
+   * unchanged because background GC work hasn't settled (empirically up to
+   * ~200 ms under realistic churn). The strings are eligible for collection;
+   * they'll be reclaimed at the next sweep, naturally as pressure builds.
+   * We don't force gc() here because the settling time is heap-size
+   * dependent and not predictable, and forcing a stop-the-world early
+   * would just stall the next operation.
+   * RSS often stays high after the heap drops because the allocator
+   * (jemalloc/glibc) keeps freed pages around for reuse; that is not a
+   * leak — the next allocations reuse them without growing the process.
    */
   clear(): void {
     this.cache.clear()

@@ -6,15 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (6 itens)
-
-### 5.8 — `fileReadCache.clear()` não libera RSS V8
-- **Esforço:** S (investigação + escolha entre fix ou doc)
-- **Prioridade:** P1
-- **Estado:** Bench novo `scripts/profile/file-read-cache-saturation-bench.ts` mostra que após saturar 1000 entries × 256 KB (~505 MB RSS), chamar `cache.clear()` não devolve RSS — V8 retém o heap mesmo com Map vazio e GC explícito. LRU funciona durante churn (drift 0.8% em 3 rounds) mas low-mem recovery via `clear()` é ineficaz. Não é leak (steady state estabiliza), mas usuários que usam `/clear` esperando liberar RSS ficam frustrados.
-- **Ganho:** Recovery real de memória em situações de pressão (low RAM, OOM iminente). Ou pelo menos documentar a limitação.
-- **Abordagem:** (a) substituir Map por estrutura que solte `string` refs (atribuir cada entry a um wrapper, anular wrapper em vez de só `Map.delete`), (b) chamar `gc()` explícito após `clear()` quando `--expose-gc` ativo (já é default no launcher), (c) doc-only: README do bench + comentário no código. Decidir após reproduzir em sessão real.
-- **Arquivos:** `src/utils/fileReadCache.ts`, possivelmente `src/commands/clear/`.
+## Ativos (5 itens)
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -59,6 +51,11 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.8 — `/clear` agora drena `fileReadCache`; bench corrigido
+Bench original alegava que `cache.clear()` "não libera RSS V8". Investigação encontrou duas falhas: (1) `fileReadCache.clear()` **não era chamado em produção em lugar nenhum** — `/clear` (`src/commands/clear/caches.ts`) drenava ~15 caches mas pulava esse, então o sintoma só aparecia em benches sintéticos rodando direto contra o singleton; (2) o bench fazia `gc()` síncrono logo após `clear()` e tirava snapshot — JSC sweep é lazy, não roda na mesma microtask. Bench corrigido amostra heap em t=0/50/250/500 ms: heap volta abaixo do baseline em ~50 ms, RSS solta ~633 MB em ~500 ms. RSS retido depois disso é o alocador (jemalloc/glibc) mantendo páginas livres pra reuso, não leak. Fix: `clearSessionCaches` agora chama `fileReadCache.clear()`; bench mostra trajetória de decay em vez de snapshot único; doc no `clear()` explica semantics. Tentei agendar `gc()` forçado mas o tempo de settle do JSC é dependente do tamanho do heap (50-200+ ms sob churn realista) — delay fixo é frágil; o engine sweepa naturalmente quando há pressão.
+
+Arquivos: `src/utils/fileReadCache.ts`, `src/commands/clear/caches.ts`, `scripts/profile/file-read-cache-saturation-bench.ts`.
 
 ### 5.7 — Cap/poda de `QueryEngine.mutableMessages` em sessões longas (26ed91c)
 `mutableMessages` (`src/QueryEngine.ts:187`) crescia sem cap; tool_results de 50-200 KB ficavam retidos até `/clear`. Wire path já emitia esses como stubs determinísticos (microcompact size-based trigger + `applyStableStubs` em `claude.ts`/`openaiShim`/`codexShim`), mas `applyStableStubs` retornava array NOVO — os blocos originais continuavam vivos em `mutableMessages`. Solução: substituir `mutableMessages = applyStableStubs(mutableMessages)` no início de `submitMessage` e deixar GC reclamar os originais. gRPC (`src/grpc/server.ts:201`) aplica a mesma compactação antes de cachear o snapshot cross-stream. Identity-preserving fast-path adicionado em `applyStableStubs` cobre 2 casos no-op (set vazio + set sem matches), pra guard `compacted !== this.mutableMessages` evitar reatribuição em todo turno. Bench (1000 turnos × 50 KB tool_results, 2 tools/turn): array bytes 99.0 MB → 1.4 MB (−98.6%), RSS/turno 220.9 KB → 84.6 KB (−62%). 459 testes provider passam; 3 testes novos em `src/grpc/server.test.ts` + 3 em `stableStubState.test.ts` (identity guard, GC-eligibility, sub-agent isolation).
@@ -179,4 +176,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**4 ativos** (1× P0: 4.1; 1× P1: 5.8; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **17 concluídos**.
+**4 ativos** (1× P0: 4.1; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **18 concluídos**.

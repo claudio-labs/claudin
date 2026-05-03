@@ -136,6 +136,28 @@ Options:
     })
   }
 
+  // Sample the heap several times after a release event so the decay
+  // is visible. JSC sweeps lazily after Map.clear(): a synchronous gc()
+  // immediately after typically leaves orphaned string contents in the
+  // heap; the engine settles on its own across the next ~hundreds of ms,
+  // and natural pressure from the next operation triggers full reclaim.
+  // We forced gc() but JSC may schedule background work regardless.
+  async function recordPhaseDelay(name: string, t0: number, delayMs: number): Promise<void> {
+    await new Promise(r => setTimeout(r, delayMs))
+    gc()
+    gc()
+    const m = snap()
+    phases.push({
+      name,
+      cacheSize: fileReadCache.getStats().size,
+      ms: performance.now() - t0,
+      mem: m,
+      deltaRss: m.rss - baseline.rss,
+      deltaHeap: m.heap - baseline.heap,
+      deltaExt: m.ext - baseline.ext,
+    })
+  }
+
   // Phase 1: saturate (read up to cap)
   let t0 = performance.now()
   for (let i = 0; i < Math.min(1000, args.entries); i++) {
@@ -161,10 +183,15 @@ Options:
     recordPhase(`churn-round-${round + 1}`, t0)
   }
 
-  // Phase 4: cache.clear() — should release everything
+  // Phase 4: cache.clear() — drops references; sample heap at 0/50/250/500 ms
+  // to show the lazy-sweep decay. RSS often stays high because the allocator
+  // keeps freed pages around for reuse — that is not a leak.
   t0 = performance.now()
   fileReadCache.clear()
-  recordPhase('after-clear', t0)
+  await recordPhaseDelay('after-clear+0ms', t0, 0)
+  await recordPhaseDelay('after-clear+50ms', t0, 50)
+  await recordPhaseDelay('after-clear+250ms', t0, 200)
+  await recordPhaseDelay('after-clear+500ms', t0, 250)
 
   rmSync(dir, { recursive: true, force: true })
 
@@ -201,11 +228,24 @@ Options:
     )
   }
 
-  const afterClear = phases.find(p => p.name === 'after-clear')
-  const tailChurn = churnPhases[churnPhases.length - 1]
-  if (afterClear && tailChurn) {
-    const recovered = tailChurn.deltaRss - afterClear.deltaRss
-    console.log(`clear() released: ${fmtBytes(recovered)} RSS (${((recovered / tailChurn.deltaRss) * 100).toFixed(1)}% of saturated state)`)
+  // Show heap reclaim trajectory: at 0 ms vs 500 ms after clear().
+  // Heap should be near baseline by 500 ms; RSS may stay high (allocator).
+  const clearStart = phases.find(p => p.name === 'after-clear+0ms')
+  const clearLast = phases
+    .filter(p => p.name.startsWith('after-clear+'))
+    .at(-1)
+  if (clearStart && clearLast) {
+    const heapReclaimed = clearStart.deltaHeap - clearLast.deltaHeap
+    console.log(
+      `clear() heap decay: Δheap ${fmtBytes(clearStart.deltaHeap)} → ${fmtBytes(clearLast.deltaHeap)} (reclaimed ${fmtBytes(heapReclaimed)} between samples)`,
+    )
+    const tailChurn = churnPhases[churnPhases.length - 1]
+    if (tailChurn) {
+      const rssReleased = tailChurn.deltaRss - clearLast.deltaRss
+      console.log(
+        `clear() RSS released: ${fmtBytes(rssReleased)} (${((rssReleased / tailChurn.deltaRss) * 100).toFixed(1)}% of saturated state; remainder retained by allocator for reuse)`,
+      )
+    }
   }
 }
 
