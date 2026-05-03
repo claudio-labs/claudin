@@ -6,7 +6,23 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (5 itens)
+## Ativos (7 itens)
+
+### 5.7 — Cap/poda de `QueryEngine.mutableMessages` em sessões longas
+- **Esforço:** M (decisão arquitetural + implementação)
+- **Prioridade:** P1
+- **Estado:** `mutableMessages: Message[]` (`src/QueryEngine.ts:187`) cresce sem cap por toda a sessão. Append sites: `:432` (user input), `:782` (assistant), `:786` (progress), `:799` (tool_results), `:844` (attachment). Tool_results de FileRead/Bash/Grep facilmente reach 50-200 KB cada e ficam retidos até `/clear`. Bench novo `scripts/profile/query-engine-mem-bench.ts` mostra **~232 KB RSS/turno** com tool_results de 50 KB; em 500 turnos = +113 MB RSS. Heap V8 fica 0 (strings vão pra `external`), invisível no `long-session-bench.ts` antigo. autocompact (5.0) mitiga via heap pressure mas só dispara perto do limit; não há proteção contínua.
+- **Ganho:** Reduzir RSS em sessões longas reais (2h+) onde autocompact ainda não disparou. Prevenir OOM em hardware com pouca RAM.
+- **Abordagem (a decidir):** (a) cap absoluto em N mensagens com FIFO eviction de tool_results antigos, (b) compressão proativa de tool_results > X KB após Y turnos (substitui por stub, mantém tool_use_id), (c) TTL por tool_use_id. Opção (b) preserva caching prefix-stable do Anthropic (já documentado em team memory `feedback-cache-stable-compression.md`). Bench e regressão em CI usando `query-engine-mem-bench.ts`.
+- **Arquivos:** `src/QueryEngine.ts`, possivelmente `src/services/compact/` (reuso de stable-stub design existente).
+
+### 5.8 — `fileReadCache.clear()` não libera RSS V8
+- **Esforço:** S (investigação + escolha entre fix ou doc)
+- **Prioridade:** P1
+- **Estado:** Bench novo `scripts/profile/file-read-cache-saturation-bench.ts` mostra que após saturar 1000 entries × 256 KB (~505 MB RSS), chamar `cache.clear()` não devolve RSS — V8 retém o heap mesmo com Map vazio e GC explícito. LRU funciona durante churn (drift 0.8% em 3 rounds) mas low-mem recovery via `clear()` é ineficaz. Não é leak (steady state estabiliza), mas usuários que usam `/clear` esperando liberar RSS ficam frustrados.
+- **Ganho:** Recovery real de memória em situações de pressão (low RAM, OOM iminente). Ou pelo menos documentar a limitação.
+- **Abordagem:** (a) substituir Map por estrutura que solte `string` refs (atribuir cada entry a um wrapper, anular wrapper em vez de só `Map.delete`), (b) chamar `gc()` explícito após `clear()` quando `--expose-gc` ativo (já é default no launcher), (c) doc-only: README do bench + comentário no código. Decidir após reproduzir em sessão real.
+- **Arquivos:** `src/utils/fileReadCache.ts`, possivelmente `src/commands/clear/`.
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)

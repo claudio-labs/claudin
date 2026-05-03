@@ -37,6 +37,11 @@
     "profile:memory": "bun run scripts/profile/memory-bench.ts",
     "profile:transcript": "bun run scripts/profile/transcript-bench.ts --with-code",
     "profile:long-session": "bun --expose-gc run scripts/profile/long-session-bench.ts",
+    "profile:query-engine-mem": "bun --expose-gc run scripts/profile/query-engine-mem-bench.ts",
+    "profile:streaming-shim": "bun --expose-gc run scripts/profile/streaming-shim-bench.ts",
+    "profile:skills-plugin": "bun --expose-gc run scripts/profile/skills-plugin-bench.ts",
+    "profile:file-read-cache-saturation": "bun --expose-gc run scripts/profile/file-read-cache-saturation-bench.ts",
+    "profile:heap-snapshot-diff": "bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts",
     "prepack": "npm run build:release"
   },
   "dependencies": {

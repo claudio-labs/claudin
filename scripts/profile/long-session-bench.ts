@@ -90,6 +90,11 @@ function heapBytes(): number {
   return process.memoryUsage().heapUsed
 }
 
+function memSnap(): { heap: number; rss: number; ext: number; ab: number } {
+  const m = process.memoryUsage()
+  return { heap: m.heapUsed, rss: m.rss, ext: m.external, ab: m.arrayBuffers }
+}
+
 async function measure<T>(
   name: string,
   declaredCap: number,
@@ -324,6 +329,10 @@ type SessionSnapshot = {
   turn: number
   heapUsedBytes: number
   heapDeltaBytes: number
+  rssBytes: number
+  rssDeltaBytes: number
+  externalBytes: number
+  arrayBuffersBytes: number
   caches: {
     tokenCache: number
     toolProgress: number
@@ -403,6 +412,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
   await new Promise(r => setTimeout(r, 10))
   gc()
   const baselineHeap = heapBytes()
+  const baselineRss = process.memoryUsage().rss
   const t0 = performance.now()
 
   const snapshots: SessionSnapshot[] = []
@@ -474,11 +484,16 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     // Snapshot at every 10% boundary (and final).
     if ((turn + 1) % snapshotInterval === 0 || turn === turns - 1) {
       gc()
-      const heapNow = heapBytes()
+      const memNow = process.memoryUsage()
+      const heapNow = memNow.heapUsed
       snapshots.push({
         turn: turn + 1,
         heapUsedBytes: heapNow,
         heapDeltaBytes: heapNow - baselineHeap,
+        rssBytes: memNow.rss,
+        rssDeltaBytes: memNow.rss - baselineRss,
+        externalBytes: memNow.external,
+        arrayBuffersBytes: memNow.arrayBuffers,
         caches: {
           tokenCache: __TEST_ONLY_getTokenCacheSize(),
           toolProgress: __TEST_ONLY_getToolProgressMapSize(),
@@ -640,11 +655,11 @@ async function main(): Promise<void> {
     )
     console.log(`  wall: ${fmt(mixed.wallMs)}ms\n`)
     console.log(
-      'turn       heap used   Δ vs t=0   tokenC  toolPr  imgs  lspD  fileRC',
+      'turn       heap used   Δheap        RSS    ΔRSS    ext    arrBuf  tokenC  toolPr  imgs  lspD  fileRC',
     )
     for (const s of mixed.snapshots) {
       console.log(
-        `${String(s.turn).padStart(5)}  ${fmtBytes(s.heapUsedBytes).padStart(10)}  ${fmtBytes(s.heapDeltaBytes).padStart(9)}  ${String(s.caches.tokenCache).padStart(6)}  ${String(s.caches.toolProgress).padStart(6)}  ${String(s.caches.storedImagePaths).padStart(4)}  ${String(s.caches.deliveredDiagnostics).padStart(4)}  ${String(s.caches.fileReadCache).padStart(6)}`,
+        `${String(s.turn).padStart(5)}  ${fmtBytes(s.heapUsedBytes).padStart(10)}  ${fmtBytes(s.heapDeltaBytes).padStart(9)}  ${fmtBytes(s.rssBytes).padStart(8)}  ${fmtBytes(s.rssDeltaBytes).padStart(7)}  ${fmtBytes(s.externalBytes).padStart(6)}  ${fmtBytes(s.arrayBuffersBytes).padStart(7)}  ${String(s.caches.tokenCache).padStart(6)}  ${String(s.caches.toolProgress).padStart(6)}  ${String(s.caches.storedImagePaths).padStart(4)}  ${String(s.caches.deliveredDiagnostics).padStart(4)}  ${String(s.caches.fileReadCache).padStart(6)}`,
       )
     }
     console.log('')
