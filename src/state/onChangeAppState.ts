@@ -1,5 +1,4 @@
 import { setMainLoopModelOverride } from '../bootstrap/state.js'
-import { isAntEmployee } from '../utils/buildConfig.js'
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
@@ -146,18 +145,6 @@ export function onChangeAppState({
       ...current,
       verbose,
     }))
-  }
-
-  // tungstenPanelVisible (internal-only tmux panel sticky toggle)
-  if (isAntEmployee()) {
-    if (
-      newState.tungstenPanelVisible !== oldState.tungstenPanelVisible &&
-      newState.tungstenPanelVisible !== undefined &&
-      getGlobalConfig().tungstenPanelVisible !== newState.tungstenPanelVisible
-    ) {
-      const tungstenPanelVisible = newState.tungstenPanelVisible
-      saveGlobalConfig(current => ({ ...current, tungstenPanelVisible }))
-    }
   }
 
   // settings: clear auth-related caches when settings change

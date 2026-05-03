@@ -78,12 +78,6 @@ describe('getBashGitInstructionsBody', () => {
     expect(body).toContain('# Creating pull requests')
   })
 
-  it('returns a non-empty string for ant users (short variant)', () => {
-    process.env.USER_TYPE = 'ant'
-    const body = getBashGitInstructionsBody()
-    expect(body.length).toBeGreaterThan(0)
-    expect(body).toContain('# Git operations')
-  })
 })
 
 describe('BashTool description vs git block injection', () => {

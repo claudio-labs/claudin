@@ -1,12 +1,34 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-02 | ROI honesto, sem itens marginais
+> Última auditoria: 2026-05-03 | ROI honesto, sem itens marginais
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (3 itens)
+## Ativos (5 itens)
+
+### 5.1 — Code-splitting de provider SDKs
+- **Esforço:** L (1-2 dias)
+- **Prioridade:** P2
+- **Estado:** Bundle = 21 MB, parseia em ~80-150 MB de heap V8 antes do primeiro turn. Claudio empacota Anthropic SDK + Bedrock + Vertex + Foundry + AWS SDK + lodash-es + GrowthBook (stubs) + Ink + Yoga TS port + React + RxJS + Highlight.js + Pyright LSP polyfills + libs OAuth/keychain. Claude Code oficial (440 MB residente) empacota só o path Anthropic; Claudio idle fica ~1.4 GB → delta de ~1 GB é estrutural.
+- **Ganho:** Único caminho real para fechar o delta de ~1 GB vs Claude oficial. Reduz tempo de cold start, RSS residente e pressão sobre o heap-pressure trigger (5.2).
+- **Abordagem:** Lazy-load via `import()` dinâmico nos shims que não pertencem ao provider ativo. Bedrock e Vertex já são parcialmente deferidos (`src/utils/tokens.ts:3-5`); estender para Foundry, AWS extras, Codex, Gemini.
+- **Arquivos:** `src/services/api/client.ts`, `src/services/api/providerConfig.ts`, `src/services/api/{bedrock,vertex,foundry,codex,gemini}*.ts`
+
+### 5.2 — Auditoria de lodash `memoize` por escape de closure
+- **Esforço:** S-M (meio dia)
+- **Prioridade:** P3
+- **Estado:** 116 sites usam `memoize` do lodash. Default mantém Map sem bound, keyed pelo PRIMEIRO argumento. Quando o primeiro arg é objeto/array reference (não primitivo) e o reference é reconstruído por chamada, a Map cresce sem limite. Pior, se a função `memoize`-ada captura state de fora (closure), cada entrada fixa esse state em memória. Auditoria do agent já identificou que `getDeferredToolTokenCount` (`src/utils/toolSearch.ts:125`) tem resolver explícito e está OK; resto não foi auditado.
+- **Ganho:** Previne escape silencioso de AppState ou outros state grandes via cache memoize.
+- **Abordagem:** Listar todos `= memoize(`, filtrar os que NÃO têm resolver (segundo arg), checar se primeiro arg é primitivo. Para os perigosos, migrar para `memoizeWithLRU` com key-fn explícita.
+- **Arquivos:** `src/**` (116 sites — começar pelos `services/api/`, `utils/auth.ts`, `utils/claudemd.ts`)
+
+### 2.4 — Gerenciamento de memória em sessões longas
+- **Esforço:** M
+- **Estado:** `fileReadCache` sem check de tamanho por entrada (1000 × ficheiros grandes = >1 GB); `invalidate()` nunca chamado após writes — coerência depende só de mtime granularity. Listeners em REPL.tsx estão corretos (2 on + 2 off balanceados).
+- **Ganho:** Cap de memória previsível em sessões longas; elimina risco de stale read em writes rápidos.
+- **Arquivos:** `src/utils/fileReadCache.ts`, `src/utils/file.ts`
 
 ### 2.4 — Gerenciamento de memória em sessões longas
 - **Esforço:** M
@@ -30,6 +52,13 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.0 — Heap-pressure backup trigger para autocompact (3a67e41, e6aa174, 89bc281)
+OOM em sessões longas (relatado: 2h ativas → 4 GB heap → mark-compact infrutífero). Causa: autocompact é triggered por TOKEN count (~967k pra Opus 1M), mas em memória 967k tokens com objetos React/Ink/strings facilmente vira 1-2 GB de heap — V8 estoura o cap default de 4 GB muito antes do token threshold disparar. Três commits:
+
+1. `fix(autocompact): trigger compaction on V8 heap pressure` — adiciona `isAboveHeapPressureThreshold` em `shouldAutoCompact`. Dispara compact quando `used_heap_size / heap_size_limit > 0.7` (configurável via `CLAUDIO_HEAP_PRESSURE_RATIO`). Guarded por `MIN_MESSAGES_FOR_HEAP_TRIGGER=20` pra não compactar sessão recém-aberta.
+2. `chore(launcher): bump default V8 heap limit to 8 GB via re-exec` — `bin/claudio` re-exec com `--max-old-space-size=8192` (override `CLAUDIO_MAX_HEAP_MB`, opt-out `CLAUDIO_NO_HEAP_BUMP=1`). Dá margem pro trigger de heap-pressure rodar summary antes do OOM.
+3. `perf(memory): hint V8 GC at natural release points` — `globalThis.gc?.()` em `runPostCompactCleanup` e no finally de `runAgent.ts`. Re-exec do launcher agora inclui `--expose-gc` por default.
 
 ### 3.6 — Keep-alive por provider (não global)
 `let keepAliveDisabled` → `Map<string, boolean>` em `proxy.ts`. `disableKeepAlive(provider)` e `getProxyFetchOptions({ provider })` agora são scoped por provider. Callers atualizados: `withRetry.ts` passa `getAPIProvider()`, `openaiShim.ts` passa a variável `provider` local, `codexShim.ts` passa `'codex'`, `client.ts` passa `'anthropic'`. Test isolado garante que ECONNRESET no DeepSeek não afeta o Anthropic.
@@ -123,4 +152,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**3 ativos** (1× P0, 2× P2) + **11 concluídos**.
+**5 ativos** (1× P0, 2× P2, 1× P3, +2.4 sem prio) + **12 concluídos**.

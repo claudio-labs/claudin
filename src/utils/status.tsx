@@ -17,7 +17,6 @@ import { resolveProviderRequest } from '../services/api/providerConfig.js';
 import { getMTLSConfig } from './mtls.js';
 import { checkInstall } from './nativeInstaller/index.js';
 import { getProxyUrl } from './proxy.js';
-import { SandboxManager } from './sandbox/sandbox-adapter.js';
 import { getSettingsWithAllErrors } from './settings/allErrors.js';
 import { getEnabledSettingSources, getSettingSourceDisplayNameCapitalized } from './settings/constants.js';
 import { getManagedFileSettingsPresence, getPolicySettingsOrigin, getSettingsForSource } from './settings/settings.js';
@@ -29,14 +28,7 @@ export type Property = {
 };
 export type Diagnostic = React.ReactNode;
 export function buildSandboxProperties(): Property[] {
-  if ("external" !== 'ant') {
-    return [];
-  }
-  const isSandboxed = SandboxManager.isSandboxingEnabled();
-  return [{
-    label: 'Bash Sandbox',
-    value: isSandboxed ? 'Enabled' : 'Disabled'
-  }];
+  return [];
 }
 export function buildIDEProperties(mcpClients: MCPServerConnection[], ideInstallationStatus: IDEExtensionInstallationStatus | null = null, theme: ThemeName): Property[] {
   const ideClient = mcpClients?.find(client => client.name === 'ide');

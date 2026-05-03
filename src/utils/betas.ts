@@ -8,14 +8,12 @@ import { getIsNonInteractiveSession, getSdkBetas } from '../bootstrap/state.js'
 import {
   BEDROCK_EXTRA_PARAMS_HEADERS,
   CLAUDE_CODE_20250219_BETA_HEADER,
-  CLI_INTERNAL_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
   CONTEXT_MANAGEMENT_BETA_HEADER,
   INTERLEAVED_THINKING_BETA_HEADER,
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
-  SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER,
   TOKEN_EFFICIENT_TOOLS_BETA_HEADER,
   TOOL_SEARCH_BETA_HEADER_1P,
   TOOL_SEARCH_BETA_HEADER_3P,
@@ -157,45 +155,19 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   )
 }
 
-// @[MODEL LAUNCH]: Add the new model if it supports auto mode (specifically PI probes) — ask in #proj-claude-code-safety-research.
 export function modelSupportsAutoMode(model: string): boolean {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const m = getCanonicalName(model)
-    // Claudio: upstream restricts auto mode to firstParty + a narrow model
-    // allowlist because the PI-probe classifier is wired only for Anthropic
-    // direct. We don't ship the probe infra anyway, so gate on the local
-    // classifier being usable for any model the user has configured.
-    // The `disableAutoMode` setting remains the opt-out for users who want
-    // to keep approval prompts strict.
-    if (process.env.USER_TYPE !== 'ant') {
-      return true
-    }
-    // GrowthBook override: tengu_auto_mode_config.allowModels force-enables
-    // auto mode for listed models, bypassing the denylist/allowlist below.
-    // Exact model IDs (e.g. "claude-strudel-v6-p") match only that model;
-    // canonical names (e.g. "claude-strudel") match the whole family.
-    const config = getFeatureValue_CACHED_MAY_BE_STALE<{
-      allowModels?: string[]
-    }>('tengu_auto_mode_config', {})
-    const rawLower = model.toLowerCase()
-    if (
-      config?.allowModels?.some(
-        am => am.toLowerCase() === rawLower || am.toLowerCase() === m,
-      )
-    ) {
-      return true
-    }
-    if (process.env.USER_TYPE === 'ant') {
-      // Denylist: block known-unsupported claude models, allow everything else (ant-internal models etc.)
-      if (m.includes('claude-3-')) return false
-      // claude-*-4 not followed by -[6-9]: blocks bare -4, -4-YYYYMMDD, -4@, -4-0 thru -4-5
-      if (/claude-(opus|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false
-      return true
-    }
-    // External allowlist (firstParty already checked above).
-    return /^claude-(opus|sonnet)-4-6/.test(m)
-  }
-  return false
+  if (!feature('TRANSCRIPT_CLASSIFIER')) return false
+  const m = getCanonicalName(model)
+  // The auto-mode classifier prompt was authored for Claude tool-call
+  // shape; non-Claude providers (OpenAI/Gemini/Mistral/Ollama/etc.) are
+  // not validated and stay opt-out. Within Claude, deny families that
+  // cannot run the classifier reliably (Claude 3.x and Claude 4 pre-4-6).
+  // The `disableAutoMode` setting remains the opt-out for users who want
+  // strict approval prompts.
+  if (!m.startsWith('claude-')) return false
+  if (m.includes('claude-3-')) return false
+  if (/claude-(opus|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false
+  return true
 }
 
 /**
@@ -243,14 +215,6 @@ export const getAllModelBetas = memoize((model: string): string[] => {
 
   if (!isHaiku) {
     betaHeaders.push(CLAUDE_CODE_20250219_BETA_HEADER)
-    if (
-      process.env.USER_TYPE === 'ant' &&
-      process.env.CLAUDE_CODE_ENTRYPOINT === 'cli'
-    ) {
-      if (CLI_INTERNAL_BETA_HEADER) {
-        betaHeaders.push(CLI_INTERNAL_BETA_HEADER)
-      }
-    }
   }
   if (isClaudeAISubscriber()) {
     betaHeaders.push(OAUTH_BETA_HEADER)
@@ -280,38 +244,9 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     betaHeaders.push(REDACT_THINKING_BETA_HEADER)
   }
 
-  // POC: server-side connector-text summarization (anti-distillation). The
-  // API buffers assistant text between tool calls, summarizes it, and returns
-  // the summary with a signature so the original can be restored on subsequent
-  // turns — same mechanism as thinking blocks. Ant-only while we measure
-  // TTFT/TTLT/capacity; betas already flow to tengu_api_success for splitting.
-  // Backend independently requires Capability.ANTHROPIC_INTERNAL_RESEARCH.
-  //
-  // USE_CONNECTOR_TEXT_SUMMARIZATION is tri-state: =1 forces on (opt-in even
-  // if GB is off), =0 forces off (opt-out of a GB rollout you were bucketed
-  // into), unset defers to GB.
-  if (
-    SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER &&
-    process.env.USER_TYPE === 'ant' &&
-    includeFirstPartyOnlyBetas &&
-    !isEnvDefinedFalsy(process.env.USE_CONNECTOR_TEXT_SUMMARIZATION) &&
-    (isEnvTruthy(process.env.USE_CONNECTOR_TEXT_SUMMARIZATION) ||
-      getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_prism', false))
-  ) {
-    betaHeaders.push(SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER)
-  }
-
-  // Add context management beta for tool clearing (ant opt-in) or thinking preservation
-  const antOptedIntoToolClearing =
-    isEnvTruthy(process.env.USE_API_CONTEXT_MANAGEMENT) &&
-    process.env.USER_TYPE === 'ant'
-
   const thinkingPreservationEnabled = modelSupportsContextManagement(model)
 
-  if (
-    shouldIncludeFirstPartyOnlyBetas() &&
-    (antOptedIntoToolClearing || thinkingPreservationEnabled)
-  ) {
+  if (shouldIncludeFirstPartyOnlyBetas() && thinkingPreservationEnabled) {
     betaHeaders.push(CONTEXT_MANAGEMENT_BETA_HEADER)
   }
   // Add strict tool use beta if experiment is enabled.
@@ -322,11 +257,14 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   // github.com/deshaw/anthropic-issues/issues/5
   const strictToolsEnabled =
     checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_tool_pear')
-  // 3P default: false. API rejects strict + token-efficient-tools together
-  // (tool_use.py:139), so these are mutually exclusive — strict wins.
+  // API rejects strict + token-efficient-tools together (tool_use.py:139),
+  // so these are mutually exclusive — strict wins. Off by default; opt in
+  // via CLAUDE_CODE_JSON_TOOL_USE=1 or the tengu_amber_json_tools remote
+  // flag.
   const tokenEfficientToolsEnabled =
     !strictToolsEnabled &&
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_json_tools', false)
+    (isEnvTruthy(process.env.CLAUDE_CODE_JSON_TOOL_USE) ||
+      getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_json_tools', false))
   if (
     includeFirstPartyOnlyBetas &&
     modelSupportsStructuredOutputs(model) &&
@@ -334,15 +272,11 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   ) {
     betaHeaders.push(STRUCTURED_OUTPUTS_BETA_HEADER)
   }
-  // JSON tool_use format (FC v3) — ~4.5% output token reduction vs ANTML.
-  // Sends the v2 header (2026-03-28) added in anthropics/anthropic#337072 to
-  // isolate the CC A/B cohort from ~9.2M/week existing v1 senders. Ant-only
-  // while the restored JsonToolUseOutputParser soaks.
-  if (
-    process.env.USER_TYPE === 'ant' &&
-    includeFirstPartyOnlyBetas &&
-    tokenEfficientToolsEnabled
-  ) {
+  // JSON tool_use format (FC v3) — Anthropic measured ~4.5% output token
+  // reduction vs ANTML. Header value is the public v2 from 2026-03-28.
+  // Anthropic-direct only because the parser pairs with the server-side
+  // beta; mutually exclusive with strict tools (handled in the gate above).
+  if (includeFirstPartyOnlyBetas && tokenEfficientToolsEnabled) {
     betaHeaders.push(TOKEN_EFFICIENT_TOOLS_BETA_HEADER)
   }
 
@@ -410,14 +344,6 @@ export function getMergedBetas(
   if (options?.isAgenticQuery) {
     if (!baseBetas.includes(CLAUDE_CODE_20250219_BETA_HEADER)) {
       baseBetas.push(CLAUDE_CODE_20250219_BETA_HEADER)
-    }
-    if (
-      process.env.USER_TYPE === 'ant' &&
-      process.env.CLAUDE_CODE_ENTRYPOINT === 'cli' &&
-      CLI_INTERNAL_BETA_HEADER &&
-      !baseBetas.includes(CLI_INTERNAL_BETA_HEADER)
-    ) {
-      baseBetas.push(CLI_INTERNAL_BETA_HEADER)
     }
   }
 

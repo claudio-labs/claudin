@@ -707,7 +707,7 @@ export async function getEventMetadata(
   const metadata: EventMetadata = {
     model,
     sessionId: getSessionId(),
-    userType: process.env.USER_TYPE || '',
+    userType: '',
     ...(betas.length > 0 ? { betas: betas } : {}),
     envContext,
     ...(process.env.CLAUDE_CODE_ENTRYPOINT && {

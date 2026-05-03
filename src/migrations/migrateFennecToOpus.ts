@@ -16,10 +16,6 @@ import {
  * settings here would cause infinite re-runs + silent global promotion.
  */
 export function migrateFennecToOpus(): void {
-  if (process.env.USER_TYPE !== 'ant') {
-    return
-  }
-
   const settings = getSettingsForSource('userSettings')
 
   const model = settings?.model

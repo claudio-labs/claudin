@@ -343,19 +343,6 @@ export function groupHooksByEventAndMatcher(
               pluginName: matcher.pluginId,
             })
           }
-        } else if (process.env.USER_TYPE === 'ant') {
-          eventGroup[matcherKey] ??= []
-          for (const _hook of matcher.hooks) {
-            eventGroup[matcherKey].push({
-              event: hookEvent,
-              config: {
-                type: 'command',
-                command: '[internal-only] Built-in Hook',
-              },
-              matcher: matcher.matcher,
-              source: 'builtinHook',
-            })
-          }
         }
       }
     }

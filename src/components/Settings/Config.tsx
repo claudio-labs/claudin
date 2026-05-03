@@ -448,29 +448,7 @@ export function Config({
       });
     }
   }] : []),
-  // Speculation toggle (internal-only)
-  ...("external" === 'ant' ? [{
-    id: 'speculationEnabled',
-    label: 'Speculative execution',
-    value: globalConfig.speculationEnabled ?? true,
-    type: 'boolean' as const,
-    onChange(enabled_2: boolean) {
-      saveGlobalConfig(current_1 => {
-        if (current_1.speculationEnabled === enabled_2) return current_1;
-        return {
-          ...current_1,
-          speculationEnabled: enabled_2
-        };
-      });
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        speculationEnabled: enabled_2
-      });
-      logEvent('tengu_speculation_setting_changed', {
-        enabled: enabled_2
-      });
-    }
-  }] : []), ...(isFileCheckpointingAvailable ? [{
+  ...(isFileCheckpointingAvailable ? [{
     id: 'fileCheckpointingEnabled',
     label: 'Rewind code (checkpoints)',
     value: globalConfig.fileCheckpointingEnabled,
@@ -691,7 +669,7 @@ export function Config({
   }] : []), {
     id: 'flickerFreeMode',
     label: 'Flicker-free mode',
-    value: globalConfig.flickerFreeMode ?? (process.env.USER_TYPE === 'ant'),
+    value: globalConfig.flickerFreeMode ?? false,
     type: 'boolean' as const,
     onChange(flickerFreeMode: boolean) {
       saveGlobalConfig(current => ({

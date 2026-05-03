@@ -95,13 +95,10 @@ const PERMISSION_MODE_CONFIG: Partial<
  * auto is internal-only and excluded from external modes.
  */
 export function isExternalPermissionMode(
-  mode: PermissionMode,
-): mode is ExternalPermissionMode {
-  // External users can't have auto, so always true for them
-  if (process.env.USER_TYPE !== 'ant') {
-    return true
-  }
-  return mode !== 'auto' && mode !== 'bubble'
+  _mode: PermissionMode,
+): _mode is ExternalPermissionMode {
+  // External users can't have auto, so always true.
+  return true
 }
 
 function getModeConfig(mode: PermissionMode): PermissionModeConfig {

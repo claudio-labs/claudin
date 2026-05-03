@@ -288,22 +288,6 @@ export async function checkForReleaseNotes(
   lastSeenVersion: string | null | undefined,
   currentVersion: string = MACRO.VERSION,
 ): Promise<{ hasReleaseNotes: boolean; releaseNotes: string[] }> {
-  // For Ant builds, use VERSION_CHANGELOG bundled at build time
-  if (process.env.USER_TYPE === 'ant') {
-    const changelog = MACRO.VERSION_CHANGELOG
-    if (changelog) {
-      const commits = changelog.trim().split('\n').filter(Boolean)
-      return {
-        hasReleaseNotes: commits.length > 0,
-        releaseNotes: commits,
-      }
-    }
-    return {
-      hasReleaseNotes: false,
-      releaseNotes: [],
-    }
-  }
-
   // Ensure the in-memory cache is populated for subsequent sync reads
   const cachedChangelog = await getStoredChangelog()
 
@@ -336,22 +320,6 @@ export function checkForReleaseNotesSync(
   lastSeenVersion: string | null | undefined,
   currentVersion: string = MACRO.VERSION,
 ): { hasReleaseNotes: boolean; releaseNotes: string[] } {
-  // For Ant builds, use VERSION_CHANGELOG bundled at build time
-  if (process.env.USER_TYPE === 'ant') {
-    const changelog = MACRO.VERSION_CHANGELOG
-    if (changelog) {
-      const commits = changelog.trim().split('\n').filter(Boolean)
-      return {
-        hasReleaseNotes: commits.length > 0,
-        releaseNotes: commits,
-      }
-    }
-    return {
-      hasReleaseNotes: false,
-      releaseNotes: [],
-    }
-  }
-
   const releaseNotes = getRecentReleaseNotes(currentVersion, lastSeenVersion)
   return {
     hasReleaseNotes: releaseNotes.length > 0,

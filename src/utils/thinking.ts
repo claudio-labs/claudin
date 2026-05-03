@@ -92,11 +92,6 @@ export function modelSupportsThinking(model: string): boolean {
   if (supported3P !== undefined) {
     return supported3P
   }
-  if (process.env.USER_TYPE === 'ant') {
-    if (resolveAntModel(model.toLowerCase())) {
-      return true
-    }
-  }
   // IMPORTANT: Do not change thinking support without notifying the model
   // launch DRI and research. This can greatly affect model quality and bashing.
   const canonical = getCanonicalName(model)

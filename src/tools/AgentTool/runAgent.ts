@@ -14,7 +14,6 @@ import { getSystemContext, getUserContext } from '../../context.js'
 import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
 import { query } from '../../query.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { getDumpPromptsPath } from '../../services/api/dumpPrompts.js'
 import { cleanupAgentTracking } from '../../services/api/promptCacheBreakDetection.js'
 import {
   connectToServer,
@@ -42,7 +41,6 @@ import type {
 } from '../../types/message.js'
 import { createAttachmentMessage } from '../../utils/attachments.js'
 import { AbortError } from '../../utils/errors.js'
-import { getDisplayPath } from '../../utils/file.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
@@ -374,13 +372,6 @@ export async function* runAgent({
   if (isPerfettoTracingEnabled()) {
     const parentId = toolUseContext.agentId ?? getSessionId()
     registerPerfettoAgent(agentId, agentDefinition.agentType, parentId)
-  }
-
-  // Log API calls path for subagents (internal-only)
-  if (process.env.USER_TYPE === 'ant') {
-    logForDebugging(
-      `[Subagent ${agentDefinition.agentType}] API calls: ${getDisplayPath(getDumpPromptsPath(agentId))}`,
-    )
   }
 
   // Handle message forking for context sharing
@@ -916,6 +907,13 @@ export async function* runAgent({
       )
     }
     /* eslint-enable @typescript-eslint/no-require-imports */
+
+    // Hint V8 to release the just-cleared file state cache clone (up to
+    // 25 MB per agent) and other agent-scoped allocations now, instead of
+    // waiting for the next allocation-driven GC. Wide subagent fan-outs
+    // (10× concurrent) can otherwise leave 250 MB of clone bytes
+    // unreleased for seconds. No-op unless launched with --expose-gc.
+    globalThis.gc?.()
   }
 }
 

@@ -981,9 +981,6 @@ export function getAutoModeConfig():
       if (result.success) {
         if (result.data.allow) allow.push(...result.data.allow)
         if (result.data.soft_deny) soft_deny.push(...result.data.soft_deny)
-        if (process.env.USER_TYPE === 'ant') {
-          if (result.data.deny) soft_deny.push(...result.data.deny)
-        }
         if (result.data.environment)
           environment.push(...result.data.environment)
       }

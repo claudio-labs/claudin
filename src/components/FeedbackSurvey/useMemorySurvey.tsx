@@ -86,20 +86,8 @@ export function useMemorySurvey(messages: Message[], isLoading: boolean, hasActi
       survey_type: 'memory'
     });
   }, []);
-  const shouldShowTranscriptPrompt = useCallback((selected_0: FeedbackSurveyResponse) => {
-    if ("external" !== 'ant') {
-      return false;
-    }
-    if (selected_0 !== 'bad' && selected_0 !== 'good') {
-      return false;
-    }
-    if (getGlobalConfig().transcriptShareDismissed) {
-      return false;
-    }
-    if (!isPolicyAllowed('allow_product_feedback')) {
-      return false;
-    }
-    return true;
+  const shouldShowTranscriptPrompt = useCallback((_selected_0: FeedbackSurveyResponse) => {
+    return false;
   }, []);
   const onTranscriptPromptShown = useCallback((appearanceId_1: string) => {
     logEvent(MEMORY_SURVEY_EVENT, {

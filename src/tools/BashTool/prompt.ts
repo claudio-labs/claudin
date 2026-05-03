@@ -11,10 +11,6 @@ import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
 } from '../../utils/timeouts.js'
-import {
-  getUndercoverInstructions,
-  isUndercover,
-} from '../../utils/undercover.js'
 import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
 import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
@@ -42,13 +38,12 @@ function getBackgroundUsageNote(): string | null {
 /**
  * Whether the bash git/PR instructions block should be injected as an
  * attachment message instead of embedded in the BashTool description. When
- * true, getCommitAndPRInstructions() returns only the undercover section
- * (defense-in-depth) and attachments.ts emits a bash_git_instructions
- * attachment per request.
+ * true, getCommitAndPRInstructions() returns an empty string and
+ * attachments.ts emits a bash_git_instructions attachment per request.
  *
- * The git block is ~7.5KB combined (ant short + external full). Lifting it
- * out of the tool description keeps the tool-schema cache stable when only
- * the git block changes (toggle, cwd switch in/out of repo).
+ * Lifting the git block out of the tool description keeps the tool-schema
+ * cache stable when only the git block changes (toggle, cwd switch in/out
+ * of repo).
  *
  * Override with CLAUDE_CODE_BASH_GIT_IN_MESSAGES=false to revert to the
  * inline behavior. Default = true (attachment on).
@@ -65,39 +60,11 @@ export function shouldInjectBashGitInstructionsInMessages(): boolean {
 }
 
 /**
- * The bash git/PR instructions body, without the undercover section and
- * without the `shouldIncludeGitInstructions()` gate. Callers must check
- * `shouldIncludeGitInstructions()` themselves before deciding to emit this
- * (the attachment builder does — see attachments.ts).
- *
- * Returns the ant-short variant when USER_TYPE=ant, else the external full
- * git+PR protocol.
+ * The bash git/PR instructions body, without the `shouldIncludeGitInstructions()`
+ * gate. Callers must check `shouldIncludeGitInstructions()` themselves before
+ * deciding to emit this (the attachment builder does — see attachments.ts).
  */
 export function getBashGitInstructionsBody(): string {
-  // For ant users, use the short version pointing to skills
-  if (process.env.USER_TYPE === 'ant') {
-    const skillsSection = !isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)
-      ? `For git commits and pull requests, use the \`/commit\` and \`/commit-push-pr\` skills:
-- \`/commit\` - Create a git commit with staged changes
-- \`/commit-push-pr\` - Commit, push, and create a pull request
-
-These skills handle git safety protocols, proper commit message formatting, and PR creation.
-
-Before creating a pull request, run \`/simplify\` to review your changes, then test end-to-end (e.g. via \`/tmux\` for interactive features).
-
-`
-      : ''
-    return `# Git operations
-
-${skillsSection}IMPORTANT: NEVER skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it.
-
-Use the gh command via the Bash tool for other GitHub-related tasks including working with issues, checks, and releases. If given a Github URL use the gh command to get the information needed.
-
-# Other common operations
-- View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments`
-  }
-
-  // For external users, include full inline instructions
   const { commit: commitAttribution, pr: prAttribution } = getAttributionTexts()
 
   return `# Committing changes with git
@@ -183,24 +150,9 @@ Important:
 }
 
 function getCommitAndPRInstructions(): string {
-  // Defense-in-depth: undercover instructions must survive even if the user
-  // has disabled git instructions entirely. Attribution stripping and model-ID
-  // hiding are mechanical and work regardless, but the explicit "don't blow
-  // your cover" instructions are the last line of defense against the model
-  // volunteering an internal codename in a commit message. Stays inline even
-  // when the rest of the git block is moved to a system-reminder attachment.
-  const undercoverSection =
-    process.env.USER_TYPE === 'ant' && isUndercover()
-      ? getUndercoverInstructions() + '\n'
-      : ''
-
-  if (!shouldIncludeGitInstructions()) return undercoverSection
-
-  // When the git block is delivered via attachment, only the undercover
-  // section stays in the description.
-  if (shouldInjectBashGitInstructionsInMessages()) return undercoverSection
-
-  return `${undercoverSection}${getBashGitInstructionsBody()}`
+  if (!shouldIncludeGitInstructions()) return ''
+  if (shouldInjectBashGitInstructionsInMessages()) return ''
+  return getBashGitInstructionsBody()
 }
 
 // SandboxManager merges config from multiple sources (settings layers, defaults,

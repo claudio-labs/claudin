@@ -1701,11 +1701,6 @@ function isGitSafe(args: string[]): boolean {
 }
 
 function isGhSafe(args: string[]): boolean {
-  // gh commands are network-dependent; only allow for ant users
-  if (process.env.USER_TYPE !== 'ant') {
-    return false
-  }
-
   if (args.length === 0) {
     return true
   }

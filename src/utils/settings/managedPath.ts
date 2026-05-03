@@ -6,14 +6,6 @@ import { getPlatform } from '../platform.js'
  * Get the path to the managed settings directory based on the current platform.
  */
 export const getManagedFilePath = memoize(function (): string {
-  // Allow override for testing/demos (Ant-only, eliminated from external builds)
-  if (
-    process.env.USER_TYPE === 'ant' &&
-    process.env.CLAUDE_CODE_MANAGED_SETTINGS_PATH
-  ) {
-    return process.env.CLAUDE_CODE_MANAGED_SETTINGS_PATH
-  }
-
   switch (getPlatform()) {
     case 'macos':
       return '/Library/Application Support/ClaudeCode'

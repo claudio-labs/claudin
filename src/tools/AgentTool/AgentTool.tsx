@@ -98,7 +98,7 @@ const fullInputSchema = lazySchema(() => {
     mode: permissionModeSchema().optional().describe('Permission mode for spawned teammate (e.g., "plan" to require plan approval).')
   });
   return baseInputSchema().merge(multiAgentInputSchema).extend({
-    isolation: ("external" === 'ant' ? z.enum(['worktree', 'remote']) : z.enum(['worktree'])).optional().describe("external" === 'ant' ? 'Isolation mode. "worktree" creates a temporary git worktree so the agent works on an isolated copy of the repo. "remote" launches the agent in a remote CCR environment (always runs in background).' : 'Isolation mode. "worktree" creates a temporary git worktree so the agent works on an isolated copy of the repo.'),
+    isolation: z.enum(['worktree']).optional().describe('Isolation mode. "worktree" creates a temporary git worktree so the agent works on an isolated copy of the repo.'),
     cwd: z.string().optional().describe('Absolute path to run the agent in. Overrides the working directory for all filesystem and shell operations within this agent. Mutually exclusive with isolation: "worktree".')
   });
 });
@@ -432,56 +432,7 @@ export const AgentTool = buildTool({
     // Resolve effective isolation mode (explicit param overrides agent def)
     const effectiveIsolation = isolation ?? selectedAgent.isolation;
 
-    // Remote isolation: delegate to CCR. Gated internal-only — the guard enables
-    // dead code elimination of the entire block for external builds.
-    if ("external" === 'ant' && effectiveIsolation === 'remote') {
-      const eligibility = await checkRemoteAgentEligibility();
-      if (!eligibility.eligible) {
-        const reasons = eligibility.errors.map(formatPreconditionError).join('\n');
-        throw new Error(`Cannot launch remote agent:\n${reasons}`);
-      }
-      let bundleFailHint: string | undefined;
-      const session = await teleportToRemote({
-        initialMessage: prompt,
-        description,
-        signal: toolUseContext.abortController.signal,
-        onBundleFail: msg => {
-          bundleFailHint = msg;
-        }
-      });
-      if (!session) {
-        throw new Error(bundleFailHint ?? 'Failed to create remote session');
-      }
-      const {
-        taskId,
-        sessionId
-      } = registerRemoteAgentTask({
-        remoteTaskType: 'remote-agent',
-        session: {
-          id: session.id,
-          title: session.title || description
-        },
-        command: prompt,
-        context: toolUseContext,
-        toolUseId: toolUseContext.toolUseId
-      });
-      logEvent('tengu_agent_tool_remote_launched', {
-        agent_type: selectedAgent.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-      const remoteResult: RemoteLaunchedOutput = {
-        status: 'remote_launched',
-        taskId,
-        sessionUrl: getRemoteTaskSessionUrl(sessionId),
-        description,
-        prompt,
-        outputFile: getTaskOutputPath(taskId)
-      };
-      return {
-        data: remoteResult
-      } as unknown as {
-        data: Output;
-      };
-    }
+    void effectiveIsolation;
     // System prompt + prompt messages: branch on fork path.
     //
     // Fork path: child inherits the PARENT's system prompt (not FORK_AGENT's)
@@ -524,9 +475,6 @@ export const AgentTool = buildTool({
         // Log agent memory loaded event for subagents
         if (selectedAgent.memory) {
           logEvent('tengu_agent_memory_loaded', {
-            ...("external" === 'ant' && {
-              agent_type: selectedAgent.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-            }),
             scope: selectedAgent.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
             source: 'subagent' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
           });
@@ -1310,15 +1258,7 @@ export const AgentTool = buildTool({
   async checkPermissions(input, context): Promise<PermissionResult> {
     const appState = context.getAppState();
 
-    // Only route through auto mode classifier when in auto mode
-    // In all other modes, auto-approve sub-agent generation
-    // Note: "external" === 'ant' guard enables dead code elimination for external builds
-    if ("external" === 'ant' && appState.toolPermissionContext.mode === 'auto') {
-      return {
-        behavior: 'passthrough',
-        message: 'Agent tool requires permission to spawn sub-agents.'
-      };
-    }
+    void appState;
     return {
       behavior: 'allow',
       updatedInput: input

@@ -5,8 +5,7 @@
  * Both mdmRawRead.ts and mdmSettings.ts import from here to avoid duplication.
  */
 
-import { homedir, userInfo } from 'os'
-import { join } from 'path'
+import { userInfo } from 'os'
 
 /** macOS preference domain for Claude Code MDM profiles. */
 export const MACOS_PREFERENCE_DOMAIN = 'com.anthropic.claudecode'
@@ -39,8 +38,6 @@ export const MDM_SUBPROCESS_TIMEOUT_MS = 5000
 
 /**
  * Build the list of macOS plist paths in priority order (highest first).
- * Evaluates `process.env.USER_TYPE` at call time so internal-only paths are
- * included only when appropriate.
  */
 export function getMacOSPlistPaths(): Array<{ path: string; label: string }> {
   let username = ''
@@ -63,19 +60,6 @@ export function getMacOSPlistPaths(): Array<{ path: string; label: string }> {
     path: `/Library/Managed Preferences/${MACOS_PREFERENCE_DOMAIN}.plist`,
     label: 'device-level managed preferences',
   })
-
-  // Allow user-writable preferences for local MDM testing in ant builds only.
-  if (process.env.USER_TYPE === 'ant') {
-    paths.push({
-      path: join(
-        homedir(),
-        'Library',
-        'Preferences',
-        `${MACOS_PREFERENCE_DOMAIN}.plist`,
-      ),
-      label: 'user preferences (internal-only)',
-    })
-  }
 
   return paths
 }

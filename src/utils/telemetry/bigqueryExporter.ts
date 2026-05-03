@@ -46,16 +46,7 @@ export class BigQueryMetricsExporter implements PushMetricExporter {
   constructor(options: { timeout?: number } = {}) {
     const defaultEndpoint = 'https://api.anthropic.com/api/claude_code/metrics'
 
-    if (
-      process.env.USER_TYPE === 'ant' &&
-      process.env.ANT_CLAUDE_CODE_METRICS_ENDPOINT
-    ) {
-      this.endpoint =
-        process.env.ANT_CLAUDE_CODE_METRICS_ENDPOINT +
-        '/api/claude_code/metrics'
-    } else {
-      this.endpoint = defaultEndpoint
-    }
+    this.endpoint = defaultEndpoint
 
     this.timeout = options.timeout || 5000
   }

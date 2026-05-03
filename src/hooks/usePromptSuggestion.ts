@@ -148,12 +148,6 @@ export function usePromptSuggestion({
           Math.round(
             (finalInput.length / (suggestionText?.length || 1)) * 100,
           ) / 100,
-        ...(process.env.USER_TYPE === 'ant' && {
-          suggestion:
-            suggestionText as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          userInput:
-            finalInput as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
       })
       if (!opts?.skipReset) resetSuggestion()
     },

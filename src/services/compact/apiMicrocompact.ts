@@ -90,11 +90,6 @@ export function getAPIContextManagement(options?: {
     })
   }
 
-  // Tool clearing strategies are internal-only
-  if (process.env.USER_TYPE !== 'ant') {
-    return strategies.length > 0 ? { edits: strategies } : undefined
-  }
-
   const useClearToolResults = isEnvTruthy(
     process.env.USE_API_CLEAR_TOOL_RESULTS,
   )

@@ -108,21 +108,8 @@ function getLogWriter(path: string): JsonlWriter {
   return writer
 }
 
-function appendToLog(path: string, message: object): void {
-  if (process.env.USER_TYPE !== 'ant') {
-    return
-  }
-
-  const messageWithTimestamp = {
-    timestamp: new Date().toISOString(),
-    ...message,
-    cwd: getFsImplementation().cwd(),
-    userType: process.env.USER_TYPE,
-    sessionId: getSessionId(),
-    version: MACRO.VERSION,
-  }
-
-  getLogWriter(path).write(messageWithTimestamp)
+function appendToLog(_path: string, _message: object): void {
+  // Error log sink disabled in open Claudio builds.
 }
 
 function extractServerMessage(data: unknown): string | undefined {

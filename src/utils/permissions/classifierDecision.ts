@@ -34,12 +34,7 @@ const OVERFLOW_TEST_TOOL_NAME = feature('OVERFLOW_TEST_TOOL')
       require('../../tools/OverflowTestTool/OverflowTestTool.js') as typeof import('../../tools/OverflowTestTool/OverflowTestTool.js')
     ).OVERFLOW_TEST_TOOL_NAME
   : null
-const VERIFY_PLAN_EXECUTION_TOOL_NAME =
-  process.env.USER_TYPE === 'ant'
-    ? (
-        require('../../tools/VerifyPlanExecutionTool/constants.js') as typeof import('../../tools/VerifyPlanExecutionTool/constants.js')
-      ).VERIFY_PLAN_EXECUTION_TOOL_NAME
-    : null
+const VERIFY_PLAN_EXECUTION_TOOL_NAME = null
 const WORKFLOW_TOOL_NAME = feature('WORKFLOW_SCRIPTS')
   ? (
       require('../../tools/WorkflowTool/constants.js') as typeof import('../../tools/WorkflowTool/constants.js')

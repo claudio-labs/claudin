@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { getHeapStatistics } from 'v8'
 import { markPostCompaction } from 'src/bootstrap/state.js'
 import { getSdkBetas } from '../../bootstrap/state.js'
 import type { QuerySource } from '../../constants/querySource.js'
@@ -73,6 +74,36 @@ export const MANUAL_COMPACT_BUFFER_TOKENS = 3_000
 // BQ 2026-03-10: 1,279 sessions had 50+ consecutive failures (up to 3,272)
 // in a single session, wasting ~250K API calls/day globally.
 const MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3
+
+// Heap-pressure backup trigger. Token-based autocompact is keyed on the model's
+// context window (e.g. ~967k for Opus 1M), but with React/Ink object overhead
+// + tool result strings + cached file contents, V8 heap can hit its limit
+// LONG before tokens reach that threshold — long Opus/Gemini sessions OOM at
+// 4 GB while still well under the model's context cap. Fire compact when heap
+// usage crosses HEAP_PRESSURE_RATIO of the V8 heap limit so the summary path
+// runs while there is still headroom for it.
+const DEFAULT_HEAP_PRESSURE_RATIO = 0.7
+// Don't trigger heap-based compaction on a fresh session: bundle parsing alone
+// can occupy hundreds of MB right after startup, before any conversation has
+// accumulated. The token-based path will handle short sessions correctly.
+const MIN_MESSAGES_FOR_HEAP_TRIGGER = 20
+
+function getHeapPressureRatio(): number {
+  const override = process.env.CLAUDIO_HEAP_PRESSURE_RATIO
+  if (override) {
+    const parsed = parseFloat(override)
+    if (!isNaN(parsed) && parsed > 0 && parsed < 1) return parsed
+  }
+  return DEFAULT_HEAP_PRESSURE_RATIO
+}
+
+function isAboveHeapPressureThreshold(messageCount: number): boolean {
+  if (messageCount < MIN_MESSAGES_FOR_HEAP_TRIGGER) return false
+  const stats = getHeapStatistics()
+  if (!stats.heap_size_limit) return false
+  const ratio = stats.used_heap_size / stats.heap_size_limit
+  return ratio > getHeapPressureRatio()
+}
 
 export function getAutoCompactThreshold(model: string): number {
   const effectiveContextWindow = getEffectiveContextWindowSize(model)
@@ -245,7 +276,21 @@ export async function shouldAutoCompact(
     model,
   )
 
-  return isAboveAutoCompactThreshold
+  if (isAboveAutoCompactThreshold) return true
+
+  // Backup: trigger compaction on V8 heap pressure even when tokens are
+  // under the model's context cap. See DEFAULT_HEAP_PRESSURE_RATIO note.
+  if (isAboveHeapPressureThreshold(messages.length)) {
+    const stats = getHeapStatistics()
+    const usedMB = Math.round(stats.used_heap_size / 1024 / 1024)
+    const limitMB = Math.round(stats.heap_size_limit / 1024 / 1024)
+    logForDebugging(
+      `autocompact: heap pressure triggered (used=${usedMB}MB/${limitMB}MB, msgs=${messages.length})`,
+    )
+    return true
+  }
+
+  return false
 }
 
 export async function autoCompactIfNeeded(

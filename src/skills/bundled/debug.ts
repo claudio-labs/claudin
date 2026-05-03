@@ -12,10 +12,7 @@ const TAIL_READ_BYTES = 64 * 1024
 export function registerDebugSkill(): void {
   registerBundledSkill({
     name: 'debug',
-    description:
-      process.env.USER_TYPE === 'ant'
-        ? 'Debug your current Claude Code session by reading the session debug log. Includes all event logging'
-        : 'Enable debug logging for this session and help diagnose issues',
+    description: 'Enable debug logging for this session and help diagnose issues',
     allowedTools: ['Read', 'Grep', 'Glob'],
     argumentHint: '[issue description]',
     // disableModelInvocation so that the user has to explicitly request it in

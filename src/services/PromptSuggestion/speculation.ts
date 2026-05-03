@@ -16,7 +16,6 @@ import type { SpeculationAcceptMessage } from '../../types/logs.js'
 import type { Message } from '../../types/message.js'
 import { createChildAbortController } from '../../utils/abortController.js'
 import { count } from '../../utils/array.js'
-import { getGlobalConfig } from '../../utils/config.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { errorMessage } from '../../utils/errors.js'
 import {
@@ -29,12 +28,10 @@ import {
   createCacheSafeParams,
   runForkedAgent,
 } from '../../utils/forkedAgent.js'
-import { formatDuration, formatNumber } from '../../utils/format.js'
 import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
 import { logError } from '../../utils/log.js'
 import type { SetAppState } from '../../utils/messageQueueManager.js'
 import {
-  createSystemMessage,
   createUserMessage,
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
@@ -271,40 +268,12 @@ export function prepareMessagesForInjection(messages: Message[]): Message[] {
 }
 
 function createSpeculationFeedbackMessage(
-  messages: Message[],
-  boundary: CompletionBoundary | null,
-  timeSavedMs: number,
-  sessionTotalMs: number,
+  _messages: Message[],
+  _boundary: CompletionBoundary | null,
+  _timeSavedMs: number,
+  _sessionTotalMs: number,
 ): Message | null {
-  if (process.env.USER_TYPE !== 'ant') return null
-
-  if (messages.length === 0 || timeSavedMs === 0) return null
-
-  const toolUses = countToolsInMessages(messages)
-  const tokens = boundary?.type === 'complete' ? boundary.outputTokens : null
-
-  const parts = []
-  if (toolUses > 0) {
-    parts.push(`Speculated ${toolUses} tool ${toolUses === 1 ? 'use' : 'uses'}`)
-  } else {
-    const turns = messages.length
-    parts.push(`Speculated ${turns} ${turns === 1 ? 'turn' : 'turns'}`)
-  }
-
-  if (tokens !== null) {
-    parts.push(`${formatNumber(tokens)} tokens`)
-  }
-
-  const savedText = `+${formatDuration(timeSavedMs)} saved`
-  const sessionSuffix =
-    sessionTotalMs !== timeSavedMs
-      ? ` (${formatDuration(sessionTotalMs)} this session)`
-      : ''
-
-  return createSystemMessage(
-    `[internal-only] ${parts.join(' · ')} · ${savedText}${sessionSuffix}`,
-    'warning',
-  )
+  return null
 }
 
 function updateActiveSpeculationState(
@@ -335,11 +304,7 @@ function resetSpeculationState(setAppState: SetAppState): void {
 }
 
 export function isSpeculationEnabled(): boolean {
-  const enabled =
-    process.env.USER_TYPE === 'ant' &&
-    (getGlobalConfig().speculationEnabled ?? true)
-  logForDebugging(`[Speculation] enabled=${enabled}`)
-  return enabled
+  return false
 }
 
 async function generatePipelinedSuggestion(

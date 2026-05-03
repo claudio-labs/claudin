@@ -7,11 +7,37 @@
  * Otherwise, tell the user to build first or use `bun run dev`.
  */
 
+import { spawnSync } from 'child_process'
 import { existsSync, mkdirSync } from 'fs'
 import * as module from 'module'
 import { homedir } from 'os'
 import { join, dirname } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
+
+// V8 default old-space cap is 4 GB on 64-bit. Long Opus/Gemini sessions can
+// hit it (parsed bundle + React/Ink tree + tool-result strings + cached file
+// contents) before the heap-pressure autocompact trigger fires. Re-exec
+// once with a higher cap so the trigger has room to run summary before OOM.
+// Override via CLAUDIO_MAX_HEAP_MB; opt out with CLAUDIO_NO_HEAP_BUMP=1.
+const HEAP_BUMP_SENTINEL = '_CLAUDIO_HEAP_BUMPED'
+if (
+  !process.env[HEAP_BUMP_SENTINEL] &&
+  process.env.CLAUDIO_NO_HEAP_BUMP !== '1' &&
+  !(process.env.NODE_OPTIONS || '').includes('max-old-space-size') &&
+  !process.execArgv.some(a => a.startsWith('--max-old-space-size'))
+) {
+  const heapMB = process.env.CLAUDIO_MAX_HEAP_MB || '8192'
+  // --expose-gc lets the runtime hint V8 to mark-sweep at natural release
+  // points (post-compact, post-subagent cleanup) instead of waiting for an
+  // allocation-driven GC. Negligible perf overhead; opt out via
+  // CLAUDIO_NO_HEAP_BUMP=1 if needed.
+  const result = spawnSync(
+    process.execPath,
+    [`--max-old-space-size=${heapMB}`, '--expose-gc', ...process.execArgv, fileURLToPath(import.meta.url), ...process.argv.slice(2)],
+    { stdio: 'inherit', env: { ...process.env, [HEAP_BUMP_SENTINEL]: '1' } },
+  )
+  process.exit(result.status ?? 1)
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distPath = join(__dirname, '..', 'dist', 'cli.mjs')

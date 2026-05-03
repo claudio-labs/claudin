@@ -1267,38 +1267,6 @@ RESPOND WITH ONLY A VALID JSON OBJECT:
 Include 3 opportunities. Think BIG - autonomous workflows, parallel agents, iterating against tests.`,
     maxTokens: 8192,
   },
-  ...(process.env.USER_TYPE === 'ant'
-    ? [
-        {
-          name: 'cc_team_improvements',
-          prompt: `Analyze this Claude Code usage data and suggest product improvements for the CC team.
-
-RESPOND WITH ONLY A VALID JSON OBJECT:
-{
-  "improvements": [
-    {"title": "Product/tooling improvement", "detail": "3-4 sentences describing the improvement", "evidence": "3-4 sentences with specific session examples"}
-  ]
-}
-
-Include 2-3 improvements based on friction patterns observed.`,
-          maxTokens: 8192,
-        },
-        {
-          name: 'model_behavior_improvements',
-          prompt: `Analyze this Claude Code usage data and suggest model behavior improvements.
-
-RESPOND WITH ONLY A VALID JSON OBJECT:
-{
-  "improvements": [
-    {"title": "Model behavior change", "detail": "3-4 sentences describing what the model should do differently", "evidence": "3-4 sentences with specific examples"}
-  ]
-}
-
-Include 2-3 improvements based on friction patterns observed.`,
-          maxTokens: 8192,
-        },
-      ]
-    : []),
   {
     name: 'fun_ending',
     prompt: `Analyze this Claude Code usage data and find a memorable moment.
@@ -2007,76 +1975,7 @@ function generateHtmlReport(
     `
       : ''
 
-  // Build Team Feedback section (collapsible, internal-only)
-  const ccImprovements =
-    process.env.USER_TYPE === 'ant'
-      ? insights.cc_team_improvements?.improvements || []
-      : []
-  const modelImprovements =
-    process.env.USER_TYPE === 'ant'
-      ? insights.model_behavior_improvements?.improvements || []
-      : []
-  const teamFeedbackHtml =
-    ccImprovements.length > 0 || modelImprovements.length > 0
-      ? `
-    <h2 id="section-feedback" class="feedback-header">Closing the Loop: Feedback for Other Teams</h2>
-    <p class="feedback-intro">Suggestions for the CC product and model teams based on your usage patterns. Click to expand.</p>
-    ${
-      ccImprovements.length > 0
-        ? `
-    <div class="collapsible-section">
-      <div class="collapsible-header" onclick="toggleCollapsible(this)">
-        <span class="collapsible-arrow">▶</span>
-        <h3>Product Improvements for CC Team</h3>
-      </div>
-      <div class="collapsible-content">
-        <div class="suggestions-section">
-          ${ccImprovements
-            .map(
-              imp => `
-            <div class="feedback-card team-card">
-              <div class="feedback-title">${escapeHtml(imp.title || '')}</div>
-              <div class="feedback-detail">${escapeHtml(imp.detail || '')}</div>
-              ${imp.evidence ? `<div class="feedback-evidence"><em>Evidence:</em> ${escapeHtml(imp.evidence)}</div>` : ''}
-            </div>
-          `,
-            )
-            .join('')}
-        </div>
-      </div>
-    </div>
-    `
-        : ''
-    }
-    ${
-      modelImprovements.length > 0
-        ? `
-    <div class="collapsible-section">
-      <div class="collapsible-header" onclick="toggleCollapsible(this)">
-        <span class="collapsible-arrow">▶</span>
-        <h3>Model Behavior Improvements</h3>
-      </div>
-      <div class="collapsible-content">
-        <div class="suggestions-section">
-          ${modelImprovements
-            .map(
-              imp => `
-            <div class="feedback-card model-card">
-              <div class="feedback-title">${escapeHtml(imp.title || '')}</div>
-              <div class="feedback-detail">${escapeHtml(imp.detail || '')}</div>
-              ${imp.evidence ? `<div class="feedback-evidence"><em>Evidence:</em> ${escapeHtml(imp.evidence)}</div>` : ''}
-            </div>
-          `,
-            )
-            .join('')}
-        </div>
-      </div>
-    </div>
-    `
-        : ''
-    }
-    `
-      : ''
+  const teamFeedbackHtml = ''
 
   // Build Fun Ending section
   const funEnding = insights.fun_ending

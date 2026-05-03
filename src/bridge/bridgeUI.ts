@@ -54,7 +54,6 @@ export function createBridgeLogger(options: {
   let currentStateText = 'Ready'
   let repoName = ''
   let branch = ''
-  let debugLogPath = ''
 
   // Connect URL (built in printBanner with correct base for staging/prod)
   let connectUrl = ''
@@ -221,11 +220,6 @@ export function createBridgeLogger(options: {
       suffix += chalk.dim(' \u00b7 ') + chalk.dim(branch)
     }
 
-    if (process.env.USER_TYPE === 'ant' && debugLogPath) {
-      writeStatus(
-        `${chalk.yellow('[internal] Logs:')} ${chalk.dim(debugLogPath)}\n`,
-      )
-    }
     writeStatus(`${indicatorColor(indicator)} ${stateText}${suffix}\n`)
 
     // Session count and per-session list (multi-session mode only)
@@ -367,10 +361,6 @@ export function createBridgeLogger(options: {
     setRepoInfo(repo: string, branchName: string): void {
       repoName = repo
       branch = branchName
-    },
-
-    setDebugLogPath(path: string): void {
-      debugLogPath = path
     },
 
     updateIdleStatus(): void {

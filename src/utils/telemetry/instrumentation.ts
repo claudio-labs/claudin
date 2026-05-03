@@ -85,31 +85,6 @@ function telemetryTimeout(ms: number, message: string): Promise<never> {
 }
 
 export function bootstrapTelemetry() {
-  if (process.env.USER_TYPE === 'ant') {
-    // Read from ANT_ prefixed variables that are defined at build time
-    if (process.env.ANT_OTEL_METRICS_EXPORTER) {
-      process.env.OTEL_METRICS_EXPORTER = process.env.ANT_OTEL_METRICS_EXPORTER
-    }
-    if (process.env.ANT_OTEL_LOGS_EXPORTER) {
-      process.env.OTEL_LOGS_EXPORTER = process.env.ANT_OTEL_LOGS_EXPORTER
-    }
-    if (process.env.ANT_OTEL_TRACES_EXPORTER) {
-      process.env.OTEL_TRACES_EXPORTER = process.env.ANT_OTEL_TRACES_EXPORTER
-    }
-    if (process.env.ANT_OTEL_EXPORTER_OTLP_PROTOCOL) {
-      process.env.OTEL_EXPORTER_OTLP_PROTOCOL =
-        process.env.ANT_OTEL_EXPORTER_OTLP_PROTOCOL
-    }
-    if (process.env.ANT_OTEL_EXPORTER_OTLP_ENDPOINT) {
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT =
-        process.env.ANT_OTEL_EXPORTER_OTLP_ENDPOINT
-    }
-    if (process.env.ANT_OTEL_EXPORTER_OTLP_HEADERS) {
-      process.env.OTEL_EXPORTER_OTLP_HEADERS =
-        process.env.ANT_OTEL_EXPORTER_OTLP_HEADERS
-    }
-  }
-
   // Set default tempoality to 'delta' because it's the more sane default
   if (!process.env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE) {
     process.env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = 'delta'

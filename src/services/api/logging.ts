@@ -732,18 +732,6 @@ export function logAPISuccessAndDuration({
         )
         .join('\n') || undefined
 
-    // Thinking output - Ant-only (build-time gated)
-    if (process.env.USER_TYPE === 'ant') {
-      thinkingOutput =
-        newMessages
-          .flatMap(m =>
-            m.message.content
-              .filter(c => c.type === 'thinking')
-              .map(c => (c as { type: 'thinking'; thinking: string }).thinking),
-          )
-          .join('\n') || undefined
-    }
-
     // Check if any tool_use blocks were in the output
     hasToolCall = newMessages.some(m =>
       m.message.content.some(c => c.type === 'tool_use'),

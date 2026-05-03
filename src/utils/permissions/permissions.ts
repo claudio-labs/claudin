@@ -701,20 +701,6 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
         clearClassifierChecking(toolUseID)
       }
 
-      // Notify ants when classifier error dumped prompts (will be in /share)
-      if (
-        process.env.USER_TYPE === 'ant' &&
-        classifierResult.errorDumpPath &&
-        context.addNotification
-      ) {
-        context.addNotification({
-          key: 'auto-mode-error-dump',
-          text: `Auto mode classifier error — prompts dumped to ${classifierResult.errorDumpPath} (included in /share)`,
-          priority: 'immediate',
-          color: 'error',
-        })
-      }
-
       // Log classifier decision for metrics (including overhead telemetry)
       const yoloDecision = classifierResult.unavailable
         ? 'unavailable'

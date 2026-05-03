@@ -19,7 +19,6 @@ import { createServer, type Server, type Socket } from 'net'
 import { platform } from 'os'
 import { join } from 'path'
 import { z } from 'zod'
-import { getClaudioConfigHomeDir } from '../envUtils.js'
 import { lazySchema } from '../lazySchema.js'
 import { jsonParse, jsonStringify } from '../slowOperations.js'
 import { getSecureSocketPath, getSocketDir } from './common.js'
@@ -27,10 +26,7 @@ import { getSecureSocketPath, getSocketDir } from './common.js'
 const VERSION = '1.0.0'
 const MAX_MESSAGE_SIZE = 1024 * 1024 // 1MB - Max message size that can be sent to Chrome
 
-const LOG_FILE =
-  process.env.USER_TYPE === 'ant'
-    ? join(getClaudioConfigHomeDir(), 'debug', 'chrome-native-host.txt')
-    : undefined
+const LOG_FILE: string | undefined = undefined
 
 function log(message: string, ...args: unknown[]): void {
   if (LOG_FILE) {

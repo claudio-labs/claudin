@@ -310,16 +310,6 @@ export function formatModelAndBilling(
  * For external users, uses public changelog
  */
 export function getRecentReleaseNotesSync(maxItems: number): string[] {
-  // For ants, use bundled changelog
-  if (process.env.USER_TYPE === 'ant') {
-    const changelog = MACRO.VERSION_CHANGELOG
-    if (changelog) {
-      const commits = changelog.trim().split('\n').filter(Boolean)
-      return commits.slice(0, maxItems)
-    }
-    return []
-  }
-
   const changelog = getStoredChangelogFromMemory()
   if (!changelog) {
     return []

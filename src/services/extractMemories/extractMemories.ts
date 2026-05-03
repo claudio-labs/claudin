@@ -307,9 +307,6 @@ export function initExtractMemories(): void {
    *  considers messages added since the previous extraction. */
   let lastMemoryMessageUuid: string | undefined
 
-  /** One-shot flag: once we log that the gate is disabled, don't repeat. */
-  let hasLoggedGateFailure = false
-
   /** True while runExtraction is executing — prevents overlapping runs. */
   let inProgress = false
 
@@ -535,10 +532,6 @@ export function initExtractMemories(): void {
     }
 
     if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)) {
-      if (process.env.USER_TYPE === 'ant' && !hasLoggedGateFailure) {
-        hasLoggedGateFailure = true
-        logEvent('tengu_extract_memories_gate_disabled', {})
-      }
       return
     }
 

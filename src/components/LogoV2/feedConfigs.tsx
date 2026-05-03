@@ -25,23 +25,12 @@ export function createRecentActivityFeed(activities: LogOption[]): FeedConfig {
   };
 }
 export function createWhatsNewFeed(releaseNotes: string[]): FeedConfig {
-  const lines: FeedLine[] = releaseNotes.map(note => {
-    if ("external" === 'ant') {
-      const match = note.match(/^(\d+\s+\w+\s+ago)\s+(.+)$/);
-      if (match) {
-        return {
-          timestamp: match[1],
-          text: match[2] || ''
-        };
-      }
-    }
-    return {
-      text: note
-    };
-  });
-  const emptyMessage = "external" === 'ant' ? 'Unable to fetch latest claude-cli-internal commits' : 'Check /release-notes for recent updates';
+  const lines: FeedLine[] = releaseNotes.map(note => ({
+    text: note
+  }));
+  const emptyMessage = 'Check /release-notes for recent updates';
   return {
-    title: "external" === 'ant' ? "Claudio Updates [internal-only: Latest CC commits]" : "Claudio Updates",
+    title: "Claudio Updates",
     lines,
     footer: lines.length > 0 ? '/release-notes for more' : undefined,
     emptyMessage

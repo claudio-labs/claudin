@@ -158,6 +158,11 @@ const result = await Bun.build({
   minify: false,
   naming: 'cli.mjs',
   define: {
+    // Inline USER_TYPE so Bun constant-folds and tree-shakes every
+    // `process.env.USER_TYPE === 'ant'` branch. USER_TYPE is an
+    // Anthropic-internal env that is never set in Claudio; this acts as
+    // a safety net even after the source is cleaned of those gates.
+    'process.env.USER_TYPE': JSON.stringify('open'),
     // MACRO.* build-time constants
     // Keep the internal compatibility version high enough to pass
     // first-party minimum-version guards, but expose the real package

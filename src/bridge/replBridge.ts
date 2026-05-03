@@ -60,12 +60,6 @@ import {
 } from './pollConfigDefaults.js'
 import { errorMessage } from '../utils/errors.js'
 import { sleep } from '../utils/sleep.js'
-import {
-  wrapApiForFaultInjection,
-  registerBridgeDebugHandle,
-  clearBridgeDebugHandle,
-  injectBridgeFault,
-} from './bridgeDebug.js'
 
 export type ReplBridgeHandle = {
   bridgeSessionId: string
@@ -324,10 +318,7 @@ export async function initBridgeCore(
     onAuth401,
     getTrustedDeviceToken,
   })
-  // Ant-only: interpose so /bridge-kick can inject poll/register/heartbeat
-  // failures. Zero cost in external builds (rawApi passes through unchanged).
-  const api =
-    process.env.USER_TYPE === 'ant' ? wrapApiForFaultInjection(rawApi) : rawApi
+  const api = rawApi
 
   const bridgeConfig: BridgeConfig = {
     dir,
@@ -877,8 +868,7 @@ export async function initBridgeCore(
 
   /**
    * Body of the transport's setOnClose callback, hoisted to initBridgeCore
-   * scope so /bridge-kick can fire it directly. setOnClose wraps this with
-   * a stale-transport guard; debugFireClose calls it bare.
+   * scope. setOnClose wraps this with a stale-transport guard.
    *
    * With autoReconnect:true, this only fires on: clean close (1000),
    * permanent server rejection (4001/1002/4003), or 10-min budget
@@ -965,45 +955,6 @@ export async function initBridgeCore(
     })
   }
 
-  // Ant-only: SIGUSR2 → force doReconnect() for manual testing. Skips the
-  // ~30s poll wait — fire-and-observe in the debug log immediately.
-  // Windows has no USR signals; `process.on` would throw there.
-  let sigusr2Handler: (() => void) | undefined
-  if (process.env.USER_TYPE === 'ant' && process.platform !== 'win32') {
-    sigusr2Handler = () => {
-      logForDebugging(
-        '[bridge:repl] SIGUSR2 received — forcing doReconnect() for testing',
-      )
-      void reconnectEnvironmentWithSession()
-    }
-    process.on('SIGUSR2', sigusr2Handler)
-  }
-
-  // Ant-only: /bridge-kick fault injection. handleTransportPermanentClose
-  // is defined below and assigned into this slot so the slash command can
-  // invoke it directly — the real setOnClose callback is buried inside
-  // wireTransport which is itself inside onWorkReceived.
-  let debugFireClose: ((code: number) => void) | null = null
-  if (process.env.USER_TYPE === 'ant') {
-    registerBridgeDebugHandle({
-      fireClose: code => {
-        if (!debugFireClose) {
-          logForDebugging('[bridge:debug] fireClose: no transport wired yet')
-          return
-        }
-        logForDebugging(`[bridge:debug] fireClose(${code}) — injecting`)
-        debugFireClose(code)
-      },
-      forceReconnect: () => {
-        logForDebugging('[bridge:debug] forceReconnect — injecting')
-        void reconnectEnvironmentWithSession()
-      },
-      injectFault: injectBridgeFault,
-      wakePollLoop,
-      describe: () =>
-        `env=${environmentId} session=${currentSessionId} transport=${transport?.getStateLabel() ?? 'null'} workId=${currentWorkId ?? 'null'}`,
-    })
-  }
 
   const pollOpts = {
     api,
@@ -1340,13 +1291,6 @@ export async function initBridgeCore(
           )
         })
 
-        // Body lives at initBridgeCore scope so /bridge-kick can call it
-        // directly via debugFireClose. All referenced closures (transport,
-        // wakePollLoop, flushGate, reconnectEnvironmentWithSession, etc.)
-        // are already at that scope. The only lexical dependency on
-        // wireTransport was `newTransport.getLastSequenceNum()` — but after
-        // the guard below passes we know transport === newTransport.
-        debugFireClose = handleTransportPermanentClose
         newTransport.setOnClose(closeCode => {
           // Guard: if transport was replaced, ignore stale close.
           if (transport !== newTransport) return
@@ -1568,13 +1512,6 @@ export async function initBridgeCore(
     }
     if (keepAliveTimer !== null) {
       clearInterval(keepAliveTimer)
-    }
-    if (sigusr2Handler) {
-      process.off('SIGUSR2', sigusr2Handler)
-    }
-    if (process.env.USER_TYPE === 'ant') {
-      clearBridgeDebugHandle()
-      debugFireClose = null
     }
     pollController.abort()
     logForDebugging('[bridge:repl] Teardown: poll loop aborted')

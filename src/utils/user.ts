@@ -109,7 +109,7 @@ export const getCoreUserData = memoize(
       platform: getHostPlatformForAnalytics(),
       organizationUuid,
       accountUuid,
-      userType: process.env.USER_TYPE,
+      userType: undefined,
       subscriptionType,
       rateLimitTier,
       firstTokenTime,

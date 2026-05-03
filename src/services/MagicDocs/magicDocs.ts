@@ -13,14 +13,10 @@ import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
 import {
   FileReadTool,
   type Output as FileReadToolOutput,
-  registerFileReadListener,
 } from '../../tools/FileReadTool/FileReadTool.js'
 import { isFsInaccessible } from '../../utils/errors.js'
 import { cloneFileStateCache } from '../../utils/fileStateCache.js'
-import {
-  type REPLHookContext,
-  registerPostSamplingHook,
-} from '../../utils/hooks/postSamplingHooks.js'
+import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
@@ -240,15 +236,5 @@ const updateMagicDocs = sequential(async function (
 })
 
 export async function initMagicDocs(): Promise<void> {
-  if (process.env.USER_TYPE === 'ant') {
-    // Register listener to detect magic docs when files are read
-    registerFileReadListener((filePath: string, content: string) => {
-      const result = detectMagicDocHeader(content)
-      if (result) {
-        registerMagicDoc(filePath)
-      }
-    })
-
-    registerPostSamplingHook(updateMagicDocs)
-  }
+  // Magic docs feature gated to internal-only build; no-op in open builds.
 }

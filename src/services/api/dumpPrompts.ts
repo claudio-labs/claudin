@@ -15,10 +15,6 @@ export function clearAllDumpState(): void {}
 
 export function addApiRequestToCache(_requestData: unknown): void {}
 
-export function getDumpPromptsPath(_agentIdOrSessionId?: string): string {
-  return ''
-}
-
 export function createDumpPromptsFetch(
   _agentIdOrSessionId: string,
 ): ClientOptions['fetch'] {

@@ -141,16 +141,6 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
       'How to spawn teammates: "tmux" for traditional tmux, "in-process" for same process, "auto" to choose automatically',
     options: TEAMMATE_MODES,
   },
-  ...(process.env.USER_TYPE === 'ant'
-    ? {
-        classifierPermissionsEnabled: {
-          source: 'settings' as const,
-          type: 'boolean' as const,
-          description:
-            'Enable AI-based classification for Bash(prompt:...) permission rules',
-        },
-      }
-    : {}),
   ...(feature('VOICE_MODE')
     ? {
         voiceEnabled: {

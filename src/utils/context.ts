@@ -79,19 +79,6 @@ export function getContextWindowForModel(
   model: string,
   betas?: string[],
 ): number {
-  // Allow override via environment variable (internal-only)
-  // This takes precedence over all other context window resolution, including 1M detection,
-  // so users can cap the effective context window for local decisions (auto-compact, etc.)
-  // while still using a 1M-capable endpoint.
-  if (
-    process.env.USER_TYPE === 'ant' &&
-    process.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS
-  ) {
-    const override = parseInt(process.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS, 10)
-    if (!isNaN(override) && override > 0) {
-      return override
-    }
-  }
 
   // [1m] suffix — explicit client-side opt-in, respected over all detection
   if (has1mContext(model)) {
@@ -130,12 +117,6 @@ export function getContextWindowForModel(
   }
   if (getSonnet1mExpTreatmentEnabled(model)) {
     return 1_000_000
-  }
-  if (process.env.USER_TYPE === 'ant') {
-    const antModel = resolveAntModel(model)
-    if (antModel?.contextWindow) {
-      return antModel.contextWindow
-    }
   }
   return MODEL_CONTEXT_WINDOW_DEFAULT
 }
@@ -195,15 +176,6 @@ export function getModelMaxOutputTokens(model: string): {
 } {
   let defaultTokens: number
   let upperLimit: number
-
-  if (process.env.USER_TYPE === 'ant') {
-    const antModel = resolveAntModel(model.toLowerCase())
-    if (antModel) {
-      defaultTokens = antModel.defaultMaxTokens ?? MAX_OUTPUT_TOKENS_DEFAULT
-      upperLimit = antModel.upperMaxTokensLimit ?? MAX_OUTPUT_TOKENS_UPPER_LIMIT
-      return { default: defaultTokens, upperLimit }
-    }
-  }
 
   // OpenAI-compatible provider — use known output limits to avoid 400 errors
   if (isOpenAIShimTransport()) {

@@ -16,11 +16,7 @@ import { logForDebugging } from '../debug.js'
 import { getPlatform } from '../platform.js'
 import { getSessionEnvironmentScript } from '../sessionEnvironment.js'
 import { getSessionEnvVars } from '../sessionEnvVars.js'
-import {
-  ensureSocketInitialized,
-  getClaudeTmuxEnv,
-  hasTmuxToolBeenUsed,
-} from '../tmuxSocket.js'
+import { getClaudeTmuxEnv } from '../tmuxSocket.js'
 import { windowsPathToPosixPath } from '../windowsPaths.js'
 import type { ShellProvider } from './shellProvider.js'
 
@@ -217,13 +213,6 @@ export async function createBashShellProvider(
       // commands will use Claude's isolated socket via the TMUX env var override.
       //
       // See tmuxSocket.ts for the full isolation architecture documentation.
-      const commandUsesTmux = command.includes('tmux')
-      if (
-        process.env.USER_TYPE === 'ant' &&
-        (hasTmuxToolBeenUsed() || commandUsesTmux)
-      ) {
-        await ensureSocketInitialized()
-      }
       const claudeTmuxEnv = getClaudeTmuxEnv()
       const env: Record<string, string> = {}
       // CRITICAL: Override TMUX to isolate ALL tmux commands to Claude's socket.

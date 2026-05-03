@@ -22,12 +22,7 @@ function isAgentTeamsFlagSet(): boolean {
  * 2. GrowthBook gate 'tengu_amber_flint' enabled (killswitch)
  */
 export function isAgentSwarmsEnabled(): boolean {
-  // Ant: always on
-  if (process.env.USER_TYPE === 'ant') {
-    return true
-  }
-
-  // External: require opt-in via env var or --agent-teams flag
+  // Require opt-in via env var or --agent-teams flag
   if (
     !isEnvTruthy(process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) &&
     !isAgentTeamsFlagSet()

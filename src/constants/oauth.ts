@@ -1,17 +1,7 @@
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-
 // Default to prod config, override with test/staging if enabled
 type OauthConfigType = 'prod' | 'staging' | 'local'
 
 function getOauthConfigType(): OauthConfigType {
-  if (process.env.USER_TYPE === 'ant') {
-    if (isEnvTruthy(process.env.USE_LOCAL_OAUTH)) {
-      return 'local'
-    }
-    if (isEnvTruthy(process.env.USE_STAGING_OAUTH)) {
-      return 'staging'
-    }
-  }
   return 'prod'
 }
 
@@ -113,35 +103,6 @@ const PROD_OAUTH_CONFIG = {
 export const MCP_CLIENT_METADATA_URL =
   'https://claude.ai/oauth/claude-code-client-metadata'
 
-// Staging OAuth configuration - only included in ant builds with staging flag
-// Uses literal check for dead code elimination
-const STAGING_OAUTH_CONFIG =
-  process.env.USER_TYPE === 'ant'
-    ? ({
-        BASE_API_URL: 'https://api-staging.anthropic.com',
-        CONSOLE_AUTHORIZE_URL:
-          'https://platform.staging.ant.dev/oauth/authorize',
-        CLAUDE_AI_AUTHORIZE_URL:
-          'https://claude-ai.staging.ant.dev/oauth/authorize',
-        CLAUDE_AI_ORIGIN: 'https://claude-ai.staging.ant.dev',
-        TOKEN_URL: 'https://platform.staging.ant.dev/v1/oauth/token',
-        API_KEY_URL:
-          'https://api-staging.anthropic.com/api/oauth/claude_cli/create_api_key',
-        ROLES_URL:
-          'https://api-staging.anthropic.com/api/oauth/claude_cli/roles',
-        CONSOLE_SUCCESS_URL:
-          'https://platform.staging.ant.dev/buy_credits?returnUrl=/oauth/code/success%3Fapp%3Dclaude-code',
-        CLAUDEAI_SUCCESS_URL:
-          'https://platform.staging.ant.dev/oauth/code/success?app=claude-code',
-        MANUAL_REDIRECT_URL:
-          'https://platform.staging.ant.dev/oauth/code/callback',
-        CLIENT_ID: '22422756-60c9-4084-8eb7-27705fd5cf9a',
-        OAUTH_FILE_SUFFIX: '-staging-oauth',
-        MCP_PROXY_URL: 'https://mcp-proxy-staging.anthropic.com',
-        MCP_PROXY_PATH: '/v1/mcp/{server_id}',
-      } as const)
-    : undefined
-
 // Three local dev servers: :8000 api-proxy (`api dev start -g ccr`),
 // :4000 claude-ai frontend, :3000 Console frontend. Env vars let
 // scripts/claude-localhost override if your layout differs.
@@ -189,7 +150,7 @@ export function getOauthConfig(): OauthConfig {
       case 'local':
         return getLocalOauthConfig()
       case 'staging':
-        return STAGING_OAUTH_CONFIG ?? PROD_OAUTH_CONFIG
+        return PROD_OAUTH_CONFIG
       case 'prod':
         return PROD_OAUTH_CONFIG
     }

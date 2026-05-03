@@ -48,12 +48,7 @@ import skills from './commands/skills/index.js'
 import status from './commands/status/index.js'
 import tasks from './commands/tasks/index.js'
 import teleport from './commands/teleport/index.js'
-/* eslint-disable @typescript-eslint/no-require-imports */
-const agentsPlatform =
-  process.env.USER_TYPE === 'ant'
-    ? require('./commands/agents-platform/index.js').default
-    : null
-/* eslint-enable @typescript-eslint/no-require-imports */
+const agentsPlatform = null
 import securityReview from './commands/security-review.js'
 import bughunter from './commands/bughunter/index.js'
 import terminalSetup from './commands/terminalSetup/index.js'
@@ -135,7 +130,6 @@ import passes from './commands/passes/index.js'
 import privacySettings from './commands/privacy-settings/index.js'
 import provider from './commands/provider/index.js'
 import hooks from './commands/hooks/index.js'
-import files from './commands/files/index.js'
 import branch from './commands/branch/index.js'
 import agents from './commands/agents/index.js'
 import autoFix from './commands/auto-fix.js'
@@ -144,7 +138,6 @@ import reloadPlugins from './commands/reload-plugins/index.js'
 import rewind from './commands/rewind/index.js'
 import heapDump from './commands/heapdump/index.js'
 import mockLimits from './commands/mock-limits/index.js'
-import bridgeKick from './commands/bridge-kick.js'
 import version from './commands/version.js'
 import wiki from './commands/wiki/index.js'
 import summary from './commands/summary/index.js'
@@ -181,7 +174,6 @@ import env from './commands/env/index.js'
 import exit from './commands/exit/index.js'
 import exportCommand from './commands/export/index.js'
 import model from './commands/model/index.js'
-import tag from './commands/tag/index.js'
 import outputStyle from './commands/output-style/index.js'
 import remoteEnv from './commands/remote-env/index.js'
 import upgrade from './commands/upgrade/index.js'
@@ -242,7 +234,6 @@ export const INTERNAL_ONLY_COMMANDS = [
   initVerifiers,
   ...(forceSnip ? [forceSnip] : []),
   mockLimits,
-  bridgeKick,
   version,
   ...(ultraplan ? [ultraplan] : []),
   ...(subscribePr ? [subscribePr] : []),
@@ -288,7 +279,6 @@ const COMMANDS = memoize((): Command[] => [
   effort,
   exit,
   fast,
-  files,
   heapDump,
   help,
   ide,
@@ -317,7 +307,6 @@ const COMMANDS = memoize((): Command[] => [
   status,
   statusline,
   stickers,
-  tag,
   theme,
   feedback,
   review,
@@ -356,9 +345,6 @@ const COMMANDS = memoize((): Command[] => [
   tasks,
   ...(workflowsCmd ? [workflowsCmd] : []),
   ...(torch ? [torch] : []),
-  ...(process.env.USER_TYPE === 'ant' && !process.env.IS_DEMO
-    ? INTERNAL_ONLY_COMMANDS
-    : []),
 ])
 
 export const builtInCommandNames = memoize(
@@ -671,7 +657,6 @@ export const BRIDGE_SAFE_COMMANDS: Set<Command> = new Set(
     cost, // Show session cost
     summary, // Summarize conversation
     releaseNotes, // Show changelog
-    files, // List tracked files
   ].filter((c): c is Command => c !== null),
 )
 
