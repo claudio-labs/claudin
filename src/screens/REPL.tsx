@@ -85,6 +85,7 @@ import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js';
 import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { getShortcutDisplay } from '../keybindings/shortcutFormat.js';
 import { CancelRequestHandler } from '../hooks/useCancelRequest.js';
+import { useExitOnCtrlCDWithKeybindings } from '../hooks/useExitOnCtrlCDWithKeybindings.js';
 import { useBackgroundTaskNavigation } from '../hooks/useBackgroundTaskNavigation.js';
 import { useSwarmInitialization } from '../hooks/useSwarmInitialization.js';
 import { useTeammateViewAutoExit } from '../hooks/useTeammateViewAutoExit.js';
@@ -594,6 +595,13 @@ export function REPL({
   thinkingConfig
 }: Props): React.ReactNode {
   const isRemoteSession = !!remoteSessionConfig;
+
+  // Wire up Ctrl+C / Ctrl+D double-press to exit. Ink raw mode disables ISIG,
+  // so the OS-level SIGINT handler in main.tsx never fires while the TUI is
+  // mounted. Without this hook, idle Ctrl+C at the prompt is silently
+  // swallowed (CancelRequestHandler intentionally only claims it during a
+  // running task). The hook also drives the "Press Ctrl-C again to exit" hint.
+  useExitOnCtrlCDWithKeybindings();
 
   // Env-var gates hoisted to mount-time — isEnvTruthy does toLowerCase+trim+
   // includes, and these were on the render path (hot during PageUp spam).
