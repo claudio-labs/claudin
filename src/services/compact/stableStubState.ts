@@ -203,8 +203,13 @@ function arrayContainsImage(content: unknown): boolean {
 
 /**
  * Walk messages and rewrite every tool_result whose tool_use_id is in the
- * current (session, agent)'s clipped-ids set. No-op when the set is empty
- * (returns the input array reference — callers may rely on this fast path).
+ * current (session, agent)'s clipped-ids set. Returns the input array
+ * reference (identity-preserving fast path) in two no-op cases:
+ *   1. The clipped set is empty.
+ *   2. The clipped set is non-empty but no message contains a matching
+ *      tool_result, OR every match is already a stub.
+ * The QueryEngine.submitMessage substitution (roadmap 5.7) and other hot-path
+ * callers rely on this so they can guard reassignment with a `=== input` check.
  *
  * Image-bearing trade-off: tool_results whose content is an array containing
  * an `image` block are SKIPPED — we leave them untouched on this turn so
@@ -217,8 +222,9 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
   if (!clippedIds || clippedIds.size === 0) return messages
 
   const toolNames = indexToolUses(messages)
+  let anyTouched = false
 
-  return messages.map(msg => {
+  const out = messages.map(msg => {
     const inner = getInner(msg)
     const content = inner.content
     if (!Array.isArray(content)) return msg
@@ -264,10 +270,17 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
     })
 
     if (!touched) return msg
+    anyTouched = true
 
     if (msg.message) {
       return { ...msg, message: { ...msg.message, content: newContent } } as T
     }
     return { ...msg, content: newContent } as T
   })
+
+  // Identity-preserving fast path for QueryEngine (roadmap 5.7): when the
+  // clipped set has ids but none of them appear in the current messages
+  // (or every match is already a stub), return the input ref so callers'
+  // identity guards don't reassign on every turn.
+  return anyTouched ? out : messages
 }

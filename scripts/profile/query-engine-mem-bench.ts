@@ -28,6 +28,8 @@ type Args = {
   turns: number
   payloadKb: number
   toolsPerTurn: number
+  withPrune: boolean
+  keepRecent: number
   json: boolean
   help: boolean
 }
@@ -37,15 +39,19 @@ function parseArgs(argv: string[]): Args {
     turns: 1000,
     payloadKb: 50,
     toolsPerTurn: 2,
+    withPrune: false,
+    keepRecent: 2,
     json: false,
     help: false,
   }
   for (const a of argv) {
     if (a === '--help' || a === '-h') args.help = true
     else if (a === '--json') args.json = true
+    else if (a === '--with-prune') args.withPrune = true
     else if (a.startsWith('--turns=')) args.turns = Number(a.slice(8)) || args.turns
     else if (a.startsWith('--payload-kb=')) args.payloadKb = Number(a.slice(13)) || args.payloadKb
     else if (a.startsWith('--tools-per-turn=')) args.toolsPerTurn = Number(a.slice(17)) || args.toolsPerTurn
+    else if (a.startsWith('--keep-recent=')) args.keepRecent = Number(a.slice(14)) || args.keepRecent
   }
   return args
 }
@@ -149,6 +155,57 @@ function makeUserPromptMessage(text: string): SyntheticMessage {
   }
 }
 
+// ---- Stable-stub simulation (mirrors src/services/compact/stableStubState.ts)
+//
+// Standalone re-implementation: the bench can't import the real module
+// without dragging in ~100 MB of QueryEngine module graph. The contract is
+// narrow enough to mirror locally — buildClipStub bytes match exactly so
+// the bench reflects production bytes-on-the-array.
+
+const CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens from .+\]$/
+
+function buildClipStub(toolName: string, originalTokens: number): string {
+  return `[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName}]`
+}
+
+function simulateApplyStableStubs(
+  messages: SyntheticMessage[],
+  clippedIds: Set<string>,
+  toolNames: Map<string, string>,
+): SyntheticMessage[] {
+  if (clippedIds.size === 0) return messages
+
+  let touched = false
+  const out = messages.map(msg => {
+    const content = msg.message.content
+    if (!Array.isArray(content)) return msg
+    let blockTouched = false
+    const newContent = content.map(block => {
+      if (block.type !== 'tool_result' || !clippedIds.has(block.tool_use_id)) {
+        return block
+      }
+      if (typeof block.content === 'string' && CLIP_STUB_PATTERN.test(block.content)) {
+        return block
+      }
+      if (block.content == null || block.content === '') return block
+      // Approx tokens: ASCII bytes / 4. Mirrors roughTokenCountEstimation 1:4.
+      const approxTokens = Math.ceil(block.content.length / 4)
+      blockTouched = true
+      return {
+        ...block,
+        content: buildClipStub(toolNames.get(block.tool_use_id) ?? 'tool', approxTokens),
+      }
+    })
+    if (!blockTouched) return msg
+    touched = true
+    return {
+      ...msg,
+      message: { ...msg.message, content: newContent },
+    }
+  })
+  return touched ? out : messages
+}
+
 // ---- Approximate in-memory size of the messages array --------------------
 
 function approxArrayBytes(messages: SyntheticMessage[]): number {
@@ -186,8 +243,16 @@ type Snapshot = {
 }
 
 async function run(args: Args): Promise<{ snapshots: Snapshot[]; wallMs: number; final: Snapshot }> {
-  const messages: SyntheticMessage[] = []
+  let messages: SyntheticMessage[] = []
   const payloadBytes = args.payloadKb * 1024
+
+  // Track all tool_use_ids in encounter order; apply prune by clipping all
+  // but the most recent `keepRecent` ids each turn. Mirrors microcompact's
+  // size-based trigger contract: oldest tool_results become stubs, newest
+  // stay live for the model's working context.
+  const allToolUseIds: string[] = []
+  const toolNames = new Map<string, string>()
+  const clippedIds = new Set<string>()
 
   gc()
   await new Promise(r => setTimeout(r, 10))
@@ -207,6 +272,10 @@ async function run(args: Args): Promise<{ snapshots: Snapshot[]; wallMs: number;
       id: `toolu_${turn}_${i}`,
       name: i % 2 === 0 ? 'Read' : 'Bash',
     }))
+    for (const t of toolUses) {
+      allToolUseIds.push(t.id)
+      toolNames.set(t.id, t.name)
+    }
     messages.push(makeAssistantToolUseMessage(toolUses))
 
     // Generate fresh payload per turn so V8 cannot pool references.
@@ -223,6 +292,24 @@ async function run(args: Args): Promise<{ snapshots: Snapshot[]; wallMs: number;
     messages.push(
       makeAssistantTextMessage(`Based on turn ${turn} I see the value is ${turn * 7}. Moving on.`),
     )
+
+    // Mirrors QueryEngine.submitMessage: at the top of each new turn (after
+    // the prior turn's transcript has flushed), substitute the array with
+    // applyStableStubs(...). Identity guard preserves the ref when the set
+    // is unchanged and no rewrite was needed.
+    if (args.withPrune && allToolUseIds.length > args.keepRecent) {
+      const candidates = allToolUseIds.slice(0, -args.keepRecent)
+      let added = false
+      for (const id of candidates) {
+        if (!clippedIds.has(id)) {
+          clippedIds.add(id)
+          added = true
+        }
+      }
+      if (added) {
+        messages = simulateApplyStableStubs(messages, clippedIds, toolNames)
+      }
+    }
 
     if ((turn + 1) % interval === 0 || turn === args.turns - 1) {
       gc()
@@ -253,6 +340,11 @@ Options:
   --turns=N            number of turns to simulate (default 1000)
   --payload-kb=N       size of each tool_result payload in KB (default 50)
   --tools-per-turn=N   tool_use blocks per turn (default 2)
+  --with-prune         simulate roadmap 5.7 substitution: each turn,
+                       applyStableStubs rewrites tool_results older than
+                       --keep-recent into stubs, freeing the original payloads
+  --keep-recent=N      number of most-recent tool_use ids to leave intact
+                       under --with-prune (default 2)
   --json               emit JSON instead of human-readable table
   --help               this message
 `)
@@ -272,7 +364,7 @@ Options:
 
   console.log(`QueryEngine message-history simulation`)
   console.log(
-    `  ${args.turns} turns, ${args.payloadKb} KB/tool_result, ${args.toolsPerTurn} tools/turn`,
+    `  ${args.turns} turns, ${args.payloadKb} KB/tool_result, ${args.toolsPerTurn} tools/turn${args.withPrune ? ` [PRUNE keep-recent=${args.keepRecent}]` : ''}`,
   )
   console.log(`  wall: ${wallMs.toFixed(1)}ms\n`)
   console.log('turn      msgs   approx       heap        Δheap        RSS        ΔRSS       external')

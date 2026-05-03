@@ -15,6 +15,7 @@ import type {
   SDKUserMessageReplay,
 } from 'src/entrypoints/agentSdkTypes.js'
 import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
+import { applyStableStubs } from 'src/services/compact/stableStubState.js'
 import type { NonNullableUsage } from 'src/services/api/logging.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import stripAnsi from 'strip-ansi'
@@ -237,6 +238,20 @@ export class QueryEngine {
     } = this.config
 
     this.discoveredSkillNames.clear()
+
+    // Free RSS held by tool_result blocks the wire path has been emitting as
+    // stubs since the size-based microcompact trigger fired. applyStableStubs
+    // returns a new array where touched messages are NEW Message objects with
+    // stub bytes; the old large-content blocks become GC-eligible once nothing
+    // else holds them. Substitution (not in-place mutation) is intentional:
+    // snapshot holders (gRPC session cache, bridge transports mid-flight) keep
+    // their references to the OLD objects intact. Identity guard preserves
+    // the input ref when the clipped set is empty (fast path). Roadmap 5.7.
+    const compacted = applyStableStubs(this.mutableMessages)
+    if (compacted !== this.mutableMessages) {
+      this.mutableMessages = compacted
+    }
+
     setCwd(cwd)
     const persistSession = !isSessionPersistenceDisabled()
     const startTime = Date.now()
@@ -1173,6 +1188,13 @@ export class QueryEngine {
     this.abortController.abort()
   }
 
+  /**
+   * Returns the live message history. Callers that hold the returned reference
+   * across turns must run applyStableStubs on their copy if they want it kept
+   * in sync with subsequent compactions; otherwise they end up holding refs to
+   * (now-orphaned) original blocks. The gRPC server (server.ts) demonstrates
+   * the pattern by compacting before caching its cross-stream snapshot.
+   */
   getMessages(): readonly Message[] {
     return this.mutableMessages
   }

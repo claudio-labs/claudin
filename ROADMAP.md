@@ -6,15 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (7 itens)
-
-### 5.7 — Cap/poda de `QueryEngine.mutableMessages` em sessões longas
-- **Esforço:** M (decisão arquitetural + implementação)
-- **Prioridade:** P1
-- **Estado:** `mutableMessages: Message[]` (`src/QueryEngine.ts:187`) cresce sem cap por toda a sessão. Append sites: `:432` (user input), `:782` (assistant), `:786` (progress), `:799` (tool_results), `:844` (attachment). Tool_results de FileRead/Bash/Grep facilmente reach 50-200 KB cada e ficam retidos até `/clear`. Bench novo `scripts/profile/query-engine-mem-bench.ts` mostra **~232 KB RSS/turno** com tool_results de 50 KB; em 500 turnos = +113 MB RSS. Heap V8 fica 0 (strings vão pra `external`), invisível no `long-session-bench.ts` antigo. autocompact (5.0) mitiga via heap pressure mas só dispara perto do limit; não há proteção contínua.
-- **Ganho:** Reduzir RSS em sessões longas reais (2h+) onde autocompact ainda não disparou. Prevenir OOM em hardware com pouca RAM.
-- **Abordagem (a decidir):** (a) cap absoluto em N mensagens com FIFO eviction de tool_results antigos, (b) compressão proativa de tool_results > X KB após Y turnos (substitui por stub, mantém tool_use_id), (c) TTL por tool_use_id. Opção (b) preserva caching prefix-stable do Anthropic (já documentado em team memory `feedback-cache-stable-compression.md`). Bench e regressão em CI usando `query-engine-mem-bench.ts`.
-- **Arquivos:** `src/QueryEngine.ts`, possivelmente `src/services/compact/` (reuso de stable-stub design existente).
+## Ativos (6 itens)
 
 ### 5.8 — `fileReadCache.clear()` não libera RSS V8
 - **Esforço:** S (investigação + escolha entre fix ou doc)
@@ -67,6 +59,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.7 — Cap/poda de `QueryEngine.mutableMessages` em sessões longas (26ed91c)
+`mutableMessages` (`src/QueryEngine.ts:187`) crescia sem cap; tool_results de 50-200 KB ficavam retidos até `/clear`. Wire path já emitia esses como stubs determinísticos (microcompact size-based trigger + `applyStableStubs` em `claude.ts`/`openaiShim`/`codexShim`), mas `applyStableStubs` retornava array NOVO — os blocos originais continuavam vivos em `mutableMessages`. Solução: substituir `mutableMessages = applyStableStubs(mutableMessages)` no início de `submitMessage` e deixar GC reclamar os originais. gRPC (`src/grpc/server.ts:201`) aplica a mesma compactação antes de cachear o snapshot cross-stream. Identity-preserving fast-path adicionado em `applyStableStubs` cobre 2 casos no-op (set vazio + set sem matches), pra guard `compacted !== this.mutableMessages` evitar reatribuição em todo turno. Bench (1000 turnos × 50 KB tool_results, 2 tools/turn): array bytes 99.0 MB → 1.4 MB (−98.6%), RSS/turno 220.9 KB → 84.6 KB (−62%). 459 testes provider passam; 3 testes novos em `src/grpc/server.test.ts` + 3 em `stableStubState.test.ts` (identity guard, GC-eligibility, sub-agent isolation).
 
 ### 5.5 — Versão do pacote no nome dos chunks em release builds
 Investigação inicial mostrou que a premissa original do item (usar `[dir]` para nomear chunks por subdiretório de fonte) era inviável: o token `[dir]` em `naming.chunk` deriva do entrypoint que puxa o chunk, não dos módulos-fonte que o compõem, e como temos só dois entrypoints na mesma pasta (`src/entrypoints/cli.tsx` e `mcp.ts`) o `[dir]` expande pra vazio. Bun nomeia ~213 chunks por módulo dominante (`App-*`, `REPL-*`, `AgentTool-*`...) automaticamente, mas restam ~195 chunks compartilhados que ficam `cli-XXXX.mjs` sem identificação. Solução adotada: gate `naming.chunk` em `CLAUDIO_RELEASE_BUILD=1` (set por `package.json:build:release`) que injeta `${version}` no template — em release o chunk vira `cli-0.1.5-XXXX.mjs`, dando rastreabilidade pra stack traces de produção sem sourcemap. Local builds preservam o nome curto. Teste em `scripts/release-chunk-naming.test.ts` (4 asserts) trava o template + a env var no `package.json`.
@@ -184,4 +179,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**5 ativos** (1× P0: 4.1; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **16 concluídos**.
+**4 ativos** (1× P0: 4.1; 1× P1: 5.8; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **17 concluídos**.

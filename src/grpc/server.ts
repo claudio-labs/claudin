@@ -7,6 +7,7 @@ import { getTools } from '../tools.js'
 import { getDefaultAppState } from '../state/AppStateStore.js'
 import { AppState } from '../state/AppState.js'
 import { FileStateCache, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js'
+import { applyStableStubs } from '../services/compact/stableStubState.js'
 
 const PROTO_PATH = path.resolve(import.meta.dirname, '../proto/claudio.proto')
 
@@ -187,8 +188,20 @@ export class GrpcServer {
           }
 
           if (!interrupted) {
-            // Save messages for multi-turn context in subsequent requests
-            previousMessages = [...engine.getMessages()]
+            // Save messages for multi-turn context in subsequent requests.
+            // applyStableStubs rewrites tool_results clipped by the size-based
+            // microcompact trigger to deterministic stub bytes, so the cached
+            // snapshot doesn't pin the original 50-200 KB content in RAM
+            // across cross-stream resumes. Roadmap 5.7.
+            //
+            // Limitation: applyStableStubs reads the process-global session
+            // key (getSessionId() in stableStubState.ts), not req.session_id.
+            // Single-client gRPC is fine — the global key matches the lone
+            // active session. Multi-client gRPC servers sharing this process
+            // could see ids from one client influence stubbing for another;
+            // pre-existing scope (gRPC never called setSessionId) and out of
+            // scope for 5.7. Track separately if multi-client lands.
+            previousMessages = applyStableStubs([...engine.getMessages()])
 
             // Persist to session store for cross-stream resumption
             if (sessionId) {

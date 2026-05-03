@@ -337,6 +337,110 @@ test('first switchSession fire after reset is a no-op (lazy lastSeenSessionId)',
   switchSession(original)
 })
 
+// ROADMAP 5.7: substitution semantics for QueryEngine.mutableMessages
+//
+// QueryEngine substitutes its mutableMessages reference with the result of
+// applyStableStubs at the start of each turn. These tests pin the contract
+// the engine relies on: identity-preserving fast path when there is nothing
+// to clip, and full GC-eligibility of the original block content (not just
+// the wire bytes) when there is.
+
+test('5.7 substitution: array identity preserved when no rewrites apply', () => {
+  // Set has an id that does NOT appear in messages → no rewrites possible.
+  addClippedIds(['toolu_unrelated'])
+  const messages: Msg[] = [
+    assistantToolUse('toolu_a', 'Read'),
+    userToolResult('toolu_a', 'A'.repeat(5_000)),
+  ]
+  const result = applyStableStubs(messages)
+  // Same array reference: QueryEngine's `compacted !== this.mutableMessages`
+  // identity guard relies on this so we don't reassign on every turn.
+  expect(result).toBe(messages)
+})
+
+test('5.7 substitution: sub-agent applyStableStubs is no-op for parent-only clipped ids', async () => {
+  // QueryEngine.submitMessage substitution must not leak the parent's stubs
+  // into a sub-agent's mutableMessages. Each engine runs under its own
+  // teammateContext; currentKey() composes (sessionId, agentId), so the
+  // sub-agent's lookup misses the parent's set and applyStableStubs is a
+  // pure identity no-op there.
+  const { runWithTeammateContext } = await import('../../utils/teammateContext.js')
+
+  // Parent: clip an id and confirm substitution rewrites it
+  addClippedIds(['parent_only'])
+  const parentMessages: Msg[] = [
+    assistantToolUse('parent_only', 'Read'),
+    userToolResult('parent_only', 'X'.repeat(2_000)),
+  ]
+  const parentCompacted = applyStableStubs(parentMessages)
+  expect(parentCompacted).not.toBe(parentMessages)
+
+  // Sub-agent: same messages, but its currentKey misses the parent's set,
+  // so applyStableStubs returns the input ref unchanged (no leak).
+  const ctx = {
+    agentId: 'agent-isolation-test',
+    agentName: 'test-agent',
+    teamName: 'team-1',
+    planModeRequired: false,
+    parentSessionId: 'parent-session',
+    isInProcess: true as const,
+    abortController: new AbortController(),
+  }
+  await runWithTeammateContext(ctx, async () => {
+    const childMessages: Msg[] = [
+      assistantToolUse('parent_only', 'Read'),
+      userToolResult('parent_only', 'Y'.repeat(2_000)),
+    ]
+    const childCompacted = applyStableStubs(childMessages)
+    // Identity preserved: the substitution would be a no-op in the engine
+    // (the `compacted !== this.mutableMessages` guard skips reassignment).
+    expect(childCompacted).toBe(childMessages)
+    // And the original 2 KB content is untouched in the child's view.
+    const block = (childCompacted[1].content as Block[])[0] as { content: string }
+    expect(block.content).toBe('Y'.repeat(2_000))
+  })
+})
+
+test('5.7 substitution: original block content is no longer reachable from the new array', () => {
+  // Build messages where every tool_result content is a unique 50 KB string.
+  // After applyStableStubs, the new array must not transitively reference
+  // any of those originals — otherwise the in-memory hold survives the
+  // substitution and the roadmap 5.7 RSS win evaporates.
+  const originals: string[] = []
+  const messages: Msg[] = []
+  for (let i = 0; i < 20; i++) {
+    const big = `payload-${i}-`.repeat(5_000) // ~60 KB each
+    originals.push(big)
+    messages.push(assistantToolUse(`toolu_${i}`, 'Read'))
+    messages.push(userToolResult(`toolu_${i}`, big))
+  }
+  addClippedIds(originals.map((_, i) => `toolu_${i}`))
+
+  const compacted = applyStableStubs(messages)
+  expect(compacted).not.toBe(messages)
+
+  // Walk the compacted array and assert no surviving reference to any
+  // original payload string.
+  const survivingContents = new Set<unknown>()
+  for (const msg of compacted) {
+    const content = msg.message?.content ?? msg.content
+    if (!Array.isArray(content)) continue
+    for (const block of content as Block[]) {
+      if (block.type === 'tool_result') {
+        survivingContents.add(block.content)
+      }
+    }
+  }
+  for (const orig of originals) {
+    expect(survivingContents.has(orig)).toBe(false)
+  }
+  // And the new content is the deterministic stub.
+  for (const c of survivingContents) {
+    expect(typeof c).toBe('string')
+    expect(c as string).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
+  }
+})
+
 test('Map size stays bounded across many switchSession calls', () => {
   const original = getSessionId()
   for (let i = 0; i < 50; i++) {
