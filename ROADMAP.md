@@ -6,7 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (8 itens)
+## Ativos (7 itens)
 
 ### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
 - **Esforço:** S (~30 min)
@@ -26,8 +26,6 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Ganho:** Debug mais fácil em produção sem inflar tamanho.
 - **Abordagem:** Trocar para `chunks/[dir]-[name]-[hash].mjs` ou similar. Validar se Bun aceita esses tokens em `naming.chunk` (consulta docs Bun) e que o resultado preserva `[hash]` ao final (cache busting).
 - **Arquivos:** `scripts/build.ts:159-163` (objeto `naming`).
-
-### 5.3a — Bench de cap invariants para caches conhecidos ✅ (movido para Concluídos)
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -56,18 +54,6 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Abordagem:** Listar todos `= memoize(`, filtrar os que NÃO têm resolver (segundo arg), checar se primeiro arg é primitivo. Para os perigosos, migrar para `memoizeWithLRU` com key-fn explícita.
 - **Arquivos:** `src/**` (116 sites — começar pelos `services/api/`, `utils/auth.ts`, `utils/claudemd.ts`)
 
-### 2.4 — Gerenciamento de memória em sessões longas
-- **Esforço:** M
-- **Estado:** `fileReadCache` sem check de tamanho por entrada (1000 × ficheiros grandes = >1 GB); `invalidate()` nunca chamado após writes — coerência depende só de mtime granularity. Listeners em REPL.tsx estão corretos (2 on + 2 off balanceados).
-- **Ganho:** Cap de memória previsível em sessões longas; elimina risco de stale read em writes rápidos.
-- **Arquivos:** `src/utils/fileReadCache.ts`, `src/utils/file.ts`
-
-### 2.4 — Gerenciamento de memória em sessões longas
-- **Esforço:** M
-- **Estado:** `fileReadCache` sem check de tamanho por entrada (1000 × ficheiros grandes = >1 GB); `invalidate()` nunca chamado após writes — coerência depende só de mtime granularity. Listeners em REPL.tsx estão corretos (2 on + 2 off balanceados).
-- **Ganho:** Cap de memória previsível em sessões longas; elimina risco de stale read em writes rápidos.
-- **Arquivos:** `src/utils/fileReadCache.ts`, `src/utils/file.ts`
-
 ### 3.12 — Wildcard permission rules (last-match-wins)
 - **Esforço:** M (~80 LoC + revisão de UX `/permissions`)
 - **Estado:** `tools.allow`/`deny` é all-or-nothing por tool. Sem padrão `bash:rm -rf /* → deny`, `bash:git push → ask`, `bash:* → allow`.
@@ -84,6 +70,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 2.4 — Gerenciamento de memória em sessões longas (a629290, ff4ee09, f86cca9)
+`fileReadCache` ganhou `maxEntryBytes = 256 * 1024` (`src/utils/fileReadCache.ts:21,51`) — alinhado com `MAX_OUTPUT_SIZE` em `file.ts`. Worst-case RSS do cache: ~250 MB em vez de unbounded. `writeTextContent()` (`src/utils/file.ts:98`) chama `fileReadCache.invalidate(filePath)` após cada write, eliminando o risco de stale read entre FileEditTool/FileWriteTool/NotebookEditTool e o próximo Read no mesmo segundo. 11 testes em `fileReadCache.test.ts` cobrem hit/miss/eviction/size-guard/invalidate/clear. Claim original sobre listeners imbalanceados em REPL.tsx era falsa (corrigido na descrição original).
 
 ### 5.3a — Bench de cap invariants para caches conhecidos
 Bench `scripts/profile/long-session-bench.ts` + invariantes em `src/utils/cacheBoundsInvariants.test.ts` validaram empiricamente que os 5 caches module-level mais quentes respeitam seus caps sob 10k cycles cada. Resultado: total heap delta 5.3 MB (esperado: ~cap × bytes/entry × 5 caches), zero crescimento unbounded. Para cobertura: ver `baselines/long-session.json`. OOM original (4 GB) ficou explicado pelo combo "token threshold alto + V8 heap cap default 4 GB" e foi mitigado pela 5.0; não havia leak per-turn nos containers auditados.
@@ -189,4 +178,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**8 ativos** (5.3a → done; 5.3b adicionado P3, 1× P0 4.1, 1× P1 5.3, 2× P2 5.1/5.5, etc.) + **13 concluídos** (5.3a juntado).
+**7 ativos** (1× P0: 4.1; 2× P2: 5.1; 4× P3: 5.4/5.5/5.2/5.3b; +3.12 sem prio) + **13 concluídos** (2.4 estava duplicado nos ativos, movido pra cá).
