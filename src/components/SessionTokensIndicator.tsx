@@ -12,7 +12,7 @@ import { tryGetActiveProvider } from '../services/api/activeProvider.js';
 import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
 import { useAppState } from '../state/AppState.js';
 import { formatTokens } from '../utils/format.js';
-import { getMainLoopModel } from '../utils/model/model.js';
+import { parseUserSpecifiedModel } from '../utils/model/model.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
 import { parseModelList } from '../utils/providerModels.js';
 
@@ -89,18 +89,16 @@ export function readSnapshot(extraModels: readonly (string | null)[] = []): Snap
   // invisible here for the rest of the session. They still flow into /cost
   // (they live in modelUsage), so this is a display gap, not a data loss.
   const models = new Set<string>(parseModelList(profile.model));
-  // cost-tracker keys usage by the *resolved* model name, which can differ
-  // from `profile.model` (raw config) and `appState.mainLoopModel` (which
-  // may be a user alias or null). Folding in the resolved current model
-  // guarantees the active bucket is always counted, regardless of provider.
-  try {
-    const resolved = getMainLoopModel();
-    if (resolved) models.add(resolved);
-  } catch {
-    // getMainLoopModel can throw before bootstrap completes — ignore.
-  }
+  // cost-tracker keys usage by the *resolved* model name (e.g. an alias like
+  // `opus[1m]` is stored as `claude-opus-4-7[1m]`). `extraModels` carries the
+  // raw appState fields (`mainLoopModel`, `mainLoopModelForSession`) — pass
+  // each one through `parseUserSpecifiedModel` so it matches the cost-tracker
+  // bucket. Mirrors the resolution chain in query.ts (where `options.model`
+  // is built before `addToTotalSessionCost` is called).
   for (const m of extraModels) {
-    if (m && m.length > 0) models.add(m);
+    if (!m || m.length === 0) continue;
+    models.add(m);
+    models.add(parseUserSpecifiedModel(m));
   }
   const usage = getModelUsage();
   let input = 0;

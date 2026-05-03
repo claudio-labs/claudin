@@ -62,12 +62,24 @@ mock.module('../utils/model/providers.js', () => ({
   isGithubNativeAnthropicMode: () => false,
 }));
 
-let resolvedMainLoopModel: string | undefined;
-function setResolvedMainLoopModel(name: string | undefined) {
-  resolvedMainLoopModel = name;
-}
+// Mirror parseUserSpecifiedModel's behavior just enough for the tests:
+// expand a small set of aliases and pass through anything else unchanged.
+// The real function lives in src/utils/model/model.ts and runs the same
+// resolution chain query.ts uses before storing usage in cost-tracker.
 mock.module('../utils/model/model.js', () => ({
-  getMainLoopModel: () => resolvedMainLoopModel,
+  parseUserSpecifiedModel: (input: string) => {
+    if (!input) return input;
+    const has1m = /\[1m]$/i.test(input);
+    const base = has1m ? input.replace(/\[1m]$/i, '') : input;
+    const map: Record<string, string> = {
+      sonnet: 'claude-sonnet-4-6',
+      opus: 'claude-opus-4-7',
+      haiku: 'claude-haiku-4-5',
+    };
+    const expanded = map[base.toLowerCase()];
+    if (expanded) return expanded + (has1m ? '[1m]' : '');
+    return input;
+  },
 }));
 
 mock.module('../ink.js', () => ({
@@ -89,7 +101,6 @@ afterEach(() => {
   setUsage({});
   setProfile(undefined);
   setCacheProvider('anthropic');
-  setResolvedMainLoopModel(undefined);
 });
 
 describe('readSnapshot — per-provider scoping', () => {
@@ -220,28 +231,49 @@ describe('readSnapshot — per-provider scoping', () => {
     expect(snap.cacheCreation).toBe(300);
   });
 
-  test('resolved mainLoopModel is counted even when profile.model differs from the recorded key', () => {
-    // Reproduces the bug where the indicator went blank: cost-tracker keys
-    // usage by the *resolved* model name, but profile.model can hold a raw
-    // unresolved form and appState.mainLoopModel can be a user alias or
-    // null. getMainLoopModel() is the only source for the resolved name.
-    // The exact shape of the divergence is provider-specific (e.g. variant
-    // suffixes, alias expansion), so the model strings here are arbitrary.
+  test('alias mainLoopModel ([1m] suffix) resolves to the cost-tracker key', () => {
+    // Reproduces the bug where the indicator went blank: cost-tracker stores
+    // usage under the *resolved* model name (`claude-opus-4-7[1m]`), built in
+    // query.ts via parseUserSpecifiedModel before addToTotalSessionCost runs.
+    // appState.mainLoopModel can be the raw alias (`opus[1m]`) or even null
+    // (default). Resolving extraModels through parseUserSpecifiedModel makes
+    // both forms collapse to the same bucket.
     setUsage({
-      'resolved-model-name': {
+      'claude-opus-4-7[1m]': {
         inputTokens: 12, outputTokens: 8,
         cacheReadInputTokens: 116000, cacheCreationInputTokens: 63800,
       },
     });
-    setProfile({ id: 'p', model: 'unresolved-model-name', baseUrl: 'https://example' });
-    setResolvedMainLoopModel('resolved-model-name');
+    setProfile({ id: 'anthropic-1', model: 'claude-opus-4-7', baseUrl: 'https://api.anthropic.com' });
 
-    const snap = readSnapshot();
+    const snap = readSnapshot(['opus[1m]']);
 
     expect(snap.input).toBe(12);
     expect(snap.output).toBe(8);
     expect(snap.cacheRead).toBe(116000);
     expect(snap.cacheCreation).toBe(63800);
+  });
+
+  test('/model session override (mainLoopModelForSession alias) is resolved and counted', () => {
+    // /model sonnet[1m] writes 'sonnet[1m]' to mainLoopModelForSession, but
+    // query.ts records usage under 'claude-sonnet-4-6[1m]'. The indicator
+    // must resolve the session override the same way.
+    setUsage({
+      'claude-sonnet-4-6[1m]': {
+        inputTokens: 1, outputTokens: 2,
+        cacheReadInputTokens: 3, cacheCreationInputTokens: 4,
+      },
+    });
+    setProfile({ id: 'anthropic-1', model: 'claude-opus-4-7', baseUrl: 'https://api.anthropic.com' });
+
+    // extraModels carries [mainLoopModel, mainLoopModelForSession] per the
+    // component's own ref wiring; session override second.
+    const snap = readSnapshot([null, 'sonnet[1m]']);
+
+    expect(snap.input).toBe(1);
+    expect(snap.output).toBe(2);
+    expect(snap.cacheRead).toBe(3);
+    expect(snap.cacheCreation).toBe(4);
   });
 
   test('extraModels deduplicates against profile.model (no double-count)', () => {
