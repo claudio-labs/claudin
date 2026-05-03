@@ -28,7 +28,7 @@
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
     "build:extension": "mkdir -p dist && cd vscode-extension/claudio-vscode && bun install --frozen-lockfile && npx --yes @vscode/vsce@^3 package --out ../../dist/claudio-vscode.vsix",
-    "build:release": "bun run build:extension && bun run build",
+    "build:release": "bun run build:extension && CLAUDIO_RELEASE_BUILD=1 bun run build",
     "test:provider": "bun test src/services/api/*.test.ts src/utils/context.test.ts",
     "profile": "bun run scripts/profile/run-all.ts",
     "profile:streaming": "bun run scripts/profile/streaming-bench.ts --compare",

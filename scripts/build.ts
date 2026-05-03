@@ -168,7 +168,14 @@ const result = await Bun.build({
   minify: false,
   naming: {
     entry: 'cli.mjs',
-    chunk: 'chunks/[name]-[hash].mjs',
+    // Release builds embed the package version in chunk filenames so a
+    // stack trace from a published bundle (`cli-0.1.5-abc123.mjs:42`)
+    // identifies the release without requiring sourcemaps. Local dev
+    // builds keep the shorter `cli-abc123.mjs` form. Toggled by
+    // CLAUDIO_RELEASE_BUILD=1 (set in package.json `build:release`).
+    chunk: process.env.CLAUDIO_RELEASE_BUILD === '1'
+      ? `chunks/[name]-${version}-[hash].mjs`
+      : 'chunks/[name]-[hash].mjs',
     asset: 'assets/[name]-[hash][ext]',
   },
   define: {

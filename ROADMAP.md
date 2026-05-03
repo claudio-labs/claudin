@@ -6,15 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (6 itens)
-
-### 5.5 — Naming de chunks com diretório para legibilidade de stack traces
-- **Esforço:** XS (1 linha + teste)
-- **Prioridade:** P3 (cosmético)
-- **Estado:** Após code-splitting, `naming.chunk: 'chunks/[name]-[hash].mjs'` produz 198 chunks chamados `cli-XXXX.mjs` quando o `[name]` deriva de fontes ambíguas (`cli.tsx`, vários `index.ts`). Stack traces ficam ilegíveis: "qual `cli-q4kjxz12` é esse?".
-- **Ganho:** Debug mais fácil em produção sem inflar tamanho.
-- **Abordagem:** Trocar para `chunks/[dir]-[name]-[hash].mjs` ou similar. Validar se Bun aceita esses tokens em `naming.chunk` (consulta docs Bun) e que o resultado preserva `[hash]` ao final (cache busting).
-- **Arquivos:** `scripts/build.ts:159-163` (objeto `naming`).
+## Ativos (5 itens)
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -59,6 +51,9 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 5.5 — Versão do pacote no nome dos chunks em release builds
+Investigação inicial mostrou que a premissa original do item (usar `[dir]` para nomear chunks por subdiretório de fonte) era inviável: o token `[dir]` em `naming.chunk` deriva do entrypoint que puxa o chunk, não dos módulos-fonte que o compõem, e como temos só dois entrypoints na mesma pasta (`src/entrypoints/cli.tsx` e `mcp.ts`) o `[dir]` expande pra vazio. Bun nomeia ~213 chunks por módulo dominante (`App-*`, `REPL-*`, `AgentTool-*`...) automaticamente, mas restam ~195 chunks compartilhados que ficam `cli-XXXX.mjs` sem identificação. Solução adotada: gate `naming.chunk` em `CLAUDIO_RELEASE_BUILD=1` (set por `package.json:build:release`) que injeta `${version}` no template — em release o chunk vira `cli-0.1.5-XXXX.mjs`, dando rastreabilidade pra stack traces de produção sem sourcemap. Local builds preservam o nome curto. Teste em `scripts/release-chunk-naming.test.ts` (4 asserts) trava o template + a env var no `package.json`.
 
 ### 5.1 — Code-splitting de provider SDKs (Anthropic family externalizados)
 Bun estava deduplicando os 3 SDKs Anthropic (`@anthropic-ai/{bedrock,vertex,foundry}-sdk`, ~3.6 MB combinados) em um único shared chunk de 6.1 MB — pulled por todos os branches de dynamic-import em `client.ts`. Externalizados em `scripts/build.ts:541-553` (junto com `@aws-sdk/*`, `@azure/identity`, `google-auth-library` que já eram external). Agora são resolvidos em runtime de `node_modules` em vez de bundlados; nenhum chunk contém mais as classes `AnthropicBedrock|AnthropicVertex|AnthropicFoundry`. Sessões puramente Anthropic native nunca parseiam código de bedrock/vertex/foundry. Guard test em `scripts/provider-sdks-external.test.ts` previne regressão (assert no `external` array + scan dos chunks). Verificado: bundle pré 63 MB / 412 chunks → pós 62 MB / 408 chunks (delta de disco modesto, mas mais relevante: 3.6 MB de código de provider sai do hot-path V8 parse). Smoke + 459 provider tests + verify:privacy passam.
@@ -173,4 +168,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**6 ativos** (1× P0: 4.1; 4× P3: 5.5/5.2/5.3b/5.1b; +3.12 sem prio) + **15 concluídos**.
+**5 ativos** (1× P0: 4.1; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **16 concluídos**.
