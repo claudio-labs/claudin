@@ -42,7 +42,6 @@ import { logOTelEvent, redactIfDisabled } from '../telemetry/events.js';
 import { buildPluginCommandTelemetryFields } from '../telemetry/pluginTelemetry.js';
 import { getAssistantMessageContentLength } from '../tokens.js';
 import { createAgentId } from '../uuid.js';
-import { getWorkload } from '../workloadContext.js';
 import type { ProcessUserInputBaseResult, ProcessUserInputContext } from './processUserInput.js';
 type SlashCommandResult = ProcessUserInputBaseResult & {
   command: Command;
@@ -104,30 +103,17 @@ async function executeForkedSlashCommand(command: CommandBase & PromptCommand, a
     const bgAbortController = createAbortController();
     const commandName = getCommandName(command);
 
-    // Workload: handlePromptSubmit wraps the entire turn in runWithWorkload
-    // (AsyncLocalStorage). ALS context is captured when this `void` fires
-    // and survives every await inside — isolated from the parent's
-    // continuation. The detached closure's runAgent calls see the cron tag
-    // automatically. We still capture the value here ONLY for the
-    // re-enqueued result prompt below: that second turn runs in a fresh
-    // handlePromptSubmit → fresh runWithWorkload boundary (which always
-    // establishes a new context, even for `undefined`) → so it needs its
-    // own QueuedCommand.workload tag to preserve attribution.
-    const spawnTimeWorkload = getWorkload();
-
     // Re-enter the queue as a hidden prompt. isMeta: hides from queue
     // preview + placeholder + transcript. skipSlashCommands: prevents
     // re-parsing if the result text happens to start with '/'. When
     // drained, this triggers a main-agent turn that sees the result and
-    // decides whether to SendUserMessage. Propagate workload so that
-    // second turn is also tagged.
+    // decides whether to SendUserMessage.
     const enqueueResult = (value: string): void => enqueuePendingNotification({
       value,
       mode: 'prompt',
       priority: 'later',
       isMeta: true,
-      skipSlashCommands: true,
-      workload: spawnTimeWorkload
+      skipSlashCommands: true
     });
     void (async () => {
       // Wait for MCP servers to settle. Scheduled tasks fire at startup and

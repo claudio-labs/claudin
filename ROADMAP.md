@@ -6,7 +6,7 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ---
 
-## Ativos (5 itens)
+## Ativos (11 itens)
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -26,6 +26,22 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Ganho:** Bundles para usuários puramente OpenAI/Mistral diminuem ~50-80 KB. Marginal.
 - **Abordagem:** `const getCodex = lazy(() => import('./codexShim.js'))` com await nos 6 call sites. Idem para gemini/github helpers gated por mode flags.
 - **Arquivos:** `src/services/api/openaiShim.ts`
+
+### 5.10 — Lazy bash parser (~12.3k LoC eagerly loaded)
+- **Esforço:** S (1-2h)
+- **Prioridade:** P1
+- **Estado:** `src/utils/bash/*.ts` soma 12 306 LoC (bashParser 4 436, ast 2 679, commands 1 339, heredoc 733, ShellSnapshot 582, treeSitterAnalysis 506, ParsedCommand 318...). Importado por BashTool (`src/tools/BashTool/BashTool.tsx`), bashCommandHelpers, readOnlyValidation, bashPermissions, pathValidation, MonitorTool. Parser é JIT-compilado em todo startup, mesmo em sessões `--print`/plan-mode/MCP-only que nunca chamam Bash.
+- **Ganho:** Modesto mas barato. Diferimento de ~12k LoC compilados até a primeira invocação BashTool/MonitorTool. Bench `scripts/profile/long-session-bench.ts` deve mostrar delta claro de retained code size.
+- **Abordagem:** Getter `getBashParser()` lazy memoizado, disparado só na primeira invocação real. Cuidado: `bashPermissions.ts`/`pathValidation.ts` rodam em pre-tool-use (validação de prompt) — verificar se já não força carregamento eager via algum hook.
+- **Arquivos:** `src/utils/bash/*.ts` consumers, `src/tools/BashTool/*`
+
+### 5.11 — Sub-agents em `worker_threads` (eliminar duplicação de heap)
+- **Esforço:** L (multi-dia)
+- **Prioridade:** P1 (maior potencial de ganho real — centenas de MB em sessões agent-heavy)
+- **Estado:** Confirmado: zero uso de `worker_threads`/`new Worker(` em todo `src/`. `runAgent.ts:1031 LoC` faz `import { query } from '../../query.js'` estático; `coordinator/workerAgent.ts` tem só **18 linhas** (nome enganoso — não é um Worker, é uma fachada in-process). Quando o usuário dispara N AgentTool em paralelo (coordinator mode, ou múltiplas calls numa única resposta), cada sub-agente carrega QueryEngine + registry de tools + closures completas no mesmo heap principal. Em árvores A→B→C o retained-set multiplica.
+- **Ganho:** Único candidato com potencial de cortar centenas de MB em sessões pesadas. Worker dispensa Ink/React-reconciler/startupProfiler/TUI inteira; carrega só o subset necessário (api client + tool registry + slice mínimo de utils).
+- **Abordagem:** Pool de `worker_threads` (limit configurável; default = `os.cpus().length`). Mensagem entry: `(prompt, agentType, parentMessagesSlice, dossier, permissionContext)` via `postMessage` com structured clone. Worker streama `SDKMessage` de volta. Cuidado com: (1) MCP servers já são child processes — sub-agents precisam reusar conexões parent ou abrir próprias?, (2) permission prompts precisam re-roteados ao parent, (3) `worker_threads` aceita ESM via `--experimental-vm-modules` ou bundle separado, (4) Ctrl-C precisa propagar `terminate()` ao pool.
+- **Arquivos:** `src/coordinator/workerAgent.ts` (substituir façade), `src/tools/AgentTool/runAgent.ts`, possivelmente um novo bundle entry `src/entrypoints/agent-worker.ts` para evitar carregar Ink no worker.
 
 ### 5.2 — Auditoria de lodash `memoize` por escape de closure
 - **Esforço:** S-M (meio dia)
@@ -47,6 +63,43 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 - **Prioridade:** P0
 - **Estado:** Sem testes em `QueryEngine.ts` (core agent loop), `coordinator/`, `grpc/server.ts`, `tools/AgentTool/`, `main.tsx`, `screens/REPL.tsx`, `bridge/`.
 - **Ganho:** Reduz risco de regressão silenciosa no core.
+
+### 1.10 — Tool registry membership stability (LSP/MCP/provider/coordinator flips)
+- **Esforço:** M
+- **Prioridade:** P1
+- **Estado:** Após `cc_workload` ser removido (commit `bec0336` + `155e8a7`), o próximo cache-break frequente vem de mudanças de **membership** no array de tools entre turnos da mesma sessão. O sort interno de `assembleToolPool` em `src/tools.ts:343-365` preserva ordem, mas a entrada/saída de tools muda os bytes da seção de tools (que vem após o system prompt no prefixo cacheado). Eventos reais que disparam: (1) **LSP connect** — `getAllBaseTools()` em `src/tools.ts:222` faz `isLspGloballyEnabled() && isLspConnected()` direto no array, então a `LSPTool` entra na lista no momento em que o LSP server termina o handshake; (2) **`/provider` switch** — `WebSearchTool.isEnabled` em `src/tools/WebSearchTool/WebSearchTool.ts:542-562` chama `getProviderMode()`/`getAvailableProviders()`/`isCodexResponsesWebSearchEnabled()`, que mudam ao trocar profile; (3) **MCP server connect/disconnect** — tools MCP entram/saem via `mcpTools` argumento de `assembleToolPool`; (4) **`/coordinator` toggle** — `getTools()` lines 278-281, 289-294 ligam/desligam `TaskStopTool`, `getSendMessageTool()`, `AgentTool`. Bench atual em `scripts/measure-cache-invalidation-budget.ts` mede ~16 334 break tokens (5m discount) por add/remove de 1 tool — confirmado experimentalmente.
+- **Ganho:** Cada flip de membership rebila ~16k tokens. Em sessões com LSP ligado tarde (servidor aquece em 2-5s), `/provider` switch para testes, ou MCP servers conectando assincronamente, são vários eventos por sessão.
+- **Abordagem:** três opções (avaliar antes do plan):
+  1. **Eager-load determinístico** — incluir todas as tools `getAllBaseTools()` retorna independentemente de `isEnabled`, e gate o uso runtime em vez do registry. Schemas idênticos turn-a-turn; LLM "vê" mais tools mas não pode invocar as desabilitadas. Custo: prompt fica ligeiramente maior; tools registradas mas não-funcionais podem confundir o modelo.
+  2. **Cache breakpoint após o registry** — acrescentar um `cache_control` breakpoint imediatamente após o array de tools, de forma que mudanças posteriores (mensagens) ainda cacheiam mas tools-section vira "instável" (rebill só dela). Requer entender quantos breakpoints sobram (Anthropic permite 4).
+  3. **Estabilizar o subset que muda** — para LSP/MCP especificamente: emitir o slot da tool com schema completo desde o início e flip um campo "available: true/false" interno, mantendo bytes do schema iguais. Pode não funcionar com Anthropic se o servidor descartar tools sem `description` válida.
+- **Tests requeridos:** snapshot do `getTools()` array (nomes + schema bytes hash) antes/depois de simular: LSP connect, MCP connect, /provider switch, /coordinator toggle. Falham hoje em todos os 4; passam após o fix.
+- **Bench:** estender `scripts/measure-cache-invalidation-budget.ts` com cenários `lsp-connect`, `mcp-connect`, `provider-switch` quantificando o rebill por evento.
+- **Arquivos:** `src/tools.ts`, `src/tools/WebSearchTool/`, `src/services/api/claude.ts` (cache breakpoint placement em `splitSysPromptPrefix`).
+
+### 1.11 — Coordinator MCP server list determinístico
+- **Esforço:** XS (1 linha + test)
+- **Prioridade:** P3 (latente — só morde em sessões coordinator com reconexão de MCP)
+- **Estado:** `src/coordinator/coordinatorMode.ts:99-101` faz `mcpClients.map(c => c.name).join(', ')` em ordem de input. A ordem do array vem de async connect timing — não-determinística entre sessões. Quando coordinator mode está ativo, esse texto entra no `getCoordinatorUserContext` que vai pro system context. Hoje é dormente para a maioria dos usuários (coordinator mode é gated por env var). Test source-level já existe em `src/coordinator/coordinatorMode.test.ts` (commit `1597130`) documentando o bug e pronto pra flipar.
+- **Ganho:** Marginal em uso normal; protege sessões coordinator de invalidação de cache em reconexões MCP.
+- **Abordagem:** `mcpClients.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => c.name)`. Flipar o test source-level pra `expect(src).toMatch(/\.sort\(/)`.
+- **Arquivos:** `src/coordinator/coordinatorMode.ts`, `src/coordinator/coordinatorMode.test.ts`.
+
+### 1.12 — `getMcpInstructions` sort determinístico
+- **Esforço:** XS (1 linha + test)
+- **Prioridade:** P3 (dormente sob flag default — `isMcpInstructionsDeltaEnabled()` retorna `true` por padrão e o delta path substitui esta seção; só morde se `CLAUDE_CODE_MCP_INSTR_DELTA=0` for setado)
+- **Estado:** `src/constants/prompts.ts:516-521` joina `mcpClients` em ordem de input. Wrapper `DANGEROUS_uncachedSystemPromptSection('mcp_instructions', ..., 'MCP servers connect/disconnect between turns')` em `src/constants/systemPromptSections.ts:43` força recompute por turno mas devolve `null` quando delta está ativo (caminho default).
+- **Ganho:** Quase zero em uso default. Vale documentar como guard pro caso de o delta path ser desabilitado.
+- **Abordagem:** sort por nome antes do filter+join. Adicionar test que falhe quando o sort some.
+- **Arquivos:** `src/constants/prompts.ts`.
+
+### 1.13 — `should1hCacheTTL` latch-on documentation
+- **Esforço:** XS (comentário + opcional test)
+- **Prioridade:** P3 (não é bug, é intentional)
+- **Estado:** `src/services/api/claude.ts:414-425` flipa o TTL do cache de 5m para 1h quando o tamanho cumulativo do prompt cruza o threshold pela primeira vez na sessão. É **latch-on / high-water-mark**, não one-shot — uma vez ligado, fica ligado. Causa **um** cache miss por sessão (no primeiro crossing) que é depois amortizado pelo TTL maior. Análise inicial classificou como "one-shot" (errado) → auditor corrigiu pra "latch-on" (correto). Tudo working as intended.
+- **Ganho:** Zero código, mas vale um comentário explicando o latch-on no source. Test opcional que asserta o latch (uma vez true, sempre true) protegeria contra refactors que acidentalmente tornassem o flip volátil.
+- **Abordagem:** comentário em `claude.ts:414`. Test em `src/services/api/claude.test.ts` (se existir) ou criar `should1hCacheTTL.test.ts` próprio.
+- **Arquivos:** `src/services/api/claude.ts`.
 
 ---
 
@@ -147,6 +200,7 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 **Premissa falsa:**
 - **3.5** (rate-limit headers Bedrock/Vertex/Gemini) — esses providers **não emitem** `x-ratelimit-reset-*`. Bedrock usa AWS SDK error metadata, Gemini usa `RetryInfo` em gRPC details. Não é "estamos ignorando", é "não existe pra ignorar". Escopo real >> M.
+- **5.9** (lazy registry de tools em `tools.ts`) — desclassificada após bench empírico em 2026-05-04. Premissa original era "dezenas de MB de retained code+ICs". Bench (`scripts/profile/cold-start-retained-bench.ts` com 14 probes per-candidate, baseline em `baselines/cold-start-retained.json`) mostrou que TODOS os candidatos puxam ~30 MB de heap idêntico via stack transitiva compartilhada (Tool.ts + zod + ink + prompt helpers). Delta do módulo próprio do tool é <1 MB cada — única exceção foi AskUserQuestionTool (13 MB vs 30 MB, único que não puxa a stack completa). Ganho real estimado: 3-5 MB total no melhor caso, não dezenas. Adicionar isso justifica o custo de Proxy traps + audit de cross-imports + refactor de identity-checks em `PermissionRequest.tsx`. Roadmap-killer: dois reviews independentes (Plan agent) também identificaram bloqueadores (identity comparisons quebram com Proxy, no-Suspense em REPL, memo cache do react-compiler). Os 4 testes escritos durante a investigação (`src/__tests__/lazyToolImports.test.ts`, `src/__tests__/lazyToolModuleLoad.test.ts`, `src/components/permissions/PermissionRequest.test.ts`, e os probes adicionais no `cold-start-retained-bench.ts`) ficam como guarda — `lazyToolImports` previne re-eagerização acidental de tools que hoje só são importados por `tools.ts`, e `PermissionRequest.test` trava drift entre `tool.name` e a constante NAME exportada.
 
 **Parcialmente cobertos por código existente:**
 - **3.1** (resposta parcial em streaming) e **3.8** (timeout configurável) — `STREAM_IDLE_TIMEOUT_MS` já existe em `claude.ts:1840`, configurável via env, com warning intermediário. Resume-from-checkpoint é caro de implementar (L) para ganho marginal.
@@ -176,4 +230,4 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**4 ativos** (1× P0: 4.1; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **18 concluídos**.
+**7 ativos** (1× P0: 4.1; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **18 concluídos**. 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.

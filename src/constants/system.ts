@@ -5,7 +5,6 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growt
 import { logForDebugging } from '../utils/debug.js'
 import { isEnvDefinedFalsy } from '../utils/envUtils.js'
 import { getAPIProvider } from '../utils/model/providers.js'
-import { getWorkload } from '../utils/workloadContext.js'
 
 const DEFAULT_PREFIX =
   `You are Claudio, an open-source coding agent and CLI.`
@@ -83,15 +82,16 @@ export function getAttributionHeader(fingerprint: string): string {
 
   // cch=00000 placeholder is overwritten by Bun's HTTP stack with attestation token
   const cch = feature('NATIVE_CLIENT_ATTESTATION') ? ' cch=00000;' : ''
-  // cc_workload: turn-scoped hint so the API can route e.g. cron-initiated
-  // requests to a lower QoS pool. Absent = interactive default. Safe re:
-  // fingerprint (computed from msg chars + version only, line 78 above) and
-  // cch attestation (placeholder overwritten in serialized body bytes after
-  // this string is built). Server _parse_cc_header tolerates unknown extra
-  // fields so old API deploys silently ignore this.
-  const workload = getWorkload()
-  const workloadPair = workload ? ` cc_workload=${workload};` : ''
-  const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};${cch}${workloadPair}`
+  // NOTE: this header is block 0 of the system prompt array
+  // (claude.ts:1348) and result[0] of splitSysPromptPrefix
+  // (utils/api.ts:399-485) — the literal-byte anchor of Anthropic's
+  // prompt-cache prefix match. Anything appended here that varies per
+  // turn invalidates the entire cached prefix on every flip. The
+  // previously-injected `cc_workload` tag (a 1P QoS hint for cron
+  // turns) was removed for that reason — do not re-add per-turn data
+  // here without first moving it past every downstream cache_control
+  // breakpoint.
+  const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};${cch}`
 
   logForDebugging(`attribution header ${header}`)
   return header

@@ -13,7 +13,6 @@ import { removeCronTasks } from '../utils/cronTasks.js'
 import { logForDebugging } from '../utils/debug.js'
 import { enqueuePendingNotification } from '../utils/messageQueueManager.js'
 import { createScheduledTaskFireMessage } from '../utils/messages.js'
-import { WORKLOAD_CRON } from '../utils/workloadContext.js'
 
 type Props = {
   isLoading: boolean
@@ -74,11 +73,6 @@ export function useScheduledTasks({
         mode: 'prompt',
         priority: 'later',
         isMeta: true,
-        // Threaded through to cc_workload= in the billing-header
-        // attribution block so the API can serve cron-initiated requests
-        // at lower QoS when capacity is tight. No human is actively
-        // waiting on this response.
-        workload: WORKLOAD_CRON,
       })
 
     const scheduler = createCronScheduler({

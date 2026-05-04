@@ -168,6 +168,15 @@ export async function measureCacheInvalidation(options: {
   scenarios.push(row('switch model (/provider)', baselineBytes))
   scenarios.push(row('flip beta header', baselineBytes))
 
+  // cc_workload flip on cron↔interactive alternation: USED to invalidate
+  // the entire prefix because getWorkload() was inlined into the
+  // attribution header (block 0 of the system prompt). Fixed by removing
+  // that injection — workload still rides on the User-Agent suffix
+  // (utils/http.ts:34), but the prefix bytes are now stable. Kept here
+  // as a 0-byte regression marker so any reintroduction surfaces in the
+  // bench output.
+  scenarios.push(row('cc_workload flip cron<->interactive (fixed)', 0))
+
   // Non-breaking reference rows: env_info delivered as a user-message
   // attachment is BELOW the cache marker, so nothing rebills. Same with
   // sticky auto_mode.

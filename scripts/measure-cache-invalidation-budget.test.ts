@@ -13,7 +13,15 @@ describe('measureCacheInvalidation', () => {
     expect(result.model).toBe('claude-sonnet-4-5')
     expect(result.bytesPerToken).toBe(3.5)
 
-    expect(result.scenarios.length).toBeGreaterThanOrEqual(6)
+    expect(result.scenarios.length).toBeGreaterThanOrEqual(7)
+    const ccWorkloadRow = result.scenarios.find(s =>
+      s.scenario.includes('cc_workload flip'),
+    )
+    expect(ccWorkloadRow).toBeDefined()
+    // Post-fix: cc_workload no longer enters the cached prefix, so the
+    // flip rebills 0 tokens. If this jumps back up, someone re-inlined
+    // the workload tag into the attribution header (system.ts).
+    expect(ccWorkloadRow!.rebillTokens).toBe(0)
 
     for (const row of result.scenarios) {
       expect(row.cachedPrefixBytes).toBeGreaterThanOrEqual(0)

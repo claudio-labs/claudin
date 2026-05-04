@@ -700,11 +700,6 @@ export const AgentTool = buildTool({
         invocationEmitted: false
       };
 
-      // Workload propagation: handlePromptSubmit wraps the entire turn in
-      // runWithWorkload (AsyncLocalStorage). ALS context is captured at
-      // invocation time — when this `void` fires — and survives every await
-      // inside. No capture/restore needed; the detached closure sees the
-      // parent turn's workload automatically, isolated from its finally.
       void runWithAgentContext(asyncAgentContext, () => wrapWithCwd(() => runAsyncAgentLifecycle({
         taskId: agentBackgroundTask.agentId,
         abortController: agentBackgroundTask.abortController!,
@@ -880,8 +875,6 @@ export const AgentTool = buildTool({
                 // below owns its own independent stop function.
                 stopForegroundSummarization?.();
 
-                // Workload: inherited via ALS at `void` invocation time,
-                // same as the async-from-start path above.
                 // Continue agent in background and return async result
                 void runWithAgentContext(syncAgentContext, async () => {
                   let stopBackgroundedSummarization: (() => void) | undefined;
