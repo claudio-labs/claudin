@@ -601,7 +601,15 @@ export function REPL({
   // mounted. Without this hook, idle Ctrl+C at the prompt is silently
   // swallowed (CancelRequestHandler intentionally only claims it during a
   // running task). The hook also drives the "Press Ctrl-C again to exit" hint.
-  useExitOnCtrlCDWithKeybindings();
+  //
+  // Both PromptInput's TextInput (via useTextInput's own useDoublePress) and
+  // this hook see the same Ctrl+C event. Route both through handleExit so the
+  // worktree/bg-session paths run; the reentry guard inside handleExit makes
+  // the second concurrent call a no-op, avoiding the Ink-unmount-vs-/exit race
+  // that otherwise leaves the process to be reaped by gracefulShutdown's 5s
+  // failsafe (perceived as a freeze).
+  const handleExitRef = useRef<() => void>(() => {});
+  useExitOnCtrlCDWithKeybindings(() => { handleExitRef.current(); });
 
   // Env-var gates hoisted to mount-time — isEnvTruthy does toLowerCase+trim+
   // includes, and these were on the render path (hot during PageUp spam).
@@ -3589,7 +3597,13 @@ export function REPL({
       resetHistory: () => { }
     });
   }, []);
+  // Guards against concurrent re-entry. TextInput's useDoublePress and the
+  // REPL's useExitOnCtrlCD both fire on a Ctrl+C double-press; without this,
+  // exit.load() runs twice and the two ExitFlows race.
+  const isExitingRef = useRef(false);
   const handleExit = useCallback(async () => {
+    if (isExitingRef.current) return;
+    isExitingRef.current = true;
     setIsExiting(true);
     // In bg sessions, always detach instead of kill — even when a worktree is
     // active. Without this guard, the worktree branch below short-circuits into
@@ -3598,6 +3612,7 @@ export function REPL({
       spawnSync('tmux', ['detach-client'], {
         stdio: 'ignore'
       });
+      isExitingRef.current = false;
       setIsExiting(false);
       return;
     }
@@ -3605,6 +3620,7 @@ export function REPL({
     if (showWorktree) {
       setExitFlow(<ExitFlow showWorktree onDone={() => { }} onCancel={() => {
         setExitFlow(null);
+        isExitingRef.current = false;
         setIsExiting(false);
       }} />);
       return;
@@ -3616,9 +3632,13 @@ export function REPL({
     // clear isExiting so the UI is usable on reattach. No-op on the normal
     // path — gracefulShutdown's process.exit() means we never get here.
     if (exitFlowResult === null) {
+      isExitingRef.current = false;
       setIsExiting(false);
     }
   }, []);
+  // Sync the ref so the early useExitOnCtrlCDWithKeybindings hook (above)
+  // can dispatch into handleExit even though it's defined later.
+  handleExitRef.current = handleExit;
   const handleShowMessageSelector = useCallback(() => {
     setIsMessageSelectorVisible(prev => !prev);
   }, []);
