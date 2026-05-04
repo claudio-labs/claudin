@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
-import { isStaticDedupEnabled } from './claudeMdDelta.js'
+import { describe, expect, test } from 'bun:test'
 import { getClaudeMdDelta } from './claudeMdDelta.js'
 
 // Fake minimal attachment-message shape — mirrors the Message union's
@@ -84,38 +83,3 @@ describe('getClaudeMdDelta', () => {
   })
 })
 
-// The gate has three paths: truthy env → on, explicit falsy → off,
-// everything else (undefined/empty) → off. The default-off case is
-// exercised implicitly by every test above (env is unset). This block
-// covers the two explicit paths so a regression in either — e.g. a
-// typo in the `isEnvDefinedFalsy` branch — surfaces as a red test.
-describe('isStaticDedupEnabled env gate', () => {
-  const original = process.env.CLAUDIO_STATIC_DEDUP
-
-  afterEach(() => {
-    if (original === undefined) {
-      delete process.env.CLAUDIO_STATIC_DEDUP
-    } else {
-      process.env.CLAUDIO_STATIC_DEDUP = original
-    }
-  })
-
-  test('truthy env enables dedup', () => {
-    process.env.CLAUDIO_STATIC_DEDUP = 'true'
-    expect(isStaticDedupEnabled()).toBe(true)
-    process.env.CLAUDIO_STATIC_DEDUP = '1'
-    expect(isStaticDedupEnabled()).toBe(true)
-  })
-
-  test('explicit falsy env disables dedup', () => {
-    process.env.CLAUDIO_STATIC_DEDUP = 'false'
-    expect(isStaticDedupEnabled()).toBe(false)
-    process.env.CLAUDIO_STATIC_DEDUP = '0'
-    expect(isStaticDedupEnabled()).toBe(false)
-  })
-
-  test('undefined env defaults to disabled', () => {
-    delete process.env.CLAUDIO_STATIC_DEDUP
-    expect(isStaticDedupEnabled()).toBe(false)
-  })
-})

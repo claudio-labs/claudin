@@ -26,10 +26,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from './api.js'
-import {
-  getClaudeMdDelta,
-  isStaticDedupEnabled,
-} from './claudeMdDelta.js'
+import { getClaudeMdDelta } from './claudeMdDelta.js'
 import { getGitStatusDelta } from './gitStatusDelta.js'
 import { getMemoryDelta, type MemoryFileInput } from './memoryDelta.js'
 import { stableStringify } from './stableStringify.js'
@@ -447,63 +444,28 @@ describe('static-dedup integration: combined 3-turn session', () => {
 })
 
 /**
- * End-to-end: toggle the real CLAUDIO_STATIC_DEDUP env var and
- * measure what would go on the wire under each setting.
+ * End-to-end: compute the wire-size savings that the per-turn delta
+ * pipeline actually delivers, vs. the historical always-emit baseline.
  *
  * The per-scanner tests above simulate both paths with hand-built
- * attachment arrays. This block instead treats the feature as a
- * black box: flip the env var, exercise the same pipeline
- * (`isStaticDedupEnabled()` gates which attachments reach the shim)
- * and compute the savings percentages that ship in the PR claim.
- *
- * Numbers from this block are the ones to quote externally — they're
- * measured by the same code path production uses.
+ * attachment arrays. This block treats the feature as a black box:
+ * for each turn, build the delta payload (current behavior) and the
+ * always-emit payload (historical baseline shape) and compute the
+ * savings percentage that ships in the PR claim.
  */
-describe('static-dedup integration: env-toggled end-to-end savings', () => {
-  const ENV_VAR = 'CLAUDIO_STATIC_DEDUP'
-  let originalEnvValue: string | undefined
-
-  beforeAll(() => {
-    originalEnvValue = process.env[ENV_VAR]
-  })
-
-  afterAll(() => {
-    if (originalEnvValue === undefined) {
-      delete process.env[ENV_VAR]
-    } else {
-      process.env[ENV_VAR] = originalEnvValue
-    }
-  })
-
+describe('static-dedup integration: end-to-end savings', () => {
   /**
-   * Build the full per-turn static payload that a provider would see,
-   * deciding what to include based on `isStaticDedupEnabled()`:
-   *
-   * - Flag OFF: baseline shape (claudeMd/gitStatus injected via context,
-   *   full nested_memory + todo_reminder attachments).
-   * - Flag ON: delta shape (delta attachments instead; scanners emit
-   *   full content on turn 1, null on turn 2+).
-   *
-   * The transcript accumulates across turns so the scanners can
-   * reconstruct prior-announced state — exactly like production.
+   * Build the per-turn delta payload (current production shape).
+   * Scanners emit full content on turn 1 and null on turn 2+ when
+   * nothing changed.
    */
-  function emitTurnPayload(
+  function emitDeltaTurnPayload(
     transcript: AttachmentMessage[],
     claudeMdContent: string,
     gitStatusSnapshot: string,
     memoryFiles: MemoryFileInput[],
     todoSnapshot: TodoSnapshotItem[],
   ): Record<string, unknown>[] {
-    if (!isStaticDedupEnabled()) {
-      // Baseline: every turn re-emits the full static bundle.
-      return [
-        baselineClaudeMd(claudeMdContent),
-        baselineGitStatus(gitStatusSnapshot),
-        ...baselineMemoryAttachments(memoryFiles),
-        baselineTodoReminder(todoSnapshot),
-      ]
-    }
-
     const emitted: Record<string, unknown>[] = []
     const claudeMdDelta = getClaudeMdDelta(claudeMdContent, transcript)
     if (claudeMdDelta) {
@@ -542,12 +504,30 @@ describe('static-dedup integration: env-toggled end-to-end savings', () => {
     return emitted
   }
 
+  /**
+   * Build the historical always-emit payload — every turn re-ships the
+   * full static bundle. Used only as the comparison baseline; nothing
+   * in the live code path emits this shape any more.
+   */
+  function emitBaselineTurnPayload(
+    claudeMdContent: string,
+    gitStatusSnapshot: string,
+    memoryFiles: MemoryFileInput[],
+    todoSnapshot: TodoSnapshotItem[],
+  ): Record<string, unknown>[] {
+    return [
+      baselineClaudeMd(claudeMdContent),
+      baselineGitStatus(gitStatusSnapshot),
+      ...baselineMemoryAttachments(memoryFiles),
+      baselineTodoReminder(todoSnapshot),
+    ]
+  }
+
   /** Simulate a stable N-turn session and return per-turn payload sizes. */
-  function measureSession(turnCount: number): {
-    totalBytes: number
-    totalTokens: number
-    turnBytes: number[]
-  } {
+  function measureSession(
+    turnCount: number,
+    mode: 'delta' | 'baseline',
+  ): { totalBytes: number; totalTokens: number; turnBytes: number[] } {
     const claudeMdContent = repeat(TYPICAL_CLAUDE_MD_SIZE)
     const gitStatusSnapshot = repeat(TYPICAL_GIT_STATUS_SIZE)
     const memoryFiles: MemoryFileInput[] = Array.from(
@@ -571,13 +551,21 @@ describe('static-dedup integration: env-toggled end-to-end savings', () => {
     let totalTokens = 0
     const turnBytes: number[] = []
     for (let turnIndex = 0; turnIndex < turnCount; turnIndex++) {
-      const turnPayload = emitTurnPayload(
-        transcript,
-        claudeMdContent,
-        gitStatusSnapshot,
-        memoryFiles,
-        todoSnapshot,
-      )
+      const turnPayload =
+        mode === 'delta'
+          ? emitDeltaTurnPayload(
+              transcript,
+              claudeMdContent,
+              gitStatusSnapshot,
+              memoryFiles,
+              todoSnapshot,
+            )
+          : emitBaselineTurnPayload(
+              claudeMdContent,
+              gitStatusSnapshot,
+              memoryFiles,
+              todoSnapshot,
+            )
       const bytes = serialize(turnPayload)
       totalBytes += bytes
       totalTokens += estimateTokens(turnPayload)
@@ -586,46 +574,31 @@ describe('static-dedup integration: env-toggled end-to-end savings', () => {
     return { totalBytes, totalTokens, turnBytes }
   }
 
-  test('flag OFF → baseline emits full static payload every turn', () => {
-    process.env[ENV_VAR] = ''
-    expect(isStaticDedupEnabled()).toBe(false)
-
-    const baseline = measureSession(3)
-    // Every turn carries the full static bundle → near-identical sizes.
+  test('always-emit baseline: every turn carries full payload (historical shape)', () => {
+    const baseline = measureSession(3, 'baseline')
     expect(baseline.turnBytes[0]).toBe(baseline.turnBytes[1])
     expect(baseline.turnBytes[1]).toBe(baseline.turnBytes[2])
   })
 
-  test('flag ON → turn 2+ payloads drop sharply', () => {
-    process.env[ENV_VAR] = 'true'
-    expect(isStaticDedupEnabled()).toBe(true)
-
-    const dedup = measureSession(3)
-    // Turn 1 carries the full initial deltas; turn 2 and 3 should
-    // collapse to near-zero because nothing changed.
+  test('delta shape: turn 2+ payloads collapse to near-zero', () => {
+    const dedup = measureSession(3, 'delta')
     expect(dedup.turnBytes[0]).toBeGreaterThan(1_000)
     expect(dedup.turnBytes[1]).toBeLessThan(50)
     expect(dedup.turnBytes[2]).toBeLessThan(50)
   })
 
-  test('measured savings: flag ON vs flag OFF over a 10-turn session', () => {
-    // Run both paths and compute the percentage the PR claims.
-    process.env[ENV_VAR] = ''
-    const baseline = measureSession(10)
-    process.env[ENV_VAR] = 'true'
-    const dedup = measureSession(10)
+  test('measured savings: delta vs always-emit baseline over a 10-turn session', () => {
+    const baseline = measureSession(10, 'baseline')
+    const dedup = measureSession(10, 'delta')
 
     const byteSavings =
       (baseline.totalBytes - dedup.totalBytes) / baseline.totalBytes
     const tokenSavings =
       (baseline.totalTokens - dedup.totalTokens) / baseline.totalTokens
 
-    // Guardrail: claim is "≥25% body reduction over a stable session".
     expect(byteSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
     expect(tokenSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
 
-    // Log the measured numbers so running this test prints the %
-    // the PR description can quote (`bun test <file>` surfaces them).
     // eslint-disable-next-line no-console
     console.log(
       `[static-dedup measured] bytes: baseline=${baseline.totalBytes} dedup=${dedup.totalBytes} savings=${(byteSavings * 100).toFixed(1)}% | tokens: baseline=${baseline.totalTokens} dedup=${dedup.totalTokens} savings=${(tokenSavings * 100).toFixed(1)}%`,
@@ -636,20 +609,13 @@ describe('static-dedup integration: env-toggled end-to-end savings', () => {
 /**
  * Real production pipeline: call the exact `appendSystemContext` and
  * `prependUserContext` functions used by `src/services/api/claude.ts`
- * before every request, toggle the env var, and compare bytes on the
- * wire.
- *
- * This is the most honest end-to-end check we can run without booting
- * a real session: the production code decides what to strip/keep based
- * on `isStaticDedupEnabled()`, and we measure the serialized output.
- * If `filterStaticDedupKeys` regresses, this test fails.
+ * before every request and verify the static-dedup keys are stripped.
  *
  * `prependUserContext` early-returns when NODE_ENV === 'test' (a guard
  * that prevents noisy test output); we override it so the production
  * path actually runs during this block and restore it on teardown.
  */
 describe('static-dedup integration: production injection functions', () => {
-  const ENV_VAR = 'CLAUDIO_STATIC_DEDUP'
   // Minimal SystemPrompt-branded empty array for calling
   // appendSystemContext. Matches the shape of production callers in
   // src/services/api/claude.ts when the dynamic-boundary split yields
@@ -657,21 +623,14 @@ describe('static-dedup integration: production injection functions', () => {
   const EMPTY_SYSTEM_PROMPT = [] as unknown as Parameters<
     typeof appendSystemContext
   >[0]
-  let originalEnvValue: string | undefined
   let originalNodeEnv: string | undefined
 
   beforeAll(() => {
-    originalEnvValue = process.env[ENV_VAR]
     originalNodeEnv = process.env.NODE_ENV
     process.env.NODE_ENV = 'production'
   })
 
   afterAll(() => {
-    if (originalEnvValue === undefined) {
-      delete process.env[ENV_VAR]
-    } else {
-      process.env[ENV_VAR] = originalEnvValue
-    }
     if (originalNodeEnv === undefined) {
       delete process.env.NODE_ENV
     } else {
@@ -688,19 +647,7 @@ describe('static-dedup integration: production injection functions', () => {
     }
   }
 
-  test('appendSystemContext keeps claudeMd/gitStatus when flag OFF', () => {
-    process.env[ENV_VAR] = ''
-    expect(isStaticDedupEnabled()).toBe(false)
-    const output = appendSystemContext(EMPTY_SYSTEM_PROMPT, buildFixtureContext())
-    const joined = output.join('\n')
-    expect(joined).toContain('claudeMd:')
-    expect(joined).toContain('gitStatus:')
-    expect(joined.length).toBeGreaterThan(TYPICAL_CLAUDE_MD_SIZE)
-  })
-
-  test('appendSystemContext strips claudeMd/gitStatus when flag ON', () => {
-    process.env[ENV_VAR] = 'true'
-    expect(isStaticDedupEnabled()).toBe(true)
+  test('appendSystemContext strips claudeMd/gitStatus', () => {
     const output = appendSystemContext(EMPTY_SYSTEM_PROMPT, buildFixtureContext())
     const joined = output.join('\n')
     expect(joined).not.toContain('claudeMd:')
@@ -714,17 +661,7 @@ describe('static-dedup integration: production injection functions', () => {
     )
   })
 
-  test('prependUserContext injects claudeMd/gitStatus when flag OFF', () => {
-    process.env[ENV_VAR] = ''
-    const output = prependUserContext([], buildFixtureContext())
-    expect(output.length).toBe(1) // the injected system-reminder
-    const injected = stableStringify(output[0])
-    expect(injected).toContain('claudeMd')
-    expect(injected).toContain('gitStatus')
-  })
-
-  test('prependUserContext omits claudeMd/gitStatus when flag ON', () => {
-    process.env[ENV_VAR] = 'true'
+  test('prependUserContext omits claudeMd/gitStatus', () => {
     const output = prependUserContext([], buildFixtureContext())
     // With claudeMd + gitStatus stripped, remaining context keys
     // (directoryStructure, platform) should still trigger injection.
@@ -737,8 +674,7 @@ describe('static-dedup integration: production injection functions', () => {
 
   test('prependUserContext skips injection entirely if only dedup keys present', () => {
     // Edge case: the only context keys are the ones that get stripped.
-    // With flag ON the filtered context is empty → no system-reminder.
-    process.env[ENV_VAR] = 'true'
+    // The filtered context is empty → no system-reminder.
     const output = prependUserContext([], {
       claudeMd: 'some content',
       gitStatus: 'M file.ts',
@@ -746,38 +682,24 @@ describe('static-dedup integration: production injection functions', () => {
     expect(output.length).toBe(0)
   })
 
-  test('measured savings via the real injection pipeline (10-turn session)', () => {
-    // Per-turn: appendSystemContext + prependUserContext combined is
-    // what the request body actually carries as "context shell" before
-    // the conversation history. Measure both shapes and compare.
-    function measureContextPayload(): { bytes: number; tokens: number } {
-      const context = buildFixtureContext()
-      const systemOut = appendSystemContext(EMPTY_SYSTEM_PROMPT, context)
-      const userOut = prependUserContext([], context)
-      const combined = stableStringify({ systemOut, userOut })
-      return {
-        bytes: combined.length,
-        tokens: roughTokenCountEstimation(combined, 2),
-      }
-    }
-
-    process.env[ENV_VAR] = ''
-    const baseline = measureContextPayload()
-    process.env[ENV_VAR] = 'true'
-    const dedup = measureContextPayload()
-
-    const byteSavings = (baseline.bytes - dedup.bytes) / baseline.bytes
-    const tokenSavings = (baseline.tokens - dedup.tokens) / baseline.tokens
-
-    // The context shell shrinks drastically when the flag is on: both
-    // appendSystemContext and prependUserContext strip the same keys,
-    // so savings should exceed the 25% floor comfortably.
-    expect(byteSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
-    expect(tokenSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
-
+  // Reference comparison for the dedup vs always-emit shape.
+  test('appendSystemContext output is materially smaller than the historical always-emit shape', () => {
+    const ctx = buildFixtureContext()
+    const dedupOut = appendSystemContext(EMPTY_SYSTEM_PROMPT, ctx)
+    const dedupBytes = stableStringify(dedupOut).length
+    // Reconstruct the historical shape — claudeMd + gitStatus inlined
+    // into the system prompt — for the comparison baseline.
+    const baselineBytes = stableStringify([
+      `claudeMd: ${ctx.claudeMd}`,
+      `gitStatus: ${ctx.gitStatus}`,
+      `directoryStructure: ${ctx.directoryStructure}`,
+      `platform: ${ctx.platform}`,
+    ]).length
+    const savings = (baselineBytes - dedupBytes) / baselineBytes
+    expect(savings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
     // eslint-disable-next-line no-console
     console.log(
-      `[static-dedup pipeline] bytes: baseline=${baseline.bytes} dedup=${dedup.bytes} savings=${(byteSavings * 100).toFixed(1)}% | tokens: baseline=${baseline.tokens} dedup=${dedup.tokens} savings=${(tokenSavings * 100).toFixed(1)}%`,
+      `[static-dedup pipeline] bytes: baseline=${baselineBytes} dedup=${dedupBytes} savings=${(savings * 100).toFixed(1)}%`,
     )
   })
 
@@ -789,10 +711,7 @@ describe('static-dedup integration: production injection functions', () => {
   // nested_memory directly. If a future contributor mistakes this for
   // a bug and adds a NESTED_MEMORY_CONTEXT_KEY to the strip list, the
   // coexistence breaks silently without this test failing.
-  test('filterStaticDedupKeys does NOT strip memory or non-dedup keys when flag ON', () => {
-    process.env[ENV_VAR] = 'true'
-    expect(isStaticDedupEnabled()).toBe(true)
-
+  test('filterStaticDedupKeys does NOT strip memory or non-dedup keys', () => {
     const context = {
       claudeMd: 'should be stripped',
       gitStatus: 'should be stripped',

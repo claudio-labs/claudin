@@ -29,7 +29,6 @@
  */
 
 import { logEvent } from '../services/analytics/index.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'
 import { djb2Hash } from './hash.js'
 
 /**
@@ -52,22 +51,12 @@ export type ClaudeMdDelta = {
   isInitial: boolean
 }
 
-/**
- * Opt-in: CLAUDIO_STATIC_DEDUP=true enables the turn-delta scanners
- * across the four dedup modules (CLAUDE.md, gitStatus, nested memory,
- * todo reminders). Kept off by default to avoid regressing the current
- * always-emit path; once validated end-to-end the gate can flip.
- *
- * Mirrors the env-override pattern used by
- * `isMcpInstructionsDeltaEnabled`:
- *   - CLAUDE_CODE_MCP_INSTR_DELTA wins over any upstream gate.
- * Same semantics: truthy enables, explicit falsy disables.
- */
-export function isStaticDedupEnabled(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIO_STATIC_DEDUP)) return true
-  if (isEnvDefinedFalsy(process.env.CLAUDIO_STATIC_DEDUP)) return false
-  return false
-}
+// Static-dedup is permanently on. Validated end-to-end by
+// `staticDedup.integration.test.ts` (turn 2+ payload collapses to <50
+// bytes for unchanged static context, ≥25% savings over a 10-turn
+// session) and per-engine wire-level checks in
+// `staticDedup.shim.integration.test.ts`. The earlier
+// CLAUDIO_STATIC_DEDUP env gate has been removed.
 
 type ScannableMessage = {
   type: string
