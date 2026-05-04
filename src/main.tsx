@@ -36,6 +36,7 @@ import { launchRepl } from './replLauncher.js';
 import { refreshGrowthBookAfterAuthChange } from './services/analytics/growthbook.js';
 import { fetchBootstrapData } from './services/api/bootstrap.js';
 import { prefetchOllamaModels } from './utils/model/ollamaModels.js';
+import { prefetchOpenAICompatibleModels } from './utils/model/openaiModelDiscovery.js';
 import { type DownloadResult, downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from './services/api/filesApi.js';
 import { prefetchPassesEligibility } from './services/api/referral.js';
 import { prefetchOfficialMcpUrls } from './services/mcp/officialRegistry.js';
@@ -2351,6 +2352,8 @@ async function run(): Promise<CommanderCommand> {
     const skipStartupPrefetches = isBareMode() || bgRefreshThrottleMs > 0 && Date.now() - lastPrefetched < bgRefreshThrottleMs;
     // Always prefetch Ollama models (not gated by throttle — local server, fast & cheap)
     prefetchOllamaModels();
+    // Prefetch models for remote OpenAI-compat providers (OpenRouter, Groq, NovitaAI, etc.)
+    void prefetchOpenAICompatibleModels();
 
     if (!skipStartupPrefetches) {
       const lastPrefetchedInfo = lastPrefetched > 0 ? ` last ran ${Math.round((Date.now() - lastPrefetched) / 1000)}s ago` : '';

@@ -604,11 +604,21 @@ export function getAdditionalModelOptionsCacheScope(): string | null {
     return null
   }
 
-  if (!isLocalProviderUrl(request.baseUrl)) {
-    return null
-  }
-
   return `openai:${request.baseUrl.toLowerCase()}`
+}
+
+/**
+ * Returns true only when the active provider is the canonical OpenAI API
+ * (api.openai.com). Returns false for OpenAI-compatible aggregators like
+ * OpenRouter, NovitaAI, Groq, etc. — those use the openai transport but
+ * host arbitrary models, so GPT-specific UI (Codex model list, gpt-4o
+ * fallback strings) should not appear for them.
+ */
+export function isDirectOpenAIProvider(): boolean {
+  const request = resolveProviderRequest()
+  if (request.transport !== 'chat_completions') return false
+  const url = request.baseUrl.toLowerCase()
+  return url.includes('api.openai.com') || url === DEFAULT_OPENAI_BASE_URL
 }
 
 export function resolveCodexAuthPath(

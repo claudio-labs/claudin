@@ -470,7 +470,17 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
  * "gpt-4o-2024-11-20" resolve to the base "gpt-4o" entry.
  */
 export function getOpenAIContextWindow(model: string): number | undefined {
-  return lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
+  const known = lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
+  if (known !== undefined) return known
+  // Fall back to context windows discovered at runtime from the provider's /models API.
+  // Imported lazily to avoid a module-init cycle (openaiModelDiscovery imports modelOptions
+  // which imports openaiContextWindows).
+  try {
+    const { getDiscoveredContextWindow } = require('./openaiModelDiscovery.js') as typeof import('./openaiModelDiscovery.js')
+    return getDiscoveredContextWindow(model)
+  } catch {
+    return undefined
+  }
 }
 
 /**

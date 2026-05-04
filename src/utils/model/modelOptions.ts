@@ -1,6 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { getInitialMainLoopModel } from '../../bootstrap/state.js'
-import { getAdditionalModelOptionsCacheScope } from '../../services/api/providerConfig.js'
+import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from '../../services/api/providerConfig.js'
 import {
   isClaudeAISubscriber,
   isMaxSubscriber,
@@ -490,6 +490,19 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     ]
   }
 
+  // For OpenAI-compat aggregators (OpenRouter, NovitaAI, Groq, etc.) with a
+  // profile that defines models: show only those. The generic PAYG 3P list maps
+  // Claude aliases to gpt-4o fallbacks which is wrong for these providers.
+  if (getAPIProvider() === 'openai' && !isDirectOpenAIProvider()) {
+    const activeProfile = getActiveProviderProfile()
+    if (activeProfile) {
+      const models = getProfileModelOptions(activeProfile)
+      if (models.length > 0) {
+        return filterModelOptionsByAllowlist([getDefaultOptionForUser(fastMode), ...models])
+      }
+    }
+  }
+
   // When a provider profile is active, collect its models so they can be
   // appended to the standard picker options below.
   const profileModelOptions: ModelOption[] = []
@@ -525,8 +538,10 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   // PAYG 3P: Default (Sonnet 4.5) + Sonnet (3P custom) or Sonnet 4.6/1M + Opus (3P custom) or Opus 4.1/Opus 4.6/Opus1M + Haiku + Opus 4.1
   const payg3pOptions = [getDefaultOptionForUser(fastMode)]
 
-  // Add Codex models for openai and codex providers
-  if (getAPIProvider() === 'openai' || getAPIProvider() === 'codex') {
+  // Add Codex models only for direct OpenAI API or the codex provider.
+  // OpenAI-compat aggregators (OpenRouter, NovitaAI, Groq, etc.) use the
+  // openai transport but don't host GPT-Codex models.
+  if (isDirectOpenAIProvider() || getAPIProvider() === 'codex') {
     payg3pOptions.push(...getCodexModelOptions())
   }
 

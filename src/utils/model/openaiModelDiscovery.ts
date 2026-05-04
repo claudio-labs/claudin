@@ -1,16 +1,27 @@
 import axios from 'axios'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { getAdditionalModelOptionsCacheScope } from '../../services/api/providerConfig.js'
 import { logForDebugging } from '../debug.js'
 import type { ModelOption } from './modelOptions.js'
 import { getAPIProvider } from './providers.js'
+import { setActiveOpenAIModelOptionsCache } from '../providerProfiles.js'
 
 const DISCOVERY_TIMEOUT_MS = 5000
-const DISCOVERED_MODEL_DESCRIPTION =
-  'Discovered from OpenAI-compatible endpoint'
+
+// Model id → context window (tokens), populated from the provider's /models API.
+// Consulted by getOpenAIContextWindow() so auto-compact uses the real value
+// instead of the 128k fallback for models not in the hardcoded table.
+const discoveredContextWindows = new Map<string, number>()
+
+export function getDiscoveredContextWindow(model: string): number | undefined {
+  return discoveredContextWindows.get(model)
+}
 
 type OpenAIModelsResponse = {
   data?: Array<{
     id?: string | null
+    name?: string | null
+    context_length?: number | null
   }>
 }
 
@@ -108,62 +119,72 @@ function getOllamaTagsUrl(baseUrl: string): string | null {
   }
 }
 
-function uniqueModelNames(modelNames: string[]): string[] {
-  const seen = new Set<string>()
-  const unique: string[] = []
-
-  for (const modelName of modelNames) {
-    const trimmed = modelName.trim()
-    if (!trimmed || seen.has(trimmed)) {
-      continue
-    }
-    seen.add(trimmed)
-    unique.push(trimmed)
-  }
-
-  return unique
+function formatContextWindow(tokens: number): string {
+  if (tokens >= 1_000_000) return `${tokens / 1_000_000}M ctx`
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K ctx`
+  return `${tokens} ctx`
 }
 
 async function fetchOpenAIModels(
   urls: string[],
   headers: Record<string, string>,
-): Promise<string[]> {
+): Promise<ModelOption[]> {
+  const seen = new Set<string>()
   for (const url of urls) {
     try {
       const response = await axios.get<OpenAIModelsResponse>(url, {
         headers,
         timeout: DISCOVERY_TIMEOUT_MS,
       })
-      const modelNames = uniqueModelNames(
-        (response.data?.data ?? [])
-          .map(model => model.id ?? '')
-          .filter((model): model is string => model.length > 0),
-      )
-      if (modelNames.length > 0) {
-        return modelNames
+      const options: ModelOption[] = []
+      for (const model of response.data?.data ?? []) {
+        const id = model.id?.trim()
+        if (!id || seen.has(id)) continue
+        seen.add(id)
+        const label = model.name?.trim() || id
+        const ctx = model.context_length ?? null
+        if (ctx && ctx > 0) discoveredContextWindows.set(id, ctx)
+        const ctxPart = ctx ? ` · ${formatContextWindow(ctx)}` : ''
+        options.push({
+          value: id,
+          label,
+          description: `${id}${ctxPart}`,
+        })
+      }
+      if (options.length > 0) {
+        options.sort((a, b) => {
+          const aProvider = String(a.value).split('/')[0] ?? ''
+          const bProvider = String(b.value).split('/')[0] ?? ''
+          const providerCmp = aProvider.localeCompare(bProvider)
+          return providerCmp !== 0 ? providerCmp : String(a.value).localeCompare(String(b.value))
+        })
+        return options
       }
     } catch {
       logForDebugging(`[ModelDiscovery] Failed to fetch OpenAI models from ${url}`)
     }
   }
-
   return []
 }
 
 async function fetchOllamaModels(
   url: string,
   headers: Record<string, string>,
-): Promise<string[]> {
+): Promise<ModelOption[]> {
   try {
     const response = await axios.get<OllamaTagsResponse>(url, {
       headers,
       timeout: DISCOVERY_TIMEOUT_MS,
     })
-    return uniqueModelNames(
-      (response.data?.models ?? [])
-        .map(model => model.name ?? '')
-        .filter((model): model is string => model.length > 0),
-    )
+    const seen = new Set<string>()
+    return (response.data?.models ?? [])
+      .map(model => model.name?.trim() ?? '')
+      .filter(name => {
+        if (!name || seen.has(name)) return false
+        seen.add(name)
+        return true
+      })
+      .map(name => ({ value: name, label: name, description: 'Ollama model' }))
   } catch {
     logForDebugging(`[ModelDiscovery] Failed to fetch Ollama models from ${url}`)
     return []
@@ -180,21 +201,39 @@ export async function discoverOpenAICompatibleModelOptions(): Promise<
   const baseUrl = getNormalizedOpenAIBaseUrl()
   const headers = getOpenAIAuthHeaders(baseUrl)
 
-  let discoveredModelNames = await fetchOpenAIModels(
-    getModelListUrls(baseUrl),
-    headers,
-  )
+  const discovered = await fetchOpenAIModels(getModelListUrls(baseUrl), headers)
+  if (discovered.length > 0) return discovered
 
-  if (discoveredModelNames.length === 0) {
-    const ollamaTagsUrl = getOllamaTagsUrl(baseUrl)
-    if (ollamaTagsUrl) {
-      discoveredModelNames = await fetchOllamaModels(ollamaTagsUrl, headers)
-    }
+  const ollamaTagsUrl = getOllamaTagsUrl(baseUrl)
+  if (ollamaTagsUrl) {
+    return fetchOllamaModels(ollamaTagsUrl, headers)
   }
 
-  return discoveredModelNames.map(modelName => ({
-    value: modelName,
-    label: modelName,
-    description: DISCOVERED_MODEL_DESCRIPTION,
-  }))
+  return []
+}
+
+let prefetchPromise: Promise<void> | null = null
+
+/**
+ * Prefetch and cache model options for the active OpenAI-compat provider at
+ * startup. No-ops for Ollama (handled separately), firstParty, and non-openai
+ * providers. Safe to call multiple times — only one fetch runs at a time.
+ */
+export function prefetchOpenAICompatibleModels(): Promise<void> {
+  if (prefetchPromise) return prefetchPromise
+  prefetchPromise = (async () => {
+    const scope = getAdditionalModelOptionsCacheScope()
+    if (!scope?.startsWith('openai:')) return
+    try {
+      const options = await discoverOpenAICompatibleModelOptions()
+      if (options.length > 0) {
+        setActiveOpenAIModelOptionsCache(options)
+      }
+    } catch {
+      // Non-fatal — /model will still work with profile-defined models
+    } finally {
+      prefetchPromise = null
+    }
+  })()
+  return prefetchPromise
 }

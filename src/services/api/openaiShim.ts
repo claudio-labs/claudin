@@ -915,6 +915,7 @@ async function* openaiStreamToAnthropic(
   let lastStopReason: 'tool_use' | 'max_tokens' | 'end_turn' | null = null
   let hasEmittedFinalUsage = false
   let hasProcessedFinishReason = false
+  let estimatedOutputChars = 0
   const streamState = createStreamState()
 
   // Emit message_start
@@ -1073,6 +1074,7 @@ async function* openaiStreamToAnthropic(
 
           const visible = thinkFilter.feed(delta.content)
           if (visible) {
+            estimatedOutputChars += visible.length
             yield {
               type: 'content_block_delta',
               index: contentBlockIndex,
@@ -1130,6 +1132,7 @@ async function* openaiStreamToAnthropic(
 
               // Emit any initial arguments
               if (tc.function.arguments && !normalizeAtStop) {
+                estimatedOutputChars += tc.function.arguments.length
                 yield {
                   type: 'content_block_delta',
                   index: toolBlockIndex,
@@ -1144,6 +1147,7 @@ async function* openaiStreamToAnthropic(
               const active = activeToolCalls.get(tc.index)
               if (active) {
                 if (tc.function.arguments) {
+                  estimatedOutputChars += tc.function.arguments.length
                   active.jsonBuffer += tc.function.arguments
                 }
 
@@ -1309,6 +1313,22 @@ async function* openaiStreamToAnthropic(
       }),
       { level: 'debug' },
     )
+  }
+
+  // Fallback for providers that ignore stream_options.include_usage (e.g. NovitaAI/Kimi).
+  // Estimate output tokens from accumulated streamed characters so the UI shows non-zero
+  // data instead of "0 tokens". Input remains 0 — genuinely unknowable without provider data.
+  if (!hasEmittedFinalUsage && lastStopReason !== null && estimatedOutputChars > 0) {
+    yield {
+      type: 'message_delta',
+      delta: { stop_reason: lastStopReason, stop_sequence: null },
+      usage: {
+        input_tokens: 0,
+        output_tokens: Math.ceil(estimatedOutputChars / 4),
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+      },
+    }
   }
 
   yield { type: 'message_stop' }
