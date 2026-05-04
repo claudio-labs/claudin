@@ -100,16 +100,9 @@ Forks are cheap because they share your prompt cache. Don't set \`model\` on a f
 
 ## Writing the prompt
 
-${forkEnabled ? 'When spawning a fresh agent (with a `subagent_type`), it starts with zero context. ' : ''}Brief the agent like a smart colleague who just walked into the room — it hasn't seen this conversation, doesn't know what you've tried, doesn't understand why this task matters.
-- Explain what you're trying to accomplish and why.
-- Describe what you've already learned or ruled out.
-- Give enough context about the surrounding problem that the agent can make judgment calls rather than just following a narrow instruction.
-- If you need a short response, say so ("report in under 200 words").
-- Lookups: hand over the exact command. Investigations: hand over the question — prescribed steps become dead weight when the premise is wrong.
+${forkEnabled ? 'When spawning a fresh agent (with a `subagent_type`), it starts with zero context. ' : ''}Brief the agent like a colleague who hasn't seen this conversation: explain the goal, what you've ruled out, scope, and any output-length cap. Lookups: hand over the exact command. Investigations: hand over the question.
 
-${forkEnabled ? 'For fresh agents, terse' : 'Terse'} command-style prompts produce shallow, generic work.
-
-**Never delegate understanding.** Don't write "based on your findings, fix the bug" or "based on the research, implement it." Those phrases push synthesis onto the agent instead of doing it yourself. Write prompts that prove you understood: include file paths, line numbers, what specifically to change.
+**Never delegate understanding.** Don't write "based on your findings, fix the bug" — that pushes synthesis onto the agent. Include file paths, line numbers, and what specifically to change.
 `
 
   const forkExamples = `Example usage:
@@ -157,7 +150,6 @@ ${AGENT_TOOL_NAME}({
 
 <example_agent_descriptions>
 "claude-code-guide": use this agent when the user asks how Claude Code works or how to use its features
-"statusline-setup": use this agent to configure the user's Claude Code status line setting
 </example_agent_descriptions>
 
 <example>
@@ -166,14 +158,6 @@ user: "How do I configure Claude Code hooks?"
 This is a Claude Code usage question, so use the claude-code-guide agent
 </commentary>
 assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claude-code-guide agent
-</example>
-
-<example>
-user: "Set up my Claude Code status line"
-<commentary>
-This matches the statusline-setup agent, so use it to configure the setting
-</commentary>
-assistant: "I'm going to use the ${AGENT_TOOL_NAME} tool to launch the statusline-setup agent"
 </example>
 `
 
@@ -223,9 +207,7 @@ ${
     ? ''
     : `
 When NOT to use the ${AGENT_TOOL_NAME} tool:
-- If you want to read a specific file path, use the ${FILE_READ_TOOL_NAME} tool or ${fileSearchHint} instead of the ${AGENT_TOOL_NAME} tool, to find the match more quickly
-- If you are searching for a specific class definition like "class Foo", use ${contentSearchHint} instead, to find the match more quickly
-- If you are searching for code within a specific file or set of 2-3 files, use the ${FILE_READ_TOOL_NAME} tool instead of the ${AGENT_TOOL_NAME} tool, to find the match more quickly
+- For known file paths or content searches in 1-3 specific files, use the ${FILE_READ_TOOL_NAME} tool or ${fileSearchHint} / ${contentSearchHint} directly — they're faster
 - Other tasks that are not related to the agent descriptions above
 `
 

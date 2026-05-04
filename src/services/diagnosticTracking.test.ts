@@ -141,12 +141,129 @@ describe('DiagnosticTrackingService', () => {
       const noIdeClients = [
         { type: 'disconnected', name: 'test-disconnected-2', config: {} } as unknown as MCPServerConnection,
       ]
-      
+
       await service.handleQueryStart(noIdeClients)
-      
+
       // Should handle gracefully
       const result = await service.getNewDiagnosticsCompat()
       expect(result).toEqual([])
+    })
+  })
+
+  describe('formatDiagnosticsSummary — severity sort + honest truncation', () => {
+    const mkDiag = (
+      severity: 'Error' | 'Warning' | 'Info' | 'Hint',
+      msg: string,
+      line = 1,
+    ) => ({
+      severity,
+      message: msg,
+      range: {
+        start: { line, character: 0 },
+        end: { line, character: 10 },
+      },
+    })
+
+    test('errors come before warnings/info/hints in the output', () => {
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary([
+        {
+          uri: 'file:///a.ts',
+          diagnostics: [
+            mkDiag('Hint', 'h1'),
+            mkDiag('Warning', 'w1'),
+            mkDiag('Error', 'e1'),
+            mkDiag('Info', 'i1'),
+          ],
+        },
+      ])
+      const errIdx = out.indexOf('e1')
+      const warnIdx = out.indexOf('w1')
+      const infoIdx = out.indexOf('i1')
+      const hintIdx = out.indexOf('h1')
+      expect(errIdx).toBeGreaterThanOrEqual(0)
+      expect(errIdx).toBeLessThan(warnIdx)
+      expect(warnIdx).toBeLessThan(infoIdx)
+      expect(infoIdx).toBeLessThan(hintIdx)
+    })
+
+    test('files with errors are listed before files with only warnings', () => {
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary([
+        {
+          uri: 'file:///a.ts',
+          diagnostics: [mkDiag('Warning', 'only-warning')],
+        },
+        {
+          uri: 'file:///b.ts',
+          diagnostics: [mkDiag('Error', 'has-error')],
+        },
+      ])
+      expect(out.indexOf('has-error')).toBeLessThan(out.indexOf('only-warning'))
+    })
+
+    test('truncation footer reports honest hidden severity counts', () => {
+      // Force truncation: pile in many large-message diagnostics.
+      const big = 'x'.repeat(200)
+      const files = Array.from({ length: 30 }, (_, i) => ({
+        uri: `file:///f${i}.ts`,
+        diagnostics: [
+          mkDiag('Hint', `H-${i}-${big}`),
+          mkDiag('Hint', `H2-${i}-${big}`),
+        ],
+      }))
+      // Inject 3 error diagnostics so the footer can name them.
+      files[0]!.diagnostics.unshift(mkDiag('Error', `E-priority-${big}`))
+      files[1]!.diagnostics.unshift(mkDiag('Error', `E-priority-2-${big}`))
+      files[2]!.diagnostics.unshift(mkDiag('Error', `E-priority-3-${big}`))
+
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary(files)
+      expect(out).toContain('…[truncated:')
+      // All 3 errors must fit (sorted first, small in count).
+      expect(out).toContain('E-priority-')
+      // The footer must call out hint counts since hints are what got cut.
+      expect(out).toContain('hints hidden')
+    })
+
+    test('output stays under the 4000-char cap', () => {
+      const big = 'y'.repeat(200)
+      const files = Array.from({ length: 50 }, (_, i) => ({
+        uri: `file:///f${i}.ts`,
+        diagnostics: [
+          mkDiag('Warning', `W-${i}-${big}`),
+          mkDiag('Hint', `H-${i}-${big}`),
+        ],
+      }))
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary(files)
+      // Cap is 4000 chars (UTF-8 glyphs may slightly inflate bytes).
+      expect(out.length).toBeLessThanOrEqual(4000)
+    })
+
+    test('no truncation footer when under cap', () => {
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary([
+        { uri: 'file:///a.ts', diagnostics: [mkDiag('Error', 'small')] },
+      ])
+      expect(out).not.toContain('…[truncated')
+      expect(out).toContain('small')
+    })
+
+    test('files with empty diagnostics arrays are dropped (no orphan filename:)', () => {
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary([
+        { uri: 'file:///a.ts', diagnostics: [] },
+        { uri: 'file:///b.ts', diagnostics: [mkDiag('Error', 'real-diag')] },
+        { uri: 'file:///c.ts', diagnostics: [] },
+      ])
+      // The sole rendered file is b.ts; a.ts and c.ts must not appear at all.
+      expect(out).not.toContain('a.ts')
+      expect(out).not.toContain('c.ts')
+      expect(out).toContain('b.ts')
+      expect(out).toContain('real-diag')
+    })
+
+    test('all-empty input renders as empty string, not orphan colons', () => {
+      const out = DiagnosticTrackingService.formatDiagnosticsSummary([
+        { uri: 'file:///a.ts', diagnostics: [] },
+        { uri: 'file:///b.ts', diagnostics: [] },
+      ])
+      expect(out).toBe('')
     })
   })
 })

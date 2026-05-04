@@ -78,6 +78,26 @@ describe('getBashGitInstructionsBody', () => {
     expect(body).toContain('# Creating pull requests')
   })
 
+  it('warns about both `-i` (interactive) and `--no-edit` rebase flags', () => {
+    // Regression guard: a prior trim merged two rebase-flag bullets into one
+    // and accidentally dropped the `--no-edit` warning. The model would then
+    // suggest `git rebase --no-edit` (not a valid rebase flag) and silently
+    // swallow errors. Both warnings must stay in the body.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).toContain('-i')
+    expect(body).toContain('--no-edit')
+  })
+
+  it('keeps the HEREDOC commit-message example intact', () => {
+    // The HEREDOC pattern is the model's only path to multi-line commit
+    // messages without shell-quoting hazards. A naive "trim verbose
+    // examples" pass would remove it; this test prevents that.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).toContain(`git commit -m "$(cat <<'EOF'`)
+  })
+
 })
 
 describe('BashTool description vs git block injection', () => {

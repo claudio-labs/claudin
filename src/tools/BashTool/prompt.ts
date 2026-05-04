@@ -69,9 +69,7 @@ export function getBashGitInstructionsBody(): string {
 
   return `# Committing changes with git
 
-Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully:
-
-You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. The numbered steps below indicate which commands should be batched in parallel.
+Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully (run independent commands in parallel where possible):
 
 Git Safety Protocol:
 - NEVER update the git config
@@ -102,10 +100,9 @@ Important notes:
 - NEVER run additional commands to read or explore code, besides git bash commands
 - NEVER use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
 - DO NOT push to the remote repository unless the user explicitly asks you to do so
-- IMPORTANT: Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
-- IMPORTANT: Do not use --no-edit with git rebase commands, as the --no-edit flag is not a valid option for git rebase.
-- If there are no changes to commit (i.e., no untracked files and no modifications), do not create an empty commit
-- In order to ensure good formatting, ALWAYS pass the commit message via a HEREDOC, a la this example:
+- Never use git commands with the \`-i\` flag (rebase/add interactive) — they require TTY input. Also never use \`--no-edit\` with \`git rebase\` — it is not a valid rebase flag.
+- If there are no changes to commit, do not create an empty commit.
+- ALWAYS pass the commit message via a HEREDOC for proper formatting, e.g.:
 <example>
 git commit -m "$(cat <<'EOF'
    Commit message here.${commitAttribution ? `\n\n   ${commitAttribution}` : ''}
@@ -264,11 +261,6 @@ export function getSimplePrompt(): string {
     'DO NOT use newlines to separate commands (newlines are ok in quoted strings).',
   ]
 
-  const gitSubitems = [
-    'Prefer to create a new commit rather than amending an existing commit.',
-    'Before running destructive operations (e.g., git reset --hard, git push --force, git checkout --), consider whether there is a safer alternative that achieves the same goal. Only use destructive operations when they are truly the best approach.',
-    'Never skip hooks (--no-verify) or bypass signing (--no-gpg-sign, -c commit.gpgsign=false) unless the user has explicitly asked for it. If a hook fails, investigate and fix the underlying issue.',
-  ]
 
   const sleepSubitems = [
     'Do not sleep between commands that can run immediately — just run them.',
@@ -299,8 +291,11 @@ export function getSimplePrompt(): string {
     ...(backgroundNote !== null ? [backgroundNote] : []),
     'When issuing multiple commands:',
     multipleCommandsSubitems,
-    'For git commands:',
-    gitSubitems,
+    // git-specific safety rules are delivered via the bash_git_instructions
+    // attachment (production default; emitted once per agentKey, see
+    // attachments.ts:3033). When the attachment is gated off the same body
+    // is embedded inline via getCommitAndPRInstructions(). Either way, the
+    // short bullet list that used to live here was a strict duplicate.
     'Avoid unnecessary `sleep` commands:',
     sleepSubitems,
     ...(embedded
@@ -319,10 +314,9 @@ export function getSimplePrompt(): string {
     '',
     "The working directory persists between commands, but shell state does not. The shell environment is initialized from the user's profile (bash or zsh).",
     '',
-    `IMPORTANT: Avoid using this tool to run ${avoidCommands} commands, unless explicitly instructed or after you have verified that a dedicated tool cannot accomplish your task. Instead, use the appropriate dedicated tool as this will provide a much better experience for the user:`,
+    `IMPORTANT: Avoid running ${avoidCommands} via this tool unless a dedicated tool cannot do the job. Prefer:`,
     '',
     ...prependBullets(toolPreferenceItems),
-    `While the ${BASH_TOOL_NAME} tool can do similar things, it’s better to use the built-in tools as they provide a better user experience and make it easier to review tool calls and give permission.`,
     '',
     '# Instructions',
     ...prependBullets(instructionItems),

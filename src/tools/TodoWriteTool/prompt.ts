@@ -14,32 +14,13 @@ Use this tool proactively in these scenarios:
 
 ## When NOT to Use This Tool
 
-Skip using this tool when:
-1. There is only a single, straightforward task
-2. The task is trivial and tracking it provides no organizational benefit
-3. The task can be completed in less than 3 trivial steps
-4. The task is purely conversational or informational
+Skip when there is only a single, trivial, or purely conversational task — just do it directly.
 
-NOTE that you should not use this tool if there is only one trivial task to do. In this case you are better off just doing the task directly.
-
-## Examples of When to Use the Todo List
+## Example
 
 <example>
-User: I want to add a dark mode toggle to the application settings. Make sure you run the tests and build when you're done!
-Assistant: *Creates todo list with the following items:*
-1. Creating dark mode toggle component in Settings page
-2. Adding dark mode state management (context/store)
-3. Implementing CSS-in-JS styles for dark theme
-4. Updating existing components to support theme switching
-5. Running tests and build process, addressing any failures or errors that occur
-*Begins working on the first task*
-</example>
-
-<example>
-User: Help me rename the function getCwd to getCurrentWorkingDirectory across my project
-Assistant: *Uses grep or search tools to locate all instances of getCwd in the codebase*
-I've found 15 instances of 'getCwd' across 8 different files.
-*Creates todo list with specific items for each file that needs updating*
+User: "I want to add a dark mode toggle. Run tests and build when done."
+Assistant creates a todo list with one item per logical step (component, state, styles, test+build), marks the first as in_progress, and starts work.
 </example>
 
 ## Task States and Management
@@ -61,14 +42,8 @@ I've found 15 instances of 'getCwd' across 8 different files.
    - Remove tasks that are no longer relevant from the list entirely
 
 3. **Task Completion Requirements**:
-   - ONLY mark a task as completed when you have FULLY accomplished it
-   - If you encounter errors, blockers, or cannot finish, keep the task as in_progress
-   - When blocked, create a new task describing what needs to be resolved
-   - Never mark a task as completed if:
-     - Tests are failing
-     - Implementation is partial
-     - You encountered unresolved errors
-     - You couldn't find necessary files or dependencies
+   - Only mark a task completed when fully accomplished (no failing tests, no unresolved errors, no partial implementations).
+   - If blocked, keep the task in_progress and create a new task describing what needs to be resolved.
 
 4. **Task Breakdown**:
    - Create specific, actionable items

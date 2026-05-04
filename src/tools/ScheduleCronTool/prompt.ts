@@ -91,20 +91,13 @@ For "every N minutes" / "every hour" / "weekdays at 9am" requests:
 
 ## Avoid the :00 and :30 minute marks when the task allows it
 
-Every user who asks for "9am" gets \`0 9\`, and every user who asks for "hourly" gets \`0 *\` — which means requests from across the planet land on the API at the same instant. When the user's request is approximate, pick a minute that is NOT 0 or 30:
-  "every morning around 9" → "57 8 * * *" or "3 9 * * *" (not "0 9 * * *")
-  "hourly" → "7 * * * *" (not "0 * * * *")
-  "in an hour or so, remind me to..." → pick whatever minute you land on, don't round
-
-Only use minute 0 or 30 when the user names that exact time and clearly means it ("at 9:00 sharp", "at half past", coordinating with a meeting). When in doubt, nudge a few minutes early or late — the user will not notice, and the fleet will.
+When the request is approximate ("around 9am", "hourly"), pick a minute that is NOT 0 or 30 — every user otherwise lands on the same instant. E.g., "around 9" → "57 8 * * *". Use 0/30 only when the user names that exact time.
 
 ${durabilitySection}
 
 ## Runtime behavior
 
-Jobs only fire while the REPL is idle (not mid-query). ${durableRuntimeNote}The scheduler adds a small deterministic jitter on top of whatever you pick: recurring tasks fire up to 10% of their period late (max 15 min); one-shot tasks landing on :00 or :30 fire up to 90 s early. Picking an off-minute is still the bigger lever.
-
-Recurring tasks auto-expire after ${DEFAULT_MAX_AGE_DAYS} days — they fire one final time, then are deleted. This bounds session lifetime. Tell the user about the ${DEFAULT_MAX_AGE_DAYS}-day limit when scheduling recurring jobs.
+Jobs only fire while the REPL is idle. ${durableRuntimeNote}Scheduler adds small deterministic jitter (recurring: up to 10% late, max 15 min; one-shot on :00/:30: up to 90 s early). Recurring tasks auto-expire after ${DEFAULT_MAX_AGE_DAYS} days — tell the user about this limit.
 
 Returns a job ID you can pass to ${CRON_DELETE_TOOL_NAME}.`
 }

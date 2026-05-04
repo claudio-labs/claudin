@@ -392,33 +392,104 @@ export class DiagnosticTrackingService {
    * @returns Formatted string representation of the diagnostics
    */
   static formatDiagnosticsSummary(files: DiagnosticFile[]): string {
-    const truncationMarker = '…[truncated]'
-    const result = files
-      .map(file => {
-        const filename = file.uri.split('/').pop() || file.uri
-        const diagnostics = file.diagnostics
-          .map(d => {
-            const severitySymbol = DiagnosticTrackingService.getSeveritySymbol(
-              d.severity,
-            )
-
-            return `  ${severitySymbol} [Line ${d.range.start.line + 1}:${d.range.start.character + 1}] ${d.message}${d.code ? ` [${d.code}]` : ''}${d.source ? ` (${d.source})` : ''}`
-          })
-          .join('\n')
-
-        return `${filename}:\n${diagnostics}`
-      })
-      .join('\n\n')
-
-    if (result.length > MAX_DIAGNOSTICS_SUMMARY_CHARS) {
-      return (
-        result.slice(
-          0,
-          MAX_DIAGNOSTICS_SUMMARY_CHARS - truncationMarker.length,
-        ) + truncationMarker
-      )
+    // Sort by severity so a budget-bound payload prioritizes Errors over
+    // Warnings/Info/Hints. File-level rank is the highest (lowest-numbered)
+    // severity within the file, then file URI for stability across turns.
+    const severityRank: Record<Diagnostic['severity'], number> = {
+      Error: 0,
+      Warning: 1,
+      Info: 2,
+      Hint: 3,
     }
-    return result
+    // Drop files with no diagnostics — they would render as a noisy
+    // "filename:\n" empty block.
+    const sortedFiles = files
+      .filter(f => f.diagnostics.length > 0)
+      .map(file => {
+        const sortedDiags = [...file.diagnostics].sort((a, b) => {
+          const r = severityRank[a.severity] - severityRank[b.severity]
+          if (r !== 0) return r
+          return a.range.start.line - b.range.start.line
+        })
+        const fileRank = severityRank[sortedDiags[0]!.severity]
+        return { file: { ...file, diagnostics: sortedDiags }, fileRank }
+      })
+      .sort((a, b) => {
+        if (a.fileRank !== b.fileRank) return a.fileRank - b.fileRank
+        return a.file.uri.localeCompare(b.file.uri)
+      })
+      .map(x => x.file)
+
+    // Tally totals up-front so the truncation footer can be honest about
+    // what got hidden.
+    const totals = { Error: 0, Warning: 0, Info: 0, Hint: 0 }
+    for (const file of sortedFiles) {
+      for (const d of file.diagnostics) totals[d.severity] += 1
+    }
+
+    const formatBlock = (file: DiagnosticFile): string => {
+      const filename = file.uri.split('/').pop() || file.uri
+      const diags = file.diagnostics
+        .map(d => {
+          const sym = DiagnosticTrackingService.getSeveritySymbol(d.severity)
+          return `  ${sym} [Line ${d.range.start.line + 1}:${d.range.start.character + 1}] ${d.message}${d.code ? ` [${d.code}]` : ''}${d.source ? ` (${d.source})` : ''}`
+        })
+        .join('\n')
+      return `${filename}:\n${diags}`
+    }
+
+    // File-boundary-aware accumulation: append whole file blocks until the
+    // next would overflow. Reserves room for an honest truncation footer
+    // up-front so the cap is never exceeded.
+    //
+    // Worst-case footer (e.g. all 4 severities × 7-digit counts plus the
+    // multi-byte ellipsis) lands around 130 chars. 192 leaves a comfortable
+    // margin so the body never gets hard-clipped mid-multibyte char by the
+    // safety net below.
+    const FOOTER_RESERVE = 192
+    const blocks = sortedFiles.map(formatBlock)
+    const blockCount = blocks.length
+    let acc = ''
+    let included = 0
+    let includedFiles = 0
+    let truncated = false
+    for (let i = 0; i < blockCount; i++) {
+      const sep = acc.length === 0 ? '' : '\n\n'
+      const candidate = acc + sep + blocks[i]
+      const budget = MAX_DIAGNOSTICS_SUMMARY_CHARS - FOOTER_RESERVE
+      if (candidate.length > budget) {
+        truncated = true
+        break
+      }
+      acc = candidate
+      includedFiles += 1
+      included += sortedFiles[i]!.diagnostics.length
+    }
+
+    if (!truncated) return acc
+
+    // Build a footer that names the hidden severity counts so the model
+    // knows there's more state and can ask for it explicitly if needed.
+    const hiddenTotals = { ...totals }
+    for (let i = 0; i < includedFiles; i++) {
+      for (const d of sortedFiles[i]!.diagnostics) hiddenTotals[d.severity] -= 1
+    }
+    const totalDiags =
+      totals.Error + totals.Warning + totals.Info + totals.Hint
+    const hiddenDiags = totalDiags - included
+    const parts: string[] = []
+    if (hiddenTotals.Error > 0) parts.push(`${hiddenTotals.Error} errors`)
+    if (hiddenTotals.Warning > 0) parts.push(`${hiddenTotals.Warning} warnings`)
+    if (hiddenTotals.Info > 0) parts.push(`${hiddenTotals.Info} info`)
+    if (hiddenTotals.Hint > 0) parts.push(`${hiddenTotals.Hint} hints`)
+    const footer = `\n…[truncated: ${hiddenDiags} more diagnostics across ${blockCount - includedFiles} files — ${parts.join(', ')} hidden]`
+    // Footer reserve is conservative; if the actual footer is somehow
+    // larger, hard-clip the body so the total stays under the cap.
+    let body = acc
+    if (body.length + footer.length > MAX_DIAGNOSTICS_SUMMARY_CHARS) {
+      body = body.slice(0, MAX_DIAGNOSTICS_SUMMARY_CHARS - footer.length)
+    }
+    return body + footer
   }
 
   /**

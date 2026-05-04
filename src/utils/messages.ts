@@ -3730,19 +3730,22 @@ Read the team config to discover your teammates' names. Check the task list peri
       ])
     }
     case 'relevant_memories': {
-      return wrapMessagesInSystemReminder(
-        attachment.memories.map(m => {
-          // Use the header stored at attachment-creation time so the
-          // rendered bytes are stable across turns (prompt-cache hit).
-          // Fall back to recomputing for resumed sessions that predate
-          // the stored-header field.
+      if (attachment.memories.length === 0) return []
+      // Collapse N memories into a single <system-reminder>-wrapped
+      // UserMessage. Each memory previously got its own message + wrapper
+      // shell, costing ~10 tokens of pure chrome per file. Concatenation
+      // order matches the array (selector-stable), and each memory's
+      // `header` is pre-computed at attachment-creation time so rendered
+      // bytes stay byte-stable across turns (prompt-cache hit).
+      const body = attachment.memories
+        .map(m => {
           const header = m.header ?? memoryHeader(m.path, m.mtimeMs)
-          return createUserMessage({
-            content: `${header}\n\n${m.content}`,
-            isMeta: true,
-          })
-        }),
-      )
+          return `${header}\n\n${m.content}`
+        })
+        .join('\n\n---\n\n')
+      return wrapMessagesInSystemReminder([
+        createUserMessage({ content: body, isMeta: true }),
+      ])
     }
     case 'dynamic_skill': {
       // Dynamic skills are informational for the UI only - the skills themselves

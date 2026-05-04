@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
+  PLAN_MODE_ATTACHMENT_CONFIG,
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,
   suppressNextBashGitInstructions,
@@ -196,5 +197,39 @@ describe('getBashGitInstructionsAttachment', () => {
     // Latch should be cleared by reset, so the next call emits.
     const result = await getBashGitInstructionsAttachment(ctx)
     expect(result).toHaveLength(1)
+  })
+})
+
+describe('PLAN_MODE_ATTACHMENT_CONFIG.FULL_REMINDER_EVERY_N_ATTACHMENTS', () => {
+  // The plan-mode attachment producer cycles full/sparse via
+  // `attachmentCount % FULL_REMINDER_EVERY_N_ATTACHMENTS === 1`. Setting
+  // this to a finite small number (e.g. 5) makes the heavy ~1010-token
+  // full reminder repeat across long planning sessions. The intentional
+  // value is `Number.MAX_SAFE_INTEGER` so that only the first attachment
+  // of a given session (counter resets on plan_mode_exit) emits the full
+  // body. Guard the constant so a "looks unused" cleanup doesn't revert.
+  it('is set to MAX_SAFE_INTEGER (full reminder fires once per session)', () => {
+    expect(PLAN_MODE_ATTACHMENT_CONFIG.FULL_REMINDER_EVERY_N_ATTACHMENTS).toBe(
+      Number.MAX_SAFE_INTEGER,
+    )
+  })
+
+  it('preserves the 5-turn throttle between consecutive attachments', () => {
+    // Throttle is independent of the full/sparse cycle — verify it didn't
+    // change accidentally when the cycle constant was bumped.
+    expect(PLAN_MODE_ATTACHMENT_CONFIG.TURNS_BETWEEN_ATTACHMENTS).toBe(5)
+  })
+
+  it('cycle math: every count from 1..1000 maps to sparse except count=1', () => {
+    // Confirms the modulo identity that powers the once-per-session rule.
+    // Pre-fix this test would have shown count=1 → full, count=6 → full,
+    // count=11 → full (every 5th). Post-fix only count=1 maps to full.
+    const FULL_EVERY = PLAN_MODE_ATTACHMENT_CONFIG.FULL_REMINDER_EVERY_N_ATTACHMENTS
+    let fullCount = 0
+    for (let count = 1; count <= 1000; count++) {
+      const isFull = count % FULL_EVERY === 1
+      if (isFull) fullCount += 1
+    }
+    expect(fullCount).toBe(1)
   })
 })

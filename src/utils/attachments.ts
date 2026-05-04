@@ -276,7 +276,13 @@ export const TODO_REMINDER_CONFIG = {
 
 export const PLAN_MODE_ATTACHMENT_CONFIG = {
   TURNS_BETWEEN_ATTACHMENTS: 5,
-  FULL_REMINDER_EVERY_N_ATTACHMENTS: 5,
+  // Full reminder fires only on the FIRST plan-mode attachment of a given
+  // plan-mode session (counter resets on plan_mode_exit; subagent path
+  // independently always-fulls via getPlanModeV2SubAgentInstructions).
+  // Sparse (~111 tokens) repeats every 5 turns and re-states the load-bearing
+  // "read-only except plan file" + ExitPlanMode contract. Saves ~900 tokens
+  // per recurring full reminder avoided in long planning sessions.
+  FULL_REMINDER_EVERY_N_ATTACHMENTS: Number.MAX_SAFE_INTEGER,
 } as const
 
 export const AUTO_MODE_ATTACHMENT_CONFIG = {

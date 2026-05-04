@@ -2,6 +2,7 @@ import { describe, test, expect } from 'bun:test'
 import {
   createAssistantMessage,
   createUserMessage,
+  normalizeAttachmentForAPI,
   stripOldThinkingBlocks,
 } from './messages.js'
 
@@ -207,5 +208,60 @@ describe('stripOldThinkingBlocks', () => {
     ]
     const result = stripOldThinkingBlocks(msgs, 2)
     expect(result).toBe(msgs)
+  })
+})
+
+describe('normalizeAttachmentForAPI — relevant_memories collapse', () => {
+  test('produces exactly one UserMessage regardless of memory count', () => {
+    const memories = Array.from({ length: 5 }, (_, i) => ({
+      path: `/m${i}.md`,
+      content: `body-${i}`,
+      mtimeMs: 1_700_000_000_000 + i * 1000,
+      header: `Saved ${i}d ago — m${i}.md`,
+    }))
+    const out = normalizeAttachmentForAPI({
+      type: 'relevant_memories',
+      memories,
+    })
+    expect(out).toHaveLength(1)
+    const text = String(
+      typeof out[0]!.message.content === 'string'
+        ? out[0]!.message.content
+        : JSON.stringify(out[0]!.message.content),
+    )
+    // All headers and bodies must survive the collapse.
+    for (let i = 0; i < memories.length; i++) {
+      expect(text).toContain(`m${i}.md`)
+      expect(text).toContain(`body-${i}`)
+    }
+    // Separator between bodies preserves visual boundaries.
+    expect(text).toContain('---')
+    // System-reminder wrapper applied once (not N times).
+    const reminderOpens = text.split('<system-reminder>').length - 1
+    expect(reminderOpens).toBe(1)
+  })
+
+  test('empty memories array returns no messages', () => {
+    const out = normalizeAttachmentForAPI({
+      type: 'relevant_memories',
+      memories: [],
+    })
+    expect(out).toEqual([])
+  })
+
+  test('output is byte-stable across two consecutive calls (cache invariant)', () => {
+    // Memory team rule: tool_result/attachment compression must produce
+    // byte-identical output across turns or the prompt cache busts.
+    const memories = [
+      {
+        path: '/m.md',
+        content: 'b',
+        mtimeMs: 1_700_000_000_000,
+        header: 'Saved 1d ago — m.md',
+      },
+    ]
+    const a = normalizeAttachmentForAPI({ type: 'relevant_memories', memories })
+    const b = normalizeAttachmentForAPI({ type: 'relevant_memories', memories })
+    expect(a[0]!.message.content).toBe(b[0]!.message.content)
   })
 })
