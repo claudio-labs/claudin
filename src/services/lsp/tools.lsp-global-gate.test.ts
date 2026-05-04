@@ -1,7 +1,9 @@
 /**
  * Verifies the global LSP master toggle composes with isLspConnected() when
  * deciding whether to expose LSPTool in getTools(). The exact gate from
- * tools.ts is: `isLspGloballyEnabled() && LSPTool.isEnabled()`.
+ * tools.ts is: `isLspGloballyEnabled() && isLspConnected()` — this test
+ * still exercises `LSPTool.isEnabled()` directly because that function is
+ * a pure wrapper of `isLspConnected()` (see tools/LSPTool/LSPTool.ts).
  */
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
