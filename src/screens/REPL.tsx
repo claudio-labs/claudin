@@ -3601,9 +3601,26 @@ export function REPL({
   // REPL's useExitOnCtrlCD both fire on a Ctrl+C double-press; without this,
   // exit.load() runs twice and the two ExitFlows race.
   const isExitingRef = useRef(false);
+  // Hard kill failsafe. gracefulShutdown has its own 5s failsafe but only
+  // runs once it's actually called — and after long sessions we've seen the
+  // exit path hang before reaching it (React render of ExitFlow stalls, the
+  // dynamic exit.load() never resolves, etc.), leaving an unkillable REPL.
+  // This timer fires SIGKILL unconditionally 15s after the user committed
+  // to exit, and is cleared on the explicit "stay in REPL" branches.
+  const exitFailsafeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearExitFailsafe = (): void => {
+    if (exitFailsafeTimerRef.current) {
+      clearTimeout(exitFailsafeTimerRef.current);
+      exitFailsafeTimerRef.current = null;
+    }
+  };
   const handleExit = useCallback(async () => {
     if (isExitingRef.current) return;
     isExitingRef.current = true;
+    exitFailsafeTimerRef.current = setTimeout(() => {
+      process.kill(process.pid, 'SIGKILL');
+    }, 15_000);
+    exitFailsafeTimerRef.current.unref?.();
     setIsExiting(true);
     // In bg sessions, always detach instead of kill — even when a worktree is
     // active. Without this guard, the worktree branch below short-circuits into
@@ -3612,6 +3629,7 @@ export function REPL({
       spawnSync('tmux', ['detach-client'], {
         stdio: 'ignore'
       });
+      clearExitFailsafe();
       isExitingRef.current = false;
       setIsExiting(false);
       return;
@@ -3620,6 +3638,7 @@ export function REPL({
     if (showWorktree) {
       setExitFlow(<ExitFlow showWorktree onDone={() => { }} onCancel={() => {
         setExitFlow(null);
+        clearExitFailsafe();
         isExitingRef.current = false;
         setIsExiting(false);
       }} />);
@@ -3632,6 +3651,7 @@ export function REPL({
     // clear isExiting so the UI is usable on reattach. No-op on the normal
     // path — gracefulShutdown's process.exit() means we never get here.
     if (exitFlowResult === null) {
+      clearExitFailsafe();
       isExitingRef.current = false;
       setIsExiting(false);
     }
@@ -4511,11 +4531,11 @@ export function REPL({
         setCursor(null);
         jumpToNew(scrollRef.current);
       }} scrollable={<>
-        {/* Flicker-free path: render the startup banner inside the
-                  alt-screen so it commits to scrollback. The non-fullscreen
-                  path still uses printStartupScreen() in cli.tsx — the gate
-                  there mirrors this branch. */}
-        {isFullscreenEnvEnabled() && <StartupBanner />}
+        {/* Render the startup banner inside Ink so it scrolls naturally
+                  into scrollback as content grows (non-fullscreen) or commits
+                  to the alt-screen (fullscreen). Writing it via stdout before
+                  Ink mounts caused fullReset to wipe it on the first keystroke. */}
+        <StartupBanner />
         <TeammateViewHeader />
         <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} streamingText={isLoading && !viewedAgentTask ? visibleStreamingText : null} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
         <AwsAuthStatusBox />

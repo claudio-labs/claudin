@@ -112,26 +112,22 @@ async function main(): Promise<void> {
 
   await validateProviderEnvForStartupOrExit()
 
-  // Parse --model early so the startup screen can display the override
-  const { eagerParseCliFlag } = await import('../utils/cliArgs.js')
-  const earlyModelFlag = eagerParseCliFlag('--model')
-
-  // Print the gradient startup screen before the Ink UI loads.
-  // Skip in flicker-free / fullscreen mode: writing to stdout here lands in
-  // the main buffer BEFORE <AlternateScreen> mounts, so the banner gets
-  // stranded in scrollback that the user can't see until they exit the REPL.
-  // The Ink-side <StartupBanner> picks up rendering inside the alt-screen
-  // when fullscreen is active.
-  // Also defer when no provider profile is configured yet — printing now
-  // would freeze "Not configured" at the top of the scrollback even after
-  // the setup wizard creates a profile. main.tsx prints it post-wizard.
-  const { isFullscreenEnvEnabled } = await import('../utils/fullscreen.js')
+  // Ctrl+L-style clear before mounting the REPL — gives the user a clean
+  // viewport on every launch. Scrollback is preserved (no \x1b[3J).
+  // The banner itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so
+  // it scrolls naturally into scrollback when content grows, instead of
+  // being wiped by Ink's fullReset on the first keystroke. Opt out with
+  // CLAUDIO_NO_CLEAR_ON_START=1.
   const { tryGetActiveProvider } = await import(
     '../services/api/activeProvider.js'
   )
-  if (!isFullscreenEnvEnabled() && tryGetActiveProvider()) {
-    const { printStartupScreen } = await import('../components/StartupScreen.js')
-    printStartupScreen(earlyModelFlag)
+  if (
+    tryGetActiveProvider() &&
+    process.stdout.isTTY &&
+    process.env.CLAUDIO_NO_CLEAR_ON_START !== '1'
+  ) {
+    const { clearTerminal } = await import('../ink/clearTerminal.js')
+    process.stdout.write(clearTerminal)
   }
 
   // For all other paths, load the startup profiler
