@@ -60,7 +60,7 @@ This policy applies to:
 
 - the Claudio source code in this repository
 - official release artifacts published from this repository
-- the `@viudes/claudio` npm package
+- the `@claudiolabs/claudio` npm package
 
 This policy does not cover:
 

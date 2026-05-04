@@ -193,7 +193,7 @@ const result = await Bun.build({
     'MACRO.BUILD_TIME': JSON.stringify(new Date().toISOString()),
     'MACRO.ISSUES_EXPLAINER':
       JSON.stringify('report the issue at https://github.com/anthropics/claude-code/issues'),
-    'MACRO.PACKAGE_URL': JSON.stringify('@viudes/claudio'),
+    'MACRO.PACKAGE_URL': JSON.stringify('@claudiolabs/claudio'),
     'MACRO.NATIVE_PACKAGE_URL': 'undefined',
     'MACRO.IDE_EXTENSION_VERSION': JSON.stringify(ideExtensionVersion),
   },

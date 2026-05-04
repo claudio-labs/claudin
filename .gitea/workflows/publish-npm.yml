@@ -64,6 +64,6 @@ jobs:
           {
             echo "## Published ${{ inputs.tag }}"
             echo
-            echo "- npm: https://www.npmjs.com/package/@viudes/claudio"
-            echo "- install: \`npm install -g @viudes/claudio\`"
+            echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudio"
+            echo "- install: \`npm install -g @claudiolabs/claudio\`"
           } >> "$GITHUB_STEP_SUMMARY"

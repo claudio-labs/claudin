@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "@viudes/claudio",
+      "package-name": "@claudiolabs/claudio",
       "bump-minor-pre-major": true,
       "include-v-in-tag": true
     }

@@ -22,7 +22,7 @@ Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, A
 ### Install
 
 ```bash
-npm install -g @viudes/claudio@latest
+npm install -g @claudiolabs/claudio@latest
 ```
 
 Works on Linux, macOS, and Windows (Node 20+). Or build from source — see [Source Build And Local Development](#source-build-and-local-development).
@@ -36,13 +36,13 @@ If the install later reports `ripgrep not found`, install ripgrep system-wide an
 ### Update
 
 ```bash
-npm install -g @viudes/claudio@latest
+npm install -g @claudiolabs/claudio@latest
 ```
 
 ### Uninstall
 
 ```bash
-npm uninstall -g @viudes/claudio
+npm uninstall -g @claudiolabs/claudio
 ```
 
 ### Start

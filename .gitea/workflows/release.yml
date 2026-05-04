@@ -221,6 +221,6 @@ jobs:
             echo "- Tag: ${{ steps.bump.outputs.tag }}"
             echo "- Version: ${{ steps.bump.outputs.version }}"
             echo "- Release page: ${GITEA_REPO_URL}/releases/tag/${{ steps.bump.outputs.tag }}"
-            echo "- npm: https://www.npmjs.com/package/@viudes/claudio"
-            echo "- install: \`npm install -g @viudes/claudio@${{ steps.bump.outputs.version }}\`"
+            echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudio"
+            echo "- install: \`npm install -g @claudiolabs/claudio@${{ steps.bump.outputs.version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
