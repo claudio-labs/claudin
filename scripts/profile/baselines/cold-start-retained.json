@@ -1,0 +1,242 @@
+[
+  {
+    "name": "baseline",
+    "description": "Just the empty Bun runtime + GC + measurement.",
+    "rssBytes": 35110912,
+    "heapUsedBytes": 398709,
+    "externalBytes": 90554,
+    "importMs": 0.00042099999999933857
+  },
+  {
+    "name": "react",
+    "description": "React only.",
+    "rssBytes": 39542784,
+    "heapUsedBytes": 491556,
+    "externalBytes": 130633,
+    "importMs": 3.484648000000001
+  },
+  {
+    "name": "ink",
+    "description": "Ink TUI runtime (pulls React + reconciler).",
+    "rssBytes": null,
+    "heapUsedBytes": null,
+    "externalBytes": null,
+    "importMs": null
+  },
+  {
+    "name": "zod/v4",
+    "description": "Zod schema validator (pulled by every Tool).",
+    "rssBytes": 63889408,
+    "heapUsedBytes": 1011123,
+    "externalBytes": 252504,
+    "importMs": 12.790519000000002
+  },
+  {
+    "name": "@anthropic-ai/sdk",
+    "description": "Anthropic SDK.",
+    "rssBytes": 53800960,
+    "heapUsedBytes": 794423,
+    "externalBytes": 227532,
+    "importMs": 8.122107
+  },
+  {
+    "name": "cli-highlight",
+    "description": "Syntax highlighter (pulled by Markdown).",
+    "rssBytes": 63131648,
+    "heapUsedBytes": 5892307,
+    "externalBytes": 2324052,
+    "importMs": 87.703453
+  },
+  {
+    "name": "Tool.ts",
+    "description": "Tool type module — what every tool re-exports.",
+    "rssBytes": 43823104,
+    "heapUsedBytes": 1159785,
+    "externalBytes": 394878,
+    "importMs": 9.892537
+  },
+  {
+    "name": "src/utils/log.ts",
+    "description": "Logger.",
+    "rssBytes": 130535424,
+    "heapUsedBytes": 11988256,
+    "externalBytes": 3555582,
+    "importMs": 171.78260799999998
+  },
+  {
+    "name": "src/services/tools/toolResultCache",
+    "description": "Imported directly by Tool.ts.",
+    "rssBytes": 43638784,
+    "heapUsedBytes": 1150443,
+    "externalBytes": 392688,
+    "importMs": 9.167698999999999
+  },
+  {
+    "name": "tools.ts (full registry)",
+    "description": "~30 statically-imported tools.",
+    "rssBytes": 225001472,
+    "heapUsedBytes": 31839633,
+    "externalBytes": 7271373,
+    "importMs": 445.79483500000003
+  },
+  {
+    "name": "bash parser (utils/bash/*)",
+    "description": "~12.3k LoC: bashParser + ast + heredoc + treeSitter.",
+    "rssBytes": 37683200,
+    "heapUsedBytes": 450311,
+    "externalBytes": 98540,
+    "importMs": 2.397705
+  },
+  {
+    "name": "BashTool",
+    "description": "BashTool + UI + transitive deps.",
+    "rssBytes": 225701888,
+    "heapUsedBytes": 31843638,
+    "externalBytes": 7275152,
+    "importMs": 446.25800899999996
+  },
+  {
+    "name": "FileReadTool",
+    "description": "Smaller tool — reference for \"what one tool costs\".",
+    "rssBytes": null,
+    "heapUsedBytes": null,
+    "externalBytes": null,
+    "importMs": null
+  },
+  {
+    "name": "cand: NotebookEditTool",
+    "description": "Lazy candidate — only used for .ipynb edits.",
+    "rssBytes": 229093376,
+    "heapUsedBytes": 31828812,
+    "externalBytes": 7274022,
+    "importMs": 434.292304
+  },
+  {
+    "name": "cand: WebFetchTool",
+    "description": "Lazy candidate — model-invoked, ~1.5k LoC.",
+    "rssBytes": 223334400,
+    "heapUsedBytes": 31843776,
+    "externalBytes": 7275644,
+    "importMs": 441.581289
+  },
+  {
+    "name": "cand: WebSearchTool",
+    "description": "Lazy candidate — biggest among non-hot tools (~3k LoC).",
+    "rssBytes": 227172352,
+    "heapUsedBytes": 31830428,
+    "externalBytes": 7273819,
+    "importMs": 440.430637
+  },
+  {
+    "name": "cand: SkillTool",
+    "description": "Lazy candidate — only when /skill invoked.",
+    "rssBytes": 226217984,
+    "heapUsedBytes": 31842487,
+    "externalBytes": 7276033,
+    "importMs": 448.019786
+  },
+  {
+    "name": "cand: AskUserQuestionTool",
+    "description": "Lazy candidate — power-use only.",
+    "rssBytes": 151494656,
+    "heapUsedBytes": 14065141,
+    "externalBytes": 4082511,
+    "importMs": 210.197959
+  },
+  {
+    "name": "cand: BriefTool",
+    "description": "Lazy candidate — coordinator-mode primary channel.",
+    "rssBytes": 227708928,
+    "heapUsedBytes": 31829308,
+    "externalBytes": 7264726,
+    "importMs": 445.462563
+  },
+  {
+    "name": "cand: ToolSearchTool",
+    "description": "Lazy candidate — gated by isToolSearchEnabledOptimistic.",
+    "rssBytes": 223723520,
+    "heapUsedBytes": 31832986,
+    "externalBytes": 7268745,
+    "importMs": 440.90517
+  },
+  {
+    "name": "cand: EnterPlanModeTool",
+    "description": "Lazy candidate — plan-mode entry only.",
+    "rssBytes": 227979264,
+    "heapUsedBytes": 31853721,
+    "externalBytes": 7278021,
+    "importMs": 429.578403
+  },
+  {
+    "name": "cand: ExitPlanModeV2Tool",
+    "description": "Lazy candidate — plan-mode exit only.",
+    "rssBytes": 225939456,
+    "heapUsedBytes": 31838180,
+    "externalBytes": 7268096,
+    "importMs": 446.29784
+  },
+  {
+    "name": "cand: EnterWorktreeTool",
+    "description": "Lazy candidate — gated by isWorktreeModeEnabled().",
+    "rssBytes": 228093952,
+    "heapUsedBytes": 31840306,
+    "externalBytes": 7277628,
+    "importMs": 430.343552
+  },
+  {
+    "name": "cand: ExitWorktreeTool",
+    "description": "Lazy candidate — gated by isWorktreeModeEnabled().",
+    "rssBytes": 227373056,
+    "heapUsedBytes": 31836808,
+    "externalBytes": 7277844,
+    "importMs": 437.463186
+  },
+  {
+    "name": "cand: TaskCreateTool",
+    "description": "Lazy candidate — todoV2 family (one of 4).",
+    "rssBytes": 226066432,
+    "heapUsedBytes": 31851251,
+    "externalBytes": 7276989,
+    "importMs": 442.40103999999997
+  },
+  {
+    "name": "cand: ListMcpResourcesTool",
+    "description": "Lazy candidate — MCP resources only.",
+    "rssBytes": 224874496,
+    "heapUsedBytes": 31844560,
+    "externalBytes": 7270042,
+    "importMs": 437.118804
+  },
+  {
+    "name": "cand: AgentTool",
+    "description": "Lazy candidate (fronteira) — ~6.6k LoC, sub-agent driver.",
+    "rssBytes": 226746368,
+    "heapUsedBytes": 31832159,
+    "externalBytes": 7268121,
+    "importMs": 437.289358
+  },
+  {
+    "name": "openaiShim",
+    "description": "OpenAI-compatible translator (~2.2k LoC).",
+    "rssBytes": 225464320,
+    "heapUsedBytes": 31902275,
+    "externalBytes": 7277887,
+    "importMs": 450.37088700000004
+  },
+  {
+    "name": "Markdown",
+    "description": "Streaming markdown renderer.",
+    "rssBytes": 223748096,
+    "heapUsedBytes": 31829747,
+    "externalBytes": 7271789,
+    "importMs": 436.071796
+  },
+  {
+    "name": "QueryEngine",
+    "description": "Core agent loop driver.",
+    "rssBytes": 225394688,
+    "heapUsedBytes": 31880904,
+    "externalBytes": 7279906,
+    "importMs": 445.720431
+  }
+]
