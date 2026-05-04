@@ -164,8 +164,11 @@ const result = await Bun.build({
   target: 'node',
   format: 'esm',
   splitting: true,
-  sourcemap: 'external',
-  minify: false,
+  // Release builds (npm publish) drop sourcemaps entirely and minify, so the
+  // tarball stays small and source isn't shipped. Local dev keeps external
+  // sourcemaps + unminified output for stack traces / debugging.
+  sourcemap: process.env.CLAUDIO_RELEASE_BUILD === '1' ? 'none' : 'external',
+  minify: process.env.CLAUDIO_RELEASE_BUILD === '1',
   naming: {
     entry: 'cli.mjs',
     // Release builds embed the package version in chunk filenames so a
