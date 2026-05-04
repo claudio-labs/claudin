@@ -9,6 +9,7 @@
   "files": [
     "bin/",
     "dist/",
+    "scripts/v8cache-gc.mjs",
     "README.md"
   ],
   "scripts": {
