@@ -227,6 +227,7 @@ import {
   getAssistantMessageFromError,
   getErrorMessageIfRefusal,
 } from './errors.js'
+import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
 import {
   EMPTY_USAGE,
   type GlobalCacheStrategy,
@@ -2531,18 +2532,24 @@ async function* queryModel(
     // endpoints but work fine with non-streaming. Before v2.1.8, BetaMessageStream
     // threw 404s during iteration (caught by inner catch with fallback), but now
     // with raw streams, 404s are thrown during creation (caught here).
-    const is404StreamCreationError =
-      !didFallBackToNonStreaming &&
+    // Exclude model_not_found: the model is unavailable, not the streaming
+    // endpoint — non-streaming would fail the same way.
+    const originalError404 =
       errorFromRetry instanceof CannotRetryError &&
       errorFromRetry.originalError instanceof APIError &&
       errorFromRetry.originalError.status === 404
+        ? (errorFromRetry.originalError as APIError)
+        : null
+    const is404StreamCreationError =
+      !didFallBackToNonStreaming &&
+      originalError404 !== null &&
+      extractOpenAICategoryMarker(originalError404.message ?? '') !== 'model_not_found'
 
     if (is404StreamCreationError) {
       // 404 is thrown at .withResponse() before streamRequestId is assigned,
       // and CannotRetryError means every retry failed — so grab the failed
       // request's ID from the error header instead.
-      const failedRequestId =
-        (errorFromRetry.originalError as APIError).requestID ?? 'unknown'
+      const failedRequestId = originalError404?.requestID ?? 'unknown'
       logForDebugging(
         'Streaming endpoint returned 404, falling back to non-streaming mode',
         { level: 'warn' },

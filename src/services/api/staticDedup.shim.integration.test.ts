@@ -20,6 +20,11 @@
  * the test fails.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
 import { convertAnthropicMessagesToResponsesInput } from './codexShim.js'
 import { createOpenAIShimClient } from './openaiShim.js'
 import { stableStringify } from '../../utils/stableStringify.js'

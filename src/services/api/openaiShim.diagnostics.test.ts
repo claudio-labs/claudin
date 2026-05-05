@@ -1,5 +1,10 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
+
 // openaiShim consumes tryGetActiveProvider() for transport routing. Each
 // test sets the legacy OPENAI_* envs to describe the provider; we synthesize
 // a matching profile so the resolver-driven branches pick up the same

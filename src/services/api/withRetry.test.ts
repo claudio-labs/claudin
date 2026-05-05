@@ -346,3 +346,46 @@ describe('getRetryDelay', () => {
     expect(delay).toBeLessThanOrEqual(625)
   })
 })
+
+// --- shouldRetry (OpenAI-compat 404) ---
+describe('shouldRetry', () => {
+  function make404Error(message: string): APIError {
+    return {
+      headers: new Headers(),
+      status: 404,
+      message,
+      name: 'APIError',
+      error: {},
+    } as unknown as APIError
+  }
+
+  test('retries 404 with openai_category marker (endpoint_not_found) at attempt 1', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    const error = make404Error('Not found [openai_category=endpoint_not_found]')
+    expect(shouldRetry(error, 1)).toBe(true)
+  })
+
+  test('retries 404 with openai_category marker at attempt 2', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    const error = make404Error('Not found [openai_category=endpoint_not_found]')
+    expect(shouldRetry(error, 2)).toBe(true)
+  })
+
+  test('stops retrying 404 with marker after MAX_OPENAI_COMPAT_404_RETRIES', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    const error = make404Error('Not found [openai_category=endpoint_not_found]')
+    expect(shouldRetry(error, 3)).toBe(false)
+  })
+
+  test('does not retry 404 with model_not_found category', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    const error = make404Error('Model not found [openai_category=model_not_found]')
+    expect(shouldRetry(error, 1)).toBe(false)
+  })
+
+  test('does not retry 404 without openai_category marker', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    const error = make404Error('Not found')
+    expect(shouldRetry(error, 1)).toBe(false)
+  })
+})

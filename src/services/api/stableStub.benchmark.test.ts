@@ -21,6 +21,11 @@
  *   - assert exactly one `cache_control` marker in the compressed body
  */
 import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
+
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
 import { stableStringify } from '../../utils/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch

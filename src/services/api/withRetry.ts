@@ -32,6 +32,7 @@ import {
   isFastModeEnabled,
   triggerFastModeCooldown,
 } from '../../utils/fastMode.js'
+import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
 import { isNonCustomOpusModel } from '../../utils/model/model.js'
 import { disableKeepAlive } from '../../utils/proxy.js'
 import { sleep } from '../../utils/sleep.js'
@@ -51,6 +52,9 @@ const DEFAULT_MAX_RETRIES = 10
 const FLOOR_OUTPUT_TOKENS = 3000
 const MAX_529_RETRIES = 3
 export const BASE_DELAY_MS = 500
+// OpenAI-compat providers can return transient 404s (model loading, routing blip).
+// Retry these a limited number of times before treating as permanent.
+const MAX_OPENAI_COMPAT_404_RETRIES = 2
 
 // Foreground query sources where the user IS blocking on the result — these
 // retry on 529. Everything else (summaries, titles, suggestions, classifiers)
@@ -378,7 +382,7 @@ export async function* withRetry<T>(
         handleAwsCredentialError(error) || handleGcpCredentialError(error)
       if (
         !handledCloudAuthError &&
-        (!(error instanceof APIError) || !shouldRetry(error))
+        (!(error instanceof APIError) || !shouldRetry(error, attempt))
       ) {
         throw new CannotRetryError(error, retryContext)
       }
@@ -758,7 +762,7 @@ function handleGcpCredentialError(error: unknown): boolean {
   return false
 }
 
-function shouldRetry(error: APIError): boolean {
+export function shouldRetry(error: APIError, attempt = 1): boolean {
   // Never retry mock errors - they're from /mock-limits command for testing
   if (isMockRateLimitError(error)) {
     return false
@@ -843,6 +847,17 @@ function shouldRetry(error: APIError): boolean {
 
   // Retry internal errors.
   if (error.status && error.status >= 500) return true
+
+  // OpenAI-compat providers sometimes return transient 404s (model loading,
+  // routing blip). Detect via the [openai_category=...] marker embedded by
+  // openaiShim.ts and retry a limited number of times before surfacing the error.
+  // Exclude model_not_found: the model genuinely doesn't exist, retrying won't help.
+  if (error.status === 404) {
+    const category = extractOpenAICategoryMarker(error.message ?? '')
+    if (category && category !== 'model_not_found' && attempt <= MAX_OPENAI_COMPAT_404_RETRIES) {
+      return true
+    }
+  }
 
   return false
 }

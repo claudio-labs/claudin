@@ -7,6 +7,11 @@
  * AND is a no-op when the set is empty.
  */
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
+
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
 import { createOpenAIShimClient } from './openaiShim.js'
 import {
   addClippedIds,
