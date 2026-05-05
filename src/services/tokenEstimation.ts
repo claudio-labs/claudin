@@ -488,7 +488,7 @@ export function roughTokenCountEstimationForMessage(message: {
   return 0
 }
 
-function roughTokenCountEstimationForContent(
+export function roughTokenCountEstimationForContent(
   content:
     | string
     | Array<Anthropic.ContentBlock>

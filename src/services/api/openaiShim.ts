@@ -76,6 +76,11 @@ import {
   getStreamStats,
 } from '../../utils/streamingOptimizer.js'
 import { stableStringify } from '../../utils/stableStringify.js'
+import {
+  roughTokenCountEstimation,
+  roughTokenCountEstimationForContent,
+  getBytesPerTokenForModel,
+} from '../tokenEstimation.js'
 
 type SecretValueSource = Partial<{
   OPENAI_API_KEY: string
@@ -895,6 +900,7 @@ async function* openaiStreamToAnthropic(
   response: Response,
   model: string,
   signal?: AbortSignal,
+  estimatedInputTokens?: number,
 ): AsyncGenerator<AnthropicStreamEvent> {
   const messageId = makeMessageId()
   let contentBlockIndex = 0
@@ -1316,15 +1322,16 @@ async function* openaiStreamToAnthropic(
   }
 
   // Fallback for providers that ignore stream_options.include_usage (e.g. NovitaAI/Kimi).
-  // Estimate output tokens from accumulated streamed characters so the UI shows non-zero
-  // data instead of "0 tokens". Input remains 0 — genuinely unknowable without provider data.
-  if (!hasEmittedFinalUsage && lastStopReason !== null && estimatedOutputChars > 0) {
+  // Estimate output tokens from accumulated streamed characters and input tokens from
+  // the pre-computed estimate passed by the caller so the UI shows non-zero data.
+  if (!hasEmittedFinalUsage && lastStopReason !== null && (estimatedOutputChars > 0 || (estimatedInputTokens ?? 0) > 0)) {
+    const bytesPerToken = getBytesPerTokenForModel(model)
     yield {
       type: 'message_delta',
       delta: { stop_reason: lastStopReason, stop_sequence: null },
       usage: {
-        input_tokens: 0,
-        output_tokens: Math.ceil(estimatedOutputChars / 4),
+        input_tokens: estimatedInputTokens ?? 0,
+        output_tokens: Math.ceil(estimatedOutputChars / bytesPerToken),
         cache_creation_input_tokens: 0,
         cache_read_input_tokens: 0,
       },
@@ -1376,10 +1383,31 @@ class OpenAIShimMessages {
 
       if (params.stream) {
         const isResponsesStream = response.url?.includes('/responses')
+        // Estimate input tokens from request messages + system prompt so the
+        // fallback path (providers that don't emit usage) can report non-zero
+        // input instead of 0. The messages may be in either the internal
+        // Claudio format ({ type, message: { content } }) or the Anthropic
+        // SDK format ({ role, content }) — extract content and delegate to
+        // roughTokenCountEstimationForContent which handles all block types
+        // (text, tool_use, tool_result, image, etc.).
+        let estimatedInputTokens = 0
+        for (const msg of params.messages) {
+          const m = msg as Record<string, unknown>
+          const content = m.message
+            ? (m.message as Record<string, unknown>).content
+            : m.content
+          if (content != null && typeof content !== 'string' && !Array.isArray(content)) continue
+          estimatedInputTokens += roughTokenCountEstimationForContent(content)
+        }
+        if (typeof params.system === 'string') {
+          estimatedInputTokens += roughTokenCountEstimation(params.system)
+        } else if (Array.isArray(params.system)) {
+          estimatedInputTokens += roughTokenCountEstimationForContent(params.system)
+        }
         return new OpenAIShimStream(
           (request.transport === 'codex_responses' || isResponsesStream)
             ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal)
-            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal),
+            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens),
         )
       }
 
