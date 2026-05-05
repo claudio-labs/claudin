@@ -1,0 +1,10 @@
+Checking formatting...
+[warn] src/utils/unaryLogging.ts
+[warn] src/utils/urlRedaction.test.ts
+[warn] src/utils/urlRedaction.ts
+[warn] src/utils/user.test.ts
+[warn] src/utils/user.ts
+[warn] src/utils/userAgent.ts
+[warn] src/utils/userPromptKeywords.ts
+[warn] src/utils/uuid.ts
+[warn] Code style issues found in 8 files. Run Prettier with --write to fix.

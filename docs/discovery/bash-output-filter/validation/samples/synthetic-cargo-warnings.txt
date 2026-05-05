@@ -1,0 +1,27 @@
+   Compiling rtk v0.28.2 (/home/viudes/projects/rtk)
+warning: direct cast of function item into an integer
+    --> src/main.rs:2231:62
+     |
+2231 |                     libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
+     |                                                              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: direct cast of function item into an integer
+    --> src/main.rs:2232:63
+     |
+2232 |                     libc::signal(libc::SIGTERM, handle_signal as libc::sighandler_t);
+     |                                                               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: direct cast of function item into an integer
+    --> src/main.rs:2245:62
+     |
+2245 |                     libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
+     |                                                              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: direct cast of function item into an integer
+    --> src/main.rs:2246:63
+     |
+2246 |                     libc::signal(libc::SIGTERM, handle_signal as libc::sighandler_t);
+     |                                                               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: `rtk` (bin "rtk") generated 9 warnings
+    Finished `dev` profile in 16.41s

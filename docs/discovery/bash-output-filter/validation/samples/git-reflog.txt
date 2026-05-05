@@ -1,0 +1,10 @@
+a200d7d HEAD@{0}: commit: fix(providers): retry transient 404s from OpenAI-compat providers
+eed74e1 HEAD@{1}: commit: fix(providers): use claudio branding in User-Agent for non-Anthropic providers
+bb98dbf HEAD@{2}: reset: moving to HEAD
+bb98dbf HEAD@{3}: checkout: moving from main to fix/user-agent-openai-shim
+bb98dbf HEAD@{4}: pull --rebase: Fast-forward
+3c1ce42 HEAD@{5}: reset: moving to HEAD
+3c1ce42 HEAD@{6}: pull --rebase origin main (finish): returning to refs/heads/main
+3c1ce42 HEAD@{7}: pull --rebase origin main (pick): fix(cache): skip model-options cache scope for non-local provider URLs
+41c5b06 HEAD@{8}: pull --rebase origin main (start): checkout 41c5b06835d3d5b25095be329c991ed3bb42411f
+27dc93a HEAD@{9}: commit: fix(cache): skip model-options cache scope for non-local provider URLs

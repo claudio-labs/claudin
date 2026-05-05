@@ -1,0 +1,6 @@
+/home/viudes/projects/claudio/src/utils/attachments.ts:import { isAbortError } from './errors.js'
+/home/viudes/projects/claudio/src/utils/attachments.ts:    if (!isAbortError(e)) {
+/home/viudes/projects/claudio/src/services/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
+/home/viudes/projects/claudio/src/services/api/openaiShim.ts:        const isAbortError =
+/home/viudes/projects/claudio/src/services/api/openaiShim.ts:        if (isAbortError) {
+/home/viudes/projects/claudio/src/utils/errors.ts:export function isAbortError(e: unknown): boolean {

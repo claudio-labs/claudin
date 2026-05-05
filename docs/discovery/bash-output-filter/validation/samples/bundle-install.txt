@@ -1,0 +1,18 @@
+Fetching gem metadata from https://rubygems.org/...
+Resolving dependencies...
+Fetching rake 13.4.2
+Installing rake 13.4.2
+Fetching diff-lcs 1.6.2
+Fetching rspec-support 3.13.7
+Fetching rspec-core 3.13.6
+Fetching rspec-expectations 3.13.5
+Fetching rspec-mocks 3.13.8
+Fetching rspec 3.13.2
+Installing diff-lcs 1.6.2
+Installing rspec-support 3.13.7
+Installing rspec 3.13.2
+Installing rspec-expectations 3.13.5
+Installing rspec-mocks 3.13.8
+Installing rspec-core 3.13.6
+Bundle complete! 2 Gemfile dependencies, 7 gems now installed.
+Bundled gems are installed into `./vendor/bundle`

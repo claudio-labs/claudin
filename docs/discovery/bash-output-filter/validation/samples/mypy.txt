@@ -1,0 +1,5 @@
+atomic_chat_provider.py: error: Source file found twice under different module names: "python.atomic_chat_provider" and "atomic_chat_provider"
+atomic_chat_provider.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+atomic_chat_provider.py: note: Common resolutions include:
+atomic_chat_provider.py: note:     a) adding `__init__.py` somewhere,
+atomic_chat_provider.py: note:     b) using `--explicit-package-bases` or adjusting `MYPYPATH`

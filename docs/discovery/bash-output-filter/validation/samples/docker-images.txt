@@ -1,0 +1,5 @@
+WARNING: This output is designed for human readability. For machine-readable output, please use --format.
+IMAGE                                 ID             DISK USAGE   CONTENT SIZE   EXTRA
+ghcr.io/ericc-ch/copilot-api:latest   1b57d0dd9897        162MB             0B   U    
+postgres:16-alpine                    108b27c919e6        276MB             0B   U    
+redis:7-alpine                        aa189b5a1954       41.4MB             0B   U    

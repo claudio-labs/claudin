@@ -1,0 +1,422 @@
+$ tsc --noEmit
+src/QueryEngine.ts(10,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionMode'.
+src/QueryEngine.ts(11,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKCompactBoundaryMessage'.
+src/QueryEngine.ts(12,3): error TS2460: Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/QueryEngine.ts(13,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKPermissionDenial'.
+src/QueryEngine.ts(14,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKStatus'.
+src/QueryEngine.ts(15,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKUserMessageReplay'.
+src/QueryEngine.ts(43,30): error TS2307: Cannot find module './types/message.js' or its corresponding type declarations.
+src/QueryEngine.ts(128,71): error TS2307: Cannot find module './services/compact/snipProjection.js' or its corresponding type declarations.
+src/QueryEngine.ts(726,50): error TS2550: Property 'findLastIndex' does not exist on type 'Message[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/QueryEngine.ts(727,15): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/QueryEngine.ts(1087,29): error TS2550: Property 'findLast' does not exist on type 'Message[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/QueryEngine.ts(1088,7): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/QueryEngine.ts(1096,42): error TS2339: Property 'type' does not exist on type '{}'.
+src/QueryEngine.ts(1156,22): error TS2339: Property 'type' does not exist on type '{}'.
+src/QueryEngine.ts(1157,45): error TS2339: Property 'text' does not exist on type '{}'.
+src/QueryEngine.ts(1159,34): error TS2339: Property 'text' does not exist on type '{}'.
+src/QueryEngine.ts(1317,32): error TS2339: Property 'snipCompactIfNeeded' does not exist on type 'typeof import("/home/viudes/projects/claudio/src/services/compact/snipCompact")'.
+src/Tool.ts(46,8): error TS2307: Cannot find module './types/message.js' or its corresponding type declarations.
+src/Tool.ts(64,8): error TS2307: Cannot find module './types/tools.js' or its corresponding type declarations.
+src/Tool.ts(82,34): error TS2307: Cannot find module './constants/querySource.js' or its corresponding type declarations.
+src/Tool.ts(83,15): error TS2305: Module '"./entrypoints/agentSdkTypes.js"' has no exported member 'SDKStatus'.
+src/Tool.ts(91,36): error TS2307: Cannot find module './types/utils.js' or its corresponding type declarations.
+src/__tests__/providerCounts.test.ts(49,13): error TS2554: Expected 1 arguments, but got 2.
+src/assistant/sessionHistory.ts(3,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bootstrap/state.ts(10,15): error TS2724: '"src/entrypoints/agentSdkTypes.js"' has no exported member named 'HookEvent'. Did you mean 'HOOK_EVENTS'?
+src/bootstrap/state.ts(10,26): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'ModelUsage'.
+src/bootstrap/state.ts(1424,46): error TS2488: Type 'RegisteredHookMatcher[] | undefined' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/bootstrap/state.ts(1446,27): error TS18048: 'matchers' is possibly 'undefined'.
+src/bridge/bridgeEnabled.ts(168,33): error TS2304: Cannot find name 'MACRO'.
+src/bridge/bridgeEnabled.ts(169,42): error TS2304: Cannot find name 'MACRO'.
+src/bridge/bridgeMain.ts(2329,20): error TS2304: Cannot find name 'MACRO'.
+src/bridge/bridgeMain.ts(2876,20): error TS2304: Cannot find name 'MACRO'.
+src/bridge/bridgeMessaging.ts(14,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/bridgeMessaging.ts(18,8): error TS2307: Cannot find module '../entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/bridge/bridgeMessaging.ts(19,15): error TS2305: Module '"../entrypoints/sdk/coreTypes.js"' has no exported member 'SDKResultSuccess'.
+src/bridge/bridgeMessaging.ts(22,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/bridge/bridgeMessaging.ts(154,65): error TS2339: Property 'request' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(164,41): error TS2339: Property 'uuid' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(165,18): error TS2339: Property 'uuid' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(170,53): error TS2339: Property 'type' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(182,69): error TS2339: Property 'type' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(188,52): error TS2339: Property 'type' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(191,16): error TS2339: Property 'type' does not exist on type 'never'.
+src/bridge/bridgeMessaging.ts(200,73): error TS2339: Property 'type' does not exist on type 'never'.
+src/bridge/bridgeUI.ts(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
+src/bridge/bridgeUI.ts(296,50): error TS2304: Cannot find name 'MACRO'.
+src/bridge/createSession.ts(1,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/envLessBridgeConfig.ts(149,29): error TS2304: Cannot find name 'MACRO'.
+src/bridge/envLessBridgeConfig.ts(150,40): error TS2304: Cannot find name 'MACRO'.
+src/bridge/inboundAttachments.ts(148,21): error TS2550: Property 'findLastIndex' does not exist on type 'ContentBlockParam[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/bridge/inboundAttachments.ts(148,35): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/bridge/inboundMessages.ts(7,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/initReplBridge.ts(19,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/initReplBridge.ts(20,41): error TS2307: Cannot find module '../entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/bridge/initReplBridge.ts(27,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/bridge/initReplBridge.ts(477,57): error TS2307: Cannot find module '../assistant/index.js' or its corresponding type declarations.
+src/bridge/remoteBridgeCore.ts(66,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/bridge/remoteBridgeCore.ts(67,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/remoteBridgeCore.ts(71,8): error TS2307: Cannot find module '../entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/bridge/replBridge.ts(48,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/bridge/replBridge.ts(49,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/bridge/replBridge.ts(54,8): error TS2307: Cannot find module '../entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/bridge/replBridge.ts(316,20): error TS2304: Cannot find name 'MACRO'.
+src/bridge/replBridgeTransport.ts(1,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/bridge/sessionRunner.test.ts(2,31): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/bridge/sessionRunner.ts(371,9): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+src/bridge/workSecret.test.ts(2,29): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/buddy/CompanionSprite.tsx(43,23): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(70,13): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(70,16): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(177,32): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(178,29): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(179,31): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(359,17): error TS7006: Parameter 'set' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(362,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/buddy/CompanionSprite.tsx(368,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/buddy/observer.ts(1,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/buddy/prompt.ts(1,30): error TS2307: Cannot find module '../types/message.js' or its corresponding type declarations.
+src/buddy/useBuddyNotification.tsx(20,22): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/buddy/useBuddyNotification.tsx(38,16): error TS7006: Parameter 'ch' implicitly has an 'any' type.
+src/buddy/useBuddyNotification.tsx(38,20): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/cli/handlers/auth.ts(22,34): error TS2307: Cannot find module '../../services/oauth/types.js' or its corresponding type declarations.
+src/cli/handlers/util.tsx(56,28): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/cli/print.ts(41,53): error TS2307: Cannot find module 'src/types/message.js' or its corresponding type declarations.
+src/cli/print.ts(111,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKStatus'.
+src/cli/print.ts(112,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'ModelInfo'.
+src/cli/print.ts(113,3): error TS2460: Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/cli/print.ts(114,3): error TS2460: Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKUserMessage' locally, but it is exported as 'SDKControlRequest'.
+src/cli/print.ts(115,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKUserMessageReplay'.
+src/cli/print.ts(116,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionResult'.
+src/cli/print.ts(117,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'McpServerConfigForProcessTransport'.
+src/cli/print.ts(118,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'McpServerStatus'.
+src/cli/print.ts(119,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'RewindFilesResult'.
+src/cli/print.ts(129,8): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/print.ts(130,37): error TS2307: Cannot find module '@anthropic-ai/claude-agent-sdk' or its corresponding type declarations.
+src/cli/print.ts(196,15): error TS2724: '"src/entrypoints/agentSdkTypes.js"' has no exported member named 'HookEvent'. Did you mean 'HOOK_EVENTS'?
+src/cli/print.ts(362,58): error TS2307: Cannot find module '../proactive/index.js' or its corresponding type declarations.
+src/cli/print.ts(847,5): error TS2345: Argument of type '(Tool<AnyObject, unknown, ToolProgressData> | { name: string; mcpInfo?: { serverName: string; toolName: string; } | undefined; })[]' is not assignable to parameter of type 'Tools'.
+  Type 'Tool<AnyObject, unknown, ToolProgressData> | { name: string; mcpInfo?: { serverName: string; toolName: string; } | undefined; }' is not assignable to type 'Tool<AnyObject, unknown, ToolProgressData>'.
+    Type '{ name: string; mcpInfo?: { serverName: string; toolName: string; } | undefined; }' is missing the following properties from type 'Tool<AnyObject, unknown, ToolProgressData>': call, description, inputSchema, isConcurrencySafe, and 9 more.
+src/cli/print.ts(1424,15): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/cli/print.ts(1567,17): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/cli/print.ts(1598,32): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(1936,29): error TS2550: Property 'findLast' does not exist on type 'QueuedCommand[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/cli/print.ts(1936,38): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(2530,34): error TS18046: 't' is of type 'unknown'.
+src/cli/print.ts(3111,46): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3124,47): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3182,46): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3206,47): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3230,47): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3280,46): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3365,53): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3621,46): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(3639,47): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/print.ts(4402,35): error TS18046: 'matchers' is of type 'unknown'.
+src/cli/print.ts(4402,48): error TS7006: Parameter 'matcher' implicitly has an 'any' type.
+src/cli/print.ts(4403,55): error TS7006: Parameter 'callbackId' implicitly has an 'any' type.
+src/cli/print.ts(5530,51): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/cli/print.ts(5540,55): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/cli/remoteIO.ts(1,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/remoteIO.ts(28,32): error TS2307: Cannot find module './transports/Transport.js' or its corresponding type declarations.
+src/cli/structuredIO.ts(7,39): error TS2307: Cannot find module 'src/types/message.js' or its corresponding type declarations.
+src/cli/structuredIO.ts(9,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'HookInput'.
+src/cli/structuredIO.ts(10,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'HookJSONOutput'.
+src/cli/structuredIO.ts(11,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionUpdate'.
+src/cli/structuredIO.ts(12,3): error TS2460: Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
+src/cli/structuredIO.ts(13,3): error TS2460: Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKUserMessage' locally, but it is exported as 'SDKControlRequest'.
+src/cli/structuredIO.ts(21,8): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/structuredIO.ts(355,11): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/cli/transports/HybridTransport.ts(2,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/transports/SSETransport.ts(2,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/transports/SSETransport.ts(10,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
+src/cli/transports/WebSocketTransport.ts(1,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/transports/WebSocketTransport.ts(2,30): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudio/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/ws` if it exists or add a new declaration (.d.ts) file containing `declare module 'ws';`
+src/cli/transports/WebSocketTransport.ts(18,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
+src/cli/transports/WebSocketTransport.ts(178,44): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudio/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/ws` if it exists or add a new declaration (.d.ts) file containing `declare module 'ws';`
+src/cli/transports/ccrClient.ts(5,8): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
+src/cli/transports/transportUtils.ts(5,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
+src/cli/update.ts(41,29): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(43,40): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(51,37): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(137,50): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(149,26): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(150,44): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(160,26): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(161,44): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(173,26): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(174,44): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(263,36): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(265,49): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(270,42): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(292,43): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(294,34): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(310,9): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(310,31): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(319,25): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(329,25): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(331,45): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(337,58): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(397,40): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(409,50): error TS2304: Cannot find name 'MACRO'.
+src/cli/update.ts(424,50): error TS2304: Cannot find name 'MACRO'.
+src/commands.test.ts(3,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/commands.test.ts(4,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/commands.test.ts(12,5): error TS2304: Cannot find name 'expect'.
+src/commands.test.ts(15,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/commands.test.ts(28,5): error TS2304: Cannot find name 'expect'.
+src/commands.ts(3,23): error TS7016: Could not find a declaration file for module './commands/autofix-pr/index.js'. '/home/viudes/projects/claudio/src/commands/autofix-pr/index.js' implicitly has an 'any' type.
+src/commands.ts(4,30): error TS7016: Could not find a declaration file for module './commands/backfill-sessions/index.js'. '/home/viudes/projects/claudio/src/commands/backfill-sessions/index.js' implicitly has an 'any' type.
+src/commands.ts(6,24): error TS7016: Could not find a declaration file for module './commands/good-claude/index.js'. '/home/viudes/projects/claudio/src/commands/good-claude/index.js' implicitly has an 'any' type.
+src/commands.ts(7,19): error TS7016: Could not find a declaration file for module './commands/issue/index.js'. '/home/viudes/projects/claudio/src/commands/issue/index.js' implicitly has an 'any' type.
+src/commands.ts(21,21): error TS7016: Could not find a declaration file for module './commands/ctx_viz/index.js'. '/home/viudes/projects/claudio/src/commands/ctx_viz/index.js' implicitly has an 'any' type.
+src/commands.ts(33,24): error TS7016: Could not find a declaration file for module './commands/break-cache/index.js'. '/home/viudes/projects/claudio/src/commands/break-cache/index.js' implicitly has an 'any' type.
+src/commands.ts(39,24): error TS7016: Could not find a declaration file for module './commands/onboarding/index.js'. '/home/viudes/projects/claudio/src/commands/onboarding/index.js' implicitly has an 'any' type.
+src/commands.ts(46,19): error TS7016: Could not find a declaration file for module './commands/share/index.js'. '/home/viudes/projects/claudio/src/commands/share/index.js' implicitly has an 'any' type.
+src/commands.ts(50,22): error TS7016: Could not find a declaration file for module './commands/teleport/index.js'. '/home/viudes/projects/claudio/src/commands/teleport/index.js' implicitly has an 'any' type.
+src/commands.ts(53,23): error TS7016: Could not find a declaration file for module './commands/bughunter/index.js'. '/home/viudes/projects/claudio/src/commands/bughunter/index.js' implicitly has an 'any' type.
+src/commands.ts(88,65): error TS2307: Cannot find module './commands/workflows/index.js' or its corresponding type declarations.
+src/commands.ts(98,73): error TS2307: Cannot find module './services/skillSearch/localSearch.js' or its corresponding type declarations.
+src/commands.ts(110,61): error TS2307: Cannot find module './commands/peers/index.js' or its corresponding type declarations.
+src/commands.ts(115,60): error TS2307: Cannot find module './commands/fork/index.js' or its corresponding type declarations.
+src/commands.ts(140,24): error TS7016: Could not find a declaration file for module './commands/mock-limits/index.js'. '/home/viudes/projects/claudio/src/commands/mock-limits/index.js' implicitly has an 'any' type.
+src/commands.ts(143,21): error TS7016: Could not find a declaration file for module './commands/summary/index.js'. '/home/viudes/projects/claudio/src/commands/summary/index.js' implicitly has an 'any' type.
+src/commands.ts(147,8): error TS7016: Could not find a declaration file for module './commands/reset-limits/index.js'. '/home/viudes/projects/claudio/src/commands/reset-limits/index.js' implicitly has an 'any' type.
+src/commands.ts(148,22): error TS7016: Could not find a declaration file for module './commands/ant-trace/index.js'. '/home/viudes/projects/claudio/src/commands/ant-trace/index.js' implicitly has an 'any' type.
+src/commands.ts(149,23): error TS7016: Could not find a declaration file for module './commands/perf-issue/index.js'. '/home/viudes/projects/claudio/src/commands/perf-issue/index.js' implicitly has an 'any' type.
+src/commands.ts(173,17): error TS7016: Could not find a declaration file for module './commands/env/index.js'. '/home/viudes/projects/claudio/src/commands/env/index.js' implicitly has an 'any' type.
+src/commands.ts(203,26): error TS7016: Could not find a declaration file for module './commands/oauth-refresh/index.js'. '/home/viudes/projects/claudio/src/commands/oauth-refresh/index.js' implicitly has an 'any' type.
+src/commands.ts(204,27): error TS7016: Could not find a declaration file for module './commands/debug-tool-call/index.js'. '/home/viudes/projects/claudio/src/commands/debug-tool-call/index.js' implicitly has an 'any' type.
+src/commands.ts(405,81): error TS2307: Cannot find module './tools/WorkflowTool/createWorkflowCommand.js' or its corresponding type declarations.
+src/commands/add-dir/add-dir.tsx(15,22): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/benchmark.ts(9,10): error TS2724: '"../utils/model/ollamaModels.js"' has no exported member named 'getOllamaModelOptions'. Did you mean 'getCachedOllamaModelOptions'?
+src/commands/benchmark.ts(16,14): error TS2339: Property 'stdout' does not exist on type 'ToolUseContext'.
+src/commands/benchmark.ts(29,55): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/commands/benchmark.ts(32,12): error TS2339: Property 'stdout' does not exist on type 'ToolUseContext'.
+src/commands/benchmark.ts(37,16): error TS2339: Property 'stdout' does not exist on type 'ToolUseContext'.
+src/commands/benchmark.ts(44,12): error TS2339: Property 'stdout' does not exist on type 'ToolUseContext'.
+src/commands/benchmark.ts(50,9): error TS2353: Object literal may only specify known properties, and 'onExecute' does not exist in type 'Command'.
+src/commands/benchmark.ts(51,26): error TS2339: Property 'args' does not exist on type 'ToolUseContext'.
+src/commands/branch/branch.ts(47,12): error TS7006: Parameter 'block' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(3,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
+src/commands/bridge/bridge.tsx(38,23): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(120,7): error TS7034: Variable 't2' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/commands/bridge/bridge.tsx(123,12): error TS7005: Variable 't2' implicitly has an 'any[]' type.
+src/commands/bridge/bridge.tsx(146,17): error TS7006: Parameter 's_1' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(149,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(152,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(155,33): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(160,3): error TS2554: Expected 2 arguments, but got 1.
+src/commands/bridge/bridge.tsx(432,18): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(432,24): error TS7006: Parameter 'i_1' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(435,17): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(438,17): error TS7006: Parameter 'i_0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(441,17): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(444,17): error TS7006: Parameter 'prev_0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(447,17): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(458,17): error TS7006: Parameter 's_1' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(461,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(464,17): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(490,22): error TS2307: Cannot find module '../../assistant/index.js' or its corresponding type declarations.
+src/commands/btw/btw.tsx(17,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/btw/btw.tsx(36,26): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/btw/btw.tsx(60,33): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/commands/btw/btw.tsx(70,28): error TS2339: Property 'scrollBy' does not exist on type 'never'.
+src/commands/btw/btw.tsx(74,28): error TS2339: Property 'scrollBy' does not exist on type 'never'.
+src/commands/btw/btw.tsx(98,27): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<null>'.
+src/commands/btw/btw.tsx(100,24): error TS2345: Argument of type '"No response received"' is not assignable to parameter of type 'SetStateAction<null>'.
+src/commands/btw/btw.tsx(106,22): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<null>'.
+src/commands/btw/btw.tsx(198,16): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(25,29): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(59,27): error TS7006: Parameter 'url' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(73,32): error TS7006: Parameter 'action' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(263,17): error TS7006: Parameter 'k' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(266,17): error TS7006: Parameter 'k_0' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(269,17): error TS7006: Parameter 'k_1' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(272,17): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/commands/chrome/chrome.tsx(275,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/clear/caches.ts(104,17): error TS2307: Cannot find module '../../utils/attributionHooks.js' or its corresponding type declarations.
+src/commands/clear/conversation.ts(25,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/clear/conversation.ts(147,15): error TS18046: 'task' is of type 'unknown'.
+src/commands/clear/conversation.ts(155,38): error TS18046: 'task' is of type 'unknown'.
+src/commands/clear/conversation.ts(156,37): error TS2339: Property 'abort' does not exist on type '{}'.
+src/commands/clear/conversation.ts(158,40): error TS18046: 'task' is of type 'unknown'.
+src/commands/clear/conversation.ts(159,20): error TS2349: This expression is not callable.
+  Type '{}' has no call signatures.
+src/commands/compact/compact.ts(23,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/compact/compact.ts(36,76): error TS2307: Cannot find module '../../services/compact/reactiveCompact.js' or its corresponding type declarations.
+src/commands/context/context-noninteractive.ts(6,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/context/context-noninteractive.ts(53,80): error TS2307: Cannot find module '../../services/contextCollapse/operations.js' or its corresponding type declarations.
+src/commands/context/context-noninteractive.ts(112,13): error TS2339: Property 'getStats' does not exist on type 'typeof import("/home/viudes/projects/claudio/src/services/contextCollapse/index")'.
+src/commands/context/context.tsx(7,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/context/context.tsx(24,82): error TS2307: Cannot find module '../../services/contextCollapse/operations.js' or its corresponding type declarations.
+src/commands/copy/copy.tsx(19,48): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/copy/copy.tsx(120,21): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(165,39): error TS7006: Parameter 'selected' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(188,38): error TS7006: Parameter 'selected_0' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(222,52): error TS7006: Parameter 'selected_1' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(239,33): error TS7006: Parameter 'e_0' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(263,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(272,10): error TS7006: Parameter 'selected_2' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(320,17): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(326,16): error TS7006: Parameter 'block' implicitly has an 'any' type.
+src/commands/copy/copy.tsx(326,23): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/effort/effort.tsx(117,27): error TS2345: Argument of type '"low" | "medium" | "high" | "xhigh"' is not assignable to parameter of type 'EffortValue'.
+  Type '"xhigh"' is not assignable to type 'EffortValue'. Did you mean '"high"'?
+src/commands/effort/effort.tsx(123,28): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/effort/effort.tsx(135,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/effort/effort.tsx(138,30): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/export/export.tsx(6,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/extra-usage/extra-usage.tsx(4,23): error TS2307: Cannot find module '../login/login.js' or its corresponding type declarations.
+src/commands/extra-usage/extra-usage.tsx(12,130): error TS7006: Parameter 'success' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(41,32): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(175,10): error TS7006: Parameter 'exitState' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(211,17): error TS7006: Parameter 'prev_0' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(214,17): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(220,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/commands/fast/fast.tsx(223,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/feedback/feedback.tsx(5,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
+src/commands/ide/ide.tsx(25,20): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(47,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(54,39): error TS7006: Parameter 'ide' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(78,12): error TS7006: Parameter 'ide_1' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(139,139): error TS7006: Parameter 'value_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(198,17): error TS7006: Parameter 'ide_3' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(198,24): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(201,17): error TS7006: Parameter 'ide_2' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(204,16): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(204,21): error TS7006: Parameter 'ide_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(227,27): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(245,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(246,46): error TS7006: Parameter 'ide' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(280,10): error TS7006: Parameter 'value_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(310,17): error TS7006: Parameter 'ide_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(316,29): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(326,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(359,10): error TS7006: Parameter 'value_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(389,17): error TS7006: Parameter 'ide' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(395,25): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(527,33): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(527,57): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(575,46): error TS7006: Parameter 'c_0' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(576,42): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/commands/ide/ide.tsx(577,48): error TS7006: Parameter 'c_1' implicitly has an 'any' type.
+src/commands/insights.ts(2402,26): error TS2304: Cannot find name 'MACRO'.
+src/commands/insights.ts(2402,50): error TS2304: Cannot find name 'MACRO'.
+src/commands/insights.ts(2469,5): error TS2322: Type 'Dirent<string>[]' is not assignable to type 'Dirent<NonSharedBuffer>[]'.
+  Type 'Dirent<string>' is not assignable to type 'Dirent<NonSharedBuffer>'.
+    Type 'string' is not assignable to type 'NonSharedBuffer'.
+src/commands/insights.ts(2476,38): error TS2345: Argument of type 'NonSharedBuffer' is not assignable to parameter of type 'string'.
+src/commands/install-github-app/ApiKeyStep.tsx(18,28): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/CheckExistingSecretStep.tsx(14,41): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/ChooseRepoStep.tsx(15,32): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/CreatingStep.tsx(4,31): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/install-github-app/CreatingStep.tsx(13,30): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/CreatingStep.tsx(46,97): error TS7006: Parameter 'stepText' implicitly has an 'any' type.
+src/commands/install-github-app/CreatingStep.tsx(46,107): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/install-github-app/ErrorStep.tsx(10,27): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/ErrorStep.tsx(82,16): error TS7006: Parameter 'instruction' implicitly has an 'any' type.
+src/commands/install-github-app/ErrorStep.tsx(82,29): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/install-github-app/ExistingWorkflowStep.tsx(9,38): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/ExistingWorkflowStep.tsx(34,10): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/commands/install-github-app/InstallAppStep.tsx(11,32): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/OAuthFlowStep.tsx(138,33): error TS2345: Argument of type 'number' is not assignable to parameter of type 'Timeout'.
+src/commands/install-github-app/SuccessStep.tsx(10,29): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/WarningsStep.tsx(7,30): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/install-github-app/WarningsStep.tsx(12,30): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install-github-app/WarningsStep.tsx(67,17): error TS7006: Parameter 'warning' implicitly has an 'any' type.
+src/commands/install-github-app/WarningsStep.tsx(67,26): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/install-github-app/WarningsStep.tsx(70,16): error TS7006: Parameter 'instruction' implicitly has an 'any' type.
+src/commands/install-github-app/WarningsStep.tsx(70,29): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(27,47): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/install-github-app/install-github-app.tsx(101,20): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(118,14): error TS7006: Parameter 'prev_0' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(134,14): error TS7006: Parameter 'prev_1' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(141,18): error TS7006: Parameter 'prev_4' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(153,16): error TS7006: Parameter 'prev_5' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(163,18): error TS7006: Parameter 'prev_2' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(174,18): error TS7006: Parameter 'prev_3' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(227,18): error TS7006: Parameter 'prev_6' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(236,20): error TS7006: Parameter 'prev_7' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(244,20): error TS7006: Parameter 'prev_8' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(254,18): error TS7006: Parameter 'prev_9' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(262,18): error TS7006: Parameter 'prev_10' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(274,16): error TS7006: Parameter 'prev_11' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(320,18): error TS7006: Parameter 'prev_12' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(331,18): error TS7006: Parameter 'prev_13' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(344,18): error TS7006: Parameter 'prev_14' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(349,18): error TS7006: Parameter 'prev_15' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(383,18): error TS7006: Parameter 'prev_16' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(392,16): error TS7006: Parameter 'prev_17' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(409,20): error TS7006: Parameter 'prev_18' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(431,14): error TS7006: Parameter 'prev_19' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(437,14): error TS7006: Parameter 'prev_20' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(443,14): error TS7006: Parameter 'prev_21' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(452,14): error TS7006: Parameter 'prev_22' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(461,14): error TS7006: Parameter 'prev_23' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(471,14): error TS7006: Parameter 'prev_24' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(478,14): error TS7006: Parameter 'prev_25' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(484,14): error TS7006: Parameter 'prev_26' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(491,14): error TS7006: Parameter 'prev_27' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(497,14): error TS7006: Parameter 'prev_28' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(511,14): error TS7006: Parameter 'prev_29' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(521,18): error TS7006: Parameter 'prev_30' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(561,95): error TS7006: Parameter 'selectedWorkflows' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(565,18): error TS7006: Parameter 'prev_31' implicitly has an 'any' type.
+src/commands/install-github-app/install-github-app.tsx(574,20): error TS7006: Parameter 'prev_32' implicitly has an 'any' type.
+src/commands/install-github-app/repoSlug.test.ts(4,39): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/commands/install-github-app/setupGitHubActions.ts(15,31): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/install.tsx(53,21): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/install.tsx(86,16): error TS7006: Parameter 'message' implicitly has an 'any' type.
+src/commands/install.tsx(86,25): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/commands/mcp/mcp.tsx(11,20): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/mcp/mcp.tsx(31,58): error TS7006: Parameter 'c_0' implicitly has an 'any' type.
+src/commands/mcp/mcp.tsx(31,146): error TS7006: Parameter 'c_1' implicitly has an 'any' type.
+src/commands/mcp/mcp.tsx(56,17): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/commands/mcp/mcp.tsx(59,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
+src/commands/mobile/mobile.tsx(24,23): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(43,7): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Record<Platform, { url: string; }>'.
+  No index signature with a parameter of type 'string' was found on type 'Record<Platform, { url: string; }>'.
+src/commands/mobile/mobile.tsx(46,7): error TS7034: Variable 't3' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/commands/mobile/mobile.tsx(66,12): error TS7005: Variable 't3' implicitly has an 'any[]' type.
+src/commands/mobile/mobile.tsx(95,33): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(261,17): error TS7006: Parameter 'line_0' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(261,25): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(264,17): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(267,17): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/commands/model/model.tsx(24,29): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/model/model.tsx(53,32): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/commands/model/model.tsx(53,39): error TS7006: Parameter 'effort' implicitly has an 'any' type.
+src/commands/model/model.tsx(121,17): error TS7006: Parameter 'prev_0' implicitly has an 'any' type.
+src/commands/model/model.tsx(127,17): error TS7006: Parameter 's_1' implicitly has an 'any' type.
+src/commands/model/model.tsx(130,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/commands/model/model.tsx(133,16): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/model/model.tsx(145,34): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/model/model.tsx(252,28): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/model/model.tsx(268,17): error TS7006: Parameter 's_1' implicitly has an 'any' type.
+src/commands/model/model.tsx(271,17): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/commands/model/model.tsx(274,17): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/permissions/permissions.tsx(6,62): error TS7006: Parameter 'commands' implicitly has an 'any' type.
+src/commands/plan/plan.tsx(14,22): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/plugin/AddMarketplace.tsx(15,32): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/plugin/BrowseMarketplace.tsx(26,51): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/plugin/DiscoverPlugins.tsx(31,51): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/plugin/DiscoverPlugins.tsx(651,33): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/plugin/DiscoverPlugins.tsx(706,28): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/plugin/ManageMarketplaces.tsx(24,32): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/plugin/ManageMarketplaces.tsx(766,37): error TS7006: Parameter 't0' implicitly has an 'any' type.
+src/commands/plugin/ManagePlugins.tsx(13,89): error TS2307: Cannot find module '../../components/mcp/types.js' or its corresponding type declarations.
+src/commands/plugin/ManagePlugins.tsx(50,51): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+src/commands/plugin/ManagePlugins.tsx(52,43): error TS2307: Cannot find module './unifiedTypes.js' or its corresponding type declarations.
+src/commands/plugin/ManagePlugins.tsx(407,34): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/commands/plugin/ManagePlugins.tsx(408,32): error TS7006: Parameter 's_0' implicitly has an 'any' type.
+src/command

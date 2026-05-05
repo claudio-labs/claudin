@@ -1,12 +1,51 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-03 | ROI honesto, sem itens marginais
+> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (11 itens)
+## Ativos (12 itens)
+
+### 6.1 — Command-aware bash output filter ⭐ NOVO (P0, top priority)
+- **Esforço:** L (8 PRs sequenciados, ~2.200 LoC total)
+- **Prioridade:** **P0** — maior ROI absoluto medido em qualquer item ativo do roadmap.
+- **Status:** Discovery + spec + phase docs completos. Pronto pra Phase 0 começar.
+
+#### Documentação
+- **Discovery:** [`docs/discovery/bash-output-filter/`](docs/discovery/bash-output-filter/) — 8 rodadas, 67/67 cases passing, 35+ comandos analisados, [`optimization-matrix.md`](docs/discovery/bash-output-filter/optimization-matrix.md), [`rtk-comparison.md`](docs/discovery/bash-output-filter/rtk-comparison.md)
+- **Spec técnica:** [`docs/tech/bash-output-filter/architecture.md`](docs/tech/bash-output-filter/architecture.md) — rev 2 pós-review aplicado (22 seções, ~900 linhas, 4 bloqueadores + 5 misalignments corrigidos)
+- **Phase docs (8):** [`docs/tech/bash-output-filter/phases/`](docs/tech/bash-output-filter/phases/) — um doc por PR, com pré-requisitos, file changes line-by-line, tests, acceptance, PR template
+
+#### Phases (8 PRs, sequenciadas)
+
+Cada phase doc é self-contained — agent/dev pode pickup uma fase lendo só ela + a architecture.md.
+
+- [ ] **6.1.0** — [Plumbing](docs/tech/bash-output-filter/phases/phase-0-plumbing.md) (~10 LoC) — extend `isAlreadyCompacted` em `toolResultSummarizer.ts:242` + register 3 config keys em `GLOBAL_CONFIG_KEYS` + export collapse helpers
+- [ ] **6.1.1** — [Skeleton + harness](docs/tech/bash-output-filter/phases/phase-1-skeleton.md) (~700 LoC) — cria `src/utils/bashOutputFilter/`, port do `validation/pipeline.ts`, harness com 67 cases, redos scan (módulo é dead code)
+- [ ] **6.1.2** — [Built-in batch 1](docs/tech/bash-output-filter/phases/phase-2-builtin-batch-1.md) (~400 LoC) — 10 highest-ROI filters em 7 family files (bundle/pytest/ps/rubocop/go-test/ls/rspec/top/cargo/grep-rg/ruff)
+- [ ] **6.1.3** — [BashTool integration](docs/tech/bash-output-filter/phases/phase-3-bashtool-integration.md) (~30 LoC) — wire pipeline-only no `BashTool.call()` (rewrite vem na 6.1.4)
+- [ ] **6.1.4** — [Rewrite layer](docs/tech/bash-output-filter/phases/phase-4-rewrite-layer.md) (~150 LoC) — `planFilter` com `rewriteCommand` + 5 rewrite filters (git-log força `--oneline`, git-status força `--porcelain`, gh pr/issue/run list força `--json`)
+- [ ] **6.1.5** — [Built-in batch 2](docs/tech/bash-output-filter/phases/phase-5-builtin-batch-2.md) (~250 LoC) — git family completa (status/log/blame/pull/add/commit/push), docker (ps/images/logs), network (curl/wget/dig), journalctl
+- [ ] **6.1.6** — [User filters](docs/tech/bash-output-filter/phases/phase-6-user-filters.md) (~290 LoC) — `~/.claudio/filters.json` + zod schema + ReDoS guards (length cap + denylist + build-time scan)
+- [ ] **6.1.7** — [Default-on flip](docs/tech/bash-output-filter/phases/phase-7-default-on.md) (~3 LoC + 1 semana soak) — flip `bashOutputFilterEnabled: true` por default + observação telemetria
+
+#### Ganho esperado (medido empiricamente)
+
+Top filtros por ROI medido:
+- `bundle install` **96%**, `pytest` **95%**, `ps aux` **93%**, `git log` (rewrite) **92%**, `ls -la` **81%**
+- `rubocop` **83%**, `go test -v` **82%**, `rspec` **73%**, `wget` **72%**, `cargo check` **64%**
+
+Cumulativo numa sessão típica 30min: **~50k tokens economizados**, **~72% redução custo input**.
+
+#### Arquitetura (3 toques no codebase, ~20 LoC totais)
+
+1. `BashTool.tsx` (`call`): 2 inserções (`planFilter` antes de `runShellCommand`, `applyFilterToStdout` depois)
+2. `toolResultSummarizer.ts:242` (`isAlreadyCompacted`): +2 linhas pra reconhecer markers do filter
+3. `config.ts:705` (`GLOBAL_CONFIG_KEYS`): registrar 3 keys flat
+
+Markers vão direto pra `result.stdout` — sobrevivem error path via `ShellError`. `mapToolResult`, `processToolResultBlock`, `Out` schema intactos.
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -230,4 +269,6 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**7 ativos** (1× P0: 4.1; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **18 concluídos**. 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**8 ativos** (2× P0: **6.1 (top priority)**, 4.1; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **18 concluídos**. 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+
+**Próxima entrega (P0 priority):** **6.1 — Command-aware bash output filter**. Discovery completo + spec rev 2 aprovada + ~67/67 cases validados empiricamente. Pronto pra Phase 0 (~10 LoC plumbing); 8 PRs no total. Ganho medido: top 10 comandos com 50-96% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. Detalhes em [`docs/tech/bash-output-filter/architecture.md`](docs/tech/bash-output-filter/architecture.md) e [`docs/discovery/bash-output-filter/`](docs/discovery/bash-output-filter/).

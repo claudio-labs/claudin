@@ -1,0 +1,2 @@
+/home/viudes/projects/claudio                                  a200d7d [fix/user-agent-openai-shim]
+/home/viudes/projects/claudio/.claude/worktrees/agent-ab5c48be aad73b1 [worktree-agent-ab5c48be]

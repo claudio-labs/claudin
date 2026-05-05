@@ -1,0 +1,30 @@
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudio
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   2) 
+23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Claudio is a coding-agent CLI for cloud and local model providers.
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   4) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   5) Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, Atomic Chat, and other supported backends while keeping one terminal-first workflow: prompts, tools, agents, MCP, slash commands, and streaming output.
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   6) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   7) [![Security Policy](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   8) [![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   9) 
+23551ecd (Viudes 2026-05-02 11:28:25 -0300  10) [Quick Start](#quick-start) | [Setup Guides](#setup-guides) | [Providers](#supported-providers) | [Source Build](#source-build-and-local-development) | [VS Code Extension](#vs-code-extension)
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  11) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  12) ## Why Claudio
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  13) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  14) - Use one CLI across cloud APIs and local model backends
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  15) - Configure providers and models entirely from inside the app via `/provider`
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  16) - Run with OpenAI-compatible services, Anthropic, Gemini, Mistral, GitHub Copilot, Codex OAuth, Ollama, Bedrock, Vertex, Foundry, and other supported providers
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  17) - Keep coding-agent workflows in one place: bash, file tools, grep, glob, agents, tasks, MCP, and web tools
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  18) - Use the bundled VS Code extension for launch integration and theme support
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  19) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  20) ## Quick Start
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  21) 
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  22) ### Install
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  23) 
+abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  24) ```bash
+88601ce6 (Viudes 2026-05-03 23:19:19 -0300  25) npm install -g @claudiolabs/claudio@latest
+abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  26) ```
+abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  27) 
+41022703 (Viudes 2026-05-02 16:07:23 -0300  28) Works on Linux, macOS, and Windows (Node 20+). Or build from source — see [Source Build And Local Development](#source-build-and-local-development).
+41022703 (Viudes 2026-05-02 16:07:23 -0300  29) 
+41022703 (Viudes 2026-05-02 16:07:23 -0300  30) **Platform-specific guides:**

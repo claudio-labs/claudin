@@ -1,0 +1,25 @@
+commit a200d7d5b6fadf11043aa46455713b2b03428e0c
+Author: Viudes <andersonvieiraviudes@gmail.com>
+Date:   Tue May 5 15:11:45 2026 -0300
+
+    fix(providers): retry transient 404s from OpenAI-compat providers
+    
+    OpenAI-compat providers sometimes return transient 404s (model loading,
+    routing blip). Previously these were treated as permanent failures,
+    causing unnecessary fallback to non-streaming or outright errors.
+    
+    - shouldRetry() now retries 404s with [openai_category=...] marker up
+      to 2 attempts, excluding model_not_found (model genuinely missing)
+    - claude.ts excludes model_not_found from non-streaming fallback too
+    - Uses extractOpenAICategoryMarker() instead of duplicated regex
+    - Add MACRO global to 4 test files broken by getClaudioUserAgent()
+    - Add 5 shouldRetry tests for 404 retry logic
+
+ src/services/api/claude.ts                         | 15 ++++++--
+ src/services/api/openaiShim.compression.test.ts    |  5 +++
+ src/services/api/openaiShim.diagnostics.test.ts    |  5 +++
+ src/services/api/stableStub.benchmark.test.ts      |  5 +++
+ .../api/staticDedup.shim.integration.test.ts       |  5 +++
+ src/services/api/withRetry.test.ts                 | 43 ++++++++++++++++++++++
+ src/services/api/withRetry.ts                      | 19 +++++++++-
+ 7 files changed, 91 insertions(+), 6 deletions(-)

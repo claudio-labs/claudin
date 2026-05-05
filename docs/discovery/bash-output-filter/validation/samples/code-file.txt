@@ -1,0 +1,50 @@
+import { APIUserAbortError } from '@anthropic-ai/sdk'
+
+export class ClaudeError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = this.constructor.name
+  }
+}
+
+export class MalformedCommandError extends Error {}
+
+export class AbortError extends Error {
+  constructor(message?: string) {
+    super(message)
+    this.name = 'AbortError'
+  }
+}
+
+/**
+ * True iff `e` is any of the abort-shaped errors the codebase encounters:
+ * our AbortError class, a DOMException from AbortController.abort()
+ * (.name === 'AbortError'), or the SDK's APIUserAbortError. The SDK class
+ * is checked via instanceof because minified builds mangle class names —
+ * constructor.name becomes something like 'nJT' and the SDK never sets
+ * this.name, so string matching silently fails in production.
+ */
+export function isAbortError(e: unknown): boolean {
+  return (
+    e instanceof AbortError ||
+    e instanceof APIUserAbortError ||
+    (e instanceof Error && e.name === 'AbortError')
+  )
+}
+
+/**
+ * Custom error class for configuration file parsing errors
+ * Includes the file path and the default configuration that should be used
+ */
+export class ConfigParseError extends Error {
+  filePath: string
+  defaultConfig: unknown
+
+  constructor(message: string, filePath: string, defaultConfig: unknown) {
+    super(message)
+    this.name = 'ConfigParseError'
+    this.filePath = filePath
+    this.defaultConfig = defaultConfig
+  }
+}
+
