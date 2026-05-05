@@ -157,6 +157,12 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
   // returns to main thread. Otherwise just handleCancel. Must NOT claim
   // ctrl+c when main is idle at the prompt — that blocks the copy-selection
   // handler and double-press-to-exit from ever seeing the keypress.
+  //
+  // Returns false when nothing was cancelled, allowing the keypress to
+  // propagate to the double-press-to-exit handler. This is critical after
+  // the first Ctrl+C aborts a task: React hasn't re-rendered yet, so
+  // isCtrlCActive may still be true with stale canCancelRunningTask.
+  // Reading abortSignal.aborted fresh (not from the closure) catches this.
   const isCtrlCActive =
     isContextActive &&
     (canCancelRunningTask || hasQueuedCommands || isViewingTeammate)
@@ -197,20 +203,34 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
   // Ctrl+C (app:interrupt). Scoped to teammate-view: killing agents from the
   // main prompt stays a deliberate gesture (chat:killAgents), not a
   // side-effect of cancelling a turn.
-  const handleInterrupt = useCallback(() => {
+  //
+  // Returns false when nothing was cancelled, allowing the keypress to
+  // propagate to the double-press-to-exit handler (useExitOnCtrlCD). Without
+  // this, a stale isCtrlCActive closure swallows the second Ctrl+C in a
+  // double-press when React hasn't re-rendered after the first Ctrl+C
+  // aborted the task.
+  const handleInterrupt = useCallback((): void | false => {
     if (isViewingTeammate) {
       killAllAgentsAndNotify()
       exitTeammateView(setAppState)
+      return // consumed — teammate view handled it
     }
-    if (canCancelRunningTask || hasQueuedCommands) {
+    // Read abortSignal.aborted and queue state fresh — not from stale closures.
+    // After the first Ctrl+C aborts a task / pops the queue, React hasn't
+    // re-rendered yet, so canCancelRunningTask and hasQueuedCommands may still
+    // be true. Reading live state avoids swallowing the second Ctrl+C.
+    const hasRunningTask = abortSignal !== undefined && !abortSignal.aborted
+    const hasQueuedLive = hasCommandsInQueue()
+    if (hasRunningTask || hasQueuedLive) {
       handleCancel()
+      return // consumed — cancelled a running task or popped a queued command
     }
+    return false // nothing to cancel — propagate to double-press-to-exit
   }, [
     isViewingTeammate,
     killAllAgentsAndNotify,
     setAppState,
-    canCancelRunningTask,
-    hasQueuedCommands,
+    abortSignal,
     handleCancel,
   ])
 
