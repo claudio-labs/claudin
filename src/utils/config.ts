@@ -646,6 +646,11 @@ export type GlobalConfig = {
 
   // Knowledge Graph configuration
   knowledgeGraphEnabled: boolean
+
+  // Bash output filter (roadmap 6.1) — Phase 3+ reads these; undefined → false
+  bashOutputFilterEnabled?: boolean
+  bashOutputFilterRewriteEnabled?: boolean
+  bashOutputFilterUserEnabled?: boolean
 }
 
 /**
@@ -746,6 +751,9 @@ export const GLOBAL_CONFIG_KEYS = [
   'remoteControlAtStartup',
   'remoteDialogSeen',
   'knowledgeGraphEnabled',
+  'bashOutputFilterEnabled',
+  'bashOutputFilterRewriteEnabled',
+  'bashOutputFilterUserEnabled',
 ] as const
 
 export type GlobalConfigKey = (typeof GLOBAL_CONFIG_KEYS)[number]

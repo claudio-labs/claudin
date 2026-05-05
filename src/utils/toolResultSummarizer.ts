@@ -241,9 +241,13 @@ function hasImageContentBlock(_text: string): boolean {
 
 function isAlreadyCompacted(text: string): boolean {
   // <persisted-output> or <tool-result-summary (either marker at start)
+  // <bash-output-rewritten> or <bash-output-filtered> — markers from the
+  // bash-output-filter pipeline (Phase 0+ of roadmap 6.1)
   return (
     text.startsWith('<persisted-output>') ||
-    text.startsWith(TOOL_RESULT_SUMMARY_TAG)
+    text.startsWith(TOOL_RESULT_SUMMARY_TAG) ||
+    text.startsWith('<bash-output-rewritten') ||
+    text.startsWith('<bash-output-filtered')
   )
 }
 
@@ -472,7 +476,7 @@ function summarizeBashOutput(text: string): StrategyResult | null {
   }
 }
 
-function collapseIdenticalRuns(lines: string[]): string[] {
+export function collapseIdenticalRuns(lines: string[]): string[] {
   if (lines.length === 0) return lines
   const out: string[] = []
   let runLine = lines[0] ?? ''
@@ -497,7 +501,7 @@ function collapseIdenticalRuns(lines: string[]): string[] {
 // catch progress bars / percentage dumps / tick counters.
 const DIGIT_TEMPLATE_MIN_RUN = 5
 
-function collapseDigitTemplates(lines: string[]): string[] {
+export function collapseDigitTemplates(lines: string[]): string[] {
   if (lines.length === 0) return lines
   const out: string[] = []
   let template: string | null = null

@@ -39,6 +39,8 @@ const {
   isSummarizedContent,
   TOOL_RESULT_SUMMARY_TAG,
   TOOL_RESULT_SUMMARY_CLOSING_TAG,
+  collapseIdenticalRuns,
+  collapseDigitTemplates,
 } = await import('./toolResultSummarizer.js')
 const { saveGlobalConfig } = await import('./config.js')
 const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('../tools/AgentTool/constants.js')
@@ -1321,4 +1323,78 @@ test('MCPTool savings: 15KB string → reduced via dispatch', () => {
   expect(evt?.metadata.originalSizeBytes).toBe(text.length)
   expect(evt?.metadata.summarizedSizeBytes).toBeLessThan(text.length)
   expect(evt?.metadata.reductionPct).toBeGreaterThan(0)
+})
+
+// ============================================================
+// bash-output-filter markers (Phase 0 plumbing — roadmap 6.1.0)
+// ============================================================
+
+test('bash-output: <bash-output-rewritten> marker is not re-summarized', () => {
+  const rewritten = `<bash-output-rewritten filter="git-log" original="500" actual="40">\n${bigText(20_000)}`
+  const block = makeBlock(rewritten)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block)
+})
+
+test('bash-output: <bash-output-filtered> marker is not re-summarized', () => {
+  const filtered = `<bash-output-filtered name="ps-aux" reduction="93%">\n${bigText(20_000)}`
+  const block = makeBlock(filtered)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block)
+})
+
+test('bash-output: marker with error-like content inside is not re-summarized', () => {
+  const filtered = `<bash-output-filtered name="pytest" reduction="95%">\nerror: test failed\nFAILED test_foo.py::test_bar\n${bigText(20_000)}`
+  const block = makeBlock(filtered)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block)
+})
+
+test('bash-output: markers with complex attributes are recognized', () => {
+  const rewritten = `<bash-output-rewritten filter="git-log --oneline -20" original="git log -10" actual="git log --oneline -10">\n${bigText(20_000)}`
+  const block = makeBlock(rewritten)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block)
+})
+
+test('bash-output: guard works for all tool types (Grep, WebFetch, Read, Glob)', () => {
+  const marker = `<bash-output-filtered name="ps-aux" reduction="93%">\n${bigText(20_000)}`
+  for (const toolName of ['Grep', 'WebFetch', 'Read', 'Glob']) {
+    const block = makeBlock(marker)
+    const out = maybeSummarizeToolResult(block, toolName)
+    expect(out).toBe(block)
+  }
+})
+
+test('bash-output: idempotent (summarize∘filter-output = filter-output)', () => {
+  const filtered = `<bash-output-filtered name="ps-aux" reduction="93%">\n${bigText(20_000)}`
+  const first = maybeSummarizeToolResult(makeBlock(filtered), 'Bash')
+  const second = maybeSummarizeToolResult(first, 'Bash')
+  expect(second).toBe(first)
+})
+
+test('bash-output: isSummarizedContent returns false for bash-output markers', () => {
+  expect(isSummarizedContent('<bash-output-rewritten filter="x" original="git log" actual="git log --oneline">')).toBe(false)
+  expect(isSummarizedContent('<bash-output-filtered name="y" reduction="72%">')).toBe(false)
+})
+
+test('bash-output: small output with marker is also passthrough', () => {
+  const small = `<bash-output-rewritten filter="git-status" original="git status" actual="git status --porcelain">\nM src/foo.ts`
+  const block = makeBlock(small)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block)
+})
+
+test('bash-output: collapseIdenticalRuns is importable and works', () => {
+  expect(collapseIdenticalRuns(['a', 'a', 'a'])).toEqual(['a (×3)'])
+  expect(collapseIdenticalRuns(['a', 'b', 'b', 'c'])).toEqual(['a', 'b (×2)', 'c'])
+  expect(collapseIdenticalRuns([])).toEqual([])
+})
+
+test('bash-output: collapseDigitTemplates is importable and works', () => {
+  const lines = Array.from({ length: 5 }, (_, i) => `line ${i + 1}`)
+  expect(collapseDigitTemplates(lines)).toEqual(['line 1 (5 updates)'])
+  expect(collapseDigitTemplates([])).toEqual([])
+  // Below DIGIT_TEMPLATE_MIN_RUN (5) — preserve as-is
+  expect(collapseDigitTemplates(['line 1', 'line 2'])).toEqual(['line 1', 'line 2'])
 })
