@@ -1,5 +1,10 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
+
 // openaiShim and providerConfig consume tryGetActiveProvider() for transport
 // routing. This file's tests still set CLAUDE_CODE_USE_*/OPENAI_* envs to
 // describe the desired provider; we synthesize a matching profile from those

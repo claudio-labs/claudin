@@ -27,6 +27,7 @@ import {
   refreshCodexAccessTokenIfNeeded,
 } from '../../utils/codexCredentials.js'
 import { logForDebugging } from '../../utils/debug.js'
+import { getClaudioUserAgent } from '../../utils/userAgent.js'
 import { isBareMode, isEnvTruthy } from '../../utils/envUtils.js'
 import { resolveGeminiCredential } from '../../utils/geminiAuth.js'
 import { hydrateGeminiAccessTokenFromSecureStorage } from '../../utils/geminiCredentials.js'
@@ -1686,6 +1687,8 @@ class OpenAIShimMessages {
       'Content-Type': 'application/json',
       ...this.defaultHeaders,
       ...filterAnthropicHeaders(options?.headers),
+      // Override upstream "claude-cli" User-Agent with Claudio branding
+      'User-Agent': getClaudioUserAgent(),
     }
 
     const isGemini = isGeminiMode()

@@ -3,6 +3,11 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
+
 // providerConfig and codexShim consume tryGetActiveProvider() for transport
 // routing and baseUrl/model resolution. The tests below still describe the
 // desired provider via OPENAI_BASE_URL/OPENAI_MODEL envs; synthesize a
