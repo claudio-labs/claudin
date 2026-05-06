@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   _getClippedIdsMapSizeForTesting,
   _resetAllClippedIdsForTesting,
@@ -6,6 +6,7 @@ import {
   applyStableStubs,
   buildClipStub,
   getClippedIds,
+  pruneOldToolResults,
   resetClippedIds,
 } from './stableStubState.js'
 import {
@@ -439,6 +440,159 @@ test('5.7 substitution: original block content is no longer reachable from the n
     expect(typeof c).toBe('string')
     expect(c as string).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
   }
+})
+
+// ===========================================================================
+// pruneOldToolResults
+// ===========================================================================
+
+describe('pruneOldToolResults', () => {
+  test('no-op on empty messages', () => {
+    const result = pruneOldToolResults([])
+    expect(result).toEqual([])
+  })
+
+  test('no-op when fewer turns than keepTurns', () => {
+    // 1 user message → fewer than default keepTurns=1... actually keepTurns=1
+    // means we protect the last 1 user turn, so with exactly 1 user message
+    // there is nothing before the cutoff → no pruning.
+    const messages: Msg[] = [
+      assistantToolUse('toolu_a', 'Bash'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_a', content: 'output' }] },
+    ]
+    const result = pruneOldToolResults(messages, 1)
+    expect(result).toBe(messages)
+  })
+
+  test('stubs tool_results older than keepTurns (default 1)', () => {
+    // Two turns: turn-1 and turn-2. With keepTurns=1, turn-1's tool_result
+    // should be stubbed, turn-2's (the current) should be intact.
+    const bigContent = 'A'.repeat(10_000)
+    const turn2Content = 'current turn output'
+    const messages: Msg[] = [
+      // turn 1
+      assistantToolUse('toolu_old', 'Bash'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_old', content: bigContent }] },
+      // turn 2 (current)
+      assistantToolUse('toolu_cur', 'Grep'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: turn2Content }] },
+    ]
+
+    const result = pruneOldToolResults(messages, 1)
+    expect(result).not.toBe(messages)
+
+    const oldBlock = (result[1].content as Block[])[0] as { content: string }
+    expect(oldBlock.content).toMatch(/^\[clipped: ~\d+ tokens from Bash\]$/)
+    expect(oldBlock.content).not.toContain(bigContent)
+
+    const curBlock = (result[3].content as Block[])[0] as { content: string }
+    expect(curBlock.content).toBe(turn2Content)
+  })
+
+  test('identity-preserving when all turns within window', () => {
+    // keepTurns=2, only 1 user message → nothing to prune → same ref returned
+    const messages: Msg[] = [
+      assistantToolUse('toolu_a', 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_a', content: 'data' }] },
+    ]
+    const result = pruneOldToolResults(messages, 2)
+    expect(result).toBe(messages)
+  })
+
+  test('identity-preserving when all old blocks are already stubs', () => {
+    const stub = buildClipStub('Bash', 500)
+    const messages: Msg[] = [
+      assistantToolUse('toolu_old', 'Bash'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_old', content: stub }] },
+      assistantToolUse('toolu_cur', 'Grep'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh output' }] },
+    ]
+
+    const result = pruneOldToolResults(messages, 1)
+    // The old block is already a stub, so nothing changes → same ref
+    expect(result).toBe(messages)
+  })
+
+  test('skips image-bearing tool_results (preserves vision context)', () => {
+    const imageContent = [
+      { type: 'text', text: 'description' },
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'aGVsbG8=' } },
+    ]
+    const messages: Msg[] = [
+      assistantToolUse('toolu_img', 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_img', content: imageContent }] },
+      assistantToolUse('toolu_cur', 'Bash'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: 'text output' }] },
+    ]
+
+    const result = pruneOldToolResults(messages, 1)
+    const imgBlock = (result[1].content as Block[])[0] as { content: unknown }
+    // Vision content untouched
+    expect(imgBlock.content).toEqual(imageContent)
+  })
+
+  test('skips null/empty content (no stub added)', () => {
+    const messages: Msg[] = [
+      assistantToolUse('toolu_null', 'Bash'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_null', content: null }] },
+      assistantToolUse('toolu_cur', 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh' }] },
+    ]
+    const result = pruneOldToolResults(messages, 1)
+    // null block is skipped → if that was the only change candidate, result ref equals input
+    const oldBlock = (result[1].content as Block[])[0] as { content: unknown }
+    expect(oldBlock.content).toBeNull()
+  })
+
+  test('keepTurns=6: protects last 6 user turns, prunes everything older', () => {
+    // Build 10 turns (each with a big tool_result)
+    const msgs: Msg[] = []
+    for (let i = 0; i < 10; i++) {
+      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
+      msgs.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: `toolu_${i}`, content: 'X'.repeat(5_000) }] })
+    }
+
+    const result = pruneOldToolResults(msgs, 6)
+    expect(result).not.toBe(msgs)
+
+    // Turns 0-3 (the first 4 user messages) should be stubbed
+    for (let i = 0; i < 4; i++) {
+      const block = (result[i * 2 + 1].content as Block[])[0] as { content: string }
+      expect(block.content).toMatch(/^\[clipped: ~\d+ tokens from Bash\]$/)
+    }
+    // Turns 4-9 (last 6) should be intact
+    for (let i = 4; i < 10; i++) {
+      const block = (result[i * 2 + 1].content as Block[])[0] as { content: string }
+      expect(block.content).toBe('X'.repeat(5_000))
+    }
+  })
+
+  test('RSS regression: 50 turns of 50 KB → tiny residual after pruning', () => {
+    // This pins the memory-reduction contract from the ROADMAP 5.7 bench.
+    const msgs: Msg[] = []
+    for (let i = 0; i < 50; i++) {
+      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
+      msgs.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: `toolu_${i}`, content: 'B'.repeat(50_000) }] })
+    }
+
+    const result = pruneOldToolResults(msgs, 1)
+
+    // All but the last tool_result must be stubbed stubs (short strings)
+    let totalSurvivedBytes = 0
+    for (let i = 0; i < result.length; i++) {
+      const msg = result[i]!
+      const content = msg.content
+      if (!Array.isArray(content)) continue
+      for (const block of content as Block[]) {
+        if (block.type === 'tool_result') {
+          totalSurvivedBytes += String((block as { content: unknown }).content ?? '').length
+        }
+      }
+    }
+    // The only surviving full payload is the last turn's 50 KB.
+    // Everything else is a ~40-char stub. Budget: 50 KB + 49 * 50 bytes ≈ 53 KB.
+    expect(totalSurvivedBytes).toBeLessThan(55_000)
+  })
 })
 
 test('Map size stays bounded across many switchSession calls', () => {
