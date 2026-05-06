@@ -604,10 +604,6 @@ export function getAdditionalModelOptionsCacheScope(): string | null {
     return null
   }
 
-  if (!isLocalProviderUrl(request.baseUrl)) {
-    return null
-  }
-
   return `openai:${request.baseUrl.toLowerCase()}`
 }
 

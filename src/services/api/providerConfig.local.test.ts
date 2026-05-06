@@ -94,14 +94,16 @@ test('keeps codex alias models on chat completions for local openai-compatible p
   )
 })
 
-test('skips local model cache scope for remote openai-compatible providers', () => {
+test('creates cache scope for remote openai-compatible providers', () => {
   resolvedOverride = {
     transport: 'openai_compat',
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o',
   }
 
-  expect(getAdditionalModelOptionsCacheScope()).toBeNull()
+  expect(getAdditionalModelOptionsCacheScope()).toBe(
+    'openai:https://api.openai.com/v1',
+  )
 })
 
 test('derives local retry base URLs with /v1 and loopback fallback candidates', () => {
