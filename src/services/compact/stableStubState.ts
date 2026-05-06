@@ -145,7 +145,7 @@ type AnyContentBlock = {
   [k: string]: unknown
 }
 
-type AnyMessage = {
+export type AnyMessage = {
   role?: string
   message?: { role?: string; content?: unknown }
   content?: unknown
@@ -202,6 +202,29 @@ function arrayContainsImage(content: unknown): boolean {
 }
 
 /**
+ * Attempt to rewrite a single tool_result block as a clip stub.
+ * Returns the original block unchanged when: already a stub, empty, or
+ * image-bearing. Callers are responsible for any additional pre-filters
+ * (e.g. clippedIds membership check in applyStableStubs).
+ */
+function stubOneBlock(
+  block: AnyContentBlock,
+  toolNames: Map<string, string>,
+): AnyContentBlock {
+  if (block?.type !== 'tool_result') return block
+  const existing = (block as ToolResultBlockParam).content
+  if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return block
+  if (existing == null || existing === '') return block
+  if (Array.isArray(existing) && existing.length === 0) return block
+  if (arrayContainsImage(existing)) return block
+  const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+  return {
+    ...block,
+    content: buildClipStub(toolNames.get(toolUseId) ?? 'tool', estimateToolResultTokens(existing)),
+  }
+}
+
+/**
  * Walk messages and rewrite every tool_result whose tool_use_id is in the
  * current (session, agent)'s clipped-ids set. Returns the input array
  * reference (identity-preserving fast path) in two no-op cases:
@@ -238,35 +261,10 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
       ) {
         return block
       }
-
-      const existing = (block as ToolResultBlockParam).content
-      // Idempotent: once a block carries the clipped-stub format, leave it
-      // alone so subsequent calls produce byte-identical output even though
-      // the stub string itself estimates to fewer tokens than the original.
-      if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) {
-        return block
-      }
-
-      // Don't stub empty/null content — replacing zero bytes with ~30 bytes
-      // of stub label is a compression that ADDS bytes. Skip and leave the
-      // id in the set; if a future turn replaces this with real content,
-      // it'll be stubbed normally.
-      if (existing == null || existing === '') return block
-      if (Array.isArray(existing) && existing.length === 0) return block
-
-      // Skip image-bearing array content — preserves vision context. The id
-      // stays in the clipped set so a future text-only replacement will stub
-      // normally.
-      if (arrayContainsImage(existing)) {
-        return block
-      }
-
-      const stub = buildClipStub(
-        toolNames.get(block.tool_use_id) ?? 'tool',
-        estimateToolResultTokens(existing),
-      )
+      const stubbed = stubOneBlock(block, toolNames)
+      if (stubbed === block) return block
       touched = true
-      return { ...block, content: stub }
+      return stubbed
     })
 
     if (!touched) return msg
@@ -288,21 +286,13 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
 /**
  * Prune tool_result content that is older than `keepTurns` turns.
  *
- * This is a time-based complement to the token-threshold-based applyStableStubs:
- * that mechanism only fires when the conversation exceeds 50% of the context
- * window, which for 200k-token models means ~400 turns of silence. In normal
- * sessions the RSS therefore grows unboundedly.
+ * Complements applyStableStubs: that mechanism only fires at ≥50% context
+ * window (~400 turns for 200k-token models), so RSS grows unboundedly before
+ * it triggers. This runs every turn, keeping only the last `keepTurns` turns'
+ * tool results in full.
  *
- * This function fires after every turn and stubs any tool_result block that
- * falls outside the rolling window of the last `keepTurns` turns. A "turn
- * boundary" is defined by a `role: 'user'` message (each user prompt starts
- * a new turn). Tool_result blocks within the protected window are left intact.
- *
- * Identity-preserving: returns the input array reference unchanged when no
- * blocks are pruned (empty sessions, all results within the window, or all
- * matching blocks already carry the stub format).
- *
- * Image-bearing tool_results are skipped (same policy as applyStableStubs).
+ * "Turn boundary" = a `role: 'user'` message. Image-bearing blocks are skipped
+ * to preserve vision context. Identity-preserving when nothing changes.
  */
 export function pruneOldToolResults<T extends AnyMessage>(
   messages: T[],
@@ -310,11 +300,10 @@ export function pruneOldToolResults<T extends AnyMessage>(
 ): T[] {
   if (messages.length === 0) return messages
 
-  // Walk backwards counting user-role turn boundaries to find the cutoff index.
-  // We keep everything at or after the boundary of the (keepTurns)th-from-last
-  // user message.
+  // Walk backwards to find the index of the (keepTurns)th-from-last user message.
+  // "turn boundary" = role: 'user'. -1 means not enough turns yet.
+  let cutoffIdx = -1
   let turnsFound = 0
-  let cutoffIdx = 0
   for (let i = messages.length - 1; i >= 0; i--) {
     const inner = getInner(messages[i]!)
     const role = inner.role ?? (messages[i] as AnyMessage).role
@@ -327,14 +316,13 @@ export function pruneOldToolResults<T extends AnyMessage>(
     }
   }
 
-  // Fewer turns than keepTurns → everything is within the window, nothing to prune.
-  if (turnsFound < keepTurns) return messages
+  if (cutoffIdx === -1) return messages  // fewer turns than keepTurns
+  if (cutoffIdx === 0) return messages   // nothing before the cutoff to prune
 
   const toolNames = indexToolUses(messages)
   let anyTouched = false
 
   const out = messages.map((msg, idx) => {
-    // Messages within the protected window are never pruned.
     if (idx >= cutoffIdx) return msg
 
     const inner = getInner(msg)
@@ -343,29 +331,10 @@ export function pruneOldToolResults<T extends AnyMessage>(
 
     let touched = false
     const newContent = (content as AnyContentBlock[]).map(block => {
-      if (block?.type !== 'tool_result') return block
-
-      const existing = (block as ToolResultBlockParam).content
-
-      // Already a stub — idempotent, leave it.
-      if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) {
-        return block
-      }
-
-      // Nothing to stub.
-      if (existing == null || existing === '') return block
-      if (Array.isArray(existing) && existing.length === 0) return block
-
-      // Skip image-bearing blocks — preserves vision context.
-      if (arrayContainsImage(existing)) return block
-
-      const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
-      const stub = buildClipStub(
-        toolNames.get(toolUseId) ?? 'tool',
-        estimateToolResultTokens(existing),
-      )
+      const stubbed = stubOneBlock(block, toolNames)
+      if (stubbed === block) return block
       touched = true
-      return { ...block, content: stub }
+      return stubbed
     })
 
     if (!touched) return msg

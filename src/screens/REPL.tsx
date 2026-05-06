@@ -173,7 +173,7 @@ import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
 import { resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs, pruneOldToolResults } from '../services/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, type AnyMessage } from '../services/compact/stableStubState.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
@@ -2801,22 +2801,13 @@ export function REPL({
     })) {
       onQueryEvent(event);
     }
-    // Free RSS held by large tool_result blocks. Two complementary passes:
-    //
-    // 1. pruneOldToolResults — stubs every tool_result except the current turn.
-    //    Once a turn is complete its results are already past (consumed by the
-    //    model); keeping the full payloads in React state only wastes RSS.
-    //
-    // 2. applyStableStubs — token-threshold-based (fires at ≥50% context window):
-    //    stubs blocks that microcompact marked for clipping, maintaining stable
-    //    prompt-cache prefixes.
-    //
-    // Both return the input reference when nothing changed (identity-preserving
-    // fast path). Applied before onTurnComplete so callers receive the
-    // already-pruned array. Roadmap 5.7.
-    type StubInput = Parameters<typeof applyStableStubs>[0]
-    const before = messagesRef.current as StubInput
-    const after = applyStableStubs(pruneOldToolResults(before) as StubInput)
+    // Free RSS from large tool_result payloads after each turn.
+    // pruneOldToolResults: stubs results outside the rolling window (every turn).
+    // applyStableStubs: stubs microcompact-marked blocks (fires at ≥50% context)
+    //   while preserving prompt-cache prefix stability.
+    // Applied before onTurnComplete so callers receive the pruned array.
+    const before = messagesRef.current as AnyMessage[]
+    const after = applyStableStubs(pruneOldToolResults(before))
     if (after !== before) {
       setMessages(() => after as MessageType[])
     }
