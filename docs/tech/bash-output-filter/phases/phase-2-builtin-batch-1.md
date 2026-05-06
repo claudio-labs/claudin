@@ -38,20 +38,20 @@ Implementa os 10 filters de maior ROI medido empiricamente no discovery. Sem rew
 
 | Arquivo | LoC est. | Specs |
 |---|---|---|
-| `src/utils/bashOutputFilter/filters/pkg.ts` | ~50 | `bundleInstall` |
-| `src/utils/bashOutputFilter/filters/tests.ts` | ~120 | `pytest`, `rspec`, `goTest` |
-| `src/utils/bashOutputFilter/filters/system.ts` | ~80 | `psAux`, `top` |
-| `src/utils/bashOutputFilter/filters/linters.ts` | ~60 | `rubocop`, `ruffCheck` (passthrough+M) |
-| `src/utils/bashOutputFilter/filters/ls.ts` | ~40 | `lsLa` |
-| `src/utils/bashOutputFilter/filters/grep-rg.ts` | ~30 | `grepRg` |
-| `src/utils/bashOutputFilter/filters/cargo.ts` | ~100 | `cargoBuild`, `cargoCheck`, `cargoTest`, `cargoClippy` |
+| `src/outputFilter/Bash/filters/pkg.ts` | ~50 | `bundleInstall` |
+| `src/outputFilter/Bash/filters/tests.ts` | ~120 | `pytest`, `rspec`, `goTest` |
+| `src/outputFilter/Bash/filters/system.ts` | ~80 | `psAux`, `top` |
+| `src/outputFilter/Bash/filters/linters.ts` | ~60 | `rubocop`, `ruffCheck` (passthrough+M) |
+| `src/outputFilter/Bash/filters/ls.ts` | ~40 | `lsLa` |
+| `src/outputFilter/Bash/filters/grep-rg.ts` | ~30 | `grepRg` |
+| `src/outputFilter/Bash/filters/cargo.ts` | ~100 | `cargoBuild`, `cargoCheck`, `cargoTest`, `cargoClippy` |
 
 ### Arquivos modificados
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/utils/bashOutputFilter/filters/index.ts` | Importar e exportar todos os specs no array `builtInFilters` | +14 |
-| `src/utils/bashOutputFilter/bashOutputFilter.test.ts` | Trocar inline filter definitions nos `CASES[]` para imports dos specs reais | (replace ~14 entries) |
+| `src/outputFilter/Bash/filters/index.ts` | Importar e exportar todos os specs no array `builtInFilters` | +14 |
+| `src/outputFilter/Bash/bashFilter.test.ts` | Trocar inline filter definitions nos `CASES[]` para imports dos specs reais | (replace ~14 entries) |
 | `scripts/regex-redos-scan.test.ts` | Não muda (auto-detecta novos arquivos) | n/a |
 
 ## Steps
@@ -62,8 +62,8 @@ Para cada filter, seguir o template:
 2. **Escrever spec object literal** baseado em [`../architecture.md` §4](../architecture.md#4-filter-spec-syntax--the-authoring-shape)
 3. **Module-level regex consts** (typescript-patterns.md regra 3)
 4. **Importar e re-exportar de `filters/index.ts`**
-5. **Trocar test case inline por import real** em `bashOutputFilter.test.ts`
-6. **Rodar `bun test src/utils/bashOutputFilter`** e confirmar ROI ≥ predicted-5pp
+5. **Trocar test case inline por import real** em `bashFilter.test.ts`
+6. **Rodar `bun test src/outputFilter/Bash`** e confirmar ROI ≥ predicted-5pp
 
 ### Specs concretos
 
@@ -84,7 +84,7 @@ Os filter specs são portados das discovery files. Para cada:
 ## Tests
 
 ```bash
-bun test src/utils/bashOutputFilter
+bun test src/outputFilter/Bash
 # Espera 67/67 harness cases passing (todos os specs Phase 2 + os Phase 5 ainda mockados)
 bun test scripts/regex-redos-scan.test.ts
 # Espera pass — nenhum dos novos regex no denylist

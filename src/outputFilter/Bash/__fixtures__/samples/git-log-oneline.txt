@@ -1,0 +1,10 @@
+a200d7d fix(providers): retry transient 404s from OpenAI-compat providers
+eed74e1 fix(providers): use claudio branding in User-Agent for non-Anthropic providers
+bb98dbf chore(release): v0.1.10
+3c1ce42 fix(cache): skip model-options cache scope for non-local provider URLs
+41c5b06 fix(providers): accurate token metrics for OpenAI-compat providers (#13)
+53b6c6d fix(interrupt): propagate Ctrl+C to exit handler when nothing to cancel (#12)
+78c72e7 feat(providers): dynamic model discovery + fixes for OpenAI-compat providers
+7e583ad feat: fix cli
+a6ed4ba test(cache): regression tests + bench for cc_workload prefix flip (#11)
+fc131f8 feat(benches): add 11 token-economy measurement scripts (#10)

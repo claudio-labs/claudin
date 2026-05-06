@@ -33,15 +33,15 @@ Adiciona o rewrite layer — comandos podem ser **substituídos** antes da execu
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/utils/bashOutputFilter/index.ts` | Trocar `planFilter` stub por implementação real (chama `rewriteCommand` se filter tem; valida resultado) | +30 |
-| `src/utils/bashOutputFilter/registry.ts` | Adicionar `hasCompound(command)` — detecta `\|`, `&&`, `;`, `\|\|`. Skip rewrite se compound. | +15 |
-| `src/utils/bashOutputFilter/markers.ts` | Estender `wrapStdoutWithMarkers` pra prepend `<bash-output-rewritten>` quando `plan.rewrite != null` | +20 |
-| `src/utils/bashOutputFilter/filters/git.ts` | Adicionar `rewriteCommand` em `gitLog` e `gitStatus` (specs já existentes em Phase 5 ou movem pra cá) | +40 |
-| `src/utils/bashOutputFilter/filters/gh.ts` (NEW) | 3 specs: `ghPrList`, `ghIssueList`, `ghRunList` — todos com `rewriteCommand` | +60 |
-| `src/utils/bashOutputFilter/filters/index.ts` | Re-exportar gh family | +3 |
+| `src/outputFilter/Bash/index.ts` | Trocar `planFilter` stub por implementação real (chama `rewriteCommand` se filter tem; valida resultado) | +30 |
+| `src/outputFilter/Bash/registry.ts` | Adicionar `hasCompound(command)` — detecta `\|`, `&&`, `;`, `\|\|`. Skip rewrite se compound. | +15 |
+| `src/outputFilter/Bash/markers.ts` | Estender `wrapStdoutWithMarkers` pra prepend `<bash-output-rewritten>` quando `plan.rewrite != null` | +20 |
+| `src/outputFilter/Bash/filters/git.ts` | Adicionar `rewriteCommand` em `gitLog` e `gitStatus` (specs já existentes em Phase 5 ou movem pra cá) | +40 |
+| `src/outputFilter/Bash/filters/gh.ts` (NEW) | 3 specs: `ghPrList`, `ghIssueList`, `ghRunList` — todos com `rewriteCommand` | +60 |
+| `src/outputFilter/Bash/filters/index.ts` | Re-exportar gh family | +3 |
 | `src/tools/BashTool/BashTool.tsx` | Trocar plan stub por `const filterPlan = planFilter(input.command); const effectiveCommand = filterPlan.effectiveCommand` antes do `runShellCommand`. Permission check continua sobre `input.command` (original). | +5 |
-| `src/utils/bashOutputFilter/bashOutputFilter.test.ts` | Adicionar 5 rewrite tests + 1 compound bypass test | +60 |
-| `src/utils/bashOutputFilter/__fixtures__/samples/` | Capturar samples reais dos 3 gh commands | +3 files |
+| `src/outputFilter/Bash/bashFilter.test.ts` | Adicionar 5 rewrite tests + 1 compound bypass test | +60 |
+| `src/outputFilter/Bash/__fixtures__/samples/` | Capturar samples reais dos 3 gh commands | +3 files |
 
 ## Steps
 
@@ -159,7 +159,7 @@ Adiciona o rewrite layer — comandos podem ser **substituídos** antes da execu
    ```
 
 5. **Tests:**
-   - 5 rewrite tests em `bashOutputFilter.test.ts`: cada filter prova `effectiveCommand` matches expected
+   - 5 rewrite tests em `bashFilter.test.ts`: cada filter prova `effectiveCommand` matches expected
    - 1 compound bypass test: `git log -5 | wc -l` → no rewrite (no marker)
    - 1 determinism test: chamar `rewriteCommand` 2× com mesma input → mesma output
 
@@ -176,7 +176,7 @@ Adiciona o rewrite layer — comandos podem ser **substituídos** antes da execu
 ## Tests
 
 ```bash
-bun test src/utils/bashOutputFilter
+bun test src/outputFilter/Bash
 bun test src/tools/BashTool/BashTool.test.ts
 bun run typecheck
 
@@ -204,7 +204,7 @@ CLAUDIO_BASH_FILTER_DEBUG=1 bun run dev
 - [ ] All 5 rewrite tests pass in harness
 - [ ] **Marker survives ShellError throw path** — concrete test via `formatError`:
   ```ts
-  // src/utils/bashOutputFilter/rewrite.test.ts (or add to bashOutputFilter.test.ts)
+  // src/outputFilter/Bash/rewrite.test.ts (or add to bashFilter.test.ts)
   test('rewrite marker survives error-exit path via ShellError.stderr', () => {
     // Simulate what BashTool does: filter result.stdout, then throw ShellError
     const filteredStdout = applyFilterToStdout(

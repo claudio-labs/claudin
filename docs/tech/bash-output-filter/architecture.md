@@ -79,7 +79,7 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 ## 3. Module layout
 
 ```
-src/utils/bashOutputFilter/
+src/outputFilter/Bash/
 ├── index.ts                    # public API: planFilter, applyFilter, types
 ├── pipeline.ts                 # 11 stages (port of validation/pipeline.ts)
 ├── registry.ts                 # findFilterForCommand: linear scan
@@ -97,7 +97,7 @@ src/utils/bashOutputFilter/
 │   ├── network.ts              # curl, wget, dig
 │   ├── pkg.ts                  # bundle-install, npm-install
 │   └── grep-rg.ts
-├── bashOutputFilter.test.ts    # integration harness (port of validate.ts)
+├── bashFilter.test.ts    # integration harness (port of validate.ts)
 ├── pipeline.test.ts            # per-stage unit tests
 ├── registry.test.ts
 ├── markers.test.ts
@@ -122,7 +122,7 @@ src/utils/bashOutputFilter/
 The authoring shape, final:
 
 ```ts
-// src/utils/bashOutputFilter/filters/git.ts
+// src/outputFilter/Bash/filters/git.ts
 import type { FilterSpec } from '../index.js'
 
 const LOG_MATCH = /^git(\s+-[^\s]+)*\s+log\b/
@@ -155,7 +155,7 @@ export const gitLog: FilterSpec = {
 - `rewriteCommand` is sync, deterministic, pure of `RewriteContext` (the `{ command, verb, args }` shape).
 - No async filters. A filter that calls out is by definition not safe in the BashTool hot path.
 
-**Spec interface** (`src/utils/bashOutputFilter/index.ts`):
+**Spec interface** (`src/outputFilter/Bash/index.ts`):
 
 ```ts
 export interface RewriteContext {
@@ -218,7 +218,7 @@ parse + match → rewrite (pre-exec) ──► runShellCommand ──► result.
 **Implementation surface:**
 
 ```ts
-// src/utils/bashOutputFilter/pipeline.ts
+// src/outputFilter/Bash/pipeline.ts
 export interface PipelineResult {
   readonly body: string
   readonly applied: readonly string[]
@@ -244,7 +244,7 @@ Each stage is a private top-level function in `pipeline.ts`, takes `string[]` (l
 The orchestration lives in **two functions** in `index.ts` that `BashTool.call` invokes:
 
 ```ts
-// src/utils/bashOutputFilter/index.ts
+// src/outputFilter/Bash/index.ts
 
 export interface PreExecPlan {
   readonly effectiveCommand: string
@@ -354,7 +354,7 @@ User filters are second priority after built-ins. Same-name conflicts: built-in 
 `~/.claudio/filters.json` is the v1 surface. Schema validated with zod (zod/v4, the standard import in this codebase per ~112 occurrences).
 
 ```ts
-// src/utils/bashOutputFilter/userFilters.ts
+// src/outputFilter/Bash/userFilters.ts
 import { z } from 'zod/v4'
 
 const REGEX_MAX_LEN = 500
@@ -604,8 +604,8 @@ No silent swallow. Every catch calls `logError(e)`.
 Tests **colocated** per `.claude/rules/testing.md`. Layout:
 
 ```
-src/utils/bashOutputFilter/
-├── bashOutputFilter.test.ts     # the integration harness — port of validate.ts
+src/outputFilter/Bash/
+├── bashFilter.test.ts     # the integration harness — port of validate.ts
 ├── pipeline.test.ts             # unit tests for each stage (pure)
 ├── registry.test.ts             # canonicalization, lookup, sudo/env prefix, compound bypass
 ├── markers.test.ts              # idempotency, escaping, truncation
@@ -618,7 +618,7 @@ src/utils/bashOutputFilter/
 
 **Conversion of `validation/validate.ts`:**
 
-- Each `CASES[i]` becomes a `test('...')` body inside `bashOutputFilter.test.ts`. Wrap in `describe('integration harness', ...)`. Predicted reductions become `expect(reductionPct).toBeGreaterThanOrEqual(predicted - 5)`.
+- Each `CASES[i]` becomes a `test('...')` body inside `bashFilter.test.ts`. Wrap in `describe('integration harness', ...)`. Predicted reductions become `expect(reductionPct).toBeGreaterThanOrEqual(predicted - 5)`.
 - The 3 safety tests + new ones (sandbox annotation preservation, etc.) live inline in the same file as their own `describe('safety', ...)` block.
 - Rewrite tests → `describe('rewrite', ...)` block. Each asserts `effectiveCommand`.
 - Samples are checked in to `__fixtures__/samples/`. Discovery samples are the source of truth; we copy at Phase 1.
@@ -634,7 +634,7 @@ src/utils/bashOutputFilter/
 **Running:**
 
 ```bash
-bun test src/utils/bashOutputFilter
+bun test src/outputFilter/Bash
 bun run verify:privacy   # required (3 new event names with the suffix proof)
 ```
 
@@ -646,14 +646,14 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Engulfing a real error via `match_output` | **Critical** | `unless` clause is mandatory in every `matchOutput` rule. `bashOutputFilter.test.ts` has a `safety` describe block with one assertion per `matchOutput` rule across all built-in filters. CI fails if a `matchOutput` is added without `unless`. |
+| Engulfing a real error via `match_output` | **Critical** | `unless` clause is mandatory in every `matchOutput` rule. `bashFilter.test.ts` has a `safety` describe block with one assertion per `matchOutput` rule across all built-in filters. CI fails if a `matchOutput` is added without `unless`. |
 | Catastrophic backtracking on user regex | High | Length cap (500 chars) + `safe-regex`-style denylist + build-time test scanning all builtin regex (`scripts/regex-redos-scan.test.ts`). |
 | Catastrophic backtracking on built-in regex | Medium | Same build-time scan + PR review. |
 | Determinism break (rewrite varies across runs) | High | Spec contract: `rewriteCommand` is pure of `RewriteContext`. Test: each rewrite filter has a "determinism" assertion (call rewrite twice on same input, expect equality). Cache-key implications for any future cache layer: the **transcript** records the original command; the **effective command** is what runs. A cache keyed on either alone would desync. v2 cache must canonicalize. |
 | Filter strips a real warning the model needed | Medium | Per-filter safety case in the harness. Build-time invariant: `matchOutput` rules without `unless` rejected. |
 | 590 KB tsc output blows the pipeline | Medium | tsc has no v1 filter (matrix decision). Pipeline only fires when a filter matches — `tsc` matches none. The 8 KB summarizer catches it via head/tail. |
 | Compound-command rewrite breaks pipe semantics | High | `hasCompound(command)` skips rewrite (pipeline still runs). Test: `git log -5 \| wc -l` → no rewrite. |
-| Sandbox annotation lost via filter strip | Medium | `BashTool.tsx:720` calls `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` BEFORE our filter. If the filter strips the annotation, that's a real safety signal lost. New test: `bashOutputFilter.test.ts` includes a sample with sandbox-violation lines and asserts the filter does not strip them across all builtin filters. |
+| Sandbox annotation lost via filter strip | Medium | `BashTool.tsx:720` calls `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` BEFORE our filter. If the filter strips the annotation, that's a real safety signal lost. New test: `bashFilter.test.ts` includes a sample with sandbox-violation lines and asserts the filter does not strip them across all builtin filters. |
 | Background-task path has empty stdout for filtering | Low | `applyFilterToStdout` returns raw early when `rawStdout.trim() === ''`. Background task stdout is the preview; full output is read later via FileReadTool. No marker on background-task results. |
 | Image content path bypasses filter | Low | `mapToolResult...` line 585 short-circuits to `buildImageToolResult` when `data.isImage`. No issue: filter ran on `result.stdout` upstream; if `isImage` is set, stdout is metadata, not output. |
 | Persisted output strips our marker | Low | `wrapStdoutWithMarkers` skips wrap if `<persisted-output>` is already present. Persistence runs on the post-filter stdout (markers already there, then persistence wraps). The mapper unwraps persistence and shows preview; filter marker is inside the preview if it fits. Acceptable v1 trade-off. |
@@ -702,7 +702,7 @@ After review-driven simplifications (rev 2 cuts ~60% from rev 1):
 | `index.ts` (orchestrator + types) | ~120 | ~100 | `planFilter`, `applyFilterToStdout`, type exports, inline `safeApply` |
 | `filters/index.ts` | ~20 | n/a | Aggregator |
 | `filters/*.ts` (10 family files) | ~60 each = ~600 | n/a | Specs |
-| `bashOutputFilter.test.ts` (harness) | n/a | ~500 | Port of `validate.ts` |
+| `bashFilter.test.ts` (harness) | n/a | ~500 | Port of `validate.ts` |
 | `BashTool.tsx` patches | ~20 | included in BashTool.test | Two ~10-line insertions; one-line `result.stdout = applyFilterToStdout(...)` |
 | `toolResultSummarizer.ts` patch | ~2 | included in summarizer.test | `isAlreadyCompacted` extension |
 | `config.ts` patch | ~3 | n/a | `GLOBAL_CONFIG_KEYS` registration |
@@ -724,9 +724,9 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 - No behavior change yet.
 
 **Phase 1 — Skeleton + harness port (1 PR, ~700 LoC).**
-- Create `src/utils/bashOutputFilter/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
+- Create `src/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
 - Copy fixtures from `docs/discovery/bash-output-filter/validation/samples/` to `__fixtures__/samples/`.
-- Port `validation/validate.ts` to `bashOutputFilter.test.ts`.
+- Port `validation/validate.ts` to `bashFilter.test.ts`.
 - Add `scripts/regex-redos-scan.test.ts`.
 - Module is dead code (not yet wired to BashTool). Tests pass against the empty registry.
 - Coverage gate: 80%.
@@ -794,7 +794,7 @@ Each has a stable path forward without rearchitecture.
 When you write a new filter (built-in or PR):
 
 1. Pick the family. New family = new file in `filters/`. Existing family (e.g. `git`) = add a spec to that file.
-2. Capture a real sample. Save to `__fixtures__/samples/<filter-name>.txt`. Add a case to `bashOutputFilter.test.ts` that asserts ROI ≥ your prediction − 5pp.
+2. Capture a real sample. Save to `__fixtures__/samples/<filter-name>.txt`. Add a case to `bashFilter.test.ts` that asserts ROI ≥ your prediction − 5pp.
 3. If your spec uses `matchOutput`, you MUST add a `safety` test case that confirms a real error/warning is preserved when present in the output. Failing this rejects the PR.
 4. Module-level regex consts only. Naming: `SCREAMING_SNAKE_RE`. Compile once.
 5. `rewriteCommand`, if present:
@@ -809,7 +809,7 @@ When you write a new filter (built-in or PR):
 ## 21. Acceptance criteria for v1
 
 - [ ] `bun run build` clean.
-- [ ] `bun test src/utils/bashOutputFilter` — 100% pass (~20 filter cases + safety + rewrite + harness).
+- [ ] `bun test src/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
 - [ ] `bun run verify:privacy` — passes (3 new event names with the suffix proof).
 - [ ] `bun run typecheck` — zero errors.
 - [ ] `scripts/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
@@ -827,4 +827,4 @@ When you write a new filter (built-in or PR):
 
 ## 22. One-line summary
 
-`src/utils/bashOutputFilter/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.
+`src/outputFilter/Bash/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.

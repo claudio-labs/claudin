@@ -1,0 +1,26 @@
+
+; <<>> DiG 9.20.22 <<>> httpbin.org
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 16940
+;; flags: qr rd ra; QUERY: 1, ANSWER: 6, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+; COOKIE: 719c7cfea265a6fa5da19a125011fe46 (good)
+;; QUESTION SECTION:
+;httpbin.org.			IN	A
+
+;; ANSWER SECTION:
+httpbin.org.		35	IN	A	54.198.84.224
+httpbin.org.		35	IN	A	98.83.84.78
+httpbin.org.		35	IN	A	44.199.179.5
+httpbin.org.		35	IN	A	3.91.112.114
+httpbin.org.		35	IN	A	54.225.113.51
+httpbin.org.		35	IN	A	52.73.30.72
+
+;; Query time: 6 msec
+;; SERVER: 10.0.1.1#53(10.0.1.1) (UDP)
+;; WHEN: Tue May 05 15:54:43 -03 2026
+;; MSG SIZE  rcvd: 156
+

@@ -20,7 +20,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
 | Arquivo | Linha aprox. | Mudança | LoC |
 |---|---|---|---|
 | `src/tools/BashTool/BashTool.tsx` | ~line 720 (após `result = generatorResult.value`) | Inserir 1 chamada: `result.stdout = applyFilterToStdout(result.stdout, result.isError, plan)` onde `plan` foi capturado em scope (Phase 4 vai adicionar a captura; Phase 3 só usa um stub `plan: PreExecPlan = { effectiveCommand: input.command, filter: findFilterForCommand(input.command), rewrite: null }`) | +5 |
-| `src/tools/BashTool/BashTool.tsx` | imports | Adicionar `import { planFilter, applyFilterToStdout } from 'src/utils/bashOutputFilter/index.js'` | +1 |
+| `src/tools/BashTool/BashTool.tsx` | imports | Adicionar `import { planFilter, applyFilterToStdout } from 'src/outputFilter/Bash/index.js'` | +1 |
 | `src/tools/BashTool/BashTool.test.ts` | (existing) | 3 novos casos: filter applied (default-off), filter applied (env var enabled), kill switch | +50 |
 
 ### Notas
@@ -36,7 +36,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
      applyFilterToStdout,
      findFilterForCommand,
      type PreExecPlan,
-   } from 'src/utils/bashOutputFilter/index.js'
+   } from 'src/outputFilter/Bash/index.js'
    ```
 
 2. **No `async call()`, após `result = generatorResult.value` (~line 720):**
@@ -120,7 +120,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
 
 ```bash
 bun test src/tools/BashTool/BashTool.test.ts
-bun test src/utils/bashOutputFilter
+bun test src/outputFilter/Bash
 bun run typecheck
 bun run build:verified  # confirma privacy verifier ainda passa
 ```

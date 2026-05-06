@@ -1,0 +1,13 @@
+Building...
+Progress: 0% (0/100)
+Progress: 1% (1/100)
+Progress: 2% (2/100)
+Progress: 3% (3/100)
+Progress: 4% (4/100)
+Progress: 5% (5/100)
+Progress: 10% (10/100)
+Progress: 25% (25/100)
+Progress: 50% (50/100)
+Progress: 75% (75/100)
+Progress: 100% (100/100)
+Done in 12.34s.

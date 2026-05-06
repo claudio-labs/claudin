@@ -1,0 +1,2 @@
+origin	ssh://git@git.house.server:2222/viudes/claudio.git (fetch)
+origin	ssh://git@git.house.server:2222/viudes/claudio.git (push)

@@ -5,7 +5,7 @@
 > **PR:** _(preencher)_
 > **Parent spec:** [`../architecture.md` §3, §4, §5, §6, §13, §14](../architecture.md)
 
-Cria o módulo `src/utils/bashOutputFilter/` com toda a infraestrutura, mas **dead code** — não é chamado pelo BashTool ainda. Ports o validation harness do discovery (67 cases) como teste de integração. Adiciona o build-time ReDoS scan.
+Cria o módulo `src/outputFilter/Bash/` com toda a infraestrutura, mas **dead code** — não é chamado pelo BashTool ainda. Ports o validation harness do discovery (67 cases) como teste de integração. Adiciona o build-time ReDoS scan.
 
 ## Pré-requisitos
 
@@ -18,18 +18,18 @@ Cria o módulo `src/utils/bashOutputFilter/` com toda a infraestrutura, mas **de
 
 | Arquivo | LoC est. | Conteúdo |
 |---|---|---|
-| `src/utils/bashOutputFilter/index.ts` | ~120 | Public API: `planFilter`, `applyFilterToStdout`, types (`FilterSpec`, `RewriteContext`, `PreExecPlan`, `PipelineResult`), inline `safeApply` |
-| `src/utils/bashOutputFilter/pipeline.ts` | ~200 | 11-stage pure pipeline (port direto de [`validation/pipeline.ts`](../../../discovery/bash-output-filter/validation/pipeline.ts)) |
-| `src/utils/bashOutputFilter/registry.ts` | ~70 | `findFilterForCommand`, `canonicalizeForMatching` (strip `sudo`, env vars), `matchesCommand` |
-| `src/utils/bashOutputFilter/markers.ts` | ~40 | `wrapStdoutWithMarkers` reusando `escapeXmlAttr` de `src/utils/xml.ts` |
-| `src/utils/bashOutputFilter/userFilters.ts` | ~140 | Stub: zod schema + safe loader. Carregamento real em Phase 6. |
-| `src/utils/bashOutputFilter/filters/index.ts` | ~10 | `export const builtInFilters: FilterSpec[] = []` (vazio, populado em Phase 2/5) |
-| `src/utils/bashOutputFilter/bashOutputFilter.test.ts` | ~500 | Port direto de `validation/validate.ts` — 67 cases + 3 safety + 1 rewrite test, todos rodando contra `builtInFilters: []` (vão ficar como skipped até Phase 2) |
-| `src/utils/bashOutputFilter/pipeline.test.ts` | ~150 | Unit tests para cada um dos 11 estágios (puros) |
-| `src/utils/bashOutputFilter/registry.test.ts` | ~80 | Linear scan, sudo prefix, env prefix, compound bypass |
-| `src/utils/bashOutputFilter/markers.test.ts` | ~80 | Idempotency (don't double-wrap), XML escaping, length cap em `original`/`actual` |
-| `src/utils/bashOutputFilter/__fixtures__/samples/*.txt` | (copy) | ~30 fixture files copiados de `docs/discovery/bash-output-filter/validation/samples/` |
-| `scripts/regex-redos-scan.test.ts` | ~80 | Scan static de toda regex em `src/utils/bashOutputFilter/filters/` contra denylist (`safe-regex` heurística inline) |
+| `src/outputFilter/Bash/index.ts` | ~120 | Public API: `planFilter`, `applyFilterToStdout`, types (`FilterSpec`, `RewriteContext`, `PreExecPlan`, `PipelineResult`), inline `safeApply` |
+| `src/outputFilter/Bash/pipeline.ts` | ~200 | 11-stage pure pipeline (port direto de [`validation/pipeline.ts`](../../../discovery/bash-output-filter/validation/pipeline.ts)) |
+| `src/outputFilter/Bash/registry.ts` | ~70 | `findFilterForCommand`, `canonicalizeForMatching` (strip `sudo`, env vars), `matchesCommand` |
+| `src/outputFilter/Bash/markers.ts` | ~40 | `wrapStdoutWithMarkers` reusando `escapeXmlAttr` de `src/utils/xml.ts` |
+| `src/outputFilter/Bash/userFilters.ts` | ~140 | Stub: zod schema + safe loader. Carregamento real em Phase 6. |
+| `src/outputFilter/Bash/filters/index.ts` | ~10 | `export const builtInFilters: FilterSpec[] = []` (vazio, populado em Phase 2/5) |
+| `src/outputFilter/Bash/bashFilter.test.ts` | ~500 | Port direto de `validation/validate.ts` — 67 cases + 3 safety + 1 rewrite test, todos rodando contra `builtInFilters: []` (vão ficar como skipped até Phase 2) |
+| `src/outputFilter/Bash/pipeline.test.ts` | ~150 | Unit tests para cada um dos 11 estágios (puros) |
+| `src/outputFilter/Bash/registry.test.ts` | ~80 | Linear scan, sudo prefix, env prefix, compound bypass |
+| `src/outputFilter/Bash/markers.test.ts` | ~80 | Idempotency (don't double-wrap), XML escaping, length cap em `original`/`actual` |
+| `src/outputFilter/Bash/__fixtures__/samples/*.txt` | (copy) | ~30 fixture files copiados de `docs/discovery/bash-output-filter/validation/samples/` |
+| `scripts/regex-redos-scan.test.ts` | ~80 | Scan static de toda regex em `src/outputFilter/Bash/filters/` contra denylist (`safe-regex` heurística inline) |
 
 ### Arquivos modificados
 
@@ -37,7 +37,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
 
 ## Steps
 
-1. **Setup do módulo:** criar `src/utils/bashOutputFilter/` + sub-folders.
+1. **Setup do módulo:** criar `src/outputFilter/Bash/` + sub-folders.
 
 2. **Port `pipeline.ts`** de `docs/discovery/bash-output-filter/validation/pipeline.ts`:
    - Copiar literal os 11 estágios
@@ -99,7 +99,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
    - `applyFilterToStdout(rawStdout, isError, plan): string` — se plan tem filter, aplica pipeline (skip se isError), wrap com markers
    - Inline `safeApply<T>(label, raw, run): T` (~10 LoC)
 
-7. **Port harness `bashOutputFilter.test.ts`:**
+7. **Port harness `bashFilter.test.ts`:**
    - Copy `validation/validate.ts` arrays `CASES`, `SAFETY_TESTS`, `REWRITE_TESTS`
    - Wrap em `describe('integration harness', ...)` e `test(...)` blocks
    - Cada case usa `applyPipeline(testCase.filter, raw)` e `expect(reductionPct).toBeGreaterThanOrEqual(predicted - 5)`
@@ -107,7 +107,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
    - **Importante:** copiar as samples para `__fixtures__/samples/`; testes lêem de path relativo
 
 8. **Adicionar `scripts/regex-redos-scan.test.ts`:**
-   - Walk `src/utils/bashOutputFilter/filters/*.ts`
+   - Walk `src/outputFilter/Bash/filters/*.ts`
    - Extract regex literals via AST (use `bun:test` ou simples regex sobre source)
    - Run safe-regex heurística inline (~80 LoC vendored): rejeita `(.+)+`, `(.*)*`, `(a+)+b` shapes
    - Fail test se algum regex hit denylist
@@ -116,7 +116,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
 ## Tests
 
 ```bash
-bun test src/utils/bashOutputFilter
+bun test src/outputFilter/Bash
 bun test scripts/regex-redos-scan.test.ts
 bun run typecheck
 bun run build  # confirma que o módulo compila no bundle (mesmo dead)
@@ -125,12 +125,12 @@ bun run build  # confirma que o módulo compila no bundle (mesmo dead)
 Coverage check:
 ```bash
 bun run test:coverage
-# Verificar que src/utils/bashOutputFilter/ tem 80%+ coverage
+# Verificar que src/outputFilter/Bash/ tem 80%+ coverage
 ```
 
 ## Acceptance criteria
 
-- [ ] `bun test src/utils/bashOutputFilter` — 100% pass (67 harness cases + 3 safety + 1 rewrite + ~30 unit tests)
+- [ ] `bun test src/outputFilter/Bash` — 100% pass (67 harness cases + 3 safety + 1 rewrite + ~30 unit tests)
 - [ ] `bun run build` clean (módulo é dead code mas compila)
 - [ ] `bun run typecheck` zero errors
 - [ ] Coverage ≥80% no novo módulo
@@ -140,7 +140,7 @@ bun run test:coverage
 - [ ] Nenhum import de fora do módulo exceto: `escapeXmlAttr`, `collapseIdenticalRuns`, `collapseDigitTemplates`, `logForDebugging`, `logError`, `isEnvTruthy`, `getGlobalConfig`, `z` (zod)
 - [ ] **Locale degrade graceful test** em `pipeline.test.ts`: filter cujo `matchCommand` regex não casa (simula non-EN locale) retorna raw stdout sem exception, sem marker. Confirma fail-open natural.
 - [ ] **Empty stdout early-return test** em `pipeline.test.ts`: `applyFilterToStdout('', false, plan)` retorna `''` sem marker, mesmo com filter matched. Idem `applyFilterToStdout('   \n  \n', ...)` (whitespace-only).
-- [ ] **Module init performance baseline** em `bashOutputFilter.test.ts`:
+- [ ] **Module init performance baseline** em `bashFilter.test.ts`:
   ```ts
   test('module init + first filter lookup completes under 50ms', async () => {
     const start = performance.now()
@@ -157,11 +157,11 @@ bun run test:coverage
 ```markdown
 ## feat(bash-filter): module skeleton + integration harness (Phase 1)
 
-Creates `src/utils/bashOutputFilter/` with the full pipeline + registry + markers + zod-validated user-filter schema (stub) + ports the discovery validation harness as the integration test. **Module is dead code** — not yet wired to BashTool. That happens in Phase 3.
+Creates `src/outputFilter/Bash/` with the full pipeline + registry + markers + zod-validated user-filter schema (stub) + ports the discovery validation harness as the integration test. **Module is dead code** — not yet wired to BashTool. That happens in Phase 3.
 
 ### Changes
-- New module at `src/utils/bashOutputFilter/`: `index.ts`, `pipeline.ts` (port of validation/pipeline.ts), `registry.ts`, `markers.ts`, `userFilters.ts` (stub)
-- New test files: `bashOutputFilter.test.ts` (the harness), `pipeline.test.ts`, `registry.test.ts`, `markers.test.ts`
+- New module at `src/outputFilter/Bash/`: `index.ts`, `pipeline.ts` (port of validation/pipeline.ts), `registry.ts`, `markers.ts`, `userFilters.ts` (stub)
+- New test files: `bashFilter.test.ts` (the harness), `pipeline.test.ts`, `registry.test.ts`, `markers.test.ts`
 - New `scripts/regex-redos-scan.test.ts` to gate built-in regex against ReDoS-prone shapes
 - Reuses `escapeXmlAttr` from `src/utils/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts` (Phase 0)
 

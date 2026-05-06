@@ -35,7 +35,7 @@ Pontos de integração possíveis:
 ### 1. Estender `FilterSpec` com `rewriteCommand`
 
 ```ts
-// validation/pipeline.ts (futuro src/utils/bashOutputFilter.ts)
+// validation/pipeline.ts (futuro src/outputFilter/Bash/pipeline.ts)
 export interface FilterSpec {
   name: string
   matchCommand: RegExp
@@ -292,8 +292,8 @@ Mudanças concretas:
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/utils/bashOutputFilter.ts` (NEW) | Pipeline + types + rewriteCommand | ~300 |
-| `src/utils/bashOutputFilters/index.ts` (NEW) | Built-in filter specs | ~250 |
+| `src/outputFilter/Bash/pipeline.ts` (NEW) | Pipeline + types + rewriteCommand | ~300 |
+| `src/outputFilter/Bash/filters/index.ts` (NEW) | Built-in filter specs | ~250 |
 | `src/tools/BashTool/BashTool.tsx` | Hook em `call()` | ~15 |
 | `src/tools/BashTool/BashTool.tsx` | Marker em `mapToolResult` | ~10 |
 | `src/utils/config.ts` | Toggle `bashOutputFilter` | ~5 |

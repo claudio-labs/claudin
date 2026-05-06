@@ -1,0 +1,34 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: enp5s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 1c:86:0b:29:50:41 brd ff:ff:ff:ff:ff:ff
+    altname enx1c860b295041
+    inet 10.0.10.1/8 brd 10.255.255.255 scope global dynamic noprefixroute enp5s0
+       valid_lft 1528sec preferred_lft 1204sec
+    inet6 fe80::e573:7359:6cd6:10d2/64 scope link 
+       valid_lft forever preferred_lft forever
+3: enp0s31f6: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq_codel state DOWN group default qlen 1000
+    link/ether 18:31:bf:bb:c7:0c brd ff:ff:ff:ff:ff:ff
+    altname enx1831bfbbc70c
+4: br-160d838a9fd1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default 
+    link/ether 8e:6f:60:1d:c9:c3 brd ff:ff:ff:ff:ff:ff
+    inet 172.18.0.1/16 brd 172.18.255.255 scope global br-160d838a9fd1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::8c6f:60ff:fe1d:c9c3/64 scope link proto kernel_ll 
+       valid_lft forever preferred_lft forever
+5: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether fe:28:c4:6f:37:a5 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+6: veth6da61f0@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-160d838a9fd1 state UP group default 
+    link/ether d6:8b:00:fb:3f:57 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::bed:89d4:ec64:d98/64 scope link 
+       valid_lft forever preferred_lft forever
+7: veth6fdf974@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-160d838a9fd1 state UP group default 
+    link/ether e2:85:66:59:2c:11 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::ba7c:867d:323c:d693/64 scope link 
+       valid_lft forever preferred_lft forever

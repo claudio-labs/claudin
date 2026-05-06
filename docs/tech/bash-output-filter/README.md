@@ -5,7 +5,7 @@
 
 ## Resumo de uma frase
 
-`src/utils/bashOutputFilter/` é um módulo puro, fail-open e command-aware de compressão de saída — registry de ~20 `FilterSpec` escaneadas linearmente, chamadas de `BashTool.call()` pra (a) reescrever `input.command` antes do `runShellCommand` e (b) aplicar pipeline declarativo + prepend de markers `<bash-output-rewritten>`/`<bash-output-filtered>` diretamente no `result.stdout` — protegido por kill-switches via env var, defesas ReDoS (length cap + denylist + build-time scan) e o `toolResultSummarizer` existente (com extensão de 2 linhas em `isAlreadyCompacted`) como safety net.
+`src/outputFilter/Bash/` é um módulo puro, fail-open e command-aware de compressão de saída — registry de ~20 `FilterSpec` escaneadas linearmente, chamadas de `BashTool.call()` pra (a) reescrever `input.command` antes do `runShellCommand` e (b) aplicar pipeline declarativo + prepend de markers `<bash-output-rewritten>`/`<bash-output-filtered>` diretamente no `result.stdout` — protegido por kill-switches via env var, defesas ReDoS (length cap + denylist + build-time scan) e o `toolResultSummarizer` existente (com extensão de 2 linhas em `isAlreadyCompacted`) como safety net.
 
 ## Documentos
 
@@ -79,7 +79,7 @@ Movidos pra v2 (precisam native parser):
 ## Acceptance criteria (rev 2)
 
 - ✅ `bun run build` clean
-- ✅ `bun test src/utils/bashOutputFilter` — 100% pass (single harness + 5 unit test files)
+- ✅ `bun test src/outputFilter/Bash` — 100% pass (single harness + 5 unit test files)
 - ✅ `bun run verify:privacy` clean
 - ✅ `scripts/regex-redos-scan.test.ts` — no denylisted patterns
 - ✅ Smoke: 5 comandos com `CLAUDIO_BASH_FILTER_DEBUG=1`

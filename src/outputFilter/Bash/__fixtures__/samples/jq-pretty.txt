@@ -1,0 +1,8 @@
+{
+  "name": "claudio",
+  "version": "1.0",
+  "deps": {
+    "foo": "^1",
+    "bar": "~2"
+  }
+}
