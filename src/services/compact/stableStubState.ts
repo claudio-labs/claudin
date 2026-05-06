@@ -284,3 +284,98 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
   // identity guards don't reassign on every turn.
   return anyTouched ? out : messages
 }
+
+/**
+ * Prune tool_result content that is older than `keepTurns` turns.
+ *
+ * This is a time-based complement to the token-threshold-based applyStableStubs:
+ * that mechanism only fires when the conversation exceeds 50% of the context
+ * window, which for 200k-token models means ~400 turns of silence. In normal
+ * sessions the RSS therefore grows unboundedly.
+ *
+ * This function fires after every turn and stubs any tool_result block that
+ * falls outside the rolling window of the last `keepTurns` turns. A "turn
+ * boundary" is defined by a `role: 'user'` message (each user prompt starts
+ * a new turn). Tool_result blocks within the protected window are left intact.
+ *
+ * Identity-preserving: returns the input array reference unchanged when no
+ * blocks are pruned (empty sessions, all results within the window, or all
+ * matching blocks already carry the stub format).
+ *
+ * Image-bearing tool_results are skipped (same policy as applyStableStubs).
+ */
+export function pruneOldToolResults<T extends AnyMessage>(
+  messages: T[],
+  keepTurns = 6,
+): T[] {
+  if (messages.length === 0) return messages
+
+  // Walk backwards counting user-role turn boundaries to find the cutoff index.
+  // We keep everything at or after the boundary of the (keepTurns)th-from-last
+  // user message.
+  let turnsFound = 0
+  let cutoffIdx = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role === 'user') {
+      turnsFound++
+      if (turnsFound >= keepTurns) {
+        cutoffIdx = i
+        break
+      }
+    }
+  }
+
+  // Fewer turns than keepTurns → everything is within the window, nothing to prune.
+  if (turnsFound < keepTurns) return messages
+
+  const toolNames = indexToolUses(messages)
+  let anyTouched = false
+
+  const out = messages.map((msg, idx) => {
+    // Messages within the protected window are never pruned.
+    if (idx >= cutoffIdx) return msg
+
+    const inner = getInner(msg)
+    const content = inner.content
+    if (!Array.isArray(content)) return msg
+
+    let touched = false
+    const newContent = (content as AnyContentBlock[]).map(block => {
+      if (block?.type !== 'tool_result') return block
+
+      const existing = (block as ToolResultBlockParam).content
+
+      // Already a stub — idempotent, leave it.
+      if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) {
+        return block
+      }
+
+      // Nothing to stub.
+      if (existing == null || existing === '') return block
+      if (Array.isArray(existing) && existing.length === 0) return block
+
+      // Skip image-bearing blocks — preserves vision context.
+      if (arrayContainsImage(existing)) return block
+
+      const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+      const stub = buildClipStub(
+        toolNames.get(toolUseId) ?? 'tool',
+        estimateToolResultTokens(existing),
+      )
+      touched = true
+      return { ...block, content: stub }
+    })
+
+    if (!touched) return msg
+    anyTouched = true
+
+    if (msg.message) {
+      return { ...msg, message: { ...msg.message, content: newContent } } as T
+    }
+    return { ...msg, content: newContent } as T
+  })
+
+  return anyTouched ? out : messages
+}

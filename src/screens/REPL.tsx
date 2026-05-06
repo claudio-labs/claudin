@@ -173,7 +173,7 @@ import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
 import { resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs } from '../services/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults } from '../services/compact/stableStubState.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
@@ -2801,17 +2801,24 @@ export function REPL({
     })) {
       onQueryEvent(event);
     }
-    // Free RSS held by large tool_result blocks that were marked for clipping
-    // during this turn (size-based microcompact threshold ≥ 50% context window).
-    // applyStableStubs replaces their content with tiny stub strings so the old
-    // large byte arrays become GC-eligible. Identity guard skips the setMessages
-    // call when clippedIds is empty (fast path for normal sessions). Applied
-    // before onTurnComplete so callers receive the already-stubbed array.
-    // Roadmap 5.7.
-    const msgsForStub = messagesRef.current as Parameters<typeof applyStableStubs>[0]
-    const stubbedMessages = applyStableStubs(msgsForStub)
-    if (stubbedMessages !== msgsForStub) {
-      setMessages(() => stubbedMessages as MessageType[])
+    // Free RSS held by large tool_result blocks. Two complementary passes:
+    //
+    // 1. pruneOldToolResults — time-based: stubs tool_result blocks older than
+    //    6 turns unconditionally, every turn. Keeps RSS flat in normal sessions
+    //    where the token-threshold below never fires.
+    //
+    // 2. applyStableStubs — token-threshold-based (fires at ≥50% context window):
+    //    stubs blocks that microcompact marked for clipping, maintaining stable
+    //    prompt-cache prefixes.
+    //
+    // Both return the input reference when nothing changed (identity-preserving
+    // fast path). Applied before onTurnComplete so callers receive the
+    // already-pruned array. Roadmap 5.7.
+    type StubInput = Parameters<typeof applyStableStubs>[0]
+    const before = messagesRef.current as StubInput
+    const after = applyStableStubs(pruneOldToolResults(before) as StubInput)
+    if (after !== before) {
+      setMessages(() => after as MessageType[])
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
