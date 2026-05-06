@@ -2803,9 +2803,9 @@ export function REPL({
     }
     // Free RSS held by large tool_result blocks. Two complementary passes:
     //
-    // 1. pruneOldToolResults — time-based: stubs tool_result blocks older than
-    //    6 turns unconditionally, every turn. Keeps RSS flat in normal sessions
-    //    where the token-threshold below never fires.
+    // 1. pruneOldToolResults — stubs every tool_result except the current turn.
+    //    Once a turn is complete its results are already past (consumed by the
+    //    model); keeping the full payloads in React state only wastes RSS.
     //
     // 2. applyStableStubs — token-threshold-based (fires at ≥50% context window):
     //    stubs blocks that microcompact marked for clipping, maintaining stable

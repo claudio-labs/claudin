@@ -306,7 +306,7 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
  */
 export function pruneOldToolResults<T extends AnyMessage>(
   messages: T[],
-  keepTurns = 6,
+  keepTurns = 1,
 ): T[] {
   if (messages.length === 0) return messages
 
