@@ -2818,12 +2818,16 @@ export function REPL({
     const after = evictToMaxSize(evicted)
     if (after !== before) {
       setMessages(() => after as MessageType[])
-      // Prune orphaned contentReplacementState entries for IDs no longer
-      // in the display array. Without this, seenIds and replacements grow
-      // monotonically — evicted messages' preview strings (~2KB each) are
-      // never looked up again but never freed.
-      pruneContentReplacementState(after, contentReplacementStateRef.current)
     }
+    // Prune orphaned contentReplacementState entries for IDs no longer
+    // in the display array. Run unconditionally — orphans can accumulate
+    // even when `after === before` (text-only turns, /compact, rewind,
+    // resume). pruneContentReplacementState is idempotent and O(N) over
+    // the display array plus the state Map, so the cost is microseconds
+    // per turn. Without this, seenIds and replacements grow monotonically
+    // — evicted messages' preview strings (~2KB each) are never looked up
+    // again but never freed.
+    pruneContentReplacementState(after, contentReplacementStateRef.current)
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
         ...prev,
