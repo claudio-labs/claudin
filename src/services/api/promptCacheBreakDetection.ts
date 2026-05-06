@@ -691,6 +691,10 @@ export function resetPromptCacheBreakDetection(): void {
   previousStateBySource.clear()
 }
 
+export function _getSourceCountForTesting(): number {
+  return previousStateBySource.size
+}
+
 async function writeCacheBreakDiff(
   prevContent: string,
   newContent: string,

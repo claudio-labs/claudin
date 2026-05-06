@@ -31,10 +31,59 @@ if (
   // points (post-compact, post-subagent cleanup) instead of waiting for an
   // allocation-driven GC. Negligible perf overhead; opt out via
   // CLAUDIO_NO_HEAP_BUMP=1 if needed.
+
+  // Memory allocator strategy for long-running REPL sessions:
+  // 1. jemalloc (preferred) — aggressive dirty-page purging, low fragmentation,
+  //    RSS drops after GC. Used by Redis, Firefox, Chrome (PartitionAlloc cousin).
+  // 2. glibc malloc fallback — with MALLOC_TRIM/MMAP thresholds so freed pages
+  //    return to the OS. Better than mimalloc (V8 default) which retains pages.
+  // Opt out via CLAUDIO_MALLOC=default (use V8's built-in allocator as-is).
+  const mallocEnv = {}
+  const mallocStrategy = process.env.CLAUDIO_MALLOC || 'auto'
+  let ldPreload = process.env.LD_PRELOAD || ''
+
+  if (mallocStrategy !== 'default') {
+    // Candidate jemalloc paths (common distro locations)
+    const jemallocPaths = [
+      '/usr/lib/x86_64-linux-gnu/libjemalloc.so.2',    // Debian/Ubuntu
+      '/usr/lib64/libjemalloc.so.2',                     // RHEL/Fedora
+      '/usr/lib/libjemalloc.so.2',                       // Alpine/Arch
+      '/usr/lib/aarch64-linux-gnu/libjemalloc.so.2',    // ARM64 Debian/Ubuntu
+    ]
+    const jemallocPath = jemallocPaths.find(p => {
+      try { return existsSync(p) } catch { return false }
+    })
+
+    if (jemallocPath) {
+      // jemalloc found — prepend to LD_PRELOAD
+      ldPreload = ldPreload ? `${jemallocPath}:${ldPreload}` : jemallocPath
+    } else if (mallocStrategy === 'jemalloc') {
+      // User explicitly requested jemalloc but it's not installed
+      console.warn('claudio: CLAUDIO_MALLOC=jemalloc but libjemalloc not found. Falling back to glibc malloc tuning.')
+    }
+  }
+
+  // glibc malloc tuning (harmless under jemalloc — it ignores env vars it
+  // doesn't recognize, and these are glibc-specific). Only set when NOT
+  // using jemalloc (or as a fallback when jemalloc isn't available).
+  if (!ldPreload.includes('jemalloc') && mallocStrategy !== 'default') {
+    mallocEnv.MALLOC_MMAP_THRESHOLD_ = process.env.MALLOC_MMAP_THRESHOLD_ || '131072'
+    mallocEnv.MALLOC_TRIM_THRESHOLD_ = process.env.MALLOC_TRIM_THRESHOLD_ || '65536'
+    mallocEnv.MALLOC_MMAP_MAX_ = process.env.MALLOC_MMAP_MAX_ || '0'
+  }
+
   const result = spawnSync(
     process.execPath,
     [`--max-old-space-size=${heapMB}`, '--expose-gc', ...process.execArgv, fileURLToPath(import.meta.url), ...process.argv.slice(2)],
-    { stdio: 'inherit', env: { ...process.env, [HEAP_BUMP_SENTINEL]: '1' } },
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        [HEAP_BUMP_SENTINEL]: '1',
+        ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
+        ...mallocEnv,
+      },
+    },
   )
   process.exit(result.status ?? 1)
 }

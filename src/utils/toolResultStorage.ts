@@ -3,7 +3,7 @@
  */
 
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { getOriginalCwd, getSessionId } from '../bootstrap/state.js'
 import {
@@ -128,6 +128,36 @@ export async function ensureToolResultsDir(): Promise<void> {
     await mkdir(getToolResultsDir(), { recursive: true })
   } catch {
     // Directory may already exist
+  }
+}
+
+/**
+ * Delete the tool-results spill directory for a given (old) session.
+ *
+ * Called by `/clear` right after `regenerateSessionId` so the outgoing
+ * session's on-disk tool_result files are unlinked instead of waiting for
+ * the 30-day time-based cleanup in `src/utils/cleanup.ts`. The session ID
+ * is captured by the caller before regeneration; by definition no live
+ * code path can still reference these files (the session no longer exists).
+ *
+ * Best-effort: missing directory is not an error (ENOENT), any other
+ * failure is logged but swallowed so `/clear` always completes.
+ */
+export async function unlinkSessionSpillDir(sessionId: string): Promise<void> {
+  if (!sessionId) return
+  const dir = join(
+    getProjectDir(getOriginalCwd()),
+    sessionId,
+    TOOL_RESULTS_SUBDIR,
+  )
+  try {
+    await rm(dir, { recursive: true, force: true })
+    logForDebugging(`Unlinked tool-results spill dir for session ${sessionId}`)
+  } catch (error) {
+    // force: true already silences ENOENT; anything reaching here is
+    // unexpected (EACCES, EBUSY on Windows). Log and move on — /clear
+    // must not fail on cleanup noise.
+    logError(toError(error))
   }
 }
 

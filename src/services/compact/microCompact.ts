@@ -233,6 +233,17 @@ export async function microcompactMessages(
 
     if (newOnes.length > 0) {
       addClippedIds(newOnes)
+      // Release preview strings from ContentReplacementState.replacements
+      // for IDs that are now clipped. The stable stub has already replaced
+      // the content in the message array, so the replacement preview is no
+      // longer needed. Keep seenIds intact to prevent re-processing in
+      // enforceToolResultBudget.
+      const crs = toolUseContext?.contentReplacementState
+      if (crs) {
+        for (const id of newOnes) {
+          crs.replacements.delete(id)
+        }
+      }
       logEvent('tengu_stable_stub_clip', {
         added: newOnes.length,
         totalClipped: getClippedIds().size,

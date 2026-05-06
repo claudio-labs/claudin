@@ -6,6 +6,7 @@ import { getSystemContext, getUserContext } from '../../context.js'
 import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js'
 import { notifyCompaction } from '../../services/api/promptCacheBreakDetection.js'
 import {
+  buildPostCompactMessages,
   type CompactionResult,
   compactConversation,
   ERROR_MESSAGE_INCOMPLETE_RESPONSE,
@@ -61,7 +62,8 @@ export const call: LocalCommandCall = async (args, context) => {
       )
       if (sessionMemoryResult) {
         getUserContext.cache.clear?.()
-        runPostCompactCleanup()
+        const postCompact = buildPostCompactMessages(sessionMemoryResult)
+        runPostCompactCleanup(undefined, postCompact, context.contentReplacementState)
         // Reset cache read baseline so the post-compact drop isn't flagged
         // as a break. compactConversation does this internally; SM-compact doesn't.
         if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
@@ -115,7 +117,8 @@ export const call: LocalCommandCall = async (args, context) => {
     suppressCompactWarning()
 
     getUserContext.cache.clear?.()
-    runPostCompactCleanup()
+    const postCompact = buildPostCompactMessages(result)
+    runPostCompactCleanup(undefined, postCompact, context.contentReplacementState)
 
     return {
       type: 'compact',
@@ -198,7 +201,8 @@ async function compactViaReactive(
     // resetMicrocompactState — processSlashCommand calls that for all
     // type:'compact' results.
     setLastSummarizedMessageId(undefined)
-    runPostCompactCleanup()
+    const postCompact = buildPostCompactMessages(outcome.result)
+    runPostCompactCleanup(undefined, postCompact, context.contentReplacementState)
     suppressCompactWarning()
     getUserContext.cache.clear?.()
 

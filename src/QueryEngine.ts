@@ -15,7 +15,10 @@ import type {
   SDKUserMessageReplay,
 } from 'src/entrypoints/agentSdkTypes.js'
 import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
-import { applyStableStubs } from 'src/services/compact/stableStubState.js'
+import {
+  applyStableStubs,
+  pruneOldToolResults,
+} from 'src/services/compact/stableStubState.js'
 import type { NonNullableUsage } from 'src/services/api/logging.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import stripAnsi from 'strip-ansi'
@@ -812,6 +815,19 @@ export class QueryEngine {
           break
         case 'user':
           this.mutableMessages.push(message)
+          // Stub out tool_result content older than the current turn.
+          // Substitution-not-mutation: pruneOldToolResults returns a new array
+          // when it stubs, or the same ref when nothing changed (see
+          // QueryEngine L242-253 snapshot-safety contract). Keeps
+          // mutableMessages bounded between hard compactions — the primary
+          // memory-leak vector identified by the memory-leak-detector bench
+          // (~100 MB / 100 turns residue vs. ~28 MB with prune).
+          {
+            const pruned = pruneOldToolResults(this.mutableMessages, 1)
+            if (pruned !== this.mutableMessages) {
+              this.mutableMessages = pruned
+            }
+          }
           yield* normalizeMessage(message)
           break
         case 'stream_event':

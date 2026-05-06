@@ -43,6 +43,7 @@ import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
 } from '../../utils/task/diskOutput.js'
+import { unlinkSessionSpillDir } from '../../utils/toolResultStorage.js'
 import { getCurrentWorktreeSession } from '../../utils/worktree.js'
 import { clearSessionCaches } from './caches.js'
 
@@ -199,8 +200,16 @@ export async function clearConversation({
   clearSessionMetadata()
 
   // Generate new session ID to provide fresh state
-  // Set the old session as parent for analytics lineage tracking
+  // Set the old session as parent for analytics lineage tracking.
+  // Capture the old session ID *before* regeneration so we can unlink its
+  // tool-results spill directory — otherwise the 30-day time-based cleanup
+  // in cleanup.ts is the only thing that reclaims that disk (measured at
+  // ~50 MB per 100 tool calls in memory-leak-detector-bench.ts).
+  const oldSessionId = getSessionId()
   regenerateSessionId({ setCurrentAsParent: true })
+  // Fire-and-log: the unlink should never block /clear, and the helper
+  // already swallows errors internally.
+  void unlinkSessionSpillDir(oldSessionId)
   // Update the environment variable so subprocesses use the new session ID
   await resetSessionFilePointer()
 

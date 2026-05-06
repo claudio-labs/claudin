@@ -512,3 +512,7 @@ export function clearAllSessions(): void {
   lastUuidMap.clear()
   sequentialAppendBySession.clear()
 }
+
+export function _getSessionCountForTesting(): number {
+  return lastUuidMap.size
+}

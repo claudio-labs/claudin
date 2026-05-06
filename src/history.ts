@@ -440,6 +440,15 @@ export function clearPendingHistoryEntries(): void {
 }
 
 /**
+ * Clear skipped timestamps after compaction. Entries flushed before
+ * compaction reference messages that no longer exist, so their timestamps
+ * should not suppress history reads for new entries with the same timestamp.
+ */
+export function clearSkippedTimestamps(): void {
+  skippedTimestamps.clear()
+}
+
+/**
  * Undo the most recent addToHistory call. Used by auto-restore-on-interrupt:
  * when Esc rewinds the conversation before any response arrives, the submit is
  * semantically undone — the history entry should be too, otherwise Up-arrow

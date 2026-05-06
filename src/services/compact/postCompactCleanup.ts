@@ -2,13 +2,23 @@ import { feature } from 'bun:bundle'
 import type { QuerySource } from '../../constants/querySource.js'
 import { clearSystemPromptSections } from '../../constants/systemPromptSections.js'
 import { getUserContext } from '../../context.js'
+import type { Message } from '../../types/message.js'
 import { clearSpeculativeChecks } from '../../tools/BashTool/bashPermissions.js'
 import { resetSentBashGitInstructions } from '../../utils/attachments.js'
 import { clearClassifierApprovals } from '../../utils/classifierApprovals.js'
 import { resetGetMemoryFilesCache } from '../../utils/claudemd.js'
+import {
+  type ContentReplacementState,
+  reconstructContentReplacementState,
+} from '../../utils/toolResultStorage.js'
+import { resetPromptCacheBreakDetection } from '../../services/api/promptCacheBreakDetection.js'
+import { clearAllSessions } from '../../services/api/sessionIngress.js'
+import { diagnosticTracker } from '../../services/diagnosticTracking.js'
 import { clearSessionMessagesCache } from '../../utils/sessionStorage.js'
 import { clearBetaTracingState } from '../../utils/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from './microCompact.js'
+import { pruneStaleClippedIds, pruneOrphanClippedIds } from './stableStubState.js'
+import { clearSkippedTimestamps } from '../../history.js'
 
 /**
  * Run cleanup of caches and tracking state after compaction.
@@ -29,7 +39,11 @@ import { resetMicrocompactState } from './microCompact.js'
  * pass querySource — undefined is only safe for callers that are
  * genuinely main-thread-only (/compact, /clear).
  */
-export function runPostCompactCleanup(querySource?: QuerySource): void {
+export function runPostCompactCleanup(
+  querySource?: QuerySource,
+  messages?: Message[],
+  contentReplacementState?: ContentReplacementState,
+): void {
   // Subagents (agent:*) run in the same process and share module-level
   // state with the main thread. Only reset main-thread module-level state
   // (context-collapse, memory file cache) for main-thread compacts.
@@ -40,6 +54,31 @@ export function runPostCompactCleanup(querySource?: QuerySource): void {
     querySource === 'sdk'
 
   resetMicrocompactState()
+
+  // Rebuild ContentReplacementState to release entries for compacted-away
+  // messages. Without this, seenIds and replacements grow monotonically
+  // because stubbing/compaction removes messages from the array but never
+  // removes their tracking entries. Mutating in-place preserves the
+  // reference held by contentReplacementStateRef in the REPL.
+  if (messages && contentReplacementState) {
+    const rebuilt = reconstructContentReplacementState(
+      messages,
+      [],
+      contentReplacementState.replacements,
+    )
+    contentReplacementState.seenIds = rebuilt.seenIds
+    contentReplacementState.replacements = rebuilt.replacements
+  }
+
+  // Remove perKeyClippedIds entries for sessions/agents whose messages
+  // no longer exist (compacted away or session switched).
+  pruneStaleClippedIds()
+
+  // Prune clipped IDs from the current key that reference messages
+  // removed by compaction.
+  if (messages) {
+    pruneOrphanClippedIds(messages)
+  }
   if (feature('CONTEXT_COLLAPSE')) {
     if (isMainThreadCompact) {
       /* eslint-disable @typescript-eslint/no-require-imports */
@@ -92,6 +131,30 @@ export function runPostCompactCleanup(querySource?: QuerySource): void {
     )
   }
   clearSessionMessagesCache()
+
+  // Prompt-cache break detection holds diffable content hashes per source.
+  // Entries for sources that only existed in the compacted-away prefix become
+  // stale — they compare against a prefix the model no longer sees, so the
+  // next turn always detects a "break" and forces a full cache miss.
+  // Resetting lets the next turn rebuild from the actual post-compact state.
+  resetPromptCacheBreakDetection()
+
+  // Session ingress tracking (sequential-append dedup, last-UUID) accumulates
+  // entries per session (including subagents). After compaction the
+  // compacted-away messages are gone from the array but their ingress
+  // metadata lingers, growing the map indefinitely. Clear to release them.
+  clearAllSessions()
+
+  // Diagnostic tracking holds per-file Maps (baseline, timestamps,
+  // rightFileDiagnostics). Files edited before compaction leave stale
+  // entries that grow unbounded. Reset lets the next turn rebuild from
+  // the actual post-compact state.
+  diagnosticTracker.reset()
+
+  // Skipped timestamps reference history entries for messages that
+  // no longer exist after compaction. Clear so they don't suppress
+  // history reads for new entries with coinciding timestamps.
+  clearSkippedTimestamps()
 
   // After clearing all the per-conversation caches above, hint V8 to mark-
   // sweep so dropped messages/tool-results are released back to the OS now

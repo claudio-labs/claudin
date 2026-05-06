@@ -1,7 +1,16 @@
-import { expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
+import { getOriginalCwd } from '../bootstrap/state.ts'
+import { getProjectDir } from './sessionStoragePortable.ts'
 import { createUserMessage } from './messages.ts'
-import { applyToolResultReplacementsToMessages } from './toolResultStorage.ts'
+import {
+  applyToolResultReplacementsToMessages,
+  TOOL_RESULTS_SUBDIR,
+  unlinkSessionSpillDir,
+} from './toolResultStorage.ts'
 
 test('applyToolResultReplacementsToMessages replaces matching tool results and preserves unrelated messages', () => {
   const unrelated = createUserMessage({ content: 'keep me' })
@@ -56,4 +65,84 @@ test('applyToolResultReplacementsToMessages is idempotent when messages are alre
   )
 
   expect(next).toBe(messages)
+})
+
+describe('unlinkSessionSpillDir', () => {
+  // Isolate filesystem side effects in a hermetic config dir so the test
+  // never touches ~/.claudio. CLAUDIO_CONFIG_DIR flows through
+  // getClaudioConfigHomeDir → getProjectsDir → getProjectDir.
+  const prevConfigDir = process.env.CLAUDIO_CONFIG_DIR
+  const testConfigDir = join(
+    tmpdir(),
+    `claudio-test-spill-${process.pid}-${Date.now()}`,
+  )
+
+  beforeAll(() => {
+    process.env.CLAUDIO_CONFIG_DIR = testConfigDir
+    mkdirSync(testConfigDir, { recursive: true })
+  })
+
+  afterAll(() => {
+    if (prevConfigDir === undefined) {
+      delete process.env.CLAUDIO_CONFIG_DIR
+    } else {
+      process.env.CLAUDIO_CONFIG_DIR = prevConfigDir
+    }
+    rmSync(testConfigDir, { recursive: true, force: true })
+  })
+
+  function makeSessionSpillDir(sessionId: string, fileCount: number): string {
+    const spillDir = join(
+      getProjectDir(getOriginalCwd()),
+      sessionId,
+      TOOL_RESULTS_SUBDIR,
+    )
+    mkdirSync(spillDir, { recursive: true })
+    for (let i = 0; i < fileCount; i++) {
+      writeFileSync(join(spillDir, `tool_${i}.txt`), 'X'.repeat(1_000))
+    }
+    return spillDir
+  }
+
+  test('removes the tool-results directory for the given session', async () => {
+    const sessionId = `sess-remove-${Date.now()}`
+    const dir = makeSessionSpillDir(sessionId, 5)
+    expect(existsSync(dir)).toBe(true)
+
+    await unlinkSessionSpillDir(sessionId)
+
+    expect(existsSync(dir)).toBe(false)
+  })
+
+  test('leaves unrelated sessions untouched', async () => {
+    const victim = `sess-victim-${Date.now()}`
+    const survivor = `sess-survivor-${Date.now()}`
+    const victimDir = makeSessionSpillDir(victim, 3)
+    const survivorDir = makeSessionSpillDir(survivor, 3)
+
+    await unlinkSessionSpillDir(victim)
+
+    expect(existsSync(victimDir)).toBe(false)
+    expect(existsSync(survivorDir)).toBe(true)
+    expect(existsSync(join(survivorDir, 'tool_0.txt'))).toBe(true)
+  })
+
+  test('is a no-op when the session directory does not exist', async () => {
+    // Force: true swallows ENOENT — this just verifies we don't throw.
+    await expect(
+      unlinkSessionSpillDir(`sess-nonexistent-${Date.now()}`),
+    ).resolves.toBeUndefined()
+  })
+
+  test('is a no-op when sessionId is empty', async () => {
+    // Guard: empty string must never escalate to "rm -rf projectDir/" via
+    // join() treating it as a path segment. The early return protects this.
+    const sentinel = `sess-sentinel-${Date.now()}`
+    const sentinelDir = makeSessionSpillDir(sentinel, 2)
+
+    await unlinkSessionSpillDir('')
+
+    // Nothing near the projectDir root was touched
+    expect(existsSync(sentinelDir)).toBe(true)
+  })
 })

@@ -173,7 +173,7 @@ import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
 import { resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs, pruneOldToolResults, type AnyMessage } from '../services/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from '../services/compact/stableStubState.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
@@ -2626,7 +2626,11 @@ export function REPL({
           return [...oldMessages, newMessage];
         });
       } else {
-        setMessages(oldMessages => [...oldMessages, newMessage]);
+        // Immediately stub large tool_results for display to prevent
+        // mid-turn memory spikes. Full content is preserved in
+        // QueryEngine.mutableMessages (API-facing) and transcript.
+        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current as AnyMessage[])
+        setMessages(oldMessages => [...oldMessages, displayMessage]);
       }
       // Block ticks on API errors to prevent tick → error → tick
       // runaway loops (e.g., auth failure, rate limit, blocking limit).
@@ -2805,11 +2809,20 @@ export function REPL({
     // pruneOldToolResults: stubs results outside the rolling window (every turn).
     // applyStableStubs: stubs microcompact-marked blocks (fires at ≥50% context)
     //   while preserving prompt-cache prefix stability.
+    // evictOldStubbedMessages: removes fully-stubbed message pairs (display-only).
+    // evictToMaxSize: caps total display messages to prevent unbounded growth.
     // Applied before onTurnComplete so callers receive the pruned array.
     const before = messagesRef.current as AnyMessage[]
-    const after = applyStableStubs(pruneOldToolResults(before))
+    const stubbed = applyStableStubs(pruneOldToolResults(before))
+    const evicted = evictOldStubbedMessages(stubbed)
+    const after = evictToMaxSize(evicted)
     if (after !== before) {
       setMessages(() => after as MessageType[])
+      // Prune orphaned contentReplacementState entries for IDs no longer
+      // in the display array. Without this, seenIds and replacements grow
+      // monotonically — evicted messages' preview strings (~2KB each) are
+      // never looked up again but never freed.
+      pruneContentReplacementState(after, contentReplacementStateRef.current)
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
@@ -4936,7 +4949,7 @@ export function REPL({
               proactiveModule?.setContextBlocked(false);
             }
             setConversationId(randomUUID());
-            runPostCompactCleanup(context.options.querySource);
+            runPostCompactCleanup(context.options.querySource, postCompact, contentReplacementStateRef.current);
             if (direction === 'from') {
               const r = textForResubmit(message);
               if (r) {

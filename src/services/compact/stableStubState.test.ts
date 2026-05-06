@@ -5,9 +5,13 @@ import {
   addClippedIds,
   applyStableStubs,
   buildClipStub,
+  evictOldStubbedMessages,
+  evictToMaxSize,
   getClippedIds,
+  pruneContentReplacementState,
   pruneOldToolResults,
   resetClippedIds,
+  stubToolResultForDisplay,
 } from './stableStubState.js'
 import {
   getSessionId,
@@ -593,6 +597,78 @@ describe('pruneOldToolResults', () => {
     // Everything else is a ~40-char stub. Budget: 50 KB + 49 * 50 bytes ≈ 53 KB.
     expect(totalSurvivedBytes).toBeLessThan(55_000)
   })
+
+  // Regression: QueryEngine.mutableMessages stores messages in the
+  // `{ type, message: { role, content } }` wrapper shape (see Message type in
+  // src/types/message.ts). pruneOldToolResults must stub those correctly.
+  // Without this coverage, an edit to getInner() could silently break A1.
+  test('handles .message wrapper shape used by mutableMessages', () => {
+    const bigContent = 'C'.repeat(10_000)
+    const wrappedMsgs = [
+      {
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_w_old', name: 'Bash', input: {} },
+          ],
+        },
+      },
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'toolu_w_old',
+              content: bigContent,
+            },
+          ],
+        },
+      },
+      {
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'toolu_w_cur', name: 'Grep', input: {} },
+          ],
+        },
+      },
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'toolu_w_cur',
+              content: 'fresh',
+            },
+          ],
+        },
+      },
+    ] as Msg[]
+
+    const result = pruneOldToolResults(wrappedMsgs, 1)
+    expect(result).not.toBe(wrappedMsgs)
+
+    // Old turn stubbed
+    const oldInner = (result[1] as { message: { content: Block[] } }).message
+    const oldBlock = oldInner.content[0] as { content: string }
+    expect(oldBlock.content).toMatch(/^\[clipped: ~\d+ tokens from Bash\]$/)
+    expect(oldBlock.content).not.toContain(bigContent)
+
+    // Current turn untouched
+    const curInner = (result[3] as { message: { content: Block[] } }).message
+    const curBlock = curInner.content[0] as { content: string }
+    expect(curBlock.content).toBe('fresh')
+
+    // Outer wrapper identity preserved except where content changed
+    expect((result[0] as Msg).type).toBe('assistant')
+    expect((result[1] as Msg).type).toBe('user')
+  })
 })
 
 test('Map size stays bounded across many switchSession calls', () => {
@@ -604,4 +680,629 @@ test('Map size stays bounded across many switchSession calls', () => {
   // Listener drops outgoing entries → at most 1-2 active
   expect(_getClippedIdsMapSizeForTesting()).toBeLessThanOrEqual(2)
   switchSession(original)
+})
+
+describe('stubToolResultForDisplay', () => {
+  test('returns same reference for non-user messages', () => {
+    const msg: Msg = { role: 'assistant', content: [{ type: 'text', text: 'hello' }] }
+    const result = stubToolResultForDisplay(msg, [msg])
+    expect(result).toBe(msg)
+  })
+
+  test('returns same reference for user messages with small tool_results', () => {
+    const msg: Msg = userToolResult('toolu_1', 'small output')
+    const result = stubToolResultForDisplay(msg, [msg])
+    expect(result).toBe(msg)
+  })
+
+  test('stubs user messages with large tool_result content', () => {
+    const assistantMsg: Msg = assistantToolUse('toolu_1', 'Grep')
+    const largeContent = 'X'.repeat(20_000)  // ~5000 tokens
+    const msg: Msg = userToolResult('toolu_1', largeContent)
+    const result = stubToolResultForDisplay(msg, [assistantMsg])
+    expect(result).not.toBe(msg)
+    const content = (result as Msg).content as Block[]
+    expect(content[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_1' })
+    expect((content[0] as { content: string }).content).toContain('clipped')
+    expect((content[0] as { content: string }).content).toContain('Grep')
+  })
+
+  test('uses fallback tool name when assistant message is not in allMessages', () => {
+    const largeContent = 'Y'.repeat(20_000)
+    const msg: Msg = userToolResult('toolu_1', largeContent)
+    const result = stubToolResultForDisplay(msg, [])  // no assistant message available
+    expect(result).not.toBe(msg)
+    const content = (result as Msg).content as Block[]
+    expect((content[0] as { content: string }).content).toContain('tool')
+  })
+
+  test('does not stub already-stubbed content', () => {
+    const stubbed = buildClipStub('Grep', 5000)
+    const msg: Msg = userToolResult('toolu_1', stubbed)
+    const result = stubToolResultForDisplay(msg, [msg])
+    expect(result).toBe(msg)
+  })
+
+  test('does not stub tool_results already in clippedIds', () => {
+    _resetAllClippedIdsForTesting()
+    addClippedIds(['toolu_1'])
+    const largeContent = 'Z'.repeat(20_000)
+    const msg: Msg = userToolResult('toolu_1', largeContent)
+    const result = stubToolResultForDisplay(msg, [msg])
+    expect(result).toBe(msg)
+    _resetAllClippedIdsForTesting()
+  })
+
+  test('stubs multiple large tool_results in one message', () => {
+    const assistantMsg: Msg = { role: 'assistant', content: [
+      { type: 'tool_use', id: 'toolu_1', name: 'Grep', input: {} },
+      { type: 'tool_use', id: 'toolu_2', name: 'Read', input: {} },
+    ] }
+    const largeContent1 = 'A'.repeat(20_000)
+    const largeContent2 = 'B'.repeat(15_000)
+    const msg: Msg = { role: 'user', content: [
+      { type: 'tool_result', tool_use_id: 'toolu_1', content: largeContent1 },
+      { type: 'tool_result', tool_use_id: 'toolu_2', content: largeContent2 },
+    ] }
+    const result = stubToolResultForDisplay(msg, [assistantMsg])
+    expect(result).not.toBe(msg)
+    const content = (result as Msg).content as Block[]
+    expect((content[0] as { content: string }).content).toContain('Grep')
+    expect((content[1] as { content: string }).content).toContain('Read')
+  })
+
+  test('leaves small tool_result intact while stubbing large one', () => {
+    const assistantMsg: Msg = { role: 'assistant', content: [
+      { type: 'tool_use', id: 'toolu_1', name: 'Bash', input: {} },
+      { type: 'tool_use', id: 'toolu_2', name: 'Grep', input: {} },
+    ] }
+    const smallContent = 'short output'
+    const largeContent = 'X'.repeat(20_000)
+    const msg: Msg = { role: 'user', content: [
+      { type: 'tool_result', tool_use_id: 'toolu_1', content: smallContent },
+      { type: 'tool_result', tool_use_id: 'toolu_2', content: largeContent },
+    ] }
+    const result = stubToolResultForDisplay(msg, [assistantMsg])
+    expect(result).not.toBe(msg)
+    const content = (result as Msg).content as Block[]
+    // Small result unchanged
+    expect((content[0] as { content: string }).content).toBe(smallContent)
+    // Large result stubbed
+    expect((content[1] as { content: string }).content).toContain('clipped')
+  })
+
+  test('preserves .message wrapper when stubbing', () => {
+    const largeContent = 'X'.repeat(20_000)
+    // Simulate a wrapped message (real MessageType shape)
+    const msg = {
+      type: 'user' as const,
+      uuid: 'test-uuid-123',
+      timestamp: Date.now(),
+      message: {
+        role: 'user' as const,
+        content: [{ type: 'tool_result' as const, tool_use_id: 'toolu_1', content: largeContent }],
+      },
+    }
+    const result = stubToolResultForDisplay(msg, [])
+    // Must preserve outer wrapper fields
+    expect(result).toMatchObject({
+      type: 'user',
+      uuid: 'test-uuid-123',
+    })
+    // Inner message must have stubbed content
+    const inner = (result as { message: { content: Block[] } }).message
+    expect(inner.content[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_1' })
+    expect((inner.content[0] as { content: string }).content).toContain('clipped')
+  })
+})
+
+describe('evictOldStubbedMessages', () => {
+  function stubContent(toolName: string, tokens: number): string {
+    return buildClipStub(toolName, tokens)
+  }
+
+  test('returns same reference when no messages can be evicted', () => {
+    const msgs: Msg[] = [
+      { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+      { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    expect(result).toBe(msgs)
+  })
+
+  test('returns same reference when messages have fewer turns than keepTurns', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('toolu_1', 'Bash'),
+      userToolResult('toolu_1', stubContent('Bash', 1000)),
+    ]
+    const result = evictOldStubbedMessages(msgs, 2)
+    expect(result).toBe(msgs)
+  })
+
+  test('evicts fully stubbed tool_use/tool_result pairs beyond keepTurns', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('toolu_1', 'Grep'),
+      userToolResult('toolu_1', stubContent('Grep', 5000)),
+      assistantToolUse('toolu_2', 'Read'),
+      userToolResult('toolu_2', stubContent('Read', 3000)),
+      // Keep region: these survive
+      assistantToolUse('toolu_3', 'Bash'),
+      userToolResult('toolu_3', 'live output'),
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    // Should evict the first 4 messages (2 pairs), keep last 2
+    expect(result.length).toBe(2)
+    expect((result[0]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_3' })
+    expect((result[1]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_3' })
+  })
+
+  test('preserves assistant messages with text alongside tool_use', () => {
+    const msgs: Msg[] = [
+      { role: 'assistant', content: [
+        { type: 'text', text: 'Let me search for that.' },
+        { type: 'tool_use', id: 'toolu_1', name: 'Grep', input: {} },
+      ] },
+      userToolResult('toolu_1', stubContent('Grep', 5000)),
+      // Keep region
+      assistantToolUse('toolu_2', 'Bash'),
+      userToolResult('toolu_2', 'live'),
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    // Assistant message has text — not evictable. User message stays too
+    // (its tool_use_id is in a non-evictable assistant message).
+    expect(result.length).toBe(4)
+  })
+
+  test('does not evict user messages with non-stub tool_results', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('toolu_1', 'Grep'),
+      userToolResult('toolu_1', 'full content not yet stubbed'),
+      // Keep region
+      assistantToolUse('toolu_2', 'Bash'),
+      userToolResult('toolu_2', 'live'),
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    // tool_result has full content (not a stub) — can't evict
+    expect(result.length).toBe(4)
+  })
+
+  test('does not evict user messages with non-tool_result blocks', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('toolu_1', 'Grep'),
+      { role: 'user', content: [
+        { type: 'tool_result', tool_use_id: 'toolu_1', content: stubContent('Grep', 5000) },
+        { type: 'text', text: 'also a text block' },
+      ] },
+      // Keep region
+      assistantToolUse('toolu_2', 'Bash'),
+      userToolResult('toolu_2', 'live'),
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    // User message has a text block alongside tool_result — can't evict
+    expect(result.length).toBe(4)
+  })
+
+  test('evicts only evictable pairs, leaves others intact', () => {
+    const msgs: Msg[] = [
+      // Evictable: pure tool_use + stubbed tool_result
+      assistantToolUse('toolu_1', 'Grep'),
+      userToolResult('toolu_1', stubContent('Grep', 5000)),
+      // Not evictable: assistant has text
+      { role: 'assistant', content: [
+        { type: 'text', text: 'Here is what I found:' },
+        { type: 'tool_use', id: 'toolu_2', name: 'Read', input: {} },
+      ] },
+      userToolResult('toolu_2', stubContent('Read', 3000)),
+      // Evictable
+      assistantToolUse('toolu_3', 'Bash'),
+      userToolResult('toolu_3', stubContent('Bash', 1000)),
+      // Keep region
+      assistantToolUse('toolu_4', 'Bash'),
+      userToolResult('toolu_4', 'live'),
+    ]
+    const result = evictOldStubbedMessages(msgs, 1)
+    // Should evict pairs 1 and 3, keep pair 2 (has text) and pair 4 (in keep region)
+    expect(result.length).toBe(4)
+    // Pair 2 (non-evictable assistant + its tool_result)
+    expect((result[0]!.content as Block[]).map((b: Block) => b.type)).toEqual(['text', 'tool_use'])
+    expect((result[1]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_2' })
+    // Pair 4 (keep region)
+    expect((result[2]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_4' })
+    expect((result[3]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_4' })
+  })
+
+  test('handles empty messages array', () => {
+    const result = evictOldStubbedMessages([], 1)
+    expect(result).toEqual([])
+  })
+
+  test('RSS regression: 50 turns → much shorter array after stub+evict', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 50; i++) {
+      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
+      msgs.push(userToolResult(`toolu_${i}`, 'X'.repeat(50_000)))
+    }
+
+    // First stub old results
+    const stubbed = pruneOldToolResults(msgs, 1)
+    // Then evict fully-stubbed pairs
+    const result = evictOldStubbedMessages(stubbed, 1)
+
+    // Only the last turn's pair should survive
+    expect(result.length).toBe(2)
+    expect((result[0]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_49' })
+  })
+})
+
+describe('evictToMaxSize', () => {
+  test('returns same reference when under limit', () => {
+    const msgs: Msg[] = [
+      { role: 'assistant', content: [{ type: 'text', text: 'hi' }] },
+      { role: 'user', content: [{ type: 'text', text: 'hello' }] },
+    ]
+    const result = evictToMaxSize(msgs, 10)
+    expect(result).toBe(msgs)
+  })
+
+  test('truncates messages from the front when over limit', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 20; i++) {
+      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `msg_${i}` }] })
+    }
+    const result = evictToMaxSize(msgs, 10)
+    expect(result.length).toBe(10)
+    // Should keep the last 10 messages
+    expect((result[0]!.content as Block[])[0]).toMatchObject({ text: 'msg_10' })
+    expect((result[9]!.content as Block[])[0]).toMatchObject({ text: 'msg_19' })
+  })
+
+  test('preserves compact boundary message', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 5; i++) {
+      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `old_${i}` }] })
+    }
+    // Compact boundary at index 5
+    msgs.push({ role: 'system', subtype: 'compact_boundary', content: [{ type: 'text', text: 'summary' }] } as Msg)
+    for (let i = 0; i < 15; i++) {
+      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `new_${i}` }] })
+    }
+    // Total 21 messages, max 10
+    const result = evictToMaxSize(msgs, 10)
+    // Should not cut past the compact boundary
+    expect(result.some(m => (m as { subtype?: string }).subtype === 'compact_boundary')).toBe(true)
+  })
+
+  test('does not split tool_use/tool_result pairs', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 8; i++) {
+      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `text_${i}` }] })
+      msgs.push({ role: 'user', content: [{ type: 'text', text: `reply_${i}` }] })
+    }
+    // Add a tool_use/tool_result pair near the cut point
+    msgs.push(assistantToolUse('toolu_1', 'Bash'))
+    msgs.push(userToolResult('toolu_1', 'output'))
+    msgs.push({ role: 'assistant', content: [{ type: 'text', text: 'final' }] })
+
+    const result = evictToMaxSize(msgs, 10)
+    // Should not have orphaned tool_use or tool_result
+    const toolUseIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
+    })
+    const toolResultIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
+    })
+    // If there's a tool_use, there must be a tool_result after it
+    if (toolUseIdx !== -1) {
+      expect(toolResultIdx).toBeGreaterThan(toolUseIdx)
+    }
+  })
+
+  test('returns same reference when exactly at limit', () => {
+    const msgs: Msg[] = Array.from({ length: 10 }, (_, i) => ({
+      role: 'assistant' as const,
+      content: [{ type: 'text' as const, text: `msg_${i}` }],
+    }))
+    const result = evictToMaxSize(msgs, 10)
+    expect(result).toBe(msgs)
+  })
+
+  test('handles very small max (2 messages)', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 20; i++) {
+      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `msg_${i}` }] })
+    }
+    const result = evictToMaxSize(msgs, 2)
+    expect(result.length).toBeLessThanOrEqual(2)
+    expect(result.length).toBeGreaterThanOrEqual(1)
+  })
+
+  test('skips past tool_use when cut lands on it', () => {
+    // Cut point lands exactly on an assistant with tool_use —
+    // should skip past the pair, not include a partial/orphaned pair
+    const msgs: Msg[] = [
+      // indices 0-7: 8 text messages
+      ...Array.from({ length: 8 }, (_, i) => ({
+        role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: `text_${i}` }],
+      })),
+      // index 8: assistant with tool_use (this is where cutAt would land)
+      assistantToolUse('toolu_cut', 'Bash'),
+      // index 9: tool_result
+      userToolResult('toolu_cut', 'output'),
+      // index 10-11: trailing messages
+      { role: 'assistant', content: [{ type: 'text', text: 'after' }] },
+      { role: 'user', content: [{ type: 'text', text: 'reply' }] },
+    ]
+    // 12 messages, max 4 → excess = 8, cutAt = 8 (lands on tool_use)
+    const result = evictToMaxSize(msgs, 4)
+    // Should skip past tool_use+tool_result pair → cutAt = 10
+    // Result: last 2 messages (indices 10, 11)
+    const toolUseIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
+    })
+    const toolResultIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
+    })
+    // No orphaned tool_use or tool_result
+    expect(toolUseIdx).toBe(-1)
+    expect(toolResultIdx).toBe(-1)
+  })
+
+  test('skips past orphaned tool_result when cut lands on it', () => {
+    // Cut point lands on a user message with tool_result —
+    // its preceding assistant was already cut, so skip past it
+    const msgs: Msg[] = [
+      // indices 0-7: 8 text messages
+      ...Array.from({ length: 8 }, (_, i) => ({
+        role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: `text_${i}` }],
+      })),
+      // index 8: assistant with tool_use (will be cut)
+      assistantToolUse('toolu_orphan', 'Bash'),
+      // index 9: tool_result (cutAt would land here if max forces it)
+      userToolResult('toolu_orphan', 'output'),
+      // index 10: safe message
+      { role: 'assistant', content: [{ type: 'text', text: 'safe' }] },
+    ]
+    // 11 messages, max 2 → excess = 9, cutAt = 9 (lands on tool_result)
+    const result = evictToMaxSize(msgs, 2)
+    // Should skip past tool_result → cutAt = 10
+    // Result: only the last message
+    const toolResultIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
+    })
+    expect(toolResultIdx).toBe(-1)
+  })
+
+  test('skips multiple consecutive tool_use/tool_result pairs', () => {
+    // Cut point lands on a sequence of tool pairs —
+    // should skip past all of them
+    const msgs: Msg[] = [
+      // indices 0-5: 6 text messages
+      ...Array.from({ length: 6 }, (_, i) => ({
+        role: 'assistant' as const,
+        content: [{ type: 'text' as const, text: `text_${i}` }],
+      })),
+      // indices 6-9: two consecutive tool pairs
+      assistantToolUse('toolu_a', 'Bash'),
+      userToolResult('toolu_a', 'output_a'),
+      assistantToolUse('toolu_b', 'Grep'),
+      userToolResult('toolu_b', 'output_b'),
+      // index 10: safe message
+      { role: 'assistant', content: [{ type: 'text', text: 'safe' }] },
+    ]
+    // 11 messages, max 4 → excess = 7, cutAt = 7 (lands on tool_result of a)
+    const result = evictToMaxSize(msgs, 4)
+    // Should skip past all tool pairs → cutAt = 10
+    const toolUseIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
+    })
+    const toolResultIdx = result.findIndex(m => {
+      const content = (m as Msg).content as Block[] | undefined
+      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
+    })
+    expect(toolUseIdx).toBe(-1)
+    expect(toolResultIdx).toBe(-1)
+    expect(result.length).toBe(1)
+  })
+
+  test('RSS regression: 500 messages → capped at 200', () => {
+    const msgs: Msg[] = []
+    for (let i = 0; i < 500; i++) {
+      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
+      msgs.push(userToolResult(`toolu_${i}`, 'output'))
+    }
+    // 1000 total messages
+    const result = evictToMaxSize(msgs, 200)
+    expect(result.length).toBeLessThanOrEqual(200)
+  })
+})
+
+describe('pruneContentReplacementState', () => {
+  function makeState(ids: string[], replacementIds: string[] = ids) {
+    return {
+      seenIds: new Set(ids),
+      replacements: new Map(replacementIds.map(id => [id, `[preview ${id}]`])),
+    }
+  }
+
+  test('removes seenIds for tool_use_ids no longer in messages', () => {
+    const msgs = [
+      assistantToolUse('keep-1', 'Bash'),
+      userToolResult('keep-1', 'output'),
+    ]
+    const state = makeState(['keep-1', 'gone-1', 'gone-2'])
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.seenIds.has('keep-1')).toBe(true)
+    expect(state.seenIds.has('gone-1')).toBe(false)
+    expect(state.seenIds.has('gone-2')).toBe(false)
+  })
+
+  test('removes replacements for tool_use_ids no longer in messages', () => {
+    const msgs = [
+      assistantToolUse('keep-1', 'Bash'),
+      userToolResult('keep-1', 'output'),
+    ]
+    const state = makeState(['keep-1', 'gone-1'], ['keep-1', 'gone-1'])
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.replacements.has('keep-1')).toBe(true)
+    expect(state.replacements.has('gone-1')).toBe(false)
+  })
+
+  test('detects live IDs from tool_result blocks (not just tool_use)', () => {
+    // Only tool_result message, no corresponding assistant tool_use
+    const msgs = [userToolResult('from-result', 'output')]
+    const state = makeState(['from-result', 'orphan'])
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.seenIds.has('from-result')).toBe(true)
+    expect(state.seenIds.has('orphan')).toBe(false)
+  })
+
+  test('handles empty messages — removes everything', () => {
+    const state = makeState(['id-1', 'id-2'], ['id-1'])
+
+    pruneContentReplacementState([], state)
+
+    expect(state.seenIds.size).toBe(0)
+    expect(state.replacements.size).toBe(0)
+  })
+
+  test('no-op when all IDs are still present', () => {
+    const msgs = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', 'out'),
+      assistantToolUse('b', 'Grep'),
+      userToolResult('b', 'out'),
+    ]
+    const state = makeState(['a', 'b'], ['a', 'b'])
+    const seenBefore = state.seenIds.size
+    const replBefore = state.replacements.size
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.seenIds.size).toBe(seenBefore)
+    expect(state.replacements.size).toBe(replBefore)
+  })
+
+  test('preserves object identity (mutates in-place)', () => {
+    const msgs = [assistantToolUse('keep', 'Bash')]
+    const state = makeState(['keep', 'gone'])
+    const originalSeenRef = state.seenIds
+    const originalReplRef = state.replacements
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.seenIds).toBe(originalSeenRef)
+    expect(state.replacements).toBe(originalReplRef)
+  })
+
+  test('full eviction pipeline: evictToMaxSize + pruneContentReplacementState', () => {
+    // Build 300 tool pairs → 600 messages total
+    const msgs: Msg[] = []
+    for (let i = 0; i < 300; i++) {
+      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
+      msgs.push(userToolResult(`toolu_${i}`, 'output'))
+    }
+
+    // Simulate contentReplacementState tracking all 300 IDs
+    const state = makeState(
+      Array.from({ length: 300 }, (_, i) => `toolu_${i}`),
+      Array.from({ length: 300 }, (_, i) => `toolu_${i}`),
+    )
+    expect(state.seenIds.size).toBe(300)
+    expect(state.replacements.size).toBe(300)
+
+    // Evict to 200 messages
+    const after = evictToMaxSize(msgs, 200)
+    expect(after.length).toBeLessThanOrEqual(200)
+
+    // Prune orphaned state entries
+    pruneContentReplacementState(after, state)
+
+    // seenIds and replacements should only contain IDs still in the array
+    expect(state.seenIds.size).toBeLessThanOrEqual(200)
+    expect(state.replacements.size).toBeLessThanOrEqual(200)
+
+    // Every remaining ID should be present in the surviving messages
+    for (const id of state.seenIds) {
+      const inMessages = after.some(m => {
+        const content = (m as Msg).content as Block[] | undefined
+        return Array.isArray(content) && content.some(
+          b => (b as Block).tool_use_id === id || (b as Block).id === id,
+        )
+      })
+      expect(inMessages).toBe(true)
+    }
+  })
+
+  test('full eviction pipeline: evictOldStubbedMessages + pruneContentReplacementState', () => {
+    // Build messages with old stubbed tool pairs + recent ones
+    const stub = buildClipStub('Bash', 5000)
+    const msgs: Msg[] = [
+      // Old: fully stubbed pair (evictable)
+      assistantToolUse('old-1', 'Bash'),
+      userToolResult('old-1', stub),
+      assistantToolUse('old-2', 'Grep'),
+      userToolResult('old-2', stub),
+      // Recent: still has real content (kept)
+      assistantToolUse('keep-1', 'Bash'),
+      userToolResult('keep-1', 'real output'),
+      { role: 'user', content: [{ type: 'text', text: 'latest user message' }] },
+    ]
+
+    // Simulate contentReplacementState tracking all IDs
+    const state = makeState(
+      ['old-1', 'old-2', 'keep-1'],
+      ['old-1', 'old-2', 'keep-1'],
+    )
+
+    // Register old IDs as clipped so they're recognized as stubs
+    addClippedIds(['old-1', 'old-2'])
+
+    const after = evictOldStubbedMessages(msgs, 1)
+    expect(after.length).toBeLessThan(msgs.length)
+
+    // Prune orphaned state entries
+    pruneContentReplacementState(after, state)
+
+    // old-1 and old-2 should be gone
+    expect(state.seenIds.has('old-1')).toBe(false)
+    expect(state.seenIds.has('old-2')).toBe(false)
+    expect(state.replacements.has('old-1')).toBe(false)
+    expect(state.replacements.has('old-2')).toBe(false)
+
+    // keep-1 should still be present
+    expect(state.seenIds.has('keep-1')).toBe(true)
+    expect(state.replacements.has('keep-1')).toBe(true)
+  })
+
+  test('mixed messages: non-tool messages are ignored, tool IDs are pruned', () => {
+    const msgs: Msg[] = [
+      { role: 'user', content: [{ type: 'text', text: 'hello' }] },
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', 'out'),
+      { role: 'assistant', content: [{ type: 'text', text: 'done' }] },
+    ]
+    const state = makeState(['a', 'b', 'c'], ['a', 'b'])
+
+    pruneContentReplacementState(msgs, state)
+
+    expect(state.seenIds.has('a')).toBe(true)
+    expect(state.seenIds.has('b')).toBe(false)
+    expect(state.seenIds.has('c')).toBe(false)
+    expect(state.replacements.has('a')).toBe(true)
+    expect(state.replacements.has('b')).toBe(false)
+  })
 })

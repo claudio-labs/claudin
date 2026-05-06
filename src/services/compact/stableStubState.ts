@@ -30,6 +30,9 @@ import { getAgentId } from '../../utils/teammate.js'
 import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
 import { roughTokenCountEstimation } from '../tokenEstimation.js'
 
+/** Minimum token count for a tool_result to be immediately stubbed on display. */
+const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000
+
 const DOCUMENT_TOKEN_FALLBACK = 2000
 
 // Worst-case cap on the number of (session, agent) entries we hold. The
@@ -80,6 +83,58 @@ export function addClippedIds(ids: Iterable<string>): void {
 
 export function resetClippedIds(): void {
   perKeyClippedIds.delete(currentKey())
+}
+
+/**
+ * Remove perKeyClippedIds entries for keys that don't match the current
+ * session/agent. After compaction, old session keys from /resume or
+ * session-switch scenarios hold stale IDs whose messages no longer exist.
+ * The onSessionSwitch listener handles the common case, but compaction
+ * can leave orphaned sub-agent keys.
+ */
+export function pruneStaleClippedIds(): void {
+  const key = currentKey()
+  for (const k of perKeyClippedIds.keys()) {
+    if (k !== key) perKeyClippedIds.delete(k)
+  }
+}
+
+/**
+ * Prune clipped IDs from the current key that no longer exist in the
+ * message array (e.g. after compaction removed their messages). Without
+ * this, the Set for the current key grows monotonically with IDs whose
+ * messages were compacted away.
+ */
+export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
+  const ids = perKeyClippedIds.get(currentKey())
+  if (!ids || ids.size === 0) return
+
+  const liveIds = new Set<string>()
+  for (const msg of messages) {
+    const inner = getInner(msg)
+    const role = inner.role ?? msg.role
+    if (role === 'assistant') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        for (const block of content as ToolUseBlock[]) {
+          if (block?.type === 'tool_use' && block.id) liveIds.add(block.id)
+        }
+      }
+    }
+    if (role === 'user') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        for (const block of content as AnyContentBlock[]) {
+          if (block?.type === 'tool_result' && block.tool_use_id)
+            liveIds.add(block.tool_use_id)
+        }
+      }
+    }
+  }
+
+  for (const id of ids) {
+    if (!liveIds.has(id)) ids.delete(id)
+  }
 }
 
 // Test-only: reset all tracked keys. Useful for unit tests that mock
@@ -186,6 +241,97 @@ function indexToolUses(messages: readonly AnyMessage[]): Map<string, string> {
  */
 export function buildClipStub(toolName: string, originalTokens: number): string {
   return `[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName}]`
+}
+
+/**
+ * Immediately stub large tool_result content for the display array.
+ *
+ * When a tool_result arrives during streaming, its full content is stored
+ * in QueryEngine.mutableMessages (API-facing) and the transcript. The
+ * display array (React state) only needs the content for rendering, and
+ * once the tool_result block is committed the user has already seen the
+ * output. This function replaces large tool_result content with a clip
+ * stub immediately, preventing mid-turn memory spikes.
+ *
+ * Only stubs content above IMMEDIATE_STUB_TOKEN_THRESHOLD (~2000 tokens).
+ * Small results (errors, short outputs) are left intact for scrollback.
+ *
+ * @param message A user message containing tool_result blocks
+ * @param allMessages Current messages array (used to look up tool names)
+ * @returns The same message reference if nothing was stubbed, or a new
+ *          message with stubbed content
+ */
+export function stubToolResultForDisplay<T extends AnyMessage>(
+  message: T,
+  allMessages: T[],
+): T {
+  const inner = getInner(message)
+  const role = inner.role ?? (message as AnyMessage).role
+  if (role !== 'user') return message
+
+  const content = inner.content
+  if (!Array.isArray(content)) return message
+
+  let anyStubbed = false
+  const newContent = (content as AnyContentBlock[]).map(block => {
+    if (block?.type !== 'tool_result') return block
+
+    const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+    const existing = (block as { content?: unknown }).content
+
+    // Already stubbed
+    if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return block
+
+    // Skip non-string content
+    if (typeof existing !== 'string') return block
+
+    // Skip if already in clippedIds (microcompact will handle it)
+    if (getClippedIds().has(toolUseId)) return block
+
+    // Estimate tokens and check threshold
+    const tokens = roughTokenCountEstimation(existing)
+    if (tokens < IMMEDIATE_STUB_TOKEN_THRESHOLD) return block
+
+    // Look up the tool name from the preceding assistant message's tool_use block
+    const toolName = findToolNameById(allMessages, toolUseId)
+    anyStubbed = true
+    return {
+      ...block,
+      content: buildClipStub(toolName, tokens),
+    } as AnyContentBlock
+  })
+
+  if (!anyStubbed) return message
+
+  // Preserve the .message wrapper if present (same pattern as
+  // applyStableStubs / pruneOldToolResults)
+  if ((message as { message?: unknown }).message) {
+    return {
+      ...message,
+      message: { ...inner, content: newContent },
+    } as T
+  }
+  return { ...message, content: newContent } as T
+}
+
+/** Find the tool name for a given tool_use_id by scanning assistant messages. */
+function findToolNameById<T extends AnyMessage>(
+  messages: T[],
+  toolUseId: string,
+): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role !== 'assistant') continue
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+    for (const block of content as AnyContentBlock[]) {
+      if (block?.type === 'tool_use' && (block as ToolUseBlock).id === toolUseId) {
+        return (block as ToolUseBlock).name ?? 'tool'
+      }
+    }
+  }
+  return 'tool'
 }
 
 // Used to detect blocks already rewritten on a previous turn so applyStableStubs
@@ -347,4 +493,338 @@ export function pruneOldToolResults<T extends AnyMessage>(
   })
 
   return anyTouched ? out : messages
+}
+
+/**
+ * Evict old fully-stubbed message pairs from the display array.
+ *
+ * While pruneOldToolResults replaces tool_result content with stubs,
+ * the message objects remain in the array. This function goes further:
+ * it removes user messages that contain ONLY stubbed tool_results,
+ * along with their corresponding assistant messages if those contain
+ * ONLY tool_use blocks (no text, no thinking). This frees the wrapper
+ * objects and any remaining string allocation overhead.
+ *
+ * Safe for display-only arrays (React state). Does NOT affect
+ * QueryEngine.mutableMessages (API-facing array).
+ *
+ * @param messages Display messages array
+ * @param keepTurns Number of recent turns to preserve untouched (default 2)
+ * @returns The same array reference if nothing was evicted, or a new shorter array
+ */
+export function evictOldStubbedMessages<T extends AnyMessage>(
+  messages: T[],
+  keepTurns = 2,
+): T[] {
+  if (messages.length === 0) return messages
+
+  // Find cutoff: same algorithm as pruneOldToolResults but with a
+  // more conservative default (keepTurns=2 vs 1) because eviction
+  // is more destructive than stubbing
+  let cutoffIdx = -1
+  let turnsFound = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role === 'user') {
+      turnsFound++
+      if (turnsFound >= keepTurns) {
+        cutoffIdx = i
+        break
+      }
+    }
+  }
+
+  if (cutoffIdx === -1) return messages
+  if (cutoffIdx === 0) return messages
+
+  // Step 1: Find assistant messages before cutoff that contain ONLY tool_use
+  // blocks (no text, thinking, or other content that the user needs to see).
+  // Collect the tool_use_ids from these purely-tool-use assistant messages.
+  const candidateToolUseIds = new Set<string>()
+  const candidateAssistantIndices = new Set<number>()
+
+  for (let i = 0; i < cutoffIdx; i++) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role !== 'assistant') continue
+
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+
+    let allToolUse = true
+    for (const block of content as AnyContentBlock[]) {
+      if (block?.type !== 'tool_use') {
+        allToolUse = false
+        break
+      }
+    }
+
+    if (!allToolUse) continue
+    candidateAssistantIndices.add(i)
+    for (const block of content as ToolUseBlock[]) {
+      if (block.id) candidateToolUseIds.add(block.id)
+    }
+  }
+
+  if (candidateToolUseIds.size === 0) return messages
+
+  // Step 2: Find user messages before cutoff whose tool_results are ALL
+  // stubbed AND whose tool_use_ids are ALL in candidateToolUseIds.
+  // Only evict the pair if both sides are cleanly removable.
+  const evictableUserMsgIndices = new Set<number>()
+  const evictedToolResultIds = new Set<string>()
+
+  for (let i = 0; i < cutoffIdx; i++) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role !== 'user') continue
+
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+
+    let allEvictable = true
+    let hasAnyBlock = false
+    for (const block of content as AnyContentBlock[]) {
+      hasAnyBlock = true
+      if (block?.type !== 'tool_result') {
+        allEvictable = false
+        break
+      }
+      const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+      if (!candidateToolUseIds.has(toolUseId)) {
+        allEvictable = false
+        break
+      }
+      // Check if the tool_result content is already a stub
+      const existing = (block as { content?: unknown }).content
+      if (typeof existing !== 'string' || !CLIP_STUB_PATTERN.test(existing)) {
+        allEvictable = false
+        break
+      }
+    }
+
+    if (hasAnyBlock && allEvictable) {
+      evictableUserMsgIndices.add(i)
+      for (const block of content as AnyContentBlock[]) {
+        const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+        if (toolUseId) evictedToolResultIds.add(toolUseId)
+      }
+    }
+  }
+
+  if (evictableUserMsgIndices.size === 0) return messages
+
+  // Step 3: Filter candidate assistant messages — only keep those whose
+  // tool_use_ids are ALL covered by evictable user messages.
+  const evictableAssistantIndices = new Set<number>()
+  for (const i of candidateAssistantIndices) {
+    const inner = getInner(messages[i]!)
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+
+    let allCovered = true
+    for (const block of content as ToolUseBlock[]) {
+      if (!evictedToolResultIds.has(block.id ?? '')) {
+        allCovered = false
+        break
+      }
+    }
+
+    if (allCovered) evictableAssistantIndices.add(i)
+  }
+
+  // Build the new array without evicted messages
+  const evictSet = new Set([...evictableUserMsgIndices, ...evictableAssistantIndices])
+  if (evictSet.size === 0) return messages
+
+  const out = messages.filter((_, idx) => !evictSet.has(idx))
+  return out.length === messages.length ? messages : out
+}
+
+/** Maximum number of messages to keep in the display array. */
+const MAX_DISPLAY_MESSAGES = 200
+
+/**
+ * Evict messages from the start of the display array when it exceeds
+ * MAX_DISPLAY_MESSAGES. This prevents unbounded growth of the React
+ * state array across very long sessions.
+ *
+ * Rules:
+ * - Never evict the compact boundary message (system with subtype compact_boundary)
+ * - Never evict the first system message (initial context)
+ * - Always evict in complete user/assistant pairs to avoid orphaned tool_uses
+ * - Preserve tool_use/tool_result pairing within evicted ranges
+ *
+ * The transcript on disk retains the full (cleaned) conversation for /resume.
+ *
+ * @param messages Display messages array
+ * @param maxMessages Maximum messages to keep (default MAX_DISPLAY_MESSAGES)
+ * @returns The same array reference if under limit, or a truncated array
+ */
+export function evictToMaxSize<T extends AnyMessage>(
+  messages: T[],
+  maxMessages = MAX_DISPLAY_MESSAGES,
+): T[] {
+  if (messages.length <= maxMessages) return messages
+
+  // Find the compact boundary — we must keep it and everything after it
+  let boundaryIdx = -1
+  for (let i = 0; i < messages.length; i++) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role === 'system') {
+      const subtype = (inner as { subtype?: string }).subtype
+      if (subtype === 'compact_boundary') {
+        boundaryIdx = i
+        break
+      }
+    }
+  }
+
+  // Calculate how many messages to drop from the front
+  const excess = messages.length - maxMessages
+
+  // Find a safe cut point: we need to cut at a position that doesn't
+  // leave orphaned tool_uses or tool_results
+  let cutAt = excess
+
+  // If there's a compact boundary, don't cut past it — cut right at it
+  // (everything before the boundary is already compacted/summarized)
+  if (boundaryIdx !== -1 && cutAt > boundaryIdx) {
+    cutAt = boundaryIdx
+  }
+
+  // Never cut past the first message (keep at least the system/initial message)
+  if (cutAt >= messages.length - 1) return messages
+
+  // Adjust cut point to avoid splitting tool_use/tool_result pairs.
+  // Walk forward from cutAt to find a safe message boundary (a message
+  // that is NOT in the middle of a tool_use/tool_result pair).
+  // Track the last safe cut point in case the array is all tool pairs.
+  let lastSafeCut = -1
+  for (let i = cutAt; i < messages.length; i++) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+
+    // If we land on an assistant message that has tool_use blocks,
+    // we must skip past the entire pair (assistant + tool_result)
+    if (role === 'assistant') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        const hasToolUse = (content as AnyContentBlock[]).some(
+          b => b?.type === 'tool_use'
+        )
+        if (hasToolUse) {
+          // Skip past this assistant and its tool_result response
+          // (the next message should be the tool_result).
+          // Set i = cutAt - 1 so the for-loop's i++ lands on cutAt,
+          // avoiding a redundant re-scan of the tool_result message.
+          cutAt = i + 2
+          // The assistant+tool_result pair at [i, i+1] forms a complete
+          // unit — cutAt = i+2 is a safe boundary between pairs.
+          lastSafeCut = cutAt
+          i = cutAt - 1
+          continue
+        }
+      }
+      // Assistant without tool_use — safe to cut before it
+      cutAt = i
+      break
+    }
+
+    // If we land on a user message that is a tool_result response,
+    // we must also skip past it (its preceding assistant is already cut)
+    if (role === 'user') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        const hasToolResult = (content as AnyContentBlock[]).some(
+          b => b?.type === 'tool_result'
+        )
+        if (hasToolResult) {
+          // The pair ending at this tool_result is a complete unit.
+          // After skipping past it, cutAt = i+1 is a safe boundary
+          // (we're between pairs, not inside one).
+          lastSafeCut = i + 1
+          // Skip past this tool_result
+          cutAt = i + 1
+          continue
+        }
+      }
+      // User message without tool_result — safe to cut before it
+      cutAt = i
+      break
+    }
+
+    // System or other message — safe to cut before it
+    cutAt = i
+    break
+  }
+
+  if (cutAt <= 0) return messages
+
+  // If cutAt walked past the end (all messages from cutAt onward were
+  // tool_use/tool_result pairs with no text messages to break on), fall
+  // back to the last complete pair boundary we saw. This ensures we
+  // still evict messages even when the tail is all tool pairs.
+  if (cutAt >= messages.length) {
+    if (lastSafeCut <= 0) return messages
+    cutAt = lastSafeCut
+  }
+
+  const out = messages.slice(cutAt)
+  return out
+}
+
+/**
+ * Remove contentReplacementState entries for tool_use_ids that no longer
+ * exist in the current messages array. After evictToMaxSize or
+ * evictOldStubbedMessages drop messages from the display array, the
+ * corresponding seenIds and replacements entries become orphans — they hold
+ * references to preview strings (up to ~2KB each) that will never be looked
+ * up again. This function prunes them in-place, preserving the object
+ * reference held by REPL's contentReplacementStateRef.
+ */
+export function pruneContentReplacementState(
+  messages: AnyMessage[],
+  state: { seenIds: Set<string>; replacements: Map<string, unknown> },
+): void {
+  // Collect all tool_use_ids still present in the messages
+  const liveIds = new Set<string>()
+  for (const msg of messages) {
+    const inner = getInner(msg)
+    const role = inner.role ?? msg.role
+
+    // Collect from assistant tool_use blocks
+    if (role === 'assistant') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        for (const block of content as ToolUseBlock[]) {
+          if (block?.type === 'tool_use' && block.id) {
+            liveIds.add(block.id)
+          }
+        }
+      }
+    }
+
+    // Collect from user tool_result blocks
+    if (role === 'user') {
+      const content = inner.content
+      if (Array.isArray(content)) {
+        for (const block of content as AnyContentBlock[]) {
+          if (block?.type === 'tool_result' && block.tool_use_id) {
+            liveIds.add(block.tool_use_id)
+          }
+        }
+      }
+    }
+  }
+
+  // Remove entries for IDs no longer in the message array
+  for (const id of state.seenIds) {
+    if (!liveIds.has(id)) state.seenIds.delete(id)
+  }
+  for (const id of state.replacements.keys()) {
+    if (!liveIds.has(id)) state.replacements.delete(id)
+  }
 }
