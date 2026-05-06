@@ -173,6 +173,7 @@ import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
 import { resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
+import { applyStableStubs } from '../services/compact/stableStubState.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
@@ -2799,6 +2800,18 @@ export function REPL({
       querySource: getQuerySourceForREPL()
     })) {
       onQueryEvent(event);
+    }
+    // Free RSS held by large tool_result blocks that were marked for clipping
+    // during this turn (size-based microcompact threshold ≥ 50% context window).
+    // applyStableStubs replaces their content with tiny stub strings so the old
+    // large byte arrays become GC-eligible. Identity guard skips the setMessages
+    // call when clippedIds is empty (fast path for normal sessions). Applied
+    // before onTurnComplete so callers receive the already-stubbed array.
+    // Roadmap 5.7.
+    const msgsForStub = messagesRef.current as Parameters<typeof applyStableStubs>[0]
+    const stubbedMessages = applyStableStubs(msgsForStub)
+    if (stubbedMessages !== msgsForStub) {
+      setMessages(() => stubbedMessages as MessageType[])
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
