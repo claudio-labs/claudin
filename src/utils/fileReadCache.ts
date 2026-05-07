@@ -98,6 +98,16 @@ class FileReadCache {
       entries: Array.from(this.cache.keys()),
     }
   }
+
+  /**
+   * Current number of cached entries. Used by memory profiling benches
+   * (scripts/profile/memory-turn-by-turn-bench.ts) to track cache growth
+   * per turn without allocating the full entries array that getStats()
+   * returns.
+   */
+  get size(): number {
+    return this.cache.size
+  }
 }
 
 // Export a singleton instance

@@ -148,6 +148,16 @@ export function _getClippedIdsMapSizeForTesting(): number {
   return perKeyClippedIds.size
 }
 
+// Test-only: sum of clipped-id counts across all tracked keys.
+// Used by the turn-by-turn memory bench to detect when individual
+// session buckets grow unbounded (the Map-size cap of 16 can hide
+// per-bucket growth).
+export function _getClippedIdsTotalCountForTesting(): number {
+  let total = 0
+  for (const ids of perKeyClippedIds.values()) total += ids.size
+  return total
+}
+
 // Drop the outgoing session's entries when sessionSwitched fires. We delete
 // every key that starts with the OLD sessionId so sub-agent entries for that
 // session are reclaimed too. Subscribed once at module load.

@@ -182,6 +182,14 @@ const result = await Bun.build({
     asset: 'assets/[name]-[hash][ext]',
   },
   define: {
+    // Inline NODE_ENV=production so Bun constant-folds the
+    // `if (process.env.NODE_ENV === 'production')` branches in
+    // react-reconciler/react-dom/scheduler. Without this, the DEV build
+    // of react-reconciler is loaded at runtime and accumulates diagnostic
+    // data (PerformanceMeasure entries, prop-diff strings, memoization
+    // warnings) that grow the heap by ~400 MB over a long TUI session.
+    // Bundle size drops too because the dev-only code gets tree-shaken.
+    'process.env.NODE_ENV': JSON.stringify('production'),
     // Inline USER_TYPE so Bun constant-folds and tree-shakes every
     // `process.env.USER_TYPE === 'ant'` branch. USER_TYPE is an
     // Anthropic-internal env that is never set in Claudio; this acts as
