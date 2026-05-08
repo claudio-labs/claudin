@@ -1,0 +1,332 @@
+// Integration tests for the bash output filter hook in BashTool.
+//
+// These tests verify that applyBashOutputFilter() — the Phase 3 integration
+// helper exported from BashTool.tsx — correctly honours the
+// `bashOutputFilterEnabled` config flag, the
+// `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER` kill switch, and the backgroundTaskId
+// guard.
+//
+// The outputFilter internals (pipeline stages, individual filters, markers)
+// are covered by src/outputFilter/Bash/bashFilter.test.ts. This suite tests
+// only the BashTool integration boundary.
+//
+// Mocking strategy — follows the project convention (no mock.module()):
+//   • Config  → saveGlobalConfig() mutates TEST_GLOBAL_CONFIG_FOR_TESTING
+//               (NODE_ENV=test path in getGlobalConfig). Restored in afterEach.
+//   • Env var → process.env mutation with save/restore in afterEach.
+//   • ExecResult → plain object literals (no shell subprocess needed here).
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import type { ExecResult } from '../../utils/ShellCommand.js'
+import { applyBashOutputFilter, shouldFilterOutput } from './BashTool.js'
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+/** Minimal ExecResult for a successful foreground command. */
+function makeResult(overrides: Partial<ExecResult> = {}): ExecResult {
+  return {
+    stdout: 'some output\n',
+    stderr: '',
+    code: 0,
+    interrupted: false,
+    ...overrides,
+  }
+}
+
+/** Sample output that matches the ls-la filter (registered in Phase 6.1.2). */
+const LS_LA_SAMPLE = [
+  'total 64',
+  'drwxr-xr-x  2 root root 4096 Jan  1 00:00 .',
+  'drwxr-xr-x 19 root root 4096 Jan  1 00:00 ..',
+  '-rw-r--r--  1 root root  220 Jan  1 00:00 .bash_logout',
+  '-rw-r--r--  1 root root 3526 Jan  1 00:00 .bashrc',
+  '-rw-r--r--  1 root root  807 Jan  1 00:00 .profile',
+].join('\n') + '\n'
+
+// ---------------------------------------------------------------------------
+// State management helpers
+// ---------------------------------------------------------------------------
+
+let savedBashOutputFilterEnabled: boolean | undefined
+
+function enableFilter(): void {
+  saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: true }))
+}
+
+function disableFilter(): void {
+  saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: false }))
+}
+
+beforeEach(() => {
+  savedBashOutputFilterEnabled = getGlobalConfig().bashOutputFilterEnabled
+})
+
+afterEach(() => {
+  saveGlobalConfig(c => ({
+    ...c,
+    bashOutputFilterEnabled: savedBashOutputFilterEnabled,
+  }))
+})
+
+// ---------------------------------------------------------------------------
+// Suite 1 — config guard
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — config guard', () => {
+  test('flag explicitly false → passthrough, no markers', () => {
+    disableFilter()
+
+    const result = makeResult({ stdout: LS_LA_SAMPLE })
+    applyBashOutputFilter(result, 'ls -la')
+
+    expect(result.stdout).toBe(LS_LA_SAMPLE)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+
+  test('config enabled + ls -la → stdout wrapped with filter markers', () => {
+    enableFilter()
+
+    const result = makeResult({ stdout: LS_LA_SAMPLE })
+    applyBashOutputFilter(result, 'ls -la')
+
+    expect(result.stdout).toContain('<bash-output-filtered')
+    expect(result.stdout).toContain('reduction=')
+    // Closing tag present (well-formed XML)
+    expect(result.stdout).toContain('</bash-output-filtered>')
+  })
+
+  // Kill switch tested via shouldFilterOutput (pure function) in Suite 3.
+})
+
+// ---------------------------------------------------------------------------
+// Suite 2 — guard conditions
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — guard conditions', () => {
+  test('background task → stdout unchanged even when config is enabled', () => {
+    enableFilter()
+
+    const result = makeResult({
+      stdout: LS_LA_SAMPLE,
+      backgroundTaskId: 'bg-task-123',
+    })
+    applyBashOutputFilter(result, 'ls -la')
+
+    // backgroundTaskId guard → passthrough
+    expect(result.stdout).toBe(LS_LA_SAMPLE)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+
+  test('ls -la + empty stdout → returns empty string, no marker (pipeline short-circuits at line 61 of index.ts)', () => {
+    // applyBashFilterToStdout: `if (rawStdout === "") return ""` — empty output
+    // is always a passthrough regardless of which filter matched the command.
+    enableFilter()
+
+    const result = makeResult({ stdout: '' })
+    applyBashOutputFilter(result, 'ls -la')
+
+    expect(result.stdout).toBe('')
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+
+  test('command with no registered filter + empty stdout → passthrough, no crash', () => {
+    // Separate axis from above: no filter matched AND stdout is empty.
+    // Guard: !plan.filter && !plan.rewrite → return rawStdout (which is '').
+    enableFilter()
+
+    const result = makeResult({ stdout: '' })
+    applyBashOutputFilter(result, 'date')
+
+    expect(result.stdout).toBe('')
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+
+  test('command with non-zero exit code → no filter marker (isError path in applyBashFilterToStdout)', () => {
+    // applyBashFilterToStdout skips the pipeline on errors and does not add
+    // a filter marker. With rewrite=null this is a pure passthrough.
+    enableFilter()
+
+    const stderr = 'ls: cannot access \'/nonexistent\': No such file or directory\n'
+    const result = makeResult({ stdout: stderr, code: 2 })
+    applyBashOutputFilter(result, 'ls -la /nonexistent')
+
+    // Error path: pipeline is skipped, no filter marker
+    expect(result.stdout).not.toContain('filter="ls-la"')
+    // Original error message preserved
+    expect(result.stdout).toContain('No such file or directory')
+  })
+
+  test('command with no matching filter → passthrough, no marker', () => {
+    enableFilter()
+
+    const output = 'Tue Jan  1 00:00:00 UTC 2000\n'
+    const result = makeResult({ stdout: output })
+    applyBashOutputFilter(result, 'date')
+
+    // date has no registered filter → filter=null + rewrite=null → passthrough
+    expect(result.stdout).toBe(output)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 3 — kill switch (shouldFilterOutput pure-function tests)
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — kill switch (shouldFilterOutput)', () => {
+  // isBashOutputFilterDisabled is captured at module load time — runtime env
+  // mutations have no effect. shouldFilterOutput is the extracted pure function
+  // that encapsulates the guard logic, making the kill-switch path testable
+  // without a subprocess.
+
+  test('kill switch active → returns false regardless of flag', () => {
+    expect(shouldFilterOutput(true, true, undefined)).toBe(false)
+    expect(shouldFilterOutput(false, true, undefined)).toBe(false)
+  })
+
+  test('kill switch inactive + flag enabled + no backgroundTaskId → returns true', () => {
+    expect(shouldFilterOutput(true, false, undefined)).toBe(true)
+  })
+
+  test('kill switch inactive + flag disabled → returns false', () => {
+    expect(shouldFilterOutput(false, false, undefined)).toBe(false)
+    expect(shouldFilterOutput(undefined, false, undefined)).toBe(false)
+  })
+
+  test('kill switch inactive + backgroundTaskId set → returns false', () => {
+    // Guard composition: kill switch off but backgroundTaskId blocks filter
+    expect(shouldFilterOutput(true, false, 'bg-456')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 4 — regression: filter off preserves raw output
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — regression (filter off)', () => {
+  // Default is undefined (not in DEFAULT_GLOBAL_CONFIG). undefined === true is false,
+  // so the filter is already off. beforeEach/afterEach handle save/restore.
+
+  test('ls -la with config off → raw output preserved exactly, no markers', () => {
+    const result = makeResult({ stdout: LS_LA_SAMPLE })
+    applyBashOutputFilter(result, 'ls -la')
+
+    expect(result.stdout).toBe(LS_LA_SAMPLE)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+    // Spot-check raw content is intact
+    expect(result.stdout).toContain('total 64')
+    expect(result.stdout).toContain('drwxr-xr-x')
+  })
+
+  test('echo output with config off → output unchanged', () => {
+    const sentinel = `sentinel-${Date.now()}`
+    const result = makeResult({ stdout: `${sentinel}\n` })
+    applyBashOutputFilter(result, `echo ${sentinel}`)
+
+    expect(result.stdout).toContain(sentinel)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 4 — integration smoke (filter enabled, real filter interaction)
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — integration smoke', () => {
+  test('ps aux output with filter enabled → wrapped with markers, not empty', () => {
+    enableFilter()
+
+    // Fabricate a minimal ps aux header to trigger the ps-aux filter
+    const psOutput = [
+      'USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
+      'root           1  0.0  0.0 168928 11452 ?        Ss   00:00   0:01 /sbin/init',
+      'root           2  0.0  0.0      0     0 ?        S    00:00   0:00 [kthreadd]',
+      'user        1234  0.1  0.5 123456  5678 pts/0    S+   00:01   0:00 bash',
+    ].join('\n') + '\n'
+
+    const result = makeResult({ stdout: psOutput })
+    applyBashOutputFilter(result, 'ps aux')
+
+    expect(result.stdout).toContain('<bash-output-filtered')
+    expect(result.stdout).toContain('</bash-output-filtered>')
+    // Should not be empty inside the marker
+    const lines = result.stdout.split('\n').filter(Boolean)
+    expect(lines.length).toBeGreaterThan(1)
+  })
+
+  test('applyBashOutputFilter returns the same result object (mutates in place)', () => {
+    enableFilter()
+
+    const result = makeResult({ stdout: LS_LA_SAMPLE })
+    const returned = applyBashOutputFilter(result, 'ls -la')
+
+    // Must return the same reference (not a copy)
+    expect(returned).toBe(result)
+  })
+
+  test('python3 --version (no registered filter) with filter enabled → passthrough, no crash', () => {
+    enableFilter()
+
+    const output = 'Python 3.11.0\n'
+    const result = makeResult({ stdout: output })
+    applyBashOutputFilter(result, 'python3 --version')
+
+    // No filter registered for python3 → pure passthrough
+    expect(result.stdout).toBe(output)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 5 — catch path (fail-open / belt-and-suspenders)
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — catch path (fail-open)', () => {
+  // applyBashOutputFilter wraps planBashFilter + applyBashFilterToStdout in a
+  // try/catch. Both functions internally use safeApply, so the catch in
+  // applyBashOutputFilter is currently unreachable without mocking internals.
+  //
+  // This suite tests the observable guarantee: `result.stdout` is always
+  // returned unchanged when the filter pipeline is a no-op — verifying that
+  // the fail-open contract holds end-to-end across all code paths.
+  //
+  // If the catch ever becomes reachable (e.g. safeApply removed from
+  // planBashFilter), the integration tests in Suite 1 would catch the
+  // regression. A direct unit test requires mock.module which this file
+  // deliberately avoids to keep test isolation simple.
+
+  test('result.stderr is never mutated regardless of filter path', () => {
+    enableFilter()
+
+    const originalStderr = 'some error on stderr\n'
+    const result = makeResult({ stdout: LS_LA_SAMPLE, stderr: originalStderr })
+    applyBashOutputFilter(result, 'ls -la')
+
+    // filter only touches stdout — stderr must be preserved exactly
+    expect(result.stderr).toBe(originalStderr)
+  })
+
+  test('result object identity preserved — always returns same reference', () => {
+    // Verifies fail-open contract: every code path (guard passthrough, filter
+    // applied, catch) returns the original result object, never a copy.
+    enableFilter()
+
+    const result = makeResult({ stdout: LS_LA_SAMPLE })
+    const returned = applyBashOutputFilter(result, 'ls -la')
+    expect(returned).toBe(result)
+
+    // Also verify for the guard passthrough path (backgroundTaskId set)
+    const result2 = makeResult({ stdout: LS_LA_SAMPLE, backgroundTaskId: 'bg-1' })
+    const returned2 = applyBashOutputFilter(result2, 'ls -la')
+    expect(returned2).toBe(result2)
+
+    // And for the config-off path (no filter applied)
+    disableFilter()
+    const result3 = makeResult({ stdout: LS_LA_SAMPLE })
+    const returned3 = applyBashOutputFilter(result3, 'ls -la')
+    expect(returned3).toBe(result3)
+  })
+})

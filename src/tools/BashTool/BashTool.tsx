@@ -41,6 +41,11 @@ import { isOutputLineTruncated } from '../../utils/terminal.js';
 import { buildLargeToolResultMessage, ensureToolResultsDir, generatePreview, getToolResultPath, PREVIEW_SIZE_BYTES } from '../../utils/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from '../FileEditTool/UI.js';
 import { trackGitOperations } from '../shared/gitOperationTracking.js';
+import {
+  applyBashFilterToStdout,
+  planBashFilter,
+} from 'src/outputFilter/Bash/index.js';
+import { getGlobalConfig } from '../../utils/config.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from './bashPermissions.js';
 import { interpretCommandResult } from './commandSemantics.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from './prompt.js';
@@ -223,8 +228,13 @@ const DISALLOWED_AUTO_BACKGROUND_COMMANDS = ['sleep' // Sleep should run in fore
 
 // Check if background tasks are disabled at module load time
 const isBackgroundTasksDisabled =
-// eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: schema must be defined at module load
+// eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
 isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS);
+// Captured at module load so the filter decision is consistent for the entire
+// process lifetime — a child cannot silently re-enable filtering after the
+// operator sets the kill switch before starting the agent.
+// eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
+const isBashOutputFilterDisabled = isEnvTruthy(process.env.CLAUDIO_DISABLE_BASH_OUTPUT_FILTER);
 const fullInputSchema = lazySchema(() => z.strictObject({
   command: z.string().describe('The command to execute'),
   timeout: semanticNumber(z.number().optional()).describe(`Optional timeout in milliseconds (max ${getMaxTimeoutMs()})`),
@@ -690,6 +700,9 @@ export const BashTool = buildTool({
 
       // Get the final result from the generator's return value
       result = generatorResult.value;
+
+      result = applyBashOutputFilter(result, input.command);
+
       trackGitOperations(input.command, result.code, result.stdout);
       const isInterrupt = result.interrupted && abortController.signal.reason === 'interrupt';
 
@@ -833,6 +846,60 @@ export const BashTool = buildTool({
     return isOutputLineTruncated(output.stdout) || isOutputLineTruncated(output.stderr);
   }
 } satisfies ToolDef<InputSchema, Out, BashProgress>);
+
+// ---------------------------------------------------------------------------
+// Bash output filter helper — Phase 3 integration
+// Exported for testing; not part of the agent-facing API.
+// ---------------------------------------------------------------------------
+
+/**
+ * Guards (passthrough conditions — mutates result.stdout in place):
+ *  - `bashOutputFilterEnabled !== true`  → default off until Phase 7 flips it
+ *  - `isBashOutputFilterDisabled`        → kill switch (env var, module-level)
+ *  - `result.backgroundTaskId` defined   → output goes to disk, not to the model
+ *
+ * Note — no `structuredContent` guard needed: `ExecResult` (from ShellCommand.ts)
+ * does not carry that field. `structuredContent` lives on the Zod input schema and
+ * is consumed by `mapToolResult` (the serialization layer) before this function is
+ * ever reached; when `mapToolResult` detects structured content it short-circuits
+ * and `result.stdout` is never forwarded to the model regardless.
+ *
+ * Note — `planBashFilter` calls `maybeRewrite` internally, but rewrite is inert
+ * until a `FilterSpec` defines `rewriteCommand`. No registered filter (Phase 6.1.2)
+ * defines that field, so `plan.rewrite` is always `null` in practice. Phase 4 will
+ * wire rewrite explicitly when the first filter needs it.
+ */
+// Exported for testing; shouldFilterOutput is extracted as a pure function so the
+// kill-switch path can be tested without a subprocess (module-level const is not
+// re-evaluable at runtime).
+export function shouldFilterOutput(
+  bashOutputFilterEnabled: boolean | undefined,
+  killSwitchActive: boolean,
+  backgroundTaskId: string | undefined,
+): boolean {
+  return bashOutputFilterEnabled === true && !killSwitchActive && !backgroundTaskId
+}
+
+export function applyBashOutputFilter(
+  result: ExecResult,
+  command: string,
+): ExecResult {
+  const { bashOutputFilterEnabled } = getGlobalConfig()
+  if (!shouldFilterOutput(bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) return result
+
+  try {
+    const filterPlan = planBashFilter(command)
+    result.stdout = applyBashFilterToStdout(result.stdout, result.code !== 0, filterPlan)
+  } catch (e) {
+    // Fail-open: extra defensive layer — planBashFilter and applyBashFilterToStdout
+    // both wrap internally with safeApply, so this catch is currently unreachable.
+    // Kept as a belt-and-suspenders guard: if either function ever removes its
+    // internal safeApply, this boundary still prevents a crash from reaching the user.
+    logError(new Error('bash output filter failed, returning raw stdout', { cause: e }))
+  }
+  return result
+}
+
 // Exported for tests in runShellCommand.test.ts; not part of the agent-facing
 // API. Encapsulates the foreground/background lifecycle of a single bash run.
 export async function* runShellCommand({
