@@ -204,6 +204,7 @@ import exit from '../commands/exit/index.js';
 import { ExitFlow } from '../components/ExitFlow.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
 import { popAllEditable, enqueue, type SetAppState, getCommandQueue, getCommandQueueLength, removeByFilter } from '../utils/messageQueueManager.js';
+import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from '../utils/toolJSXStore.js';
 import { useCommandQueue } from '../hooks/useCommandQueue.js';
 import { SessionBackgroundHint } from '../components/SessionBackgroundHint.js';
 import { startBackgroundSession } from '../tasks/LocalMainSessionTask.js';
@@ -1024,65 +1025,55 @@ export function REPL({
     isImmediate?: boolean;
   } | null>(null);
 
-  // Track local JSX commands separately so tools can't overwrite them.
-  // This enables "immediate" commands (like /btw) to persist while Claude is processing.
-  const localJSXCommandRef = useRef<{
-    jsx: React.ReactNode | null;
-    shouldHidePromptInput: boolean;
-    shouldContinueAnimation?: true;
-    showSpinner?: boolean;
-    isLocalJSXCommand: true;
-  } | null>(null);
+  // toolJSXStore is a module singleton wrapping a pure reducer (see
+  // src/utils/setToolJSXReducer.ts). It exists so async call sites
+  // (processSlashCommand, handlePromptSubmit) can capture a generation token
+  // before they start awaiting, and have late writes from a stale chain
+  // dropped automatically. Without this, a clearLocalJSX:true firing between
+  // a slash command's await load() / await mod.call() / late setToolJSX
+  // microtask would leave isLocalJSXCommand stuck true, blocking the queue
+  // processor and locking out non-immediate slash commands like /clear.
+  useEffect(() => bindToolJSXStore(setToolJSXInternal), []);
 
-  // Wrapper for setToolJSX that preserves local JSX commands (like /btw).
-  // When a local JSX command is active, we ignore updates from tools
-  // unless they explicitly set clearLocalJSX: true (from onDone callbacks).
+  // Wrapper for setToolJSX that dispatches into the singleton store.
   //
   // TO ADD A NEW IMMEDIATE COMMAND:
   // 1. Set `immediate: true` in the command definition
   // 2. Set `isLocalJSXCommand: true` when calling setToolJSX in the command's JSX
   // 3. In the onDone callback, use `setToolJSX({ jsx: null, shouldHidePromptInput: false, clearLocalJSX: true })`
   //    to explicitly clear the overlay when the user dismisses it
+  // 4. For async callers that await before calling setToolJSX with
+  //    isLocalJSXCommand:true, capture getCurrentLocalJSXGeneration() BEFORE
+  //    the first await and pass it back as `generation` — protects against
+  //    stale-write races.
   const setToolJSX = useCallback((args: {
     jsx: React.ReactNode | null;
     shouldHidePromptInput: boolean;
     shouldContinueAnimation?: true;
     showSpinner?: boolean;
     isLocalJSXCommand?: boolean;
+    isImmediate?: boolean;
     clearLocalJSX?: boolean;
+    generation?: number;
   } | null) => {
-    // If setting a local JSX command, store it in the ref
-    if (args?.isLocalJSXCommand) {
-      const {
-        clearLocalJSX: _,
-        ...rest
-      } = args;
-      localJSXCommandRef.current = {
-        ...rest,
-        isLocalJSXCommand: true
-      };
-      setToolJSXInternal(rest);
+    if (args == null) {
+      dispatchToolJSX({ type: 'set_null' });
       return;
     }
-
-    // If there's an active local JSX command in the ref
-    if (localJSXCommandRef.current) {
-      // Allow clearing only if explicitly requested (from onDone callbacks)
-      if (args?.clearLocalJSX) {
-        localJSXCommandRef.current = null;
-        setToolJSXInternal(null);
-        return;
-      }
-      // Otherwise, keep the local JSX command visible - ignore tool updates
+    if (args.clearLocalJSX) {
+      dispatchToolJSX({ type: 'clear_local_jsx' });
       return;
     }
-
-    // No active local JSX command, allow any update
-    if (args?.clearLocalJSX) {
-      setToolJSXInternal(null);
+    const { clearLocalJSX: _c, generation, ...payload } = args;
+    if (args.isLocalJSXCommand) {
+      dispatchToolJSX({
+        type: 'set_local_jsx',
+        payload,
+        generation: generation ?? Number.MAX_SAFE_INTEGER,
+      });
       return;
     }
-    setToolJSXInternal(args);
+    dispatchToolJSX({ type: 'set_regular', payload });
   }, []);
   const [toolUseConfirmQueue, setToolUseConfirmQueue] = useState<ToolUseConfirm[]>([]);
   // Sticky footer JSX registered by permission request components (currently
@@ -3267,18 +3258,20 @@ export function REPL({
           // updates — matches the pattern at L2384/L2400/L2662 and avoids
           // pinning stale REPL render scopes in downstream closures.
           const context = getToolUseContext(messagesRef.current, [], createAbortController(), mainLoopModel);
+          // Capture the generation token BEFORE any await — see toolJSXStore.ts.
+          const generation = getCurrentLocalJSXGeneration();
           const mod = await matchingCommand.load();
           const jsx = await mod.call(onDone, context, commandArgs);
 
-          // Skip if onDone already fired — prevents stuck isLocalJSXCommand
-          // (see processSlashCommand.tsx local-jsx case for full mechanism).
+          // doneWasCalled guards sync onDone; generation guards the async race.
           if (jsx && !doneWasCalled) {
             // shouldHidePromptInput: false keeps Notifications mounted
             // so the onDone result isn't lost
             setToolJSX({
               jsx,
               shouldHidePromptInput: false,
-              isLocalJSXCommand: true
+              isLocalJSXCommand: true,
+              generation
             });
           }
         };

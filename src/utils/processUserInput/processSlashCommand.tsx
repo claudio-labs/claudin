@@ -28,6 +28,7 @@ import { isFullscreenEnvEnabled } from '../fullscreen.js';
 import { toArray } from '../generators.js';
 import { registerSkillHooks } from '../hooks/registerSkillHooks.js';
 import { logError } from '../log.js';
+import { getCurrentLocalJSXGeneration } from '../toolJSXStore.js';
 import { enqueuePendingNotification } from '../messageQueueManager.js';
 import { createCommandInputMessage, createSyntheticUserCaveatMessage, createSystemMessage, createUserInterruptionMessage, createUserMessage, formatCommandInputTags, isCompactBoundaryMessage, isSystemLocalCommandMessage, normalizeMessages, prepareUserContent } from '../messages.js';
 import type { ModelAlias } from '../model/aliases.js';
@@ -561,6 +562,10 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
                 submitNextInput: options?.submitNextInput
               });
             };
+            // Capture the generation token BEFORE any await. If a
+            // clearLocalJSX:true fires before our late set lands, the
+            // store will drop our stale write — see toolJSXStore.ts.
+            const generation = getCurrentLocalJSXGeneration();
             void command.load().then(mod => mod.call(onDone, {
               ...context,
               canUseTool
@@ -574,20 +579,17 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
                 });
                 return;
               }
-              // Guard: if onDone fired during mod.call() (early-exit path
-              // that calls onDone then returns JSX), skip setToolJSX. This
-              // chain is fire-and-forget — the outer Promise resolves when
-              // onDone is called, so executeUserInput may have already run
-              // its setToolJSX({clearLocalJSX: true}) before we get here.
-              // Setting isLocalJSXCommand after clear leaves it stuck true,
-              // blocking useQueueProcessor and TextInput focus.
+              // doneWasCalled guards the synchronous onDone-then-return-jsx
+              // case; the generation token guards the async race where
+              // onDone is never called and a separate path issues a clear.
               if (doneWasCalled) return;
               setToolJSX({
                 jsx,
                 shouldHidePromptInput: true,
                 showSpinner: false,
                 isLocalJSXCommand: true,
-                isImmediate: command.immediate === true
+                isImmediate: command.immediate === true,
+                generation
               });
             }).catch(e => {
               // If load()/call() throws and onDone never fired, the outer

@@ -26,6 +26,7 @@ import { fileHistoryEnabled, fileHistoryMakeSnapshot } from './fileHistory.js'
 import { gracefulShutdownSync } from './gracefulShutdown.js'
 import { enqueue } from './messageQueueManager.js'
 import { resolveSkillModelOverride } from './model/model.js'
+import { getCurrentLocalJSXGeneration } from './toolJSXStore.js'
 import type { ProcessUserInputContext } from './processUserInput/processUserInput.js'
 import { processUserInput } from './processUserInput/processUserInput.js'
 import type { QueryGuard } from './QueryGuard.js'
@@ -292,17 +293,19 @@ export async function handlePromptSubmit(
         }
       }
 
+      // Capture the generation token BEFORE any await — see toolJSXStore.ts.
+      const generation = getCurrentLocalJSXGeneration()
       const impl = await immediateCommand.load()
       const jsx = await impl.call(onDone, context, commandArgs)
 
-      // Skip if onDone already fired — prevents stuck isLocalJSXCommand
-      // (see processSlashCommand.tsx local-jsx case for full mechanism).
+      // doneWasCalled guards sync onDone; generation guards the async race.
       if (jsx && !doneWasCalled) {
         setToolJSX({
           jsx,
           shouldHidePromptInput: false,
           isLocalJSXCommand: true,
           isImmediate: true,
+          generation,
         })
       }
       return

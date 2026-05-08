@@ -116,6 +116,14 @@ export type SetToolJSXFn = (
     isImmediate?: boolean
     /** Set to true to clear a local JSX command (e.g., from its onDone callback) */
     clearLocalJSX?: boolean
+    /**
+     * Generation token captured via `getCurrentLocalJSXGeneration()` BEFORE
+     * any await. Echoed back when calling with `isLocalJSXCommand: true` so
+     * the singleton store can drop stale writes whose generation has been
+     * superseded by an intervening `clearLocalJSX`. Optional — non-racing
+     * callers can omit it.
+     */
+    generation?: number
   } | null,
 ) => void
 
