@@ -606,10 +606,10 @@ export function REPL({
   //
   // Both PromptInput's TextInput (via useTextInput's own useDoublePress) and
   // this hook see the same Ctrl+C event. Route both through handleExit so the
-  // worktree/bg-session paths run; the reentry guard inside handleExit makes
-  // the second concurrent call a no-op, avoiding the Ink-unmount-vs-/exit race
-  // that otherwise leaves the process to be reaped by gracefulShutdown's 5s
-  // failsafe (perceived as a freeze).
+  // worktree/bg-session paths run; the exit state machine inside handleExit
+  // collapses the two concurrent calls (both transition idle → requested in
+  // the same tick, the second is observed as 'requested' and forces SIGKILL —
+  // which is the desired behavior on a true second press).
   const handleExitRef = useRef<() => void>(() => {});
   useExitOnCtrlCDWithKeybindings(() => { handleExitRef.current(); });
 
@@ -3618,16 +3618,32 @@ export function REPL({
       resetHistory: () => { }
     });
   }, []);
-  // Guards against concurrent re-entry. TextInput's useDoublePress and the
-  // REPL's useExitOnCtrlCD both fire on a Ctrl+C double-press; without this,
-  // exit.load() runs twice and the two ExitFlows race.
-  const isExitingRef = useRef(false);
+  // Exit state machine. The previous boolean `isExitingRef` would silently
+  // early-return on every subsequent press once it flipped to true, so any
+  // stall in the shutdown path (slow exit.load(), MCP cleanup hanging,
+  // ExitFlow render wedge) left the user with no way to escape. The state
+  // machine gives a guaranteed escape: a second press while shutdown is
+  // already in flight forces SIGKILL.
+  //
+  //   idle → requested  : first press; arm failsafe + run shutdown
+  //   requested → forced: second press; SIGKILL immediately
+  //   requested → idle  : user backed out (worktree cancel, bg detach)
+  //   * → forced (timer): failsafe fired after 10s of stalled cleanup
+  type ExitState = 'idle' | 'requested' | 'forced';
+  const exitStateRef = useRef<ExitState>('idle');
+  // Timestamp of the idle→requested transition. PromptInput's TextInput hook
+  // and useExitOnCtrlCDWithKeybindings both fire on the same Ctrl+C, so two
+  // synchronous calls land in the same tick. Honor "force kill" only if the
+  // second call arrives well after the first — humans can't double-tap inside
+  // 250ms, and the Ink double-press window is itself ~500ms.
+  const exitRequestedAtRef = useRef(0);
+  const FORCE_KILL_MIN_GAP_MS = 250;
   // Hard kill failsafe. gracefulShutdown has its own 5s failsafe but only
   // runs once it's actually called — and after long sessions we've seen the
   // exit path hang before reaching it (React render of ExitFlow stalls, the
   // dynamic exit.load() never resolves, etc.), leaving an unkillable REPL.
-  // This timer fires SIGKILL unconditionally 15s after the user committed
-  // to exit, and is cleared on the explicit "stay in REPL" branches.
+  // Not unref'd — if cleanup hangs we want the timer to fire; if it completes
+  // gracefulShutdown's process.exit() terminates us before the timer matters.
   const exitFailsafeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearExitFailsafe = (): void => {
     if (exitFailsafeTimerRef.current) {
@@ -3636,12 +3652,22 @@ export function REPL({
     }
   };
   const handleExit = useCallback(async () => {
-    if (isExitingRef.current) return;
-    isExitingRef.current = true;
-    exitFailsafeTimerRef.current = setTimeout(() => {
+    if (exitStateRef.current === 'forced') return;
+    if (exitStateRef.current === 'requested') {
+      // Same-press double dispatch (two hooks, one keypress) — collapse.
+      if (Date.now() - exitRequestedAtRef.current < FORCE_KILL_MIN_GAP_MS) return;
+      // Real second press while shutdown is in flight — user wants out NOW.
+      exitStateRef.current = 'forced';
+      clearExitFailsafe();
       process.kill(process.pid, 'SIGKILL');
-    }, 15_000);
-    exitFailsafeTimerRef.current.unref?.();
+      return;
+    }
+    exitStateRef.current = 'requested';
+    exitRequestedAtRef.current = Date.now();
+    exitFailsafeTimerRef.current = setTimeout(() => {
+      exitStateRef.current = 'forced';
+      process.kill(process.pid, 'SIGKILL');
+    }, 10_000);
     setIsExiting(true);
     // In bg sessions, always detach instead of kill — even when a worktree is
     // active. Without this guard, the worktree branch below short-circuits into
@@ -3651,7 +3677,7 @@ export function REPL({
         stdio: 'ignore'
       });
       clearExitFailsafe();
-      isExitingRef.current = false;
+      exitStateRef.current = 'idle';
       setIsExiting(false);
       return;
     }
@@ -3660,7 +3686,7 @@ export function REPL({
       setExitFlow(<ExitFlow showWorktree onDone={() => { }} onCancel={() => {
         setExitFlow(null);
         clearExitFailsafe();
-        isExitingRef.current = false;
+        exitStateRef.current = 'idle';
         setIsExiting(false);
       }} />);
       return;
@@ -3673,7 +3699,7 @@ export function REPL({
     // path — gracefulShutdown's process.exit() means we never get here.
     if (exitFlowResult === null) {
       clearExitFailsafe();
-      isExitingRef.current = false;
+      exitStateRef.current = 'idle';
       setIsExiting(false);
     }
   }, []);
