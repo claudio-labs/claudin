@@ -1,8 +1,7 @@
-// System-inspection filters: ps aux, top.
+// System-inspection filters: ps aux, top, journalctl.
 //
-// Both are dominated by kernel threads (VIRT/RSS=0) that are rarely relevant
-// to a coding agent. We strip those plus cap max lines, keeping the header
-// and real user-space processes.
+// ps/top are dominated by kernel threads (VIRT/RSS=0) that are rarely relevant
+// to a coding agent. journalctl repeats the hostname on every line — strip it.
 //
 // Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
 
@@ -43,4 +42,28 @@ export const top: FilterSpec = {
   // top's header is 5-7 lines + column header; cap at 60 to cover header
   // and the ~50 busiest user processes.
   maxLines: 60,
+}
+
+// --- journalctl ------------------------------------------------------------
+// Every line repeats the hostname — strip it. Empty-entries and boot markers
+// add noise without actionable information, so replace them too.
+// Passthrough when user requested structured output, is following live, or
+// using --machine (hostname is informative in multi-host context).
+
+const JOURNALCTL_MATCH = /^(sudo\s+)?journalctl\b/
+const JOURNALCTL_REJECT =
+  /--output=json\b|--output=cat\b|-o\s+(json|cat|export)\b|-f\b|--follow\b|--machine\b/
+// "May 05 12:18:04 viudes-arch ..." → "May 05 12:18:04 ..."
+const JOURNALCTL_HOST_REPLACE =
+  /^(\w{3} \d{1,2} \d{2}:\d{2}:\d{2}) \S+ /gm
+
+export const journalctl: FilterSpec = {
+  name: 'journalctl',
+  matchCommand: JOURNALCTL_MATCH,
+  matchCommandReject: JOURNALCTL_REJECT,
+  replace: [{ pattern: JOURNALCTL_HOST_REPLACE, replacement: '$1 ' }],
+  stripLinesMatching: [
+    /^-- No entries --$/,
+    /^-- Boot [0-9a-f]+ --$/,
+  ],
 }

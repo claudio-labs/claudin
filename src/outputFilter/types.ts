@@ -1,6 +1,8 @@
 export interface ReplaceRule {
   pattern: RegExp;
   replacement: string;
+  /** Skip this replace rule if the full text matches this pattern. */
+  unless?: RegExp;
 }
 
 export interface MatchOutputRule {

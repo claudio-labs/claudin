@@ -979,6 +979,607 @@ describe("phase 6.1.4 — ghRunList", () => {
 // Phase 6.1.4 — Regression: batch-1 specs unaffected
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — git pipeline-only specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.5 — gitBlame", () => {
+  test("ROI: git-blame sample ≥20% reduction", () => {
+    assertReduction("git-blame", "git blame README.md", "git-blame", 20);
+  });
+
+  test("match: git blame README.md", () => {
+    expect(findFilterForCommand("git blame README.md")?.name).toBe("git-blame");
+  });
+
+  test("match: git blame -w src/foo.ts", () => {
+    expect(findFilterForCommand("git blame -w src/foo.ts")?.name).toBe("git-blame");
+  });
+
+  test("reject: git blame --porcelain", () => {
+    expect(findFilterForCommand("git blame --porcelain README.md")).toBeNull();
+  });
+
+  test("reject: git blame -p", () => {
+    expect(findFilterForCommand("git blame -p README.md")).toBeNull();
+  });
+
+  test("strips author+timezone, keeps hash+date+line", () => {
+    const raw = "^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudio\n23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Coding agent\n";
+    const body = runFilterBody("git-blame", "git blame README.md", raw);
+    expect(body).toContain("^b8dc2bb");
+    expect(body).toContain("2026-04-29");
+    expect(body).not.toContain("18:08:59");
+    expect(body).not.toContain("-0300");
+    expect(body).not.toContain("Viudes");
+  });
+
+  test("strips author+timezone with full 40-char hash (--abbrev=40)", () => {
+    const hash = "a3f8c9d1e2b4f6a7c8d9e0f1a2b3c4d5e6f7a8b9";
+    const raw = `${hash} (Viudes 2026-05-01 10:00:00 +0000   5) full hash line\n`;
+    const body = runFilterBody("git-blame", "git blame --abbrev=40 README.md", raw);
+    expect(body).toContain(hash);
+    expect(body).toContain("2026-05-01");
+    expect(body).not.toContain("10:00:00");
+    expect(body).not.toContain("Viudes");
+  });
+});
+
+describe("phase 6.1.5 — gitPull", () => {
+  test("ROI: git-pull-synthetic sample ≥40% reduction", () => {
+    assertReduction("git-pull", "git pull", "git-pull-synthetic", 40);
+  });
+
+  test("match: git pull", () => {
+    expect(findFilterForCommand("git pull")?.name).toBe("git-pull");
+  });
+
+  test("match: git pull origin main", () => {
+    expect(findFilterForCommand("git pull origin main")?.name).toBe("git-pull");
+  });
+
+  test("reject: git pull --dry-run", () => {
+    expect(findFilterForCommand("git pull --dry-run")).toBeNull();
+  });
+
+  test("reject: git pull --no-ff", () => {
+    expect(findFilterForCommand("git pull --no-ff")).toBeNull();
+  });
+
+  test("matchOutput: already up to date collapses", () => {
+    const raw = "Already up to date.\n";
+    const body = runFilterBody("git-pull", "git pull", raw);
+    expect(body).toBe("✓ git pull: already up to date");
+  });
+
+  test("matchOutput: already up to date with error → passthrough", () => {
+    const raw = "Already up to date.\nerror: conflict\n";
+    const body = runFilterBody("git-pull", "git pull", raw);
+    expect(body).not.toBe("✓ git pull: already up to date");
+    expect(body).toContain("error: conflict");
+  });
+
+  test("strips remote: progress noise, keeps From/Updating/Fast-forward", () => {
+    const raw = [
+      "remote: Enumerating objects: 47, done.",
+      "remote: Counting objects: 100% (47/47), done.",
+      "remote: Compressing objects: 100% (25/25), done.",
+      "remote: Total 29 (delta 18), reused 0 (delta 0), pack-reused 0",
+      "Unpacking objects: 100% (29/29), 4.32 KiB | 1.08 MiB/s, done.",
+      "From git.server:owner/repo",
+      "   3c1ce42..bb98dbf  main       -> origin/main",
+      "Updating 3c1ce42..bb98dbf",
+      "Fast-forward",
+      " src/foo.ts | 12 ++++++++----",
+      " 3 files changed, 11 insertions(+), 6 deletions(-)",
+    ].join("\n") + "\n";
+    const body = runFilterBody("git-pull", "git pull", raw);
+    expect(body).not.toContain("Enumerating objects");
+    expect(body).not.toContain("Unpacking objects");
+    expect(body).toContain("From git.server");
+    expect(body).toContain("Fast-forward");
+    expect(body).toContain("3 files changed");
+  });
+});
+
+describe("phase 6.1.5 — gitAdd", () => {
+  test("match: git add .", () => {
+    expect(findFilterForCommand("git add .")?.name).toBe("git-add");
+  });
+
+  test("match: git add --dry-run docs/", () => {
+    expect(findFilterForCommand("git add --dry-run docs/")?.name).toBe("git-add");
+  });
+
+  test("reject: git add -i (interactive)", () => {
+    expect(findFilterForCommand("git add -i")).toBeNull();
+  });
+
+  test("reject: git add --interactive", () => {
+    expect(findFilterForCommand("git add --interactive")).toBeNull();
+  });
+
+  test("reject: git add -p (patch)", () => {
+    expect(findFilterForCommand("git add -p")).toBeNull();
+  });
+
+  test("reject: git add --patch", () => {
+    expect(findFilterForCommand("git add --patch")).toBeNull();
+  });
+
+  test("caps dry-run output at 30 lines", () => {
+    const raw = Array.from({ length: 50 }, (_, i) => `add 'src/file${i}.ts'`).join("\n") + "\n";
+    const body = runFilterBody("git-add", "git add --dry-run .", raw);
+    const lines = body.split("\n").filter((l) => l.startsWith("add "));
+    expect(lines.length).toBeLessThanOrEqual(30);
+  });
+});
+
+describe("phase 6.1.5 — gitCommit", () => {
+  test("match: git commit -m 'msg'", () => {
+    expect(findFilterForCommand("git commit -m 'fix: something'")?.name).toBe("git-commit");
+  });
+
+  test("match: git commit --amend", () => {
+    expect(findFilterForCommand("git commit --amend")?.name).toBe("git-commit");
+  });
+
+  test("reject: git commit --dry-run", () => {
+    expect(findFilterForCommand("git commit --dry-run")).toBeNull();
+  });
+
+  test("matchOutput: success collapses to committed message with hash", () => {
+    const raw = "[main a3f8c9d] fix: something\n 7 files changed, 30 insertions(+), 4 deletions(-)\n";
+    const body = runFilterBody("git-commit", "git commit -m 'fix: something'", raw);
+    expect(body.trim()).toBe("✓ committed a3f8c9d");
+  });
+
+  test("matchOutput: nothing to commit collapses", () => {
+    const raw = "On branch main\nnothing to commit, working tree clean\n";
+    const body = runFilterBody("git-commit", "git commit", raw);
+    expect(body).toBe("✓ nothing to commit");
+  });
+
+  test("matchOutput: hook failure → passthrough (error keyword)", () => {
+    const raw = "husky - pre-commit hook exited with code 1 (error)\n✗ ESLint failed\n";
+    const body = runFilterBody("git-commit", "git commit -m 'msg'", raw);
+    expect(body).toContain("hook exited");
+    expect(body).not.toBe("✓ committed");
+  });
+
+  test("passthrough: gpg failure (non-indented line)", () => {
+    const raw = "[main a3f8c9d] fix: something\ngpg failed to sign the data\n";
+    const body = runFilterBody("git-commit", "git commit -S -m 'fix'", raw);
+    expect(body).toContain("gpg failed");
+    expect(body).not.toContain("✓ committed");
+  });
+
+  test("passthrough: indented error line after hash (was blocker)", () => {
+    // GIT_COMMIT_SUCCESS_RE captures indented lines via (?:\n[ \t][^\n]*)* —
+    // without the `unless` guard the replace would swallow the error and return
+    // "✓ committed a3f8c9d", hiding the failure from the agent.
+    const raw =
+      "[main a3f8c9d] fix: something\n\terror: failed to write commit object\n";
+    const body = runFilterBody("git-commit", "git commit -m 'fix'", raw);
+    expect(body).toContain("error: failed to write commit object");
+    expect(body).not.toContain("✓ committed");
+  });
+
+  test("passthrough: rejected → passthrough", () => {
+    const raw = "[main a3f8c9d] fix: something\nerror: rejected by server\n";
+    const body = runFilterBody("git-commit", "git commit -m 'fix'", raw);
+    expect(body).toContain("rejected by server");
+    expect(body).not.toContain("✓ committed");
+  });
+});
+
+describe("phase 6.1.5 — gitPush", () => {
+  test("match: git push", () => {
+    expect(findFilterForCommand("git push")?.name).toBe("git-push");
+  });
+
+  test("match: git push origin main", () => {
+    expect(findFilterForCommand("git push origin main")?.name).toBe("git-push");
+  });
+
+  test("match: git push -u origin feature/foo", () => {
+    expect(findFilterForCommand("git push -u origin feature/foo")?.name).toBe("git-push");
+  });
+
+  test("reject: git push --dry-run", () => {
+    expect(findFilterForCommand("git push --dry-run")).toBeNull();
+  });
+
+  test("matchOutput: Everything up-to-date collapses", () => {
+    const raw = "Everything up-to-date\n";
+    const body = runFilterBody("git-push", "git push", raw);
+    expect(body).toBe("✓ push: up-to-date");
+  });
+
+  test("strips transfer protocol noise, preserves remote: lines and To line", () => {
+    const raw = [
+      "Enumerating objects: 47, done.",
+      "Counting objects: 100% (47/47), done.",
+      "Delta compression using up to 8 threads",
+      "Compressing objects: 100% (25/25), done.",
+      "Writing objects: 100% (29/29), 4.32 KiB | 4.32 MiB/s, done.",
+      "Total 29 (delta 18), reused 0 (delta 0), pack-reused 0",
+      "remote: Resolving deltas: 100% (18/18), completed with 11 local objects.",
+      "remote:",
+      "remote: Create a pull request for 'feature/foo' on GitHub by visiting:",
+      "remote:      https://github.com/owner/repo/pull/new/feature/foo",
+      "remote:",
+      "To github.com:owner/repo.git",
+      " * [new branch]      feature/foo -> feature/foo",
+    ].join("\n") + "\n";
+    const body = runFilterBody("git-push", "git push", raw);
+    expect(body).not.toContain("Enumerating objects");
+    expect(body).not.toContain("Counting objects");
+    expect(body).not.toContain("Compressing objects");
+    expect(body).not.toContain("Writing objects");
+    expect(body).toContain("https://github.com/owner/repo/pull/new/feature/foo");
+    expect(body).toContain("To github.com:owner/repo.git");
+    expect(body).toContain("* [new branch]");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — container specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.5 — dockerPs", () => {
+  test("ROI: docker-ps sample ≥20% reduction", () => {
+    assertReduction("docker-ps", "docker ps -a", "docker-ps", 20);
+  });
+
+  test("match: docker ps", () => {
+    expect(findFilterForCommand("docker ps")?.name).toBe("docker-ps");
+  });
+
+  test("match: docker ps -a", () => {
+    expect(findFilterForCommand("docker ps -a")?.name).toBe("docker-ps");
+  });
+
+  test("reject: docker ps --format", () => {
+    expect(findFilterForCommand("docker ps --format '{{.Names}}'")).toBeNull();
+  });
+
+  test("reject: docker ps -q", () => {
+    expect(findFilterForCommand("docker ps -q")).toBeNull();
+  });
+
+  test("reject: docker ps --quiet", () => {
+    expect(findFilterForCommand("docker ps --quiet")).toBeNull();
+  });
+
+  test("reject: docker ps --no-trunc", () => {
+    expect(findFilterForCommand("docker ps --no-trunc")).toBeNull();
+  });
+
+  test("strips CONTAINER ID column from data rows", () => {
+    const raw = "CONTAINER ID   IMAGE             STATUS\na3f8c9d2e1b7   postgres:16       Up 2 hours\n";
+    const body = runFilterBody("docker-ps", "docker ps -a", raw);
+    expect(body).not.toMatch(/^[0-9a-f]{12}\s/m);
+    expect(body).toContain("postgres:16");
+  });
+
+  test("onEmpty: no containers returns message", () => {
+    const raw = "CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES\n";
+    const body = runFilterBody("docker-ps", "docker ps", raw);
+    expect(body).toContain("No matching containers.");
+  });
+});
+
+describe("phase 6.1.5 — dockerImages", () => {
+  test("ROI: docker-images sample ≥30% reduction", () => {
+    assertReduction("docker-images", "docker images", "docker-images", 30);
+  });
+
+  test("match: docker images", () => {
+    expect(findFilterForCommand("docker images")?.name).toBe("docker-images");
+  });
+
+  test("reject: docker images --format", () => {
+    expect(findFilterForCommand("docker images --format '{{.Repository}}'")).toBeNull();
+  });
+
+  test("reject: docker images -q", () => {
+    expect(findFilterForCommand("docker images -q")).toBeNull();
+  });
+
+  test("strips WARNING line", () => {
+    const raw = "WARNING: This output is designed for human readability. For machine-readable output, please use --format.\nIMAGE   ID   DISK USAGE\npostgres:16   108b27c919e6   276MB\n";
+    const body = runFilterBody("docker-images", "docker images", raw);
+    expect(body).not.toContain("WARNING:");
+    expect(body).toContain("postgres:16");
+  });
+
+  test("strips 12-char hex ID column", () => {
+    const raw = "IMAGE   ID             DISK USAGE\npostgres:16   108b27c919e6   276MB\n";
+    const body = runFilterBody("docker-images", "docker images", raw);
+    expect(body).not.toMatch(/\b[0-9a-f]{12}\b/);
+  });
+});
+
+describe("phase 6.1.5 — dockerLogs", () => {
+  test("ROI: docker-logs sample ≥15% reduction", () => {
+    assertReduction("docker-logs", "docker logs postgres", "docker-logs", 15);
+  });
+
+  test("match: docker logs myapp", () => {
+    expect(findFilterForCommand("docker logs myapp")?.name).toBe("docker-logs");
+  });
+
+  test("match: docker logs --tail 50 myapp", () => {
+    expect(findFilterForCommand("docker logs --tail 50 myapp")?.name).toBe("docker-logs");
+  });
+
+  test("reject: docker logs -f myapp", () => {
+    expect(findFilterForCommand("docker logs -f myapp")).toBeNull();
+  });
+
+  test("reject: docker logs --follow myapp", () => {
+    expect(findFilterForCommand("docker logs --follow myapp")).toBeNull();
+  });
+
+  test("reject: docker logs --timestamps=false myapp", () => {
+    expect(findFilterForCommand("docker logs --timestamps=false myapp")).toBeNull();
+  });
+
+  test("strips postgres-style timestamp prefix to HH:MM:SS", () => {
+    const raw = "2026-05-05 14:35:40.337 UTC [27] LOG:  checkpoint complete\n2026-05-05 14:35:40.405 UTC [1] LOG:  database shut down\n";
+    const body = runFilterBody("docker-logs", "docker logs postgres", raw);
+    expect(body).toContain("14:35:40 LOG:");
+    expect(body).not.toContain("2026-05-05");
+    expect(body).not.toContain("[27]");
+  });
+
+  test("strips Docker ISO timestamp prefix", () => {
+    const raw = "2026-05-05T14:35:40.337Z INFO Starting server\n2026-05-05T14:35:41.001Z INFO Ready\n";
+    const body = runFilterBody("docker-logs", "docker logs myapp", raw);
+    expect(body).toContain("INFO Starting server");
+    expect(body).not.toContain("2026-05-05T");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — network specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.5 — curlV", () => {
+  test("ROI: curl-v sample ≥50% reduction", () => {
+    assertReduction("curl", "curl -v https://httpbin.org/get", "curl-v", 50);
+  });
+
+  test("match: curl -v https://example.com", () => {
+    expect(findFilterForCommand("curl -v https://example.com")?.name).toBe("curl");
+  });
+
+  test("no match: curl https://example.com (no -v, should passthrough)", () => {
+    expect(findFilterForCommand("curl https://example.com")).toBeNull();
+  });
+
+  test("match: curl --verbose https://example.com", () => {
+    expect(findFilterForCommand("curl --verbose https://example.com")?.name).toBe("curl");
+  });
+
+  test("reject: curl -s https://api.example.com", () => {
+    expect(findFilterForCommand("curl -s https://api.example.com")).toBeNull();
+  });
+
+  test("reject: curl --silent https://api.example.com", () => {
+    expect(findFilterForCommand("curl --silent https://api.example.com")).toBeNull();
+  });
+
+  test("reject: curl -I https://example.com", () => {
+    expect(findFilterForCommand("curl -I https://example.com")).toBeNull();
+  });
+
+  test("reject: curl --head https://example.com", () => {
+    expect(findFilterForCommand("curl --head https://example.com")).toBeNull();
+  });
+
+  test("strips TLS handshake lines", () => {
+    const raw = "* TLSv1.3 (OUT), TLS handshake, Client hello (1):\n* TLSv1.2 (IN), TLS handshake, Certificate (11):\n* SSL certificate verify ok.\n> GET / HTTP/2\n< HTTP/2 200\n";
+    const body = runFilterBody("curl", "curl -v https://example.com", raw);
+    expect(body).not.toContain("TLSv1.3");
+    expect(body).not.toContain("TLSv1.2");
+    expect(body).toContain("> GET / HTTP/2");
+    expect(body).toContain("< HTTP/2 200");
+  });
+
+  test("strips byte-count markers", () => {
+    const raw = "} [1566 bytes data]\n{ [5 bytes data]\n> GET / HTTP/2\n";
+    const body = runFilterBody("curl", "curl -v https://example.com", raw);
+    expect(body).not.toContain("bytes data");
+    expect(body).toContain("> GET / HTTP/2");
+  });
+
+  test("strips DNS/connection noise", () => {
+    const raw = "* Host httpbin.org:443 was resolved.\n* IPv4: 44.199.179.5\n* Trying 44.199.179.5:443...\n* ALPN: curl offers h2,http/1.1\n* Connection #0 to host left intact\n< HTTP/2 200\n";
+    const body = runFilterBody("curl", "curl -v https://httpbin.org/get", raw);
+    expect(body).not.toContain("was resolved");
+    expect(body).not.toContain("IPv4:");
+    expect(body).not.toContain("Trying ");
+    expect(body).not.toContain("ALPN:");
+    expect(body).not.toContain("Connection #0");
+    expect(body).toContain("< HTTP/2 200");
+  });
+});
+
+describe("phase 6.1.5 — dig", () => {
+  test("ROI: dig sample ≥40% reduction", () => {
+    assertReduction("dig", "dig httpbin.org", "dig", 40);
+  });
+
+  test("match: dig example.com", () => {
+    expect(findFilterForCommand("dig example.com")?.name).toBe("dig");
+  });
+
+  test("match: dig @8.8.8.8 example.com", () => {
+    expect(findFilterForCommand("dig @8.8.8.8 example.com")?.name).toBe("dig");
+  });
+
+  test("reject: dig +short example.com", () => {
+    expect(findFilterForCommand("dig +short example.com")).toBeNull();
+  });
+
+  test("reject: dig +nocomments example.com", () => {
+    expect(findFilterForCommand("dig +nocomments example.com")).toBeNull();
+  });
+
+  test("strips semicolon comment lines", () => {
+    const raw = "; <<>> DiG 9.20.22 <<>> example.com\n;; global options: +cmd\n;; Got answer:\nexample.com. 60 IN A 93.184.216.34\n";
+    const body = runFilterBody("dig", "dig example.com", raw);
+    expect(body).not.toContain("; <<>>");
+    expect(body).not.toContain(";; global options");
+    expect(body).toContain("example.com.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — system extend: journalctl
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.5 — journalctl", () => {
+  test("ROI: journalctl sample ≥10% reduction", () => {
+    assertReduction("journalctl", "journalctl -u systemd-logind", "journalctl", 10);
+  });
+
+  test("match: journalctl -u systemd-logind", () => {
+    expect(findFilterForCommand("journalctl -u systemd-logind")?.name).toBe("journalctl");
+  });
+
+  test("match: sudo journalctl -n 50", () => {
+    expect(findFilterForCommand("sudo journalctl -n 50")?.name).toBe("journalctl");
+  });
+
+  test("reject: journalctl --output=json", () => {
+    expect(findFilterForCommand("journalctl --output=json")).toBeNull();
+  });
+
+  test("reject: journalctl -o json", () => {
+    expect(findFilterForCommand("journalctl -o json")).toBeNull();
+  });
+
+  test("reject: journalctl --output=cat", () => {
+    expect(findFilterForCommand("journalctl --output=cat")).toBeNull();
+  });
+
+  test("reject: journalctl -f (follow)", () => {
+    expect(findFilterForCommand("journalctl -f")).toBeNull();
+  });
+
+  test("reject: journalctl --follow", () => {
+    expect(findFilterForCommand("journalctl --follow")).toBeNull();
+  });
+
+  test("reject: journalctl --machine=host1 (hostname is informative)", () => {
+    expect(findFilterForCommand("journalctl --machine=host1")).toBeNull();
+  });
+
+  test("strips hostname from log lines", () => {
+    const raw = "May 05 12:18:04 viudes-arch systemd-logind[726]: Watching system buttons\nMay 05 12:22:44 viudes-arch systemd-logind[726]: System is rebooting.\n";
+    const body = runFilterBody("journalctl", "journalctl -u systemd-logind", raw);
+    expect(body).not.toContain("viudes-arch");
+    expect(body).toContain("May 05 12:18:04");
+    expect(body).toContain("systemd-logind[726]: Watching");
+  });
+
+  test("strips boot markers", () => {
+    const raw = "May 05 12:22:49 viudes-arch systemd[1]: Stopped service.\n-- Boot ed3041156fb04270ae0d53e7892c949b --\nMay 05 12:23:37 viudes-arch systemd[1]: Starting service.\n";
+    const body = runFilterBody("journalctl", "journalctl -u systemd", raw);
+    expect(body).not.toContain("-- Boot ed3041");
+    expect(body).toContain("Stopped service.");
+    expect(body).toContain("Starting service.");
+  });
+
+  test("strips no-entries marker", () => {
+    const raw = "-- No entries --\n";
+    const body = runFilterBody("journalctl", "journalctl -u unknown-service", raw);
+    expect(body).not.toContain("-- No entries --");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — Regression: all batch-1 + 6.1.4 specs still match
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.5 — batch-1 specs still match after batch-2 added", () => {
+  const cases: [string, string][] = [
+    ["pytest",          "pytest src/"],
+    ["rspec",           "rspec spec/"],
+    ["go-test",         "go test ./..."],
+    ["bundle-install",  "bundle install"],
+    ["ps-aux",          "ps aux"],
+    ["top",             "top -bn1"],
+    ["rubocop",         "rubocop app/"],
+    ["ruff-check",      "ruff check src/"],
+    ["ls-la",           "ls -la"],
+    ["grep-rg",         "rg foo src/"],
+    ["cargo-test",      "cargo test"],
+    ["cargo-clippy",    "cargo clippy"],
+    ["cargo-check",     "cargo check"],
+    ["cargo-build",     "cargo build"],
+    ["git-log",         "git log"],
+    ["git-status",      "git status"],
+    ["gh-pr-list",      "gh pr list"],
+    ["gh-issue-list",   "gh issue list"],
+    ["gh-run-list",     "gh run list"],
+  ];
+  for (const [name, cmd] of cases) {
+    test(`${name} still matches '${cmd}'`, () => {
+      expect(findFilterForCommand(cmd)?.name).toBe(name);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — Regression: reject guards for new specs
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.5 — reject guards for batch-2 specs", () => {
+  // gitBlame rejects
+  test("git blame --porcelain → no match", () => expect(findFilterForCommand("git blame --porcelain")).toBeNull());
+  test("git blame -p → no match",           () => expect(findFilterForCommand("git blame -p README.md")).toBeNull());
+  // gitPull rejects
+  test("git pull --dry-run → no match",    () => expect(findFilterForCommand("git pull --dry-run")).toBeNull());
+  test("git pull --no-ff → no match",      () => expect(findFilterForCommand("git pull --no-ff")).toBeNull());
+  // gitAdd rejects
+  test("git add -i → no match",            () => expect(findFilterForCommand("git add -i")).toBeNull());
+  test("git add --patch → no match",       () => expect(findFilterForCommand("git add --patch")).toBeNull());
+  // gitCommit rejects
+  test("git commit --dry-run → no match",  () => expect(findFilterForCommand("git commit --dry-run")).toBeNull());
+  // gitPush rejects
+  test("git push --dry-run → no match",    () => expect(findFilterForCommand("git push --dry-run")).toBeNull());
+  // dockerPs rejects
+  test("docker ps --format → no match",    () => expect(findFilterForCommand("docker ps --format '{{.Names}}'")).toBeNull());
+  test("docker ps -q → no match",          () => expect(findFilterForCommand("docker ps -q")).toBeNull());
+  test("docker ps --no-trunc → no match",  () => expect(findFilterForCommand("docker ps --no-trunc")).toBeNull());
+  // dockerImages rejects
+  test("docker images --format → no match", () => expect(findFilterForCommand("docker images --format '{{.ID}}'")).toBeNull());
+  test("docker images -q → no match",       () => expect(findFilterForCommand("docker images -q")).toBeNull());
+  // dockerLogs rejects
+  test("docker logs -f → no match",         () => expect(findFilterForCommand("docker logs -f myapp")).toBeNull());
+  test("docker logs --follow → no match",   () => expect(findFilterForCommand("docker logs --follow myapp")).toBeNull());
+  test("docker logs --timestamps=false → no match", () => expect(findFilterForCommand("docker logs --timestamps=false myapp")).toBeNull());
+  // curlV rejects
+  test("curl -s → no match",                () => expect(findFilterForCommand("curl -s https://api.example.com")).toBeNull());
+  test("curl --silent → no match",          () => expect(findFilterForCommand("curl --silent https://api.example.com")).toBeNull());
+  test("curl -I → no match",                () => expect(findFilterForCommand("curl -I https://example.com")).toBeNull());
+  test("curl --head → no match",            () => expect(findFilterForCommand("curl --head https://example.com")).toBeNull());
+  // dig rejects
+  test("dig +short → no match",             () => expect(findFilterForCommand("dig +short example.com")).toBeNull());
+  test("dig +nocomments → no match",        () => expect(findFilterForCommand("dig +nocomments example.com")).toBeNull());
+  // journalctl rejects
+  test("journalctl --output=json → no match", () => expect(findFilterForCommand("journalctl --output=json")).toBeNull());
+  test("journalctl -o json → no match",       () => expect(findFilterForCommand("journalctl -o json")).toBeNull());
+  test("journalctl -f → no match",            () => expect(findFilterForCommand("journalctl -f")).toBeNull());
+  test("journalctl --machine=host1 → no match", () => expect(findFilterForCommand("journalctl --machine=host1")).toBeNull());
+});
+
+// ---------------------------------------------------------------------------
+
 describe("regression 6.1.4 — batch-1 specs still match after new specs added", () => {
   const cases: [string, string][] = [
     ["pytest",          "pytest src/"],

@@ -150,6 +150,7 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
     // 3. replace
     if (filter.replace) {
       for (const rule of filter.replace) {
+        if (rule.unless?.test(text)) continue;
         const before = text.length;
         text = text.replace(rule.pattern, rule.replacement);
         if (text.length !== before)
