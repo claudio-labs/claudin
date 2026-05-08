@@ -31,7 +31,6 @@
 ./python/requirements.txt
 ./python/smart_router.py
 ./scripts/feature-flags-source-guard.test.ts
-./scripts/grpc-cli.ts
 ./scripts/measure-tool-schemas.test.ts
 ./scripts/measure-tool-schemas.ts
 ./scripts/no-telemetry-growthbook-stub.test.ts
@@ -45,7 +44,6 @@
 ./scripts/v8cache-gc.test.mjs
 ./scripts/provider-sdks-external.test.ts
 ./scripts/release-chunk-naming.test.ts
-./scripts/start-grpc.ts
 ./scripts/build.ts
 ./scripts/measure-attachments-budget.test.ts
 ./scripts/measure-attachments-budget.ts

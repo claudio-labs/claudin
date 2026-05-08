@@ -24,8 +24,7 @@ const GLOBAL_KEYTERMS: readonly string[] = [
   'JSON',
   'OAuth',
   'webhook',
-  'gRPC',
-  'dotfiles',
+'dotfiles',
   'subagent',
   'worktree',
 ]

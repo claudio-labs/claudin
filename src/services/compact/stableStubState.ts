@@ -16,7 +16,6 @@
  * Per-(session, agent) keying ensures:
  *   - /resume / switchSession gets a fresh, empty set
  *   - /clear (regenerateSessionId) gets a fresh, empty set
- *   - gRPC headless multi-client clients don't share state
  *   - Sub-agents in a swarm have isolated sets from the parent — a sub-agent
  *     post-autocompact reset cannot wipe the parent's mid-flight state.
  *

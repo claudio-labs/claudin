@@ -138,15 +138,6 @@ async function getOtlpReaders() {
       const httpConfig = getOTLPExporterConfig()
 
       switch (protocol) {
-        case 'grpc': {
-          // Lazy-import to keep @grpc/grpc-js (~700KB) out of the telemetry chunk
-          // when the protocol is http/protobuf (ant default) or http/json.
-          const { OTLPMetricExporter } = await import(
-            '@opentelemetry/exporter-metrics-otlp-grpc'
-          )
-          exporters.push(new OTLPMetricExporter())
-          break
-        }
         case 'http/json': {
           const { OTLPMetricExporter } = await import(
             '@opentelemetry/exporter-metrics-otlp-http'
@@ -209,13 +200,6 @@ async function getOtlpLogExporters() {
       const httpConfig = getOTLPExporterConfig()
 
       switch (protocol) {
-        case 'grpc': {
-          const { OTLPLogExporter } = await import(
-            '@opentelemetry/exporter-logs-otlp-grpc'
-          )
-          exporters.push(new OTLPLogExporter())
-          break
-        }
         case 'http/json': {
           const { OTLPLogExporter } = await import(
             '@opentelemetry/exporter-logs-otlp-http'
@@ -260,13 +244,6 @@ async function getOtlpTraceExporters() {
       const httpConfig = getOTLPExporterConfig()
 
       switch (protocol) {
-        case 'grpc': {
-          const { OTLPTraceExporter } = await import(
-            '@opentelemetry/exporter-trace-otlp-grpc'
-          )
-          exporters.push(new OTLPTraceExporter())
-          break
-        }
         case 'http/json': {
           const { OTLPTraceExporter } = await import(
             '@opentelemetry/exporter-trace-otlp-http'

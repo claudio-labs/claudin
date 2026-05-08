@@ -247,7 +247,7 @@ export class QueryEngine {
     // returns a new array where touched messages are NEW Message objects with
     // stub bytes; the old large-content blocks become GC-eligible once nothing
     // else holds them. Substitution (not in-place mutation) is intentional:
-    // snapshot holders (gRPC session cache, bridge transports mid-flight) keep
+    // snapshot holders (bridge transports mid-flight) keep
     // their references to the OLD objects intact. Identity guard preserves
     // the input ref when the clipped set is empty (fast path). Roadmap 5.7.
     const compacted = applyStableStubs(this.mutableMessages)
@@ -1208,8 +1208,7 @@ export class QueryEngine {
    * Returns the live message history. Callers that hold the returned reference
    * across turns must run applyStableStubs on their copy if they want it kept
    * in sync with subsequent compactions; otherwise they end up holding refs to
-   * (now-orphaned) original blocks. The gRPC server (server.ts) demonstrates
-   * the pattern by compacting before caching its cross-stream snapshot.
+   * (now-orphaned) original blocks.
    */
   getMessages(): readonly Message[] {
     return this.mutableMessages

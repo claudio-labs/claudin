@@ -71,8 +71,7 @@ const EXCLUDED_FILENAME_PATTERNS = [
   /^.*\.pb\.(go|js|ts|py|rb)$/i, // Protocol buffer generated files
   /^.*_pb2?\.py$/i, // Python protobuf files
   /^.*\.pb\.h$/i, // C++ protobuf headers
-  /^.*\.grpc\.[a-z]+$/i, // gRPC generated files
-  /^.*\.swagger\.[a-z]+$/i, // Swagger generated files
+/^.*\.swagger\.[a-z]+$/i, // Swagger generated files
   /^.*\.openapi\.[a-z]+$/i, // OpenAPI generated files
 ]
 
