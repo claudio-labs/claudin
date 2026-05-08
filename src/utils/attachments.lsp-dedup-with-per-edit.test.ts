@@ -6,7 +6,7 @@
  * getLSPDiagnosticAttachments must NOT re-emit the same diagnostic — content
  * hash matches what was marked, so the dedup LRU swallows it.
  */
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseContext } from '../Tool.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
 import type { DiagnosticFile } from '../services/diagnosticTracking.js'
@@ -16,6 +16,14 @@ import {
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
 } from '../services/lsp/LSPDiagnosticRegistry.js'
+
+// Force-enable the LSP master toggle so this suite is deterministic regardless
+// of the local user's ~/.claudio/settings.json (lsp.enabled may be false).
+const realUserSettings = await import('../services/lsp/userSettings.js')
+mock.module('../services/lsp/userSettings.js', () => ({
+  ...realUserSettings,
+  isLspGloballyEnabled: () => true,
+}))
 
 function makeCtx(): ToolUseContext {
   return {
