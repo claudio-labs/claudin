@@ -1,3 +1,6 @@
+import { readFileSync } from "fs";
+import { join } from "path";
+import { getClaudioConfigHomeDir } from "src/utils/envUtils.js";
 import { logError } from "src/utils/log.js";
 import { z } from "zod/v4";
 import type { FilterSpec } from "./types.js";
@@ -177,13 +180,49 @@ function compileUserSpec(
 }
 
 // ---------------------------------------------------------------------------
-// Public API (stub — Phase 6 adds real file loading)
+// Public API
 // ---------------------------------------------------------------------------
 
-/** Stub — returns empty until Phase 6 adds file loading from `~/.claudio/bash-filters.json`. */
+const USER_FILTERS_FILENAME = "bash-filters.json";
+
+// Module-level cache — reloaded only when the config dir changes (env var)
+// or the process restarts. CLI sessions are short-lived, so this is fine.
+let _cachedFilters: FilterSpec[] | null = null;
+let _cachedConfigDir: string | null = null;
+
+/** Loads and compiles user filters from `~/.claudio/bash-filters.json` (or `$CLAUDIO_CONFIG_DIR/bash-filters.json`). Returns empty array if the file doesn't exist or is invalid. Result is cached for the lifetime of the process. */
 export function loadUserFilters(): FilterSpec[] {
-  // Phase 6 will load from ~/.claudio/bash-filters.json
-  return [];
+  const configDir = getClaudioConfigHomeDir();
+  if (_cachedFilters !== null && _cachedConfigDir === configDir) {
+    return _cachedFilters;
+  }
+  const filePath = join(configDir, USER_FILTERS_FILENAME);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch (e) {
+    // ENOENT is expected — no user filters file is normal
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      logError(
+        new Error(
+          `bash-output-filter: failed to read ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
+        ),
+      );
+    }
+    _cachedFilters = [];
+    _cachedConfigDir = configDir;
+    return [];
+  }
+  const filters = compileUserFilters(raw);
+  _cachedFilters = filters;
+  _cachedConfigDir = configDir;
+  return filters;
+}
+
+/** Clears the user-filters cache. Useful in tests that write a temporary filters file. */
+export function clearUserFiltersCache(): void {
+  _cachedFilters = null;
+  _cachedConfigDir = null;
 }
 
 /** Validates and compiles a raw JSON object into `FilterSpec[]`, rejecting unsafe or invalid regexes. Logs and skips individual bad filters rather than failing the whole file. */

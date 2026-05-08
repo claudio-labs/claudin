@@ -1,0 +1,1 @@
+[{"status":"completed","conclusion":"success","name":"CI","databaseId":12345678,"headBranch":"main"},{"status":"completed","conclusion":"success","name":"CI","databaseId":12345677,"headBranch":"feat/bash-output-filter"},{"status":"completed","conclusion":"failure","name":"CI","databaseId":12345676,"headBranch":"fix/memory-prune"}]

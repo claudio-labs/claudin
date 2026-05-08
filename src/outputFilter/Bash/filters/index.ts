@@ -1,4 +1,4 @@
-// Built-in filter registry. Phase 6.1.2 — batch 1 (14 specs).
+// Built-in filter registry. Phase 6.1.2 — batch 1 (14 specs). Phase 6.1.4 — rewrite specs (5).
 //
 // Order matters only insofar as more specific specs must come before
 // less specific ones when their matchCommand regex could overlap. We
@@ -13,6 +13,8 @@ import { psAux, top } from './system.js'
 import { rubocop, ruffCheck } from './linters.js'
 import { lsLa } from './ls.js'
 import { grepRg } from './grep-rg.js'
+import { gitLog, gitStatus } from './git.js'
+import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
 
 export const builtInFilters: FilterSpec[] = [
@@ -32,6 +34,13 @@ export const builtInFilters: FilterSpec[] = [
   lsLa,
   // Code search
   grepRg,
+  // Git — Phase 6.1.4
+  gitLog,
+  gitStatus,
+  // GitHub CLI — Phase 6.1.4
+  ghPrList,
+  ghIssueList,
+  ghRunList,
   // Cargo (Rust) — specific variants first so matchCommandReject fires
   // before a more general one could claim the command.
   cargoTest,

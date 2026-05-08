@@ -732,3 +732,330 @@ describe("phase 6.1.2 — cargoClippy", () => {
     expect(findFilterForCommand("cargo clippy")?.name).toBe("cargo-clippy");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — git rewrite specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.4 — gitLog", () => {
+  test("rewrite: git log → git log --oneline", () => {
+    const plan = planBashFilter("git log");
+    expect(plan.rewrite?.to).toBe("git log --oneline");
+  });
+
+  test("rewrite: git log src/foo.ts → forwards path", () => {
+    const plan = planBashFilter("git log src/foo.ts");
+    expect(plan.rewrite?.to).toBe("git log --oneline src/foo.ts");
+  });
+
+  test("rewrite: git log --author=alice → forwards flag", () => {
+    const plan = planBashFilter("git log --author=alice");
+    expect(plan.rewrite?.to).toBe("git log --oneline --author=alice");
+  });
+
+  test("no rewrite when --oneline already present", () => {
+    const plan = planBashFilter("git log --oneline");
+    expect(plan.rewrite).toBeNull();
+    expect(plan.filter).toBeNull();
+  });
+
+  test("no rewrite when --format= present", () => {
+    expect(planBashFilter('git log --format="%H"').rewrite).toBeNull();
+  });
+
+  test("no rewrite when --pretty= present", () => {
+    expect(planBashFilter("git log --pretty=oneline").rewrite).toBeNull();
+  });
+
+  test("no rewrite when --pretty <fmt> present (no equals)", () => {
+    expect(planBashFilter("git log --pretty oneline").rewrite).toBeNull();
+    expect(planBashFilter("git log --pretty format:'%h %s'").rewrite).toBeNull();
+  });
+
+  test("no rewrite when --pretty at end of string (no arg)", () => {
+    expect(planBashFilter("git log --pretty").rewrite).toBeNull();
+  });
+
+  test("no rewrite when -p (patch) present", () => {
+    expect(planBashFilter("git log -p").rewrite).toBeNull();
+  });
+
+  test("no rewrite when --patch present", () => {
+    expect(planBashFilter("git log --patch").rewrite).toBeNull();
+  });
+
+  test("no rewrite for single-digit -N flag: git log -5", () => {
+    expect(planBashFilter("git log -5").rewrite).toBeNull();
+    expect(planBashFilter("git log -5").filter).toBeNull();
+  });
+
+  test("rewrite fires for multi-digit -10 (not single-digit)", () => {
+    const plan = planBashFilter("git log -10");
+    expect(plan.rewrite?.to).toBe("git log --oneline -10");
+  });
+
+  test("compound bypass: git log && echo done passes through", () => {
+    const plan = planBashFilter("git log && echo done");
+    expect(plan.filter).toBeNull();
+    expect(plan.rewrite).toBeNull();
+  });
+
+  test("match: git-log spec claims 'git log'", () => {
+    expect(findFilterForCommand("git log")?.name).toBe("git-log");
+  });
+
+  test("ROI: git-log-default sample — rewrite fires and maxLines trims", () => {
+    const raw = loadSample("git-log-default");
+    const plan = planBashFilter("git log");
+    expect(plan.rewrite?.to).toBe("git log --oneline");
+    expect(() => applyBashFilterToStdout(raw, false, plan)).not.toThrow();
+  });
+
+  test("ROI: git-log-oneline sample — passthrough (no rewrite)", () => {
+    const raw = loadSample("git-log-oneline");
+    const plan = planBashFilter("git log --oneline");
+    expect(plan.rewrite).toBeNull();
+    expect(applyBashFilterToStdout(raw, false, plan)).toBe(raw);
+  });
+});
+
+describe("phase 6.1.4 — gitStatus", () => {
+  test("rewrite: git status → git status --porcelain --branch", () => {
+    const plan = planBashFilter("git status");
+    expect(plan.rewrite?.to).toBe("git status --porcelain --branch");
+  });
+
+  test("no rewrite when --porcelain already present", () => {
+    const plan = planBashFilter("git status --porcelain");
+    expect(plan.rewrite).toBeNull();
+    expect(plan.filter).toBeNull();
+  });
+
+  test("no rewrite when --short present", () => {
+    expect(planBashFilter("git status --short").rewrite).toBeNull();
+  });
+
+  test("no rewrite when -s present", () => {
+    expect(planBashFilter("git status -s").rewrite).toBeNull();
+  });
+
+  test("no rewrite when combined -sb flag present", () => {
+    expect(planBashFilter("git status -sb").rewrite).toBeNull();
+    expect(planBashFilter("git status -su").rewrite).toBeNull();
+  });
+
+  test("no rewrite when combined -suno / -suall flags present", () => {
+    expect(planBashFilter("git status -suno").rewrite).toBeNull();
+    expect(planBashFilter("git status -suall").rewrite).toBeNull();
+  });
+
+  test("compound bypass: git status || true passes through", () => {
+    const plan = planBashFilter("git status || true");
+    expect(plan.filter).toBeNull();
+  });
+
+  test("match: git-status spec claims 'git status'", () => {
+    expect(findFilterForCommand("git status")?.name).toBe("git-status");
+  });
+
+  test("ROI: git-status sample passes through without crashing", () => {
+    const raw = loadSample("git-status");
+    const plan = planBashFilter("git status");
+    expect(plan.rewrite?.to).toBe("git status --porcelain --branch");
+    expect(() => applyBashFilterToStdout(raw, false, plan)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — gh rewrite specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.4 — ghPrList", () => {
+  test("rewrite: gh pr list → canonical --json form", () => {
+    const plan = planBashFilter("gh pr list");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("number,title,state");
+    expect(plan.rewrite?.to).toContain("headRefName");
+  });
+
+  test("no rewrite when --json already present", () => {
+    expect(planBashFilter("gh pr list --json number").rewrite).toBeNull();
+    expect(planBashFilter("gh pr list --json number").filter).toBeNull();
+  });
+
+  test("compound bypass: gh pr list && echo done passes through", () => {
+    expect(planBashFilter("gh pr list && echo done").filter).toBeNull();
+  });
+
+  test("match: gh-pr-list spec claims 'gh pr list'", () => {
+    expect(findFilterForCommand("gh pr list")?.name).toBe("gh-pr-list");
+  });
+
+  test("ROI: gh-pr-list sample passes through without crashing", () => {
+    const raw = loadSample("gh-pr-list");
+    const plan = planBashFilter("gh pr list");
+    expect(() => applyBashFilterToStdout(raw, false, plan)).not.toThrow();
+  });
+
+  test("determinism: two runs yield same plan", () => {
+    const a = planBashFilter("gh pr list");
+    const b = planBashFilter("gh pr list");
+    expect(a.rewrite?.to).toBe(b.rewrite?.to);
+  });
+
+  test("flag-forward: --repo owner/repo is preserved in rewrite", () => {
+    const plan = planBashFilter("gh pr list --repo owner/repo");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("--repo owner/repo");
+  });
+
+  test("flag-forward: --author and --state flags are preserved", () => {
+    const plan = planBashFilter("gh pr list --author alice --state open");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("--author alice");
+    expect(plan.rewrite?.to).toContain("--state open");
+  });
+});
+
+describe("phase 6.1.4 — ghIssueList", () => {
+  test("rewrite: gh issue list → canonical --json form", () => {
+    const plan = planBashFilter("gh issue list");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("number,title,state");
+  });
+
+  test("no rewrite when --json already present", () => {
+    expect(planBashFilter("gh issue list --json number").rewrite).toBeNull();
+  });
+
+  test("match: gh-issue-list spec claims 'gh issue list'", () => {
+    expect(findFilterForCommand("gh issue list")?.name).toBe("gh-issue-list");
+  });
+
+  test("ROI: gh-issue-list sample passes through without crashing", () => {
+    const raw = loadSample("gh-issue-list");
+    const plan = planBashFilter("gh issue list");
+    expect(() => applyBashFilterToStdout(raw, false, plan)).not.toThrow();
+  });
+
+  test("flag-forward: --assignee flag is preserved in rewrite", () => {
+    const plan = planBashFilter("gh issue list --assignee bob --label bug");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("--assignee bob");
+    expect(plan.rewrite?.to).toContain("--label bug");
+  });
+});
+
+describe("phase 6.1.4 — ghRunList", () => {
+  test("rewrite: gh run list → canonical --json form", () => {
+    const plan = planBashFilter("gh run list");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("status,conclusion,name");
+  });
+
+  test("no rewrite when --json already present", () => {
+    expect(planBashFilter("gh run list --json status").rewrite).toBeNull();
+  });
+
+  test("match: gh-run-list spec claims 'gh run list'", () => {
+    expect(findFilterForCommand("gh run list")?.name).toBe("gh-run-list");
+  });
+
+  test("ROI: gh-run-list sample passes through without crashing", () => {
+    const raw = loadSample("gh-run-list");
+    const plan = planBashFilter("gh run list");
+    expect(() => applyBashFilterToStdout(raw, false, plan)).not.toThrow();
+  });
+
+  test("flag-forward: --branch flag is preserved in rewrite", () => {
+    const plan = planBashFilter("gh run list --branch main --limit 10");
+    expect(plan.rewrite?.to).toContain("--json");
+    expect(plan.rewrite?.to).toContain("--branch main");
+    expect(plan.rewrite?.to).toContain("--limit 10");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: batch-1 specs unaffected
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — batch-1 specs still match after new specs added", () => {
+  const cases: [string, string][] = [
+    ["pytest",          "pytest src/"],
+    ["rspec",           "rspec spec/"],
+    ["go-test",         "go test ./..."],
+    ["bundle-install",  "bundle install"],
+    ["ps-aux",          "ps aux"],
+    ["top",             "top -bn1"],
+    ["rubocop",         "rubocop app/"],
+    ["ruff-check",      "ruff check src/"],
+    ["ls-la",           "ls -la"],
+    ["grep-rg",         "rg foo src/"],
+    ["cargo-test",      "cargo test"],
+    ["cargo-clippy",    "cargo clippy"],
+    ["cargo-check",     "cargo check"],
+    ["cargo-build",     "cargo build"],
+  ];
+  for (const [name, cmd] of cases) {
+    test(`${name} still matches '${cmd}'`, () => {
+      expect(findFilterForCommand(cmd)?.name).toBe(name);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: reject guards
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — reject guards", () => {
+  // gitLog rejects
+  test("git log --oneline → no match",      () => expect(findFilterForCommand("git log --oneline")).toBeNull());
+  test('git log --format="%H" → no match',  () => expect(findFilterForCommand('git log --format="%H"')).toBeNull());
+  test("git log -p → no match",             () => expect(findFilterForCommand("git log -p")).toBeNull());
+  test("git log --patch → no match",        () => expect(findFilterForCommand("git log --patch")).toBeNull());
+  test("git log -5 → no match (single-digit)", () => expect(findFilterForCommand("git log -5")).toBeNull());
+  // gitStatus rejects
+  test("git status --porcelain → no match", () => expect(findFilterForCommand("git status --porcelain")).toBeNull());
+  test("git status --short → no match",     () => expect(findFilterForCommand("git status --short")).toBeNull());
+  test("git status -s → no match",           () => expect(findFilterForCommand("git status -s")).toBeNull());
+  test("git status -sb → no match",          () => expect(findFilterForCommand("git status -sb")).toBeNull());
+  test("git log --pretty oneline → no match",() => expect(findFilterForCommand("git log --pretty oneline")).toBeNull());
+  // gh rejects
+  test("gh pr list --json → no match",      () => expect(findFilterForCommand("gh pr list --json number")).toBeNull());
+  test("gh issue list --json → no match",   () => expect(findFilterForCommand("gh issue list --json number")).toBeNull());
+  test("gh run list --json → no match",     () => expect(findFilterForCommand("gh run list --json status")).toBeNull());
+  test("gh pr list --format → no match",    () => expect(findFilterForCommand("gh pr list --format '{{.number}}'")).toBeNull());
+  test("gh pr list --template → no match",  () => expect(findFilterForCommand("gh pr list --template '{{.number}}'")).toBeNull());
+  test("gh issue list --format → no match", () => expect(findFilterForCommand("gh issue list --format '{{.number}}'")).toBeNull());
+  test("gh run list --format → no match",   () => expect(findFilterForCommand("gh run list --format '{{.name}}'")).toBeNull());
+  // compound bypass
+  test("git log && echo → no match (compound)",       () => expect(findFilterForCommand("git log && echo done")).toBeNull());
+  test("git status || true → no match (compound)",    () => expect(findFilterForCommand("git status || true")).toBeNull());
+  test("gh pr list && echo → no match (compound)",    () => expect(findFilterForCommand("gh pr list && echo done")).toBeNull());
+  // P3: --format with space (not only --format=)
+  test("git log --format '%H' → no match (space form)", () => expect(findFilterForCommand("git log --format '%H'")).toBeNull());
+  test("git log --format=%H → no match (= form)",    () => expect(findFilterForCommand("git log --format=%H")).toBeNull());
+  // P4: --web flag opens browser, must not be rewritten
+  test("gh pr list --web → no match",                () => expect(findFilterForCommand("gh pr list --web")).toBeNull());
+  test("gh issue list --web → no match",             () => expect(findFilterForCommand("gh issue list --web")).toBeNull());
+  test("gh run list --web → no match",               () => expect(findFilterForCommand("gh run list --web")).toBeNull());
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: -[1-9]\b boundary
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — -N boundary for git log", () => {
+  test("git log -10 is NOT rejected (multi-digit safe)", () => {
+    expect(findFilterForCommand("git log -10")?.name).toBe("git-log");
+  });
+  test("git log -1 IS rejected (single-digit)", () => {
+    expect(findFilterForCommand("git log -1")).toBeNull();
+  });
+  test("git log -9 IS rejected (single-digit)", () => {
+    expect(findFilterForCommand("git log -9")).toBeNull();
+  });
+  test("git log -20 is NOT rejected (multi-digit)", () => {
+    expect(findFilterForCommand("git log -20")?.name).toBe("git-log");
+  });
+});

@@ -864,10 +864,10 @@ export const BashTool = buildTool({
  * ever reached; when `mapToolResult` detects structured content it short-circuits
  * and `result.stdout` is never forwarded to the model regardless.
  *
- * Note — `planBashFilter` calls `maybeRewrite` internally, but rewrite is inert
- * until a `FilterSpec` defines `rewriteCommand`. No registered filter (Phase 6.1.2)
- * defines that field, so `plan.rewrite` is always `null` in practice. Phase 4 will
- * wire rewrite explicitly when the first filter needs it.
+ * Note — `planBashFilter` calls `maybeRewrite` internally. `rewriteCommand` is
+ * supported and wired since Phase 6.1.4; filters that define it will have their
+ * command rewritten before execution. `plan.rewrite` is `null` only for filters
+ * that omit the field.
  */
 // Exported for testing; shouldFilterOutput is extracted as a pure function so the
 // kill-switch path can be tested without a subprocess (module-level const is not

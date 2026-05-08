@@ -66,6 +66,22 @@ describe("hasCompound", () => {
   test("returns true for if/then", () => {
     expect(hasCompound("if [ -f foo ]; then echo ok; fi")).toBe(true);
   });
+
+  test("returns true for single pipe |", () => {
+    expect(hasCompound("git log | head -10")).toBe(true);
+  });
+
+  test("returns true for single semicolon ;", () => {
+    expect(hasCompound("git log; ls")).toBe(true);
+  });
+
+  test("returns false for --for-each-ref (P1: for inside flag name)", () => {
+    expect(hasCompound("git log --for-each-ref")).toBe(false);
+  });
+
+  test("returns false for 'echo task done' (P2: done as argument word)", () => {
+    expect(hasCompound('echo "task done"')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -333,6 +349,20 @@ describe("applyPipeline", () => {
     expect(result.applied).toContain("onEmpty");
   });
 
+  test("P5: maxLines with headLines+tailLines >= lines.length does not expand output", () => {
+    const filter: FilterSpec = {
+      name: "test",
+      matchCommand: /^test$/,
+      maxLines: 10,
+      headLines: 20,
+      tailLines: 20,
+    };
+    const input = Array.from({ length: 15 }, (_, i) => `line${i}`).join("\n");
+    const result = applyPipeline(filter, input);
+    const resultLines = result.body.split("\n");
+    expect(resultLines.length).toBeLessThanOrEqual(input.split("\n").length + 1);
+  });
+
   test("empty input returns empty with no reduction", () => {
     const filter: FilterSpec = {
       name: "test",
@@ -365,5 +395,41 @@ describe("applyPipeline", () => {
     const result = applyPipeline(filter, "FALLOU: idioma diferente\nlinha 2");
     expect(result.shortCircuited).toBe(false);
     expect(result.body).toBe("FALLOU: idioma diferente\nlinha 2");
+  });
+
+  // B-1: stripAnsi must run before matchOutput so ANSI-colorized sentinels match
+  test("matchOutput fires on ANSI-colorized output when stripAnsi:true", () => {
+    const ansiGreen = "\x1b[32m";
+    const ansiReset = "\x1b[0m";
+    const filter: FilterSpec = {
+      name: "test",
+      matchCommand: /^cargo$/,
+      stripAnsi: true,
+      matchOutput: [
+        { pattern: /Finished.*release/, message: "Build succeeded" },
+      ],
+    };
+    // Output contains ANSI codes around the sentinel text
+    const raw = `${ansiGreen}Finished release [optimized] target(s)${ansiReset}`;
+    const result = applyPipeline(filter, raw);
+    expect(result.shortCircuited).toBe(true);
+    expect(result.body).toBe("Build succeeded");
+    expect(result.applied).toContain("stripAnsi");
+  });
+
+  test("matchOutput does NOT fire on ANSI-colorized output when pattern anchored and stripAnsi:false", () => {
+    const ansiGreen = "\x1b[32m";
+    const ansiReset = "\x1b[0m";
+    const filter: FilterSpec = {
+      name: "test",
+      matchCommand: /^cargo$/,
+      // stripAnsi intentionally omitted
+      // Anchored pattern: only matches clean text, not ANSI-wrapped text
+      matchOutput: [{ pattern: /^Finished release/, message: "Build succeeded" }],
+    };
+    // "\x1b[32m" prefix prevents "^Finished" from matching at the start of the string
+    const raw = `${ansiGreen}Finished release [optimized] target(s)${ansiReset}`;
+    const result = applyPipeline(filter, raw);
+    expect(result.shortCircuited).toBe(false);
   });
 });

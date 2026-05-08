@@ -1,0 +1,1 @@
+[{"number":42,"title":"Filter bash output for git log and git status commands","state":"OPEN","author":{"login":"viudes"},"url":"https://github.com/owner/repo/issues/42"},{"number":41,"title":"Add gh CLI output filters","state":"OPEN","author":{"login":"viudes"},"url":"https://github.com/owner/repo/issues/41"}]

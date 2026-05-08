@@ -42,8 +42,10 @@ function debug(label: string, detail?: unknown): void {
 const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
 export const LEADING_PREFIX_RE =
   /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+)+/;
+// Keywords are only shell control-flow when delimited by whitespace/metacharacters —
+// NOT inside flag names like --for-each-ref or filenames like done.txt.
 const COMPOUND_RE =
-  /[;&|]{2}|`\S|`\$|\$\(|>\(|\bthen\b|\bdo\b|\bdone\b|\bif\b|\bwhile\b|\bfor\b/;
+  /[;&|]|`\S|`\$|\$\(|>\(|(?:(?:^|[\s;&|()`])(?:then|do|done|if|while|for)(?=[\s;&|()`]|$))/;
 const WHITESPACE_RE = /\s+/;
 const DIGIT_TEMPLATE_RE = /\d+/g;
 
@@ -113,14 +115,21 @@ const HEAD_TAIL_OMIT_MARKER = "…N lines omitted…";
 const DEFAULT_HEAD_LINES = 15;
 const DEFAULT_TAIL_LINES = 15;
 
-/** Runs the full filter pipeline (matchOutput → stripAnsi → replace → collapse → dedup → strip/keep → truncate → head/tail → onEmpty) and returns the result with applied-stage names and reduction percentage. */
+/** Runs the full filter pipeline (stripAnsi → matchOutput → replace → collapse → dedup → strip/keep → truncate → head/tail → onEmpty) and returns the result with applied-stage names and reduction percentage. */
 export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
   const originalLength = raw.length;
   let text = raw;
   const applied: string[] = [];
   let shortCircuited = false;
 
-  // 1. matchOutput — short-circuit
+  // 1. stripAnsi — must run first so matchOutput patterns match on clean text
+  if (filter.stripAnsi) {
+    const before = text.length;
+    text = stripAnsi(text);
+    if (text.length !== before) applied.push("stripAnsi");
+  }
+
+  // 2. matchOutput — short-circuit
   if (filter.matchOutput) {
     for (const rule of filter.matchOutput) {
       if (rule.pattern.test(text)) {
@@ -138,13 +147,6 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
   }
 
   if (!shortCircuited) {
-    // 2. stripAnsi
-    if (filter.stripAnsi) {
-      const before = text.length;
-      text = stripAnsi(text);
-      if (text.length !== before) applied.push("stripAnsi");
-    }
-
     // 3. replace
     if (filter.replace) {
       for (const rule of filter.replace) {
@@ -252,14 +254,16 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
       const head = filter.headLines ?? DEFAULT_HEAD_LINES;
       const tail = filter.tailLines ?? DEFAULT_TAIL_LINES;
       const omitted = lines.length - head - tail;
-      const headPart = head > 0 ? lines.slice(0, head) : [];
-      const tailPart = tail > 0 ? lines.slice(-tail) : [];
-      lines = [
-        ...headPart,
-        HEAD_TAIL_OMIT_MARKER.replace("N", String(omitted)),
-        ...tailPart,
-      ];
-      applied.push("maxLines");
+      if (omitted > 0) {
+        const headPart = head > 0 ? lines.slice(0, head) : [];
+        const tailPart = tail > 0 ? lines.slice(-tail) : [];
+        lines = [
+          ...headPart,
+          HEAD_TAIL_OMIT_MARKER.replace("N", String(omitted)),
+          ...tailPart,
+        ];
+        applied.push("maxLines");
+      }
     } else if (filter.headLines || filter.tailLines) {
       // 11. headLines + tailLines (when no maxLines or within maxLines)
       const head = filter.headLines ?? 0;
