@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { getGlobalConfig, saveGlobalConfig } from "src/utils/config.js";
 import {
   clearUserFiltersCache,
   compileUserFilters,
@@ -176,5 +177,112 @@ describe("loadUserFilters", () => {
     );
     const second = loadUserFilters();
     expect(second).toHaveLength(0);
+  });
+
+  test("returns empty array when bashOutputFilterUserEnabled is false", () => {
+    const saved = getGlobalConfig().bashOutputFilterUserEnabled;
+    try {
+      writeFileSync(
+        join(tmpDir, "bash-filters.json"),
+        JSON.stringify({ filters: [{ name: "my-cli", matchCommand: "^mycli$" }] }),
+        "utf8",
+      );
+      saveGlobalConfig((c) => ({ ...c, bashOutputFilterUserEnabled: false }));
+      clearUserFiltersCache();
+
+      const filters = loadUserFilters();
+      expect(filters).toEqual([]);
+    } finally {
+      saveGlobalConfig((c) => ({ ...c, bashOutputFilterUserEnabled: saved }));
+      clearUserFiltersCache();
+    }
+  });
+
+  test("loads normally when bashOutputFilterUserEnabled is undefined", () => {
+    const saved = getGlobalConfig().bashOutputFilterUserEnabled;
+    try {
+      writeFileSync(
+        join(tmpDir, "bash-filters.json"),
+        JSON.stringify({ filters: [{ name: "my-cli", matchCommand: "^mycli$" }] }),
+        "utf8",
+      );
+      saveGlobalConfig((c) => ({ ...c, bashOutputFilterUserEnabled: undefined }));
+      clearUserFiltersCache();
+
+      const filters = loadUserFilters();
+      expect(filters).toHaveLength(1);
+    } finally {
+      saveGlobalConfig((c) => ({ ...c, bashOutputFilterUserEnabled: saved }));
+      clearUserFiltersCache();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// compileUserFilters — schema hardening (6.1.6 acceptance criteria)
+// ---------------------------------------------------------------------------
+
+describe("compileUserFilters — schema hardening", () => {
+  test("rejects matchCommand exceeding 500 chars", () => {
+    const raw = { filters: [{ name: "x", matchCommand: "a".repeat(501) }] };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("accepts matchCommand exactly 500 chars", () => {
+    const raw = { filters: [{ name: "x", matchCommand: "a".repeat(500) }] };
+    expect(compileUserFilters(raw)).toHaveLength(1);
+  });
+
+  test("rejects replacement exceeding 500 chars", () => {
+    const raw = {
+      filters: [
+        {
+          name: "x",
+          matchCommand: "^x$",
+          replace: [{ pattern: "a", replacement: "b".repeat(501), flags: "g" }],
+        },
+      ],
+    };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("rejects filter with unknown field — rewriteCommand blocked by strict()", () => {
+    const raw = {
+      filters: [{ name: "x", matchCommand: "^x$", rewriteCommand: "echo safe" }],
+    };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("rejects name with uppercase letters", () => {
+    const raw = { filters: [{ name: "MyFilter", matchCommand: "^x$" }] };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("rejects name with spaces", () => {
+    const raw = { filters: [{ name: "my filter", matchCommand: "^x$" }] };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("rejects name exceeding 60 chars", () => {
+    const raw = { filters: [{ name: "a".repeat(61), matchCommand: "^x$" }] };
+    expect(compileUserFilters(raw)).toEqual([]);
+  });
+
+  test("accepts name with lowercase letters, digits, and hyphens", () => {
+    const raw = { filters: [{ name: "my-filter-01", matchCommand: "^x$" }] };
+    expect(compileUserFilters(raw)).toHaveLength(1);
+  });
+
+  test("rejects stripLinesMatching entry exceeding 500 chars", () => {
+    const raw = {
+      filters: [
+        {
+          name: "x",
+          matchCommand: "^x$",
+          stripLinesMatching: ["a".repeat(501)],
+        },
+      ],
+    };
+    expect(compileUserFilters(raw)).toEqual([]);
   });
 });

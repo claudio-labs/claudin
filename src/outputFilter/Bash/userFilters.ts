@@ -1,9 +1,12 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getGlobalConfig } from "src/utils/config.js";
 import { getClaudioConfigHomeDir } from "src/utils/envUtils.js";
 import { logError } from "src/utils/log.js";
 import { z } from "zod/v4";
 import type { FilterSpec } from "./types.js";
+
+const REGEX_MAX_LEN = 500;
 
 // ---------------------------------------------------------------------------
 // ReDoS safety
@@ -37,40 +40,40 @@ export function isSafeRegex(pattern: string): boolean {
 // ---------------------------------------------------------------------------
 
 const ReplaceRuleSchema = z.object({
-  pattern: z.string().min(1),
-  replacement: z.string(),
+  pattern: z.string().min(1).max(REGEX_MAX_LEN),
+  replacement: z.string().max(REGEX_MAX_LEN),
   flags: z.string().optional().default("g"),
-});
+}).strict();
 
 const MatchOutputRuleSchema = z.object({
-  pattern: z.string().min(1),
+  pattern: z.string().min(1).max(REGEX_MAX_LEN),
   message: z.string().min(1),
-  unless: z.string().optional(),
-});
+  unless: z.string().max(REGEX_MAX_LEN).optional(),
+}).strict();
 
 const UserFilterSpecSchema = z.object({
-  name: z.string().min(1),
-  matchCommand: z.string().min(1),
-  matchCommandReject: z.string().optional(),
+  name: z.string().regex(/^[a-z0-9-]+$/).min(1).max(60),
+  matchCommand: z.string().min(1).max(REGEX_MAX_LEN),
+  matchCommandReject: z.string().max(REGEX_MAX_LEN).optional(),
   stripAnsi: z.boolean().optional(),
   replace: z.array(ReplaceRuleSchema).optional(),
   collapseRuns: z.boolean().optional(),
   collapseDigitTemplates: z
     .union([
       z.boolean(),
-      z.object({ minRun: z.number().int().min(2).optional() }),
+      z.object({ minRun: z.number().int().min(2).optional() }).strict(),
     ])
     .optional(),
   dedupGlobal: z.boolean().optional(),
   matchOutput: z.array(MatchOutputRuleSchema).optional(),
-  stripLinesMatching: z.array(z.string().min(1)).optional(),
-  keepLinesMatching: z.array(z.string().min(1)).optional(),
+  stripLinesMatching: z.array(z.string().min(1).max(REGEX_MAX_LEN)).optional(),
+  keepLinesMatching: z.array(z.string().min(1).max(REGEX_MAX_LEN)).optional(),
   truncateLineAt: z.number().int().min(1).optional(),
   headLines: z.number().int().min(0).optional(),
   tailLines: z.number().int().min(0).optional(),
   maxLines: z.number().int().min(1).optional(),
   onEmpty: z.string().optional(),
-});
+}).strict();
 
 /** Zod schema for the user filters JSON file (`{ filters: [...] }`). */
 export const UserFiltersFileSchema = z.object({
@@ -192,6 +195,7 @@ let _cachedConfigDir: string | null = null;
 
 /** Loads and compiles user filters from `~/.claudio/bash-filters.json` (or `$CLAUDIO_CONFIG_DIR/bash-filters.json`). Returns empty array if the file doesn't exist or is invalid. Result is cached for the lifetime of the process. */
 export function loadUserFilters(): FilterSpec[] {
+  if (getGlobalConfig().bashOutputFilterUserEnabled === false) return [];
   const configDir = getClaudioConfigHomeDir();
   if (_cachedFilters !== null && _cachedConfigDir === configDir) {
     return _cachedFilters;
