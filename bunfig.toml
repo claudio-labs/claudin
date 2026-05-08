@@ -1,0 +1,6 @@
+[alias]
+"@growthbook/growthbook" = "./src/stubs/growthbook-stub.ts"
+"@anthropic-ai/sandbox-runtime" = "./src/stubs/sandbox-runtime-stub.ts"
+
+[test]
+preload = ["./src/stubs/test-preload.ts"]

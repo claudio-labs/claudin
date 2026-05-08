@@ -58,7 +58,7 @@ process.stdout.write(JSON.stringify({
 `
 
 function probeLoadedSubdirs(): { toolCount: number; loadedSubdirs: string[] } {
-  const r = spawnSync('bun', ['-e', PROBE_SOURCE], {
+  const r = spawnSync('bun', ['--preload', './src/stubs/test-preload.ts', '-e', PROBE_SOURCE], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     env: { ...process.env, NODE_ENV: 'test', NODE_NO_WARNINGS: '1' },
