@@ -24,6 +24,7 @@ import {
 import { isEnvTruthy } from '../../utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
+import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
 import { errorMessage } from '../../utils/errors.js'
 import {
   type CooldownReason,
@@ -251,6 +252,16 @@ export async function* withRetry<T>(
           // stored OAuth token so the next getClient() picks up the fresh token.
           if (tryGetActiveProvider()?.transport === 'github_copilot') {
             await refreshGithubModelsTokenIfNeeded()
+          }
+          // For Codex OAuth, force-refresh on 401 even if the JWT clock says the
+          // token is still valid — server-side revocation won't match the clock.
+          if (tryGetActiveProvider()?.transport === 'codex_responses') {
+            await refreshCodexAccessTokenIfNeeded({ force: true }).catch(e => {
+              logForDebugging(
+                `[codex] force-refresh on 401 failed: ${e instanceof Error ? e.message : String(e)}`,
+                { level: 'warn' },
+              )
+            })
           }
         }
         client = await getClient()
