@@ -785,12 +785,15 @@ function normalizeSchemaForOpenAI(
 }
 
 export function convertTools(
-  tools: Array<{ name: string; description?: string; input_schema?: Record<string, unknown> }>,
+  tools: Array<{ name: string; description?: string; input_schema?: Record<string, unknown>; type?: string }>,
 ): OpenAITool[] {
   const isGemini = isGeminiMode()
 
   return tools
     .filter(t => t.name !== 'ToolSearchTool') // Not relevant for OpenAI
+    // Anthropic server-side tools (e.g. web_search_20250305) have a non-function type and no
+    // input_schema — OpenAI-compatible providers don't support them and return 400 if sent.
+    .filter(t => !t.type || t.type === 'function')
     .map(t => {
       const schema = { ...(t.input_schema ?? { type: 'object', properties: {} }) } as Record<string, unknown>
 
@@ -1661,6 +1664,7 @@ class OpenAIShimMessages {
           name: string
           description?: string
           input_schema?: Record<string, unknown>
+          type?: string
         }>,
       )
       if (converted.length > 0) {
