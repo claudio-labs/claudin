@@ -154,6 +154,7 @@ import {
 } from 'src/utils/advisor.js'
 import { getAgentContext } from 'src/utils/agentContext.js'
 import { isClaudeAISubscriber } from 'src/utils/auth.js'
+import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
 import {
   getToolSearchBetaHeader,
   modelSupportsStructuredOutputs,
@@ -1065,7 +1066,7 @@ async function* queryModel(
     options.querySource.startsWith('agent:') ||
     options.querySource === 'sdk' ||
     options.querySource === 'hook_agent'
-  const betas = getMergedBetas(options.model, { isAgenticQuery })
+  let betas = getMergedBetas(options.model, { isAgenticQuery })
 
   // Always send the advisor beta header when advisor is enabled, so
   // non-agentic queries (compact, side_question, extract_memories, etc.)
@@ -1364,7 +1365,7 @@ async function* queryModel(
 
   const enablePromptCaching =
     options.enablePromptCaching ?? getPromptCachingEnabled(options.model)
-  const system = buildSystemPromptBlocks(systemPrompt, enablePromptCaching, {
+  let system = buildSystemPromptBlocks(systemPrompt, enablePromptCaching, {
     skipGlobalCacheForSystemPrompt: needsToolBasedCacheMarker,
     querySource: options.querySource,
   })
@@ -1384,7 +1385,7 @@ async function* queryModel(
       model: advisorModel,
     } as unknown as BetaToolUnion)
   }
-  const allTools = [...toolSchemas, ...extraToolSchemas]
+  let allTools = [...toolSchemas, ...extraToolSchemas]
 
   const isFastMode =
     isFastModeEnabled() &&
@@ -1490,6 +1491,11 @@ async function* queryModel(
   let stream: Stream<BetaRawMessageStreamEvent> | undefined = undefined
   let streamRequestId: string | null | undefined = undefined
   let clientRequestId: string | undefined = undefined
+  // Precomputed inside finally before heavy captures (system, messagesForAPI,
+  // allTools, betas) are nulled out, so the post-finally logger doesn't pin
+  // the full conversation array.
+  let logMessageCount = 0
+  let logMessageTokens = 0
   // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins -- Response is available in Node 18+ and is used by the SDK
   let streamResponse: Response | undefined = undefined
 
@@ -1729,6 +1735,18 @@ async function* queryModel(
   let isFastModeRequest = isFastMode // Keep separate state as it may change if falling back
   let isAdvisorInProgress = false
 
+  // Wrap external signal with a per-query combined signal so SDK abort listeners
+  // are isolated to a controller we throw away after the query. The Anthropic
+  // SDK's fetchWithTimeout (client.mjs:332) registers
+  // `signal.addEventListener('abort', abort, { once: true })` but only
+  // auto-removes on abort — successful requests leak the listener on the
+  // parent (session-lifetime) signal, pinning the request's AbortController,
+  // Response, and stack frames. Routing the SDK through `sdkSignal` confines
+  // those leaks to a controller that's GC'd as soon as `cleanupSdkSignal`
+  // runs in `finally`.
+  const { signal: sdkSignal, cleanup: cleanupSdkSignal } =
+    createCombinedAbortSignal(signal)
+
   try {
     queryCheckpoint('query_client_creation_start')
     const generator = withRetry(
@@ -1779,7 +1797,7 @@ async function* queryModel(
           .create(
             { ...params, stream: true },
             {
-              signal,
+              signal: sdkSignal,
               ...(clientRequestId && {
                 headers: { [CLIENT_REQUEST_ID_HEADER]: clientRequestId },
               }),
@@ -1796,7 +1814,7 @@ async function* queryModel(
         fallbackModel: options.fallbackModel,
         thinkingConfig,
         ...(isFastModeEnabled() ? { fastMode: isFastMode } : false),
-        signal,
+        signal: sdkSignal,
         querySource: options.querySource,
       },
     )
@@ -2482,7 +2500,7 @@ async function* queryModel(
           fallbackModel: options.fallbackModel,
           thinkingConfig,
           ...(isFastModeEnabled() && { fastMode: isFastMode }),
-          signal,
+          signal: sdkSignal,
           initialConsecutive529Errors: is529Error(streamingError) ? 1 : 0,
           querySource: options.querySource,
         },
@@ -2583,7 +2601,7 @@ async function* queryModel(
             fallbackModel: options.fallbackModel,
             thinkingConfig,
             ...(isFastModeEnabled() && { fastMode: isFastMode }),
-            signal,
+            signal: sdkSignal,
           },
           paramsFromContext,
           (attempt, _startTime, tokens) => {
@@ -2755,6 +2773,35 @@ async function* queryModel(
         options.model,
       )
     }
+
+    // Precompute log scalars before releasing the heavy captures so the
+    // post-finally logger doesn't need messagesForAPI.
+    logMessageCount = messagesForAPI.length
+    logMessageTokens = tokenCountFromLastAPIResponse(messagesForAPI)
+
+    // Free heavy captures so the request-building context (system prompt,
+    // full conversation history, tool schemas, betas) can be GC'd even when
+    // the async generator frame stays pinned. The frame can survive long
+    // past finally if any Error created here ends up in an AbortSignal.reason
+    // anywhere up the chain — V8's stack trace pins the lexical scope of every
+    // frame on the stack at throw time. Nulling the let-bindings breaks that
+    // chain so paramsFromContext / willDefer / releaseStreamResources / etc.
+    // (which we cannot un-pin) hold onto null instead of multi-MB arrays.
+    // Safe because no caller of this generator function uses these vars after
+    // finally, and paramsFromContext is never invoked again post-finally.
+    messagesForAPI = null as never
+    system = null as never
+    allTools = null as never
+    betas = null as never
+    // responseHeaders gets pinned via the same closure-stack-trace path
+    // (releaseStreamResources / willDefer capture it). Drop it explicitly so
+    // _Headers/_HeadersList aren't retained even if the closure stays alive.
+    responseHeaders = undefined
+
+    // Detach our combined-signal listener from the parent so the SDK's leaked
+    // listener (Anthropic SDK client.mjs:332) is anchored to a controller we
+    // are about to drop, not to the session-lifetime signal.
+    cleanupSdkSignal()
   }
 
   // Track the last requestId for the main conversation chain so shutdown
@@ -2771,11 +2818,8 @@ async function* queryModel(
     setLastMainRequestId(streamRequestId)
   }
 
-  // Precompute scalars so the fire-and-forget .then() closure doesn't pin the
-  // full messagesForAPI array (the entire conversation up to the context window
-  // limit) until getToolPermissionContext() resolves.
-  const logMessageCount = messagesForAPI.length
-  const logMessageTokens = tokenCountFromLastAPIResponse(messagesForAPI)
+  // logMessageCount/logMessageTokens were precomputed in finally before
+  // messagesForAPI was nulled out — see the heavy-capture release there.
   void options.getToolPermissionContext().then(permissionContext => {
     logAPISuccessAndDuration({
       model:

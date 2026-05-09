@@ -21,24 +21,67 @@ import { diffArrays } from 'diff'
 import type * as hljsNamespace from 'highlight.js'
 import { basename, extname } from 'path'
 
-// Lazy: defers loading highlight.js until first render. The full bundle
-// registers 190+ language grammars at require time (~50MB, 100-200ms on
-// macOS, several× that on Windows). With a top-level import, any caller
-// chunk that reaches this module — including test/preload.ts via
-// StructuredDiff.tsx → colorDiff.ts — pays that cost at module-eval time
-// and carries the heap for the rest of the process. On Windows CI this
-// pushed later tests in the same shard into GC-pause territory and a
-// beforeEach/afterEach hook timeout (officialRegistry.test.ts, PR #24150).
-// Same lazy pattern the NAPI wrapper used for dlopen.
+// Lazy: defers loading highlight.js until first render. The full default
+// bundle (`require('highlight.js')`) registers 190+ language grammars at
+// require time (~50MB, 100-200ms on macOS, several× that on Windows). With
+// a top-level import, any caller chunk that reaches this module — including
+// test/preload.ts via StructuredDiff.tsx → colorDiff.ts — pays that cost at
+// module-eval time and carries the heap for the rest of the process. On
+// Windows CI this pushed later tests in the same shard into GC-pause
+// territory and a beforeEach/afterEach hook timeout (officialRegistry.test.ts,
+// PR #24150). Same lazy pattern the NAPI wrapper used for dlopen.
+//
+// We additionally use `highlight.js/lib/core` + selective registerLanguage
+// (the 29 we actually highlight) instead of the default bundle. Brings the
+// register-time hit down to ~10-15MB heap and ~30-50ms parse, vs the
+// 50MB/100-200ms above. Anything else falls back to plain text in this
+// renderer (matches how syntect treats unknown languages).
 type HLJSApi = typeof hljsNamespace
 let cachedHljs: HLJSApi | null = null
 function hljs(): HLJSApi {
   if (cachedHljs) return cachedHljs
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('highlight.js')
-  // highlight.js uses `export =` (CJS). Under bun/ESM the interop wraps it
-  // in .default; under node CJS the module IS the API. Check at runtime.
-  cachedHljs = 'default' in mod && mod.default ? mod.default : mod
+  const coreMod = require('highlight.js/lib/core')
+  const core: HLJSApi =
+    'default' in coreMod && coreMod.default ? coreMod.default : coreMod
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const langs: ReadonlyArray<readonly [string, string]> = [
+    ['typescript', 'typescript'],
+    ['javascript', 'javascript'],
+    ['python', 'python'],
+    ['go', 'go'],
+    ['rust', 'rust'],
+    ['java', 'java'],
+    ['c', 'c'],
+    ['cpp', 'cpp'],
+    ['csharp', 'csharp'],
+    ['ruby', 'ruby'],
+    ['php', 'php'],
+    ['swift', 'swift'],
+    ['kotlin', 'kotlin'],
+    ['bash', 'bash'],
+    ['shell', 'shell'],
+    ['json', 'json'],
+    ['yaml', 'yaml'],
+    ['xml', 'xml'],
+    ['css', 'css'],
+    ['scss', 'scss'],
+    ['sql', 'sql'],
+    ['markdown', 'markdown'],
+    ['dockerfile', 'dockerfile'],
+    ['diff', 'diff'],
+    ['plaintext', 'plaintext'],
+    ['ini', 'ini'],
+    ['lua', 'lua'],
+    ['perl', 'perl'],
+    ['elixir', 'elixir'],
+  ]
+  for (const [name, mod] of langs) {
+    const m = require(`highlight.js/lib/languages/${mod}`)
+    core.registerLanguage(name, 'default' in m && m.default ? m.default : m)
+  }
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  cachedHljs = core
   return cachedHljs!
 }
 

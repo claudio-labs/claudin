@@ -80,6 +80,13 @@ if (
       env: {
         ...process.env,
         [HEAP_BUMP_SENTINEL]: '1',
+        // libuv thread pool default is 4 — every fs/dns/crypto/zlib op shares
+        // it. With concurrent Read/Glob/Grep/WebFetch under one turn the pool
+        // queues. Bumping to 10 gives the agent enough parallelism for
+        // typical multi-tool dispatches without the overhead of unbounded
+        // pools. Costs ~6 idle threads at ~100 KB native each (~600 KB).
+        // Respects pre-existing UV_THREADPOOL_SIZE if user set their own.
+        UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '10',
         ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
         ...mallocEnv,
       },
