@@ -46,7 +46,7 @@ jobs:
         run: bun run smoke
 
       - name: Full unit test suite
-        run: bun test
+        run: bun test --max-concurrency=1
 
       - name: Provider tests
         run: bun run test:provider
