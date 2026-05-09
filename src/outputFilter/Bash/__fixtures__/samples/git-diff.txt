@@ -1,0 +1,76 @@
+diff --git a/src/services/api/claude.ts b/src/services/api/claude.ts
+index c0da81f..2c4ed0c 100644
+--- a/src/services/api/claude.ts
++++ b/src/services/api/claude.ts
+@@ -227,6 +227,7 @@ import {
+   getAssistantMessageFromError,
+   getErrorMessageIfRefusal,
+ } from './errors.js'
++import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
+ import {
+   EMPTY_USAGE,
+   type GlobalCacheStrategy,
+@@ -2531,18 +2532,24 @@ async function* queryModel(
+     // endpoints but work fine with non-streaming. Before v2.1.8, BetaMessageStream
+     // threw 404s during iteration (caught by inner catch with fallback), but now
+     // with raw streams, 404s are thrown during creation (caught here).
+-    const is404StreamCreationError =
+-      !didFallBackToNonStreaming &&
++    // Exclude model_not_found: the model is unavailable, not the streaming
++    // endpoint — non-streaming would fail the same way.
++    const originalError404 =
+       errorFromRetry instanceof CannotRetryError &&
+       errorFromRetry.originalError instanceof APIError &&
+       errorFromRetry.originalError.status === 404
++        ? (errorFromRetry.originalError as APIError)
++        : null
++    const is404StreamCreationError =
++      !didFallBackToNonStreaming &&
++      originalError404 !== null &&
++      extractOpenAICategoryMarker(originalError404.message ?? '') !== 'model_not_found'
+diff --git a/src/services/api/withRetry.ts b/src/services/api/withRetry.ts
+index 5e12ab7..8d9c102 100644
+--- a/src/services/api/withRetry.ts
++++ b/src/services/api/withRetry.ts
+@@ -42,7 +42,7 @@ const RETRY_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
+
+ const RETRY_OPENAI_404_MAX_ATTEMPTS = 2
+
+-export function shouldRetry(error: unknown): boolean {
++export function shouldRetry(error: unknown, attempt = 0): boolean {
+   if (error instanceof APIUserAbortError) return false
+   if (!(error instanceof APIError)) return false
+   if (error.status === 404) {
+@@ -56,6 +56,9 @@ export function shouldRetry(error: unknown): boolean {
+     }
+     return false
+   }
++  if (attempt >= RETRY_OPENAI_404_MAX_ATTEMPTS && error.status === 404) {
++    return false
++  }
+   return RETRY_STATUS_CODES.has(error.status)
+ }
+\ No newline at end of file
+diff --git a/src/services/api/withRetry.test.ts b/src/services/api/withRetry.test.ts
+index 0a1b2c3..4d5e6f7 100644
+--- a/src/services/api/withRetry.test.ts
++++ b/src/services/api/withRetry.test.ts
+@@ -120,6 +120,49 @@ describe('shouldRetry', () => {
+     expect(shouldRetry(notApiError)).toBe(false)
+   })
+
++  test('retries 404 with openai_category marker up to 2 attempts', () => {
++    const err = new APIError(404, { message: 'not found [openai_category=server_error]' }, 'msg', {})
++    expect(shouldRetry(err, 0)).toBe(true)
++    expect(shouldRetry(err, 1)).toBe(true)
++    expect(shouldRetry(err, 2)).toBe(false)
++  })
++
++  test('does not retry model_not_found 404', () => {
++    const err = new APIError(404, { message: 'no model [openai_category=model_not_found]' }, 'msg', {})
++    expect(shouldRetry(err, 0)).toBe(false)
++  })
++
+   test('returns false for status 400', () => {
+     const err = new APIError(400, { message: 'bad' }, 'msg', {})
+     expect(shouldRetry(err)).toBe(false)

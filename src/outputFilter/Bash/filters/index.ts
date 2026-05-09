@@ -1,6 +1,7 @@
 // Built-in filter registry.
 // Phase 6.1.2 — batch 1 (14 specs). Phase 6.1.4 — rewrite specs (5).
 // Phase 6.1.5 — batch 2 (11 specs): git pipeline-only, containers, network, journalctl.
+// Phase 6.2   — JS/TS toolchain + git diff/show (8 specs).
 //
 // Order matters only insofar as more specific specs must come before
 // less specific ones when their matchCommand regex could overlap. We
@@ -11,11 +12,23 @@ import type { FilterSpec } from '../types.js'
 
 import { bundleInstall } from './pkg.js'
 import { pytest, rspec, goTest } from './tests.js'
+import { jest, vitest, bunTest, mocha, playwright } from './tests-js.js'
+import { tsc } from './tsc.js'
 import { psAux, top, journalctl } from './system.js'
 import { rubocop, ruffCheck } from './linters.js'
 import { lsLa } from './ls.js'
 import { grepRg } from './grep-rg.js'
-import { gitLog, gitStatus, gitBlame, gitPull, gitAdd, gitCommit, gitPush } from './git.js'
+import {
+  gitLog,
+  gitStatus,
+  gitBlame,
+  gitPull,
+  gitAdd,
+  gitCommit,
+  gitPush,
+  gitDiff,
+  gitShow,
+} from './git.js'
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
 import { dockerPs, dockerImages, dockerLogs } from './containers.js'
@@ -28,6 +41,16 @@ export const builtInFilters: FilterSpec[] = [
   pytest,
   rspec,
   goTest,
+  // Test runners — JS/TS (Phase 6.2). Two-word matches (`bun test`,
+  // `playwright test`) come before single-word ones so the more specific
+  // form wins when both could plausibly match.
+  bunTest,
+  playwright,
+  jest,
+  vitest,
+  mocha,
+  // TypeScript compiler (Phase 6.2)
+  tsc,
   // System inspection
   psAux,
   top,
@@ -51,6 +74,9 @@ export const builtInFilters: FilterSpec[] = [
   gitAdd,
   gitCommit,
   gitPush,
+  // Git — Phase 6.2 (diff/show)
+  gitDiff,
+  gitShow,
   // Containers — Phase 6.1.5
   dockerPs,
   dockerImages,

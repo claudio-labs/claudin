@@ -3,7 +3,7 @@
 > **Parent spec:** [`../architecture.md`](../architecture.md) (rev 2)
 > **Discovery:** [`../../../discovery/bash-output-filter/`](../../../discovery/bash-output-filter/)
 
-8 PRs sequenciados, cada um shippable independentemente atrás de `bashOutputFilterEnabled: false` até Phase 7.
+8 PRs sequenciados (Phases 0–7), cada um shippable independentemente atrás de `bashOutputFilterEnabled: false` até Phase 7. Phase 8 é uma fase pós-default-on — adiciona filtros tier-1 que não estavam no escopo original.
 
 ## Status global
 
@@ -17,6 +17,7 @@
 | 5 | Built-in batch 2 (git/docker/network/journalctl) | ~250 | ⏸ Not started | [`phase-5-builtin-batch-2.md`](phase-5-builtin-batch-2.md) |
 | 6 | User filters via JSON + zod + ReDoS guards | ~290 | ⏸ Not started | [`phase-6-user-filters.md`](phase-6-user-filters.md) |
 | 7 | Default-on flip + post-flip verification | ~3 | ⏸ Not started | [`phase-7-default-on.md`](phase-7-default-on.md) |
+| 8 | Tier-1 follow-ups: JS/TS toolchain + tsc + git diff/show (Windows deferred) | ~330 | ✅ Done — Linux side | [`phase-8-tier1-followups.md`](phase-8-tier1-followups.md) |
 
 **Status legend:** ⏸ Not started | 🔄 In progress | ✅ Done | ⛔ Blocked
 

@@ -1,0 +1,58 @@
+src/utils/parser.ts:23:5 - error TS2322: Type 'string' is not assignable to type 'number'.
+
+23     count: "five",
+       ~~~~~
+
+src/utils/parser.ts:45:7 - error TS2304: Cannot find name 'doStuff'.
+
+45       doStuff(x);
+         ~~~~~~~
+
+src/utils/parser.ts:67:12 - error TS2339: Property 'foo' does not exist on type '{ bar: string; }'.
+
+67     return obj.foo;
+              ~~~~~~~
+
+src/api/client.ts:10:1 - error TS2322: Type 'string' is not assignable to type 'number'.
+
+10  const port: number = "8080";
+    ~~~~~~~~~~~
+
+src/api/client.ts:11:5 - error TS2304: Cannot find name 'fetch2'.
+
+11      fetch2('/api');
+        ~~~~~~
+
+src/api/client.ts:12:5 - error TS2554: Expected 1 arguments, but got 2.
+
+12      doRequest(url, opts);
+        ~~~~~~~~~~~~~~~~~~~~
+
+src/api/client.ts:25:9 - error TS2367: This comparison appears to be unintentional because the types '"json"' and '"xml"' have no overlap.
+
+25     if (format === "xml") return parseXml();
+        ~~~~~~~~~~~~~~~~
+
+src/components/Modal.tsx:8:5 - error TS2304: Cannot find name 'useState'.
+
+8      useState(false);
+       ~~~~~~~~
+
+src/components/Modal.tsx:14:7 - error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+
+14       title={maybeTitle}
+         ~~~~~
+
+src/components/Modal.tsx:22:1 - error TS2322: Type '() => Element' is not assignable to type 'FC<Props>'.
+
+22 export default Modal;
+   ~~~~~~
+
+
+Found 10 errors in 3 files.
+
+Errors  Files
+     3  src/utils/parser.ts:23
+     4  src/api/client.ts:10
+     3  src/components/Modal.tsx:8

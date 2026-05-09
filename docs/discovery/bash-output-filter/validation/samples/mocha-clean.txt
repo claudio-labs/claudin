@@ -1,0 +1,47 @@
+
+
+  parseCommand
+    ✓ parses a simple command (5ms)
+    ✓ handles env assignments (2ms)
+    ✓ strips sudo prefix (1ms)
+    ✓ handles quoted args (3ms)
+    ✓ trims trailing whitespace
+    ✓ preserves env when no prefix
+    ✓ strips multiple env vars
+
+  canonicalize
+    ✓ returns original when no prefix (1ms)
+    ✓ trims whitespace
+    ✓ preserves quoted segments
+    ✓ handles empty strings
+
+  Client
+    ✓ retries on 500 (10ms)
+    ✓ throws on 401 (4ms)
+    ✓ falls back to non-streaming on 404 (8ms)
+    ✓ extracts category marker
+    ✓ preserves request id (22ms)
+
+  LRUCache
+    ✓ evicts oldest entry (3ms)
+    ✓ updates access order (2ms)
+    ✓ respects max size
+    ✓ handles set after eviction
+    ✓ supports has()
+    ✓ clear() resets state
+    ✓ size reports correctly
+    ✓ delete returns boolean
+
+  Modal
+    ✓ renders title (15ms)
+    ✓ closes on escape (8ms)
+    ✓ traps focus (12ms)
+
+  Store
+    ✓ initializes with default state
+    ✓ subscribes listeners (3ms)
+    ✓ unsubscribes correctly
+    ✓ batches updates (5ms)
+
+
+  32 passing (456ms)

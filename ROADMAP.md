@@ -1,6 +1,6 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-05 (5.7 completo)
+> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-09 (6.2 — tier-1 follow-ups Linux done)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
@@ -46,6 +46,40 @@ Cumulativo numa sessão típica 30min: **~50k tokens economizados**, **~72% redu
 3. `config.ts:705` (`GLOBAL_CONFIG_KEYS`): registrar 3 keys flat
 
 Markers vão direto pra `result.stdout` — sobrevivem error path via `ShellError`. `mapToolResult`, `processToolResultBlock`, `Out` schema intactos.
+
+### 6.2 — Bash output filter — tier-1 follow-ups (Linux JS/TS toolchain + tsc + git diff/show)
+- **Esforço:** M (1 PR Linux done, 1 PR Windows pending)
+- **Prioridade:** **P1** — preenche o gap mais visível pós-6.1: stack TS é a mais comum, e `tsc`/`jest`/`vitest`/`bun test` não estavam mapeados.
+- **Status:** ✅ **Linux side concluído** (2026-05-09, 8 specs, ~330 LoC). **Windows/PowerShell pendente** (sub-fase 9, ver doc).
+
+#### Documentação
+- **Phase doc:** [`docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md`](docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md)
+- **Bench reproducível:** `CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts` — 31 filtros, agregado 71% redução
+
+#### Filters adicionados (8 specs, Linux)
+
+- [x] **JS/TS test runners** (5 specs em `tests-js.ts`): `jest` 98.7%, `vitest` 98.5%, `bun test` 98.2%, `mocha` 97.6%, `playwright test` 98.4% — colapso pra sentinela em runs limpos, `unless` guard preserva failures
+- [x] **TypeScript compiler** (`tsc.ts`): `tsc` / `tsc --noEmit` 18.2% — strip ASCII underline `~~~` lines + tabela trailing `Errors  Files` redundante
+- [x] **git diff / show** (extensão de `git.ts`): `git diff` 10.8%, `git show` 9.4% — strip `diff --git a/X b/X` + `index <hash>..<hash>` + `\ No newline at end of file`; git-show colapsa `Author: Name <email>\nDate: ...` em uma linha
+
+#### Pendente (sub-fase 9 — Windows/PowerShell)
+
+- [ ] `Get-ChildItem` / `dir` — equivalente do `ls -la`
+- [ ] `Get-Process` / `tasklist` — equivalente do `ps aux`
+- [ ] `Get-Service`, `Get-WinEvent`/`Get-EventLog`
+- [ ] `dotnet build` / `dotnet test` / `dotnet restore`
+- [ ] `msbuild`
+
+PowerShell tem 2 peculiaridades vs bash (output tabular auto-formatado + object pipeline) que precisam de ajuste em `pipeline.ts` antes de implementar — abrir como Phase 9 dedicada.
+
+#### Arquivos tocados (Linux)
+
+- 2 arquivos novos: `src/outputFilter/Bash/filters/{tests-js,tsc}.ts`
+- 1 extensão: `src/outputFilter/Bash/filters/git.ts` (gitDiff + gitShow)
+- 1 registry: `src/outputFilter/Bash/filters/index.ts`
+- 8 fixtures novos em ambos `src/outputFilter/Bash/__fixtures__/samples/` E `docs/discovery/bash-output-filter/validation/samples/` (harness lê desse último — ver Implementation Notes do phase doc)
+- 1 harness extension: `src/outputFilter/Bash/bashFilter.test.ts` (+8 describe blocks, ~50 expect calls)
+- 1 bench update: `scripts/profile/bash-filter-gain.test.ts` (+8 cenários)
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -273,6 +307,6 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**7 ativos** (1× P0: 4.1; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **19 concluídos** (6.1 recém-concluído). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**8 ativos** (1× P0: 4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **19 concluídos** (6.1 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
 
-**Próxima entrega (P0 priority):** **4.1**. 6.1 — Command-aware bash output filter concluído em 2026-05-09 (8 fases, ~2.200 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-96% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input.
+**Próxima entrega (P0 priority):** **4.1**. 6.1 — Command-aware bash output filter concluído em 2026-05-09 (8 fases, ~2.200 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-96% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs novos (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show), 31 filtros totais, agregado 71% redução medido em fixture corpus de 186 KB. Sub-fase Windows/PowerShell em aberto.

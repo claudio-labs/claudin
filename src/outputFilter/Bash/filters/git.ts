@@ -157,6 +157,60 @@ export const gitCommit: FilterSpec = {
   ],
 }
 
+// --- git diff --------------------------------------------------------------
+// Strip the `index <hash>..<hash> <mode>` line (purely git-internal — the
+// `--- a/X` / `+++ b/X` headers above carry all the navigational info the
+// agent needs) and `\ No newline at end of file` markers. Hunks themselves
+// are the signal — never touched.
+
+const GIT_DIFF_MATCH = /^git\s+diff\b/
+// Passthrough for summary/structural variants whose output IS already compact.
+const GIT_DIFF_REJECT =
+  /--stat\b|--shortstat\b|--name-only\b|--name-status\b|--check\b|--numstat\b|--summary\b/
+const GIT_DIFF_STRIP_INDEX = /^index\s+[0-9a-f]+\.\.[0-9a-f]+(?:\s+\d+)?$/
+const GIT_DIFF_STRIP_NOEOL = /^\\ No newline at end of file$/
+// `diff --git a/X b/X` is redundant with the `--- a/X` / `+++ b/X` headers
+// that always follow (or, for rename/binary, with the explicit rename/Binary
+// lines). Safe to strip in both regular diffs and special-case diffs.
+const GIT_DIFF_STRIP_HEADER = /^diff --git\s+a\/\S+\s+b\/\S+$/
+
+export const gitDiff: FilterSpec = {
+  name: 'git-diff',
+  matchCommand: GIT_DIFF_MATCH,
+  matchCommandReject: GIT_DIFF_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [GIT_DIFF_STRIP_HEADER, GIT_DIFF_STRIP_INDEX, GIT_DIFF_STRIP_NOEOL],
+  matchOutput: [
+    {
+      pattern: /^\s*$/,
+      message: '✓ git diff: no changes',
+      unless: /\S/,
+    },
+  ],
+}
+
+// --- git show --------------------------------------------------------------
+// Same diff-body cleanup as git-diff plus collapse the redundant
+// `Author: Name <email>\nDate:   ...` pair into a single line. Email and
+// timezone are noise for an agent reading the diff.
+
+const GIT_SHOW_MATCH = /^git\s+show\b/
+const GIT_SHOW_REJECT =
+  /--stat\b|--name-only\b|--name-status\b|--no-patch\b|(?:^|\s)-s\b|--summary\b|--pretty\b|--format\b/
+// Capture the author name (greedy up to the email bracket) and the date,
+// emit a single-line "Author: Name (Date)" sentinel.
+const GIT_SHOW_AUTHOR_DATE_RE =
+  /^Author:\s+([^<\n]+?)\s*<[^>\n]+>\nDate:\s+(.+)$/m
+
+export const gitShow: FilterSpec = {
+  name: 'git-show',
+  matchCommand: GIT_SHOW_MATCH,
+  matchCommandReject: GIT_SHOW_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [GIT_DIFF_STRIP_HEADER, GIT_DIFF_STRIP_INDEX, GIT_DIFF_STRIP_NOEOL],
+  replace: [{ pattern: GIT_SHOW_AUTHOR_DATE_RE, replacement: 'Author: $1 ($2)' }],
+}
+
 // --- git push --------------------------------------------------------------
 // Strip git transfer protocol noise (Enumerating/Counting/Compressing/Writing).
 // Preserve remote: lines (includes server-side hook warnings and PR creation URLs),

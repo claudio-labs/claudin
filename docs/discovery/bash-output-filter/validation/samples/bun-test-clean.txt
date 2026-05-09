@@ -1,0 +1,48 @@
+bun test v1.3.11 (af24e281)
+
+src/utils/parser.test.ts:
+✓ parseCommand > parses a simple command [1.23ms]
+✓ parseCommand > handles env assignments [0.45ms]
+✓ parseCommand > strips sudo prefix [0.34ms]
+✓ parseCommand > handles quoted args [0.89ms]
+✓ canonicalize > returns original when no prefix [0.21ms]
+✓ canonicalize > trims trailing whitespace [0.18ms]
+
+src/api/client.test.ts:
+✓ Client > retries on 500 [4.56ms]
+✓ Client > throws on 401 [2.10ms]
+✓ Client > falls back to non-streaming on 404 [5.34ms]
+✓ Client > extracts category marker [0.45ms]
+✓ Client > preserves request id [12.78ms]
+
+src/services/cache.test.ts:
+✓ LRUCache > evicts oldest entry [1.23ms]
+✓ LRUCache > updates access order [0.78ms]
+✓ LRUCache > respects max size [0.45ms]
+✓ LRUCache > handles set after eviction [0.67ms]
+✓ LRUCache > supports has() [0.34ms]
+✓ LRUCache > clear() resets state [0.56ms]
+✓ LRUCache > size reports correctly [0.32ms]
+✓ LRUCache > delete returns boolean [0.31ms]
+
+src/components/Modal.test.tsx:
+✓ Modal > renders title [8.90ms]
+✓ Modal > closes on escape [4.56ms]
+✓ Modal > traps focus [6.78ms]
+
+src/state/store.test.ts:
+✓ Store > initializes with default state [0.45ms]
+✓ Store > subscribes listeners [1.23ms]
+✓ Store > unsubscribes correctly [0.67ms]
+✓ Store > batches updates [2.34ms]
+
+src/hooks/useAuth.test.ts:
+✓ useAuth > returns null when logged out [1.45ms]
+✓ useAuth > returns user when logged in [2.34ms]
+✓ useAuth > handles login flow [5.67ms]
+✓ useAuth > handles logout flow [1.89ms]
+
+ 28 pass
+ 0 fail
+ 0 todo
+Ran 28 tests across 6 files. [89.45ms]

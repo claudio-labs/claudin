@@ -1,0 +1,69 @@
+ RUNS  ./src/components/Modal.test.tsx
+ RUNS  ./src/services/cache.test.ts
+ RUNS  ./src/utils/parser.test.ts
+ PASS  src/utils/parser.test.ts (1.234 s)
+  parseCommand
+    ✓ parses a simple command (5 ms)
+    ✓ handles env assignments (2 ms)
+    ✓ strips sudo prefix (1 ms)
+    ✓ handles quoted args (3 ms)
+  canonicalize
+    ✓ returns original when no prefix (1 ms)
+    ✓ trims trailing whitespace (1 ms)
+
+ PASS  src/api/client.test.ts (0.876 s)
+  Client
+    ✓ retries on 500 (10 ms)
+    ✓ throws on 401 (4 ms)
+    ✓ falls back to non-streaming on 404 (8 ms)
+    ✓ extracts category marker (1 ms)
+
+ PASS  src/components/Modal.test.tsx (1.567 s)
+  Modal
+    ✓ renders title (15 ms)
+    ✓ closes on escape (8 ms)
+    ✓ traps focus (12 ms)
+
+ PASS  src/services/cache.test.ts (0.654 s)
+  LRUCache
+    ✓ evicts oldest entry (3 ms)
+    ✓ updates access order on get (2 ms)
+    ✓ respects max size (1 ms)
+    ✓ handles set after eviction (2 ms)
+    ✓ supports has() (1 ms)
+
+ PASS  src/state/store.test.ts (0.432 s)
+  Store
+    ✓ initializes with default state (1 ms)
+    ✓ subscribes listeners (3 ms)
+    ✓ unsubscribes correctly (1 ms)
+    ✓ batches updates (5 ms)
+
+ PASS  src/hooks/useAuth.test.ts (0.876 s)
+  useAuth
+    ✓ returns null when logged out (3 ms)
+    ✓ returns user when logged in (5 ms)
+    ✓ handles login flow (12 ms)
+    ✓ handles logout flow (4 ms)
+
+ PASS  src/utils/format.test.ts (0.234 s)
+  formatBytes
+    ✓ formats bytes (1 ms)
+    ✓ formats KB (1 ms)
+    ✓ formats MB (1 ms)
+    ✓ formats GB (1 ms)
+  formatDuration
+    ✓ formats milliseconds (1 ms)
+    ✓ formats seconds (1 ms)
+
+ PASS  src/api/retry.test.ts (0.456 s)
+  withRetry
+    ✓ retries on transient error (8 ms)
+    ✓ stops at max attempts (4 ms)
+    ✓ respects retry-after header (3 ms)
+
+Test Suites: 8 passed, 8 total
+Tests:       42 passed, 42 total
+Snapshots:   3 passed, 3 total
+Time:        4.821 s, estimated 5 s
+Ran all test suites.
