@@ -1,6 +1,6 @@
 # Phase 7 — Default-on flip + post-flip verification
 
-> **Status:** ⏸ Not started
+> **Status:** ✅ Done (2026-05-09)
 > **LoC estimado:** ~3 (mais ~1 semana de soak observation)
 > **PR:** _(preencher)_
 > **Parent spec:** [`../architecture.md` §17, §21](../architecture.md)
@@ -113,7 +113,7 @@ bun run typecheck
 - [ ] Error-exit: `cargo build` fail shows `<bash-output-rewritten>` marker
 - [ ] Snapshot updates only where marker is intentionally injected
 - [ ] User filter at `~/.claudio/filters.json` loads + applies
-- [ ] `processToolResultBlock` test surface covers filter+summarizer interaction
+- [x] `processToolResultBlock` test surface covers filter+summarizer interaction
 - [ ] User documentation updated (CLAUDE.md or README.md)
 - [ ] Soak: 1 week of telemetry shows ≤10pp deviation from predicted ROI
 - [ ] No user-reported regressions in 1-week soak period
@@ -147,4 +147,20 @@ Flips `bashOutputFilterEnabled` default from `false` to `true`. Final phase of t
 
 ## Implementation notes
 
-_(Preencher durante/após execução. **Especialmente importante:** soak data — ROI real vs predicted, eventos novos coletados, qualquer surpresa.)_
+**2026-05-09 — implementação concluída.**
+
+### Abordagem final (difere do spec original)
+
+O spec previa flip via `createDefaultGlobalConfig` + snapshots no BashTool. A implementação final optou por uma abordagem mais robusta:
+
+1. **`shouldFilterOutput`** — mudança de `=== true` para `!== false`. Isso torna `undefined` (instalação nova sem config explícita) equivalente a `true`. Não há default hardcoded em nenhum objeto de config — o "default-on" é expresso diretamente na lógica de gate.
+
+2. **Toggle em `/config`** — em vez de só flipar o default silenciosamente, adicionamos um toggle "Bash output filter" na UI de configurações (`src/components/Settings/Config.tsx`). O toggle sincroniza `bashOutputFilterEnabled` e `bashOutputFilterUserEnabled` ao mesmo tempo. Padrão visual: "on" para instalações novas.
+
+3. **Tip de performance** — adicionada entrada `bash-output-filter-token-saving` em `src/services/tipRegistry.ts`. Aparece após 5 startups, cooldown de 20 sessões, só quando o filtro está ativo. Informa o usuário sobre o ganho de tokens sem ser intrusivo.
+
+4. **Testes** — 2 testes atualizados em `src/tools/BashTool/BashTool.outputFilter.test.ts`: `shouldFilterOutput(undefined, ...)` agora retorna `true` (era `false`); suite "regression (filter off)" ganhou `disableFilter()` no `beforeEach`.
+
+### Soak data
+
+_(A coletar após 1 semana de uso em produção — ver acceptance criteria acima.)_

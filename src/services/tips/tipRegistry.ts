@@ -155,6 +155,16 @@ const externalTips: Tip[] = [
     },
   },
   {
+    id: 'bash-output-filter-token-saving',
+    content: async () =>
+      'Bash output filter is active — redundant command output is trimmed before reaching the model, reducing token usage. Disable in /config.',
+    cooldownSessions: 20,
+    async isRelevant() {
+      const config = getGlobalConfig()
+      return config.numStartups > 5 && config.bashOutputFilterEnabled !== false
+    },
+  },
+  {
     id: 'color-when-multi-clauding',
     content: async () =>
       'Running multiple Claude sessions? Use /color and /rename to tell them apart at a glance.',

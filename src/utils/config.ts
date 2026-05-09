@@ -647,7 +647,7 @@ export type GlobalConfig = {
   // Knowledge Graph configuration
   knowledgeGraphEnabled: boolean
 
-  // Bash output filter (roadmap 6.1) — Phase 3+ reads these; undefined → false
+  // Bash output filter (roadmap 6.1) — Phase 3+ reads these; undefined → true (default on since Phase 7)
   bashOutputFilterEnabled?: boolean
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean

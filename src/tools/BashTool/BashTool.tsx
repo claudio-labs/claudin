@@ -854,7 +854,7 @@ export const BashTool = buildTool({
 
 /**
  * Guards (passthrough conditions — mutates result.stdout in place):
- *  - `bashOutputFilterEnabled !== true`  → default off until Phase 7 flips it
+ *  - `bashOutputFilterEnabled === false`  → default on; disable via /config
  *  - `isBashOutputFilterDisabled`        → kill switch (env var, module-level)
  *  - `result.backgroundTaskId` defined   → output goes to disk, not to the model
  *
@@ -877,7 +877,7 @@ export function shouldFilterOutput(
   killSwitchActive: boolean,
   backgroundTaskId: string | undefined,
 ): boolean {
-  return bashOutputFilterEnabled === true && !killSwitchActive && !backgroundTaskId
+  return bashOutputFilterEnabled !== false && !killSwitchActive && !backgroundTaskId
 }
 
 export function applyBashOutputFilter(

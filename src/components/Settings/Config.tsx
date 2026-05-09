@@ -339,6 +339,26 @@ export function Config({
       });
     }
   }, {
+    id: 'bashOutputFilterEnabled',
+    label: 'Bash output filter',
+    value: globalConfig.bashOutputFilterEnabled !== false,
+    type: 'boolean' as const,
+    onChange(bashOutputFilterEnabled: boolean) {
+      saveGlobalConfig(current => ({
+        ...current,
+        bashOutputFilterEnabled,
+        bashOutputFilterUserEnabled: bashOutputFilterEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        bashOutputFilterEnabled,
+        bashOutputFilterUserEnabled: bashOutputFilterEnabled
+      });
+      logEvent('claudio_bash_output_filter_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        enabled: bashOutputFilterEnabled
+      });
+    }
+  }, {
     id: 'spinnerTipsEnabled',
     label: 'Show tips',
     value: settingsData?.spinnerTipsEnabled ?? true,
@@ -1207,6 +1227,9 @@ export function Config({
     }
     if (globalConfig.toolResultSummarizerEnabled !== initialConfig.current.toolResultSummarizerEnabled) {
       formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result summarizer`);
+    }
+    if (globalConfig.bashOutputFilterEnabled !== initialConfig.current.bashOutputFilterEnabled) {
+      formattedChanges.push(`${globalConfig.bashOutputFilterEnabled !== false ? 'Enabled' : 'Disabled'} bash output filter`);
     }
     if (globalConfig.respectGitignore !== initialConfig.current.respectGitignore) {
       formattedChanges.push(`${globalConfig.respectGitignore ? 'Enabled' : 'Disabled'} respect .gitignore in file picker`);

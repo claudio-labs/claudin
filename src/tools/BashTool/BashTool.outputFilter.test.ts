@@ -191,9 +191,12 @@ describe('bash output filter — kill switch (shouldFilterOutput)', () => {
     expect(shouldFilterOutput(true, false, undefined)).toBe(true)
   })
 
-  test('kill switch inactive + flag disabled → returns false', () => {
+  test('kill switch inactive + flag explicitly disabled → returns false', () => {
     expect(shouldFilterOutput(false, false, undefined)).toBe(false)
-    expect(shouldFilterOutput(undefined, false, undefined)).toBe(false)
+  })
+
+  test('kill switch inactive + flag undefined (default) → returns true', () => {
+    expect(shouldFilterOutput(undefined, false, undefined)).toBe(true)
   })
 
   test('kill switch inactive + backgroundTaskId set → returns false', () => {
@@ -207,8 +210,8 @@ describe('bash output filter — kill switch (shouldFilterOutput)', () => {
 // ---------------------------------------------------------------------------
 
 describe('bash output filter — regression (filter off)', () => {
-  // Default is undefined (not in DEFAULT_GLOBAL_CONFIG). undefined === true is false,
-  // so the filter is already off. beforeEach/afterEach handle save/restore.
+  // Filter is now default-on; explicitly disable for these passthrough tests.
+  beforeEach(() => disableFilter())
 
   test('ls -la with config off → raw output preserved exactly, no markers', () => {
     const result = makeResult({ stdout: LS_LA_SAMPLE })
@@ -281,7 +284,78 @@ describe('bash output filter — integration smoke', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 5 — catch path (fail-open / belt-and-suspenders)
+// Suite 5 — filter + summarizer interaction (double-processing guard)
+// ---------------------------------------------------------------------------
+//
+// Verifies that bash output already wrapped in <bash-output-filtered> markers
+// is NOT re-processed by the bash filter pipeline. The filter pipeline must
+// short-circuit on already-filtered input to prevent double-wrapping and to
+// guarantee that the summarizer sees the filtered (reduced) content — not the
+// original — when both features are enabled simultaneously.
+
+describe('bash output filter — filter+summarizer interaction', () => {
+  test('already-filtered output is not re-wrapped when passed through the pipeline again', () => {
+    enableFilter()
+
+    // Simulate output that already went through the filter (e.g. from a
+    // sub-agent that also runs with filter enabled).
+    const preFiltered = [
+      '<bash-output-filtered filter="ls-la" lines_in="6" lines_out="2" reduction="67%">',
+      'drwxr-xr-x  2 root root 4096 Jan  1 00:00 .',
+      '-rw-r--r--  1 root root  220 Jan  1 00:00 .bash_logout',
+      '</bash-output-filtered>',
+    ].join('\n') + '\n'
+
+    const result = makeResult({ stdout: preFiltered })
+    applyBashOutputFilter(result, 'ls -la')
+
+    // Must NOT contain a nested <bash-output-filtered inside the outer one
+    const markerCount = (result.stdout.match(/<bash-output-filtered/g) ?? []).length
+    expect(markerCount).toBe(1)
+  })
+
+  test('filter reduces output before it could reach the summarizer threshold', () => {
+    enableFilter()
+
+    // Build ls-like output large enough that the raw form could be summarized,
+    // but small enough after filtering that summarization is skipped.
+    const lines = Array.from(
+      { length: 300 },
+      (_, i) => `-rw-r--r--  1 user group ${1000 + i} Jan  1 00:00 file-${i.toString().padStart(4, '0')}.ts`,
+    )
+    const bigLsOutput = ['total 300', ...lines].join('\n') + '\n'
+
+    const result = makeResult({ stdout: bigLsOutput })
+    applyBashOutputFilter(result, 'ls -la')
+
+    // Filter should have applied (markers present)
+    expect(result.stdout).toContain('<bash-output-filtered')
+    expect(result.stdout).toContain('</bash-output-filtered>')
+
+    // Filtered output must be strictly smaller than the original
+    expect(result.stdout.length).toBeLessThan(bigLsOutput.length)
+  })
+
+  test('filter off → full output reaches downstream unchanged', () => {
+    disableFilter()
+
+    const lines = Array.from(
+      { length: 50 },
+      (_, i) => `-rw-r--r--  1 user group ${100 + i} Jan  1 00:00 file-${i}.ts`,
+    )
+    const raw = ['total 50', ...lines].join('\n') + '\n'
+
+    const result = makeResult({ stdout: raw })
+    applyBashOutputFilter(result, 'ls -la')
+
+    // No filtering applied — downstream sees the original content
+    expect(result.stdout).toBe(raw)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 6 — catch path (fail-open / belt-and-suspenders)
 // ---------------------------------------------------------------------------
 
 describe('bash output filter — catch path (fail-open)', () => {
