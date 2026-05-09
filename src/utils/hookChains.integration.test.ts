@@ -1,7 +1,17 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+const realTeammate = { ...(await import('./teammate.js')) }
+const realTeammateMailbox = { ...(await import('./teammateMailbox.js')) }
+const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+const realTelemetryEvents = { ...(await import('./telemetry/events.js')) }
+const realPolicyLimits = { ...(await import('../services/policyLimits/index.js')) }
+const realTeamHelpers = { ...(await import('./swarm/teamHelpers.js')) }
+const realReplBridgeHandle = { ...(await import('../bridge/replBridgeHandle.js')) }
+const realAgentTool = { ...(await import('../tools/AgentTool/AgentTool.js')) }
+const realEnvUtils = { ...(await import('./envUtils.js')) }
 
 type HookChainsModule = typeof import('./hookChains.js')
 
@@ -49,6 +59,19 @@ async function importHookChainsHarness(
       status: 'async_launched',
       agentId: 'agent-fallback-1',
     },
+  }))
+
+  // Inline the real isEnvTruthy and getClaudioConfigHomeDir to avoid stale
+  // captures from other files that may have mocked envUtils.js in the same worker.
+  mock.module('./envUtils.js', () => ({
+    ...realEnvUtils,
+    isEnvTruthy: (v: string | boolean | undefined) => {
+      if (!v) return false
+      if (typeof v === 'boolean') return v
+      const n = String(v).toLowerCase().trim()
+      return n === '1' || n === 'true' || n === 'yes' || n === 'on'
+    },
+    getClaudioConfigHomeDir: () => process.env.CLAUDIO_CONFIG_DIR ?? `${process.env.HOME ?? '~'}/.claudio`,
   }))
 
   mock.module('../services/analytics/index.js', () => ({
@@ -355,4 +378,25 @@ describe('hookChains integration dispatch', () => {
     expect(result.actionResults[0]?.status).toBe('skipped')
     expect(result.actionResults[0]?.reason).toContain('Bridge is not active')
   })
+})
+
+afterAll(() => {
+  mock.module('./teammate.js', () => realTeammate)
+  mock.module('src/utils/teammate.js', () => realTeammate)
+  mock.module('./teammateMailbox.js', () => realTeammateMailbox)
+  mock.module('src/utils/teammateMailbox.js', () => realTeammateMailbox)
+  mock.module('./envUtils.js', () => realEnvUtils)
+  mock.module('src/utils/envUtils.js', () => realEnvUtils)
+  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('./telemetry/events.js', () => realTelemetryEvents)
+  mock.module('src/utils/telemetry/events.js', () => realTelemetryEvents)
+  mock.module('../services/policyLimits/index.js', () => realPolicyLimits)
+  mock.module('src/services/policyLimits/index.js', () => realPolicyLimits)
+  mock.module('./swarm/teamHelpers.js', () => realTeamHelpers)
+  mock.module('src/utils/swarm/teamHelpers.js', () => realTeamHelpers)
+  mock.module('../bridge/replBridgeHandle.js', () => realReplBridgeHandle)
+  mock.module('src/bridge/replBridgeHandle.js', () => realReplBridgeHandle)
+  mock.module('../tools/AgentTool/AgentTool.js', () => realAgentTool)
+  mock.module('src/tools/AgentTool/AgentTool.js', () => realAgentTool)
 })

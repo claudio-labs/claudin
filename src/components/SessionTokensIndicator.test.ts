@@ -7,7 +7,7 @@
  * decides whether the layout shows the cache groups or the legacy
  * input/output pair.
  */
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test';
 
 let totalInput = 0;
 let totalOutput = 0;
@@ -25,6 +25,13 @@ function setTotals(next: {
   cacheRead = next.cacheRead ?? 0;
   cacheCreated = next.cacheCreated ?? 0;
 }
+
+const realCostTracker = { ...(await import('../cost-tracker.js')) };
+const realCacheStatsTracker = { ...(await import('../services/api/cacheStatsTracker.js')) };
+const realActiveProvider = { ...(await import('../services/api/activeProvider.js')) };
+const realCacheMetrics = { ...(await import('../services/api/cacheMetrics.js')) };
+const realProviders = { ...(await import('../utils/model/providers.js')) };
+const realInk = { ...(await import('../ink.js')) };
 
 mock.module('../cost-tracker.js', () => ({
   getTotalInputTokens: () => totalInput,
@@ -146,4 +153,19 @@ describe('readSnapshot — supportsCache layout flag', () => {
     setProfile(undefined);
     expect(readSnapshot().supportsCache).toBe(false);
   });
+});
+
+afterAll(() => {
+  mock.module('../cost-tracker.js', () => realCostTracker);
+  mock.module('src/cost-tracker.js', () => realCostTracker);
+  mock.module('../services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
+  mock.module('src/services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
+  mock.module('../services/api/activeProvider.js', () => realActiveProvider);
+  mock.module('src/services/api/activeProvider.js', () => realActiveProvider);
+  mock.module('../services/api/cacheMetrics.js', () => realCacheMetrics);
+  mock.module('src/services/api/cacheMetrics.js', () => realCacheMetrics);
+  mock.module('../utils/model/providers.js', () => realProviders);
+  mock.module('src/utils/model/providers.js', () => realProviders);
+  mock.module('../ink.js', () => realInk);
+  mock.module('src/ink.js', () => realInk);
 });

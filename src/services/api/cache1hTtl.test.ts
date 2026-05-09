@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 const ORIGINAL_ENV = { ...process.env }
+
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 type Provider =
   | 'firstParty'
@@ -47,6 +49,10 @@ beforeEach(() => {
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('src/utils/model/providers.js', () => realProviders)
 })
 
 describe('getCacheControl — 1h TTL gating', () => {

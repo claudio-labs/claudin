@@ -1,7 +1,17 @@
-import { afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+
+const realProviders = { ...(await import('./model/providers.js')) }
+const realModelSupportOverrides = { ...(await import('./model/modelSupportOverrides.js')) }
+const realProviderConfig = { ...(await import('../services/api/providerConfig.js')) }
 
 afterEach(() => {
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('./model/providers.js', () => realProviders)
+  mock.module('./model/modelSupportOverrides.js', () => realModelSupportOverrides)
+  mock.module('../services/api/providerConfig.js', () => realProviderConfig)
 })
 
 async function importFreshEffortModule(options: {

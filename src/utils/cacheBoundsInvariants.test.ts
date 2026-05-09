@@ -19,7 +19,19 @@
  *     OAuth/keychain mocks > test value. Verified by inspection (auth.ts:1383-1390).
  */
 
-import { describe, expect, mock, test } from 'bun:test'
+import { afterAll, describe, expect, mock, test } from 'bun:test'
+import { _resetAllClippedIdsForTesting } from '../services/compact/stableStubState.js'
+
+// Capture real modules before mocking so afterAll can restore them
+const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
+const realAnalytics = { ...(await import('../services/analytics/index.js')) }
+const realDebug = { ...(await import('./debug.js')) }
+const realBootstrapState = { ...(await import('../bootstrap/state.js')) }
+const realEnvUtils = { ...(await import('./envUtils.js')) }
+const realFsOperations = { ...(await import('./fsOperations.js')) }
+const realLog = { ...(await import('./log.js')) }
+const realSlowOperations = { ...(await import('./slowOperations.js')) }
+const realFile = { ...(await import('./file.js')) }
 
 // ── Shared mocks: silence telemetry/analytics/growthbook used by deep imports ──
 mock.module('../services/analytics/growthbook.js', () => ({
@@ -84,6 +96,7 @@ describe('cache bounds invariants', () => {
   test('imageStore storedImagePaths FIFO cap = 200', async () => {
     mock.module('./debug.js', () => ({ logForDebugging: () => {} }))
     mock.module('../bootstrap/state.js', () => ({
+      ...realBootstrapState,
       getSessionId: () => 'test-session',
     }))
     mock.module('./envUtils.js', () => ({
@@ -170,4 +183,30 @@ describe('cache bounds invariants', () => {
     }
     expect(fileReadCache.getStats().size).toBeLessThanOrEqual(1000)
   })
+})
+
+afterAll(() => {
+  // Restore modules FIRST so getSessionId() is the real function when
+  // _resetAllClippedIdsForTesting() syncs lastSeenSessionId below.
+  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('../services/analytics/index.js', () => realAnalytics)
+  mock.module('src/services/analytics/index.js', () => realAnalytics)
+  mock.module('./debug.js', () => realDebug)
+  mock.module('src/utils/debug.js', () => realDebug)
+  mock.module('../bootstrap/state.js', () => realBootstrapState)
+  mock.module('src/bootstrap/state.js', () => realBootstrapState)
+  mock.module('./envUtils.js', () => realEnvUtils)
+  mock.module('src/utils/envUtils.js', () => realEnvUtils)
+  mock.module('./fsOperations.js', () => realFsOperations)
+  mock.module('src/utils/fsOperations.js', () => realFsOperations)
+  mock.module('./log.js', () => realLog)
+  mock.module('src/utils/log.js', () => realLog)
+  mock.module('./slowOperations.js', () => realSlowOperations)
+  mock.module('src/utils/slowOperations.js', () => realSlowOperations)
+  mock.module('./file.js', () => realFile)
+  mock.module('src/utils/file.js', () => realFile)
+  // Reset after restoring so getSessionId() returns the real session ID,
+  // keeping lastSeenSessionId in sync for downstream tests.
+  _resetAllClippedIdsForTesting()
 })

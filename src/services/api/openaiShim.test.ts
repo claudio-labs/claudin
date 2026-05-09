@@ -10,7 +10,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 // describe the desired provider; we synthesize a matching profile from those
 // envs so the resolver-driven code paths see the same configuration. Spread
 // the real activeProvider module + restore in afterAll to avoid leaks.
-const realActiveProvider = await import('./activeProvider.js')
+const realActiveProvider = { ...(await import('./activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type Transport =

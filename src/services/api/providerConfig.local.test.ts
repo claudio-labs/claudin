@@ -4,7 +4,7 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // profile resolver, not from CLAUDE_CODE_USE_*/OPENAI_* envs. Spread the
 // real activeProvider module so its non-mocked exports survive, and restore
 // in afterAll to avoid leaking the mock to later test files.
-const realActiveProvider = await import('./activeProvider.js')
+const realActiveProvider = { ...(await import('./activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null

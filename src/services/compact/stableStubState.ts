@@ -140,6 +140,12 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
 // getSessionId across a single test run.
 export function _resetAllClippedIdsForTesting(): void {
   perKeyClippedIds.clear()
+  // Sync lastSeenSessionId with the current session so that the first
+  // switchSession() call in a test correctly identifies which key to evict.
+  // Without this, tests that run after a mock of bootstrap/state.js has
+  // changed the session ID would leave lastSeenSessionId pointing at a
+  // stale key, causing subsequent switchSession() to miss the eviction.
+  lastSeenSessionId = getSessionId()
 }
 
 // Test-only: peek at the Map size. Used by tests asserting bounded growth.

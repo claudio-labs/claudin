@@ -1,4 +1,16 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+
+// Capture real modules before mocking so afterAll can restore them
+const realFsOperations = { ...(await import('./fsOperations.js')) }
+const realFileRead = { ...(await import('./fileRead.js')) }
+const realDebug = { ...(await import('./debug.js')) }
+const realLog = { ...(await import('./log.js')) }
+const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
+const realAnalytics = { ...(await import('../services/analytics/index.js')) }
+const realCwd = { ...(await import('./cwd.js')) }
+const realPath = { ...(await import('./path.js')) }
+const realPlatform = { ...(await import('./platform.js')) }
+const realErrors = { ...(await import('./errors.js')) }
 
 // Controllable fake fs — tests mutate these per-test via beforeEach
 let fakeStatMtime = 1000
@@ -192,4 +204,27 @@ describe('writeTextContent + fileReadCache integration', () => {
 
     expect(fileReadCache.getStats().size).toBe(0)
   })
+})
+
+afterAll(() => {
+  mock.module('./fsOperations.js', () => realFsOperations)
+  mock.module('src/utils/fsOperations.js', () => realFsOperations)
+  mock.module('./fileRead.js', () => realFileRead)
+  mock.module('src/utils/fileRead.js', () => realFileRead)
+  mock.module('./debug.js', () => realDebug)
+  mock.module('src/utils/debug.js', () => realDebug)
+  mock.module('./log.js', () => realLog)
+  mock.module('src/utils/log.js', () => realLog)
+  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('../services/analytics/index.js', () => realAnalytics)
+  mock.module('src/services/analytics/index.js', () => realAnalytics)
+  mock.module('./cwd.js', () => realCwd)
+  mock.module('src/utils/cwd.js', () => realCwd)
+  mock.module('./path.js', () => realPath)
+  mock.module('src/utils/path.js', () => realPath)
+  mock.module('./platform.js', () => realPlatform)
+  mock.module('src/utils/platform.js', () => realPlatform)
+  mock.module('./errors.js', () => realErrors)
+  mock.module('src/utils/errors.js', () => realErrors)
 })

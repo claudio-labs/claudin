@@ -1,5 +1,7 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
+
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 // Helper to build a mock APIError with specific headers
 function makeError(headers: Record<string, string>): APIError {
@@ -40,6 +42,10 @@ afterEach(() => {
     else process.env[key] = originalEnv[key]
   }
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('src/utils/model/providers.js', () => realProviders)
 })
 
 async function importFreshWithRetryModule(

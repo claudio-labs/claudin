@@ -4,7 +4,7 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // Synthesize a profile from the legacy CLAUDE_CODE_USE_*/OPENAI_* envs the
 // existing test sets up. Spread + restore in afterAll to avoid mock-leaks
 // into later test files (Bun's discovery is process-global).
-const realActiveProvider = await import('../../services/api/activeProvider.js')
+const realActiveProvider = { ...(await import('../../services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 mock.module('../../services/api/activeProvider.js', () => ({

@@ -1,8 +1,10 @@
 
-import { expect, test, mock, describe, beforeEach, afterEach } from "bun:test";
+import { afterAll, expect, test, mock, describe, beforeEach, afterEach } from "bun:test";
 import { linuxSecretStorage } from "./linuxSecretStorage.js";
 import { windowsCredentialStorage } from "./windowsCredentialStorage.js";
 import { getSecureStorageServiceName, CREDENTIALS_SERVICE_SUFFIX } from "./macOsKeychainHelpers.js";
+
+const realExeca = await import("execa");
 
 // Mock execaSync
 const mockExecaSync = mock(() => ({ exitCode: 0, stdout: "" }));
@@ -161,7 +163,7 @@ describe("Secure Storage Platform Implementations", () => {
     }
 
     afterEach(() => {
-      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     test("darwin returns keychain with fallback", async () => {
@@ -185,4 +187,8 @@ describe("Secure Storage Platform Implementations", () => {
       expect(storage.name).toContain("credential-locker");
     });
   });
+});
+
+afterAll(() => {
+  mock.module("execa", () => realExeca);
 });

@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream'
 
-import { afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
@@ -8,6 +8,9 @@ import { createRoot, Text, useTheme } from '../ink.js'
 import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
 import { AppStateProvider } from '../state/AppState.js'
 import { ThemeProvider } from './design-system/ThemeProvider.js'
+
+const realStructuredDiff = { ...(await import('./StructuredDiff.js')) }
+const realColorDiff = { ...(await import('./StructuredDiff/colorDiff.js')) }
 
 mock.module('./StructuredDiff.js', () => ({
   StructuredDiff: function StructuredDiffPreview(): React.ReactNode {
@@ -117,6 +120,11 @@ async function waitForFrame(
 
 afterEach(() => {
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('./StructuredDiff.js', () => realStructuredDiff)
+  mock.module('./StructuredDiff/colorDiff.js', () => realColorDiff)
 })
 
 test('updates the preview when keyboard focus moves to another theme', async () => {

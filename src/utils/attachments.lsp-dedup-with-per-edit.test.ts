@@ -6,7 +6,7 @@
  * getLSPDiagnosticAttachments must NOT re-emit the same diagnostic — content
  * hash matches what was marked, so the dedup LRU swallows it.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseContext } from '../Tool.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
 import type { DiagnosticFile } from '../services/diagnosticTracking.js'
@@ -19,7 +19,7 @@ import {
 
 // Force-enable the LSP master toggle so this suite is deterministic regardless
 // of the local user's ~/.claudio/settings.json (lsp.enabled may be false).
-const realUserSettings = await import('../services/lsp/userSettings.js')
+const realUserSettings = { ...(await import('../services/lsp/userSettings.js')) }
 mock.module('../services/lsp/userSettings.js', () => ({
   ...realUserSettings,
   isLspGloballyEnabled: () => true,
@@ -55,6 +55,10 @@ beforeEach(() => {
 afterEach(() => {
   resetAllLSPDiagnosticState()
   _resetFileWaitersForTesting()
+})
+
+afterAll(() => {
+  mock.module('../services/lsp/userSettings.js', () => realUserSettings)
 })
 
 describe('LSP dedup: per-edit + turn-level share the LRU', () => {
@@ -108,4 +112,9 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
       )
     }
   })
+})
+
+afterAll(() => {
+  mock.module('../services/lsp/userSettings.js', () => realUserSettings)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettings)
 })

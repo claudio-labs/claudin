@@ -39,7 +39,7 @@ mock.module('../../utils/execFileNoThrow.js', () => ({
 }))
 
 const mockLogError = mock((_err: unknown) => {})
-const realLogStreaming = await import('../../utils/log.js')
+const realLogStreaming = { ...(await import('../../utils/log.js')) }
 mock.module('../../utils/log.js', () => ({ ...realLogStreaming, logError: mockLogError }))
 
 // Full export shape — Bun locks the namespace on first mock.module call,
@@ -56,7 +56,7 @@ mock.module('./manager.js', () => ({
 }))
 const realOsStreaming = _require('os') as typeof import('os')
 mock.module('os', () => ({ ...realOsStreaming, default: realOsStreaming, homedir: () => '/tmp/fake-home-streaming', release: () => '5.15.0', type: () => 'Linux', version: () => '#1 SMP' }))
-const realEnvUtilsStreaming = await import('../../utils/envUtils.js')
+const realEnvUtilsStreaming = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsStreaming,
   getClaudioConfigHomeDir: () => '/tmp/fake-config-streaming',
@@ -64,7 +64,7 @@ mock.module('../../utils/envUtils.js', () => ({
 }))
 
 const mockGetUserLspSettings = mock(() => ({} as Record<string, { disabled?: boolean }>))
-const realUserSettingsStreaming = await import('./userSettings.js')
+const realUserSettingsStreaming = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsStreaming,
   getUserLspSettings: mockGetUserLspSettings,
@@ -349,12 +349,10 @@ afterAll(() => {
     execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
     execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
   }))
-  mock.module('../../utils/log.js', () => ({ ...realLogStreaming, logError: () => {} }))
-  mock.module('../../utils/envUtils.js', () => ({
-    ...realEnvUtilsStreaming,
-    getClaudioConfigHomeDir: () => '/tmp',
-    isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
-  }))
+  mock.module('../../utils/log.js', () => realLogStreaming)
+  mock.module('src/utils/log.js', () => realLogStreaming)
+  mock.module('../../utils/envUtils.js', () => realEnvUtilsStreaming)
+  mock.module('src/utils/envUtils.js', () => realEnvUtilsStreaming)
   mock.module('./manager.js', () => ({
     reinitializeLspServerManager: () => {},
     isLspConnected: () => false,
@@ -365,9 +363,6 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsStreaming,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./userSettings.js', () => realUserSettingsStreaming)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsStreaming)
 })

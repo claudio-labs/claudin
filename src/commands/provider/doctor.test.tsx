@@ -6,9 +6,9 @@ import type { ResolvedProvider } from '../../services/api/activeProvider.js'
 // at teardown so the mocks don't bleed into later test files. We snapshot the
 // genuine exports into plain objects so the restore in afterAll cannot pick
 // up our own overrides through live bindings.
-const realActiveProviderNS = await import('../../services/api/activeProvider.js')
-const realGeminiAuthNS = await import('../../utils/geminiAuth.js')
-const realProviderDiscoveryNS = await import('../../utils/providerDiscovery.js')
+const realActiveProviderNS = { ...(await import('../../services/api/activeProvider.js')) }
+const realGeminiAuthNS = { ...(await import('../../utils/geminiAuth.js')) }
+const realProviderDiscoveryNS = { ...(await import('../../utils/providerDiscovery.js')) }
 
 const realActiveProvider = { ...realActiveProviderNS }
 const realGeminiAuth = { ...realGeminiAuthNS }

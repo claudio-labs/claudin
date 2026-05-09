@@ -8,7 +8,7 @@
  * locks namespace shape on first import; mocking registry exports here
  * leaks no-ops into every later test that imports them.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseContext } from '../Tool.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
 import {
@@ -18,7 +18,7 @@ import {
 } from '../services/lsp/LSPDiagnosticRegistry.js'
 
 const mockIsLspGloballyEnabled = mock(() => true)
-const realUserSettingsAttachGate = await import('../services/lsp/userSettings.js')
+const realUserSettingsAttachGate = { ...(await import('../services/lsp/userSettings.js')) }
 mock.module('../services/lsp/userSettings.js', () => ({
   ...realUserSettingsAttachGate,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
@@ -40,6 +40,11 @@ beforeEach(() => {
 afterEach(() => {
   resetAllLSPDiagnosticState()
   mockIsLspGloballyEnabled.mockReset()
+})
+
+afterAll(() => {
+  mock.module('../services/lsp/userSettings.js', () => realUserSettingsAttachGate)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsAttachGate)
 })
 
 const sampleFile = {

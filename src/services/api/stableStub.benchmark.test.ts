@@ -280,6 +280,7 @@ afterAll(() => {
   }
   globalThis.fetch = originalFetch
   mock.module('../../utils/config.js', () => realConfig)
+  mock.module('../compact/autoCompact.js', () => realAutoCompact)
 })
 
 afterEach(() => {

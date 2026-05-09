@@ -12,9 +12,9 @@ import { buildProviderManagerCompletion } from './provider.js'
 const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
 
-const realGithubModelsCredentials = await import(
+const realGithubModelsCredentials = { ...(await import(
   '../../utils/githubModelsCredentials.js'
-)
+)) }
 
 afterAll(() => {
   mock.module(
@@ -173,9 +173,9 @@ test('GithubDeviceFlowStep renders already-authed screen when a token is stored'
   expect(output).toContain('Back to /provider menu')
 })
 
-const realProviderProfilesForFinalize = await import(
+const realProviderProfilesForFinalize = { ...(await import(
   '../../utils/providerProfiles.js'
-)
+)) }
 
 afterAll(() => {
   mock.module(

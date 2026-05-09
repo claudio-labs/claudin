@@ -10,7 +10,7 @@ import type { LspServerRow } from '../../services/lsp/builtinServers.js'
 
 // Mock LSP user settings so the component reads a deterministic master toggle
 // state instead of the developer's home directory.
-const realUserSettings = await import('../../services/lsp/userSettings.js')
+const realUserSettings = { ...(await import('../../services/lsp/userSettings.js')) }
 const mockIsLspGloballyEnabled = mock(() => true)
 mock.module('../../services/lsp/userSettings.js', () => ({
   ...realUserSettings,
@@ -18,7 +18,7 @@ mock.module('../../services/lsp/userSettings.js', () => ({
 }))
 
 // Mock settings writer so the toggle path doesn't try to mutate disk.
-const realSettings = await import('../../utils/settings/settings.js')
+const realSettings = { ...(await import('../../utils/settings/settings.js')) }
 const mockUpdateSettings = mock(() => {})
 mock.module('../../utils/settings/settings.js', () => ({
   ...realSettings,

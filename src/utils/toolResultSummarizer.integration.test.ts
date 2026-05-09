@@ -30,6 +30,9 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+const realAnalyticsMetadata = { ...(await import('../services/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+
 mock.module('../services/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (n: string) => n,
   // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
@@ -55,15 +58,23 @@ mock.module('../services/analytics/index.js', () => ({
 const { processToolResultBlock, processPreMappedToolResultBlock } =
   await import('./toolResultStorage.js')
 const summarizer = await import('./toolResultSummarizer.js')
-const { setOriginalCwd, getSessionId } = await import('../bootstrap/state.js')
+const { setOriginalCwd, getOriginalCwd, getSessionId } = await import('../bootstrap/state.js')
 const { getProjectDir } = await import('./sessionStorage.js')
 const { saveGlobalConfig } = await import('./config.js')
 
 let tempRoot = ''
 const createdProjectDirs = new Set<string>()
 const originalEnv = process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER
+const originalCwd = getOriginalCwd()
 
 afterAll(async () => {
+  // Restore the original CWD so subsequent test files see a clean state.
+  setOriginalCwd(originalCwd)
+  // Restore mocked modules.
+  mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   // Clean up every project dir we touched (one per test).
   for (const dir of createdProjectDirs) {
     await rm(dir, { recursive: true, force: true })

@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 // desired provider via OPENAI_BASE_URL/OPENAI_MODEL envs; synthesize a
 // profile that mirrors them so the resolver-driven branches see the same
 // configuration. Spread + restore in afterAll to avoid leaks.
-const realActiveProvider = await import('./activeProvider.js')
+const realActiveProvider = { ...(await import('./activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 mock.module('./activeProvider.js', () => ({

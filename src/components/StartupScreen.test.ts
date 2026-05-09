@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 // (ActiveProviderNotConfiguredError, getActiveProvider, etc.) survive the
 // process-global mock. detectProvider goes through tryGetActiveProvider, so
 // the test surface is the resolver, not env vars.
-const realActiveProvider = await import('../services/api/activeProvider.js')
+const realActiveProvider = { ...(await import('../services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null

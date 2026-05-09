@@ -1,12 +1,18 @@
-import { afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { resolveRuntimeCodexCredentials } from './providerConfig.js'
 
+const realCodexCredentials = { ...(await import('../../utils/codexCredentials.js')) }
+
 afterEach(() => {
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('../../utils/codexCredentials.js', () => realCodexCredentials)
 })
 
 function makeJwt(payload: Record<string, unknown>): string {

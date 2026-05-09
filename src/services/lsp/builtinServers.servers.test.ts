@@ -26,7 +26,7 @@ mock.module('../../utils/execFileNoThrow.js', () => ({
 }))
 
 const mockLogError = mock((_err: unknown) => {})
-const realLogServers = await import('../../utils/log.js')
+const realLogServers = { ...(await import('../../utils/log.js')) }
 mock.module('../../utils/log.js', () => ({
   ...realLogServers,
   logError: mockLogError,
@@ -47,7 +47,7 @@ const realOsServers = _require('os') as typeof import('os')
 mock.module('os', () => ({ ...realOsServers, default: realOsServers, homedir: () => '/tmp/fake-home', release: () => '5.15.0', type: () => 'Linux', version: () => '#1 SMP' }))
 
 let configDir = '/tmp/fake-config-dir'
-const realEnvUtilsServers = await import('../../utils/envUtils.js')
+const realEnvUtilsServers = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsServers,
   getClaudioConfigHomeDir: () => configDir,
@@ -58,7 +58,7 @@ const mockAxiosGet = mock(async () => ({ data: {} }))
 mock.module('axios', () => ({ default: { get: mockAxiosGet } }))
 
 const mockGetUserLspSettings = mock(() => ({} as Record<string, { disabled?: boolean }>))
-const realUserSettingsServers = await import('./userSettings.js')
+const realUserSettingsServers = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsServers,
   getUserLspSettings: mockGetUserLspSettings,
@@ -546,12 +546,10 @@ afterAll(() => {
     execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
     execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
   }))
-  mock.module('../../utils/log.js', () => ({ ...realLogServers, logError: () => {} }))
-  mock.module('../../utils/envUtils.js', () => ({
-    ...realEnvUtilsServers,
-    getClaudioConfigHomeDir: () => '/tmp',
-    isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
-  }))
+  mock.module('../../utils/log.js', () => realLogServers)
+  mock.module('src/utils/log.js', () => realLogServers)
+  mock.module('../../utils/envUtils.js', () => realEnvUtilsServers)
+  mock.module('src/utils/envUtils.js', () => realEnvUtilsServers)
   mock.module('./manager.js', () => ({
     reinitializeLspServerManager: () => {},
     isLspConnected: () => false,
@@ -562,9 +560,6 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsServers,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./userSettings.js', () => realUserSettingsServers)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsServers)
 })

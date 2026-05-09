@@ -27,7 +27,7 @@ import {
 } from './LSPDiagnosticRegistry.js'
 
 const mockIsLspGloballyEnabled = mock(() => true)
-const realUserSettingsDiag = await import('./userSettings.js')
+const realUserSettingsDiag = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsDiag,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
@@ -223,11 +223,8 @@ describe('buildPostEditDiagnosticsMessages', () => {
 // Restore module mocks so leaks don't bleed into subsequent test files.
 // ---------------------------------------------------------------------------
 afterAll(() => {
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsDiag,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./userSettings.js', () => realUserSettingsDiag)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsDiag)
   mock.module('./manager.js', () => ({
     reinitializeLspServerManager: () => {},
     isLspConnected: () => false,

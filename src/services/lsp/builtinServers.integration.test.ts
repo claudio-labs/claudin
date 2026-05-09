@@ -22,7 +22,7 @@ mock.module('../../utils/execFileNoThrow.js', () => ({
   execSyncWithDefaults_DEPRECATED: () => ({ code: 0, stdout: '', stderr: '' }),
 }))
 
-const realLogIntegration = await import('../../utils/log.js')
+const realLogIntegration = { ...(await import('../../utils/log.js')) }
 mock.module('../../utils/log.js', () => ({ ...realLogIntegration, logError: mock(() => {}) }))
 // Full export shape — Bun locks the namespace on first mock.module call,
 // so subsequent files can't add exports we omit here.
@@ -36,7 +36,7 @@ mock.module('./manager.js', () => ({
   waitForInitialization: mock(async () => {}),
   _resetLspManagerForTesting: mock(() => {}),
 }))
-const realUserSettingsIntegration = await import('./userSettings.js')
+const realUserSettingsIntegration = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsIntegration,
   getUserLspSettings: mock(() => ({} as Record<string, { disabled?: boolean }>)),
@@ -44,7 +44,7 @@ mock.module('./userSettings.js', () => ({
 }))
 const realOsIntegration = _require('os') as typeof import('os')
 mock.module('os', () => ({ ...realOsIntegration, default: realOsIntegration, homedir: () => '/tmp/fake-home-integ', release: () => '5.15.0', type: () => 'Linux', version: () => '#1 SMP' }))
-const realEnvUtilsIntegration = await import('../../utils/envUtils.js')
+const realEnvUtilsIntegration = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsIntegration,
   getClaudioConfigHomeDir: () => '/tmp/fake-config-integ',
@@ -248,12 +248,10 @@ afterAll(() => {
     execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
     execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
   }))
-  mock.module('../../utils/log.js', () => ({ ...realLogIntegration, logError: () => {} }))
-  mock.module('../../utils/envUtils.js', () => ({
-    ...realEnvUtilsIntegration,
-    getClaudioConfigHomeDir: () => '/tmp',
-    isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
-  }))
+  mock.module('../../utils/log.js', () => realLogIntegration)
+  mock.module('src/utils/log.js', () => realLogIntegration)
+  mock.module('../../utils/envUtils.js', () => realEnvUtilsIntegration)
+  mock.module('src/utils/envUtils.js', () => realEnvUtilsIntegration)
   mock.module('./manager.js', () => ({
     reinitializeLspServerManager: () => {},
     isLspConnected: () => false,
@@ -264,9 +262,6 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsIntegration,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./userSettings.js', () => realUserSettingsIntegration)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsIntegration)
 })

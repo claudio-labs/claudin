@@ -14,13 +14,15 @@ function makeServer(name: string, scope: 'builtin' | 'dynamic', source: string):
   }
 }
 
+const realBuiltinServers = { ...(await import('./builtinServers.js')) }
 const mockGetBuiltins = mock(async (): Promise<Record<string, ScopedLspServerConfig>> => ({}))
 mock.module('./builtinServers.js', () => ({
+  ...realBuiltinServers,
   getBuiltinLspServers: mockGetBuiltins,
 }))
 
 const mockGetUserSettings = mock((): Record<string, { disabled?: boolean; command?: string[]; extensions?: string[] }> => ({}))
-const realUserSettingsConfig = await import('./userSettings.js')
+const realUserSettingsConfig = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsConfig,
   getUserLspSettings: mockGetUserSettings,
@@ -216,12 +218,6 @@ afterAll(() => {
   mock.module('../../utils/debug.js', () => realDebugConfigTest)
   mock.module('../../utils/errors.js', () => realErrorsConfigTest)
   mock.module('../../utils/log.js', () => ({ ...realLogConfig, logError: () => {} }))
-  mock.module('./builtinServers.js', () => ({
-    getBuiltinLspServers: async () => ({}),
-  }))
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsConfig,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./builtinServers.js', () => realBuiltinServers)
+  mock.module('./userSettings.js', () => realUserSettingsConfig)
 })

@@ -11,7 +11,7 @@ import { renderToString } from '../utils/staticRender.js'
 // detectProvider reads from getActiveProvider(). Spread the real module so
 // other consumers' shapes survive Bun's process-global mock; restore in
 // afterAll to avoid leaks.
-const realActiveProvider = await import('../services/api/activeProvider.js')
+const realActiveProvider = { ...(await import('../services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null

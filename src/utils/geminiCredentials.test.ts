@@ -1,10 +1,12 @@
-import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 type MockStorageData = Record<string, unknown>
 
 const originalEnv = { ...process.env }
 const originalArgv = [...process.argv]
 let storageState: MockStorageData = {}
+
+const realSecureStorage = await import('./secureStorage/index.js')
 
 async function importFreshModule() {
   mock.module('./secureStorage/index.js', () => ({
@@ -38,6 +40,10 @@ afterEach(() => {
   process.argv = [...originalArgv]
   storageState = {}
   mock.restore()
+})
+
+afterAll(() => {
+  mock.module('./secureStorage/index.js', () => realSecureStorage)
 })
 
 test('saveGeminiAccessToken stores and reads back the token', async () => {

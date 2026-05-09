@@ -23,6 +23,7 @@ const { mkdtempSync, rmSync } = realFs
 // for the migration's read/write surface — the same pattern used by
 // activeProvider.test.ts.
 const realProviderProfile = await import('./providerProfile.js')
+const realProviderProfiles = await import('./providerProfiles.js')
 
 const exdevTrigger: { legacy: string | null; dst: string | null } = {
   legacy: null,
@@ -121,6 +122,7 @@ mock.module('./providerProfile.js', () => ({
 
 afterAll(() => {
   mock.module('./providerProfile.js', () => realProviderProfile)
+  mock.module('./providerProfiles.js', () => realProviderProfiles)
   const restore = () => ({ ...realFs, default: realFs })
   mock.module('node:fs', restore)
   mock.module('fs', restore)

@@ -23,7 +23,7 @@ mock.module('../../utils/execFileNoThrow.js', () => ({
 }))
 
 const mockLogError = mock((_err: unknown) => {})
-const realLogBuiltin = await import('../../utils/log.js')
+const realLogBuiltin = { ...(await import('../../utils/log.js')) }
 mock.module('../../utils/log.js', () => ({
   ...realLogBuiltin,
   logError: mockLogError,
@@ -53,7 +53,7 @@ mock.module('os', () => ({
 }))
 
 const mockConfigDir = '/tmp/fake-claudio-lsp-test'
-const realEnvUtilsBuiltin = await import('../../utils/envUtils.js')
+const realEnvUtilsBuiltin = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsBuiltin,
   getClaudioConfigHomeDir: () => mockConfigDir,
@@ -107,7 +107,7 @@ mock.module('fs', () => ({
 }))
 
 const mockGetUserLspSettings = mock(() => ({} as Record<string, { disabled?: boolean }>))
-const realUserSettingsBuiltin = await import('./userSettings.js')
+const realUserSettingsBuiltin = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsBuiltin,
   getUserLspSettings: mockGetUserLspSettings,
@@ -551,12 +551,10 @@ afterAll(() => {
     execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
     execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
   }))
-  mock.module('../../utils/log.js', () => ({ ...realLogBuiltin, logError: () => {} }))
-  mock.module('../../utils/envUtils.js', () => ({
-    ...realEnvUtilsBuiltin,
-    getClaudioConfigHomeDir: () => '/tmp',
-    isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
-  }))
+  mock.module('../../utils/log.js', () => realLogBuiltin)
+  mock.module('src/utils/log.js', () => realLogBuiltin)
+  mock.module('../../utils/envUtils.js', () => realEnvUtilsBuiltin)
+  mock.module('src/utils/envUtils.js', () => realEnvUtilsBuiltin)
   mock.module('./manager.js', () => ({
     reinitializeLspServerManager: () => {},
     isLspConnected: () => false,
@@ -567,9 +565,6 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('./userSettings.js', () => ({
-    ...realUserSettingsBuiltin,
-    getUserLspSettings: () => ({}),
-    isLspGloballyEnabled: () => true,
-  }))
+  mock.module('./userSettings.js', () => realUserSettingsBuiltin)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsBuiltin)
 })

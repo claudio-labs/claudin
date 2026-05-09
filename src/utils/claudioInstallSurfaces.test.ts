@@ -1,10 +1,11 @@
-import { afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import * as fsPromises from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
+const realEnvUtils = { ...(await import('./envUtils.js')) }
 
 afterEach(() => {
   process.env = { ...originalEnv }
@@ -84,4 +85,9 @@ test('cleanupNpmInstallations removes both claudio and legacy claude local insta
 
   expect(removedPaths).toContain(join(homedir(), '.claudio', 'local'))
   expect(removedPaths).toContain(join(homedir(), '.claude', 'local'))
+})
+
+afterAll(() => {
+  mock.module('./envUtils.js', () => realEnvUtils)
+  mock.module('src/utils/envUtils.js', () => realEnvUtils)
 })

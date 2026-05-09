@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
 import {
   __resetMemoizedRatiosForTests,
@@ -38,6 +38,12 @@ afterEach(() => {
   mock.module('./api/client.js', () => realClient)
   mock.module('./api/activeProvider.js', () => realActiveProvider)
   __resetMemoizedRatiosForTests()
+})
+
+afterAll(() => {
+  mock.module('../utils/model/model.js', () => realModel)
+  mock.module('./api/client.js', () => realClient)
+  mock.module('./api/activeProvider.js', () => realActiveProvider)
 })
 
 describe('roughTokenCountEstimation — model-aware', () => {

@@ -153,6 +153,10 @@ const realProviderProfilesForPm = { ...(await import('../utils/providerProfiles.
 const realProviderProfileForPm = { ...(await import('../utils/providerProfile.js')) }
 const realSettingsForPm = { ...(await import('../utils/settings/settings.js')) }
 const realClaudioMigrationForPm = { ...(await import('../utils/claudioMigration.js')) }
+const realProviderDiscoveryForPm = { ...(await import('../utils/providerDiscovery.js')) }
+const realGithubModelsCredentialsForPm = { ...(await import('../utils/githubModelsCredentials.js')) }
+const realCodexCredentialsForPm = { ...(await import('../utils/codexCredentials.js')) }
+const realUseCodexOAuthFlowForPm = { ...(await import('./useCodexOAuthFlow.js')) }
 
 function mockProviderProfilesModule(options?: {
   addProviderProfile?: (...args: unknown[]) => unknown
@@ -439,6 +443,12 @@ afterAll(() => {
   // mock.restore() does not reset mock.module() calls.
   mock.module('../utils/claudioMigration.js', () => realClaudioMigrationForPm)
   mock.module('../utils/providerProfiles.js', () => realProviderProfilesForPm)
+  mock.module('../utils/providerProfile.js', () => realProviderProfileForPm)
+  mock.module('../utils/settings/settings.js', () => realSettingsForPm)
+  mock.module('../utils/providerDiscovery.js', () => realProviderDiscoveryForPm)
+  mock.module('../utils/githubModelsCredentials.js', () => realGithubModelsCredentialsForPm)
+  mock.module('../utils/codexCredentials.js', () => realCodexCredentialsForPm)
+  mock.module('./useCodexOAuthFlow.js', () => realUseCodexOAuthFlowForPm)
 })
 
 test('ProviderManager renders the GitHub Copilot profile exactly once when a real Copilot profile exists', async () => {

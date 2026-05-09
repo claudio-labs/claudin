@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 const originalEnv = { ...process.env }
 const originalFetch = globalThis.fetch
+const realProviders = { ...(await import('./model/providers.js')) }
 
 async function importFreshModule() {
   mock.restore()
@@ -80,4 +81,9 @@ describe('preconnectAnthropicApi', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+})
+
+afterAll(() => {
+  mock.module('./model/providers.js', () => realProviders)
+  mock.module('src/utils/model/providers.js', () => realProviders)
 })

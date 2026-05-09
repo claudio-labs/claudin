@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 import { mock } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from '../../bootstrap/state.js'
@@ -86,4 +86,8 @@ test('GitHub provider exposes default + all Copilot models in /model options', a
   expect(nonDefault.length).toBeGreaterThan(1)
   expect(nonDefault.some((o: { value: unknown }) => o.value === 'gpt-4o')).toBe(true)
   expect(nonDefault.some((o: { value: unknown }) => o.value === 'gpt-5.2-codex')).toBe(true)
+})
+
+afterAll(() => {
+  mock.module('./providers.js', () => realProvidersModule)
 })

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
 import { resolve } from 'node:path'
 
-const realActiveProvider_minimax = await import('./activeProvider.js')
+const realActiveProvider_minimax = { ...(await import('./activeProvider.js')) }
 const realActiveProviderSnapshot_minimax = { ...realActiveProvider_minimax }
 mock.module('./activeProvider.js', () => ({
   ...realActiveProviderSnapshot_minimax,

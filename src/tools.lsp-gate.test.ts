@@ -2,9 +2,10 @@
  * Tests that LSPTool is always included in ALL_TOOLS regardless of env var,
  * and that isEnabled() delegates to isLspConnected().
  */
-import { afterEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
 const mockIsLspConnected = mock(() => false)
+const realLspManager = await import('./services/lsp/manager.js')
 mock.module('./services/lsp/manager.js', () => ({
   isLspConnected: mockIsLspConnected,
   reinitializeLspServerManager: mock(() => {}),
@@ -19,6 +20,10 @@ mock.module('./services/lsp/manager.js', () => ({
 afterEach(() => {
   mockIsLspConnected.mockReset()
   delete process.env.ENABLE_LSP_TOOL
+})
+
+afterAll(() => {
+  mock.module('./services/lsp/manager.js', () => realLspManager)
 })
 
 describe('LSP tool gate', () => {
