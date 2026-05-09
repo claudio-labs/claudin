@@ -13,7 +13,7 @@
 
 import type { FilterSpec } from '../types.js'
 
-const TSC_MATCH = /^(?:npx\s+|yarn\s+|pnpm\s+|bunx\s+)?tsc\b/
+const TSC_MATCH = /^(?:npx tsc|yarn tsc|pnpm tsc|bunx tsc|tsc)\b/
 // Passthrough for diagnostics modes whose verbose output IS the signal.
 const TSC_PASSTHROUGH =
   /(?:^|\s)(?:--listFiles\b|--traceResolution\b|--diagnostics\b|--extendedDiagnostics\b|--watch\b|-w\b|--showConfig\b)/

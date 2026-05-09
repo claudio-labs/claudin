@@ -169,7 +169,7 @@ const GIT_DIFF_MATCH = /^git\s+diff\b/
 // Passthrough for summary/structural variants whose output IS already compact.
 const GIT_DIFF_REJECT =
   /--stat\b|--shortstat\b|--name-only\b|--name-status\b|--check\b|--numstat\b|--summary\b/
-const GIT_DIFF_STRIP_INDEX = /^index\s+[0-9a-f]+\.\.[0-9a-f]+(?:\s+\d+)?$/
+const GIT_DIFF_STRIP_INDEX = /^index\s+[0-9a-f]+\.\.[0-9a-f]/
 const GIT_DIFF_STRIP_NOEOL = /^\\ No newline at end of file$/
 // `diff --git a/X b/X` is redundant with the `--- a/X` / `+++ b/X` headers
 // that always follow (or, for rename/binary, with the explicit rename/Binary

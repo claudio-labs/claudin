@@ -1,14 +1,20 @@
-import { describe, it, expect, mock } from 'bun:test'
-import { getCombinedTools, loadReexposedMcpTools } from './mcp.js'
-import type { Tool as InternalTool } from '../Tool.js'
+import { afterAll, describe, expect, it, mock } from 'bun:test'
 import type { MCPServerConnection } from '../services/mcp/types.js'
+import type { Tool as InternalTool } from '../Tool.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { getCombinedTools, loadReexposedMcpTools } from './mcp.js'
+
+const realMcpClient = { ...(await import('../services/mcp/client.js')) }
 
 // Mock the MCP client service to control the tools and connections returned
-const mockGetMcpToolsCommandsAndResources = mock(async (onConnectionAttempt: any) => {})
+const mockGetMcpToolsCommandsAndResources = mock(async () => {})
 mock.module('../services/mcp/client.js', () => ({
   getMcpToolsCommandsAndResources: mockGetMcpToolsCommandsAndResources
 }))
+
+afterAll(() => {
+  mock.module('../services/mcp/client.js', () => realMcpClient)
+})
 
 describe('getCombinedTools', () => {
   it('deduplicates builtins when mcpTools have the same name, prioritizing mcpTools', () => {

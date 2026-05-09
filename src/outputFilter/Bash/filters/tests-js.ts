@@ -10,7 +10,7 @@ import type { FilterSpec } from '../types.js'
 
 // --- jest ----------------------------------------------------------------
 
-const JEST_MATCH = /^(?:npx\s+|yarn\s+|pnpm\s+|bunx\s+)?jest\b/
+const JEST_MATCH = /^(?:npx jest|yarn jest|pnpm jest|bunx jest|jest)\b/
 // Passthrough for interactive / introspection modes whose output is the signal.
 const JEST_PASSTHROUGH = /(?:^|\s)(?:--watch\b|--listTests\b|--showSeed\b|--ci=false\b|--debug\b)/
 // Carousel "RUNS  ..." while tests execute — pure noise after the run finishes.
@@ -38,7 +38,7 @@ export const jest: FilterSpec = {
 
 // --- vitest --------------------------------------------------------------
 
-const VITEST_MATCH = /^(?:npx\s+|yarn\s+|pnpm\s+|bunx\s+)?vitest\b/
+const VITEST_MATCH = /^(?:npx vitest|yarn vitest|pnpm vitest|bunx vitest|vitest)\b/
 const VITEST_PASSTHROUGH = /(?:^|\s)(?:--watch\b|--ui\b|--inspect\b|--reporter=(?:verbose|json|junit))/
 // Indented per-test `✓ describe > it Nms` lines.
 const VITEST_STRIP_TEST_OK = /^\s+✓\s/
@@ -93,7 +93,7 @@ export const bunTest: FilterSpec = {
 
 // --- mocha ---------------------------------------------------------------
 
-const MOCHA_MATCH = /^(?:npx\s+|yarn\s+|pnpm\s+)?mocha\b/
+const MOCHA_MATCH = /^(?:npx mocha|yarn mocha|pnpm mocha|mocha)\b/
 const MOCHA_PASSTHROUGH = /(?:^|\s)(?:--reporter=(?:json|tap|xunit)|--watch\b|--inspect\b)/
 // Indented `✓ name (Nms)` lines (mocha 2-space-indent default reporter).
 const MOCHA_STRIP_TEST_OK = /^\s+✓\s/
@@ -119,7 +119,7 @@ export const mocha: FilterSpec = {
 // --- playwright ----------------------------------------------------------
 
 // Two-word verb: requires command-form match.
-const PLAYWRIGHT_MATCH = /^(?:npx\s+)?playwright\s+test\b/
+const PLAYWRIGHT_MATCH = /^(?:npx playwright|playwright)\s+test\b/
 const PLAYWRIGHT_PASSTHROUGH =
   /(?:^|\s)(?:--ui\b|--debug\b|--reporter=(?:json|junit|line|null))/
 // Indented `✓  N [project] › file.spec.ts:L:C › title (Ns)` lines — one per test.

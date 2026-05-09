@@ -6,8 +6,10 @@
  * wiring contract instead of the full call() — global fs mocks from other
  * LSP tests in the shard prevent real-fs integration tests from running here.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { AttachmentMessage } from 'src/types/message.js'
+
+const realDiagnosticsWrite = { ...(await import('../../services/lsp/diagnosticsForToolResult.js')) }
 
 const mockBuildPostEdit = mock(
   async (_path: string) => [] as AttachmentMessage[],
@@ -23,6 +25,10 @@ beforeEach(() => {
 
 afterEach(() => {
   mockBuildPostEdit.mockReset()
+})
+
+afterAll(() => {
+  mock.module('../../services/lsp/diagnosticsForToolResult.js', () => realDiagnosticsWrite)
 })
 
 // Mirror of the production return shape at FileWriteTool.ts (both create + update branches).

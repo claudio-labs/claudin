@@ -17,8 +17,10 @@
  * change is a single `await` + spread, intentionally minimal to keep the
  * blast radius tiny.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { AttachmentMessage } from 'src/types/message.js'
+
+const realDiagnosticsEdit = { ...(await import('../../services/lsp/diagnosticsForToolResult.js')) }
 
 const mockBuildPostEdit = mock(
   async (_path: string) => [] as AttachmentMessage[],
@@ -34,6 +36,10 @@ beforeEach(() => {
 
 afterEach(() => {
   mockBuildPostEdit.mockReset()
+})
+
+afterAll(() => {
+  mock.module('../../services/lsp/diagnosticsForToolResult.js', () => realDiagnosticsEdit)
 })
 
 // Mirror of the production return shape at FileEditTool.ts:574.

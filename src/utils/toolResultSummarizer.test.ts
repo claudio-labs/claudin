@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
+
+const realAnalyticsMetadata = { ...(await import('../services/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+
+afterAll(() => {
+  mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+})
 
 // Mock analytics/metadata + index only (narrow surfaces, safe to replace).
 // Leave ./config.js as the real module — Bun test runner sets NODE_ENV=test,

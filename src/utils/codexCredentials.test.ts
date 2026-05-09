@@ -2,7 +2,13 @@
  * These tests avoid static imports so Bun can mock secureStorage before
  * codexCredentials is first loaded.
  */
-import { afterEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
+
+const realSecureStorage = { ...(await import('./secureStorage/index.js')) }
+
+afterAll(() => {
+  mock.module('./secureStorage/index.js', () => realSecureStorage)
+})
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' }))
