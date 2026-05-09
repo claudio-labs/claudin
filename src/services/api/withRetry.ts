@@ -23,6 +23,7 @@ import {
 } from '../../utils/auth.js'
 import { isEnvTruthy } from '../../utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
+import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
 import { errorMessage } from '../../utils/errors.js'
 import {
   type CooldownReason,
@@ -245,6 +246,11 @@ export async function* withRetry<T>(
           const failedAccessToken = getClaudeAIOAuthTokens()?.accessToken
           if (failedAccessToken) {
             await handleOAuth401Error(failedAccessToken)
+          }
+          // For GitHub Copilot, refresh the short-lived Copilot token using the
+          // stored OAuth token so the next getClient() picks up the fresh token.
+          if (tryGetActiveProvider()?.transport === 'github_copilot') {
+            await refreshGithubModelsTokenIfNeeded()
           }
         }
         client = await getClient()

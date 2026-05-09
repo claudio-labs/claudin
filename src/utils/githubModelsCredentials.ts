@@ -2,6 +2,7 @@ import { tryGetActiveProvider } from '../services/api/activeProvider.js'
 import { isBareMode } from './envUtils.js'
 import { getSecureStorage } from './secureStorage/index.js'
 import { exchangeForCopilotToken } from '../services/github/deviceFlow.js'
+import { getProviderProfiles, updateProviderProfile } from './providerProfiles.js'
 
 function isGithubCopilotProfileActive(): boolean {
   return tryGetActiveProvider()?.transport === 'github_copilot'
@@ -128,6 +129,22 @@ export async function refreshGithubModelsTokenIfNeeded(): Promise<boolean> {
     const saved = saveGithubModelsToken(refreshed.token, oauthToken)
     if (!saved.success) {
       return false
+    }
+
+    // Update the active Copilot profile's extras.githubToken so the API shim
+    // picks up the fresh token on the next request without requiring a reconnect.
+    const copilotProfile = getProviderProfiles().find(
+      p => p.provider === 'openai' && p.extras?.githubToken !== undefined,
+    )
+    if (copilotProfile) {
+      updateProviderProfile(copilotProfile.id, {
+        provider: 'openai',
+        name: copilotProfile.name,
+        baseUrl: copilotProfile.baseUrl,
+        model: copilotProfile.model,
+        apiKey: refreshed.token,
+        extras: { ...copilotProfile.extras, githubToken: refreshed.token },
+      })
     }
 
     return true
