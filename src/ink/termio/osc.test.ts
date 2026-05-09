@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { join } from 'node:path'
 
 const originalEnv = { ...process.env }
@@ -10,6 +10,10 @@ const generateTempFilePathMock = mock(() => mockedClipboardPath)
 const execFileNoThrowMock = mock(
   async () => ({ code: 0, stdout: '', stderr: '' }),
 )
+
+// Capture the real modules before mocking so afterAll can restore them.
+const realExecFileNoThrowOsc = { ...(await import('../../utils/execFileNoThrow.js')) }
+const realTempfileOsc = { ...(await import('../../utils/tempfile.js')) }
 
 function installOscMocks(): void {
   mock.module('../../utils/execFileNoThrow.js', () => ({
@@ -147,4 +151,9 @@ describe('clipboard path behavior remains stable', () => {
       true,
     )
   })
+})
+
+afterAll(() => {
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowOsc)
+  mock.module('../../utils/tempfile.js', () => realTempfileOsc)
 })

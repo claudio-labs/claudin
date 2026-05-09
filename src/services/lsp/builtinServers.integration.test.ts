@@ -11,6 +11,8 @@ import { createRequire } from 'node:module'
 // for the same specifier.
 const _require = createRequire(import.meta.url)
 
+// Capture the real module before mocking so afterAll can fully restore it.
+const realExecFileNoThrowIntegration = { ...(await import('../../utils/execFileNoThrow.js')) }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockExecFile = mock(async (..._args: any[]) => ({ code: 1, stdout: '', stderr: '' }))
 // Include execFileNoThrow + execSyncWithDefaults_DEPRECATED in the shape so
@@ -244,10 +246,7 @@ afterAll(() => {
   mock.module('fs/promises', () => realFsPromisesIntegration)
   mock.module('os', () => realOsIntegration)
   mock.module('axios', () => ({ default: {} }))
-  mock.module('../../utils/execFileNoThrow.js', () => ({
-    execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
-    execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
-  }))
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowIntegration)
   mock.module('../../utils/log.js', () => realLogIntegration)
   mock.module('src/utils/log.js', () => realLogIntegration)
   mock.module('../../utils/envUtils.js', () => realEnvUtilsIntegration)

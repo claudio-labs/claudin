@@ -24,6 +24,9 @@ const _require = createRequire(import.meta.url)
 // Top-level mocks — installed before any import of the module under test
 // ---------------------------------------------------------------------------
 
+// Capture the real module before mocking so afterAll can restore it.
+const realExecFileNoThrowStreaming = { ...(await import('../../utils/execFileNoThrow.js')) }
+
 const mockExecFile = mock(async (_cmd: string, _args: string[]) => ({
   code: 1,
   stdout: '',
@@ -345,10 +348,7 @@ afterAll(() => {
   mock.module('os', () => realOsStreaming)
   mock.module('fflate', () => realFflate)
   mock.module('axios', () => ({ default: {} }))
-  mock.module('../../utils/execFileNoThrow.js', () => ({
-    execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
-    execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
-  }))
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowStreaming)
   mock.module('../../utils/log.js', () => realLogStreaming)
   mock.module('src/utils/log.js', () => realLogStreaming)
   mock.module('../../utils/envUtils.js', () => realEnvUtilsStreaming)

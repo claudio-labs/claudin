@@ -7,6 +7,9 @@ import { createRequire } from 'node:module'
 const _require = createRequire(import.meta.url)
 
 // Top-level mocks — must come before imports of the module under test
+// Capture the real module before mocking so afterAll can restore it.
+const realExecFileNoThrowBuiltin = { ...(await import('../../utils/execFileNoThrow.js')) }
+
 const mockExecFile = mock(async (_cmd: string, _args: string[]) => ({
   code: 0,
   stdout: '/usr/bin/typescript-language-server\n',
@@ -547,10 +550,7 @@ afterAll(() => {
   mock.module('fs', () => realFs)
   mock.module('os', () => realOs)
   mock.module('axios', () => ({ default: {} }))
-  mock.module('../../utils/execFileNoThrow.js', () => ({
-    execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
-    execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
-  }))
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowBuiltin)
   mock.module('../../utils/log.js', () => realLogBuiltin)
   mock.module('src/utils/log.js', () => realLogBuiltin)
   mock.module('../../utils/envUtils.js', () => realEnvUtilsBuiltin)

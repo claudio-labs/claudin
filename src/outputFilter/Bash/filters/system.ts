@@ -50,7 +50,7 @@ export const top: FilterSpec = {
 // Passthrough when user requested structured output, is following live, or
 // using --machine (hostname is informative in multi-host context).
 
-const JOURNALCTL_MATCH = /^(sudo\s+)?journalctl\b/
+const JOURNALCTL_MATCH = /^(?:sudo )?journalctl\b/
 const JOURNALCTL_REJECT =
   /--output=json\b|--output=cat\b|-o\s+(json|cat|export)\b|-f\b|--follow\b|--machine\b/
 // "May 05 12:18:04 viudes-arch ..." → "May 05 12:18:04 ..."

@@ -21,6 +21,9 @@ mock.module('./manager.js', () => ({
   _resetLspManagerForTesting: () => {},
 }))
 
+// Capture the real module before mocking so afterAll can restore it.
+const realExecFileNoThrowRows = { ...(await import('../../utils/execFileNoThrow.js')) }
+
 const mockExecFile = mock(async (_cmd: string, _args: string[]) => ({
   code: 0,
   stdout: '/usr/bin/typescript-language-server\n',
@@ -216,10 +219,7 @@ afterAll(() => {
   mock.module('os', () => realOsRows)
   mock.module('fflate', () => realFflate)
   mock.module('axios', () => ({ default: {} }))
-  mock.module('../../utils/execFileNoThrow.js', () => ({
-    execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
-    execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
-  }))
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowRows)
   mock.module('../../utils/log.js', () => realLogRows)
   mock.module('src/utils/log.js', () => realLogRows)
   mock.module('../../utils/envUtils.js', () => realEnvUtilsRows)

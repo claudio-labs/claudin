@@ -130,10 +130,11 @@ export const gitAdd: FilterSpec = {
 const GIT_COMMIT_MATCH = /^git\s+commit\b/
 // --dry-run output is structurally identical to git-status; let git-status handle it.
 const GIT_COMMIT_REJECT = /--dry-run\b/
-// Matches "[branch hash] subject\n  N files changed…" — the commit header plus
-// optional indented stats lines. Capture group $2 = the short hash.
-const GIT_COMMIT_SUCCESS_RE =
-  /^\[(\S+)\s+([0-9a-f]{7,40})\][^\n]*(?:\n[ \t][^\n]*)*/gm
+// Matches the commit header "[branch hash] subject". Capture group $2 = the short hash.
+// Indented stats lines ("N files changed…", "create mode…") are stripped separately.
+const GIT_COMMIT_SUCCESS_RE = /^\[(\S+)\s+([0-9a-f]{7,40})\][^\n]*/gm
+const GIT_COMMIT_STATS_RE = /^\s+\d+ file/
+const GIT_COMMIT_MODE_RE = /^\s+(create|delete|rename) mode /
 
 export const gitCommit: FilterSpec = {
   name: 'git-commit',
@@ -155,6 +156,7 @@ export const gitCommit: FilterSpec = {
       unless: /\b(error|fail|failed|hook exited|hook declined|denied|rejected|gpg failed)\b|✗/i,
     },
   ],
+  stripLinesMatching: [GIT_COMMIT_STATS_RE, GIT_COMMIT_MODE_RE],
 }
 
 // --- git diff --------------------------------------------------------------

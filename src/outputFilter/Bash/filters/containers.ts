@@ -25,8 +25,8 @@ const DOCKER_PS_CREATED =
 // IPv6 duplicate port binding appended after IPv4: ", [::]:5432->5432/tcp"
 const DOCKER_PS_IPV6 = /, \[::\]:\d+->\d+\/(?:tcp|udp)/g
 
-// docker ps column header line (after ID column is stripped, or full form).
-const DOCKER_PS_HDR_LINE = /^\s*(?:CONTAINER ID\s+)?IMAGE\s+COMMAND\s+CREATED\s+STATUS\b.*$/
+// docker ps column header line (CONTAINER ID header or post-strip IMAGE header).
+const DOCKER_PS_HDR_LINE = /^(?:CONTAINER ID|IMAGE)\s/
 
 export const dockerPs: FilterSpec = {
   name: 'docker-ps',

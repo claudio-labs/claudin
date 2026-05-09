@@ -21,6 +21,7 @@ mock.module('../../services/lsp/manager.js', () => ({
   _resetLspManagerForTesting: mock(() => {}),
 }))
 
+const realUserSettingsLazy = { ...(await import('../../services/lsp/userSettings.js')) }
 mock.module('../../services/lsp/userSettings.js', () => ({
   isLspGloballyEnabled: () => true,
   getUserLspSettings: () => ({}),
@@ -66,6 +67,7 @@ afterAll(async () => {
   // mock.module is global to the test run; an explicit restore is required.
   const real = await import('../../tools/LSPTool/LSPTool.js')
   mock.module('../../tools/LSPTool/LSPTool.js', () => real)
+  mock.module('../../services/lsp/userSettings.js', () => realUserSettingsLazy)
 })
 
 describe('LSPTool lazy load (ROADMAP 5.9)', () => {

@@ -49,6 +49,9 @@ mock.module('./manager.js', () => ({
   _resetLspManagerForTesting: () => {},
 }))
 
+// Capture real settings module before mocking so afterAll can restore it.
+const realSettingsDiag = { ...(await import('../../utils/settings/settings.js')) }
+
 const mockGetInitialSettings = mock(
   () => ({}) as { lsp?: { diagnosticsTimeoutMs?: number } },
 )
@@ -235,29 +238,5 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('../../utils/settings/settings.js', () => ({
-    getInitialSettings: () => ({}),
-    updateSettingsForSource: async () => {},
-    setSetting: async () => {},
-    loadSettings: async () => ({}),
-    getSettingsForSource: () => ({}),
-    getSettingsWithSources: () => ({}),
-    getSettingsWithErrors: () => ({ settings: {}, errors: [] }),
-    getSettings_DEPRECATED: () => ({}),
-    loadManagedFileSettings: () => ({ settings: {}, errors: [] }),
-    getManagedFileSettingsPresence: () => ({}),
-    parseSettingsFile: () => ({ settings: {}, errors: [] }),
-    getSettingsRootPathForSource: () => '',
-    getSettingsFilePathForSource: () => '',
-    getRelativeSettingsFilePathForSource: () => '',
-    getPolicySettingsOrigin: () => ({}),
-    settingsMergeCustomizer: () => undefined,
-    getManagedSettingsKeysForLogging: () => [],
-    hasSkipDangerousModePermissionPrompt: () => false,
-    hasAllowBypassPermissionsMode: () => false,
-    hasAutoModeOptIn: () => false,
-    getUseAutoModeDuringPlan: () => false,
-    getAutoModeConfig: () => ({}),
-    rawSettingsContainsKey: () => false,
-  }))
+  mock.module('../../utils/settings/settings.js', () => realSettingsDiag)
 })

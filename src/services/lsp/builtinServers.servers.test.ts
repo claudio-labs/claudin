@@ -11,6 +11,9 @@ import { createRequire } from 'node:module'
 // for the same specifier.
 const _require = createRequire(import.meta.url)
 
+// Capture the real module before mocking so afterAll can restore it.
+const realExecFileNoThrowServers = { ...(await import('../../utils/execFileNoThrow.js')) }
+
 const mockExecFile = mock(async (_cmd: string, _args: string[]) => ({
   code: 1,
   stdout: '',
@@ -542,10 +545,7 @@ afterAll(() => {
   mock.module('fs/promises', () => realFsPromisesServers)
   mock.module('os', () => realOsServers)
   mock.module('axios', () => ({ default: {} }))
-  mock.module('../../utils/execFileNoThrow.js', () => ({
-    execFileNoThrow: () => ({ code: 0, stdout: '', stderr: '' }),
-    execFileNoThrowWithCwd: () => ({ code: 0, stdout: '', stderr: '' }),
-  }))
+  mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrowServers)
   mock.module('../../utils/log.js', () => realLogServers)
   mock.module('src/utils/log.js', () => realLogServers)
   mock.module('../../utils/envUtils.js', () => realEnvUtilsServers)

@@ -6,6 +6,7 @@ import { join } from 'path'
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
 const realEnvUtils = { ...(await import('./envUtils.js')) }
+const realExecFileNoThrowInstall = { ...(await import('./execFileNoThrow.js')) }
 
 afterEach(() => {
   process.env = { ...originalEnv }
@@ -90,4 +91,6 @@ test('cleanupNpmInstallations removes both claudio and legacy claude local insta
 afterAll(() => {
   mock.module('./envUtils.js', () => realEnvUtils)
   mock.module('src/utils/envUtils.js', () => realEnvUtils)
+  mock.module('./execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrowInstall)
 })
