@@ -45,9 +45,9 @@ let _flags = undefined;
 // features. Only keys that DIFFER from upstream belong here — the
 // catalog below is pure documentation and does NOT affect resolution.
 //
-// Priority: ~/.claude/feature-flags.json > _openBuildDefaults > defaultValue
+// Priority: ~/.claudio/feature-flags.json > _openBuildDefaults > defaultValue
 //
-// To override at runtime, create ~/.claude/feature-flags.json:
+// To override at runtime, create ~/.claudio/feature-flags.json:
 //   { "tengu_some_flag": true }
 const _openBuildDefaults = {
   'tengu_sedge_lantern': true,  // AWAY_SUMMARY — "while you were away" recap (upstream: false)
@@ -65,7 +65,7 @@ const _openBuildDefaults = {
  * Some keys have different defaults at different call sites — this is
  * intentional upstream (the server unifies the value at runtime).
  *
- * To activate any of these, add them to ~/.claude/feature-flags.json
+ * To activate any of these, add them to ~/.claudio/feature-flags.json
  * or to _openBuildDefaults above.
  *
  * ── Reasoning & thinking ──────────────────────────────────────────────
@@ -188,7 +188,7 @@ function _loadFlags() {
   if (_flags !== undefined) return;
   try {
     const flagsPath = process.env.CLAUDE_FEATURE_FLAGS_FILE
-      || _path.join(_os.homedir(), '.claude', 'feature-flags.json');
+      || _path.join(_os.homedir(), '.claudio', 'feature-flags.json');
     const parsed = JSON.parse(_fs.readFileSync(flagsPath, 'utf-8'));
     _flags = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
   } catch {

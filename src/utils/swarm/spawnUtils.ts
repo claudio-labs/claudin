@@ -156,7 +156,7 @@ export function buildInheritedEnvVars(): string {
     'CLAUDECODE=1',
     'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1',
     // Teammates should inherit the leader-selected provider route instead of
-    // replaying persisted ~/.claude or settings.env provider defaults.
+    // replaying persisted ~/.claudio or settings.env provider defaults.
     'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1',
   ]
 

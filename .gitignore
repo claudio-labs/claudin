@@ -9,6 +9,7 @@ reports/
 GEMINI.md
 package-lock.json
 /.claude
+/.claudio
 /.openclaude
 coverage/
 agent.log

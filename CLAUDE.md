@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Coding Rules
 
-Patterns, error handling, and anti-patterns are defined in `.claude/rules/` (auto-loaded into context):
+Patterns, error handling, and anti-patterns are defined in `.claudio/rules/` (auto-loaded into context):
 
-- [typescript-patterns.md](.claude/rules/typescript-patterns.md) — TypeScript idioms, error handling, zod schemas, provider abstraction, privacy rules
-- [testing.md](.claude/rules/testing.md) — Bun test runner, snapshot testing, provider tests, pre-PR checklist
-- [search-strategy.md](.claude/rules/search-strategy.md) — Module map, navigation patterns, common Grep/Glob queries
+- [typescript-patterns.md](.claudio/rules/typescript-patterns.md) — TypeScript idioms, error handling, zod schemas, provider abstraction, privacy rules
+- [testing.md](.claudio/rules/testing.md) — Bun test runner, snapshot testing, provider tests, pre-PR checklist
+- [search-strategy.md](.claudio/rules/search-strategy.md) — Module map, navigation patterns, common Grep/Glob queries
 
 ## Project Overview
 

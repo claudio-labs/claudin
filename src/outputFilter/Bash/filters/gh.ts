@@ -5,7 +5,7 @@
 // any user-supplied filter flags (--repo, --author, --state, etc.) so that
 // filtering intent is preserved while the output schema stays predictable.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { RewriteContext } from '../../types.js'
 import type { FilterSpec } from '../types.js'

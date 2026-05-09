@@ -110,7 +110,7 @@ src/outputFilter/Bash/
 
 1. **One file per command family**, not per command. `git.ts` exports 5 specs that share `^git\b` infrastructure. This keeps each file 50–150 LoC and the module flat.
 2. **All specs statically imported.** Total spec data <8 KB; lazy-loading complicates the bundler with no runtime win.
-3. **Tests colocated** per `.claude/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudio for cross-cutting tests at `src/__tests__/`.
+3. **Tests colocated** per `.claudio/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudio for cross-cutting tests at `src/__tests__/`.
 4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/services/api/__fixtures__/`.
 5. **No subclasses, no plugins.** A custom-code filter (e.g. `tsc` parsing, JSON reformat) is a v2 native parser — see §17.
 6. **No standalone `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Each was <30 LoC; inline at callers (review §"Over-engineering #2-6").
@@ -601,7 +601,7 @@ No silent swallow. Every catch calls `logError(e)`.
 
 ## 14. Testing strategy
 
-Tests **colocated** per `.claude/rules/testing.md`. Layout:
+Tests **colocated** per `.claudio/rules/testing.md`. Layout:
 
 ```
 src/outputFilter/Bash/
@@ -623,7 +623,7 @@ src/outputFilter/Bash/
 - Rewrite tests → `describe('rewrite', ...)` block. Each asserts `effectiveCommand`.
 - Samples are checked in to `__fixtures__/samples/`. Discovery samples are the source of truth; we copy at Phase 1.
 
-**Coverage targets** (from `.claude/rules/testing.md` `src/utils/*` 75%+ guideline):
+**Coverage targets** (from `.claudio/rules/testing.md` `src/utils/*` 75%+ guideline):
 
 - `pipeline.ts` 90%+ (pure logic)
 - `registry.ts` 85%+
@@ -681,7 +681,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 13. **Per-filter `Promise.race` timeout.** Rejected: doesn't interrupt sync regex anyway. Build-time scan + length cap is the real defense.
 14. **`verb: string` field on FilterSpec for hash lookup.** Rejected: linear scan over 20 filters is sub-microsecond and dominated by regex cost. Hashmap optimization deferred.
 15. **Standalone files for `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Rejected: each <30 LoC with single-digit callers; inline at use sites.
-16. **`__tests__/` subdir layout.** Rejected: violates `.claude/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
+16. **`__tests__/` subdir layout.** Rejected: violates `.claudio/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
 17. **Per-filter `.test.ts` smoke files.** Rejected: duplicates the harness. One harness is the source of truth.
 18. **Nested config keys (`bashOutputFilter.{enabled, ...}`).** Rejected: every existing key in `GLOBAL_CONFIG_KEYS` is flat.
 19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/utils/xml.ts`.

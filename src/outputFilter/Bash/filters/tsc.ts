@@ -9,7 +9,7 @@
 //
 // On a clean run tsc emits empty stdout (no marker — handled upstream).
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

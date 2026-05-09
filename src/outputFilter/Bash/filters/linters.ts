@@ -7,7 +7,7 @@
 // Ruff on a clean run prints a single line, so for the clean case we just
 // collapse with match_output; on dirty runs the diagnostics are the signal.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

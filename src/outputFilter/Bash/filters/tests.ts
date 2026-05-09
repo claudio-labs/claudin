@@ -3,7 +3,7 @@
 // All three follow the same pattern: strip per-test noise (P), then match a
 // success sentinel (M). An `unless` guard keeps errors/failures intact.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

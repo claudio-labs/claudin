@@ -188,4 +188,4 @@ Validado empiricamente no claudio repo (5 May 2026):
 - **O que mudamos:**
   - rtk força `ls -la` por trás (mesmo se user pediu `ls`); nós só ativamos quando user pede com `-l` ou variantes.
   - rtk omite sumário em pipe (não-TTY); claudio sempre vai pra LLM, então sempre mostrar sumário.
-- **Adaptações pra TS/Node:** sem `lazy_static`, criar regex como module-level `const` (regra do projeto, `.claude/rules/typescript-patterns.md`).
+- **Adaptações pra TS/Node:** sem `lazy_static`, criar regex como module-level `const` (regra do projeto, `.claudio/rules/typescript-patterns.md`).

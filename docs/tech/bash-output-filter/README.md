@@ -25,7 +25,7 @@
 | **Drop 4 arquivos** (safety/analytics/debug/parse) | Cada <30 LoC, single-digit callers — inline (review §"Over-engineering #2-6") |
 | **Reusar `escapeXmlAttr`** de `src/utils/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
 | **Reusar `collapseIdenticalRuns`/`collapseDigitTemplates`** de `toolResultSummarizer.ts` | Saves ~80 LoC duplicação (review §"Over-engineering #3") |
-| **Tests colocados** ao invés de `__tests__/` | Viola `.claude/rules/testing.md` (review §"Misalignments #7") |
+| **Tests colocados** ao invés de `__tests__/` | Viola `.claudio/rules/testing.md` (review §"Misalignments #7") |
 | **Config keys flat** (`bashOutputFilterEnabled`) | Match `toolResultSummarizerEnabled` precedent (review §"Missed conventions #4") |
 | **Drop `extractBaseCommand` reuse claim** | Função é private + não tem redaction (review §"Misalignments #4") |
 | **Single integration harness**, não per-filter test files | Duplica assertions (review §"Testing strategy") |

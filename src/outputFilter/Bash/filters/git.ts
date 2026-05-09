@@ -8,7 +8,7 @@
 // Extra args (file paths, --author=, --since=, etc.) are forwarded after the
 // injected flag so the query scope is preserved.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

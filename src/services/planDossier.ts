@@ -100,7 +100,7 @@ const PDF_EXTENSIONS = new Set(['pdf'])
 
 export function getDossierPath(planSlug: string): string {
   // Derive from getPlanFilePath() so the dossier follows whatever base dir
-  // the user has configured (settings.plansDirectory, ~/.claude/plans, etc).
+  // the user has configured (settings.plansDirectory, ~/.claudio/plans, etc).
   // We replace the final {slug}.md with {slug}.dossier.json inside the same
   // directory rather than recomputing it — this keeps the two paths in sync.
   const planPath = getPlanFilePath()

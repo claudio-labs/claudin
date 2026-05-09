@@ -8,7 +8,7 @@
 // For build / check, on a clean success we collapse to a one-line sentinel.
 // For clippy we never collapse: warnings are the whole signal.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

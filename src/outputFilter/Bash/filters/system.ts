@@ -3,7 +3,7 @@
 // ps/top are dominated by kernel threads (VIRT/RSS=0) that are rarely relevant
 // to a coding agent. journalctl repeats the hostname on every line — strip it.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

@@ -5,7 +5,7 @@
 // docker images includes a WARNING line and an ID column that are rarely useful.
 // docker logs often embeds timestamps + PID in every line — strip to message only.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

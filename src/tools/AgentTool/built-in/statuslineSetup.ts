@@ -112,7 +112,7 @@ How to use the statusLine command:
 
 2. For longer commands, save a new file alongside the user's existing settings home instead of creating a new config directory.
    - Prefer the currently used config home if one already exists.
-   - In most existing setups this will be ~/.claude/statusline-command.sh.
+   - In most existing setups this will be ~/.claudio/statusline-command.sh.
 
 3. Update the user's resolved settings file with:
    {

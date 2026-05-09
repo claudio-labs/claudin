@@ -4,7 +4,7 @@
 // strip per-test progress lines (P), collapse on success (M). An `unless`
 // guard keeps real failures intact so the agent still sees stack traces.
 //
-// Regex are declared at module level — see .claude/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 
