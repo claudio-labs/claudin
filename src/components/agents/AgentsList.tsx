@@ -255,7 +255,7 @@ export function AgentsList(t0) {
         }
         let t27;
         if ($[61] !== renderBuiltInAgentsSection || $[62] !== sortedAgents || $[63] !== source) {
-          t27 = source !== "built-in" && sortedAgents.some(_temp7) && <><Divider />{renderBuiltInAgentsSection()}</>;
+          t27 = source !== "built-in" && sortedAgents.some(_temp7) && renderBuiltInAgentsSection();
           $[61] = renderBuiltInAgentsSection;
           $[62] = sortedAgents;
           $[63] = source;
