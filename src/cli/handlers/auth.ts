@@ -1,13 +1,14 @@
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handler intentionally exits */
 
-import {
-  clearAuthRelatedCaches,
-  performLogout,
-} from '../../commands/logout/logout.js'
+import { clearTrustedDeviceTokenCache } from '../../bridge/trustedDevice.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from '../../services/analytics/index.js'
+import { refreshGrowthBookAfterAuthChange } from '../../services/analytics/growthbook.js'
+import { getGroveNoticeConfig, getGroveSettings } from '../../services/api/grove.js'
+import { clearPolicyLimitsCache } from '../../services/policyLimits/index.js'
+import { clearRemoteManagedSettingsCache } from '../../services/remoteManagedSettings/index.js'
 import { getSSLErrorHint } from '../../services/api/errorUtils.js'
 import { fetchAndStoreClaudeCodeFirstTokenDate } from '../../services/api/firstTokenDate.js'
 import {
@@ -24,16 +25,22 @@ import {
   clearOAuthTokenCache,
   getAnthropicApiKeyWithSource,
   getAuthTokenSource,
+  getClaudeAIOAuthTokens,
   getOauthAccountInfo,
   getSubscriptionType,
   isUsing3PServices,
+  removeApiKey,
   saveOAuthTokensIfNeeded,
   validateForceLoginOrg,
 } from '../../utils/auth.js'
+import { clearBetasCaches } from '../../utils/betas.js'
 import { saveGlobalConfig } from '../../utils/config.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { errorMessage } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
+import { getSecureStorage } from '../../utils/secureStorage/index.js'
+import { clearToolSchemaCache } from '../../utils/toolSchemaCache.js'
+import { resetUserCache } from '../../utils/user.js'
 import { getAPIProvider } from '../../utils/model/providers.js'
 import { getInitialSettings } from '../../utils/settings/settings.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
@@ -41,6 +48,61 @@ import {
   buildAccountProperties,
   buildAPIProviderProperties,
 } from '../../utils/status.js'
+
+export async function performLogout({
+  clearOnboarding = false,
+}: {
+  clearOnboarding?: boolean
+}): Promise<void> {
+  // Flush telemetry BEFORE clearing credentials to prevent org data leakage
+  const { flushTelemetry } = await import('../../utils/telemetry/instrumentation.js')
+  await flushTelemetry()
+  await removeApiKey()
+
+  // Wipe all secure storage data on logout
+  const secureStorage = getSecureStorage()
+  secureStorage.delete()
+  await clearAuthRelatedCaches()
+  saveGlobalConfig(current => {
+    const updated = { ...current }
+    if (clearOnboarding) {
+      updated.hasCompletedOnboarding = false
+      updated.subscriptionNoticeCount = 0
+      updated.hasAvailableSubscription = false
+      if (updated.customApiKeyResponses?.approved) {
+        updated.customApiKeyResponses = {
+          ...updated.customApiKeyResponses,
+          approved: [],
+        }
+      }
+    }
+    updated.oauthAccount = undefined
+    return updated
+  })
+}
+
+// clearing anything memoized that must be invalidated when user/session/auth changes
+export async function clearAuthRelatedCaches(): Promise<void> {
+  // Clear the OAuth token cache
+  getClaudeAIOAuthTokens.cache?.clear?.()
+  clearTrustedDeviceTokenCache()
+  clearBetasCaches()
+  clearToolSchemaCache()
+
+  // Clear user data cache BEFORE GrowthBook refresh so it picks up fresh credentials
+  resetUserCache()
+  refreshGrowthBookAfterAuthChange()
+
+  // Clear Grove config cache
+  getGroveNoticeConfig.cache?.clear?.()
+  getGroveSettings.cache?.clear?.()
+
+  // Clear remotely managed settings cache
+  await clearRemoteManagedSettingsCache()
+
+  // Clear policy limits cache
+  await clearPolicyLimitsCache()
+}
 
 /**
  * Shared post-token-acquisition logic. Saves tokens, fetches profile/roles,
