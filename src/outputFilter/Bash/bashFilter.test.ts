@@ -794,9 +794,12 @@ describe("phase 6.1.4 — gitLog", () => {
     expect(plan.rewrite?.to).toBe("git log --oneline -10");
   });
 
-  test("compound bypass: git log && echo done passes through", () => {
+  test("chain resolves: git log && echo done applies git-log filter", () => {
+    // The trailing `echo done` has no filter of its own, so the chain
+    // resolves to `git-log` (no conflict). Rewriting is suppressed for
+    // chains because rewrite would only mutate the `git log` segment.
     const plan = planBashFilter("git log && echo done");
-    expect(plan.filter).toBeNull();
+    expect(plan.filter?.name).toBe("git-log");
     expect(plan.rewrite).toBeNull();
   });
 
@@ -849,9 +852,11 @@ describe("phase 6.1.4 — gitStatus", () => {
     expect(planBashFilter("git status -suall").rewrite).toBeNull();
   });
 
-  test("compound bypass: git status || true passes through", () => {
+  test("chained: git status || true resolves to git-status (only matching segment)", () => {
     const plan = planBashFilter("git status || true");
-    expect(plan.filter).toBeNull();
+    expect(plan.filter?.name).toBe("git-status");
+    // Rewrite is skipped on compound commands to avoid mangling adjacent segments.
+    expect(plan.rewrite).toBeNull();
   });
 
   test("match: git-status spec claims 'git status'", () => {
@@ -883,8 +888,11 @@ describe("phase 6.1.4 — ghPrList", () => {
     expect(planBashFilter("gh pr list --json number").filter).toBeNull();
   });
 
-  test("compound bypass: gh pr list && echo done passes through", () => {
-    expect(planBashFilter("gh pr list && echo done").filter).toBeNull();
+  test("chain resolves: gh pr list && echo done applies gh-pr-list", () => {
+    // `echo done` has no filter, so the chain resolves to `gh-pr-list`.
+    expect(planBashFilter("gh pr list && echo done").filter?.name).toBe(
+      "gh-pr-list",
+    );
   });
 
   test("match: gh-pr-list spec claims 'gh pr list'", () => {
@@ -1629,10 +1637,12 @@ describe("regression 6.1.4 — reject guards", () => {
   test("gh pr list --template → no match",  () => expect(findFilterForCommand("gh pr list --template '{{.number}}'")).toBeNull());
   test("gh issue list --format → no match", () => expect(findFilterForCommand("gh issue list --format '{{.number}}'")).toBeNull());
   test("gh run list --format → no match",   () => expect(findFilterForCommand("gh run list --format '{{.name}}'")).toBeNull());
-  // compound bypass
-  test("git log && echo → no match (compound)",       () => expect(findFilterForCommand("git log && echo done")).toBeNull());
-  test("git status || true → no match (compound)",    () => expect(findFilterForCommand("git status || true")).toBeNull());
-  test("gh pr list && echo → no match (compound)",    () => expect(findFilterForCommand("gh pr list && echo done")).toBeNull());
+  // compound: bypass when filters disagree, resolve when only one segment matches
+  test("git log && echo done → resolves to git-log (echo has no filter)", () => expect(findFilterForCommand("git log && echo done")?.name).toBe("git-log"));
+  test("git status || true → resolves to git-status (only matching segment)", () => expect(findFilterForCommand("git status || true")?.name).toBe("git-status"));
+  test("gh pr list && echo done → resolves to gh-pr-list (echo has no filter)", () => expect(findFilterForCommand("gh pr list && echo done")?.name).toBe("gh-pr-list"));
+  test("git log | head → no match (pipe — cannot split)", () => expect(findFilterForCommand("git log | head")).toBeNull());
+  test("cd src && git status → resolves to git-status", () => expect(findFilterForCommand("cd src && git status")?.name).toBe("git-status"));
   // P3: --format with space (not only --format=)
   test("git log --format '%H' → no match (space form)", () => expect(findFilterForCommand("git log --format '%H'")).toBeNull());
   test("git log --format=%H → no match (= form)",    () => expect(findFilterForCommand("git log --format=%H")).toBeNull());

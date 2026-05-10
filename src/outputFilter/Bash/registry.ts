@@ -1,36 +1,66 @@
 import { builtInFilters } from "./filters/index.js";
-import { LEADING_PREFIX_RE, matchesCommand } from "./pipeline.js";
+import {
+  ENV_ASSIGNMENT_RE,
+  findEnvAssignmentEnd,
+  hasCompound,
+  LEADING_PREFIX_RE,
+  matchesAtomicCommand,
+  splitTopLevelSegments,
+} from "./pipeline.js";
 import type { FilterSpec } from "./types.js";
 import { loadUserFilters } from "./userFilters.js";
-
-const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=\S*\s*/;
 
 /** Strips sudo/time/nice prefixes and leading env assignments so `sudo FOO=bar ls` matches the `ls` filter. */
 export function canonicalizeForMatching(command: string): string {
   let s = command.trim();
   // Strip leading prefixes (sudo, time, nice, etc.)
   s = s.replace(LEADING_PREFIX_RE, "");
-  // Strip env assignments (FOO=bar, FOO=bar BAZ=qux ...)
+  // Strip env assignments (FOO=bar, FOO="quoted val", FOO=bar BAZ=qux ...).
+  // Quote-aware via `findEnvAssignmentEnd` so `FOO="a b" git status` doesn't lose the verb.
   while (ENV_ASSIGNMENT_RE.test(s)) {
-    s = s.replace(ENV_ASSIGNMENT_RE, "");
+    const end = findEnvAssignmentEnd(s);
+    if (end === -1) break;
+    s = s.slice(end).trimStart();
   }
   return s.trim();
 }
 
-/** Returns the first matching filter (built-ins before user filters), or null if none match. */
-export function findFilterForCommand(command: string): FilterSpec | null {
-  // Pre-normalize once here so every matchesCommand call below receives a clean verb.
-  // matchesCommand also calls parseBashCommand internally because it can be invoked
-  // standalone with a raw command — both sites must handle raw input independently.
-  const canon = canonicalizeForMatching(command);
-  // Check built-in filters first
-  for (const filter of builtInFilters) {
-    if (matchesCommand(filter, canon)) return filter;
-  }
-  // Then user filters
+function findAtomicFilter(canon: string): FilterSpec | null {
   const userFilters = loadUserFilters();
+  for (const filter of builtInFilters) {
+    if (matchesAtomicCommand(filter, canon)) return filter;
+  }
   for (const filter of userFilters) {
-    if (matchesCommand(filter, canon)) return filter;
+    if (matchesAtomicCommand(filter, canon)) return filter;
   }
   return null;
+}
+
+/**
+ * Returns the first matching filter (built-ins before user filters), or null if none match.
+ *
+ * For chained commands (`a && b`, `a; b`, `a || b`) we attempt a safe top-level split:
+ * if every segment that has a filter resolves to the *same* filter (and others have none),
+ * we apply that single filter. This catches the common `cd X && cmd` and `git status && git diff`
+ * patterns without risking mis-filtering when verbs disagree. Pipes, subshells, backgrounding,
+ * and control-flow keywords still bypass — they cannot be split safely.
+ */
+export function findFilterForCommand(command: string): FilterSpec | null {
+  const canon = canonicalizeForMatching(command);
+
+  if (hasCompound(canon)) {
+    const segments = splitTopLevelSegments(canon);
+    if (!segments) return null;
+    let chosen: FilterSpec | null = null;
+    for (const seg of segments) {
+      const segCanon = canonicalizeForMatching(seg);
+      const f = findAtomicFilter(segCanon);
+      if (!f) continue;
+      if (chosen && chosen !== f) return null; // disagreement → bypass
+      chosen = f;
+    }
+    return chosen;
+  }
+
+  return findAtomicFilter(canon);
 }

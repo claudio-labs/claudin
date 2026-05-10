@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { getGlobalConfig } from "src/utils/config.js";
 import { getClaudioConfigHomeDir } from "src/utils/envUtils.js";
+import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
 import { z } from "zod/v4";
 import type { FilterSpec } from "./types.js";
@@ -91,7 +92,7 @@ function safeRegExp(pattern: string, flags?: string): RegExp | null {
     return new RegExp(pattern, flags);
   } catch (e) {
     logError(
-      new Error(
+      new ClaudeError(
         `bash-output-filter: invalid regex /${pattern}/${flags ?? ""}: ${e instanceof Error ? e.message : String(e)}`,
       ),
     );
@@ -208,7 +209,7 @@ export function loadUserFilters(): FilterSpec[] {
     // ENOENT is expected — no user filters file is normal
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
       logError(
-        new Error(
+        new ClaudeError(
           `bash-output-filter: failed to read ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
         ),
       );
@@ -234,7 +235,7 @@ export function compileUserFilters(raw: unknown): FilterSpec[] {
   const parsed = UserFiltersFileSchema.safeParse(raw);
   if (!parsed.success) {
     logError(
-      new Error(
+      new ClaudeError(
         `bash-output-filter: user filters file failed validation, ignoring`,
       ),
     );
@@ -247,7 +248,7 @@ export function compileUserFilters(raw: unknown): FilterSpec[] {
       results.push(compiled);
     } else {
       logError(
-        new Error(
+        new ClaudeError(
           `bash-output-filter: user filter "${spec.name}" rejected (unsafe/invalid regex), skipping`,
         ),
       );

@@ -85,6 +85,93 @@ describe("hasCompound", () => {
 });
 
 // ---------------------------------------------------------------------------
+// splitTopLevelSegments
+// ---------------------------------------------------------------------------
+
+import { splitTopLevelSegments } from "./pipeline.js";
+
+describe("splitTopLevelSegments", () => {
+  test("splits on &&", () => {
+    expect(splitTopLevelSegments("cd src && ls -la")).toEqual([
+      "cd src",
+      "ls -la",
+    ]);
+  });
+
+  test("splits on ;", () => {
+    expect(splitTopLevelSegments("pwd; ls")).toEqual(["pwd", "ls"]);
+  });
+
+  test("splits on ||", () => {
+    expect(splitTopLevelSegments("npm test || echo failed")).toEqual([
+      "npm test",
+      "echo failed",
+    ]);
+  });
+
+  test("splits a three-segment chain", () => {
+    expect(splitTopLevelSegments("cd a && pwd && ls")).toEqual([
+      "cd a",
+      "pwd",
+      "ls",
+    ]);
+  });
+
+  test("respects double quotes around ;", () => {
+    expect(splitTopLevelSegments('echo "a; b" && ls')).toEqual([
+      'echo "a; b"',
+      "ls",
+    ]);
+  });
+
+  test("respects single quotes around &&", () => {
+    expect(splitTopLevelSegments("echo 'x && y'; pwd")).toEqual([
+      "echo 'x && y'",
+      "pwd",
+    ]);
+  });
+
+  test("respects escaped quote inside double quotes", () => {
+    expect(splitTopLevelSegments('echo "a\\";b" && pwd')).toEqual([
+      'echo "a\\";b"',
+      "pwd",
+    ]);
+  });
+
+  test("returns null for single pipe", () => {
+    expect(splitTopLevelSegments("git log | head")).toBeNull();
+  });
+
+  test("returns null for background &", () => {
+    expect(splitTopLevelSegments("pwd & ls")).toBeNull();
+  });
+
+  test("returns null for $(...) subshell", () => {
+    expect(splitTopLevelSegments("echo $(date) && ls")).toBeNull();
+  });
+
+  test("returns null for backtick subshell", () => {
+    expect(splitTopLevelSegments("echo `date` && ls")).toBeNull();
+  });
+
+  test("returns null for process substitution", () => {
+    expect(splitTopLevelSegments("diff <(ls a) <(ls b)")).toBeNull();
+  });
+
+  test("returns null for control-flow keyword", () => {
+    expect(splitTopLevelSegments("if [ -f x ]; then ls; fi")).toBeNull();
+  });
+
+  test("returns null for unclosed quote", () => {
+    expect(splitTopLevelSegments('echo "unterminated && ls')).toBeNull();
+  });
+
+  test("drops empty segments", () => {
+    expect(splitTopLevelSegments("ls;; pwd")).toEqual(["ls", "pwd"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // matchesCommand
 // ---------------------------------------------------------------------------
 

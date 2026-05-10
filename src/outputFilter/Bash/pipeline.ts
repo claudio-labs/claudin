@@ -39,24 +39,33 @@ function debug(label: string, detail?: unknown): void {
 // Command parsing
 // ---------------------------------------------------------------------------
 
-const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
+export const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
 export const LEADING_PREFIX_RE =
   /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+)+/;
-// Keywords are only shell control-flow when delimited by whitespace/metacharacters —
-// NOT inside flag names like --for-each-ref or filenames like done.txt.
-const COMPOUND_RE =
-  /[;&|]|`\S|`\$|\$\(|>\(|(?:(?:^|[\s;&|()`])(?:then|do|done|if|while|for)(?=[\s;&|()`]|$))/;
+// Bash treats `\<LF>` as line continuation (joins lines into a single command).
+// Used by `parseBashCommand` and `extractCommandPrefix` to collapse continuations
+// before tokenization. Module-level so it is compiled once.
+const LINE_CONTINUATION_RE = /\\\n/g;
 const WHITESPACE_RE = /\s+/;
 const DIGIT_TEMPLATE_RE = /\d+/g;
 
-/** Strips env assignments and leading prefixes (sudo, time, nice…) to extract the verb and args. */
+/** Strips env assignments and leading prefixes (sudo, time, nice…) to extract the verb and args.
+ *
+ * Env stripping is quote-, escape-, and subshell-aware via `findEnvAssignmentEnd` so that
+ * `FOO="a b" git status`, `FOO=$(date) git status`, `FOO=a\ b git status` all canonicalize
+ * to `git status` (verb `git`, args `[status]`). Backslash-newline line continuations are
+ * collapsed into a single space before tokenization so `git \<LF>status` parses as
+ * verb `git`, args `[status]`.
+ */
 export function parseBashCommand(command: string): RewriteContext {
-  let trimmed = command.trim();
-  // Strip env assignments
+  // Collapse `\<LF>` line continuations into a single space (bash semantics).
+  let trimmed = command.replace(LINE_CONTINUATION_RE, " ").trim();
+  // Strip env assignments using the same quote-aware boundary detector as
+  // `canonicalizeForMatching` to keep both code paths in lockstep.
   while (ENV_ASSIGNMENT_RE.test(trimmed)) {
-    const spaceIdx = trimmed.indexOf(" ");
-    if (spaceIdx === -1) break;
-    trimmed = trimmed.slice(spaceIdx + 1).trimStart();
+    const end = findEnvAssignmentEnd(trimmed);
+    if (end === -1) break;
+    trimmed = trimmed.slice(end).trimStart();
   }
   // Strip leading prefixes
   trimmed = trimmed.replace(LEADING_PREFIX_RE, "");
@@ -66,11 +75,115 @@ export function parseBashCommand(command: string): RewriteContext {
   return { command: trimmed, verb, args };
 }
 
-/** True if the command uses shell operators (`&&`, `||`, `|`, `;`), subshells, or control flow — these bypass filtering.
- * Compound commands can fan out to multiple verbs, so there is no single canonical verb to match a filter against. */
+/** Returns the index immediately after an env assignment value (start of the next token), or -1
+ * if no whitespace boundary is found.
+ *
+ * Quote-, escape-, and subshell-aware: `FOO="a b"`, `FOO=a\ b`, `FOO=$(date)`, `FOO=\`date\``
+ * all advance past the full value before returning the next-token offset. Returns -1 (no
+ * boundary) when quotes/subshells are unclosed — caller should treat this as "do not strip".
+ */
+export function findEnvAssignmentEnd(s: string): number {
+  let inSingle = false;
+  let inDouble = false;
+  let parenDepth = 0; // tracks `$(...)` (and nested) depth
+  let inBacktick = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inSingle) {
+      if (c === "'") inSingle = false;
+      continue;
+    }
+    if (inDouble) {
+      if (c === "\\" && i + 1 < s.length) {
+        i++;
+        continue;
+      }
+      if (c === '"') inDouble = false;
+      continue;
+    }
+    if (inBacktick) {
+      if (c === "\\" && i + 1 < s.length) {
+        i++;
+        continue;
+      }
+      if (c === "`") inBacktick = false;
+      continue;
+    }
+    if (parenDepth > 0) {
+      if (c === "\\" && i + 1 < s.length) {
+        i++;
+        continue;
+      }
+      if (c === "'") {
+        inSingle = true;
+        continue;
+      }
+      if (c === '"') {
+        inDouble = true;
+        continue;
+      }
+      if (c === "(") parenDepth++;
+      else if (c === ")") parenDepth--;
+      continue;
+    }
+    // Outside quotes/subshells.
+    if (c === "\\" && i + 1 < s.length) {
+      // Backslash escapes the next char (including space) — it stays part of the value.
+      i++;
+      continue;
+    }
+    if (c === "'") {
+      inSingle = true;
+      continue;
+    }
+    if (c === '"') {
+      inDouble = true;
+      continue;
+    }
+    if (c === "`") {
+      inBacktick = true;
+      continue;
+    }
+    if (c === "$" && s[i + 1] === "(") {
+      parenDepth = 1;
+      i++;
+      continue;
+    }
+    if (c === " " || c === "\t") return i + 1;
+  }
+  return -1;
+}
+
+/** True if the command uses shell operators (`&&`, `||`, `|`, `;`), subshells, process
+ * substitution, heredocs, control flow, or unbalanced quotes — these bypass single-filter matching.
+ *
+ * Quote-aware: `git log --grep='fix; pwd'` is atomic, not compound, because the `;` is inside
+ * single quotes. Implemented via `splitTopLevelSegments`, which is the single source of truth
+ * for what counts as a separable boundary. Any input the splitter refuses (returns `null`) or
+ * splits into >1 segments is treated as compound. */
 export function hasCompound(command: string): boolean {
-  const trimmed = command.trim();
-  return COMPOUND_RE.test(trimmed);
+  const segments = splitTopLevelSegments(command.trim());
+  return segments === null || segments.length > 1;
+}
+
+/** Returns the env-assignment + leading-prefix slice of a command (e.g. `GIT_PAGER=cat sudo `
+ * for `GIT_PAGER=cat sudo git log`). Used by `maybeRewrite` to re-prepend the prefix onto the
+ * rewritten verb so env overrides and `sudo` are not silently dropped. Matches the stripping
+ * logic of `parseBashCommand` so the two stay in lockstep. Always returns a string ending at
+ * a token boundary (or empty). */
+export function extractCommandPrefix(command: string): string {
+  const collapsed = command.replace(LINE_CONTINUATION_RE, " ");
+  let consumed = collapsed.length - collapsed.trimStart().length;
+  while (ENV_ASSIGNMENT_RE.test(collapsed.slice(consumed))) {
+    const end = findEnvAssignmentEnd(collapsed.slice(consumed));
+    if (end === -1) break;
+    consumed += end;
+    const after = collapsed.slice(consumed);
+    consumed += after.length - after.trimStart().length;
+  }
+  const leadingMatch = collapsed.slice(consumed).match(LEADING_PREFIX_RE);
+  if (leadingMatch) consumed += leadingMatch[0].length;
+  return collapsed.slice(0, consumed);
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +193,19 @@ export function hasCompound(command: string): boolean {
 /** Tests the canonicalized command against `matchCommand`, rejects compounds, and honours `matchCommandReject`. */
 export function matchesCommand(filter: FilterSpec, command: string): boolean {
   if (hasCompound(command)) return false;
+  return matchesAtomicCommand(filter, command);
+}
+
+/** Same as `matchesCommand` but skips the compound bypass — caller guarantees the input is a single atomic segment. */
+export function matchesAtomicCommand(
+  filter: FilterSpec,
+  command: string,
+): boolean {
   const ctx = parseBashCommand(command);
+  // No verb means no command to match — pure env assignment, blank, or
+  // similar. A greedy user filter (`/.*/`) would otherwise match the empty
+  // string and try to rewrite a no-op.
+  if (ctx.verb === "") return false;
   if (
     !filter.matchCommand.test(ctx.verb) &&
     !filter.matchCommand.test(ctx.command)
@@ -90,11 +215,146 @@ export function matchesCommand(filter: FilterSpec, command: string): boolean {
   return true;
 }
 
+const CONTROL_FLOW_VERBS = new Set([
+  "then",
+  "do",
+  "done",
+  "if",
+  "fi",
+  "while",
+  "for",
+  "case",
+  "esac",
+  "function",
+  "elif",
+  "else",
+  "in",
+  "select",
+  "until",
+]);
+
+/**
+ * Splits a compound command into atomic top-level segments separated by
+ * `&&`, `||`, `;`, or unquoted newlines (bash treats `\n` as a statement
+ * separator equivalent to `;`).
+ *
+ * Returns `null` when the command uses constructs we cannot safely split:
+ * pipes (`|`), background (`&`), subshells (`$(...)`, backticks, `<()`, `>()`),
+ * heredocs (`<<`), shell control-flow keywords, or unclosed quotes.
+ *
+ * Quote-aware so that `echo "a; b" && ls` splits cleanly into [`echo "a; b"`, `ls`].
+ * Backslash-newline (`\<LF>`) is a line continuation and is consumed silently
+ * (bash semantics — joins lines into a single command).
+ * Whitespace around segments is trimmed; empty segments are dropped.
+ *
+ * Control-flow keywords are detected post-split by inspecting each segment's
+ * verb (so `echo "; then ls"` keeps its quoted token and is not misclassified).
+ */
+export function splitTopLevelSegments(command: string): string[] | null {
+  const segments: string[] = [];
+  let buf = "";
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i] ?? "";
+    const next = command[i + 1] ?? "";
+    if (inSingle) {
+      if (c === "'") inSingle = false;
+      buf += c;
+      continue;
+    }
+    if (inDouble) {
+      // Track escapes so we don't exit the double-quoted region on \"
+      if (c === "\\" && next) {
+        buf += c + next;
+        i++;
+        continue;
+      }
+      if (c === '"') inDouble = false;
+      buf += c;
+      continue;
+    }
+    if (c === "'") {
+      inSingle = true;
+      buf += c;
+      continue;
+    }
+    if (c === '"') {
+      inDouble = true;
+      buf += c;
+      continue;
+    }
+    // Backslash escapes the next character (outside quotes). `\<LF>` is line
+    // continuation — drop both. Any other `\X` keeps X verbatim (so `\&` does
+    // not split, `\;` does not split). This matches bash's rules for unquoted
+    // backslash.
+    if (c === "\\" && next) {
+      if (next === "\n") {
+        i++;
+        continue;
+      }
+      buf += next;
+      i++;
+      continue;
+    }
+    // Bail on constructs we cannot safely segment:
+    if (c === "`") return null; // backtick subshell
+    if (c === "$" && next === "(") return null; // $(...) subshell
+    if ((c === "<" || c === ">") && next === "(") return null; // process substitution
+    if (c === "<" && next === "<") return null; // heredoc — body would be split mid-text
+    // `[[ ... ]]` test brackets and `(( ... ))` arithmetic eval can contain
+    // `&&` / `||` operators that are NOT statement separators. Splitting
+    // through them produces wrong segments, so bail conservatively.
+    if (c === "[" && next === "[") return null;
+    if (c === "(" && next === "(") return null;
+    // `|&` (bash 4+ pipe-with-stderr) — same risk as a plain pipe.
+    if (c === "|" && next === "&") return null;
+    if (c === "|" && next === "|") {
+      segments.push(buf);
+      buf = "";
+      i++;
+      continue;
+    }
+    if (c === "|") return null; // single pipe — output is transformed, not concatenated
+    if (c === "&" && next === "&") {
+      segments.push(buf);
+      buf = "";
+      i++;
+      continue;
+    }
+    if (c === "&") return null; // background — output ordering undefined
+    if (c === ";" || c === "\n") {
+      segments.push(buf);
+      buf = "";
+      continue;
+    }
+    buf += c;
+  }
+  if (inSingle || inDouble) return null;
+  segments.push(buf);
+  const cleaned = segments.map((s) => s.trim()).filter((s) => s.length > 0);
+  if (cleaned.length === 0) return null;
+  // Reject if any segment begins with a control-flow keyword. Doing this on
+  // the cleaned segment (rather than on raw input) keeps the check quote-aware
+  // — `echo "; then ls"` stays as a single segment whose verb is `echo`.
+  for (const seg of cleaned) {
+    const verb = seg.split(WHITESPACE_RE, 1)[0] ?? "";
+    if (CONTROL_FLOW_VERBS.has(verb)) return null;
+  }
+  return cleaned;
+}
+
 // ---------------------------------------------------------------------------
 // Rewrite
 // ---------------------------------------------------------------------------
 
-/** Invokes the filter's `rewriteCommand` and returns the rewrite pair, or null if unchanged / not applicable. */
+/** Invokes the filter's `rewriteCommand` and returns the rewrite pair, or null if unchanged / not applicable.
+ *
+ * Re-prepends any env-assignment / leading-prefix (sudo, time, …) that `parseBashCommand`
+ * stripped before passing the command to the filter, so a rewrite like `git log` →
+ * `git log --oneline` does not silently drop a user-supplied `GIT_PAGER=cat` or `sudo`.
+ * Identity is checked against the canonicalized command (the form the filter sees), so a
+ * filter returning its input unchanged correctly produces no marker. */
 export function maybeRewrite(
   filter: FilterSpec,
   command: string,
@@ -102,9 +362,9 @@ export function maybeRewrite(
   if (!filter.rewriteCommand) return null;
   const ctx = parseBashCommand(command);
   const rewritten = filter.rewriteCommand(ctx);
-  // Treat an identity rewrite as "no rewrite" so no marker is emitted for an unchanged command.
-  if (!rewritten || rewritten === command) return null;
-  return { rewritten, original: command };
+  if (!rewritten || rewritten === ctx.command) return null;
+  const prefix = extractCommandPrefix(command);
+  return { rewritten: prefix + rewritten, original: command };
 }
 
 // ---------------------------------------------------------------------------
@@ -115,8 +375,27 @@ const HEAD_TAIL_OMIT_MARKER = "…N lines omitted…";
 const DEFAULT_HEAD_LINES = 15;
 const DEFAULT_TAIL_LINES = 15;
 
+// Hard cap on raw input size fed into the pipeline. Anything larger is passed
+// through unchanged with a tail-truncation marker — the regex engine has no
+// timeout, so an unbounded input combined with a marginally-greedy user regex
+// is the realistic ReDoS path. 8 MiB covers any reasonable command output;
+// anything bigger is almost always a corrupted binary or a runaway loop.
+const PIPELINE_INPUT_MAX_BYTES = 8 * 1024 * 1024;
+
 /** Runs the full filter pipeline (stripAnsi → matchOutput → replace → collapse → dedup → strip/keep → truncate → head/tail → onEmpty) and returns the result with applied-stage names and reduction percentage. */
 export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
+  if (raw.length > PIPELINE_INPUT_MAX_BYTES) {
+    debug("input exceeds cap, bypassing pipeline", {
+      length: raw.length,
+      cap: PIPELINE_INPUT_MAX_BYTES,
+    });
+    return {
+      body: raw,
+      applied: [],
+      shortCircuited: false,
+      reductionPct: 0,
+    };
+  }
   const originalLength = raw.length;
   let text = raw;
   const applied: string[] = [];
@@ -151,9 +430,9 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
     if (filter.replace) {
       for (const rule of filter.replace) {
         if (rule.unless?.test(text)) continue;
-        const before = text.length;
+        const before = text;
         text = text.replace(rule.pattern, rule.replacement);
-        if (text.length !== before)
+        if (text !== before)
           applied.push(`replace:${rule.pattern.source.slice(0, 30)}`);
       }
     }

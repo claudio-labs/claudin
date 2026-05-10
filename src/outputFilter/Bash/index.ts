@@ -1,7 +1,7 @@
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
 import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "./markers.js";
-import { applyPipeline, maybeRewrite } from "./pipeline.js";
+import { applyPipeline, hasCompound, maybeRewrite } from "./pipeline.js";
 import { findFilterForCommand } from "./registry.js";
 import type { PipelineResult, PreExecPlan } from "./types.js";
 
@@ -31,7 +31,10 @@ export function planBashFilter(command: string): PreExecPlan {
     "planBashFilter",
     () => {
       const filter = findFilterForCommand(command);
-      const rewrite = filter ? maybeRewrite(filter, command) : null;
+      // Skip rewriteCommand for chained commands — the filter only knows about its
+      // own verb's arguments, so rewriting could mangle adjacent segments.
+      const rewrite =
+        filter && !hasCompound(command) ? maybeRewrite(filter, command) : null;
       return {
         effectiveCommand: rewrite?.rewritten ?? command,
         filter,
