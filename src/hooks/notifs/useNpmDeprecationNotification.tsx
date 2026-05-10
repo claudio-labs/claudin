@@ -7,6 +7,9 @@ export function useNpmDeprecationNotification() {
   useStartupNotification(_temp);
 }
 async function _temp() {
+  if (MACRO.PACKAGE_URL !== '@anthropic-ai/claude-code') {
+    return null;
+  }
   if (isInBundledMode() || isEnvTruthy(process.env.DISABLE_INSTALLATION_CHECKS)) {
     return null;
   }
