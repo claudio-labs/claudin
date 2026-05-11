@@ -178,7 +178,7 @@ async function startFileWatcher(teamDir: string): Promise<void> {
 
     watcher = watch(
       teamDir,
-      { persistent: true, recursive: true },
+      { persistent: false, recursive: true },
       (_eventType, filename) => {
         if (filename === null) {
           schedulePush()

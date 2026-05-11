@@ -67,7 +67,7 @@ function resolveWatchPaths(
 function startWatching(paths: string[]): void {
   logForDebugging(`FileChanged: watching ${paths.length} paths`)
   watcher = chokidar.watch(paths, {
-    persistent: true,
+    persistent: false,
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 200 },
     ignorePermissionErrors: true,

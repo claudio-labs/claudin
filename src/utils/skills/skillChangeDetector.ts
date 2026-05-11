@@ -108,7 +108,7 @@ export async function initialize(): Promise<void> {
   )
 
   watcher = chokidar.watch(paths, {
-    persistent: true,
+    persistent: false,
     ignoreInitial: true,
     depth: 2, // Skills use skill-name/SKILL.md format
     awaitWriteFinish: {

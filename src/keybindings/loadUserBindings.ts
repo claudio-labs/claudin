@@ -384,7 +384,7 @@ export async function initializeKeybindingWatcher(): Promise<void> {
   logForDebugging(`[keybindings] Watching for changes to ${userPath}`)
 
   watcher = chokidar.watch(userPath, {
-    persistent: true,
+    persistent: false,
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: FILE_STABILITY_THRESHOLD_MS,

@@ -433,7 +433,6 @@ export async function gracefulShutdown(
     Math.max(5000, sessionEndTimeoutMs + 3500),
     exitCode,
   )
-  failsafeTimer.unref()
 
   // Set the exit code that will be used when process naturally exits
   process.exitCode = exitCode

@@ -101,7 +101,7 @@ export async function initialize(): Promise<void> {
   )
 
   watcher = chokidar.watch(dirs, {
-    persistent: true,
+    persistent: false,
     ignoreInitial: true,
     depth: 0, // Only watch immediate children, not subdirectories
     awaitWriteFinish: {
