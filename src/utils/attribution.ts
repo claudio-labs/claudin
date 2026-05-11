@@ -2,7 +2,6 @@ import { feature } from 'bun:bundle'
 import { stat } from 'fs/promises'
 import { getClientType } from '../bootstrap/state.js'
 import { getRemoteSessionUrl, isRemoteSessionLocal } from '../constants/product.js'
-import { isEnvTruthy } from './envUtils.js'
 import { TERMINAL_OUTPUT_TAGS } from '../constants/xml.js'
 import type { AppState } from '../state/AppState.js'
 import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
@@ -15,18 +14,14 @@ import {
   type AttributionData,
   calculateCommitAttribution,
   isInternalModelRepo,
-  isInternalModelRepoCached,
   sanitizeModelName,
 } from './commitAttribution.js'
 import { logForDebugging } from './debug.js'
 import { parseJSONL } from './json.js'
 import { logError } from './log.js'
-import { getAPIProvider } from './model/providers.js'
 import {
   getCanonicalName,
   getMainLoopModel,
-  getPublicModelDisplayName,
-  getPublicModelName,
 } from './model/model.js'
 import { isMemoryFileAccess } from './sessionFileAccessHooks.js'
 import { getTranscriptPath } from './sessionStorage.js'
@@ -40,11 +35,8 @@ export type AttributionTexts = {
 
 /**
  * Returns attribution text for commits and PRs based on user settings.
- * Handles:
- * - Dynamic model name via getPublicModelName()
- * - Custom attribution settings (settings.attribution.commit/pr)
- * - Backward compatibility with deprecated includeCoAuthoredBy setting
- * - Remote mode: returns session URL for attribution
+ * Claudio does not add a Co-Authored-By trailer by default; users who want
+ * one can set `attribution.commit` in settings.json.
  */
 export function getAttributionTexts(): AttributionTexts {
   if (getClientType() === 'remote') {
@@ -60,41 +52,17 @@ export function getAttributionTexts(): AttributionTexts {
     return { commit: '', pr: '' }
   }
 
-  // @[MODEL LAUNCH]: Update the hardcoded fallback model name below (guards against codename leaks).
-  // For internal repos, use the real model name. For external repos,
-  // fall back to "Claude Opus 4.7" for unrecognized models to avoid leaking codenames.
-  const model = getMainLoopModel()
-  const isKnownPublicModel = getPublicModelDisplayName(model) !== null
-  const modelName =
-    isInternalModelRepoCached() || isKnownPublicModel
-      ? getPublicModelName(model)
-      : 'Claude Opus 4.7'
-  const defaultAttribution =
-    '🤖 Generated with Claudio'
-  const coAuthorDomain =
-    getAPIProvider() === 'firstParty' ? 'anthropic.com' : 'claudio.dev'
-  const defaultCommit = isEnvTruthy(
-    process.env.CLAUDIO_DISABLE_CO_AUTHORED_BY,
-  )
-    ? ''
-    : `Co-Authored-By: ${modelName} <noreply@${coAuthorDomain}>`
-
+  const defaultAttribution = '🤖 Generated with Claudio'
   const settings = getInitialSettings()
 
-  // New attribution setting takes precedence over deprecated includeCoAuthoredBy
   if (settings.attribution) {
     return {
-      commit: settings.attribution.commit ?? defaultCommit,
+      commit: settings.attribution.commit ?? '',
       pr: settings.attribution.pr ?? defaultAttribution,
     }
   }
 
-  // Backward compatibility: deprecated includeCoAuthoredBy setting
-  if (settings.includeCoAuthoredBy === false) {
-    return { commit: '', pr: '' }
-  }
-
-  return { commit: defaultCommit, pr: defaultAttribution }
+  return { commit: '', pr: defaultAttribution }
 }
 
 /**
@@ -316,13 +284,7 @@ export async function getEnhancedPRAttribution(
     return settings.attribution.pr
   }
 
-  // Backward compatibility: deprecated includeCoAuthoredBy setting
-  if (settings.includeCoAuthoredBy === false) {
-    return ''
-  }
-
-  const defaultAttribution =
-    '🤖 Generated with Claudio'
+  const defaultAttribution = '🤖 Generated with Claudio'
 
   // Get AppState first
   const appState = getAppState()

@@ -363,13 +363,6 @@ export const SettingsSchema = lazySchema(() =>
           'Customize attribution text for commits and PRs. ' +
             'Each field defaults to the standard Claude Code attribution if not set.',
         ),
-      includeCoAuthoredBy: z
-        .boolean()
-        .optional()
-        .describe(
-          'Deprecated: Use attribution instead. ' +
-            "Whether to include Claude's co-authored by attribution in commits and PRs (defaults to true)",
-        ),
       includeGitInstructions: z
         .boolean()
         .optional()
