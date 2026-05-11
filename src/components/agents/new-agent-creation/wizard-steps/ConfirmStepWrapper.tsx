@@ -1,10 +1,12 @@
 import chalk from 'chalk';
+import { dirname } from 'path';
 import React, { type ReactNode, useCallback, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { useSetAppState } from 'src/state/AppState.js';
 import type { Tools } from '../../../../Tool.js';
 import type { AgentDefinition } from '../../../../tools/AgentTool/loadAgentsDir.js';
 import { getActiveAgentsFromList } from '../../../../tools/AgentTool/loadAgentsDir.js';
+import { writeProjectAgentOverride } from '../../../../tools/AgentTool/projectAgentOverrides.js';
 import { editFileInEditor } from '../../../../utils/promptEditor.js';
 import { useWizard } from '../../../wizard/index.js';
 import { getNewAgentFilePath, saveAgentToFile } from '../../agentFileUtils.js';
@@ -28,7 +30,15 @@ export function ConfirmStepWrapper({
   const saveAgent = useCallback(async (openInEditor: boolean): Promise<void> => {
     if (!wizardData?.finalAgent) return;
     try {
-      await saveAgentToFile(wizardData.location!, wizardData.finalAgent.agentType, wizardData.finalAgent.whenToUse, wizardData.finalAgent.tools, wizardData.finalAgent.getSystemPrompt(), true, wizardData.finalAgent.color, wizardData.finalAgent.model, wizardData.finalAgent.memory);
+      await saveAgentToFile(wizardData.location!, wizardData.finalAgent.agentType, wizardData.finalAgent.whenToUse, wizardData.finalAgent.tools, wizardData.finalAgent.getSystemPrompt(), true, wizardData.finalAgent.color, wizardData.finalAgent.memory);
+      if (wizardData.finalAgent.model) {
+        const filePath = getNewAgentFilePath({
+          source: wizardData.location!,
+          agentType: wizardData.finalAgent.agentType,
+        });
+        const baseDir = dirname(filePath);
+        await writeProjectAgentOverride(baseDir, wizardData.finalAgent.agentType, wizardData.finalAgent.model);
+      }
       setAppState(state => {
         if (!wizardData.finalAgent) return state;
         const allAgents = state.agentDefinitions.allAgents.concat(wizardData.finalAgent);

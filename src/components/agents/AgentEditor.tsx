@@ -10,6 +10,7 @@ import type { Tools } from '../../Tool.js';
 import { type AgentColorName, setAgentColor } from '../../tools/AgentTool/agentColorManager.js';
 import { type AgentDefinition, getActiveAgentsFromList, isCustomAgent, isPluginAgent } from '../../tools/AgentTool/loadAgentsDir.js';
 import { editFileInEditor } from '../../utils/promptEditor.js';
+import { writeProjectAgentOverride } from '../../tools/AgentTool/projectAgentOverrides.js';
 import { getActualAgentFilePath, updateAgentFile } from './agentFileUtils.js';
 import { ColorPicker } from './ColorPicker.js';
 import { ModelSelector } from './ModelSelector.js';
@@ -66,7 +67,12 @@ export function AgentEditor({
       if (!isCustomAgent(agent) && !isPluginAgent(agent)) {
         return false;
       }
-      await updateAgentFile(agent, agent.whenToUse, newTools ?? agent.tools, agent.getSystemPrompt(), finalColor, newModel ?? agent.model);
+      if (hasToolsChanged || hasColorChanged) {
+        await updateAgentFile(agent, agent.whenToUse, newTools ?? agent.tools, agent.getSystemPrompt(), finalColor);
+      }
+      if (hasModelChanged && agent.baseDir) {
+        await writeProjectAgentOverride(agent.baseDir, agent.agentType, newModel);
+      }
       if (hasColorChanged && finalColor) {
         setAgentColor(agent.agentType, finalColor);
       }

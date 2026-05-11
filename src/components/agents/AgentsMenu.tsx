@@ -10,7 +10,10 @@ import { Box, Text } from '../../ink.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { Tools } from '../../Tool.js';
 import { type ResolvedAgent, resolveAgentOverrides } from '../../tools/AgentTool/agentDisplay.js';
-import { type AgentDefinition, getActiveAgentsFromList } from '../../tools/AgentTool/loadAgentsDir.js';
+import { type AgentDefinition, clearAgentDefinitionsCache, getActiveAgentsFromList, getAgentDefinitionsWithOverrides } from '../../tools/AgentTool/loadAgentsDir.js';
+import { builtInOverrideKey } from '../../tools/AgentTool/builtInModelOverrides.js';
+import { writeProjectAgentOverride } from '../../tools/AgentTool/projectAgentOverrides.js';
+import { saveGlobalConfig } from '../../utils/config.js';
 import { toError } from '../../utils/errors.js';
 import { logError } from '../../utils/log.js';
 import { Select } from '../CustomSelect/select.js';
@@ -19,7 +22,9 @@ import { AgentDetail } from './AgentDetail.js';
 import { AgentEditor } from './AgentEditor.js';
 import { AgentNavigationFooter } from './AgentNavigationFooter.js';
 import { AgentsList } from './AgentsList.js';
+import { ModelSelector } from './ModelSelector.js';
 import { deleteAgentFromFile } from './agentFileUtils.js';
+import { getCwd } from '../../utils/cwd.js';
 import { CreateAgentWizard } from './new-agent-creation/CreateAgentWizard.js';
 import type { ModeState } from './types.js';
 type Props = {
@@ -326,6 +331,7 @@ export function AgentsMenu(t0) {
         const freshAgent_1 = t13;
         const agentToUse = freshAgent_1 || modeState.agent;
         const isEditable = agentToUse.source !== "built-in" && agentToUse.source !== "plugin" && agentToUse.source !== "flagSettings";
+        const isBuiltIn = agentToUse.source === "built-in";
         let t14;
         if ($[60] === Symbol.for("react.memo_cache_sentinel")) {
           t14 = {
@@ -336,19 +342,25 @@ export function AgentsMenu(t0) {
         } else {
           t14 = $[60];
         }
-        let t15;
-        if ($[61] !== isEditable) {
-          t15 = isEditable ? [{
+        let t15: Array<{ label: string; value: string }>;
+        if (isEditable) {
+          t15 = [{
             label: "Edit agent",
             value: "edit"
           }, {
+            label: "Change model",
+            value: "change-model"
+          }, {
             label: "Delete agent",
             value: "delete"
-          }] : [];
-          $[61] = isEditable;
-          $[62] = t15;
+          }];
+        } else if (isBuiltIn) {
+          t15 = [{
+            label: "Change model",
+            value: "change-model"
+          }];
         } else {
-          t15 = $[62];
+          t15 = [];
         }
         let t16;
         if ($[63] === Symbol.for("react.memo_cache_sentinel")) {
@@ -395,6 +407,15 @@ export function AgentsMenu(t0) {
                 {
                   setModeState({
                     mode: "delete-confirm",
+                    agent: agentToUse,
+                    previousMode: modeState
+                  });
+                  break bb129;
+                }
+              case "change-model":
+                {
+                  setModeState({
+                    mode: "edit-builtin-model",
                     agent: agentToUse,
                     previousMode: modeState
                   });
@@ -760,6 +781,73 @@ export function AgentsMenu(t0) {
           t21 = $[156];
         }
         return t21;
+      }
+    case "edit-builtin-model":
+      {
+        const agentToEdit = modeState.agent;
+        const previousMode = modeState.previousMode;
+        const handleModelSelected = async (model?: string) => {
+          const next = model ?? "inherit";
+          try {
+            if (agentToEdit.source === "built-in") {
+              saveGlobalConfig(config => ({
+                ...config,
+                agentModelOverrides: {
+                  ...(config.agentModelOverrides ?? {}),
+                  [builtInOverrideKey(agentToEdit.agentType)]: next,
+                },
+              }));
+            } else if (agentToEdit.baseDir) {
+              writeProjectAgentOverride(
+                agentToEdit.baseDir,
+                agentToEdit.agentType,
+                next,
+              );
+            } else {
+              logError(
+                new Error(
+                  `Cannot save model override for ${agentToEdit.agentType}: missing baseDir`,
+                ),
+              );
+              setModeState(previousMode);
+              return;
+            }
+            clearAgentDefinitionsCache();
+            const refreshed = await getAgentDefinitionsWithOverrides(getCwd());
+            setAppState(state => ({
+              ...state,
+              agentDefinitions: {
+                ...state.agentDefinitions,
+                allAgents: refreshed.allAgents,
+                activeAgents: refreshed.activeAgents,
+              },
+            }));
+            setChanges(prev => [
+              ...prev,
+              `Set model for ${chalk.bold(agentToEdit.agentType)} → ${next}`,
+            ]);
+          } catch (err) {
+            logError(err);
+          }
+          setModeState(previousMode);
+        };
+        const handleCancel = () => setModeState(previousMode);
+        return (
+          <>
+            <Dialog
+              title={`Change model: ${agentToEdit.agentType}`}
+              onCancel={handleCancel}
+              hideInputGuide={true}
+            >
+              <ModelSelector
+                initialModel={agentToEdit.model ?? "inherit"}
+                onComplete={handleModelSelected}
+                onCancel={handleCancel}
+              />
+            </Dialog>
+            <AgentNavigationFooter />
+          </>
+        );
       }
     default:
       {

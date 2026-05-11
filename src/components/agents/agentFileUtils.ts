@@ -23,7 +23,6 @@ export function formatAgentAsMarkdown(
   tools: string[] | undefined,
   systemPrompt: string,
   color?: string,
-  model?: string,
   memory?: AgentMemoryScope,
   effort?: EffortValue,
 ): string {
@@ -40,14 +39,13 @@ export function formatAgentAsMarkdown(
   const isAllTools =
     tools === undefined || (tools.length === 1 && tools[0] === '*')
   const toolsLine = isAllTools ? '' : `\ntools: ${tools.join(', ')}`
-  const modelLine = model ? `\nmodel: ${model}` : ''
   const effortLine = effort !== undefined ? `\neffort: ${effort}` : ''
   const colorLine = color ? `\ncolor: ${color}` : ''
   const memoryLine = memory ? `\nmemory: ${memory}` : ''
 
   return `---
 name: ${agentType}
-description: "${escapedWhenToUse}"${toolsLine}${modelLine}${effortLine}${colorLine}${memoryLine}
+description: "${escapedWhenToUse}"${toolsLine}${effortLine}${colorLine}${memoryLine}
 ---
 
 ${systemPrompt}
@@ -171,7 +169,6 @@ export async function saveAgentToFile(
   systemPrompt: string,
   checkExists = true,
   color?: string,
-  model?: string,
   memory?: AgentMemoryScope,
   effort?: EffortValue,
 ): Promise<void> {
@@ -188,7 +185,6 @@ export async function saveAgentToFile(
     tools,
     systemPrompt,
     color,
-    model,
     memory,
     effort,
   )
@@ -211,7 +207,6 @@ export async function updateAgentFile(
   newTools: string[] | undefined,
   newSystemPrompt: string,
   newColor?: string,
-  newModel?: string,
   newMemory?: AgentMemoryScope,
   newEffort?: EffortValue,
 ): Promise<void> {
@@ -227,7 +222,6 @@ export async function updateAgentFile(
     newTools,
     newSystemPrompt,
     newColor,
-    newModel,
     newMemory,
     newEffort,
   )

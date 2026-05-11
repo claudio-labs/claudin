@@ -607,6 +607,13 @@ export type GlobalConfig = {
   providerProfiles?: ProviderProfile[]
   activeProviderProfileId?: string
 
+  // Per-agent model overrides keyed by agentType. Lets users pick a custom
+  // model for built-in agents (e.g. Explore, Plan) without producing a
+  // shadow .md file. Value 'inherit' is allowed and means "use the parent
+  // conversation model" — same semantics as a missing entry, but stored
+  // explicitly so the UI can show that the user has chosen inherit.
+  agentModelOverrides?: Record<string, string>
+
   // Per-profile cache for models discovered from OpenAI-compatible endpoints.
   // Keyed by provider profile id.
   openaiAdditionalModelOptionsCacheByProfile?: Record<string, ModelOption[]>

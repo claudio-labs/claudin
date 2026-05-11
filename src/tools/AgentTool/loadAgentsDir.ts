@@ -52,6 +52,8 @@ import {
   initializeFromSnapshot,
 } from './agentMemorySnapshot.js'
 import { getBuiltInAgents } from './builtInAgents.js'
+import { applyBuiltInModelOverrides } from './builtInModelOverrides.js'
+import { applyProjectAgentOverrides } from './projectAgentOverrides.js'
 
 // Type for MCP server specification in agent definitions
 // Can be either a reference to an existing server by name, or an inline definition as { [name]: config }
@@ -76,12 +78,6 @@ const AgentJsonSchema = lazySchema(() =>
     tools: z.array(z.string()).optional(),
     disallowedTools: z.array(z.string()).optional(),
     prompt: z.string().min(1, 'Prompt cannot be empty'),
-    model: z
-      .string()
-      .trim()
-      .min(1, 'Model cannot be empty')
-      .transform(m => (m.toLowerCase() === 'inherit' ? 'inherit' : m))
-      .optional(),
     effort: z.union([z.enum(EFFORT_LEVELS), z.number().int()]).optional(),
     permissionMode: z.enum(PERMISSION_MODES).optional(),
     mcpServers: z.array(AgentMcpServerSpecSchema()).optional(),
@@ -290,11 +286,13 @@ async function initializeAgentMemorySnapshots(
   )
 }
 
+export { applyBuiltInModelOverrides }
+
 export const getAgentDefinitionsWithOverrides = memoize(
   async (cwd: string): Promise<AgentDefinitionsResult> => {
     // Simple mode: skip custom agents, only return built-ins
     if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
-      const builtInAgents = getBuiltInAgents()
+      const builtInAgents = applyBuiltInModelOverrides(getBuiltInAgents())
       return {
         activeAgents: builtInAgents,
         allAgents: builtInAgents,
@@ -351,13 +349,13 @@ export const getAgentDefinitionsWithOverrides = memoize(
       }
       const pluginAgents = await pluginAgentsPromise
 
-      const builtInAgents = getBuiltInAgents()
+      const builtInAgents = applyBuiltInModelOverrides(getBuiltInAgents())
 
-      const allAgentsList: AgentDefinition[] = [
+      const allAgentsList: AgentDefinition[] = applyProjectAgentOverrides([
         ...builtInAgents,
         ...pluginAgents,
         ...customAgents,
-      ]
+      ])
 
       const activeAgents = getActiveAgentsFromList(allAgentsList)
 
@@ -379,7 +377,7 @@ export const getAgentDefinitionsWithOverrides = memoize(
       logForDebugging(`Error loading agent definitions: ${errorMessage}`)
       logError(error)
       // Even on error, return the built-in agents
-      const builtInAgents = getBuiltInAgents()
+      const builtInAgents = applyBuiltInModelOverrides(getBuiltInAgents())
       return {
         activeAgents: builtInAgents,
         allAgents: builtInAgents,
@@ -484,7 +482,6 @@ export function parseAgentFromJson(
         return systemPrompt
       },
       source,
-      ...(parsed.model ? { model: parsed.model } : {}),
       ...(parsed.effort !== undefined ? { effort: parsed.effort } : {}),
       ...(parsed.permissionMode
         ? { permissionMode: parsed.permissionMode }
@@ -562,12 +559,6 @@ export function parseAgentFromMarkdown(
     whenToUse = whenToUse.replace(/\\n/g, '\n')
 
     const color = frontmatter['color'] as AgentColorName | undefined
-    const modelRaw = frontmatter['model']
-    let model: string | undefined
-    if (typeof modelRaw === 'string' && modelRaw.trim().length > 0) {
-      const trimmed = modelRaw.trim()
-      model = trimmed.toLowerCase() === 'inherit' ? 'inherit' : trimmed
-    }
 
     // Parse background flag
     const backgroundRaw = frontmatter['background']
@@ -731,7 +722,6 @@ export function parseAgentFromMarkdown(
       ...(color && typeof color === 'string' && AGENT_COLORS.includes(color)
         ? { color }
         : {}),
-      ...(model !== undefined ? { model } : {}),
       ...(parsedEffort !== undefined ? { effort: parsedEffort } : {}),
       ...(isValidPermissionMode
         ? { permissionMode: permissionModeRaw as PermissionMode }

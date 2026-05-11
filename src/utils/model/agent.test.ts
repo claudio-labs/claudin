@@ -259,3 +259,110 @@ describe('getAgentModel provider-aware fallback', () => {
     })
   })
 })
+
+describe('getAgentModelOptions picker', () => {
+  afterEach(() => {
+    mock.restore()
+  })
+
+  test('falls back to Claude aliases + inherit when no active profile', async () => {
+    mock.module('../config.js', () => ({
+      getGlobalConfig: () => ({}),
+    }))
+    mock.module('../providerProfiles.js', () => ({
+      getActiveProviderProfile: () => undefined,
+      getProfileModelOptions: () => [],
+    }))
+
+    const { getAgentModelOptions } = await import('./agent.js')
+    const opts = getAgentModelOptions()
+    const values = opts.map(o => o.value)
+    expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
+    expect(opts[0].label).toBe('Inherit from parent (default)')
+  })
+
+  test('falls back when profile has no model list', async () => {
+    mock.module('../config.js', () => ({
+      getGlobalConfig: () => ({}),
+    }))
+    mock.module('../providerProfiles.js', () => ({
+      getActiveProviderProfile: () => ({ id: 'p', name: 'P', model: '' }),
+      getProfileModelOptions: () => [],
+    }))
+
+    const { getAgentModelOptions } = await import('./agent.js')
+    const values = getAgentModelOptions().map(o => o.value)
+    expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
+  })
+
+  test('returns inherit + profile models when profile has a model list', async () => {
+    const profile = { id: 'p', name: 'DeepSeek', model: 'deepseek-chat,deepseek-r1' }
+    mock.module('../config.js', () => ({
+      getGlobalConfig: () => ({}),
+    }))
+    mock.module('../providerProfiles.js', () => ({
+      getActiveProviderProfile: () => profile,
+      getProfileModelOptions: () => [
+        { value: 'deepseek-chat', label: 'deepseek-chat', description: 'Provider: DeepSeek' },
+        { value: 'deepseek-r1', label: 'deepseek-r1', description: 'Provider: DeepSeek' },
+      ],
+    }))
+
+    const { getAgentModelOptions } = await import('./agent.js')
+    const opts = getAgentModelOptions()
+    expect(opts.map(o => o.value)).toEqual(['inherit', 'deepseek-chat', 'deepseek-r1'])
+    expect(opts[1].description).toBe('Provider: DeepSeek')
+  })
+
+  test('falls back to aliases when getActiveProviderProfile throws', async () => {
+    mock.module('../config.js', () => ({
+      getGlobalConfig: () => ({}),
+    }))
+    mock.module('../providerProfiles.js', () => ({
+      getActiveProviderProfile: () => {
+        throw new Error('profile lookup failed')
+      },
+      getProfileModelOptions: () => [],
+    }))
+
+    const { getAgentModelOptions } = await import('./agent.js')
+    const values = getAgentModelOptions().map(o => o.value)
+    expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
+  })
+})
+
+describe('getAgentModelDisplay text', () => {
+  test('omitted model → Inherit from parent (default)', async () => {
+    const { getAgentModelDisplay } = await import('./agent.js')
+    expect(getAgentModelDisplay(undefined)).toBe('Inherit from parent (default)')
+  })
+
+  test('inherit → Inherit from parent', async () => {
+    const { getAgentModelDisplay } = await import('./agent.js')
+    expect(getAgentModelDisplay('inherit')).toBe('Inherit from parent')
+  })
+
+  test('capitalizes other values', async () => {
+    const { getAgentModelDisplay } = await import('./agent.js')
+    expect(getAgentModelDisplay('haiku')).toBe('Haiku')
+  })
+})
+
+describe('getAgentModel with provider-specific models', () => {
+  afterEach(() => {
+    mock.restore()
+  })
+
+  test('does not inherit-shortcut a provider-specific model on non-Claude-native provider', async () => {
+    mock.module('./providers.js', () => ({
+      getAPIProvider: () => 'openai',
+      isFirstPartyAnthropicBaseUrl: () => false,
+    }))
+
+    const { getAgentModel } = await import('./agent.js')
+    const result = getAgentModel('gpt-5.1', 'gpt-4o-mini', undefined, 'default')
+
+    // Should NOT inherit parent — provider-specific string passes through.
+    expect(result).toBe('gpt-5.1')
+  })
+})

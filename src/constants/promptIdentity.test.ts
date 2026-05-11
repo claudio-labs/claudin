@@ -18,7 +18,6 @@ import { CLAUDE_CODE_GUIDE_AGENT } from '../tools/AgentTool/built-in/claudeCodeG
 import { GENERAL_PURPOSE_AGENT } from '../tools/AgentTool/built-in/generalPurposeAgent.js'
 import { EXPLORE_AGENT } from '../tools/AgentTool/built-in/exploreAgent.js'
 import { PLAN_AGENT } from '../tools/AgentTool/built-in/planAgent.js'
-import { STATUSLINE_SETUP_AGENT } from '../tools/AgentTool/built-in/statuslineSetup.js'
 
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 
@@ -88,12 +87,6 @@ test('built-in agent prompts describe Claudio instead of Claude Code', () => {
   })
   expect(planPrompt).toContain('Claudio')
   expect(planPrompt).not.toContain('Claude Code')
-
-  const statuslinePrompt = STATUSLINE_SETUP_AGENT.getSystemPrompt({
-    toolUseContext: { options: {} as never },
-  })
-  expect(statuslinePrompt).toContain('Claudio')
-  expect(statuslinePrompt).not.toContain('Claude Code')
 
   const guidePrompt = CLAUDE_CODE_GUIDE_AGENT.getSystemPrompt({
     toolUseContext: {

@@ -1,5 +1,11 @@
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { capitalize } from '../stringUtils.js'
+import { getGlobalConfig } from '../config.js'
+import { logError } from '../log.js'
+import {
+  getActiveProviderProfile,
+  getProfileModelOptions,
+} from '../providerProfiles.js'
 import { MODEL_ALIASES, type ModelAlias } from './aliases.js'
 import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from './bedrock.js'
 import {
@@ -13,7 +19,7 @@ export const AGENT_MODEL_OPTIONS = [...MODEL_ALIASES, 'inherit'] as const
 export type AgentModelAlias = (typeof AGENT_MODEL_OPTIONS)[number]
 
 export type AgentModelOption = {
-  value: AgentModelAlias
+  value: string
   label: string
   description: string
 }
@@ -165,10 +171,40 @@ export function getAgentModelDisplay(model: string | undefined): string {
 }
 
 /**
- * Get available model options for agents
+ * Get available model options for agents.
+ *
+ * When an active provider profile has its own model list, return
+ * `inherit` followed by those models. Otherwise fall back to the
+ * built-in Claude aliases (sonnet/opus/haiku) so users on Claude-native
+ * providers without an explicit model list still see meaningful choices.
  */
 export function getAgentModelOptions(): AgentModelOption[] {
+  const inherit: AgentModelOption = {
+    value: 'inherit',
+    label: 'Inherit from parent (default)',
+    description: 'Use the same model as the agent that spawned this one',
+  }
+
+  try {
+    const profile = getActiveProviderProfile(getGlobalConfig())
+    if (profile) {
+      const profileOptions: AgentModelOption[] = getProfileModelOptions(profile)
+        .filter(
+          (o): o is AgentModelOption =>
+            typeof o.value === 'string' && o.value.length > 0,
+        )
+        .map(({ value, label, description }) => ({ value, label, description }))
+      if (profileOptions.length > 0) {
+        return [inherit, ...profileOptions]
+      }
+    }
+  } catch (e) {
+    // Fall through to alias fallback; surface the error for debugging.
+    logError(e)
+  }
+
   return [
+    inherit,
     {
       value: 'sonnet',
       label: 'Sonnet',
@@ -183,11 +219,6 @@ export function getAgentModelOptions(): AgentModelOption[] {
       value: 'haiku',
       label: 'Haiku',
       description: 'Fast and efficient for simple tasks',
-    },
-    {
-      value: 'inherit',
-      label: 'Inherit from parent',
-      description: 'Use the same model as the main conversation',
     },
   ]
 }

@@ -35,7 +35,7 @@ export function ModelSelector(t0) {
     t1 = $[1];
   }
   const modelOptions = t1;
-  const defaultModel = initialModel ?? "sonnet";
+  const defaultModel = initialModel ?? "inherit";
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = <Box marginBottom={1}><Text dimColor={true}>Model determines the agent's reasoning capabilities and speed.</Text></Box>;
