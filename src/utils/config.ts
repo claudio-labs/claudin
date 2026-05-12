@@ -104,6 +104,25 @@ export type ProjectConfig = {
       costUSD: number
     }
   >
+  // Cumulative project totals across all completed sessions in this project.
+  // Excludes the in-progress session — that lives in `last*` until the next
+  // session boundary, at which point it is folded into these counters.
+  cumulativeCost?: number
+  cumulativeAPIDuration?: number
+  cumulativeDuration?: number
+  cumulativeLinesAdded?: number
+  cumulativeLinesRemoved?: number
+  cumulativeModelUsage?: Record<
+    string,
+    {
+      inputTokens: number
+      outputTokens: number
+      cacheReadInputTokens: number
+      cacheCreationInputTokens: number
+      webSearchRequests: number
+      costUSD: number
+    }
+  >
   lastSessionMetrics?: Record<string, number>
   exampleFiles?: string[]
   exampleFilesGeneratedAt?: number

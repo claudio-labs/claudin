@@ -1,8 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { extraUsage as extraUsageCommand } from 'src/commands/extra-usage/index.js';
-import { formatCost } from 'src/cost-tracker.js';
+import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalLinesAdded, getTotalLinesRemoved, hasUnknownModelCost } from 'src/cost-tracker.js';
+import { getCanonicalName } from 'src/utils/model/model.js';
+import { formatDuration, formatNumber } from 'src/utils/format.js';
 import { getSubscriptionType } from 'src/utils/auth.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text } from '../../ink.js';
@@ -267,15 +269,139 @@ function AnthropicUsage(): React.ReactNode {
       </Text>
     </Box>;
 }
+type ModelUsageLite = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  webSearchRequests: number;
+  costUSD: number;
+};
+
+function CostStatsBlock(props: {
+  title: string;
+  totalCost: number;
+  apiDuration: number;
+  wallDuration: number;
+  linesAdded: number;
+  linesRemoved: number;
+  modelUsage: Record<string, ModelUsageLite>;
+  unknownCost?: boolean;
+}): React.ReactNode {
+  const { title, totalCost, apiDuration, wallDuration, linesAdded, linesRemoved, modelUsage, unknownCost } = props;
+  const modelEntries = Object.entries(modelUsage);
+  if (totalCost === 0 && modelEntries.length === 0 && linesAdded === 0 && linesRemoved === 0) {
+    return null;
+  }
+
+  // Mirror formatModelUsage: accumulate per canonical short name so duplicate
+  // model IDs (e.g. dated variants) collapse into a single line.
+  const usageByShortName: Record<string, ModelUsageLite> = {};
+  for (const [model, usage] of modelEntries) {
+    const shortName = getCanonicalName(model);
+    if (!usageByShortName[shortName]) {
+      usageByShortName[shortName] = {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+        webSearchRequests: 0,
+        costUSD: 0
+      };
+    }
+    const acc = usageByShortName[shortName];
+    acc.inputTokens += usage.inputTokens;
+    acc.outputTokens += usage.outputTokens;
+    acc.cacheReadInputTokens += usage.cacheReadInputTokens;
+    acc.cacheCreationInputTokens += usage.cacheCreationInputTokens;
+    acc.webSearchRequests += usage.webSearchRequests;
+    acc.costUSD += usage.costUSD;
+  }
+  const aggregated = Object.entries(usageByShortName);
+
+  return <Box flexDirection="column">
+      <Text bold>{title}</Text>
+      <Text>
+        <Text>Total cost:            </Text>
+        <Text>{formatCost(totalCost)}</Text>
+        {unknownCost && <Text dimColor> (costs may be inaccurate due to usage of unknown models)</Text>}
+      </Text>
+      <Text>Total duration (API):  {formatDuration(apiDuration)}</Text>
+      <Text>Total duration (wall): {formatDuration(wallDuration)}</Text>
+      <Text>
+        Total code changes:    {linesAdded} {linesAdded === 1 ? 'line' : 'lines'} added, {linesRemoved} {linesRemoved === 1 ? 'line' : 'lines'} removed
+      </Text>
+      {aggregated.length > 0 && <Text>Usage by model:</Text>}
+      {aggregated.map(([shortName, usage]) => {
+        let line = `${formatNumber(usage.inputTokens)} input, ${formatNumber(usage.outputTokens)} output`;
+        if (usage.cacheReadInputTokens > 0) {
+          line += `, ${formatNumber(usage.cacheReadInputTokens)} cache read`;
+        }
+        if (usage.cacheCreationInputTokens > 0) {
+          line += `, ${formatNumber(usage.cacheCreationInputTokens)} cache write`;
+        }
+        if (usage.webSearchRequests > 0) {
+          line += `, ${formatNumber(usage.webSearchRequests)} web search`;
+        }
+        line += ` (${formatCost(usage.costUSD)})`;
+        return <Text key={shortName}>{`${shortName}:`.padStart(21)} {line}</Text>;
+      })}
+    </Box>;
+}
+
+export function SessionCostStats(): React.ReactNode {
+  const [, tick] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const interval = setInterval(() => tick(), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const sessionCost = getTotalCost();
+  const sessionModelUsage = getModelUsage();
+  const sessionLinesAdded = getTotalLinesAdded();
+  const sessionLinesRemoved = getTotalLinesRemoved();
+  const hasSessionData = sessionCost !== 0 || Object.keys(sessionModelUsage).length > 0 || sessionLinesAdded !== 0 || sessionLinesRemoved !== 0;
+
+  const projectTotals = getProjectTotals();
+  const hasProjectData = projectTotals.totalCost !== 0 || Object.keys(projectTotals.modelUsage).length > 0 || projectTotals.totalLinesAdded !== 0 || projectTotals.totalLinesRemoved !== 0;
+
+  if (!hasSessionData && !hasProjectData) {
+    return null;
+  }
+
+  const unknownCost = hasUnknownModelCost();
+
+  return <Box flexDirection="column" gap={1}>
+      {hasSessionData && <CostStatsBlock
+        title="Session"
+        totalCost={sessionCost}
+        apiDuration={getTotalAPIDuration()}
+        wallDuration={getTotalDuration()}
+        linesAdded={sessionLinesAdded}
+        linesRemoved={sessionLinesRemoved}
+        modelUsage={sessionModelUsage}
+        unknownCost={unknownCost}
+      />}
+      {hasProjectData && <CostStatsBlock
+        title="Project total (all sessions)"
+        totalCost={projectTotals.totalCost}
+        apiDuration={projectTotals.totalAPIDuration}
+        wallDuration={projectTotals.totalDuration}
+        linesAdded={projectTotals.totalLinesAdded}
+        linesRemoved={projectTotals.totalLinesRemoved}
+        modelUsage={projectTotals.modelUsage}
+        unknownCost={unknownCost}
+      />}
+    </Box>;
+}
 export function Usage(): React.ReactNode {
   const provider = getAPIProvider();
+  let providerView: React.ReactNode;
   if (provider === 'codex') {
-    return <CodexUsage />;
-  }
-  if (provider === 'minimax') {
-    return <MiniMaxUsage />;
-  }
-  if (provider !== 'firstParty') {
+    providerView = <CodexUsage />;
+  } else if (provider === 'minimax') {
+    providerView = <MiniMaxUsage />;
+  } else if (provider !== 'firstParty') {
     const providerLabel = {
       openai: 'this OpenAI-compatible provider',
       gemini: 'Google Gemini',
@@ -286,9 +412,14 @@ export function Usage(): React.ReactNode {
       vertex: 'Google Vertex AI',
       foundry: 'Microsoft Foundry'
     }[provider] ?? 'this provider';
-    return <UnsupportedUsage providerLabel={providerLabel} />;
+    providerView = <UnsupportedUsage providerLabel={providerLabel} />;
+  } else {
+    providerView = <AnthropicUsage />;
   }
-  return <AnthropicUsage />;
+  return <Box flexDirection="column" gap={1} width="100%">
+      <SessionCostStats />
+      {providerView}
+    </Box>;
 }
 type ExtraUsageSectionProps = {
   extraUsage: ExtraUsage;

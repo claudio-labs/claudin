@@ -208,37 +208,211 @@ export function recomputeCostStateFromMessages(
  * Call this before switching sessions to avoid losing accumulated costs.
  */
 export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
-  saveCurrentProjectConfig(current => ({
-    ...current,
-    lastCost: getTotalCostUSD(),
-    lastAPIDuration: getTotalAPIDuration(),
-    lastAPIDurationWithoutRetries: getTotalAPIDurationWithoutRetries(),
-    lastToolDuration: getTotalToolDuration(),
-    lastDuration: getTotalDuration(),
-    lastLinesAdded: getTotalLinesAdded(),
-    lastLinesRemoved: getTotalLinesRemoved(),
-    lastTotalInputTokens: getTotalInputTokens(),
-    lastTotalOutputTokens: getTotalOutputTokens(),
-    lastTotalCacheCreationInputTokens: getTotalCacheCreationInputTokens(),
-    lastTotalCacheReadInputTokens: getTotalCacheReadInputTokens(),
-    lastTotalWebSearchRequests: getTotalWebSearchRequests(),
-    lastFpsAverage: fpsMetrics?.averageFps,
-    lastFpsLow1Pct: fpsMetrics?.low1PctFps,
-    lastModelUsage: Object.fromEntries(
-      Object.entries(getModelUsage()).map(([model, usage]) => [
-        model,
-        {
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          cacheReadInputTokens: usage.cacheReadInputTokens,
-          cacheCreationInputTokens: usage.cacheCreationInputTokens,
-          webSearchRequests: usage.webSearchRequests,
-          costUSD: usage.costUSD,
-        },
-      ]),
-    ),
-    lastSessionId: getSessionId(),
-  }))
+  saveCurrentProjectConfig(current => {
+    const currentSessionId = getSessionId()
+    // On a session boundary, the previously-saved `last*` belongs to a session
+    // that is now closed — fold it into the cumulative project totals before
+    // overwriting it with the current session's data.
+    const isNewSession = current.lastSessionId !== currentSessionId
+    const baseCumulativeCost = current.cumulativeCost ?? 0
+    const baseCumulativeAPIDuration = current.cumulativeAPIDuration ?? 0
+    const baseCumulativeDuration = current.cumulativeDuration ?? 0
+    const baseCumulativeLinesAdded = current.cumulativeLinesAdded ?? 0
+    const baseCumulativeLinesRemoved = current.cumulativeLinesRemoved ?? 0
+    const baseCumulativeModelUsage = current.cumulativeModelUsage ?? {}
+
+    const cumulativeCost = isNewSession
+      ? baseCumulativeCost + (current.lastCost ?? 0)
+      : baseCumulativeCost
+    const cumulativeAPIDuration = isNewSession
+      ? baseCumulativeAPIDuration + (current.lastAPIDuration ?? 0)
+      : baseCumulativeAPIDuration
+    const cumulativeDuration = isNewSession
+      ? baseCumulativeDuration + (current.lastDuration ?? 0)
+      : baseCumulativeDuration
+    const cumulativeLinesAdded = isNewSession
+      ? baseCumulativeLinesAdded + (current.lastLinesAdded ?? 0)
+      : baseCumulativeLinesAdded
+    const cumulativeLinesRemoved = isNewSession
+      ? baseCumulativeLinesRemoved + (current.lastLinesRemoved ?? 0)
+      : baseCumulativeLinesRemoved
+
+    let cumulativeModelUsage = baseCumulativeModelUsage
+    if (isNewSession && current.lastModelUsage) {
+      cumulativeModelUsage = { ...baseCumulativeModelUsage }
+      for (const [model, usage] of Object.entries(current.lastModelUsage)) {
+        const prev = cumulativeModelUsage[model]
+        cumulativeModelUsage[model] = prev
+          ? {
+              inputTokens: prev.inputTokens + usage.inputTokens,
+              outputTokens: prev.outputTokens + usage.outputTokens,
+              cacheReadInputTokens:
+                prev.cacheReadInputTokens + usage.cacheReadInputTokens,
+              cacheCreationInputTokens:
+                prev.cacheCreationInputTokens + usage.cacheCreationInputTokens,
+              webSearchRequests:
+                prev.webSearchRequests + usage.webSearchRequests,
+              costUSD: prev.costUSD + usage.costUSD,
+            }
+          : { ...usage }
+      }
+    }
+
+    return {
+      ...current,
+      lastCost: getTotalCostUSD(),
+      lastAPIDuration: getTotalAPIDuration(),
+      lastAPIDurationWithoutRetries: getTotalAPIDurationWithoutRetries(),
+      lastToolDuration: getTotalToolDuration(),
+      lastDuration: getTotalDuration(),
+      lastLinesAdded: getTotalLinesAdded(),
+      lastLinesRemoved: getTotalLinesRemoved(),
+      lastTotalInputTokens: getTotalInputTokens(),
+      lastTotalOutputTokens: getTotalOutputTokens(),
+      lastTotalCacheCreationInputTokens: getTotalCacheCreationInputTokens(),
+      lastTotalCacheReadInputTokens: getTotalCacheReadInputTokens(),
+      lastTotalWebSearchRequests: getTotalWebSearchRequests(),
+      lastFpsAverage: fpsMetrics?.averageFps,
+      lastFpsLow1Pct: fpsMetrics?.low1PctFps,
+      lastModelUsage: Object.fromEntries(
+        Object.entries(getModelUsage()).map(([model, usage]) => [
+          model,
+          {
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            cacheReadInputTokens: usage.cacheReadInputTokens,
+            cacheCreationInputTokens: usage.cacheCreationInputTokens,
+            webSearchRequests: usage.webSearchRequests,
+            costUSD: usage.costUSD,
+          },
+        ]),
+      ),
+      lastSessionId: currentSessionId,
+      cumulativeCost,
+      cumulativeAPIDuration,
+      cumulativeDuration,
+      cumulativeLinesAdded,
+      cumulativeLinesRemoved,
+      cumulativeModelUsage,
+    }
+  })
+}
+
+/**
+ * Project-level cumulative totals: completed sessions + current in-memory
+ * session. The `cumulative*` fields on disk exclude the active session
+ * (they are advanced at the session boundary), so we sum the in-memory
+ * counters into them here for live display.
+ */
+export type ProjectTotals = {
+  totalCost: number
+  totalAPIDuration: number
+  totalDuration: number
+  totalLinesAdded: number
+  totalLinesRemoved: number
+  modelUsage: Record<
+    string,
+    {
+      inputTokens: number
+      outputTokens: number
+      cacheReadInputTokens: number
+      cacheCreationInputTokens: number
+      webSearchRequests: number
+      costUSD: number
+    }
+  >
+}
+
+export function getProjectTotals(): ProjectTotals {
+  const config = getCurrentProjectConfig()
+  const cumulativeModelUsage = config.cumulativeModelUsage ?? {}
+  const liveModelUsage = getModelUsage()
+
+  // The `last*` slot on disk holds the most recent completed session that has
+  // not yet been folded into `cumulative*` (the fold happens on the next save
+  // when the session ID changes). For a live read, fold it in here when the
+  // saved session is different from the current one — otherwise the user sees
+  // the previous session's cost stuck at "Session" $0 and "Project total" $0
+  // until the REPL exits.
+  const currentSessionId = getSessionId()
+  const includeLastAsPending =
+    config.lastSessionId !== undefined &&
+    config.lastSessionId !== currentSessionId
+
+  const merged: ProjectTotals['modelUsage'] = {}
+  const addUsage = (
+    model: string,
+    usage: {
+      inputTokens: number
+      outputTokens: number
+      cacheReadInputTokens: number
+      cacheCreationInputTokens: number
+      webSearchRequests: number
+      costUSD: number
+    },
+  ): void => {
+    const prev = merged[model]
+    merged[model] = prev
+      ? {
+          inputTokens: prev.inputTokens + usage.inputTokens,
+          outputTokens: prev.outputTokens + usage.outputTokens,
+          cacheReadInputTokens:
+            prev.cacheReadInputTokens + usage.cacheReadInputTokens,
+          cacheCreationInputTokens:
+            prev.cacheCreationInputTokens + usage.cacheCreationInputTokens,
+          webSearchRequests: prev.webSearchRequests + usage.webSearchRequests,
+          costUSD: prev.costUSD + usage.costUSD,
+        }
+      : { ...usage }
+  }
+
+  for (const [model, usage] of Object.entries(cumulativeModelUsage)) {
+    addUsage(model, usage)
+  }
+  if (includeLastAsPending && config.lastModelUsage) {
+    for (const [model, usage] of Object.entries(config.lastModelUsage)) {
+      addUsage(model, usage)
+    }
+  }
+  for (const [model, usage] of Object.entries(liveModelUsage)) {
+    addUsage(model, usage)
+  }
+
+  const pendingCost = includeLastAsPending ? (config.lastCost ?? 0) : 0
+  const pendingAPIDuration = includeLastAsPending
+    ? (config.lastAPIDuration ?? 0)
+    : 0
+  const pendingDuration = includeLastAsPending
+    ? (config.lastDuration ?? 0)
+    : 0
+  const pendingLinesAdded = includeLastAsPending
+    ? (config.lastLinesAdded ?? 0)
+    : 0
+  const pendingLinesRemoved = includeLastAsPending
+    ? (config.lastLinesRemoved ?? 0)
+    : 0
+
+  return {
+    totalCost:
+      (config.cumulativeCost ?? 0) + pendingCost + getTotalCostUSD(),
+    totalAPIDuration:
+      (config.cumulativeAPIDuration ?? 0) +
+      pendingAPIDuration +
+      getTotalAPIDuration(),
+    totalDuration:
+      (config.cumulativeDuration ?? 0) +
+      pendingDuration +
+      getTotalDuration(),
+    totalLinesAdded:
+      (config.cumulativeLinesAdded ?? 0) +
+      pendingLinesAdded +
+      getTotalLinesAdded(),
+    totalLinesRemoved:
+      (config.cumulativeLinesRemoved ?? 0) +
+      pendingLinesRemoved +
+      getTotalLinesRemoved(),
+    modelUsage: merged,
+  }
 }
 
 function formatCost(cost: number, maxDecimalPlaces: number = 4): string {
