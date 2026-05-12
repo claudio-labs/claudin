@@ -25,7 +25,7 @@ export type SuggestionType =
   | 'slack-channel'
   | 'none'
 
-export const OVERLAY_MAX_ITEMS = 5
+export const OVERLAY_MAX_ITEMS = 10
 
 const SELECTED_PREFIX = `${figures.pointer} `
 const UNSELECTED_PREFIX = '  '
@@ -172,7 +172,7 @@ export function PromptInputFooterSuggestions({
   overlay,
 }: Props): ReactNode {
   const { rows } = useTerminalSize()
-  const maxVisibleItems = overlay ? OVERLAY_MAX_ITEMS : Math.min(6, Math.max(1, rows - 3))
+  const maxVisibleItems = overlay ? OVERLAY_MAX_ITEMS : Math.min(10, Math.max(1, rows - 3))
 
   if (suggestions.length === 0) {
     return null

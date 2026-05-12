@@ -28,6 +28,7 @@ import { sendNotification } from '../services/notifier.js';
 import { startPreventSleep, stopPreventSleep } from '../services/preventSleep.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from '../ink/terminal.js';
+import instances from '../ink/instances.js';
 import { createFileStateCacheWithSizeLimit, mergeFileStateCaches, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js';
 import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, getTurnHookDurationMs, getTurnHookCount, resetTurnHookDuration, getTurnToolDurationMs, getTurnToolCount, resetTurnToolDuration, getTurnClassifierDurationMs, getTurnClassifierCount, resetTurnClassifierDuration } from '../bootstrap/state.js';
 import { asSessionId, asAgentId } from '../types/ids.js';
@@ -2096,6 +2097,20 @@ export function REPL({
     if (was !== now) repinScroll();
     prevDialogRef.current = focusedInputDialog;
   }, [focusedInputDialog, repinScroll]);
+
+  // When the permission dialog mounts/unmounts (or suppression flips it on/off
+  // mid-typing), the bottom region's row count changes. Ink's blit fast path
+  // can copy stale dialog cells into rows the new layout no longer covers,
+  // leaving typed characters visually mixed with the dialog box until Ctrl+L.
+  // invalidatePrevFrame() forces the next frame to do a full-damage diff.
+  const prevDialogPresenceRef = useRef<boolean>(!!focusedInputDialog || !!hasSuppressedDialogs);
+  useLayoutEffect(() => {
+    const next = !!focusedInputDialog || !!hasSuppressedDialogs;
+    if (next !== prevDialogPresenceRef.current) {
+      instances.get(process.stdout)?.invalidatePrevFrame();
+      prevDialogPresenceRef.current = next;
+    }
+  }, [focusedInputDialog, hasSuppressedDialogs]);
   function onCancel() {
     if (focusedInputDialog === 'elicitation') {
       // Elicitation dialog handles its own Escape, and closing it shouldn't affect any loading state.
