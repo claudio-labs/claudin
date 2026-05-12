@@ -13,7 +13,7 @@ import { tryGetActiveProvider } from '../../services/api/activeProvider.js';
 import { getGlobalConfig, getAutoUpdaterDisabledReason, formatAutoUpdaterDisabledReason, getRemoteControlAtStartup } from '../../utils/config.js';
 import chalk from 'chalk';
 import { permissionModeTitle, permissionModeFromString, toExternalPermissionMode, isExternalPermissionMode, EXTERNAL_PERMISSION_MODES, PERMISSION_MODES, type ExternalPermissionMode, type PermissionMode } from '../../utils/permissions/PermissionMode.js';
-import { getAutoModeEnabledState, hasAutoModeOptInAnySource, transitionPlanAutoMode } from '../../utils/permissions/permissionSetup.js';
+import { transitionPlanAutoMode } from '../../utils/permissions/permissionSetup.js';
 import { logError } from '../../utils/log.js';
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
 import { isBridgeEnabled } from '../../bridge/bridgeEnabled.js';
@@ -123,11 +123,7 @@ export function Config({
   const thinkingEnabled = useAppState(s_1 => s_1.thinkingEnabled);
   const isFastMode = useAppState(s_2 => isFastModeEnabled() ? s_2.fastMode : false);
   const promptSuggestionEnabled = useAppState(s_3 => s_3.promptSuggestionEnabled);
-  // Show auto in the default-mode dropdown when the user has opted in OR the
-  // config is fully 'enabled' — even if currently circuit-broken ('disabled'),
-  // an opted-in user should still see it in settings (it's a temporary state).
-  const showAutoInDefaultModePicker = feature('TRANSCRIPT_CLASSIFIER') ? hasAutoModeOptInAnySource() || getAutoModeEnabledState() === 'enabled' : false;
-  // Chat/Transcript view picker is visible to entitled users (pass the GB
+// Chat/Transcript view picker is visible to entitled users (pass the GB
   // gate) even if they haven't opted in this session — it IS the persistent
   // opt-in. 'chat' written here is read at next startup by main.tsx which
   // sets userMsgOptIn if still entitled.
@@ -554,7 +550,7 @@ export function Config({
       const priorityOrder: PermissionMode[] = ['default', 'plan'];
       const allModes: readonly PermissionMode[] = feature('TRANSCRIPT_CLASSIFIER') ? PERMISSION_MODES : EXTERNAL_PERMISSION_MODES;
       const excluded: PermissionMode[] = ['bypassPermissions'];
-      if (feature('TRANSCRIPT_CLASSIFIER') && !showAutoInDefaultModePicker) {
+      if (!feature('TRANSCRIPT_CLASSIFIER')) {
         excluded.push('auto');
       }
       return [...priorityOrder, ...allModes.filter(m => !priorityOrder.includes(m) && !excluded.includes(m))];
@@ -596,7 +592,7 @@ export function Config({
         value: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }
-  }, ...(feature('TRANSCRIPT_CLASSIFIER') && showAutoInDefaultModePicker ? [{
+  }, ...(feature('TRANSCRIPT_CLASSIFIER') ? [{
     id: 'useAutoModeDuringPlan',
     label: 'Use auto mode during plan',
     value: (settingsData as {

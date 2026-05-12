@@ -95,10 +95,9 @@ const PERMISSION_MODE_CONFIG: Partial<
  * auto is internal-only and excluded from external modes.
  */
 export function isExternalPermissionMode(
-  _mode: PermissionMode,
-): _mode is ExternalPermissionMode {
-  // External users can't have auto, so always true.
-  return true
+  mode: PermissionMode,
+): mode is ExternalPermissionMode {
+  return mode !== 'auto'
 }
 
 function getModeConfig(mode: PermissionMode): PermissionModeConfig {
