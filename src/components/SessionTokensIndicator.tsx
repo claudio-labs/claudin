@@ -1,6 +1,8 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
+  formatCost,
+  getTotalCost,
   getTotalInputTokens,
   getTotalOutputTokens,
 } from '../cost-tracker.js';
@@ -10,6 +12,9 @@ import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
 import { getSessionCacheMetrics } from '../services/api/cacheStatsTracker.js';
 import { formatTokens } from '../utils/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
+import { getTheme } from '../utils/theme.js';
+import { getCurrentUsage } from '../utils/tokens.js';
+import type { Message } from '../types/message.js';
 
 type Snapshot = {
   input: number;
@@ -17,6 +22,7 @@ type Snapshot = {
   cacheRead: number;
   cacheCreation: number;
   supportsCache: boolean;
+  cost: number;
 };
 
 const POLL_INTERVAL_MS = 2000;
@@ -75,6 +81,7 @@ export function readSnapshot(): Snapshot {
     cacheRead: cache.read,
     cacheCreation: cache.created,
     supportsCache: activeProviderSupportsCache(),
+    cost: getTotalCost(),
   };
 }
 
@@ -84,7 +91,8 @@ function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
     a.output === b.output &&
     a.cacheRead === b.cacheRead &&
     a.cacheCreation === b.cacheCreation &&
-    a.supportsCache === b.supportsCache
+    a.supportsCache === b.supportsCache &&
+    a.cost === b.cost
   );
 }
 
@@ -102,7 +110,7 @@ function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
  *
  * Polled every 2s; underlying state lives in cost-tracker (no event API).
  */
-export function SessionTokensIndicator(): React.ReactNode {
+export function SessionTokensIndicator({ messages }: { messages?: Message[] } = {}): React.ReactNode {
   const [snapshot, setSnapshot] = useState<Snapshot>(() => readSnapshot());
 
   useEffect(() => {
@@ -119,24 +127,40 @@ export function SessionTokensIndicator(): React.ReactNode {
     snapshot.input + snapshot.output + snapshot.cacheRead + snapshot.cacheCreation;
   if (grandTotal === 0) return null;
 
+  const usage = messages ? getCurrentUsage(messages) : null;
+  const contextTokens = usage
+    ? usage.input_tokens +
+      usage.output_tokens +
+      usage.cache_creation_input_tokens +
+      usage.cache_read_input_tokens
+    : 0;
+
   const parts: string[] = [];
+  if (contextTokens > 0) {
+    parts.push(`Context: ${formatTokens(contextTokens)}`);
+  }
   if (snapshot.supportsCache) {
     if (snapshot.cacheCreation > 0) {
-      parts.push(`${ICON_CREATED} ${formatTokens(snapshot.cacheCreation)} created`);
+      parts.push(`Cache Write: ${formatTokens(snapshot.cacheCreation)}`);
     }
     if (snapshot.cacheRead > 0) {
-      parts.push(`${ICON_CACHED} ${formatTokens(snapshot.cacheRead)} cached`);
+      parts.push(`Cache Read: ${formatTokens(snapshot.cacheRead)}`);
     }
   } else {
-    parts.push(`↑ ${formatTokens(snapshot.input)}  ↓ ${formatTokens(snapshot.output)}`);
+    parts.push(`Input: ${formatTokens(snapshot.input)}`);
+    parts.push(`Output: ${formatTokens(snapshot.output)}`);
   }
-  parts.push(`${ICON_TOTAL} ${formatTokens(grandTotal)} tokens`);
+
+  const costValue = snapshot.cost > 0 ? formatCost(snapshot.cost) : null;
+  const theme = getTheme();
 
   return (
     <Box>
       <Text dimColor wrap="truncate">
         {parts.join(' · ')}
+        {costValue ? ' │ Cost: ' : ''}
       </Text>
+      {costValue ? <Text color={theme.claude}>{costValue}</Text> : null}
     </Box>
   );
 }

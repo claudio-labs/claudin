@@ -32,7 +32,6 @@ import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { usePromptSuggestion } from '../../hooks/usePromptSuggestion.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { useTypeahead } from '../../hooks/useTypeahead.js';
-import type { BorderTextOptions } from '../../ink/render-border.js';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { useCwdBranchSegment } from '../../hooks/useCwdBranchSegment.js';
 import { Box, type ClickEvent, type Key, Text, useInput } from '../../ink.js';
@@ -102,6 +101,8 @@ import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
 import { getVisibleAgentTasks, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
 import { getEffortNotificationText } from '../EffortIndicator.js';
 import { getFastIconString } from '../FastIcon.js';
+import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
+import { ProviderModelIndicator } from '../ProviderModelIndicator.js';
 import { GlobalSearchDialog } from '../GlobalSearchDialog.js';
 import { HistorySearchDialog } from '../HistorySearchDialog.js';
 import { ModelPicker } from '../ModelPicker.js';
@@ -2265,6 +2266,8 @@ function PromptInput({
           <Text dimColor>Waiting for permission…</Text>
         </Box>}
       <PromptInputStashNotice hasStash={stashedPrompt !== undefined} />
+      <Box width="100%" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} borderDimColor />
+
       {swarmBanner ? <>
           <Text color={swarmBanner.bgColor}>
             {swarmBanner.text ? <>
@@ -2283,12 +2286,29 @@ function PromptInput({
             </Box>
           </Box>
           <Text color={swarmBanner.bgColor}>{'─'.repeat(columns)}</Text>
-        </> : <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderTop={false} borderBottom width="100%" paddingY={1} borderText={buildBorderText(showFastIcon ?? false, showFastIconHint, fastModeCooldown, cwdSegment, branchSegment, prSegment)}>
-          <PromptInputModeIndicator mode={mode} isLoading={isLoading} viewingAgentName={viewingAgentName} viewingAgentColor={viewingAgentColor} />
-          <Box flexGrow={1} flexShrink={1} onClick={handleInputClick}>
-            {textInputElement}
+        </> : <>
+          <Box flexDirection="row" alignItems="flex-start" justifyContent="flex-start" width="100%" paddingBottom={1}>
+            <PromptInputModeIndicator mode={mode} isLoading={isLoading} viewingAgentName={viewingAgentName} viewingAgentColor={viewingAgentColor} />
+            <Box flexGrow={1} flexShrink={1} onClick={handleInputClick}>
+              {textInputElement}
+            </Box>
           </Box>
-        </Box>}
+          {(() => {
+            const fastSeg = (showFastIcon ?? false)
+              ? showFastIconHint
+                ? ` ${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')} `
+                : ` ${getFastIconString(true, fastModeCooldown)} `
+              : '';
+            const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
+            return <Box width="100%" flexDirection="row" justifyContent="space-between">
+                <Box gap={2}>
+                  <ProviderModelIndicator />
+                  <SessionTokensIndicator messages={messages} />
+                </Box>
+                <Box>{bottomRight ? <Text>{bottomRight}</Text> : null}</Box>
+              </Box>;
+          })()}
+        </>}
       <PromptInputFooter apiKeyStatus={apiKeyStatus} debug={debug} exitMessage={exitMessage} vimMode={isVimModeEnabled() ? vimMode : undefined} mode={mode} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} suggestions={suggestions} selectedSuggestion={selectedSuggestion} maxColumnWidth={maxColumnWidth} toolPermissionContext={effectiveToolPermissionContext} helpOpen={helpOpen} suppressHint={input.length > 0} isLoading={isLoading} tasksSelected={tasksSelected} teamsSelected={teamsSelected} bridgeSelected={bridgeSelected} tmuxSelected={tmuxSelected} teammateFooterIndex={teammateFooterIndex} ideSelection={ideSelection} mcpClients={mcpClients} isPasting={isPasting} isInputWrapped={isInputWrapped} messages={messages} isSearching={isSearchingHistory} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={isFullscreenEnvEnabled() ? handleOpenTasksDialog : undefined} />
       {isFullscreenEnvEnabled() ? null : autoModeOptInDialog}
       {isFullscreenEnvEnabled() ?
@@ -2343,36 +2363,4 @@ function getInitialPasteId(messages: Message[]): number {
   }
   return maxId + 1;
 }
-function buildBorderText(
-  showFastIcon: boolean,
-  showFastIconHint: boolean,
-  fastModeCooldown: boolean,
-  cwdSegment: string,
-  branchSegment: string,
-  prSegment: string,
-): BorderTextOptions | BorderTextOptions[] | undefined {
-  const segments: BorderTextOptions[] = [];
-
-  // Bottom-right: fast-icon (when active) + cwd pill + branch pill + PR pill,
-  // composed as one content string so the pieces stay adjacent and anchored
-  // to the right edge. Order: [fast] [cwd][branch][PR] — PR is rightmost.
-  const fastSeg = showFastIcon
-    ? showFastIconHint
-      ? ` ${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')} `
-      : ` ${getFastIconString(true, fastModeCooldown)} `
-    : '';
-  const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
-  if (bottomRight) {
-    segments.push({
-      content: bottomRight,
-      position: 'bottom',
-      align: 'end',
-      offset: 0,
-    });
-  }
-
-  if (segments.length === 0) return undefined;
-  return segments.length === 1 ? segments[0] : segments;
-}
-
 export default React.memo(PromptInput);

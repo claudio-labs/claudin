@@ -325,7 +325,6 @@ function NotificationContent({
                 {voiceError}
               </Text>
             </Box> : null}
-      <SessionTokensIndicator />
       <SandboxPromptFooterHint />
     </>;
 }

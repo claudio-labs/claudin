@@ -5,6 +5,8 @@ const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path seg
 const BRANCH_ICON = '\uE0A0' // Powerline branch glyph
 const SEP_LEFT = ''    // Powerline left-arrow filled — opens pill from default bg
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
+const CAP_LEFT_ROUND = '\uE0B6'  // Powerline rounded left cap
+const CAP_RIGHT_ROUND = '\uE0B4' // Powerline rounded right cap
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 
 function resolveBranchBg(theme: Theme): string {
@@ -109,6 +111,32 @@ export function buildCwdPill(displayCwd: string, theme: Theme): string {
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
   const capChalk = applyColor(chalk, cwdBg, 'fg')
   return capChalk(SEP_LEFT) + cwdChalk(` ${displayCwd} `) + capChalk(SEP)
+}
+
+/**
+ * Provider pill — branch-style palette (azul cinza / muted) so it pairs
+ * visually with the branch pill on the opposite side of the row.
+ */
+export function buildProviderPill(label: string, theme: Theme): string {
+  if (!label) return ''
+  const bg = resolveBranchBg(theme)
+  const fg = theme.suggestion
+  const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg')
+  const cap = applyColor(chalk, bg, 'fg')
+  return cap(CAP_LEFT_ROUND) + text(`${label}`) + cap(CAP_RIGHT_ROUND)
+}
+
+/**
+ * Model pill — cwd-style palette (vibrant blue) so it mirrors the cwd pill
+ * on the opposite side of the row. Rounded Powerline caps.
+ */
+export function buildModelPill(label: string, theme: Theme): string {
+  if (!label) return ''
+  const bg = theme.suggestion
+  const fg = theme.inverseText
+  const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg').bold
+  const cap = applyColor(chalk, bg, 'fg')
+  return cap(CAP_LEFT_ROUND) + text(`${label}`) + cap(CAP_RIGHT_ROUND)
 }
 
 /**
