@@ -118,7 +118,7 @@ describe('<SessionCostStats />', () => {
     const { SessionCostStats } = await import('./Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 120))
 
-    expect(output).toContain('Session')
+    expect(output).toContain('Project total (all sessions)')
     expect(output).toContain('Total cost:')
     expect(output).toContain('$0.0008')
     expect(output).toContain('Total duration (API):  6s')
@@ -131,7 +131,7 @@ describe('<SessionCostStats />', () => {
     expect(output).not.toContain('web search')
   })
 
-  it('renders a separate Project total section with cumulative values', async () => {
+  it('renders the cumulative project total values', async () => {
     totalCost = 0.05
     modelUsage = {
       'claude-opus-4-7-20251101': makeUsage({ inputTokens: 100, outputTokens: 50, costUSD: 0.05 }),
@@ -148,7 +148,6 @@ describe('<SessionCostStats />', () => {
     const { SessionCostStats } = await import('./Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 140))
 
-    expect(output).toContain('Session')
     expect(output).toContain('Project total (all sessions)')
     expect(output).toContain('$1.23')
     expect(output).toContain('42 lines added, 7 lines removed')
@@ -194,6 +193,14 @@ describe('<SessionCostStats />', () => {
     totalCost = 0
     modelUsage = {
       'mystery-model': makeUsage({ inputTokens: 10, outputTokens: 5 }),
+    }
+    projectTotals = {
+      totalCost: 0,
+      totalAPIDuration: 0,
+      totalDuration: 0,
+      totalLinesAdded: 0,
+      totalLinesRemoved: 0,
+      modelUsage: { 'mystery-model': { inputTokens: 10, outputTokens: 5, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: 0, costUSD: 0 } },
     }
     unknownCost = true
 

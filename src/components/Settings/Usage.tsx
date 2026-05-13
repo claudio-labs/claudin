@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useReducer, useState } from 'react';
 import { extraUsage as extraUsageCommand } from 'src/commands/extra-usage/index.js';
-import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalLinesAdded, getTotalLinesRemoved, hasUnknownModelCost } from 'src/cost-tracker.js';
+import { formatCost, getProjectTotals, hasUnknownModelCost } from 'src/cost-tracker.js';
 import { getCanonicalName } from 'src/utils/model/model.js';
 import { formatDuration, formatNumber } from 'src/utils/format.js';
 import { getSubscriptionType } from 'src/utils/auth.js';
@@ -356,33 +356,17 @@ export function SessionCostStats(): React.ReactNode {
     return () => clearInterval(interval);
   }, []);
 
-  const sessionCost = getTotalCost();
-  const sessionModelUsage = getModelUsage();
-  const sessionLinesAdded = getTotalLinesAdded();
-  const sessionLinesRemoved = getTotalLinesRemoved();
-  const hasSessionData = sessionCost !== 0 || Object.keys(sessionModelUsage).length > 0 || sessionLinesAdded !== 0 || sessionLinesRemoved !== 0;
-
   const projectTotals = getProjectTotals();
   const hasProjectData = projectTotals.totalCost !== 0 || Object.keys(projectTotals.modelUsage).length > 0 || projectTotals.totalLinesAdded !== 0 || projectTotals.totalLinesRemoved !== 0;
 
-  if (!hasSessionData && !hasProjectData) {
+  if (!hasProjectData) {
     return null;
   }
 
   const unknownCost = hasUnknownModelCost();
 
   return <Box flexDirection="column" gap={1}>
-      {hasSessionData && <CostStatsBlock
-        title="Session"
-        totalCost={sessionCost}
-        apiDuration={getTotalAPIDuration()}
-        wallDuration={getTotalDuration()}
-        linesAdded={sessionLinesAdded}
-        linesRemoved={sessionLinesRemoved}
-        modelUsage={sessionModelUsage}
-        unknownCost={unknownCost}
-      />}
-      {hasProjectData && <CostStatsBlock
+      <CostStatsBlock
         title="Project total (all sessions)"
         totalCost={projectTotals.totalCost}
         apiDuration={projectTotals.totalAPIDuration}
@@ -391,7 +375,8 @@ export function SessionCostStats(): React.ReactNode {
         linesRemoved={projectTotals.totalLinesRemoved}
         modelUsage={projectTotals.modelUsage}
         unknownCost={unknownCost}
-      />}
+      />
+      <Text dimColor>Aggregated across all sessions in this project — includes the current session live.</Text>
     </Box>;
 }
 export function Usage(): React.ReactNode {
