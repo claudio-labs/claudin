@@ -13,6 +13,7 @@ import { finishSelection, hasSelection, type SelectionState, startSelection } fr
 import { isXtermJs, setXtversionName, supportsExtendedKeys } from '../terminal.js';
 import { getTerminalFocused, setTerminalFocused } from '../terminal-focus-state.js';
 import { TerminalQuerier, xtversion } from '../terminal-querier.js';
+import { createStdinWatchdog, type StdinWatchdog } from '../stdinWatchdog.js';
 import { DISABLE_KITTY_KEYBOARD, DISABLE_MODIFY_OTHER_KEYS, ENABLE_KITTY_KEYBOARD, ENABLE_MODIFY_OTHER_KEYS, FOCUS_IN, FOCUS_OUT } from '../termio/csi.js';
 import { DBP, DFE, DISABLE_MOUSE_TRACKING, EBP, EFE, HIDE_CURSOR, SHOW_CURSOR } from '../termio/dec.js';
 import AppContext from './AppContext.js';
@@ -150,6 +151,15 @@ export default class App extends PureComponent<Props, State> {
   // Initialized to now so startup doesn't false-trigger.
   lastStdinTime = Date.now();
 
+  // Periodic recovery for a rare wedge where the stdin readable stream stops
+  // emitting 'readable' even though rawMode=on and our listener is registered.
+  // We verified live (inspector against PID 100816) that
+  // `removeListener('readable', fn); addListener('readable', fn)` restores
+  // the stream instantly. The watchdog runs that exact identity-preserving
+  // cure on a long interval, gated by a staleness check. See stdinWatchdog.ts.
+  // Only used when stdinMode === 'readable'.
+  stdinWatchdog: StdinWatchdog | null = null;
+
   // Determines if TTY is supported on the provided stdin
   isRawModeSupported(): boolean {
     return this.props.stdin.isTTY;
@@ -205,6 +215,11 @@ export default class App extends PureComponent<Props, State> {
     if (this.isRawModeSupported()) {
       this.handleSetRawMode(false);
     }
+    // Defensive: handleSetRawMode only stops the watchdog when the refcount
+    // reaches 0. If unmount happens while another component still holds
+    // raw mode (rawModeEnabledCount > 1), guarantee the timer is cancelled.
+    this.stdinWatchdog?.stop();
+    this.stdinWatchdog = null;
   }
   override componentDidCatch(error: Error) {
     logError(error);
@@ -236,6 +251,23 @@ export default class App extends PureComponent<Props, State> {
           stdin.addListener('data', this.handleDataChunk);
         } else {
           stdin.addListener('readable', this.handleReadable);
+          // Arm the wedge watchdog. Only the readable-mode path can wedge in
+          // the way we observed (data-mode receives chunks via 'data' events
+          // and doesn't depend on the readable-stream pollable re-arming).
+          this.stdinWatchdog = createStdinWatchdog({
+            stdin,
+            listener: this.handleReadable,
+            getLastStdinTime: () => this.lastStdinTime,
+            isActive: () => this.rawModeEnabledCount > 0,
+            onRecover: gapMs => {
+              logError(
+                new Error(
+                  `stdinWatchdog: re-attached stdin readable listener after ${gapMs}ms idle wedge`,
+                ),
+              );
+            },
+          });
+          this.stdinWatchdog?.start();
         }
         stdin.resume();
         // Enable bracketed paste mode
@@ -287,6 +319,8 @@ export default class App extends PureComponent<Props, State> {
       stdin.removeListener('data', this.handleDataChunk);
       stdin.pause();
       stdin.unref();
+      this.stdinWatchdog?.stop();
+      this.stdinWatchdog = null;
     }
   };
 
