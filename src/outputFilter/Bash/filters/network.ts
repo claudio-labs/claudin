@@ -118,3 +118,76 @@ export const curlPlain: FilterSpec = {
   ],
   maxLines: 100,
 }
+
+// --- wget -----------------------------------------------------------------
+// `wget` (without `-q`) prints a verbose download log: timestamped request
+// banner, CA-cert load, DNS resolution, TCP connect, HTTP request/response,
+// content length, target path, and then a progress meter consisting of
+// dot-blocks ("     0K .......... .......... ... 100% 22.3M=0s") — one line
+// per ~50 KB on a large file. A 50 MB download produces ~1000 progress
+// lines that carry no information beyond the final "saved" summary.
+//
+// Strategy: strip the chatter (Loaded CA, Resolving, Connecting, Length:,
+// Saving to:) and every progress-dot/bar line. The `HTTP request sent,
+// awaiting response...` line is only stripped when the response was a
+// success (200/206) — non-2xx codes (3xx redirects, 4xx/5xx errors) are
+// signal the LLM needs. The "saved [n/total]" final summary survives
+// because it doesn't start with any of the stripped tokens. Errors
+// (`failed:`, `unable to resolve`, `ERROR`, retry banners) survive too.
+//
+// Passthrough when `-q`/`--quiet` is in effect (no output) or when the
+// user pipes the body to stdout via `-O -` / `-O-` / `-qO-` (very common
+// `wget -qO- URL | sh` installer pattern) — filtering those would corrupt
+// the payload downstream.
+//
+// `--progress=bar` emits a single-line bar that `\r`-overwrites itself
+// (same trick curl/rsync use). The CR-collapse pass below reduces it to
+// the final frame before the bar-strip pattern fires.
+
+const WGET_MATCH = /^wget(?=\s|$)/
+// Stdout-writing forms must be rejected. We match three shapes:
+//   `-O -` / `-O-` (space optional)
+//   `-qO-` / `-qO -` (glued short form, common in installer one-liners)
+//   `--output-document=-`
+// Plain `-q`/`--quiet` is also rejected (no output to filter).
+const WGET_REJECT =
+  /(?:^|\s)(?:-q|--quiet)\b|(?:^|\s)-q?O\s*-(?:\s|$)|--output-document=-(?:\s|$)/
+// Boilerplate header lines emitted before the transfer starts.
+const WGET_RESOLVING = /^Resolving\s/
+const WGET_CONNECTING = /^Connecting to\s/
+// Only strip the HTTP-status line for *successful* responses. Non-2xx
+// (3xx redirect, 4xx/5xx error) is the only place the status code shows
+// up in non-fatal cases — must survive.
+const WGET_HTTP_OK = /^HTTP request sent, awaiting response\.\.\. 20[06]\b/
+const WGET_LENGTH = /^Length:\s/
+const WGET_SAVING = /^Saving to:\s/
+const WGET_CA = /^Loaded CA certificate\s/
+// Carriage-return overwrites from `--progress=bar`/`--progress=bar:force`.
+// Linear, ReDoS-safe (single quantifier, anchored class).
+const WGET_CR_OVERWRITE = /[^\r\n]*\r/g
+// Progress dot rows: leading whitespace, optional offset (e.g. "   500K"),
+// at least one run of dots, optional percentage, optional rate, optional ETA.
+// Anchored at start of line so a real filename line containing dots cannot
+// match by accident.
+const WGET_PROGRESS_DOTS = /^\s*\d+[KMG]?\s+\.{2,}(?:\s|$)/
+// Progress bar rows: `[===>     ] 12,345,678  12.3M/s`. Anchored.
+const WGET_PROGRESS_BAR = /^\s*\d+[KMG]?\s*\[=*>?\s*\]\s/
+
+export const wget: FilterSpec = {
+  name: 'wget',
+  matchCommand: WGET_MATCH,
+  matchCommandReject: WGET_REJECT,
+  stripAnsi: true,
+  replace: [{ pattern: WGET_CR_OVERWRITE, replacement: '' }],
+  stripLinesMatching: [
+    WGET_CA,
+    WGET_RESOLVING,
+    WGET_CONNECTING,
+    WGET_HTTP_OK,
+    WGET_LENGTH,
+    WGET_SAVING,
+    WGET_PROGRESS_DOTS,
+    WGET_PROGRESS_BAR,
+  ],
+  maxLines: 60,
+}

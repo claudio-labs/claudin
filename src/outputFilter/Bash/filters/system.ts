@@ -279,3 +279,39 @@ export const jq: FilterSpec = {
   headLines: 200,
   tailLines: 300,
 }
+
+// --- find ----------------------------------------------------------------
+// `find` output is pure signal (one path per line), so there is nothing to
+// strip without losing information. The risk is volume: `find / -type f`
+// or a scan over a populated `node_modules/` can produce tens of thousands
+// of lines, all of which would land in the LLM context if uncapped. We
+// cap with a generous head/tail split so the agent still sees both the
+// beginning and the end of the listing — enough to recognise truncation
+// and re-run with a narrower predicate.
+//
+// Reject paths that change output format/structure, because our cap would
+// either be redundant (already aggregating output) or actively wrong:
+//   -printf / -fprintf / -fprint  → custom record format, may emit
+//                                   newlines/binary inside a "record"
+//   -print0 / -fprint0            → NUL-delimited stream; "lines" don't
+//                                   exist, line-based cap corrupts it
+//   -exec / -execdir / -ok / -okdir → arbitrary subprocess output mixed in
+//   -ls                           → multi-column tabular output, different
+//                                   shape than plain paths
+// Verb anchored so `findutils` or `find-something` cannot be claimed.
+
+const FIND_MATCH = /^find(?=\s|$)/
+const FIND_REJECT =
+  /(?:^|\s)(?:-printf|-fprintf|-fprint|-print0|-fprint0|-exec|-execdir|-ok|-okdir|-ls)\b/
+
+export const find: FilterSpec = {
+  name: 'find',
+  matchCommand: FIND_MATCH,
+  matchCommandReject: FIND_REJECT,
+  // Defends against pathological filenames (no real filename should exceed
+  // 4 KB; if it does, truncating is safer than blowing the budget).
+  truncateLineAt: 4096,
+  maxLines: 150,
+  headLines: 50,
+  tailLines: 100,
+}

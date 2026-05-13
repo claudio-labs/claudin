@@ -2,6 +2,8 @@
 // Phase 6.1.2 — batch 1 (14 specs). Phase 6.1.4 — rewrite specs (5).
 // Phase 6.1.5 — batch 2 (11 specs): git pipeline-only, containers, network, journalctl.
 // Phase 6.2   — JS/TS toolchain + git diff/show (8 specs).
+// Phase 9     — system utilities (ping/rsync/tree/ssh/df/du/dmesg/stat/jq) + curl-plain.
+// Phase 10    — wget + find.
 //
 // Order matters only insofar as more specific specs must come before
 // less specific ones when their matchCommand regex could overlap. We
@@ -27,6 +29,7 @@ import {
   dmesg,
   stat,
   jq,
+  find,
 } from './system.js'
 import { rubocop, ruffCheck } from './linters.js'
 import { lsLa } from './ls.js'
@@ -45,7 +48,7 @@ import {
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
 import { dockerPs, dockerImages, dockerLogs } from './containers.js'
-import { curlV, dig, curlPlain } from './network.js'
+import { curlV, dig, curlPlain, wget } from './network.js'
 
 export const builtInFilters: FilterSpec[] = [
   // Package managers
@@ -112,7 +115,9 @@ export const builtInFilters: FilterSpec[] = [
   dmesg,
   stat,
   jq,
+  find,
   curlPlain,
+  wget,
   // Cargo (Rust) — specific variants first so matchCommandReject fires
   // before a more general one could claim the command.
   cargoTest,

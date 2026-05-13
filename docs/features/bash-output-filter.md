@@ -614,26 +614,162 @@ b2c3d4e5 2025-03-22 43)   const res = await api.get(`/users/${id}`)
 
 ---
 
+### `wget`
+
+Strips CA/Resolving/Connecting chatter, the "HTTP request sent…" 200/206 success line, `Length:`/`Saving to:` headers, and the dot-progress block. Preserves any non-success HTTP status (3xx redirects, 4xx/5xx) and the final `saved [bytes/total]` summary. `-q`, `--quiet`, `-O -`/`-qO-`/`--output-document=-` are passed through unchanged (output is being piped or already silenced).
+
+**Before** (74 lines, 5 KB — clipped)
+```
+--2026-05-12 09:14:02--  https://releases.example.com/dist/big-package-1.2.3.tar.gz
+Loaded CA certificate '/etc/ssl/certs/ca-certificates.crt'
+Resolving releases.example.com... 151.101.1.91, 151.101.65.91, ...
+Connecting to releases.example.com|151.101.1.91|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 52428800 (50M) [application/gzip]
+Saving to: 'big-package-1.2.3.tar.gz'
+
+     0K .......... .......... .......... .......... ..........  0% 2.34M 21s
+    50K .......... .......... .......... .......... ..........  0% 4.12M 17s
+... (60+ more dot-progress lines) ...
+ 51200K .......... ..........                                  100% 14.7M=3.4s
+
+2026-05-12 09:14:05 (14.7 MB/s) - 'big-package-1.2.3.tar.gz' saved [52428800/52428800]
+```
+
+**After**
+```
+--2026-05-12 09:14:02--  https://releases.example.com/dist/big-package-1.2.3.tar.gz
+2026-05-12 09:14:05 (14.7 MB/s) - 'big-package-1.2.3.tar.gz' saved [52428800/52428800]
+```
+
+---
+
+### `find`
+
+Output is already pure signal (one path per line), so nothing is stripped — instead the spec caps long results with a head/tail window (first 50 + last 100, marker in between) and truncates pathological lines beyond 4 KB. Reject list covers flags whose output is custom-formatted and would be unsafe to truncate: `-printf`, `-print0`, `-exec`/`-execdir`, `-ok`/`-okdir`, `-ls`, `-fprint*`. Stderr lines like `find: '/root': Permission denied` survive the cap.
+
+**Before** (321 lines)
+```
+./src/a/b/c/file001.ts
+./src/a/b/c/file002.ts
+... (300+ more paths) ...
+./vendor/pkg/file321.ts
+```
+
+**After** (151 lines)
+```
+./src/a/b/c/file001.ts
+... (first 50) ...
+./src/a/b/c/file050.ts
+[... 170 more lines omitted ...]
+./vendor/pkg/file221.ts
+... (last 100) ...
+./vendor/pkg/file321.ts
+```
+
+Small outputs (< 150 lines) pass through unchanged.
+
+---
+
+### `curl` (plain, non-verbose)
+
+Collapses CR-overwritten progress bars from the default progress meter to the final state. The verbose form (`curl -v`) is handled by a separate spec (verbose headers stay; only `*` debug noise is trimmed).
+
+---
+
+### `rsync`
+
+Collapses CR-overwritten file-progress lines and strips per-file `… speedup is X.XX` summaries. Preserves the final `sent / received / total` block and any `rsync: …` error lines.
+
+---
+
+### `ping`
+
+Strips per-packet `64 bytes from … icmp_seq=N time=… ms` rows beyond the first one. Preserves the header and the `--- ping statistics ---` summary block (packet loss, rtt min/avg/max).
+
+---
+
+### `tree`
+
+Caps the listing at a configurable head/tail window and replaces the rest with `[… N entries omitted …]`. The final `N directories, M files` summary is always kept.
+
+---
+
+### `ssh -v` / `-vv` / `-vvv`
+
+Strips `debug1:` / `debug2:` / `debug3:` lines and `OpenSSH_…` banners. Preserves any line containing `Warning`, `Error`, `Permission denied`, `Connection refused`, or a fingerprint prompt.
+
+---
+
+### `df` / `du`
+
+Drops virtual / pseudo filesystem rows (`tmpfs`, `devtmpfs`, `overlay`, `udev`, `cgroup`, `proc`, `sys`, `efivars`) from `df`. Strips `du: cannot access …: Permission denied` noise from `du`. Real mount points and the actual byte counts always survive.
+
+---
+
+### `dmesg` / `journalctl`
+
+Strips repeated bracketed-timestamp prefixes from `dmesg`. For `journalctl`, removes the noisy `-- Boot 0x… --` markers and collapses `systemd[1]: Started …`/`Stopped …`/`Reached target …` chatter, keeping anything tagged `error`, `fail`, `denied`, `warning`, or `kernel:`.
+
+---
+
+### `stat`
+
+No-op when the output is short; only triggers when `stat` is called over many files and the same field labels (`File:`, `Size:`, `Blocks:`, `IO Block:`, etc.) repeat — in which case it elides the redundant labels.
+
+---
+
+### `jq`
+
+Truncates deeply nested pretty-printed JSON beyond a configurable depth/line cap. Top-level keys and the closing brackets are always preserved so the structure stays parseable.
+
+---
+
 ## Per-command reduction summary
+
+Measured on the in-repo fixtures via `bun test scripts/measure-bash-filter-roi.test.ts`. Numbers are byte reduction of the filtered body (the `<bash-output-filtered …>` wrapper itself adds ~80 bytes, dominant only for very small fixtures).
 
 | Command | Reduction | What's stripped |
 |---|---|---|
+| `cargo check` | 99.8% | Transitive `Compiling`/`Checking` lines |
+| `cargo build` | 99.7% | Same as `cargo check` |
 | `jest` | 98.7% | RUNS carousel, ✓ per-test lines |
-| `playwright test` | 98.4% | ✓ per-test lines |
 | `vitest` | 98.5% | RUN banner, ✓ per-test lines |
-| `bundle install` | 96% | Fetching lines |
-| `pytest` | 95% | Warnings blocks, deprecations |
 | `bun test` | 98.2% | Banner, ✓ per-test lines |
+| `ssh -vvv` | 97.9% | `debug1/2/3` lines |
 | `mocha` | 97.6% | ✓ per-test lines |
-| `ps aux` | 93% | Kernel thread rows |
-| `git log` | 92% | Author/Date/body per commit |
-| `go test -v` | 82% | RUN/PAUSE/CONT/PASS lines |
-| `ls -la` | 81% | uid/gid/size/mtime columns |
-| `cargo check` | 64% | Transitive `Compiling`/`Checking` lines |
-| `rubocop` | 83% | New-cops preamble |
-| `tsc` | 18% | Underlines, Errors table |
+| `wget` | 96.7% | CA/Resolving/Connecting, 200/206 line, dot-progress |
+| `bundle install` | 95.2% | Fetching lines |
+| `pytest` | 95.1% | Warnings blocks, deprecations (clean run) |
+| `ps aux` | 93.9% | Kernel thread rows |
+| `rsync` | 91.1% | CR-overwritten progress lines |
+| `git log` | 85.0% | Author/Date/body per commit |
+| `rubocop` | 84.1% | New-cops preamble |
+| `go test -v` | 82.6% | RUN/PAUSE/CONT/PASS lines |
+| `curl` (plain) | 78.4% | CR-overwritten progress bar |
+| `ls -la` | 73.7% | uid/gid/size/mtime columns |
+| `top -b -n 1` | 73.3% | Per-CPU rows, idle processes |
+| `dig` | 66.7% | Empty `;; SECTION` blocks, OPT pseudo-section |
+| `du -sh` | 59.4% | `du: cannot access … Permission denied` noise |
+| `ping` | 57.8% | Per-packet `icmp_seq` lines |
+| `df -h` | 52.3% | tmpfs / devtmpfs / overlay rows |
+| `tree` | 51.3% | Mid-listing entries (head/tail cap) |
+| `git pull` | 51.1% | `Resolving deltas` / `remote: Counting` |
+| `find` (large) | 50.9% | Head/tail cap (small outputs pass through) |
+| `docker ps` | 40.8% | Column padding / inactive rows |
+| `docker images` | 36.3% | `<none>` rows, ID column |
+| `rg` / `grep` | 33% | ANSI color escapes, line numbers |
+| `git blame` | 25.4% | Author name/email/time/TZ |
+| `dmesg` | 23.6% | Repeated bracketed timestamps |
+| `docker logs` | 19.3% | Repeated timestamp prefix |
+| `tsc` | 18.2% | Underlines, Errors table |
+| `journalctl` | 15.1% | `Boot` markers, systemd lifecycle |
 | `git diff` | 10.8% | `diff --git`, `index`, `No newline` lines |
 | `git show` | 9.4% | Same as diff + Author/Date merge |
+
+Pass-throughs (0%): `cargo clippy`, `cargo test --no-run`, `jq`, `ruff check` (clean), `stat`, `find` (small) — output is already pure signal.
+
+The `gh pr|issue|run list` filters and `git status` are **rewrites**, not strippers: they force the underlying command to emit a deterministic format (`gh … --json …`, `git status --porcelain=v2`). The byte count on very small fixtures can grow slightly because of the wrapper, but the downstream parser sees a stable schema instead of a fragile pretty-printed table.
 
 ---
 
