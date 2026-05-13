@@ -81,6 +81,21 @@ const SCENARIOS: Scenario[] = [
   // git-show: ceiling is the metadata + per-file headers — diff bodies
   // (the bulk of the fixture) are intentionally untouched.
   { filter: 'git-show', command: 'git show HEAD', sample: 'git-show-full', predicted: 5 },
+  // ---- Phase 9 — system utilities ----------------------------------------
+  { filter: 'ping', command: 'ping -c 20 8.8.8.8', sample: 'ping-google', predicted: 55 },
+  { filter: 'rsync', command: 'rsync -av src/ dst/', sample: 'rsync-incremental', predicted: 70 },
+  { filter: 'tree', command: 'tree', sample: 'tree-deep', predicted: 30 },
+  { filter: 'ssh', command: 'ssh -vvv example.com echo ok', sample: 'ssh-vvv', predicted: 70 },
+  { filter: 'df', command: 'df -h', sample: 'df-h', predicted: 40 },
+  // du: structural strip + cap; no "predicted %" target because the savings
+  // depend heavily on the tree shape. The safety tests cover correctness.
+  { filter: 'du', command: 'du -h', sample: 'du-noisy' },
+  { filter: 'dmesg', command: 'dmesg', sample: 'dmesg-long', predicted: 25 },
+  // stat / jq: short fixtures, the cap rarely fires — gain table reports
+  // the actual reduction without a target.
+  { filter: 'stat', command: 'stat package.json', sample: 'stat-file' },
+  { filter: 'jq', command: "jq '.'", sample: 'jq-pretty-deep' },
+  { filter: 'curl-plain', command: 'curl http://example.com', sample: 'curl-plain', predicted: 40 },
 ]
 
 const loadSample = (name: string): string => {

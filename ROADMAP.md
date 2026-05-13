@@ -1,6 +1,6 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-09 (6.2 — tier-1 follow-ups Linux done)
+> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-13 (6.1.9 — system utilities done)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
@@ -30,6 +30,8 @@ Cada phase doc é self-contained — agent/dev pode pickup uma fase lendo só el
 - [x] **6.1.5** — [Built-in batch 2](docs/tech/bash-output-filter/phases/phase-5-builtin-batch-2.md) (~250 LoC) — git family completa (status/log/blame/pull/add/commit/push), docker (ps/images/logs), network (curl/wget/dig), journalctl
 - [x] **6.1.6** — [User filters](docs/tech/bash-output-filter/phases/phase-6-user-filters.md) (~290 LoC) — `~/.claudio/filters.json` + zod schema + ReDoS guards (length cap + denylist + build-time scan)
 - [x] **6.1.7** — [Default-on flip](docs/tech/bash-output-filter/phases/phase-7-default-on.md) — `shouldFilterOutput` default-on (`!== false`), toggle em `/config`, tip de performance em `tipRegistry`
+- [x] **6.1.9** — [System utilities](docs/tech/bash-output-filter/phases/phase-9-system-utils.md) (~140 LoC) — ping, rsync, tree, ssh, df, du, dmesg, stat, jq + curl-plain. Todos os 10 specs atingem o target (ping 58%, rsync 91%, tree 52%, ssh 98%, df 60%, du 59%, dmesg 27%, curl-plain 78%). Aggregate gain table (41 filtros): **69.9%** de redução.
+
 
 #### Ganho esperado (medido empiricamente)
 
@@ -307,6 +309,6 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**8 ativos** (1× P0: 4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **19 concluídos** (6.1 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**8 ativos** (1× P0: 4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **20 concluídos** (6.1 incl. 6.1.9 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
 
-**Próxima entrega (P0 priority):** **4.1**. 6.1 — Command-aware bash output filter concluído em 2026-05-09 (8 fases, ~2.200 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-96% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs novos (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show), 31 filtros totais, agregado 71% redução medido em fixture corpus de 186 KB. Sub-fase Windows/PowerShell em aberto.
+**Próxima entrega (P0 priority):** **4.1**. 6.1 — Command-aware bash output filter concluído em 2026-05-13 (9 fases, ~2.340 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-98% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.1.9 — System utilities** concluído em 2026-05-13: 10 specs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain), 41 filtros totais, agregado **69.9%** redução medido em fixture corpus de 200.6 KB. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show). Sub-fase Windows/PowerShell em aberto.

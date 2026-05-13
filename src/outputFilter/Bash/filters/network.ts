@@ -75,3 +75,46 @@ export const dig: FilterSpec = {
   stripLinesMatching: [DIG_COMMENT_FULL, DIG_COMMENT_SPACE],
   maxLines: 50,
 }
+
+// --- curl (plain — no -v) -------------------------------------------------
+// Phase 9 — `curl URL` without `-v`/`-s`/`-I`/`-o` prints a progress meter to
+// stderr that the agent does not need. The meter is two header lines
+// (`% Total ... Current` and `Dload Upload ...`) followed by data rows that
+// `\r`-overwrite themselves into a single physical line on a real terminal
+// but become multiple lines in a captured buffer.
+//
+// Strategy:
+//   1) Collapse `\r`-overwrites by replacing `...content...\r` with empty —
+//      this is what the terminal would have shown. `[^\r\n]*\r` is linear and
+//      ReDoS-safe (single quantifier, anchored class).
+//   2) Strip the two textual header lines on whatever remains.
+//   3) Strip a final residual progress data row if any survived the CR pass.
+//
+// `curlV` (Phase 6.1.5) already handles `curl -v` with the TLS-frame stripper,
+// so we reject `-v`/`--verbose` to avoid double-claiming the command. `-s`
+// (silent), `-I` (head only), `-o` (write to file) all skip — those modes do
+// not emit the progress meter to begin with.
+
+const CURL_PLAIN_MATCH = /^curl(?=\s|$)/
+const CURL_PLAIN_REJECT =
+  /(?:^|\s)(?:-v|--verbose|-s|--silent|-I|--head|-o|--output)\b/
+// Carriage-return overwrites: everything up to (and including) each `\r` on a
+// line. Char class is non-greedy by virtue of excluding `\r`, so no backtrack.
+const CURL_CR_OVERWRITE = /[^\r\n]*\r/g
+const CURL_PROGRESS_HEADER = /^\s*%\s+Total\s+%\s+Received/
+const CURL_PROGRESS_RULE = /^\s*Dload\s+Upload\b/
+const CURL_PROGRESS_DATA = /^\s*\d+\s+\d+[kKMG]?\s+\d+\s+\d+[kKMG]?/
+
+export const curlPlain: FilterSpec = {
+  name: 'curl-plain',
+  matchCommand: CURL_PLAIN_MATCH,
+  matchCommandReject: CURL_PLAIN_REJECT,
+  stripAnsi: true,
+  replace: [{ pattern: CURL_CR_OVERWRITE, replacement: '' }],
+  stripLinesMatching: [
+    CURL_PROGRESS_HEADER,
+    CURL_PROGRESS_RULE,
+    CURL_PROGRESS_DATA,
+  ],
+  maxLines: 100,
+}

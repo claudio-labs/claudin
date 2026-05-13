@@ -14,7 +14,20 @@ import { bundleInstall } from './pkg.js'
 import { pytest, rspec, goTest } from './tests.js'
 import { jest, vitest, bunTest, mocha, playwright } from './tests-js.js'
 import { tsc } from './tsc.js'
-import { psAux, top, journalctl } from './system.js'
+import {
+  psAux,
+  top,
+  journalctl,
+  ping,
+  rsync,
+  tree,
+  ssh,
+  df,
+  du,
+  dmesg,
+  stat,
+  jq,
+} from './system.js'
 import { rubocop, ruffCheck } from './linters.js'
 import { lsLa } from './ls.js'
 import { grepRg } from './grep-rg.js'
@@ -32,7 +45,7 @@ import {
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
 import { dockerPs, dockerImages, dockerLogs } from './containers.js'
-import { curlV, dig } from './network.js'
+import { curlV, dig, curlPlain } from './network.js'
 
 export const builtInFilters: FilterSpec[] = [
   // Package managers
@@ -86,6 +99,20 @@ export const builtInFilters: FilterSpec[] = [
   dig,
   // System extend — Phase 6.1.5
   journalctl,
+  // Phase 9 — system utilities (filesystem / network / process).
+  // curl-plain is after curlV so `curl -v` is claimed by the verbose
+  // spec first; the matchCommandReject on -v makes the order redundant
+  // for correctness but it keeps the intent obvious.
+  ping,
+  rsync,
+  tree,
+  ssh,
+  df,
+  du,
+  dmesg,
+  stat,
+  jq,
+  curlPlain,
   // Cargo (Rust) — specific variants first so matchCommandReject fires
   // before a more general one could claim the command.
   cargoTest,
