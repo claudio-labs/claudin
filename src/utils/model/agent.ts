@@ -1,12 +1,8 @@
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { capitalize } from '../stringUtils.js'
-import { getGlobalConfig } from '../config.js'
 import { logError } from '../log.js'
-import {
-  getActiveProviderProfile,
-  getProfileModelOptions,
-} from '../providerProfiles.js'
 import { MODEL_ALIASES, type ModelAlias } from './aliases.js'
+import { getModelOptions } from './modelOptions.js'
 import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from './bedrock.js'
 import {
   getCanonicalName,
@@ -186,17 +182,13 @@ export function getAgentModelOptions(): AgentModelOption[] {
   }
 
   try {
-    const profile = getActiveProviderProfile(getGlobalConfig())
-    if (profile) {
-      const profileOptions: AgentModelOption[] = getProfileModelOptions(profile)
-        .filter(
-          (o): o is AgentModelOption =>
-            typeof o.value === 'string' && o.value.length > 0,
-        )
-        .map(({ value, label, description }) => ({ value, label, description }))
-      if (profileOptions.length > 0) {
-        return [inherit, ...profileOptions]
-      }
+    const providerOptions: AgentModelOption[] = getModelOptions()
+      .filter((o): o is AgentModelOption & { value: string } =>
+        typeof o.value === 'string' && o.value.length > 0,
+      )
+      .map(({ value, label, description }) => ({ value: value as string, label, description }))
+    if (providerOptions.length > 0) {
+      return [inherit, ...providerOptions]
     }
   } catch (e) {
     // Fall through to alias fallback; surface the error for debugging.

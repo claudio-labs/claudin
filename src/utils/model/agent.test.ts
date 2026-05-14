@@ -265,13 +265,9 @@ describe('getAgentModelOptions picker', () => {
     mock.restore()
   })
 
-  test('falls back to Claude aliases + inherit when no active profile', async () => {
-    mock.module('../config.js', () => ({
-      getGlobalConfig: () => ({}),
-    }))
-    mock.module('../providerProfiles.js', () => ({
-      getActiveProviderProfile: () => undefined,
-      getProfileModelOptions: () => [],
+  test('falls back to Claude aliases + inherit when getModelOptions returns no string values', async () => {
+    mock.module('./modelOptions.js', () => ({
+      getModelOptions: () => [{ value: null, label: 'Default', description: 'recommended' }],
     }))
 
     const { getAgentModelOptions } = await import('./agent.js')
@@ -281,13 +277,9 @@ describe('getAgentModelOptions picker', () => {
     expect(opts[0].label).toBe('Inherit from parent (default)')
   })
 
-  test('falls back when profile has no model list', async () => {
-    mock.module('../config.js', () => ({
-      getGlobalConfig: () => ({}),
-    }))
-    mock.module('../providerProfiles.js', () => ({
-      getActiveProviderProfile: () => ({ id: 'p', name: 'P', model: '' }),
-      getProfileModelOptions: () => [],
+  test('falls back when getModelOptions returns empty list', async () => {
+    mock.module('./modelOptions.js', () => ({
+      getModelOptions: () => [],
     }))
 
     const { getAgentModelOptions } = await import('./agent.js')
@@ -295,14 +287,10 @@ describe('getAgentModelOptions picker', () => {
     expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
   })
 
-  test('returns inherit + profile models when profile has a model list', async () => {
-    const profile = { id: 'p', name: 'DeepSeek', model: 'deepseek-chat,deepseek-r1' }
-    mock.module('../config.js', () => ({
-      getGlobalConfig: () => ({}),
-    }))
-    mock.module('../providerProfiles.js', () => ({
-      getActiveProviderProfile: () => profile,
-      getProfileModelOptions: () => [
+  test('returns inherit + provider models when getModelOptions has string values', async () => {
+    mock.module('./modelOptions.js', () => ({
+      getModelOptions: () => [
+        { value: null, label: 'Default', description: 'recommended' },
         { value: 'deepseek-chat', label: 'deepseek-chat', description: 'Provider: DeepSeek' },
         { value: 'deepseek-r1', label: 'deepseek-r1', description: 'Provider: DeepSeek' },
       ],
@@ -314,15 +302,11 @@ describe('getAgentModelOptions picker', () => {
     expect(opts[1].description).toBe('Provider: DeepSeek')
   })
 
-  test('falls back to aliases when getActiveProviderProfile throws', async () => {
-    mock.module('../config.js', () => ({
-      getGlobalConfig: () => ({}),
-    }))
-    mock.module('../providerProfiles.js', () => ({
-      getActiveProviderProfile: () => {
-        throw new Error('profile lookup failed')
+  test('falls back to aliases when getModelOptions throws', async () => {
+    mock.module('./modelOptions.js', () => ({
+      getModelOptions: () => {
+        throw new Error('model options lookup failed')
       },
-      getProfileModelOptions: () => [],
     }))
 
     const { getAgentModelOptions } = await import('./agent.js')
