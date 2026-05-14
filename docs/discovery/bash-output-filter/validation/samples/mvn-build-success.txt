@@ -1,0 +1,47 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] -----------------------< com.example:myapp >-----------------------
+[INFO] Building myapp 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-resources-plugin/3.3.1/maven-resources-plugin-3.3.1.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-resources-plugin/3.3.1/maven-resources-plugin-3.3.1.pom (1.2 kB at 12 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-compiler-plugin/3.11.0/maven-compiler-plugin-3.11.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-compiler-plugin/3.11.0/maven-compiler-plugin-3.11.0.pom (4.1 kB at 88 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.3.0/maven-jar-plugin-3.3.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.3.0/maven-jar-plugin-3.3.0.pom (1.9 kB at 42 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-surefire-plugin/3.2.5/maven-surefire-plugin-3.2.5.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-surefire-plugin/3.2.5/maven-surefire-plugin-3.2.5.pom (5.1 kB at 110 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/example/mylib/2.1.0/mylib-2.1.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/example/mylib/2.1.0/mylib-2.1.0.pom (2.3 kB at 50 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.pom (3.8 kB at 80 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.16.1/jackson-databind-2.16.1.jar
+[INFO] Progress (1): 100 kB / 1.8 MB
+[INFO] Progress (1): 200 kB / 1.8 MB
+[INFO] Progress (1): 300 kB / 1.8 MB
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.16.1/jackson-databind-2.16.1.jar (1.8 MB at 500 kB/s)
+[INFO]
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ myapp ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO]
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ myapp ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 5 source files with javac [debug parameters release 17]
+[INFO]
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ myapp ---
+[INFO] skip non existing resourceDirectory /home/user/projects/myapp/src/test/resources
+[INFO]
+[INFO] --- maven-compiler-plugin:3.11.0:testCompile (default-testCompile) @ myapp ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- maven-surefire-plugin:3.2.5:test (default-test) @ myapp ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- maven-jar-plugin:3.3.0:jar (default-jar) @ myapp ---
+[INFO] Building jar: /home/user/projects/myapp/target/myapp-1.0-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.123 s
+[INFO] Finished at: 2026-05-13T14:30:00Z
+[INFO] ------------------------------------------------------------------------

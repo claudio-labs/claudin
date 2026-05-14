@@ -1,0 +1,18 @@
+Acquiring state lock. This may take a few moments...
+Refreshing state... [id=vpc-0abc123def456789]
+Refreshing state... [id=sg-0def456789abc123]
+Refreshing state... [id=sg-0abc123def456789b]
+Refreshing state... [id=subnet-0abc123def456789]
+Refreshing state... [id=subnet-0def456789abc1234]
+Refreshing state... [id=subnet-0abc123def456789c]
+Refreshing state... [id=i-0abc123def4567890]
+Refreshing state... [id=i-0def456789abc1234a]
+Refreshing state... [id=eip-0abc123def456789a]
+Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-lb/1234567890abcdef]
+Refreshing state... [id=arn:aws:rds:us-east-1:123456789012:db:mydb]
+Releasing state lock. This may take a few moments...
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.

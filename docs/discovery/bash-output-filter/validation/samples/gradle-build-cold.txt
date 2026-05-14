@@ -1,0 +1,23 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+> Resolving dependencies of configuration ':app:compileClasspath'
+Downloading https://services.gradle.org/distributions/gradle-8.6-bin.zip
+> Transform junit-4.13.2.jar (junit:junit:4.13.2) with ArtifactTransform
+> Transform hamcrest-core-1.3.jar (org.hamcrest:hamcrest-core:1.3) with ArtifactTransform
+
+> Task :app:compileJava
+Note: Some messages have been omitted.
+
+> Task :app:processResources
+> Task :app:classes
+> Task :app:compileTestJava
+> Task :app:processTestResources
+> Task :app:testClasses
+> Task :app:test
+> Task :app:check
+> Task :app:assemble
+> Task :app:build
+
+BUILD SUCCESSFUL in 45s
+9 actionable tasks: 9 executed

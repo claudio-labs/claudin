@@ -1,0 +1,31 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] -----------------------< com.example:myapp >-----------------------
+[INFO] Building myapp 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ myapp ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO]
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ myapp ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 5 source files with javac [debug parameters release 17]
+[ERROR] /home/user/projects/myapp/src/main/java/com/example/Main.java:[10,5] cannot find symbol
+[ERROR]   symbol:   method foo()
+[ERROR]   location: class com.example.Main
+[ERROR] /home/user/projects/myapp/src/main/java/com/example/UserService.java:[25,9] incompatible types: String cannot be converted to int
+[ERROR]   25 |         int userId = getUserName();
+[ERROR]      |                      ^
+[INFO] 2 errors
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.543 s
+[INFO] Finished at: 2026-05-13T14:30:05Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project myapp: Compilation failure: Compilation failure:
+[ERROR] /home/user/projects/myapp/src/main/java/com/example/Main.java:[10,5] cannot find symbol
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

@@ -1,0 +1,19 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+> Resolving dependencies of configuration ':app:compileClasspath'
+
+> Task :app:compileJava UP-TO-DATE
+> Task :app:processResources UP-TO-DATE
+> Task :app:classes UP-TO-DATE
+> Task :app:compileKotlin UP-TO-DATE
+> Task :app:compileTestJava NO-SOURCE
+> Task :app:processTestResources NO-SOURCE
+> Task :app:testClasses UP-TO-DATE
+> Task :app:test FROM-CACHE
+> Task :app:check UP-TO-DATE
+> Task :app:assemble UP-TO-DATE
+> Task :app:build UP-TO-DATE
+
+BUILD SUCCESSFUL in 2s
+11 actionable tasks: 11 up-to-date

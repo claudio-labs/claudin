@@ -1,0 +1,27 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :app
+> Resolving dependencies of configuration ':app:compileClasspath'
+
+> Task :app:compileJava FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileJava'.
+> Could not resolve com.example:missing-lib:1.0.0.
+   Required by:
+       project :app
+   > Could not resolve com.example:missing-lib:1.0.0.
+      > Could not get resource 'https://repo.maven.apache.org/maven2/com/example/missing-lib/1.0.0/missing-lib-1.0.0.pom'.
+         > Could not HEAD 'https://repo.maven.apache.org/maven2/com/example/missing-lib/1.0.0/missing-lib-1.0.0.pom'. Received status code 404 from server: Not Found
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+* Get more help at https://help.gradle.org
+
+BUILD FAILED in 3s
+1 actionable tasks: 0 executed, 1 failed

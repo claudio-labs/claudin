@@ -1,0 +1,37 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] -----------------------< com.example:myapp >-----------------------
+[INFO] Building myapp 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ myapp ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO]
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ myapp ---
+[INFO] Compiling 5 source files with javac [debug parameters release 17]
+[INFO]
+[INFO] --- maven-surefire-plugin:3.2.5:test (default-test) @ myapp ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.UserServiceTest
+[ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.456 s <<< FAILURE! - in com.example.UserServiceTest
+[ERROR] com.example.UserServiceTest.shouldAuthenticateUser -- AssertionError: expected: <true> but was: <false>
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   UserServiceTest.shouldAuthenticateUser:42 expected: <true> but was: <false>
+[INFO]
+[ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.234 s
+[INFO] Finished at: 2026-05-13T14:30:10Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project myapp: There are test failures.
+[ERROR] Please refer to /home/user/projects/myapp/target/surefire-reports for the individual test results.
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.

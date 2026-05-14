@@ -1,0 +1,45 @@
+Acquiring state lock. This may take a few moments...
+Refreshing state... [id=vpc-0abc123def456789]
+Refreshing state... [id=sg-0def456789abc123]
+Refreshing state... [id=i-0abc123def4567890]
+Releasing state lock. This may take a few moments...
+
+Terraform used the selected providers to generate the following execution plan.
+Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be updated in-place
+  ~ resource "aws_instance" "web" {
+      ~ instance_type = "t3.micro" -> "t3.small"
+        id            = "i-0abc123def4567890"
+        tags          = {
+            "Name" = "web-server"
+        }
+        # (12 unchanged attributes hidden)
+    }
+
+  # aws_security_group_rule.allow_http will be created
+  + resource "aws_security_group_rule" "allow_http" {
+      + cidr_blocks       = [
+          + "0.0.0.0/0",
+        ]
+      + from_port         = 80
+      + id                = (known after apply)
+      + protocol          = "tcp"
+      + security_group_id = "sg-0def456789abc123"
+      + to_port           = 80
+      + type              = "ingress"
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  ~ instance_type = "t3.micro" -> "t3.small"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.

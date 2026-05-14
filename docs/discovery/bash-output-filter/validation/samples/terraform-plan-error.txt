@@ -1,0 +1,14 @@
+Acquiring state lock. This may take a few moments...
+Refreshing state... [id=vpc-0abc123def456789]
+Refreshing state... [id=sg-0def456789abc123]
+Releasing state lock. This may take a few moments...
+
+╷
+│ Error: Reference to undeclared resource
+│
+│   on main.tf line 12, in resource "aws_instance" "web":
+│   12:   subnet_id = aws_subnet.missing.id
+│
+│ A managed resource "aws_subnet" "missing" has not been declared in the
+│ root module.
+╵

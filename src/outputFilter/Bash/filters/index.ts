@@ -4,6 +4,7 @@
 // Phase 6.2   — JS/TS toolchain + git diff/show (8 specs).
 // Phase 9     — system utilities (ping/rsync/tree/ssh/df/du/dmesg/stat/jq) + curl-plain.
 // Phase 10    — wget + find.
+// Phase 11    — Java build tools (gradle, mvn) + IAC (terraform).
 //
 // Order matters only insofar as more specific specs must come before
 // less specific ones when their matchCommand regex could overlap. We
@@ -46,6 +47,8 @@ import {
   gitShow,
 } from './git.js'
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
+import { gradle, mvn } from './java-build.js'
+import { terraform } from './iac.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
 import { dockerPs, dockerImages, dockerLogs } from './containers.js'
 import { curlV, dig, curlPlain, wget } from './network.js'
@@ -118,6 +121,9 @@ export const builtInFilters: FilterSpec[] = [
   find,
   curlPlain,
   wget,
+  gradle,
+  mvn,
+  terraform,
   // Cargo (Rust) — specific variants first so matchCommandReject fires
   // before a more general one could claim the command.
   cargoTest,
