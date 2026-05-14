@@ -34,7 +34,7 @@ export const AGENT_COLOR_TO_THEME_COLOR = {
 } as const satisfies Record<AgentColorName, keyof Theme>
 
 export function getAgentColor(agentType: string): keyof Theme | undefined {
-  if (agentType === 'general-purpose') {
+  if (agentType === 'Code') {
     return undefined
   }
 

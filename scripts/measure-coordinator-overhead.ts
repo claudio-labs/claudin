@@ -188,7 +188,7 @@ export async function measureCoordinatorOverhead(options: {
     const workerToolsBytes = bytes(workerTools)
 
     const dispatch = renderDispatchEnvelope(
-      'general-purpose',
+      'Code',
       'Investigate the cache invalidation issue in src/services/api/.',
     )
     const dispatchBytes = bytes(dispatch)

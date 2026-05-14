@@ -43,7 +43,7 @@ export type PromptCommand = {
   // 'inline' = skill content expands into the current conversation
   // 'fork' = skill runs in a sub-agent with separate context and token budget
   context?: 'inline' | 'fork'
-  // Agent type to use when forked (e.g., 'Bash', 'general-purpose')
+  // Agent type to use when forked (e.g., 'Bash', 'code')
   // Only applicable when context is 'fork'
   agent?: string
   effort?: EffortValue

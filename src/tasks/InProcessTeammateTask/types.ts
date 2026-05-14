@@ -31,7 +31,7 @@ export type InProcessTeammateTaskState = TaskStateBase & {
   // Optional model override for this teammate
   model?: string
   // Optional: Only set if teammate uses a specific agent definition
-  // Many teammates run as general-purpose agents without a predefined definition
+  // Many teammates run as code agents without a predefined definition
   selectedAgent?: AgentDefinition
   abortController?: AbortController // Runtime only, not serialized to disk - kills WHOLE teammate
   currentWorkAbortController?: AbortController // Runtime only - aborts current turn without killing teammate

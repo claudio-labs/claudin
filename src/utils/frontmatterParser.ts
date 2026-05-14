@@ -42,7 +42,7 @@ export type FrontmatterData = {
   // 'inline' = skill content expands into the current conversation
   // 'fork' = skill runs in a sub-agent with separate context and token budget
   context?: 'inline' | 'fork' | null
-  // Agent type to use when forked (e.g., 'Bash', 'general-purpose')
+  // Agent type to use when forked (e.g., 'Bash', 'code')
   // Only applicable when context is 'fork'
   agent?: string | null
   // Glob patterns for file paths this skill applies to. Accepts either a

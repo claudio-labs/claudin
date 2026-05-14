@@ -18,7 +18,7 @@ export const HARD_CAP_PCT = 0.25
 
 export const SUBAGENT_BUDGET_PCT: Record<string, number> = {
   'claudio-dev': 0.25,
-  'general-purpose': 0.2,
+  'Code': 0.2,
   __customDefault: 0.2,
   Explore: 0,
 }

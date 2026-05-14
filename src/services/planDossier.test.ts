@@ -464,8 +464,8 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
     expect(renderDossierForSubagent(smallDossier(), 'Explore', 'claude-opus-4-7')).toBeNull()
   })
 
-  test('renders text for general-purpose subagent', () => {
-    const result = renderDossierForSubagent(smallDossier(), 'general-purpose', 'claude-opus-4-7')
+  test('renders text for code subagent', () => {
+    const result = renderDossierForSubagent(smallDossier(), 'Code', 'claude-opus-4-7')
     expect(result).not.toBeNull()
     expect(result!.text).toContain('<plan-dossier>')
     expect(result!.text).toContain('# plan content')
@@ -497,7 +497,7 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
         },
       ],
     }
-    const result = renderDossierForSubagent(dossier, 'general-purpose', 'claude-opus-4-7')!
+    const result = renderDossierForSubagent(dossier, 'Code', 'claude-opus-4-7')!
     // No Tier 1 block should be rendered
     expect(result.text).not.toContain('AAAA') // raw bytes from content not present
     expect(result.text).toContain('--- Other explored files & searches ---')
@@ -524,7 +524,7 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
         },
       ],
     }
-    const result = renderDossierForSubagent(dossier, 'general-purpose', 'claude-opus-4-7')!
+    const result = renderDossierForSubagent(dossier, 'Code', 'claude-opus-4-7')!
     expect(result.text).toContain('STALE: /x/stale.ts')
   })
 })
@@ -563,7 +563,7 @@ describe('renderDossierForSubagent — tier 3 degrade and overflow', () => {
     // Use a small effective window via legacy model with smaller capacity
     const result = renderDossierForSubagent(
       dossier,
-      'general-purpose',
+      'Code',
       'claude-3-5-haiku-latest',
     )!
     // The smaller file (big1) should remain in full; the larger (big2) should
@@ -597,7 +597,7 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
 
   const SUBAGENT_TYPES: string[] = [
     'claudio-dev',
-    'general-purpose',
+    'Code',
     '__customDefault',
     'Explore',
     'some-custom-name-not-in-table',

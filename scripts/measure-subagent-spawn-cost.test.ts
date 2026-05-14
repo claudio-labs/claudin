@@ -5,7 +5,7 @@ import { measureSubagentSpawnCost } from './measure-subagent-spawn-cost.ts'
 describe('measureSubagentSpawnCost', () => {
   test('returns at least one row per built-in agent with a non-empty system prompt', async () => {
     const result = await measureSubagentSpawnCost()
-    // The open build always ships >=1 built-in agent (general-purpose).
+    // The open build always ships >=1 built-in agent (Code).
     expect(result.rows.length).toBeGreaterThan(0)
     for (const r of result.rows) {
       expect(r.agentType.length).toBeGreaterThan(0)

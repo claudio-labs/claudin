@@ -27,7 +27,6 @@ type Props = {
 
 const NAME_COL_MIN = 20;
 const MODEL_COL_MIN = 12;
-const MEMORY_COL_MIN = 10;
 
 function truncate(value: string, width: number): string {
   if (value.length <= width) return value;
@@ -45,7 +44,6 @@ function getOverrideInfo(agent: ResolvedAgent) {
 type ColumnWidths = {
   name: number;
   model: number;
-  memory: number;
 };
 
 function computeColumnWidths(agents: ResolvedAgent[]): ColumnWidths {
@@ -54,21 +52,15 @@ function computeColumnWidths(agents: ResolvedAgent[]): ColumnWidths {
   // terminal-narrow agent name still gets truncated correctly.
   let name = NAME_COL_MIN;
   let model = MODEL_COL_MIN;
-  let memory = MEMORY_COL_MIN;
   for (const agent of agents) {
     if (agent.agentType.length > name) name = agent.agentType.length;
     const m = resolveAgentModelDisplay(agent);
     if (m && m.length > model) model = m.length;
-    if (agent.memory) {
-      const memText = `${agent.memory} memory`;
-      if (memText.length > memory) memory = memText.length;
-    }
   }
   // Cap to keep things sane on narrow terminals.
   return {
     name: Math.min(name, 32),
     model: Math.min(model, 28),
-    memory: Math.min(memory, 20),
   };
 }
 
@@ -85,7 +77,6 @@ function AgentRow({ agent, isSelected, dimmed, widths, selectable }: AgentRowPro
   const rowDim = dimmed && !isSelected;
   const textColor = selectable && isSelected ? 'suggestion' : undefined;
   const resolvedModel = resolveAgentModelDisplay(agent) ?? '';
-  const memoryDisplay = agent.memory ? `${agent.memory} memory` : '';
   const pointer = selectable ? (isSelected ? `${figures.pointer} ` : '  ') : '';
 
   return (
@@ -99,11 +90,6 @@ function AgentRow({ agent, isSelected, dimmed, widths, selectable }: AgentRowPro
       <Box width={widths.model + 2} flexShrink={0}>
         <Text dimColor={true} color={textColor}>
           {truncate(resolvedModel, widths.model)}
-        </Text>
-      </Box>
-      <Box width={widths.memory + 2} flexShrink={0}>
-        <Text dimColor={true} color={textColor}>
-          {truncate(memoryDisplay, widths.memory)}
         </Text>
       </Box>
       {overriddenBy && (
@@ -134,9 +120,6 @@ function ColumnHeader({
       </Box>
       <Box width={widths.model + 2} flexShrink={0}>
         <Text dimColor={true}>Model</Text>
-      </Box>
-      <Box width={widths.memory + 2} flexShrink={0}>
-        <Text dimColor={true}>Memory</Text>
       </Box>
     </Box>
   );

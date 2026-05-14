@@ -274,7 +274,7 @@ export type AgentMetadata = {
 /**
  * Persist the agentType used to launch a subagent. Read by resume to
  * route correctly when subagent_type is omitted — without this, resuming
- * a fork silently degrades to general-purpose (4KB system prompt, no
+ * a fork silently degrades to code (4KB system prompt, no
  * inherited history). Sidecar file avoids JSONL schema changes.
  *
  * Also stores the worktreePath when the agent was spawned with worktree

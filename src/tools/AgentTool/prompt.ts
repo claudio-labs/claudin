@@ -149,15 +149,15 @@ ${AGENT_TOOL_NAME}({
   const currentExamples = `Example usage:
 
 <example_agent_descriptions>
-"claude-code-guide": use this agent when the user asks how Claude Code works or how to use its features
+"claudio-guide": use this agent when the user asks how Claude Code works or how to use its features
 </example_agent_descriptions>
 
 <example>
 user: "How do I configure Claude Code hooks?"
 <commentary>
-This is a Claude Code usage question, so use the claude-code-guide agent
+This is a Claude Code usage question, so use the claudio-guide agent
 </commentary>
-assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claude-code-guide agent
+assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claudio-guide agent
 </example>
 `
 
@@ -182,7 +182,7 @@ ${agentListSection}
 ${
   forkEnabled
     ? `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type to use a specialized agent, or omit it to fork yourself — a fork inherits your full conversation context.`
-    : `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type parameter to select which agent type to use. If omitted, the general-purpose agent is used.`
+    : `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type parameter to select which agent type to use. If omitted, the Code agent is used.`
 }`
 
   // Coordinator mode gets the slim prompt -- the coordinator system prompt

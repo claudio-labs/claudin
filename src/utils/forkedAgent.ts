@@ -178,7 +178,7 @@ export type PreparedForkedContext = {
   skillContent: string
   /** Modified getAppState with allowed tools */
   modifiedGetAppState: ToolUseContext['getAppState']
-  /** The general-purpose agent to use */
+  /** The code agent to use */
   baseAgent: AgentDefinition
   /** Initial prompt messages */
   promptMessages: Message[]
@@ -208,12 +208,12 @@ export async function prepareForkedCommandContext(
     allowedTools,
   )
 
-  // Use command.agent if specified, otherwise 'general-purpose'
-  const agentTypeName = command.agent ?? 'general-purpose'
+  // Use command.agent if specified, otherwise 'Code'
+  const agentTypeName = command.agent ?? 'Code'
   const agents = context.options.agentDefinitions.activeAgents
   const baseAgent =
     agents.find(a => a.agentType === agentTypeName) ??
-    agents.find(a => a.agentType === 'general-purpose') ??
+    agents.find(a => a.agentType === 'Code') ??
     agents[0]
 
   if (!baseAgent) {
