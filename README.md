@@ -1,9 +1,8 @@
 # Claudio
 
-Claudio is a coding-agent CLI that works across multiple model providers — Anthropic, OpenAI-compatible APIs, Gemini, GitHub Copilot, Ollama, Bedrock, Vertex, and more — with one consistent terminal workflow: prompts, tools, agents, MCP, and slash commands.
+A coding-agent CLI that works across multiple model providers — Anthropic, OpenAI-compatible APIs, Gemini, Mistral, GitHub Copilot, ChatGPT, Ollama, Bedrock, Vertex, Foundry, and more — with one consistent terminal workflow.
 
 [![License](https://img.shields.io/badge/license-source--available-2563eb)](LICENSE)
-[![Security Policy](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 
 ---
 
@@ -15,29 +14,27 @@ npm install -g @claudiolabs/claudio@latest
 
 Requires Node 20+. Works on Linux, macOS, and Windows.
 
-## Start
+## Quick Start
 
 ```bash
 claudio
 ```
 
-On first run, Claudio opens the `/provider` wizard automatically. Pick a preset, enter credentials, and start working — no environment variables required.
+On first run, Claudio opens the `/provider` wizard. Pick a preset, enter credentials, and start working — no environment variables required.
 
 ## Providers
 
-Configure providers from inside the REPL with `/provider`:
+Configure from inside the REPL with `/provider`:
 
-| Type | Presets |
-|---|---|
-| Anthropic | `anthropic` (API key or OAuth) |
-| OpenAI-compatible | `openai`, `deepseek`, `groq`, `openrouter`, `lmstudio`, `together`, `nvidia-nim`, `atomic-chat`, and more |
-| Google | `gemini` |
-| Mistral | `mistral` |
-| Local | `ollama` |
-| ChatGPT | `codex` (OAuth) |
-| GitHub | `github-copilot` (device flow) |
-| Cloud | `bedrock`, `vertex`, `foundry` |
-| Custom | any OpenAI-compatible base URL |
+- **Anthropic** — API key or OAuth
+- **OpenAI-compatible** — DeepSeek, Groq, OpenRouter, LM Studio, Together, Novita AI, NVIDIA NIM, and any OpenAI-compatible base URL
+- **Google** — Gemini (API key, ADC, or OAuth)
+- **Mistral** — API key
+- **ChatGPT** — Codex OAuth
+- **GitHub** — Copilot (device flow)
+- **Local** — Ollama
+- **Cloud** — Bedrock, Vertex, Foundry
+- **Custom** — any OpenAI-compatible endpoint
 
 Run `/provider doctor` to check your active profile, or `/provider migrate` to import a legacy `~/.claude/` config.
 
@@ -45,39 +42,45 @@ Run `/provider doctor` to check your active profile, or `/provider migrate` to i
 
 | Command | Description |
 |---|---|
-| `/provider` | Manage provider profiles |
-| `/plan` | Enter plan mode |
+| `/provider` | Manage provider profiles and credentials |
+| `/model` | Change the active model |
+| `/plan` | Enter plan mode (explore before coding) |
 | `/review` | Code review |
+| `/commit` | Commit changes |
 | `/mcp` | Manage MCP servers |
+| `/memory` | View and manage project memory |
 | `/hooks` | Configure event hooks |
-| `/usage` | Token and cost summary |
+| `/usage` / `/cost` | Token and cost tracking |
 | `/config` | Settings |
+| `/resume` | Resume a previous session |
+| `/fast` | Toggle fast mode |
+| `/help` | List all commands |
+
+## Features
+
+- **Multi-provider** — one CLI, every major model provider
+- **Tools** — file I/O, grep, glob, bash, web search/fetch, notebook editing
+- **Sub-agents** — spawn specialized agents in parallel
+- **MCP** — connect external tool servers (filesystem, databases, APIs)
+- **Auto-memory** — persistent per-project notes under `~/.claudio/projects/`
+- **gRPC headless** — run `claudio --grpc` for programmatic access
+- **VS Code** — [extension](vscode-extension/claudio-vscode) for launch integration and themes
 
 ## Source Build
 
 ```bash
-bun install
-bun run build
-node dist/cli.mjs
+bun install && bun run build && node dist/cli.mjs
 ```
 
-Other useful commands:
+Other commands:
 
 ```bash
-bun run dev          # build + run
-bun run smoke        # build + version check
-bun test             # full test suite
-bun run typecheck    # tsc --noEmit
-bun run verify:privacy  # check for phone-home patterns
+bun run dev              # build + run
+bun run smoke            # build + version check
+bun test                 # full test suite
+bun run typecheck        # tsc --noEmit
+bun run verify:privacy   # scan for phone-home patterns
 ```
-
-## VS Code Extension
-
-The repo includes a VS Code extension at [`vscode-extension/claudio-vscode`](vscode-extension/claudio-vscode) for Claudio launch integration and theme support.
-
-## Contributing
-
-For larger changes, open an issue first. Run `bun run build`, `bun run smoke`, and `bun test` before opening a PR.
 
 ## Disclaimer
 
