@@ -100,6 +100,14 @@ async function main(): Promise<void> {
     applySafeConfigEnvironmentVariables()
   }
 
+  // Check for a newer Claudio release on npm and self-update before mounting
+  // the TUI. Fails open — see src/utils/startupUpdateCheck.ts for skip
+  // conditions (TTY, dev install, throttle, sentinel, etc.).
+  {
+    const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
+    await runStartupUpdateCheck(args)
+  }
+
   // Hydrate GitHub credentials so the github_copilot transport sees the token at startup
   {
     const {

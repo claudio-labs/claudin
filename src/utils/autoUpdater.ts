@@ -1,24 +1,20 @@
-import axios from 'axios'
 import { constants as fsConstants } from 'fs'
 import { access, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import { getDynamicConfig_BLOCKS_ON_INIT } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
 import { type ReleaseChannel, saveGlobalConfig } from './config.js'
-import { getAPIProvider } from './model/providers.js'
 import { logForDebugging } from './debug.js'
 import { env } from './env.js'
 import { getClaudioConfigHomeDir } from './envUtils.js'
 import { ClaudeError, getErrnoCode, isENOENT } from './errors.js'
 import { execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { getFsImplementation } from './fsOperations.js'
-import { gracefulShutdownSync } from './gracefulShutdown.js'
 import { logError } from './log.js'
-import { gte, lt } from './semver.js'
+import { gte } from './semver.js'
 import { getInitialSettings } from './settings/settings.js'
 import {
   filterClaudeAliases,
@@ -27,9 +23,6 @@ import {
   writeFileLines,
 } from './shellConfig.js'
 import { jsonParse } from './slowOperations.js'
-
-const GCS_BUCKET_URL =
-  'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases'
 
 class AutoUpdaterError extends ClaudeError {}
 
@@ -69,40 +62,8 @@ export type MaxVersionConfig = {
  * This approach keeps version comparison logic simple while maintaining traceability via the SHA.
  */
 export async function assertMinVersion(): Promise<void> {
-  if (process.env.NODE_ENV === 'test') {
-    return
-  }
-
-  // Skip version check for third-party providers — the min version
-  // kill-switch is first-party-specific and should not block 3P users
-  if (getAPIProvider() !== 'firstParty') {
-    return
-  }
-
-  try {
-    const versionConfig = await getDynamicConfig_BLOCKS_ON_INIT<{
-      minVersion: string
-    }>('tengu_version_config', { minVersion: '0.0.0' })
-
-    if (
-      versionConfig.minVersion &&
-      lt(MACRO.VERSION, versionConfig.minVersion)
-    ) {
-      // biome-ignore lint/suspicious/noConsole:: intentional console output
-      console.error(`
-It looks like your version of Claude Code (${MACRO.VERSION}) needs an update.
-A newer version (${versionConfig.minVersion} or higher) is required to continue.
-
-To update, please run:
-    claude update
-
-This will ensure you have access to the latest features and improvements.
-`)
-      gracefulShutdownSync(1)
-    }
-  } catch (error) {
-    logError(error as Error)
-  }
+  // Claudio: the upstream min-version kill-switch is Anthropic-specific
+  // (gated by their Growthbook tenant). Neutralized for multi-provider builds.
 }
 
 /**
@@ -112,30 +73,14 @@ This will ensure you have access to the latest features and improvements.
  * This is used as a server-side kill switch to pause auto-updates during incidents.
  * Returns undefined if no cap is configured.
  */
+// Claudio: max-version kill-switch is Anthropic-specific (Growthbook tenant).
+// Neutralized — no cap is ever applied in open builds.
 export async function getMaxVersion(): Promise<string | undefined> {
-  const config = await getMaxVersionConfig()
-  return config.external || undefined
+  return undefined
 }
 
-/**
- * Returns the server-driven message explaining the known issue, if configured.
- * Shown in the warning banner when the current version exceeds the max allowed version.
- */
 export async function getMaxVersionMessage(): Promise<string | undefined> {
-  const config = await getMaxVersionConfig()
-  return config.external_message || undefined
-}
-
-async function getMaxVersionConfig(): Promise<MaxVersionConfig> {
-  try {
-    return await getDynamicConfig_BLOCKS_ON_INIT<MaxVersionConfig>(
-      'tengu_max_version_config',
-      {},
-    )
-  } catch (error) {
-    logError(error as Error)
-    return {}
-  }
+  return undefined
 }
 
 /**
@@ -319,15 +264,17 @@ export async function checkGlobalInstallPermissions(): Promise<{
 
 export async function getLatestVersion(
   channel: ReleaseChannel,
+  options: { timeoutMs?: number } = {},
 ): Promise<string | null> {
   const npmTag = channel === 'stable' ? 'stable' : 'latest'
+  const timeoutMs = options.timeoutMs ?? 5000
 
   // Run from home directory to avoid reading project-level .npmrc
   // which could be maliciously crafted to redirect to an attacker's registry
   const result = await execFileNoThrowWithCwd(
     'npm',
     ['view', `${MACRO.PACKAGE_URL}@${npmTag}`, 'version', '--prefer-online'],
-    { abortSignal: AbortSignal.timeout(5000), cwd: homedir() },
+    { abortSignal: AbortSignal.timeout(timeoutMs), cwd: homedir() },
   )
   if (result.code !== 0) {
     logForDebugging(`npm view failed with code ${result.code}`)
@@ -378,36 +325,17 @@ export async function getNpmDistTags(): Promise<NpmDistTags> {
   }
 }
 
-/**
- * Get the latest version from GCS bucket for a given release channel.
- * This is used by installations that don't have npm (e.g. package manager installs).
- */
+// Claudio: GCS endpoints below pointed at Anthropic-owned distribution infra.
+// Neutralized so the native installer path never phones home — callers
+// already treat null as "no GCS info available".
 export async function getLatestVersionFromGcs(
-  channel: ReleaseChannel,
+  _channel: ReleaseChannel,
 ): Promise<string | null> {
-  try {
-    const response = await axios.get(`${GCS_BUCKET_URL}/${channel}`, {
-      timeout: 5000,
-      responseType: 'text',
-    })
-    return response.data.trim()
-  } catch (error) {
-    logForDebugging(`Failed to fetch ${channel} from GCS: ${error}`)
-    return null
-  }
+  return null
 }
 
-/**
- * Get available versions from GCS bucket (for native installations).
- * Fetches both latest and stable channel pointers.
- */
 export async function getGcsDistTags(): Promise<NpmDistTags> {
-  const [latest, stable] = await Promise.all([
-    getLatestVersionFromGcs('latest'),
-    getLatestVersionFromGcs('stable'),
-  ])
-
-  return { latest, stable }
+  return { latest: null, stable: null }
 }
 
 /**
