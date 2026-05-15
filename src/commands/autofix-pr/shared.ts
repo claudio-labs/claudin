@@ -5,7 +5,9 @@ import { getBranch, getDefaultBranch, getIsGit } from '../../utils/git.js'
 import { logError } from '../../utils/log.js'
 import { jsonParse } from '../../utils/slowOperations.js'
 
-export class AutofixPreconditionError extends ClaudeError {}
+export class AutofixPreconditionError extends ClaudeError {
+  override name = 'Autofix PR failed'
+}
 
 const PrViewSchema = z.object({
   number: z.number().int().positive(),
