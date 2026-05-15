@@ -1,7 +1,8 @@
 import { execa } from 'execa'
 import { readFile, realpath } from 'fs/promises'
 import { homedir } from 'os'
-import { delimiter, dirname, join, posix, win32 } from 'path'
+import { delimiter, join, posix, win32 } from 'path'
+import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from './sourceTreeDetect.js'
 import { checkGlobalInstallPermissions } from './autoUpdater.js'
 import { isInBundledMode } from './bundledMode.js'
 import {
@@ -95,28 +96,7 @@ function getNormalizedPaths(): [invokedPath: string, execPath: string] {
 }
 
 async function isInvokedFromSourceTree(invokedPath: string): Promise<boolean> {
-  if (!invokedPath) return false
-  try {
-    const resolved = await realpath(invokedPath)
-    let dir = dirname(resolved)
-    // Walk up at most 4 levels looking for a package.json that matches our own name.
-    for (let i = 0; i < 4; i++) {
-      const pkgPath = join(dir, 'package.json')
-      try {
-        const raw = await readFile(pkgPath, 'utf8')
-        const pkg = JSON.parse(raw) as { name?: string }
-        if (pkg.name === MACRO.PACKAGE_URL) return true
-      } catch {
-        // package.json missing or unreadable at this level — keep walking
-      }
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
-    }
-  } catch {
-    // realpath failed (broken symlink, permission denied, etc.) — not dev
-  }
-  return false
+  return isInvokedFromSourceTreeImpl(invokedPath, MACRO.PACKAGE_URL)
 }
 
 export async function getCurrentInstallationType(): Promise<InstallationType> {
