@@ -203,14 +203,20 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
 
     if (status !== 'success') {
       if (status === 'no_permissions') {
+        const launcherPath = process.argv[1] || ''
+        const isBunInstall =
+          launcherPath.includes('/.bun/install/global/') ||
+          (process.env.BUN_INSTALL
+            ? launcherPath.startsWith(process.env.BUN_INSTALL)
+            : false)
+        const manualCmd = isBunInstall
+          ? `bun install -g ${MACRO.PACKAGE_URL}@latest`
+          : `sudo npm install -g ${MACRO.PACKAGE_URL}@latest`
         process.stdout.write(
           chalk.yellow(
             `\nUpdate to ${latest} failed: insufficient permissions.\n` +
               `Run manually:\n`,
-          ) +
-            chalk.bold(
-              `  sudo npm install -g ${MACRO.PACKAGE_URL}@latest\n\n`,
-            ),
+          ) + chalk.bold(`  ${manualCmd}\n\n`),
         )
       } else {
         process.stdout.write(

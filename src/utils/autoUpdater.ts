@@ -26,6 +26,20 @@ import { jsonParse } from './slowOperations.js'
 
 class AutoUpdaterError extends ClaudeError {}
 
+/**
+ * Detect a Bun global install even when the launcher re-exec'd into Node.
+ * `bin/claudio` swaps to `process.execPath` (Node) for the heap bump, which
+ * means `isRunningWithBun()` returns false; we fall back to inspecting the
+ * launcher path to keep the package manager aligned with the install source.
+ */
+function isInstalledViaBun(): boolean {
+  const invokedPath = process.argv[1] || ''
+  if (invokedPath.includes('/.bun/install/global/')) return true
+  const bunInstall = process.env.BUN_INSTALL
+  if (bunInstall && invokedPath.startsWith(bunInstall)) return true
+  return false
+}
+
 export type InstallStatus =
   | 'success'
   | 'no_permissions'
@@ -215,7 +229,7 @@ async function releaseLock(): Promise<void> {
 
 async function getInstallationPrefix(): Promise<string | null> {
   // Run from home directory to avoid reading project-level .npmrc/.bunfig.toml
-  const isBun = env.isRunningWithBun()
+  const isBun = env.isRunningWithBun() || isInstalledViaBun()
   let prefixResult = null
   if (isBun) {
     prefixResult = await execFileNoThrowWithCwd('bun', ['pm', 'bin', '-g'], {
@@ -430,7 +444,8 @@ To fix this issue:
 
     // Run from home directory to avoid reading project-level .npmrc/.bunfig.toml
     // which could be maliciously crafted to redirect to an attacker's registry
-    const packageManager = env.isRunningWithBun() ? 'bun' : 'npm'
+    const packageManager =
+      env.isRunningWithBun() || isInstalledViaBun() ? 'bun' : 'npm'
     const installResult = await execFileNoThrowWithCwd(
       packageManager,
       ['install', '-g', packageSpec],

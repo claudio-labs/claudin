@@ -174,6 +174,16 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
     return 'npm-global'
   }
 
+  // Bun global installs live under <bun-install>/install/global/node_modules.
+  // The default is ~/.bun/install/global; respect BUN_INSTALL override.
+  if (invokedPath.includes('/.bun/install/global/')) {
+    return 'npm-global'
+  }
+  const bunInstall = process.env.BUN_INSTALL
+  if (bunInstall && invokedPath.startsWith(bunInstall)) {
+    return 'npm-global'
+  }
+
   const npmConfigResult = await execa('npm config get prefix', {
     shell: true,
     reject: false,
