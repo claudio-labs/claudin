@@ -255,6 +255,7 @@ const COMMANDS = memoize((): Command[] => [
   advisor,
   agents,
   autoFix,
+  autofixPr,
   branch,
   btw,
   cacheProbe,
