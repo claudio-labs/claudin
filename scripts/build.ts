@@ -136,12 +136,20 @@ function restoreModifiedFiles() {
 }
 
 // Wipe stale build artifacts before rebuilding. With splitting:true, chunks
-// carry hashed names ([name]-[version]-[hash].mjs). We keep `dist/chunks/`
-// across rebuilds so a CLI process already running on an older version can
-// still lazy-import its chunks — wiping the dir would break those processes.
-// Garbage collection happens after the build (see below), pruning by version.
+// carry hashed names ([name]-[version]-[hash].mjs). For dev builds we keep
+// `dist/chunks/` across rebuilds so a CLI process already running on an
+// older version can still lazy-import its chunks — wiping the dir would
+// break those processes. Garbage collection happens after the build (see
+// below), pruning by version. Release builds (CI/publish) start from a
+// clean chunks dir: there's no long-running CLI to protect, and leaving
+// stale dev chunks behind would cause them to ship in the npm tarball
+// alongside fresh release chunks (duplicates observed in v0.2.5).
 const distDir = join(import.meta.dir, '..', 'dist')
-for (const stale of ['cli.mjs', 'cli.mjs.map']) {
+const isReleaseBuild = process.env.CLAUDIO_RELEASE_BUILD === '1'
+const staleArtifacts = isReleaseBuild
+  ? ['cli.mjs', 'cli.mjs.map', 'chunks']
+  : ['cli.mjs', 'cli.mjs.map']
+for (const stale of staleArtifacts) {
   rmSync(join(distDir, stale), { recursive: true, force: true })
 }
 
