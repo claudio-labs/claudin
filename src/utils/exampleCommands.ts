@@ -139,24 +139,38 @@ async function getFrequentlyModifiedFiles(): Promise<string[]> {
 
 const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000
 
-export const getExampleCommandFromCache = memoize(() => {
+function buildCommandPool(count: number): string[] {
   const projectConfig = getCurrentProjectConfig()
-  const frequentFile = projectConfig.exampleFiles?.length
-    ? sample(projectConfig.exampleFiles)
-    : '<filepath>'
+  const files: string[] = projectConfig.exampleFiles?.length
+    ? projectConfig.exampleFiles
+    : ['<filepath>']
 
   const commands = [
     'fix lint errors',
     'fix typecheck errors',
-    `how does ${frequentFile} work?`,
-    `refactor ${frequentFile}`,
+    `how does ${files[0]} work?`,
+    `refactor ${files[Math.floor(files.length / 2)]}`,
     'how do I log an error?',
-    `edit ${frequentFile} to...`,
-    `write a test for ${frequentFile}`,
+    `edit ${files[files.length - 1]} to...`,
+    `write a test for ${files[0]}`,
     'create a util logging.py that...',
   ]
 
-  return `Try "${sample(commands)}"`
+  // Fisher-Yates shuffle, pick first `count` without repeats
+  const pool = [...commands]
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j]!, pool[i]!]
+  }
+  return pool.slice(0, count).map(c => `Try "${c}"`)
+}
+
+export const getExampleCommandFromCache = memoize(() => {
+  return buildCommandPool(1)[0] ?? 'Try "fix lint errors"'
+})
+
+export const getExampleCommandPool = memoize((count: number) => {
+  return buildCommandPool(count)
 })
 
 export const refreshExampleCommands = memoize(async (): Promise<void> => {
