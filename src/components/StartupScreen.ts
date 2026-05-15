@@ -31,20 +31,18 @@ const PINK_DARK: RGB = [170, 65, 110]
 // ─── Pixel-art logo ───────────────────────────────────────────────────────────
 
 /**
- * 5-row pink pixel-art robot. Built with half-block characters (▀ ▄ █) so
- * each character cell shows two stacked pixels — that's how the eyes get to
- * be vertical slits and the mouth a horizontal bar at the right scale.
+ * 5-row pink pixel-art robot using half-block chars (█ ▜ ▝).
+ * Each cell encodes two stacked pixel rows: foreground = pink,
+ * terminal background fills eye/mouth holes.
  *
- * Layout: sparkle floating above (row 0), head with eyes (rows 1–2),
- * mouth/chin (row 3), three stubby legs (row 4). Rows are space-padded to
- * the same width so the trailing GAP + text columns line up.
+ * Rows are space-padded to the same width so the text column lines up.
+ * See LOGO_LINES for the character layout (4 rows).
  */
 const LOGO_LINES: string[] = [
-  '             ',
-  '      █▀███▀█',
-  '      █▄███▄█',
-  '      ▀█▄▄▄█▀',
-  '        █▀█ ',
+  '           ',
+  '   ▐▛███▜▌ ',
+  '   ███████ ',
+  '    ▘▘ ▝▝  ',
 ]
 
 const LOGO_SHADES: RGB[] = [PINK_LIGHT, PINK, PINK, PINK, PINK_DARK]
