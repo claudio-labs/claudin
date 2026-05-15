@@ -137,18 +137,18 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
 
   const parts: string[] = [];
   if (contextTokens > 0) {
-    parts.push(`Context: ${formatTokens(contextTokens)}`);
+    parts.push(`ctx: ${formatTokens(contextTokens)}`);
   }
   if (snapshot.supportsCache) {
     if (snapshot.cacheCreation > 0) {
-      parts.push(`Cache Write: ${formatTokens(snapshot.cacheCreation)}`);
+      parts.push(`wrt: ${formatTokens(snapshot.cacheCreation)}`);
     }
     if (snapshot.cacheRead > 0) {
-      parts.push(`Cache Read: ${formatTokens(snapshot.cacheRead)}`);
+      parts.push(`rd: ${formatTokens(snapshot.cacheRead)}`);
     }
   } else {
-    parts.push(`Input: ${formatTokens(snapshot.input)}`);
-    parts.push(`Output: ${formatTokens(snapshot.output)}`);
+    parts.push(`in: ${formatTokens(snapshot.input)}`);
+    parts.push(`out: ${formatTokens(snapshot.output)}`);
   }
 
   const costValue = snapshot.cost > 0 ? formatCost(snapshot.cost) : null;
@@ -158,7 +158,7 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
     <Box>
       <Text dimColor wrap="truncate">
         {parts.join(' · ')}
-        {costValue ? ' │ Cost: ' : ''}
+        {costValue ? ' │ ' : ''}
       </Text>
       {costValue ? <Text color={theme.claude}>{costValue}</Text> : null}
     </Box>
