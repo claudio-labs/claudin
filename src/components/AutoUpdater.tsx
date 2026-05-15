@@ -100,6 +100,17 @@ export function AutoUpdater({
         return;
       }
 
+      // Skip when we can't reliably tell which package manager owns the
+      // current binary (e.g. bun-global, custom prefixes). Auto-updating in
+      // that case can install into a different prefix than the one on PATH,
+      // leaving the user on the old version. Stay silent — user can run
+      // `claudio update` (or the matching package-manager command) manually.
+      if (installationType === 'unknown') {
+        logForDebugging('AutoUpdater: Unknown installation type, skipping auto-update');
+        onChangeIsUpdating(false);
+        return;
+      }
+
       // Choose the appropriate update method based on what's actually running
       let installStatus: InstallStatus;
       let updateMethod: 'local' | 'global';

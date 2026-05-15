@@ -145,8 +145,17 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     if (
       installType === 'development' ||
       installType === 'native' ||
-      installType === 'package-manager'
+      installType === 'package-manager' ||
+      installType === 'unknown'
     ) {
+      // 'unknown' means we cannot reliably tell which package manager owns the
+      // current binary (e.g. bun-global installs, custom prefixes). Triggering
+      // `npm install -g` in that case can install into a different prefix than
+      // the one on PATH, leaving the user on the old version forever — skip
+      // and let the user run `claudio update` manually.
+      logForDebugging(
+        `startup-update: skipping for installType=${installType}`,
+      )
       return
     }
 
