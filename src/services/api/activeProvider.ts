@@ -31,6 +31,7 @@ export type ResolvedProvider = {
   model: string
   apiKey?: string
   extras?: ProviderProfileExtras
+  name: string
 }
 
 export class ActiveProviderNotConfiguredError extends Error {
@@ -87,6 +88,7 @@ function resolveFromProfile(profile: ProviderProfile): ResolvedProvider {
     model: primaryModel,
     apiKey: profile.apiKey,
     extras: profile.extras,
+    name: profile.name,
   }
 }
 

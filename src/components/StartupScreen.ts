@@ -9,6 +9,8 @@ import { tryGetActiveProvider } from '../services/api/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from '../services/api/providerConfig.js'
 import { getLocalOpenAICompatibleProviderLabel } from '../utils/providerDiscovery.js'
 import { parseUserSpecifiedModel } from '../utils/model/model.js'
+import { getDisplayedEffortLevel, getInitialEffortSetting, modelSupportsEffort, type EffortLevel } from '../utils/effort.js'
+import { effortLevelToSymbol } from './EffortIndicator.js'
 
 const UNCONFIGURED_PLACEHOLDER = '—'
 
@@ -39,10 +41,10 @@ const PINK_DARK: RGB = [170, 65, 110]
  * See LOGO_LINES for the character layout (4 rows).
  */
 const LOGO_LINES: string[] = [
-  '           ',
-  '   ▐▛███▜▌ ',
-  '   ███████ ',
-  '    ▘▘ ▝▝  ',
+  '          ',
+  '  ▐▛███▜▌ ',
+  '  ▐█████▌ ',
+  '   ▘▘ ▝▝  ',
 ]
 
 const LOGO_SHADES: RGB[] = [PINK_LIGHT, PINK, PINK, PINK, PINK_DARK]
@@ -56,7 +58,7 @@ const LOGO_WIDTH = LOGO_LINES[0].length
 
 // ─── Provider detection ───────────────────────────────────────────────────────
 
-export function detectProvider(modelOverride?: string): { name: string; model: string; baseUrl: string; isLocal: boolean } {
+export function detectProvider(modelOverride?: string): { name: string; model: string; baseUrl: string; isLocal: boolean; effort?: EffortLevel } {
   const provider = tryGetActiveProvider()
 
   // No active profile — keep the banner honest instead of guessing Anthropic.
@@ -74,27 +76,23 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
   const baseUrl = provider.baseUrl
   const rawModel = modelOverride || provider.model
   const isLocal = isLocalProviderUrl(baseUrl)
+  const extrasEffort = provider.extras?.reasoningEffort
 
   switch (transport) {
     case 'gemini':
-      return { name: 'Google Gemini', model: rawModel, baseUrl, isLocal: false }
     case 'mistral':
-      return { name: 'Mistral', model: rawModel, baseUrl, isLocal: false }
     case 'github_copilot':
-      return { name: 'GitHub Copilot', model: rawModel, baseUrl, isLocal: false }
+      return { name: provider.name, model: rawModel, baseUrl, isLocal: false, effort: extrasEffort }
     case 'bedrock':
-      return { name: 'AWS Bedrock', model: parseUserSpecifiedModel(rawModel), baseUrl, isLocal: false }
     case 'vertex':
-      return { name: 'Google Vertex', model: parseUserSpecifiedModel(rawModel), baseUrl, isLocal: false }
     case 'foundry':
-      return { name: 'Azure Foundry', model: parseUserSpecifiedModel(rawModel), baseUrl, isLocal: false }
+      return { name: provider.name, model: parseUserSpecifiedModel(rawModel), baseUrl, isLocal: false, effort: extrasEffort }
     case 'anthropic': {
-      return {
-        name: 'Anthropic',
-        model: parseUserSpecifiedModel(rawModel),
-        baseUrl,
-        isLocal,
-      }
+      const resolvedModel = parseUserSpecifiedModel(rawModel)
+      const effort = modelSupportsEffort(resolvedModel)
+        ? getDisplayedEffortLevel(resolvedModel, getInitialEffortSetting())
+        : undefined
+      return { name: provider.name, model: resolvedModel, baseUrl, isLocal, effort }
     }
     case 'codex_responses':
     case 'openai_compat':
@@ -106,16 +104,11 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       const resolvedBaseUrl = resolvedRequest.baseUrl
       const resolvedIsLocal = isLocalProviderUrl(resolvedBaseUrl)
 
-      let name = 'OpenAI'
-      if (
-        resolvedRequest.transport === 'codex_responses' ||
-        resolvedBaseUrl.includes('chatgpt.com/backend-api/codex')
-      )
-        name = 'Codex'
+      let name = provider.name
       // Base URL is authoritative — must precede rawModel checks so aggregators
       // (OpenRouter/Together/Groq) aren't mislabelled as DeepSeek/Kimi/etc.
       // when routed to models whose IDs contain a vendor prefix. See issue #855.
-      else if (/openrouter/i.test(resolvedBaseUrl)) name = 'OpenRouter'
+      if (/openrouter/i.test(resolvedBaseUrl)) name = 'OpenRouter'
       else if (/together/i.test(resolvedBaseUrl)) name = 'Together AI'
       else if (/groq/i.test(resolvedBaseUrl)) name = 'Groq'
       else if (/azure/i.test(resolvedBaseUrl)) name = 'Azure OpenAI'
@@ -139,15 +132,9 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       else if (/bankr/i.test(rawModel)) name = 'Bankr'
       else if (resolvedIsLocal) name = getLocalOpenAICompatibleProviderLabel(resolvedBaseUrl)
 
-      // Resolve model alias to actual model name + reasoning effort
-      let displayModel = resolvedRequest.resolvedModel
-      const reasoningEffort =
-        resolvedRequest.reasoning?.effort ?? provider.extras?.reasoningEffort
-      if (reasoningEffort) {
-        displayModel = `${displayModel} (${reasoningEffort})`
-      }
+      const resolvedEffort = resolvedRequest.reasoning?.effort ?? provider.extras?.reasoningEffort
 
-      return { name, model: displayModel, baseUrl: resolvedBaseUrl, isLocal: resolvedIsLocal }
+      return { name, model: resolvedRequest.resolvedModel, baseUrl: resolvedBaseUrl, isLocal: resolvedIsLocal, effort: resolvedEffort }
     }
   }
 }
@@ -190,7 +177,9 @@ export function buildStartupBannerLines(modelOverride?: string): string[] {
   const sep = `${DIM}·${RESET}`
 
   const headerLine = `${BOLD}Claudio${RESET} ${DIM}v${version}${RESET}`
-  const providerLine = `${p.name} ${sep} ${p.model}`
+  const providerLine = p.effort
+    ? `${p.name} ${sep} ${p.model} ${sep} ${effortLevelToSymbol(p.effort)} ${p.effort}`
+    : `${p.name} ${sep} ${p.model}`
   const cwdLine = `${DIM}${formatCwd()}${RESET}`
 
   const textRows: (string | undefined)[] = [

@@ -73,6 +73,24 @@ describe('buildStartupBannerLines', () => {
     expect(text).toContain('gpt-4o')
   })
 
+  it('shows reasoning effort as a separate token when set', async () => {
+    resolvedOverride = {
+      transport: 'anthropic',
+      baseUrl: 'https://api.anthropic.com',
+      model: 'claude-sonnet-4-6',
+      apiKey: 'test',
+      extras: { reasoningEffort: 'high' },
+    }
+
+    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const lines = buildStartupBannerLines()
+    const text = stripAnsi(lines.join('\n'))
+
+    expect(text).toContain('Anthropic')
+    expect(text).toContain('claude-sonnet-4-6')
+    expect(text).toContain('· high')
+  })
+
   it('still resolves local providers without crashing', async () => {
     resolvedOverride = {
       transport: 'openai_compat',
