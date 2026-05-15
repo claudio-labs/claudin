@@ -136,14 +136,21 @@ function restoreModifiedFiles() {
 }
 
 // Wipe stale build artifacts before rebuilding. With splitting:true, chunks
-// carry hashed names ([name]-[hash].mjs) and Bun.build() does NOT remove
-// outputs from previous runs whose hashes have since changed. Without this,
-// `dist/chunks/` accumulates duplicates across rebuilds and `npm pack`
-// publishes orphans alongside fresh chunks.
+// carry hashed names ([name]-[version]-[hash].mjs). We keep `dist/chunks/`
+// across rebuilds so a CLI process already running on an older version can
+// still lazy-import its chunks — wiping the dir would break those processes.
+// Garbage collection happens after the build (see below), pruning by version.
 const distDir = join(import.meta.dir, '..', 'dist')
-for (const stale of ['cli.mjs', 'cli.mjs.map', 'chunks']) {
+for (const stale of ['cli.mjs', 'cli.mjs.map']) {
   rmSync(join(distDir, stale), { recursive: true, force: true })
 }
+
+// Per-build identifier (base36 timestamp). Dev builds use this in place of
+// the content hash so every chunk emitted by a single `bun run build` shares
+// the same suffix. That lets the post-build GC group chunks by generation
+// and keep only the N most recent — old chunks for CLIs still running on a
+// prior build survive, but accumulation is bounded.
+const buildId = Date.now().toString(36)
 
 preProcessFeatureFlags(join(import.meta.dir, '..', 'src'))
 const numModified = modifiedFiles.size
@@ -184,7 +191,7 @@ const result = await Bun.build({
     // CLAUDIO_RELEASE_BUILD=1 (set in package.json `build:release`).
     chunk: process.env.CLAUDIO_RELEASE_BUILD === '1'
       ? `chunks/[name]-${version}-[hash].mjs`
-      : 'chunks/[name]-[hash].mjs',
+      : `chunks/[name]-${buildId}-[hash].mjs`,
     asset: 'assets/[name]-[hash][ext]',
   },
   define: {
@@ -588,6 +595,47 @@ if (!result.success) {
   // package.json `files` — npm only honours .npmignore *inside* the directory.
   // Without this, ~90 MB of .map files ship to every npm install.
   writeFileSync(join(distDir, '.npmignore'), '**/*.map\n')
+
+  // GC dist/chunks: keep the 3 most recent build generations. Dev builds
+  // name chunks `<Name>-<buildId>-<hash>.mjs` where buildId is a base36
+  // timestamp shared by every chunk emitted in the same `bun run build`,
+  // and hash disambiguates chunks within that build. We bucket files by
+  // buildId, sort buckets desc, and prune everything outside the top 3.
+  // Release-build chunks (`<Name>-<version>-<hash>.mjs`) don't match this
+  // pattern and are left untouched — they only exist in CI/publish flows
+  // where dist/ starts empty anyway.
+  const chunksDir = join(distDir, 'chunks')
+  if (existsSync(chunksDir)) {
+    // Dev chunk filename: <Name>-<buildId>-<hash>.mjs(.map).
+    // buildId is a base36 timestamp (≥8 chars); hash is Bun's content hash.
+    const DEV_CHUNK_RE = /-([0-9a-z]{8,})-[a-z0-9]+\.mjs(?:\.map)?$/
+    const buckets = new Map<string, string[]>()
+    for (const file of readdirSync(chunksDir)) {
+      const m = file.match(DEV_CHUNK_RE)
+      if (!m) continue
+      const id = m[1]
+      const arr = buckets.get(id) ?? []
+      arr.push(file)
+      buckets.set(id, arr)
+    }
+    const keep = new Set(
+      [...buckets.keys()]
+        .sort((a, b) => parseInt(b, 36) - parseInt(a, 36))
+        .slice(0, 3),
+    )
+    let pruned = 0
+    for (const [id, files] of buckets) {
+      if (keep.has(id)) continue
+      for (const file of files) {
+        rmSync(join(chunksDir, file), { force: true })
+        pruned++
+      }
+    }
+    if (pruned > 0) {
+      console.log(`  🧹 chunks GC: pruned ${pruned} file(s) from ${buckets.size - keep.size} old generation(s), kept ${[...keep].join(', ')}`)
+    }
+  }
+
   console.log(`✓ Built claudio v${version} → dist/cli.mjs`)
 }
 
