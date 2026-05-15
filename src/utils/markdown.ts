@@ -190,13 +190,22 @@ export function formatToken(
         )
         .join('')
     }
-    case 'list_item':
-      return (token.tokens ?? [])
-        .map(
-          _ =>
-            `${'  '.repeat(listDepth)}${formatToken(_, theme, listDepth + 1, orderedListNumber, token, highlight)}`,
-        )
+    case 'list_item': {
+      const children = token.tokens ?? []
+      if ((token as Tokens.ListItem).task) {
+        // Task items: checkbox + text share one visual line.
+        // Only prefix the first child with indentation; the rest (text) continues inline.
+        return children
+          .map((_, i) => {
+            const formatted = formatToken(_, theme, listDepth + 1, orderedListNumber, token, highlight)
+            return i === 0 ? `${'  '.repeat(listDepth)}${formatted}` : formatted
+          })
+          .join('')
+      }
+      return children
+        .map(_ => `${'  '.repeat(listDepth)}${formatToken(_, theme, listDepth + 1, orderedListNumber, token, highlight)}`)
         .join('')
+    }
     case 'paragraph':
       return (
         (token.tokens ?? [])
@@ -216,7 +225,10 @@ export function formatToken(
         return token.text
       }
       if (parent?.type === 'list_item') {
-        return `${orderedListNumber === null ? '-' : getListNumber(listDepth, orderedListNumber) + '.'} ${token.tokens ? token.tokens.map(_ => formatToken(_, theme, listDepth, orderedListNumber, token, highlight)).join('') : linkifyIssueReferences(token.text)}${EOL}`
+        // Task items have a checkbox child that already serves as the item marker
+        const isTask = (parent as Tokens.ListItem).task
+        const bullet = isTask ? '' : orderedListNumber === null ? '-' : getListNumber(listDepth, orderedListNumber) + '.'
+        return `${bullet}${bullet ? ' ' : ''}${token.tokens ? token.tokens.map(_ => formatToken(_, theme, listDepth, orderedListNumber, token, highlight)).join('') : linkifyIssueReferences(token.text)}${EOL}`
       }
       return linkifyIssueReferences(token.text)
     case 'table': {
@@ -287,6 +299,11 @@ export function formatToken(
     case 'escape':
       // Markdown escape: \) → ), \\ → \, etc.
       return token.text
+    case 'checkbox': {
+      // list_item already adds indentation per child, so no '  '.repeat needed here
+      const check = token.checked ? 'x' : ' '
+      return `[${check}] `
+    }
     case 'def':
     case 'del':
     case 'html':
