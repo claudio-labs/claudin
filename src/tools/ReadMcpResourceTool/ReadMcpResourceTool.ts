@@ -2,7 +2,7 @@ import {
   type ReadResourceResult,
   ReadResourceResultSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { ensureConnectedClient } from '../../services/mcp/client.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'

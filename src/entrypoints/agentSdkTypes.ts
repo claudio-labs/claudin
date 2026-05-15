@@ -13,6 +13,7 @@ import type {
   CallToolResult,
   ToolAnnotations,
 } from '@modelcontextprotocol/sdk/types.js'
+import type { z } from 'zod'
 
 // Control protocol types for SDK builders (bridge subpath consumers)
 /** @alpha */
@@ -42,7 +43,6 @@ import type {
 } from './sdk/coreTypes.js'
 // Import types needed for function signatures
 import type {
-  AnyZodRawShape,
   ForkSessionOptions,
   ForkSessionResult,
   GetSessionInfoOptions,
@@ -70,7 +70,7 @@ export type {
   SDKSessionInfo,
 }
 
-export function tool<Schema extends AnyZodRawShape>(
+export function tool<Schema extends Record<string, z.ZodType>>(
   _name: string,
   _description: string,
   _inputSchema: Schema,

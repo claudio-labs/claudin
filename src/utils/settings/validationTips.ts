@@ -1,4 +1,4 @@
-import type { ZodIssueCode } from 'zod/v4'
+import type { ZodIssueCode } from 'zod'
 
 // v4 ZodIssueCode is a value, not a type - use typeof to get the type
 type ZodIssueCodeType = (typeof ZodIssueCode)[keyof typeof ZodIssueCode]

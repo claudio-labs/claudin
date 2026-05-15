@@ -1,4 +1,4 @@
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { lazySchema } from '../lazySchema.js'
 
 const TodoStatusSchema = lazySchema(() =>

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { getOauthConfig } from '../../constants/oauth.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { getOrganizationUUID } from '../../services/oauth/client.js'

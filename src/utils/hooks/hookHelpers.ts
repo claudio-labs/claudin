@@ -1,4 +1,4 @@
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import type { Tool } from '../../Tool.js'
 import {
   SYNTHETIC_OUTPUT_TOOL_NAME,

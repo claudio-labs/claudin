@@ -5,7 +5,7 @@ import { getAllowedChannels, getQuestionPreviewFormat } from 'src/bootstrap/stat
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { getModeColor } from 'src/utils/permissions/PermissionMode.js';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { Box, Text } from '../../ink.js';
 import type { Tool } from '../../Tool.js';
 import { buildTool, type ToolDef } from '../../Tool.js';

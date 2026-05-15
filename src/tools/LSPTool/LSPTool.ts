@@ -11,7 +11,7 @@ import type {
   LocationLink,
   SymbolInformation,
 } from 'vscode-languageserver-types'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import {
   getInitializationStatus,
   getLspServerManager,

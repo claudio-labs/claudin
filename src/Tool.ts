@@ -7,7 +7,7 @@ import type {
   ElicitResult,
 } from '@modelcontextprotocol/sdk/types.js'
 import type { UUID } from 'crypto'
-import type { z } from 'zod/v4'
+import type { z } from 'zod'
 import type { Command } from './commands.js'
 import type { CanUseToolFn } from './hooks/useCanUseTool.js'
 import {

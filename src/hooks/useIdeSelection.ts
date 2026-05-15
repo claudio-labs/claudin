@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { logError } from 'src/utils/log.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
 } from '../services/mcp/types.js'
+import { asMcpSchema } from '../services/mcp/zodCompat.js'
 import { getConnectedIdeClient } from '../utils/ide.js'
 import { lazySchema } from '../utils/lazySchema.js'
 export type SelectionPoint = {
@@ -110,7 +111,7 @@ export function useIdeSelection(
 
     // Register notification handler for selection_changed events
     ideClient.client.setNotificationHandler(
-      SelectionChangedSchema(),
+      asMcpSchema(SelectionChangedSchema()),
       notification => {
         if (currentIDERef.current !== ideClient) {
           return

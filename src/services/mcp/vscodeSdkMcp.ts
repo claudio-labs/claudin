@@ -1,5 +1,5 @@
 import { logForDebugging } from 'src/utils/debug.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { lazySchema } from '../../utils/lazySchema.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
@@ -7,6 +7,7 @@ import {
 } from '../analytics/growthbook.js'
 import { logEvent } from '../analytics/index.js'
 import type { ConnectedMCPServer, MCPServerConnection } from './types.js'
+import { asMcpSchema } from './zodCompat.js'
 
 // Mirror of AutoModeEnabledState in permissionSetup.ts — inlined because that
 // file pulls in too many deps for this thin IPC module.
@@ -69,7 +70,7 @@ export function setupVscodeSdkMcp(sdkClients: MCPServerConnection[]): void {
     vscodeMcpClient = client
 
     client.client.setNotificationHandler(
-      LogEventNotificationSchema(),
+      asMcpSchema(LogEventNotificationSchema()),
       async notification => {
         const { eventName, eventData } = notification.params
         logEvent(

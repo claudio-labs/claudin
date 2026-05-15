@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { z } from 'zod/v4';
+import type { z } from 'zod';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { OutputLine } from '../../components/shell/OutputLine.js';
 import { Box, Text } from '../../ink.js';

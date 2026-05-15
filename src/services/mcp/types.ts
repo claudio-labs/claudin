@@ -3,7 +3,7 @@ import type {
   Resource,
   ServerCapabilities,
 } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { lazySchema } from '../../utils/lazySchema.js'
 
 // Configuration schemas and types

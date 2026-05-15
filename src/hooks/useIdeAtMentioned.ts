@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { logError } from 'src/utils/log.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
 } from '../services/mcp/types.js'
+import { asMcpSchema } from '../services/mcp/zodCompat.js'
 import { getConnectedIdeClient } from '../utils/ide.js'
 import { lazySchema } from '../utils/lazySchema.js'
 export type IDEAtMentioned = {
@@ -47,7 +48,7 @@ export function useIdeAtMentioned(
     // If we found a connected IDE client, register our handler
     if (ideClient) {
       ideClient.client.setNotificationHandler(
-        AtMentionedSchema(),
+        asMcpSchema(AtMentionedSchema()),
         notification => {
           if (ideClientRef.current !== ideClient) {
             return

@@ -7,7 +7,7 @@
  */
 
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages.js'
-import type { z } from 'zod/v4'
+import type { z } from 'zod'
 
 /**
  * Extract tool use block from message content by tool name.
@@ -27,7 +27,7 @@ export function extractToolUseBlock(
  * Parse and validate classifier response from tool use block.
  * Returns null if parsing fails.
  */
-export function parseClassifierResponse<T extends z.ZodTypeAny>(
+export function parseClassifierResponse<T extends z.ZodType>(
   toolUseBlock: Extract<BetaContentBlock, { type: 'tool_use' }>,
   schema: T,
 ): z.infer<T> | null {

@@ -8,7 +8,7 @@
 //   REPL (useScheduledTasks.ts): pass `getJitterConfig: getCronJitterConfig`
 //   Daemon/SDK: omit getJitterConfig → DEFAULT_CRON_JITTER_CONFIG applies.
 
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { getFeatureValue_CACHED_WITH_REFRESH } from '../services/analytics/growthbook.js'
 import {
   type CronJitterConfig,

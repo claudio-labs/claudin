@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { basename } from 'path';
 import React from 'react';
-import type { z } from 'zod/v4';
+import type { z } from 'zod';
 import { Text } from '../../../ink.js';
 import { NotebookEditTool } from '../../../tools/NotebookEditTool/NotebookEditTool.js';
 import { logError } from '../../../utils/log.js';

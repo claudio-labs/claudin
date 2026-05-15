@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { getKairosActive, setUserMsgOptIn } from '../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
 import {

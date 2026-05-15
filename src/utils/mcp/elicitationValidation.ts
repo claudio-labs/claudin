@@ -4,7 +4,7 @@ import type {
   PrimitiveSchemaDefinition,
   StringSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { jsonStringify } from '../slowOperations.js'
 import { plural } from '../stringUtils.js'
 import {
@@ -132,7 +132,7 @@ export function getEnumLabel(schema: EnumSchema, value: string): string {
   return index >= 0 ? (getEnumLabels(schema)[index] ?? value) : value
 }
 
-function getZodSchema(schema: PrimitiveSchemaDefinition): z.ZodTypeAny {
+function getZodSchema(schema: PrimitiveSchemaDefinition): z.ZodType {
   if (isEnumSchema(schema)) {
     const [first, ...rest] = getEnumValues(schema)
     if (!first) {

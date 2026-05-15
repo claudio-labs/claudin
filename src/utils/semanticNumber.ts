@@ -1,4 +1,4 @@
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 const NUMERIC_LITERAL_RE = /^[+-]?\d+(\.\d+)?$/
 

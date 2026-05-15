@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import figures from 'figures';
 import * as React from 'react';
-import type { z } from 'zod/v4';
+import type { z } from 'zod';
 import { ProgressBar } from '../../components/design-system/ProgressBar.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { linkifyUrlsInText, OutputLine } from '../../components/shell/OutputLine.js';

@@ -5,7 +5,7 @@ import type { Message as MessageType, NormalizedUserMessage } from 'src/types/me
 import { getQuerySourceForAgent } from 'src/utils/promptCategory.js';
 import { getAgentPlanSlug } from '../../services/planDossier.js';
 import { getPlan, getPlanSlug } from '../../utils/plans.js';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled } from '../../bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from '../../constants/prompts.js';
 import { isCoordinatorMode } from '../../coordinator/coordinatorMode.js';
@@ -97,7 +97,7 @@ const fullInputSchema = lazySchema(() => {
     team_name: z.string().optional().describe('Team name for spawning. Uses current team context if omitted.'),
     mode: permissionModeSchema().optional().describe('Permission mode for spawned teammate (e.g., "plan" to require plan approval).')
   });
-  return baseInputSchema().merge(multiAgentInputSchema).extend({
+  return baseInputSchema().extend(multiAgentInputSchema.shape).extend({
     isolation: z.enum(['worktree']).optional().describe('Isolation mode. "worktree" creates a temporary git worktree so the agent works on an isolated copy of the repo.'),
     cwd: z.string().optional().describe('Absolute path to run the agent in. Overrides the working directory for all filesystem and shell operations within this agent. Mutually exclusive with isolation: "worktree".')
   });

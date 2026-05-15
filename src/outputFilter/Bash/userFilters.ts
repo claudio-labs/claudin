@@ -4,7 +4,7 @@ import { getGlobalConfig } from "src/utils/config.js";
 import { getClaudioConfigHomeDir } from "src/utils/envUtils.js";
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
-import { z } from "zod/v4";
+import { z } from "zod";
 import type { FilterSpec } from "./types.js";
 
 const REGEX_MAX_LEN = 500;

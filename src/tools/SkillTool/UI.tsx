@@ -3,7 +3,7 @@ import * as React from 'react';
 import { SubAgentProvider } from 'src/components/CtrlOToExpand.js';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
 import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRejectedMessage.js';
-import type { z } from 'zod/v4';
+import type { z } from 'zod';
 import type { Command } from '../../commands.js';
 import { Byline } from '../../components/design-system/Byline.js';
 import { Message as MessageComponent } from '../../components/Message.js';

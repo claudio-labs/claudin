@@ -3,7 +3,7 @@
  * Used for validation and JSON schema generation.
  */
 
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { lazySchema } from '../utils/lazySchema.js'
 
 /**

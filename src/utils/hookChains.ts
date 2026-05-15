@@ -18,7 +18,7 @@ import { readTeamFileAsync } from './swarm/teamHelpers.js'
 import { getAgentName, getTeamName, getTeammateColor } from './teammate.js'
 import { writeToMailbox } from './teammateMailbox.js'
 import { logOTelEvent } from './telemetry/events.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 type HookEvent = (typeof HOOK_EVENTS)[number]
 

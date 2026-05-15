@@ -1,6 +1,6 @@
 import { dirname, sep } from 'path'
 import { logEvent } from 'src/services/analytics/index.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { diagnosticTracker } from '../../services/diagnosticTracking.js'
 import { buildPostEditDiagnosticsMessages } from '../../services/lsp/diagnosticsForToolResult.js'

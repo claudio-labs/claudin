@@ -82,6 +82,7 @@ import {
 import { registerElicitationHandler } from './elicitationHandler.js'
 import { getMcpPrefix } from './mcpStringUtils.js'
 import { commandBelongsToServer, excludeStalePluginClients } from './utils.js'
+import { asMcpSchema } from './zodCompat.js'
 
 // Constants for reconnection with exponential backoff
 const MAX_RECONNECT_ATTEMPTS = 5
@@ -504,7 +505,7 @@ export function useManageMCPConnections(
               case 'register':
                 logMCPDebug(client.name, 'Channel notifications registered')
                 client.client.setNotificationHandler(
-                  ChannelMessageNotificationSchema(),
+                  asMcpSchema(ChannelMessageNotificationSchema()),
                   async notification => {
                     const { content, meta } = notification.params
                     logMCPDebug(
@@ -541,7 +542,7 @@ export function useManageMCPConnections(
                   ] !== undefined
                 ) {
                   client.client.setNotificationHandler(
-                    ChannelPermissionNotificationSchema(),
+                    asMcpSchema(ChannelPermissionNotificationSchema()),
                     async notification => {
                       const { request_id, behavior } = notification.params
                       const resolved =

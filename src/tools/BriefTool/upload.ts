@@ -17,7 +17,7 @@ import axios from 'axios'
 import { randomUUID } from 'crypto'
 import { readFile } from 'fs/promises'
 import { basename, extname } from 'path'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 import {
   getBridgeAccessToken,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { getEmptyToolPermissionContext, type Tool, type Tools } from '../Tool.js'
 import { SkillTool } from '../tools/SkillTool/SkillTool.js'
 import { splitSysPromptPrefix, toolToAPISchema } from './api.js'

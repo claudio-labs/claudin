@@ -4,7 +4,7 @@ import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
 } from 'src/utils/fileHistory.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { buildTool, type ToolDef, type ToolUseContext } from '../../Tool.js'
 import type { NotebookCell, NotebookContent } from '../../types/notebook.js'
 import { getCwd } from '../../utils/cwd.js'

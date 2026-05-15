@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { basename, relative } from 'path';
 import React, { useMemo } from 'react';
-import type { z } from 'zod/v4';
+import type { z } from 'zod';
 import { Text } from '../../../ink.js';
 import { FileWriteTool } from '../../../tools/FileWriteTool/FileWriteTool.js';
 import { getCwd } from '../../../utils/cwd.js';

@@ -1,4 +1,4 @@
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { lazySchema } from '../../utils/lazySchema.js'
 import type { SettingsJson } from '../../utils/settings/types.js'
 

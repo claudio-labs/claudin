@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 import { clearInvokedSkillsForAgent } from '../../bootstrap/state.js'
 import {
   ALL_AGENT_DISALLOWED_TOOLS,

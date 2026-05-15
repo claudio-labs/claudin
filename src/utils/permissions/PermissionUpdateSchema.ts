@@ -5,7 +5,7 @@
  * so it can be safely imported by src/types/hooks.ts without creating
  * circular dependencies.
  */
-import z from 'zod/v4'
+import z from 'zod'
 // Types extracted to src/types/permissions.ts to break import cycles
 import type {
   PermissionUpdate,
