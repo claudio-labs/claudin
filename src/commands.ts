@@ -36,7 +36,6 @@ import lsp from './commands/lsp/index.js'
 import mcp from './commands/mcp/index.js'
 import mobile from './commands/mobile/index.js'
 import onboarding from './commands/onboarding/index.js'
-import pr_comments from './commands/pr_comments/index.js'
 import releaseNotes from './commands/release-notes/index.js'
 import rename from './commands/rename/index.js'
 import resume from './commands/resume/index.js'
@@ -292,7 +291,6 @@ const COMMANDS = memoize((): Command[] => [
   remoteEnv,
   plugin,
   provider,
-  pr_comments,
   releaseNotes,
   reloadPlugins,
   rename,

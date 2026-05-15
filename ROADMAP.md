@@ -1,12 +1,12 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-13 (6.1.9 — system utilities done)
+> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-15 (7.0 — `/autofix-pr` ✅ entregue)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (12 itens)
+## Ativos (13 itens)
 
 ### 6.1 — Command-aware bash output filter ⭐ NOVO (P0, top priority)
 - **Esforço:** L (8 PRs sequenciados, ~2.200 LoC total)
@@ -82,6 +82,19 @@ PowerShell tem 2 peculiaridades vs bash (output tabular auto-formatado + object 
 - 8 fixtures novos em ambos `src/outputFilter/Bash/__fixtures__/samples/` E `docs/discovery/bash-output-filter/validation/samples/` (harness lê desse último — ver Implementation Notes do phase doc)
 - 1 harness extension: `src/outputFilter/Bash/bashFilter.test.ts` (+8 describe blocks, ~50 expect calls)
 - 1 bench update: `scripts/profile/bash-filter-gain.test.ts` (+8 cenários)
+
+### 7.0 — `/autofix-pr` — comando unificado de autofix de PR (P0) — ✅ ENTREGUE
+- **Esforço real:** M (~7 commits, ~700 LoC TS + testes/snapshots)
+- **Status:** ✅ **Concluído** (2026-05-15) em `feat/autofix-pr`. Reativo (sem `--watch`): usuário invoca; comando coleta → triagem → fix → push → reply, loop até 5 iter com anti-stall.
+
+#### Entregue
+- `src/commands/autofix-pr/{index.ts, prompt.ts, shared.ts}` + testes colocados.
+- Guards reaproveitando `getIsGit`, `getBranch`, `getDefaultBranch`, `fetchPrStatus` (5 falhas curtas: not-git, detached HEAD, default branch, gh não autenticado, sem PR).
+- `--dry-run`: paridade com antigo `/pr-comments` + triagem (5 labels: `ok`, `change_request`, `pr_questionable`, `unclear`, `out_of_scope`).
+- Modo padrão: collect → triage → AskUserQuestion para `pr_questionable`/`unclear` → fix → typecheck + focused tests → commit (sem `--amend`/`--no-verify`) → push (sem force) → reply em thread.
+- Loop até 5 iterações com anti-stall por `(comment_id, updated_at)`.
+- Removido: `src/commands/pr_comments/`, registro em `src/commands.ts`, stub `index.js`.
+- `--watch` com `CronCreate`: **rejeitado** (reativo é mais elegante; status bar já mostra `reviewState` para o usuário decidir invocar).
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -309,6 +322,6 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**8 ativos** (1× P0: 4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **20 concluídos** (6.1 incl. 6.1.9 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**9 ativos** (2× P0: **7.0**/4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **20 concluídos** (6.1 incl. 6.1.9 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
 
-**Próxima entrega (P0 priority):** **4.1**. 6.1 — Command-aware bash output filter concluído em 2026-05-13 (9 fases, ~2.340 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-98% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.1.9 — System utilities** concluído em 2026-05-13: 10 specs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain), 41 filtros totais, agregado **69.9%** redução medido em fixture corpus de 200.6 KB. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show). Sub-fase Windows/PowerShell em aberto.
+**7.0 — `/autofix-pr`** concluído em 2026-05-15 (P0 entregue). **Próxima entrega:** revisar próximo P0 do backlog. 6.1 — Command-aware bash output filter concluído em 2026-05-13 (9 fases, ~2.340 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-98% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.1.9 — System utilities** concluído em 2026-05-13: 10 specs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain), 41 filtros totais, agregado **69.9%** redução medido em fixture corpus de 200.6 KB. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show). Sub-fase Windows/PowerShell em aberto.
