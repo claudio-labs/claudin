@@ -43,6 +43,15 @@ bun run dev:grpc:cli        # streaming CLI client over gRPC
 
 After install (npm) or local build, the launcher is `bin/claudio` — it requires `dist/cli.mjs` to exist; otherwise it prints a "build first" hint. There is no separate dev runner that bypasses the bundle.
 
+### `claudio` vs `claudiodev` (dev convention)
+
+To keep the published release usable while iterating on unreleased features, this environment uses two binaries on `$PATH`:
+
+- **`claudio`** → globally installed npm package (`@claudiolabs/claudio`) — stable release, only updated via `bun install -g @claudiolabs/claudio`.
+- **`claudiodev`** → symlink to `/home/viudes/projects/claudio/bin/claudio` — always runs the latest local `bun run build` output (`dist/cli.mjs`) from this repo.
+
+Implication for agents: if a user reports that a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudiodev` (after `bun run build`); `claudio` keeps the pinned release version regardless of repo state.
+
 ## Build System (Critical)
 
 `scripts/build.ts` is not a thin wrapper — it does several things that affect every change:
