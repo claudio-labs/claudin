@@ -1,12 +1,29 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (8.0 — `WebResearcher` subagent built-in implementado e movido pra Concluídos; 6.1, 6.2-Linux e 7.0 também concluídos antes)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 entregue; 10.2/10.3 ainda ativos — follow-ups do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (13 itens)
+## Ativos (15 itens)
+
+### 10.2 — Adotar cache diagnostics beta do SDK 0.96 (P1)
+- **Esforço:** M (~150-250 LoC + testes)
+- **Prioridade:** P1 — afeta visibilidade do recurso de maior ROI da plataforma Anthropic (prompt caching).
+- **Estado:** Hoje consumimos só os escalares `cache_creation_input_tokens` e `cache_read_input_tokens` em `/usage`, `/cost`, e `services/api/promptCacheBreakDetection.ts`. A heurística de break detection é estimativa local (compara prefixo turn-a-turn). SDK 0.96 introduziu beta de **cache diagnostics** que expõe dados autoritativos do servidor (qual breakpoint hit/miss, motivo do break, idade do cache hit).
+- **Ganho:** (1) `/cost` e `/usage` ganham breakdown por breakpoint; (2) `promptCacheBreakDetection` pode substituir heurística por verdade do servidor; (3) habilita métricas precisas para validar itens como 1.10 (membership stability) sem rodar bench sintético.
+- **Abordagem:** (1) ativar header beta opcional gated por feature flag `CACHE_DIAGNOSTICS` em `scripts/build.ts`; (2) estender `services/api/claude.ts` para ler campo novo e propagar via `SDKUsage`; (3) atualizar `commands/usage` e `commands/cost` com tabela "by breakpoint"; (4) refatorar `promptCacheBreakDetection.ts` para preferir dados do servidor quando disponíveis, fallback para heurística atual. Aplica-se só a Anthropic-native; OpenAI shim ignora.
+- **Trade-off:** Beta API — sujeito a mudança. Gated por flag mitiga risco.
+- **Arquivos:** `scripts/build.ts` (flag), `src/services/api/claude.ts`, `src/services/api/promptCacheBreakDetection.ts`, `src/commands/usage/*`, `src/commands/cost/*`, `src/entrypoints/agentSdkTypes.ts` (estender `SDKUsage`).
+
+### 10.3 — Adotar `stop_details` estruturado (P2)
+- **Esforço:** S-M (~80-120 LoC + testes)
+- **Prioridade:** P2 — UX/observabilidade. Hoje tratamos `stop_reason` como string opaca.
+- **Estado:** SDK 0.82 introduziu `stop_details` (objeto estruturado complementando `stop_reason`). Lemos `stop_reason` em `claude.ts:1717,1826,2174-2211`, `QueryEngine.ts:797`, `errors.ts:1302` (refusal classifier), `withRetry.ts:409`. Shims (`openaiShim.ts`, `codexShim.ts`) só fabricam o escalar. Nenhum lugar inspeciona detalhes mais ricos.
+- **Ganho:** (1) Classificação de refusal mais fina (`errors.ts`) — hoje agrupa tudo em `refusal`, perdendo distinção entre safety/policy/safety-tools; (2) retry policy em `withRetry.ts` pode reagir diferente a `max_tokens` vs `pause_turn` vs `tool_use`; (3) UX: exibir motivo de parada mais descritivo no `--print`/transcript.
+- **Abordagem:** (1) estender `SDKMessage` em `entrypoints/agentSdkTypes.ts` para incluir `stop_details?`; (2) propagar do raw response em `claude.ts`; (3) usar em `errors.ts` para refinar `classifyRefusal`; (4) Shims continuam fabricando `null` (compatível); (5) testes de classificação para cada `stop_reason` × `stop_details` combo.
+- **Arquivos:** `src/services/api/claude.ts`, `src/services/api/errors.ts`, `src/services/api/withRetry.ts`, `src/entrypoints/agentSdkTypes.ts`, `src/QueryEngine.ts`.
 
 ### 9.0 — Notificações nativas do SO (P2)
 - **Esforço:** P (~150-200 LoC + matriz de testes manuais por SO)
@@ -125,6 +142,14 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 10.1 — Normalização de imports `zod/v4` (2026-05-16)
+Codemod mecânico: 138 arquivos (`src/**/*.ts(x)` + `scripts/measure-tokenizer-accuracy.ts`) migrados de `from 'zod'` para `from 'zod/v4'`. Zero residual; regra `.claudio/rules/typescript-patterns.md` agora alinhada 100% ao código.
+
+- **Guard executável:** `scripts/zod-v4-only-guard.test.ts` walka `src/` + `scripts/` e falha se reaparecer `from 'zod'` puro. Skip explícito do próprio path para evitar self-match.
+- **Paridade comportamental:** `bun test` antes/depois — 268 pass / 424 fail (vs 425 baseline, ou seja −1 falha) / 91 errors (idênticos). Falhas pré-existentes, não relacionadas ao codemod. `bun run build`, `bun run smoke` e `bun run verify:privacy` passam.
+- **Runtime já era v4** (instalado `zod@4.4.3` com subpath `./v4` exposto) — mudança é defensiva contra futuros breaks do SDK que exijam tipos v4 explícitos (p.ex. `@anthropic-ai/sdk@0.96.0`+).
+- Arquivos: 138 source files + `scripts/zod-v4-only-guard.test.ts` (novo).
 
 ### 8.0 — `WebResearcher` subagent built-in para research multi-página (2026-05-16)
 Novo `subagent_type: 'WebResearcher'` registrado ao lado de Code/Explore/Plan. Reusa a primitiva de subagent existente — zero código novo no `AgentTool` genérico. Pai descobre automaticamente via `whenToUse`.
@@ -304,6 +329,14 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **8.0** (agentic_fetch)/**9.0** (OS notifications)/6.2-Windows; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **23 concluídos** (incl. **6.1**, **6.2-Linux** e **7.0** recém-movidos). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**15 ativos** (1× P0: 4.1; 4× P1: 5.10/5.11/1.10/**10.2**; 3× P2: **9.0** (OS notifications)/6.2-Windows/**10.3**; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **24 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0** e **10.1** recém-movidos). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
 
-**Próxima entrega:** revisar próximo P0 do backlog (**4.1** — testes para caminhos críticos). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
+**Próxima entrega:** **10.2** (cache diagnostics beta — P1, M, breakdown por breakpoint em `/usage` e `/cost`). Em seguida P0 **4.1** (testes para caminhos críticos) e depois **10.3** (`stop_details`). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
+
+**Auditoria SDK 0.82→0.96 — descartados como itens:**
+- *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.
+- *AbortSignal no tool runner* (0.84.0) — já temos plumbing próprio via `ToolUseContext.abortController` em 200+ arquivos. Migrar custaria reescrever `QueryEngine` + `services/tools/*` perdendo permissions/MCP/sub-agents/coordinator/plan/hooks. **Skip**.
+- *Compaction helpers deprecados* (0.83.0) — nunca usados (`apiMicrocompact` é nosso). **No-op**.
+- *Audit redaction api-key* (0.95.1) — SDK já é seguro; nosso `buildFetch` em `client.ts:399` foi validado por inspeção rápida. **No-op**.
+- *Modelos Sonnet 4 / Opus 4 deprecados* (0.89.0) — zero referências no codebase (já migrados para Opus 4.7). **No-op**.
+- *APIError em chunk frames* (0.92.0) — auditoria estreita em `withRetry.ts` + `errors.ts`; vira bug se aparecer, não item proativo de roadmap.

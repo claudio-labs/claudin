@@ -6,7 +6,7 @@ import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHin
 import { CtrlOToExpand, SubAgentProvider } from 'src/components/CtrlOToExpand.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import type { z } from 'zod';
+import type { z } from 'zod/v4';
 import { AgentProgressLine } from '../../components/AgentProgressLine.js';
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js';
 import { FallbackToolUseRejectedMessage } from '../../components/FallbackToolUseRejectedMessage.js';

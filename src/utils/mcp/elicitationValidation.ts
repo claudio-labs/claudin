@@ -4,7 +4,7 @@ import type {
   PrimitiveSchemaDefinition,
   StringSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { jsonStringify } from '../slowOperations.js'
 import { plural } from '../stringUtils.js'
 import {

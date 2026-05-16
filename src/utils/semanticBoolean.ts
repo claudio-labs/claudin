@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 /**
  * Boolean that also accepts the string literals "true"/"false".

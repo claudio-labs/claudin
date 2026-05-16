@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { isReplBridgeActive } from '../../bootstrap/state.js'
 import { getReplBridgeHandle } from '../../bridge/replBridgeHandle.js'
 import type { Tool, ToolUseContext } from '../../Tool.js'

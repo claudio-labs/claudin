@@ -1,6 +1,6 @@
 import { homedir } from 'os'
 import { isAbsolute, resolve } from 'path'
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
 import type { ToolPermissionContext } from '../../Tool.js'
 import type { Redirect, SimpleCommand } from '../../utils/bash/ast.js'
 import {

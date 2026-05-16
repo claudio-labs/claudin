@@ -5,7 +5,7 @@
  * Based on the backend API contract from anthropic/anthropic#250711.
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../../utils/lazySchema.js'
 
 /**

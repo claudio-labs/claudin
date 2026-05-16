@@ -15,7 +15,7 @@
  * the tag matches what's actually installed before this check runs.
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { parsePluginIdentifier } from '../../utils/plugins/pluginIdentifier.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'

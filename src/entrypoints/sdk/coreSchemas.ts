@@ -7,7 +7,7 @@
  * @see scripts/generate-sdk-types.ts for type generation
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../../utils/lazySchema.js'
 
 // ============================================================================

@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'child_process'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../utils/lazySchema.js'
 
 export const connectResponseSchema = lazySchema(() =>

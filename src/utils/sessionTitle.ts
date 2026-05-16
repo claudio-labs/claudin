@@ -12,7 +12,7 @@
  * Each remains for backwards compat; new callers should use this module.
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { getIsNonInteractiveSession } from '../bootstrap/state.js'
 import { logEvent } from '../services/analytics/index.js'
 import { queryHaiku } from '../services/api/claude.js'

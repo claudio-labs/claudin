@@ -7,7 +7,7 @@ process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { ZodError } from 'zod'
+import { ZodError } from 'zod/v4'
 import {
   CallToolRequestSchema,
   type CallToolResult,

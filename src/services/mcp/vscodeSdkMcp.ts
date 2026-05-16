@@ -1,5 +1,5 @@
 import { logForDebugging } from 'src/utils/debug.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../../utils/lazySchema.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,

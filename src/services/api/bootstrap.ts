@@ -5,7 +5,7 @@ import {
   getClaudeAIOAuthTokens,
   hasProfileScope,
 } from 'src/utils/auth.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { getOauthConfig, OAUTH_BETA_HEADER } from '../../constants/oauth.js'
 import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
 import { logForDebugging } from '../../utils/debug.js'

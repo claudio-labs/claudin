@@ -13,7 +13,7 @@ import type {
   CallToolResult,
   ToolAnnotations,
 } from '@modelcontextprotocol/sdk/types.js'
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
 
 // Control protocol types for SDK builders (bridge subpath consumers)
 /** @alpha */

@@ -5,7 +5,7 @@ import type {
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
 import { queryModelWithStreaming } from '../../services/api/claude.js'

@@ -72,7 +72,7 @@ const PROSE = `The agent loop drives the model through a series of tool dispatch
 Many of the surfaces that consume tokens are invisible from the outside: the system prompt, tool schemas, environment metadata, and a memory block that varies per project. When something invalidates the prompt cache, that bootstrap cost is paid in full again, even though nothing the user did appears to have changed.`
 
 const TYPESCRIPT = `import type { Tool, ToolUseContext } from 'src/Tool.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const fileReadInputSchema = z.object({
   file_path: z.string().describe('Absolute path to the file to read'),

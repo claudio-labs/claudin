@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { logError } from 'src/utils/log.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,

@@ -7,7 +7,7 @@
  */
 
 import { join } from 'path'
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
 import { getAdditionalDirectoriesForClaudeMd } from '../../bootstrap/state.js'
 import { parseSettingsFile } from '../settings/settings.js'
 import type {

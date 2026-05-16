@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { logEvent } from 'src/services/analytics/index.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import type { MCPServerConnection } from '../services/mcp/types.js'
 import { asMcpSchema } from '../services/mcp/zodCompat.js'
 import { getConnectedIdeClient } from '../utils/ide.js'

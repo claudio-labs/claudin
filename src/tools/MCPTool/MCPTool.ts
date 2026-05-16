@@ -1,5 +1,5 @@
 import { Ajv } from 'ajv'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { buildTool, type ToolDef, type ValidationResult } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import type { PermissionResult } from '../../types/permissions.js'

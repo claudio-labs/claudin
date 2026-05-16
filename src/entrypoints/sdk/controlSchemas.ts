@@ -7,7 +7,7 @@
  * SDK consumers should use coreSchemas.ts instead.
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../../utils/lazySchema.js'
 import {
   AccountInfoSchema,

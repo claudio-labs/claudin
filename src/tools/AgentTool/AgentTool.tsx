@@ -5,7 +5,7 @@ import type { Message as MessageType, NormalizedUserMessage } from 'src/types/me
 import { getQuerySourceForAgent } from 'src/utils/promptCategory.js';
 import { getAgentPlanSlug } from '../../services/planDossier.js';
 import { getPlan, getPlanSlug } from '../../utils/plans.js';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled } from '../../bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from '../../constants/prompts.js';
 import { isCoordinatorMode } from '../../coordinator/coordinatorMode.js';

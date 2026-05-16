@@ -21,7 +21,7 @@
  */
 import { feature } from 'bun:bundle'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { getDefaultMaxRetries } from '../../services/api/withRetry.js'
 import type { ToolPermissionContext } from '../../Tool.js'
 import { errorMessage } from '../errors.js'

@@ -7,7 +7,7 @@
  */
 
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages.js'
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
 
 /**
  * Extract tool use block from message content by tool name.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { semanticNumber } from 'src/utils/semanticNumber.js'
 
 describe('semanticNumber', () => {

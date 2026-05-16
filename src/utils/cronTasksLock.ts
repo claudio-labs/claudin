@@ -10,7 +10,7 @@
 
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { getProjectRoot, getSessionId } from '../bootstrap/state.js'
 import { registerCleanup } from './cleanupRegistry.js'
 import { logForDebugging } from './debug.js'

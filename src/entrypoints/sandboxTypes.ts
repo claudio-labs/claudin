@@ -5,7 +5,7 @@
  * Both the SDK and the settings validation import from here.
  */
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { lazySchema } from '../utils/lazySchema.js'
 
 /**
