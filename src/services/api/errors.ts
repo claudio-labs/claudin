@@ -5,6 +5,7 @@ import {
 } from '@anthropic-ai/sdk'
 import type {
   BetaMessage,
+  BetaRefusalStopDetails,
   BetaStopReason,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { AFK_MODE_BETA_HEADER } from 'src/constants/betas.js'
@@ -1301,12 +1302,24 @@ export function categorizeRetryableAPIError(
 export function getErrorMessageIfRefusal(
   stopReason: BetaStopReason | null,
   model: string,
+  stopDetails?: BetaRefusalStopDetails | null,
 ): AssistantMessage | undefined {
   if (stopReason !== 'refusal') {
     return
   }
 
-  logEvent('tengu_refusal_api_response', {})
+  // category arrives as 'cyber' | 'bio' | null; LogEventMetadata only accepts
+  // boolean | number | undefined, so encode as discrete booleans.
+  const category = stopDetails?.category ?? null
+  logEvent(
+    'tengu_refusal_api_response',
+    category === null
+      ? {}
+      : {
+          category_cyber: category === 'cyber',
+          category_bio: category === 'bio',
+        },
+  )
 
   const usagePolicyUrl =
     getAPIProvider() === 'firstParty'
@@ -1317,13 +1330,17 @@ export function getErrorMessageIfRefusal(
     ? `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (${usagePolicyUrl}). Try rephrasing the request or attempting a different approach.`
     : `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (${usagePolicyUrl}). Please double press esc to edit your last message or start a new session for Claude Code to assist with a different task.`
 
+  const explanationLine = stopDetails?.explanation
+    ? `\n\nReason from provider: ${stopDetails.explanation}`
+    : ''
+
   const modelSuggestion =
     model !== 'claude-sonnet-4-20250514'
       ? ' If you are seeing this refusal repeatedly, try running /model claude-sonnet-4-20250514 to switch models.'
       : ''
 
   return createAssistantAPIErrorMessage({
-    content: baseMessage + modelSuggestion,
+    content: baseMessage + explanationLine + modelSuggestion,
     error: 'invalid_request',
   })
 }

@@ -1,6 +1,6 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative entregues; 10.2 arquivado por premissa falsa; 10.3 ainda ativo — follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
@@ -8,13 +8,14 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 
 ## Ativos (14 itens)
 
-### 10.3 — Adotar `stop_details` estruturado (P2)
-- **Esforço:** S-M (~80-120 LoC + testes)
-- **Prioridade:** P2 — UX/observabilidade. Hoje tratamos `stop_reason` como string opaca.
-- **Estado:** SDK 0.82 introduziu `stop_details` (objeto estruturado complementando `stop_reason`). Lemos `stop_reason` em `claude.ts:1717,1826,2174-2211`, `QueryEngine.ts:797`, `errors.ts:1302` (refusal classifier), `withRetry.ts:409`. Shims (`openaiShim.ts`, `codexShim.ts`) só fabricam o escalar. Nenhum lugar inspeciona detalhes mais ricos.
-- **Ganho:** (1) Classificação de refusal mais fina (`errors.ts`) — hoje agrupa tudo em `refusal`, perdendo distinção entre safety/policy/safety-tools; (2) retry policy em `withRetry.ts` pode reagir diferente a `max_tokens` vs `pause_turn` vs `tool_use`; (3) UX: exibir motivo de parada mais descritivo no `--print`/transcript.
-- **Abordagem:** (1) estender `SDKMessage` em `entrypoints/agentSdkTypes.ts` para incluir `stop_details?`; (2) propagar do raw response em `claude.ts`; (3) usar em `errors.ts` para refinar `classifyRefusal`; (4) Shims continuam fabricando `null` (compatível); (5) testes de classificação para cada `stop_reason` × `stop_details` combo.
-- **Arquivos:** `src/services/api/claude.ts`, `src/services/api/errors.ts`, `src/services/api/withRetry.ts`, `src/entrypoints/agentSdkTypes.ts`, `src/QueryEngine.ts`.
+### 10.3-derivative — Surface refusal explanation/category (P3)
+- **Esforço:** XS (~15-30 LoC + 1 teste)
+- **Prioridade:** P3 — micro-UX. Único ganho real do `stop_details` no SDK 0.96 (resto do 10.3 original era premissa falsa, ver Removidos).
+- **Estado:** `RefusalStopDetails` (`@anthropic-ai/sdk@0.96` → `messages.d.mts:691`) expõe `category: 'cyber' | 'bio' | null` e `explanation: string | null` quando `stop_reason === 'refusal'`. Hoje `errors.ts:1301-1329` (`getErrorMessageIfRefusal`) ignora ambos e emite mensagem genérica.
+- **Ganho:** (1) usuário vê a `explanation` do servidor quando vier (motivo concreto do refusal, não só link genérico de AUP); (2) `tengu_refusal_api_response` (`errors.ts:1309`) ganha `category` no payload para distinguir cyber vs bio em analytics.
+- **Abordagem:** (1) estender assinatura de `getErrorMessageIfRefusal()` para receber `stop_details?: RefusalStopDetails | null`; (2) propagar do raw response em `claude.ts` (sites que chamam o classifier); (3) concatenar `explanation` (truncada) à mensagem de erro quando presente; (4) logar `category` no analytics event com sufixo `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` (category é enum fixo `cyber|bio|null`, não vaza dados de usuário); (5) shims fabricam `null` (compatível); (6) teste de cada combo (`category` presente/ausente, `explanation` presente/ausente).
+- **Arquivos:** `src/services/api/errors.ts`, `src/services/api/claude.ts` (call-site do classifier), `src/services/api/errors.test.ts`.
+- **Não-objetivos:** Nada de `withRetry.ts`, `QueryEngine.ts`, `agentSdkTypes.ts` — `stop_details` só existe pra refusal (não para `max_tokens`/`pause_turn`/`tool_use`), então retry policy e propagação SDK ficam intocados.
 
 ### 9.0 — Notificações nativas do SO (P2)
 - **Esforço:** P (~150-200 LoC + matriz de testes manuais por SO)
@@ -299,6 +300,7 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 **Bug do roadmap:** 2.6 e 4.6 eram o **mesmo item duplicado** ("preprocessamento de feature flags") em pilares diferentes — removidos. SIGINT/SIGTERM já tratado no `build.ts`; SIGKILL é raro o bastante para aceitar `git checkout --`.
 
 **Premissa falsa:**
+- **10.3** (adotar `stop_details` estruturado) — auditado em 2026-05-16 contra `node_modules/@anthropic-ai/sdk@0.96` (`messages.d.mts:691`). Premissa original prometia (1) classificação fina de refusal em safety/policy/safety-tools, (2) retry policy diferenciado em `withRetry.ts` para `max_tokens` vs `pause_turn` vs `tool_use`, (3) motivo de parada descritivo em transcript. **Realidade:** `stop_details` no SDK 0.96 só tem a variante `RefusalStopDetails` (`category: 'cyber'|'bio'|null`, `explanation: string|null`, `type: 'refusal'`) e é populada **só** quando `stop_reason === 'refusal'`. Não existem `MaxTokensStopDetails`/`PauseTurnStopDetails`/`ToolUseStopDetails` — ganhos (1) e (2) caem por terra (eixo cyber/bio ≠ safety/policy/tools; retry não recebe nada novo). Sobra só fragmento de (3) restrito a refusals, e mesmo isso o `errors.ts:1301-1329` já cobre com link de AUP. Quick-win residual virou item **10.3-derivative** em Ativos (P3, XS — surfacing de `explanation`/`category`).
 - **10.2** (cache diagnostics beta do SDK 0.96) — auditado em 2026-05-16. Premissa original ("breakdown hit/miss por breakpoint em `/usage` e `/cost`") **não existe na API**: `BetaDiagnostics` em `@anthropic-ai/sdk@0.96` é request-scoped, expõe `cache_miss_reason` (enum único) e `cache_missed_input_tokens` (escalar único) — não há array por breakpoint nem "idade do cache hit". Substituir `promptCacheBreakDetection.ts` por dados do servidor seria troca lateral: heurística atual cobre flips de escopo/TTL que o servidor ignora, e funciona em todos os providers (beta header é Anthropic-native só). Custo de beta opt-in stateful (`previous_message_id` por sessão) não compensa pra **uma linha extra** no `/cost`. Quick-win adjacente identificado na auditoria (bug de pricing TTL 1h) virou item **10.2-derivative** em Concluídos.
 - **3.5** (rate-limit headers Bedrock/Vertex/Gemini) — esses providers **não emitem** `x-ratelimit-reset-*`. Bedrock usa AWS SDK error metadata, Gemini usa `RetryInfo` em gRPC details. Não é "estamos ignorando", é "não existe pra ignorar". Escopo real >> M.
 - **5.9** (lazy registry de tools em `tools.ts`) — desclassificada após bench empírico em 2026-05-04. Premissa original era "dezenas de MB de retained code+ICs". Bench (`scripts/profile/cold-start-retained-bench.ts` com 14 probes per-candidate, baseline em `baselines/cold-start-retained.json`) mostrou que TODOS os candidatos puxam ~30 MB de heap idêntico via stack transitiva compartilhada (Tool.ts + zod + ink + prompt helpers). Delta do módulo próprio do tool é <1 MB cada — única exceção foi AskUserQuestionTool (13 MB vs 30 MB, único que não puxa a stack completa). Ganho real estimado: 3-5 MB total no melhor caso, não dezenas. Adicionar isso justifica o custo de Proxy traps + audit de cross-imports + refactor de identity-checks em `PermissionRequest.tsx`. Roadmap-killer: dois reviews independentes (Plan agent) também identificaram bloqueadores (identity comparisons quebram com Proxy, no-Suspense em REPL, memo cache do react-compiler). Os 4 testes escritos durante a investigação (`src/__tests__/lazyToolImports.test.ts`, `src/__tests__/lazyToolModuleLoad.test.ts`, `src/components/permissions/PermissionRequest.test.ts`, e os probes adicionais no `cold-start-retained-bench.ts`) ficam como guarda — `lazyToolImports` previne re-eagerização acidental de tools que hoje só são importados por `tools.ts`, e `PermissionRequest.test` trava drift entre `tool.name` e a constante NAME exportada.
@@ -331,9 +333,9 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**10.3**; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **25 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1** e **10.2-derivative** recém-movidos). 5.9 e 10.2 desclassificadas por premissa falsa — ver Removidos.
+**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 2× P2: **9.0** (OS notifications)/6.2-Windows; 7× P3: **10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **25 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1** e **10.2-derivative** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
 
-**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). Em seguida **10.3** (`stop_details` estruturado — P2, último follow-up do upgrade SDK 0.81→0.96). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
+**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der. Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
 
 **Auditoria SDK 0.82→0.96 — descartados como itens:**
 - *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.
