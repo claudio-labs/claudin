@@ -27,6 +27,7 @@ import {
   refreshCodexAccessTokenIfNeeded,
 } from '../../utils/codexCredentials.js'
 import { logForDebugging } from '../../utils/debug.js'
+import { getAPIProvider } from '../../utils/model/providers.js'
 import { getClaudioUserAgent } from '../../utils/userAgent.js'
 import { isBareMode, isEnvTruthy } from '../../utils/envUtils.js'
 import { resolveGeminiCredential } from '../../utils/geminiAuth.js'
@@ -1896,18 +1897,26 @@ class OpenAIShimMessages {
     }
 
     let response: Response | undefined
-    const provider = request.baseUrl.includes('nvidia') ? 'nvidia-nim'
+    // `logProvider` is the human-readable bucket for analytics/logging only.
+    // `dispatcherProvider` MUST match the canonical APIProvider value used by
+    // buildFetch() in client.ts so that disableKeepAlive/markProviderH1Only
+    // invalidate the same per-provider Agent end-to-end (otherwise the shim
+    // and the SDK paths would maintain divergent dispatcher buckets for the
+    // same physical endpoint — invalidations from one path wouldn't reach
+    // the other, breaking stale-pool eviction and h2-fallback stickiness).
+    const logProvider = request.baseUrl.includes('nvidia') ? 'nvidia-nim'
       : request.baseUrl.includes('minimax') ? 'minimax'
       : request.baseUrl.includes('localhost:11434') || request.baseUrl.includes('localhost:11435') ? 'ollama'
       : request.baseUrl.includes('anthropic') ? 'anthropic'
       : 'openai'
-    const { correlationId, startTime } = logApiCallStart(provider, request.resolvedModel)
+    const dispatcherProvider = getAPIProvider()
+    const { correlationId, startTime } = logApiCallStart(logProvider, request.resolvedModel)
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         response = await fetchWithProxyRetry(
           chatCompletionsUrl,
           buildFetchInit(),
-          { provider },
+          { provider: dispatcherProvider },
         )
       } catch (error) {
         const isAbortError =
@@ -2033,7 +2042,7 @@ class OpenAIShimMessages {
               headers,
               body: stableStringify(responsesBody),
               signal: options?.signal,
-            }, { provider })
+            }, { provider: dispatcherProvider })
           } catch (error) {
             throwClassifiedTransportError(error, responsesUrl)
           }

@@ -31,13 +31,55 @@ const keepAliveDisabled = new Map<string, boolean>()
 
 export function disableKeepAlive(provider: string): void {
   keepAliveDisabled.set(provider, true)
+  // Invalidate cached per-provider dispatcher so the next request rebuilds
+  // an Agent with keepAliveTimeout collapsed to its minimum, evicting any
+  // dead pooled sockets that triggered the original ECONNRESET.
+  invalidateProviderDispatcher(provider)
+}
+
+// Evict the cached undici Agent for a provider so the next request rebuilds
+// it. We intentionally DO NOT call `.close()` here: invalidation can race
+// with concurrent in-flight requests still holding the same Agent reference
+// (e.g. a coordinator with sub-agents on one provider), and eagerly closing
+// would surface ClientDestroyedError on those siblings. Sockets owned by
+// the discarded Agent close on their own once keepAliveTimeout idles them
+// (or sooner if the underlying error already invalidated them); GC reclaims
+// the Agent once the last in-flight request resolves.
+function invalidateProviderDispatcher(provider: string): void {
+  getProviderDispatcher.cache.delete?.(provider)
 }
 
 export function _resetKeepAliveForTesting(provider?: string): void {
   if (provider !== undefined) {
     keepAliveDisabled.delete(provider)
+    invalidateProviderDispatcher(provider)
   } else {
     keepAliveDisabled.clear()
+    getProviderDispatcher.cache.clear?.()
+  }
+}
+
+// Providers marked as h1-only after a failed h2 negotiation. Sticky for the
+// process lifetime — once we know a provider's gateway rejects h2, don't try
+// it again this session. Set by withH2Fallback() in services/api/h2Fallback.ts.
+const h1OnlyProviders = new Map<string, boolean>()
+
+export function markProviderH1Only(provider: string): void {
+  h1OnlyProviders.set(provider, true)
+  invalidateProviderDispatcher(provider)
+}
+
+export function isProviderH1Only(provider: string): boolean {
+  return h1OnlyProviders.get(provider) === true
+}
+
+export function _resetH1OnlyForTesting(provider?: string): void {
+  if (provider !== undefined) {
+    h1OnlyProviders.delete(provider)
+    invalidateProviderDispatcher(provider)
+  } else {
+    h1OnlyProviders.clear()
+    getProviderDispatcher.cache.clear?.()
   }
 }
 
@@ -245,6 +287,81 @@ export const getProxyAgent = memoize((uri: string): undici.Dispatcher => {
   return new undiciMod.EnvHttpProxyAgent(proxyOptions)
 })
 
+// Per-provider undici Agent profile. undici 8 enabled HTTP/2 by default; we
+// opt-in optimistically and let withH2Fallback() flip a provider to h1-only
+// on protocol errors (markProviderH1Only). `connections` is a lazy ceiling —
+// undici opens sockets on demand and closes them after keepAliveTimeout idle.
+type ProviderPoolConfig = {
+  allowH2: boolean
+  connections: number
+  keepAliveTimeout: number
+  pipelining: number
+}
+
+const BASE_PROVIDER_POOL: Omit<ProviderPoolConfig, 'allowH2'> = {
+  connections: 12,
+  keepAliveTimeout: 30_000,
+  pipelining: 1,
+}
+
+// Keys must match the canonical values returned by getAPIProvider() in
+// src/utils/model/providers.ts. Adding a new APIProvider variant? Add it here
+// (or accept the optimistic default below).
+//
+// Intentionally absent: 'bedrock', 'vertex', 'foundry'. These transports use
+// AWS/GCP/Azure SDKs that bypass our `fetchOptions.dispatcher`, so a custom
+// undici Agent would be ignored. They fall through to DEFAULT_PROVIDER_PROFILE
+// as a no-op (cached but never consulted by the underlying client).
+const PROVIDER_DISPATCHER_PROFILES: Record<string, ProviderPoolConfig> = {
+  firstParty: { ...BASE_PROVIDER_POOL, allowH2: true },
+  openai: { ...BASE_PROVIDER_POOL, allowH2: true },
+  gemini: { ...BASE_PROVIDER_POOL, allowH2: true },
+  mistral: { ...BASE_PROVIDER_POOL, allowH2: true },
+  github: { ...BASE_PROVIDER_POOL, allowH2: true },
+  codex: { ...BASE_PROVIDER_POOL, allowH2: true },
+  'nvidia-nim': { ...BASE_PROVIDER_POOL, allowH2: true },
+  minimax: { ...BASE_PROVIDER_POOL, allowH2: true },
+}
+
+// Unknown providers (custom OpenAI-compatible bases, self-hosted gateways)
+// get the optimistic h2 profile. If the gateway can't speak h2,
+// withH2Fallback() flips them to h1-only after the first failure.
+const DEFAULT_PROVIDER_PROFILE: ProviderPoolConfig =
+  PROVIDER_DISPATCHER_PROFILES.openai
+
+/**
+ * Per-provider undici dispatcher with tuned pool config. Used by direct API
+ * fetches (no proxy). When a proxy is configured, getProxyAgent takes
+ * precedence and this is bypassed because EnvHttpProxyAgent owns the
+ * dispatcher for proxied requests.
+ *
+ * Memoized per provider. Cache is invalidated by:
+ *   - disableKeepAlive(provider) — after stale-pool ECONNRESET
+ *   - markProviderH1Only(provider) — after h2 negotiation failure
+ */
+export const getProviderDispatcher = memoize(
+  (provider: string): undici.Dispatcher => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const undiciMod = require('undici') as typeof undici
+    const baseProfile =
+      PROVIDER_DISPATCHER_PROFILES[provider] ?? DEFAULT_PROVIDER_PROFILE
+    const profile: ProviderPoolConfig = {
+      ...baseProfile,
+      allowH2: baseProfile.allowH2 && !isProviderH1Only(provider),
+      // Collapse keep-alive when the pool was just evicted to force a fresh
+      // TCP connection on the next request. 100ms is the smallest value
+      // undici's pool semantics document as honored — sub-second timeouts
+      // below that are undefined behavior. The path is recovery-only, so
+      // the exact value barely matters; what matters is "much smaller than
+      // the default 30s" so the rebuilt Agent doesn't re-pool dead sockets.
+      keepAliveTimeout: keepAliveDisabled.get(provider)
+        ? 100
+        : baseProfile.keepAliveTimeout,
+    }
+    return new undiciMod.Agent(profile)
+  },
+)
+
 /**
  * Get an HTTP agent configured for WebSocket proxy support
  * Returns undefined if no proxy is configured or URL should bypass proxy
@@ -301,10 +418,14 @@ export function getProxyFetchOptions(opts?: { forAnthropicAPI?: boolean; provide
   unix?: string
   keepalive?: false
 } {
-  const providerKey = opts?.provider ?? 'unknown'
-  const base = keepAliveDisabled.get(providerKey)
-    ? ({ keepalive: false } as const)
-    : {}
+  // Only consult the keep-alive bucket when we have a real provider key.
+  // Provider-less callers (WebSearch, etc.) manage their own per-call
+  // keep-alive override in fetchWithProxyRetry to avoid leaking a single
+  // ECONNRESET across all anonymous callers for the process lifetime.
+  const base =
+    opts?.provider && keepAliveDisabled.get(opts.provider)
+      ? ({ keepalive: false } as const)
+      : {}
 
   // ANTHROPIC_UNIX_SOCKET tunnels through the `claude ssh` auth proxy, which
   // hardcodes the upstream to the Anthropic API. Scope to the Anthropic API
@@ -326,8 +447,26 @@ export function getProxyFetchOptions(opts?: { forAnthropicAPI?: boolean; provide
     return { ...base, dispatcher: getProxyAgent(proxyUrl) }
   }
 
+  // No proxy: attach per-provider tuned dispatcher when we know which
+  // provider this fetch is for. Bedrock/Vertex use their own SDK transport
+  // and ignore fetchOptions.dispatcher, so this is a no-op there.
+  //
+  // If mTLS is configured WITHOUT a proxy, getTLSFetchOptions() returns its
+  // own dispatcher carrying the client cert/key. Replacing it with our
+  // per-provider Agent would silently drop the cert and break mTLS auth.
+  // In that case we cede the dispatcher slot to the mTLS Agent — we lose
+  // the per-provider tuning, but correctness (mTLS handshake) wins.
+  const tlsOptions = getTLSFetchOptions()
+  if (opts?.provider && !tlsOptions.dispatcher) {
+    return {
+      ...base,
+      ...tlsOptions,
+      dispatcher: getProviderDispatcher(opts.provider),
+    }
+  }
+
   // Otherwise, use TLS options directly if available
-  return { ...base, ...getTLSFetchOptions() }
+  return { ...base, ...tlsOptions }
 }
 
 /**

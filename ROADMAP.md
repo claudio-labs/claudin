@@ -1,38 +1,32 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** + **11.2** entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** + **11.2** + **11.3** (escopo reduzido) + **11.5** (ganho honesto: higiene/resiliência, não throughput; medição pendente por harness quebrado) entregues; **11.4** auditado e fechado sem ação (zero ocorrências do padrão); 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (17 itens)
+## Ativos (15 itens)
 
-### 11.3 — `<Activity>` (React 19.2) em overlays do REPL (P2)
-- **Esforço:** M (~2h — entender ciclo de mount de cada overlay + testar interativamente em Ink)
-- **Prioridade:** P2 — UX win visível; alvo certo para feedback visual de "voltei e tudo está como eu deixei".
-- **Estado:** React 19.2 introduziu `<Activity mode="visible|hidden">` para esconder subárvore **preservando state** (em vez de unmount). Hoje permission dialog (`src/services/mcpServerApproval.tsx`), `/provider` picker (`src/commands/provider/`), plan-mode panel, history picker remontam ao reabrir — perdem scroll position, cursor, draft de input. `react-reconciler@0.33` (pinned) precisa ser verificado: confirmar se Ink upstream passa o elemento intacto ou se host-config precisa de allow-list (`<Activity>` é primitive React, não DOM, então deveria fluir).
-- **Ganho:** UX qualitativa — usuário recupera contexto ao trocar entre overlay e REPL. Hoje cada toggle é "stateful reset".
-- **Abordagem:** (1) protótipo num único overlay (sugestão: `/provider` picker — alto custo de re-construir lista filtrada por search); (2) medir comportamento em terminal real; (3) propagar pros outros 3 overlays se OK; (4) caso Ink não suporte, abrir issue upstream e parar aqui.
-- **Risco:** feature React 19.2 + Ink não-DOM = possível incompatibilidade silenciosa. Sempre fácil reverter (comentar o wrapper).
-- **Arquivos:** `src/services/mcpServerApproval.tsx`, `src/commands/provider/*.tsx`, `src/screens/REPL.tsx` (plan panel + history picker).
-
-### 11.4 — `useEffectEvent` (React 19.2) no `REPL.tsx` (P3)
-- **Esforço:** M (~1-2h — 42 useEffects, precisa identificar quais têm stale closure de verdade)
-- **Prioridade:** P3 — **só fazer se houver bug concreto de stale closure reportado**. Aplicar em massa = refactor preventivo (anti-pattern do roadmap).
-- **Estado:** React 19.2 estabilizou `useEffectEvent` — callback estável que sempre lê props/state mais recentes sem precisar entrar nas deps do `useEffect`. `src/screens/REPL.tsx` tem **42 useEffects**; alguns provavelmente sofrem do padrão clássico "handler longo-vivo + state que muda + deps incompletas pra não re-subscribe". Sem reproduzir bug, é dívida hipotética.
-- **Ganho:** Caça bugs latentes de stale closure se existirem. Zero se não existirem.
-- **Abordagem:** **gate por sintoma**. Quando aparecer bug de "handler usou valor antigo" no REPL, refatorar **esse** effect com `useEffectEvent`. Não fazer sweep.
-- **Arquivos:** `src/screens/REPL.tsx`.
-
-### 11.5 — undici 8 pool tuning + HTTP/2 per-provider (P3)
-- **Esforço:** L (~3-4h — exige benchmark antes e depois por provider)
-- **Prioridade:** P3 — sem dados de baseline, é chute. Adiar até ter relato de latência ou conexões esgotadas.
-- **Estado:** `src/utils/proxy.ts:207-245` usa `EnvHttpProxyAgent` sem ajustar `connections`, `keepAliveTimeout`, `pipelining`, `allowH2`. undici 8 ligou **HTTP/2 por padrão** — alguns gateways OpenAI-compatíveis são h1-only e fazem fallback com RTT extra (pode querer `allowH2: false` por provider). Também: `src/utils/proxy.ts:30` flipa `keepAliveDisabled` no dispatcher **global**, penalizando todas as conexões quando o objetivo provavelmente era cirúrgico.
-- **Ganho:** Incerto sem medição. Em cenário ideal: -50-200 ms por request em providers h1-only com fallback negativo + reuso de connection pool mais agressivo em sessões longas.
-- **Abordagem:** (1) escrever bench em `scripts/profile/` que faz N requests sequenciais por provider (Anthropic, OpenAI direto, Firecrawl, gateway h1-only conhecido) e mede p50/p95; (2) baseline com config atual; (3) iterar `allowH2`/`connections`/`pipelining` por provider; (4) refatorar `keepAliveDisabled` para per-dispatcher em vez de global; (5) só shipar se delta for >10% num cenário real.
-- **Risco:** fallback h2→h1 silencioso pode degradar sem alarme. Bench tem que ser anterior à mudança.
-- **Arquivos:** `src/utils/proxy.ts`, novo `scripts/profile/undici-pool-bench.ts`.
+### 11.5 — undici 8 pool tuning + HTTP/2 per-provider (P3) — **ENTREGUE 2026-05-16 (ganho honesto: higiene + resiliência, não throughput)**
+- **Esforço real:** M (~4h incluindo auditoria por agent + 3 round-trips de correção)
+- **O que foi feito:**
+  - `getProviderDispatcher()` em `src/utils/proxy.ts` — Agent undici per-provider, memoizado, `connections: 12` (lazy, cresce sob demanda), `keepAliveTimeout: 30s`, `pipelining: 1`, `allowH2: true` otimista.
+  - `PROVIDER_DISPATCHER_PROFILES` cobre os 8 providers cujos SDKs respeitam `fetchOptions.dispatcher`: `firstParty`, `openai`, `gemini`, `mistral`, `github`, `codex`, `nvidia-nim`, `minimax`. Bedrock/Vertex/Foundry intencionalmente fora (SDKs próprios ignoram dispatcher).
+  - `withH2Fallback()` em `src/services/api/h2Fallback.ts` — detecta erro h2 (regex apertado: `ERR_HTTP2_*`, `NGHTTP2_*`, `H2_*`, `stream_refused`, `ALPN`, `HTTP/2 (stream|frame|protocol|connection|session)`; **bare `GOAWAY` excluído** porque servidor h2 saudável emite GOAWAY em rollover gracioso — marcaria sticky h1-only sem recovery), marca provider como sticky h1-only via `markProviderH1Only`, retenta 1×. Aplicado em `fetchWithProxyRetry` e em `client.ts:buildFetch` (caminho do SDK Anthropic).
+  - `disableKeepAlive` per-provider (não mais global) — `localKeepAliveDisabled` per-call para callers sem provider (WebSearch etc), isolando falha entre chamadores anônimos.
+  - `invalidateProviderDispatcher()` apenas `cache.delete()` (NÃO chama `.close()`): eager close racearia com requests concorrentes ainda usando o Agent (coordinator com sub-agents) e geraria `ClientDestroyedError` espúrios. Sockets fecham por idle naturalmente; GC reclama o Agent quando a última request resolve.
+  - `pickFetch()` em `src/services/api/pickFetch.ts` — roteia para `undici.fetch` (do pacote 8.3) quando há dispatcher custom; mantém `globalThis.fetch` quando substituído (test mocks). Resolve incompatibilidade Node-embedded-undici (v7) vs undici instalado (v8) que crashava com `UND_ERR_INVALID_ARG invalid onRequestStart method`.
+  - mTLS sem proxy: cedemos o slot do dispatcher para o Agent do mTLS (preserva client cert; perdemos tuning per-provider mas correctness vence).
+  - openaiShim usa `getAPIProvider()` canonical no dispatcher bucket, mantendo `logProvider` separado para analytics — garante invalidação end-to-end entre shim e SDK paths.
+  - 23 testes novos cobrindo: memoization, invalidação, dispatch correto por provider canonical, falsos positivos h2 (incluindo GOAWAY → false), sticky behavior, h2-then-keepalive combinado, isolamento per-call.
+- **Ganho real (sóbrio):**
+  - **Resiliência (principal):** pool isolado por provider — ECONNRESET no WebSearch não desliga keep-alive da sessão Anthropic; h2 quebrado em provider X não contamina provider Y; sockets mortos removidos transparentemente pelo pool.
+  - **Higiene de conexões:** TLS handshake reusado em tráfego sequencial no mesmo provider (até 30s idle); bursts paralelos abrem até `connections` handshakes (teto: 12). Economia real por request reusado: ~30-80ms (local) a ~150-300ms (intercontinental).
+  - **Cold-start coordinator:** sub-agents do mesmo provider reusam conexão em vez de cada um pagar handshake; com h2, os streams concorrentes multiplexam em 1 socket (vs N sockets em h1).
+- **Ganho que NÃO entregou:** throughput não dobra com h2 multiplexing — 4 sub-agents já rodavam em paralelo antes em 4 sockets; agora rodam em 1 socket com 4 streams. Bytes/s no fio são equivalentes. h2 só ganharia throughput se servidor limitasse conexões/IP (Anthropic não limita publicamente) ou se setup dominasse latência (irrelevante em desktop).
+- **Não medido:** delta numérico p50/p95. Bench harness (`scripts/profile/undici-pool-bench.ts`, commit b395898) tem bug em Bun (`dispatcher.request` indef no servidor h2 de teste). Captura de baseline com código antigo permanece válida; medição pós-mudança fica pendente até consertar harness (provavelmente usar `http2.createServer` puro em vez do shim Bun).
+- **Arquivos:** `src/utils/proxy.ts`, `src/services/api/h2Fallback.ts` (novo), `src/services/api/pickFetch.ts` (novo), `src/services/api/fetchWithProxyRetry.ts`, `src/services/api/client.ts`, `src/services/api/openaiShim.ts`, testes colocalizados.
 
 ### 10.3-derivative — Surface refusal explanation/category (P3)
 - **Esforço:** XS (~15-30 LoC + 1 teste)
@@ -160,6 +154,25 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 11.4 — `useEffectEvent` (React 19.2) no `REPL.tsx` — auditado sem ação (2026-05-16)
+Varredura dos ~36 `useEffect`s reais de `src/screens/REPL.tsx` (os "42" do roadmap incluíam formas compiladas pelo React Compiler). **Nenhum** match do padrão que `useEffectEvent` arruma (listener longo-vivo cujo handler lê state que muda durante a sessão).
+
+- **Únicos candidatos plausíveis e por que foram descartados:**
+  - `internal_eventEmitter.on('suspend'|'resume', ...)` (linha 4148) — handler só escreve string estática em stdout e usa `setRemountKey(prev => prev + 1)` (functional update). Não captura state mutável.
+  - `setInterval` da animação do spinner (linha ~514) — handler recebe apenas o setter estável `setFrame`. O tear-down em `[disabled, noPrefix, isAnimating, terminalFocused]` é **necessário** (early-return), não desperdício.
+  - `bindToolJSXStore(setToolJSXInternal)` (linha 1030) — setter estável, deps `[]`.
+- **Os outros 9 timers** (linhas 429, 858, 1349, 1624, 3141, 3675, 3986, 4022, 4347) são todos `setTimeout` **one-shot**, não listeners de vida longa — fora do escopo de `useEffectEvent`. Onde leem state, já passam o valor como argumento do `setTimeout`.
+- **Fechado sem ação.** Reabrir só se aparecer bug concreto de "handler usou valor antigo" no REPL — refatorar então **aquele** effect específico, não fazer sweep.
+- Arquivos: nenhum (auditoria-só). Memória team: `useeffectevent-repl-audit-2026-05-16.md`.
+
+### 11.3 — `<Activity>` (React 19.2) em overlays do REPL (escopo reduzido, 2026-05-16)
+History picker (`PromptInput.tsx` / `HistorySearchDialog`) envolvido em `<Activity mode="visible|hidden">` — Ctrl+R preserva query, focusedIndex e scroll entre toggles. Funciona em Ink sem allow-list de host-config (Activity é primitive React, fluiu transparente).
+
+- **Premissa original que falhou:** os outros 3 alvos do escopo (`mcpServerApproval.tsx`, `/provider` picker, `ExitPlanModePermissionRequest`) **não são toggle-driven**: são one-shots disparados pelo agente/slash command, vivem uma rodada, e somem na resposta do usuário. `<Activity>` não muda comportamento observável e ainda mantém árvore montada à toa. Auditoria 2026-05-16: `src/screens/REPL.tsx:1072-1087` (queues consumidas linearmente) e fluxo `localJSXResponse` em `commands.ts` (`call → JSX → onDone → unmount`).
+- **Lição registrada (team memory `activity-toggle-driven-only.md`):** antes de wrappar em `<Activity>`, confirmar que o componente reabre com **mesmo identity** (hotkey/toggle), não que é re-criado a cada invocação.
+- **Re-abrir só se:** aparecer novo overlay com padrão "open/close repetidamente, queremos guardar state" (ex.: painel de tasks com hotkey, drawer de skills) — nesse caso vira item novo, não reabertura deste.
+- Arquivos: `src/components/PromptInput.tsx`, `src/components/HistorySearchDialog.tsx`. Commit `f878d75`.
 
 ### 11.2 — Limpar `ignoreDeprecations` no `tsconfig.json` (2026-05-16)
 Auditoria do flag mostrou que ele silenciava **apenas** o aviso de `baseUrl` (deprecado em TS 7.0). Como `moduleResolution: "bundler"` + `paths` resolvem relativo ao próprio `tsconfig.json`, `baseUrl` era redundante. Removido junto com o `ignoreDeprecations`, sem ajustes em call-sites.
@@ -374,9 +387,9 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**17 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**11.3** (`<Activity>` overlays); 9× P3: **11.4**/**11.5**/**10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **27 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative**, **11.1** e **11.2** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
+**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 2× P2: **9.0** (OS notifications)/6.2-Windows; 7× P3: **10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **30 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative**, **11.1**, **11.2**, **11.3** — este último com escopo reduzido: só history picker; os outros 3 alvos eram one-shots, descartados na auditoria 2026-05-16 —, **11.4** auditado sem ação por zero ocorrências, e **11.5** entregue com ganho honesto (higiene de conexões + resiliência per-provider via undici Agent + h2 fallback sticky; throughput inalterado; medição p50/p95 pendente até consertar bench harness)). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
 
-**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). **11.3** (`<Activity>` overlays) é o próximo passo de UX. **11.4** e **11.5** ficam dormentes até haver sintoma. O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der.
+**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der. **Follow-up de 11.5 pendente:** consertar `scripts/profile/undici-pool-bench.ts` (bug em Bun) e capturar delta p50/p95 real pós-mudança — sem isso, ganho fica em "esperado teoricamente" em vez de "medido".
 
 **Auditoria SDK 0.82→0.96 — descartados como itens:**
 - *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.

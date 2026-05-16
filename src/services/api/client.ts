@@ -17,6 +17,8 @@ import {
   isGithubNativeAnthropicMode,
 } from 'src/utils/model/providers.js'
 import { getProxyFetchOptions } from 'src/utils/proxy.js'
+import { withH2Fallback } from './h2Fallback.js'
+import { pickFetch } from './pickFetch.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
@@ -425,6 +427,14 @@ function buildFetch(
     } catch {
       // never let logging crash the fetch
     }
-    return inner(input, { ...init, headers })
+    // Wrap with withH2Fallback so the Anthropic SDK fetch path also gets the
+    // optimistic-h2 + sticky h1 fallback. fetchWithProxyRetry handles its own
+    // wrap; the SDK does not go through that helper.
+    const initWithDispatcher = init as
+      | (RequestInit & { dispatcher?: unknown })
+      | undefined
+    return withH2Fallback(getAPIProvider(), () =>
+      pickFetch(initWithDispatcher, inner)(input, { ...init, headers }),
+    )
   }
 }
