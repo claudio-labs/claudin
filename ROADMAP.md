@@ -1,20 +1,12 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** + **11.2** entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (18 itens)
-
-### 11.2 — Limpar `ignoreDeprecations: "6.0"` no `tsconfig.json` (P3)
-- **Esforço:** XS (~15 min — `tsc` aponta o que reclama)
-- **Prioridade:** P3 — higiene; é dívida explícita declarada no próprio config.
-- **Estado:** `tsconfig.json:20` silencia deprecations específicas do TS 6.0. Sem o flag, `bun run typecheck` lista os call-sites a corrigir. Provavelmente `getOwnPropertyDescriptor`/`importsNotUsedAsValues` ou similar — patches localizados.
-- **Ganho:** Remove uma supressão global que pode mascarar novas deprecations futuras do TS 6.x.
-- **Abordagem:** (1) remover linha 20; (2) rodar `bun run typecheck`; (3) corrigir cada warning; (4) recolocar o flag só se algo for genuinamente fora do nosso controle (com comentário explicando).
-- **Arquivos:** `tsconfig.json` + os arquivos que `tsc` apontar.
+## Ativos (17 itens)
 
 ### 11.3 — `<Activity>` (React 19.2) em overlays do REPL (P2)
 - **Esforço:** M (~2h — entender ciclo de mount de cada overlay + testar interativamente em Ink)
@@ -168,6 +160,12 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 11.2 — Limpar `ignoreDeprecations` no `tsconfig.json` (2026-05-16)
+Auditoria do flag mostrou que ele silenciava **apenas** o aviso de `baseUrl` (deprecado em TS 7.0). Como `moduleResolution: "bundler"` + `paths` resolvem relativo ao próprio `tsconfig.json`, `baseUrl` era redundante. Removido junto com o `ignoreDeprecations`, sem ajustes em call-sites.
+
+- **Verificação:** `bun run typecheck` limpo; `bun run build` + `bun run smoke` ok.
+- Arquivos: `tsconfig.json` (−3 / +1). Commit `c805a90`.
 
 ### 11.1 — `discriminatedUnion` no `coreSchemas.ts` (2026-05-16)
 Auditoria dos `z.union([...])` em `src/entrypoints/sdk/coreSchemas.ts` separou 3 grupos (line numbers pós-edição):
@@ -376,9 +374,9 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**18 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**11.3** (`<Activity>` overlays); 10× P3: **11.2**/**11.4**/**11.5**/**10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **26 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative** e **11.1** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
+**17 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**11.3** (`<Activity>` overlays); 9× P3: **11.4**/**11.5**/**10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **27 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative**, **11.1** e **11.2** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
 
-**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). Quick win remanescente dos upgrades de libs: **11.2** (limpar `ignoreDeprecations`, XS). **11.3** (`<Activity>` overlays) é o próximo passo de UX. **11.4** e **11.5** ficam dormentes até haver sintoma. O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der.
+**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). **11.3** (`<Activity>` overlays) é o próximo passo de UX. **11.4** e **11.5** ficam dormentes até haver sintoma. O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der.
 
 **Auditoria SDK 0.82→0.96 — descartados como itens:**
 - *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.

@@ -36,6 +36,7 @@ export function HistorySearchDialog({
   const [items, setItems] = useState<Item[] | null>(null);
   const [query, setQuery] = useState(initialQuery ?? '');
   useEffect(() => {
+    if (items !== null) return;
     let cancelled = false;
     void (async () => {
       const reader = getTimestampedHistory();
@@ -61,7 +62,7 @@ export function HistorySearchDialog({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [items]);
   const filtered = useMemo(() => {
     if (!items) return [];
     const q = query.trim().toLowerCase();

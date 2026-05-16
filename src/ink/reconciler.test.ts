@@ -1,11 +1,11 @@
 import { PassThrough } from 'node:stream'
 
 import { expect, test } from 'bun:test'
-import React from 'react'
+import React, { Activity } from 'react'
 
 import type { DOMElement, ElementNames } from './dom.ts'
 import instances from './instances.ts'
-import { LayoutEdge } from './layout/node.ts'
+import { LayoutDisplay, LayoutEdge } from './layout/node.ts'
 import type { ParsedKey } from './parse-keypress.ts'
 import { createRoot } from './root.ts'
 
@@ -367,3 +367,50 @@ test('raw ink-box updates layout style in place across rerenders', async () => {
     await harness.dispose()
   }
 })
+
+test('<Activity> toggles host display:none and preserves the same DOM node', async () => {
+  const harness = await createHarness()
+
+  try {
+    const child = React.createElement(
+      'ink-box',
+      { style: { paddingLeft: 1 } },
+      React.createElement('ink-text', { style: RAW_TEXT_STYLE }, 'inside'),
+    )
+
+    harness.root.render(
+      React.createElement(Activity, { mode: 'hidden', children: child }),
+    )
+    await Bun.sleep(25)
+
+    const hiddenBox = requireElement(harness.stdout, 'ink-box')
+    expect(hiddenBox.isHidden).toBe(true)
+    const hiddenYoga = hiddenBox.yogaNode!
+    expect(hiddenYoga).toBeDefined()
+    expect(hiddenYoga.getDisplay()).toBe(LayoutDisplay.None)
+
+    harness.root.render(
+      React.createElement(Activity, { mode: 'visible', children: child }),
+    )
+    await Bun.sleep(25)
+
+    const visibleBox = requireElement(harness.stdout, 'ink-box')
+    // Same host node — Activity preserves the underlying fiber/DOM mount
+    expect(visibleBox).toBe(hiddenBox)
+    expect(visibleBox.isHidden).toBe(false)
+    expect(visibleBox.yogaNode!.getDisplay()).toBe(LayoutDisplay.Flex)
+
+    harness.root.render(
+      React.createElement(Activity, { mode: 'hidden', children: child }),
+    )
+    await Bun.sleep(25)
+
+    const reHiddenBox = requireElement(harness.stdout, 'ink-box')
+    expect(reHiddenBox).toBe(hiddenBox)
+    expect(reHiddenBox.isHidden).toBe(true)
+    expect(reHiddenBox.yogaNode!.getDisplay()).toBe(LayoutDisplay.None)
+  } finally {
+    await harness.dispose()
+  }
+})
+

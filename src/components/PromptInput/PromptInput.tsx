@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import * as path from 'path';
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Activity, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNotifications } from 'src/context/notifications.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/hooks/useIdeAtMentioned.js';
@@ -57,7 +57,7 @@ import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
 import { count } from '../../utils/array.js';
 import type { AutoUpdaterResult } from '../../utils/autoUpdater.js';
 import { Cursor } from '../../utils/Cursor.js';
-import { getGlobalConfig, type PastedContent, saveGlobalConfig } from '../../utils/config.js';
+import { getGlobalConfig, type HistoryEntry, type PastedContent, saveGlobalConfig } from '../../utils/config.js';
 import { logForDebugging } from '../../utils/debug.js';
 import { parseDirectMemberMessage, sendDirectMemberMessage } from '../../utils/directMemberMessage.js';
 import type { EffortLevel } from '../../utils/effort.js';
@@ -419,6 +419,7 @@ function PromptInput({
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showHistoryPicker, setShowHistoryPicker] = useState(false);
+  const [hasOpenedHistoryPicker, setHasOpenedHistoryPicker] = useState(false);
   const [showFastModePicker, setShowFastModePicker] = useState(false);
   const [showThinkingToggle, setShowThinkingToggle] = useState(false);
   const [showAutoModeOptIn, setShowAutoModeOptIn] = useState(false);
@@ -1768,12 +1769,23 @@ function PromptInput({
   useKeybinding('history:search', () => {
     if (feature('HISTORY_PICKER')) {
       setShowHistoryPicker(true);
+      setHasOpenedHistoryPicker(true);
       setHelpOpen(false);
     }
   }, {
     context: 'Global',
     isActive: feature('HISTORY_PICKER') ? !isModalOverlayActive : false
   });
+
+  // TTL: after 5min hidden, unmount HistorySearchDialog so a stale items list
+  // doesn't survive the whole session. Next Ctrl+R re-fetches fresh.
+  useEffect(() => {
+    if (!hasOpenedHistoryPicker || showHistoryPicker) return;
+    const timer = setTimeout(() => {
+      setHasOpenedHistoryPicker(false);
+    }, 5 * 60_000);
+    return () => clearTimeout(timer);
+  }, [hasOpenedHistoryPicker, showHistoryPicker]);
 
   // Handle Ctrl+C to abort speculation when idle (not loading)
   // CancelRequestHandler only handles Ctrl+C during active tasks
@@ -2152,13 +2164,43 @@ function PromptInput({
   // Memoized so the portal useEffect doesn't churn on every PromptInput render.
   const autoModeOptInDialog = useMemo(() => feature('TRANSCRIPT_CLASSIFIER') && showAutoModeOptIn ? <AutoModeOptInDialog onAccept={handleAutoModeOptInAccept} onDecline={handleAutoModeOptInDecline} /> : null, [showAutoModeOptIn, handleAutoModeOptInAccept, handleAutoModeOptInDecline]);
   useSetPromptOverlayDialog(isFullscreenEnvEnabled() ? autoModeOptInDialog : null);
+
+  const handleHistorySelect = useCallback((entry: HistoryEntry) => {
+    const entryMode = getModeFromInput(entry.display);
+    const value = getValueFromInput(entry.display);
+    onModeChange(entryMode);
+    trackAndSetInput(value);
+    setPastedContents(entry.pastedContents);
+    setCursorOffset(value.length);
+    setShowHistoryPicker(false);
+  }, [onModeChange, trackAndSetInput, setPastedContents, setCursorOffset]);
+  const handleHistoryCancel = useCallback(() => {
+    setShowHistoryPicker(false);
+  }, []);
+  // initialQuery is init-once in HistorySearchDialog (useState init), so we
+  // intentionally omit `input` from deps — preserving mount across keystrokes
+  // is the whole point of using <Activity> here. The element identity stays
+  // stable while hidden, so React skips re-rendering the subtree.
+  const historyPickerEl = useMemo(() => (
+    feature('HISTORY_PICKER') && hasOpenedHistoryPicker ? (
+      <Activity mode={showHistoryPicker ? 'visible' : 'hidden'}>
+        <HistorySearchDialog initialQuery={input} onSelect={handleHistorySelect} onCancel={handleHistoryCancel} />
+      </Activity>
+    ) : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [hasOpenedHistoryPicker, showHistoryPicker, handleHistorySelect, handleHistoryCancel]);
+  // Every early return below is wrapped in a Fragment with historyPickerEl
+  // as the first child. This keeps the HistorySearchDialog Activity wrapper
+  // at a stable tree position across all render paths, so React preserves
+  // its mount (and therefore its internal state: query, focusedIndex, items)
+  // even when the user opens a different dialog between Ctrl+R toggles.
   if (showBashesDialog) {
-    return <BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} />;
+    return <>{historyPickerEl}<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} /></>;
   }
   if (isAgentSwarmsEnabled() && showTeamsDialog) {
-    return <TeamsDialog initialTeams={cachedTeams} onDone={() => {
+    return <>{historyPickerEl}<TeamsDialog initialTeams={cachedTeams} onDone={() => {
       setShowTeamsDialog(false);
-    }} />;
+    }} /></>;
   }
   if (feature('QUICK_SEARCH')) {
     const insertWithSpacing = (text: string) => {
@@ -2166,39 +2208,32 @@ function PromptInput({
       insertTextAtCursor(/\s/.test(cursorChar) ? text : ` ${text}`);
     };
     if (showQuickOpen) {
-      return <QuickOpenDialog onDone={() => setShowQuickOpen(false)} onInsert={insertWithSpacing} />;
+      return <>{historyPickerEl}<QuickOpenDialog onDone={() => setShowQuickOpen(false)} onInsert={insertWithSpacing} /></>;
     }
     if (showGlobalSearch) {
-      return <GlobalSearchDialog onDone={() => setShowGlobalSearch(false)} onInsert={insertWithSpacing} />;
+      return <>{historyPickerEl}<GlobalSearchDialog onDone={() => setShowGlobalSearch(false)} onInsert={insertWithSpacing} /></>;
     }
   }
   if (feature('HISTORY_PICKER') && showHistoryPicker) {
-    return <HistorySearchDialog initialQuery={input} onSelect={entry => {
-      const entryMode = getModeFromInput(entry.display);
-      const value = getValueFromInput(entry.display);
-      onModeChange(entryMode);
-      trackAndSetInput(value);
-      setPastedContents(entry.pastedContents);
-      setCursorOffset(value.length);
-      setShowHistoryPicker(false);
-    }} onCancel={() => setShowHistoryPicker(false)} />;
+    // historyPickerEl already contains the visible HistorySearchDialog via Activity.
+    return <>{historyPickerEl}</>;
   }
 
   // Show loop mode menu when requested (internal-only, eliminated from external builds)
   if (modelPickerElement) {
-    return modelPickerElement;
+    return <>{historyPickerEl}{modelPickerElement}</>;
   }
   if (fastModePickerElement) {
-    return fastModePickerElement;
+    return <>{historyPickerEl}{fastModePickerElement}</>;
   }
   if (thinkingToggleElement) {
-    return thinkingToggleElement;
+    return <>{historyPickerEl}{thinkingToggleElement}</>;
   }
   if (showBridgeDialog) {
-    return <BridgeDialog onDone={() => {
+    return <>{historyPickerEl}<BridgeDialog onDone={() => {
       setShowBridgeDialog(false);
       selectFooterItem(null);
-    }} />;
+    }} /></>;
   }
   const baseProps: BaseTextInputProps = {
     multiline: true,
@@ -2265,14 +2300,14 @@ function PromptInput({
     return 'promptBorder';
   };
   if (isExternalEditorActive) {
-    return <Box flexDirection="row" alignItems="center" justifyContent="center" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%">
+    return <>{historyPickerEl}<Box flexDirection="row" alignItems="center" justifyContent="center" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%">
         <Text dimColor italic>
           Save and close editor to continue...
         </Text>
-      </Box>;
+      </Box></>;
   }
   const textInputElement = isVimModeEnabled() ? <VimTextInput {...baseProps} initialMode={vimMode} onModeChange={setVimMode} /> : <TextInput {...baseProps} />;
-  return <Box flexDirection="column" marginTop={briefOwnsGap ? 0 : 1}>
+  return <>{historyPickerEl}<Box flexDirection="column" marginTop={briefOwnsGap ? 0 : 1}>
       {!isFullscreenEnvEnabled() && <PromptInputQueuedCommands />}
       {hasSuppressedDialogs && <Box marginTop={1} marginLeft={2}>
           <Text dimColor>Waiting for permission…</Text>
@@ -2343,7 +2378,7 @@ function PromptInput({
     <Box position="absolute" marginTop={briefOwnsGap ? -2 : -1} height={suggestions.length === 0 && !showAutoModeOptIn ? 1 : 0} width="100%" paddingLeft={2} paddingRight={1} flexDirection="column" justifyContent="flex-end" overflow="hidden">
           <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} />
         </Box> : null}
-    </Box>;
+    </Box></>;
 }
 
 /**
