@@ -1,100 +1,42 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-05 | ROI honesto, sem itens marginais | última atualização: 2026-05-15 (7.0 — `/autofix-pr` ✅ entregue)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (8.0 — `agentic_fetch` skill adicionada; 6.1, 6.2-Linux e 7.0 movidos pra Concluídos)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (13 itens)
+## Ativos (14 itens)
 
-### 6.1 — Command-aware bash output filter ⭐ NOVO (P0, top priority)
-- **Esforço:** L (8 PRs sequenciados, ~2.200 LoC total)
-- **Prioridade:** **P0** — maior ROI absoluto medido em qualquer item ativo do roadmap.
-- **Status:** ✅ **Todas as 8 fases concluídas** (2026-05-09). Feature ativa por default em instalações novas.
+### 8.0 — `agentic_fetch` como subagent web (P2)
+- **Esforço:** M (~150 LoC + system prompt bem escrito)
+- **Prioridade:** P2 — fecha gap real em research técnico multi-página sem inchar contexto principal.
+- **Inspiração:** Crush `agentic_fetch` tool (mas implementado lá como tool standalone; no Claudio é melhor reusar a primitiva de subagent que já existe).
+- **Problema:** `WebFetch` é one-shot (1 URL → resultado direto no contexto principal); `WebSearch` devolve só links. Para resolver "como configurar OAuth device flow no provider X" o modelo principal hoje encadeia 5-7 fetches que jogam ~20k tokens de HTML convertido no histórico — polui contexto e gasta tokens caros do Opus em trabalho de browsing mecânico.
+- **Abordagem:** novo `subagent_type: 'WebResearcher'` registrado junto com Code/Explore/Plan. Subset de tools = `[WebSearch, WebFetch, Read]`. Contexto isolado (não polui pai); devolve **só síntese final** com URLs citadas. Aparece automaticamente na lista de `subagent_type` do `AgentTool`. Prompt focado em: começar por search se URL não dada, decidir quando parar (achou vs. esgotou), sintetizar em vez de despejar HTML, citar fontes.
+- **Trade-off:** modelo principal precisa decidir entre `WebFetch` direto (rápido, 1 página) vs. `Agent(WebResearcher)` (lento, multi-página). Resolvido por descriptions bem escritas no registro.
+- **Arquivos:** registro de subagents (próximo a onde Code/Explore/Plan vivem), system prompt em `src/skills/` ou inline.
 
-#### Documentação
-- **Discovery:** [`docs/discovery/bash-output-filter/`](docs/discovery/bash-output-filter/) — 8 rodadas, 67/67 cases passing, 35+ comandos analisados, [`optimization-matrix.md`](docs/discovery/bash-output-filter/optimization-matrix.md), [`rtk-comparison.md`](docs/discovery/bash-output-filter/rtk-comparison.md)
-- **Spec técnica:** [`docs/tech/bash-output-filter/architecture.md`](docs/tech/bash-output-filter/architecture.md) — rev 2 pós-review aplicado (22 seções, ~900 linhas, 4 bloqueadores + 5 misalignments corrigidos)
-- **Phase docs (8):** [`docs/tech/bash-output-filter/phases/`](docs/tech/bash-output-filter/phases/) — um doc por PR, com pré-requisitos, file changes line-by-line, tests, acceptance, PR template
+### 9.0 — Notificações nativas do SO (P2)
+- **Esforço:** P (~150-200 LoC + matriz de testes manuais por SO)
+- **Prioridade:** P2 — feature **parcialmente quebrada hoje**: `src/services/notifier.ts` só conhece iTerm2/kitty/ghostty/Apple bell. Em Linux (GNOME/KDE/Hyprland/Sway), Windows e macOS fora do iTerm2, `sendAuto()` retorna `'no_method_available'` silenciosamente → usuário nunca é notificado quando a sessão pede input ou termina trabalho longo.
+- **Inspiração:** Crush `internal/notify/` (notificações desktop via API nativa de cada SO).
+- **Problema:** o canal `auto` cobre só ~30% dos terminais modernos. Usuário em Ubuntu+GNOME-Terminal, Windows+Windows Terminal, ou macOS+Terminal.app sem bell habilitado fica sem notificação alguma. O sistema **acha que enviou** (`logEvent` registra `no_method_available`) mas nada chega.
+- **Abordagem:** adicionar fallback de OS-native antes de `no_method_available`:
+  - **Linux:** `notify-send` (libnotify, presente em ~todo desktop Linux moderno) via `execFileNoThrow`. Detectar disponibilidade por `which`.
+  - **macOS:** `osascript -e 'display notification "..." with title "..."'` (já temos `osascript` em uso para Apple bell detection — zero dep nova).
+  - **Windows:** PowerShell `New-BurntToastNotification` se módulo presente, fallback `[System.Windows.MessageBox]` ou snoretoast bundled. Investigar se vale a complexidade vs. apenas terminal bell.
+  - Novo canal `os_native` selecionável manualmente em `/config`; `auto` passa a tentar `os_native` antes de cair em `no_method_available`.
+- **Trade-off:** depende de binários externos (`notify-send`/`osascript`) — falha silenciosa se ausente (que é exatamente o estado atual, então não regride). Windows é o caso mais frágil; aceitável deixar como "best effort".
+- **Arquivos:** `src/services/notifier.ts` (novo `sendOsNative()` + extender `sendAuto`), `src/utils/config.ts` (canal `os_native` no enum de `preferredNotifChannel`), tests colocados.
 
-#### Phases (8 PRs, sequenciadas)
-
-Cada phase doc é self-contained — agent/dev pode pickup uma fase lendo só ela + a architecture.md.
-
-- [x] **6.1.0** — [Plumbing](docs/tech/bash-output-filter/phases/phase-0-plumbing.md) (~10 LoC) — extend `isAlreadyCompacted` em `toolResultSummarizer.ts:242` + register 3 config keys em `GLOBAL_CONFIG_KEYS` + export collapse helpers
-- [x] **6.1.1** — [Skeleton + harness](docs/tech/bash-output-filter/phases/phase-1-skeleton.md) (~700 LoC) — cria `src/outputFilter/Bash/`, port do `validation/pipeline.ts`, harness com 67 cases, redos scan (módulo é dead code)
-- [x] **6.1.2** — [Built-in batch 1](docs/tech/bash-output-filter/phases/phase-2-builtin-batch-1.md) (~400 LoC) — 10 highest-ROI filters em 7 family files (bundle/pytest/ps/rubocop/go-test/ls/rspec/top/cargo/grep-rg/ruff)
-- [x] **6.1.3** — [BashTool integration](docs/tech/bash-output-filter/phases/phase-3-bashtool-integration.md) (~30 LoC) — wire pipeline-only no `BashTool.call()` (rewrite vem na 6.1.4)
-- [x] **6.1.4** — [Rewrite layer](docs/tech/bash-output-filter/phases/phase-4-rewrite-layer.md) (~150 LoC) — `planFilter` com `rewriteCommand` + 5 rewrite filters (git-log força `--oneline`, git-status força `--porcelain`, gh pr/issue/run list força `--json`)
-- [x] **6.1.5** — [Built-in batch 2](docs/tech/bash-output-filter/phases/phase-5-builtin-batch-2.md) (~250 LoC) — git family completa (status/log/blame/pull/add/commit/push), docker (ps/images/logs), network (curl/wget/dig), journalctl
-- [x] **6.1.6** — [User filters](docs/tech/bash-output-filter/phases/phase-6-user-filters.md) (~290 LoC) — `~/.claudio/filters.json` + zod schema + ReDoS guards (length cap + denylist + build-time scan)
-- [x] **6.1.7** — [Default-on flip](docs/tech/bash-output-filter/phases/phase-7-default-on.md) — `shouldFilterOutput` default-on (`!== false`), toggle em `/config`, tip de performance em `tipRegistry`
-- [x] **6.1.9** — [System utilities](docs/tech/bash-output-filter/phases/phase-9-system-utils.md) (~140 LoC) — ping, rsync, tree, ssh, df, du, dmesg, stat, jq + curl-plain. Todos os 10 specs atingem o target (ping 58%, rsync 91%, tree 52%, ssh 98%, df 60%, du 59%, dmesg 27%, curl-plain 78%). Aggregate gain table (41 filtros): **69.9%** de redução.
-
-
-#### Ganho esperado (medido empiricamente)
-
-Top filtros por ROI medido:
-- `bundle install` **96%**, `pytest` **95%**, `ps aux` **93%**, `git log` (rewrite) **92%**, `ls -la` **81%**
-- `rubocop` **83%**, `go test -v` **82%**, `rspec` **73%**, `wget` **72%**, `cargo check` **64%**
-
-Cumulativo numa sessão típica 30min: **~50k tokens economizados**, **~72% redução custo input**.
-
-#### Arquitetura (3 toques no codebase, ~20 LoC totais)
-
-1. `BashTool.tsx` (`call`): 2 inserções (`planFilter` antes de `runShellCommand`, `applyFilterToStdout` depois)
-2. `toolResultSummarizer.ts:242` (`isAlreadyCompacted`): +2 linhas pra reconhecer markers do filter
-3. `config.ts:705` (`GLOBAL_CONFIG_KEYS`): registrar 3 keys flat
-
-Markers vão direto pra `result.stdout` — sobrevivem error path via `ShellError`. `mapToolResult`, `processToolResultBlock`, `Out` schema intactos.
-
-### 6.2 — Bash output filter — tier-1 follow-ups (Linux JS/TS toolchain + tsc + git diff/show)
-- **Esforço:** M (1 PR Linux done, 1 PR Windows pending)
-- **Prioridade:** **P1** — preenche o gap mais visível pós-6.1: stack TS é a mais comum, e `tsc`/`jest`/`vitest`/`bun test` não estavam mapeados.
-- **Status:** ✅ **Linux side concluído** (2026-05-09, 8 specs, ~330 LoC). **Windows/PowerShell pendente** (sub-fase 9, ver doc).
-
-#### Documentação
-- **Phase doc:** [`docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md`](docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md)
-- **Bench reproducível:** `CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts` — 31 filtros, agregado 71% redução
-
-#### Filters adicionados (8 specs, Linux)
-
-- [x] **JS/TS test runners** (5 specs em `tests-js.ts`): `jest` 98.7%, `vitest` 98.5%, `bun test` 98.2%, `mocha` 97.6%, `playwright test` 98.4% — colapso pra sentinela em runs limpos, `unless` guard preserva failures
-- [x] **TypeScript compiler** (`tsc.ts`): `tsc` / `tsc --noEmit` 18.2% — strip ASCII underline `~~~` lines + tabela trailing `Errors  Files` redundante
-- [x] **git diff / show** (extensão de `git.ts`): `git diff` 10.8%, `git show` 9.4% — strip `diff --git a/X b/X` + `index <hash>..<hash>` + `\ No newline at end of file`; git-show colapsa `Author: Name <email>\nDate: ...` em uma linha
-
-#### Pendente (sub-fase 9 — Windows/PowerShell)
-
-- [ ] `Get-ChildItem` / `dir` — equivalente do `ls -la`
-- [ ] `Get-Process` / `tasklist` — equivalente do `ps aux`
-- [ ] `Get-Service`, `Get-WinEvent`/`Get-EventLog`
-- [ ] `dotnet build` / `dotnet test` / `dotnet restore`
-- [ ] `msbuild`
-
-PowerShell tem 2 peculiaridades vs bash (output tabular auto-formatado + object pipeline) que precisam de ajuste em `pipeline.ts` antes de implementar — abrir como Phase 9 dedicada.
-
-#### Arquivos tocados (Linux)
-
-- 2 arquivos novos: `src/outputFilter/Bash/filters/{tests-js,tsc}.ts`
-- 1 extensão: `src/outputFilter/Bash/filters/git.ts` (gitDiff + gitShow)
-- 1 registry: `src/outputFilter/Bash/filters/index.ts`
-- 8 fixtures novos em ambos `src/outputFilter/Bash/__fixtures__/samples/` E `docs/discovery/bash-output-filter/validation/samples/` (harness lê desse último — ver Implementation Notes do phase doc)
-- 1 harness extension: `src/outputFilter/Bash/bashFilter.test.ts` (+8 describe blocks, ~50 expect calls)
-- 1 bench update: `scripts/profile/bash-filter-gain.test.ts` (+8 cenários)
-
-### 7.0 — `/autofix-pr` — comando unificado de autofix de PR (P0) — ✅ ENTREGUE
-- **Esforço real:** M (~7 commits, ~700 LoC TS + testes/snapshots)
-- **Status:** ✅ **Concluído** (2026-05-15) em `feat/autofix-pr`. Reativo (sem `--watch`): usuário invoca; comando coleta → triagem → fix → push → reply, loop até 5 iter com anti-stall.
-
-#### Entregue
-- `src/commands/autofix-pr/{index.ts, prompt.ts, shared.ts}` + testes colocados.
-- Guards reaproveitando `getIsGit`, `getBranch`, `getDefaultBranch`, `fetchPrStatus` (5 falhas curtas: not-git, detached HEAD, default branch, gh não autenticado, sem PR).
-- `--dry-run`: paridade com antigo `/pr-comments` + triagem (5 labels: `ok`, `change_request`, `pr_questionable`, `unclear`, `out_of_scope`).
-- Modo padrão: collect → triage → AskUserQuestion para `pr_questionable`/`unclear` → fix → typecheck + focused tests → commit (sem `--amend`/`--no-verify`) → push (sem force) → reply em thread.
-- Loop até 5 iterações com anti-stall por `(comment_id, updated_at)`.
-- Removido: `src/commands/pr_comments/`, registro em `src/commands.ts`, stub `index.js`.
-- `--watch` com `CronCreate`: **rejeitado** (reativo é mais elegante; status bar já mostra `reviewState` para o usuário decidir invocar).
+### 6.2-Windows — Bash output filter PowerShell/Windows (P2)
+- **Esforço:** M (sub-fase 9 dedicada, ~150-200 LoC)
+- **Prioridade:** P2 — bloqueada em ajuste prévio do `pipeline.ts` para output tabular auto-formatado + object pipeline do PowerShell.
+- **Status:** Linux side ✅ concluído (2026-05-09, ver Concluídos). Windows side pendente.
+- **Filtros pendentes:** `Get-ChildItem`/`dir`, `Get-Process`/`tasklist`, `Get-Service`, `Get-WinEvent`/`Get-EventLog`, `dotnet {build,test,restore}`, `msbuild`.
+- **Pré-requisito:** ajustar `pipeline.ts` para lidar com (1) output tabular auto-formatado do PowerShell, (2) object pipeline.
+- **Arquivos:** `src/outputFilter/Bash/filters/powershell-*.ts`, extensão de `pipeline.ts`, fixtures em ambos `src/outputFilter/Bash/__fixtures__/samples/` e `docs/discovery/bash-output-filter/validation/samples/`.
 
 ### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
 - **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
@@ -192,6 +134,43 @@ PowerShell tem 2 peculiaridades vs bash (output tabular auto-formatado + object 
 ---
 
 ## Concluídos ✅
+
+### 7.0 — `/autofix-pr` — comando unificado de autofix de PR (2026-05-15)
+Reativo (sem `--watch`): usuário invoca; comando coleta → triagem → fix → push → reply, loop até 5 iter com anti-stall. ~7 commits, ~700 LoC TS + testes/snapshots em `feat/autofix-pr`.
+
+- `src/commands/autofix-pr/{index.ts, prompt.ts, shared.ts}` + testes colocados.
+- Guards reaproveitando `getIsGit`, `getBranch`, `getDefaultBranch`, `fetchPrStatus` (5 falhas curtas: not-git, detached HEAD, default branch, gh não autenticado, sem PR).
+- `--dry-run`: paridade com antigo `/pr-comments` + triagem (5 labels: `ok`, `change_request`, `pr_questionable`, `unclear`, `out_of_scope`).
+- Modo padrão: collect → triage → AskUserQuestion para `pr_questionable`/`unclear` → fix → typecheck + focused tests → commit (sem `--amend`/`--no-verify`) → push (sem force) → reply em thread.
+- Loop até 5 iterações com anti-stall por `(comment_id, updated_at)`.
+- Removido: `src/commands/pr_comments/`, registro em `src/commands.ts`, stub `index.js`.
+- `--watch` com `CronCreate`: rejeitado (reativo é mais elegante; status bar já mostra `reviewState` para o usuário decidir invocar).
+
+### 6.2-Linux — Bash output filter tier-1 follow-ups Linux (2026-05-09)
+JS/TS toolchain + tsc + git diff/show. 8 specs, ~330 LoC. Bench: 31 filtros, agregado 71% redução. Doc: [`docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md`](docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md). Bench reproducível: `CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts`.
+
+- **JS/TS test runners** (5 specs em `tests-js.ts`): `jest` 98.7%, `vitest` 98.5%, `bun test` 98.2%, `mocha` 97.6%, `playwright test` 98.4% — colapso pra sentinela em runs limpos, `unless` guard preserva failures.
+- **TypeScript compiler** (`tsc.ts`): `tsc`/`tsc --noEmit` 18.2% — strip ASCII underline `~~~` lines + tabela trailing `Errors  Files` redundante.
+- **git diff/show** (extensão de `git.ts`): `git diff` 10.8%, `git show` 9.4% — strip `diff --git`, `index <hash>..<hash>`, `\ No newline at end of file`; git-show colapsa Author+Date em uma linha.
+- Arquivos: `src/outputFilter/Bash/filters/{tests-js,tsc}.ts` + extensão `git.ts` + registry + 8 fixtures + harness `bashFilter.test.ts` (+8 describes) + bench `scripts/profile/bash-filter-gain.test.ts`.
+
+### 6.1 — Command-aware bash output filter (2026-05-09/13, 8+1 fases)
+Maior ROI absoluto medido em qualquer item do roadmap. Feature ativa por default em instalações novas. ~2.340 LoC total (~20 LoC no codebase principal: 2 inserções em `BashTool.tsx`, +2 linhas em `toolResultSummarizer.ts:242`, 3 keys em `config.ts:705`). Docs completas em [`docs/tech/bash-output-filter/`](docs/tech/bash-output-filter/).
+
+**Ganho cumulativo:** sessão típica 30min → ~50k tokens economizados, ~72% redução de custo input. Top filtros: `bundle install` 96%, `pytest` 95%, `ps aux` 93%, `git log` (rewrite) 92%, `rubocop` 83%, `go test -v` 82%, `ls -la` 81%, `rspec` 73%, `wget` 72%, `cargo check` 64%. Aggregate gain table (41 filtros): 69.9% redução.
+
+Fases entregues:
+- **6.1.0** Plumbing — extend `isAlreadyCompacted` + register 3 config keys + export collapse helpers.
+- **6.1.1** Skeleton + harness — `src/outputFilter/Bash/`, port do `validation/pipeline.ts`, 67/67 cases passing, redos scan.
+- **6.1.2** Built-in batch 1 — 10 highest-ROI filters (bundle/pytest/ps/rubocop/go-test/ls/rspec/top/cargo/grep-rg/ruff).
+- **6.1.3** BashTool integration — wire pipeline-only no `BashTool.call()`.
+- **6.1.4** Rewrite layer — `planFilter` com `rewriteCommand` + 5 rewrite filters (git-log `--oneline`, git-status `--porcelain`, gh pr/issue/run list `--json`).
+- **6.1.5** Built-in batch 2 — git family completa, docker, network (curl/wget/dig), journalctl.
+- **6.1.6** User filters — `~/.claudio/filters.json` + zod schema + ReDoS guards.
+- **6.1.7** Default-on flip — `shouldFilterOutput !== false`, toggle em `/config`, tip em `tipRegistry`.
+- **6.1.9** System utilities — ping, rsync, tree, ssh, df, du, dmesg, stat, jq, curl-plain (10 specs, todos no target).
+
+Markers vão direto pra `result.stdout` — sobrevivem error path via `ShellError`. `mapToolResult`, `processToolResultBlock`, `Out` schema intactos.
 
 ### 5.8 — `/clear` agora drena `fileReadCache`; bench corrigido
 Bench original alegava que `cache.clear()` "não libera RSS V8". Investigação encontrou duas falhas: (1) `fileReadCache.clear()` **não era chamado em produção em lugar nenhum** — `/clear` (`src/commands/clear/caches.ts`) drenava ~15 caches mas pulava esse, então o sintoma só aparecia em benches sintéticos rodando direto contra o singleton; (2) o bench fazia `gc()` síncrono logo após `clear()` e tirava snapshot — JSC sweep é lazy, não roda na mesma microtask. Bench corrigido amostra heap em t=0/50/250/500 ms: heap volta abaixo do baseline em ~50 ms, RSS solta ~633 MB em ~500 ms. RSS retido depois disso é o alocador (jemalloc/glibc) mantendo páginas livres pra reuso, não leak. Fix: `clearSessionCaches` agora chama `fileReadCache.clear()`; bench mostra trajetória de decay em vez de snapshot único; doc no `clear()` explica semantics. Tentei agendar `gc()` forçado mas o tempo de settle do JSC é dependente do tamanho do heap (50-200+ ms sob churn realista) — delay fixo é frágil; o engine sweepa naturalmente quando há pressão.
@@ -322,6 +301,6 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**9 ativos** (2× P0: **7.0**/4.1; 1× P1: 6.2-Windows; 2× P1: 5.10/5.11; 3× P3: 5.2/5.3b/5.1b; +3.12 sem prio) + **20 concluídos** (6.1 incl. 6.1.9 + 6.2 Linux side). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **8.0** (agentic_fetch)/**9.0** (OS notifications)/6.2-Windows; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **23 concluídos** (incl. **6.1**, **6.2-Linux** e **7.0** recém-movidos). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
 
-**7.0 — `/autofix-pr`** concluído em 2026-05-15 (P0 entregue). **Próxima entrega:** revisar próximo P0 do backlog. 6.1 — Command-aware bash output filter concluído em 2026-05-13 (9 fases, ~2.340 LoC). Filtro ativo por default, toggle em `/config`, tip de performance. Ganho medido: top 10 comandos com 50-98% redução de output, ~50k tokens economizados por sessão típica de 30min, ~72% redução de custo input. **6.1.9 — System utilities** concluído em 2026-05-13: 10 specs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain), 41 filtros totais, agregado **69.9%** redução medido em fixture corpus de 200.6 KB. **6.2 — Tier-1 follow-ups (Linux)** concluído em 2026-05-09: 8 specs (jest/vitest/bun-test/mocha/playwright + tsc + git-diff/show). Sub-fase Windows/PowerShell em aberto.
+**Próxima entrega:** revisar próximo P0 do backlog (**4.1** — testes para caminhos críticos). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
