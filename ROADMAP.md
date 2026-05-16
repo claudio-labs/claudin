@@ -1,400 +1,106 @@
-# Claudio — Roadmap Técnico
+# Roadmap — Claudio
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** + **11.2** + **11.3** (escopo reduzido) + **11.5** (ganho honesto: higiene/resiliência, não throughput; medição pendente por harness quebrado) entregues; **11.4** auditado e fechado sem ação (zero ocorrências do padrão); 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
+Itens priorizados por ROI (ganho / esforço). Atualizado em 2026-05-16.
 
-Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
-
----
-
-## Ativos (15 itens)
-
-### 11.5 — undici 8 pool tuning + HTTP/2 per-provider (P3) — **ENTREGUE 2026-05-16 (ganho honesto: higiene + resiliência, não throughput)**
-- **Esforço real:** M (~4h incluindo auditoria por agent + 3 round-trips de correção)
-- **O que foi feito:**
-  - `getProviderDispatcher()` em `src/utils/proxy.ts` — Agent undici per-provider, memoizado, `connections: 12` (lazy, cresce sob demanda), `keepAliveTimeout: 30s`, `pipelining: 1`, `allowH2: true` otimista.
-  - `PROVIDER_DISPATCHER_PROFILES` cobre os 8 providers cujos SDKs respeitam `fetchOptions.dispatcher`: `firstParty`, `openai`, `gemini`, `mistral`, `github`, `codex`, `nvidia-nim`, `minimax`. Bedrock/Vertex/Foundry intencionalmente fora (SDKs próprios ignoram dispatcher).
-  - `withH2Fallback()` em `src/services/api/h2Fallback.ts` — detecta erro h2 (regex apertado: `ERR_HTTP2_*`, `NGHTTP2_*`, `H2_*`, `stream_refused`, `ALPN`, `HTTP/2 (stream|frame|protocol|connection|session)`; **bare `GOAWAY` excluído** porque servidor h2 saudável emite GOAWAY em rollover gracioso — marcaria sticky h1-only sem recovery), marca provider como sticky h1-only via `markProviderH1Only`, retenta 1×. Aplicado em `fetchWithProxyRetry` e em `client.ts:buildFetch` (caminho do SDK Anthropic).
-  - `disableKeepAlive` per-provider (não mais global) — `localKeepAliveDisabled` per-call para callers sem provider (WebSearch etc), isolando falha entre chamadores anônimos.
-  - `invalidateProviderDispatcher()` apenas `cache.delete()` (NÃO chama `.close()`): eager close racearia com requests concorrentes ainda usando o Agent (coordinator com sub-agents) e geraria `ClientDestroyedError` espúrios. Sockets fecham por idle naturalmente; GC reclama o Agent quando a última request resolve.
-  - `pickFetch()` em `src/services/api/pickFetch.ts` — roteia para `undici.fetch` (do pacote 8.3) quando há dispatcher custom; mantém `globalThis.fetch` quando substituído (test mocks). Resolve incompatibilidade Node-embedded-undici (v7) vs undici instalado (v8) que crashava com `UND_ERR_INVALID_ARG invalid onRequestStart method`.
-  - mTLS sem proxy: cedemos o slot do dispatcher para o Agent do mTLS (preserva client cert; perdemos tuning per-provider mas correctness vence).
-  - openaiShim usa `getAPIProvider()` canonical no dispatcher bucket, mantendo `logProvider` separado para analytics — garante invalidação end-to-end entre shim e SDK paths.
-  - 23 testes novos cobrindo: memoization, invalidação, dispatch correto por provider canonical, falsos positivos h2 (incluindo GOAWAY → false), sticky behavior, h2-then-keepalive combinado, isolamento per-call.
-- **Ganho real (sóbrio):**
-  - **Resiliência (principal):** pool isolado por provider — ECONNRESET no WebSearch não desliga keep-alive da sessão Anthropic; h2 quebrado em provider X não contamina provider Y; sockets mortos removidos transparentemente pelo pool.
-  - **Higiene de conexões:** TLS handshake reusado em tráfego sequencial no mesmo provider (até 30s idle); bursts paralelos abrem até `connections` handshakes (teto: 12). Economia real por request reusado: ~30-80ms (local) a ~150-300ms (intercontinental).
-  - **Cold-start coordinator:** sub-agents do mesmo provider reusam conexão em vez de cada um pagar handshake; com h2, os streams concorrentes multiplexam em 1 socket (vs N sockets em h1).
-- **Ganho que NÃO entregou:** throughput não dobra com h2 multiplexing — 4 sub-agents já rodavam em paralelo antes em 4 sockets; agora rodam em 1 socket com 4 streams. Bytes/s no fio são equivalentes. h2 só ganharia throughput se servidor limitasse conexões/IP (Anthropic não limita publicamente) ou se setup dominasse latência (irrelevante em desktop).
-- **Não medido:** delta numérico p50/p95. Bench harness (`scripts/profile/undici-pool-bench.ts`, commit b395898) tem bug em Bun (`dispatcher.request` indef no servidor h2 de teste). Captura de baseline com código antigo permanece válida; medição pós-mudança fica pendente até consertar harness (provavelmente usar `http2.createServer` puro em vez do shim Bun).
-- **Arquivos:** `src/utils/proxy.ts`, `src/services/api/h2Fallback.ts` (novo), `src/services/api/pickFetch.ts` (novo), `src/services/api/fetchWithProxyRetry.ts`, `src/services/api/client.ts`, `src/services/api/openaiShim.ts`, testes colocalizados.
-
-### 10.3-derivative — Surface refusal explanation/category (P3)
-- **Esforço:** XS (~15-30 LoC + 1 teste)
-- **Prioridade:** P3 — micro-UX. Único ganho real do `stop_details` no SDK 0.96 (resto do 10.3 original era premissa falsa, ver Removidos).
-- **Estado:** `RefusalStopDetails` (`@anthropic-ai/sdk@0.96` → `messages.d.mts:691`) expõe `category: 'cyber' | 'bio' | null` e `explanation: string | null` quando `stop_reason === 'refusal'`. Hoje `errors.ts:1301-1329` (`getErrorMessageIfRefusal`) ignora ambos e emite mensagem genérica.
-- **Ganho:** (1) usuário vê a `explanation` do servidor quando vier (motivo concreto do refusal, não só link genérico de AUP); (2) `tengu_refusal_api_response` (`errors.ts:1309`) ganha `category` no payload para distinguir cyber vs bio em analytics.
-- **Abordagem:** (1) estender assinatura de `getErrorMessageIfRefusal()` para receber `stop_details?: RefusalStopDetails | null`; (2) propagar do raw response em `claude.ts` (sites que chamam o classifier); (3) concatenar `explanation` (truncada) à mensagem de erro quando presente; (4) logar `category` no analytics event com sufixo `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` (category é enum fixo `cyber|bio|null`, não vaza dados de usuário); (5) shims fabricam `null` (compatível); (6) teste de cada combo (`category` presente/ausente, `explanation` presente/ausente).
-- **Arquivos:** `src/services/api/errors.ts`, `src/services/api/claude.ts` (call-site do classifier), `src/services/api/errors.test.ts`.
-- **Não-objetivos:** Nada de `withRetry.ts`, `QueryEngine.ts`, `agentSdkTypes.ts` — `stop_details` só existe pra refusal (não para `max_tokens`/`pause_turn`/`tool_use`), então retry policy e propagação SDK ficam intocados.
-
-### 9.0 — Notificações nativas do SO (P2)
-- **Esforço:** P (~150-200 LoC + matriz de testes manuais por SO)
-- **Prioridade:** P2 — feature **parcialmente quebrada hoje**: `src/services/notifier.ts` só conhece iTerm2/kitty/ghostty/Apple bell. Em Linux (GNOME/KDE/Hyprland/Sway), Windows e macOS fora do iTerm2, `sendAuto()` retorna `'no_method_available'` silenciosamente → usuário nunca é notificado quando a sessão pede input ou termina trabalho longo.
-- **Inspiração:** Crush `internal/notify/` (notificações desktop via API nativa de cada SO).
-- **Problema:** o canal `auto` cobre só ~30% dos terminais modernos. Usuário em Ubuntu+GNOME-Terminal, Windows+Windows Terminal, ou macOS+Terminal.app sem bell habilitado fica sem notificação alguma. O sistema **acha que enviou** (`logEvent` registra `no_method_available`) mas nada chega.
-- **Abordagem:** adicionar fallback de OS-native antes de `no_method_available`:
-  - **Linux:** `notify-send` (libnotify, presente em ~todo desktop Linux moderno) via `execFileNoThrow`. Detectar disponibilidade por `which`.
-  - **macOS:** `osascript -e 'display notification "..." with title "..."'` (já temos `osascript` em uso para Apple bell detection — zero dep nova).
-  - **Windows:** PowerShell `New-BurntToastNotification` se módulo presente, fallback `[System.Windows.MessageBox]` ou snoretoast bundled. Investigar se vale a complexidade vs. apenas terminal bell.
-  - Novo canal `os_native` selecionável manualmente em `/config`; `auto` passa a tentar `os_native` antes de cair em `no_method_available`.
-- **Trade-off:** depende de binários externos (`notify-send`/`osascript`) — falha silenciosa se ausente (que é exatamente o estado atual, então não regride). Windows é o caso mais frágil; aceitável deixar como "best effort".
-- **Arquivos:** `src/services/notifier.ts` (novo `sendOsNative()` + extender `sendAuto`), `src/utils/config.ts` (canal `os_native` no enum de `preferredNotifChannel`), tests colocados.
-
-### 6.2-Windows — Bash output filter PowerShell/Windows (P2)
-- **Esforço:** M (sub-fase 9 dedicada, ~150-200 LoC)
-- **Prioridade:** P2 — bloqueada em ajuste prévio do `pipeline.ts` para output tabular auto-formatado + object pipeline do PowerShell.
-- **Status:** Linux side ✅ concluído (2026-05-09, ver Concluídos). Windows side pendente.
-- **Filtros pendentes:** `Get-ChildItem`/`dir`, `Get-Process`/`tasklist`, `Get-Service`, `Get-WinEvent`/`Get-EventLog`, `dotnet {build,test,restore}`, `msbuild`.
-- **Pré-requisito:** ajustar `pipeline.ts` para lidar com (1) output tabular auto-formatado do PowerShell, (2) object pipeline.
-- **Arquivos:** `src/outputFilter/Bash/filters/powershell-*.ts`, extensão de `pipeline.ts`, fixtures em ambos `src/outputFilter/Bash/__fixtures__/samples/` e `docs/discovery/bash-output-filter/validation/samples/`.
-
-### 5.3b — Auditar caches secundários (não cobertos pela 5.3a)
-- **Esforço:** S por cache (auditoria estática + bench se sobreviver à triagem)
-- **Prioridade:** P3 (nenhum reportado como leak ativo; 5.0 mitigou OOM)
-- **Estado:** A 5.3a cobriu 5 dos ~14 sites originalmente listados (Markdown.tokenCache, queryHelpers.toolProgressLastSentTime, imageStore.storedImagePaths, LSPDiagnosticRegistry.deliveredDiagnostics, fileReadCache). Outros 9 sites foram pulados:
-  - **Já neutralizados no build aberto:** `services/analytics/growthbook.ts` (4 maps/sets — substituídos por stub vazio em `scripts/no-telemetry-plugin.ts:36-228`), `utils/telemetry/perfettoTracing.ts`, `utils/telemetry/sessionTracing.ts` (telemetry desligada por feature flag).
-  - **Verificados por inspeção, sem cap mas com self-cleanup correto:** `utils/auth.ts:1363` pending401Handlers (`finally { delete }` em :1387), `services/lsp/LSPDiagnosticRegistry.ts:60` fileWaiters (cleanup em resolve/timeout em :147-152).
-  - **Não auditados ainda:** `services/MagicDocs/magicDocs.ts:38` trackedMagicDocs, `services/api/promptCacheBreakDetection.ts:98` previousStateBySource, `utils/hooks/AsyncHookRegistry.ts:28` pendingHooks, `skills/loadSkillsDir.ts:907,912` dynamicSkills + conditionalSkills, `services/planDossier.ts:469,484` revalidateCache + agentPlanSlugRegistry.
-- **Ganho:** Confirmar que nenhum dos 5 não-auditados tem leak real. Provavelmente baixo (5.0 já mitigou OOM e bench da 5.3a passou); abrir só se aparecer pressão de heap em sessões longas reais.
-- **Abordagem:** auditoria estática primeiro (eviction? cleanup hook? scoped per-session?). Se algum aparecer suspeito → adicionar exerciser ao `long-session-bench.ts`.
-- **Arquivos:** dependentes da triagem.
-
-### 5.1b — Code-splitting follow-up: codexShim + openaiShim helpers
-- **Esforço:** M
-- **Prioridade:** P3 (ganho marginal, ~50-80 KB)
-- **Estado:** A 5.1 cobriu os SDKs grandes (Bedrock/Vertex/Foundry externalizados). `codexShim.ts` (972 LoC) e helpers (`geminiAuth`, `geminiCredentials`, `githubModelsCredentials`, `codexCredentials`) ainda são imports estáticos de `openaiShim.ts:24-78`. Complicação: `convertAnthropicMessagesToResponsesInput`/`convertToolsToResponsesTools` do codexShim são usados também no fallback `/responses` do GitHub Copilot (`openaiShim.ts:1931,1962`), não só em `transport==='codex_responses'`. Splitting requer um getter lazy memoizado.
-- **Ganho:** Bundles para usuários puramente OpenAI/Mistral diminuem ~50-80 KB. Marginal.
-- **Abordagem:** `const getCodex = lazy(() => import('./codexShim.js'))` com await nos 6 call sites. Idem para gemini/github helpers gated por mode flags.
-- **Arquivos:** `src/services/api/openaiShim.ts`
-
-### 5.10 — Lazy bash parser (~12.3k LoC eagerly loaded)
-- **Esforço:** S (1-2h)
-- **Prioridade:** P1
-- **Estado:** `src/utils/bash/*.ts` soma 12 306 LoC (bashParser 4 436, ast 2 679, commands 1 339, heredoc 733, ShellSnapshot 582, treeSitterAnalysis 506, ParsedCommand 318...). Importado por BashTool (`src/tools/BashTool/BashTool.tsx`), bashCommandHelpers, readOnlyValidation, bashPermissions, pathValidation, MonitorTool. Parser é JIT-compilado em todo startup, mesmo em sessões `--print`/plan-mode/MCP-only que nunca chamam Bash.
-- **Ganho:** Modesto mas barato. Diferimento de ~12k LoC compilados até a primeira invocação BashTool/MonitorTool. Bench `scripts/profile/long-session-bench.ts` deve mostrar delta claro de retained code size.
-- **Abordagem:** Getter `getBashParser()` lazy memoizado, disparado só na primeira invocação real. Cuidado: `bashPermissions.ts`/`pathValidation.ts` rodam em pre-tool-use (validação de prompt) — verificar se já não força carregamento eager via algum hook.
-- **Arquivos:** `src/utils/bash/*.ts` consumers, `src/tools/BashTool/*`
-
-### 5.11 — Sub-agents em `worker_threads` (eliminar duplicação de heap)
-- **Esforço:** L (multi-dia)
-- **Prioridade:** P1 (maior potencial de ganho real — centenas de MB em sessões agent-heavy)
-- **Estado:** Confirmado: zero uso de `worker_threads`/`new Worker(` em todo `src/`. `runAgent.ts:1031 LoC` faz `import { query } from '../../query.js'` estático; `coordinator/workerAgent.ts` tem só **18 linhas** (nome enganoso — não é um Worker, é uma fachada in-process). Quando o usuário dispara N AgentTool em paralelo (coordinator mode, ou múltiplas calls numa única resposta), cada sub-agente carrega QueryEngine + registry de tools + closures completas no mesmo heap principal. Em árvores A→B→C o retained-set multiplica.
-- **Ganho:** Único candidato com potencial de cortar centenas de MB em sessões pesadas. Worker dispensa Ink/React-reconciler/startupProfiler/TUI inteira; carrega só o subset necessário (api client + tool registry + slice mínimo de utils).
-- **Abordagem:** Pool de `worker_threads` (limit configurável; default = `os.cpus().length`). Mensagem entry: `(prompt, agentType, parentMessagesSlice, dossier, permissionContext)` via `postMessage` com structured clone. Worker streama `SDKMessage` de volta. Cuidado com: (1) MCP servers já são child processes — sub-agents precisam reusar conexões parent ou abrir próprias?, (2) permission prompts precisam re-roteados ao parent, (3) `worker_threads` aceita ESM via `--experimental-vm-modules` ou bundle separado, (4) Ctrl-C precisa propagar `terminate()` ao pool.
-- **Arquivos:** `src/coordinator/workerAgent.ts` (substituir façade), `src/tools/AgentTool/runAgent.ts`, possivelmente um novo bundle entry `src/entrypoints/agent-worker.ts` para evitar carregar Ink no worker.
-
-### 5.2 — Auditoria de lodash `memoize` por escape de closure
-- **Esforço:** S-M (meio dia)
-- **Prioridade:** P3
-- **Estado:** 116 sites usam `memoize` do lodash. Default mantém Map sem bound, keyed pelo PRIMEIRO argumento. Quando o primeiro arg é objeto/array reference (não primitivo) e o reference é reconstruído por chamada, a Map cresce sem limite. Pior, se a função `memoize`-ada captura state de fora (closure), cada entrada fixa esse state em memória. Auditoria do agent já identificou que `getDeferredToolTokenCount` (`src/utils/toolSearch.ts:125`) tem resolver explícito e está OK; resto não foi auditado.
-- **Ganho:** Previne escape silencioso de AppState ou outros state grandes via cache memoize.
-- **Abordagem:** Listar todos `= memoize(`, filtrar os que NÃO têm resolver (segundo arg), checar se primeiro arg é primitivo. Para os perigosos, migrar para `memoizeWithLRU` com key-fn explícita.
-- **Arquivos:** `src/**` (116 sites — começar pelos `services/api/`, `utils/auth.ts`, `utils/claudemd.ts`)
-
-### 3.12 — Wildcard permission rules (last-match-wins)
-- **Esforço:** M (~80 LoC + revisão de UX `/permissions`)
-- **Estado:** `tools.allow`/`deny` é all-or-nothing por tool. Sem padrão `bash:rm -rf /* → deny`, `bash:git push → ask`, `bash:* → allow`.
-- **Ganho:** Granularidade real para usuários em modo `--auto`. Único item de feature de produto no roadmap.
-- **Inspirado em:** OpenCode `permission/evaluate.ts:9-15` (`findLast` sobre regras `{permission, pattern, action}`).
-- **Arquivos:** `src/permission/`, `src/commands/permissions/`
-
-### 4.1 — Testes para caminhos críticos
-- **Esforço:** L
-- **Prioridade:** P0
-- **Estado:** Sem testes em `QueryEngine.ts` (core agent loop), `coordinator/`, `grpc/server.ts`, `tools/AgentTool/`, `main.tsx`, `screens/REPL.tsx`, `bridge/`.
-- **Ganho:** Reduz risco de regressão silenciosa no core.
-
-### 1.10 — Tool registry membership stability (LSP/MCP/provider/coordinator flips)
-- **Esforço:** M
-- **Prioridade:** P1
-- **Estado:** Após `cc_workload` ser removido (commit `bec0336` + `155e8a7`), o próximo cache-break frequente vem de mudanças de **membership** no array de tools entre turnos da mesma sessão. O sort interno de `assembleToolPool` em `src/tools.ts:343-365` preserva ordem, mas a entrada/saída de tools muda os bytes da seção de tools (que vem após o system prompt no prefixo cacheado). Eventos reais que disparam: (1) **LSP connect** — `getAllBaseTools()` em `src/tools.ts:222` faz `isLspGloballyEnabled() && isLspConnected()` direto no array, então a `LSPTool` entra na lista no momento em que o LSP server termina o handshake; (2) **`/provider` switch** — `WebSearchTool.isEnabled` em `src/tools/WebSearchTool/WebSearchTool.ts:542-562` chama `getProviderMode()`/`getAvailableProviders()`/`isCodexResponsesWebSearchEnabled()`, que mudam ao trocar profile; (3) **MCP server connect/disconnect** — tools MCP entram/saem via `mcpTools` argumento de `assembleToolPool`; (4) **`/coordinator` toggle** — `getTools()` lines 278-281, 289-294 ligam/desligam `TaskStopTool`, `getSendMessageTool()`, `AgentTool`. Bench atual em `scripts/measure-cache-invalidation-budget.ts` mede ~16 334 break tokens (5m discount) por add/remove de 1 tool — confirmado experimentalmente.
-- **Ganho:** Cada flip de membership rebila ~16k tokens. Em sessões com LSP ligado tarde (servidor aquece em 2-5s), `/provider` switch para testes, ou MCP servers conectando assincronamente, são vários eventos por sessão.
-- **Abordagem:** três opções (avaliar antes do plan):
-  1. **Eager-load determinístico** — incluir todas as tools `getAllBaseTools()` retorna independentemente de `isEnabled`, e gate o uso runtime em vez do registry. Schemas idênticos turn-a-turn; LLM "vê" mais tools mas não pode invocar as desabilitadas. Custo: prompt fica ligeiramente maior; tools registradas mas não-funcionais podem confundir o modelo.
-  2. **Cache breakpoint após o registry** — acrescentar um `cache_control` breakpoint imediatamente após o array de tools, de forma que mudanças posteriores (mensagens) ainda cacheiam mas tools-section vira "instável" (rebill só dela). Requer entender quantos breakpoints sobram (Anthropic permite 4).
-  3. **Estabilizar o subset que muda** — para LSP/MCP especificamente: emitir o slot da tool com schema completo desde o início e flip um campo "available: true/false" interno, mantendo bytes do schema iguais. Pode não funcionar com Anthropic se o servidor descartar tools sem `description` válida.
-- **Tests requeridos:** snapshot do `getTools()` array (nomes + schema bytes hash) antes/depois de simular: LSP connect, MCP connect, /provider switch, /coordinator toggle. Falham hoje em todos os 4; passam após o fix.
-- **Bench:** estender `scripts/measure-cache-invalidation-budget.ts` com cenários `lsp-connect`, `mcp-connect`, `provider-switch` quantificando o rebill por evento.
-- **Arquivos:** `src/tools.ts`, `src/tools/WebSearchTool/`, `src/services/api/claude.ts` (cache breakpoint placement em `splitSysPromptPrefix`).
-
-### 1.11 — Coordinator MCP server list determinístico
-- **Esforço:** XS (1 linha + test)
-- **Prioridade:** P3 (latente — só morde em sessões coordinator com reconexão de MCP)
-- **Estado:** `src/coordinator/coordinatorMode.ts:99-101` faz `mcpClients.map(c => c.name).join(', ')` em ordem de input. A ordem do array vem de async connect timing — não-determinística entre sessões. Quando coordinator mode está ativo, esse texto entra no `getCoordinatorUserContext` que vai pro system context. Hoje é dormente para a maioria dos usuários (coordinator mode é gated por env var). Test source-level já existe em `src/coordinator/coordinatorMode.test.ts` (commit `1597130`) documentando o bug e pronto pra flipar.
-- **Ganho:** Marginal em uso normal; protege sessões coordinator de invalidação de cache em reconexões MCP.
-- **Abordagem:** `mcpClients.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => c.name)`. Flipar o test source-level pra `expect(src).toMatch(/\.sort\(/)`.
-- **Arquivos:** `src/coordinator/coordinatorMode.ts`, `src/coordinator/coordinatorMode.test.ts`.
-
-### 1.12 — `getMcpInstructions` sort determinístico
-- **Esforço:** XS (1 linha + test)
-- **Prioridade:** P3 (dormente sob flag default — `isMcpInstructionsDeltaEnabled()` retorna `true` por padrão e o delta path substitui esta seção; só morde se `CLAUDE_CODE_MCP_INSTR_DELTA=0` for setado)
-- **Estado:** `src/constants/prompts.ts:516-521` joina `mcpClients` em ordem de input. Wrapper `DANGEROUS_uncachedSystemPromptSection('mcp_instructions', ..., 'MCP servers connect/disconnect between turns')` em `src/constants/systemPromptSections.ts:43` força recompute por turno mas devolve `null` quando delta está ativo (caminho default).
-- **Ganho:** Quase zero em uso default. Vale documentar como guard pro caso de o delta path ser desabilitado.
-- **Abordagem:** sort por nome antes do filter+join. Adicionar test que falhe quando o sort some.
-- **Arquivos:** `src/constants/prompts.ts`.
-
-### 1.13 — `should1hCacheTTL` latch-on documentation
-- **Esforço:** XS (comentário + opcional test)
-- **Prioridade:** P3 (não é bug, é intentional)
-- **Estado:** `src/services/api/claude.ts:414-425` flipa o TTL do cache de 5m para 1h quando o tamanho cumulativo do prompt cruza o threshold pela primeira vez na sessão. É **latch-on / high-water-mark**, não one-shot — uma vez ligado, fica ligado. Causa **um** cache miss por sessão (no primeiro crossing) que é depois amortizado pelo TTL maior. Análise inicial classificou como "one-shot" (errado) → auditor corrigiu pra "latch-on" (correto). Tudo working as intended.
-- **Ganho:** Zero código, mas vale um comentário explicando o latch-on no source. Test opcional que asserta o latch (uma vez true, sempre true) protegeria contra refactors que acidentalmente tornassem o flip volátil.
-- **Abordagem:** comentário em `claude.ts:414`. Test em `src/services/api/claude.test.ts` (se existir) ou criar `should1hCacheTTL.test.ts` próprio.
-- **Arquivos:** `src/services/api/claude.ts`.
+Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, **Risco** e checkbox de status.
 
 ---
 
-## Concluídos ✅
+## Tier 1 — Quick wins (esforço baixo, risco baixo)
 
-### 11.4 — `useEffectEvent` (React 19.2) no `REPL.tsx` — auditado sem ação (2026-05-16)
-Varredura dos ~36 `useEffect`s reais de `src/screens/REPL.tsx` (os "42" do roadmap incluíam formas compiladas pelo React Compiler). **Nenhum** match do padrão que `useEffectEvent` arruma (listener longo-vivo cujo handler lê state que muda durante a sessão).
+### [x] 1. Regex em escopo de módulo
+- **Arquivos:** `src/services/api/providerConfig.ts:237-240,295,362,395,566`, `src/services/api/withRetry.ts:63`, `src/services/api/cacheMetrics.ts:147-152,526-527`
+- **Problema:** Regex compilada dentro de funções em hot path. Viola `.claudio/rules/typescript-patterns.md`.
+- **Ganho:** baixo (CPU) — **Esforço:** trivial — **Risco:** nenhum.
 
-- **Únicos candidatos plausíveis e por que foram descartados:**
-  - `internal_eventEmitter.on('suspend'|'resume', ...)` (linha 4148) — handler só escreve string estática em stdout e usa `setRemountKey(prev => prev + 1)` (functional update). Não captura state mutável.
-  - `setInterval` da animação do spinner (linha ~514) — handler recebe apenas o setter estável `setFrame`. O tear-down em `[disabled, noPrefix, isAnimating, terminalFocused]` é **necessário** (early-return), não desperdício.
-  - `bindToolJSXStore(setToolJSXInternal)` (linha 1030) — setter estável, deps `[]`.
-- **Os outros 9 timers** (linhas 429, 858, 1349, 1624, 3141, 3675, 3986, 4022, 4347) são todos `setTimeout` **one-shot**, não listeners de vida longa — fora do escopo de `useEffectEvent`. Onde leem state, já passam o valor como argumento do `setTimeout`.
-- **Fechado sem ação.** Reabrir só se aparecer bug concreto de "handler usou valor antigo" no REPL — refatorar então **aquele** effect específico, não fazer sweep.
-- Arquivos: nenhum (auditoria-só). Memória team: `useeffectevent-repl-audit-2026-05-16.md`.
+### [ ] 2. Paralelizar dynamic imports do startup
+- **Arquivo:** `src/entrypoints/cli.tsx`
+- **Problema:** Imports dinâmicos sequenciais no boot; vários são independentes.
+- **Ganho:** médio (cold start visível) — **Esforço:** baixo — **Risco:** baixo (preservar ordem onde houver dep).
 
-### 11.3 — `<Activity>` (React 19.2) em overlays do REPL (escopo reduzido, 2026-05-16)
-History picker (`PromptInput.tsx` / `HistorySearchDialog`) envolvido em `<Activity mode="visible|hidden">` — Ctrl+R preserva query, focusedIndex e scroll entre toggles. Funciona em Ink sem allow-list de host-config (Activity é primitive React, fluiu transparente).
+### [ ] 3. Cache de `isEnabled()` por tool
+- **Arquivos:** `src/tools.ts:179-249`, consumido em `src/screens/REPL.tsx:703`
+- **Problema:** `useMemo` invalida por turn e escaneia ~30 tools chamando `isEnabled()` (toca env/config/flags).
+- **Ganho:** médio — **Esforço:** baixo (invalidação por evento de config) — **Risco:** baixo.
 
-- **Premissa original que falhou:** os outros 3 alvos do escopo (`mcpServerApproval.tsx`, `/provider` picker, `ExitPlanModePermissionRequest`) **não são toggle-driven**: são one-shots disparados pelo agente/slash command, vivem uma rodada, e somem na resposta do usuário. `<Activity>` não muda comportamento observável e ainda mantém árvore montada à toa. Auditoria 2026-05-16: `src/screens/REPL.tsx:1072-1087` (queues consumidas linearmente) e fluxo `localJSXResponse` em `commands.ts` (`call → JSX → onDone → unmount`).
-- **Lição registrada (team memory `activity-toggle-driven-only.md`):** antes de wrappar em `<Activity>`, confirmar que o componente reabre com **mesmo identity** (hotkey/toggle), não que é re-criado a cada invocação.
-- **Re-abrir só se:** aparecer novo overlay com padrão "open/close repetidamente, queremos guardar state" (ex.: painel de tasks com hotkey, drawer de skills) — nesse caso vira item novo, não reabertura deste.
-- Arquivos: `src/components/PromptInput.tsx`, `src/components/HistorySearchDialog.tsx`. Commit `f878d75`.
+### [ ] 4. Imports relativos → alias `src/...`
+- **Arquivo:** `src/services/api/openaiShim.ts:26-34` (8 imports)
+- **Problema:** Viola regra do projeto; quebra em moves.
+- **Ganho:** manutenibilidade — **Esforço:** trivial — **Risco:** nenhum.
 
-### 11.2 — Limpar `ignoreDeprecations` no `tsconfig.json` (2026-05-16)
-Auditoria do flag mostrou que ele silenciava **apenas** o aviso de `baseUrl` (deprecado em TS 7.0). Como `moduleResolution: "bundler"` + `paths` resolvem relativo ao próprio `tsconfig.json`, `baseUrl` era redundante. Removido junto com o `ignoreDeprecations`, sem ajustes em call-sites.
-
-- **Verificação:** `bun run typecheck` limpo; `bun run build` + `bun run smoke` ok.
-- Arquivos: `tsconfig.json` (−3 / +1). Commit `c805a90`.
-
-### 11.1 — `discriminatedUnion` no `coreSchemas.ts` (2026-05-16)
-Auditoria dos `z.union([...])` em `src/entrypoints/sdk/coreSchemas.ts` separou 3 grupos (line numbers pós-edição):
-
-- **Convertidos (4 sites):** `ThinkingConfigSchema` (linha 94, discriminator `type` — branches `adaptive`/`enabled`/`disabled`), `PermissionResultSchema` (linha 317, discriminator `behavior`), `SDKResultMessageSchema` (linha 1457, discriminator `subtype` — `success` literal + enum de erros, suportado em zod 4) e o `decision` interno de `PermissionRequestHookSpecificOutputSchema` (linha 879, discriminator `behavior`). Despacho O(1) em vez de tentar cada branch sequencialmente; erros de validação passam a listar as branches válidas do discriminator.
-- **Mantidos como `z.union` com comentário explicativo (2 sites):** `McpServerConfigForProcessTransportSchema` (linha 142) — `McpStdioServerConfigSchema` tem `type` opcional para backwards-compat (configs antigas sem `type` default → stdio), o que `discriminatedUnion` rejeita; `HookInputSchema` (linha 769) — cada branch é `ZodIntersection` (`BaseHookInputSchema().and(...)`), zod 4 exige discriminador em `ZodObject` top-level.
-- **Não tocados (sem discriminador comum / colisão):** `McpServerStatusConfigSchema` (depende da union de cima), `AsyncHookJSONOutputSchema | SyncHookJSONOutputSchema` (sem discriminador), `SDKStatusSchema` (literal + null), `AgentMcpServerSpecSchema` (string vs record — tipos primitivos), `SDKMessageSchema` (22 branches, várias colisões em `type: 'system'` e `type: 'user'`).
-- **Verificação:** `bun run typecheck` limpo no arquivo; `bun run build` + `bun run smoke` (0.2.9) ok; `bun run test:provider` mesmas 70 falhas pré-existentes (sem regressão).
-- Arquivos: `src/entrypoints/sdk/coreSchemas.ts` (4 conversões + 2 comentários explicativos de "por que não").
-
-### 10.2-derivative — Fix de pricing TTL `ephemeral_1h` no `/cost` (2026-05-16)
-Auditoria do item 10.2 (cache diagnostics beta) achou um bug não-cosmético adjacente: `tokensToUSDCost` em `src/utils/modelCost.ts:221` agregava `cache_creation_input_tokens` como escalar e bilhava tudo na tabela 5m TTL (`inputTokens × 1.25`). Sessões que cruzavam o threshold de `should1hCacheTTL` (`claude.ts:414-425`, doc no item 1.13) latcham na escrita 1h — cobrada pela Anthropic a `inputTokens × 2.0`, ou seja, **+60%** sobre o segmento de cache writes. O `/cost` reportava menos do que a fatura real.
-
-- **Fix:** estender `ModelCosts` com `promptCacheWrite1hTokens?` (Anthropic-only; non-Claude fica undefined → fallback 5m), popular nos 6 tiers Claude (`COST_TIER_3_15`: 6, `COST_TIER_15_75`: 30, `COST_TIER_5_25`: 10, `COST_TIER_30_150`: 60, `COST_HAIKU_35`: 1.6, `COST_HAIKU_45`: 2), e refatorar `tokensToUSDCost` para preferir `usage.cache_creation.ephemeral_{1h,5m}_input_tokens` (já vem do SDK, descartávamos) quando presente, fallback escalar caso contrário.
-- **Bug secundário:** `recomputeCostStateFromMessages` em `cost-tracker.ts:187-195` strippa o objeto `cache_creation` ao normalizar — sessões resumidas (cold-load via `/resume`) caíam no fallback mesmo quando a transcrição preservava o split. Adicionado `cache_creation: usage.cache_creation` à normalização.
-- **Limitações aceitas:** (a) Bedrock/Vertex/OpenAI-compat não expõem o split TTL — caem no fallback 5m (bug residual conhecido); (b) `cost-tracker.ts:597` (advisor cost) idem; (c) `vcr.ts:167` (replay) preserva se a recording preservou.
-- **Testes:** 5 casos novos em `src/utils/modelCost.test.ts` (1h-only, 5m-only regression, mix, fallback escalar, non-Anthropic fallback) + 2 em `src/cost-tracker.cacheIntegration.test.ts` (`recomputeCostStateFromMessages` end-to-end com TTL split). 38 + 6 pass.
-- **10.2 original arquivado** — premissa "breakdown por breakpoint" não existe na API; `BetaDiagnostics` é request-scoped (ver Removidos).
-- Arquivos: `src/utils/modelCost.ts`, `src/utils/modelCost.test.ts`, `src/cost-tracker.ts`, `src/cost-tracker.cacheIntegration.test.ts`. ~75 LoC + testes.
-
-### 10.1 — Normalização de imports `zod/v4` (2026-05-16)
-Codemod mecânico: 138 arquivos (`src/**/*.ts(x)` + `scripts/measure-tokenizer-accuracy.ts`) migrados de `from 'zod'` para `from 'zod/v4'`. Zero residual; regra `.claudio/rules/typescript-patterns.md` agora alinhada 100% ao código.
-
-- **Guard executável:** `scripts/zod-v4-only-guard.test.ts` walka `src/` + `scripts/` e falha se reaparecer `from 'zod'` puro. Skip explícito do próprio path para evitar self-match.
-- **Paridade comportamental:** `bun test` antes/depois — 268 pass / 424 fail (vs 425 baseline, ou seja −1 falha) / 91 errors (idênticos). Falhas pré-existentes, não relacionadas ao codemod. `bun run build`, `bun run smoke` e `bun run verify:privacy` passam.
-- **Runtime já era v4** (instalado `zod@4.4.3` com subpath `./v4` exposto) — mudança é defensiva contra futuros breaks do SDK que exijam tipos v4 explícitos (p.ex. `@anthropic-ai/sdk@0.96.0`+).
-- Arquivos: 138 source files + `scripts/zod-v4-only-guard.test.ts` (novo).
-
-### 8.0 — `WebResearcher` subagent built-in para research multi-página (2026-05-16)
-Novo `subagent_type: 'WebResearcher'` registrado ao lado de Code/Explore/Plan. Reusa a primitiva de subagent existente — zero código novo no `AgentTool` genérico. Pai descobre automaticamente via `whenToUse`.
-
-- **Allowlist:** `[WebSearch, WebFetch]` — escopo puro web público; sem leitura local, sem MCP, sem shell. `tools: [...]` em vez de `disallowedTools` evita regressão se novas write-tools forem adicionadas.
-- **Modelo:** `'haiku'` (universal: Anthropic/Bedrock/Vertex/Foundry). Override per-user via `agentModelOverrides['built-in:WebResearcher']` (hook já existente em `agentModelResolver.ts`).
-- **`omitClaudeMd: true`** — research não precisa de regras de commit/lint do projeto.
-- **`permissionMode`** herdado — domain check do `WebFetch` continua válido em domínio novo.
-- **System prompt** inline com regras: decidir entrada (URL → fetch direto; senão → search), parar em ~5–7 fetches sem progresso, sintetizar (não despejar HTML), citação obrigatória em markdown link, paralelismo onde possível.
-- Sem feature flag (decisão por simplicidade); reverte via PR se aparecer problema.
-- Arquivos: `src/tools/AgentTool/built-in/webResearcherAgent.ts` (~55 LoC) + `.test.ts` (~60 LoC, 9 testes de regression) + 4 linhas em `builtInAgents.ts`.
-- Doc: [`docs/tech/web-researcher/README.md`](docs/tech/web-researcher/README.md).
-
-### 7.0 — `/autofix-pr` — comando unificado de autofix de PR (2026-05-15)
-Reativo (sem `--watch`): usuário invoca; comando coleta → triagem → fix → push → reply, loop até 5 iter com anti-stall. ~7 commits, ~700 LoC TS + testes/snapshots em `feat/autofix-pr`.
-
-- `src/commands/autofix-pr/{index.ts, prompt.ts, shared.ts}` + testes colocados.
-- Guards reaproveitando `getIsGit`, `getBranch`, `getDefaultBranch`, `fetchPrStatus` (5 falhas curtas: not-git, detached HEAD, default branch, gh não autenticado, sem PR).
-- `--dry-run`: paridade com antigo `/pr-comments` + triagem (5 labels: `ok`, `change_request`, `pr_questionable`, `unclear`, `out_of_scope`).
-- Modo padrão: collect → triage → AskUserQuestion para `pr_questionable`/`unclear` → fix → typecheck + focused tests → commit (sem `--amend`/`--no-verify`) → push (sem force) → reply em thread.
-- Loop até 5 iterações com anti-stall por `(comment_id, updated_at)`.
-- Removido: `src/commands/pr_comments/`, registro em `src/commands.ts`, stub `index.js`.
-- `--watch` com `CronCreate`: rejeitado (reativo é mais elegante; status bar já mostra `reviewState` para o usuário decidir invocar).
-
-### 6.2-Linux — Bash output filter tier-1 follow-ups Linux (2026-05-09)
-JS/TS toolchain + tsc + git diff/show. 8 specs, ~330 LoC. Bench: 31 filtros, agregado 71% redução. Doc: [`docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md`](docs/tech/bash-output-filter/phases/phase-8-tier1-followups.md). Bench reproducível: `CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts`.
-
-- **JS/TS test runners** (5 specs em `tests-js.ts`): `jest` 98.7%, `vitest` 98.5%, `bun test` 98.2%, `mocha` 97.6%, `playwright test` 98.4% — colapso pra sentinela em runs limpos, `unless` guard preserva failures.
-- **TypeScript compiler** (`tsc.ts`): `tsc`/`tsc --noEmit` 18.2% — strip ASCII underline `~~~` lines + tabela trailing `Errors  Files` redundante.
-- **git diff/show** (extensão de `git.ts`): `git diff` 10.8%, `git show` 9.4% — strip `diff --git`, `index <hash>..<hash>`, `\ No newline at end of file`; git-show colapsa Author+Date em uma linha.
-- Arquivos: `src/outputFilter/Bash/filters/{tests-js,tsc}.ts` + extensão `git.ts` + registry + 8 fixtures + harness `bashFilter.test.ts` (+8 describes) + bench `scripts/profile/bash-filter-gain.test.ts`.
-
-### 6.1 — Command-aware bash output filter (2026-05-09/13, 8+1 fases)
-Maior ROI absoluto medido em qualquer item do roadmap. Feature ativa por default em instalações novas. ~2.340 LoC total (~20 LoC no codebase principal: 2 inserções em `BashTool.tsx`, +2 linhas em `toolResultSummarizer.ts:242`, 3 keys em `config.ts:705`). Docs completas em [`docs/tech/bash-output-filter/`](docs/tech/bash-output-filter/).
-
-**Ganho cumulativo:** sessão típica 30min → ~50k tokens economizados, ~72% redução de custo input. Top filtros: `bundle install` 96%, `pytest` 95%, `ps aux` 93%, `git log` (rewrite) 92%, `rubocop` 83%, `go test -v` 82%, `ls -la` 81%, `rspec` 73%, `wget` 72%, `cargo check` 64%. Aggregate gain table (41 filtros): 69.9% redução.
-
-Fases entregues:
-- **6.1.0** Plumbing — extend `isAlreadyCompacted` + register 3 config keys + export collapse helpers.
-- **6.1.1** Skeleton + harness — `src/outputFilter/Bash/`, port do `validation/pipeline.ts`, 67/67 cases passing, redos scan.
-- **6.1.2** Built-in batch 1 — 10 highest-ROI filters (bundle/pytest/ps/rubocop/go-test/ls/rspec/top/cargo/grep-rg/ruff).
-- **6.1.3** BashTool integration — wire pipeline-only no `BashTool.call()`.
-- **6.1.4** Rewrite layer — `planFilter` com `rewriteCommand` + 5 rewrite filters (git-log `--oneline`, git-status `--porcelain`, gh pr/issue/run list `--json`).
-- **6.1.5** Built-in batch 2 — git family completa, docker, network (curl/wget/dig), journalctl.
-- **6.1.6** User filters — `~/.claudio/filters.json` + zod schema + ReDoS guards.
-- **6.1.7** Default-on flip — `shouldFilterOutput !== false`, toggle em `/config`, tip em `tipRegistry`.
-- **6.1.9** System utilities — ping, rsync, tree, ssh, df, du, dmesg, stat, jq, curl-plain (10 specs, todos no target).
-
-Markers vão direto pra `result.stdout` — sobrevivem error path via `ShellError`. `mapToolResult`, `processToolResultBlock`, `Out` schema intactos.
-
-### 5.8 — `/clear` agora drena `fileReadCache`; bench corrigido
-Bench original alegava que `cache.clear()` "não libera RSS V8". Investigação encontrou duas falhas: (1) `fileReadCache.clear()` **não era chamado em produção em lugar nenhum** — `/clear` (`src/commands/clear/caches.ts`) drenava ~15 caches mas pulava esse, então o sintoma só aparecia em benches sintéticos rodando direto contra o singleton; (2) o bench fazia `gc()` síncrono logo após `clear()` e tirava snapshot — JSC sweep é lazy, não roda na mesma microtask. Bench corrigido amostra heap em t=0/50/250/500 ms: heap volta abaixo do baseline em ~50 ms, RSS solta ~633 MB em ~500 ms. RSS retido depois disso é o alocador (jemalloc/glibc) mantendo páginas livres pra reuso, não leak. Fix: `clearSessionCaches` agora chama `fileReadCache.clear()`; bench mostra trajetória de decay em vez de snapshot único; doc no `clear()` explica semantics. Tentei agendar `gc()` forçado mas o tempo de settle do JSC é dependente do tamanho do heap (50-200+ ms sob churn realista) — delay fixo é frágil; o engine sweepa naturalmente quando há pressão.
-
-Arquivos: `src/utils/fileReadCache.ts`, `src/commands/clear/caches.ts`, `scripts/profile/file-read-cache-saturation-bench.ts`.
-
-### 5.7 — Cap/poda de `QueryEngine.mutableMessages` + REPL React state em sessões longas (26ed91c, 9ab73a9)
-`mutableMessages` (`src/QueryEngine.ts:187`) crescia sem cap; tool_results de 50-200 KB ficavam retidos até `/clear`. Wire path já emitia esses como stubs determinísticos (microcompact size-based trigger + `applyStableStubs` em `claude.ts`/`openaiShim`/`codexShim`), mas `applyStableStubs` retornava array NOVO — os blocos originais continuavam vivos em `mutableMessages`. Solução: substituir `mutableMessages = applyStableStubs(mutableMessages)` no início de `submitMessage` e deixar GC reclamar os blocos antigos (commit `26ed91c`).
-
-**Lacuna identificada (commit `9ab73a9`):** o `mutableMessages` do `QueryEngine` era substituído, mas o array `messages` do React state do REPL (`src/screens/REPL.tsx`) — cópia espelhada mantida para scrollback da UI — nunca recebia os stubs. Isso causava crescimento ilimitado do heap mesmo após a 5.7 original: ao longo de uma sessão longa a pressão de GC aumentava até travar o event loop, impedindo que `/clear`, `/compact` e Ctrl+C processassem. Solução: aplicar `applyStableStubs(messagesRef.current)` após cada turno no `onQueryImpl`, antes de `onTurnComplete`, com identity guard que pula o `setMessages` quando `clippedIds` está vazio (fast path para sessões normais).
-
-Bench (200 turns, 100 KB payload/tool): sem correção **~201 KB/turn** → ~39 MB array; com correção **~2.3 KB/turn** → ~467 KB array (~85× redução). os originais. gRPC (`src/grpc/server.ts:201`) aplica a mesma compactação antes de cachear o snapshot cross-stream. Identity-preserving fast-path adicionado em `applyStableStubs` cobre 2 casos no-op (set vazio + set sem matches), pra guard `compacted !== this.mutableMessages` evitar reatribuição em todo turno. Bench (1000 turnos × 50 KB tool_results, 2 tools/turn): array bytes 99.0 MB → 1.4 MB (−98.6%), RSS/turno 220.9 KB → 84.6 KB (−62%). 459 testes provider passam; 3 testes novos em `src/grpc/server.test.ts` + 3 em `stableStubState.test.ts` (identity guard, GC-eligibility, sub-agent isolation).
-
-### 5.5 — Versão do pacote no nome dos chunks em release builds
-Investigação inicial mostrou que a premissa original do item (usar `[dir]` para nomear chunks por subdiretório de fonte) era inviável: o token `[dir]` em `naming.chunk` deriva do entrypoint que puxa o chunk, não dos módulos-fonte que o compõem, e como temos só dois entrypoints na mesma pasta (`src/entrypoints/cli.tsx` e `mcp.ts`) o `[dir]` expande pra vazio. Bun nomeia ~213 chunks por módulo dominante (`App-*`, `REPL-*`, `AgentTool-*`...) automaticamente, mas restam ~195 chunks compartilhados que ficam `cli-XXXX.mjs` sem identificação. Solução adotada: gate `naming.chunk` em `CLAUDIO_RELEASE_BUILD=1` (set por `package.json:build:release`) que injeta `${version}` no template — em release o chunk vira `cli-0.1.5-XXXX.mjs`, dando rastreabilidade pra stack traces de produção sem sourcemap. Local builds preservam o nome curto. Teste em `scripts/release-chunk-naming.test.ts` (4 asserts) trava o template + a env var no `package.json`.
-
-### 5.1 — Code-splitting de provider SDKs (Anthropic family externalizados)
-Bun estava deduplicando os 3 SDKs Anthropic (`@anthropic-ai/{bedrock,vertex,foundry}-sdk`, ~3.6 MB combinados) em um único shared chunk de 6.1 MB — pulled por todos os branches de dynamic-import em `client.ts`. Externalizados em `scripts/build.ts:541-553` (junto com `@aws-sdk/*`, `@azure/identity`, `google-auth-library` que já eram external). Agora são resolvidos em runtime de `node_modules` em vez de bundlados; nenhum chunk contém mais as classes `AnthropicBedrock|AnthropicVertex|AnthropicFoundry`. Sessões puramente Anthropic native nunca parseiam código de bedrock/vertex/foundry. Guard test em `scripts/provider-sdks-external.test.ts` previne regressão (assert no `external` array + scan dos chunks). Verificado: bundle pré 63 MB / 412 chunks → pós 62 MB / 408 chunks (delta de disco modesto, mas mais relevante: 3.6 MB de código de provider sai do hot-path V8 parse). Smoke + 459 provider tests + verify:privacy passam.
-
-### 5.4 — GC do V8 compile cache (`~/.claudio/v8cache/`)
-Sweep lazy de entradas com `mtime > CLAUDIO_V8CACHE_TTL_DAYS` (default 14d) em `scripts/v8cache-gc.mjs`, disparado async pelo `bin/claudio` após `enableCompileCache`. Subdirs de fingerprint (`vNN-x64-<hash>-<uid>`) ficam vazios depois da varredura e também são removidos. Opt-out via `CLAUDIO_V8CACHE_GC=0`. Verificado empiricamente: 14 MB / 622 entradas / 2 fingerprint dirs → 628 KB / 1 dir após uma execução com TTL agressivo. 6 testes em `scripts/v8cache-gc.test.mjs` cobrem TTL boundary, dir cleanup, missing dir, stray files, injeção de `now` para determinismo.
-
-### 2.4 — Gerenciamento de memória em sessões longas (a629290, ff4ee09, f86cca9)
-`fileReadCache` ganhou `maxEntryBytes = 256 * 1024` (`src/utils/fileReadCache.ts:21,51`) — alinhado com `MAX_OUTPUT_SIZE` em `file.ts`. Worst-case RSS do cache: ~250 MB em vez de unbounded. `writeTextContent()` (`src/utils/file.ts:98`) chama `fileReadCache.invalidate(filePath)` após cada write, eliminando o risco de stale read entre FileEditTool/FileWriteTool/NotebookEditTool e o próximo Read no mesmo segundo. 11 testes em `fileReadCache.test.ts` cobrem hit/miss/eviction/size-guard/invalidate/clear. Claim original sobre listeners imbalanceados em REPL.tsx era falsa (corrigido na descrição original).
-
-### 5.3a — Bench de cap invariants para caches conhecidos
-Bench `scripts/profile/long-session-bench.ts` + invariantes em `src/utils/cacheBoundsInvariants.test.ts` validaram empiricamente que os 5 caches module-level mais quentes respeitam seus caps sob 10k cycles cada. Resultado: total heap delta 5.3 MB (esperado: ~cap × bytes/entry × 5 caches), zero crescimento unbounded. Para cobertura: ver `baselines/long-session.json`. OOM original (4 GB) ficou explicado pelo combo "token threshold alto + V8 heap cap default 4 GB" e foi mitigado pela 5.0; não havia leak per-turn nos containers auditados.
-
-Arquivos: `src/components/markdownTokenCache.ts` (extraído de Markdown.tsx para isolar de React/Ink), `src/components/Markdown.tsx`, `src/utils/queryHelpers.ts`, `src/utils/imageStore.ts`, `src/services/lsp/LSPDiagnosticRegistry.ts` (cada um com getter `__TEST_ONLY_*`), `src/utils/cacheBoundsInvariants.test.ts` (5 testes), `scripts/profile/long-session-bench.ts`, `scripts/profile/baselines/long-session.json`, `scripts/profile/run-all.ts`, `scripts/profile/README.md`, `package.json` (script `profile:long-session`).
-
-### 5.0 — Heap-pressure backup trigger para autocompact (3a67e41, e6aa174, 89bc281)
-OOM em sessões longas (relatado: 2h ativas → 4 GB heap → mark-compact infrutífero). Causa: autocompact é triggered por TOKEN count (~967k pra Opus 1M), mas em memória 967k tokens com objetos React/Ink/strings facilmente vira 1-2 GB de heap — V8 estoura o cap default de 4 GB muito antes do token threshold disparar. Três commits:
-
-1. `fix(autocompact): trigger compaction on V8 heap pressure` — adiciona `isAboveHeapPressureThreshold` em `shouldAutoCompact`. Dispara compact quando `used_heap_size / heap_size_limit > 0.7` (configurável via `CLAUDIO_HEAP_PRESSURE_RATIO`). Guarded por `MIN_MESSAGES_FOR_HEAP_TRIGGER=20` pra não compactar sessão recém-aberta.
-2. `chore(launcher): bump default V8 heap limit to 8 GB via re-exec` — `bin/claudio` re-exec com `--max-old-space-size=8192` (override `CLAUDIO_MAX_HEAP_MB`, opt-out `CLAUDIO_NO_HEAP_BUMP=1`). Dá margem pro trigger de heap-pressure rodar summary antes do OOM.
-3. `perf(memory): hint V8 GC at natural release points` — `globalThis.gc?.()` em `runPostCompactCleanup` e no finally de `runAgent.ts`. Re-exec do launcher agora inclui `--expose-gc` por default.
-
-### 3.6 — Keep-alive por provider (não global)
-`let keepAliveDisabled` → `Map<string, boolean>` em `proxy.ts`. `disableKeepAlive(provider)` e `getProxyFetchOptions({ provider })` agora são scoped por provider. Callers atualizados: `withRetry.ts` passa `getAPIProvider()`, `openaiShim.ts` passa a variável `provider` local, `codexShim.ts` passa `'codex'`, `client.ts` passa `'anthropic'`. Test isolado garante que ECONNRESET no DeepSeek não afeta o Anthropic.
-
-### 1.8 — `countTokensViaHaikuFallback` agora usa `countTokens` (free)
-`anthropic.beta.messages.create` (cobrava input + 1 output token por chamada de fallback) trocado por `anthropic.beta.messages.countTokens`, que é gratuito e suporta os mesmos parâmetros (thinking, tools, betas) que precisávamos. Test em `tokenEstimation.test.ts` garante que `create` nunca é chamado nesse caminho.
-
-### 1.7 — Remover dead code de ContentType / compression ratios (54ce9a9)
-`ContentType`, `COMPRESSION_RATIOS`, `detectContentType()`, `getCompressionRatio()`, `estimateWithBounds()` (~95 linhas) deletados; único caller em `staticDedup.integration.test.ts` agora chama `roughTokenCountEstimation(s, 2)` direto.
-
-### 4.4 — Error boundary real (substituir SentryErrorBoundary) (61d8e5b)
-`SentryErrorBoundary` substituído por `ErrorBoundary` real com fallback visível + `logError` em crash. `SentryErrorBoundary.ts` virou re-export de `ErrorBoundary` para manter os 4 callsites sem mudança. Testes em `ErrorBoundary.test.tsx`.
-
-### 4.8 — Renomeado `writeFileSyncAndFlush_DEPRECATED` → `writeFileSyncAndFlush` (9ec5c63)
-A deprecação era aspiracional — os 3 callers (config writes, settings writes, file edit writes) são sync por design. Renomear + atualizar jsdoc remove o marcador enganoso sem refactor M-L de propagar async.
-
-### 1.1 — Strip progressivo de thinking blocks (de7b67d)
-`stripOldThinkingBlocks()` agora roda em todos os providers, não só Bedrock/Vertex.
-
-### 1.2 — Estimativa de tokens por modelo
-`roughTokenCountEstimation()` já usa `getActiveModelBytesPerToken()` memoizado, com `MODEL_TOKENIZER_CONFIGS` cobrindo 19 famílias de modelo. Auditoria descobriu que estava feito mas não marcado.
-
-### 1.4 — Stable-stub tool_result compression (7b6b374, 2e6c638, ed80303, ff59bc3)
-Set monotônico per-sessão de tool_use_ids clipados, byte-stable cross-turn. Funciona em Anthropic native, Bedrock, Vertex, OpenAI shim, Codex shim. Permitiu deletar `compressToolHistory.ts` (~1.8k linhas).
-
-### 1.6 — Tabela de preços para modelos não-Claude (163a180)
-`NON_CLAUDE_MODEL_COSTS` cobre 30+ patterns (gpt/gemini/deepseek/grok/cohere/phi/...). DeepSeek a $0.14/Mtok não aparece mais como $5/Mtok.
-
-### 1.9 — Estimativa de imagens por provider (14f0416)
-Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
-
-### 3.11 — `retry-after-ms` + HTTP-date no `Retry-After` (3dace3a)
-`parseRetryAfterValue` aceita integer/decimal seconds + RFC 7231 HTTP-date. `getRetryAfterMs` prefere `retry-after-ms` (extensão Anthropic/OpenAI) sobre `retry-after`. 21 testes.
+### [ ] 5. `any` → `unknown` + guard em `isQuotaExhausted`
+- **Arquivo:** `src/services/api/withRetry.ts:109`
+- **Problema:** `any` no hot path de retry, sem type safety.
+- **Ganho:** correção / segurança de tipos — **Esforço:** trivial — **Risco:** baixo.
 
 ---
 
-## Oportunidades — pesquisa de comunidade (2026-05-01)
+## Tier 2 — Alto impacto (esforço médio, payoff grande)
 
-> Fonte: GitHub issues, HN, Reddit (r/LocalLLaMA, r/ClaudeAI), RedMonk, Stack Overflow Survey 2025, JetBrains 2025.  
-> Ainda não priorizados; listados para avaliação de ROI.
+### [ ] 6. Cache de `stableStringify` para prefixo imutável de mensagens
+- **Arquivo:** `src/services/api/openaiShim.ts:1811-1815`
+- **Problema:** `stableStringify(body)` rodado duas vezes consecutivas; `body` contém histórico inteiro. **Maior gargalo CPU/turn** já identificado por bench do próprio repo.
+- **Ganho:** alto — **Esforço:** médio — **Risco:** médio (preservar byte-identity para prefix caching).
 
-| ID | Feature | Esforço est. | Evidência |
-|----|---------|-------------|-----------|
-| C1 | **AGENTS.md** — ler `.agents/skills/` além de `.claude/skills/` | XS | 3 000+ upvotes anthropics/claude-code#31005; Cursor, Codex, Amp já suportam; Anthropic parada há 7+ meses |
-| C2 | **Hidden CLAUDE.md** — aceitar `.claude/CLAUDE.md` como fallback | XS | anthropics/claude-code#54183; mudança mínima de lookup |
-| C3 | **Custo inline por turno** — `$0.xx` no status bar em tempo real | S | 66% dos devs citam custo imprevisível como bloqueador; `/cost` existe mas não é inline |
-| C4 | **Local-first UX** — wizard de setup Ollama + docs proeminentes | S | Ollama já funciona; r/LocalLLaMA (266k membros) busca ativamente isso |
-| C5 | **Issue tracker via MCP** — bundles pré-configurados GitHub Issues + Linear no `/provider` | M | anthropics/claude-code#10998; "implement issue #64" sem copy-paste |
-| C6 | **`/spec <file>`** — pinar requirements.md ao contexto que sobrevive à compactação | M | Devs querem requirements como fonte de verdade cross-compaction |
-| C7 | **Session rollback / checkpoint** — `/rewind` equivalente sem precisar de git | M | Claude Code tem `/rewind`; Zed tem restore por edição; Claudio não tem nada |
-| C8 | **Wildcard permission rules** | M | Já em roadmap ativo como 3.12 — mencionado aqui por correlação com C9 |
-| C9 | **Sandboxing / least-privilege** — scoping de permissão por tool/agente | L | 30+ CVEs em AI coding tools; prompt injection via MCP (CVE-2025-61260) |
-| C10 | **Multi-agent dashboard** — progresso de agentes paralelos visível | L | RedMonk #5 de 10 necessidades agentic IDE; coordinator mode existe mas sem UI de visibilidade |
+### [ ] 7. Delta-write no `recordTranscript`
+- **Arquivo:** `src/QueryEngine.ts:733-762`
+- **Problema:** Re-serializa array inteiro de mensagens por content block do stream — N×M.
+- **Ganho:** alto em sessões longas — **Esforço:** médio — **Risco:** médio (resume/recovery depende do formato).
 
----
+### [ ] 8. `WeakMap` cache para `JSON.stringify(tu.input)` na conversão
+- **Arquivo:** `src/services/api/openaiShim.ts:585-589`
+- **Problema:** Re-stringify de tool_use inputs a cada conversão; escala com histórico × tool calls.
+- **Ganho:** médio — **Esforço:** baixo — **Risco:** baixo.
 
-## Removidos da auditoria
+### [ ] 9. Write-coalescing no `void recordTranscript`
+- **Arquivo:** `src/QueryEngine.ts:760`
+- **Problema:** Fire-and-forget enfileira closures retendo referência ao `messages` (cresce a cada bloco) — pressão de GC.
+- **Ganho:** médio — **Esforço:** médio — **Risco:** médio (durability/resume).
 
-**Já feitos (movidos para Concluídos):** 1.2, 1.6.
-
-**Bug do roadmap:** 2.6 e 4.6 eram o **mesmo item duplicado** ("preprocessamento de feature flags") em pilares diferentes — removidos. SIGINT/SIGTERM já tratado no `build.ts`; SIGKILL é raro o bastante para aceitar `git checkout --`.
-
-**Premissa falsa:**
-- **10.3** (adotar `stop_details` estruturado) — auditado em 2026-05-16 contra `node_modules/@anthropic-ai/sdk@0.96` (`messages.d.mts:691`). Premissa original prometia (1) classificação fina de refusal em safety/policy/safety-tools, (2) retry policy diferenciado em `withRetry.ts` para `max_tokens` vs `pause_turn` vs `tool_use`, (3) motivo de parada descritivo em transcript. **Realidade:** `stop_details` no SDK 0.96 só tem a variante `RefusalStopDetails` (`category: 'cyber'|'bio'|null`, `explanation: string|null`, `type: 'refusal'`) e é populada **só** quando `stop_reason === 'refusal'`. Não existem `MaxTokensStopDetails`/`PauseTurnStopDetails`/`ToolUseStopDetails` — ganhos (1) e (2) caem por terra (eixo cyber/bio ≠ safety/policy/tools; retry não recebe nada novo). Sobra só fragmento de (3) restrito a refusals, e mesmo isso o `errors.ts:1301-1329` já cobre com link de AUP. Quick-win residual virou item **10.3-derivative** em Ativos (P3, XS — surfacing de `explanation`/`category`).
-- **10.2** (cache diagnostics beta do SDK 0.96) — auditado em 2026-05-16. Premissa original ("breakdown hit/miss por breakpoint em `/usage` e `/cost`") **não existe na API**: `BetaDiagnostics` em `@anthropic-ai/sdk@0.96` é request-scoped, expõe `cache_miss_reason` (enum único) e `cache_missed_input_tokens` (escalar único) — não há array por breakpoint nem "idade do cache hit". Substituir `promptCacheBreakDetection.ts` por dados do servidor seria troca lateral: heurística atual cobre flips de escopo/TTL que o servidor ignora, e funciona em todos os providers (beta header é Anthropic-native só). Custo de beta opt-in stateful (`previous_message_id` por sessão) não compensa pra **uma linha extra** no `/cost`. Quick-win adjacente identificado na auditoria (bug de pricing TTL 1h) virou item **10.2-derivative** em Concluídos.
-- **3.5** (rate-limit headers Bedrock/Vertex/Gemini) — esses providers **não emitem** `x-ratelimit-reset-*`. Bedrock usa AWS SDK error metadata, Gemini usa `RetryInfo` em gRPC details. Não é "estamos ignorando", é "não existe pra ignorar". Escopo real >> M.
-- **5.9** (lazy registry de tools em `tools.ts`) — desclassificada após bench empírico em 2026-05-04. Premissa original era "dezenas de MB de retained code+ICs". Bench (`scripts/profile/cold-start-retained-bench.ts` com 14 probes per-candidate, baseline em `baselines/cold-start-retained.json`) mostrou que TODOS os candidatos puxam ~30 MB de heap idêntico via stack transitiva compartilhada (Tool.ts + zod + ink + prompt helpers). Delta do módulo próprio do tool é <1 MB cada — única exceção foi AskUserQuestionTool (13 MB vs 30 MB, único que não puxa a stack completa). Ganho real estimado: 3-5 MB total no melhor caso, não dezenas. Adicionar isso justifica o custo de Proxy traps + audit de cross-imports + refactor de identity-checks em `PermissionRequest.tsx`. Roadmap-killer: dois reviews independentes (Plan agent) também identificaram bloqueadores (identity comparisons quebram com Proxy, no-Suspense em REPL, memo cache do react-compiler). Os 4 testes escritos durante a investigação (`src/__tests__/lazyToolImports.test.ts`, `src/__tests__/lazyToolModuleLoad.test.ts`, `src/components/permissions/PermissionRequest.test.ts`, e os probes adicionais no `cold-start-retained-bench.ts`) ficam como guarda — `lazyToolImports` previne re-eagerização acidental de tools que hoje só são importados por `tools.ts`, e `PermissionRequest.test` trava drift entre `tool.name` e a constante NAME exportada.
-
-**Parcialmente cobertos por código existente:**
-- **3.1** (resposta parcial em streaming) e **3.8** (timeout configurável) — `STREAM_IDLE_TIMEOUT_MS` já existe em `claude.ts:1840`, configurável via env, com warning intermediário. Resume-from-checkpoint é caro de implementar (L) para ganho marginal.
-
-**Overengineering / ganho hipotético:**
-- 1.3 (redução de tool schemas) — vai pra cache 1h; ganho só nos misses
-- 1.5 (threshold cache 8k→4k) — sessões reais já passam de 8k logo
-- 1.10 (filtragem dinâmica de tools) — Cron/Worktree custam <300 tokens cada
-- 2.1 (defer imports main.tsx) — Anthropic-internal já são stubs no-op
-- 2.2 (bundle 21MB) — Node parseia em <100ms
-- 2.3 (decompor REPL.tsx) — feio mas funciona
-- 2.5 (sync I/O 530 calls) — quase todas em bootstrap, ganho zero
-- 2.7 (cache CWD) — 1ms total, abaixo do ruído
-- 2.8 (Yoga layout) — sem evidência de gargalo
-- 3.2 (failover cross-provider) — UX manual via `/provider` é aceitável
-- 3.3 (hardening gRPC) — uso nicho, sem demanda
-- 3.4 (retry por provider) — curva única funciona
-- 3.9 (classificação erros) — catch-all >=408 raramente erra
-- 3.10 (OAuth refresh async) — refresh raro, bloqueio invisível
-- 3.13 (protected paths TCC) — usuários macOS já têm TCC OS-level
-- 4.2 (decompor arquivos gigantes) — manutenibilidade pura, sem ganho funcional
-- 4.3 (eliminar double casts) — refactor preventivo, código funciona
-- 4.5 (limpeza TODOs) — cosmético
-- 4.7 (validação schema settings.json) — settings.json editado quase só via `/provider`
+### [ ] 10. Extrair `tryParseMailboxMessage<T>` (7 `catch {}` duplicados)
+- **Arquivo:** `src/services/teammateMailbox.ts` (a partir da linha 438)
+- **Problema:** Padrão repetido de `catch {}` engole diagnóstico; viola regra "no silent error swallow".
+- **Ganho:** robustez — **Esforço:** baixo — **Risco:** baixo.
 
 ---
 
-## Total
+## Tier 3 — Saúde estrutural (esforço alto, débito de longo prazo)
 
-**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 2× P2: **9.0** (OS notifications)/6.2-Windows; 7× P3: **10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **30 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative**, **11.1**, **11.2**, **11.3** — este último com escopo reduzido: só history picker; os outros 3 alvos eram one-shots, descartados na auditoria 2026-05-16 —, **11.4** auditado sem ação por zero ocorrências, e **11.5** entregue com ganho honesto (higiene de conexões + resiliência per-provider via undici Agent + h2 fallback sticky; throughput inalterado; medição p50/p95 pendente até consertar bench harness)). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
+### [ ] 11. Split de `src/services/api/openaiShim.ts` (~2.274 linhas)
+- **Sugestão:** dividir em `{client, streamParser, messageConverter, toolConverter}`.
+- **Ganho:** manutenibilidade, testabilidade — **Esforço:** alto — **Risco:** médio.
 
-**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der. **Follow-up de 11.5 pendente:** consertar `scripts/profile/undici-pool-bench.ts` (bug em Bun) e capturar delta p50/p95 real pós-mudança — sem isso, ganho fica em "esperado teoricamente" em vez de "medido".
+### [ ] 12. Cobertura de testes para `src/QueryEngine.ts`
+- **Arquivo:** `src/QueryEngine.ts` (1.346 linhas, **sem `.test.ts` colocalizado**)
+- **Problema:** Coração do agent loop sem cobertura unitária.
+- **Ganho:** alto — **Esforço:** alto — **Risco:** baixo.
 
-**Auditoria SDK 0.82→0.96 — descartados como itens:**
-- *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.
-- *AbortSignal no tool runner* (0.84.0) — já temos plumbing próprio via `ToolUseContext.abortController` em 200+ arquivos. Migrar custaria reescrever `QueryEngine` + `services/tools/*` perdendo permissions/MCP/sub-agents/coordinator/plan/hooks. **Skip**.
-- *Compaction helpers deprecados* (0.83.0) — nunca usados (`apiMicrocompact` é nosso). **No-op**.
-- *Audit redaction api-key* (0.95.1) — SDK já é seguro; nosso `buildFetch` em `client.ts:399` foi validado por inspeção rápida. **No-op**.
-- *Modelos Sonnet 4 / Opus 4 deprecados* (0.89.0) — zero referências no codebase (já migrados para Opus 4.7). **No-op**.
-- *APIError em chunk frames* (0.92.0) — auditoria estreita em `withRetry.ts` + `errors.ts`; vira bug se aparecer, não item proativo de roadmap.
+### [ ] 13. Cobertura de tools sem teste
+- **Tools alvo:** `WebSearchTool`, `MonitorTool`, `ScheduleCronTool`, `WorkflowTool`, `SkillTool`, MCP tools, Worktree tools, PlanMode tools (~38 dirs sem `.test.ts`).
+- **Ganho:** alto — **Esforço:** alto — **Risco:** baixo.
+
+### [ ] 14. Reconciliar doc vs código sobre flag `--provider`
+- **Arquivos:** `CLAUDE.md` diz removido; `src/main.tsx:992` ainda enumera providers.
+- **Ganho:** clareza — **Esforço:** baixo — **Risco:** baixo.
+
+### [ ] 15. `checkAutoModeClassifierPrompts()` deveria falhar, não apenas warn
+- **Arquivo:** `scripts/build.ts`
+- **Problema:** Se `TRANSCRIPT_CLASSIFIER=true` e `.txt` faltar, auto-mode cai silenciosamente para auto-allow. **Risco de segurança.**
+- **Ganho:** segurança — **Esforço:** baixo — **Risco:** baixo.
+
+---
+
+## Limpeza oportunista
+
+- [ ] **CHICAGO_MCP cleanup duplicado** em `src/query.ts:1060` e `1621` — flag está `false` em `build.ts`; código morto no open build. Unificar ou gate explícito.
+- [ ] **`useMemo(() => false, [])`** em `src/screens/REPL.tsx:618` — slot de hook gasto para constante.
+
+---
+
+## Ordem sugerida de execução (top 5 ROI)
+
+1. Item 1 — regex módulo-level (15 min, sem risco)
+2. Item 6 — cache `stableStringify` (maior gargalo medido)
+3. Item 2 — paralelizar dynamic imports (cold start)
+4. Item 7 — delta-write transcript (escala mal em turnos longos)
+5. Item 3 — cache `isEnabled()` (reduz custo do `useMemo` do REPL)

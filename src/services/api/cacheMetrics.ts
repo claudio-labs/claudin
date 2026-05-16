@@ -141,6 +141,16 @@ function pickPath(usage: RawUsage, path: string[]): unknown {
  * See cacheMetrics.test.ts for the cases this function is contracted to
  * return true/false for.
  */
+// Module-level regex constants for `isLocalOrPrivateUrl` hot path.
+// URL.hostname normalizes short/hex/octal IPv4 to dotted-quad, so a simple
+// regex is sufficient for the display-classification use case.
+const IPV4_DOTTED_QUAD_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+// IPv6 ULA (fc00::/7) and link-local equivalents — colon required so
+// `fc-api.example.com` / `fd-hosted.com` don't over-match.
+const IPV6_ULA_FC_RE = /^fc[0-9a-f]{0,2}:/
+const IPV6_ULA_FD_RE = /^fd[0-9a-f]{0,2}:/
+const TRAILING_DOT_ZERO_RE = /\.0$/
+
 function isLocalOrPrivateUrl(url: string): boolean {
   if (!url) return false
   let hostname = ''
@@ -187,7 +197,7 @@ function isLocalOrPrivateUrl(url: string): boolean {
   // IPv4 private and reserved ranges. URL.hostname normalizes short /
   // hex / octal IPv4 representations to dotted-quad, so a simple regex
   // works for the display-classification use case.
-  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  const ipv4 = h.match(IPV4_DOTTED_QUAD_RE)
   if (ipv4) {
     const a = Number(ipv4[1])
     const b = Number(ipv4[2])
@@ -213,8 +223,8 @@ function isLocalOrPrivateUrl(url: string): boolean {
   // `fc00::1` — still contains the colon.
   if (
     h.startsWith('fe80:') ||
-    /^fc[0-9a-f]{0,2}:/.test(h) ||
-    /^fd[0-9a-f]{0,2}:/.test(h)
+    IPV6_ULA_FC_RE.test(h) ||
+    IPV6_ULA_FD_RE.test(h)
   ) {
     return true
   }
@@ -514,8 +524,8 @@ export function formatCacheMetricsFull(
 // deterministic — utils/format pulls Intl locale state which varies.
 function formatCompactNumber(n: number): string {
   if (n < 1_000) return String(n)
-  if (n < 1_000_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`
-  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`
+  if (n < 1_000_000) return `${(n / 1_000).toFixed(1).replace(TRAILING_DOT_ZERO_RE, '')}k`
+  return `${(n / 1_000_000).toFixed(1).replace(TRAILING_DOT_ZERO_RE, '')}m`
 }
 
 /** Sum two CacheMetrics, preserving `supported` as true only if both are. */

@@ -58,6 +58,10 @@ export const BASE_DELAY_MS = 500
 // Retry these a limited number of times before treating as permanent.
 const MAX_OPENAI_COMPAT_404_RETRIES = 2
 
+// Numeric seconds/ms value used by Retry-After headers. Module-level so we
+// don't recompile on every retry parse.
+const NUMERIC_RETRY_AFTER_RE = /^\d+(?:\.\d+)?$/
+
 // Foreground query sources where the user IS blocking on the result — these
 // retry on 529. Everything else (summaries, titles, suggestions, classifiers)
 // bails immediately: during a capacity cascade each retry is 3-10× gateway
@@ -573,7 +577,7 @@ export function parseRetryAfterValue(
 
   // Numeric path covers both integer and decimal seconds. parseFloat tolerates
   // leading whitespace already trimmed; reject if any non-numeric tail.
-  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+  if (NUMERIC_RETRY_AFTER_RE.test(trimmed)) {
     const seconds = Number(trimmed)
     if (!Number.isFinite(seconds) || seconds < 0) return null
     return Math.min(Math.round(seconds * 1000), PERSISTENT_RESET_CAP_MS)
@@ -597,7 +601,7 @@ function parseRetryAfterMsValue(
   if (value == null) return null
   const trimmed = value.trim()
   if (trimmed === '') return null
-  if (!/^\d+(?:\.\d+)?$/.test(trimmed)) return null
+  if (!NUMERIC_RETRY_AFTER_RE.test(trimmed)) return null
   const ms = Number(trimmed)
   if (!Number.isFinite(ms) || ms < 0) return null
   return Math.min(Math.round(ms), PERSISTENT_RESET_CAP_MS)

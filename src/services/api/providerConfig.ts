@@ -234,6 +234,12 @@ export function shouldUseCodexTransport(
   return isCodexBaseUrl(explicitBaseUrl) || (!explicitBaseUrl && isCodexAlias(model))
 }
 
+const GPT_MAJOR_VERSION_RE = /^gpt-(\d+)/
+const GPT5_FAMILY_RE = /^gpt-5(?:[.-]|$)/
+const TRAILING_SLASH_RE = /\/+$/
+// Safe to share with `.replace()` — `String.prototype.replace` does not consult/mutate `lastIndex`.
+const IPV6_BRACKET_RE = /^\[|\]$/g
+
 function shouldUseGithubResponsesApi(model: string): boolean {
   const normalized = model.trim().toLowerCase()
 
@@ -241,7 +247,7 @@ function shouldUseGithubResponsesApi(model: string): boolean {
   if (normalized.includes('codex')) return true
 
   // GPT-5+ models use /responses, except gpt-5-mini.
-  const match = /^gpt-(\d+)/.exec(normalized)
+  const match = GPT_MAJOR_VERSION_RE.exec(normalized)
   if (!match) return false
   const major = Number(match[1])
   if (major < 5) return false
@@ -289,7 +295,7 @@ export function isLocalProviderUrl(baseUrl: string | undefined): boolean {
 }
 
 function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, '')
+  return value.replace(TRAILING_SLASH_RE, '')
 }
 
 function normalizePathWithV1(pathname: string): string {
@@ -356,7 +362,7 @@ export function getLocalProviderRetryBaseUrls(baseUrl: string): string[] {
       addCandidate(parsed.hostname, v1Pathname)
     }
 
-    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+    const hostname = parsed.hostname.toLowerCase().replace(IPV6_BRACKET_RE, '')
     if (hostname === 'localhost' || hostname === '::1') {
       addCandidate('127.0.0.1', parsed.pathname || '/')
       addCandidate('127.0.0.1', v1Pathname)
@@ -389,7 +395,7 @@ export function isCodexBaseUrl(baseUrl: string | undefined): boolean {
     const parsed = new URL(baseUrl)
     return (
       parsed.hostname === 'chatgpt.com' &&
-      parsed.pathname.replace(/\/+$/, '') === '/backend-api/codex'
+      parsed.pathname.replace(TRAILING_SLASH_RE, '') === '/backend-api/codex'
     )
   } catch {
     return false
@@ -560,7 +566,7 @@ export function resolveProviderRequest(options?: {
           : (isGithubMode
             ? GITHUB_COPILOT_BASE_URL
             : DEFAULT_OPENAI_BASE_URL))
-      ).replace(/\/+$/, ''),
+      ).replace(TRAILING_SLASH_RE, ''),
     reasoning,
   }
 }
@@ -931,5 +937,5 @@ export function supportsCodexReasoningEffort(model: string): boolean {
     return true
   }
 
-  return /^gpt-5(?:[.-]|$)/.test(base)
+  return GPT5_FAMILY_RE.test(base)
 }
