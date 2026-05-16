@@ -6,6 +6,7 @@ import {
 } from '../services/analytics/index.js'
 import { abortSpeculation } from '../services/PromptSuggestion/speculation.js'
 import { useAppState, useSetAppState } from '../state/AppState.js'
+import { computeGhostRemainder } from './promptSuggestionGhost.js'
 
 type Props = {
   inputValue: string
@@ -17,8 +18,10 @@ export function usePromptSuggestion({
   isAssistantResponding,
 }: Props): {
   suggestion: string | null
+  promptSuggestionGhostRemainder: string | null
   markAccepted: () => void
   markShown: () => void
+  resetSuggestion: () => void
   logOutcomeAtSubmission: (
     finalInput: string,
     opts?: { skipReset: boolean },
@@ -34,6 +37,15 @@ export function usePromptSuggestion({
     acceptedAt,
     generationRequestId,
   } = promptSuggestion
+
+  // Case-insensitive prefix match: keep the suggestion alive while the user
+  // is still on track (fish/zsh-autosuggestions style). The remainder is
+  // what we render as dim ghost text after the cursor.
+  const promptSuggestionGhostRemainder = computeGhostRemainder(
+    suggestionText,
+    inputValue,
+    isAssistantResponding,
+  )
 
   const suggestion =
     isAssistantResponding || inputValue.length > 0 ? null : suggestionText
@@ -80,13 +92,20 @@ export function usePromptSuggestion({
 
   const markAccepted = useCallback(() => {
     if (!isValidSuggestion) return
-    setAppState(prev => ({
-      ...prev,
-      promptSuggestion: {
-        ...prev.promptSuggestion,
-        acceptedAt: Date.now(),
-      },
-    }))
+    // Idempotent: a Tab+Enter sequence fires markAccepted twice (Tab branch in
+    // useTypeahead + onSubmit's inputMatchesSuggestion path). Without this
+    // guard, acceptedAt would be overwritten and timeToAcceptMs would be
+    // inflated by the time between Tab and Enter.
+    setAppState(prev => {
+      const { promptSuggestion: ps } = prev
+      // `>=` (not `>`) handles same-millisecond Tab→Enter races. Combined with
+      // `acceptedAt > 0` so the initial "never accepted" state still updates.
+      if (ps.acceptedAt > 0 && ps.acceptedAt >= ps.shownAt) return prev
+      return {
+        ...prev,
+        promptSuggestion: { ...ps, acceptedAt: Date.now() },
+      }
+    })
   }, [isValidSuggestion, setAppState])
 
   const markShown = useCallback(() => {
@@ -164,8 +183,10 @@ export function usePromptSuggestion({
 
   return {
     suggestion,
+    promptSuggestionGhostRemainder,
     markAccepted,
     markShown,
+    resetSuggestion,
     logOutcomeAtSubmission,
   }
 }

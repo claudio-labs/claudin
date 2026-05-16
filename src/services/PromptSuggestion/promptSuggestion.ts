@@ -11,19 +11,21 @@ import {
   runForkedAgent,
 } from '../../utils/forkedAgent.js'
 import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
+import { logForDebugging } from '../../utils/debug.js'
 import { logError } from '../../utils/log.js'
 import {
   createUserMessage,
+  extractTextContent,
   getLastAssistantMessage,
 } from '../../utils/messages.js'
 import { getInitialSettings } from '../../utils/settings/settings.js'
 import { isTeammate } from '../../utils/teammate.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from '../analytics/index.js'
 import { currentLimits } from '../claudeAiLimits.js'
+import { endsWithFollowupOffer } from './followupOffer.js'
 import { isSpeculationEnabled, startSpeculation } from './speculation.js'
 
 let currentAbortController: AbortController | null = null
@@ -54,15 +56,9 @@ export function shouldEnablePromptSuggestion(): boolean {
     return true
   }
 
-  // Keep default in sync with Config.tsx (settings toggle visibility)
-  if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_chomp_inflection', false)) {
-    logEvent('tengu_prompt_suggestion_init', {
-      enabled: false,
-      source:
-        'growthbook' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-    return false
-  }
+  // Upstream gates this on a GrowthBook flag ('tengu_chomp_inflection').
+  // Claudio strips GrowthBook via noTelemetryPlugin, so the flag would always
+  // return its default (false) and disable the entire feature. Skip the gate.
 
   // Disable in non-interactive mode (print mode, piped input, SDK)
   if (getIsNonInteractiveSession()) {
@@ -134,8 +130,12 @@ export async function tryGenerateSuggestion(
     return null
   }
 
+  // Need at least one assistant message to base a suggestion on. Upstream
+  // required 2 to skip the very first exchange in a fresh session; in Claudio
+  // we also want suggestions to fire on `--resume` where the user lands with
+  // an existing history and may only type one new turn before expecting one.
   const assistantTurnCount = count(messages, m => m.type === 'assistant')
-  if (assistantTurnCount < 2) {
+  if (assistantTurnCount < 1) {
     logSuggestionSuppressed('early_conversation', undefined, undefined, source)
     return null
   }
@@ -148,6 +148,18 @@ export async function tryGenerateSuggestion(
   const cacheReason = getParentCacheSuppressReason(lastAssistantMessage)
   if (cacheReason) {
     logSuggestionSuppressed(cacheReason, undefined, undefined, source)
+    return null
+  }
+
+  // Only surface a suggestion when the assistant actually invited a reply
+  // (question, "Quer rodar os tests?", "Want me to commit?", etc.). Avoids
+  // spinning up a forked agent — and showing ghost text — when the assistant
+  // simply reported a result.
+  const lastAssistantText = lastAssistantMessage
+    ? extractTextContent(lastAssistantMessage.message.content, '\n')
+    : ''
+  if (!endsWithFollowupOffer(lastAssistantText)) {
+    logSuggestionSuppressed('no_followup', undefined, undefined, source)
     return null
   }
 
@@ -174,6 +186,9 @@ export async function tryGenerateSuggestion(
   }
   if (shouldFilterSuggestion(suggestion, promptId, source)) return null
 
+  logForDebugging(
+    `[prompt-suggestion] generated (promptId=${promptId}, length=${suggestion.length})`,
+  )
   return { suggestion, promptId, generationRequestId }
 }
 
@@ -232,7 +247,13 @@ export async function executePromptSuggestion(
   }
 }
 
-const MAX_PARENT_UNCACHED_TOKENS = 10_000
+// Upstream Anthropic build used 10_000 here to keep the demo cheap; in Claudio
+// the user is paying their own provider bill and the fork agent runs on the
+// small/fast model (typically Haiku), so a single fork costs cents at worst.
+// Raising the ceiling to 100k lets the feature actually fire in real working
+// sessions (which routinely exceed 10k tokens per assistant turn) while still
+// suppressing on pathologically large turns where the fork would be wasteful.
+const MAX_PARENT_UNCACHED_TOKENS = 100_000
 
 export function getParentCacheSuppressReason(
   lastAssistantMessage: ReturnType<typeof getLastAssistantMessage>,
@@ -493,6 +514,9 @@ export function logSuggestionSuppressed(
   source?: 'cli' | 'sdk',
 ): void {
   const resolvedPromptId = promptId ?? getPromptVariant()
+  logForDebugging(
+    `[prompt-suggestion] suppressed: ${reason}${suggestion ? ` (length=${suggestion.length})` : ''}`,
+  )
   logEvent('tengu_prompt_suggestion', {
     ...(source && {
       source:

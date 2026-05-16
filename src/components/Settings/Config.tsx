@@ -449,7 +449,7 @@ export function Config({
         }));
       }
     }
-  }] : []), ...(getFeatureValue_CACHED_MAY_BE_STALE('tengu_chomp_inflection', false) ? [{
+  }] : []), {
     id: 'promptSuggestionEnabled',
     label: 'Prompt suggestions',
     value: promptSuggestionEnabled,
@@ -463,7 +463,7 @@ export function Config({
         promptSuggestionEnabled: enabled_1 ? undefined : false
       });
     }
-  }] : []),
+  },
   ...(isFileCheckpointingAvailable ? [{
     id: 'fileCheckpointingEnabled',
     label: 'Rewind code (checkpoints)',

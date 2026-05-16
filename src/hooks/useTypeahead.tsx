@@ -104,6 +104,14 @@ type Props = {
   suppressSuggestions?: boolean;
   markAccepted: () => void;
   onModeChange?: (mode: PromptInputMode) => void;
+  // Remainder of the prompt suggestion that the assistant generated (case-
+  // insensitive prefix of what the user has typed). When set, rendered as
+  // dim ghost text after the cursor and accepted by Tab/Right/Enter.
+  promptSuggestionGhost?: { fullText: string; remainder: string };
+  // Called when the user dismisses autocomplete (Esc) while a prompt-suggestion
+  // ghost is the active overlay — clears the suggestion state so the ghost
+  // disappears instead of lingering.
+  onDismissPromptSuggestion?: () => void;
 };
 type UseTypeaheadResult = {
   suggestions: SuggestionItem[];
@@ -367,8 +375,14 @@ export function useTypeahead({
   },
   suppressSuggestions = false,
   markAccepted,
-  onModeChange
+  onModeChange,
+  promptSuggestionGhost: promptSuggestionGhostProp,
+  onDismissPromptSuggestion
 }: Props): UseTypeaheadResult {
+  // Destructure into primitives so the memo below doesn't invalidate on every
+  // render just because the caller passes a fresh object literal.
+  const promptSuggestionFullText = promptSuggestionGhostProp?.fullText;
+  const promptSuggestionRemainder = promptSuggestionGhostProp?.remainder;
   const {
     addNotification
   } = useNotifications();
@@ -413,8 +427,28 @@ export function useTypeahead({
     };
   }, [input, cursorOffset, mode, commands, suppressSuggestions]);
 
+  // Prompt-suggestion ghost text: rendered as dim text after the cursor when
+  // the user's input is a case-insensitive prefix of the assistant-generated
+  // suggestion. Mid-input slash-command completion wins if both are active.
+  const promptSuggestionGhostText = useMemo((): InlineGhostText | undefined => {
+    if (mode !== 'prompt' || suppressSuggestions) return undefined;
+    if (!promptSuggestionFullText || !promptSuggestionRemainder) return undefined;
+    // Only render when cursor is at end of input — avoids weird overlays
+    // when the user is editing mid-string.
+    if (cursorOffset !== input.length) return undefined;
+    return {
+      text: promptSuggestionRemainder,
+      fullCommand: promptSuggestionFullText,
+      insertPosition: input.length
+    };
+  }, [mode, suppressSuggestions, promptSuggestionFullText, promptSuggestionRemainder, cursorOffset, input.length]);
+
   // Merged ghost text: prompt mode uses synchronous useMemo, bash mode uses async useState
-  const effectiveGhostText = suppressSuggestions ? undefined : mode === 'prompt' ? syncPromptGhostText : inlineGhostText;
+  const effectiveGhostText = suppressSuggestions
+    ? undefined
+    : mode === 'prompt'
+      ? (syncPromptGhostText ?? promptSuggestionGhostText)
+      : inlineGhostText;
 
   // Use a ref for cursorOffset to avoid re-triggering suggestions on cursor movement alone
   // We only want to re-fetch suggestions when the actual search token changes
@@ -920,6 +954,20 @@ export function useTypeahead({
         return;
       }
 
+      // Prompt-suggestion ghost text: replace whatever the user typed with
+      // the full assistant-generated suggestion. Tab fires the same accept
+      // path as the existing empty-input + Tab case (markAccepted), keeping
+      // analytics consistent.
+      if (
+        promptSuggestionFullText &&
+        effectiveGhostText.fullCommand === promptSuggestionFullText
+      ) {
+        markAccepted();
+        onInputChange(promptSuggestionFullText);
+        setCursorOffset(promptSuggestionFullText.length);
+        return;
+      }
+
       // Find the mid-input command to get its position (for prompt mode)
       const midInputCommand = findMidInputSlashCommand(input, cursorOffset);
       if (midInputCommand) {
@@ -1131,7 +1179,7 @@ export function useTypeahead({
         setMaxColumnWidth(undefined);
       }
     }
-  }, [suggestions, selectedSuggestion, input, suggestionType, commands, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, cursorOffset, updateSuggestions, mcpResources, setSuggestionsState, agents, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, effectiveGhostText]);
+  }, [suggestions, selectedSuggestion, input, suggestionType, commands, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, cursorOffset, updateSuggestions, mcpResources, setSuggestionsState, agents, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, effectiveGhostText, promptSuggestionFullText, markAccepted]);
 
   // Handle enter key press - apply and execute suggestions
   const handleEnter = useCallback(() => {
@@ -1234,9 +1282,14 @@ export function useTypeahead({
     debouncedFetchFileSuggestions.cancel();
     debouncedFetchSlackChannels.cancel();
     clearSuggestions();
+    // Esc should also dismiss prompt-suggestion ghost text; otherwise the
+    // overlay would linger after the dropdown is cleared.
+    if (promptSuggestionFullText && onDismissPromptSuggestion) {
+      onDismissPromptSuggestion();
+    }
     // Remember the input when dismissed to prevent immediate re-triggering
     dismissedForInputRef.current = input;
-  }, [debouncedFetchFileSuggestions, debouncedFetchSlackChannels, clearSuggestions, input]);
+  }, [debouncedFetchFileSuggestions, debouncedFetchSlackChannels, clearSuggestions, input, promptSuggestionFullText, onDismissPromptSuggestion]);
 
   // Handler for autocomplete:previous - selects previous suggestion
   const handleAutocompletePrevious = useCallback(() => {
