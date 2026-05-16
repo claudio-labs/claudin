@@ -727,7 +727,7 @@ export function Config({
     id: 'notifChannel',
     label: feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION') ? 'Local notifications' : 'Notifications',
     value: globalConfig.preferredNotifChannel,
-    options: ['auto', 'iterm2', 'terminal_bell', 'iterm2_with_bell', 'kitty', 'ghostty', 'notifications_disabled'],
+    options: ['auto', 'iterm2', 'terminal_bell', 'iterm2_with_bell', 'kitty', 'ghostty', 'os_native', 'notifications_disabled'],
     type: 'enum',
     onChange(notifChannel: GlobalConfig['preferredNotifChannel']) {
       saveGlobalConfig(current_9 => ({

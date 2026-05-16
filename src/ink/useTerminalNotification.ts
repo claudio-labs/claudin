@@ -13,6 +13,16 @@ export type TerminalNotification = {
   notifyITerm2: (opts: { message: string; title?: string }) => void
   notifyKitty: (opts: { message: string; title: string; id: number }) => void
   notifyGhostty: (opts: { message: string; title: string }) => void
+  /**
+   * OSC 777 `notify;title;body` — supported by ghostty, wezterm, foot, urxvt.
+   */
+  notifyOsc777: (opts: { message: string; title: string }) => void
+  /**
+   * OSC 9 plain `ESC ] 9 ; text BEL` — interpreted as a desktop toast by
+   * Windows Terminal and ConEmu. Single-line message (protocol has no
+   * separate title/body fields).
+   */
+  notifyOsc9Plain: (opts: { message: string; title?: string }) => void
   notifyBell: () => void
   /**
    * Report progress to the terminal via OSC 9;4 sequences.
@@ -55,9 +65,20 @@ export function useTerminalNotification(): TerminalNotification {
     [writeRaw],
   )
 
-  const notifyGhostty = useCallback(
+  const notifyOsc777 = useCallback(
     ({ message, title }: { message: string; title: string }) => {
       writeRaw(wrapForMultiplexer(osc(OSC.GHOSTTY, 'notify', title, message)))
+    },
+    [writeRaw],
+  )
+
+  // Ghostty uses the same OSC 777 `notify;...` format as wezterm/foot/urxvt.
+  const notifyGhostty = notifyOsc777
+
+  const notifyOsc9Plain = useCallback(
+    ({ message, title }: { message: string; title?: string }) => {
+      const text = title ? `${title}: ${message}` : message
+      writeRaw(wrapForMultiplexer(osc(OSC.ITERM2, text)))
     },
     [writeRaw],
   )
@@ -120,7 +141,23 @@ export function useTerminalNotification(): TerminalNotification {
   )
 
   return useMemo(
-    () => ({ notifyITerm2, notifyKitty, notifyGhostty, notifyBell, progress }),
-    [notifyITerm2, notifyKitty, notifyGhostty, notifyBell, progress],
+    () => ({
+      notifyITerm2,
+      notifyKitty,
+      notifyGhostty,
+      notifyOsc777,
+      notifyOsc9Plain,
+      notifyBell,
+      progress,
+    }),
+    [
+      notifyITerm2,
+      notifyKitty,
+      notifyGhostty,
+      notifyOsc777,
+      notifyOsc9Plain,
+      notifyBell,
+      progress,
+    ],
   )
 }

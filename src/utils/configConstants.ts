@@ -8,6 +8,7 @@ export const NOTIFICATION_CHANNELS = [
   'terminal_bell',
   'kitty',
   'ghostty',
+  'os_native',
   'notifications_disabled',
 ] as const
 
