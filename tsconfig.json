@@ -12,12 +12,10 @@
     "declaration": false,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
     "paths": {
       "src/*": ["./src/*"]
     },
-    "types": ["node", "bun", "react", "ws"],
-    "ignoreDeprecations": "6.0"
+    "types": ["node", "bun", "react", "ws"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
