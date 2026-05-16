@@ -88,5 +88,6 @@ export const PLAN_AGENT: BuiltInAgentDefinition = {
   // Plan is read-only and can Read CLAUDE.md directly if it needs conventions.
   // Dropping it from context saves tokens without blocking access.
   omitClaudeMd: true,
+  omitGitStatus: true,
   getSystemPrompt: () => getPlanV2SystemPrompt(),
 }

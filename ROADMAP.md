@@ -1,21 +1,12 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (8.0 — `agentic_fetch` skill adicionada; 6.1, 6.2-Linux e 7.0 movidos pra Concluídos)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (8.0 — `WebResearcher` subagent built-in implementado e movido pra Concluídos; 6.1, 6.2-Linux e 7.0 também concluídos antes)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (14 itens)
-
-### 8.0 — `agentic_fetch` como subagent web (P2)
-- **Esforço:** M (~150 LoC + system prompt bem escrito)
-- **Prioridade:** P2 — fecha gap real em research técnico multi-página sem inchar contexto principal.
-- **Inspiração:** Crush `agentic_fetch` tool (mas implementado lá como tool standalone; no Claudio é melhor reusar a primitiva de subagent que já existe).
-- **Problema:** `WebFetch` é one-shot (1 URL → resultado direto no contexto principal); `WebSearch` devolve só links. Para resolver "como configurar OAuth device flow no provider X" o modelo principal hoje encadeia 5-7 fetches que jogam ~20k tokens de HTML convertido no histórico — polui contexto e gasta tokens caros do Opus em trabalho de browsing mecânico.
-- **Abordagem:** novo `subagent_type: 'WebResearcher'` registrado junto com Code/Explore/Plan. Subset de tools = `[WebSearch, WebFetch, Read]`. Contexto isolado (não polui pai); devolve **só síntese final** com URLs citadas. Aparece automaticamente na lista de `subagent_type` do `AgentTool`. Prompt focado em: começar por search se URL não dada, decidir quando parar (achou vs. esgotou), sintetizar em vez de despejar HTML, citar fontes.
-- **Trade-off:** modelo principal precisa decidir entre `WebFetch` direto (rápido, 1 página) vs. `Agent(WebResearcher)` (lento, multi-página). Resolvido por descriptions bem escritas no registro.
-- **Arquivos:** registro de subagents (próximo a onde Code/Explore/Plan vivem), system prompt em `src/skills/` ou inline.
+## Ativos (13 itens)
 
 ### 9.0 — Notificações nativas do SO (P2)
 - **Esforço:** P (~150-200 LoC + matriz de testes manuais por SO)
@@ -134,6 +125,18 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 8.0 — `WebResearcher` subagent built-in para research multi-página (2026-05-16)
+Novo `subagent_type: 'WebResearcher'` registrado ao lado de Code/Explore/Plan. Reusa a primitiva de subagent existente — zero código novo no `AgentTool` genérico. Pai descobre automaticamente via `whenToUse`.
+
+- **Allowlist:** `[WebSearch, WebFetch]` — escopo puro web público; sem leitura local, sem MCP, sem shell. `tools: [...]` em vez de `disallowedTools` evita regressão se novas write-tools forem adicionadas.
+- **Modelo:** `'haiku'` (universal: Anthropic/Bedrock/Vertex/Foundry). Override per-user via `agentModelOverrides['built-in:WebResearcher']` (hook já existente em `agentModelResolver.ts`).
+- **`omitClaudeMd: true`** — research não precisa de regras de commit/lint do projeto.
+- **`permissionMode`** herdado — domain check do `WebFetch` continua válido em domínio novo.
+- **System prompt** inline com regras: decidir entrada (URL → fetch direto; senão → search), parar em ~5–7 fetches sem progresso, sintetizar (não despejar HTML), citação obrigatória em markdown link, paralelismo onde possível.
+- Sem feature flag (decisão por simplicidade); reverte via PR se aparecer problema.
+- Arquivos: `src/tools/AgentTool/built-in/webResearcherAgent.ts` (~55 LoC) + `.test.ts` (~60 LoC, 9 testes de regression) + 4 linhas em `builtInAgents.ts`.
+- Doc: [`docs/tech/web-researcher/README.md`](docs/tech/web-researcher/README.md).
 
 ### 7.0 — `/autofix-pr` — comando unificado de autofix de PR (2026-05-15)
 Reativo (sem `--watch`): usuário invoca; comando coleta → triagem → fix → push → reply, loop até 5 iter com anti-stall. ~7 commits, ~700 LoC TS + testes/snapshots em `feat/autofix-pr`.

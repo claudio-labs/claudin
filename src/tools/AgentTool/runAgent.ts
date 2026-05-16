@@ -447,17 +447,15 @@ export async function* runAgent({
     ? userContextNoClaudeMd
     : baseUserContext
 
-  // Explore/Plan are read-only search agents — the parent-session-start
-  // gitStatus (up to 40KB, explicitly labeled stale) is dead weight. If they
-  // need git info they run `git status` themselves and get fresh data.
-  // Saves ~1-3 Gtok/week fleet-wide.
+  // Agents that don't need stale gitStatus (up to 40KB) opt out via
+  // omitGitStatus. Read-only search agents (Explore, Plan) can run
+  // `git status` themselves for fresh data; web-only agents (WebResearcher)
+  // never touch git. Saves ~1-3 Gtok/week fleet-wide.
   const { gitStatus: _omittedGitStatus, ...systemContextNoGit } =
     baseSystemContext
-  const resolvedSystemContext =
-    agentDefinition.agentType === 'Explore' ||
-    agentDefinition.agentType === 'Plan'
-      ? systemContextNoGit
-      : baseSystemContext
+  const resolvedSystemContext = agentDefinition.omitGitStatus
+    ? systemContextNoGit
+    : baseSystemContext
 
   // Override permission mode if agent defines one
   // However, don't override if parent is in bypassPermissions or acceptEdits mode - those should always take precedence

@@ -16,3 +16,4 @@ docs/tech/
 | Feature | Status | Discovery |
 |---|---|---|
 | [`bash-output-filter/`](bash-output-filter/) | Em design | [`docs/discovery/bash-output-filter/`](../discovery/bash-output-filter/) |
+| [`web-researcher/`](web-researcher/) | Implementado (2026-05-16) | — |

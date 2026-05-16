@@ -7,4 +7,5 @@ export const LEGACY_AGENT_TOOL_NAME = 'Task'
 export const ONE_SHOT_BUILTIN_AGENT_TYPES: ReadonlySet<string> = new Set([
   'Explore',
   'Plan',
+  'WebResearcher',
 ])

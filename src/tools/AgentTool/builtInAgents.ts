@@ -6,6 +6,7 @@ import { CLAUDE_CODE_GUIDE_AGENT } from './built-in/claudeCodeGuideAgent.js'
 import { EXPLORE_AGENT } from './built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from './built-in/planAgent.js'
+import { WEB_RESEARCHER_AGENT } from './built-in/webResearcherAgent.js'
 import type { AgentDefinition } from './loadAgentsDir.js'
 
 export function areExplorePlanAgentsEnabled(): boolean {
@@ -45,6 +46,10 @@ export function getBuiltInAgents(): AgentDefinition[] {
   if (areExplorePlanAgentsEnabled()) {
     agents.push(EXPLORE_AGENT, PLAN_AGENT)
   }
+
+  // Multi-page web research subagent — isolated context so the parent does not
+  // accumulate raw HTML. See docs/tech/web-researcher/README.md.
+  agents.push(WEB_RESEARCHER_AGENT)
 
   // Include Code Guide agent for non-SDK entrypoints
   const isNonSdkEntrypoint =

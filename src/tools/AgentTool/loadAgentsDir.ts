@@ -123,6 +123,11 @@ export type BaseAgentDefinition = {
    * full CLAUDE.md and interprets their output. Saves ~5-15 Gtok/week across
    * 34M+ Explore spawns. Kill-switch: tengu_slim_subagent_claudemd. */
   omitClaudeMd?: boolean
+  /** Omit the parent-session gitStatus blob (up to 40KB, often stale) from the
+   * agent's systemContext. Useful for agents that either don't touch git
+   * (WebResearcher) or can run `git status` themselves for fresh data
+   * (Explore, Plan). */
+  omitGitStatus?: boolean
 }
 
 // Built-in agents - dynamic prompts only, no static systemPrompt field
