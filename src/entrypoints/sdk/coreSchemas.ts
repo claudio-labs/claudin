@@ -93,7 +93,7 @@ export const ThinkingDisabledSchema = lazySchema(() =>
 
 export const ThinkingConfigSchema = lazySchema(() =>
   z
-    .union([
+    .discriminatedUnion('type', [
       ThinkingAdaptiveSchema(),
       ThinkingEnabledSchema(),
       ThinkingDisabledSchema(),
@@ -140,6 +140,8 @@ export const McpSdkServerConfigSchema = lazySchema(() =>
 )
 
 export const McpServerConfigForProcessTransportSchema = lazySchema(() =>
+  // Not a discriminatedUnion: McpStdioServerConfigSchema has `type` optional
+  // for backwards compatibility (configs without `type` default to stdio).
   z.union([
     McpStdioServerConfigSchema(),
     McpSSEServerConfigSchema(),
@@ -313,7 +315,7 @@ export const PermissionDecisionClassificationSchema = lazySchema(() =>
 )
 
 export const PermissionResultSchema = lazySchema(() =>
-  z.union([
+  z.discriminatedUnion('behavior', [
     z.object({
       behavior: z.literal('allow'),
       // Optional - may not be provided if hook sets permission without input modification
@@ -765,6 +767,8 @@ export const SessionEndHookInputSchema = lazySchema(() =>
 )
 
 export const HookInputSchema = lazySchema(() =>
+  // Not a discriminatedUnion: each branch is a ZodIntersection (BaseHookInputSchema().and(...)),
+  // which zod 4's discriminatedUnion rejects — the discriminator must live on a top-level ZodObject.
   z.union([
     PreToolUseHookInputSchema(),
     PostToolUseHookInputSchema(),
@@ -875,7 +879,7 @@ export const NotificationHookSpecificOutputSchema = lazySchema(() =>
 export const PermissionRequestHookSpecificOutputSchema = lazySchema(() =>
   z.object({
     hookEventName: z.literal('PermissionRequest'),
-    decision: z.union([
+    decision: z.discriminatedUnion('behavior', [
       z.object({
         behavior: z.literal('allow'),
         updatedInput: z.record(z.string(), z.unknown()).optional(),
@@ -1451,7 +1455,10 @@ export const SDKResultErrorSchema = lazySchema(() =>
 )
 
 export const SDKResultMessageSchema = lazySchema(() =>
-  z.union([SDKResultSuccessSchema(), SDKResultErrorSchema()]),
+  z.discriminatedUnion('subtype', [
+    SDKResultSuccessSchema(),
+    SDKResultErrorSchema(),
+  ]),
 )
 
 export const SDKSystemMessageSchema = lazySchema(() =>

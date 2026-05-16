@@ -1,12 +1,46 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative + **11.1** entregues; 10.2 e 10.3 arquivados por premissa parcialmente falsa; abertos derivatives 10.2-derivative ✅ e 10.3-derivative — fim do follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96; +5 itens 11.x abertos a partir da auditoria pós-upgrade de zod/marked/typescript/react/undici)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (14 itens)
+## Ativos (18 itens)
+
+### 11.2 — Limpar `ignoreDeprecations: "6.0"` no `tsconfig.json` (P3)
+- **Esforço:** XS (~15 min — `tsc` aponta o que reclama)
+- **Prioridade:** P3 — higiene; é dívida explícita declarada no próprio config.
+- **Estado:** `tsconfig.json:20` silencia deprecations específicas do TS 6.0. Sem o flag, `bun run typecheck` lista os call-sites a corrigir. Provavelmente `getOwnPropertyDescriptor`/`importsNotUsedAsValues` ou similar — patches localizados.
+- **Ganho:** Remove uma supressão global que pode mascarar novas deprecations futuras do TS 6.x.
+- **Abordagem:** (1) remover linha 20; (2) rodar `bun run typecheck`; (3) corrigir cada warning; (4) recolocar o flag só se algo for genuinamente fora do nosso controle (com comentário explicando).
+- **Arquivos:** `tsconfig.json` + os arquivos que `tsc` apontar.
+
+### 11.3 — `<Activity>` (React 19.2) em overlays do REPL (P2)
+- **Esforço:** M (~2h — entender ciclo de mount de cada overlay + testar interativamente em Ink)
+- **Prioridade:** P2 — UX win visível; alvo certo para feedback visual de "voltei e tudo está como eu deixei".
+- **Estado:** React 19.2 introduziu `<Activity mode="visible|hidden">` para esconder subárvore **preservando state** (em vez de unmount). Hoje permission dialog (`src/services/mcpServerApproval.tsx`), `/provider` picker (`src/commands/provider/`), plan-mode panel, history picker remontam ao reabrir — perdem scroll position, cursor, draft de input. `react-reconciler@0.33` (pinned) precisa ser verificado: confirmar se Ink upstream passa o elemento intacto ou se host-config precisa de allow-list (`<Activity>` é primitive React, não DOM, então deveria fluir).
+- **Ganho:** UX qualitativa — usuário recupera contexto ao trocar entre overlay e REPL. Hoje cada toggle é "stateful reset".
+- **Abordagem:** (1) protótipo num único overlay (sugestão: `/provider` picker — alto custo de re-construir lista filtrada por search); (2) medir comportamento em terminal real; (3) propagar pros outros 3 overlays se OK; (4) caso Ink não suporte, abrir issue upstream e parar aqui.
+- **Risco:** feature React 19.2 + Ink não-DOM = possível incompatibilidade silenciosa. Sempre fácil reverter (comentar o wrapper).
+- **Arquivos:** `src/services/mcpServerApproval.tsx`, `src/commands/provider/*.tsx`, `src/screens/REPL.tsx` (plan panel + history picker).
+
+### 11.4 — `useEffectEvent` (React 19.2) no `REPL.tsx` (P3)
+- **Esforço:** M (~1-2h — 42 useEffects, precisa identificar quais têm stale closure de verdade)
+- **Prioridade:** P3 — **só fazer se houver bug concreto de stale closure reportado**. Aplicar em massa = refactor preventivo (anti-pattern do roadmap).
+- **Estado:** React 19.2 estabilizou `useEffectEvent` — callback estável que sempre lê props/state mais recentes sem precisar entrar nas deps do `useEffect`. `src/screens/REPL.tsx` tem **42 useEffects**; alguns provavelmente sofrem do padrão clássico "handler longo-vivo + state que muda + deps incompletas pra não re-subscribe". Sem reproduzir bug, é dívida hipotética.
+- **Ganho:** Caça bugs latentes de stale closure se existirem. Zero se não existirem.
+- **Abordagem:** **gate por sintoma**. Quando aparecer bug de "handler usou valor antigo" no REPL, refatorar **esse** effect com `useEffectEvent`. Não fazer sweep.
+- **Arquivos:** `src/screens/REPL.tsx`.
+
+### 11.5 — undici 8 pool tuning + HTTP/2 per-provider (P3)
+- **Esforço:** L (~3-4h — exige benchmark antes e depois por provider)
+- **Prioridade:** P3 — sem dados de baseline, é chute. Adiar até ter relato de latência ou conexões esgotadas.
+- **Estado:** `src/utils/proxy.ts:207-245` usa `EnvHttpProxyAgent` sem ajustar `connections`, `keepAliveTimeout`, `pipelining`, `allowH2`. undici 8 ligou **HTTP/2 por padrão** — alguns gateways OpenAI-compatíveis são h1-only e fazem fallback com RTT extra (pode querer `allowH2: false` por provider). Também: `src/utils/proxy.ts:30` flipa `keepAliveDisabled` no dispatcher **global**, penalizando todas as conexões quando o objetivo provavelmente era cirúrgico.
+- **Ganho:** Incerto sem medição. Em cenário ideal: -50-200 ms por request em providers h1-only com fallback negativo + reuso de connection pool mais agressivo em sessões longas.
+- **Abordagem:** (1) escrever bench em `scripts/profile/` que faz N requests sequenciais por provider (Anthropic, OpenAI direto, Firecrawl, gateway h1-only conhecido) e mede p50/p95; (2) baseline com config atual; (3) iterar `allowH2`/`connections`/`pipelining` por provider; (4) refatorar `keepAliveDisabled` para per-dispatcher em vez de global; (5) só shipar se delta for >10% num cenário real.
+- **Risco:** fallback h2→h1 silencioso pode degradar sem alarme. Bench tem que ser anterior à mudança.
+- **Arquivos:** `src/utils/proxy.ts`, novo `scripts/profile/undici-pool-bench.ts`.
 
 ### 10.3-derivative — Surface refusal explanation/category (P3)
 - **Esforço:** XS (~15-30 LoC + 1 teste)
@@ -134,6 +168,15 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 11.1 — `discriminatedUnion` no `coreSchemas.ts` (2026-05-16)
+Auditoria dos `z.union([...])` em `src/entrypoints/sdk/coreSchemas.ts` separou 3 grupos (line numbers pós-edição):
+
+- **Convertidos (4 sites):** `ThinkingConfigSchema` (linha 94, discriminator `type` — branches `adaptive`/`enabled`/`disabled`), `PermissionResultSchema` (linha 317, discriminator `behavior`), `SDKResultMessageSchema` (linha 1457, discriminator `subtype` — `success` literal + enum de erros, suportado em zod 4) e o `decision` interno de `PermissionRequestHookSpecificOutputSchema` (linha 879, discriminator `behavior`). Despacho O(1) em vez de tentar cada branch sequencialmente; erros de validação passam a listar as branches válidas do discriminator.
+- **Mantidos como `z.union` com comentário explicativo (2 sites):** `McpServerConfigForProcessTransportSchema` (linha 142) — `McpStdioServerConfigSchema` tem `type` opcional para backwards-compat (configs antigas sem `type` default → stdio), o que `discriminatedUnion` rejeita; `HookInputSchema` (linha 769) — cada branch é `ZodIntersection` (`BaseHookInputSchema().and(...)`), zod 4 exige discriminador em `ZodObject` top-level.
+- **Não tocados (sem discriminador comum / colisão):** `McpServerStatusConfigSchema` (depende da union de cima), `AsyncHookJSONOutputSchema | SyncHookJSONOutputSchema` (sem discriminador), `SDKStatusSchema` (literal + null), `AgentMcpServerSpecSchema` (string vs record — tipos primitivos), `SDKMessageSchema` (22 branches, várias colisões em `type: 'system'` e `type: 'user'`).
+- **Verificação:** `bun run typecheck` limpo no arquivo; `bun run build` + `bun run smoke` (0.2.9) ok; `bun run test:provider` mesmas 70 falhas pré-existentes (sem regressão).
+- Arquivos: `src/entrypoints/sdk/coreSchemas.ts` (4 conversões + 2 comentários explicativos de "por que não").
 
 ### 10.2-derivative — Fix de pricing TTL `ephemeral_1h` no `/cost` (2026-05-16)
 Auditoria do item 10.2 (cache diagnostics beta) achou um bug não-cosmético adjacente: `tokensToUSDCost` em `src/utils/modelCost.ts:221` agregava `cache_creation_input_tokens` como escalar e bilhava tudo na tabela 5m TTL (`inputTokens × 1.25`). Sessões que cruzavam o threshold de `should1hCacheTTL` (`claude.ts:414-425`, doc no item 1.13) latcham na escrita 1h — cobrada pela Anthropic a `inputTokens × 2.0`, ou seja, **+60%** sobre o segmento de cache writes. O `/cost` reportava menos do que a fatura real.
@@ -333,9 +376,9 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 2× P2: **9.0** (OS notifications)/6.2-Windows; 7× P3: **10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **25 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1** e **10.2-derivative** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
+**18 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**11.3** (`<Activity>` overlays); 10× P3: **11.2**/**11.4**/**11.5**/**10.3-derivative**/5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **26 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1**, **10.2-derivative** e **11.1** recém-movidos). 5.9, 10.2 e 10.3 desclassificadas por premissa (parcialmente) falsa — ver Removidos.
 
-**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der. Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
+**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). Quick win remanescente dos upgrades de libs: **11.2** (limpar `ignoreDeprecations`, XS). **11.3** (`<Activity>` overlays) é o próximo passo de UX. **11.4** e **11.5** ficam dormentes até haver sintoma. O follow-up do upgrade SDK 0.81→0.96 está fechado — só sobrou o quick-win **10.3-derivative** (P3, XS) para pegar quando der.
 
 **Auditoria SDK 0.82→0.96 — descartados como itens:**
 - *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.
