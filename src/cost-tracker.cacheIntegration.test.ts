@@ -15,7 +15,12 @@
  * test fails for the right reason if anyone breaks the wrapping.
  */
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { addToTotalSessionCost, resetCostState } from './cost-tracker.js'
+import {
+  addToTotalSessionCost,
+  getTotalCost,
+  recomputeCostStateFromMessages,
+  resetCostState,
+} from './cost-tracker.js'
 import {
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
@@ -103,6 +108,62 @@ describe('addToTotalSessionCost → cacheStatsTracker wiring', () => {
     // hitRate computed against a non-zero total is 0, not null — empty
     // cache on a cacheable provider is a legitimate "no-hit" signal.
     expect(turn.hitRate).toBe(0)
+  })
+})
+
+describe('recomputeCostStateFromMessages — preserves cache_creation TTL split', () => {
+  // Pins the fix in cost-tracker.ts:187-195: the normalization layer used to
+  // strip `cache_creation`, forcing the 1h ephemeral bucket to fall back to
+  // the 5m rate. A resumed session with 1h cache hits would underbill ~60%.
+  test('resume path bills 1h-only cache writes at the 2× rate', () => {
+    // Sonnet 4.5 → COST_TIER_3_15: 1h write = $6/Mtok, 5m write = $3.75/Mtok.
+    // 1M 1h tokens → $6 ; if cache_creation were stripped, would be $3.75.
+    const messages = [
+      {
+        type: 'assistant',
+        message: {
+          model: 'claude-sonnet-4-5-20250514',
+          usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_creation_input_tokens: 1_000_000,
+            cache_read_input_tokens: 0,
+            cache_creation: {
+              ephemeral_1h_input_tokens: 1_000_000,
+              ephemeral_5m_input_tokens: 0,
+            },
+          },
+        },
+      },
+    ]
+
+    recomputeCostStateFromMessages(messages)
+    expect(getTotalCost()).toBeCloseTo(6, 5)
+  })
+
+  test('resume path bills mixed 1h+5m as the sum of both buckets', () => {
+    const messages = [
+      {
+        type: 'assistant',
+        message: {
+          model: 'claude-sonnet-4-5-20250514',
+          usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_creation_input_tokens: 1_000_000,
+            cache_read_input_tokens: 0,
+            cache_creation: {
+              ephemeral_1h_input_tokens: 500_000,
+              ephemeral_5m_input_tokens: 500_000,
+            },
+          },
+        },
+      },
+    ]
+
+    recomputeCostStateFromMessages(messages)
+    // 0.5 * 6 + 0.5 * 3.75 = 4.875
+    expect(getTotalCost()).toBeCloseTo(4.875, 5)
   })
 })
 

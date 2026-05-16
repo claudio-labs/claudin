@@ -1,21 +1,12 @@
 # Claudio — Roadmap Técnico
 
-> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 entregue; 10.2/10.3 ainda ativos — follow-ups do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
+> Última auditoria: 2026-05-16 | ROI honesto, sem itens marginais | última atualização: 2026-05-16 (10.1 + 10.2-derivative entregues; 10.2 arquivado por premissa falsa; 10.3 ainda ativo — follow-up do upgrade `@anthropic-ai/sdk` 0.81 → 0.96)
 
 Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos e overengineering foram removidos. Mantém só o que **vale a pena de verdade** + histórico do que já foi feito.
 
 ---
 
-## Ativos (15 itens)
-
-### 10.2 — Adotar cache diagnostics beta do SDK 0.96 (P1)
-- **Esforço:** M (~150-250 LoC + testes)
-- **Prioridade:** P1 — afeta visibilidade do recurso de maior ROI da plataforma Anthropic (prompt caching).
-- **Estado:** Hoje consumimos só os escalares `cache_creation_input_tokens` e `cache_read_input_tokens` em `/usage`, `/cost`, e `services/api/promptCacheBreakDetection.ts`. A heurística de break detection é estimativa local (compara prefixo turn-a-turn). SDK 0.96 introduziu beta de **cache diagnostics** que expõe dados autoritativos do servidor (qual breakpoint hit/miss, motivo do break, idade do cache hit).
-- **Ganho:** (1) `/cost` e `/usage` ganham breakdown por breakpoint; (2) `promptCacheBreakDetection` pode substituir heurística por verdade do servidor; (3) habilita métricas precisas para validar itens como 1.10 (membership stability) sem rodar bench sintético.
-- **Abordagem:** (1) ativar header beta opcional gated por feature flag `CACHE_DIAGNOSTICS` em `scripts/build.ts`; (2) estender `services/api/claude.ts` para ler campo novo e propagar via `SDKUsage`; (3) atualizar `commands/usage` e `commands/cost` com tabela "by breakpoint"; (4) refatorar `promptCacheBreakDetection.ts` para preferir dados do servidor quando disponíveis, fallback para heurística atual. Aplica-se só a Anthropic-native; OpenAI shim ignora.
-- **Trade-off:** Beta API — sujeito a mudança. Gated por flag mitiga risco.
-- **Arquivos:** `scripts/build.ts` (flag), `src/services/api/claude.ts`, `src/services/api/promptCacheBreakDetection.ts`, `src/commands/usage/*`, `src/commands/cost/*`, `src/entrypoints/agentSdkTypes.ts` (estender `SDKUsage`).
+## Ativos (14 itens)
 
 ### 10.3 — Adotar `stop_details` estruturado (P2)
 - **Esforço:** S-M (~80-120 LoC + testes)
@@ -142,6 +133,16 @@ Roadmap enxuto após auditoria contra o código real. Itens marginais, obsoletos
 ---
 
 ## Concluídos ✅
+
+### 10.2-derivative — Fix de pricing TTL `ephemeral_1h` no `/cost` (2026-05-16)
+Auditoria do item 10.2 (cache diagnostics beta) achou um bug não-cosmético adjacente: `tokensToUSDCost` em `src/utils/modelCost.ts:221` agregava `cache_creation_input_tokens` como escalar e bilhava tudo na tabela 5m TTL (`inputTokens × 1.25`). Sessões que cruzavam o threshold de `should1hCacheTTL` (`claude.ts:414-425`, doc no item 1.13) latcham na escrita 1h — cobrada pela Anthropic a `inputTokens × 2.0`, ou seja, **+60%** sobre o segmento de cache writes. O `/cost` reportava menos do que a fatura real.
+
+- **Fix:** estender `ModelCosts` com `promptCacheWrite1hTokens?` (Anthropic-only; non-Claude fica undefined → fallback 5m), popular nos 6 tiers Claude (`COST_TIER_3_15`: 6, `COST_TIER_15_75`: 30, `COST_TIER_5_25`: 10, `COST_TIER_30_150`: 60, `COST_HAIKU_35`: 1.6, `COST_HAIKU_45`: 2), e refatorar `tokensToUSDCost` para preferir `usage.cache_creation.ephemeral_{1h,5m}_input_tokens` (já vem do SDK, descartávamos) quando presente, fallback escalar caso contrário.
+- **Bug secundário:** `recomputeCostStateFromMessages` em `cost-tracker.ts:187-195` strippa o objeto `cache_creation` ao normalizar — sessões resumidas (cold-load via `/resume`) caíam no fallback mesmo quando a transcrição preservava o split. Adicionado `cache_creation: usage.cache_creation` à normalização.
+- **Limitações aceitas:** (a) Bedrock/Vertex/OpenAI-compat não expõem o split TTL — caem no fallback 5m (bug residual conhecido); (b) `cost-tracker.ts:597` (advisor cost) idem; (c) `vcr.ts:167` (replay) preserva se a recording preservou.
+- **Testes:** 5 casos novos em `src/utils/modelCost.test.ts` (1h-only, 5m-only regression, mix, fallback escalar, non-Anthropic fallback) + 2 em `src/cost-tracker.cacheIntegration.test.ts` (`recomputeCostStateFromMessages` end-to-end com TTL split). 38 + 6 pass.
+- **10.2 original arquivado** — premissa "breakdown por breakpoint" não existe na API; `BetaDiagnostics` é request-scoped (ver Removidos).
+- Arquivos: `src/utils/modelCost.ts`, `src/utils/modelCost.test.ts`, `src/cost-tracker.ts`, `src/cost-tracker.cacheIntegration.test.ts`. ~75 LoC + testes.
 
 ### 10.1 — Normalização de imports `zod/v4` (2026-05-16)
 Codemod mecânico: 138 arquivos (`src/**/*.ts(x)` + `scripts/measure-tokenizer-accuracy.ts`) migrados de `from 'zod'` para `from 'zod/v4'`. Zero residual; regra `.claudio/rules/typescript-patterns.md` agora alinhada 100% ao código.
@@ -298,6 +299,7 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 **Bug do roadmap:** 2.6 e 4.6 eram o **mesmo item duplicado** ("preprocessamento de feature flags") em pilares diferentes — removidos. SIGINT/SIGTERM já tratado no `build.ts`; SIGKILL é raro o bastante para aceitar `git checkout --`.
 
 **Premissa falsa:**
+- **10.2** (cache diagnostics beta do SDK 0.96) — auditado em 2026-05-16. Premissa original ("breakdown hit/miss por breakpoint em `/usage` e `/cost`") **não existe na API**: `BetaDiagnostics` em `@anthropic-ai/sdk@0.96` é request-scoped, expõe `cache_miss_reason` (enum único) e `cache_missed_input_tokens` (escalar único) — não há array por breakpoint nem "idade do cache hit". Substituir `promptCacheBreakDetection.ts` por dados do servidor seria troca lateral: heurística atual cobre flips de escopo/TTL que o servidor ignora, e funciona em todos os providers (beta header é Anthropic-native só). Custo de beta opt-in stateful (`previous_message_id` por sessão) não compensa pra **uma linha extra** no `/cost`. Quick-win adjacente identificado na auditoria (bug de pricing TTL 1h) virou item **10.2-derivative** em Concluídos.
 - **3.5** (rate-limit headers Bedrock/Vertex/Gemini) — esses providers **não emitem** `x-ratelimit-reset-*`. Bedrock usa AWS SDK error metadata, Gemini usa `RetryInfo` em gRPC details. Não é "estamos ignorando", é "não existe pra ignorar". Escopo real >> M.
 - **5.9** (lazy registry de tools em `tools.ts`) — desclassificada após bench empírico em 2026-05-04. Premissa original era "dezenas de MB de retained code+ICs". Bench (`scripts/profile/cold-start-retained-bench.ts` com 14 probes per-candidate, baseline em `baselines/cold-start-retained.json`) mostrou que TODOS os candidatos puxam ~30 MB de heap idêntico via stack transitiva compartilhada (Tool.ts + zod + ink + prompt helpers). Delta do módulo próprio do tool é <1 MB cada — única exceção foi AskUserQuestionTool (13 MB vs 30 MB, único que não puxa a stack completa). Ganho real estimado: 3-5 MB total no melhor caso, não dezenas. Adicionar isso justifica o custo de Proxy traps + audit de cross-imports + refactor de identity-checks em `PermissionRequest.tsx`. Roadmap-killer: dois reviews independentes (Plan agent) também identificaram bloqueadores (identity comparisons quebram com Proxy, no-Suspense em REPL, memo cache do react-compiler). Os 4 testes escritos durante a investigação (`src/__tests__/lazyToolImports.test.ts`, `src/__tests__/lazyToolModuleLoad.test.ts`, `src/components/permissions/PermissionRequest.test.ts`, e os probes adicionais no `cold-start-retained-bench.ts`) ficam como guarda — `lazyToolImports` previne re-eagerização acidental de tools que hoje só são importados por `tools.ts`, e `PermissionRequest.test` trava drift entre `tool.name` e a constante NAME exportada.
 
@@ -329,9 +331,9 @@ Per-provider implementado (Anthropic, OpenAI, Gemini com fórmulas próprias).
 
 ## Total
 
-**15 ativos** (1× P0: 4.1; 4× P1: 5.10/5.11/1.10/**10.2**; 3× P2: **9.0** (OS notifications)/6.2-Windows/**10.3**; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **24 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0** e **10.1** recém-movidos). 5.9 desclassificada por bench empírico — ver "Premissa falsa" em Removidos.
+**14 ativos** (1× P0: 4.1; 3× P1: 5.10/5.11/1.10; 3× P2: **9.0** (OS notifications)/6.2-Windows/**10.3**; 6× P3: 5.2/5.3b/5.1b/1.11/1.12/1.13; +3.12 sem prio) + **25 concluídos** (incl. **6.1**, **6.2-Linux**, **7.0**, **8.0**, **10.1** e **10.2-derivative** recém-movidos). 5.9 e 10.2 desclassificadas por premissa falsa — ver Removidos.
 
-**Próxima entrega:** **10.2** (cache diagnostics beta — P1, M, breakdown por breakpoint em `/usage` e `/cost`). Em seguida P0 **4.1** (testes para caminhos críticos) e depois **10.3** (`stop_details`). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
+**Próxima entrega:** P0 **4.1** (testes para caminhos críticos). Em seguida **10.3** (`stop_details` estruturado — P2, último follow-up do upgrade SDK 0.81→0.96). Detalhes históricos dos itens concluídos estão na seção Concluídos acima.
 
 **Auditoria SDK 0.82→0.96 — descartados como itens:**
 - *Token budgets server-side* (0.90.0) — sobrepõe ao nosso `applyStableStubs` (per-turn, determinístico) em `QueryEngine.ts:253`. Adotar significaria abrir mão de controle local de stubs/cache-breakpoints em troca de política black-box do servidor. Pas overengineering, **skip**.

@@ -181,6 +181,77 @@ describe('calculateUSDCost — non-Claude end-to-end', () => {
   })
 })
 
+describe('calculateUSDCost — TTL cache breakdown (1h vs 5m)', () => {
+  // Sonnet 4.5 → COST_TIER_3_15: 5m write = $3.75/Mtok, 1h write = $6/Mtok
+  const sonnet = 'claude-sonnet-4-5-20250514'
+
+  it('bills 1h-only cache_creation at the 2× rate', () => {
+    const usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation: {
+        ephemeral_1h_input_tokens: 1_000_000,
+        ephemeral_5m_input_tokens: 0,
+      },
+    } as unknown as Usage
+    const cost = calculateUSDCost(sonnet, usage)
+    expect(cost).toBeCloseTo(6, 5)
+  })
+
+  it('bills 5m-only cache_creation at the 1.25× rate (regression)', () => {
+    const usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation: {
+        ephemeral_1h_input_tokens: 0,
+        ephemeral_5m_input_tokens: 1_000_000,
+      },
+    } as unknown as Usage
+    const cost = calculateUSDCost(sonnet, usage)
+    expect(cost).toBeCloseTo(3.75, 5)
+  })
+
+  it('bills mixed 1h+5m at the sum of both buckets', () => {
+    const usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation: {
+        ephemeral_1h_input_tokens: 500_000,
+        ephemeral_5m_input_tokens: 500_000,
+      },
+    } as unknown as Usage
+    const cost = calculateUSDCost(sonnet, usage)
+    // 0.5 * 6 + 0.5 * 3.75 = 3 + 1.875 = 4.875
+    expect(cost).toBeCloseTo(4.875, 5)
+  })
+
+  it('falls back to scalar cache_creation_input_tokens at 5m rate when split absent', () => {
+    const usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation_input_tokens: 1_000_000,
+    } as unknown as Usage
+    const cost = calculateUSDCost(sonnet, usage)
+    // Pre-fix behavior preserved for shims/replay paths without TTL split.
+    expect(cost).toBeCloseTo(3.75, 5)
+  })
+
+  it('non-Anthropic models bill 1h bucket at the 5m fallback price (no 1h product)', () => {
+    // DeepSeek has no 1h ephemeral concept; the bucket still bills at the
+    // model's only cache-write rate (here equal to input: $0.14/Mtok).
+    const usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation: {
+        ephemeral_1h_input_tokens: 1_000_000,
+        ephemeral_5m_input_tokens: 0,
+      },
+    } as unknown as Usage
+    const cost = calculateUSDCost('deepseek-chat', usage)
+    expect(cost).toBeCloseTo(0.14, 5)
+  })
+})
+
 describe('getModelPricingString — non-Claude', () => {
   it('formats DeepSeek pricing', () => {
     expect(getModelPricingString('deepseek-chat')).toBe('$0.14/$0.28 per Mtok')

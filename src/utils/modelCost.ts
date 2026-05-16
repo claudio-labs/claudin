@@ -29,6 +29,9 @@ export type ModelCosts = {
   inputTokens: number
   outputTokens: number
   promptCacheWriteTokens: number
+  // 1h ephemeral cache write price per Mtok. Anthropic-only; when omitted, the
+  // 1h TTL bucket falls back to `promptCacheWriteTokens` (5m pricing).
+  promptCacheWrite1hTokens?: number
   promptCacheReadTokens: number
   webSearchRequests: number
 }
@@ -38,6 +41,7 @@ export const COST_TIER_3_15 = {
   inputTokens: 3,
   outputTokens: 15,
   promptCacheWriteTokens: 3.75,
+  promptCacheWrite1hTokens: 6,
   promptCacheReadTokens: 0.3,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -47,6 +51,7 @@ export const COST_TIER_15_75 = {
   inputTokens: 15,
   outputTokens: 75,
   promptCacheWriteTokens: 18.75,
+  promptCacheWrite1hTokens: 30,
   promptCacheReadTokens: 1.5,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -56,6 +61,7 @@ export const COST_TIER_5_25 = {
   inputTokens: 5,
   outputTokens: 25,
   promptCacheWriteTokens: 6.25,
+  promptCacheWrite1hTokens: 10,
   promptCacheReadTokens: 0.5,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -65,6 +71,7 @@ export const COST_TIER_30_150 = {
   inputTokens: 30,
   outputTokens: 150,
   promptCacheWriteTokens: 37.5,
+  promptCacheWrite1hTokens: 60,
   promptCacheReadTokens: 3,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -74,6 +81,7 @@ export const COST_HAIKU_35 = {
   inputTokens: 0.8,
   outputTokens: 4,
   promptCacheWriteTokens: 1,
+  promptCacheWrite1hTokens: 1.6,
   promptCacheReadTokens: 0.08,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -83,6 +91,7 @@ export const COST_HAIKU_45 = {
   inputTokens: 1,
   outputTokens: 5,
   promptCacheWriteTokens: 1.25,
+  promptCacheWrite1hTokens: 2,
   promptCacheReadTokens: 0.1,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
@@ -219,13 +228,27 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
  * Calculates the USD cost based on token usage and model cost configuration
  */
 function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
+  const cacheWrite1hPrice =
+    modelCosts.promptCacheWrite1hTokens ?? modelCosts.promptCacheWriteTokens
+
+  // Prefer the per-TTL breakdown (`cache_creation`) over the scalar field so
+  // sessions that latch into the 1h ephemeral cache get billed at the correct
+  // 2× rate instead of the 1.25× 5m rate. Falls back to the scalar for shims
+  // (Bedrock/Vertex/OpenAI-compat) and replay paths that don't carry the split.
+  const cc = usage.cache_creation
+  const cacheWriteCost = cc
+    ? ((cc.ephemeral_5m_input_tokens ?? 0) / 1_000_000) *
+        modelCosts.promptCacheWriteTokens +
+      ((cc.ephemeral_1h_input_tokens ?? 0) / 1_000_000) * cacheWrite1hPrice
+    : ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) *
+      modelCosts.promptCacheWriteTokens
+
   return (
     (usage.input_tokens / 1_000_000) * modelCosts.inputTokens +
     (usage.output_tokens / 1_000_000) * modelCosts.outputTokens +
     ((usage.cache_read_input_tokens ?? 0) / 1_000_000) *
       modelCosts.promptCacheReadTokens +
-    ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) *
-      modelCosts.promptCacheWriteTokens +
+    cacheWriteCost +
     (usage.server_tool_use?.web_search_requests ?? 0) *
       modelCosts.webSearchRequests
   )

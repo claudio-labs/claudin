@@ -189,6 +189,9 @@ export function recomputeCostStateFromMessages(
       output_tokens: usage.output_tokens ?? 0,
       cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
       cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+      // Preserve TTL breakdown so `calculateUSDCost` can bill the 1h ephemeral
+      // bucket at the correct 2× rate instead of the 1.25× 5m fallback.
+      cache_creation: usage.cache_creation,
     } as Usage
     if (
       normalized.input_tokens === 0 &&
