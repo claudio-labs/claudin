@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { afterAll, describe, expect, it, beforeEach } from 'bun:test'
 import { call as knowledgeCall } from './knowledge.js'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import { getGlobalConfig, saveGlobalConfig, resetGlobalConfigForTests } from '../../utils/config.js'
 import { getArc, addEntity, resetArc } from '../../utils/conversationArc.js'
 
 describe('knowledge command', () => {
@@ -64,4 +64,8 @@ describe('knowledge command', () => {
     const res = await knowledgeCallWithCapture('invalid')
     expect(res.toLowerCase()).toContain('unknown subcommand')
   })
+})
+
+afterAll(() => {
+  resetGlobalConfigForTests()
 })

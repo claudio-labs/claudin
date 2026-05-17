@@ -16,8 +16,8 @@
 //   • Env var → process.env mutation with save/restore in afterEach.
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from '../../utils/config.js'
 import type { ExecResult } from '../../utils/ShellCommand.js'
 import { applyBashOutputFilter, shouldFilterOutput } from './BashTool.js'
 
@@ -69,6 +69,10 @@ afterEach(() => {
     ...c,
     bashOutputFilterEnabled: savedBashOutputFilterEnabled,
   }))
+})
+
+afterAll(() => {
+  resetGlobalConfigForTests()
 })
 
 // ---------------------------------------------------------------------------

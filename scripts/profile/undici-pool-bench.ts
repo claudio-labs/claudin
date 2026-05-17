@@ -19,10 +19,12 @@
 //   bun run scripts/profile/undici-pool-bench.ts --scenario=sequential-burst
 //   bun run scripts/profile/undici-pool-bench.ts --json > baselines/undici-pool.json
 //   bun run scripts/profile/undici-pool-bench.ts --compare
+//   bun run scripts/profile/undici-pool-bench.ts --sanity     # harness sanity checks (needs Node)
 //
 // Required: bench needs --expose-gc only if you want clean heap deltas; not
 // used here (this bench is latency-only).
 
+import assert from 'node:assert/strict'
 import { performance } from 'node:perf_hooks'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -45,6 +47,7 @@ type Args = {
   quick: boolean
   json: boolean
   compare: boolean
+  sanity: boolean
   scenario: string | undefined
   latencyMs: number
   payloadBytes: number
@@ -60,6 +63,7 @@ function parseArgs(argv: string[]): Args {
     quick: argv.includes('--quick'),
     json: argv.includes('--json'),
     compare: argv.includes('--compare'),
+    sanity: argv.includes('--sanity'),
     scenario: get('scenario'),
     latencyMs: Number(get('latency-ms') ?? '50'),
     payloadBytes: Number(get('payload-bytes') ?? '2048'),
@@ -497,11 +501,131 @@ function rankByDefault(rows: Row[]): string {
 }
 
 // ----------------------------------------------------------------------------
+// Sanity checks (replaces undici-pool-bench.test.ts — run with --sanity)
+// ----------------------------------------------------------------------------
+
+async function runSanity(): Promise<void> {
+  let passed = 0
+  let failed = 0
+  const results: string[] = []
+
+  async function run(name: string, fn: () => Promise<void>): Promise<void> {
+    const disposables: Array<{ close: () => Promise<void> }> = []
+    try {
+      await fn()
+      passed++
+      results.push(`  ✓ ${name}`)
+    } catch (err) {
+      failed++
+      results.push(`  ✗ ${name}: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      while (disposables.length) {
+        try {
+          await disposables.pop()?.close()
+        } catch {
+          // best-effort cleanup
+        }
+      }
+    }
+  }
+
+  await run('h2-capable server negotiates ALPN h2 when allowH2=true', async () => {
+    const cert = readFileSync(join(TLS_DIR, 'cert.pem'))
+    const key = readFileSync(join(TLS_DIR, 'key.pem'))
+    const server = createSecureServer({ cert, key, allowHTTP1: true })
+    server.on('request', (_req, res) => { res.writeHead(200); res.end('ok') })
+    await new Promise<void>(r => server.listen(0, '127.0.0.1', r))
+    const { port } = server.address() as AddressInfo
+    const origin = `https://127.0.0.1:${port}`
+    let alpn: string | undefined | null | false
+    const onConnected = (msg: unknown) => {
+      const m = msg as { socket?: { alpnProtocol?: string | false | null } }
+      alpn = m.socket?.alpnProtocol
+    }
+    diagnosticsChannel.subscribe('undici:client:connected', onConnected)
+    const pool = new Pool(origin, { allowH2: true, connect: { rejectUnauthorized: false } })
+    try {
+      const res = await pool.request({ origin, path: '/', method: 'GET' })
+      await res.body.dump()
+      assert.equal(alpn, 'h2')
+    } finally {
+      diagnosticsChannel.unsubscribe('undici:client:connected', onConnected)
+      await pool.close()
+      await new Promise<void>(r => server.close(() => r()))
+    }
+  })
+
+  await run('h1-only origin keeps http/1.1 even if allowH2=true', async () => {
+    const server = createH1Server((_req, res) => { res.writeHead(200); res.end('ok') })
+    await new Promise<void>(r => server.listen(0, '127.0.0.1', r))
+    const { port } = server.address() as AddressInfo
+    const origin = `http://127.0.0.1:${port}`
+    let alpn: string | undefined | null | false = 'unset'
+    const onConnected = (msg: unknown) => {
+      const m = msg as { socket?: { alpnProtocol?: string | false | null } }
+      alpn = m.socket?.alpnProtocol
+    }
+    diagnosticsChannel.subscribe('undici:client:connected', onConnected)
+    const pool = new Pool(origin, { allowH2: true })
+    try {
+      const res = await pool.request({ origin, path: '/', method: 'GET' })
+      await res.body.dump()
+      assert.ok(alpn === false || alpn == null, `expected false/null, got ${JSON.stringify(alpn)}`)
+    } finally {
+      diagnosticsChannel.unsubscribe('undici:client:connected', onConnected)
+      await pool.close()
+      await new Promise<void>(r => server.close(() => r()))
+    }
+  })
+
+  await run('socket reuse — N sequential requests on connections=1 produce 1 tcp connect', async () => {
+    const server = createH1Server((_req, res) => { res.writeHead(200); res.end('ok') })
+    await new Promise<void>(r => server.listen(0, '127.0.0.1', r))
+    const { port } = server.address() as AddressInfo
+    const origin = `http://127.0.0.1:${port}`
+    let connects = 0
+    let requests = 0
+    const onConnected = () => { connects++ }
+    const onSendHeaders = () => { requests++ }
+    diagnosticsChannel.subscribe('undici:client:connected', onConnected)
+    diagnosticsChannel.subscribe('undici:client:sendHeaders', onSendHeaders)
+    const pool = new Pool(origin, { connections: 1, keepAliveTimeout: 30_000, pipelining: 1 })
+    try {
+      for (let i = 0; i < 5; i++) {
+        const res = await pool.request({ origin, path: '/', method: 'GET' })
+        await res.body.dump()
+      }
+      assert.equal(requests, 5)
+      assert.equal(connects, 1)
+    } finally {
+      diagnosticsChannel.unsubscribe('undici:client:connected', onConnected)
+      diagnosticsChannel.unsubscribe('undici:client:sendHeaders', onSendHeaders)
+      await pool.close()
+      await new Promise<void>(r => server.close(() => r()))
+    }
+  })
+
+  console.log(`undici-pool-bench harness sanity (${passed + failed} tests):`)
+  for (const line of results) console.log(line)
+  if (failed > 0) {
+    console.error(`\n${failed} test(s) failed`)
+    process.exit(1)
+  }
+  console.log(`\nAll ${passed} sanity tests passed`)
+}
+
+// ----------------------------------------------------------------------------
 // Main
 // ----------------------------------------------------------------------------
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
+
+  if (args.sanity) {
+    await runSanity()
+    return
+  }
+
   const matrix = buildMatrix(args.quick)
   const scenarios: Scenario[] = args.scenario
     ? [args.scenario as Scenario]

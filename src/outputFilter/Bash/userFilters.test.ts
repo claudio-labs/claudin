@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { getGlobalConfig, saveGlobalConfig } from "src/utils/config.js";
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from "src/utils/config.js";
 import {
   clearUserFiltersCache,
   compileUserFilters,
@@ -286,3 +286,7 @@ describe("compileUserFilters — schema hardening", () => {
     expect(compileUserFilters(raw)).toEqual([]);
   });
 });
+
+afterAll(() => {
+  resetGlobalConfigForTests()
+})

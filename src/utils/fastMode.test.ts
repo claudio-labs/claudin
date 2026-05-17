@@ -144,6 +144,7 @@ afterAll(() => {
   mock.module('./privacyLevel.js', () => realPrivacyLevelForFastMode)
   mock.module('./settings/settings.js', () => realSettingsForFastMode)
   mock.module('./signal.js', () => realSignalForFastMode)
+  realConfigForFastMode.resetGlobalConfigForTests?.()
 })
 
 describe('fastMode ant-only fallback cleanup', () => {

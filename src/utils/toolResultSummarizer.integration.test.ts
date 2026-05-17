@@ -60,7 +60,7 @@ const { processToolResultBlock, processPreMappedToolResultBlock } =
 const summarizer = await import('./toolResultSummarizer.js')
 const { setOriginalCwd, getOriginalCwd, getSessionId } = await import('../bootstrap/state.js')
 const { getProjectDir } = await import('./sessionStorage.js')
-const { saveGlobalConfig } = await import('./config.js')
+const { saveGlobalConfig, resetGlobalConfigForTests } = await import('./config.js')
 
 let tempRoot = ''
 const createdProjectDirs = new Set<string>()
@@ -80,6 +80,7 @@ afterAll(async () => {
     await rm(dir, { recursive: true, force: true })
   }
   if (tempRoot) await rm(tempRoot, { recursive: true, force: true })
+  resetGlobalConfigForTests()
 })
 
 beforeEach(async () => {

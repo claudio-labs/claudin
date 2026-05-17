@@ -1,4 +1,5 @@
 import {
+  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -7,6 +8,7 @@ import {
   test,
 } from 'bun:test'
 import type { TerminalNotification } from '../ink/useTerminalNotification.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from '../utils/config.js'
 
 // -- Top-level mocks (must run before importing the SUT) --------------------
 
@@ -22,6 +24,10 @@ const execFileNoThrowImpl = mock<
 
 mock.module('../utils/execFileNoThrow.js', () => ({
   execFileNoThrow: async (cmd: string, args: string[]) => {
+    execCalls.push({ cmd, args })
+    return execFileNoThrowImpl(cmd, args)
+  },
+  execFileNoThrowWithCwd: async (cmd: string, args: string[]) => {
     execCalls.push({ cmd, args })
     return execFileNoThrowImpl(cmd, args)
   },
@@ -54,15 +60,38 @@ mock.module('../utils/env.js', () => ({
       return envState[prop]
     },
   }),
-}))
-
-mock.module('../utils/config.js', () => ({
-  getGlobalConfig: () => ({ preferredNotifChannel: 'os_native' }),
-  saveGlobalConfig: () => {},
+  // envDynamic.ts imports JETBRAINS_IDES as a named export; keep it real to avoid
+  // module-binding errors in sibling test files that share this worker.
+  JETBRAINS_IDES: [
+    'pycharm','intellij','webstorm','phpstorm','rubymine','clion',
+    'goland','rider','datagrip','appcode','dataspell','aqua','gateway',
+    'fleet','jetbrains','androidstudio',
+  ],
 }))
 
 mock.module('../utils/hooks.js', () => ({
   executeNotificationHooks: async () => {},
+  // Stub all exports that modules in the same Bun worker might need.
+  executeWorktreeRemoveHook: async () => {},
+  executeWorktreeCreateHook: async () => {},
+  hasWorktreeCreateHook: () => false,
+  hasWorktreeRemoveHook: () => false,
+  executePreToolUseHooks: async () => ({ decision: 'allow' as const }),
+  executePostToolUseHooks: async () => {},
+  executeStopHooks: async () => ({ decision: 'allow' as const }),
+  executePreCompactHooks: async () => ({ decision: 'allow' as const }),
+  executeUserPromptSubmitHooks: async () => ({ decision: 'allow' as const }),
+  executeSubagentStopHooks: async () => ({ decision: 'allow' as const }),
+  isEnabled: () => false,
+  getHooks: () => ({}),
+  getHooksByType: () => [],
+  shouldEnableHookPrompts: () => false,
+  getGlobalHookConfig: () => ({}),
+  hasHooks: () => false,
+  hasInstructionsLoadedHook: () => false,
+  executeStartupHooks: async () => {},
+  executeShutdownHooks: async () => {},
+  executeInstructionsLoadedHooks: async () => ({ decision: 'allow' as const }),
 }))
 
 mock.module('./analytics/index.js', () => ({
@@ -90,6 +119,7 @@ const terminalStub: TerminalNotification = {
 }
 
 beforeEach(() => {
+  saveGlobalConfig(c => ({ ...c, preferredNotifChannel: 'os_native' }))
   execCalls.length = 0
   execFileNoThrowImpl.mockReset()
   execFileNoThrowImpl.mockImplementation(async () => ({
@@ -109,6 +139,11 @@ beforeEach(() => {
 afterEach(() => {
   _resetNotifierCachesForTests()
 })
+
+afterAll(() => {
+  resetGlobalConfigForTests()
+})
+
 
 describe('sendOsNative on macOS', () => {
   test('prefers terminal-notifier when available', async () => {

@@ -32,6 +32,7 @@ let testConfigState: Record<string, unknown> = {}
 afterAll(() => {
   mock.module('./config.js', () => realConfig)
   mock.module('./providerProfiles.js', () => realProviderProfiles)
+  realConfig.resetGlobalConfigForTests?.()
 })
 
 // Use dynamic imports inside beforeAll so we get fresh bindings after any

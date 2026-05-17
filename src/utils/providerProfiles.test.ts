@@ -89,6 +89,7 @@ afterEach(() => {
 
 afterAll(() => {
   mock.module('./config.js', () => realConfig)
+  realConfig.resetGlobalConfigForTests?.()
 })
 
 async function importFreshProviderProfileModules() {

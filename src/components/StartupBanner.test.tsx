@@ -88,7 +88,7 @@ describe('buildStartupBannerLines', () => {
 
     expect(text).toContain('Anthropic')
     expect(text).toContain('claude-sonnet-4-6')
-    expect(text).toContain('· high')
+    expect(text).toContain('● high')
   })
 
   it('still resolves local providers without crashing', async () => {
@@ -123,8 +123,8 @@ describe('buildStartupBannerLines', () => {
   it('returns a stable line count for snapshot-style assertions', async () => {
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
-    // Banner shape: leading blank + 5 logo rows + trailing blank = 7 lines.
-    expect(lines.length).toBe(7)
+    // Banner shape: leading blank + 4 logo rows + trailing blank = 6 lines.
+    expect(lines.length).toBe(6)
   })
 })
 

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 import { mock } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from '../../bootstrap/state.js'
-import { saveGlobalConfig } from '../config.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from '../config.js'
 
 const realProvidersModule = await import('./providers.js')
 
@@ -90,4 +90,5 @@ test('GitHub provider exposes default + all Copilot models in /model options', a
 
 afterAll(() => {
   mock.module('./providers.js', () => realProvidersModule)
+  resetGlobalConfigForTests()
 })

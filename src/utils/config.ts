@@ -870,6 +870,16 @@ const TEST_GLOBAL_CONFIG_FOR_TESTING: GlobalConfig = {
   autoUpdates: false,
   knowledgeGraphEnabled: true,
 }
+
+/** Call this in afterEach/afterAll when a test modifies the global config, to prevent state leaking into sibling test files that share the same Bun worker. */
+export function resetGlobalConfigForTests(): void {
+  if (process.env.NODE_ENV !== 'test') return
+  Object.assign(TEST_GLOBAL_CONFIG_FOR_TESTING, {
+    ...DEFAULT_GLOBAL_CONFIG,
+    autoUpdates: false,
+    knowledgeGraphEnabled: true,
+  })
+}
 const TEST_PROJECT_CONFIG_FOR_TESTING: ProjectConfig = {
   ...DEFAULT_PROJECT_CONFIG,
 }

@@ -44,3 +44,6 @@ jobs:
 
       - name: Smoke check
         run: bun run smoke
+
+      - name: Tests
+        run: bun test --max-concurrency=1

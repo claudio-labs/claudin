@@ -92,7 +92,7 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       const effort = modelSupportsEffort(resolvedModel)
         ? getDisplayedEffortLevel(resolvedModel, getInitialEffortSetting())
         : undefined
-      return { name: provider.name, model: resolvedModel, baseUrl, isLocal, effort }
+      return { name: provider.name ?? 'Anthropic', model: resolvedModel, baseUrl, isLocal, effort }
     }
     case 'codex_responses':
     case 'openai_compat':
@@ -108,7 +108,8 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       // Base URL is authoritative — must precede rawModel checks so aggregators
       // (OpenRouter/Together/Groq) aren't mislabelled as DeepSeek/Kimi/etc.
       // when routed to models whose IDs contain a vendor prefix. See issue #855.
-      if (/openrouter/i.test(resolvedBaseUrl)) name = 'OpenRouter'
+      if (/api\.openai\.com/i.test(resolvedBaseUrl)) name = 'OpenAI'
+      else if (/openrouter/i.test(resolvedBaseUrl)) name = 'OpenRouter'
       else if (/together/i.test(resolvedBaseUrl)) name = 'Together AI'
       else if (/groq/i.test(resolvedBaseUrl)) name = 'Groq'
       else if (/azure/i.test(resolvedBaseUrl)) name = 'Azure OpenAI'

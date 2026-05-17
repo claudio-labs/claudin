@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 
-import { saveGlobalConfig } from '../config.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from '../config.js'
 import { getDefaultMainLoopModelSetting, getUserSpecifiedModelSetting } from './model.js'
 
 const env = {
@@ -54,4 +54,8 @@ test('user specified model ignores non-string saved model', () => {
     expect(typeof model).toBe('string')
     expect(model).not.toBe('[object Object]')
   }
+})
+
+afterAll(() => {
+  resetGlobalConfigForTests()
 })

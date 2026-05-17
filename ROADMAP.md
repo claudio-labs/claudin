@@ -18,7 +18,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Problema:** Imports dinâmicos sequenciais no boot; vários são independentes.
 - **Ganho:** médio (cold start visível) — **Esforço:** baixo — **Risco:** baixo (preservar ordem onde houver dep).
 
-### [ ] 3. Cache de `isEnabled()` por tool
+### [x] 3. Cache de `isEnabled()` por tool
 - **Arquivos:** `src/tools.ts:179-249`, consumido em `src/screens/REPL.tsx:703`
 - **Problema:** `useMemo` invalida por turn e escaneia ~30 tools chamando `isEnabled()` (toca env/config/flags).
 - **Ganho:** médio — **Esforço:** baixo (invalidação por evento de config) — **Risco:** baixo.

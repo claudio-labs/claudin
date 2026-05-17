@@ -31,8 +31,8 @@ describe('release chunk naming', () => {
     )
   })
 
-  test('local branch keeps the short [name]-[hash] template', () => {
-    expect(buildSrc).toContain("'chunks/[name]-[hash].mjs'")
+  test('local branch keeps the short [name]-buildId-[hash] template', () => {
+    expect(buildSrc).toMatch(/chunks\/\[name\]-\$\{buildId\}-\[hash\]\.mjs/)
   })
 
   test('package.json build:release sets CLAUDIO_RELEASE_BUILD=1', () => {

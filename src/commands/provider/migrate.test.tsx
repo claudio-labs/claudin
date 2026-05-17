@@ -28,6 +28,7 @@ mock.module('../../utils/config.js', () => ({
 
 afterAll(() => {
   mock.module('../../utils/config.js', () => realConfig)
+  realConfig.resetGlobalConfigForTests?.()
 })
 
 import { parseMigrateArgs, runProviderMigrate } from './migrate.js'
