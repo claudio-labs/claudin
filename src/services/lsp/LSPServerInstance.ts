@@ -62,6 +62,8 @@ export type LSPServerInstance = {
     method: string,
     handler: (params: TParams) => TResult | Promise<TResult>,
   ): void
+  /** Subscribe to server state transitions (running, error, stopped, etc.) */
+  onStateChange(handler: () => void): () => void
 }
 
 /**
@@ -115,11 +117,20 @@ export function createLSPServerInstance(
   let lastError: Error | undefined
   let restartCount = 0
   let crashRecoveryCount = 0
+  const stateChangeListeners = new Set<() => void>()
+
+  function setStateAndNotify(newState: LspServerState): void {
+    state = newState
+    for (const listener of stateChangeListeners) {
+      try { listener() } catch { /* listener errors must not block state transitions */ }
+    }
+  }
+
   // Propagate crash state so ensureServerStarted can restart on next use.
   // Without this, state stays 'running' after crash and the server is never
   // restarted (zombie state).
   const client = createLSPClient(name, error => {
-    state = 'error'
+    setStateAndNotify('error')
     lastError = error
     crashRecoveryCount++
   })
@@ -151,7 +162,7 @@ export function createLSPServerInstance(
 
     let initPromise: Promise<unknown> | undefined
     try {
-      state = 'starting'
+      setStateAndNotify('starting')
       logForDebugging(`Starting LSP server instance: ${name}`)
 
       // Start the client
@@ -247,7 +258,7 @@ export function createLSPServerInstance(
         await initPromise
       }
 
-      state = 'running'
+      setStateAndNotify('running')
       startTime = new Date()
       crashRecoveryCount = 0
       logForDebugging(`LSP server instance started: ${name}`)
@@ -256,7 +267,7 @@ export function createLSPServerInstance(
       client.stop().catch(() => {})
       // Prevent unhandled rejection from abandoned initialize promise
       initPromise?.catch(() => {})
-      state = 'error'
+      setStateAndNotify('error')
       lastError = error as Error
       logError(error)
       throw error
@@ -277,12 +288,12 @@ export function createLSPServerInstance(
     }
 
     try {
-      state = 'stopping'
+      setStateAndNotify('stopping')
       await client.stop()
-      state = 'stopped'
+      setStateAndNotify('stopped')
       logForDebugging(`LSP server instance stopped: ${name}`)
     } catch (error) {
-      state = 'error'
+      setStateAndNotify('error')
       lastError = error as Error
       logError(error)
       throw error
@@ -489,6 +500,10 @@ export function createLSPServerInstance(
     sendNotification,
     onNotification,
     onRequest,
+    onStateChange(handler: () => void): () => void {
+      stateChangeListeners.add(handler)
+      return () => stateChangeListeners.delete(handler)
+    },
   }
 }
 

@@ -2,6 +2,7 @@ import { logForDebugging } from '../../utils/debug.js'
 import { isBareMode } from '../../utils/envUtils.js'
 import { errorMessage } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
+import { notifyRuntimeStateChange } from '../../bootstrap/state.js'
 import {
   createLSPServerManager,
   type LSPServerManager,
@@ -33,6 +34,27 @@ let initializationError: Error | undefined
  * Generation counter to prevent stale initialization promises from updating state
  */
 let initializationGeneration = 0
+
+type LspStateChangeListener = () => void
+const lspStateChangeListeners = new Set<LspStateChangeListener>()
+
+export function onLspStateChange(listener: LspStateChangeListener): () => void {
+  lspStateChangeListeners.add(listener)
+  return () => lspStateChangeListeners.delete(listener)
+}
+
+function notifyLspStateListeners(): void {
+  for (const listener of lspStateChangeListeners) {
+    try {
+      listener()
+    } catch {
+      // listener errors must not block state transitions
+    }
+  }
+  // Also signal the general runtime state channel so tools.ts cache
+  // invalidation works without importing manager.ts directly.
+  notifyRuntimeStateChange()
+}
 
 /**
  * Promise that resolves when initialization completes (success or failure)
@@ -184,9 +206,14 @@ export function initializeLspServerManager(): void {
       if (currentGeneration === initializationGeneration) {
         initializationState = 'success'
         logForDebugging('LSP server manager initialized successfully')
+        notifyLspStateListeners()
 
-        // Register passive notification handlers for diagnostics
+        // Subscribe to individual server state transitions so that crashes,
+        // restarts, and stops after init also invalidate the isEnabled() cache.
         if (lspManagerInstance) {
+          for (const server of lspManagerInstance.getAllServers().values()) {
+            server.onStateChange(notifyLspStateListeners)
+          }
           registerLSPNotificationHandlers(lspManagerInstance)
         }
       }
@@ -198,6 +225,7 @@ export function initializeLspServerManager(): void {
         initializationError = error as Error
         // Clear the instance since it's not usable
         lspManagerInstance = undefined
+        notifyLspStateListeners()
 
         logError(error as Error)
         logForDebugging(
@@ -248,6 +276,7 @@ export function reinitializeLspServerManager(): void {
   lspManagerInstance = undefined
   initializationState = 'not-started'
   initializationError = undefined
+  notifyLspStateListeners()
 
   initializeLspServerManager()
 }

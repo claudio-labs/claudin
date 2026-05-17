@@ -28,6 +28,32 @@ type RegisteredHookMatcher = HookCallbackMatcher | PluginHookMatcher
 
 import type { SessionId } from 'src/types/ids.js'
 
+// Listeners for runtime state changes that affect tool availability (e.g. isEnabled()).
+// Used by tools.ts to invalidate the isEnabled() cache without going through saveGlobalConfig.
+type RuntimeStateChangeListener = () => void
+const runtimeStateChangeListeners = new Set<RuntimeStateChangeListener>()
+
+export function onRuntimeStateChange(
+  listener: RuntimeStateChangeListener,
+): () => void {
+  runtimeStateChangeListeners.add(listener)
+  return () => runtimeStateChangeListeners.delete(listener)
+}
+
+export function notifyRuntimeStateChange(): void {
+  notifyRuntimeStateListeners()
+}
+
+function notifyRuntimeStateListeners(): void {
+  for (const listener of runtimeStateChangeListeners) {
+    try {
+      listener()
+    } catch {
+      // listener errors must not block state mutations
+    }
+  }
+}
+
 // DO NOT ADD MORE STATE HERE - BE JUDICIOUS WITH GLOBAL STATE
 
 // dev: true on entries that came via --dangerously-load-development-channels.
@@ -1076,6 +1102,7 @@ export function getKairosActive(): boolean {
 
 export function setKairosActive(value: boolean): void {
   STATE.kairosActive = value
+  notifyRuntimeStateListeners()
 }
 
 export function getStrictToolResultPairing(): boolean {
@@ -1095,6 +1122,7 @@ export function getUserMsgOptIn(): boolean {
 
 export function setUserMsgOptIn(value: boolean): void {
   STATE.userMsgOptIn = value
+  notifyRuntimeStateListeners()
 }
 
 export function getSessionSource(): string | undefined {
@@ -1623,6 +1651,7 @@ export function getAllowedChannels(): ChannelEntry[] {
 
 export function setAllowedChannels(entries: ChannelEntry[]): void {
   STATE.allowedChannels = entries
+  notifyRuntimeStateListeners()
 }
 
 export function getHasDevChannels(): boolean {

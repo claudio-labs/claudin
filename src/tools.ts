@@ -140,6 +140,9 @@ import { isEnvTruthy } from './utils/envUtils.js'
 import { isPowerShellToolEnabled } from './utils/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from './utils/agentSwarmsEnabled.js'
 import { isWorktreeModeEnabled } from './utils/worktreeModeEnabled.js'
+import { onGlobalConfigChange } from './utils/config.js'
+import { onRuntimeStateChange } from './bootstrap/state.js'
+import { onGrowthBookRefresh } from './services/analytics/growthbook.js'
 import {
   REPL_TOOL_NAME,
   REPL_ONLY_TOOLS,
@@ -154,6 +157,27 @@ const getPowerShellTool = () => {
   ).PowerShellTool
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+// Cache for isEnabled() results. Keyed by tool name; invalidated on every
+// global config change or runtime state transition (LSP connect/disconnect,
+// kairos/brief opt-in, allowed-channels update). Prevents redundant
+// env/config/flag reads when getTools() is called multiple times within the
+// same config state.
+let _enabledCacheVer = 0
+const _enabledCache = new Map<string, { ver: number; val: boolean }>()
+onGlobalConfigChange(() => { _enabledCacheVer++ })
+onRuntimeStateChange(() => { _enabledCacheVer++ })
+onGrowthBookRefresh(() => { _enabledCacheVer++ })
+
+function cachedIsEnabled(tool: { name: string; isEnabled(): boolean }): boolean {
+  const cached = _enabledCache.get(tool.name)
+  if (cached !== undefined && cached.ver === _enabledCacheVer) {
+    return cached.val
+  }
+  const val = tool.isEnabled()
+  _enabledCache.set(tool.name, { ver: _enabledCacheVer, val })
+  return val
+}
 
 /**
  * Predefined tool presets that can be used with --tools flag
@@ -178,8 +202,7 @@ export function parseToolPreset(preset: string): ToolPreset | null {
  */
 export function getToolsForDefaultPreset(): string[] {
   const tools = getAllBaseTools()
-  const isEnabled = tools.map(tool => tool.isEnabled())
-  return tools.filter((_, i) => isEnabled[i]).map(tool => tool.name)
+  return tools.filter(tool => cachedIsEnabled(tool)).map(tool => tool.name)
 }
 
 /**
@@ -320,8 +343,7 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     }
   }
 
-  const isEnabled = allowedTools.map(_ => _.isEnabled())
-  return allowedTools.filter((_, i) => isEnabled[i])
+  return allowedTools.filter(tool => cachedIsEnabled(tool))
 }
 
 /**

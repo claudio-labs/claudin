@@ -27,6 +27,8 @@ mock.module('../../services/lsp/userSettings.js', () => ({
   getUserLspSettings: () => ({}),
 }))
 
+const realLSPToolLazy = { ...(await import('../../tools/LSPTool/LSPTool.js')) }
+
 let lspToolFactoryCallCount = 0
 mock.module('../../tools/LSPTool/LSPTool.js', () => {
   lspToolFactoryCallCount++
@@ -65,8 +67,8 @@ afterAll(async () => {
   // Restore the real LSPTool module so subsequent tests in the same run
   // (e.g. tools.lsp-global-gate.test.ts) don't see the stub from this file.
   // mock.module is global to the test run; an explicit restore is required.
-  const real = await import('../../tools/LSPTool/LSPTool.js')
-  mock.module('../../tools/LSPTool/LSPTool.js', () => real)
+  // Note: realLSPToolLazy must be captured BEFORE mocking (see top of file).
+  mock.module('../../tools/LSPTool/LSPTool.js', () => realLSPToolLazy)
   mock.module('../../services/lsp/userSettings.js', () => realUserSettingsLazy)
 })
 
