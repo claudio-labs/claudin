@@ -72,9 +72,9 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Sugestão:** separar por responsabilidade — normalização, serialização, content-block helpers, render helpers, pricing/usage.
 - **Ganho:** alto (util compartilhado em todo lugar) — **Esforço:** alto — **Risco:** médio (alto reuso → muitos call sites).
 
-### [ ] 11b. Split de `src/cli/print.ts` (5.559 linhas, 206 KB)
-- **Sugestão:** modo `--print` headless; isolar formatters, stream renderers, json/text emitters.
-- **Ganho:** alto — **Esforço:** alto — **Risco:** baixo (entrypoint isolado).
+### [x] 11b. Split de `src/cli/print.ts` (5.559 linhas, 206 KB) — parcial
+- Caracterização (26 testes) + split em 11 módulos sob `src/cli/print/`: `promptBatching`, `uuidDedupe`, `structuredIOFactory`, `orphanPermission`, `permissionGlue`, `controlHandlers`, `initHandler`, `mcpReconcile`, `messageOps`, `sessionLoad`, `runHeadless`. `print.ts` vira barrel de 50 linhas. A sugestão original ("formatters, stream renderers, json/text emitters") não se aplicava — toda emissão vive em `StructuredIO`/`RemoteIO`; split foi por responsabilidade do driver headless.
+- **Deferido para 11c**: extração de `runHeadlessStreaming` em arquivo próprio com DI explícita (`HeadlessStreamingDeps`). Hoje vive em `runHeadless.ts` (4.094 linhas) capturando estado por closure léxica.
 
 ### [ ] 11c. Split de `src/utils/sessionStorage.ts` (5.361 linhas, 183 KB)
 - **Sugestão:** dividir em `{persistence, resume, indexing, migrations}`.

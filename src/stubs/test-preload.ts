@@ -1,5 +1,9 @@
 import { mock } from 'bun:test'
 
+mock.module('bun:bundle', () => {
+  return { feature: (_flag: string) => false }
+})
+
 mock.module('@growthbook/growthbook', () => {
   class GrowthBook {
     setAttributes(_attrs: Record<string, unknown>): void {}
