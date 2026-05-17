@@ -1,0 +1,649 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`normalizeMessages passes through single-block assistant + user pair 1`] = `
+[
+  {
+    "message": {
+      "content": [
+        {
+          "text": "hi",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "text": "hello",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`normalizeMessages splits multi-block assistant into one message per block 1`] = `
+[
+  {
+    "message": {
+      "content": [
+        {
+          "text": "do it",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "text": "sure",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "id": "toolu_1",
+          "input": {
+            "command": "ls",
+          },
+          "name": "Bash",
+          "type": "tool_use",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`normalizeMessages orphan tool_result user message is preserved as-is 1`] = `
+[
+  {
+    "message": {
+      "content": [
+        {
+          "text": "go",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "message": {
+      "content": [
+        {
+          "content": "x",
+          "tool_use_id": "toolu_missing",
+          "type": "tool_result",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`mergeUserMessagesAndToolResults merges adjacent user content blocks, hoisting tool_results first 1`] = `
+{
+  "message": {
+    "content": [
+      {
+        "content": "ok",
+        "tool_use_id": "toolu_42",
+        "type": "tool_result",
+      },
+      {
+        "text": "first",
+        "type": "text",
+      },
+    ],
+    "role": "user",
+  },
+  "timestamp": "<iso-ts>",
+  "type": "user",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`normalizeMessagesForAPI 5-turn fixture with tool use/result roundtrip 1`] = `
+[
+  {
+    "message": {
+      "content": "hello",
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "text": "hi",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+  {
+    "message": {
+      "content": "run ls",
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "id": "toolu_a",
+          "input": {
+            "command": "ls",
+          },
+          "name": "Bash",
+          "type": "tool_use",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+  {
+    "message": {
+      "content": [
+        {
+          "content": 
+"file1
+file2"
+,
+          "tool_use_id": "toolu_a",
+          "type": "tool_result",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "text": "done",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`ensureToolResultPairing paired tool_use → tool_result passes through 1`] = `
+[
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "id": "toolu_p",
+          "input": {},
+          "name": "Bash",
+          "type": "tool_use",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+  {
+    "message": {
+      "content": [
+        {
+          "content": "ok",
+          "tool_use_id": "toolu_p",
+          "type": "tool_result",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`ensureToolResultPairing orphan tool_result (no preceding assistant) gets placeholder 1`] = `
+[
+  {
+    "message": {
+      "content": [
+        {
+          "text": "[Orphaned tool result removed due to conversation resume]",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`ensureToolResultPairing tool_use without result gets stub result appended 1`] = `
+[
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "id": "toolu_lonely",
+          "input": {},
+          "name": "Bash",
+          "type": "tool_use",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+  {
+    "message": {
+      "content": [
+        {
+          "content": "[Tool result missing due to internal error]",
+          "is_error": true,
+          "tool_use_id": "toolu_lonely",
+          "type": "tool_result",
+        },
+        {
+          "text": "next turn anyway",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`stripAdvisorBlocks removes advisor blocks, inserts placeholder when emptied 1`] = `
+[
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "advisor": true,
+          "text": "advisor reply",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`stripSignatureBlocks strips thinking blocks from assistant messages 1`] = `
+[
+  {
+    "isApiErrorMessage": false,
+    "message": {
+      "container": null,
+      "content": [
+        {
+          "text": "answer",
+          "type": "text",
+        },
+      ],
+      "context_management": null,
+      "id": "<uuid>",
+      "model": "<synthetic>",
+      "role": "assistant",
+      "stop_reason": "stop_sequence",
+      "stop_sequence": "",
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0,
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "inference_geo": null,
+        "input_tokens": 0,
+        "iterations": null,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_fetch_requests": 0,
+          "web_search_requests": 0,
+        },
+        "service_tier": null,
+        "speed": null,
+      },
+    },
+    "timestamp": "<iso-ts>",
+    "type": "assistant",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`filterWhitespaceOnlyAssistantMessages drops whitespace-only assistant, merges adjacent users 1`] = `
+[
+  {
+    "message": {
+      "content": [
+        {
+          "text": 
+"first
+"
+,
+          "type": "text",
+        },
+        {
+          "text": "second",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;

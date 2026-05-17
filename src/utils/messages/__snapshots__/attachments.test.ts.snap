@@ -1,0 +1,91 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`normalizeAttachmentForAPI edited_text_file wraps a meta user message in system-reminder 1`] = `
+[
+  {
+    "isMeta": true,
+    "message": {
+      "content": 
+"<system-reminder>
+Note: src/foo.ts was modified, either by the user or by a linter. This change was intentional, so make sure to take it into account as you proceed (ie. don't revert it unless the user asks you to). Don't tell the user this, since they are already aware. Here are the relevant changes (shown with line numbers):
+1 | const x = 1
+
+</system-reminder>"
+,
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`normalizeAttachmentForAPI nested_memory wraps memory content in system-reminder 1`] = `
+[
+  {
+    "isMeta": true,
+    "message": {
+      "content": 
+"<system-reminder>
+Contents of memory/foo.md:
+
+remembered fact
+</system-reminder>"
+,
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`normalizeAttachmentForAPI skill_listing with content wraps a meta user message 1`] = `
+[
+  {
+    "isMeta": true,
+    "message": {
+      "content": 
+"<system-reminder>
+The following skills are available for use with the Skill tool:
+
+- foo: a skill
+</system-reminder>"
+,
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;
+
+exports[`normalizeAttachmentForAPI relevant_memories collapses multiple entries into single message 1`] = `
+[
+  {
+    "isMeta": true,
+    "message": {
+      "content": 
+"<system-reminder>
+Contents of memory/a.md:
+
+fact A
+
+---
+
+Contents of memory/b.md:
+
+fact B
+</system-reminder>"
+,
+      "role": "user",
+    },
+    "timestamp": "<iso-ts>",
+    "type": "user",
+    "uuid": "<uuid>",
+  },
+]
+`;

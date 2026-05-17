@@ -1,0 +1,211 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`createAssistantMessage string content → single text block 1`] = `
+{
+  "isApiErrorMessage": false,
+  "message": {
+    "container": null,
+    "content": [
+      {
+        "text": "hi",
+        "type": "text",
+      },
+    ],
+    "context_management": null,
+    "id": "<uuid>",
+    "model": "<synthetic>",
+    "role": "assistant",
+    "stop_reason": "stop_sequence",
+    "stop_sequence": "",
+    "type": "message",
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0,
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": null,
+      "input_tokens": 0,
+      "iterations": null,
+      "output_tokens": 0,
+      "server_tool_use": {
+        "web_fetch_requests": 0,
+        "web_search_requests": 0,
+      },
+      "service_tier": null,
+      "speed": null,
+    },
+  },
+  "timestamp": "<iso-ts>",
+  "type": "assistant",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createAssistantMessage block content passes through 1`] = `
+{
+  "isApiErrorMessage": false,
+  "message": {
+    "container": null,
+    "content": [
+      {
+        "text": "hello",
+        "type": "text",
+      },
+    ],
+    "context_management": null,
+    "id": "<uuid>",
+    "model": "<synthetic>",
+    "role": "assistant",
+    "stop_reason": "stop_sequence",
+    "stop_sequence": "",
+    "type": "message",
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0,
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": null,
+      "input_tokens": 0,
+      "iterations": null,
+      "output_tokens": 0,
+      "server_tool_use": {
+        "web_fetch_requests": 0,
+        "web_search_requests": 0,
+      },
+      "service_tier": null,
+      "speed": null,
+    },
+  },
+  "timestamp": "<iso-ts>",
+  "type": "assistant",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createUserMessage string content + defaults 1`] = `
+{
+  "message": {
+    "content": "hi",
+    "role": "user",
+  },
+  "timestamp": "<iso-ts>",
+  "type": "user",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createAssistantAPIErrorMessage flags isApiErrorMessage + carries content 1`] = `
+{
+  "errorDetails": "extra",
+  "isApiErrorMessage": true,
+  "message": {
+    "container": null,
+    "content": [
+      {
+        "text": "rate limit hit",
+        "type": "text",
+      },
+    ],
+    "context_management": null,
+    "id": "<uuid>",
+    "model": "<synthetic>",
+    "role": "assistant",
+    "stop_reason": "stop_sequence",
+    "stop_sequence": "",
+    "type": "message",
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0,
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": null,
+      "input_tokens": 0,
+      "iterations": null,
+      "output_tokens": 0,
+      "server_tool_use": {
+        "web_fetch_requests": 0,
+        "web_search_requests": 0,
+      },
+      "service_tier": null,
+      "speed": null,
+    },
+  },
+  "timestamp": "<iso-ts>",
+  "type": "assistant",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createSystemMessage informational level + content 1`] = `
+{
+  "content": "hello world",
+  "isMeta": false,
+  "level": "info",
+  "subtype": "informational",
+  "timestamp": "<iso-ts>",
+  "type": "system",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createProgressMessage carries toolUseID, parentToolUseID, data 1`] = `
+{
+  "data": {
+    "kind": "progress",
+    "step": 1,
+  },
+  "parentToolUseID": "toolu_parent",
+  "timestamp": "<iso-ts>",
+  "toolUseID": "toolu_1",
+  "type": "progress",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createCompactBoundaryMessage manual trigger snapshot 1`] = `
+{
+  "compactMetadata": {
+    "messagesSummarized": 7,
+    "preTokens": 12345,
+    "trigger": "manual",
+    "userContext": "why",
+  },
+  "content": "Conversation compacted",
+  "isMeta": false,
+  "level": "info",
+  "subtype": "compact_boundary",
+  "timestamp": "<iso-ts>",
+  "type": "system",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createApiMetricsMessage minimal metrics 1`] = `
+{
+  "isMeta": false,
+  "otps": 50,
+  "subtype": "api_metrics",
+  "timestamp": "<iso-ts>",
+  "ttftMs": 100,
+  "type": "system",
+  "uuid": "<uuid>",
+}
+`;
+
+exports[`createToolUseSummaryMessage snapshot of basic summary 1`] = `
+{
+  "precedingToolUseIds": [
+    "toolu_1",
+  ],
+  "summary": "1 tool used",
+  "timestamp": "<iso-ts>",
+  "type": "tool_use_summary",
+  "uuid": "<uuid>",
+}
+`;

@@ -64,11 +64,59 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ---
 
-## Tier 3 — Saúde estrutural (esforço alto, débito de longo prazo)
+## Tier 3 — Saúde estrutural (PRIORIDADE — quebra de arquivos gigantes)
 
-### [ ] 11. Split de `src/services/api/openaiShim.ts` (~2.274 linhas)
+> Promovido a prioridade em 2026-05-17: arquivos acima de ~3k linhas estão virando gargalo de navegação, review e onboarding. Ordem proposta abaixo segue ROI/risco (utils primeiro, raízes Ink por último).
+
+### [x] 11a. Split de `src/utils/messages.ts` (5.711 linhas, 198 KB)
+- **Sugestão:** separar por responsabilidade — normalização, serialização, content-block helpers, render helpers, pricing/usage.
+- **Ganho:** alto (util compartilhado em todo lugar) — **Esforço:** alto — **Risco:** médio (alto reuso → muitos call sites).
+
+### [ ] 11b. Split de `src/cli/print.ts` (5.559 linhas, 206 KB)
+- **Sugestão:** modo `--print` headless; isolar formatters, stream renderers, json/text emitters.
+- **Ganho:** alto — **Esforço:** alto — **Risco:** baixo (entrypoint isolado).
+
+### [ ] 11c. Split de `src/utils/sessionStorage.ts` (5.361 linhas, 183 KB)
+- **Sugestão:** dividir em `{persistence, resume, indexing, migrations}`.
+- **Ganho:** alto — **Esforço:** alto — **Risco:** médio (formato em disco; cobertura por snapshot antes).
+
+### [ ] 11d. Split de `src/utils/hooks.ts` (5.210 linhas, 161 KB)
+- **Sugestão:** um arquivo por tipo de hook (PreToolUse, PostToolUse, UserPromptSubmit, etc.) + core runner.
+- **Ganho:** alto — **Esforço:** médio-alto — **Risco:** baixo (fronteira clara).
+
+### [ ] 11e. Split de `src/screens/REPL.tsx` (5.015 linhas, 255 KB)
+- **Sugestão:** extrair subcomponentes (input, transcript, status bar, overlays) e custom hooks.
+- **Ganho:** alto — **Esforço:** alto — **Risco:** **alto** (cuidar de React identity — ver memória team `<Activity>`).
+
+### [ ] 11f. Split de `src/utils/bash/bashParser.ts` (4.436 linhas, 128 KB)
+- **Sugestão:** separar tokenizer, AST, validators, command-detection tables.
+- **Ganho:** médio-alto — **Esforço:** médio — **Risco:** baixo (puro, testável).
+
+### [ ] 11g. Split de `src/main.tsx` (4.379 linhas, 212 KB)
+- **Sugestão:** extrair parsing de CLI args, montagem do app Ink, signal handlers, lifecycle.
+- **Ganho:** alto — **Esforço:** alto — **Risco:** alto (entrypoint; muitos side effects no boot).
+
+### [ ] 11h. Split de `src/utils/attachments.ts` (4.346 linhas, 138 KB)
+- **Sugestão:** dividir por tipo (image, pdf, text, paste) + pipeline comum.
+- **Ganho:** médio — **Esforço:** médio — **Risco:** baixo.
+
+### [ ] 11i. Split de `src/services/mcp/client.ts` (3.366 linhas, 117 KB)
+- **Sugestão:** transporte (stdio/sse/http) separado de gerenciamento de servidor/sessão.
+- **Ganho:** médio — **Esforço:** médio — **Risco:** médio (protocolo MCP; testes de integração).
+
+### [ ] 11j. Split de `src/services/api/claude.ts` (3.218 linhas, 117 KB)
+- **Sugestão:** isolar request builder, response parser, streaming, retries.
+- **Ganho:** médio — **Esforço:** médio — **Risco:** médio (hot path do provider Anthropic).
+
+### [ ] 11k. Split de `src/services/api/openaiShim.ts` (~2.274 linhas)
 - **Sugestão:** dividir em `{client, streamParser, messageConverter, toolConverter}`.
 - **Ganho:** manutenibilidade, testabilidade — **Esforço:** alto — **Risco:** médio.
+
+### [—] 11l. `src/bridge/bridgeMain.ts` (2.975 linhas) — **adiado**
+- Vive sob `feature('BRIDGE_MODE')` desabilitado no build aberto. Refatorar não tem payoff em runtime atual.
+
+### [—] 11m. `src/utils/ansiToPng.ts` (334 linhas, 210 KB) — **não refatorar**
+- Tamanho vem de assets/fontes embutidas em base64, não de lógica. Quebrar não reduz nada.
 
 ### [ ] 12. Cobertura de testes para `src/QueryEngine.ts`
 - **Arquivo:** `src/QueryEngine.ts` (1.346 linhas, **sem `.test.ts` colocalizado**)
@@ -97,10 +145,26 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ---
 
-## Ordem sugerida de execução (top 5 ROI)
+## Ordem sugerida de execução
 
-1. Item 1 — regex módulo-level (15 min, sem risco)
-2. Item 6 — cache `stableStringify` (maior gargalo medido)
-3. Item 2 — paralelizar dynamic imports (cold start)
-4. Item 7 — delta-write transcript (escala mal em turnos longos)
-5. Item 3 — cache `isEnabled()` (reduz custo do `useMemo` do REPL)
+**Prioridade nova (Tier 3 — quebra de arquivos gigantes), por ROI/risco:**
+
+1. 11a — `utils/messages.ts`
+2. 11c — `utils/sessionStorage.ts`
+3. 11d — `utils/hooks.ts`
+4. 11h — `utils/attachments.ts`
+5. 11f — `utils/bash/bashParser.ts`
+6. 11b — `cli/print.ts`
+7. 11i — `services/mcp/client.ts`
+8. 11j — `services/api/claude.ts`
+9. 11k — `services/api/openaiShim.ts`
+10. 11e — `screens/REPL.tsx` (risco alto — depois de cobertura)
+11. 11g — `main.tsx` (risco alto — por último)
+
+**Tier 1/2 pendentes (executar em paralelo quando couber):**
+
+- Item 1 — regex módulo-level (15 min, sem risco)
+- Item 6 — cache `stableStringify` (maior gargalo medido)
+- Item 2 — paralelizar dynamic imports (cold start)
+- Item 7 — delta-write transcript (escala mal em turnos longos)
+- Item 3 — cache `isEnabled()` (reduz custo do `useMemo` do REPL)
