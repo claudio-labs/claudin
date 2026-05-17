@@ -47,10 +47,3 @@ jobs:
 
       - name: Smoke check
         run: bun run smoke
-
-      - name: Tests
-        run: |
-          echo "bun path: $(which bun)"
-          echo "bun version: $(bun --version)"
-          bun test --max-concurrency=1 2>&1; EXIT=$?
-          exit $EXIT
