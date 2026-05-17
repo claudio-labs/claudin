@@ -25,7 +25,6 @@ import { setEnvHookNotifier } from '../../utils/hooks/fileChangedWatcher.js';
 import { toIDEDisplayName } from '../../utils/ide.js';
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
 import { tokenCountFromLastAPIResponse } from '../../utils/tokens.js';
-import { AutoUpdaterWrapper } from '../AutoUpdaterWrapper.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
 import { IdeStatusIndicator } from '../IdeStatusIndicator.js';
 import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
@@ -319,7 +318,6 @@ function NotificationContent({
           </Text>
         </Box>}
       {!isBriefOnly && <TokenWarning tokenUsage={tokenUsage} model={mainLoopModel} />}
-      {shouldShowAutoUpdater && <AutoUpdaterWrapper verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} autoUpdaterResult={autoUpdaterResult} isUpdating={isAutoUpdating} onChangeIsUpdating={onChangeIsUpdating} showSuccessMessage={!isShowingCompactMessage} />}
       {feature('VOICE_MODE') ? voiceEnabled && voiceError && <Box>
               <Text color="error" wrap="truncate">
                 {voiceError}
