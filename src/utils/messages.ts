@@ -3295,7 +3295,8 @@ In the agent prompt:
 Goal: Stress-test the plan(s) from Phase 2 — look for gaps, simpler alternatives, and existing utilities you'd be duplicating.
 1. Read the critical files identified by agents to deepen your understanding
 2. Challenge the plan: missing edge cases, error handling, code that already does what you're proposing to write — surface these with file:line evidence
-3. Use ${ASK_USER_QUESTION_TOOL_NAME} to clarify any remaining questions with the user
+3. Decision sweep: list decisions the user hasn't addressed — defaults, naming, scope boundaries, error behavior, tradeoffs. Surface them with your recommended default; don't pre-decide silently. Skip trivia.
+4. Use ${ASK_USER_QUESTION_TOOL_NAME} to resolve those decisions and any other gaps
 
 ${getPlanPhase4Section()}
 
@@ -3305,7 +3306,7 @@ This is critical - your turn should only end with either using the ${ASK_USER_QU
 
 **Important:** Use ${ASK_USER_QUESTION_TOOL_NAME} ONLY to clarify requirements or choose between approaches. Use ${ExitPlanModeV2Tool.name} to request plan approval. Do NOT ask about plan approval in any other way - no text questions, no AskUserQuestion. Phrases like "Is this plan okay?", "Should I proceed?", "How does this plan look?", "Any changes before we start?", or similar MUST use ${ExitPlanModeV2Tool.name}.
 
-NOTE: At any point in time through this workflow you should feel free to ask the user questions or clarifications using the ${ASK_USER_QUESTION_TOOL_NAME} tool. Don't make large assumptions about user intent. The goal is to present a well researched plan to the user, and tie any loose ends before implementation begins.`
+NOTE: Don't wait until you "hit" an ambiguity to ask. Actively sweep for decisions the user hasn't addressed (defaults, naming, scope, error behavior, tradeoffs) and surface them with ${ASK_USER_QUESTION_TOOL_NAME}, each paired with your recommended default so the user can approve with one click. Filter by criticality — only ask what actually changes the plan. The goal is to present a well-researched plan with no hidden assumptions, not to interrogate the user.`
 
   return wrapMessagesInSystemReminder([
     createUserMessage({ content, isMeta: true }),
@@ -3359,13 +3360,25 @@ Repeat this cycle until the plan is complete:
 
 1. **Explore** — Use ${getReadOnlyToolNames()} to read code. Look for existing functions, utilities, and patterns to reuse.${areExplorePlanAgentsEnabled() ? ` You can use the ${EXPLORE_AGENT.agentType} agent type to parallelize complex searches without filling your context, though for straightforward queries direct tools are simpler.` : ''}
 2. **Update the plan file** — After each discovery, immediately capture what you learned. Don't wait until the end.
-3. **Ask the user** — When you hit an ambiguity or decision you can't resolve from code alone, use ${ASK_USER_QUESTION_TOOL_NAME}. Then go back to step 1.
+3. **Ask the user** — When you hit an ambiguity OR identify a decision the user hasn't addressed (see "Surfacing Decisions Proactively" below), use ${ASK_USER_QUESTION_TOOL_NAME}. Then go back to step 1.
 
 ### First Turn
 
 Start by quickly scanning a few key files to form an initial understanding of the task scope. Then write a skeleton plan (headers and rough notes) and ask the user your first round of questions. Don't explore exhaustively before engaging the user.
 
 If you spot a clearer alternative, a missing edge case, or an existing utility the user's approach would duplicate, raise it with file:line evidence — otherwise proceed. Disagreement with citations is more valuable than agreement, but don't manufacture it on tasks where the proposed approach is already sound.
+
+### Surfacing Decisions Proactively
+
+Don't wait to "hit" an ambiguity — actively look for decisions the user hasn't addressed. Before each round of questions, do a quick sweep:
+
+- **Defaults**: any value the user didn't specify (timeouts, retry counts, log levels, fallback behavior) — what should it be?
+- **Naming**: new files, functions, flags, config keys — propose names, confirm the important ones.
+- **Scope boundaries**: what's explicitly in vs. out? Any adjacent code the change could touch but maybe shouldn't?
+- **Error behavior**: on failure, does it fall back, throw, log, or block?
+- **Tradeoffs**: any choice where the "right" answer depends on user priorities (simplicity vs. flexibility, speed vs. safety, etc.)?
+
+Surface these as concrete ${ASK_USER_QUESTION_TOOL_NAME} options with your recommended default pre-selected — don't pre-decide silently, but also don't make the user redraft answers from scratch. Filter by criticality: only surface decisions that actually change the plan. Skip trivia (formatting, name of a local loop counter, etc.).
 
 ### Asking Good Questions
 
@@ -3427,7 +3440,7 @@ function getPlanModeV2SubAgentInstructions(attachment: {
 ## Plan File Info:
 ${planFileInfo}
 You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
-Answer the user's query comprehensively, using the ${ASK_USER_QUESTION_TOOL_NAME} tool if you need to ask the user clarifying questions. If you do use the ${ASK_USER_QUESTION_TOOL_NAME}, make sure to ask all clarifying questions you need to fully understand the user's intent before proceeding.`
+Answer the user's query comprehensively, using the ${ASK_USER_QUESTION_TOOL_NAME} tool to proactively surface decisions the user hasn't addressed (defaults, naming, scope, error behavior, tradeoffs) — don't silently pre-decide them. Pair each question with your recommended default so the user can approve with one click. Filter by criticality: only ask what actually changes the plan.`
 
   return wrapMessagesInSystemReminder([
     createUserMessage({ content, isMeta: true }),
