@@ -40,10 +40,17 @@ jobs:
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          echo "bun path: $(which bun)"
+          echo "bun version: $(bun --version)"
+          bun install --frozen-lockfile
 
       - name: Smoke check
         run: bun run smoke
 
       - name: Tests
-        run: bun test --max-concurrency=1
+        run: |
+          echo "bun path: $(which bun)"
+          echo "bun version: $(bun --version)"
+          bun test --max-concurrency=1 2>&1; EXIT=$?
+          exit $EXIT
