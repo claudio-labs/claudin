@@ -5,7 +5,6 @@ const originalFetch = globalThis.fetch
 const realProviders = { ...(await import('./model/providers.js')) }
 
 async function importFreshModule() {
-  mock.restore()
   return import(`./apiPreconnect.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
@@ -16,7 +15,6 @@ beforeEach(() => {
 afterEach(() => {
   process.env = { ...originalEnv }
   globalThis.fetch = originalFetch
-  mock.restore()
 })
 
 describe('preconnectAnthropicApi', () => {

@@ -12,7 +12,6 @@ async function importFreshEnvUtils() {
 afterEach(() => {
   process.env = { ...originalEnv }
   process.argv = [...originalArgv]
-  mock.restore()
 })
 
 describe('Claudio paths', () => {

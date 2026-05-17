@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { beforeEach, expect, mock, test } from 'bun:test'
 
 // Mock the Anthropic-API-side before importing the module under test, so
 // queryHaiku resolves into whatever the individual test wants (slow, failing,
@@ -13,10 +13,6 @@ beforeEach(async () => {
     ...actual,
     queryHaiku: haikuMock,
   }))
-})
-
-afterEach(() => {
-  mock.restore()
 })
 
 async function runApply(markdown = 'Hello world.', signal?: AbortSignal): Promise<string> {

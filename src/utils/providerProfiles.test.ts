@@ -82,7 +82,6 @@ afterEach(() => {
     }
   }
 
-  mock.restore()
   mockConfigState = createMockConfigState()
   process.chdir(originalCwd)
 })
@@ -93,7 +92,6 @@ afterAll(() => {
 })
 
 async function importFreshProviderProfileModules() {
-  mock.restore()
   mock.module('./config.js', () => ({
     ...realConfig,
     getGlobalConfig: () => mockConfigState,

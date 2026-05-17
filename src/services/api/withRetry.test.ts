@@ -41,7 +41,6 @@ afterEach(() => {
     if (originalEnv[key] === undefined) delete process.env[key]
     else process.env[key] = originalEnv[key]
   }
-  mock.restore()
 })
 
 afterAll(() => {
@@ -59,7 +58,6 @@ async function importFreshWithRetryModule(
     | 'codex'
     | 'foundry' = 'firstParty',
 ) {
-  mock.restore()
   mock.module('src/utils/model/providers.js', () => ({
     getAPIProvider: () => provider,
     getAPIProviderForStatsig: () => provider,

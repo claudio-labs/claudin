@@ -19,8 +19,6 @@ async function makeConfigFile(config: unknown): Promise<string> {
 async function importHookChainsModule(options?: {
   allowRemoteSessions?: boolean
 }): Promise<HookChainsModule> {
-  mock.restore()
-
   const allowRemoteSessions = options?.allowRemoteSessions ?? true
 
   mock.module('../services/analytics/index.js', () => ({
@@ -44,7 +42,9 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  mock.restore()
+  mock.module('../services/analytics/index.js', () => ({}))
+  mock.module('./telemetry/events.js', () => ({}))
+  mock.module('../services/policyLimits/index.js', () => ({}))
 
   if (originalHookChainsEnabled === undefined) {
     delete process.env.CLAUDE_CODE_ENABLE_HOOK_CHAINS

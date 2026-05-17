@@ -122,7 +122,6 @@ function installCommonMocks(options?: {
 }
 
 afterEach(() => {
-  mock.restore()
   process.env = { ...originalEnv }
 })
 

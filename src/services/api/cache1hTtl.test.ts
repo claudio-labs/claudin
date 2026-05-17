@@ -24,7 +24,6 @@ function setProvider(p: Provider) {
 }
 
 async function importFresh() {
-  mock.restore()
   mock.module('src/utils/model/providers.js', () => ({
     getAPIProvider: () => mockedProvider,
     isFirstPartyAnthropicBaseUrl: () => mockedProvider === 'firstParty',
@@ -48,7 +47,6 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
-  mock.restore()
 })
 
 afterAll(() => {

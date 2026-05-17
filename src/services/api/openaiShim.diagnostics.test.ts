@@ -51,7 +51,7 @@ afterEach(() => {
   restoreEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL)
   restoreEnv('OPENAI_API_KEY', originalEnv.OPENAI_API_KEY)
   restoreEnv('OPENAI_MODEL', originalEnv.OPENAI_MODEL)
-  mock.restore()
+  mock.module('../../utils/debug.js', () => ({}))
 })
 
 test('logs classified transport diagnostics with category and code', async () => {

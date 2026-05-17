@@ -65,10 +65,6 @@ async function importFreshShared() {
   return import(`./shared.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
-afterEach(() => {
-  mock.restore()
-})
-
 afterAll(() => {
   mock.module('../../utils/git.js', () => realGit)
   mock.module('../../utils/execFileNoThrow.js', () => realExecFileNoThrow)

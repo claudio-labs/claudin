@@ -1,8 +1,4 @@
-import { afterEach, expect, mock, test } from 'bun:test'
-
-afterEach(() => {
-  mock.restore()
-})
+import { expect, mock, test } from 'bun:test'
 
 test('custom error responses log the error redirect analytics event', async () => {
   const events: Array<{

@@ -68,7 +68,6 @@ function installCommonMocks(options?: {
 }
 
 afterEach(() => {
-  mock.restore()
   process.env = { ...originalEnv }
   delete (globalThis as Record<string, unknown>).MACRO
 })

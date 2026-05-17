@@ -8,13 +8,8 @@ import {
 } from './deviceFlow.js'
 
 async function importFreshModule() {
-  mock.restore()
   return import(`./deviceFlow.ts?ts=${Date.now()}-${Math.random()}`)
 }
-
-afterEach(() => {
-  mock.restore()
-})
 
 describe('requestDeviceCode', () => {
   test('parses successful device code response', async () => {

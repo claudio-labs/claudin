@@ -39,7 +39,6 @@ afterEach(() => {
   process.env = { ...originalEnv }
   process.argv = [...originalArgv]
   storageState = {}
-  mock.restore()
 })
 
 afterAll(() => {

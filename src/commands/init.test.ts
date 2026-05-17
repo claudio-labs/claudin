@@ -7,8 +7,6 @@ async function importInitCommand() {
 }
 
 afterEach(() => {
-  mock.restore()
-
   if (originalClaudeCodeNewInit === undefined) {
     delete process.env.CLAUDE_CODE_NEW_INIT
   } else {

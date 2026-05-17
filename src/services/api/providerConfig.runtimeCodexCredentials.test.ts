@@ -7,10 +7,6 @@ import { resolveRuntimeCodexCredentials } from './providerConfig.js'
 
 const realCodexCredentials = { ...(await import('../../utils/codexCredentials.js')) }
 
-afterEach(() => {
-  mock.restore()
-})
-
 afterAll(() => {
   mock.module('../../utils/codexCredentials.js', () => realCodexCredentials)
 })

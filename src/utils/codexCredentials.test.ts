@@ -23,7 +23,6 @@ describe('codexCredentials', () => {
   const originalFetch = globalThis.fetch
 
   afterEach(() => {
-    mock.restore()
     globalThis.fetch = originalFetch
 
     if (originalSimple === undefined) {

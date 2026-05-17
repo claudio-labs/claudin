@@ -46,8 +46,6 @@ async function importHookChainsHarness(
   writeToMailboxSpy: ReturnType<typeof mock>
   agentToolCallSpy: ReturnType<typeof mock>
 }> {
-  mock.restore()
-
   const allowRemoteSessions = options.allowRemoteSessions ?? true
   const teamName = options.teamName ?? 'mesh-team'
   const senderName = options.senderName ?? 'mesh-lead'
@@ -129,8 +127,6 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  mock.restore()
-
   if (originalHookChainsEnabled === undefined) {
     delete process.env.CLAUDE_CODE_ENABLE_HOOK_CHAINS
   } else {

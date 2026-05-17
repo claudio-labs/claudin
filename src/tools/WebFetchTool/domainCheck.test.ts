@@ -4,7 +4,6 @@ import axios from 'axios'
 const originalEnv = { ...process.env }
 
 async function importFreshModule() {
-  mock.restore()
   return import(`./utils.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
@@ -14,7 +13,6 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...originalEnv }
-  mock.restore()
 })
 
 describe('checkDomainBlocklist', () => {

@@ -7,7 +7,6 @@ import { resetGlobalConfigForTests, saveGlobalConfig } from '../config.js'
 const realProvidersModule = await import('./providers.js')
 
 async function importFreshModelOptionsModule() {
-  mock.restore()
   mock.module('./providers.js', () => ({
     ...realProvidersModule,
     getAPIProvider: () => 'github',
@@ -29,7 +28,6 @@ const originalEnv = {
 }
 
 beforeEach(() => {
-  mock.restore()
   delete process.env.CLAUDE_CODE_USE_GITHUB
   delete process.env.CLAUDE_CODE_USE_OPENAI
   delete process.env.CLAUDE_CODE_USE_GEMINI
@@ -43,7 +41,6 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  mock.restore()
   process.env.CLAUDE_CODE_USE_GITHUB = originalEnv.CLAUDE_CODE_USE_GITHUB
   process.env.CLAUDE_CODE_USE_OPENAI = originalEnv.CLAUDE_CODE_USE_OPENAI
   process.env.CLAUDE_CODE_USE_GEMINI = originalEnv.CLAUDE_CODE_USE_GEMINI

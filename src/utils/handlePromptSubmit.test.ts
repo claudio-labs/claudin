@@ -13,7 +13,6 @@ describe('handlePromptSubmit', () => {
 
   afterEach(() => {
     resetCommandQueue()
-    mock.restore()
   })
 
   afterAll(() => {

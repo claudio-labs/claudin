@@ -11,7 +11,7 @@ async function importFileModuleWithKillswitchEnabled(
 }
 
 afterEach(() => {
-  mock.restore()
+  mock.module('../services/analytics/growthbook.js', () => ({}))
 })
 
 describe('addLineNumbers', () => {

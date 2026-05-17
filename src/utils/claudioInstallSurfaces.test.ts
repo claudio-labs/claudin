@@ -11,7 +11,6 @@ const realExecFileNoThrowInstall = { ...(await import('./execFileNoThrow.js')) }
 afterEach(() => {
   process.env = { ...originalEnv }
   ;(globalThis as Record<string, unknown>).MACRO = originalMacro
-  mock.restore()
 })
 
 async function importFreshInstallCommand() {

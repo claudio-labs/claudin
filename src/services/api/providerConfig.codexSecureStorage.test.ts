@@ -13,7 +13,8 @@ function makeJwt(payload: Record<string, unknown>): string {
 
 describe('resolveCodexApiCredentials with secure storage', () => {
   afterEach(() => {
-    mock.restore()
+    mock.module('../../utils/codexCredentials.js', () => ({}))
+    mock.module('node:os', () => ({}))
   })
 
   test('loads Codex credentials from Claudio secure storage', async () => {

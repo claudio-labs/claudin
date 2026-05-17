@@ -52,7 +52,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   }
 
   beforeEach(() => {
-    mock.restore()
+    mock.module('./secureStorage/index.js', () => ({}))
+    mock.module('../services/github/deviceFlow.js', () => realDeviceFlow)
   })
 
   afterEach(() => {

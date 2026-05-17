@@ -7,7 +7,6 @@ const originalCallbackPort = process.env.CODEX_OAUTH_CALLBACK_PORT
 const originalClientId = process.env.CODEX_OAUTH_CLIENT_ID
 
 afterEach(() => {
-  mock.restore()
   globalThis.fetch = originalFetch
 
   if (originalCallbackPort === undefined) {

@@ -3,7 +3,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 describe('getAgentModel provider-aware fallback', () => {
   // Restore all mocks after each test
   afterEach(() => {
-    mock.restore()
+    mock.module('./providers.js', () => ({}))
   })
 
   describe('Claude-native providers', () => {
@@ -262,7 +262,7 @@ describe('getAgentModel provider-aware fallback', () => {
 
 describe('getAgentModelOptions picker', () => {
   afterEach(() => {
-    mock.restore()
+    mock.module('./modelOptions.js', () => ({}))
   })
 
   test('falls back to Claude aliases + inherit when getModelOptions returns no string values', async () => {
@@ -334,7 +334,7 @@ describe('getAgentModelDisplay text', () => {
 
 describe('getAgentModel with provider-specific models', () => {
   afterEach(() => {
-    mock.restore()
+    mock.module('./providers.js', () => ({}))
   })
 
   test('does not inherit-shortcut a provider-specific model on non-Claude-native provider', async () => {

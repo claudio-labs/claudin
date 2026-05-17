@@ -45,7 +45,8 @@ async function writeJsonl(entry: unknown): Promise<string> {
 }
 
 afterEach(async () => {
-  mock.restore()
+  mock.module('./sessionStart.js', () => ({}))
+  mock.module('./model/providers.js', () => ({}))
   process.env.CLAUDE_CODE_SIMPLE = originalSimple
   await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
@@ -131,7 +132,6 @@ test('deserializeMessagesWithInterruptDetection strips thinking blocks only for 
     JSON.stringify(thirdPartyAssistantMessages.map(message => message.message?.content)),
   ).not.toContain('only hidden reasoning')
 
-  mock.restore()
   mock.module('./model/providers.js', () => ({
     getAPIProvider: () => 'bedrock',
     isOpenAICompatibleProvider: (provider: string) =>
