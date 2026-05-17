@@ -13,7 +13,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Problema:** Regex compilada dentro de funções em hot path. Viola `.claudio/rules/typescript-patterns.md`.
 - **Ganho:** baixo (CPU) — **Esforço:** trivial — **Risco:** nenhum.
 
-### [ ] 2. Paralelizar dynamic imports do startup
+### [x] 2. Paralelizar dynamic imports do startup
 - **Arquivo:** `src/entrypoints/cli.tsx`
 - **Problema:** Imports dinâmicos sequenciais no boot; vários são independentes.
 - **Ganho:** médio (cold start visível) — **Esforço:** baixo — **Risco:** baixo (preservar ordem onde houver dep).

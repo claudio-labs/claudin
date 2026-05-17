@@ -100,23 +100,24 @@ async function main(): Promise<void> {
     applySafeConfigEnvironmentVariables()
   }
 
-  // Check for a newer Claudio release on npm and self-update before mounting
-  // the TUI. Fails open — see src/utils/startupUpdateCheck.ts for skip
-  // conditions (TTY, dev install, throttle, sentinel, etc.).
-  {
-    const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
-    await runStartupUpdateCheck(args)
-  }
-
-  // Hydrate GitHub credentials so the github_copilot transport sees the token at startup
-  {
-    const {
-      hydrateGithubModelsTokenFromSecureStorage,
-      refreshGithubModelsTokenIfNeeded,
-    } = await import('../utils/githubModelsCredentials.js')
-    await refreshGithubModelsTokenIfNeeded()
-    hydrateGithubModelsTokenFromSecureStorage()
-  }
+  // Update check and GitHub token refresh are independent after config is ready —
+  // run in parallel. The inner github ops stay sequential (refresh writes before
+  // hydrate reads). validateProviderEnvForStartupOrExit must follow hydration in
+  // case the active provider is github_copilot (validation reads the hydrated token).
+  await Promise.all([
+    (async () => {
+      const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
+      await runStartupUpdateCheck(args)
+    })(),
+    (async () => {
+      const {
+        hydrateGithubModelsTokenFromSecureStorage,
+        refreshGithubModelsTokenIfNeeded,
+      } = await import('../utils/githubModelsCredentials.js')
+      await refreshGithubModelsTokenIfNeeded()
+      hydrateGithubModelsTokenFromSecureStorage()
+    })(),
+  ])
 
   await validateProviderEnvForStartupOrExit()
 
