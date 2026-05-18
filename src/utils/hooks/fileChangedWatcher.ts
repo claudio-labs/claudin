@@ -6,8 +6,8 @@ import { errorMessage } from '../errors.js'
 import {
   executeCwdChangedHooks,
   executeFileChangedHooks,
-  type HookOutsideReplResult,
-} from '../hooks.js'
+} from './events.js'
+import type { HookOutsideReplResult } from './types.js'
 import { clearCwdEnvFiles } from '../sessionEnvironment.js'
 import { getHooksConfigFromSnapshot } from './hooksConfigSnapshot.js'
 
