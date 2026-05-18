@@ -1,0 +1,31 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
+"
+          
+  ▐▛███▜▌    Claudio vtest-version
+  ▐█████▌    Not configured · claude-opus-4-7[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudio 
+  ? for shortcuts"
+`;
+
+exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent context) 1`] = `
+"
+          
+  ▐▛███▜▌    Claudio vtest-version
+  ▐█████▌    Not configured · claude-opus-4-7[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudio 
+  ? for shortcuts"
+`;

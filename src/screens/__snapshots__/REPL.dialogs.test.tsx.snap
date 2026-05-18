@@ -1,0 +1,40 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`<REPL> dialogs baseline disabled prop (suppresses prompt, dialog container still mounts) 1`] = `
+"
+          
+  ▐▛███▜▌    Claudio vtest-version
+  ▐█████▌    Not configured · claude-opus-4-7[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+"
+`;
+
+exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1`] = `
+"
+          
+  ▐▛███▜▌    Claudio vtest-version
+  ▐█████▌    Not configured · claude-opus-4-7[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudio 
+  ? for shortcuts"
+`;
+
+exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path reachable) 1`] = `
+"
+          
+  ▐▛███▜▌    Claudio vtest-version
+  ▐█████▌    Not configured · claude-opus-4-7[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudio 
+  ? for shortcuts"
+`;

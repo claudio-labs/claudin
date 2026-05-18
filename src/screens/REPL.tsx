@@ -1,31 +1,37 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { spawnSync } from 'child_process';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount, getTotalInputTokens } from '../bootstrap/state.js';
 import { parseTokenBudget } from '../utils/tokenBudget.js';
 import { count } from '../utils/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
-import figures from 'figures';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- / n N Esc [ v are bare letters in transcript modal context, same class as g/G/j/k in ScrollKeybindingHandler
 import { useInput } from '../ink.js';
-import { useSearchInput } from '../hooks/useSearchInput.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { useSearchHighlight } from '../ink/hooks/use-search-highlight.js';
 import type { JumpHandle } from '../components/VirtualMessageList.js';
+import { median } from './repl/utils/math.js';
+import { TranscriptModeFooter } from './repl/components/TranscriptModeFooter.js';
+import { TranscriptSearchBar } from './repl/components/TranscriptSearchBar.js';
+import { AnimatedTerminalTitle } from './repl/components/AnimatedTerminalTitle.js';
+import { REPLStatus } from './repl/components/REPLStatus.js';
+import { REPLTranscriptView } from './repl/components/REPLTranscriptView.js';
+import { renderREPLDialogs } from './repl/components/REPLDialogs.js';
+import { getFocusedInputDialog } from './repl/utils/getFocusedInputDialog.js';
+import { useReplExit } from './repl/hooks/useReplExit.js';
+import { useReplLifecycle } from './repl/hooks/useReplLifecycle.js';
+import { resumeSession } from './repl/services/resumeSession.js';
 import { renderMessagesToPlainText } from '../utils/exportRenderer.js';
 import { openFileInExternalEditor } from '../utils/editor.js';
 import { writeFile } from 'fs/promises';
-import { Box, Text, useStdin, useTheme, useTerminalFocus, useTerminalTitle, useTabStatus } from '../ink.js';
-import type { TabStatusKind } from '../ink/hooks/use-tab-status.js';
+import { Box, Text, useStdin, useTheme, useTerminalFocus, useTabStatus } from '../ink.js';
 import { CostThresholdDialog } from '../components/CostThresholdDialog.js';
 import { IdleReturnDialog } from '../components/IdleReturnDialog.js';
 import * as React from 'react';
-import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect } from 'react';
 import { useNotifications } from '../context/notifications.js';
 import { sendNotification } from '../services/notifier.js';
-import { startPreventSleep, stopPreventSleep } from '../services/preventSleep.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from '../ink/terminal.js';
 import instances from '../ink/instances.js';
@@ -83,7 +89,6 @@ import { useApiKeyVerification } from '../hooks/useApiKeyVerification.js';
 import { GlobalKeybindingHandlers } from '../hooks/useGlobalKeybindings.js';
 import { CommandKeybindingHandlers } from '../hooks/useCommandKeybindings.js';
 import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js';
-import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { getShortcutDisplay } from '../keybindings/shortcutFormat.js';
 import { CancelRequestHandler } from '../hooks/useCancelRequest.js';
 import { useExitOnCtrlCDWithKeybindings } from '../hooks/useExitOnCtrlCDWithKeybindings.js';
@@ -183,7 +188,7 @@ import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type
 import { type AttributionState, incrementPromptCount } from '../utils/commitAttribution.js';
 import { recordAttributionSnapshot } from '../utils/sessionStorage.js';
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionStateFromLog, restoreWorktreeForResume, exitRestoredWorktree } from '../utils/sessionRestore.js';
-import { isBgSession, updateSessionName, updateSessionActivity } from '../utils/concurrentSessions.js';
+import { updateSessionName } from '../utils/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from '../tasks/InProcessTeammateTask/types.js';
 import { restoreRemoteAgentTasks } from '../tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { useInboxPoller } from '../hooks/useInboxPoller.js';
@@ -201,8 +206,6 @@ import { useTaskListWatcher } from '../hooks/useTaskListWatcher.js';
 import type { SandboxAskCallback, NetworkHostPattern } from '../utils/sandbox/sandbox-adapter.js';
 import { type IDEExtensionInstallationStatus, closeOpenDiffs, getConnectedIdeClient, type IdeType } from '../utils/ide.js';
 import { useIDEIntegration } from '../hooks/useIDEIntegration.js';
-import exit from '../commands/exit/index.js';
-import { ExitFlow } from '../components/ExitFlow.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
 import { popAllEditable, enqueue, type SetAppState, getCommandQueue, getCommandQueueLength, removeByFilter } from '../utils/messageQueueManager.js';
 import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from '../utils/toolJSXStore.js';
@@ -307,221 +310,14 @@ const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
 // 100 files should be sufficient for most coding sessions while preventing
 // memory issues when working across many files in large projects
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2) : sorted[mid]!;
-}
+// `median`, `TranscriptModeFooter`, `TranscriptSearchBar`,
+// `AnimatedTerminalTitle` and the `TITLE_*` constants were extracted
+// in Etapa 1 of ROADMAP 11e. See:
+//   src/screens/repl/utils/math.ts
+//   src/screens/repl/components/TranscriptModeFooter.tsx
+//   src/screens/repl/components/TranscriptSearchBar.tsx
+//   src/screens/repl/components/AnimatedTerminalTitle.tsx
 
-/**
- * Small component to display transcript mode footer with dynamic keybinding.
- * Must be rendered inside KeybindingSetup to access keybinding context.
- */
-function TranscriptModeFooter(t0) {
-  const $ = _c(9);
-  const {
-    showAllInTranscript,
-    virtualScroll,
-    searchBadge,
-    suppressShowAll: t1,
-    status
-  } = t0;
-  const suppressShowAll = t1 === undefined ? false : t1;
-  const toggleShortcut = useShortcutDisplay("app:toggleTranscript", "Global", "ctrl+o");
-  const showAllShortcut = useShortcutDisplay("transcript:toggleShowAll", "Transcript", "ctrl+e");
-  const t2 = searchBadge ? " \xB7 n/N to navigate" : virtualScroll ? ` · ${figures.arrowUp}${figures.arrowDown} scroll · home/end top/bottom` : suppressShowAll ? "" : ` · ${showAllShortcut} to ${showAllInTranscript ? "collapse" : "show all"}`;
-  let t3;
-  if ($[0] !== t2 || $[1] !== toggleShortcut) {
-    t3 = <Text dimColor={true}>Showing detailed transcript · {toggleShortcut} to toggle{t2}</Text>;
-    $[0] = t2;
-    $[1] = toggleShortcut;
-    $[2] = t3;
-  } else {
-    t3 = $[2];
-  }
-  let t4;
-  if ($[3] !== searchBadge || $[4] !== status) {
-    t4 = status ? <><Box flexGrow={1} /><Text>{status} </Text></> : searchBadge ? <><Box flexGrow={1} /><Text dimColor={true}>{searchBadge.current}/{searchBadge.count}{"  "}</Text></> : null;
-    $[3] = searchBadge;
-    $[4] = status;
-    $[5] = t4;
-  } else {
-    t4 = $[5];
-  }
-  let t5;
-  if ($[6] !== t3 || $[7] !== t4) {
-    t5 = <Box noSelect={true} alignItems="center" alignSelf="center" borderTopDimColor={true} borderBottom={false} borderLeft={false} borderRight={false} borderStyle="single" marginTop={1} paddingLeft={2} width="100%">{t3}{t4}</Box>;
-    $[6] = t3;
-    $[7] = t4;
-    $[8] = t5;
-  } else {
-    t5 = $[8];
-  }
-  return t5;
-}
-
-/** less-style / bar. 1-row, same border-top styling as TranscriptModeFooter
- *  so swapping them in the bottom slot doesn't shift ScrollBox height.
- *  useSearchInput handles readline editing; we report query changes and
- *  render the counter. Incremental — re-search + highlight per keystroke. */
-function TranscriptSearchBar({
-  jumpRef,
-  count,
-  current,
-  onClose,
-  onCancel,
-  setHighlight,
-  initialQuery
-}: {
-  jumpRef: RefObject<JumpHandle | null>;
-  count: number;
-  current: number;
-  /** Enter — commit. Query persists for n/N. */
-  onClose: (lastQuery: string) => void;
-  /** Esc/ctrl+c/ctrl+g — undo to pre-/ state. */
-  onCancel: () => void;
-  setHighlight: (query: string) => void;
-  // Seed with the previous query (less: / shows last pattern). Mount-fire
-  // of the effect re-scans with the same query — idempotent (same matches,
-  // nearest-ptr, same highlights). User can edit or clear.
-  initialQuery: string;
-}): React.ReactNode {
-  const {
-    query,
-    cursorOffset
-  } = useSearchInput({
-    isActive: true,
-    initialQuery,
-    onExit: () => onClose(query),
-    onCancel
-  });
-  // Index warm-up runs before the query effect so it measures the real
-  // cost — otherwise setSearchQuery fills the cache first and warm
-  // reports ~0ms while the user felt the actual lag.
-  // First / in a transcript session pays the extractSearchText cost.
-  // Subsequent / return 0 immediately (indexWarmed ref in VML).
-  // Transcript is frozen at ctrl+o so the cache stays valid.
-  // Initial 'building' so warmDone is false on mount — the [query] effect
-  // waits for the warm effect's first resolve instead of racing it. With
-  // null initial, warmDone would be true on mount → [query] fires →
-  // setSearchQuery fills cache → warm reports ~0ms while the user felt
-  // the real lag.
-  const [indexStatus, setIndexStatus] = React.useState<'building' | {
-    ms: number;
-  } | null>('building');
-  React.useEffect(() => {
-    let alive = true;
-    const warm = jumpRef.current?.warmSearchIndex;
-    if (!warm) {
-      setIndexStatus(null); // VML not mounted yet — rare, skip indicator
-      return;
-    }
-    setIndexStatus('building');
-    warm().then(ms => {
-      if (!alive) return;
-      // <20ms = imperceptible. No point showing "indexed in 3ms".
-      if (ms < 20) {
-        setIndexStatus(null);
-      } else {
-        setIndexStatus({
-          ms
-        });
-        setTimeout(() => alive && setIndexStatus(null), 2000);
-      }
-    });
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // mount-only: bar opens once per /
-  // Gate the query effect on warm completion. setHighlight stays instant
-  // (screen-space overlay, no indexing). setSearchQuery (the scan) waits.
-  const warmDone = indexStatus !== 'building';
-  useEffect(() => {
-    if (!warmDone) return;
-    jumpRef.current?.setSearchQuery(query);
-    setHighlight(query);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, warmDone]);
-  const off = cursorOffset;
-  const cursorChar = off < query.length ? query[off] : ' ';
-  return <Box borderTopDimColor borderBottom={false} borderLeft={false} borderRight={false} borderStyle="single" marginTop={1} paddingLeft={2} width="100%"
-    // applySearchHighlight scans the whole screen buffer. The query
-    // text rendered here IS on screen — /foo matches its own 'foo' in
-    // the bar. With no content matches that's the ONLY visible match →
-    // gets CURRENT → underlined. noSelect makes searchHighlight.ts:76
-    // skip these cells (same exclusion as gutters). You can't text-
-    // select the bar either; it's transient chrome, fine.
-    noSelect>
-    <Text>/</Text>
-    <Text>{query.slice(0, off)}</Text>
-    <Text inverse>{cursorChar}</Text>
-    {off < query.length && <Text>{query.slice(off + 1)}</Text>}
-    <Box flexGrow={1} />
-    {indexStatus === 'building' ? <Text dimColor>indexing… </Text> : indexStatus ? <Text dimColor>indexed in {indexStatus.ms}ms </Text> : count === 0 && query ? <Text color="error">no matches </Text> : count > 0 ?
-      // Engine-counted (indexOf on extractSearchText). May drift from
-      // render-count for ghost/phantom messages — badge is a rough
-      // location hint. scanElement gives exact per-message positions
-      // but counting ALL would cost ~1-3ms × matched-messages.
-      <Text dimColor>
-        {current}/{count}
-        {'  '}
-      </Text> : null}
-  </Box>;
-}
-const TITLE_ANIMATION_FRAMES = ['⠂', '⠐'];
-const TITLE_STATIC_PREFIX = '✳';
-const TITLE_ANIMATION_INTERVAL_MS = 960;
-
-/**
- * Sets the terminal tab title, with an animated prefix glyph while a query
- * is running. Isolated from REPL so the 960ms animation tick re-renders only
- * this leaf component (which returns null — pure side-effect) instead of the
- * entire REPL tree. Before extraction, the tick was ~1 REPL render/sec for
- * the duration of every turn, dragging PromptInput and friends along.
- */
-function AnimatedTerminalTitle(t0) {
-  const $ = _c(6);
-  const {
-    isAnimating,
-    title,
-    disabled,
-    noPrefix
-  } = t0;
-  const terminalFocused = useTerminalFocus();
-  const [frame, setFrame] = useState(0);
-  let t1;
-  let t2;
-  if ($[0] !== disabled || $[1] !== isAnimating || $[2] !== noPrefix || $[3] !== terminalFocused) {
-    t1 = () => {
-      if (disabled || noPrefix || !isAnimating || !terminalFocused) {
-        return;
-      }
-      const interval = setInterval(_temp2, TITLE_ANIMATION_INTERVAL_MS, setFrame);
-      return () => clearInterval(interval);
-    };
-    t2 = [disabled, noPrefix, isAnimating, terminalFocused];
-    $[0] = disabled;
-    $[1] = isAnimating;
-    $[2] = noPrefix;
-    $[3] = terminalFocused;
-    $[4] = t1;
-    $[5] = t2;
-  } else {
-    t1 = $[4];
-    t2 = $[5];
-  }
-  useEffect(t1, t2);
-  const prefix = isAnimating ? TITLE_ANIMATION_FRAMES[frame] ?? TITLE_STATIC_PREFIX : TITLE_STATIC_PREFIX;
-  useTerminalTitle(disabled ? null : noPrefix ? title : `${prefix} ${title}`);
-  return null;
-}
-function _temp2(setFrame_0) {
-  return setFrame_0(_temp);
-}
-function _temp(f) {
-  return (f + 1) % TITLE_ANIMATION_FRAMES.length;
-}
 export type Props = {
   commands: Command[];
   debug: boolean;
@@ -1116,26 +912,18 @@ export function REPL({
   // here because onQueryImpl reads them (background session description,
   // haiku title extraction gate).
 
-  // Prevent macOS from sleeping while Claude is working
-  useEffect(() => {
-    if (isLoading && !isWaitingForApproval && !isShowingLocalJSXCommand) {
-      startPreventSleep();
-      return () => stopPreventSleep();
-    }
-  }, [isLoading, isWaitingForApproval, isShowingLocalJSXCommand]);
-  const sessionStatus: TabStatusKind = isWaitingForApproval || isShowingLocalJSXCommand ? 'waiting' : isLoading ? 'busy' : 'idle';
-  const waitingFor = sessionStatus !== 'waiting' ? undefined : toolUseConfirmQueue.length > 0 ? `approve ${toolUseConfirmQueue[0]!.tool.name}` : pendingWorkerRequest ? 'worker request' : pendingSandboxRequest ? 'sandbox request' : isShowingLocalJSXCommand ? 'dialog open' : 'input needed';
-
-  // Push status to the PID file for `claude ps`. Fire-and-forget; ps falls
-  // back to transcript-tail derivation when this is missing/stale.
-  useEffect(() => {
-    if (feature('BG_SESSIONS')) {
-      void updateSessionActivity({
-        status: sessionStatus,
-        waitingFor
-      });
-    }
-  }, [sessionStatus, waitingFor]);
+  // Boot/lifecycle effects: prevent-sleep + session-activity PID file push.
+  // Both keyed on the same upstream loading/approval signals; consolidated in
+  // a single hook so the `sessionStatus`/`waitingFor` derivation lives next to
+  // its only consumer. See src/screens/repl/hooks/useReplLifecycle.ts.
+  const { sessionStatus, waitingFor } = useReplLifecycle({
+    isLoading,
+    isWaitingForApproval,
+    isShowingLocalJSXCommand,
+    toolUseConfirmQueue,
+    pendingWorkerRequest,
+    pendingSandboxRequest,
+  });
 
   // 3P default: off — OSC 21337 is internal-only while the spec stabilizes.
   // Gated so we can roll back if the sidebar indicator conflicts with
@@ -1731,220 +1519,27 @@ export function REPL({
     fileHistory: fileHistoryState
   })));
   const resume = useCallback(async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => {
-    const resumeStart = performance.now();
-    try {
-      // Deserialize messages to properly clean up the conversation
-      // This filters unresolved tool uses and adds a synthetic assistant message if needed
-      const messages = deserializeMessages(log.messages);
-
-      // Match coordinator/normal mode to the resumed session
-      if (feature('COORDINATOR_MODE')) {
-        /* eslint-disable @typescript-eslint/no-require-imports */
-        const coordinatorModule = require('../coordinator/coordinatorMode.js') as typeof import('../coordinator/coordinatorMode.js');
-        /* eslint-enable @typescript-eslint/no-require-imports */
-        const warning = coordinatorModule.matchSessionMode(log.mode);
-        if (warning) {
-          // Re-derive agent definitions after mode switch so built-in agents
-          // reflect the new coordinator/normal mode
-          /* eslint-disable @typescript-eslint/no-require-imports */
-          const {
-            getAgentDefinitionsWithOverrides,
-            getActiveAgentsFromList
-          } = require('../tools/AgentTool/loadAgentsDir.js') as typeof import('../tools/AgentTool/loadAgentsDir.js');
-          /* eslint-enable @typescript-eslint/no-require-imports */
-          getAgentDefinitionsWithOverrides.cache.clear?.();
-          const freshAgentDefs = await getAgentDefinitionsWithOverrides(getOriginalCwd());
-          setAppState(prev => ({
-            ...prev,
-            agentDefinitions: {
-              ...freshAgentDefs,
-              allAgents: freshAgentDefs.allAgents,
-              activeAgents: getActiveAgentsFromList(freshAgentDefs.allAgents)
-            }
-          }));
-          messages.push(createSystemMessage(warning, 'warning'));
-        }
-      }
-
-      // Fire SessionEnd hooks for the current session before starting the
-      // resumed one, mirroring the /clear flow in conversation.ts.
-      const sessionEndTimeoutMs = getSessionEndHookTimeoutMs();
-      await executeSessionEndHooks('resume', {
-        getAppState: () => store.getState(),
-        setAppState,
-        signal: AbortSignal.timeout(sessionEndTimeoutMs),
-        timeoutMs: sessionEndTimeoutMs
-      });
-
-      // Process session start hooks for resume
-      const hookMessages = await processSessionStartHooks('resume', {
-        sessionId,
-        agentType: mainThreadAgentDefinition?.agentType,
-        model: mainLoopModel
-      });
-
-      // Append hook messages to the conversation
-      messages.push(...hookMessages);
-      // For forks, generate a new plan slug and copy the plan content so the
-      // original and forked sessions don't clobber each other's plan files.
-      // For regular resumes, reuse the original session's plan slug.
-      if (entrypoint === 'fork') {
-        void copyPlanForFork(log, asSessionId(sessionId));
-      } else {
-        void copyPlanForResume(log, asSessionId(sessionId));
-      }
-
-      // Restore file history and attribution state from the resumed conversation
-      restoreSessionStateFromLog(log, setAppState);
-      if (log.fileHistorySnapshots) {
-        void copyFileHistoryForResume(log);
-      }
-
-      // Restore agent setting from the resumed conversation
-      // Always reset to the new session's values (or clear if none),
-      // matching the standaloneAgentContext pattern below
-      const {
-        agentDefinition: restoredAgent
-      } = restoreAgentFromSession(log.agentSetting, initialMainThreadAgentDefinition, agentDefinitions);
-      setMainThreadAgentDefinition(restoredAgent);
-      setAppState(prev => ({
-        ...prev,
-        agent: restoredAgent?.agentType
-      }));
-
-      // Restore standalone agent context from the resumed conversation
-      // Always reset to the new session's values (or clear if none)
-      setAppState(prev => ({
-        ...prev,
-        standaloneAgentContext: computeStandaloneAgentContext(log.agentName, log.agentColor)
-      }));
-      void updateSessionName(log.agentName);
-
-      // Restore read file state from the message history
-      restoreReadFileState(messages, log.projectPath ?? getOriginalCwd());
-
-      // Clear any active loading state (no queryId since we're not in a query)
-      resetLoadingState();
-      setAbortController(null);
-      setConversationId(sessionId);
-
-      // Get target session's costs BEFORE saving current session
-      // (saveCurrentSessionCosts overwrites the config, so we need to read first)
-      const targetSessionCosts = getStoredSessionCosts(sessionId);
-
-      // Save current session's costs before switching to avoid losing accumulated costs
-      saveCurrentSessionCosts();
-
-      // Reset cost state for clean slate before restoring target session
-      resetCostState();
-
-      // Switch session (id + project dir atomically). fullPath may point to
-      // a different project (cross-worktree, /branch); null derives from
-      // current originalCwd.
-      switchSession(asSessionId(sessionId), log.fullPath ? dirname(log.fullPath) : null);
-      // Rename asciicast recording to match the resumed session ID
-      const {
-        renameRecordingForSession
-      } = await import('../utils/asciicast.js');
-      await renameRecordingForSession();
-      await resetSessionFilePointer();
-
-      // Clear then restore session metadata so it's re-appended on exit via
-      // reAppendSessionMetadata. clearSessionMetadata must be called first:
-      // restoreSessionMetadata only sets-if-truthy, so without the clear,
-      // a session without an agent name would inherit the previous session's
-      // cached name and write it to the wrong transcript on first message.
-      clearSessionMetadata();
-      restoreSessionMetadata(log);
-      // Resumed sessions shouldn't re-title from mid-conversation context
-      // (same reasoning as the useRef seed), and the previous session's
-      // Haiku title shouldn't carry over.
-      haikuTitleAttemptedRef.current = true;
-      setHaikuTitle(undefined);
-
-      // Exit any worktree a prior /resume entered, then cd into the one
-      // this session was in. Without the exit, resuming from worktree B
-      // to non-worktree C leaves cwd/currentWorktreeSession stale;
-      // resuming B→C where C is also a worktree fails entirely
-      // (getCurrentWorktreeSession guard blocks the switch).
-      //
-      // Skipped for /branch: forkLog doesn't carry worktreeSession, so
-      // this would kick the user out of a worktree they're still working
-      // in. Same fork skip as processResumedConversation for the adopt —
-      // fork materializes its own file via recordTranscript on REPL mount.
-      if (entrypoint !== 'fork') {
-        exitRestoredWorktree();
-        restoreWorktreeForResume(log.worktreeSession);
-        adoptResumedSessionFile();
-        void restoreRemoteAgentTasks({
-          abortController: new AbortController(),
-          getAppState: () => store.getState(),
-          setAppState
-        });
-      } else {
-        // Fork: same re-persist as /clear (conversation.ts). The clear
-        // above wiped currentSessionWorktree, forkLog doesn't carry it,
-        // and the process is still in the same worktree.
-        const ws = getCurrentWorktreeSession();
-        if (ws) saveWorktreeState(ws);
-      }
-
-      // Persist the current mode so future resumes know what mode this session was in
-      if (feature('COORDINATOR_MODE')) {
-        /* eslint-disable @typescript-eslint/no-require-imports */
-        const {
-          saveMode
-        } = require('../utils/sessionStorage.js');
-        const {
-          isCoordinatorMode
-        } = require('../coordinator/coordinatorMode.js') as typeof import('../coordinator/coordinatorMode.js');
-        /* eslint-enable @typescript-eslint/no-require-imports */
-        saveMode(isCoordinatorMode() ? 'coordinator' : 'normal');
-      }
-
-      // Restore target session's costs from the data we read earlier
-      if (targetSessionCosts) {
-        setCostStateForRestore(targetSessionCosts);
-      }
-
-      // Reconstruct replacement state for the resumed session. Runs after
-      // setSessionId so any NEW replacements post-resume write to the
-      // resumed session's tool-results dir. Gated on ref.current: the
-      // initial mount already read the feature flag, so we don't re-read
-      // it here (mid-session flag flips stay unobservable in both
-      // directions).
-      //
-      // Skipped for in-session /branch: the existing ref is already correct
-      // (branch preserves tool_use_ids), so there's no need to reconstruct.
-      // createFork() does write content-replacement entries to the forked
-      // JSONL with the fork's sessionId, so `claude -r {forkId}` also works.
-      if (contentReplacementStateRef.current && entrypoint !== 'fork') {
-        contentReplacementStateRef.current = reconstructContentReplacementState(messages, log.contentReplacements ?? []);
-      }
-      const hydratedMessages = contentReplacementStateRef.current ? applyToolResultReplacementsToMessages(messages, contentReplacementStateRef.current.replacements) : messages;
-
-      // Reset messages to the provided initial messages
-      // Use a callback to ensure we're not dependent on stale state
-      setMessages(() => hydratedMessages);
-
-      // Clear any active tool JSX
-      setToolJSX(null);
-
-      // Clear input to ensure no residual state
-      setInputValue('');
-      logEvent('tengu_session_resumed', {
-        entrypoint: entrypoint as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: true,
-        resume_duration_ms: Math.round(performance.now() - resumeStart)
-      });
-    } catch (error) {
-      logEvent('tengu_session_resumed', {
-        entrypoint: entrypoint as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: false
-      });
-      throw error;
-    }
+    await resumeSession(sessionId, log, entrypoint, {
+      setAppState,
+      store,
+      mainThreadAgentDefinition,
+      initialMainThreadAgentDefinition,
+      agentDefinitions,
+      setMainThreadAgentDefinition,
+      mainLoopModel,
+      restoreReadFileState,
+      resetLoadingState,
+      setAbortController,
+      setConversationId,
+      haikuTitleAttemptedRef,
+      setHaikuTitle,
+      contentReplacementStateRef,
+      setMessages,
+      setToolJSX,
+      setInputValue,
+    });
   }, [resetLoadingState, setAppState]);
+
 
   // Lazy init: useRef(createX()) would call createX on every render and
   // discard the result. LRUCache construction inside FileStateCache is
@@ -2002,61 +1597,44 @@ export function REPL({
   // autoRunIssueReason is cleared.
   const didAutoRunIssueRef = useRef(false);
 
-  // State for exit feedback flow
-  const [exitFlow, setExitFlow] = useState<React.ReactNode>(null);
-  const [isExiting, setIsExiting] = useState(false);
+  // Exit state machine + exit-flow node. See useReplExit for the state diagram
+  // and the failsafe-timer rationale. The hook owns the refs and exposes only
+  // the values REPL.tsx needs to render and arbitrate focus.
+  const { exitFlow, isExiting, handleExit } = useReplExit();
 
   // Calculate if cost dialog should be shown
   const showingCostDialog = !isLoading && showCostDialog;
 
-  // Determine which dialog should have focus (if any)
+  // Determine which dialog should have focus (if any). Pure arbitration
+  // extracted to src/screens/repl/utils/getFocusedInputDialog.ts so the
+  // priority order is documented in one place and independently testable.
   // Permission and interactive dialogs can show even when toolJSX is set,
   // as long as shouldContinueAnimation is true. This prevents deadlocks when
   // agents set background hints while waiting for user interaction.
-  function getFocusedInputDialog(): 'message-selector' | 'sandbox-permission' | 'tool-permission' | 'prompt' | 'worker-sandbox-permission' | 'elicitation' | 'cost' | 'idle-return' | 'init-onboarding' | 'ide-onboarding' | 'model-switch' | 'effort-callout' | 'remote-callout' | 'lsp-recommendation' | 'plugin-hint' | 'desktop-upsell' | 'ultraplan-choice' | 'ultraplan-launch' | undefined {
-    // Exit states always take precedence
-    if (isExiting || exitFlow) return undefined;
-
-    // High priority dialogs (always show regardless of typing)
-    if (isMessageSelectorVisible) return 'message-selector';
-
-    // Suppress interrupt dialogs while user is actively typing
-    if (promptTypingSuppressionActive) return undefined;
-    if (sandboxPermissionRequestQueue[0]) return 'sandbox-permission';
-
-    // Permission/interactive dialogs (show unless blocked by toolJSX)
-    const allowDialogsWithAnimation = !toolJSX || toolJSX.shouldContinueAnimation;
-    if (allowDialogsWithAnimation && toolUseConfirmQueue[0]) return 'tool-permission';
-    if (allowDialogsWithAnimation && promptQueue[0]) return 'prompt';
-    // Worker sandbox permission prompts (network access) from swarm workers
-    if (allowDialogsWithAnimation && workerSandboxPermissions.queue[0]) return 'worker-sandbox-permission';
-    if (allowDialogsWithAnimation && elicitation.queue[0]) return 'elicitation';
-    if (allowDialogsWithAnimation && showingCostDialog) return 'cost';
-    if (allowDialogsWithAnimation && idleReturnPending) return 'idle-return';
-    if (feature('ULTRAPLAN') && allowDialogsWithAnimation && !isLoading && ultraplanPendingChoice) return 'ultraplan-choice';
-    if (feature('ULTRAPLAN') && allowDialogsWithAnimation && !isLoading && ultraplanLaunchPending) return 'ultraplan-launch';
-
-    // Onboarding dialogs (special conditions)
-    if (allowDialogsWithAnimation && showIdeOnboarding) return 'ide-onboarding';
-
-    // Effort callout (shown once for Opus 4.6/4.7 users when effort is enabled)
-    if (allowDialogsWithAnimation && showEffortCallout) return 'effort-callout';
-
-    // Remote callout (shown once before first bridge enable)
-    if (allowDialogsWithAnimation && showRemoteCallout) return 'remote-callout';
-
-    // LSP plugin recommendation (lowest priority - non-blocking suggestion)
-    // Suppress during startup window to prevent stealing focus from the prompt (issue #363)
-    if (allowDialogsWithAnimation && lspRecommendation && startupChecksStartedRef.current) return 'lsp-recommendation';
-
-    // Plugin hint from CLI/SDK stderr (same priority band as LSP rec)
-    if (allowDialogsWithAnimation && hintRecommendation && startupChecksStartedRef.current) return 'plugin-hint';
-
-    // Desktop app upsell (max 3 launches, lowest priority)
-    if (allowDialogsWithAnimation && showDesktopUpsellStartup && startupChecksStartedRef.current) return 'desktop-upsell';
-    return undefined;
-  }
-  const focusedInputDialog = getFocusedInputDialog();
+  const focusedInputDialog = getFocusedInputDialog({
+    isExiting,
+    exitFlow,
+    isMessageSelectorVisible,
+    promptTypingSuppressionActive,
+    sandboxPermissionRequestQueue,
+    toolJSX,
+    toolUseConfirmQueue,
+    promptQueue,
+    workerSandboxPermissions,
+    elicitation,
+    showingCostDialog,
+    idleReturnPending,
+    ultraplanPendingChoice,
+    ultraplanLaunchPending,
+    isLoading,
+    showIdeOnboarding,
+    showEffortCallout,
+    showRemoteCallout,
+    lspRecommendation,
+    hintRecommendation,
+    showDesktopUpsellStartup,
+    startupChecksStarted: startupChecksStartedRef.current,
+  });
 
   // True when permission prompts exist but are hidden because the user is typing
   const hasSuppressedDialogs = promptTypingSuppressionActive && (sandboxPermissionRequestQueue[0] || toolUseConfirmQueue[0] || promptQueue[0] || workerSandboxPermissions.queue[0] || elicitation.queue[0] || showingCostDialog);
@@ -3626,93 +3204,14 @@ export function REPL({
       resetHistory: () => { }
     });
   }, []);
-  // Exit state machine. The previous boolean `isExitingRef` would silently
-  // early-return on every subsequent press once it flipped to true, so any
-  // stall in the shutdown path (slow exit.load(), MCP cleanup hanging,
-  // ExitFlow render wedge) left the user with no way to escape. The state
-  // machine gives a guaranteed escape: a second press while shutdown is
-  // already in flight forces SIGKILL.
+  // Exit state machine + failsafe live in useReplExit (called above, near the
+  // other early `useState`s). The previous inline 60-line implementation was
+  // moved verbatim — see src/screens/repl/hooks/useReplExit.tsx for the
+  // state diagram and SIGKILL failsafe rationale.
   //
-  //   idle → requested  : first press; arm failsafe + run shutdown
-  //   requested → forced: second press; SIGKILL immediately
-  //   requested → idle  : user backed out (worktree cancel, bg detach)
-  //   * → forced (timer): failsafe fired after 10s of stalled cleanup
-  type ExitState = 'idle' | 'requested' | 'forced';
-  const exitStateRef = useRef<ExitState>('idle');
-  // Timestamp of the idle→requested transition. PromptInput's TextInput hook
-  // and useExitOnCtrlCDWithKeybindings both fire on the same Ctrl+C, so two
-  // synchronous calls land in the same tick. Honor "force kill" only if the
-  // second call arrives well after the first — humans can't double-tap inside
-  // 250ms, and the Ink double-press window is itself ~500ms.
-  const exitRequestedAtRef = useRef(0);
-  const FORCE_KILL_MIN_GAP_MS = 250;
-  // Hard kill failsafe. gracefulShutdown has its own 5s failsafe but only
-  // runs once it's actually called — and after long sessions we've seen the
-  // exit path hang before reaching it (React render of ExitFlow stalls, the
-  // dynamic exit.load() never resolves, etc.), leaving an unkillable REPL.
-  // Not unref'd — if cleanup hangs we want the timer to fire; if it completes
-  // gracefulShutdown's process.exit() terminates us before the timer matters.
-  const exitFailsafeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearExitFailsafe = (): void => {
-    if (exitFailsafeTimerRef.current) {
-      clearTimeout(exitFailsafeTimerRef.current);
-      exitFailsafeTimerRef.current = null;
-    }
-  };
-  const handleExit = useCallback(async () => {
-    if (exitStateRef.current === 'forced') return;
-    if (exitStateRef.current === 'requested') {
-      // Same-press double dispatch (two hooks, one keypress) — collapse.
-      if (Date.now() - exitRequestedAtRef.current < FORCE_KILL_MIN_GAP_MS) return;
-      // Real second press while shutdown is in flight — user wants out NOW.
-      exitStateRef.current = 'forced';
-      clearExitFailsafe();
-      process.kill(process.pid, 'SIGKILL');
-      return;
-    }
-    exitStateRef.current = 'requested';
-    exitRequestedAtRef.current = Date.now();
-    exitFailsafeTimerRef.current = setTimeout(() => {
-      exitStateRef.current = 'forced';
-      process.kill(process.pid, 'SIGKILL');
-    }, 10_000);
-    setIsExiting(true);
-    // In bg sessions, always detach instead of kill — even when a worktree is
-    // active. Without this guard, the worktree branch below short-circuits into
-    // ExitFlow (which calls gracefulShutdown) before exit.tsx is ever loaded.
-    if (feature('BG_SESSIONS') && isBgSession()) {
-      spawnSync('tmux', ['detach-client'], {
-        stdio: 'ignore'
-      });
-      clearExitFailsafe();
-      exitStateRef.current = 'idle';
-      setIsExiting(false);
-      return;
-    }
-    const showWorktree = getCurrentWorktreeSession() !== null;
-    if (showWorktree) {
-      setExitFlow(<ExitFlow showWorktree onDone={() => { }} onCancel={() => {
-        setExitFlow(null);
-        clearExitFailsafe();
-        exitStateRef.current = 'idle';
-        setIsExiting(false);
-      }} />);
-      return;
-    }
-    const exitMod = await exit.load();
-    const exitFlowResult = await exitMod.call(() => { });
-    setExitFlow(exitFlowResult);
-    // If call() returned without killing the process (bg session detach),
-    // clear isExiting so the UI is usable on reattach. No-op on the normal
-    // path — gracefulShutdown's process.exit() means we never get here.
-    if (exitFlowResult === null) {
-      clearExitFailsafe();
-      exitStateRef.current = 'idle';
-      setIsExiting(false);
-    }
-  }, []);
-  // Sync the ref so the early useExitOnCtrlCDWithKeybindings hook (above)
-  // can dispatch into handleExit even though it's defined later.
+  // Sync the ref so the early useExitOnCtrlCDWithKeybindings hook (defined
+  // above this declaration) can dispatch into handleExit even though the
+  // callback identity only materializes here in render order.
   handleExitRef.current = handleExit;
   const handleShowMessageSelector = useCallback(() => {
     setIsMessageSelectorVisible(prev => !prev);
@@ -4410,103 +3909,53 @@ export function REPL({
   // Auto-exit viewing mode when teammate completes or errors
   useTeammateViewAutoExit();
   if (screen === 'transcript') {
-    // Virtual scroll replaces the 30-message cap: everything is scrollable
-    // and memory is bounded by the viewport. Without it, wrapping transcript
-    // in a ScrollBox would mount all messages (~250 MB on long sessions —
-    // the exact problem), so the kill switch and non-fullscreen paths must
-    // fall through to the legacy render: no alt screen, dump to terminal
-    // scrollback, 30-cap + Ctrl+E. Reusing scrollRef is safe — normal-mode
-    // and transcript-mode are mutually exclusive (this early return), so
-    // only one ScrollBox is ever mounted at a time.
-    const transcriptScrollRef = isFullscreenEnvEnabled() && !disableVirtualScroll && !dumpMode ? scrollRef : undefined;
-    const transcriptMessagesElement = <Messages messages={transcriptMessages} tools={tools} commands={renderCommands} verbose={true} toolJSX={null} toolUseConfirmQueue={[]} inProgressToolUseIDs={inProgressToolUseIDs} isMessageSelectorVisible={false} conversationId={conversationId} screen={screen} agentDefinitions={agentDefinitions} streamingToolUses={transcriptStreamingToolUses} showAllInTranscript={showAllInTranscript} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} hidePastThinking={true} streamingThinking={streamingThinking} scrollRef={transcriptScrollRef} jumpRef={jumpRef} onSearchMatchesChange={onSearchMatchesChange} scanElement={scanElement} setPositions={setPositions} disableRenderCap={dumpMode} />;
-    const transcriptToolJSX = toolJSX && <Box flexDirection="column" width="100%">
-      {toolJSX.jsx}
-    </Box>;
-    const transcriptReturn = <KeybindingSetup>
-      <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
-      <GlobalKeybindingHandlers {...globalKeybindingProps} />
-      {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
-      <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
-      {transcriptScrollRef ?
-        // ScrollKeybindingHandler must mount before CancelRequestHandler so
-        // ctrl+c-with-selection copies instead of cancelling the active task.
-        // Its raw useInput handler only stops propagation when a selection
-        // exists — without one, ctrl+c falls through to CancelRequestHandler.
-        <ScrollKeybindingHandler scrollRef={scrollRef}
-          // Yield wheel/ctrl+u/d to UltraplanChoiceDialog's own scroll
-          // handler while the modal is showing.
-          isActive={focusedInputDialog !== 'ultraplan-choice'}
-          // g/G/j/k/ctrl+u/ctrl+d would eat keystrokes the search bar
-          // wants. Off while searching.
-          isModal={!searchOpen}
-          // Manual scroll exits the search context — clear the yellow
-          // current-match marker. Positions are (msg, rowOffset)-keyed;
-          // j/k changes scrollTop so rowOffset is stale → wrong row
-          // gets yellow. Next n/N re-establishes via step()→jump().
-          onScroll={() => jumpRef.current?.disarmSearch()} /> : null}
-      <CancelRequestHandler {...cancelRequestProps} />
-      {transcriptScrollRef ? <FullscreenLayout scrollRef={scrollRef} scrollable={<>
-        {transcriptMessagesElement}
-        {transcriptToolJSX}
-        <SandboxViolationExpandedView />
-      </>} bottom={searchOpen ? <TranscriptSearchBar jumpRef={jumpRef}
-        // Seed was tried (c01578c8) — broke /hello muscle
-        // memory (cursor lands after 'foo', /hello → foohello).
-        // Cancel-restore handles the 'don't lose prior search'
-        // concern differently (onCancel re-applies searchQuery).
-        initialQuery="" count={searchCount} current={searchCurrent} onClose={q => {
-          // Enter — commit. 0-match guard: junk query shouldn't
-          // persist (badge hidden, n/N dead anyway).
-          setSearchQuery(searchCount > 0 ? q : '');
-          setSearchOpen(false);
-          // onCancel path: bar unmounts before its useEffect([query])
-          // can fire with ''. Without this, searchCount stays stale
-          // (n guard at :4956 passes) and VML's matches[] too
-          // (nextMatch walks the old array). Phantom nav, no
-          // highlight. onExit (Enter, q non-empty) still commits.
-          if (!q) {
-            setSearchCount(0);
-            setSearchCurrent(0);
-            jumpRef.current?.setSearchQuery('');
-          }
-        }} onCancel={() => {
-          // Esc/ctrl+c/ctrl+g — undo. Bar's effect last fired
-          // with whatever was typed. searchQuery (REPL state)
-          // is unchanged since / (onClose = commit, didn't run).
-          // Two VML calls: '' restores anchor (0-match else-
-          // branch), then searchQuery re-scans from anchor's
-          // nearest. Both synchronous — one React batch.
-          // setHighlight explicit: REPL's sync-effect dep is
-          // searchQuery (unchanged), wouldn't re-fire.
-          setSearchOpen(false);
-          jumpRef.current?.setSearchQuery('');
-          jumpRef.current?.setSearchQuery(searchQuery);
-          setHighlight(searchQuery);
-        }} setHighlight={setHighlight} /> : <TranscriptModeFooter showAllInTranscript={showAllInTranscript} virtualScroll={true} status={editorStatus || undefined} searchBadge={searchQuery && searchCount > 0 ? {
-          current: searchCurrent,
-          count: searchCount
-        } : undefined} />} /> : <>
-        {transcriptMessagesElement}
-        {transcriptToolJSX}
-        <SandboxViolationExpandedView />
-        <TranscriptModeFooter showAllInTranscript={showAllInTranscript} virtualScroll={false} suppressShowAll={dumpMode} status={editorStatus || undefined} />
-      </>}
-    </KeybindingSetup>;
-    // The virtual-scroll branch (FullscreenLayout above) needs
-    // <AlternateScreen>'s <Box height={rows}> constraint — without it,
-    // ScrollBox's flexGrow has no ceiling, viewport = content height,
-    // scrollTop pins at 0, and Ink's screen buffer sizes to the full
-    // spacer (200×5k+ rows on long sessions). Same root type + props as
-    // normal mode's wrap below so React reconciles and the alt buffer
-    // stays entered across toggle. The 30-cap dump branch stays
-    // unwrapped — it wants native terminal scrollback.
-    if (transcriptScrollRef) {
-      return <AlternateScreen mouseTracking={isMouseTrackingEnabled()}>
-        {transcriptReturn}
-      </AlternateScreen>;
-    }
-    return transcriptReturn;
+    // Transcript-mode render is delegated to REPLTranscriptView (Etapa 5,
+    // ROADMAP 11e). The same scrollRef and jumpRef instances flow through
+    // as props — never recreated — so the virtual-scroll branch keeps its
+    // hold over the shared scroll position. REPL retains ownership of the
+    // feature('VOICE_MODE') gate; the resulting element is passed as a
+    // pre-built ReactNode so the view stays voice-subsystem-agnostic.
+    return <REPLTranscriptView
+      scrollRef={scrollRef as unknown as React.RefObject<unknown>}
+      jumpRef={jumpRef}
+      disableVirtualScroll={disableVirtualScroll}
+      dumpMode={dumpMode}
+      transcriptMessages={transcriptMessages}
+      tools={tools}
+      renderCommands={renderCommands}
+      inProgressToolUseIDs={inProgressToolUseIDs}
+      conversationId={conversationId}
+      screen={screen}
+      agentDefinitions={agentDefinitions}
+      transcriptStreamingToolUses={transcriptStreamingToolUses}
+      showAllInTranscript={showAllInTranscript}
+      handleOpenRateLimitOptions={handleOpenRateLimitOptions}
+      isLoading={isLoading}
+      streamingThinking={streamingThinking}
+      onSearchMatchesChange={onSearchMatchesChange as (m: unknown) => void}
+      scanElement={scanElement}
+      setPositions={setPositions as (p: unknown) => void}
+      toolJSX={toolJSX}
+      titleIsAnimating={titleIsAnimating}
+      terminalTitle={terminalTitle}
+      titleDisabled={titleDisabled}
+      showStatusInTerminalTab={showStatusInTerminalTab}
+      globalKeybindingProps={globalKeybindingProps as unknown as Record<string, unknown>}
+      voiceKeybindingSlot={feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
+      onSubmit={onSubmit as (...args: unknown[]) => unknown}
+      cancelRequestProps={cancelRequestProps as unknown as Record<string, unknown>}
+      focusedInputDialog={focusedInputDialog}
+      searchOpen={searchOpen}
+      searchCount={searchCount}
+      searchCurrent={searchCurrent}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      setSearchOpen={setSearchOpen}
+      setSearchCount={setSearchCount}
+      setSearchCurrent={setSearchCurrent}
+      setHighlight={setHighlight}
+      editorStatus={editorStatus}
+    />;
   }
 
   // Get viewed agent task (inlined from selectors for explicit data flow).
@@ -4607,10 +4056,7 @@ export function REPL({
           {toolJSX.jsx}
         </Box>}
         {feature('WEB_BROWSER_TOOL') ? WebBrowserPanelModule && <WebBrowserPanelModule.WebBrowserPanel /> : null}
-        <Box flexGrow={1} />
-        {showSpinner && <SpinnerWithVerb mode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} overrideMessage={spinnerMessage} spinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} overrideColor={spinnerColor} overrideShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} />}
-        {!showSpinner && !isLoading && !userInputOnProcessing && !hasRunningTeammates && isBriefOnly && !viewedAgentTask && <BriefIdleStatus />}
-        {isFullscreenEnvEnabled() && <PromptInputQueuedCommands />}
+        <REPLStatus showSpinner={showSpinner} streamMode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} spinnerMessage={spinnerMessage} stopHookSpinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerColor={spinnerColor} spinnerShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} isLoading={isLoading} userInputOnProcessing={userInputOnProcessing} hasRunningTeammates={hasRunningTeammates} isBriefOnly={isBriefOnly} viewedAgentTask={viewedAgentTask} />
       </>} bottom={<Box flexDirection={isBuddyEnabled() && companionNarrow ? 'column' : 'row'} width="100%" alignItems={isBuddyEnabled() && companionNarrow ? undefined : 'flex-end'}>
         {isBuddyEnabled() && companionNarrow && isFullscreenEnvEnabled() && companionVisible ? <CompanionSprite /> : null}
         <Box flexDirection="column" flexGrow={1}>
@@ -4630,277 +4076,77 @@ export function REPL({
           {!showSpinner && !toolJSX?.isLocalJSXCommand && showExpandedTodos && tasksV2 && tasksV2.length > 0 && <Box width="100%" flexDirection="column">
             <TaskListV2 tasks={tasksV2} isStandalone={true} />
           </Box>}
-          {focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: {
-            allow: boolean;
-            persistToSettings: boolean;
-          }) => {
-            const {
-              allow,
-              persistToSettings
-            } = response;
-            const currentRequest = sandboxPermissionRequestQueue[0];
-            if (!currentRequest) return;
-            const approvedHost = currentRequest.hostPattern.host;
-            if (persistToSettings) {
-              const update = {
-                type: 'addRules' as const,
-                rules: [{
-                  toolName: WEB_FETCH_TOOL_NAME,
-                  ruleContent: `domain:${approvedHost}`
-                }],
-                behavior: (allow ? 'allow' : 'deny') as 'allow' | 'deny',
-                destination: 'localSettings' as const
-              };
-              setAppState(prev => ({
-                ...prev,
-                toolPermissionContext: applyPermissionUpdate(prev.toolPermissionContext, update)
-              }));
-              persistPermissionUpdate(update);
-
-              // Immediately update sandbox in-memory config to prevent race conditions
-              // where pending requests slip through before settings change is detected
-              SandboxManager.refreshConfig();
-            }
-
-            // Resolve ALL pending requests for the same host (not just the first one)
-            // This handles the case where multiple parallel requests came in for the same domain
-            setSandboxPermissionRequestQueue(queue => {
-              queue.filter(item => item.hostPattern.host === approvedHost).forEach(item => item.resolvePromise(allow));
-              return queue.filter(item => item.hostPattern.host !== approvedHost);
-            });
-
-            // Clean up bridge subscriptions and cancel remote prompts
-            // for this host since the local user already responded.
-            const cleanups = sandboxBridgeCleanupRef.current.get(approvedHost);
-            if (cleanups) {
-              for (const fn of cleanups) {
-                fn();
-              }
-              sandboxBridgeCleanupRef.current.delete(approvedHost);
-            }
-          }} />}
-          {focusedInputDialog === 'prompt' && <PromptDialog key={promptQueue[0]!.request.prompt} title={promptQueue[0]!.title} toolInputSummary={promptQueue[0]!.toolInputSummary} request={promptQueue[0]!.request} onRespond={selectedKey => {
-            const item = promptQueue[0];
-            if (!item) return;
-            item.resolve({
-              prompt_response: item.request.prompt,
-              selected: selectedKey
-            });
-            setPromptQueue(([, ...tail]) => tail);
-          }} onAbort={() => {
-            const item = promptQueue[0];
-            if (!item) return;
-            item.reject(new Error('Prompt cancelled by user'));
-            setPromptQueue(([, ...tail]) => tail);
-          }} />}
-          {/* Show pending indicator on worker while waiting for leader approval */}
-          {pendingWorkerRequest && <WorkerPendingPermission toolName={pendingWorkerRequest.toolName} description={pendingWorkerRequest.description} />}
-          {/* Show pending indicator for sandbox permission on worker side */}
-          {pendingSandboxRequest && <WorkerPendingPermission toolName="Network Access" description={`Waiting for leader to approve network access to ${pendingSandboxRequest.host}`} />}
-          {/* Worker sandbox permission requests from swarm workers */}
-          {focusedInputDialog === 'worker-sandbox-permission' && <SandboxPermissionRequest key={workerSandboxPermissions.queue[0]!.requestId} hostPattern={{
-            host: workerSandboxPermissions.queue[0]!.host,
-            port: undefined
-          } as NetworkHostPattern} onUserResponse={(response: {
-            allow: boolean;
-            persistToSettings: boolean;
-          }) => {
-            const {
-              allow,
-              persistToSettings
-            } = response;
-            const currentRequest = workerSandboxPermissions.queue[0];
-            if (!currentRequest) return;
-            const approvedHost = currentRequest.host;
-
-            // Send response via mailbox to the worker
-            void sendSandboxPermissionResponseViaMailbox(currentRequest.workerName, currentRequest.requestId, approvedHost, allow, teamContext?.teamName);
-            if (persistToSettings && allow) {
-              const update = {
-                type: 'addRules' as const,
-                rules: [{
-                  toolName: WEB_FETCH_TOOL_NAME,
-                  ruleContent: `domain:${approvedHost}`
-                }],
-                behavior: 'allow' as const,
-                destination: 'localSettings' as const
-              };
-              setAppState(prev => ({
-                ...prev,
-                toolPermissionContext: applyPermissionUpdate(prev.toolPermissionContext, update)
-              }));
-              persistPermissionUpdate(update);
-              SandboxManager.refreshConfig();
-            }
-
-            // Remove from queue
-            setAppState(prev => ({
-              ...prev,
-              workerSandboxPermissions: {
-                ...prev.workerSandboxPermissions,
-                queue: prev.workerSandboxPermissions.queue.slice(1)
-              }
-            }));
-          }} />}
-          {focusedInputDialog === 'elicitation' && <ElicitationDialog key={elicitation.queue[0]!.serverName + ':' + String(elicitation.queue[0]!.requestId)} event={elicitation.queue[0]!} onResponse={(action, content) => {
-            const currentRequest = elicitation.queue[0];
-            if (!currentRequest) return;
-            // Call respond callback to resolve Promise
-            currentRequest.respond({
-              action,
-              content
-            });
-            // For URL accept, keep in queue for phase 2
-            const isUrlAccept = currentRequest.params.mode === 'url' && action === 'accept';
-            if (!isUrlAccept) {
-              setAppState(prev => ({
-                ...prev,
-                elicitation: {
-                  queue: prev.elicitation.queue.slice(1)
-                }
-              }));
-            }
-          }} onWaitingDismiss={action => {
-            const currentRequest = elicitation.queue[0];
-            // Remove from queue
-            setAppState(prev => ({
-              ...prev,
-              elicitation: {
-                queue: prev.elicitation.queue.slice(1)
-              }
-            }));
-            currentRequest?.onWaitingDismiss?.(action);
-          }} />}
-          {focusedInputDialog === 'cost' && <CostThresholdDialog onDone={() => {
-            setShowCostDialog(false);
-            setHaveShownCostDialog(true);
-            saveGlobalConfig(current => ({
-              ...current,
-              hasAcknowledgedCostThreshold: true
-            }));
-            logEvent('tengu_cost_threshold_acknowledged', {});
-          }} />}
-          {focusedInputDialog === 'idle-return' && idleReturnPending && <IdleReturnDialog idleMinutes={idleReturnPending.idleMinutes} totalInputTokens={getTotalInputTokens()} onDone={async action => {
-            const pending = idleReturnPending;
-            setIdleReturnPending(null);
-            logEvent('tengu_idle_return_action', {
-              action: action as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              idleMinutes: Math.round(pending.idleMinutes),
-              messageCount: messagesRef.current.length,
-              totalInputTokens: getTotalInputTokens()
-            });
-            if (action === 'dismiss') {
-              setInputValue(pending.input);
-              return;
-            }
-            if (action === 'never') {
-              saveGlobalConfig(current => {
-                if (current.idleReturnDismissed) return current;
-                return {
-                  ...current,
-                  idleReturnDismissed: true
-                };
-              });
-            }
-            if (action === 'clear') {
-              const {
-                clearConversation
-              } = await import('../commands/clear/conversation.js');
-              await clearConversation({
-                setMessages,
-                readFileState: readFileState.current,
-                discoveredSkillNames: discoveredSkillNamesRef.current,
-                loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
-                getAppState: () => store.getState(),
-                setAppState,
-                setConversationId
-              });
-              haikuTitleAttemptedRef.current = false;
-              setHaikuTitle(undefined);
-              bashTools.current.clear();
-              bashToolsProcessedIdx.current = 0;
-            }
-            skipIdleCheckRef.current = true;
-            void onSubmitRef.current(pending.input, {
-              setCursorOffset: () => { },
-              clearBuffer: () => { },
-              resetHistory: () => { }
-            });
-          }} />}
-          {focusedInputDialog === 'ide-onboarding' && <IdeOnboardingDialog onDone={() => setShowIdeOnboarding(false)} installationStatus={ideInstallationStatus} />}
-          {focusedInputDialog === 'effort-callout' && <EffortCallout model={mainLoopModel} onDone={selection => {
-            setShowEffortCallout(false);
-            if (selection !== 'dismiss') {
-              setAppState(prev => ({
-                ...prev,
-                effortValue: selection
-              }));
-            }
-          }} />}
-          {focusedInputDialog === 'remote-callout' && <RemoteCallout onDone={selection => {
-            setAppState(prev => {
-              if (!prev.showRemoteCallout) return prev;
-              return {
-                ...prev,
-                showRemoteCallout: false,
-                ...(selection === 'enable' && {
-                  replBridgeEnabled: true,
-                  replBridgeExplicit: true,
-                  replBridgeOutboundOnly: false
-                })
-              };
-            });
-          }} />}
-
-          {exitFlow}
-
-          {focusedInputDialog === 'plugin-hint' && hintRecommendation && <PluginHintMenu pluginName={hintRecommendation.pluginName} pluginDescription={hintRecommendation.pluginDescription} marketplaceName={hintRecommendation.marketplaceName} sourceCommand={hintRecommendation.sourceCommand} onResponse={handleHintResponse} />}
-
-          {focusedInputDialog === 'lsp-recommendation' && lspRecommendation && <LspRecommendationMenu pluginName={lspRecommendation.pluginName} pluginDescription={lspRecommendation.pluginDescription} fileExtension={lspRecommendation.fileExtension} onResponse={handleLspResponse} />}
-
-          {focusedInputDialog === 'desktop-upsell' && <DesktopUpsellStartup onDone={() => setShowDesktopUpsellStartup(false)} />}
-
-          {feature('ULTRAPLAN') ? focusedInputDialog === 'ultraplan-choice' && ultraplanPendingChoice && <UltraplanChoiceDialog plan={ultraplanPendingChoice.plan} sessionId={ultraplanPendingChoice.sessionId} taskId={ultraplanPendingChoice.taskId} setMessages={setMessages} readFileState={readFileState.current} getAppState={() => store.getState()} setConversationId={setConversationId} /> : null}
-
-          {feature('ULTRAPLAN') ? focusedInputDialog === 'ultraplan-launch' && ultraplanLaunchPending && <UltraplanLaunchDialog onChoice={(choice, opts) => {
-            const blurb = ultraplanLaunchPending.blurb;
-            setAppState(prev => prev.ultraplanLaunchPending ? {
-              ...prev,
-              ultraplanLaunchPending: undefined
-            } : prev);
-            if (choice === 'cancel') return;
-            // Command's onDone used display:'skip', so add the
-            // echo here — gives immediate feedback before the
-            // ~5s teleportToRemote resolves.
-            setMessages(prev => [...prev, createCommandInputMessage(formatCommandInputTags('ultraplan', blurb))]);
-            const appendStdout = (msg: string) => setMessages(prev => [...prev, createCommandInputMessage(`<${LOCAL_COMMAND_STDOUT_TAG}>${escapeXml(msg)}</${LOCAL_COMMAND_STDOUT_TAG}>`)]);
-            // Defer the second message if a query is mid-turn
-            // so it lands after the assistant reply, not
-            // between the user's prompt and the reply.
-            const appendWhenIdle = (msg: string) => {
-              if (!queryGuard.isActive) {
-                appendStdout(msg);
-                return;
-              }
-              const unsub = queryGuard.subscribe(() => {
-                if (queryGuard.isActive) return;
-                unsub();
-                // Skip if the user stopped ultraplan while we
-                // were waiting — avoids a stale "Monitoring
-                // <url>" message for a session that's gone.
-                if (!store.getState().ultraplanSessionUrl) return;
-                appendStdout(msg);
-              });
-            };
-            void launchUltraplan({
-              blurb,
-              getAppState: () => store.getState(),
-              setAppState,
-              signal: createAbortController().signal,
-              disconnectedBridge: opts?.disconnectedBridge,
-              onSessionReady: appendWhenIdle
-            }).then(appendStdout).catch(logError);
-          }} /> : null}
+          {renderREPLDialogs({
+            focusedInputDialog,
+            sandboxPermissionRequestQueue,
+            setSandboxPermissionRequestQueue: setSandboxPermissionRequestQueue as unknown as React.Dispatch<React.SetStateAction<unknown[]>>,
+            sandboxBridgeCleanupRef,
+            promptQueue: promptQueue as unknown as Parameters<typeof renderREPLDialogs>[0]['promptQueue'],
+            setPromptQueue: setPromptQueue as unknown as React.Dispatch<React.SetStateAction<unknown[]>>,
+            pendingWorkerRequest,
+            pendingSandboxRequest,
+            workerSandboxPermissions,
+            teamContext,
+            setAppState: setAppState as unknown as (updater: (prev: unknown) => unknown) => void,
+            elicitation: elicitation as unknown as Parameters<typeof renderREPLDialogs>[0]['elicitation'],
+            setShowCostDialog,
+            setHaveShownCostDialog,
+            idleReturnPending,
+            setIdleReturnPending,
+            getTotalInputTokens,
+            messagesRef: messagesRef as unknown as React.RefObject<unknown[]>,
+            setInputValue,
+            setMessages: setMessages as unknown as (m: unknown) => void,
+            readFileState,
+            discoveredSkillNamesRef,
+            loadedNestedMemoryPathsRef,
+            store,
+            setConversationId,
+            haikuTitleAttemptedRef,
+            setHaikuTitle,
+            bashTools: bashTools as unknown as React.RefObject<{ clear: () => void }>,
+            bashToolsProcessedIdx,
+            skipIdleCheckRef,
+            onSubmitRef: onSubmitRef as unknown as React.RefObject<(input: string, helpers: { setCursorOffset: () => void; clearBuffer: () => void; resetHistory: () => void }) => unknown>,
+            setShowIdeOnboarding,
+            ideInstallationStatus,
+            mainLoopModel,
+            setShowEffortCallout,
+            exitFlow,
+            hintRecommendation,
+            handleHintResponse,
+            lspRecommendation,
+            handleLspResponse,
+            setShowDesktopUpsellStartup,
+            ultraplanPendingChoice,
+            ultraplanLaunchPending,
+            queryGuard,
+            createAbortController,
+            createCommandInputMessage,
+            formatCommandInputTags,
+            escapeXml,
+            LOCAL_COMMAND_STDOUT_TAG,
+            // ULTRAPLAN is dead in the open build (feature flag off); the
+            // identifier `launchUltraplan` is never imported here, so a
+            // direct reference would ReferenceError at unbundled (test) eval
+            // time. The matching slot below is `null`, so the renderer's
+            // feature() gate short-circuits before this is ever called.
+            launchUltraplan: (() => Promise.resolve('')) as unknown as Parameters<typeof renderREPLDialogs>[0]['launchUltraplan'],
+          }, {
+            SandboxPermissionRequest,
+            IdeOnboardingDialog,
+            EffortCallout,
+            RemoteCallout,
+            PluginHintMenu,
+            LspRecommendationMenu,
+            DesktopUpsellStartup,
+            // ULTRAPLAN feature is disabled in the open build; both dialogs
+            // are referenced symbolically (never imported) inside the
+            // feature() ternary. Pass null so the slot type stays sound and
+            // the render function's feature gate short-circuits identically.
+            UltraplanChoiceDialog: null,
+            UltraplanLaunchDialog: null,
+          })}
 
           {mrRender()}
 

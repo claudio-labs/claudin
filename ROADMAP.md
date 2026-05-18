@@ -76,17 +76,18 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - Caracterização (26 testes) + split em 11 módulos sob `src/cli/print/`: `promptBatching`, `uuidDedupe`, `structuredIOFactory`, `orphanPermission`, `permissionGlue`, `controlHandlers`, `initHandler`, `mcpReconcile`, `messageOps`, `sessionLoad`, `runHeadless`. `print.ts` vira barrel de 50 linhas. A sugestão original ("formatters, stream renderers, json/text emitters") não se aplicava — toda emissão vive em `StructuredIO`/`RemoteIO`; split foi por responsabilidade do driver headless.
 - **Deferido para 11c**: extração de `runHeadlessStreaming` em arquivo próprio com DI explícita (`HeadlessStreamingDeps`). Hoje vive em `runHeadless.ts` (4.094 linhas) capturando estado por closure léxica.
 
-### [ ] 11c. Split de `src/utils/sessionStorage.ts` (5.361 linhas, 183 KB)
+### [x] 11c. Split de `src/utils/sessionStorage.ts` (5.361 linhas, 183 KB)
 - **Sugestão:** dividir em `{persistence, resume, indexing, migrations}`.
 - **Ganho:** alto — **Esforço:** alto — **Risco:** médio (formato em disco; cobertura por snapshot antes).
 
-### [ ] 11d. Split de `src/utils/hooks.ts` (5.210 linhas, 161 KB)
+### [x] 11d. Split de `src/utils/hooks.ts` (5.210 linhas, 161 KB)
 - **Sugestão:** um arquivo por tipo de hook (PreToolUse, PostToolUse, UserPromptSubmit, etc.) + core runner.
 - **Ganho:** alto — **Esforço:** médio-alto — **Risco:** baixo (fronteira clara).
 
-### [ ] 11e. Split de `src/screens/REPL.tsx` (5.015 linhas, 255 KB)
+### [x] 11e. Split de `src/screens/REPL.tsx` (5.015 → 4.261 linhas)
 - **Sugestão:** extrair subcomponentes (input, transcript, status bar, overlays) e custom hooks.
 - **Ganho:** alto — **Esforço:** alto — **Risco:** **alto** (cuidar de React identity — ver memória team `<Activity>`).
+- Cluster `src/screens/repl/` com leaves UI (`TranscriptModeFooter`, `TranscriptSearchBar`, `AnimatedTerminalTitle`), utils (`median`, `getFocusedInputDialog`), hooks (`useReplExit`, `useReplLifecycle`), service (`resumeSession`), e subviews (`REPLTranscriptView`, `REPLStatus`, `REPLDialogs`). REPL.tsx mantém controllers (`onSubmit`/`onQuery*`) e composição. Cobertura: 6 baselines snapshot + harness em `src/screens/__testutils__/replTestHarness.ts` (15 snapshots estáveis através do split). Controllers ficam para um trabalho futuro.
 
 ### [ ] 11f. Split de `src/utils/bash/bashParser.ts` (4.436 linhas, 128 KB)
 - **Sugestão:** separar tokenizer, AST, validators, command-detection tables.
