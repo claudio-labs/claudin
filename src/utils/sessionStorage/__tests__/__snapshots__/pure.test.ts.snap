@@ -1,0 +1,59 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`stripPersistedToolUseResultsFromJSONLBuffer: mixed lines — only persisted lines are modified 1`] = `
+"{"uuid":"UUID_0","parentUuid":null,"timestamp":"<TS>","cwd":"/tmp","userType":"external","sessionId":"UUID_1","version":"test","isSidechain":false,"type":"assistant","message":{"id":"UUID_0","type":"message","role":"assistant","content":[{"type":"text","text":"hi"}],"model":"test-model","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}
+{"uuid":"UUID_2","parentUuid":"UUID_0","timestamp":"<TS>","cwd":"/tmp","userType":"external","sessionId":"UUID_1","version":"test","isSidechain":false,"type":"user","isMeta":false,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu-2","is_error":false,"content":"<persisted-output>\\nkept-preview\\n</persisted-output>"}]}}
+{"uuid":"UUID_3","parentUuid":"UUID_2","timestamp":"<TS>","cwd":"/tmp","userType":"external","sessionId":"UUID_1","version":"test","isSidechain":false,"type":"user","isMeta":false,"message":{"role":"user","content":"thanks"}}
+"
+`;
+
+exports[`cleanMessagesForLogging: filters progress and returns the rest in original order 1`] = `
+"[
+  {
+    "uuid": "UUID_0",
+    "parentUuid": null,
+    "timestamp":"<TS>",
+    "cwd": "/tmp",
+    "userType": "external",
+    "sessionId": "UUID_1",
+    "version": "test",
+    "isSidechain": false,
+    "type": "user",
+    "isMeta": false,
+    "message": {
+      "role": "user",
+      "content": "hi"
+    }
+  },
+  {
+    "uuid": "UUID_2",
+    "parentUuid": "UUID_0",
+    "timestamp":"<TS>",
+    "cwd": "/tmp",
+    "userType": "external",
+    "sessionId": "UUID_1",
+    "version": "test",
+    "isSidechain": false,
+    "type": "assistant",
+    "message": {
+      "id": "UUID_2",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ],
+      "model": "test-model",
+      "stop_reason": "end_turn",
+      "usage": {
+        "input_tokens": 1,
+        "output_tokens": 1,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      }
+    }
+  }
+]"
+`;

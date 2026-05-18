@@ -1,0 +1,51 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`recordTranscript: dedup by uuid — second call with overlapping prefix appends only new tail 1`] = `
+"[
+  {
+    "type": "user",
+    "uuid": "UUID_0",
+    "parentUuid": null
+  },
+  {
+    "type": "assistant",
+    "uuid": "UUID_1",
+    "parentUuid": "UUID_0"
+  },
+  {
+    "type": "user",
+    "uuid": "UUID_2",
+    "parentUuid": "UUID_1"
+  },
+  {
+    "type": "assistant",
+    "uuid": "UUID_3",
+    "parentUuid": "UUID_2"
+  }
+]"
+`;
+
+exports[`loadTranscriptFile + buildConversationChain: round-trips a linear conversation 1`] = `
+"[
+  {
+    "type": "user",
+    "uuid": "UUID_0",
+    "parentUuid": null
+  },
+  {
+    "type": "assistant",
+    "uuid": "UUID_1",
+    "parentUuid": "UUID_0"
+  },
+  {
+    "type": "user",
+    "uuid": "UUID_2",
+    "parentUuid": "UUID_1"
+  },
+  {
+    "type": "assistant",
+    "uuid": "UUID_3",
+    "parentUuid": "UUID_2"
+  }
+]"
+`;

@@ -1,0 +1,16 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`recordTranscript linear: writes user/assistant pair as JSONL with chained parentUuid 1`] = `
+"[
+  {
+    "type": "user",
+    "uuid": "UUID_0",
+    "parentUuid": null
+  },
+  {
+    "type": "assistant",
+    "uuid": "UUID_1",
+    "parentUuid": "UUID_0"
+  }
+]"
+`;
