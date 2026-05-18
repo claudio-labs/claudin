@@ -11,7 +11,7 @@ import { initializeTelemetryAfterTrust } from './entrypoints/init.js';
 import { isSynchronizedOutputSupported } from './ink/terminal.js';
 import type { RenderOptions, Root, TextProps } from './ink.js';
 import { KeybindingSetup } from './keybindings/KeybindingProviderSetup.js';
-import { startDeferredPrefetches } from './main.js';
+import { startDeferredPrefetches } from './main/deferredPrefetches.js';
 import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from './services/analytics/growthbook.js';
 import { tryGetActiveProvider } from './services/api/activeProvider.js';
 import { isQualifiedForGrove } from './services/api/grove.js';

@@ -1,0 +1,61 @@
+# profileCheckpoint() call sites declared in src/main.tsx
+#
+# Source of truth: ONLY the order/presence matters here.
+# Durations are non-deterministic — never snapshot them.
+#
+# Captured before 11g split. If a checkpoint name disappears or moves
+# during the split, this file must change in the same commit AND the PR
+# must explain why.
+#
+# Format: line_number  checkpoint_name  context
+
+# --- module top-level (eval order) ---
+12      main_tsx_entry                          top of file
+209     main_tsx_imports_loaded                 after all top-level imports
+
+# --- eagerLoadSettings() helper ---
+497     eagerLoadSettings_start
+509     eagerLoadSettings_end
+
+# --- main() function ---
+580     main_function_start                     first line of main()
+601     main_warning_handler_initialized
+843     main_client_type_determined
+847     main_before_run                         call site of run()
+849     main_after_run                          return path A (most flows)
+
+# --- run() function ---
+879     run_function_start
+897     run_commander_initialized
+904     preAction_after_init                    preAction hook
+922     preAction_after_sinks                   preAction hook
+938     preAction_after_migrations              preAction hook
+950     preAction_after_claudio_migrations      preAction hook
+958     preAction_after_remote_settings         preAction hook
+965     preAction_after_settings_sync           preAction hook
+
+# --- default action handler ---
+1006    action_handler_start
+1795    action_after_input_prompt
+1811    action_tools_loaded
+1837    action_before_setup
+1869    action_after_setup
+1949    action_commands_loaded
+2351    action_mcp_configs_loaded
+2508    action_after_plugins_init               branch: project_plugins
+2514    action_after_plugins_init               branch: user_plugins (duplicate name intentional)
+2560    before_validateForceLoginOrg
+2676    before_connectMcp
+2678    after_connectMcp
+2757    after_connectMcp_claudeai
+2769    before_print_import                     print/headless branch
+2773    after_print_import                      print/headless branch
+3606    action_after_hooks
+
+# --- post-action / parse ---
+3700    run_main_options_built
+3713    run_before_parse                        direct-connect branch
+3715    run_after_parse                         direct-connect branch
+4207    run_before_parse                        default Commander parse
+4209    run_after_parse                         default Commander parse
+4212    main_after_run                          return path B (direct-connect)
