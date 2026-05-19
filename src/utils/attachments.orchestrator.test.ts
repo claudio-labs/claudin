@@ -1,0 +1,159 @@
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+  getAttachments,
+  getAttachmentMessages,
+  getQueuedCommandAttachments,
+} from './attachments.js'
+import type { ToolUseContext } from '../Tool.js'
+import type { QueuedCommand } from '../types/textInputTypes.js'
+
+// Minimal context skeleton — the disabled path uses none of these fields,
+// they exist to satisfy the type at the call site.
+function makeContext(): ToolUseContext {
+  return {
+    agentId: undefined,
+    options: {
+      tools: [],
+      mcpClients: [],
+      agentDefinitions: { activeAgents: [] },
+      mainLoopModel: 'test-model',
+    },
+    getAppState: () => ({ toolPermissionContext: {}, mcp: { commands: [] } }),
+    setAppState: () => {},
+    readFileState: new Map(),
+  } as unknown as ToolUseContext
+}
+
+function makeQueuedCommand(value: string, uuid?: string): QueuedCommand {
+  return {
+    value,
+    mode: 'prompt',
+    uuid: uuid as QueuedCommand['uuid'],
+  } as QueuedCommand
+}
+
+describe('getAttachments — disabled-attachments early-exit', () => {
+  const originalDisable = process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+  const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+
+  beforeEach(() => {
+    delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+    delete process.env.CLAUDE_CODE_SIMPLE
+  })
+
+  afterEach(() => {
+    if (originalDisable === undefined)
+      delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+    else process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = originalDisable
+    if (originalSimple === undefined) delete process.env.CLAUDE_CODE_SIMPLE
+    else process.env.CLAUDE_CODE_SIMPLE = originalSimple
+  })
+
+  test('CLAUDE_CODE_DISABLE_ATTACHMENTS=1: only queued commands are returned', async () => {
+    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+    const queued = [
+      makeQueuedCommand('hello', 'uuid-1'),
+      makeQueuedCommand('world', 'uuid-2'),
+    ]
+    const out = await getAttachments(null, makeContext(), null, queued)
+    expect(out).toHaveLength(2)
+    expect(out.every(a => a.type === 'queued_command')).toBe(true)
+  })
+
+  test('CLAUDE_CODE_SIMPLE=1: same early-exit as disable flag', async () => {
+    process.env.CLAUDE_CODE_SIMPLE = '1'
+    const queued = [makeQueuedCommand('hi', 'uuid-3')]
+    const out = await getAttachments(null, makeContext(), null, queued)
+    expect(out).toHaveLength(1)
+    expect(out[0]?.type).toBe('queued_command')
+  })
+
+  test('disabled + empty queue: returns []', async () => {
+    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+    const out = await getAttachments(null, makeContext(), null, [])
+    expect(out).toEqual([])
+  })
+})
+
+describe('getQueuedCommandAttachments — direct producer', () => {
+  test('returns [] for empty queue', async () => {
+    expect(await getQueuedCommandAttachments([])).toEqual([])
+  })
+
+  test('filters out non-inline modes (only prompt + task-notification)', async () => {
+    const queue: QueuedCommand[] = [
+      { value: 'p', mode: 'prompt' } as QueuedCommand,
+      { value: 't', mode: 'task-notification' } as QueuedCommand,
+      { value: 'i', mode: 'instruction' as unknown as string } as QueuedCommand,
+    ]
+    const out = await getQueuedCommandAttachments(queue)
+    expect(out).toHaveLength(2)
+  })
+
+  test('preserves uuid and commandMode on each attachment', async () => {
+    const queue: QueuedCommand[] = [
+      makeQueuedCommand('hello', 'abc'),
+      { value: 'world', mode: 'task-notification', uuid: 'xyz' } as unknown as QueuedCommand,
+    ]
+    const out = await getQueuedCommandAttachments(queue)
+    expect(out[0]).toMatchObject({
+      type: 'queued_command',
+      source_uuid: 'abc',
+      commandMode: 'prompt',
+    })
+    expect(out[1]).toMatchObject({
+      type: 'queued_command',
+      source_uuid: 'xyz',
+      commandMode: 'task-notification',
+    })
+  })
+})
+
+describe('getAttachmentMessages — generator wraps each attachment with createAttachmentMessage', () => {
+  const originalDisable = process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+
+  beforeEach(() => {
+    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+  })
+
+  afterEach(() => {
+    if (originalDisable === undefined)
+      delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+    else process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = originalDisable
+  })
+
+  async function collect<T>(gen: AsyncGenerator<T, void>): Promise<T[]> {
+    const out: T[] = []
+    for await (const item of gen) out.push(item)
+    return out
+  }
+
+  test('preserves input order across multiple queued commands', async () => {
+    const queue = [
+      makeQueuedCommand('first', 'u1'),
+      makeQueuedCommand('second', 'u2'),
+      makeQueuedCommand('third', 'u3'),
+    ]
+    const messages = await collect(
+      getAttachmentMessages(null, makeContext(), null, queue),
+    )
+    expect(messages).toHaveLength(3)
+    expect(messages.map(m => (m.attachment as { source_uuid?: string }).source_uuid)).toEqual([
+      'u1',
+      'u2',
+      'u3',
+    ])
+    for (const m of messages) {
+      expect(m.type).toBe('attachment')
+      expect(typeof m.uuid).toBe('string')
+      expect(typeof m.timestamp).toBe('string')
+    }
+  })
+
+  test('yields nothing when there is nothing to attach', async () => {
+    const messages = await collect(
+      getAttachmentMessages(null, makeContext(), null, []),
+    )
+    expect(messages).toEqual([])
+  })
+})

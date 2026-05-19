@@ -89,15 +89,15 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Ganho:** alto — **Esforço:** alto — **Risco:** **alto** (cuidar de React identity — ver memória team `<Activity>`).
 - Cluster `src/screens/repl/` com leaves UI (`TranscriptModeFooter`, `TranscriptSearchBar`, `AnimatedTerminalTitle`), utils (`median`, `getFocusedInputDialog`), hooks (`useReplExit`, `useReplLifecycle`), service (`resumeSession`), e subviews (`REPLTranscriptView`, `REPLStatus`, `REPLDialogs`). REPL.tsx mantém controllers (`onSubmit`/`onQuery*`) e composição. Cobertura: 6 baselines snapshot + harness em `src/screens/__testutils__/replTestHarness.ts` (15 snapshots estáveis através do split). Controllers ficam para um trabalho futuro.
 
-### [ ] 11f. Split de `src/utils/bash/bashParser.ts` (4.436 linhas, 128 KB)
+### [x] 11f. Split de `src/utils/bash/bashParser.ts` (4.436 linhas, 128 KB)
 - **Sugestão:** separar tokenizer, AST, validators, command-detection tables.
 - **Ganho:** médio-alto — **Esforço:** médio — **Risco:** baixo (puro, testável).
 
-### [ ] 11g. Split de `src/main.tsx` (4.379 linhas, 212 KB)
+### [x] 11g. Split de `src/main.tsx` (4.379 linhas, 212 KB)
 - **Sugestão:** extrair parsing de CLI args, montagem do app Ink, signal handlers, lifecycle.
 - **Ganho:** alto — **Esforço:** alto — **Risco:** alto (entrypoint; muitos side effects no boot).
 
-### [ ] 11h. Split de `src/utils/attachments.ts` (4.346 linhas, 138 KB)
+### [x] 11h. Split de `src/utils/attachments.ts` (4.346 linhas, 138 KB)
 - **Sugestão:** dividir por tipo (image, pdf, text, paste) + pipeline comum.
 - **Ganho:** médio — **Esforço:** médio — **Risco:** baixo.
 
