@@ -1,0 +1,7420 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`bashParser API empty source returns an empty program AST 1`] = `
+{
+  "children": [],
+  "type": "program",
+}
+`;
+
+exports[`bashParser API whitespace-only source parses 1`] = `
+{
+  "children": [],
+  "type": "program",
+}
+`;
+
+exports[`bashParser API smoke: echo hello has expected program shape 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators pipe 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "|",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "pipeline",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators logical or 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "||",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "list",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators logical and 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "&&",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "list",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators semicolon list 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [],
+      "type": ";",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators background & 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [],
+      "type": "&",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators redirect out > 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators redirect append >> 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">>",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators redirect in < 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators here-string <<< 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<<<",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "herestring_redirect",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators open read-write <> 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<",
+            },
+          ],
+          "type": "file_redirect",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators duplicate stdout >& 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">&",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — operators duplicate stdin <& 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<&",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes single quotes 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "raw_string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes double quotes 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": """,
+            },
+            {
+              "children": [],
+              "type": "string_content",
+            },
+            {
+              "children": [],
+              "type": """,
+            },
+          ],
+          "type": "string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes double quotes with escape 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": """,
+            },
+            {
+              "children": [],
+              "type": "string_content",
+            },
+            {
+              "children": [],
+              "type": """,
+            },
+          ],
+          "type": "string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes ANSI-C string 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "ansi_c_string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes adjacent strings concatenate 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "raw_string",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": """,
+                },
+                {
+                  "children": [],
+                  "type": "string_content",
+                },
+                {
+                  "children": [],
+                  "type": """,
+                },
+              ],
+              "type": "string",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "concatenation",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes empty double quotes 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": """,
+            },
+            {
+              "children": [],
+              "type": """,
+            },
+          ],
+          "type": "string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — quotes empty single quotes 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "raw_string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms simple $var 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms \${var} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms $(cmd) 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$(",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+          ],
+          "type": "command_substitution",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms $((arith)) 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$((",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "number",
+                },
+                {
+                  "children": [],
+                  "type": "+",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+            {
+              "children": [],
+              "type": "))",
+            },
+          ],
+          "type": "arithmetic_expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms backticks \`cmd\` 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\`",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": "\`",
+            },
+          ],
+          "type": "command_substitution",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms $1 positional 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms $@ special 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "special_variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — dollar forms $? special 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "special_variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — heredocs plain heredoc 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<<",
+            },
+            {
+              "children": [],
+              "type": "heredoc_start",
+            },
+            {
+              "children": [],
+              "type": "heredoc_body",
+            },
+            {
+              "children": [],
+              "type": "heredoc_end",
+            },
+          ],
+          "type": "heredoc_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — heredocs heredoc with tab-stripping <<- 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<<-",
+            },
+            {
+              "children": [],
+              "type": "heredoc_start",
+            },
+            {
+              "children": [],
+              "type": "heredoc_body",
+            },
+            {
+              "children": [],
+              "type": "heredoc_end",
+            },
+          ],
+          "type": "heredoc_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — heredocs quoted heredoc (no expansion) 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<<",
+            },
+            {
+              "children": [],
+              "type": "heredoc_start",
+            },
+            {
+              "children": [],
+              "type": "heredoc_body",
+            },
+            {
+              "children": [],
+              "type": "heredoc_end",
+            },
+          ],
+          "type": "heredoc_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — heredocs heredoc body retains content 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<<",
+            },
+            {
+              "children": [],
+              "type": "heredoc_start",
+            },
+            {
+              "children": [],
+              "type": "heredoc_body",
+            },
+            {
+              "children": [],
+              "type": "heredoc_end",
+            },
+          ],
+          "type": "heredoc_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — misc comment-only 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "type": "comment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — misc trailing comment after command 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [],
+      "type": "comment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser tokenizer — misc line continuation 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands command with args 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands command with flag 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands command with env prefix 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands multiple env prefixes 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands empty assignment 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands top-level assignment (no command) 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "=",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "variable_assignment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser simple commands quoted argument 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": """,
+            },
+            {
+              "children": [],
+              "type": "string_content",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": """,
+            },
+          ],
+          "type": "string",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects stdout to file 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects stderr to file 2> 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "file_descriptor",
+            },
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects combined redirect 2>&1 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "file_descriptor",
+            },
+            {
+              "children": [],
+              "type": ">&",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects append stderr 2>> 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "file_descriptor",
+            },
+            {
+              "children": [],
+              "type": ">>",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects null output >/dev/null 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects input redirect 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser redirects multiple redirects in one command 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "<",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "file_descriptor",
+            },
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts array literal 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "=",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "(",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+          ],
+          "type": "array",
+        },
+      ],
+      "type": "variable_assignment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts empty array 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "=",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "(",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+          ],
+          "type": "array",
+        },
+      ],
+      "type": "variable_assignment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts indexed assignment arr[0]=x 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "[",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+            {
+              "children": [],
+              "type": "]",
+            },
+          ],
+          "type": "subscript",
+        },
+        {
+          "children": [],
+          "type": "=",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "variable_assignment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts \${arr[0]} subscript expansion 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": "[",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+                {
+                  "children": [],
+                  "type": "]",
+                },
+              ],
+              "type": "subscript",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts \${arr[@]} all elements 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": "[",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+                {
+                  "children": [],
+                  "type": "]",
+                },
+              ],
+              "type": "subscript",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arrays and subscripts \${#arr[@]} length 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "#",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": "[",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+                {
+                  "children": [],
+                  "type": "]",
+                },
+              ],
+              "type": "subscript",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists two-stage pipe 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "|",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "pipeline",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists three-stage pipe 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "|",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "|",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "pipeline",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists and-or chain 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": "&&",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+          ],
+          "type": "list",
+        },
+        {
+          "children": [],
+          "type": "||",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "list",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists negated command 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "!",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command",
+        },
+      ],
+      "type": "negated_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists time prefix 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists multiple semicolon list 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [],
+      "type": ";",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [],
+      "type": ";",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists newline-separated list 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser pipelines and lists pipe with redirect on last 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": "|",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+          ],
+          "type": "pipeline",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser if statement plain if then fi 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "if",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [],
+          "type": "then",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [],
+          "type": "fi",
+        },
+      ],
+      "type": "if_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser if statement if then else fi 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "if",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [],
+          "type": "then",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "else",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+          ],
+          "type": "else_clause",
+        },
+        {
+          "children": [],
+          "type": "fi",
+        },
+      ],
+      "type": "if_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser if statement if elif else fi 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "if",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [],
+          "type": "then",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "elif",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "then",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "number",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+          ],
+          "type": "elif_clause",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "else",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "number",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+          ],
+          "type": "else_clause",
+        },
+        {
+          "children": [],
+          "type": "fi",
+        },
+      ],
+      "type": "if_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser if statement multiline if 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "if",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "then",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": "fi",
+        },
+      ],
+      "type": "if_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser while/until while loop 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "while",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "while_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser while/until while true infinite 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "while",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "while_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser for loop for in list 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "for",
+        },
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "$",
+                    },
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                  ],
+                  "type": "simple_expansion",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "for_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser for loop for in empty 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "for",
+        },
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "$",
+                    },
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                  ],
+                  "type": "simple_expansion",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "for_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser for loop c-style for 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "for",
+        },
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "<",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "++",
+            },
+          ],
+          "type": "postfix_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "$",
+                    },
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                  ],
+                  "type": "simple_expansion",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "c_style_for_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser for loop for without in (positional) 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "for",
+        },
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "do",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "$",
+                    },
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                  ],
+                  "type": "simple_expansion",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "done",
+            },
+          ],
+          "type": "do_group",
+        },
+      ],
+      "type": "for_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser case statement two-pattern case 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "case",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [],
+          "type": "esac",
+        },
+      ],
+      "type": "case_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser case statement case with default 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "case",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [],
+          "type": "esac",
+        },
+      ],
+      "type": "case_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser case statement case with multiple patterns per branch 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "case",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "|",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "|",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [],
+          "type": "esac",
+        },
+      ],
+      "type": "case_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser case statement case fallthrough ;& 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "case",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "$",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "simple_expansion",
+        },
+        {
+          "children": [],
+          "type": "in",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";&",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";;",
+            },
+          ],
+          "type": "case_item",
+        },
+        {
+          "children": [],
+          "type": "esac",
+        },
+      ],
+      "type": "case_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser function definitions POSIX function 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "(",
+        },
+        {
+          "children": [],
+          "type": ")",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "{",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "compound_statement",
+        },
+      ],
+      "type": "function_definition",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser function definitions function keyword form 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "function",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "{",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "compound_statement",
+        },
+      ],
+      "type": "function_definition",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser function definitions function keyword with parens 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "function",
+        },
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "(",
+        },
+        {
+          "children": [],
+          "type": ")",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "{",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "compound_statement",
+        },
+      ],
+      "type": "function_definition",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser function definitions multiline function body 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "word",
+        },
+        {
+          "children": [],
+          "type": "(",
+        },
+        {
+          "children": [],
+          "type": ")",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "{",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "compound_statement",
+        },
+      ],
+      "type": "function_definition",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser subshells and groups subshell parens 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "(",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": "&&",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+          ],
+          "type": "list",
+        },
+        {
+          "children": [],
+          "type": ")",
+        },
+      ],
+      "type": "subshell",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser subshells and groups compound group braces 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "{",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "command_name",
+            },
+          ],
+          "type": "command",
+        },
+        {
+          "children": [],
+          "type": ";",
+        },
+        {
+          "children": [],
+          "type": "}",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser subshells and groups subshell with redirect 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "(",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ";",
+            },
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "word",
+                    },
+                  ],
+                  "type": "command_name",
+                },
+              ],
+              "type": "command",
+            },
+            {
+              "children": [],
+              "type": ")",
+            },
+          ],
+          "type": "subshell",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "file_redirect",
+        },
+      ],
+      "type": "redirected_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — defaults \${var:-default} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": ":-",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — defaults \${var:=assign} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": ":=",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — defaults \${var:?error} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": ":?",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — defaults \${var:+alt} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": ":+",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — defaults \${var-default} no colon 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "-",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — length and slice \${#var} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "#",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — length and slice \${var:offset} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — length and slice \${var:offset:length} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — pattern substitution \${var/pat/repl} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "regex",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — pattern substitution \${var//pat/repl} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "//",
+            },
+            {
+              "children": [],
+              "type": "regex",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — pattern substitution \${var/#pat/repl} prefix 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "#",
+            },
+            {
+              "children": [],
+              "type": "regex",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — pattern substitution \${var/%pat/repl} suffix 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "%",
+            },
+            {
+              "children": [],
+              "type": "regex",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — case and quoting \${var^^} uppercase 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "^^",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — case and quoting \${var,,} lowercase 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": ",,",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — case and quoting \${var@Q} quoted 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "@",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — indirect \${!var} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "!",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — indirect \${!prefix*} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "!",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "*",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser parameter expansion — indirect \${!prefix@} 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "\${",
+            },
+            {
+              "children": [],
+              "type": "!",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "@",
+            },
+            {
+              "children": [],
+              "type": "}",
+            },
+          ],
+          "type": "expansion",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] string comparisons equality == 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] string comparisons inequality != 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "!=",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] string comparisons less than < 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "<",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] string comparisons greater than > 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": ">",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] string comparisons regex =~ 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "=~",
+            },
+            {
+              "children": [],
+              "type": "regex",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] file tests -f file 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "test_operator",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] file tests -d dir 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "test_operator",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] file tests -e exists 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "test_operator",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] file tests -z empty string 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "test_operator",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] file tests -n non-empty 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "test_operator",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] boolean ops && and 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+            {
+              "children": [],
+              "type": "&&",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] boolean ops || or 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+            {
+              "children": [],
+              "type": "||",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] boolean ops ! negation 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "!",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] boolean ops parens grouping 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "(",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [],
+                          "type": "test_operator",
+                        },
+                        {
+                          "children": [],
+                          "type": "word",
+                        },
+                      ],
+                      "type": "unary_expression",
+                    },
+                    {
+                      "children": [],
+                      "type": "||",
+                    },
+                    {
+                      "children": [
+                        {
+                          "children": [],
+                          "type": "test_operator",
+                        },
+                        {
+                          "children": [],
+                          "type": "word",
+                        },
+                      ],
+                      "type": "unary_expression",
+                    },
+                  ],
+                  "type": "binary_expression",
+                },
+                {
+                  "children": [],
+                  "type": ")",
+                },
+              ],
+              "type": "parenthesized_expression",
+            },
+            {
+              "children": [],
+              "type": "&&",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "test_operator",
+                },
+                {
+                  "children": [],
+                  "type": "word",
+                },
+              ],
+              "type": "unary_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] extglob @(...) one of 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] extglob ?(...) zero or one 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] extglob *(...) zero or more 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] extglob +(...) one or more 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser [[...]] extglob !(...) negation 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "[[",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "$",
+                },
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+              ],
+              "type": "simple_expansion",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "extglob_pattern",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "]]",
+        },
+      ],
+      "type": "test_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators addition 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "+",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators subtraction 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "-",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators multiplication 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "*",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators division 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "/",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators modulo 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "%",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators power ** 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "**",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators bitshift << >> 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": "<<",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+            {
+              "children": [],
+              "type": "|",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": ">>",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — operators bitwise & | ^ ~ 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "(",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                    {
+                      "children": [],
+                      "type": "&",
+                    },
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                  ],
+                  "type": "binary_expression",
+                },
+                {
+                  "children": [],
+                  "type": ")",
+                },
+              ],
+              "type": "parenthesized_expression",
+            },
+            {
+              "children": [],
+              "type": "|",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "(",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "type": "variable_name",
+                    },
+                    {
+                      "children": [],
+                      "type": "^",
+                    },
+                    {
+                      "children": [
+                        {
+                          "children": [],
+                          "type": "~",
+                        },
+                        {
+                          "children": [],
+                          "type": "variable_name",
+                        },
+                      ],
+                      "type": "unary_expression",
+                    },
+                  ],
+                  "type": "binary_expression",
+                },
+                {
+                  "children": [],
+                  "type": ")",
+                },
+              ],
+              "type": "parenthesized_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — comparisons and logic equality == 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "==",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — comparisons and logic less-equal <= 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "<=",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — comparisons and logic logical && || 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": ">",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+            {
+              "children": [],
+              "type": "&&",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": "<",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — comparisons and logic not ! 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "!",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — assignments and ternary assign = 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — assignments and ternary compound += 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "+=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — assignments and ternary compound mix 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "-=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "*=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "/=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — assignments and ternary ternary 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "variable_name",
+                },
+                {
+                  "children": [],
+                  "type": ">",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "binary_expression",
+            },
+            {
+              "children": [],
+              "type": "?",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+            {
+              "children": [],
+              "type": ":",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "type": "-",
+                },
+                {
+                  "children": [],
+                  "type": "number",
+                },
+              ],
+              "type": "unary_expression",
+            },
+          ],
+          "type": "ternary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — inc/dec post-increment 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "++",
+            },
+          ],
+          "type": "postfix_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — inc/dec pre-increment 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "++",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — inc/dec post-decrement 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "--",
+            },
+          ],
+          "type": "postfix_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — inc/dec pre-decrement 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "--",
+            },
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+          ],
+          "type": "unary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — number bases hex 0x10 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — number bases octal 0o7 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+    {
+      "children": [],
+      "type": "ERROR",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — number bases explicit base 2#101 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser arithmetic — number bases explicit base 16#ff 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "((",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "binary_expression",
+        },
+        {
+          "children": [],
+          "type": "))",
+        },
+      ],
+      "type": "compound_statement",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases only newlines 1`] = `
+{
+  "children": [],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases multiple comments only 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "type": "comment",
+    },
+    {
+      "children": [],
+      "type": "comment",
+    },
+    {
+      "children": [],
+      "type": "comment",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases semicolon-only 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "type": "ERROR",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases command after comment 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "type": "comment",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "command_name",
+        },
+      ],
+      "type": "command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases declaration: export 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "export",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "word",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+      ],
+      "type": "declaration_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases declaration: local 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "local",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+      ],
+      "type": "declaration_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases declaration: readonly 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "readonly",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "type": "variable_name",
+            },
+            {
+              "children": [],
+              "type": "=",
+            },
+            {
+              "children": [],
+              "type": "number",
+            },
+          ],
+          "type": "variable_assignment",
+        },
+      ],
+      "type": "declaration_command",
+    },
+  ],
+  "type": "program",
+}
+`;
+
+exports[`bashParser edge cases declaration: unset 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "type": "unset",
+        },
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+        {
+          "children": [],
+          "type": "variable_name",
+        },
+      ],
+      "type": "unset_command",
+    },
+  ],
+  "type": "program",
+}
+`;
