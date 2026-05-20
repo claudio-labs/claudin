@@ -117,12 +117,12 @@ function SearchResultSummary(t0) {
   return t6;
 }
 type Output = {
-  mode?: 'content' | 'files_with_matches' | 'count';
+  mode?: 'content' | 'files_with_matches' | 'count' | 'symbols';
   numFiles: number;
   filenames: string[];
   content?: string;
   numLines?: number; // For content mode
-  numMatches?: number; // For count mode
+  numMatches?: number; // For count and symbols mode
 };
 export function renderToolUseMessage({
   pattern,
@@ -180,6 +180,9 @@ export function renderToolResultMessage({
   if (mode === 'count') {
     return <SearchResultSummary count={numMatches ?? 0} countLabel="matches" secondaryCount={numFiles} secondaryLabel="files" content={content} verbose={verbose} />;
   }
+  if (mode === 'symbols') {
+    return <SearchResultSummary count={numMatches ?? 0} countLabel="symbols" secondaryCount={numFiles} secondaryLabel="files" content={content} verbose={verbose} />;
+  }
 
   // files_with_matches mode
   const fileListContent = filenames.map(filename => filename).join('\n');
@@ -190,7 +193,7 @@ export function getToolUseSummary(input: Partial<{
   path?: string;
   glob?: string;
   type?: string;
-  output_mode?: 'content' | 'files_with_matches' | 'count';
+  output_mode?: 'content' | 'files_with_matches' | 'count' | 'symbols';
   head_limit?: number;
 }> | undefined): string | null {
   if (!input?.pattern) {

@@ -1,8 +1,11 @@
+import { readFile } from 'fs/promises'
+import { extname } from 'path'
 import { z } from 'zod/v4'
 import type { ValidationResult } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { isENOENT } from '../../utils/errors.js'
+import { logError } from '../../utils/log.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   suggestPathUnderCwd,
@@ -22,6 +25,11 @@ import { ripGrep } from '../../utils/ripgrep.js'
 import { semanticBoolean } from '../../utils/semanticBoolean.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
+import {
+  detectOutlineLang,
+  scanSymbols,
+  type SymbolEntry,
+} from '../shared/codeOutline/scanSymbols.js'
 import { GREP_TOOL_NAME, getDescription } from './prompt.js'
 import {
   getToolUseSummary,
@@ -50,10 +58,10 @@ const inputSchema = lazySchema(() =>
         'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}") - maps to rg --glob',
       ),
     output_mode: z
-      .enum(['content', 'files_with_matches', 'count'])
+      .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
       .describe(
-        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit). Defaults to "files_with_matches".',
+        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS/Python/Go). Defaults to "files_with_matches".',
       ),
     '-B': semanticNumber(z.number().optional()).describe(
       'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.',
@@ -141,9 +149,116 @@ function formatLimitInfo(
   return parts.join(', ')
 }
 
+// Cap on files scanned in 'symbols' mode — scanning is per-file work and a
+// broad pattern can match thousands of files; this bounds the cost.
+const SYMBOLS_MAX_FILES = 50
+
+/** The deepest symbol whose [startLine,endLine] range contains `line`. */
+function enclosingSymbol(
+  entries: SymbolEntry[],
+  line: number,
+): SymbolEntry | null {
+  let best: SymbolEntry | null = null
+  for (const e of entries) {
+    if (line < e.startLine || line > e.endLine) continue
+    if (best === null || e.depth > best.depth) best = e
+  }
+  return best
+}
+
+type SymbolsResult = {
+  content: string
+  numFiles: number
+  numMatches: number
+  filenames: string[]
+}
+
+// Splits a ripgrep content line into path + line number. The path is matched
+// non-greedily so the first `:<digits>:` wins — this keeps Windows drive
+// letters (`C:\...`) part of the path instead of being mistaken for the
+// line-number separator.
+export const RG_LINE_RE = /^(.+?):(\d+):/
+
+/**
+ * Maps ripgrep content lines (`abs:line:text`) to the enclosing symbol in
+ * each file. Files in an unsupported language, or where the scan fails, fall
+ * back to a bare relative-path listing. Fail-open throughout.
+ */
+async function buildSymbolsOutput(
+  rgLines: string[],
+): Promise<SymbolsResult> {
+  // Group matched line numbers by absolute file path.
+  const byFile = new Map<string, Set<number>>()
+  for (const raw of rgLines) {
+    const m = RG_LINE_RE.exec(raw)
+    if (!m) continue
+    const file = m[1]
+    const lineNo = parseInt(m[2], 10)
+    let set = byFile.get(file)
+    if (!set) {
+      set = new Set()
+      byFile.set(file, set)
+    }
+    set.add(lineNo)
+  }
+
+  const files = [...byFile.keys()].sort().slice(0, SYMBOLS_MAX_FILES)
+  const blocks: string[] = []
+  let numMatches = 0
+  const filenames: string[] = []
+
+  for (const absPath of files) {
+    const rel = toRelativePath(absPath)
+    filenames.push(rel)
+    const lineNos = [...byFile.get(absPath)!].sort((a, b) => a - b)
+    const lang = detectOutlineLang(extname(absPath))
+
+    if (!lang) {
+      blocks.push(`${rel}\n  (matched, language not supported for symbols)`)
+      continue
+    }
+
+    let entries: SymbolEntry[]
+    try {
+      const source = await readFile(absPath, 'utf8')
+      entries = scanSymbols(source, lang)
+    } catch (e) {
+      logError(e)
+      blocks.push(`${rel}\n  (matched, could not scan)`)
+      continue
+    }
+
+    const seen = new Set<string>()
+    const lines: string[] = []
+    for (const lineNo of lineNos) {
+      const sym = enclosingSymbol(entries, lineNo)
+      if (!sym) continue
+      const key = `${sym.startLine}-${sym.endLine}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      lines.push(`  ${key}  ${sym.signature}`)
+      numMatches++
+    }
+    blocks.push(
+      lines.length > 0
+        ? `${rel}\n${lines.join('\n')}`
+        : `${rel}\n  (matched outside any symbol)`,
+    )
+  }
+
+  return {
+    content: blocks.join('\n\n'),
+    numFiles: files.length,
+    numMatches,
+    filenames,
+  }
+}
+
 const outputSchema = lazySchema(() =>
   z.object({
-    mode: z.enum(['content', 'files_with_matches', 'count']).optional(),
+    mode: z
+      .enum(['content', 'files_with_matches', 'count', 'symbols'])
+      .optional(),
     numFiles: z.number(),
     filenames: z.array(z.string()),
     content: z.string().optional(),
@@ -290,6 +405,25 @@ export const GrepTool = buildTool({
       }
     }
 
+    if (mode === 'symbols') {
+      const limitInfo = formatLimitInfo(appliedLimit, appliedOffset)
+      if (!content) {
+        return {
+          tool_use_id: toolUseID,
+          type: 'tool_result',
+          content: 'No matches found',
+        }
+      }
+      const matches = numMatches ?? 0
+      const files = numFiles ?? 0
+      const header = `Found ${matches} matched ${matches === 1 ? 'symbol' : 'symbols'} across ${files} ${files === 1 ? 'file' : 'files'}${limitInfo ? ` (pagination = ${limitInfo})` : ''}`
+      return {
+        tool_use_id: toolUseID,
+        type: 'tool_result',
+        content: `${header}\n\n${content}`,
+      }
+    }
+
     // files_with_matches mode
     const limitInfo = formatLimitInfo(appliedLimit, appliedOffset)
     if (numFiles === 0) {
@@ -354,9 +488,20 @@ export const GrepTool = buildTool({
       args.push('-c')
     }
 
-    // Add line numbers if requested
-    if (show_line_numbers && output_mode === 'content') {
+    // Add line numbers if requested. 'symbols' mode always needs them — the
+    // line number is what maps each match to its enclosing symbol.
+    if (
+      (show_line_numbers && output_mode === 'content') ||
+      output_mode === 'symbols'
+    ) {
       args.push('-n')
+    }
+
+    // 'symbols' mode parses `path:line:text`, so the filename must always be
+    // present. rg omits it when the search target is a single file — force it
+    // with -H so single-file greps don't parse as `line:text` and drop matches.
+    if (output_mode === 'symbols') {
+      args.push('-H')
     }
 
     // Add context flags (-C/context takes precedence over context_before/context_after)
@@ -469,6 +614,27 @@ export const GrepTool = buildTool({
         filenames: [],
         content: finalLines.join('\n'),
         numLines: finalLines.length,
+        ...(appliedLimit !== undefined && { appliedLimit }),
+        ...(offset > 0 && { appliedOffset: offset }),
+      }
+      return { data: output }
+    }
+
+    if (output_mode === 'symbols') {
+      // rg ran in content mode with -n (abs:line:text). Map each match to
+      // its enclosing function/class; head_limit bounds the rg lines fed in.
+      const { items: limitedResults, appliedLimit } = applyHeadLimit(
+        results,
+        head_limit,
+        offset,
+      )
+      const symbols = await buildSymbolsOutput(limitedResults)
+      const output = {
+        mode: 'symbols' as const,
+        numFiles: symbols.numFiles,
+        filenames: symbols.filenames,
+        content: symbols.content,
+        numMatches: symbols.numMatches,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),
       }

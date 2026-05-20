@@ -29,7 +29,7 @@ import type { ToolUseContext } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { getClaudioConfigHomeDir, isEnvTruthy } from '../../utils/envUtils.js'
-import { getErrnoCode, isENOENT } from '../../utils/errors.js'
+import { getErrnoCode, isAbortError, isENOENT } from '../../utils/errors.js'
 import {
   addLineNumbers,
   FILE_NOT_FOUND_CWD_NOTE,
@@ -70,7 +70,18 @@ import {
 } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
-import { readFileInRange } from '../../utils/readFileInRange.js'
+import {
+  FileTooLargeError,
+  type ReadFileRangeResult,
+  readFileInRange,
+} from '../../utils/readFileInRange.js'
+import { renderOutline } from '../shared/codeOutline/renderOutline.js'
+import {
+  detectOutlineLang,
+  scanSymbols,
+  type OutlineLang,
+  type SymbolEntry,
+} from '../shared/codeOutline/scanSymbols.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import { BASH_TOOL_NAME } from '../BashTool/toolName.js'
@@ -239,6 +250,18 @@ const inputSchema = lazySchema(() =>
       .describe(
         `Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files. Maximum ${PDF_MAX_PAGES_PER_READ} pages per request.`,
       ),
+    view: z
+      .enum(['outline'])
+      .optional()
+      .describe(
+        "Set to 'outline' to read only the structural skeleton of a code file — every function/class signature with its line range — instead of the full contents. Cheap way to navigate a large file before expanding one part.",
+      ),
+    symbol: z
+      .string()
+      .optional()
+      .describe(
+        "Expand exactly one symbol by name: returns just that function/class/type body with its real line numbers. Use after an outline to read one part of a large file. Takes precedence over offset/limit and view.",
+      ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -326,6 +349,19 @@ const outputSchema = lazySchema(() => {
       type: z.literal('file_unchanged'),
       file: z.object({
         filePath: z.string().describe('The path to the file'),
+      }),
+    }),
+    z.object({
+      type: z.literal('outline'),
+      file: z.object({
+        filePath: z.string().describe('The path to the file'),
+        content: z
+          .string()
+          .describe('The pre-rendered structural outline text'),
+        totalLines: z.number().describe('Total number of lines in the file'),
+        symbolCount: z
+          .number()
+          .describe('Number of symbols in the outline'),
       }),
     }),
   ])
@@ -494,7 +530,7 @@ export const FileReadTool = buildTool({
     return { result: true }
   },
   async call(
-    { file_path, offset = 1, limit = undefined, pages },
+    { file_path, offset = 1, limit = undefined, pages, view, symbol },
     context,
     _canUseTool?,
     parentMessage?,
@@ -544,10 +580,15 @@ export const FileReadTool = buildTool({
     // by Read). Edit/Write store offset=undefined — their readFileState
     // entry reflects post-edit mtime, so deduping against it would wrongly
     // point the model at the pre-edit Read content.
+    // Skip dedup for outline/unfold requests: they share the default
+    // offset/limit with a prior full Read, so they would wrongly dedup-match
+    // and return a file_unchanged stub instead of the requested view.
     if (
       existingState &&
       !existingState.isPartialView &&
-      existingState.offset !== undefined
+      existingState.offset !== undefined &&
+      view === undefined &&
+      symbol === undefined
     ) {
       const rangeMatch =
         existingState.offset === offset && existingState.limit === limit
@@ -599,6 +640,8 @@ export const FileReadTool = buildTool({
         offset,
         limit,
         pages,
+        view,
+        symbol,
         maxSizeBytes,
         maxTokens,
         readFileState,
@@ -622,6 +665,8 @@ export const FileReadTool = buildTool({
               offset,
               limit,
               pages,
+              view,
+              symbol,
               maxSizeBytes,
               maxTokens,
               readFileState,
@@ -688,6 +733,14 @@ export const FileReadTool = buildTool({
           tool_use_id: toolUseID,
           type: 'tool_result',
           content: FILE_UNCHANGED_STUB,
+        }
+      case 'outline':
+        // Pre-rendered skeleton — no cat -n line prefixes, no mitigation
+        // reminder. Sent verbatim.
+        return {
+          tool_use_id: toolUseID,
+          type: 'tool_result',
+          content: data.file.content,
         }
       case 'text': {
         let content: string
@@ -804,6 +857,158 @@ function createImageResponse(
 /**
  * Inner implementation of call, separated to allow ENOENT handling in the outer call.
  */
+// Cap for the full read backing a symbol scan, aligned with readFileInRange's
+// fast-path ceiling. Past it the scan still works on the truncated head.
+const SCAN_MAX_BYTES = 10 * 1024 * 1024
+
+type ScannedFile = {
+  /** Full file content split into lines — the basis scanSymbols computed on. */
+  lines: string[]
+  /** Raw file content (capped at SCAN_MAX_BYTES). */
+  source: string
+  entries: SymbolEntry[]
+  mtimeMs: number
+}
+
+/**
+ * Reads a file in full and scans its symbol table. Returns null when the scan
+ * yields nothing (unsupported shape, parse failure) so callers degrade to a
+ * normal Read. Abort errors propagate; other read errors fail open as null.
+ */
+async function scanFile(
+  resolvedFilePath: string,
+  lang: OutlineLang,
+  signal: AbortSignal,
+): Promise<ScannedFile | null> {
+  let source: string
+  let mtimeMs: number
+  try {
+    const res = await readFileInRange(
+      resolvedFilePath,
+      0,
+      undefined,
+      SCAN_MAX_BYTES,
+      signal,
+      { truncateOnByteLimit: true },
+    )
+    source = res.content
+    mtimeMs = res.mtimeMs
+  } catch (e) {
+    if (isAbortError(e)) throw e
+    logError(e)
+    return null
+  }
+  const entries = scanSymbols(source, lang)
+  if (entries.length === 0) return null
+  return { lines: source.split('\n'), source, entries, mtimeMs }
+}
+
+/**
+ * Exact symbol lookup. On a name collision prefers the shallowest (top-level);
+ * on a depth tie prefers the widest line span — for overloaded TS functions
+ * this picks the implementation (which has a body) over the bare signatures.
+ */
+function findSymbolEntry(
+  entries: SymbolEntry[],
+  name: string,
+): SymbolEntry | null {
+  let best: SymbolEntry | null = null
+  for (const e of entries) {
+    if (e.name !== name) continue
+    if (best === null || e.depth < best.depth) {
+      best = e
+    } else if (
+      e.depth === best.depth &&
+      e.endLine - e.startLine > best.endLine - best.startLine
+    ) {
+      best = e
+    }
+  }
+  return best
+}
+
+function formatSymbolList(names: string[]): string {
+  const shown = names.slice(0, 15)
+  const suffix =
+    names.length > shown.length ? `, … (${names.length} total)` : ''
+  return shown.join(', ') + suffix
+}
+
+/**
+ * Builds the 'outline' result. The model has NOT seen real file content — only
+ * the skeleton — so the cache entry is marked partial (Edit/Write will require
+ * a fresh Read). Per FileState convention, `content` holds raw disk bytes.
+ */
+function makeOutlineData(
+  scanned: ScannedFile,
+  file_path: string,
+  fullFilePath: string,
+  readFileState: ToolUseContext['readFileState'],
+  overCap: boolean,
+): { data: Output } {
+  const content = renderOutline(
+    scanned.entries,
+    file_path,
+    scanned.lines.length,
+    { overCap },
+  )
+  readFileState.set(fullFilePath, {
+    content: scanned.source,
+    timestamp: Math.floor(scanned.mtimeMs),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+  })
+  return {
+    data: {
+      type: 'outline' as const,
+      file: {
+        filePath: file_path,
+        content,
+        totalLines: scanned.lines.length,
+        symbolCount: scanned.entries.length,
+      },
+    },
+  }
+}
+
+/**
+ * Builds the 'unfold' result: one symbol's body as a normal partial Read. The
+ * model has seen these exact lines, so the cache entry is NOT partial —
+ * Edit/Write stay unblocked. Line numbering is applied downstream from
+ * `startLine`, so the model sees the symbol's real line numbers.
+ */
+function makeUnfoldData(
+  scanned: ScannedFile,
+  entry: SymbolEntry,
+  file_path: string,
+  fullFilePath: string,
+  readFileState: ToolUseContext['readFileState'],
+): { data: Output } {
+  const slice = scanned.lines
+    .slice(entry.startLine - 1, entry.endLine)
+    .join('\n')
+  const numLines = entry.endLine - entry.startLine + 1
+  readFileState.set(fullFilePath, {
+    content: slice,
+    timestamp: Math.floor(scanned.mtimeMs),
+    offset: entry.startLine,
+    limit: numLines,
+  })
+  return {
+    data: {
+      type: 'text' as const,
+      file: {
+        filePath: file_path,
+        content: slice,
+        numLines,
+        startLine: entry.startLine,
+        totalLines: scanned.lines.length,
+      },
+    },
+  }
+}
+
 async function callInner(
   file_path: string,
   fullFilePath: string,
@@ -812,6 +1017,8 @@ async function callInner(
   offset: number,
   limit: number | undefined,
   pages: string | undefined,
+  view: 'outline' | undefined,
+  symbol: string | undefined,
   maxSizeBytes: number,
   maxTokens: number,
   readFileState: ToolUseContext['readFileState'],
@@ -1019,18 +1226,86 @@ async function callInner(
     }
   }
 
+  // --- Smart Code Navigation: outline / unfold views ---
+  // Precedence: symbol > view > offset/limit. Honoured at any file size.
+  const outlineLang = detectOutlineLang(ext)
+  const signal = context.abortController.signal
+
+  if (outlineLang && symbol !== undefined) {
+    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+    if (scanned) {
+      const entry = findSymbolEntry(scanned.entries, symbol)
+      if (!entry) {
+        throw new Error(
+          `Symbol '${symbol}' not found in ${file_path}. ` +
+            `Available symbols: ${formatSymbolList(scanned.entries.map(e => e.name))}. ` +
+            `Call Read(file_path, view='outline') to see the full structure.`,
+        )
+      }
+      return makeUnfoldData(
+        scanned,
+        entry,
+        file_path,
+        fullFilePath,
+        readFileState,
+      )
+    }
+    // scan empty — degrade to a normal read
+  }
+
+  if (outlineLang && view === 'outline') {
+    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+    if (scanned) {
+      return makeOutlineData(
+        scanned,
+        file_path,
+        fullFilePath,
+        readFileState,
+        false,
+      )
+    }
+    // scan empty — degrade to a normal read
+  }
+
   // --- Text file (single async read via readFileInRange) ---
   const lineOffset = offset === 0 ? 0 : offset - 1
-  const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
-    await readFileInRange(
+  let readResult: ReadFileRangeResult
+  try {
+    readResult = await readFileInRange(
       resolvedFilePath,
       lineOffset,
       limit,
       limit === undefined ? maxSizeBytes : undefined,
-      context.abortController.signal,
+      signal,
     )
+    await validateContentTokens(readResult.content, ext, maxTokens)
+  } catch (e) {
+    // Over-cap auto-outline: a plain Read that blew the byte or token cap
+    // becomes a structural outline instead of a dead-end error. Only when
+    // no explicit view/symbol was requested and the file is a code file.
+    if (
+      outlineLang &&
+      symbol === undefined &&
+      view === undefined &&
+      (e instanceof FileTooLargeError ||
+        e instanceof MaxFileReadTokenExceededError)
+    ) {
+      const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+      if (scanned) {
+        return makeOutlineData(
+          scanned,
+          file_path,
+          fullFilePath,
+          readFileState,
+          true,
+        )
+      }
+    }
+    throw e
+  }
 
-  await validateContentTokens(content, ext, maxTokens)
+  const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
+    readResult
 
   readFileState.set(fullFilePath, {
     content,

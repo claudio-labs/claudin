@@ -1,0 +1,101 @@
+// ---------------------------------------------------------------------------
+// renderOutline — turns a symbol table into the model-facing "outline" text
+// ---------------------------------------------------------------------------
+//
+// The output is pre-formatted (no `cat -n` line-number prefixes): a leading
+// <system-reminder> that tells the model how to drill in, followed by one
+// indented line per symbol: `<start>-<end>  <signature>`.
+//
+// Auto-cap: a pathological file (generated code, thousands of symbols) could
+// itself blow the read cap. If the rendered body would exceed
+// OUTLINE_MAX_TOKENS, it is truncated at the last symbol that fits and a
+// trailer line reports how many were dropped. The outline is never worse
+// than the over-cap error it replaces.
+// ---------------------------------------------------------------------------
+
+import type { SymbolEntry } from './scanSymbols.js'
+
+/** Token ceiling for the rendered outline body. */
+export const OUTLINE_MAX_TOKENS = 10_000
+
+// Bytes per token. The auto-cap is an internal safety guard, not user-facing
+// precision — a coarse 4 bytes/token heuristic keeps this module free of the
+// provider/tokenizer dependency chain.
+const BYTES_PER_TOKEN = 4
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / BYTES_PER_TOKEN)
+}
+
+export type RenderOutlineOptions = {
+  /** true when produced because a plain Read exceeded the cap. */
+  overCap?: boolean
+}
+
+function rangeLabel(entry: SymbolEntry): string {
+  return `${entry.startLine}-${entry.endLine}`
+}
+
+function renderBody(entries: SymbolEntry[]): {
+  body: string
+  shown: number
+} {
+  // Align the range column to the widest range string for readability.
+  const widest = entries.reduce(
+    (w, e) => Math.max(w, rangeLabel(e).length),
+    0,
+  )
+  const lines: string[] = []
+  let estimate = 0
+  let shown = 0
+  for (const entry of entries) {
+    const indent = '  '.repeat(entry.depth + 1)
+    const range = rangeLabel(entry).padEnd(widest)
+    const line = `${indent}${range}  ${entry.signature}`
+    const lineTokens = estimateTokens(line + '\n')
+    if (shown > 0 && estimate + lineTokens > OUTLINE_MAX_TOKENS) {
+      break
+    }
+    lines.push(line)
+    estimate += lineTokens
+    shown++
+  }
+  return { body: lines.join('\n'), shown }
+}
+
+/**
+ * Renders a symbol table as the outline view shown to the model.
+ *
+ * @param entries     Symbol table from {@link scanSymbols} (must be non-empty).
+ * @param filePath    Path shown in the header.
+ * @param totalLines  Total line count of the file.
+ */
+export function renderOutline(
+  entries: SymbolEntry[],
+  filePath: string,
+  totalLines: number,
+  options: RenderOutlineOptions = {},
+): string {
+  const { body, shown } = renderBody(entries)
+  const dropped = entries.length - shown
+
+  const firstSymbol = entries[0]?.name ?? 'name'
+  const lead = options.overCap
+    ? `File '${filePath}' (${totalLines} lines) exceeds the read cap — showing a structural outline instead of the full contents.`
+    : `Structural outline of '${filePath}' (${totalLines} lines).`
+
+  const header =
+    `<system-reminder>\n` +
+    `${lead}\n` +
+    `Call Read(file_path, symbol='${firstSymbol}') to expand one symbol's ` +
+    `body with real line numbers, or Read(file_path, offset=N, limit=M) ` +
+    `for an arbitrary range.\n` +
+    `</system-reminder>`
+
+  const trailer =
+    dropped > 0
+      ? `\n  … (+${dropped} more symbols — use offset/limit to read specific ranges)`
+      : ''
+
+  return `${header}\n\n${body}${trailer}\n`
+}

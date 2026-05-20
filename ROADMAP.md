@@ -141,12 +141,12 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ## Tier 4 — Novas capacidades
 
-### [ ] 16. Smart Code Navigation (folded file views)
-- **Arquivos:** `src/tools/shared/codeOutline/scanSymbols.ts` (novo), `src/tools/FileReadTool/` (params `view`/`symbol`), `src/tools/FileReadTool/limits.ts:9-13` (caminho over-cap), `src/tools/GrepTool/` (`output_mode: 'symbols'`, Fase 2), `scripts/build.ts` (flag `SMART_CODE_NAV`).
+### [x] 16. Smart Code Navigation (folded file views)
+- **Arquivos:** `src/tools/shared/codeOutline/scanSymbols.ts` + `renderOutline.ts` (novos), `src/tools/FileReadTool/` (params `view`/`symbol`, variante de saída `outline`, caminho over-cap), `src/tools/GrepTool/` (`output_mode: 'symbols'`), `scripts/profile/code-outline-bench.ts` (bench).
 - **Problema:** `Read` em arquivo acima dos caps (256 KB / 2000 linhas / ~25k tokens) só tem duas saídas, ambas ruins — throw "use offset/limit" (~100 bytes, modelo cego) ou truncar no cap (~25k tokens). Experimento upstream #21841 (Mar 2026) já testou e reverteu a truncagem; ver `limits.ts:9-13`.
-- **Solução:** uma primitiva `scanSymbols` alimenta três vistas — `outline` (esqueleto de assinaturas, ~1-2k tokens), `unfold` (corpo de um símbolo), `search` (símbolos casados cross-file). Enxertadas em `Read`/`Grep`, sem tool nova e sem dependência (depth-scanner com masking de strings/comentários; tree-sitter fica para v2 só se a telemetria exigir). Fail-open: degrada para `Read` normal.
-- **Ganho:** alto (~2k vs ~26k tokens no fluxo típico de "uma função de arquivo grande") — **Esforço:** médio — **Risco:** baixo (caminho over-cap hoje já é erro; flag `SMART_CODE_NAV` como kill switch).
-- **Faseamento:** Fase 1 (keystone) — `scanSymbols` + params `view`/`symbol` + auto-outline no over-cap (~90% do valor). Fase 2 — `GrepTool output_mode: 'symbols'`.
+- **Solução:** uma primitiva `scanSymbols` alimenta três vistas — `outline` (esqueleto de assinaturas, ~1-2k tokens), `unfold` (corpo de um símbolo), `search` (símbolos casados cross-file). Enxertadas em `Read`/`Grep`, sem tool nova e sem dependência (depth-scanner com masking de strings/comentários/regex; tree-sitter fica para v2 só se necessário). Fail-open: degrada para `Read`/`Grep` normal.
+- **Ganho:** alto — bench `profile:code-outline` mede ~10k vs ~391k tokens no fluxo típico de "uma função de arquivo grande" (~97% economizado) — **Esforço:** médio — **Risco:** baixo (caminho over-cap hoje já é erro).
+- **Entrega:** sem feature flag (toda a fonte está no repo); entregue na branch `feat/smart-code-navigation`. Fase 1 — `scanSymbols`/`renderOutline` + params `view`/`symbol` + auto-outline no over-cap. Fase 2 — `GrepTool output_mode: 'symbols'`.
 - **Doc:** [docs/features/7.1-smart-code-navigation.md](docs/features/7.1-smart-code-navigation.md)
 
 ---

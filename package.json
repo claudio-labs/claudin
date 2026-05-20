@@ -41,6 +41,7 @@
     "profile:skills-plugin": "bun --expose-gc run scripts/profile/skills-plugin-bench.ts",
     "profile:file-read-cache-saturation": "bun --expose-gc run scripts/profile/file-read-cache-saturation-bench.ts",
     "profile:heap-snapshot-diff": "bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts",
+    "profile:code-outline": "bun run scripts/profile/code-outline-bench.ts",
     "profile:mem": "bun --expose-gc run scripts/profile/memory-turn-by-turn-bench.ts",
     "profile:mem:500": "bun --expose-gc run scripts/profile/memory-turn-by-turn-bench.ts --turns=500 --payload-kb=200 --payload-jitter=100 --with-compact --with-clear --compact-every=100 --clear-every=200 --inflection --output=scripts/profile/baselines/memory-turn-by-turn.json --csv=scripts/profile/baselines/memory-turn-by-turn.csv",
     "profile:mem:ci": "bun --expose-gc run scripts/profile/memory-turn-by-turn-bench.ts --turns=100 --payload-kb=50 --with-compact --with-clear --compact-every=25 --clear-every=50 --inflection --json",

@@ -139,6 +139,18 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
           <Text dimColor>Unchanged since last read</Text>
         </MessageResponse>;
       }
+    case 'outline':
+      {
+        const {
+          symbolCount
+        } = output.file;
+        return <MessageResponse height={1}>
+          <Text>
+            Read outline (<Text bold>{symbolCount}</Text>{' '}
+            {symbolCount === 1 ? 'symbol' : 'symbols'})
+          </Text>
+        </MessageResponse>;
+      }
   }
 }
 export function renderToolUseErrorMessage(result: ToolResultBlockParam['content'], {
