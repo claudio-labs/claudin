@@ -446,9 +446,13 @@ To fix this issue:
     // which could be maliciously crafted to redirect to an attacker's registry
     const packageManager =
       env.isRunningWithBun() || isInstalledViaBun() ? 'bun' : 'npm'
+    const installArgs =
+      packageManager === 'npm'
+        ? ['install', '-g', '--force', packageSpec]
+        : ['install', '-g', packageSpec]
     const installResult = await execFileNoThrowWithCwd(
       packageManager,
-      ['install', '-g', packageSpec],
+      installArgs,
       { cwd: homedir() },
     )
     if (installResult.code !== 0) {
