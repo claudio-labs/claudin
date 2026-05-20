@@ -40,6 +40,14 @@ function isInstalledViaBun(): boolean {
   return false
 }
 
+async function isBunGlobalInstall(): Promise<boolean> {
+  const result = await execFileNoThrowWithCwd('bun', ['pm', 'ls', '-g'], {
+    cwd: homedir(),
+  })
+  if (result.code !== 0) return false
+  return result.stdout.includes(MACRO.PACKAGE_URL as string)
+}
+
 export type InstallStatus =
   | 'success'
   | 'no_permissions'
@@ -461,6 +469,23 @@ To fix this issue:
       )
       logError(error)
       return 'install_failed'
+    }
+
+    // If npm was used but bun also has the package installed globally, update bun too.
+    // This prevents the bun binary (which often has PATH priority) from staying behind.
+    if (packageManager === 'npm' && (await isBunGlobalInstall())) {
+      const bunResult = await execFileNoThrowWithCwd(
+        'bun',
+        ['install', '-g', packageSpec],
+        { cwd: homedir() },
+      )
+      if (bunResult.code !== 0) {
+        logError(
+          new AutoUpdaterError(
+            `Failed to update bun global install: ${bunResult.stdout} ${bunResult.stderr}`,
+          ),
+        )
+      }
     }
 
     // Set installMethod to 'global' to track npm global installations
