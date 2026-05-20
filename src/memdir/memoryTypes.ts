@@ -188,6 +188,11 @@ export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
   '- Debugging solutions or fix recipes — the fix is in the code; the commit message has the context.',
   '- Anything already documented in CLAUDE.md files.',
   '- Ephemeral task details: in-progress work, temporary state, current conversation context.',
+  // Skip-routine guidance: discard low-signal work at the source rather than
+  // compressing it later. A noisy memory costs tokens in every future session
+  // (the MEMORY.md index is always loaded). See
+  // docs/discovery/claude-mem-insights/structured-extraction.md (technique 2).
+  '- Routine work with no surprising outcome: trivial commands that succeeded (installs, builds, status checks), exploratory reads or searches that led to no conclusion, and plain navigation steps. A session can legitimately produce nothing worth saving — memory is for the non-obvious, not a log of activity.',
   '',
   // H2: explicit-save gate. Eval-validated (memory-prompt-iteration case 3,
   // 0/2 → 3/3): prevents "save this week's PR list" → activity-log noise.
