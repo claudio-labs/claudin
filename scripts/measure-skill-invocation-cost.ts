@@ -18,7 +18,7 @@
  *   1. Synthetic profile: small/medium/large/huge bodies → reports bytes,
  *      tokens, and the system-reminder envelope overhead.
  *   2. Real best-effort: registers the bundled skills that don't depend on
- *      build-time `.md` imports (debug, loop, keybindings, simplify) and
+ *      build-time `.md` imports (debug, loop, keybindings, code-review) and
  *      asks them to produce a prompt with empty args. Reports the true
  *      bytes per skill.
  *
@@ -130,7 +130,7 @@ async function loadRealBundledSkills(): Promise<RealSkillRow[]> {
     { name: 'updateConfig', load: () => import('../src/skills/bundled/updateConfig.js') },
     { name: 'keybindings', load: () => import('../src/skills/bundled/keybindings.js') },
     { name: 'debug', load: () => import('../src/skills/bundled/debug.js') },
-    { name: 'simplify', load: () => import('../src/skills/bundled/simplify.js') },
+    { name: 'code-review', load: () => import('../src/skills/bundled/code-review.js') },
     { name: 'batch', load: () => import('../src/skills/bundled/batch.js') },
     { name: 'loop', load: () => import('../src/skills/bundled/loop.js') },
   ]

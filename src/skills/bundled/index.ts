@@ -1,9 +1,9 @@
 import { feature } from 'bun:bundle'
 import { registerBatchSkill } from './batch.js'
+import { registerCodeReviewSkill } from './code-review.js'
 import { registerDebugSkill } from './debug.js'
 import { registerKeybindingsSkill } from './keybindings.js'
 import { registerLoopSkill } from './loop.js'
-import { registerSimplifySkill } from './simplify.js'
 import { registerUpdateConfigSkill } from './updateConfig.js'
 
 /**
@@ -19,7 +19,7 @@ export function initBundledSkills(): void {
   registerUpdateConfigSkill()
   registerKeybindingsSkill()
   registerDebugSkill()
-  registerSimplifySkill()
+  registerCodeReviewSkill()
   registerBatchSkill()
   if (feature('KAIROS') || feature('KAIROS_DREAM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
