@@ -101,9 +101,10 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Sugestão:** dividir por tipo (image, pdf, text, paste) + pipeline comum.
 - **Ganho:** médio — **Esforço:** médio — **Risco:** baixo.
 
-### [ ] 11i. Split de `src/services/mcp/client.ts` (3.366 linhas, 117 KB)
+### [x] 11i. Split de `src/services/mcp/client.ts` (3.366 linhas, 117 KB)
 - **Sugestão:** transporte (stdio/sse/http) separado de gerenciamento de servidor/sessão.
 - **Ganho:** médio — **Esforço:** médio — **Risco:** médio (protocolo MCP; testes de integração).
+- **Concluído:** barrel `client.ts` + `client/{errors,authCache,fetch,transport,connection,toolResult,callTool,fetchCapabilities,ide,sdkClients}.ts`. Testes de regressão em `client.regression.test.ts`.
 
 ### [ ] 11j. Split de `src/services/api/claude.ts` (3.218 linhas, 117 KB)
 - **Sugestão:** isolar request builder, response parser, streaming, retries.

@@ -20,17 +20,22 @@ const file = (relative: string) => Bun.file(resolve(SRC, relative))
 // ---------------------------------------------------------------------------
 describe('MCP tool result sanitization', () => {
   test('transformResultContent sanitizes text content', async () => {
-    const content = await file('services/mcp/client.ts').text()
-    // Tool definitions are already sanitized (line ~1798)
-    expect(content).toContain('recursivelySanitizeUnicode(result.tools)')
-    // Tool results must also be sanitized
-    expect(content).toMatch(
+    // Tool definitions are already sanitized in fetchCapabilities.ts
+    const fetchContent = await file(
+      'services/mcp/client/fetchCapabilities.ts',
+    ).text()
+    expect(fetchContent).toContain('recursivelySanitizeUnicode(result.tools)')
+    // Tool results must also be sanitized in toolResult.ts
+    const toolResultContent = await file(
+      'services/mcp/client/toolResult.ts',
+    ).text()
+    expect(toolResultContent).toMatch(
       /case 'text':[\s\S]*?recursivelySanitizeUnicode\(resultContent\.text\)/,
     )
   })
 
   test('resource text content is also sanitized', async () => {
-    const content = await file('services/mcp/client.ts').text()
+    const content = await file('services/mcp/client/toolResult.ts').text()
     expect(content).toMatch(
       /recursivelySanitizeUnicode\(\s*`\$\{prefix\}\$\{resource\.text\}`/,
     )

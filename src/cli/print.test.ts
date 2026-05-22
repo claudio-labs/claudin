@@ -14,6 +14,13 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 // Mocks must register before the SUT is imported. Imports are inside
 // describe blocks so each group can stage its own boundary mocks.
 
+// Capture the real MCP modules before any describe block mocks them, so
+// afterAll can restore them. Without this, the boundary mocks (e.g.
+// areMcpConfigsEqual stubbed to `() => true`) leak into other test files
+// in the same `bun test` run.
+const realMcpClient = { ...(await import('src/services/mcp/client.js')) }
+const realMcpConfig = { ...(await import('src/services/mcp/config.js')) }
+
 describe('promptBatching', () => {
   test('joinPromptValues: single string passes through unchanged', async () => {
     const { joinPromptValues } = await import('./print.js')
@@ -498,6 +505,8 @@ describe('handleMcpSetServers', () => {
 })
 
 afterAll(() => {
-  // No-op; included to keep parity with the 11a pattern when global config
-  // gets touched by future test additions.
+  // Restore the real MCP modules so the boundary mocks staged above don't
+  // leak into other test files sharing this `bun test` process.
+  mock.module('src/services/mcp/client.js', () => realMcpClient)
+  mock.module('src/services/mcp/config.js', () => realMcpConfig)
 })

@@ -171,12 +171,12 @@ const CANDIDATES: Candidate[] = [
     ],
     goal: ['src/tools.ts'],
   },
-  // MCP listing — pulled by mcp/client.ts and ToolSelector.tsx.
+  // MCP listing — pulled by mcp/client/fetchCapabilities.ts and ToolSelector.tsx.
   {
     modulePath: 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client.ts',
+      'src/services/mcp/client/fetchCapabilities.ts',
       'src/tools.ts',
     ],
     goal: ['src/tools.ts'],
@@ -185,7 +185,7 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client.ts',
+      'src/services/mcp/client/fetchCapabilities.ts',
       'src/tools.ts',
     ],
     goal: ['src/tools.ts'],

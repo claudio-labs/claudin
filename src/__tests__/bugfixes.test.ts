@@ -184,7 +184,7 @@ describe('Web search result count improvements', () => {
 // ---------------------------------------------------------------------------
 describe('MCP tool timeout fix', () => {
   test('default MCP tool timeout is reasonable (not 27 hours)', async () => {
-    const content = await file('services/mcp/client.ts').text()
+    const content = await file('services/mcp/client/callTool.ts').text()
 
     // Should NOT have the old ~27.8 hour default
     expect(content).not.toContain('100_000_000')
@@ -193,21 +193,21 @@ describe('MCP tool timeout fix', () => {
   })
 
   test('MCP tools/list has retry logic', async () => {
-    const content = await file('services/mcp/client.ts').text()
+    const content = await file('services/mcp/client/fetchCapabilities.ts').text()
 
     expect(content).toContain('tools/list failed (attempt')
     expect(content).toContain('Retrying...')
   })
 
   test('MCP URL elicitation checks abort signal', async () => {
-    const content = await file('services/mcp/client.ts').text()
+    const content = await file('services/mcp/client/callTool.ts').text()
 
     expect(content).toContain('signal.aborted')
     expect(content).toContain('Tool call aborted during URL elicitation')
   })
 
   test('MCP tool error messages include server and tool name in telemetry', async () => {
-    const content = await file('services/mcp/client.ts').text()
+    const content = await file('services/mcp/client/callTool.ts').text()
 
     // Telemetry message should include context like "MCP tool [serverName] toolName: error"
     // The human-readable message stays unchanged to avoid breaking error consumers
