@@ -4,7 +4,14 @@
  */
 
 // Claude.ai server names are prefixed with this string
-const CLAUDEAI_SERVER_PREFIX = 'claude.ai '
+export const CLAUDEAI_SERVER_PREFIX = 'claude.ai '
+
+/**
+ * Returns true if the given MCP server name belongs to a claude.ai connector.
+ */
+export function isClaudeAIMcpServerName(name: string): boolean {
+  return name.startsWith(CLAUDEAI_SERVER_PREFIX)
+}
 
 /**
  * Normalize server names to be compatible with the API pattern ^[a-zA-Z0-9_-]{1,64}$

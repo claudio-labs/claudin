@@ -41,6 +41,7 @@ import {
 } from '../analytics/index.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from './claudeai.js'
 import { expandEnvVarsInString } from './envExpansion.js'
+import { isClaudeAIMcpServerName } from './normalization.js'
 import {
   type ConfigScope,
   type McpHTTPServerConfig,
@@ -1515,13 +1516,22 @@ function isDefaultDisabledBuiltin(name: string): boolean {
 }
 
 /**
+ * claude.ai connectors (Gmail, Calendar, Drive, Notion, ...) are exposed via
+ * the upstream proxy but treated as opt-in here: they appear in `/mcp` but
+ * stay disabled until the user explicitly enables them via enabledMcpServers.
+ */
+function isOptInByDefault(name: string): boolean {
+  return isDefaultDisabledBuiltin(name) || isClaudeAIMcpServerName(name)
+}
+
+/**
  * Check if an MCP server is disabled
  * @param name The name of the server
  * @returns true if the server is disabled
  */
 export function isMcpServerDisabled(name: string): boolean {
   const projectConfig = getCurrentProjectConfig()
-  if (isDefaultDisabledBuiltin(name)) {
+  if (isOptInByDefault(name)) {
     const enabledServers = projectConfig.enabledMcpServers || []
     return !enabledServers.includes(name)
   }
@@ -1549,7 +1559,7 @@ export function setMcpServerEnabled(name: string, enabled: boolean): void {
     isDefaultDisabledBuiltin(name) && isMcpServerDisabled(name) === enabled
 
   saveCurrentProjectConfig(current => {
-    if (isDefaultDisabledBuiltin(name)) {
+    if (isOptInByDefault(name)) {
       const prev = current.enabledMcpServers || []
       const next = toggleMembership(prev, name, enabled)
       if (next === prev) return current
