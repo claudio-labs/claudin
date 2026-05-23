@@ -49,6 +49,21 @@ if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function'
   }
 }
 
+// Claudio: polyfill util.markAsUncloneable for Node < 22.4.
+// undici v8 calls util.markAsUncloneable on Response/Request internals to
+// prevent structured-clone copies. Node 22.3 and earlier (and all 20.x)
+// lack it, causing every HTTP call to throw "util.markAsUncloneable is
+// not a function". Stub is a no-op — losing the structured-clone guard
+// is harmless when the function isn't available anyway.
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+{
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nodeUtil = require('node:util') as { markAsUncloneable?: unknown }
+  if (typeof nodeUtil.markAsUncloneable !== 'function') {
+    nodeUtil.markAsUncloneable = () => {}
+  }
+}
+
 // Claudio: disable experimental API betas by default.
 // Tool search (defer_loading), global cache scope, and context management
 // require internal API support not available to external accounts → 500.
