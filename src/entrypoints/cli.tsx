@@ -29,6 +29,26 @@ if (typeof globalThis.File === 'undefined') {
   }
 }
 
+// Claudio: polyfill Promise.withResolvers for Node < 22.
+// undici v8+ (used by the bundled fetch) calls Promise.withResolvers at
+// runtime during the first HTTP request. Node 21 and earlier lack it,
+// causing every API call to fail with "Promise.withResolvers is not a
+// function". The polyfill must be installed before any module that pulls
+// in undici evaluates — keep it at the top with the File polyfill above.
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function') {
+  // @ts-expect-error -- polyfilling missing static
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve: (value: T | PromiseLike<T>) => void = () => {}
+    let reject: (reason?: unknown) => void = () => {}
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    return { promise, resolve, reject }
+  }
+}
+
 // Claudio: disable experimental API betas by default.
 // Tool search (defer_loading), global cache scope, and context management
 // require internal API support not available to external accounts → 500.
