@@ -55,20 +55,20 @@ describe('codexCredentials', () => {
     expect(result.warning).toContain('Bare mode')
   })
 
-  test('saveCodexCredentials refuses plaintext fallback when native secure storage is unavailable', async () => {
+  test('saveCodexCredentials uses plaintext fallback when native secure storage is unavailable', async () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
+    let lastWritten: unknown
     mock.module('./secureStorage/index.js', () => ({
       getSecureStorage: (options?: { allowPlainTextFallback?: boolean }) => {
-        expect(options?.allowPlainTextFallback).toBe(false)
+        expect(options?.allowPlainTextFallback).toBe(true)
         return {
-          read: () => null,
-          readAsync: async () => null,
-          update: () => ({
-            success: false,
-            warning:
-              'Secure storage is unavailable on this platform without plaintext fallback.',
-          }),
+          read: () => ({}),
+          readAsync: async () => ({}),
+          update: (data: unknown) => {
+            lastWritten = data
+            return { success: true }
+          },
           delete: () => true,
         }
       },
@@ -76,7 +76,7 @@ describe('codexCredentials', () => {
 
     // @ts-expect-error cache-busting query string for Bun module mocks
     const { saveCodexCredentials } = await import(
-      './codexCredentials.js?save-no-plaintext-fallback'
+      './codexCredentials.js?save-with-plaintext-fallback'
     )
 
     const result = saveCodexCredentials({
@@ -84,8 +84,39 @@ describe('codexCredentials', () => {
       accountId: 'acct_123',
     })
 
-    expect(result.success).toBe(false)
-    expect(result.warning).toContain('without plaintext fallback')
+    expect(result.success).toBe(true)
+    expect(result.warning).toBeUndefined()
+    expect((lastWritten as Record<string, unknown>)?.codex).toBeDefined()
+  })
+
+  test('readCodexCredentials and clearCodexCredentials both request plaintext fallback', async () => {
+    delete process.env.CLAUDE_CODE_SIMPLE
+
+    const flagCalls: Array<boolean | undefined> = []
+    mock.module('./secureStorage/index.js', () => ({
+      getSecureStorage: (options?: { allowPlainTextFallback?: boolean }) => {
+        flagCalls.push(options?.allowPlainTextFallback)
+        return {
+          read: () => ({}),
+          readAsync: async () => ({}),
+          update: () => ({ success: true }),
+          delete: () => true,
+        }
+      },
+    }))
+
+    // @ts-expect-error cache-busting query string for Bun module mocks
+    const { readCodexCredentials, clearCodexCredentials } = await import(
+      './codexCredentials.js?read-clear-fallback'
+    )
+
+    readCodexCredentials()
+    clearCodexCredentials()
+
+    expect(flagCalls.length).toBeGreaterThanOrEqual(2)
+    for (const flag of flagCalls) {
+      expect(flag).toBe(true)
+    }
   })
 
   test('refreshCodexAccessTokenIfNeeded refreshes expired stored credentials', async () => {
