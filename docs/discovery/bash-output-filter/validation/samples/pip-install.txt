@@ -1,0 +1,26 @@
+WARNING: Cache entry deserialization failed, entry ignored
+Collecting requests
+  Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+WARNING: Cache entry deserialization failed, entry ignored
+Collecting charset_normalizer<4,>=2 (from requests)
+  Using cached charset_normalizer-3.4.7-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+WARNING: Cache entry deserialization failed, entry ignored
+Collecting idna<4,>=2.5 (from requests)
+  Downloading idna-3.16-py3-none-any.whl.metadata (6.4 kB)
+WARNING: Cache entry deserialization failed, entry ignored
+Collecting urllib3<3,>=1.26 (from requests)
+  Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+WARNING: Cache entry deserialization failed, entry ignored
+Collecting certifi>=2023.5.7 (from requests)
+  Downloading certifi-2026.5.20-py3-none-any.whl.metadata (2.5 kB)
+Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+Using cached charset_normalizer-3.4.7-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (215 kB)
+Downloading idna-3.16-py3-none-any.whl (74 kB)
+Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+Downloading certifi-2026.5.20-py3-none-any.whl (134 kB)
+Installing collected packages: urllib3, idna, charset_normalizer, certifi, requests
+
+Successfully installed certifi-2026.5.20 charset_normalizer-3.4.7 idna-3.16 requests-2.34.2 urllib3-2.7.0
+
+[notice] A new release of pip is available: 26.0.1 -> 26.1.1
+[notice] To update, run: /tmp/filter-samples/pip-test/bin/python3 -m pip install --upgrade pip

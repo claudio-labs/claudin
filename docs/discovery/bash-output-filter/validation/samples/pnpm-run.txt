@@ -1,0 +1,6 @@
+
+> pnpm-proj@1.0.0 lint /tmp/filter-samples/pnpm-proj
+> echo running lint && echo lint ok
+
+running lint
+lint ok

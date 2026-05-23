@@ -1,0 +1,10 @@
+# synthetic — source: https://martinvonz.github.io/jj/latest/cli-reference/
+# jj log default revset (visible heads) — adapted from official docs.
+@  qpvuntsm viudes 2026-05-22 22:14:09 abc123
+│  (no description set)
+○  rlvkpnrz viudes 2026-05-22 21:58:11 def456
+│  feat(filters): universal linters (Phase 12.2)
+○  zzzzzzzz viudes 2026-05-22 19:33:01 fed789
+│  feat(filters): JS package managers (Phase 12.1)
+○  qpvuntsm root() 0000-00-00 00:00:00 000000
+   (empty) (no description set)

@@ -1,0 +1,18 @@
+# synthetic — source: https://github.com/koalaman/shellcheck/wiki/Checks
+# Captured semantics, formatted to match shellcheck v0.10.0 default output.
+
+In bad.sh line 3:
+if [ $name = "foo" ]; then
+     ^---^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+if [ "$name" = "foo" ]; then
+
+
+In bad.sh line 5:
+unused_var=hello
+^--------^ SC2034 (warning): unused_var appears unused. Verify use (or export if used externally).
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2086 -- Double quote to prevent globbing ...
+  https://www.shellcheck.net/wiki/SC2034 -- unused_var appears unused. Verif...

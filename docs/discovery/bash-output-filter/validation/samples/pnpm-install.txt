@@ -1,0 +1,18 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+
+   ╭──────────────────────────────────────────────────────────────────╮
+   │                                                                  │
+   │                Update available! 9.15.0 → 11.2.2.                │
+   │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v11.2.2   │
+   │                Run "pnpm add -g pnpm" to update.                 │
+   │                                                                  │
+   ╰──────────────────────────────────────────────────────────────────╯
+
+Packages: +66
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 66, reused 0, downloaded 66, added 66, done
+
+dependencies:
++ express 5.2.1
+
+Done in 1s

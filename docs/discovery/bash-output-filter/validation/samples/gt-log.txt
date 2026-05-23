@@ -1,0 +1,13 @@
+# synthetic — source: https://graphite.dev/docs/graphite-cli/gt-log
+# gt log short (stack of in-progress branches) — adapted from official docs.
+◯ feat/bash-filters-expansion (current)
+│  feat(filters): universal linters (Phase 12.2)
+│
+◉ refactor/cwd-branch-bottom-border
+│  refactor(cwd): bottom border alignment for branch indicator
+│
+◉ perf/token-efficiency-wins
+│  perf(query): defer compaction until idle
+│
+◉ main
+   trunk

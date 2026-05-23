@@ -261,7 +261,10 @@ describe("corner cases: prefix preservation", () => {
   });
 
   test("env vars on first segment", () => {
-    expect(filterName("FOO=bar npm install && npm test")).toBe(
+    // Env-var prefix on the first segment must be stripped before
+    // matching. Both segments resolve to the same filter so the chained
+    // form should agree with the atomic form.
+    expect(filterName("FOO=bar npm install && npm install lodash")).toBe(
       filterName("npm install"),
     );
   });

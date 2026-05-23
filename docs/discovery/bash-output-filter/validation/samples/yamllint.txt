@@ -1,0 +1,12 @@
+# synthetic — source: https://yamllint.readthedocs.io/en/stable/text_editors.html
+# yamllint v1.x default "standard" output format.
+config.yaml
+  1:1       warning  missing document start "---"  (document-start)
+  3:81      error    line too long (92 > 80 characters)  (line-length)
+  5:3       error    too many spaces after colon  (colons)
+  7:1       error    trailing spaces  (trailing-spaces)
+  9:1       warning  too few spaces before comment  (comments)
+ 12:7       error    wrong indentation: expected 4 but found 6  (indentation)
+
+other.yaml
+  2:1       error    duplication of key "name" in mapping  (key-duplicates)

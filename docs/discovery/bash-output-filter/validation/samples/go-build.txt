@@ -1,0 +1,5 @@
+go: finding module for package github.com/spf13/cobra
+go: downloading github.com/spf13/cobra v1.10.2
+go: found github.com/spf13/cobra in github.com/spf13/cobra v1.10.2
+go: downloading github.com/spf13/pflag v1.0.9
+go: downloading github.com/inconshreveable/mousetrap v1.1.0

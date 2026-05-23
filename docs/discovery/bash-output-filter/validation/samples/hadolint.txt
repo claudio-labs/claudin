@@ -1,0 +1,8 @@
+# synthetic — source: https://github.com/hadolint/hadolint#rules
+# hadolint v2.x default tty output.
+Dockerfile:1 DL3007 warning: Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag
+Dockerfile:3 DL3008 warning: Pin versions in apt-get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`
+Dockerfile:3 DL3015 info: Avoid additional packages by specifying `--no-install-recommends`
+Dockerfile:3 DL3009 info: Delete the apt-get lists after installing something
+Dockerfile:5 DL3025 warning: Use arguments JSON notation for CMD and ENTRYPOINT arguments
+Dockerfile:5 SC2086 info: Double quote to prevent globbing and word splitting.

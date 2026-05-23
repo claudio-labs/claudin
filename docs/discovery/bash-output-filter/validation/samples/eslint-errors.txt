@@ -1,0 +1,7 @@
+
+/tmp/filter-samples/npm-proj/sample.js
+  2:7  error  'unused' is assigned a value but never used  no-unused-vars
+  3:1  error  'console' is not defined                     no-undef
+
+✖ 2 problems (2 errors, 0 warnings)
+

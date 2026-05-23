@@ -10,10 +10,12 @@ CLI tools are built for humans. They're chatty by design. When Claudio runs a co
 
 ## The gain
 
-Measured across a typical 30-minute session:
+Measured across a typical 30-minute session (after Phase 12 covering JS/Python/Go/Rust package managers + linters + git remote ops):
 
-- **~50 000 tokens saved**
-- **~72% reduction in input cost**
+- **~75 000 tokens saved**
+- **~75% reduction in input cost across 60+ commands**
+
+Aggregate measurement across 30 Phase 12 sample fixtures: **75.1%** byte reduction (36 170 B → 8 999 B). Reproducible via `bun test src/outputFilter/Bash/phase12Report.test.ts`.
 
 ---
 
@@ -725,14 +727,265 @@ Truncates deeply nested pretty-printed JSON beyond a configurable depth/line cap
 
 ---
 
+## Phase 12 additions
+
+29 new filters covering JS package managers, Python tooling, Git remote ops, Go/Rust extras, and cross-language linters. Same fail-open contract: errors and warnings always survive; only the chatter is stripped.
+
+---
+
+### `npm install` / `npm ci` / `npm i`
+
+Strips `added/changed/audited N packages` summary tail, `npm fund` notices, progress bars (CR-collapsed), and the `npm http fetch` chatter under `--verbose`. Preserves warnings (`npm WARN deprecated`, peer-dep warnings) and any `npm ERR!` block.
+
+**Before** (~700 bytes for a small package)
+```
+added 57 packages, and audited 58 packages in 4s
+
+12 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm notice
+npm notice New major version of npm available! 10.8.1 -> 11.0.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.0.0
+npm notice To update run: npm install -g npm@11.0.0
+npm notice
+```
+
+**After**
+```
+added 57 packages in 4s
+
+found 0 vulnerabilities
+```
+
+---
+
+### `pnpm install` / `pnpm add`
+
+Strips the boxed "Update available" notice, Progress lines, `Lockfile is up to date`, `Downloading` chatter, and the `Done in Xs` footer. Preserves peer-dep warnings, deprecation notices, ERR_PNPM_* blocks, and the actual dependency tree.
+
+**Before** (747 bytes for `pnpm add express`)
+```
+   ╭──────────────────────────────────────────────────────────────────╮
+   │                                                                  │
+   │              Update available! 9.7.0 → 10.0.0.                   │
+   │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.0.0   │
+   │                Run "pnpm add -g pnpm" to update.                 │
+   │                                                                  │
+   ╰──────────────────────────────────────────────────────────────────╯
+
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 70, reused 0, downloaded 67, added 67
+Done in 2.1s
+```
+
+**After** (59 bytes — **92% reduction**)
+```
+dependencies:
++ express 4.21.2
+```
+
+---
+
+### `yarn install` / `yarn`
+
+Strips the 4-phase progress (`[1/4] Resolving packages…` through `[4/4] Building fresh packages…`) and the `Done in Xs` footer. Preserves warnings, errors, and the dependency list.
+
+**93% reduction** on a typical install. Yarn berry (v2+) output is structurally different but still benefits from progress-line removal.
+
+---
+
+### `pip install`
+
+Strips `Collecting`, `Downloading`, `Using cached`, `Building wheel for …` lines, and the multi-line `[notice] A new release of pip is available` block. Preserves `Successfully installed …`, version conflicts, and `error: subprocess-exited-with-error` blocks.
+
+**Before** (1572 bytes for `pip install requests`)
+```
+Collecting requests
+  Downloading requests-2.34.2-py3-none-any.whl.metadata (4.6 kB)
+Collecting charset-normalizer<4,>=2 (from requests)
+  Downloading charset_normalizer-3.4.4-cp312-cp312-manylinux_2_17_x86_64.whl.metadata (35 kB)
+Collecting idna<4,>=2.5 (from requests)
+  Downloading idna-3.10-py3-none-any.whl.metadata (10 kB)
+...
+Downloading requests-2.34.2-py3-none-any.whl (64 kB)
+Downloading charset_normalizer-3.4.4-cp312-cp312-manylinux_2_17_x86_64.whl (151 kB)
+...
+Installing collected packages: certifi, urllib3, idna, charset-normalizer, requests
+Successfully installed certifi-2025.4.26 charset-normalizer-3.4.4 idna-3.10 requests-2.34.2 urllib3-2.5.0
+
+[notice] A new release of pip is available: 24.0 -> 24.3.1
+[notice] To update, run: pip install --upgrade pip
+```
+
+**After** (192 bytes — **88% reduction**)
+```
+Installing collected packages: certifi, urllib3, idna, charset-normalizer, requests
+Successfully installed certifi-2025.4.26 charset-normalizer-3.4.4 idna-3.10 requests-2.34.2 urllib3-2.5.0
+```
+
+---
+
+### `npm test` / `npm run <script>` / `pnpm run <script>`
+
+Strips the two-line script header (`> pkg@v script\n> actual command`) injected by the runner before delegating to the underlying test framework. Combined with the existing jest/vitest/bun-test filters, a typical `npm test` collapses to a single `✓ <runner>: all tests passed` line.
+
+**82% reduction** for `npm test` wrapping jest. **80%** for `pnpm run <task>`.
+
+---
+
+### `git fetch`
+
+Strips the entire `remote: Enumerating/Counting/Compressing/Total/Receiving objects/Resolving deltas` progress block (which can balloon to tens of KB on large repos when `--progress` is forced or the terminal is non-TTY). Preserves the `From <url>` header and every `<old>..<new>  <ref> -> <remote>/<ref>` ref-update line.
+
+**Before** (21 981 bytes for `git fetch origin --progress` on a large repo)
+```
+remote: Enumerating objects: 4521, done.
+remote: Counting objects: 100% (4521/4521), done.
+remote: Compressing objects: 100% (1832/1832), done.
+remote: Total 4521 (delta 2891), reused 4012 (delta 2521), pack-reused 0
+Receiving objects: 100% (4521/4521), 12.4 MiB | 8.2 MiB/s, done.
+Resolving deltas: 100% (2891/2891), done.
+From github.com:myorg/myapp
+   a1b2c3d..d4e5f6a  main       -> origin/main
+   * [new branch]    feature/x  -> origin/feature/x
+```
+
+**After** (133 bytes — **99.4% reduction**)
+```
+From github.com:myorg/myapp
+   a1b2c3d..d4e5f6a  main       -> origin/main
+   * [new branch]    feature/x  -> origin/feature/x
+```
+
+`--porcelain` invocations bypass the filter (machine-readable, already minimal).
+
+---
+
+### `go build`
+
+Strips `go: downloading <mod> v1.2.3`, `go: finding <mod>`, and `go: found <mod>` lines that appear on cold-cache or `go.sum` rebuild. Preserves compile errors and warm-cache silent runs (which already emit nothing).
+
+When the output is **only** download/find/found lines (cold-cache success), the filter short-circuits to a positive marker — `✓ go build: dependencies downloaded, build ok` — so the model gets a clear confirmation instead of an empty body.
+
+**Before** (cold-cache success)
+```
+go: finding module for package github.com/spf13/cobra
+go: downloading github.com/spf13/cobra v1.10.2
+go: found github.com/spf13/cobra in github.com/spf13/cobra v1.10.2
+go: downloading github.com/spf13/pflag v1.0.9
+go: downloading github.com/inconshreveable/mousetrap v1.1.0
+```
+
+**After**
+```
+✓ go build: dependencies downloaded, build ok
+```
+
+On compile errors (lines matching `error:` / `undefined:` / `cannot find` / `build failed` / `FAIL` / typical `file.go:L:C:` location prefix), the positive marker is suppressed and the error output is preserved verbatim. Warm-cache builds are no-op (zero output → nothing to strip and nothing to confirm).
+
+---
+
+### `cargo run`
+
+Strips the build prologue (`Compiling <dep>`, `Finished … in Xs`, ``Running `target/debug/<bin>` ``) so only the program's actual stdout reaches the model. Build errors still surface unchanged.
+
+**Before**
+```
+   Compiling libc v0.2.155
+   Compiling proc-macro2 v1.0.86
+   ... (many compile lines) ...
+   Compiling my-app v0.1.0 (/home/viudes/my-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.32s
+     Running `target/debug/my-app`
+Hello, world!
+```
+
+**After** (**89% reduction**)
+```
+Hello, world!
+```
+
+---
+
+### `cargo fmt --check`
+
+Same minimal pass as `prettier --check`: only diffs/errors survive. ANSI stripped, blank-line runs collapsed. **21%** on the diff sample; clean runs emit nothing.
+
+---
+
+### `pre-commit run`
+
+Strips all `<hook id>........................................Passed$` lines and collapses the resulting blank runs. Preserves Failed hooks with their full diagnostic block (`- hook id:`, `- exit code:`, captured stdout/stderr).
+
+**Before** (1396 bytes, 11 hooks with 2 failures)
+```
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+black....................................................................Failed
+- hook id: black
+- files were modified by this hook
+
+reformatted src/api/client.py
+
+ruff check...............................................................Passed
+...
+mypy.....................................................................Failed
+- hook id: mypy
+- exit code: 1
+
+src/api/client.py:42: error: Incompatible types in assignment
+```
+
+**After** (**58% reduction**) — exactly the Failed hooks plus their diagnostic blocks survive.
+
+---
+
+### `prisma generate` / `prisma migrate`
+
+Strips banners (`✔ Generated Prisma Client`, `Loaded the config…`, `Schema loaded from…`) and runtime tips. Preserves drift warnings, schema validation errors, and the actual migration plan.
+
+**67%** on `generate`, **44%** on `migrate`.
+
+---
+
+### `shellcheck`
+
+Strips the trailing `For more information:` block and the two wiki URLs that follow each diagnostic. Preserves the diagnostic itself (severity, code, caret line, suggestion). **~28%** on typical output. Machine-readable formats (`-f gcc`, `-f checkstyle`, `--format=json`, etc.) bypass the filter.
+
+---
+
+### Pass-through / safety-floor filters
+
+These commands ship with a registered filter purely to apply ANSI stripping, collapse blank-line runs, and cap output length. No targeted line-stripping is configured — their output is already mostly signal. Adding them to the registry locks in safety guarantees: ANSI escapes will never leak, and pathological lengths will be capped.
+
+| Command | What the filter does |
+|---|---|
+| `eslint` | ANSI strip, collapse runs. JSON/junit/compact/checkstyle/tap/html formats bypass. |
+| `prettier --write` / `--check` | ANSI strip, collapse runs. Diffs preserved verbatim. |
+| `mypy` | ANSI strip, collapse runs. `--junit-xml` bypasses. |
+| `ruff format` | ANSI strip, collapse runs. `--diff` bypasses. |
+| `markdownlint` / `yamllint` / `hadolint` | ANSI strip, collapse runs, cap at maxLines. Machine-readable formats bypass. |
+| `go vet` / `golangci-lint` | ANSI strip, collapse runs. JSON/SARIF/junit/checkstyle bypass. |
+| `git branch` / `git stash list` / `git worktree list` | ANSI strip, cap at maxLines. Mutations (`-d`, `-D`, `-m`, `pop`, `apply`) bypass. |
+| `glab pr/mr/issue list` | ANSI strip, cap at maxLines. `--output json` bypasses. |
+| `gt log` / `jj log` / `jj st` | ANSI strip, cap at maxLines for deep stacks. |
+
+---
+
 ## Per-command reduction summary
 
 Measured on the in-repo fixtures via `bun test scripts/measure-bash-filter-roi.test.ts`. Numbers are byte reduction of the filtered body (the `<bash-output-filtered …>` wrapper itself adds ~80 bytes, dominant only for very small fixtures).
 
 | Command | Reduction | What's stripped |
 |---|---|---|
+| `go build` (cold) | 83.6% | `go: downloading/finding/found` lines → positive marker |
 | `cargo check` | 99.8% | Transitive `Compiling`/`Checking` lines |
 | `cargo build` | 99.7% | Same as `cargo check` |
+| `git fetch` | 99.4% | `remote:` progress, Receiving/Resolving |
 | `jest` | 98.7% | RUNS carousel, ✓ per-test lines |
 | `vitest` | 98.5% | RUN banner, ✓ per-test lines |
 | `bun test` | 98.2% | Banner, ✓ per-test lines |
@@ -742,32 +995,44 @@ Measured on the in-repo fixtures via `bun test scripts/measure-bash-filter-roi.t
 | `bundle install` | 95.2% | Fetching lines |
 | `pytest` | 95.1% | Warnings blocks, deprecations (clean run) |
 | `ps aux` | 93.9% | Kernel thread rows |
+| `yarn install` | 93.1% | `[1/4]…[4/4]` phases, `Done in Xs` |
+| `pnpm install` | 92.1% | Update box, Progress, Lockfile, Done |
 | `rsync` | 91.1% | CR-overwritten progress lines |
+| `cargo run` | 88.7% | Compiling/Finished/Running prologue |
+| `pip install` | 87.8% | Collecting/Downloading/Building wheel/notice |
 | `git log` | 85.0% | Author/Date/body per commit |
 | `rubocop` | 84.1% | New-cops preamble |
 | `go test -v` | 82.6% | RUN/PAUSE/CONT/PASS lines |
+| `npm test` / `npm run` | 82.0% | Script header (+ underlying runner) |
+| `pnpm run` | 79.5% | Script header (+ underlying runner) |
 | `curl` (plain) | 78.4% | CR-overwritten progress bar |
 | `ls -la` | 73.7% | uid/gid/size/mtime columns |
 | `top -b -n 1` | 73.3% | Per-CPU rows, idle processes |
 | `dig` | 66.7% | Empty `;; SECTION` blocks, OPT pseudo-section |
+| `prisma generate` | 66.8% | Banners, `Loaded config`, tips |
 | `du -sh` | 59.4% | `du: cannot access … Permission denied` noise |
+| `pre-commit run` | 57.6% | `Passed$` hook lines |
 | `ping` | 57.8% | Per-packet `icmp_seq` lines |
 | `df -h` | 52.3% | tmpfs / devtmpfs / overlay rows |
 | `tree` | 51.3% | Mid-listing entries (head/tail cap) |
 | `git pull` | 51.1% | `Resolving deltas` / `remote: Counting` |
 | `find` (large) | 50.9% | Head/tail cap (small outputs pass through) |
+| `npm install` | 45.1% | `npm fund`, `npm notice`, fetch progress |
+| `prisma migrate` | 43.8% | Banners, runtime tips |
 | `docker ps` | 40.8% | Column padding / inactive rows |
 | `docker images` | 36.3% | `<none>` rows, ID column |
 | `rg` / `grep` | 33% | ANSI color escapes, line numbers |
+| `shellcheck` | 28.1% | `For more information:` + wiki URLs |
 | `git blame` | 25.4% | Author name/email/time/TZ |
 | `dmesg` | 23.6% | Repeated bracketed timestamps |
+| `cargo fmt --check` | 21.0% | ANSI strip on diff body |
 | `docker logs` | 19.3% | Repeated timestamp prefix |
 | `tsc` | 18.2% | Underlines, Errors table |
 | `journalctl` | 15.1% | `Boot` markers, systemd lifecycle |
 | `git diff` | 10.8% | `diff --git`, `index`, `No newline` lines |
 | `git show` | 9.4% | Same as diff + Author/Date merge |
 
-Pass-throughs (0%): `cargo clippy`, `cargo test --no-run`, `jq`, `ruff check` (clean), `stat`, `find` (small) — output is already pure signal.
+Pass-throughs (0% but safety-locked — ANSI strip + maxLines cap): `cargo clippy`, `cargo test --no-run`, `jq`, `ruff check` (clean), `stat`, `find` (small), `eslint`, `prettier`, `mypy`, `ruff format`, `markdownlint`, `yamllint`, `hadolint`, `go vet`, `golangci-lint`, `git branch`, `git stash list`, `git worktree list`, `glab list`, `gt log`, `jj log` — output is already pure signal.
 
 The `gh pr|issue|run list` filters and `git status` are **rewrites**, not strippers: they force the underlying command to emit a deterministic format (`gh … --json …`, `git status --porcelain=v2`). The byte count on very small fixtures can grow slightly because of the wrapper, but the downstream parser sees a stable schema instead of a fragile pretty-printed table.
 
@@ -815,3 +1080,4 @@ Patterns are validated against a zod schema on load and guarded against ReDoS be
 
 - [6.1 — Initial release](./6.1-bash-output-filter.md) — system commands, Ruby, Python, Go, Rust, git rewrites
 - [6.2 — JS/TS + git diff](./6.2-bash-filter-tier1-followups.md) — jest, vitest, bun test, mocha, playwright, tsc, git diff/show
+- [Phase 12 gap-fill](../tech/bash-output-filter/phases/phase-12-rtk-gap-fill.md) — 29 new filters: JS pkg, Python tooling, git remote ops, Go/Rust extras, linters

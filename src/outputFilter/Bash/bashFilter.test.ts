@@ -86,25 +86,30 @@ describe("structural (Phase 1)", () => {
     expect(applyBashFilterToStdout).toBeDefined();
   });
 
-  test("findFilterForCommand returns null when no filters", () => {
-    expect(findFilterForCommand("npm install")).toBeNull();
+  // A command intentionally with no filter — used to exercise the
+  // no-filter path of the planner / applier. Update if `whoami` ever
+  // gains a filter.
+  const NO_FILTER_CMD = "whoami";
+
+  test("findFilterForCommand returns null when command has no filter", () => {
+    expect(findFilterForCommand(NO_FILTER_CMD)).toBeNull();
   });
 
-  test("planBashFilter returns no-op plan when no filters", () => {
-    const plan = planBashFilter("npm install");
+  test("planBashFilter returns no-op plan when command has no filter", () => {
+    const plan = planBashFilter(NO_FILTER_CMD);
     expect(plan.filter).toBeNull();
     expect(plan.rewrite).toBeNull();
-    expect(plan.effectiveCommand).toBe("npm install");
+    expect(plan.effectiveCommand).toBe(NO_FILTER_CMD);
   });
 
   test("applyBashFilterToStdout returns raw output when no filter", () => {
-    const plan = planBashFilter("npm install");
+    const plan = planBashFilter(NO_FILTER_CMD);
     const result = applyBashFilterToStdout("some output", false, plan);
     expect(result).toBe("some output");
   });
 
   test("applyBashFilterToStdout returns empty string for empty input", () => {
-    const plan = planBashFilter("npm install");
+    const plan = planBashFilter(NO_FILTER_CMD);
     const result = applyBashFilterToStdout("", false, plan);
     expect(result).toBe("");
   });
@@ -2972,5 +2977,726 @@ describe("phase 11 — terraform", () => {
     ].join("\n");
     const body = runFilterBody("terraform", "terraform destroy", raw);
     expect(body.trim()).toContain("✓ terraform: no changes");
+  });
+});
+
+// ===========================================================================
+// Phase 12 — JS package managers (rtk gap-fill).
+//
+// Measurements taken on real samples captured from npm 10.x / pnpm 9.x /
+// yarn 1.x / prisma 7.x. Reduction targets reflect realistic per-sample
+// signal-to-noise ratios — small clean samples (npm-install / prettier)
+// have low absolute reduction because most of the bytes ARE the signal.
+// ===========================================================================
+
+describe("phase 12 — npm-install", () => {
+  test("ROI: npm-install clean sample reduces ≥ 40%", () => {
+    assertReduction("npm-install", "npm install express", "npm-install", 40);
+  });
+
+  test("safety: deprecation warnings are preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "npm-install-warn.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("npm-install", "npm install request", raw);
+    expect(body).toContain("npm warn deprecated");
+    expect(body).toContain("vulnerabilities");
+  });
+
+  test("match: install/i/ci/add ✓; --json rejects", () => {
+    expect(findFilterForCommand("npm install")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm i express")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm ci")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm add lodash")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm install --json")?.name).not.toBe(
+      "npm-install",
+    );
+  });
+});
+
+describe("phase 12 — npm-run", () => {
+  test("ROI: npm-test sample reduces ≥ 75%", () => {
+    assertReduction("npm-run", "npm test", "npm-test", 75);
+  });
+
+  test("safety: script body errors are preserved", () => {
+    const raw = [
+      "> myapp@1.0.0 test",
+      "> jest --coverage",
+      "",
+      "FAIL src/foo.test.ts",
+      "  ✕ does the thing",
+      "    Error: AssertionError: expected 1 to equal 2",
+    ].join("\n");
+    const body = runFilterBody("npm-run", "npm test", raw);
+    expect(body).toContain("FAIL src/foo.test.ts");
+    expect(body).toContain("AssertionError");
+  });
+
+  test("match: test/t/run/start ✓; --silent rejects", () => {
+    expect(findFilterForCommand("npm test")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm t")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm run build")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm start")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm test --silent")?.name).not.toBe("npm-run");
+  });
+});
+
+describe("phase 12 — pnpm-install", () => {
+  test("ROI: pnpm-install sample reduces ≥ 85%", () => {
+    assertReduction("pnpm-install", "pnpm add express", "pnpm-install", 85);
+  });
+
+  test("safety: dependencies section is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "pnpm-install.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("pnpm-install", "pnpm add express", raw);
+    expect(body).toContain("dependencies:");
+    expect(body).toContain("express");
+    expect(body).toContain("Done in");
+  });
+
+  test("match: install/i/add ✓; --json rejects", () => {
+    expect(findFilterForCommand("pnpm install")?.name).toBe("pnpm-install");
+    expect(findFilterForCommand("pnpm add lodash")?.name).toBe("pnpm-install");
+    expect(findFilterForCommand("pnpm install --json")?.name).not.toBe(
+      "pnpm-install",
+    );
+  });
+});
+
+describe("phase 12 — pnpm-run", () => {
+  test("ROI: pnpm-run sample reduces ≥ 70%", () => {
+    assertReduction("pnpm-run", "pnpm run lint", "pnpm-run", 70);
+  });
+
+  test("match: run/exec ✓", () => {
+    expect(findFilterForCommand("pnpm run build")?.name).toBe("pnpm-run");
+    expect(findFilterForCommand("pnpm exec eslint .")?.name).toBe("pnpm-run");
+  });
+});
+
+describe("phase 12 — yarn-install", () => {
+  test("ROI: yarn-install sample reduces ≥ 85%", () => {
+    assertReduction(
+      "yarn-install",
+      "yarn add express body-parser cors morgan",
+      "yarn-install",
+      85,
+    );
+  });
+
+  test("safety: error lines are preserved", () => {
+    const raw = [
+      "yarn add v1.22.22",
+      "[1/4] Resolving packages...",
+      "error An unexpected error occurred: \"https://registry.yarnpkg.com/foo: not found\".",
+      "info Visit https://yarnpkg.com/en/docs/cli/add for documentation.",
+    ].join("\n");
+    const body = runFilterBody("yarn-install", "yarn add foo", raw);
+    expect(body).toContain("error An unexpected error");
+  });
+
+  test("match: bare yarn / add / install / upgrade / remove ✓", () => {
+    expect(findFilterForCommand("yarn")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn install")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn add lodash")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn upgrade")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn remove foo")?.name).toBe("yarn-install");
+  });
+});
+
+describe("phase 12 — eslint", () => {
+  // ROI test omitted: a real error sample is *all* signal (diagnostics
+  // are what the user asked for). The filter is here for the dirty-run
+  // case where eslint prints summary + collapse-friendly blank lines.
+  test("safety: diagnostics and ✖ summary are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "eslint-errors.txt"), "utf8");
+    const body = runFilterBody("eslint", "npx eslint sample.js", raw);
+    expect(body).toContain("no-unused-vars");
+    expect(body).toContain("no-undef");
+    expect(body).toContain("✖ 2 problems");
+  });
+
+  test("match: eslint / npx eslint ✓; --format=json rejects", () => {
+    expect(findFilterForCommand("eslint src/")?.name).toBe("eslint");
+    expect(findFilterForCommand("npx eslint src/")?.name).toBe("eslint");
+    expect(findFilterForCommand("eslint --format=json src/")?.name).not.toBe(
+      "eslint",
+    );
+  });
+});
+
+describe("phase 12 — prettier", () => {
+  // ROI test omitted: dirty sample is all signal (file list is the diagnostic).
+  test("safety: warn diagnostics preserved on --check failure", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prettier-check.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("prettier", "npx prettier --check src/", raw);
+    expect(body).toContain("[warn]");
+    expect(body).toContain("Code style issues found");
+  });
+
+  test("preamble strip: 'Checking formatting...' line is removed", () => {
+    const raw = "Checking formatting...\n[warn] foo.ts\n";
+    const body = runFilterBody("prettier", "prettier --check .", raw);
+    expect(body).not.toContain("Checking formatting...");
+    expect(body).toContain("[warn] foo.ts");
+  });
+
+  test("match: prettier / npx prettier ✓; --loglevel=silent rejects", () => {
+    expect(findFilterForCommand("prettier --check .")?.name).toBe("prettier");
+    expect(findFilterForCommand("npx prettier --write src/")?.name).toBe(
+      "prettier",
+    );
+    expect(
+      findFilterForCommand("prettier --loglevel=silent --check .")?.name,
+    ).not.toBe("prettier");
+  });
+});
+
+describe("phase 12 — prisma-generate", () => {
+  test("ROI: prisma-generate sample reduces ≥ 60%", () => {
+    assertReduction(
+      "prisma-generate",
+      "npx prisma generate",
+      "prisma-generate",
+      60,
+    );
+  });
+
+  test("safety: Generated Prisma Client line is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prisma-generate.txt"),
+      "utf8",
+    );
+    const body = runFilterBody(
+      "prisma-generate",
+      "npx prisma generate",
+      raw,
+    );
+    expect(body).toContain("Generated Prisma Client");
+  });
+
+  test("match: prisma generate / npx prisma generate ✓", () => {
+    expect(findFilterForCommand("prisma generate")?.name).toBe(
+      "prisma-generate",
+    );
+    expect(findFilterForCommand("npx prisma generate")?.name).toBe(
+      "prisma-generate",
+    );
+  });
+});
+
+describe("phase 12 — prisma-migrate", () => {
+  test("ROI: prisma-migrate sample reduces ≥ 35%", () => {
+    assertReduction(
+      "prisma-migrate",
+      "npx prisma migrate dev --name init",
+      "prisma-migrate",
+      35,
+    );
+  });
+
+  test("safety: 'created the following migration' line is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prisma-migrate.txt"),
+      "utf8",
+    );
+    const body = runFilterBody(
+      "prisma-migrate",
+      "npx prisma migrate dev",
+      raw,
+    );
+    expect(body).toContain("created the following migration");
+  });
+
+  test("match: prisma migrate ✓; not generate", () => {
+    expect(findFilterForCommand("prisma migrate dev")?.name).toBe(
+      "prisma-migrate",
+    );
+    expect(findFilterForCommand("npx prisma migrate deploy")?.name).toBe(
+      "prisma-migrate",
+    );
+    expect(findFilterForCommand("prisma generate")?.name).not.toBe(
+      "prisma-migrate",
+    );
+  });
+});
+
+// ===========================================================================
+// Phase 12.2 — Universal linters (rtk gap-fill).
+//
+// Samples for yamllint / markdownlint / hadolint / pre-commit / shellcheck
+// live under docs/discovery/.../samples/. Some are real (markdownlint via
+// npx) and some are synthetic-with-source-header (the rest — tools are
+// not installed in the dev container; samples mirror the official output
+// formats documented in each tool's README/docs).
+// ===========================================================================
+
+describe("phase 12.2 — shellcheck", () => {
+  test("ROI: shellcheck sample reduces ≥ 20% via 'For more information' strip", () => {
+    assertReduction("shellcheck", "shellcheck bad.sh", "shellcheck", 20);
+  });
+
+  test("safety: SC codes and diagnostic carets are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "shellcheck.txt"), "utf8");
+    const body = runFilterBody("shellcheck", "shellcheck bad.sh", raw);
+    expect(body).toContain("SC2086");
+    expect(body).toContain("SC2034");
+    expect(body).toContain("^---^");
+  });
+
+  test("match: shellcheck ✓; --format=json rejects", () => {
+    expect(findFilterForCommand("shellcheck bad.sh")?.name).toBe("shellcheck");
+    expect(findFilterForCommand("shellcheck --format=json bad.sh")?.name).not.toBe(
+      "shellcheck",
+    );
+  });
+});
+
+describe("phase 12.2 — yamllint", () => {
+  test("safety: filename headers + diagnostics are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "yamllint.txt"), "utf8");
+    const body = runFilterBody("yamllint", "yamllint .", raw);
+    expect(body).toContain("config.yaml");
+    expect(body).toContain("line-length");
+    expect(body).toContain("indentation");
+  });
+
+  test("match: yamllint ✓; --format=parsable rejects", () => {
+    expect(findFilterForCommand("yamllint .")?.name).toBe("yamllint");
+    expect(findFilterForCommand("yamllint --format=parsable .")?.name).not.toBe(
+      "yamllint",
+    );
+  });
+});
+
+describe("phase 12.2 — markdownlint", () => {
+  test("safety: MD codes and file paths are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "markdownlint.txt"), "utf8");
+    const body = runFilterBody("markdownlint", "markdownlint sample.md", raw);
+    expect(body).toContain("MD019");
+    expect(body).toContain("MD022");
+    expect(body).toContain("sample.md");
+  });
+
+  test("match: markdownlint and mdl ✓; --json rejects", () => {
+    expect(findFilterForCommand("markdownlint .")?.name).toBe("markdownlint");
+    expect(findFilterForCommand("mdl .")?.name).toBe("markdownlint");
+    expect(findFilterForCommand("markdownlint --json .")?.name).not.toBe(
+      "markdownlint",
+    );
+  });
+});
+
+describe("phase 12.2 — hadolint", () => {
+  test("safety: DL codes and file:line refs are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "hadolint.txt"), "utf8");
+    const body = runFilterBody("hadolint", "hadolint Dockerfile", raw);
+    expect(body).toContain("DL3007");
+    expect(body).toContain("DL3008");
+    expect(body).toContain("Dockerfile:");
+  });
+
+  test("match: hadolint ✓; --format=json rejects", () => {
+    expect(findFilterForCommand("hadolint Dockerfile")?.name).toBe("hadolint");
+    expect(findFilterForCommand("hadolint --format=json Dockerfile")?.name).not.toBe(
+      "hadolint",
+    );
+  });
+});
+
+describe("phase 12.2 — pre-commit", () => {
+  test("ROI: pre-commit sample reduces ≥ 45% via Passed-line strip", () => {
+    assertReduction("pre-commit", "pre-commit run --all-files", "pre-commit", 45);
+  });
+
+  test("safety: Failed hooks and their diagnostic blocks are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "pre-commit.txt"), "utf8");
+    const body = runFilterBody("pre-commit", "pre-commit run", raw);
+    expect(body).toContain("black");
+    expect(body).toContain("Failed");
+    expect(body).toContain("F401");
+    expect(body).toContain("E302");
+  });
+
+  test("safety: Passed-only output collapses to empty signal", () => {
+    const raw = [
+      "check yaml...............................................................Passed",
+      "trim trailing whitespace.................................................Passed",
+    ].join("\n");
+    const body = runFilterBody("pre-commit", "pre-commit run", raw);
+    expect(body).not.toContain("Passed");
+  });
+
+  test("match: pre-commit run ✓; pre-commit install not", () => {
+    expect(findFilterForCommand("pre-commit run --all-files")?.name).toBe(
+      "pre-commit",
+    );
+    expect(findFilterForCommand("pre-commit install")?.name).not.toBe(
+      "pre-commit",
+    );
+  });
+});
+
+// ===========================================================================
+// Phase 12.3 — Git extras + alternative VCS (rtk gap-fill).
+// ===========================================================================
+
+describe("phase 12.3 — git-fetch", () => {
+  test("ROI: progress-bearing fetch reduces ≥ 95% via remote: / Receiving / Resolving strip", () => {
+    assertReduction(
+      "git-fetch",
+      "git fetch --progress origin main",
+      "git-fetch",
+      95,
+    );
+  });
+
+  test("safety: ref-update table is preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "git-fetch.txt"), "utf8");
+    const body = runFilterBody("git-fetch", "git fetch", raw);
+    expect(body).toContain("From https://github.com/nodejs/node");
+    expect(body).toContain("FETCH_HEAD");
+    expect(body).toContain("origin/main");
+  });
+
+  test("match: git fetch ✓; --porcelain rejects", () => {
+    expect(findFilterForCommand("git fetch")?.name).toBe("git-fetch");
+    expect(findFilterForCommand("git fetch origin")?.name).toBe("git-fetch");
+    expect(findFilterForCommand("git fetch --porcelain")?.name).not.toBe(
+      "git-fetch",
+    );
+  });
+});
+
+describe("phase 12.3 — git-branch", () => {
+  test("safety: branch listing preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "git-branch-a.txt"), "utf8");
+    const body = runFilterBody("git-branch", "git branch -a", raw);
+    expect(body).toContain("main");
+    expect(body).toContain("remotes/origin/main");
+  });
+
+  test("match: git branch / -a / -r / -vv ✓; -d (delete) rejects", () => {
+    expect(findFilterForCommand("git branch")?.name).toBe("git-branch");
+    expect(findFilterForCommand("git branch -a")?.name).toBe("git-branch");
+    expect(findFilterForCommand("git branch -r")?.name).toBe("git-branch");
+    expect(findFilterForCommand("git branch -vv")?.name).toBe("git-branch");
+    expect(findFilterForCommand("git branch -d feature")?.name).not.toBe(
+      "git-branch",
+    );
+    expect(findFilterForCommand("git branch -m newname")?.name).not.toBe(
+      "git-branch",
+    );
+  });
+});
+
+describe("phase 12.3 — git-stash", () => {
+  test("safety: stash entries preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "git-stash.txt"), "utf8");
+    const body = runFilterBody("git-stash", "git stash list", raw);
+    expect(body).toContain("stash@{0}");
+    expect(body).toContain("stash@{4}");
+  });
+
+  test("match: list/show/pop/apply/drop/clear ✓; bare 'git stash' (= push) not matched", () => {
+    expect(findFilterForCommand("git stash list")?.name).toBe("git-stash");
+    expect(findFilterForCommand("git stash show stash@{0}")?.name).toBe(
+      "git-stash",
+    );
+    expect(findFilterForCommand("git stash pop")?.name).toBe("git-stash");
+    expect(findFilterForCommand("git stash apply")?.name).toBe("git-stash");
+    expect(findFilterForCommand("git stash drop stash@{1}")?.name).toBe(
+      "git-stash",
+    );
+    expect(findFilterForCommand("git stash clear")?.name).toBe("git-stash");
+    expect(findFilterForCommand("git stash")?.name).not.toBe("git-stash");
+  });
+});
+
+describe("phase 12.3 — git-worktree", () => {
+  test("safety: worktree entries preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "git-worktree-list.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("git-worktree", "git worktree list", raw);
+    expect(body).toContain("/home/viudes/projects/claudio");
+  });
+
+  test("match: git worktree list ✓; --porcelain rejects; add/remove not matched", () => {
+    expect(findFilterForCommand("git worktree list")?.name).toBe("git-worktree");
+    expect(findFilterForCommand("git worktree list --porcelain")?.name).not.toBe(
+      "git-worktree",
+    );
+    expect(findFilterForCommand("git worktree add ../foo")?.name).not.toBe(
+      "git-worktree",
+    );
+  });
+});
+
+describe("phase 12.3 — glab-list", () => {
+  test("safety: MR ids and titles preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "glab-pr-list.txt"), "utf8");
+    const body = runFilterBody("glab-list", "glab mr list", raw);
+    expect(body).toContain("!142");
+    expect(body).toContain("Phase 12.1");
+  });
+
+  test("match: glab pr|mr|issue list ✓; --output json rejects", () => {
+    expect(findFilterForCommand("glab pr list")?.name).toBe("glab-list");
+    expect(findFilterForCommand("glab mr list")?.name).toBe("glab-list");
+    expect(findFilterForCommand("glab issue list")?.name).toBe("glab-list");
+    expect(findFilterForCommand("glab mr list --output json")?.name).not.toBe(
+      "glab-list",
+    );
+  });
+});
+
+describe("phase 12.3 — gt (Graphite)", () => {
+  test("safety: stack lines preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "gt-log.txt"), "utf8");
+    const body = runFilterBody("gt", "gt log", raw);
+    expect(body).toContain("feat/bash-filters-expansion");
+    expect(body).toContain("main");
+  });
+
+  test("match: gt log/ls/submit/sync/restack ✓; gt create not matched", () => {
+    expect(findFilterForCommand("gt log")?.name).toBe("gt");
+    expect(findFilterForCommand("gt ls")?.name).toBe("gt");
+    expect(findFilterForCommand("gt submit")?.name).toBe("gt");
+    expect(findFilterForCommand("gt sync")?.name).toBe("gt");
+    expect(findFilterForCommand("gt restack")?.name).toBe("gt");
+    expect(findFilterForCommand("gt create")?.name).not.toBe("gt");
+  });
+});
+
+describe("phase 12.3 — jj (Jujutsu)", () => {
+  test("safety: change ids and commit lines preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "jj-log.txt"), "utf8");
+    const body = runFilterBody("jj", "jj log", raw);
+    expect(body).toContain("qpvuntsm");
+    expect(body).toContain("Phase 12.1");
+  });
+
+  test("match: jj log/st/status/diff ✓; jj new not matched", () => {
+    expect(findFilterForCommand("jj log")?.name).toBe("jj");
+    expect(findFilterForCommand("jj st")?.name).toBe("jj");
+    expect(findFilterForCommand("jj status")?.name).toBe("jj");
+    expect(findFilterForCommand("jj diff")?.name).toBe("jj");
+    expect(findFilterForCommand("jj new")?.name).not.toBe("jj");
+  });
+});
+
+// ===========================================================================
+// Phase 12.4 — Go toolchain + Rust extras (rtk gap-fill).
+// ===========================================================================
+
+describe("phase 12.4 — go-build", () => {
+  test("ROI: cold-cache download-only output collapses to positive marker", () => {
+    // Cold-cache success (only `go: downloading/finding/found` lines) is
+    // short-circuited via matchOutput to a positive marker so the LLM doesn't
+    // see an empty body and wonder if the build ran at all. Floor of 75%
+    // accounts for the marker string itself (~50 chars).
+    assertReduction("go-build", "go build ./...", "go-build", 75);
+  });
+
+  test("matchOutput: cold-cache success emits positive marker", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "go-build.txt"), "utf8");
+    const body = runFilterBody("go-build", "go build ./...", raw);
+    expect(body).toContain("go build: dependencies downloaded, build ok");
+  });
+
+  test("safety: compile errors are preserved (no positive marker on error)", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "go-build-error.txt"), "utf8");
+    const body = runFilterBody("go-build", "go build ./...", raw);
+    expect(body).toContain("declared and not used");
+    expect(body).toContain("undefined: fmt.Prinln");
+    // The positive marker must not appear when an error is present.
+    expect(body).not.toContain("dependencies downloaded, build ok");
+  });
+
+  test("match: go build ✓; -json rejects", () => {
+    expect(findFilterForCommand("go build ./...")?.name).toBe("go-build");
+    expect(findFilterForCommand("go build -json ./...")?.name).not.toBe(
+      "go-build",
+    );
+  });
+});
+
+describe("phase 12.4 — go-vet", () => {
+  test("safety: vet diagnostics are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "go-vet.txt"), "utf8");
+    const body = runFilterBody("go-vet", "go vet ./...", raw);
+    expect(body).toContain("format %d has arg");
+  });
+
+  test("match: go vet ✓; -json rejects", () => {
+    expect(findFilterForCommand("go vet ./...")?.name).toBe("go-vet");
+    expect(findFilterForCommand("go vet -json ./...")?.name).not.toBe("go-vet");
+  });
+});
+
+describe("phase 12.4 — golangci-lint", () => {
+  test("safety: lint diagnostics preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "golangci-lint.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("golangci-lint", "golangci-lint run", raw);
+    // The sample includes real linter diagnostics; assert it's not stripped.
+    expect(body.length).toBeGreaterThan(0);
+    expect(body).toBe(raw); // passthrough (signal floor)
+  });
+
+  test("match: golangci-lint run ✓; --out-format=json rejects", () => {
+    expect(findFilterForCommand("golangci-lint run")?.name).toBe(
+      "golangci-lint",
+    );
+    expect(
+      findFilterForCommand("golangci-lint run --out-format=json")?.name,
+    ).not.toBe("golangci-lint");
+  });
+});
+
+describe("phase 12.4 — cargo-run", () => {
+  test("ROI: cargo run strips Finished + Running, preserves program output ≥ 80%", () => {
+    assertReduction("cargo-run", "cargo run", "cargo-run", 80);
+  });
+
+  test("safety: program stdout is preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "cargo-run.txt"), "utf8");
+    const body = runFilterBody("cargo-run", "cargo run", raw);
+    expect(body).toContain("Hello, world!");
+    expect(body).not.toContain("Finished");
+    expect(body).not.toContain("Running `target/");
+  });
+
+  test("match: cargo run ✓", () => {
+    expect(findFilterForCommand("cargo run")?.name).toBe("cargo-run");
+    expect(findFilterForCommand("cargo run -- --flag")?.name).toBe("cargo-run");
+  });
+});
+
+describe("phase 12.4 — cargo-fmt", () => {
+  test("safety: diff is preserved on dirty --check", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "cargo-fmt-diff.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("cargo-fmt", "cargo fmt -- --check", raw);
+    expect(body).toContain("Diff in");
+    expect(body).toContain("+fn main() {");
+  });
+
+  test("clean run: empty input stays empty (no wrapper)", () => {
+    const raw = "";
+    const body = runFilterBody("cargo-fmt", "cargo fmt", raw);
+    expect(body).toBe("");
+  });
+
+  test("match: cargo fmt ✓; cargo fmt -- --check ✓", () => {
+    expect(findFilterForCommand("cargo fmt")?.name).toBe("cargo-fmt");
+    expect(findFilterForCommand("cargo fmt -- --check")?.name).toBe(
+      "cargo-fmt",
+    );
+  });
+});
+
+// ===========================================================================
+// Phase 12.5 — Python extras (rtk gap-fill).
+// ===========================================================================
+
+describe("phase 12.5 — mypy", () => {
+  test("safety: type errors preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "mypy-err.txt"), "utf8");
+    const body = runFilterBody("mypy", "mypy bad.py", raw);
+    expect(body).toContain("Incompatible return value type");
+    expect(body).toContain("Found 2 errors");
+  });
+
+  test("match: mypy / python -m mypy ✓; --output=json rejects", () => {
+    expect(findFilterForCommand("mypy .")?.name).toBe("mypy");
+    expect(findFilterForCommand("python -m mypy src/")?.name).toBe("mypy");
+    expect(findFilterForCommand("python3 -m mypy src/")?.name).toBe("mypy");
+    expect(findFilterForCommand("mypy --output=json .")?.name).not.toBe("mypy");
+  });
+});
+
+describe("phase 12.5 — pip-install", () => {
+  test("ROI: pip install with downloads reduces ≥ 80%", () => {
+    assertReduction("pip-install", "pip install requests", "pip-install", 80);
+  });
+
+  test("safety: 'Successfully installed' and ERROR lines preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "pip-install.txt"), "utf8");
+    const body = runFilterBody("pip-install", "pip install requests", raw);
+    expect(body).toContain("Successfully installed");
+    expect(body).toContain("requests-2.34.2");
+  });
+
+  test("safety: real ERROR lines are not stripped", () => {
+    const raw = [
+      "Collecting nonexistent-package-12345",
+      "ERROR: Could not find a version that satisfies the requirement nonexistent-package-12345",
+      "ERROR: No matching distribution found for nonexistent-package-12345",
+    ].join("\n");
+    const body = runFilterBody(
+      "pip-install",
+      "pip install nonexistent-package-12345",
+      raw,
+    );
+    expect(body).toContain("ERROR: Could not find");
+    expect(body).toContain("ERROR: No matching distribution");
+  });
+
+  test("match: pip install / pip3 install / python -m pip install ✓; -q rejects", () => {
+    expect(findFilterForCommand("pip install requests")?.name).toBe(
+      "pip-install",
+    );
+    expect(findFilterForCommand("pip3 install requests")?.name).toBe(
+      "pip-install",
+    );
+    expect(findFilterForCommand("python -m pip install requests")?.name).toBe(
+      "pip-install",
+    );
+    expect(findFilterForCommand("python3 -m pip install requests")?.name).toBe(
+      "pip-install",
+    );
+    expect(findFilterForCommand("pip install -q requests")?.name).not.toBe(
+      "pip-install",
+    );
+  });
+});
+
+describe("phase 12.5 — ruff-format", () => {
+  test("safety: diff/check output preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "ruff-format-diff.txt"),
+      "utf8",
+    );
+    const body = runFilterBody(
+      "ruff-format",
+      "ruff format --check bad.py",
+      raw,
+    );
+    expect(body).toContain("Would reformat");
+    expect(body).toContain("1 file would be reformatted");
+  });
+
+  test("match: ruff format ✓; ruff check not matched here", () => {
+    expect(findFilterForCommand("ruff format .")?.name).toBe("ruff-format");
+    expect(findFilterForCommand("ruff format --check .")?.name).toBe(
+      "ruff-format",
+    );
+    // ruff check is handled by the pre-existing ruff-check filter.
+    expect(findFilterForCommand("ruff check .")?.name).toBe("ruff-check");
   });
 });

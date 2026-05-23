@@ -123,3 +123,37 @@ export const cargoClippy: FilterSpec = {
   stripLinesMatching: CARGO_STRIP_BASE,
   collapseRuns: true,
 }
+
+// --- cargo run -------------------------------------------------------------
+
+const CARGO_RUN_MATCH = /^cargo\s+run\b/
+// `cargo run` ceremony: same Compiling/Finished noise as build, plus the
+// `Running \`target/...\`` line. Stripping these leaves the actual program
+// output intact — that's what the user cares about.
+const CARGO_RUN_STRIP_FINISHED = /^\s*Finished\s.*\s+in\s+[\d.]+s\s*$/
+const CARGO_RUN_STRIP_RUNNING = /^\s*Running\s+`/
+
+export const cargoRun: FilterSpec = {
+  name: 'cargo-run',
+  matchCommand: CARGO_RUN_MATCH,
+  stripAnsi: true,
+  stripLinesMatching: [
+    ...CARGO_STRIP_BASE,
+    CARGO_RUN_STRIP_FINISHED,
+    CARGO_RUN_STRIP_RUNNING,
+  ],
+}
+
+// --- cargo fmt -------------------------------------------------------------
+
+// cargo fmt clean run is silent — empty stdout, exit 0.
+// `cargo fmt -- --check` prints diffs on dirty files; we keep those verbatim
+// (signal). The filter mostly exists for ANSI strip + safety.
+const CARGO_FMT_MATCH = /^cargo\s+fmt\b/
+
+export const cargoFmt: FilterSpec = {
+  name: 'cargo-fmt',
+  matchCommand: CARGO_FMT_MATCH,
+  stripAnsi: true,
+  collapseRuns: true,
+}

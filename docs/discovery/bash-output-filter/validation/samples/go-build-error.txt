@@ -1,0 +1,4 @@
+# example.com/test
+./main.go:6:9: declared and not used: x
+./main.go:7:9: undefined: fmt.Prinln
+./main.go:7:16: undefined: undefined

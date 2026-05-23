@@ -1,0 +1,2 @@
+Would reformat: bad.py
+1 file would be reformatted

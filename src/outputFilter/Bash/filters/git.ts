@@ -253,3 +253,76 @@ export const gitPush: FilterSpec = {
     },
   ],
 }
+
+// --- git fetch -------------------------------------------------------------
+
+const GIT_FETCH_MATCH = /^git\s+fetch\b/
+// `--porcelain` prints machine-readable refs; keep it raw.
+const GIT_FETCH_REJECT = /(?:^|\s)--porcelain\b/
+// Progress chatter from `--progress` (or auto-detected TTY): bytes counted,
+// objects enumerated/compressed, deltas resolved. None of it carries lasting
+// signal — what matters is the ref-updates table that follows.
+const GIT_FETCH_STRIP_REMOTE = /^remote:\s/
+const GIT_FETCH_STRIP_RECV = /^Receiving objects:\s/
+const GIT_FETCH_STRIP_RESOLVE = /^Resolving deltas:\s/
+const GIT_FETCH_STRIP_UNPACK = /^Unpacking objects:\s/
+// `--verbose` adds an HTTP transport line that mirrors `--progress`.
+const GIT_FETCH_STRIP_HTTP = /^POST\s+git-upload-pack\b/
+
+export const gitFetch: FilterSpec = {
+  name: 'git-fetch',
+  matchCommand: GIT_FETCH_MATCH,
+  matchCommandReject: GIT_FETCH_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [
+    GIT_FETCH_STRIP_REMOTE,
+    GIT_FETCH_STRIP_RECV,
+    GIT_FETCH_STRIP_RESOLVE,
+    GIT_FETCH_STRIP_UNPACK,
+    GIT_FETCH_STRIP_HTTP,
+  ],
+  collapseRuns: true,
+}
+
+// --- git branch ------------------------------------------------------------
+
+// `git branch`, `git branch -a|-r|-vv|-v|--list`, `git branch --contains <c>`.
+const GIT_BRANCH_MATCH = /^git\s+branch(?:\s+(?:-a|-r|-vv|-v|--list|--all|--remotes|--contains|--no-contains)\b|\s*$)/
+// Modifications (`-d`, `-D`, `-m`, `-M`, `-c`, `-C`, `--set-upstream-to`,
+// `--unset-upstream`) print one-line confirmations we should not touch.
+const GIT_BRANCH_REJECT = /(?:^|\s)(?:-d|-D|-m|-M|-c|-C|--set-upstream-to|--unset-upstream)\b/
+
+export const gitBranch: FilterSpec = {
+  name: 'git-branch',
+  matchCommand: GIT_BRANCH_MATCH,
+  matchCommandReject: GIT_BRANCH_REJECT,
+  stripAnsi: true,
+  maxLines: 80,
+}
+
+// --- git stash -------------------------------------------------------------
+
+// Cover `list`, `show`, `pop`, `apply`, `drop`, `clear`. Bare `git stash`
+// implies push and is intentionally not matched (it's an action, not a read).
+const GIT_STASH_MATCH = /^git\s+stash\s+(?:list|show|pop|apply|drop|clear)\b/
+
+export const gitStash: FilterSpec = {
+  name: 'git-stash',
+  matchCommand: GIT_STASH_MATCH,
+  stripAnsi: true,
+  collapseRuns: true,
+}
+
+// --- git worktree list -----------------------------------------------------
+
+// `--porcelain` is the structured form we keep raw.
+const GIT_WORKTREE_MATCH = /^git\s+worktree\s+list\b/
+const GIT_WORKTREE_REJECT = /(?:^|\s)--porcelain\b/
+
+export const gitWorktree: FilterSpec = {
+  name: 'git-worktree',
+  matchCommand: GIT_WORKTREE_MATCH,
+  matchCommandReject: GIT_WORKTREE_REJECT,
+  stripAnsi: true,
+  maxLines: 50,
+}

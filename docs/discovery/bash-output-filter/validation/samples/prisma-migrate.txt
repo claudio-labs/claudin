@@ -1,0 +1,10 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": SQLite database "dev.db" at "file:./dev.db"
+
+SQLite database dev.db created at file:./dev.db
+
+Prisma Migrate created the following migration without applying it 20260523013914_init
+
+You can now edit it and apply it by running prisma migrate dev.

@@ -1,0 +1,5 @@
+stash@{0}: WIP on main: a200d7d feat(filters): JS package managers (Phase 12.1)
+stash@{1}: On feat/bash-filters-expansion: fix yarn-install regex collision
+stash@{2}: WIP on main: 9e646ed feat(mcp): default claude.ai connectors to disabled
+stash@{3}: On refactor/cwd-branch-bottom-border: WIP debugging worktree exit hook
+stash@{4}: WIP on perf/token-efficiency-wins: cache invalidation prototype

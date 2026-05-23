@@ -1,0 +1,9 @@
+Diff in /tmp/filter-samples/rust-test/src/main.rs:1:
+ fn main() {
+     println!("Hello, world!");
+ }
+[31m-fn main(){ println!("x") }
+(B[m[32m+fn main() {
+(B[m[32m+    println!("x")
+(B[m[32m+}
+(B[m 

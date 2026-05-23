@@ -1,0 +1,5 @@
+
+> npm-proj@1.0.0 test
+> echo "no tests" && exit 0
+
+no tests

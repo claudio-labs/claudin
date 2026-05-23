@@ -1,0 +1,2 @@
+bad.go:6:18: fmt.Sprintf format %d has arg "string" of wrong type string
+bad.go:6:5: result of fmt.Sprintf call not used

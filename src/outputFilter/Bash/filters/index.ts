@@ -32,7 +32,18 @@ import {
   jq,
   find,
 } from './system.js'
-import { rubocop, ruffCheck } from './linters.js'
+import {
+  rubocop,
+  ruffCheck,
+  shellcheck,
+  yamllint,
+  markdownlint,
+  hadolint,
+  preCommit,
+  mypy,
+  pipInstall,
+  ruffFormat,
+} from './linters.js'
 import { lsLa } from './ls.js'
 import { grepRg } from './grep-rg.js'
 import {
@@ -45,13 +56,30 @@ import {
   gitPush,
   gitDiff,
   gitShow,
+  gitFetch,
+  gitBranch,
+  gitStash,
+  gitWorktree,
 } from './git.js'
+import { glabList, gt, jj } from './vcs.js'
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { gradle, mvn } from './java-build.js'
 import { terraform } from './iac.js'
-import { cargoBuild, cargoCheck, cargoTest, cargoClippy } from './cargo.js'
+import { cargoBuild, cargoCheck, cargoTest, cargoClippy, cargoRun, cargoFmt } from './cargo.js'
+import { goBuild, goVet, golangciLint } from './go.js'
 import { dockerPs, dockerImages, dockerLogs } from './containers.js'
 import { curlV, dig, curlPlain, wget } from './network.js'
+import {
+  npmInstall,
+  npmRun,
+  pnpmInstall,
+  pnpmRun,
+  yarnInstall,
+  eslint,
+  prettier,
+  prismaGenerate,
+  prismaMigrate,
+} from './js-pkg.js'
 
 export const builtInFilters: FilterSpec[] = [
   // Package managers
@@ -130,4 +158,43 @@ export const builtInFilters: FilterSpec[] = [
   cargoClippy,
   cargoCheck,
   cargoBuild,
+  // Phase 12 — JS package managers (rtk gap-fill).
+  // `pnpm`/`yarn` come before `npm` only to keep the registry grouped by
+  // family; matchCommand regex are disjoint so order is not load-bearing.
+  npmInstall,
+  npmRun,
+  pnpmInstall,
+  pnpmRun,
+  yarnInstall,
+  eslint,
+  prettier,
+  prismaGenerate,
+  prismaMigrate,
+  // Phase 12.2 — universal linters (rtk gap-fill).
+  shellcheck,
+  yamllint,
+  markdownlint,
+  hadolint,
+  preCommit,
+  // Phase 12.3 — Git extras + alternative VCS (rtk gap-fill).
+  gitFetch,
+  gitBranch,
+  gitStash,
+  gitWorktree,
+  glabList,
+  gt,
+  jj,
+  // Phase 12.4 — Go toolchain + Rust extras (rtk gap-fill).
+  // cargoRun must come before cargoBuild's siblings? No — they're disjoint
+  // (build/check/test/clippy/run/fmt all distinct subcommands). Keep
+  // grouped by family.
+  cargoRun,
+  cargoFmt,
+  goBuild,
+  goVet,
+  golangciLint,
+  // Phase 12.5 — Python extras (rtk gap-fill).
+  mypy,
+  pipInstall,
+  ruffFormat,
 ]

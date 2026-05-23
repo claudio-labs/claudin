@@ -40,12 +40,12 @@ describe("canonicalizeForMatching", () => {
 });
 
 describe("findFilterForCommand", () => {
-  test("returns null with empty builtInFilters", () => {
-    expect(findFilterForCommand("npm install")).toBeNull();
-  });
-
   test("returns null for unknown command", () => {
     expect(findFilterForCommand("some-unknown-tool --flag")).toBeNull();
+  });
+
+  test("returns null for command with no built-in filter", () => {
+    expect(findFilterForCommand("whoami")).toBeNull();
   });
 });
 
