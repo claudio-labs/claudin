@@ -244,6 +244,7 @@ type State = {
   // Sticky latch: true once the session's system prompt is detected as
   // large enough (>8k tokens, chars/4 heuristic) to justify 1h cache TTL on
   // firstParty/vertex. Latched on first request from buildSystemPromptBlocks
+  // (see src/services/api/claude/paramBuilders.ts)
   // so mid-session prompt size jitter doesn't flip the cache_control TTL,
   // which would bust the server-side prompt cache (~20K tokens per flip).
   largeSystemPromptDetected: boolean | null

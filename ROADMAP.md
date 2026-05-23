@@ -106,9 +106,10 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Ganho:** médio — **Esforço:** médio — **Risco:** médio (protocolo MCP; testes de integração).
 - **Concluído:** barrel `client.ts` + `client/{errors,authCache,fetch,transport,connection,toolResult,callTool,fetchCapabilities,ide,sdkClients}.ts`. Testes de regressão em `client.regression.test.ts`.
 
-### [ ] 11j. Split de `src/services/api/claude.ts` (3.218 linhas, 117 KB)
+### [x] 11j. Split de `src/services/api/claude.ts` (3.218 linhas, 117 KB)
 - **Sugestão:** isolar request builder, response parser, streaming, retries.
 - **Ganho:** médio — **Esforço:** médio — **Risco:** médio (hot path do provider Anthropic).
+- **Concluído:** barrel `claude.ts` + `claude/{types,cacheControl,paramBuilders,metadata,messageConverters,nonStreaming,nonStreamingRequest,streaming,convenience}.ts`. `queryModel` mantido íntegro em `streaming.ts` (decomposição interna fica como follow-up futuro). `cacheControl.ts` e `nonStreamingRequest.ts` extraídos como módulos folha para quebrar ciclos (`paramBuilders↔messageConverters` e `streaming↔nonStreaming`). Testes de regressão em `claude/__tests__/regression.test.ts`.
 
 ### [ ] 11k. Split de `src/services/api/openaiShim.ts` (~2.274 linhas)
 - **Sugestão:** dividir em `{client, streamParser, messageConverter, toolConverter}`.
