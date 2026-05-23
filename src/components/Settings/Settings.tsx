@@ -17,7 +17,7 @@ type Props = {
     display?: CommandResultDisplay;
   }) => void;
   context: LocalJSXCommandContext;
-  defaultTab: 'Status' | 'Config' | 'Usage' | 'Gates';
+  defaultTab: 'Status' | 'Config' | 'Usage' | 'Session' | 'Gates';
 };
 export function Settings(t0) {
   const $ = _c(25);
@@ -88,7 +88,7 @@ export function Settings(t0) {
   }
   let t6;
   if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = <Tab key="usage" title="Usage"><Usage /></Tab>;
+    t6 = [<Tab key="usage" title="Usage"><Usage view="global" /></Tab>, <Tab key="session" title="Session"><Usage view="session" /></Tab>];
     $[12] = t6;
   } else {
     t6 = $[12];
@@ -103,7 +103,7 @@ export function Settings(t0) {
   }
   let t8;
   if ($[15] !== t4 || $[16] !== t5 || $[17] !== t7) {
-    t8 = [t4, t5, t6, ...t7];
+    t8 = [t4, t5, ...t6, ...t7];
     $[15] = t4;
     $[16] = t5;
     $[17] = t7;

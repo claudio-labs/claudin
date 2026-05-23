@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useReducer, useState } from 'react';
 import { extraUsage as extraUsageCommand } from 'src/commands/extra-usage/index.js';
-import { formatCost, getProjectTotals, hasUnknownModelCost } from 'src/cost-tracker.js';
+import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalLinesAdded, getTotalLinesRemoved, hasUnknownModelCost } from 'src/cost-tracker.js';
 import { getCanonicalName } from 'src/utils/model/model.js';
 import { formatDuration, formatNumber } from 'src/utils/format.js';
 import { getSubscriptionType } from 'src/utils/auth.js';
@@ -197,10 +197,22 @@ function AnthropicUsage(): React.ReactNode {
       const axiosError = err as {
         response?: {
           data?: unknown;
+          status?: number;
         };
       };
-      const responseBody = axiosError.response?.data ? jsonStringify(axiosError.response.data) : undefined;
-      setError(responseBody ? `Failed to load usage data: ${responseBody}` : 'Failed to load usage data');
+      const data = axiosError.response?.data as { error?: { type?: string; message?: string } } | undefined;
+      const status = axiosError.response?.status;
+      let friendly: string;
+      if (data?.error?.type === 'rate_limit_error') {
+        friendly = data.error.message || 'Rate limited. Please try again later.';
+      } else if (data?.error?.message) {
+        friendly = data.error.message;
+      } else if (status) {
+        friendly = `HTTP ${status} — ${jsonStringify(axiosError.response?.data ?? {})}`;
+      } else {
+        friendly = (err as Error)?.message || 'Failed to load usage data';
+      }
+      setError(friendly);
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +228,8 @@ function AnthropicUsage(): React.ReactNode {
   });
   if (error) {
     return <Box flexDirection="column" gap={1}>
-        <Text color="error">Error: {error}</Text>
+        <Text color="error">Could not load Anthropic rate-limit data: {error}</Text>
+        <Text dimColor>(cost/usage totals above are unaffected)</Text>
         <Text dimColor>
           <Byline>
             <ConfigurableShortcutHint action="settings:retry" context="Settings" fallback="r" description="retry" />
@@ -349,22 +362,38 @@ function CostStatsBlock(props: {
     </Box>;
 }
 
-export function SessionCostStats(): React.ReactNode {
+type CostView = 'global' | 'session';
+
+export function SessionCostStats(props: { view?: CostView } = {}): React.ReactNode {
+  const view: CostView = props.view ?? 'global';
   const [, tick] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
     const interval = setInterval(() => tick(), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const projectTotals = getProjectTotals();
-  const hasProjectData = projectTotals.totalCost !== 0 || Object.keys(projectTotals.modelUsage).length > 0 || projectTotals.totalLinesAdded !== 0 || projectTotals.totalLinesRemoved !== 0;
-
-  if (!hasProjectData) {
-    return null;
-  }
-
   const unknownCost = hasUnknownModelCost();
 
+  if (view === 'session') {
+    const sessionCost = getTotalCost();
+    const sessionModelUsage = getModelUsage();
+    const sessionLinesAdded = getTotalLinesAdded();
+    const sessionLinesRemoved = getTotalLinesRemoved();
+    return <CostStatsBlock
+      title="Current session"
+      totalCost={sessionCost}
+      apiDuration={getTotalAPIDuration()}
+      wallDuration={getTotalDuration()}
+      linesAdded={sessionLinesAdded}
+      linesRemoved={sessionLinesRemoved}
+      modelUsage={sessionModelUsage}
+      unknownCost={unknownCost}
+    />;
+  }
+
+  const projectTotals = getProjectTotals();
+  const hasProjectData = projectTotals.totalCost !== 0 || Object.keys(projectTotals.modelUsage).length > 0 || projectTotals.totalLinesAdded !== 0 || projectTotals.totalLinesRemoved !== 0;
+  if (!hasProjectData) return null;
   return <Box flexDirection="column" gap={1}>
       <CostStatsBlock
         title="Project total (all sessions)"
@@ -379,7 +408,13 @@ export function SessionCostStats(): React.ReactNode {
       <Text dimColor>Aggregated across all sessions in this project — includes the current session live.</Text>
     </Box>;
 }
-export function Usage(): React.ReactNode {
+export function Usage(props: { view?: CostView } = {}): React.ReactNode {
+  const view: CostView = props.view ?? 'global';
+  if (view === 'session') {
+    return <Box flexDirection="column" gap={1} width="100%">
+        <SessionCostStats view="session" />
+      </Box>;
+  }
   const provider = getAPIProvider();
   let providerView: React.ReactNode;
   if (provider === 'codex') {
@@ -402,7 +437,7 @@ export function Usage(): React.ReactNode {
     providerView = <AnthropicUsage />;
   }
   return <Box flexDirection="column" gap={1} width="100%">
-      <SessionCostStats />
+      <SessionCostStats view="global" />
       {providerView}
     </Box>;
 }
