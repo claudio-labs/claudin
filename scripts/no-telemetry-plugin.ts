@@ -405,6 +405,14 @@ export const PublicApiAuth = {
 };
 `,
 
+	'utils/telemetry/instrumentation': `
+export function bootstrapTelemetry() {}
+export function parseExporterTypes() { return []; }
+export function isTelemetryEnabled() { return false; }
+export async function initializeTelemetry() { return undefined; }
+export async function flushTelemetry() {}
+`,
+
 	'types/generated/google/protobuf/timestamp': `
 export const Timestamp = {
   fromJSON: value => value,
