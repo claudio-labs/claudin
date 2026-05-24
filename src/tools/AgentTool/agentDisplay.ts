@@ -3,11 +3,20 @@
  * Used by both the CLI `claude agents` handler and the interactive `/agents` command.
  */
 
-import { getDefaultSubagentModel } from '../../utils/model/agent.js'
+import {
+  checkIsClaudeNativeProvider,
+  getDefaultSubagentModel,
+} from '../../utils/model/agent.js'
+import { isModelAllowed } from '../../utils/model/modelAllowlist.js'
+import { logError } from '../../utils/log.js'
 import {
   getSourceDisplayName,
   type SettingSource,
 } from '../../utils/settings/constants.js'
+import {
+  getAvailableModelIdsForActiveProfile,
+  resolveModelOverride,
+} from './agentModelResolver.js'
 import type { AgentDefinition } from './loadAgentsDir.js'
 
 type AgentSource = SettingSource | 'built-in' | 'plugin'
@@ -73,14 +82,47 @@ export function resolveAgentOverrides(
 
 /**
  * Resolve the display model string for an agent.
- * Returns the model alias or 'inherit' for display purposes.
+ *
+ * Mirrors `getAgentModel` (utils/model/agent.ts) so `/agents` never shows a
+ * model the runtime won't actually use:
+ *  - Non-Claude-native provider + bare Claude family alias → `inherit`
+ *    (runtime falls back to inherit; raw alias would be unreachable).
+ *  - Claude-native provider + alias excluded by the user's `availableModels`
+ *    allowlist → `inherit` (runtime would 403/400; showing the alias would
+ *    promise something the user has explicitly forbidden).
+ *  - Non-alias model IDs (e.g. `glm-5.1`) are delegated to
+ *    `resolveModelOverride`, which returns `'inherit'` for orphans not present
+ *    on the active profile.
  */
 export function resolveAgentModelDisplay(
   agent: AgentDefinition,
 ): string | undefined {
   const model = agent.model || getDefaultSubagentModel()
   if (!model) return undefined
-  return model === 'inherit' ? 'inherit' : model
+  if (model === 'inherit') return 'inherit'
+  if (model === 'haiku' || model === 'sonnet' || model === 'opus') {
+    try {
+      if (!checkIsClaudeNativeProvider()) return 'inherit'
+      if (!isModelAllowed(model)) return 'inherit'
+    } catch (e) {
+      // Provider/allowlist probes read config; on failure, fall through to
+      // showing the raw value rather than guessing wrong.
+      logError(e)
+    }
+    return model
+  }
+  // Non-alias model ID: collapse to 'inherit' if it's not on the active
+  // profile (orphan), matching how project-scoped overrides are resolved.
+  // Pass deps explicitly so the lookup is rebound on each call (the default
+  // arg in resolveModelOverride captures at module-load time, which prevents
+  // test mocks from taking effect).
+  return (
+    resolveModelOverride(model, `agent:${agent.agentType}`, {
+      getAvailableModelIds: getAvailableModelIdsForActiveProfile,
+      logDebug: () => {},
+      logErr: logError,
+    }) ?? model
+  )
 }
 
 /**

@@ -81,14 +81,18 @@ export function getAgentModel(
 
   // Provider-aware model alias fallback for agents.
   // Claude-native providers (Bedrock, Vertex, Foundry, official Anthropic API)
-  // have guaranteed haiku/sonnet model availability. Custom Anthropic-compatible
-  // endpoints, OpenAI-shim, Gemini, Mistral, and other providers may not have
-  // equivalent models, causing "model not found" errors when resolving aliases.
-  // For haiku/sonnet aliases on non-Claude-native providers, inherit parent model.
-  // Note: 'opus' is NOT included here because it's handled separately by
-  // aliasMatchesParentTier() which checks if parent's tier matches the alias.
+  // have guaranteed haiku/sonnet/opus model availability. Custom
+  // Anthropic-compatible endpoints, OpenAI-shim, Gemini, Mistral, and other
+  // providers may not have equivalent models, causing "model not found" errors
+  // when resolving aliases. For bare Claude family aliases on non-Claude-native
+  // providers, inherit the parent model. aliasMatchesParentTier still handles
+  // the case where the parent itself is the matching tier (returns parentModel
+  // below), so the user's choice of `opus` on a Claude-native provider with an
+  // opus parent is still honored.
   if (
-    (agentModelWithExp === 'haiku' || agentModelWithExp === 'sonnet') &&
+    (agentModelWithExp === 'haiku' ||
+      agentModelWithExp === 'sonnet' ||
+      agentModelWithExp === 'opus') &&
     !checkIsClaudeNativeProvider()
   ) {
     // Non-Claude-native provider → inherit parent model
