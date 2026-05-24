@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 import type { ProviderProfile } from './config.js'
 
@@ -91,6 +91,20 @@ afterAll(() => {
   realConfig.resetGlobalConfigForTests?.()
 })
 
+type MockProjectConfigState = {
+  activeProviderProfileId?: string
+  activeModelForProject?: string
+}
+
+let mockProjectConfigState: MockProjectConfigState = {}
+
+beforeEach(() => {
+  mockProjectConfigState = {}
+})
+afterEach(() => {
+  mockProjectConfigState = {}
+})
+
 async function importFreshProviderProfileModules() {
   mock.module('./config.js', () => ({
     ...realConfig,
@@ -99,6 +113,12 @@ async function importFreshProviderProfileModules() {
       updater: (current: MockConfigState) => MockConfigState,
     ) => {
       mockConfigState = updater(mockConfigState)
+    },
+    getCurrentProjectConfig: () => mockProjectConfigState,
+    saveCurrentProjectConfig: (
+      updater: (current: MockProjectConfigState) => MockProjectConfigState,
+    ) => {
+      mockProjectConfigState = updater(mockProjectConfigState)
     },
   }))
   const nonce = `${Date.now()}-${Math.random()}`
@@ -343,4 +363,220 @@ describe('setActiveProviderProfile model cache', () => {
     expect(cacheValues).toContain('glm-4.7-flash')
     expect(cacheValues).toContain('glm-4.7-plus')
   })
+})
+
+describe('project-scoped active provider override', () => {
+  test('project override takes precedence over global default', async () => {
+    const {
+      getActiveProviderProfile,
+      setActiveProviderProfileForProject,
+    } = await importFreshProviderProfileModules()
+
+    const globalProfile = buildProfile({ id: 'global', name: 'Global' })
+    const projectProfile = buildProfile({ id: 'project', name: 'Project' })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [globalProfile, projectProfile],
+      activeProviderProfileId: 'global',
+    }))
+
+    expect(getActiveProviderProfile()?.id).toBe('global')
+
+    const set = setActiveProviderProfileForProject('project')
+    expect(set?.id).toBe('project')
+    expect(getActiveProviderProfile()?.id).toBe('project')
+  })
+
+  test('missing project profile id falls back silently to global', async () => {
+    const { getActiveProviderProfile } = await importFreshProviderProfileModules()
+
+    const globalProfile = buildProfile({ id: 'global', name: 'Global' })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [globalProfile],
+      activeProviderProfileId: 'global',
+    }))
+
+    // Simulate a stale project override pointing at a deleted profile.
+    mockProjectConfigState = { activeProviderProfileId: 'deleted_id' }
+
+    expect(getActiveProviderProfile()?.id).toBe('global')
+  })
+
+  test('setActiveProviderProfileForProject(null) clears override', async () => {
+    const {
+      getActiveProviderProfile,
+      setActiveProviderProfileForProject,
+    } = await importFreshProviderProfileModules()
+
+    const globalProfile = buildProfile({ id: 'global', name: 'Global' })
+    const projectProfile = buildProfile({ id: 'project', name: 'Project' })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [globalProfile, projectProfile],
+      activeProviderProfileId: 'global',
+    }))
+
+    setActiveProviderProfileForProject('project')
+    expect(getActiveProviderProfile()?.id).toBe('project')
+
+    setActiveProviderProfileForProject(null)
+    expect(getActiveProviderProfile()?.id).toBe('global')
+    expect(mockProjectConfigState.activeProviderProfileId).toBeUndefined()
+  })
+
+  test('full lifecycle: set project override updates model cache, clear restores global cache', async () => {
+    const {
+      getActiveProviderProfile,
+      setActiveProviderProfileForProject,
+    } = await importFreshProviderProfileModules()
+
+    const globalProfile = buildProfile({
+      id: 'global_openai',
+      name: 'Global OpenAI',
+      model: 'gpt-global-a, gpt-global-b',
+    })
+    const projectProfile = buildProfile({
+      id: 'project_openai',
+      name: 'Project OpenAI',
+      model: 'gpt-proj-a, gpt-proj-b',
+    })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [globalProfile, projectProfile],
+      activeProviderProfileId: 'global_openai',
+      openaiAdditionalModelOptionsCache: [],
+      openaiAdditionalModelOptionsCacheByProfile: {},
+    }))
+
+    expect(getActiveProviderProfile()?.id).toBe('global_openai')
+
+    setActiveProviderProfileForProject('project_openai')
+    expect(getActiveProviderProfile()?.id).toBe('project_openai')
+    // Project profile's model cache should be populated.
+    expect(
+      mockConfigState.openaiAdditionalModelOptionsCacheByProfile[
+        'project_openai'
+      ]?.length ?? 0,
+    ).toBeGreaterThan(0)
+
+    setActiveProviderProfileForProject(null)
+    expect(getActiveProviderProfile()?.id).toBe('global_openai')
+    // After clearing, global profile's cache should be populated.
+    expect(
+      mockConfigState.openaiAdditionalModelOptionsCacheByProfile[
+        'global_openai'
+      ]?.length ?? 0,
+    ).toBeGreaterThan(0)
+  })
+
+  test('setActiveProviderProfileForProject returns null for unknown profile', async () => {
+    const { setActiveProviderProfileForProject } =
+      await importFreshProviderProfileModules()
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [buildProfile({ id: 'p1' })],
+      activeProviderProfileId: 'p1',
+    }))
+
+    const result = setActiveProviderProfileForProject('does_not_exist')
+    expect(result).toBeNull()
+  })
+
+  test('re-selecting the same project profile preserves activeModelForProject', async () => {
+    const { setActiveProviderProfileForProject } =
+      await importFreshProviderProfileModules()
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [
+        buildProfile({ id: 'p_a', name: 'A' }),
+        buildProfile({ id: 'p_b', name: 'B' }),
+      ],
+      activeProviderProfileId: 'p_a',
+    }))
+
+    setActiveProviderProfileForProject('p_b')
+    mockProjectConfigState.activeModelForProject = 'user-chosen-model'
+
+    setActiveProviderProfileForProject('p_b')
+
+    expect(mockProjectConfigState.activeProviderProfileId).toBe('p_b')
+    expect(mockProjectConfigState.activeModelForProject).toBe(
+      'user-chosen-model',
+    )
+  })
+
+  test('switching project profile id clears activeModelForProject', async () => {
+    const { setActiveProviderProfileForProject } =
+      await importFreshProviderProfileModules()
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [
+        buildProfile({ id: 'p_a', name: 'A' }),
+        buildProfile({ id: 'p_b', name: 'B' }),
+      ],
+      activeProviderProfileId: 'p_a',
+    }))
+
+    setActiveProviderProfileForProject('p_a')
+    mockProjectConfigState.activeModelForProject = 'stale-model-from-a'
+
+    setActiveProviderProfileForProject('p_b')
+
+    expect(mockProjectConfigState.activeProviderProfileId).toBe('p_b')
+    expect(mockProjectConfigState.activeModelForProject).toBeUndefined()
+  })
+
+  test('deleteProviderProfile strips activeModelForProject from affected projects', async () => {
+    const { addProviderProfile, deleteProviderProfile } =
+      await importFreshProviderProfileModules()
+
+    const a = addProviderProfile({
+      provider: 'openai',
+      name: 'A',
+      baseUrl: 'https://a.example.com/v1',
+      model: 'm-a',
+      apiKey: 'k',
+    })
+    const b = addProviderProfile({
+      provider: 'openai',
+      name: 'B',
+      baseUrl: 'https://b.example.com/v1',
+      model: 'm-b',
+      apiKey: 'k',
+    })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      activeProviderProfileId: b!.id,
+      projects: {
+        '/some/project': {
+          activeProviderProfileId: a!.id,
+          activeModelForProject: 'project-chosen-model',
+        },
+        '/other/project': {
+          activeProviderProfileId: b!.id,
+          activeModelForProject: 'unaffected',
+        },
+      },
+    }) as never)
+
+    deleteProviderProfile(a!.id)
+
+    const projects = (mockConfigState as { projects?: Record<string, { activeProviderProfileId?: string; activeModelForProject?: string }> }).projects
+    expect(projects?.['/some/project']?.activeProviderProfileId).toBeUndefined()
+    expect(projects?.['/some/project']?.activeModelForProject).toBeUndefined()
+    expect(projects?.['/other/project']?.activeProviderProfileId).toBe(b!.id)
+    expect(projects?.['/other/project']?.activeModelForProject).toBe(
+      'unaffected',
+    )
+  })
+
 })

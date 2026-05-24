@@ -1,5 +1,5 @@
 import type * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   formatCost,
   getTotalCost,
@@ -112,6 +112,10 @@ function snapshotEqual(a: Snapshot, b: Snapshot): boolean {
  */
 export function SessionTokensIndicator({ messages }: { messages?: Message[] } = {}): React.ReactNode {
   const [snapshot, setSnapshot] = useState<Snapshot>(() => readSnapshot());
+  // Keep the last non-zero snapshot so the indicator doesn't unmount during
+  // the 2-second poll interval (which causes a visible flicker when the
+  // component re-mounts mid-stream or at turn boundaries).
+  const lastNonZeroRef = useRef<Snapshot | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -125,7 +129,17 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
 
   const grandTotal =
     snapshot.input + snapshot.output + snapshot.cacheRead + snapshot.cacheCreation;
-  if (grandTotal === 0) return null;
+  if (grandTotal > 0) {
+    lastNonZeroRef.current = snapshot;
+  } else if (lastNonZeroRef.current) {
+    // Snapshot collapsed back to all-zero (session reset / new conversation).
+    // Without this, the stale non-zero ref would freeze the indicator on the
+    // previous session's totals forever, which is worse than the brief
+    // flicker the ref was added to avoid.
+    lastNonZeroRef.current = null;
+  }
+  const displaySnapshot = lastNonZeroRef.current;
+  if (!displaySnapshot) return null;
 
   const usage = messages ? getCurrentUsage(messages) : null;
   const contextTokens = usage
@@ -139,19 +153,19 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
   if (contextTokens > 0) {
     parts.push(`ctx: ${formatTokens(contextTokens)}`);
   }
-  if (snapshot.supportsCache) {
-    if (snapshot.cacheCreation > 0) {
-      parts.push(`wrt: ${formatTokens(snapshot.cacheCreation)}`);
+  if (displaySnapshot.supportsCache) {
+    if (displaySnapshot.cacheCreation > 0) {
+      parts.push(`wrt: ${formatTokens(displaySnapshot.cacheCreation)}`);
     }
-    if (snapshot.cacheRead > 0) {
-      parts.push(`rd: ${formatTokens(snapshot.cacheRead)}`);
+    if (displaySnapshot.cacheRead > 0) {
+      parts.push(`rd: ${formatTokens(displaySnapshot.cacheRead)}`);
     }
   } else {
-    parts.push(`in: ${formatTokens(snapshot.input)}`);
-    parts.push(`out: ${formatTokens(snapshot.output)}`);
+    parts.push(`in: ${formatTokens(displaySnapshot.input)}`);
+    parts.push(`out: ${formatTokens(displaySnapshot.output)}`);
   }
 
-  const costValue = snapshot.cost > 0 ? formatCost(snapshot.cost) : null;
+  const costValue = displaySnapshot.cost > 0 ? formatCost(displaySnapshot.cost) : null;
   const theme = getTheme();
 
   return (

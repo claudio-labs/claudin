@@ -1,10 +1,20 @@
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
 import { resolveProviderRequest } from '../../services/api/providerConfig.js'
+import { getCurrentProjectConfig } from '../../utils/config.js'
+import { parseModelList } from '../../utils/providerModels.js'
 import {
   type OllamaGenerationReadiness,
   probeOllamaGenerationReadiness,
 } from '../../utils/providerDiscovery.js'
 import { resolveGeminiCredential } from '../../utils/geminiAuth.js'
+import {
+  getActiveProviderProfile,
+  getGlobalActiveProviderProfileId,
+  getProjectActiveProviderProfileId,
+  getProviderProfiles,
+  getRawProjectActiveProviderProfileId,
+  hasProjectProviderProfileOverride,
+} from '../../utils/providerProfiles.js'
 import { redactUrlForDisplay } from '../../utils/urlRedaction.js'
 
 type CheckResult = {
@@ -92,9 +102,74 @@ export async function runProviderDoctor(): Promise<string> {
   const lines: string[] = []
   const results: CheckResult[] = []
 
+  const projectActiveId = getProjectActiveProviderProfileId()
+  const rawProjectActiveId = getRawProjectActiveProviderProfileId()
+  const globalActiveId = getGlobalActiveProviderProfileId()
+  const activeId = getActiveProviderProfile()?.id
+  // Two independent dimensions:
+  //   1. how was the *active* profile resolved (override / global / fallback)
+  //   2. what dangling pointers exist (override or global pointing to a
+  //      missing profile), which we surface as warnings appended after.
+  let resolutionSource: string
+  if (projectActiveId && projectActiveId === activeId) {
+    resolutionSource =
+      globalActiveId === projectActiveId
+        ? 'project override (same as global default)'
+        : 'project override'
+  } else if (globalActiveId && globalActiveId === activeId) {
+    resolutionSource = 'global default'
+  } else {
+    resolutionSource = 'first available profile'
+  }
+  const danglingNotes: string[] = []
+  if (rawProjectActiveId && !projectActiveId) {
+    danglingNotes.push(
+      `project override "${rawProjectActiveId}" missing, falling back`,
+    )
+  }
+  // Only flag the global as dangling when it actually points to a non-existent
+  // profile — a healthy global that's simply *shadowed* by a valid project
+  // override is not dangling.
+  if (globalActiveId) {
+    const profileExists = getProviderProfiles().some(
+      p => p.id === globalActiveId,
+    )
+    if (!profileExists) {
+      danglingNotes.push(
+        `global default "${globalActiveId}" missing, falling back`,
+      )
+    }
+  }
+  if (danglingNotes.length > 0) {
+    resolutionSource += ` (${danglingNotes.join('; ')})`
+  }
+
   lines.push(`Active profile transport: ${profile.transport}`)
   lines.push(`Base URL: ${redactUrlForDisplay(profile.baseUrl)}`)
-  lines.push(`Model: ${profile.model}`)
+  // When a project override has its own `/model` choice, surface it alongside
+  // the profile's default so the user understands which one this session uses.
+  const projectModel = hasProjectProviderProfileOverride()
+    ? getCurrentProjectConfig().activeModelForProject
+    : undefined
+  // CSV-aware comparison: a profile's `model` field can be a list like
+  // "glm-4.7, glm-4.7-flash". `projectModel === profile.model` would falsely
+  // flag a project override that just picked one of the listed options.
+  const profileModelOptions = parseModelList(profile.model)
+  // Trim both sides — a stored override like " glm-4.7 " (legacy whitespace
+  // from older versions) shouldn't false-flag against a profile listing
+  // "glm-4.7" cleanly.
+  const projectModelTrimmed = projectModel?.trim()
+  const projectModelMatchesProfile =
+    projectModelTrimmed !== undefined &&
+    projectModelTrimmed !== '' &&
+    (projectModelTrimmed === profile.model.trim() ||
+      profileModelOptions.includes(projectModelTrimmed))
+  if (projectModel && !projectModelMatchesProfile) {
+    lines.push(`Model: ${projectModel} (project override; profile default ${profile.model})`)
+  } else {
+    lines.push(`Model: ${projectModel ?? profile.model}`)
+  }
+  lines.push(`Resolved from: ${resolutionSource}`)
 
   switch (profile.transport) {
     case 'anthropic': {

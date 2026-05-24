@@ -1,6 +1,8 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { getMainLoopModelOverride } from '../../bootstrap/state.js'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { getCurrentProjectConfig } from '../config.js'
+import { getProjectActiveProviderProfileId } from '../providerProfiles.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
@@ -110,7 +112,22 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
     // leaks (e.g. an Anthropic model setting sent to the OpenAI API). When no
     // profile is active, fall back to the saved settings.model.
     const profileModel = getActiveProfileModel()
-    specifiedModel = profileModel || setting || undefined
+    // Only treat the project override as live when it points to an EXISTING
+    // profile. A dangling override (stale id) must fall through to the global
+    // path; otherwise `activeModelForProject` (which may have survived legacy
+    // settings or manual edits) would be served against the global profile's
+    // transport — wrong shape, cross-provider leak.
+    if (getProjectActiveProviderProfileId() !== undefined) {
+      // When a project-level provider override is set, prefer the project-
+      // scoped model and skip the global `settings.model` fallback so `/model`
+      // choices in another project don't bleed in here.
+      const projectModel = normalizeModelSetting(
+        getCurrentProjectConfig().activeModelForProject,
+      )
+      specifiedModel = projectModel || profileModel || undefined
+    } else {
+      specifiedModel = profileModel || setting || undefined
+    }
   }
 
   // Ignore the user-specified model if it's not in the availableModels allowlist.

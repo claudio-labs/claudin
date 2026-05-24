@@ -5,6 +5,7 @@ import { DEFAULT_CODEX_BASE_URL } from '../services/api/providerConfig.js'
 import { Box, Text } from '../ink.js'
 import { useKeybinding } from '../keybindings/useKeybinding.js'
 import { useSetAppState } from '../state/AppState.js'
+import { suppressNextMainLoopModelPersist } from '../state/onChangeAppState.js'
 import type { ProviderProfile } from '../utils/config.js'
 import {
   clearCodexCredentials,
@@ -17,9 +18,13 @@ import {
   addProviderProfile,
   deleteProviderProfile,
   getActiveProviderProfile,
+  getGlobalActiveProviderProfileId,
+  getProjectActiveProviderProfileId,
+  hasProjectProviderProfileOverride,
   getProviderPresetDefaults,
   getProviderProfiles,
   setActiveProviderProfile,
+  setActiveProviderProfileForProject,
   type ProviderPreset,
   type ProviderProfileInput,
   updateProviderProfile,
@@ -77,6 +82,7 @@ type Screen =
   | 'custom-headers'
   | 'form'
   | 'select-active'
+  | 'select-active-project'
   | 'select-edit'
   | 'select-delete'
 
@@ -422,6 +428,16 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   // asynchronously in useEffect with queueMicrotask to keep UI responsive.
   const [profiles, setProfiles] = React.useState<ProviderProfile[]>([])
   const [activeProfileId, setActiveProfileId] = React.useState<string | undefined>()
+  const [projectActiveProfileId, setProjectActiveProfileId] = React.useState<
+    string | undefined
+  >()
+  // Tracks whether *any* project-level override is set, even if it points to
+  // a missing profile. Used to keep the "Clear project override" affordance
+  // visible so the user can recover from a stale override.
+  const [hasProjectOverride, setHasProjectOverride] = React.useState(false)
+  const [globalActiveProfileId, setGlobalActiveProfileId] = React.useState<
+    string | undefined
+  >()
   const codexRefreshEpochRef = React.useRef(0)
   const [screen, setScreen] = React.useState<Screen>(
     mode === 'first-run' ? 'select-preset' : 'menu',
@@ -477,6 +493,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     if (process.env.NODE_ENV === 'test') {
       setProfiles(getProviderProfiles())
       setActiveProfileId(getActiveProviderProfile()?.id)
+      setProjectActiveProfileId(getProjectActiveProviderProfileId())
+      setGlobalActiveProfileId(getGlobalActiveProviderProfileId())
+      setHasProjectOverride(hasProjectProviderProfileOverride())
       setIsInitializing(false)
       return
     }
@@ -486,6 +505,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       const activeId = getActiveProviderProfile()?.id
       setProfiles(profilesData)
       setActiveProfileId(activeId)
+      setProjectActiveProfileId(getProjectActiveProviderProfileId())
+      setGlobalActiveProfileId(getGlobalActiveProviderProfileId())
+      setHasProjectOverride(hasProjectProviderProfileOverride())
       setIsInitializing(false)
     })
   }, [])
@@ -518,10 +540,31 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         : []),
       {
         value: 'activate',
-        label: 'Set active provider',
-        description: 'Switch the active provider profile',
+        label: 'Set active provider (Global)',
+        description: globalActiveProfileId
+          ? `Currently: ${profiles.find(p => p.id === globalActiveProfileId)?.name ?? 'unknown'}`
+          : 'Default profile for projects without an override',
         disabled: !hasSelectableProviders,
       },
+      {
+        value: 'activate-project',
+        label: 'Set active provider (Project)',
+        description: projectActiveProfileId
+          ? `Currently: ${profiles.find(p => p.id === projectActiveProfileId)?.name ?? 'unknown'} (this project)`
+          : 'Override the global default for this project only',
+        disabled: !hasSelectableProviders,
+      },
+      ...(hasProjectOverride
+        ? [
+            {
+              value: 'clear-project-override',
+              label: 'Clear project provider override',
+              description: projectActiveProfileId
+                ? 'Stop overriding for this project; fall back to global'
+                : 'Project override points to a missing profile; clear it',
+            },
+          ]
+        : []),
       {
         value: 'edit',
         label: 'Edit provider',
@@ -554,6 +597,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       hasProfiles,
       hasStoredCodexOAuthCredentials,
       canImportLegacyClaude,
+      globalActiveProfileId,
+      projectActiveProfileId,
+      profiles,
     ],
   )
 
@@ -685,6 +731,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       const nextProfiles = getProviderProfiles()
       setProfiles(nextProfiles)
       setActiveProfileId(getActiveProviderProfile()?.id)
+      setProjectActiveProfileId(getProjectActiveProviderProfileId())
+      setGlobalActiveProfileId(getGlobalActiveProviderProfileId())
+      setHasProjectOverride(hasProjectProviderProfileOverride())
       refreshCodexOAuthCredentialState()
       isRefreshingRef.current = false
     })
@@ -759,6 +808,13 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       // (antivirus, disk cache, NTFS metadata).
       await new Promise<void>(resolve => queueMicrotask(resolve))
 
+      // Capture override state BEFORE writing the global default so we know
+      // whether this activation will actually be the effective profile for
+      // the current project. If a project override exists, the resolver still
+      // returns the override profile, and we must not push a session model
+      // sourced from the new global default (would mismatch transport).
+      const overrideActive = hasProjectProviderProfileOverride()
+
       const active = setActiveProviderProfile(profileId)
       if (!active) {
         setErrorMessage('Could not change active provider.')
@@ -767,11 +823,165 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         return
       }
 
-      // Update the session model to the new provider's first model.
-      // persistActiveProviderProfileModel (called by onChangeAppState) will
-      // not overwrite the multi-model list because it checks if the model
-      // is already in the provider's configured model list.
+      // Only refresh the session model when the activated profile is the one
+      // the current project will actually use. With an override in place, the
+      // effective profile remains the override target — touching mainLoopModel
+      // here would send wrong-shape requests on the next turn.
+      const effectiveProfile = overrideActive
+        ? (getActiveProviderProfile() ?? active)
+        : active
+      const newModel = getPrimaryModel(effectiveProfile.model)
+      if (!overrideActive) {
+        setAppState(prev => ({
+          ...prev,
+          mainLoopModel: newModel,
+          mainLoopModelForSession: null,
+        }))
+      }
+      providerLabel = active.name
+      const settingsOverrideError =
+        clearStartupProviderOverrideFromUserSettings()
+      const isActiveCodexOAuth = isCodexOAuthProfile(
+        active,
+        storedCodexOAuthProfileId,
+      )
+      const activationWarning = isActiveCodexOAuth
+        ? await activateCodexOAuthSession()
+        : null
+
+      refreshProfiles()
+      const overrideNote =
+        overrideActive && effectiveProfile.id !== active.id
+          ? ` (project override still active — this project keeps using ${effectiveProfile.name}; use "Clear project provider override" to apply the new default here)`
+          : ''
+      const activationMessage = isActiveCodexOAuth
+        ? buildCodexOAuthActivationMessage({
+            prefix: `Active provider: ${active.name}${overrideNote}`,
+            activationWarning,
+            warnings: [
+              activationWarning,
+              settingsOverrideError
+                ? `could not clear startup provider override (${settingsOverrideError})`
+                : null,
+            ].filter((warning): warning is string => Boolean(warning)),
+          })
+        : settingsOverrideError
+          ? `Active provider: ${active.name}${overrideNote}. Warning: could not clear startup provider override (${settingsOverrideError}).`
+          : `Active provider: ${active.name}${overrideNote}`
+      setStatusMessage(activationMessage)
+      setIsActivating(false)
+      onDone({
+        action: 'activated',
+        activeProfileId: active.id,
+        activeProviderName: active.name,
+        activeProviderModel: newModel,
+        message: `Provider switched to ${active.name} (${newModel})`,
+      })
+      returnToMenu()
+    } catch (error) {
+      refreshProfiles()
+      setStatusMessage(undefined)
+      setIsActivating(false)
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrorMessage(`Could not finish activating ${providerLabel}: ${detail}`)
+      returnToMenu()
+    }
+  }
+
+  async function clearProjectProviderOverride(): Promise<void> {
+    setIsActivating(true)
+    setStatusMessage('Clearing project provider override...')
+
+    try {
+      await new Promise<void>(resolve => queueMicrotask(resolve))
+
+      setActiveProviderProfileForProject(null)
+      refreshProfiles()
+      const nowEffective = getActiveProviderProfile()
+      if (nowEffective) {
+        const newModel = getPrimaryModel(nowEffective.model)
+        // Suppress the /model persistence side-effect: clearing a project
+        // override is NOT a /model choice. Without this, onChangeAppState
+        // would clobber the user's prior global settings.model and overwrite
+        // the global profile's model field with the override-clear fallback.
+        suppressNextMainLoopModelPersist()
+        setAppState(prev => ({
+          ...prev,
+          mainLoopModel: newModel,
+          mainLoopModelForSession: null,
+        }))
+        setStatusMessage(
+          `Project override cleared. Using global default: ${nowEffective.name}.`,
+        )
+        setIsActivating(false)
+        onDone({
+          action: 'activated',
+          activeProfileId: nowEffective.id,
+          activeProviderName: nowEffective.name,
+          activeProviderModel: newModel,
+          message: `Project override cleared — using ${nowEffective.name} (${newModel})`,
+        })
+        returnToMenu()
+      } else {
+        setStatusMessage(
+          'Project provider override cleared. No global default set.',
+        )
+        setIsActivating(false)
+        // The clear *did* succeed — a config change happened, the caller
+        // should refresh. 'cancelled' would be wrong (callers branch on it to
+        // skip side-effects); 'saved' matches the "config change, nothing
+        // newly active" case used elsewhere in this component.
+        onDone({
+          action: 'saved',
+          message:
+            'Project provider override cleared. No global default set.',
+        })
+        returnToMenu()
+      }
+    } catch (error) {
+      refreshProfiles()
+      setStatusMessage(undefined)
+      setIsActivating(false)
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrorMessage(`Could not clear project provider override: ${detail}`)
+      returnToMenu()
+    }
+  }
+
+  async function activateSelectedProviderForProject(
+    profileId: string,
+  ): Promise<void> {
+    let providerLabel = 'provider'
+    setIsActivating(true)
+    setStatusMessage('Setting provider for this project...')
+
+    try {
+      // Same rationale as activateSelectedProvider: defer sync I/O so the
+      // loading state renders before saveGlobalConfig blocks the main thread.
+      await new Promise<void>(resolve => queueMicrotask(resolve))
+
+      // Read from disk, not React state — projectActiveProfileId is hydrated
+      // via queueMicrotask in refreshProfiles and may be stale here. A stale
+      // read would either suppress persist on a real id switch (clobbering
+      // user's /model for the new profile) or fail to suppress on a same-id
+      // re-election (clobbering the preserved activeModelForProject).
+      const previousProjectProfileId = getProjectActiveProviderProfileId()
+      const active = setActiveProviderProfileForProject(profileId)
+      if (!active) {
+        setErrorMessage('Could not set project provider override.')
+        setIsActivating(false)
+        returnToMenu()
+        return
+      }
+
       const newModel = getPrimaryModel(active.model)
+      // Re-selecting the same project profile preserves `activeModelForProject`
+      // inside setActiveProviderProfileForProject; suppress the persist side of
+      // the upcoming setAppState so onChangeAppState's project-scoped branch
+      // doesn't overwrite that preserved per-project /model with the primary.
+      if (previousProjectProfileId === active.id) {
+        suppressNextMainLoopModelPersist()
+      }
       setAppState(prev => ({
         ...prev,
         mainLoopModel: newModel,
@@ -789,9 +999,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         : null
 
       refreshProfiles()
+      const baseMsg = `Active provider for this project: ${active.name}. Other projects keep the global default.`
       const activationMessage = isActiveCodexOAuth
         ? buildCodexOAuthActivationMessage({
-            prefix: `Active provider: ${active.name}`,
+            prefix: baseMsg,
             activationWarning,
             warnings: [
               activationWarning,
@@ -801,8 +1012,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             ].filter((warning): warning is string => Boolean(warning)),
           })
         : settingsOverrideError
-          ? `Active provider: ${active.name}. Warning: could not clear startup provider override (${settingsOverrideError}).`
-          : `Active provider: ${active.name}`
+          ? `${baseMsg} Warning: could not clear startup provider override (${settingsOverrideError}).`
+          : baseMsg
       setStatusMessage(activationMessage)
       setIsActivating(false)
       onDone({
@@ -810,7 +1021,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         activeProfileId: active.id,
         activeProviderName: active.name,
         activeProviderModel: newModel,
-        message: `Provider switched to ${active.name} (${newModel})`,
+        message: `Provider switched to ${active.name} (${newModel}) for this project`,
       })
       returnToMenu()
     } catch (error) {
@@ -818,7 +1029,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       setStatusMessage(undefined)
       setIsActivating(false)
       const detail = error instanceof Error ? error.message : String(error)
-      setErrorMessage(`Could not finish activating ${providerLabel}: ${detail}`)
+      setErrorMessage(
+        `Could not finish setting ${providerLabel} for this project: ${detail}`,
+      )
       returnToMenu()
     }
   }
@@ -923,6 +1136,16 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
     const isActiveSavedProfile = getActiveProviderProfile()?.id === saved.id
     if (isActiveSavedProfile) {
+      // Editing a profile is never a `/model` choice — suppress unconditionally
+      // so onChangeAppState updates only the bootstrap override (so the next
+      // turn resolves against the saved primary) without clobbering the user's
+      // prior `/model` selection. WITH a project override active, the
+      // project-scoped branch would overwrite `activeModelForProject`. WITHOUT
+      // an override, the global branch would replace the user's `settings.model`
+      // (which may be an alias like 'sonnet') with the profile's canonical
+      // primary. Both are wrong: a profile edit must not pretend to be a
+      // `/model` invocation.
+      suppressNextMainLoopModelPersist()
       setAppState(prev => ({
         ...prev,
         mainLoopModel: getPrimaryModel(saved.model),
@@ -934,9 +1157,17 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       : null
 
     refreshProfiles()
-    const successMessage =
-      editingProfileId
-        ? `Updated provider: ${saved.name}`
+    const overrideMaskingNew =
+      !editingProfileId &&
+      hasProjectProviderProfileOverride() &&
+      !isActiveSavedProfile
+    const overrideTargetName = overrideMaskingNew
+      ? (getActiveProviderProfile()?.name ?? 'override target')
+      : null
+    const successMessage = editingProfileId
+      ? `Updated provider: ${saved.name}`
+      : overrideMaskingNew
+        ? `Added provider: ${saved.name} (now global default — project keeps using ${overrideTargetName}; use "Clear project provider override" to apply here)`
         : `Added provider: ${saved.name} (now active)`
     setStatusMessage(
       settingsOverrideError
@@ -1713,6 +1944,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
                   setScreen('select-active')
                 }
                 break
+              case 'activate-project':
+                if (hasSelectableProviders) {
+                  setScreen('select-active-project')
+                }
+                break
+              case 'clear-project-override':
+                void clearProjectProviderOverride()
+                break
               case 'edit':
                 if (hasProfiles) {
                   setScreen('select-edit')
@@ -1782,14 +2021,24 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     emptyMessage: string,
     onSelect: (profileId: string) => void,
   ): React.ReactNode {
-    const selectOptions = profiles.map(profile => ({
-      value: profile.id,
-      label:
-        profile.id === activeProfileId
-          ? `${profile.name} (active)`
-          : profile.name,
-      description: `${profile.provider === 'anthropic' ? 'anthropic' : 'openai-compatible'} · ${profile.baseUrl} · ${profile.model}`,
-    }))
+    const selectOptions = profiles.map(profile => {
+      const labelTags: string[] = []
+      if (profile.id === activeProfileId) labelTags.push('active')
+      // Always surface "this project" when an override is set, so the user
+      // can see it even when the override matches the global default.
+      if (projectActiveProfileId && profile.id === projectActiveProfileId) {
+        labelTags.push('this project')
+      }
+      if (globalActiveProfileId && profile.id === globalActiveProfileId) {
+        labelTags.push('global default')
+      }
+      const suffix = labelTags.length > 0 ? ` (${labelTags.join(', ')})` : ''
+      return {
+        value: profile.id,
+        label: `${profile.name}${suffix}`,
+        description: `${profile.provider === 'anthropic' ? 'anthropic' : 'openai-compatible'} · ${profile.baseUrl} · ${profile.model}`,
+      }
+    })
 
     if (selectOptions.length === 0) {
       return (
@@ -1950,10 +2199,19 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       break
     case 'select-active':
       content = renderProfileSelection(
-        'Set active provider',
+        'Set active provider (Global)',
         'No providers available. Add one first.',
         profileId => {
           void activateSelectedProvider(profileId)
+        },
+      )
+      break
+    case 'select-active-project':
+      content = renderProfileSelection(
+        'Set active provider (Project)',
+        'No providers available. Add one first.',
+        profileId => {
+          void activateSelectedProviderForProject(profileId)
         },
       )
       break
@@ -1980,6 +2238,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               profiles,
               storedCodexOAuthProfileId,
             )?.id === profileId
+          // Snapshot whether the deletion will change the resolved active
+          // profile for this session — used below to push a fresh
+          // mainLoopModel so the next request doesn't go out with a
+          // wrong-transport model string left over from the deleted profile.
+          const wasActiveForSession =
+            getActiveProviderProfile()?.id === profileId
           const result = deleteProviderProfile(profileId)
           if (!result.removed) {
             setErrorMessage('Could not delete provider.')
@@ -2015,6 +2279,31 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               )
             }
             refreshProfiles()
+            // If the deleted profile was the one actively resolving for this
+            // session, push the new fallback's primary model into AppState so
+            // the next API request uses a model that matches the new active
+            // profile's transport. Suppress persistence: the user did not
+            // make a /model choice — just deleted a profile.
+            if (wasActiveForSession) {
+              const nextActive = getActiveProviderProfile()
+              if (nextActive) {
+                suppressNextMainLoopModelPersist()
+                setAppState(prev => ({
+                  ...prev,
+                  mainLoopModel: getPrimaryModel(nextActive.model),
+                  mainLoopModelForSession: null,
+                }))
+              } else {
+                // No profiles left: clear the override so the default
+                // resolver kicks in on the next turn.
+                suppressNextMainLoopModelPersist()
+                setAppState(prev => ({
+                  ...prev,
+                  mainLoopModel: null,
+                  mainLoopModelForSession: null,
+                }))
+              }
+            }
             setStatusMessage(
               warnings.length > 0
                 ? `Provider deleted. Warning: ${warnings.join('; ')}.`

@@ -1,6 +1,8 @@
 import { randomBytes } from 'crypto'
 import {
+  getCurrentProjectConfig,
   getGlobalConfig,
+  saveCurrentProjectConfig,
   saveGlobalConfig,
   type ProviderProfile,
 } from './config.js'
@@ -439,8 +441,68 @@ export function getActiveProviderProfile(
     return undefined
   }
 
+  const projectActiveId = trimOrUndefined(
+    getCurrentProjectConfig().activeProviderProfileId,
+  )
+  if (projectActiveId) {
+    const match = profiles.find(profile => profile.id === projectActiveId)
+    if (match) return match
+    // Project override points to a missing profile (deleted/renamed). Fall back
+    // to global silently; user can clear the override from /provider.
+  }
+
   const activeId = trimOrUndefined(config.activeProviderProfileId)
   return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+}
+
+/**
+ * Returns the profile id active for the current project via override, if any.
+ * Returns undefined when no project-level override is set OR when the override
+ * points to a missing profile (caller treats that as "no override").
+ *
+ * Use `hasProjectProviderProfileOverride()` when you need to know that an
+ * override is set even if it currently resolves to a missing profile (e.g.
+ * to expose a "clear override" affordance).
+ *
+ * Note: project scope is keyed by the resolved project directory (git root
+ * when available, otherwise cwd). Worktrees of the same repo therefore
+ * share the same override — this is intentional, since profile choice is
+ * a per-repo concern, not a per-branch one.
+ */
+export function getProjectActiveProviderProfileId(): string | undefined {
+  const projectActiveId = trimOrUndefined(
+    getCurrentProjectConfig().activeProviderProfileId,
+  )
+  if (!projectActiveId) return undefined
+  const profiles = getProviderProfiles()
+  return profiles.some(p => p.id === projectActiveId)
+    ? projectActiveId
+    : undefined
+}
+
+/**
+ * Returns the raw project-level override id (including stale ids pointing to
+ * a missing profile). Returns undefined when no override is set.
+ */
+export function getRawProjectActiveProviderProfileId(): string | undefined {
+  return trimOrUndefined(getCurrentProjectConfig().activeProviderProfileId)
+}
+
+/**
+ * True when a project-level override is set, even if it currently points to
+ * a missing profile. Use this for UI affordances that should remain available
+ * for the user to clear a stale override.
+ */
+export function hasProjectProviderProfileOverride(): boolean {
+  return getRawProjectActiveProviderProfileId() !== undefined
+}
+
+/**
+ * Returns the globally-default profile id (ignoring any project override),
+ * or undefined when no global default is set.
+ */
+export function getGlobalActiveProviderProfileId(): string | undefined {
+  return trimOrUndefined(getGlobalConfig().activeProviderProfileId)
 }
 
 export function addProviderProfile(
@@ -470,8 +532,11 @@ export function addProviderProfile(
     }
   })
 
-  const activeProfile = getActiveProviderProfile()
-  if (activeProfile?.id === profile.id) {
+  // Compare against the *global* active id (what we just wrote at line 526),
+  // not the resolved active profile — a project-level override could otherwise
+  // mask the fact that this new profile became the global default and skip the
+  // post-write cache rotation.
+  if (getGlobalActiveProviderProfileId() === profile.id) {
     setActiveProviderProfile(profile.id)
     clearActiveOpenAIModelOptionsCache()
   }
@@ -634,6 +699,28 @@ export function getProfileModelOptions(profile: ProviderProfile): ModelOption[] 
   }))
 }
 
+function applyActiveProfileModelCache(
+  profile: ProviderProfile,
+  config: ReturnType<typeof getGlobalConfig>,
+): Pick<
+  ReturnType<typeof getGlobalConfig>,
+  | 'openaiAdditionalModelOptionsCache'
+  | 'openaiAdditionalModelOptionsCacheByProfile'
+> {
+  const profileModelOptions = getProfileModelOptions(profile)
+  return {
+    openaiAdditionalModelOptionsCache: profileModelOptions.length > 0
+      ? profileModelOptions
+      : getModelCacheByProfile(profile.id, config),
+    openaiAdditionalModelOptionsCacheByProfile: {
+      ...(config.openaiAdditionalModelOptionsCacheByProfile ?? {}),
+      [profile.id]: profileModelOptions.length > 0
+        ? profileModelOptions
+        : (config.openaiAdditionalModelOptionsCacheByProfile?.[profile.id] ?? []),
+    },
+  }
+}
+
 export function setActiveProviderProfile(
   profileId: string,
 ): ProviderProfile | null {
@@ -645,23 +732,121 @@ export function setActiveProviderProfile(
     return null
   }
 
-  const profileModelOptions = getProfileModelOptions(activeProfile)
-
   saveGlobalConfig(config => ({
     ...config,
     activeProviderProfileId: profileId,
-    openaiAdditionalModelOptionsCache: profileModelOptions.length > 0
-      ? profileModelOptions
-      : getModelCacheByProfile(profileId, config),
-    openaiAdditionalModelOptionsCacheByProfile: {
-      ...(config.openaiAdditionalModelOptionsCacheByProfile ?? {}),
-      [profileId]: profileModelOptions.length > 0
-        ? profileModelOptions
-        : (config.openaiAdditionalModelOptionsCacheByProfile?.[profileId] ?? []),
-    },
+    ...applyActiveProfileModelCache(activeProfile, config),
   }))
 
   return activeProfile
+}
+
+/**
+ * Sets (or clears) the active provider profile override for the current
+ * project. Pass `null` to remove the override and fall back to the global
+ * default. Returns the resolved profile when set, or `null` on clear / when
+ * the given profileId does not exist.
+ */
+export function setActiveProviderProfileForProject(
+  profileId: string | null,
+): ProviderProfile | null {
+  if (profileId === null) {
+    // Drop both the override id AND its sibling per-project model. Leaving
+    // activeModelForProject behind would silently resurface as the project's
+    // preferred model the next time the user sets ANY override here, even
+    // for a different profile — surprising and wrong.
+    saveCurrentProjectConfig(current => ({
+      ...current,
+      activeProviderProfileId: undefined,
+      activeModelForProject: undefined,
+    }))
+    // Refresh the OpenAI model-options cache for the new effective profile
+    // (now the global default, if any), so the model picker isn't stale.
+    const nowEffective = getActiveProviderProfile()
+    if (nowEffective) refreshActiveProfileModelCacheIfNeeded(nowEffective)
+    return null
+  }
+
+  const profiles = getProviderProfiles()
+  const target = profiles.find(profile => profile.id === profileId)
+  if (!target) {
+    return null
+  }
+
+  // Re-validate inside the updater. saveCurrentProjectConfig is not atomic
+  // with the global-config read above, so a concurrent deleteProviderProfile
+  // (gRPC / multi-session) could remove this profile between our existence
+  // check and persist, leaving a dangling project override. Re-reading the
+  // freshest profiles snapshot inside the updater closes the practical race
+  // window; if the profile vanished mid-flight we return the prior config
+  // unchanged and signal failure to the caller.
+  //
+  // Also: when the override target *changes* (vs. re-selecting the same
+  // profile) drop activeModelForProject so a stale per-project model from
+  // the previous override doesn't carry into a different-shape transport.
+  // Relying on the UI's subsequent setAppState diff to do this cleanup is
+  // unsound: if the new profile's primary model string equals the stale one,
+  // no diff fires and the stale value survives.
+  let raceLost = false
+  saveCurrentProjectConfig(current => {
+    const stillExists = getProviderProfiles().some(p => p.id === profileId)
+    if (!stillExists) {
+      raceLost = true
+      return current
+    }
+    const next: typeof current = {
+      ...current,
+      activeProviderProfileId: profileId,
+    }
+    if (current.activeProviderProfileId !== profileId) {
+      next.activeModelForProject = undefined
+    }
+    return next
+  })
+  if (raceLost) return null
+
+  // Keep the global OpenAI model-options cache in sync with the now-effective
+  // profile so downstream consumers (model picker, etc.) see correct options.
+  refreshActiveProfileModelCacheIfNeeded(target)
+
+  return target
+}
+
+/**
+ * Writes the OpenAI model-options cache for the given profile only when the
+ * write would produce a different result. Avoids unnecessary disk writes +
+ * listener fan-out when toggling between profiles that don't carry OpenAI
+ * model options (e.g. Anthropic ↔ Anthropic).
+ */
+function refreshActiveProfileModelCacheIfNeeded(profile: ProviderProfile): void {
+  const config = getGlobalConfig()
+  const next = applyActiveProfileModelCache(profile, config)
+  const currentTopLevel = config.openaiAdditionalModelOptionsCache ?? []
+  const currentByProfile =
+    config.openaiAdditionalModelOptionsCacheByProfile?.[profile.id] ?? []
+  const nextByProfile =
+    next.openaiAdditionalModelOptionsCacheByProfile?.[profile.id] ?? []
+  if (
+    arraysShallowEqual(currentTopLevel, next.openaiAdditionalModelOptionsCache ?? []) &&
+    arraysShallowEqual(currentByProfile, nextByProfile)
+  ) {
+    return
+  }
+  // Reuse the `next` already computed above instead of recomputing inside the
+  // updater. saveGlobalConfig's updater may be called more than once under
+  // contention, but the result is referentially stable for the same profile.
+  saveGlobalConfig(c => ({ ...c, ...applyActiveProfileModelCache(profile, c) }))
+  // Note: keeping the updater-form for write-time recomputation because
+  // saveGlobalConfig's locked updater can re-read a newer base config than
+  // `config` above. Eliminating one of the two calls would risk staleness;
+  // the diff-check above prevents the *write* when nothing changes, which is
+  // the actual cost driver.
+}
+
+function arraysShallowEqual<T>(a: readonly T[], b: readonly T[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
 }
 
 export function deleteProviderProfile(profileId: string): {
@@ -699,6 +884,39 @@ export function deleteProviderProfile(profileId: string): {
     }
     delete cacheByProfile[profileId]
 
+    // Strip the deleted profile id AND its paired per-project model from
+    // every project-level override so we don't leave dangling pointers — or
+    // a stale model — across the user's other projects. Without this, those
+    // projects either keep a stale override that silently falls back to the
+    // global default while still showing as "override set" in /provider, or
+    // they preserve activeModelForProject that would resurface the next time
+    // an override is set in that project (see M4).
+    // Skip the rebuild entirely when no project pointed at the deleted
+    // profile — the common case for users who only set overrides in one or
+    // two projects. Avoids touching the projects map and its downstream
+    // listener cost.
+    const projectsTouched = current.projects
+      ? Object.values(current.projects).some(
+          pc => pc?.activeProviderProfileId === profileId,
+        )
+      : false
+    const nextProjects =
+      projectsTouched && current.projects
+        ? Object.fromEntries(
+            Object.entries(current.projects).map(([key, projectConfig]) => {
+              if (projectConfig?.activeProviderProfileId === profileId) {
+                const {
+                  activeProviderProfileId: _droppedId,
+                  activeModelForProject: _droppedModel,
+                  ...rest
+                } = projectConfig
+                return [key, rest]
+              }
+              return [key, projectConfig]
+            }),
+          )
+        : current.projects
+
     return {
       ...current,
       providerProfiles: nextProfiles,
@@ -710,6 +928,7 @@ export function deleteProviderProfile(profileId: string): {
             openaiAdditionalModelOptionsCacheByProfile: cacheByProfile,
           })
         : [],
+      projects: nextProjects,
     }
   })
 

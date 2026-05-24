@@ -1253,11 +1253,11 @@ export function REPL({
     setStreamingText(f);
   }, [showStreamingText]);
 
-  // Hide the in-progress source line so text streams line-by-line, not
-  // char-by-char. lastIndexOf returns -1 when no newline, giving '' → null.
-  // Guard on showStreamingText so toggling reducedMotion mid-stream
-  // immediately hides the streaming preview.
-  const visibleStreamingText = streamingText && showStreamingText ? streamingText.substring(0, streamingText.lastIndexOf('\n') + 1) || null : null;
+  // Show streaming text as-is; Ink's 16ms render throttle and the deferred-
+  // highlight system handle partial lines safely. The old "clip to last \n"
+  // heuristic caused 2-3 s visual freezes whenever the model streamed a long
+  // paragraph with no newline (substring(0,0) → '' → null → nothing shown).
+  const visibleStreamingText = streamingText && showStreamingText ? streamingText : null;
   const [lastQueryCompletionTime, setLastQueryCompletionTime] = useState(0);
   const [spinnerMessage, setSpinnerMessage] = useState<string | null>(null);
   const [spinnerColor, setSpinnerColor] = useState<keyof Theme | null>(null);

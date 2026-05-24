@@ -4,6 +4,10 @@ import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
+import {
+  resetGlobalConfigForTests,
+  resetProjectConfigForTests,
+} from '../utils/config.js'
 import { createRoot } from '../ink.js'
 import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from './ProviderManager.js'
@@ -428,6 +432,13 @@ async function renderProviderManagerFrame(
 
 afterEach(() => {
   mock.restore()
+  // ProviderManager tests share Bun's worker-level singletons
+  // (TEST_GLOBAL_CONFIG_FOR_TESTING, TEST_PROJECT_CONFIG_FOR_TESTING).
+  // Without this reset, a prior test that sets activeProviderProfileId would
+  // leak a "Clear project override" menu entry into sibling tests and shift
+  // every j-key index in those tests.
+  resetGlobalConfigForTests()
+  resetProjectConfigForTests()
 
   for (const [key, value] of Object.entries(ORIGINAL_ENV)) {
     if (value === undefined) {
@@ -720,6 +731,10 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
       frame.includes('Edit provider'),
   )
 
+  // Menu: Add(0), Set active Global(1), Set active Project(2), Edit(3),
+  // Delete(4), Done(5). Three j-presses move cursor from Add to Edit.
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
   mounted.stdin.write('j')
   await Bun.sleep(25)
   mounted.stdin.write('j')
