@@ -2,7 +2,31 @@ import React, { useMemo } from 'react'
 import { Box, RawAnsi } from '../ink.js'
 import { useMainLoopModel } from '../hooks/useMainLoopModel.js'
 import { eagerParseCliFlag } from '../utils/cliArgs.js'
-import { buildStartupBannerLines, STARTUP_BANNER_WIDTH } from './StartupScreen.js'
+import { readLatestVersion } from '../utils/latestVersionCache.js'
+import { gt } from '../utils/semver.js'
+import {
+  buildStartupBannerLines,
+  STARTUP_BANNER_WIDTH,
+  type UpdateNotice,
+} from './StartupScreen.js'
+
+declare const MACRO: { VERSION: string; DISPLAY_VERSION?: string }
+
+function resolveUpdateNotice(): UpdateNotice | undefined {
+  const cache = readLatestVersion()
+  if (!cache) return undefined
+  const current = MACRO.DISPLAY_VERSION ?? MACRO.VERSION
+  if (!current) return undefined
+  // Suppress when the cache was recorded against a different running version —
+  // the user just updated and the cache hasn't been refreshed yet.
+  if (cache.current !== current) return undefined
+  try {
+    if (!gt(cache.latest, current)) return undefined
+  } catch {
+    return undefined
+  }
+  return { latest: cache.latest }
+}
 
 type Props = {
   /**
@@ -36,7 +60,7 @@ export function StartupBanner({ modelOverride }: Props): React.ReactNode {
   const liveModel = useMainLoopModel()
   const lines = useMemo(() => {
     const override = modelOverride ?? eagerParseCliFlag('--model') ?? liveModel
-    return buildStartupBannerLines(override)
+    return buildStartupBannerLines(override, resolveUpdateNotice())
   }, [modelOverride, liveModel])
   return (
     <Box flexDirection="column" flexShrink={0}>

@@ -135,24 +135,26 @@ async function main(): Promise<void> {
     applySafeConfigEnvironmentVariables()
   }
 
-  // Update check and GitHub token refresh are independent after config is ready —
-  // run in parallel. The inner github ops stay sequential (refresh writes before
-  // hydrate reads). validateProviderEnvForStartupOrExit must follow hydration in
-  // case the active provider is github_copilot (validation reads the hydrated token).
-  await Promise.all([
-    (async () => {
-      const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
-      await runStartupUpdateCheck(args)
-    })(),
-    (async () => {
-      const {
-        hydrateGithubModelsTokenFromSecureStorage,
-        refreshGithubModelsTokenIfNeeded,
-      } = await import('../utils/githubModelsCredentials.js')
-      await refreshGithubModelsTokenIfNeeded()
-      hydrateGithubModelsTokenFromSecureStorage()
-    })(),
-  ])
+  // Fire-and-forget update check: writes ~/.claudio/latest-version.json in the
+  // background so the *next* launch's StartupBanner can render the notice.
+  // Never awaited — must not gate boot on npm view latency. Self-swallows all
+  // errors (see runStartupUpdateCheck).
+  void (async () => {
+    const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
+    await runStartupUpdateCheck(args)
+  })()
+
+  // GitHub token hydration is sequential (refresh writes before hydrate reads).
+  // validateProviderEnvForStartupOrExit must follow hydration in case the
+  // active provider is github_copilot (validation reads the hydrated token).
+  {
+    const {
+      hydrateGithubModelsTokenFromSecureStorage,
+      refreshGithubModelsTokenIfNeeded,
+    } = await import('../utils/githubModelsCredentials.js')
+    await refreshGithubModelsTokenIfNeeded()
+    hydrateGithubModelsTokenFromSecureStorage()
+  }
 
   await validateProviderEnvForStartupOrExit()
 

@@ -11,7 +11,6 @@ describe('getEarlySkipReason', () => {
   const originalArgv1 = process.argv[1]
 
   beforeEach(() => {
-    delete process.env._CLAUDIO_RESPAWNED_AFTER_UPDATE
     delete process.env.CLAUDIO_SKIP_STARTUP_UPDATE
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
@@ -31,11 +30,6 @@ describe('getEarlySkipReason', () => {
 
   test('returns null when nothing triggers a skip', () => {
     expect(getEarlySkipReason([])).toBeNull()
-  })
-
-  test('skips when respawn sentinel is set (avoids loop)', () => {
-    process.env._CLAUDIO_RESPAWNED_AFTER_UPDATE = '1'
-    expect(getEarlySkipReason([])).toBe('already-respawned')
   })
 
   test('skips when CLAUDIO_SKIP_STARTUP_UPDATE=1', () => {
@@ -95,10 +89,9 @@ describe('getEarlySkipReason', () => {
     expect(getEarlySkipReason(['mcp'])).toBe('subcommand')
   })
 
-  test('priority: respawn sentinel beats other conditions', () => {
-    process.env._CLAUDIO_RESPAWNED_AFTER_UPDATE = '1'
+  test('priority: env-skip beats subcommand check', () => {
     process.env.CLAUDIO_SKIP_STARTUP_UPDATE = '1'
-    expect(getEarlySkipReason(['update'])).toBe('already-respawned')
+    expect(getEarlySkipReason(['update'])).toBe('env-skip')
   })
 })
 
@@ -126,7 +119,6 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
   const originalIsTTY = process.stdout.isTTY
 
   beforeEach(() => {
-    delete process.env._CLAUDIO_RESPAWNED_AFTER_UPDATE
     delete process.env.CLAUDIO_SKIP_STARTUP_UPDATE
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
@@ -140,11 +132,6 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
       configurable: true,
       value: originalIsTTY,
     })
-  })
-
-  test('returns silently when sentinel is set (already respawned)', async () => {
-    process.env._CLAUDIO_RESPAWNED_AFTER_UPDATE = '1'
-    await expect(runStartupUpdateCheck(['update'])).resolves.toBeUndefined()
   })
 
   test('returns silently when skip env is set', async () => {

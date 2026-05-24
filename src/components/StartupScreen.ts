@@ -20,6 +20,7 @@ const ESC = '\x1b['
 const RESET = `${ESC}0m`
 const DIM = `${ESC}2m`
 const BOLD = `${ESC}1m`
+const YELLOW = `${ESC}33m`
 
 type RGB = [number, number, number]
 const rgb = (r: number, g: number, b: number) => `${ESC}38;2;${r};${g};${b}m`
@@ -168,7 +169,14 @@ export const STARTUP_BANNER_WIDTH = 80
  * Layout: 4-row pink pixel-art robot on the left, three info lines on the
  * right (rows 0..2). Row 3 of the logo extends below the text.
  */
-export function buildStartupBannerLines(modelOverride?: string): string[] {
+export type UpdateNotice = {
+  latest: string
+}
+
+export function buildStartupBannerLines(
+  modelOverride?: string,
+  updateNotice?: UpdateNotice,
+): string[] {
   const p = detectProvider(modelOverride)
   const out: string[] = []
 
@@ -196,6 +204,12 @@ export function buildStartupBannerLines(modelOverride?: string): string[] {
     const logoCell = paint(LOGO_LINES[i], LOGO_SHADES[i] ?? PINK)
     const text = textRows[i]
     out.push(text ? `${logoCell}${GAP}${text}` : logoCell)
+  }
+
+  if (updateNotice) {
+    out.push(
+      `${YELLOW}▲ New version ${updateNotice.latest} available${RESET} ${DIM}— run: claudio update${RESET}`,
+    )
   }
 
   out.push('')
