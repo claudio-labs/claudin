@@ -9,6 +9,7 @@ import type { Tool, ToolPermissionContext, ToolUseContext } from '../../Tool.js'
 import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
 import { shouldUseSandbox } from '../../tools/BashTool/shouldUseSandbox.js'
 import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
+import { EXIT_PLAN_MODE_V2_TOOL_NAME } from '../../tools/ExitPlanModeTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
 import { REPL_TOOL_NAME } from '../../tools/REPLTool/constants.js'
 import type { AssistantMessage } from '../../types/message.js'
@@ -1044,6 +1045,50 @@ function handleDenialLimitExceeded(
 }
 
 /**
+ * Plan mode hard gate. Returns a deny decision when the active permission
+ * mode is `plan` AND the tool is non-readonly AND none of the escape hatches
+ * apply (allow from tool.checkPermissions, inherited bypass, or ExitPlanMode).
+ *
+ * Lives in a shared helper so both hasPermissionsToUseToolInner (normal path)
+ * and checkRuleBasedPermissions (PreToolUse hook approval path) enforce the
+ * same gate — otherwise a hook returning `allow` would let writes through in
+ * plan mode.
+ */
+function planModeHardDenyIfApplicable(
+  tool: Tool,
+  input: { [key: string]: unknown },
+  context: ToolUseContext,
+  toolPermissionResult: PermissionResult | undefined,
+): PermissionDenyDecision | null {
+  const ctx = context.getAppState().toolPermissionContext
+  if (
+    ctx.mode !== 'plan' ||
+    ctx.isBypassPermissionsModeAvailable ||
+    tool.name === EXIT_PLAN_MODE_V2_TOOL_NAME ||
+    toolPermissionResult?.behavior === 'allow'
+  ) {
+    return null
+  }
+
+  let readOnly = false
+  try {
+    readOnly = tool.isReadOnly(tool.inputSchema.parse(input))
+  } catch {
+    readOnly = false
+  }
+  if (readOnly) return null
+
+  return {
+    behavior: 'deny',
+    message: `Plan mode is active. Tool ${tool.name} is not read-only and cannot run until you call ExitPlanMode. Only the plan file may be edited.`,
+    decisionReason: {
+      type: 'mode',
+      mode: 'plan',
+    },
+  }
+}
+
+/**
  * Check only the rule-based steps of the permission pipeline — the subset
  * that bypassPermissions mode respects (everything that fires before step 2a).
  *
@@ -1110,6 +1155,17 @@ export async function checkRuleBasedPermissions(
     }
     logError(e)
   }
+
+  // 1c.5. Plan mode hard gate (mirrors hasPermissionsToUseToolInner) — must
+  // run here too, otherwise a PreToolUse hook returning `allow` would route
+  // through this function and bypass plan mode.
+  const planDeny = planModeHardDenyIfApplicable(
+    tool,
+    input,
+    context,
+    toolPermissionResult,
+  )
+  if (planDeny) return planDeny
 
   // 1d. Tool implementation denied (catches bash subcommand denies wrapped
   // in subcommandResults — no need to inspect decisionReason.type)
@@ -1207,6 +1263,19 @@ async function hasPermissionsToUseToolInner(
     }
     logError(e)
   }
+
+  // 1c.5. Plan mode hard gate. Runs before 1d–1g so PowerShell-interactive,
+  // explicit ask-rules, and safety checks all become hard-deny in plan mode
+  // without a prompt. Also runs before 2b so plan mode beats user Edit(*)
+  // always-allow rules. Sub-agents inherit toolPermissionContext.mode from
+  // the parent (src/tools/AgentTool/runAgent.ts), so this gate covers them too.
+  const planDeny = planModeHardDenyIfApplicable(
+    tool,
+    input,
+    context,
+    toolPermissionResult,
+  )
+  if (planDeny) return planDeny
 
   // 1d. Tool implementation denied permission
   if (toolPermissionResult?.behavior === 'deny') {

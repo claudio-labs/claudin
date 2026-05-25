@@ -1,0 +1,3 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`plan mode hard gate 1. denies non-readonly tool with passthrough checkPermissions 1`] = `"Plan mode is active. Tool FileEdit is not read-only and cannot run until you call ExitPlanMode. Only the plan file may be edited."`;
