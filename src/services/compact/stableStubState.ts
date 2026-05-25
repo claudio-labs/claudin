@@ -32,6 +32,11 @@ import { roughTokenCountEstimation } from '../tokenEstimation.js'
 /** Minimum token count for a tool_result to be immediately stubbed on display. */
 const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000
 
+// Floor below which clipping is a net loss: the stub itself ("[clipped: ~N
+// tokens from <tool>]") is ~10 tokens, so anything shorter saves nothing and
+// destroys potentially useful context (especially short error messages).
+const MIN_STUB_TOKENS = 100
+
 const DOCUMENT_TOKEN_FALLBACK = 2000
 
 // Worst-case cap on the number of (session, agent) entries we hold. The
@@ -363,6 +368,27 @@ function arrayContainsImage(content: unknown): boolean {
 }
 
 /**
+ * Decide whether an age-based prune pass should clip this block.
+ * Distinct from the explicit clip path (applyStableStubs), which honors
+ * QueryEngine's decision to clip regardless of size or error flag.
+ *
+ * Skip cases:
+ *   - is_error: short error bodies (e.g. interrupted Agent) carry the only
+ *     user-visible context for the failure; clipping destroys them.
+ *   - content under MIN_STUB_TOKENS: the stub itself (~10 tokens) saves
+ *     nothing here and just replaces real text with "[clipped: ~N tokens…]".
+ */
+function shouldAgeStub(block: AnyContentBlock): boolean {
+  if (block?.type !== 'tool_result') return true
+  const tr = block as ToolResultBlockParam
+  if (tr.is_error) return false
+  const existing = tr.content
+  if (existing == null || existing === '') return true
+  if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return true
+  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
+}
+
+/**
  * Attempt to rewrite a single tool_result block as a clip stub.
  * Returns the original block unchanged when: already a stub, empty, or
  * image-bearing. Callers are responsible for any additional pre-filters
@@ -492,6 +518,7 @@ export function pruneOldToolResults<T extends AnyMessage>(
 
     let touched = false
     const newContent = (content as AnyContentBlock[]).map(block => {
+      if (!shouldAgeStub(block)) return block
       const stubbed = stubOneBlock(block, toolNames)
       if (stubbed === block) return block
       touched = true

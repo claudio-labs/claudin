@@ -548,6 +548,41 @@ describe('pruneOldToolResults', () => {
     expect(oldBlock.content).toBeNull()
   })
 
+  test('preserves short tool_results below stub threshold (no token win)', () => {
+    // Repro of the "Error: [clipped: ~12 tokens from Agent]" bug: a short
+    // error from a previous turn was being rewritten as a clip stub, which
+    // saved zero tokens and destroyed the user-visible error text.
+    const shortError = 'Agent execution was interrupted'
+    const messages: Msg[] = [
+      assistantToolUse('toolu_err', 'Agent'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_err', content: shortError }] },
+      assistantToolUse('toolu_cur', 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh' }] },
+    ]
+    const result = pruneOldToolResults(messages, 1)
+    const oldBlock = (result[1].content as Block[])[0] as { content: string }
+    expect(oldBlock.content).toBe(shortError)
+  })
+
+  test('preserves is_error tool_results regardless of size', () => {
+    // Even if an error message somehow grew past the token threshold, we
+    // want to keep it intact — losing error context is worse than the few
+    // tokens we'd save.
+    const errorBody = 'Stack trace:\n' + 'at frame X\n'.repeat(500)
+    const messages: Msg[] = [
+      assistantToolUse('toolu_err', 'Bash'),
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'toolu_err', content: errorBody, is_error: true }],
+      },
+      assistantToolUse('toolu_cur', 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh' }] },
+    ]
+    const result = pruneOldToolResults(messages, 1)
+    const oldBlock = (result[1].content as Block[])[0] as { content: string }
+    expect(oldBlock.content).toBe(errorBody)
+  })
+
   test('keepTurns=6: protects last 6 user turns, prunes everything older', () => {
     // Build 10 turns (each with a big tool_result)
     const msgs: Msg[] = []
