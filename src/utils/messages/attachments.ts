@@ -21,6 +21,7 @@ import {
 import { SEND_MESSAGE_TOOL_NAME } from '../../tools/SendMessageTool/constants.js'
 import { TASK_CREATE_TOOL_NAME } from '../../tools/TaskCreateTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from '../../tools/TaskOutputTool/constants.js'
+import { TASK_STOP_TOOL_NAME } from '../../tools/TaskStopTool/prompt.js'
 import { TASK_UPDATE_TOOL_NAME } from '../../tools/TaskUpdateTool/constants.js'
 import type {
   MessageOrigin,
@@ -592,24 +593,42 @@ You have exited auto mode. The user may now want to interact more directly. You 
         ]
       }
 
-      // For running tasks, warn against spawning a duplicate — this attachment
-      // is only emitted post-compaction, where the original spawn message is gone.
+      // For running tasks, warn against spawning a duplicate. Emitted both
+      // post-compaction (createAsyncAgentAttachmentsIfNeeded) and per-turn
+      // (getActiveBackgroundTaskReminders) so the model retains the
+      // taskId → description/command mapping after the spawn tool_result
+      // scrolls out of context.
       if (attachment.status === 'running') {
-        const parts = [
-          `Background agent "${attachment.description}" (${attachment.taskId}) is still running.`,
-        ]
+        const kindLabel =
+          attachment.taskType === 'local_bash'
+            ? 'Background shell'
+            : attachment.taskType === 'local_agent'
+              ? 'Background agent'
+              : 'Background task'
+
+        const head = attachment.command
+          ? `${kindLabel} "${attachment.description}" (${attachment.taskId}) is still running — command: \`${attachment.command}\`.`
+          : `${kindLabel} "${attachment.description}" (${attachment.taskId}) is still running.`
+
+        const parts = [head]
         if (attachment.deltaSummary) {
           parts.push(`Progress: ${attachment.deltaSummary}`)
         }
-        if (attachment.outputFilePath) {
+
+        const outputHint = attachment.outputFilePath
+          ? `read partial output at ${attachment.outputFilePath}`
+          : `check progress with the ${TASK_OUTPUT_TOOL_NAME} tool`
+
+        if (attachment.taskType === 'local_bash') {
           parts.push(
-            `Do NOT spawn a duplicate. You will be notified when it completes. You can read partial output at ${attachment.outputFilePath} or send it a message with ${SEND_MESSAGE_TOOL_NAME}.`,
+            `Do NOT spawn a duplicate or try to find this process via pkill/lsof/ps. To restart it, use ${TASK_STOP_TOOL_NAME} with task_id "${attachment.taskId}" then re-run the command in background. To inspect it, ${outputHint}.`,
           )
         } else {
           parts.push(
-            `Do NOT spawn a duplicate. You will be notified when it completes. You can check its progress with the ${TASK_OUTPUT_TOOL_NAME} tool or send it a message with ${SEND_MESSAGE_TOOL_NAME}.`,
+            `Do NOT spawn a duplicate. You will be notified when it completes. You can ${outputHint} or send it a message with ${SEND_MESSAGE_TOOL_NAME}.`,
           )
         }
+
         return [
           createUserMessage({
             content: wrapInSystemReminder(parts.join(' ')),

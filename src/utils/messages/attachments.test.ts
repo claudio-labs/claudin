@@ -88,4 +88,43 @@ describe('normalizeAttachmentForAPI', () => {
     } as any)
     expect(out).toEqual([])
   })
+
+  test('task_status running local_bash includes command and TaskStop hint', () => {
+    const out = normalizeAttachmentForAPI({
+      type: 'task_status',
+      taskId: 'bash_abc',
+      taskType: 'local_bash',
+      status: 'running',
+      description: 'dev server',
+      deltaSummary: null,
+      outputFilePath: '/tmp/bash_abc.log',
+      command: 'bun run dev:grpc',
+    } as any)
+    expect(out).toHaveLength(1)
+    const text = (out[0]!.message.content as any).toString()
+    expect(text).toContain('Background shell')
+    expect(text).toContain('bash_abc')
+    expect(text).toContain('bun run dev:grpc')
+    expect(text).toContain('TaskStop')
+    expect(text).toContain('Do NOT spawn a duplicate')
+  })
+
+  test('task_status running local_agent keeps agent wording', () => {
+    const out = normalizeAttachmentForAPI({
+      type: 'task_status',
+      taskId: 'agent_xyz',
+      taskType: 'local_agent',
+      status: 'running',
+      description: 'explore auth',
+      deltaSummary: 'found 3 files',
+      outputFilePath: '/tmp/agent_xyz.log',
+    } as any)
+    expect(out).toHaveLength(1)
+    const text = (out[0]!.message.content as any).toString()
+    expect(text).toContain('Background agent')
+    expect(text).toContain('agent_xyz')
+    expect(text).toContain('explore auth')
+    expect(text).toContain('Progress: found 3 files')
+    expect(text).not.toContain('TaskStop')
+  })
 })

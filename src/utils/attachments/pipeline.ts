@@ -76,6 +76,7 @@ import {
   getTodoReminderAttachments,
   getTaskReminderAttachments,
   getUnifiedTaskAttachments,
+  getActiveBackgroundTaskReminders,
   getVerifyPlanReminderAttachment,
   getCompactionReminderAttachment,
 } from './lifecycle.js'
@@ -332,6 +333,9 @@ export async function getAttachments(
         maybe('unified_tasks', async () =>
           getUnifiedTaskAttachments(toolUseContext),
         ),
+        maybe('active_task_reminders', async () =>
+          getActiveBackgroundTaskReminders(toolUseContext, messages),
+        ),
         maybe('async_hook_responses', async () =>
           getAsyncHookResponseAttachments(),
         ),
@@ -366,11 +370,23 @@ export async function getAttachments(
 
   clearTimeout(timeoutId)
   // Defensive: a getter leaking [undefined] crashes .map(a => a.type) below.
-  return [
+  const merged = [
     ...userAttachmentResults.flat(),
     ...threadAttachmentResults.flat(),
     ...mainThreadAttachmentResults.flat(),
   ].filter((a): a is Attachment => a !== undefined && a !== null)
+
+  // Dedup task_status by taskId — getUnifiedTaskAttachments and the per-turn
+  // reminder may both emit for the same taskId; the unified one wins because
+  // it carries fresh Progress: data. Order in `merged` is preserved by
+  // Promise.all + flat(), so first-seen is the right one to keep.
+  const seenTaskStatusIds = new Set<string>()
+  return merged.filter(a => {
+    if (a.type !== 'task_status') return true
+    if (seenTaskStatusIds.has(a.taskId)) return false
+    seenTaskStatusIds.add(a.taskId)
+    return true
+  })
 }
 
 const INLINE_NOTIFICATION_MODES = new Set(['prompt', 'task-notification'])

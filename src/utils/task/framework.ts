@@ -36,6 +36,7 @@ export type TaskAttachment = {
   status: TaskStatus
   description: string
   deltaSummary: string | null // New output since last attachment
+  command?: string // Shell command, populated for local_bash only
 }
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void

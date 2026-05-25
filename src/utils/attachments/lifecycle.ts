@@ -50,6 +50,8 @@ import {
   applyTaskOffsetsAndEvictions,
 } from '../task/framework.js'
 import { getTaskOutputPath } from '../task/diskOutput.js'
+import type { LocalShellTaskState } from '../../tasks/LocalShellTask/guards.js'
+import type { LocalAgentTaskState } from '../../tasks/LocalAgentTask/LocalAgentTask.js'
 import type { Attachment } from './types.js'
 import {
   PLAN_MODE_ATTACHMENT_CONFIG,
@@ -640,7 +642,205 @@ export async function getUnifiedTaskAttachments(
     description: taskAttachment.description,
     deltaSummary: taskAttachment.deltaSummary,
     outputFilePath: getTaskOutputPath(taskAttachment.taskId),
+    command: taskAttachment.command,
   }))
+}
+
+const MAX_COMMAND_LEN_IN_REMINDER = 500
+
+function truncateForReminder(s: string, n: number): string {
+  return s.length <= n ? s : `${s.slice(0, n)}… [truncated]`
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Build a word-boundary regex for a taskId. We can't use plain `\b<id>\b`
+ * because `_` is a word char — `\bbash_dev\b` would match inside
+ * `bash_dev_helper`. Use custom non-word-or-underscore boundaries.
+ */
+function makeTaskIdMatcher(id: string): RegExp {
+  return new RegExp(`(?<![A-Za-z0-9_])${escapeRegExp(id)}(?![A-Za-z0-9_])`)
+}
+
+function extractStringsFromContent(content: unknown, out: string[]): void {
+  if (content == null) return
+  if (typeof content === 'string') {
+    out.push(content)
+    return
+  }
+  if (Array.isArray(content)) {
+    for (const item of content) extractStringsFromContent(item, out)
+    return
+  }
+  if (typeof content === 'object') {
+    const obj = content as Record<string, unknown>
+    // Anthropic content blocks: text, tool_use(id+input), tool_result(tool_use_id+content)
+    if (typeof obj.text === 'string') out.push(obj.text)
+    if (typeof obj.id === 'string') out.push(obj.id)
+    if (typeof obj.tool_use_id === 'string') out.push(obj.tool_use_id)
+    if (obj.input !== undefined) extractStringsFromContent(obj.input, out)
+    if (obj.content !== undefined) extractStringsFromContent(obj.content, out)
+  }
+}
+
+function collectStringsFromMessage(message: Message): string[] {
+  const out: string[] = []
+  if (message.type === 'attachment') {
+    extractStringsFromContent(message.attachment, out)
+    return out
+  }
+  if (message.type === 'user' || message.type === 'assistant') {
+    extractStringsFromContent(message.message?.content, out)
+  }
+  return out
+}
+
+/**
+ * Collect taskIds the model already "knows about" in current context:
+ *
+ * 1. Mentioned in any tool_use / tool_result / text block since the most
+ *    recent real human turn (just-spawned this turn).
+ * 2. Mentioned in any `attachment` message of type `task_status` ANYWHERE in
+ *    the transcript (compact-injected reminders from
+ *    createAsyncAgentAttachmentsIfNeeded survive across the human turn and
+ *    keep the mapping visible).
+ *
+ * Matches taskIds with custom word boundaries so `bash_dev` doesn't false-positive
+ * on `bash_dev_helper`. Used to suppress per-turn re-emission.
+ */
+function collectTaskIdsMentionedSinceLastHumanTurn(
+  messages: Message[],
+  candidateTaskIds: string[],
+): Set<string> {
+  const mentioned = new Set<string>()
+  if (candidateTaskIds.length === 0) return mentioned
+  const matchers = candidateTaskIds.map(id => ({ id, re: makeTaskIdMatcher(id) }))
+
+  // Pass 1: full transcript — look only at attachment/task_status messages.
+  // These are persistent reminders (compact path) that already pin the mapping.
+  for (const message of messages) {
+    if (message?.type !== 'attachment') continue
+    if (message.attachment?.type !== 'task_status') continue
+    const taskId = (message.attachment as { taskId?: unknown }).taskId
+    if (typeof taskId !== 'string') continue
+    for (const { id } of matchers) {
+      if (id === taskId) mentioned.add(id)
+    }
+    if (mentioned.size === candidateTaskIds.length) return mentioned
+  }
+
+  // Pass 2: tail since last human turn — catches just-spawned tool_results.
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (
+      message?.type === 'user' &&
+      !message.isMeta &&
+      !hasToolResultContent(message.message.content)
+    ) {
+      break
+    }
+    if (!message) continue
+    const strings = collectStringsFromMessage(message)
+    for (const { id, re } of matchers) {
+      if (mentioned.has(id)) continue
+      for (const s of strings) {
+        if (re.test(s)) {
+          mentioned.add(id)
+          break
+        }
+      }
+    }
+    if (mentioned.size === candidateTaskIds.length) break
+  }
+  return mentioned
+}
+
+/**
+ * Per-turn reminder of background tasks the model spawned earlier but whose
+ * spawn tool_result has likely scrolled out of context (e.g. after snip /
+ * compaction). Emits a `task_status / running` attachment per surviving task,
+ * which the renderer in messages/attachments.ts:597 turns into a
+ * "Background shell/agent ... still running" system reminder.
+ *
+ * Skips:
+ * - tasks not currently running
+ * - tasks spawned by the current agent (their context already has the spawn)
+ * - foreground bash tasks (the spawn tool_result is in the current turn)
+ * - tasks whose id is still mentioned in the tail since the last human turn
+ *   (the model just spawned them this turn or referenced them in tool results)
+ *
+ * Dedup vs `getUnifiedTaskAttachments` (which may emit a `task_status` for the
+ * same taskId when it has a fresh output delta) is handled in pipeline.ts —
+ * the unified attachment wins because it carries `Progress:` data.
+ */
+export async function getActiveBackgroundTaskReminders(
+  toolUseContext: ToolUseContext,
+  messages: Message[] | undefined,
+): Promise<Attachment[]> {
+  const appState = toolUseContext.getAppState()
+  const tasks = Object.values(appState.tasks ?? {}) as (
+    | LocalShellTaskState
+    | LocalAgentTaskState
+    | { type: string; status: string; agentId?: string; id: string }
+  )[]
+  const candidates: (LocalShellTaskState | LocalAgentTaskState)[] = []
+  for (const task of tasks) {
+    if (task.status !== 'running') continue
+    // Skip only sub-agent-owned tasks viewed by their owner. Main thread
+    // (undefined agentId) still gets reminders so post-compaction context
+    // is restored — the recently-mentioned filter below handles same-turn dedup.
+    if (
+      toolUseContext.agentId !== undefined &&
+      task.agentId === toolUseContext.agentId
+    ) {
+      continue
+    }
+    if (task.type === 'local_bash') {
+      const shell = task as LocalShellTaskState
+      if (!shell.isBackgrounded) continue
+      candidates.push(shell)
+    } else if (task.type === 'local_agent') {
+      candidates.push(task as LocalAgentTaskState)
+    }
+  }
+  if (candidates.length === 0) return []
+
+  const candidateIds = candidates.map(t => t.id)
+  const recentlyMentioned = collectTaskIdsMentionedSinceLastHumanTurn(
+    messages ?? [],
+    candidateIds,
+  )
+
+  const out: Attachment[] = []
+  for (const task of candidates) {
+    if (recentlyMentioned.has(task.id)) continue
+    if (task.type === 'local_bash') {
+      out.push({
+        type: 'task_status',
+        taskId: task.id,
+        taskType: 'local_bash',
+        status: 'running',
+        description: truncateForReminder(task.description ?? task.command, MAX_COMMAND_LEN_IN_REMINDER),
+        deltaSummary: null,
+        outputFilePath: getTaskOutputPath(task.id),
+        command: truncateForReminder(task.command, MAX_COMMAND_LEN_IN_REMINDER),
+      })
+    } else {
+      out.push({
+        type: 'task_status',
+        taskId: task.id,
+        taskType: 'local_agent',
+        status: 'running',
+        description: truncateForReminder(task.description, MAX_COMMAND_LEN_IN_REMINDER),
+        deltaSummary: null,
+        outputFilePath: getTaskOutputPath(task.id),
+      })
+    }
+  }
+  return out
 }
 
 export function getVerifyPlanReminderTurnCount(messages: Message[]): number {

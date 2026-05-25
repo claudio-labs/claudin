@@ -349,6 +349,7 @@ export type Attachment =
       description: string
       deltaSummary: string | null
       outputFilePath?: string
+      command?: string
     }
   | AsyncHookResponseAttachment
   | {
