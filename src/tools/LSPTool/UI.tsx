@@ -52,6 +52,25 @@ const OPERATION_LABELS: Record<Input['operation'], {
   outgoingCalls: {
     singular: 'callee',
     plural: 'callees'
+  },
+  rename: {
+    singular: 'rename',
+    plural: 'renames',
+    special: 'applied'
+  },
+  codeActions: {
+    singular: 'action',
+    plural: 'actions'
+  },
+  applyCodeAction: {
+    singular: 'edit',
+    plural: 'edits',
+    special: 'applied'
+  },
+  renameFile: {
+    singular: 'file rename',
+    plural: 'file renames',
+    special: 'applied'
   }
 };
 

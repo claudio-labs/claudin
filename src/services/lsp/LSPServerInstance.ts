@@ -64,6 +64,13 @@ export type LSPServerInstance = {
   ): void
   /** Subscribe to server state transitions (running, error, stopped, etc.) */
   onStateChange(handler: () => void): () => void
+  /**
+   * Server capabilities reported during initialize. undefined until the
+   * server has been initialized; consumers should null-check before
+   * dispatching capability-gated requests (textDocument/rename, codeAction,
+   * etc.) to avoid pointless round-trips to servers that don't support them.
+   */
+  readonly capabilities: import('vscode-languageserver-protocol').ServerCapabilities | undefined
 }
 
 /**
@@ -503,6 +510,9 @@ export function createLSPServerInstance(
     onStateChange(handler: () => void): () => void {
       stateChangeListeners.add(handler)
       return () => stateChangeListeners.delete(handler)
+    },
+    get capabilities() {
+      return client.capabilities
     },
   }
 }

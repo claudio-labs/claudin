@@ -1412,6 +1412,110 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   }
 }
 
+/**
+ * Aggregated write-permission check across N paths for batch operations
+ * (e.g. an LSP WorkspaceEdit that touches multiple files in one go).
+ *
+ * Semantics:
+ * - If ANY path resolves to `deny` → returns `deny` listing the blocked paths
+ *   (the caller must abort without writing anything).
+ * - Else if ANY path resolves to `ask` → returns a single `ask` covering the
+ *   full set, with the per-path messages joined for the prompt.
+ * - Else → `allow`.
+ *
+ * Implemented by delegating to `checkWritePermissionForTool` per-path using a
+ * synthetic tool wrapper, so all existing rules (deny / ask / acceptEdits /
+ * safety checks / internal paths) are honored identically.
+ */
+export function checkBatchWritePermission(
+  toolName: string,
+  paths: readonly string[],
+  toolPermissionContext: ToolPermissionContext,
+  options?: { confirmThreshold?: number },
+): PermissionDecision {
+  // bypassPermissions opts out of every prompt. The framework normally
+  // short-circuits here at hasPermissionsToUseTool, but this helper is also
+  // invoked from tool.checkPermissions (LSPTool preflight), which sits
+  // upstream of that gate. Honor the bypass directly so per-path 'ask'
+  // results inside a working directory don't surface as prompts.
+  if (toolPermissionContext.mode === 'bypassPermissions') {
+    return {
+      behavior: 'allow',
+      updatedInput: {},
+      decisionReason: { type: 'mode', mode: 'bypassPermissions' },
+    }
+  }
+  type SyntheticInput = { file_path: string }
+  const denied: { path: string; message: string }[] = []
+  const asked: { path: string; message: string }[] = []
+
+  for (const p of paths) {
+    const syntheticTool = {
+      name: toolName,
+      getPath(input: SyntheticInput): string {
+        return input.file_path
+      },
+    } as unknown as Tool<z.ZodType<SyntheticInput>>
+    const decision = checkWritePermissionForTool(
+      syntheticTool,
+      { file_path: p },
+      toolPermissionContext,
+    )
+    if (decision.behavior === 'deny') {
+      denied.push({ path: p, message: decision.message })
+    } else if (decision.behavior === 'ask') {
+      asked.push({ path: p, message: decision.message })
+    }
+  }
+
+  if (denied.length > 0) {
+    return {
+      behavior: 'deny',
+      message: `Permission to write to the following paths has been denied:\n${denied
+        .map(d => `  - ${d.path}`)
+        .join('\n')}`,
+      decisionReason: { type: 'other', reason: 'batch deny' },
+    }
+  }
+
+  if (asked.length > 0) {
+    return {
+      behavior: 'ask',
+      message: `Claude requested permissions to write to ${asked.length} file${asked.length === 1 ? '' : 's'}:\n${asked
+        .map(a => `  - ${a.path}`)
+        .join('\n')}`,
+      decisionReason: { type: 'other', reason: 'batch ask' },
+    }
+  }
+
+  // Even when every individual path is auto-approved (e.g. acceptEdits mode),
+  // a large batch should still prompt — a 50-file rename is qualitatively
+  // different from a single edit. Threshold is opt-in via settings.json
+  // (lspWorkspaceEditConfirmThreshold) and passed through by the caller.
+  // bypassPermissions explicitly opts out of all prompts, so the threshold
+  // must not reintroduce one there.
+  if (
+    toolPermissionContext.mode !== 'bypassPermissions' &&
+    options?.confirmThreshold !== undefined &&
+    options.confirmThreshold > 0 &&
+    paths.length >= options.confirmThreshold
+  ) {
+    return {
+      behavior: 'ask',
+      message: `Batch write touches ${paths.length} file${paths.length === 1 ? '' : 's'} (threshold ${options.confirmThreshold}):\n${paths
+        .map(p => `  - ${p}`)
+        .join('\n')}`,
+      decisionReason: { type: 'other', reason: 'batch threshold' },
+    }
+  }
+
+  return {
+    behavior: 'allow',
+    updatedInput: {},
+    decisionReason: { type: 'other', reason: 'batch allow' },
+  }
+}
+
 export function generateSuggestions(
   filePath: string,
   operationType: 'read' | 'write' | 'create',

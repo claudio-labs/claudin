@@ -42,7 +42,25 @@ import {
   formatWorkspaceSymbolResult,
 } from './formatters.js'
 import { DESCRIPTION, LSP_TOOL_NAME } from './prompt.js'
-import { lspToolInputSchema } from './schemas.js'
+import {
+  isLSPWriteOperation,
+  lspToolInputSchema,
+} from './schemas.js'
+import {
+  handleApplyCodeAction,
+  handleCodeActions,
+  handleRename,
+  handleRenameFile,
+  type WriteOpDeps,
+} from './writeOps.js'
+import {
+  buildAggregatedDiffPreview,
+  prepareWriteOp,
+  type PrepInput,
+} from './writeOpPrep.js'
+import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
+import { getGlobalConfig } from '../../utils/config.js'
+import type { ToolPermissionContext } from '../../types/permissions.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
@@ -69,6 +87,10 @@ const inputSchema = lazySchema(() =>
         'prepareCallHierarchy',
         'incomingCalls',
         'outgoingCalls',
+        'rename',
+        'codeActions',
+        'applyCodeAction',
+        'renameFile',
       ])
       .describe('The LSP operation to perform'),
     filePath: z.string().describe('The absolute or relative path to the file'),
@@ -76,12 +98,48 @@ const inputSchema = lazySchema(() =>
       .number()
       .int()
       .positive()
+      .optional()
       .describe('The line number (1-based, as shown in editors)'),
     character: z
       .number()
       .int()
       .positive()
+      .optional()
       .describe('The character offset (1-based, as shown in editors)'),
+    endLine: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        'End line (1-based) — codeActions only; defaults to start line',
+      ),
+    endCharacter: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        'End character (1-based) — codeActions only; defaults to start character',
+      ),
+    newName: z
+      .string()
+      .optional()
+      .describe('New name — rename only'),
+    only: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'CodeActionKind filter — codeActions only (e.g. ["quickfix"])',
+      ),
+    actionId: z
+      .string()
+      .optional()
+      .describe('Synthetic action id — applyCodeAction only'),
+    newPath: z
+      .string()
+      .optional()
+      .describe('Destination path — renameFile only'),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -99,6 +157,10 @@ const outputSchema = lazySchema(() =>
         'prepareCallHierarchy',
         'incomingCalls',
         'outgoingCalls',
+        'rename',
+        'codeActions',
+        'applyCodeAction',
+        'renameFile',
       ])
       .describe('The LSP operation that was performed'),
     result: z.string().describe('The formatted result of the LSP operation'),
@@ -146,8 +208,8 @@ export const LSPTool = buildTool({
   isConcurrencySafe() {
     return true
   },
-  isReadOnly() {
-    return true
+  isReadOnly(input) {
+    return !isLSPWriteOperation(input.operation)
   },
   getPath({ filePath }): string {
     return expandPath(filePath)
@@ -209,11 +271,22 @@ export const LSPTool = buildTool({
   },
   async checkPermissions(input, context): Promise<PermissionDecision> {
     const appState = context.getAppState()
-    return checkReadPermissionForTool(
-      LSPTool,
-      input,
-      appState.toolPermissionContext,
-    )
+    // Read ops (codeActions is read-only) stay on the read-permission gate.
+    if (!isLSPWriteOperation(input.operation)) {
+      return checkReadPermissionForTool(
+        LSPTool,
+        input,
+        appState.toolPermissionContext,
+      )
+    }
+    // For write-ops we need every affected path before deciding — paths only
+    // come back from the LSP server. Run the pre-flight here, cache the
+    // normalized edit for call() to reuse, then defer to checkBatchWrite-
+    // Permission with an aggregated diff in the prompt payload. A null prep
+    // means the op has nothing to do (no capability, unknown actionId, etc.)
+    // — return allow and let call() emit the canonical user-facing message.
+    const decision = await preflightWriteOp(input, appState.toolPermissionContext)
+    return decision
   },
   async prompt() {
     return DESCRIPTION
@@ -251,9 +324,6 @@ export const LSPTool = buildTool({
       }
     }
 
-    // Map operation to LSP method and prepare params
-    const { method, params } = getMethodAndParams(input, absolutePath)
-
     try {
       // Ensure file is open in LSP server before making requests
       // Most LSP servers require textDocument/didOpen before operations
@@ -277,6 +347,44 @@ export const LSPTool = buildTool({
         }
       }
 
+      // ---- T5.1 write-ops dispatch ----
+      if (
+        input.operation === 'rename' ||
+        input.operation === 'codeActions' ||
+        input.operation === 'applyCodeAction' ||
+        input.operation === 'renameFile'
+      ) {
+        // Block disk-writing ops when invoked from a known read-only
+        // sub-agent. codeActions is read-only and allowed.
+        const agentType = _context.agentType
+        const READ_ONLY_AGENTS = new Set(['Explore', 'Plan', 'WebResearcher'])
+        if (
+          input.operation !== 'codeActions' &&
+          agentType !== undefined &&
+          READ_ONLY_AGENTS.has(agentType)
+        ) {
+          const output: Output = {
+            operation: input.operation,
+            result: `LSP ${input.operation} is a write operation and is not available to the ${agentType} sub-agent. Use the main agent for refactors.`,
+            filePath: input.filePath,
+          }
+          return { data: output }
+        }
+        const appState = _context.getAppState()
+        return await dispatchWriteOp(
+          input,
+          absolutePath,
+          {
+            manager,
+            toolPermissionContext: appState.toolPermissionContext,
+            cwd,
+            readFileState: _context.readFileState,
+          },
+        )
+      }
+
+      // Map operation to LSP method and prepare params (read ops only)
+      const { method, params } = getMethodAndParams(input, absolutePath)
       // Send request to LSP server
       let result = await manager.sendRequest(absolutePath, method, params)
 
@@ -422,6 +530,142 @@ export const LSPTool = buildTool({
 } satisfies ToolDef<InputSchema, Output>)
 
 /**
+ * Build the input descriptor used as the prep cache key. Returns null when
+ * the input is missing fields required by the operation — validation has
+ * already accepted the input, but the discriminated union in schemas only
+ * enforces shape, not "every required combination". Returning null lets
+ * the call-site emit the right error from call() instead of duplicating
+ * messages here.
+ */
+function derivePrepInput(input: Input, absolutePath: string): PrepInput | null {
+  if (input.operation === 'rename') {
+    if (
+      input.line === undefined ||
+      input.character === undefined ||
+      !input.newName
+    ) {
+      return null
+    }
+    return {
+      operation: 'rename',
+      absolutePath,
+      line: input.line,
+      character: input.character,
+      newName: input.newName,
+    }
+  }
+  if (input.operation === 'applyCodeAction') {
+    if (!input.actionId) return null
+    return {
+      operation: 'applyCodeAction',
+      absolutePath,
+      actionId: input.actionId,
+    }
+  }
+  if (input.operation === 'renameFile') {
+    if (!input.newPath) return null
+    return {
+      operation: 'renameFile',
+      absolutePath,
+      absoluteNewPath: expandPath(input.newPath),
+    }
+  }
+  return null
+}
+
+/**
+ * Pre-flight a write-op from inside checkPermissions: ensure the file is
+ * open in the server, call the LSP request that produces the WorkspaceEdit,
+ * normalize it, and ask checkBatchWritePermission. When the gate returns
+ * `ask`, an aggregated diff preview is embedded in the prompt message so
+ * the user sees the actual changes rather than a path list.
+ */
+async function preflightWriteOp(
+  input: Input,
+  toolPermissionContext: ToolPermissionContext,
+): Promise<PermissionDecision> {
+  const absolutePath = expandPath(input.filePath)
+
+  const status = getInitializationStatus()
+  if (status.status === 'pending') {
+    await waitForInitialization()
+  }
+  const manager = getLspServerManager()
+  if (!manager) {
+    // Defer the failure-mode message to call(), which already handles it.
+    return { behavior: 'allow', updatedInput: input }
+  }
+
+  // Ensure the file is opened on the server before the request — most
+  // servers reject textDocument/* requests against unknown documents.
+  // Mirrors the open-on-demand logic in call() so prep can run identically.
+  if (!manager.isFileOpen(absolutePath)) {
+    try {
+      const handle = await open(absolutePath, 'r')
+      try {
+        const stats = await handle.stat()
+        if (stats.size > MAX_LSP_FILE_SIZE_BYTES) {
+          // File too large — let call() surface the canonical error.
+          return { behavior: 'allow', updatedInput: input }
+        }
+        const content = await handle.readFile({ encoding: 'utf-8' })
+        await manager.openFile(absolutePath, content)
+      } finally {
+        await handle.close()
+      }
+    } catch (e) {
+      logForDebugging(
+        `LSP preflight openFile failed for ${input.filePath}: ${toError(e).message}`,
+      )
+      return { behavior: 'allow', updatedInput: input }
+    }
+  }
+
+  const prepInput = derivePrepInput(input, absolutePath)
+  if (prepInput === null) {
+    return { behavior: 'allow', updatedInput: input }
+  }
+
+  let prep
+  try {
+    prep = await prepareWriteOp(prepInput, { manager })
+  } catch (e) {
+    logForDebugging(
+      `LSP preflight prepareWriteOp threw: ${toError(e).message}`,
+    )
+    return { behavior: 'allow', updatedInput: input }
+  }
+  if (!prep) {
+    return { behavior: 'allow', updatedInput: input }
+  }
+
+  const configured = getGlobalConfig().lspWorkspaceEditConfirmThreshold
+  const confirmThreshold = configured === undefined ? 20 : configured
+  const decision = checkBatchWritePermission(
+    LSP_TOOL_NAME,
+    prep.paths,
+    toolPermissionContext,
+    { confirmThreshold },
+  )
+
+  if (decision.behavior !== 'ask') return decision
+
+  // Embed the aggregated diff (capped at 50 lines) in the prompt so the
+  // user sees the actual changes instead of a path list. Defaults to an
+  // inline marker on read failures so the prompt still renders.
+  let preview: string
+  try {
+    preview = await buildAggregatedDiffPreview(prep, { maxLines: 50 })
+  } catch (e) {
+    preview = `(diff preview unavailable: ${toError(e).message})`
+  }
+  return {
+    ...decision,
+    message: `${decision.message}\n\n${preview}`,
+  }
+}
+
+/**
  * Maps LSPTool operation to LSP method and params
  */
 function getMethodAndParams(
@@ -429,10 +673,12 @@ function getMethodAndParams(
   absolutePath: string,
 ): { method: string; params: unknown } {
   const uri = pathToFileURL(absolutePath).href
-  // Convert from 1-based (user-friendly) to 0-based (LSP protocol)
+  // Read ops require 1-based line/character (validated by the discriminated
+  // union before reaching this function). The regular inputSchema marks
+  // them optional only because write-ops have different position semantics.
   const position = {
-    line: input.line - 1,
-    character: input.character - 1,
+    line: (input.line ?? 1) - 1,
+    character: (input.character ?? 1) - 1,
   }
 
   switch (input.operation) {
@@ -509,6 +755,10 @@ function getMethodAndParams(
           position,
         },
       }
+    default:
+      // Write-ops are dispatched before reaching this function. This branch is
+      // unreachable; the throw exists only to satisfy exhaustiveness checks.
+      throw new Error(`getMethodAndParams called with write op: ${input.operation}`)
   }
 }
 
@@ -825,6 +1075,9 @@ function formatResult(
           calls.length > 0 ? countUniqueFilesFromOutgoingCalls(calls) : 0,
       }
     }
+    default:
+      // Write-op results are formatted by writeOps.ts handlers, not here.
+      throw new Error(`formatResult called with write op: ${operation}`)
   }
 }
 
@@ -857,4 +1110,92 @@ function countUniqueFilesFromOutgoingCalls(
 ): number {
   const validUris = calls.map(call => call.to?.uri).filter(uri => uri)
   return new Set(validUris).size
+}
+
+/**
+ * Dispatch to the appropriate write-op handler. Each handler validates its
+ * operation-specific required fields (the discriminated union has already
+ * checked at validateInput time, so this is type narrowing).
+ */
+async function dispatchWriteOp(
+  input: Input,
+  absolutePath: string,
+  deps: WriteOpDeps,
+): Promise<{ data: Output }> {
+  let formatted: string
+  let fileCount: number | undefined
+  let resultCount: number | undefined
+
+  if (input.operation === 'rename') {
+    if (!input.newName || input.line === undefined || input.character === undefined) {
+      throw new Error('rename requires line, character, and newName')
+    }
+    const r = await handleRename(
+      {
+        filePath: input.filePath,
+        absolutePath,
+        line: input.line,
+        character: input.character,
+        newName: input.newName,
+      },
+      deps,
+    )
+    formatted = r.formatted
+    fileCount = r.fileCount
+  } else if (input.operation === 'codeActions') {
+    if (input.line === undefined || input.character === undefined) {
+      throw new Error('codeActions requires line and character')
+    }
+    const r = await handleCodeActions(
+      {
+        filePath: input.filePath,
+        absolutePath,
+        line: input.line,
+        character: input.character,
+        endLine: input.endLine,
+        endCharacter: input.endCharacter,
+        only: input.only,
+      },
+      deps,
+    )
+    formatted = r.formatted
+    resultCount = r.resultCount
+  } else if (input.operation === 'applyCodeAction') {
+    if (!input.actionId) {
+      throw new Error('applyCodeAction requires actionId')
+    }
+    const r = await handleApplyCodeAction(
+      { filePath: input.filePath, absolutePath, actionId: input.actionId },
+      deps,
+    )
+    formatted = r.formatted
+    fileCount = r.fileCount
+  } else if (input.operation === 'renameFile') {
+    if (!input.newPath) {
+      throw new Error('renameFile requires newPath')
+    }
+    const r = await handleRenameFile(
+      {
+        filePath: input.filePath,
+        absolutePath,
+        newPath: input.newPath,
+        absoluteNewPath: expandPath(input.newPath),
+      },
+      deps,
+    )
+    formatted = r.formatted
+    fileCount = r.fileCount
+  } else {
+    throw new Error(`unknown write op: ${input.operation as string}`)
+  }
+
+  return {
+    data: {
+      operation: input.operation,
+      result: formatted,
+      filePath: input.filePath,
+      resultCount,
+      fileCount,
+    },
+  }
 }

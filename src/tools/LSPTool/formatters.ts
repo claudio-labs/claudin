@@ -3,6 +3,7 @@ import type {
   CallHierarchyIncomingCall,
   CallHierarchyItem,
   CallHierarchyOutgoingCall,
+  CodeAction,
   DocumentSymbol,
   Hover,
   Location,
@@ -15,6 +16,7 @@ import type {
 import { logForDebugging } from '../../utils/debug.js'
 import { errorMessage } from '../../utils/errors.js'
 import { plural } from '../../utils/stringUtils.js'
+import type { ApplyResult } from './workspaceEdit.js'
 
 /**
  * Formats a URI by converting it to a relative path if possible.
@@ -589,4 +591,98 @@ export function formatOutgoingCallsResult(
   }
 
   return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Write-op formatters (T5.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Format the outcome of a WorkspaceEdit (rename, applyCodeAction, renameFile).
+ * Returns lines describing modified files and any renames performed.
+ */
+export function formatWorkspaceEditResult(
+  result: ApplyResult,
+  cwd: string,
+): string {
+  const lines: string[] = []
+  const fileCount = result.modifiedPaths.length
+  const renameCount = result.renamedPaths.length
+
+  if (fileCount === 0 && renameCount === 0) {
+    return 'No changes applied (the workspace edit was empty).'
+  }
+
+  if (fileCount > 0) {
+    lines.push(`Modified ${fileCount} file${fileCount === 1 ? '' : 's'}:`)
+    for (const p of result.modifiedPaths) {
+      const before = result.beforeContents.get(p)
+      const after = result.afterContents.get(p)
+      let changeSummary = ''
+      if (before !== undefined && after !== undefined) {
+        const beforeLines = before.split('\n').length
+        const afterLines = after.split('\n').length
+        changeSummary = ` (${beforeLines} -> ${afterLines} lines)`
+      }
+      const rel = relative(cwd, p).replaceAll('\\', '/')
+      const display = rel.startsWith('..') ? p : rel
+      lines.push(`  ${display}${changeSummary}`)
+    }
+  }
+
+  if (renameCount > 0) {
+    lines.push(`Renamed ${renameCount} file${renameCount === 1 ? '' : 's'}:`)
+    for (const r of result.renamedPaths) {
+      const fromRel = relative(cwd, r.oldPath).replaceAll('\\', '/')
+      const toRel = relative(cwd, r.newPath).replaceAll('\\', '/')
+      const fromDisplay = fromRel.startsWith('..') ? r.oldPath : fromRel
+      const toDisplay = toRel.startsWith('..') ? r.newPath : toRel
+      lines.push(`  ${fromDisplay} -> ${toDisplay}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+export type FormattedCodeAction = {
+  actionId: string
+  title: string
+  kind?: string
+  isPreferred?: boolean
+  disabled?: string
+  unsupported?: true
+}
+
+/**
+ * Format a list of CodeActions for the agent. Marks command-only actions
+ * (no `edit`, no `data` for resolve) as unsupported so the model knows
+ * applyCodeAction will reject them.
+ */
+export function formatCodeActionList(actions: FormattedCodeAction[]): string {
+  if (actions.length === 0) {
+    return 'No code actions available at this position.'
+  }
+  const lines: string[] = [
+    `Found ${actions.length} code action${actions.length === 1 ? '' : 's'}:`,
+  ]
+  for (const a of actions) {
+    const flags: string[] = []
+    if (a.kind) flags.push(a.kind)
+    if (a.isPreferred) flags.push('preferred')
+    if (a.disabled) flags.push(`disabled: ${a.disabled}`)
+    if (a.unsupported) flags.push('unsupported: command-only')
+    const tag = flags.length > 0 ? ` [${flags.join('; ')}]` : ''
+    lines.push(`  ${a.actionId}: ${a.title}${tag}`)
+  }
+  return lines.join('\n')
+}
+
+/**
+ * A CodeAction with neither an `edit` (final or resolvable) nor a `data`
+ * blob can only be applied via the server-side `command` channel, which we
+ * don't support today. Surfaced as `unsupported` in the list and rejected
+ * by applyCodeAction.
+ */
+export function isCommandOnlyAction(action: CodeAction): boolean {
+  return action.edit === undefined && action.data === undefined
 }

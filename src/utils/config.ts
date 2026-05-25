@@ -568,6 +568,16 @@ export type GlobalConfig = {
   lspRecommendationNeverPlugins?: string[] // Plugin IDs to never suggest
   lspRecommendationIgnoredCount?: number // Track ignored recommendations (stops after 5)
 
+  // T5.1 LSPTool write-ops (rename / applyCodeAction / renameFile) safety
+  // limits. The runtime defaults in workspaceEdit.ts (maxFiles=200,
+  // maxBytes=50MB) are authoritative; these keys are reserved for future
+  // user overrides via settings.json. confirmThreshold reserved for the UI
+  // prompt — emit a confirmation when a WorkspaceEdit touches more than N
+  // files (default 20).
+  lspWorkspaceEditConfirmThreshold?: number
+  lspWorkspaceEditMaxFiles?: number
+  lspWorkspaceEditMaxBytes?: number
+
   // Claude Code hint protocol state (<claude-code-hint /> tags from CLIs/SDKs).
   // Nested by hint type so future types (docs, mcp, ...) slot in without new
   // top-level keys.
@@ -763,6 +773,9 @@ export const GLOBAL_CONFIG_KEYS = [
   'lspRecommendationDisabled',
   'lspRecommendationNeverPlugins',
   'lspRecommendationIgnoredCount',
+  'lspWorkspaceEditConfirmThreshold',
+  'lspWorkspaceEditMaxFiles',
+  'lspWorkspaceEditMaxBytes',
   'copyFullResponse',
   'copyOnSelect',
   'flickerFreeMode',

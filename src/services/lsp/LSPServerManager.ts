@@ -1,3 +1,4 @@
+import { promises as fsp } from 'fs'
 import * as path from 'path'
 import { pathToFileURL } from 'url'
 import { logForDebugging } from '../../utils/debug.js'
@@ -40,6 +41,26 @@ export type LSPServerManager = {
   closeFile(filePath: string): Promise<void>
   /** Check if a file is already open on a compatible LSP server */
   isFileOpen(filePath: string): boolean
+  /**
+   * Notify the server that one or more files were renamed (LSP 3.16+
+   * workspace/didRenameFiles). Skipped silently when the server didn't
+   * advertise the corresponding `workspace.fileOperations.didRename`
+   * capability — the manager picks the server responsible for the new
+   * path and sends one notification with all rename pairs. Also rotates
+   * per-document tracking by closing the old URI (if open) and opening
+   * the new URI with on-disk contents so future textDocument requests
+   * resolve to the renamed file.
+   */
+  notifyDidRenameFiles(
+    renames: ReadonlyArray<{ oldPath: string; newPath: string }>,
+  ): Promise<void>
+  /**
+   * Drop local didOpen tracking for a file without notifying the server.
+   * Use after a sync notification (didChange/didRenameFiles) failed so the
+   * next request forces a fresh didOpen with current disk contents rather
+   * than letting the server keep stale AST state.
+   */
+  invalidateOpenFile(filePath: string): void
 }
 
 /**
@@ -404,6 +425,96 @@ export function createLSPServerManager(): LSPServerManager {
     return openedFiles.has(fileUri)
   }
 
+  function invalidateOpenFile(filePath: string): void {
+    const fileUri = pathToFileURL(path.resolve(filePath)).href
+    openedFiles.delete(fileUri)
+  }
+
+  /**
+   * Group renames by the server responsible for the resulting path so a
+   * single workspace/didRenameFiles notification reaches each server with
+   * all its file pairs. Servers without the capability are skipped — the
+   * caller can still trust the response was applied to disk. After the
+   * notification, rotate the per-document tracking so textDocument
+   * requests addressed by URI resolve to the new path.
+   */
+  async function notifyDidRenameFiles(
+    renames: ReadonlyArray<{ oldPath: string; newPath: string }>,
+  ): Promise<void> {
+    if (renames.length === 0) return
+
+    const byServer = new Map<
+      string,
+      { oldPath: string; newPath: string; oldUri: string; newUri: string }[]
+    >()
+    for (const r of renames) {
+      const server = getServerForFile(r.newPath)
+      if (!server || server.state !== 'running') continue
+      const oldUri = pathToFileURL(path.resolve(r.oldPath)).href
+      const newUri = pathToFileURL(path.resolve(r.newPath)).href
+      const list = byServer.get(server.name) ?? []
+      list.push({ oldPath: r.oldPath, newPath: r.newPath, oldUri, newUri })
+      byServer.set(server.name, list)
+    }
+
+    for (const [serverName, items] of byServer) {
+      const server = servers.get(serverName)
+      if (!server) continue
+      const didRename =
+        server.capabilities?.workspace?.fileOperations?.didRename
+      if (server.capabilities !== undefined && !didRename) {
+        logForDebugging(
+          `LSP: ${serverName} did not advertise workspace.fileOperations.didRename; skipping didRenameFiles`,
+        )
+        continue
+      }
+      try {
+        await server.sendNotification('workspace/didRenameFiles', {
+          files: items.map(i => ({ oldUri: i.oldUri, newUri: i.newUri })),
+        })
+        logForDebugging(
+          `LSP: Sent workspace/didRenameFiles to ${serverName} for ${items.length} file(s)`,
+        )
+      } catch (error) {
+        logError(
+          new Error(
+            `Failed to send workspace/didRenameFiles to ${serverName}: ${errorMessage(error)}`,
+          ),
+        )
+      }
+
+      // Realign per-document tracking. textDocument requests are addressed
+      // by URI; without closing the old URI and opening the new one the
+      // server would still answer questions at the pre-rename location.
+      // closeFile owns the openedFiles bookkeeping; openFile suppresses
+      // redundant didOpens. We only close URIs we actually opened on this
+      // server so we don't trigger spurious didCloses for unknown docs.
+      for (const item of items) {
+        if (openedFiles.get(item.oldUri) === serverName) {
+          try {
+            await closeFile(item.oldPath)
+          } catch (error) {
+            logError(
+              new Error(
+                `Failed didClose for renamed ${item.oldPath} on ${serverName}: ${errorMessage(error)}`,
+              ),
+            )
+          }
+        }
+        try {
+          const content = await fsp.readFile(item.newPath, 'utf8')
+          await openFile(item.newPath, content)
+        } catch (error) {
+          logError(
+            new Error(
+              `Failed didOpen for renamed ${item.newPath} on ${serverName}: ${errorMessage(error)}`,
+            ),
+          )
+        }
+      }
+    }
+  }
+
   return {
     initialize,
     shutdown,
@@ -416,5 +527,7 @@ export function createLSPServerManager(): LSPServerManager {
     saveFile,
     closeFile,
     isFileOpen,
+    notifyDidRenameFiles,
+    invalidateOpenFile,
   }
 }

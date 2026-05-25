@@ -542,6 +542,31 @@ export function clearDeliveredDiagnosticsForFile(fileUri: string): void {
 /**
  * Get count of pending diagnostics (for monitoring)
  */
+/**
+ * Read the most recent pending diagnostics for a given file URI, without
+ * marking them delivered or removing them from the registry. Used by
+ * LSPTool.codeActions to populate CodeActionContext.diagnostics so
+ * servers can emit quickfix actions tied to those diagnostics.
+ *
+ * Returns [] if no pending entry references the URI. Note: this only
+ * covers diagnostics that arrived since the last attachment sweep — if
+ * checkForLSPDiagnostics already drained them, the registry is empty
+ * until the next publishDiagnostics tick.
+ */
+export function peekPendingDiagnosticsForFile(
+  fileUri: string,
+): DiagnosticFile['diagnostics'] {
+  let latest: PendingLSPDiagnostic | undefined
+  for (const entry of pendingDiagnostics.values()) {
+    const match = entry.files.find(f => f.uri === fileUri)
+    if (!match) continue
+    if (!latest || entry.timestamp > latest.timestamp) latest = entry
+  }
+  if (!latest) return []
+  const file = latest.files.find(f => f.uri === fileUri)
+  return file ? file.diagnostics : []
+}
+
 export function getPendingLSPDiagnosticCount(): number {
   return pendingDiagnostics.size
 }
