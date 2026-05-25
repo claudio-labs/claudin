@@ -153,10 +153,197 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ---
 
+## Tier 5 — Insights do discovery ohmypi
+
+> Adicionado em 2026-05-25. Síntese de 3 ondas de análise (insight → deep-dive → fit → gap) comparando `oh-my-pi` com Claudio. Cada item aponta para o doc de estudo mais profundo (preferindo `gap/` quando ele revisa o original, depois `fit/`, depois raw).
+>
+> Convenção: priorização cross-ondas — as melhores ideias vieram dos `gap/`, não dos insights originais.
+
+### Sub-tier 5.A — P0 (alto valor, esforço médio)
+
+#### [ ] T5.1 LSPTool write-ops (rename, code_actions, rename_file)
+- **Problema:** `src/tools/LSPTool/schemas.ts:14-166` só tem read-ops. "Rename amplo" hoje cai em `FileEditTool` com string match frágil.
+- **Ganho:** alto — resolve a maior dor que motivaria AstEditTool, **sem WASM, sem dep nova**, aproveitando LSP já conectado.
+- **Esforço:** médio — **Risco:** baixo (LSP devolve workspace edit pronto, só aplicar).
+- **Doc:** [docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md](docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md)
+
+#### [ ] T5.2 Late LSP diagnostics injection
+- **Problema:** Diagnostics que chegam **depois** do tool result já ter retornado não entram no histórico do modelo. Usuário tem que apontar o erro.
+- **Ganho:** alto — 80% da infra já existe (`src/services/lsp/diagnosticsForToolResult.ts`, `awaitDiagnosticsForFile.ts`, `diagnosticTracking.ts`); falta canal `queueDeferredMessage` entre turnos em `QueryEngine.ts`.
+- **Esforço:** baixo-médio — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §6
+
+#### [ ] T5.3 Checkpoint/Rewind tool (sandbox cognitivo)
+- **Problema:** Sem mecanismo para investigação especulativa: dead-ends entram no histórico e causam drift de contexto em sessões longas.
+- **Ganho:** alto — modelo explora livre + descarta + só relatório consolidado entra. Sinergia com `src/services/contextCollapse/` e `src/services/compact/`.
+- **Esforço:** médio (mutação de `messages[]` em `QueryEngine.ts`) — **Risco:** médio — gate `CHECKPOINT_REWIND`, compatível com plan mode hard-gate.
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §2
+
+#### [ ] T5.4 BM25 tool gating em providers OpenAI-compat
+- **Problema:** `src/services/api/openaiShim.ts` não tem equivalente de `defer_loading` da Anthropic — manda **todo schema sempre** (~18.384 tokens/turno medidos, 30 tools). Cauda longa de 27 deferred = ~11.948 tokens (~65%).
+- **Ganho:** alto — **30-55% redução de input tokens/turno** em DeepSeek/Groq/OpenRouter/Codex/Ollama. Topologia "deferred + search" já existe; falta substituir ranking linear por BM25 + wire para non-1P.
+- **Esforço:** médio (3 PRs propostos, flag `BM25_TOOL_GATING`) — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/fit/01-bm25-tool-gating.md](docs/discovery/ohmypi/fit/01-bm25-tool-gating.md) + [docs/discovery/ohmypi/gap/01-bm25-tool-gating.md](docs/discovery/ohmypi/gap/01-bm25-tool-gating.md)
+
+#### [ ] T5.5 3 quick wins AST sem tree-sitter no FileEditTool
+- **Problema:** `replace_all` estraga docstrings; ambiguidade de match em arquivos grandes; rename de import quebra.
+- **Ganho:** ~70% da dor do "AstEditTool" sem dep WASM. Três adições:
+  - `add_import` helper TS puro
+  - `scope_hint` no `FileEditTool` (desambiguação)
+  - `skip_comments_and_strings` flag em `replace_all`
+- **Esforço:** baixo cada — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/fit/07-tree-sitter-ast-edits.md](docs/discovery/ohmypi/fit/07-tree-sitter-ast-edits.md)
+
+#### [ ] T5.6 Cinco prompts cirúrgicos para `.md` (após hardening)
+- **Problema:** Loader `.md` em `scripts/build.ts:397-431` é subaproveitado (só `src/skills/bundled/` usa). Stub silencioso `export default ''` mascara typos.
+- **Ganho:** diff readability + ~10-15% LOC nos 5 prompts mais estáticos.
+- **Pré-requisito:** trocar stub silencioso por erro fatal.
+- **Candidatos:** `TeamCreateTool/prompt.ts`, `ToolSearchTool/prompt.ts`, `TodoWriteTool/prompt.ts`, `exploreAgent.ts`, `planAgent.ts`.
+- **Esforço:** baixo — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/fit/03-prompts-as-md.md](docs/discovery/ohmypi/fit/03-prompts-as-md.md)
+
+#### [ ] T5.7 `prompt.format` + CI check (sem engine)
+- **Problema:** Sem convenção uniforme em `.claudio/rules/*.md` e skills — `**MUST**` vs `NEVER`, ASCII triplo-ponto vs `…`, etc.
+- **Ganho:** linter de prompt cross-projeto. ~150 LOC port (subset `normalizeRfc2119` + `replaceAsciiSymbols`), zero dep Handlebars.
+- **Esforço:** baixo — **Risco:** nenhum (fail-open).
+- **Doc:** [docs/discovery/ohmypi/gap/03-prompts-as-md.md](docs/discovery/ohmypi/gap/03-prompts-as-md.md) §3.2
+
+### Sub-tier 5.B — P1 (condicional, médio retorno)
+
+#### [ ] T5.8 MCP tool-list cache (30d + config-hash)
+- **Problema:** `src/services/mcp/client/authCache.ts:6,29` cobre só "needs auth". **Não existe cache de tool-list/schema MCP** — cada reconexão paga schema fetch.
+- **Ganho:** médio — cold-start MCP fica instantâneo; reconexões em sessão longa não pagam mais nada.
+- **Esforço:** baixo (SHA-256 estável do config como invalidation key).
+- **Doc:** [docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md) §1.3
+
+#### [ ] T5.9 WebFetch in-memory contadores + soft/hard TTL
+- **Problema:** `WebFetchTool` hoje é fresh-or-miss (LRU 15min). Re-visita paga ~1.5-3s + 5-15k input tokens (chamada Haiku de summarização).
+- **Ganho:** médio — sem persistência em disco na v1 (privacidade), só instrumentação.
+- **Esforço:** baixo — **Risco:** baixo. Medir hit-ratio antes de estender pra disco.
+- **Doc:** [docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md)
+
+#### [ ] T5.10 Prefix-invalidation triggers em `toolResultCache`
+- **Problema:** `src/services/tools/toolResultCache.ts:63` hoje só revalida via mtime do file próprio. Write em vizinho não invalida nada → resultados estaleados em Grep/Glob.
+- **Ganho:** médio — correção (não performance).
+- **Esforço:** baixo — chamadas de invalidate explícitas em `FileEditTool`/`FileWriteTool`.
+- **Doc:** [docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md) §1.5
+
+#### [ ] T5.11 `report_tool_issue` JSONL local-only
+- **Problema:** `isError` propaga em 15 arquivos sem coleta agregada; zero sinal estruturado de bugs de tool.
+- **Ganho:** médio — feedback loop interno (especialmente filter / plan mode / openai shim).
+- **Storage:** JSONL append-only em `~/.claudio/projects/<dir>/tool-issues/YYYY-MM.jsonl` (fora do scan de memdir, que só ingere `.md`).
+- **Esforço:** ~300-500 LOC — **Risco:** baixo (gate `REPORT_TOOL_ISSUE` default OFF; settings checked-in liga só pro próprio repo — dogfooding).
+- **Doc:** [docs/discovery/ohmypi/fit/04-report-tool-issue.md](docs/discovery/ohmypi/fit/04-report-tool-issue.md)
+
+#### [ ] T5.12 Reviewer structured findings (confidence + priority)
+- **Problema:** `src/commands/review/` e `/security-review` não retornam output estruturado nem confidence scoring.
+- **Ganho:** médio-alto — viabiliza filtros por priority P0-P3 e batch review.
+- **Esforço:** médio — schema zod com `confidence: number(0-1)`, `priority: enum`, `findings[]` com line ranges.
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §3
+
+#### [ ] T5.13 Worker pool + Semáforo nos sub-agents
+- **Problema:** `AgentTool` paralelo usa `Promise.all` sem cap; N sub-agents saturam CPU/memória.
+- **Ganho:** médio — estabilidade em coordenador multi-agent (`COORDINATOR_MODE`).
+- **Esforço:** baixo — semáforo simples.
+- **Doc:** [docs/discovery/ohmypi/gap/08-cow-isolation.md](docs/discovery/ohmypi/gap/08-cow-isolation.md) §1
+
+#### [ ] T5.14 Memories pipeline 2-stage em `.md`
+- **Problema:** `src/services/extractMemories/prompts.ts` tem 7944 chars com 16 interpolações em `.ts`. Diff/review pesado.
+- **Ganho:** baixo-médio — só vale após T5.6 (loader hardening) e T5.7 (formatter).
+- **Esforço:** médio — pipeline `{consolidation,extract,stage1-system,stage1-input}.md`.
+- **Doc:** [docs/discovery/ohmypi/gap/03-prompts-as-md.md](docs/discovery/ohmypi/gap/03-prompts-as-md.md) §3.1
+
+### Sub-tier 5.C — Quick wins (esforço pequeno, sem risco)
+
+#### [ ] T5.15 Terminal breadcrumb (auto-resume por tty)
+- **Problema:** Resume sem id por terminal não existe; usuário tem que escolher na lista.
+- **Ganho:** DX — `~/.claudio/projects/<dir>/breadcrumbs/<tty-hash>.txt` com último session id.
+- **Esforço:** ~50 LOC — **Risco:** nenhum (aditivo, sem schema change).
+- **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (Terminal breadcrumb)
+
+#### [ ] T5.16 Draft persistence (Ctrl+C buffer + restore)
+- **Problema:** Ctrl+C no REPL com texto digitado descarta a entrada.
+- **Ganho:** DX — sidecar `draft.txt` no dir da sessão; single-shot read+unlink no resume.
+- **Esforço:** pequeno — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (Draft persistence)
+
+#### [ ] T5.17 `titleSource: user|auto` no header
+- **Problema:** `extractMemories`/auto-title pode sobrescrever um título manual.
+- **Ganho:** trivial — 1 bool no header impede overwrite.
+- **Esforço:** trivial — **Risco:** nenhum.
+- **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (titleSource)
+
+#### [ ] T5.18 IRC dedupe (anti-loop em streaming)
+- **Problema:** Modelos OpenAI-compat ocasionalmente loop em uma linha repetida N×.
+- **Ganho:** defensiva — util `textDedupe.ts` colapsa runs >3 idênticas em `[…N×]`, hard-cap 4KiB.
+- **Esforço:** pequeno — **Risco:** nenhum (fail-open).
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §7
+
+#### [ ] T5.19 Guard test prompt-size em `src/tools/*/prompt.ts`
+- **Problema:** Prompts inflando sem limite acordado; sem pressão progressiva pra fragmentar.
+- **Ganho:** invariant de saúde — falhar build se template literal > 500 chars sob `src/tools/*/prompt.ts`.
+- **Esforço:** pequeno — padrão alinhado ao `feature-flags-source-guard.test.ts` existente.
+- **Doc:** [docs/discovery/ohmypi/gap/03-prompts-as-md.md](docs/discovery/ohmypi/gap/03-prompts-as-md.md) §3.5
+
+#### [ ] T5.20 `createIf` capability gate no `buildTool`
+- **Problema:** Tools que dependem de capability (env, settings, provider) hoje abortam dentro de `call()` ou checam `isEnabled` separado.
+- **Ganho:** API mais limpa — `buildTool({ ..., createIf: (ctx) => ctx.settings.foo === 'bar' })`.
+- **Esforço:** pequeno — **Risco:** baixo.
+- **Doc:** [docs/discovery/ohmypi/gap/01-bm25-tool-gating.md](docs/discovery/ohmypi/gap/01-bm25-tool-gating.md) §1.9
+
+#### [ ] T5.21 Wall-clock cap + recursion prevention em sub-agents
+- **Problema:** `AgentTool` sem timeout máximo nem detecção de sub-agent spawnando sub-agent.
+- **Ganho:** defensiva — evita run-away.
+- **Esforço:** trivial — **Risco:** nenhum.
+- **Doc:** [docs/discovery/ohmypi/gap/08-cow-isolation.md](docs/discovery/ohmypi/gap/08-cow-isolation.md) §4 e §5
+
+### Sub-tier 5.D — P2 (nicho ou bloqueado por demanda)
+
+#### [ ] T5.22 Structural summary AST (elisão por linguagem no Read)
+- **Ganho:** maior ROI em arquivos grandes (`openaiShim.ts` 2.2k linhas vira outline semanticamente correto). Maior que `view='outline'` atual (depth-scanner) porque AST não engana com strings/comentários.
+- **Bloqueio:** grande — requer tree-sitter (WASM ou NAPI), conflita com single-file bundle.
+- **Doc:** [docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md](docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md) §1
+
+#### [ ] T5.23 CAS blob store (só para imagens/anexos binários)
+- **Trigger:** entrar fluxo de imagens/anexos inline no JSONL. Hoje dedup real ~250KB (6.4%) — não vale dual-read.
+- **Doc:** [docs/discovery/ohmypi/fit/05-cas-blob-store.md](docs/discovery/ohmypi/fit/05-cas-blob-store.md)
+
+#### [ ] T5.24 COW reflink seedar `node_modules`/`dist`
+- **Trigger:** workers paralelos lendo workspace. Hoje `git worktree add` = 100ms (gitignore esconde GBs).
+- **Encaixe:** opção pequena de reflink em `performPostCreationSetup` + doc do hook `WorktreeCreate` existente.
+- **Doc:** [docs/discovery/ohmypi/fit/08-cow-isolation.md](docs/discovery/ohmypi/fit/08-cow-isolation.md)
+
+#### [ ] T5.25 SQLite + FTS5 para history search
+- **Trigger:** `/resume` em projeto com muitas sessões fica lento (scan de N JSONLs).
+- **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (History DB)
+
+#### [ ] T5.26 Compaction entry tipada no JSONL
+- **Trigger:** querer navegar pré/pós-compact sem grep manual.
+- **Ganho:** transcript fica árvore append-only navegável.
+- **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (Compaction inline)
+
+#### [ ] T5.27 Hindsight reflect-only (tool `/reflect`)
+- **Trigger:** experimento — ortogonal a `extractMemories` que já popula `.md` automaticamente.
+- **Bloqueio:** backend 100% local (sem RPC).
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §1
+
+#### [ ] T5.28 Oracle agent (second-opinion / first-principles)
+- **Trigger:** útil com fallback chain de provider (primário fraco + escalation para modelo forte).
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §4
+
+#### [ ] T5.29 Inline terminal images (Kitty/iTerm2)
+- **Trigger:** demanda concreta. Issue upstream `anthropics/claude-code#2266` existe mas nada interno pedindo.
+- **Encaixe:** `ink-picture` atrás de flag `INLINE_IMAGES`, restrito a Kitty + iTerm2 (Sixel sai por risco de scrollback corrompido).
+- **Doc:** [docs/discovery/ohmypi/deep/10-inline-terminal-images.md](docs/discovery/ohmypi/deep/10-inline-terminal-images.md)
+
+---
+
 ## Limpeza oportunista
 
 - [ ] **CHICAGO_MCP cleanup duplicado** em `src/query.ts:1060` e `1621` — flag está `false` em `build.ts`; código morto no open build. Unificar ou gate explícito.
 - [ ] **`useMemo(() => false, [])`** em `src/screens/REPL.tsx:618` — slot de hook gasto para constante.
+- [ ] **gRPC vaporware em docs** — `CLAUDE.md:40-41,90` e `README.md:66` referenciam `src/grpc/`, `src/proto/`, scripts `dev:grpc*` que não existem no código. Limpar ~5 linhas. Registrado em team memory `grpc-vaporware-in-docs.md`.
+- [ ] **`FileEditTool` sem teste unitário direto** — único `.test.ts` cobre só LSP diagnostics. Lógica de match / `replace_all` / quote-normalization sem cobertura.
 
 ---
 
@@ -183,3 +370,18 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - Item 2 — paralelizar dynamic imports (cold start)
 - Item 7 — delta-write transcript (escala mal em turnos longos)
 - Item 3 — cache `isEnabled()` (reduz custo do `useMemo` do REPL)
+
+**Tier 5 (discovery ohmypi) — ordem recomendada por ROI:**
+
+1. T5.1 — LSPTool write-ops (resolve dor de "rename amplo" sem dep nova)
+2. T5.2 — Late LSP diagnostics injection (80% infra já existe)
+3. T5.4 — BM25 tool gating em OpenAI-compat (30-55% input tokens; vácuo concreto)
+4. T5.3 — Checkpoint/Rewind (alto valor pra sessão longa; mais risco que 1-2)
+5. T5.5 — 3 quick wins AST sem tree-sitter (cobre ~70% da dor)
+6. T5.15-T5.21 — Quick wins (executar em paralelo, ordem por preferência)
+7. T5.8 — MCP tool-list cache (gap real, esforço baixo)
+8. T5.9 — WebFetch contadores (medir antes de qualquer cache estendido)
+9. T5.10 — Prefix-invalidation `toolResultCache` (correção, não perf)
+10. T5.6 + T5.7 — Prompts md + formatter (cluster pequeno, após T5.7)
+11. P1 restante (T5.11-T5.14) — só com trigger explícito
+12. P2 (T5.22-T5.29) — bloqueado por demanda ou esforço alto
