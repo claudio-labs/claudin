@@ -3,7 +3,10 @@ import { logEvent } from 'src/services/analytics/index.js'
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { diagnosticTracker } from '../../services/diagnosticTracking.js'
-import { buildPostEditDiagnosticsMessages } from '../../services/lsp/diagnosticsForToolResult.js'
+import {
+  armFileForLateDiagnostics,
+  buildPostEditDiagnosticsMessages,
+} from '../../services/lsp/diagnosticsForToolResult.js'
 import { clearDeliveredDiagnosticsForFile } from '../../services/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from '../../services/lsp/manager.js'
 import { notifyVscodeFileUpdated } from '../../services/mcp/vscodeSdkMcp.js'
@@ -223,7 +226,7 @@ export const FileWriteTool = buildTool({
   },
   async call(
     { file_path, content },
-    { readFileState, updateFileHistoryState, dynamicSkillDirTriggers },
+    { readFileState, updateFileHistoryState, dynamicSkillDirTriggers, agentId },
     _,
     parentMessage,
   ) {
@@ -365,6 +368,9 @@ export const FileWriteTool = buildTool({
     // errors in the same turn. Single await covers both create + update paths.
     const diagnosticMessages =
       await buildPostEditDiagnosticsMessages(fullFilePath)
+
+    // Arm for tail-wait + re-engage at turn end (see FileEditTool for rationale).
+    armFileForLateDiagnostics(fullFilePath, agentId)
 
     if (oldContent) {
       const patch = getPatchForDisplay({

@@ -161,13 +161,13 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ### Sub-tier 5.A — P0 (alto valor, esforço médio)
 
-#### [ ] T5.1 LSPTool write-ops (rename, code_actions, rename_file)
+#### [x] T5.1 LSPTool write-ops (rename, code_actions, rename_file)
 - **Problema:** `src/tools/LSPTool/schemas.ts:14-166` só tem read-ops. "Rename amplo" hoje cai em `FileEditTool` com string match frágil.
 - **Ganho:** alto — resolve a maior dor que motivaria AstEditTool, **sem WASM, sem dep nova**, aproveitando LSP já conectado.
 - **Esforço:** médio — **Risco:** baixo (LSP devolve workspace edit pronto, só aplicar).
 - **Doc:** [docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md](docs/discovery/ohmypi/gap/07-tree-sitter-ast-edits.md)
 
-#### [ ] T5.2 Late LSP diagnostics injection
+#### [x] T5.2 Late LSP diagnostics injection
 - **Problema:** Diagnostics que chegam **depois** do tool result já ter retornado não entram no histórico do modelo. Usuário tem que apontar o erro.
 - **Ganho:** alto — 80% da infra já existe (`src/services/lsp/diagnosticsForToolResult.ts`, `awaitDiagnosticsForFile.ts`, `diagnosticTracking.ts`); falta canal `queueDeferredMessage` entre turnos em `QueryEngine.ts`.
 - **Esforço:** baixo-médio — **Risco:** baixo.

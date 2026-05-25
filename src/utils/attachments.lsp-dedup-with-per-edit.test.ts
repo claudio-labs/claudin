@@ -77,6 +77,43 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
     expect(result).toEqual([])
   })
 
+  test('tail-wait flow: awaitLateDiagnosticsForTurn output, when marked delivered by query.ts, is skipped by the next pull', async () => {
+    // Simulate the late-injection path: armed file gets a publish, query.ts
+    // calls markDiagnosticsAsDelivered on the surviving lateFiles, then on
+    // the NEXT user turn getLSPDiagnosticAttachments must not re-emit.
+    const {
+      armFileForLateDiagnostics,
+      awaitLateDiagnosticsForTurn,
+      clearArmedFiles,
+    } = await import('../services/lsp/diagnosticsForToolResult.js')
+    // Mock the lsp manager so arm() doesn't reject due to no server.
+    const realManager = { ...(await import('../services/lsp/manager.js')) }
+    mock.module('../services/lsp/manager.js', () => ({
+      ...realManager,
+      getLspServerManager: () => ({ getServerForFile: () => ({}) }),
+    }))
+
+    try {
+      clearArmedFiles()
+      armFileForLateDiagnostics('/tmp/F.ts', undefined)
+      registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [fileF] })
+
+      const lateFiles = await awaitLateDiagnosticsForTurn()
+      expect(lateFiles).toHaveLength(1)
+      markDiagnosticsAsDelivered(lateFiles)
+      clearArmedFiles()
+
+      // Republish — next turn pull must dedup.
+      registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [fileF] })
+      const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+      const result = await getLSPDiagnosticAttachments(makeCtx())
+      expect(result).toEqual([])
+    } finally {
+      // Restore manager mock so the rest of the suite is unaffected.
+      mock.module('../services/lsp/manager.js', () => realManager)
+    }
+  })
+
   test('a NEW diagnostic for the same file IS still delivered next turn', async () => {
     // Per-edit consumed F's first diagnostic.
     markDiagnosticsAsDelivered([fileF])

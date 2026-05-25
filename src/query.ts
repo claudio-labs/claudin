@@ -60,6 +60,11 @@ import {
   getAttachmentMessages,
   startRelevantMemoryPrefetch,
 } from './utils/attachments.js'
+import {
+  awaitLateDiagnosticsForTurn,
+  clearArmedFiles,
+} from './services/lsp/diagnosticsForToolResult.js'
+import { markDiagnosticsAsDelivered } from './services/lsp/LSPDiagnosticRegistry.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (require('./services/skillSearch/prefetch.js') as typeof import('./services/skillSearch/prefetch.js'))
@@ -215,6 +220,10 @@ type State = {
   // Capped at MAX_CONTINUATION_NUDGES to prevent infinite nudge loops
   // when the model keeps matching continuation signals without tool calls.
   continuationNudgeCount: number
+  // True once the turn re-entered via late LSP diagnostics injection.
+  // Cap=1: a second tail-wait in the same turn could re-engage on the model's
+  // own fix-attempt diagnostics and loop.
+  lateDiagnosticsReentry?: boolean
   // Why the previous iteration continued. Undefined on first iteration.
   // Lets tests assert recovery paths fired without inspecting message contents.
   transition: Continue | undefined
@@ -260,6 +269,16 @@ async function* queryLoop(
   ) {
     const { startNewTurn } = await import('./utils/multiTurnContext.js')
     startNewTurn()
+  }
+
+  // Defensive: clear any late-LSP armed files left over from a prior turn
+  // that exited via an unhandled path (abort/throw). Process-global registry,
+  // so a leak would surface diagnostics in an unrelated turn.
+  // Gated to main-thread queries — a subagent's queryLoop must NOT wipe armed
+  // state belonging to the main thread that spawned it (AgentTool runs inside
+  // the main thread's runTools batch and may have armed files before this).
+  if (toolUseContext.agentId === undefined) {
+    clearArmedFiles()
   }
 
   // Immutable params — never reassigned during the query loop.
@@ -1286,6 +1305,7 @@ async function* queryLoop(
       // error → hook blocking → retry → error → …
       if (lastMessage?.isApiErrorMessage) {
         void executeStopFailureHooks(lastMessage, toolUseContext)
+        clearArmedFiles()
         return { reason: 'completed' }
       }
 
@@ -1451,6 +1471,43 @@ async function* queryLoop(
           }
         }
       }
+
+      // Late LSP diagnostics tail-wait: closes the third diagnostic window
+      // (publish lands after the per-edit timeout but before the next user
+      // prompt). Only fires on main thread (subagents are gated at arm-time),
+      // only when files were actually armed this turn, and at most once per
+      // turn (state.lateDiagnosticsReentry caps to 1 to prevent loops on
+      // model-introduced regressions).
+      if (
+        !state.lateDiagnosticsReentry &&
+        toolUseContext.agentId === undefined
+      ) {
+        const lateFiles = await awaitLateDiagnosticsForTurn({
+          signal: toolUseContext.abortController.signal,
+        })
+        if (lateFiles.length > 0) {
+          markDiagnosticsAsDelivered(lateFiles)
+          const lateAttachment = createAttachmentMessage({
+            type: 'diagnostics',
+            files: lateFiles,
+            isNew: true,
+          })
+          yield lateAttachment
+          clearArmedFiles()
+          state = {
+            ...state,
+            messages: [
+              ...messagesForQuery,
+              ...assistantMessages,
+              lateAttachment,
+            ],
+            lateDiagnosticsReentry: true,
+            transition: { reason: 'late_lsp_diagnostics' },
+          }
+          continue
+        }
+      }
+      clearArmedFiles()
 
       return { reason: 'completed' }
     }

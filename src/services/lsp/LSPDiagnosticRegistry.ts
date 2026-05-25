@@ -211,6 +211,42 @@ export function markDiagnosticsAsDelivered(files: DiagnosticFile[]): void {
 }
 
 /**
+ * Filter out diagnostics already present in the cross-turn delivered LRU.
+ *
+ * Used by the late-injection tail-wait, which reads pending diagnostics
+ * directly via `peekPendingDiagnosticsForFile` and therefore bypasses the
+ * dedup baked into `checkForLSPDiagnostics`. Without this filter, a per-edit
+ * injection inside the same turn would be re-surfaced by tail-wait.
+ *
+ * Returns a new array of DiagnosticFile with delivered entries removed; files
+ * with no surviving diagnostics are dropped.
+ */
+export function filterUndeliveredDiagnostics(
+  files: DiagnosticFile[],
+): DiagnosticFile[] {
+  const result: DiagnosticFile[] = []
+  for (const file of files) {
+    const delivered = deliveredDiagnostics.get(file.uri)
+    if (!delivered || delivered.size === 0) {
+      if (file.diagnostics.length > 0) result.push(file)
+      continue
+    }
+    const surviving = []
+    for (const diag of file.diagnostics) {
+      try {
+        if (!delivered.has(createDiagnosticKey(diag))) surviving.push(diag)
+      } catch {
+        // On key-gen failure, include the diagnostic — better to over-report
+        // than to drop it silently. Mirrors deduplicateDiagnosticFiles.
+        surviving.push(diag)
+      }
+    }
+    if (surviving.length > 0) result.push({ uri: file.uri, diagnostics: surviving })
+  }
+  return result
+}
+
+/**
  * Test-only: clear the per-edit waiter map. Production code never needs this —
  * waiters self-clean on resolve/timeout. Tests may want to assert post-state.
  */

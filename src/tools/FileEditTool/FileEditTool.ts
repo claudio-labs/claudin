@@ -2,7 +2,10 @@ import { dirname, isAbsolute, sep } from 'path'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { diagnosticTracker } from '../../services/diagnosticTracking.js'
-import { buildPostEditDiagnosticsMessages } from '../../services/lsp/diagnosticsForToolResult.js'
+import {
+  armFileForLateDiagnostics,
+  buildPostEditDiagnosticsMessages,
+} from '../../services/lsp/diagnosticsForToolResult.js'
 import { clearDeliveredDiagnosticsForFile } from '../../services/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from '../../services/lsp/manager.js'
 import { notifyVscodeFileUpdated } from '../../services/mcp/vscodeSdkMcp.js'
@@ -392,6 +395,7 @@ export const FileEditTool = buildTool({
       userModified,
       updateFileHistoryState,
       dynamicSkillDirTriggers,
+      agentId,
     },
     _,
     parentMessage,
@@ -579,6 +583,11 @@ export const FileEditTool = buildTool({
     // Silent skip if LSP is off, no server handles the language, or timeout.
     const diagnosticMessages =
       await buildPostEditDiagnosticsMessages(absoluteFilePath)
+
+    // Arm this path for the tail-wait + re-engage that fires if the assistant
+    // ends the turn without further tool calls — closes the third diagnostic
+    // window (publish lands after per-edit timeout but before next prompt).
+    armFileForLateDiagnostics(absoluteFilePath, agentId)
 
     return {
       data,

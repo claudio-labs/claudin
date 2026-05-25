@@ -94,10 +94,10 @@ describe('FileEditTool — per-edit diagnostic injection wiring contract', () =>
     const { fileURLToPath } = await import('node:url')
     const here = path.dirname(fileURLToPath(import.meta.url))
     const src = fs.readFileSync(path.join(here, 'FileEditTool.ts'), 'utf8')
-    expect(src).toContain(
-      "import { buildPostEditDiagnosticsMessages } from '../../services/lsp/diagnosticsForToolResult.js'",
-    )
+    expect(src).toContain('buildPostEditDiagnosticsMessages')
+    expect(src).toContain("from '../../services/lsp/diagnosticsForToolResult.js'")
     expect(src).toContain('await buildPostEditDiagnosticsMessages(absoluteFilePath)')
+    expect(src).toContain('armFileForLateDiagnostics(absoluteFilePath, agentId)')
     expect(src).toContain(
       'newMessages: diagnosticMessages',
     )

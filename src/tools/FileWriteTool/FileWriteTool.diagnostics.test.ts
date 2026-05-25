@@ -113,11 +113,11 @@ describe('FileWriteTool — per-edit diagnostic injection wiring contract', () =
     const src = fs.readFileSync(path.join(here, 'FileWriteTool.ts'), 'utf8')
 
     // Helper imported.
-    expect(src).toContain(
-      "import { buildPostEditDiagnosticsMessages } from '../../services/lsp/diagnosticsForToolResult.js'",
-    )
+    expect(src).toContain('buildPostEditDiagnosticsMessages')
+    expect(src).toContain("from '../../services/lsp/diagnosticsForToolResult.js'")
     // Helper invoked once before the create/update branches.
     expect(src).toContain('await buildPostEditDiagnosticsMessages(fullFilePath)')
+    expect(src).toContain('armFileForLateDiagnostics(fullFilePath, agentId)')
     // newMessages spread present in both return statements.
     const newMessagesSpreads = (
       src.match(/newMessages: diagnosticMessages/g) || []
