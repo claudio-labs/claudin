@@ -683,6 +683,11 @@ export type GlobalConfig = {
   bashOutputFilterEnabled?: boolean
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean
+
+  // Inline terminal images (T5.29). 'auto' (default) detects Kitty-family
+  // terminals; 'enable' is semantically auto with explicit intent; 'disable'
+  // forces the legacy text/hyperlink fallback even on supported terminals.
+  inlineImagesMode?: 'auto' | 'enable' | 'disable'
 }
 
 /**
@@ -733,6 +738,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     providerProfiles: [],
     openaiAdditionalModelOptionsCacheByProfile: {},
     knowledgeGraphEnabled: true,
+    inlineImagesMode: 'auto',
   }
   return config
 }
@@ -787,6 +793,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterEnabled',
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
+  'inlineImagesMode',
 ] as const
 
 export type GlobalConfigKey = (typeof GLOBAL_CONFIG_KEYS)[number]

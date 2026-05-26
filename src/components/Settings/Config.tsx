@@ -355,6 +355,26 @@ export function Config({
       });
     }
   }, {
+    id: 'inlineImagesMode',
+    label: 'Inline terminal images',
+    value: globalConfig.inlineImagesMode ?? 'auto',
+    options: ['auto', 'enable', 'disable'],
+    type: 'enum' as const,
+    onChange(mode: string) {
+      const inlineImagesMode = (mode === 'auto' || mode === 'enable' || mode === 'disable' ? mode : 'auto') as 'auto' | 'enable' | 'disable';
+      saveGlobalConfig(current_ii => ({
+        ...current_ii,
+        inlineImagesMode
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        inlineImagesMode
+      });
+      logEvent('claudio_inline_images_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        mode: inlineImagesMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+      });
+    }
+  }, {
     id: 'spinnerTipsEnabled',
     label: 'Show tips',
     value: settingsData?.spinnerTipsEnabled ?? true,

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { extractTag } from 'src/utils/messages.js';
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js';
 import { FilePathLink } from '../../components/FilePathLink.js';
+import { InlineImage } from '../../components/InlineImage.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { Text } from '../../ink.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from '../../utils/file.js';
@@ -80,12 +81,21 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
     case 'image':
       {
         const {
-          originalSize
+          originalSize,
+          filePath
         } = output.file;
         const formattedSize = formatFileSize(originalSize);
-        return <MessageResponse height={1}>
-          <Text>Read image ({formattedSize})</Text>
-        </MessageResponse>;
+        const fallback = <Text>Read image ({formattedSize})</Text>;
+        // Omit height when InlineImage may grow into multi-row placeholders;
+        // MessageResponse's height={1} + overflowY="hidden" would clip the
+        // image to a single row. Without filePath there's no inline render
+        // path, so keep the original single-line layout.
+        if (filePath) {
+          return <MessageResponse>
+            <InlineImage path={filePath} fallback={fallback} />
+          </MessageResponse>;
+        }
+        return <MessageResponse height={1}>{fallback}</MessageResponse>;
       }
     case 'notebook':
       {

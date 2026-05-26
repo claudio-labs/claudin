@@ -195,6 +195,64 @@ export function supportsExtendedKeys(): boolean {
   return EXTENDED_KEYS_TERMINALS.includes(env.terminal ?? '')
 }
 
+// -- Inline image protocol (Kitty Unicode Placeholder) --
+//
+// Terminals supporting the Kitty Graphics Protocol let us render images in
+// the REPL by storing pixels under an integer ID, then drawing rows of a
+// special placeholder character. We restrict to a strict allowlist: Kitty
+// itself, Ghostty, and WezTerm. iTerm2 has its own protocol (OSC 1337)
+// that we don't implement; everything else falls back to the existing
+// text/hyperlink rendering.
+
+export type InlineImageProtocol = 'kitty' | null
+
+const KITTY_FAMILY_TERMINALS = new Set(['kitty', 'ghostty', 'WezTerm'])
+
+/**
+ * Detect whether the current terminal supports the Kitty Unicode Placeholder
+ * variant of the graphics protocol. Returns null when no compatible terminal
+ * is detected, when stdout isn't a TTY, when running inside tmux/screen
+ * (passthrough not implemented), or when known-unsupported terminals are
+ * present (VS Code, Cursor, Windows Terminal, Apple Terminal, iTerm2).
+ *
+ * Detection uses both env vars and the async XTVERSION probe result.
+ * Callers should snapshot the result at component mount and not re-query
+ * across renders to avoid layout flips when XTVERSION arrives late.
+ */
+export function getInlineImageProtocol(): InlineImageProtocol {
+  if (!process.stdout.isTTY) return null
+
+  // tmux/screen: graphics protocol requires DCS passthrough we don't emit.
+  if (process.env.TMUX) return null
+  const term = process.env.TERM ?? ''
+  if (term.startsWith('screen') || term.startsWith('tmux')) return null
+
+  // Known incompatible terminals (cell grid in xterm.js or different protocol).
+  if (process.env.WT_SESSION) return null
+  if (isXtermJs()) return null
+  const termProgram = process.env.TERM_PROGRAM
+  if (
+    termProgram === 'Apple_Terminal' ||
+    termProgram === 'iTerm.app' ||
+    termProgram === 'cursor' ||
+    termProgram === 'vscode'
+  ) {
+    return null
+  }
+
+  // Allowlist (env-based, fast path).
+  if (term === 'xterm-kitty' || term === 'xterm-ghostty') return 'kitty'
+  if (termProgram && KITTY_FAMILY_TERMINALS.has(termProgram)) return 'kitty'
+
+  // Allowlist via the XTVERSION reply (survives SSH; may be undefined early).
+  const xt = xtversionName?.toLowerCase()
+  if (xt && (xt.startsWith('kitty') || xt.startsWith('ghostty') || xt.startsWith('wezterm'))) {
+    return 'kitty'
+  }
+
+  return null
+}
+
 /** True if the terminal scrolls the viewport when it receives cursor-up
  *  sequences that reach above the visible area. On Windows, conhost's
  *  SetConsoleCursorPosition follows the cursor into scrollback

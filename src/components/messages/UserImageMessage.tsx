@@ -1,58 +1,56 @@
-import { c as _c } from "react-compiler-runtime";
-import * as React from 'react';
-import { pathToFileURL } from 'url';
-import Link from '../../ink/components/Link.js';
-import { supportsHyperlinks } from '../../ink/supports-hyperlinks.js';
-import { Box, Text } from '../../ink.js';
-import { getStoredImagePath } from '../../utils/imageStore.js';
-import { MessageResponse } from '../MessageResponse.js';
+import type * as React from 'react'
+import { pathToFileURL } from 'node:url'
+import Link from '../../ink/components/Link.js'
+import { supportsHyperlinks } from '../../ink/supports-hyperlinks.js'
+import { Box, Text } from '../../ink.js'
+import { getStoredImagePath } from '../../utils/imageStore.js'
+import { InlineImage } from '../InlineImage.js'
+import { MessageResponse } from '../MessageResponse.js'
+
 type Props = {
-  imageId?: number;
-  addMargin?: boolean;
-};
+  imageId?: number
+  addMargin?: boolean
+}
 
 /**
- * Renders an image attachment in user messages.
- * Shows as a clickable link if the image is stored and terminal supports hyperlinks.
- * Uses MessageResponse styling to appear connected to the message above,
- * unless addMargin is true (image starts a new user turn without text).
+ * Renders an image attachment in a user message.
+ *
+ * On Kitty-family terminals (with `inlineImagesMode != 'disable'`) we draw
+ * the actual pixels via {@link InlineImage}. Everywhere else we fall back to
+ * a `[Image #N]` label — clickable when the terminal supports hyperlinks.
+ *
+ * `addMargin` lets the caller render the image starting a new user turn
+ * (no preceding text), in which case we wrap in a Box with `marginTop=1`
+ * instead of stitching it to the previous message with `MessageResponse`.
  */
-export function UserImageMessage(t0) {
-  const $ = _c(7);
-  const {
-    imageId,
-    addMargin
-  } = t0;
-  const label = imageId ? `[Image #${imageId}]` : "[Image]";
-  let t1;
-  if ($[0] !== imageId || $[1] !== label) {
-    const imagePath = imageId ? getStoredImagePath(imageId) : null;
-    t1 = imagePath && supportsHyperlinks() ? <Link url={pathToFileURL(imagePath).href}><Text>{label}</Text></Link> : <Text>{label}</Text>;
-    $[0] = imageId;
-    $[1] = label;
-    $[2] = t1;
-  } else {
-    t1 = $[2];
-  }
-  const content = t1;
+export function UserImageMessage({
+  imageId,
+  addMargin,
+}: Props): React.ReactElement {
+  const label = imageId ? `[Image #${imageId}]` : '[Image]'
+  const imagePath = imageId ? getStoredImagePath(imageId) : null
+
+  const linkOrLabel =
+    imagePath && supportsHyperlinks() ? (
+      <Link url={pathToFileURL(imagePath).href}>
+        <Text>{label}</Text>
+      </Link>
+    ) : (
+      <Text>{label}</Text>
+    )
+
+  // When we have the file on disk, try to render pixels inline; the
+  // InlineImage component renders the link/label as its fallback when the
+  // terminal doesn't speak the Kitty protocol or the user disabled the
+  // feature, so behavior is identical for non-Kitty terminals.
+  const content = imagePath ? (
+    <InlineImage path={imagePath} fallback={linkOrLabel} />
+  ) : (
+    linkOrLabel
+  )
+
   if (addMargin) {
-    let t2;
-    if ($[3] !== content) {
-      t2 = <Box marginTop={1}>{content}</Box>;
-      $[3] = content;
-      $[4] = t2;
-    } else {
-      t2 = $[4];
-    }
-    return t2;
+    return <Box marginTop={1}>{content}</Box>
   }
-  let t2;
-  if ($[5] !== content) {
-    t2 = <MessageResponse>{content}</MessageResponse>;
-    $[5] = content;
-    $[6] = t2;
-  } else {
-    t2 = $[6];
-  }
-  return t2;
+  return <MessageResponse>{content}</MessageResponse>
 }

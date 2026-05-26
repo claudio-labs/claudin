@@ -63,6 +63,7 @@ const featureFlags: Record<string, boolean> = {
   PROMPT_CACHE_BREAK_DETECTION: true, // Detect & log unexpected prompt cache invalidations
   HOOK_PROMPTS: true,                 // Allow tools to request interactive user prompts
   BASH_CLASSIFIER: true,              // AI matching for Bash(prompt:'description') rules — paired with auto-mode
+  INLINE_IMAGES: true,                // Render image tool results inline on Kitty-family terminals (Kitty Unicode Placeholder); falls back to text/hyperlink elsewhere
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────

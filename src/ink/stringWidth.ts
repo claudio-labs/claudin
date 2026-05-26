@@ -17,9 +17,45 @@ const EMOJI_REGEX = emojiRegex()
  * which correctly treats ambiguous-width characters as narrow (width 1) as
  * recommended by the Unicode standard for Western contexts.
  */
+// Kitty Unicode Placeholder (U+10EEEE) carries 3 combining diacritics from a
+// 297-entry table; some entries fall outside the U+0305..U+036F range that
+// stringWidth would otherwise treat as zero-width, which would cause the
+// cell grid to allocate 2 cells per placeholder and break image layout.
+// Each U+10EEEE occupies exactly 1 cell regardless of its diacritics.
+//
+// We must handle MIXED strings (text + placeholders) correctly: strip the
+// placeholder + its (up to 3) trailing diacritics, count those cells
+// separately, and measure the surrounding text with the normal path. The
+// regex matches U+10EEEE followed by 0–3 combining marks of any class.
+const KITTY_PLACEHOLDER_CHAR = '\u{10EEEE}'
+const KITTY_PLACEHOLDER_CLUSTER_RE = /\u{10EEEE}\p{M}{0,3}/gu
+
+/**
+ * Returns `{ count, stripped }` where `count` is the number of placeholders
+ * in `str` and `stripped` is `str` with each placeholder-cluster removed.
+ * The two together let the caller compute width as `count + width(stripped)`.
+ */
+function extractKittyPlaceholders(str: string): {
+  count: number
+  stripped: string
+} {
+  let count = 0
+  const stripped = str.replace(KITTY_PLACEHOLDER_CLUSTER_RE, () => {
+    count++
+    return ''
+  })
+  return { count, stripped }
+}
+
 function stringWidthJavaScript(str: string): number {
   if (typeof str !== 'string' || str.length === 0) {
     return 0
+  }
+
+  if (str.includes(KITTY_PLACEHOLDER_CHAR)) {
+    const { count, stripped } = extractKittyPlaceholders(str)
+    // Recurse on the stripped text (no placeholders left → normal path).
+    return count + stringWidthJavaScript(stripped)
   }
 
   // Fast path: pure ASCII string (no ANSI codes, no wide chars)
@@ -218,5 +254,16 @@ const bunStringWidth =
 const BUN_STRING_WIDTH_OPTS = { ambiguousIsNarrow: true } as const
 
 export const stringWidth: (str: string) => number = bunStringWidth
-  ? str => bunStringWidth(str, BUN_STRING_WIDTH_OPTS)
+  ? str => {
+      if (str.includes(KITTY_PLACEHOLDER_CHAR)) {
+        const { count, stripped } = extractKittyPlaceholders(str)
+        return (
+          count +
+          (stripped.length > 0
+            ? bunStringWidth(stripped, BUN_STRING_WIDTH_OPTS)
+            : 0)
+        )
+      }
+      return bunStringWidth(str, BUN_STRING_WIDTH_OPTS)
+    }
   : stringWidthJavaScript
