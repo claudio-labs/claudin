@@ -61,13 +61,10 @@ export async function getImageProcessor(): Promise<SharpFunction> {
       const sharp = imageProcessor.sharp || imageProcessor.default
       imageProcessorModule = { default: sharp }
       return sharp
-    } catch (e) {
-      if (e instanceof ImageProcessorUnavailableError) throw e
-      // Fall back to sharp if native module is not available
-      // biome-ignore lint/suspicious/noConsole: intentional warning
-      console.warn(
-        'Native image processor not available, falling back to sharp',
-      )
+    } catch {
+      // Fall back to sharp if native module is not available (e.g. stubbed
+      // in this fork, where image-processor-napi is an Anthropic-internal
+      // package replaced by the build with a noop module).
     }
   }
 
