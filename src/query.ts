@@ -277,7 +277,7 @@ async function* queryLoop(
   // Gated to main-thread queries — a subagent's queryLoop must NOT wipe armed
   // state belonging to the main thread that spawned it (AgentTool runs inside
   // the main thread's runTools batch and may have armed files before this).
-  if (toolUseContext.agentId === undefined) {
+  if (params.toolUseContext.agentId === undefined) {
     clearArmedFiles()
   }
 
