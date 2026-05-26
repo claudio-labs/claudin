@@ -12,6 +12,7 @@ import {
 import { getSettings_DEPRECATED } from '../../utils/settings/settings.js'
 import { asSystemPrompt } from '../../utils/systemPromptType.js'
 import { ssrfGuardedLookup } from '../../utils/hooks/ssrfGuard.js'
+import { createTwoTierCache } from '../shared/twoTierCache.js'
 import { isPreapprovedHost } from './preapproved.js'
 import { makeSecondaryModelPrompt } from './prompt.js'
 
@@ -45,7 +46,10 @@ class EgressBlockedError extends Error {
   }
 }
 
-// Cache for storing fetched URL content
+// Cache for storing fetched URL content. The two-tier semantics, in-flight
+// coalescing, and stats live in src/tools/shared/twoTierCache.ts — this
+// module just wires the WebFetch-specific knobs and value type. See
+// /home/viudes/.claudio/plans/immutable-giggling-oasis.md for T5.10 design.
 type CacheEntry = {
   bytes: number
   code: number
@@ -56,15 +60,18 @@ type CacheEntry = {
   persistedSize?: number
 }
 
-// Cache with 15-minute TTL and 50MB size limit
-// LRUCache handles automatic expiration and eviction
-const CACHE_TTL_MS = 15 * 60 * 1000 // 15 minutes
-const MAX_CACHE_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
-
-const URL_CACHE = new LRUCache<string, CacheEntry>({
-  maxSize: MAX_CACHE_SIZE_BYTES,
-  ttl: CACHE_TTL_MS,
+const URL_CACHE = createTwoTierCache<string, CacheEntry | RedirectInfo>({
+  name: 'WebFetch',
+  // 5 min fresh / 60 min stale-while-revalidate. Resources behind a URL
+  // are stable enough that serving a slightly old copy + background
+  // refresh beats blocking the user on a re-fetch.
+  softTtlMs: 5 * 60 * 1000,
+  hardTtlMs: 60 * 60 * 1000,
+  maxSize: 50 * 1024 * 1024, // 50MB
+  sizeOf: v => (isRedirectInfo(v) ? 1 : v.bytes || 1),
 })
+
+export const getWebFetchCacheStats = URL_CACHE.getStats
 
 // Separate cache for preflight domain checks. URL_CACHE is URL-keyed, so
 // fetching two paths on the same domain triggers two identical preflight
@@ -72,7 +79,7 @@ const URL_CACHE = new LRUCache<string, CacheEntry>({
 // that. Only 'allowed' is cached — blocked/failed re-check on next attempt.
 const DOMAIN_CHECK_CACHE = new LRUCache<string, true>({
   max: 128,
-  ttl: 5 * 60 * 1000, // 5 minutes — shorter than URL_CACHE TTL
+  ttl: 5 * 60 * 1000,
 })
 
 export function clearWebFetchCache(): void {
@@ -389,7 +396,7 @@ export async function getWithPermittedRedirects(
 }
 
 function isRedirectInfo(
-  response: AxiosResponse<ArrayBuffer> | RedirectInfo,
+  response: AxiosResponse<ArrayBuffer> | RedirectInfo | CacheEntry,
 ): response is RedirectInfo {
   return 'type' in response && response.type === 'redirect'
 }
@@ -411,21 +418,19 @@ export async function getURLMarkdownContent(
   if (!validateURL(url)) {
     throw new Error('Invalid URL')
   }
+  // URL_CACHE handles fresh/stale/miss, in-flight coalescing, background
+  // refresh, and counters. We just hand it a fetcher.
+  return URL_CACHE.getOrFetch(
+    url,
+    signal => doFetch(url, signal),
+    abortController.signal,
+  )
+}
 
-  // Check cache (LRUCache handles TTL automatically)
-  const cachedEntry = URL_CACHE.get(url)
-  if (cachedEntry) {
-    return {
-      bytes: cachedEntry.bytes,
-      code: cachedEntry.code,
-      codeText: cachedEntry.codeText,
-      content: cachedEntry.content,
-      contentType: cachedEntry.contentType,
-      persistedPath: cachedEntry.persistedPath,
-      persistedSize: cachedEntry.persistedSize,
-    }
-  }
-
+async function doFetch(
+  url: string,
+  signal: AbortSignal,
+): Promise<FetchedContent | RedirectInfo> {
   let parsedUrl: URL
   let upgradedUrl = url
 
@@ -470,7 +475,7 @@ export async function getURLMarkdownContent(
 
   const response = await getWithPermittedRedirects(
     upgradedUrl,
-    abortController.signal,
+    signal,
     isPermittedRedirect,
   )
 
@@ -505,23 +510,14 @@ export async function getURLMarkdownContent(
   const bytes = rawBuffer.length
   const htmlContent = rawBuffer.toString('utf-8')
 
-  let markdownContent: string
-  let contentBytes: number
-  if (contentType.includes('text/html')) {
-    markdownContent = (await getTurndownService()).turndown(htmlContent)
-    contentBytes = Buffer.byteLength(markdownContent)
-  } else {
-    // It's not HTML - just use it raw. The decoded string's UTF-8 byte
-    // length equals rawBuffer.length (modulo U+FFFD replacement on invalid
-    // bytes — negligible for cache eviction accounting), so skip the O(n)
-    // Buffer.byteLength scan.
-    markdownContent = htmlContent
-    contentBytes = bytes
-  }
+  const markdownContent = contentType.includes('text/html')
+    ? (await getTurndownService()).turndown(htmlContent)
+    : htmlContent
 
-  // Store the fetched content in cache. Note that it's stored under
-  // the original URL, not the upgraded or redirected URL.
-  const entry: CacheEntry = {
+  // URL_CACHE handles storage + sizing. sizeOf uses `bytes` (raw HTTP
+  // response length) as a close-enough proxy for in-memory cost; the
+  // Turndown-converted markdown is usually smaller than the source HTML.
+  return {
     bytes,
     code: response.status,
     codeText: response.statusText,
@@ -530,9 +526,6 @@ export async function getURLMarkdownContent(
     persistedPath,
     persistedSize,
   }
-  // lru-cache requires positive integers; clamp to 1 for empty responses.
-  URL_CACHE.set(url, entry, { size: Math.max(1, contentBytes) })
-  return entry
 }
 
 // Budget for the secondary-model summarization after fetch. If the small-

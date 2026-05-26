@@ -36,6 +36,7 @@ import {
   getAvailableProviders,
   type ProviderOutput,
 } from './providers/index.js'
+import { createTwoTierCache } from '../shared/twoTierCache.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -115,6 +116,91 @@ function formatProviderOutput(po: ProviderOutput, query: string): Output {
     results,
     durationSeconds: po.durationSeconds,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Result caches for the non-streaming paths (adapter + codex).
+//
+// Why no-stale (softTtlMs === hardTtlMs)?
+//   Search results are volatile: rankings shift, news entries appear and
+//   disappear. Serving a stale entry + scheduling a background refresh
+//   (the WebFetch model) would burn provider quota delivering data that
+//   was already old. After the TTL we just re-search.
+//
+// What's cached?
+//   - Adapter path: ProviderOutput (pre-format). The cached entry's
+//     durationSeconds is overwritten with the elapsed time of the
+//     current getOrFetch() call before formatProviderOutput() runs,
+//     so the "Did N searches in Xs" UI never displays a stale value.
+//   - Codex path: the raw Responses payload. makeOutputFromCodexWebSearchResponse()
+//     runs on every hit with a freshly measured duration, same reasoning.
+//   - Native Anthropic streaming path is NOT cached. Caching it would
+//     suppress the per-search progress events and mix the tool layer
+//     with the model loop. See plan immutable-giggling-oasis.md.
+//
+// Empty results (0 hits) DO enter the cache — agents frequently retry the
+// same query after seeing nothing, and a cached 0-hit prevents that
+// amplification. Errors (throw) never enter the cache.
+// ---------------------------------------------------------------------------
+
+const WEB_SEARCH_TTL_MS = 60 * 1000
+
+const ADAPTER_RESULT_CACHE = createTwoTierCache<string, ProviderOutput>({
+  name: 'WebSearch:adapter',
+  softTtlMs: WEB_SEARCH_TTL_MS,
+  hardTtlMs: WEB_SEARCH_TTL_MS,
+  max: 64,
+})
+
+const CODEX_PAYLOAD_CACHE = createTwoTierCache<string, Record<string, unknown>>({
+  name: 'WebSearch:codex',
+  softTtlMs: WEB_SEARCH_TTL_MS,
+  hardTtlMs: WEB_SEARCH_TTL_MS,
+  max: 64,
+})
+
+export function getWebSearchCacheStats(): {
+  adapter: ReturnType<typeof ADAPTER_RESULT_CACHE.getStats>
+  codex: ReturnType<typeof CODEX_PAYLOAD_CACHE.getStats>
+} {
+  return {
+    adapter: ADAPTER_RESULT_CACHE.getStats(),
+    codex: CODEX_PAYLOAD_CACHE.getStats(),
+  }
+}
+
+export function clearWebSearchCache(): void {
+  ADAPTER_RESULT_CACHE.clear()
+  CODEX_PAYLOAD_CACHE.clear()
+}
+
+// Stable, normalized cache keys. Query is trimmed + lowercased so
+// "React Hooks" and "react hooks  " hit the same entry — search engines
+// treat them the same. Domain lists are sorted so order doesn't matter.
+function normalizeDomains(list: readonly string[] | undefined): string {
+  if (!list || list.length === 0) return ''
+  return [...list].map(d => d.toLowerCase().trim()).sort().join(',')
+}
+
+function adapterCacheKey(input: Input): string {
+  // In auto mode the actual provider used may vary between calls — we key
+  // by mode rather than resolved provider so that a previous "auto" hit
+  // serves a later "auto" call regardless of which adapter ran first.
+  return [
+    `adapter:${getProviderMode()}`,
+    input.query.trim().toLowerCase(),
+    `allowed:${normalizeDomains(input.allowed_domains)}`,
+    `blocked:${normalizeDomains(input.blocked_domains)}`,
+  ].join('::')
+}
+
+function codexCacheKey(input: Input): string {
+  return [
+    'codex',
+    input.query.trim().toLowerCase(),
+    `allowed:${normalizeDomains(input.allowed_domains)}`,
+    `blocked:${normalizeDomains(input.blocked_domains)}`,
+  ].join('::')
 }
 
 // ---------------------------------------------------------------------------
@@ -329,25 +415,19 @@ export const __test = {
   makeOutputFromCodexWebSearchResponse,
 }
 
-async function runCodexWebSearch(
+// Split into fetch (raw payload) + format so the cache stores the pre-format
+// payload. durationSeconds is recomputed by the caller on each hit, so the
+// "Did N searches in Xs" UI never displays a stale duration baked into a
+// cached result.
+async function fetchCodexWebSearchPayload(
   input: Input,
+  credentials: { apiKey: string; accountId: string },
   signal: AbortSignal,
-): Promise<Output> {
-  const startTime = performance.now()
+): Promise<Record<string, unknown>> {
   const request = resolveProviderRequest({
     model: getMainLoopModel(),
     baseUrl: tryGetActiveProvider()?.baseUrl,
   })
-  const credentials = resolveCodexApiCredentials()
-
-  if (!credentials.apiKey) {
-    throw new Error('Codex web search requires CODEX_API_KEY or a valid auth.json.')
-  }
-  if (!credentials.accountId) {
-    throw new Error(
-      'Codex web search requires CHATGPT_ACCOUNT_ID or an auth.json with chatgpt_account_id.',
-    )
-  }
 
   const body: Record<string, unknown> = {
     model: request.resolvedModel,
@@ -381,12 +461,43 @@ async function runCodexWebSearch(
     throw new Error(`Codex web search error ${response.status}: ${errorBody}`)
   }
 
-  const payload = await collectCodexCompletedResponse(response)
-  const endTime = performance.now()
+  return collectCodexCompletedResponse(response)
+}
+
+async function runCodexWebSearch(
+  input: Input,
+  signal: AbortSignal,
+): Promise<Output> {
+  // Credentials are re-validated on every call (even cache hits) so a
+  // user who has just revoked their API key gets the same error they
+  // would on a cold call — the cache must not let stale auth leak past
+  // a config change. resolveCodexApiCredentials() is a cheap local read.
+  const credentials = resolveCodexApiCredentials()
+  if (!credentials.apiKey) {
+    throw new Error('Codex web search requires CODEX_API_KEY or a valid auth.json.')
+  }
+  if (!credentials.accountId) {
+    throw new Error(
+      'Codex web search requires CHATGPT_ACCOUNT_ID or an auth.json with chatgpt_account_id.',
+    )
+  }
+
+  const startTime = performance.now()
+  const payload = await CODEX_PAYLOAD_CACHE.getOrFetch(
+    codexCacheKey(input),
+    fetchSignal =>
+      fetchCodexWebSearchPayload(
+        input,
+        { apiKey: credentials.apiKey!, accountId: credentials.accountId! },
+        fetchSignal,
+      ),
+    signal,
+  )
+  const durationSeconds = (performance.now() - startTime) / 1000
   return makeOutputFromCodexWebSearchResponse(
     payload,
     input.query,
-    (endTime - startTime) / 1000,
+    durationSeconds,
   )
 }
 
@@ -652,14 +763,28 @@ export const WebSearchTool = buildTool({
       const mode = getProviderMode()
       const isExplicitAdapter = mode !== 'auto'
       try {
-        const providerOutput = await runSearch(
-          {
-            query: input.query,
-            allowed_domains: input.allowed_domains,
-            blocked_domains: input.blocked_domains,
-          },
+        const startTime = performance.now()
+        const cachedOutput = await ADAPTER_RESULT_CACHE.getOrFetch(
+          adapterCacheKey(input),
+          fetchSignal =>
+            runSearch(
+              {
+                query: input.query,
+                allowed_domains: input.allowed_domains,
+                blocked_domains: input.blocked_domains,
+              },
+              fetchSignal,
+            ),
           context.abortController.signal,
         )
+        // Recompute durationSeconds with the elapsed time of the current
+        // call so cache hits don't surface a misleading "duration" baked
+        // into the cached ProviderOutput. Avoids mutating the cached
+        // value (it's shared across callers).
+        const providerOutput = {
+          ...cachedOutput,
+          durationSeconds: (performance.now() - startTime) / 1000,
+        }
         // Explicit adapter: return even 0 hits (no silent native fallback)
         if (isExplicitAdapter || providerOutput.hits.length > 0) {
           return { data: formatProviderOutput(providerOutput, input.query) }

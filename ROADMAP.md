@@ -174,10 +174,19 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §6
 
 #### [ ] T5.3 Checkpoint/Rewind tool (sandbox cognitivo)
-- **Problema:** Sem mecanismo para investigação especulativa: dead-ends entram no histórico e causam drift de contexto em sessões longas.
-- **Ganho:** alto — modelo explora livre + descarta + só relatório consolidado entra. Sinergia com `src/services/contextCollapse/` e `src/services/compact/`.
-- **Esforço:** médio (mutação de `messages[]` em `QueryEngine.ts`) — **Risco:** médio — gate `CHECKPOINT_REWIND`, compatível com plan mode hard-gate.
-- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §2
+- **Problema:** Sem mecanismo para investigação especulativa **model-callable**: dead-ends entram no histórico e causam drift de contexto em sessões longas. O usuário já tem `/rewind` (slash command em `src/commands/rewind/index.ts`, alias `checkpoint`), mas o modelo não consegue se "rebobinar" sozinho após uma exploração.
+- **Proposta (Opção A — reuso):** Expor a semântica de `/rewind` como tool model-callable atrás de flag `CHECKPOINT_REWIND`, **reusando** `rewindConversationTo` (`src/screens/REPL.tsx:3218-3264`) + `recordContextCollapseSnapshot` (`src/utils/sessionStorage/persistence/record.ts:204`) para JSONL persistence. Dois tools:
+  - `CheckpointTool({ goal })` → snapshot leve (índice `mutableMessages` + `fileHistoryMakeSnapshot` em `src/utils/fileHistory.ts:198` para co-rewind de arquivos opcional). `isReadOnly: () => true` para compor com plan-mode hard-gate (mesmo truque de `EnterPlanModeTool.ts:73-75`).
+  - `RewindTool({ checkpointId, report })` → dispara o path de `compact_boundary` (precedente exato em `QueryEngine.ts:962-987`) com `trigger='checkpoint_rewind'`, marca JSONL via `recordContextCollapseSnapshot`, injeta o `report` consolidado como única mensagem sobrevivente do intervalo.
+- **Ganho:** alto — modelo explora livre + descarta + só relatório consolidado entra. JSONL/SDK/UI plumbing vem de graça do `compact_boundary`. `--resume` se comporta corretamente (snapshot já marca prefixo como arquivado).
+- **Esforço:** baixo-médio — **Risco:** baixo. Sem novo path de mutação em `messages[]`; reusa o de `compact_boundary` (`:956-957`, `:971-977`).
+- **Gotchas explícitos (não cobertos no doc original):**
+  - `applyStableStubs` (`QueryEngine.ts:253-255`) pode substituir `mutableMessages` entre user turns → `checkpointId` só é válido dentro do mesmo `submitMessage`. Invalidar checkpoints em transição de turn.
+  - Top-level only: checar `ctx.agentId` em `src/Tool.ts:259` (precedente em `EnterPlanModeTool.ts:80-82`). Sub-agents (AgentTool spawns) rejeitam o tool.
+  - Cowork/coordinator (`src/coordinator/`): rewind precisa rejeitar quando `isCowork`, ou estado distribuído dessincroniza.
+  - Reconciliar com `HISTORY_SNIP` + `src/services/compact/snipCompact.ts` (stub meio-planejado) — Checkpoint/Rewind não deve duplicar.
+- **Não-objetivos:** não reimplementar `/rewind` UI; não modelar como CRDT/multi-checkpoint stack na v1 (single most-recent checkpoint).
+- **Doc:** [docs/discovery/ohmypi/gap/04-report-tool-issue.md](docs/discovery/ohmypi/gap/04-report-tool-issue.md) §2 (proposta original — reescrita acima usa Opção A do estudo de fit)
 
 #### [ ] T5.4 BM25 tool gating em providers OpenAI-compat
 - **Problema:** `src/services/api/openaiShim.ts` não tem equivalente de `defer_loading` da Anthropic — manda **todo schema sempre** (~18.384 tokens/turno medidos, 30 tools). Cauda longa de 27 deferred = ~11.948 tokens (~65%).
@@ -216,11 +225,12 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Esforço:** baixo (SHA-256 estável do config como invalidation key).
 - **Doc:** [docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md) §1.3
 
-#### [ ] T5.9 WebFetch in-memory contadores + soft/hard TTL
+#### [x] T5.9 WebFetch in-memory contadores + soft/hard TTL
 - **Problema:** `WebFetchTool` hoje é fresh-or-miss (LRU 15min). Re-visita paga ~1.5-3s + 5-15k input tokens (chamada Haiku de summarização).
 - **Ganho:** médio — sem persistência em disco na v1 (privacidade), só instrumentação.
 - **Esforço:** baixo — **Risco:** baixo. Medir hit-ratio antes de estender pra disco.
 - **Doc:** [docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md)
+- **Extensão:** infra extraída pra `src/tools/shared/twoTierCache.ts` e aplicada também no `WebSearchTool` (paths adapter + codex, modo no-stale, TTL 60s). Native streaming fica fora. Plano: `~/.claudio/plans/immutable-giggling-oasis.md`.
 
 #### [ ] T5.10 Prefix-invalidation triggers em `toolResultCache`
 - **Problema:** `src/services/tools/toolResultCache.ts:63` hoje só revalida via mtime do file próprio. Write em vizinho não invalida nada → resultados estaleados em Grep/Glob.
