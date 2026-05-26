@@ -77,11 +77,25 @@ export function nextImageId(): number {
 }
 
 /**
- * Build an APC sequence that uploads PNG bytes to Kitty under `imageId`,
- * without displaying anything (`a=t`, `q=2`). The payload is base64 and
- * chunked into 4096-byte slices (`m=1` on all but the last).
+ * Build an APC sequence that uploads PNG bytes to Kitty under `imageId`
+ * AND creates a virtual placement (`a=T`, `U=1`) so Unicode placeholders
+ * drawn later resolve to pixels. The payload is base64 and chunked into
+ * 4096-byte slices (`m=1` on all but the last).
+ *
+ * Per the spec, transmit alone (`a=t`) is insufficient for placeholder
+ * rendering — a virtual placement with `U=1,c=cols,r=rows` must also be
+ * created. Kitty itself is lenient and infers from placeholder runs, but
+ * Ghostty's implementation requires the explicit virtual placement.
+ * Combining via `a=T` makes one round-trip do both.
+ *
+ * See https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders
  */
-export function transmitKittyImage(pngBuf: Buffer, imageId: number): string {
+export function transmitKittyImage(
+  pngBuf: Buffer,
+  imageId: number,
+  rows: number,
+  cols: number,
+): string {
   const b64 = pngBuf.toString('base64')
   const chunkSize = 4096
   let out = ''
@@ -90,8 +104,10 @@ export function transmitKittyImage(pngBuf: Buffer, imageId: number): string {
     const isLast = i + chunkSize >= b64.length
     const m = isLast ? 0 : 1
     if (i === 0) {
-      // Control block on the first chunk only.
-      out += `\x1b_Ga=t,f=100,i=${imageId},q=2,m=${m};${chunk}\x1b\\`
+      // Control block on the first chunk only. a=T = transmit + create
+      // virtual placement; U=1,c,r make the placement Unicode-placeholder-
+      // addressable at the given cell footprint.
+      out += `\x1b_Ga=T,f=100,i=${imageId},U=1,c=${cols},r=${rows},q=2,m=${m};${chunk}\x1b\\`
     } else {
       out += `\x1b_Gm=${m};${chunk}\x1b\\`
     }

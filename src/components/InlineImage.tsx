@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { readFile } from 'node:fs/promises'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { Text } from '../ink.js'
+import { Box, Text } from '../ink.js'
 import {
   getInlineImageProtocol,
   type InlineImageProtocol,
@@ -63,13 +63,14 @@ function computeCellBox(
   const termCols = Math.max(1, term[0])
   const termRows = Math.max(1, term[1])
 
+  // Reserve 2 cells in each axis for the surrounding Box border.
   const boundCols = Math.max(
     1,
-    Math.min(maxCols, termCols, MAX_PLACEHOLDER_CELLS),
+    Math.min(maxCols, termCols - 2, MAX_PLACEHOLDER_CELLS),
   )
   const boundRows = Math.max(
     1,
-    Math.min(maxRows, termRows - 2, MAX_PLACEHOLDER_CELLS),
+    Math.min(maxRows, termRows - 4, MAX_PLACEHOLDER_CELLS),
   )
 
   const aspect = pixelW / pixelH // > 1 = wide, < 1 = tall
@@ -135,7 +136,7 @@ export function InlineImage({
         // small race window over a more invasive Ink writer integration:
         // worst case is a one-frame flicker on the very first paint of
         // an image during streaming, never persistent corruption.
-        process.stdout.write(transmitKittyImage(pngBuf, imageId))
+        process.stdout.write(transmitKittyImage(pngBuf, imageId, rows, cols))
 
         setLines(placeholderLines(imageId, rows, cols))
       } catch (e) {
@@ -171,5 +172,9 @@ export function InlineImage({
     // no manual cursor positioning.
     return <>{fallback}</>
   }
-  return <Text>{lines.join('\n')}</Text>
+  return (
+    <Box borderStyle="round" borderColor="gray" flexDirection="column">
+      <Text>{lines.join('\n')}</Text>
+    </Box>
+  )
 }

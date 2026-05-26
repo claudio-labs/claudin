@@ -18,12 +18,15 @@ describe('kittyImageProtocol', () => {
 
   test('transmitKittyImage chunks payload at 4096 bytes', () => {
     const pngBuf = Buffer.alloc(10_000, 0xab)
-    const out = transmitKittyImage(pngBuf, 42)
+    const out = transmitKittyImage(pngBuf, 42, 8, 40)
     // Each chunk starts with APC introducer \x1b_G and ends with ST \x1b\
     const chunks = out.split('\x1b_G').filter(Boolean)
     expect(chunks.length).toBeGreaterThan(1)
-    // First chunk has the control block with i=42
-    expect(chunks[0]).toContain('a=t')
+    // First chunk has the control block with i=42 and virtual placement params
+    expect(chunks[0]).toContain('a=T')
+    expect(chunks[0]).toContain('U=1')
+    expect(chunks[0]).toContain('c=40')
+    expect(chunks[0]).toContain('r=8')
     expect(chunks[0]).toContain('f=100')
     expect(chunks[0]).toContain('i=42')
     expect(chunks[0]).toContain('q=2')
@@ -37,7 +40,7 @@ describe('kittyImageProtocol', () => {
 
   test('transmitKittyImage single-chunk payload sets m=0', () => {
     const pngBuf = Buffer.alloc(64, 0xab)
-    const out = transmitKittyImage(pngBuf, 1)
+    const out = transmitKittyImage(pngBuf, 1, 4, 20)
     expect(out).toContain('m=0')
     expect(out).not.toContain('m=1')
   })
