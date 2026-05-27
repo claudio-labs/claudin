@@ -1,27 +1,12 @@
-import { afterEach, expect, mock, test } from 'bun:test'
-
-const originalClaudeCodeNewInit = process.env.CLAUDE_CODE_NEW_INIT
+import { expect, mock, test } from 'bun:test'
 
 async function importInitCommand() {
   return (await import(`./init.ts?ts=${Date.now()}-${Math.random()}`)).default
 }
 
-afterEach(() => {
-  if (originalClaudeCodeNewInit === undefined) {
-    delete process.env.CLAUDE_CODE_NEW_INIT
-  } else {
-    process.env.CLAUDE_CODE_NEW_INIT = originalClaudeCodeNewInit
-  }
-})
-
-test('NEW_INIT prompt preserves existing root CLAUDE.md by default', async () => {
-  process.env.CLAUDE_CODE_NEW_INIT = '1'
-
+test('init prompt preserves existing root CLAUDE.md by default', async () => {
   mock.module('../projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
-  }))
-  mock.module('./initMode.js', () => ({
-    isNewInitEnabled: () => true,
   }))
 
   const command = await importInitCommand()
@@ -29,13 +14,72 @@ test('NEW_INIT prompt preserves existing root CLAUDE.md by default', async () =>
 
   expect(blocks).toHaveLength(1)
   expect(blocks[0]?.type).toBe('text')
-  expect(String(blocks[0]?.text)).toContain(
+  const text = String(blocks[0]?.text)
+  expect(text).toContain(
     'checked-in root `CLAUDE.md` and does NOT already have a root `AGENTS.md`',
   )
-  expect(String(blocks[0]?.text)).toContain(
-    'do NOT silently create a second root instruction file',
-  )
-  expect(String(blocks[0]?.text)).toContain(
-    'update the existing root `CLAUDE.md` in place by default',
-  )
+  expect(text).toContain('do NOT silently create a second root instruction file')
+  expect(text).toContain('update the existing root `CLAUDE.md` in place by default')
+})
+
+test('init prompt asks about subagents and guardrails in Phase 1', async () => {
+  mock.module('../projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('Set up custom subagents for this project?')
+  expect(text).toContain('Configure guardrails')
+})
+
+test('init prompt includes Phase 5.5 subagent creation flow', async () => {
+  mock.module('../projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('Phase 5.5')
+  expect(text).toContain('.claudio/agents/<slug>.md')
+  expect(text).toContain('/agents')
+})
+
+test('init prompt includes guardrail categories and addPermissionRulesToSettings', async () => {
+  mock.module('../projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('addPermissionRulesToSettings')
+  // Pin the source enum literals — drift here would silently break persistence wiring.
+  expect(text).toContain("'projectSettings'")
+  expect(text).toContain("'userSettings'")
+  expect(text).toContain('No destructive git')
+  expect(text).toContain('Bash(git push --force')
+  // Pin canonical matcher syntax — colon separator must not drift to bare `*`.
+  expect(text).toContain('Bash(git commit:*)')
+  expect(text).toContain('Bash(<command>:*)')
+  expect(text).toContain('Never run `npm install`')
+})
+
+test('init prompt instructs final AGENTS.md pass to add Subagents / Skills / Guardrails sections', async () => {
+  mock.module('../projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('## Subagents')
+  expect(text).toContain('## Skills')
+  expect(text).toContain('## Guardrails')
 })

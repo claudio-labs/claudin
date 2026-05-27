@@ -1,30 +1,7 @@
 import type { Command } from '../commands.js'
 import { maybeMarkProjectOnboardingComplete } from '../projectOnboardingState.js'
-import { isNewInitEnabled } from './initMode.js'
 
-const OLD_INIT_PROMPT = `Please analyze this codebase and create a CLAUDE.md file, which will be given to future instances of Claude Code to operate in this repository.
-
-What to add:
-1. Commands that will be commonly used, such as how to build, lint, and run tests. Include the necessary commands to develop in this codebase, such as how to run a single test.
-2. High-level code architecture and structure so that future instances can be productive more quickly. Focus on the "big picture" architecture that requires reading multiple files to understand.
-
-Usage notes:
-- If there's already a CLAUDE.md, suggest improvements to it.
-- When you make the initial CLAUDE.md, do not repeat yourself and do not include obvious instructions like "Provide helpful error messages to users", "Write unit tests for all new utilities", "Never include sensitive information (API keys, tokens) in code or commits".
-- Avoid listing every component or file structure that can be easily discovered.
-- Don't include generic development practices.
-- If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), make sure to include the important parts.
-- If there is a README.md, make sure to include the important parts.
-- Do not make up information such as "Common Development Tasks", "Tips for Development", "Support and Documentation" unless this is expressly included in other files that you read.
-- Be sure to prefix the file with the following text:
-
-\`\`\`
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-\`\`\``
-
-const NEW_INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, skills, and hooks) for this repo. The root project instruction file is loaded into every Claude Code session, so it must be concise — only include what Claude would get wrong without it.
+const INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, subagents, skills, hooks, and guardrails) for this repo. The root project instruction file is loaded into every Claude Code session, so it must be concise — only include what Claude would get wrong without it.
 
 ## Phase 1: Ask what to set up
 
@@ -40,6 +17,14 @@ Use AskUserQuestion to find out what the user wants:
   Description for skills: "On-demand capabilities you or Claude invoke with \`/skill-name\` — good for repeatable workflows and reference knowledge."
   Description for hooks: "Deterministic shell commands that run on tool events (e.g., format after every edit). Claude can't skip them."
 
+- "Set up custom subagents for this project?"
+  Options: "Yes — propose from codebase" | "No"
+  Description for Yes: "Subagents are specialized AI workers Claude can dispatch (e.g., \`frontend-reviewer\`, \`backend-tester\`, \`db-migration-expert\`). Particularly useful in monorepos with distinct workspaces."
+
+- "Configure guardrails (things Claudio should refuse or always ask before doing)?"
+  Options: "Yes — propose from common categories" | "No, use defaults"
+  Description for Yes: "Add \`permissions.ask\` / \`permissions.deny\` rules to block or confirm risky commands (e.g., git commits, force-push, docker, rm -rf, terraform apply). You can also opt into a real git pre-commit hook."
+
 ## Phase 2: Explore the codebase
 
 Launch a subagent to survey the codebase, and ask it to read key files to understand the project: manifest files (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, etc.), README, Makefile/build configs, CI config, existing CLAUDE.md, .claudio/rules/, AGENTS.md, .cursor/rules or .cursorrules, .github/copilot-instructions.md, .windsurfrules, .clinerules, .mcp.json.
@@ -47,11 +32,12 @@ Launch a subagent to survey the codebase, and ask it to read key files to unders
 Detect:
 - Build, test, and lint commands (especially non-standard ones)
 - Languages, frameworks, and package manager
-- Project structure (monorepo with workspaces, multi-module, or single project)
+- Project structure (monorepo with workspaces, multi-module, or single project). Check **all** of: \`package.json\` \`workspaces\` field (npm/yarn), \`pnpm-workspace.yaml\`, \`turbo.json\`, \`nx.json\`, \`Cargo.toml\` \`[workspace]\` (Rust), \`go.work\` (Go), \`pom.xml\` with \`<modules>\` (Maven multi-module), \`settings.gradle\` / \`settings.gradle.kts\` with \`include\` (Gradle multi-project). For each workspace found, capture path + dominant language/role.
 - Code style rules that differ from language defaults
 - Non-obvious gotchas, required env vars, or workflow quirks
-- Existing .claudio/skills/ and .claudio/rules/ directories
+- Existing \`.claudio/agents/\`, \`.claudio/skills/\`, and \`.claudio/rules/\` directories
 - Formatter configuration (prettier, biome, ruff, black, gofmt, rustfmt, or a unified format script like \`npm run format\` / \`make fmt\`)
+- Sensitive areas (only relevant if guardrails were opted in): \`Dockerfile\` / \`docker-compose.yml\` / \`compose.yml\`, \`.github/workflows/\`, \`terraform/\` or \`*.tf\`, \`migrations/\`, npm/make scripts whose name contains \`prod\`, \`deploy\`, \`release\`, \`publish\`
 - Git worktree usage: run \`git worktree list\` to check if this repo has multiple worktrees (only relevant if the user wants a personal CLAUDE.local.md)
 
 Note what you could NOT figure out from code alone — these become interview questions.
@@ -152,6 +138,63 @@ If Phase 2 found multiple git worktrees and the user confirmed they use sibling/
 
 If CLAUDE.local.md already exists: read it, propose specific additions, and do not silently overwrite.
 
+## Phase 5.5: Suggest and create subagents (if user opted in for subagents in Phase 1)
+
+Skip this phase entirely if the user said "No" to subagents.
+
+Subagents are stored as markdown files with YAML frontmatter. Project-scoped → \`.claudio/agents/<slug>.md\`; personal-scoped → \`~/.claudio/agents/<slug>.md\`. The loader requires only \`name\` and \`description\`; everything else is optional.
+
+1. **Inventory** existing agents (if any) under \`.claudio/agents/\` and \`~/.claudio/agents/\`. Read their \`name\` from frontmatter. **Never propose a slug that already exists** — propose a different name or skip the area.
+
+2. **Propose agents** based on Phase 2 findings:
+
+   - **Monorepo** (workspaces detected): propose **one subagent per workspace with a clearly distinct role**. Examples:
+     - \`apps/web\` (Next.js/React) → \`frontend-reviewer\`
+     - \`services/api\` (Express/Fastify) → \`backend-tester\`
+     - \`packages/sdk\` (library) → \`sdk-author\`
+     - \`infra/\` or \`terraform/\` → \`infra-reviewer\`
+     - \`migrations/\` → \`db-migration-expert\`
+     - \`docs/\` → \`docs-writer\`
+     Do NOT propose an agent for a workspace whose role is unclear or just a thin wrapper — quality > quantity.
+
+   - **Single project**: propose 1–3 thematic agents only when Phase 2 surfaced something specific. Examples:
+     - Has \`src/services/api/\` and provider shims → \`provider-shim-reviewer\`
+     - Has \`src/tools/\` with multiple tools → \`tool-author\`
+     - Has \`CHANGELOG.md\` plus git tags → \`release-cutter\`
+     If nothing concrete jumps out, propose **zero agents** and tell the user — don't pad.
+
+3. **Confirm via a single \`AskUserQuestion\` with \`multiSelect: true\`.** Each option = one proposed agent. Use the \`preview\` field to show, for each focused option, the full file contents that would be written (slug, scope/paths, description, tools, justification, body). Add a "None — skip" option (auto-added "Other" handles custom slug requests).
+
+4. **Scope choice** follows the Phase 1 instruction-file choice:
+   - "Project AGENTS.md" or "Both" → write under \`.claudio/agents/\`.
+   - "Personal CLAUDE.local.md" only → write under \`~/.claudio/agents/\`.
+
+5. **Write each accepted agent** as a minimal file:
+
+   \`\`\`markdown
+   ---
+   name: <slug>
+   description: <one-liner: when to dispatch this subagent>
+   tools: [Read, Grep, Glob, Bash]    # tailor per agent — reviewers rarely need Bash; authors usually need Edit/Write; infra agents may want only Read/Grep
+   ---
+
+   # Scope
+
+   <Paths this subagent owns, e.g. \`apps/web/**\`, \`src/services/api/**\`. Be specific.>
+
+   # When to dispatch
+
+   <Concrete triggers: code review in this area, writing new modules here, debugging a class of bug, etc.>
+
+   # Conventions and gotchas
+
+   <2–4 bullet points pulled from Phase 2 findings: testing rules, code-style quirks, common pitfalls. Cite the project lint/test commands when relevant.>
+   \`\`\`
+
+   Keep agents minimal — only \`name\` + \`description\` are required by the loader. Other fields the loader supports (use only when they add value): \`disallowedTools\`, \`model\` (\`opus|sonnet|haiku\`), \`effort\` (\`high\`), \`permissionMode\` (\`acceptEdits|plan|bypassPermissions|default\`), \`skills: [<slug>...]\`.
+
+6. After writing, tell the user: "Run \`/agents\` to refine these (edit prompts, change models, adjust tool allow/deny, etc.)."
+
 ## Phase 6: Suggest and create skills (if user chose "Skills + hooks" or "Skills only")
 
 Skills add capabilities Claude can use on demand without bloating every session.
@@ -192,6 +235,46 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
 
 - **Linting**: If Phase 2 found no lint config (no .eslintrc, ruff.toml, .golangci.yml, etc. for the project's language), ask the user if they want Claude to set up linting for this codebase. Explain that linting catches issues early and gives Claude fast feedback on its own edits.
 
+- **Guardrails** (only if the user opted in to guardrails in Phase 1):
+
+  Guardrails are persisted as \`permissions.ask\` or \`permissions.deny\` rules in a settings file. Matcher syntax: \`Bash(<command>:*)\` for a prefix wildcard (the colon separates the command from the wildcard), \`Bash(<command>)\` for an exact match. Example: \`Bash(git commit:*)\` matches any \`git commit ...\` invocation.
+
+  **Important**: \`/init\` configures the repo at its current path only. **Never run \`npm install\`, \`pip install\`, \`brew install\`, or any other package-manager install command** as part of guardrail setup. If a category would require new dependencies (e.g., full husky/pre-commit-framework install), print the commands as a "Next steps" suggestion and move on.
+
+  1. **Present the category menu** via a single \`AskUserQuestion\` with \`multiSelect: true\`. Use \`preview\` to show, for each focused option, the exact rules that will be written. Default categories:
+
+     - **No git commits** → \`permissions.ask\` for \`Bash(git commit:*)\`
+     - **No git push** → \`permissions.ask\` for \`Bash(git push:*)\`
+     - **No destructive git** → \`permissions.deny\` for \`Bash(git push --force:*)\`, \`Bash(git push -f:*)\`, \`Bash(git reset --hard:*)\`, \`Bash(git branch -D:*)\`, \`Bash(git clean -f:*)\`
+     - **No rebase** → \`permissions.ask\` for \`Bash(git rebase:*)\`, \`Bash(git pull --rebase:*)\`
+     - **No docker / compose up** → \`permissions.ask\` for \`Bash(docker run:*)\`, \`Bash(docker compose up:*)\`, \`Bash(docker-compose up:*)\`, \`Bash(docker start:*)\`
+     - **No prod / deploy scripts** → only offer if Phase 2 detected such script names. \`permissions.deny\` for \`Bash(npm run <script>:*)\` (and equivalents for yarn/pnpm/bun/make) where \`<script>\` matched \`prod\`/\`deploy\`/\`release\`/\`publish\`.
+     - **No dangerous fs / sudo** → \`permissions.deny\` for \`Bash(rm -rf:*)\`, \`Bash(sudo:*)\`, \`Bash(chmod -R:*)\`
+     - **No terraform apply** → \`permissions.ask\` for \`Bash(terraform apply:*)\`, \`Bash(terraform destroy:*)\` (only offer if \`.tf\` files were detected)
+     - **Custom rule** → use the auto-added "Other" free-text option; user types a matcher.
+
+     **Overlap between categories is fine.** Picking both "No git push" (\`ask\` on \`Bash(git push:*)\`) and "No destructive git" (\`deny\` on \`Bash(git push --force:*)\`) coexists as two separate rules — the more specific deny wins for force-push, the ask still gates regular push. Do not warn the user about this.
+
+  2. **Per-category scope.** For each accepted category, ask where to persist (project-shared vs personal) with a sensible default:
+     - **Default project** (\`projectSettings\` → \`.claudio/settings.json\`): terraform/docker/prod scripts, dangerous fs — these are repo rules that protect the whole team.
+     - **Default personal** (\`userSettings\` → \`~/.claudio/settings.json\`): commits, push, rebase — these are individual workflow preferences.
+     Offer the default first; let the user flip.
+
+     If you would write to \`.claudio/settings.json\` (project scope): check whether \`.claudio/\` or \`.claudio/settings.json\` is matched by \`.gitignore\`. If ignored, do NOT prompt to commit the file. If not ignored, mention to the user that this file is intended to be committed (team-shared rules).
+
+  3. **Persist the rules.** Use \`addPermissionRulesToSettings({ ruleValues, ruleBehavior }, source)\` from \`src/utils/permissions/permissionsLoader.ts\` (it deduplicates and preserves existing entries). \`ruleBehavior\` is \`'ask'\` or \`'deny'\`; \`source\` is \`'projectSettings'\` or \`'userSettings'\`. Construct each \`ruleValue\` as \`{ toolName: 'Bash', ruleContent: '<command>:*' }\` (or omit \`ruleContent\` for the whole tool).
+
+     **Managed-settings fallback**: if \`addPermissionRulesToSettings\` returns \`false\` (e.g., \`shouldAllowManagedPermissionRulesOnly()\` blocked the write, or the source is read-only), tell the user that settings are managed and print the proposed rules as a copy-paste block they can hand to their admin. Do not fail the whole \`/init\`.
+
+  4. **Commit gate (real git pre-commit hook).** Separately from the permission rules above, if Phase 2 found lint/typecheck/test commands AND no existing pre-commit hook (\`.git/hooks/pre-commit\`, \`.pre-commit-config.yaml\`, \`.husky/pre-commit\`, \`lefthook.yml\`), ask via \`AskUserQuestion\`:
+
+     - **"Add raw \`.git/hooks/pre-commit\` script"** (default) — write a bash script under \`.git/hooks/pre-commit\` that runs the detected commands (lint + typecheck + fast test). Make it executable (\`chmod +x\` via Bash tool). Warn the user the file is NOT tracked by git and must be re-added per clone unless they switch to a tracked solution. Never add \`--no-verify\`.
+     - **"Add \`.husky/pre-commit\`"** — only show this option if \`.husky/\` already exists. Write the hook file only; do NOT run \`npm install\` or \`npx husky init\`.
+     - **"Skip — just mention \`/commit\` in AGENTS.md"** — lightweight fallback.
+     - **"Print install instructions for husky / pre-commit / lefthook and continue"** — \`/init\` outputs the commands the user can run later; nothing else is written.
+
+     Reminder (already in this prompt): \`PreToolUse\` hooks cannot filter \`Bash\` by command content, so a real commit gate must be a git hook, not a Claudio hook. The permission rules from step 1 above DO work for matching \`git commit\` invocations from Claudio's side because they're glob-based at the matcher level.
+
 - **Proposal-sourced hooks** (if user chose "Skills + hooks" or "Hooks only"): Consume \`hook\` entries from the Phase 3 preference queue. If Phase 2 found a formatter and the queue has no formatting hook, offer format-on-edit as a fallback. If the user chose "Neither" or "Skills only" in Phase 1, skip this bullet entirely.
 
   For each hook preference (from the queue or the formatter fallback):
@@ -211,7 +294,30 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
 
 Act on each "yes" before moving on.
 
-## Phase 8: Summary and next steps
+## Phase 8: Final AGENTS.md pass and summary
+
+### 8a: Reflect created artifacts back into AGENTS.md (only if AGENTS.md was written in Phase 4)
+
+Re-open the AGENTS.md you wrote in Phase 4 and add/update these sections **idempotently** (if the section already exists, update its contents in place rather than appending a duplicate). Keep each entry to a single line.
+
+- \`## Subagents\` — one bullet per agent created in Phase 5.5: \`- \`<slug>\` — <description>\`. Skip the whole section if no agents were created.
+- \`## Skills\` — one bullet per skill created in Phase 6: \`- \`/<skill-name>\` — <description>\`. Skip the whole section if no skills were created.
+- \`## Guardrails\` — one bullet per guardrail category accepted in Phase 7, e.g. \`- Commits require confirmation (\`permissions.ask\` on \`Bash(git commit:*)\`).\`, \`- Force-push and hard reset are blocked.\`. Skip if no guardrails were configured.
+- If a real git pre-commit hook was created in Phase 7, add a single line under your existing workflow/testing section (or create \`## Workflow\` if absent) like: \`Pre-commit hook at \`.git/hooks/pre-commit\` runs <commands>.\`
+
+Finish the file with a one-line pointer: \`To refine: \`/agents\` (subagents), \`/skills\` (skills), \`/permissions\` (viewer for permission rules — edit \`settings.json\` directly to change them).\`
+
+**Important — interaction with Phase 6**: Phase 6 (skill-creator) may have already written sections into AGENTS.md. Always read AGENTS.md before editing in this pass; never overwrite an existing section, only update its contents.
+
+### 8b: Update .gitignore
+
+If you created any of these in the project tree, ensure \`.gitignore\` covers them (append if missing, never duplicate lines):
+- \`CLAUDE.local.md\` (always — it's personal)
+- Any personal-scoped agents written under the home directory do NOT need a project gitignore entry. Skip.
+
+Note: \`.claudio/settings.json\` (project-scoped guardrails written in Phase 7) is intended to be **committed** so the rules apply to every contributor — do NOT add it to \`.gitignore\` unless the user explicitly asked for personal-only rules.
+
+### 8c: Recap
 
 Recap what was set up — which files were written and the key points included in each. Remind the user these files are a starting point: they should review and tweak them, and can run \`/init\` again anytime to re-scan.
 
@@ -219,7 +325,7 @@ Then tell the user that you'll be introducing a few more suggestions for optimiz
 
 When building the list, work through these checks and include only what applies:
 - If frontend code was detected (React, Vue, Svelte, etc.): \`/plugin install frontend-design@claude-plugins-official\` gives Claude design principles and component patterns so it produces polished UI; \`/plugin install playwright@claude-plugins-official\` lets Claude launch a real browser, screenshot what it built, and fix visual bugs itself.
-- If you found gaps in Phase 7 (missing GitHub CLI, missing linting) and the user said no: list them here with a one-line reason why each helps.
+- If you found gaps in the Phase 7 optimizations menu (missing GitHub CLI, missing linting, etc.) and the user said no: list them here with a one-line reason why each helps. (This is separate from the guardrails sub-section of Phase 7.)
 - If tests are missing or sparse: suggest setting up a test framework so Claude can verify its own changes.
 - To help you create skills and optimize existing skills using evals, Claude Code has an official skill-creator plugin you can install. Install it with \`/plugin install skill-creator@claude-plugins-official\`, then run \`/skill-creator <skill-name>\` to create new skills or refine any existing skill. (Always include this one.)
 - Browse official plugins with \`/plugin\` — these bundle skills, agents, hooks, and MCP servers that you may find helpful. You can also create your own custom plugins to share them with others. (Always include this one.)`
@@ -227,11 +333,8 @@ When building the list, work through these checks and include only what applies:
 const command = {
   type: 'prompt',
   name: 'init',
-  get description() {
-    return isNewInitEnabled()
-      ? 'Initialize new project instruction file(s) and optional skills/hooks with codebase documentation'
-      : 'Initialize a new project instruction file with codebase documentation'
-  },
+  description:
+    'Initialize project instruction file(s), optional subagents, skills, hooks, and guardrails based on codebase analysis',
   contentLength: 0, // Dynamic content
   progressMessage: 'analyzing your codebase',
   source: 'builtin',
@@ -241,7 +344,7 @@ const command = {
     return [
       {
         type: 'text',
-        text: isNewInitEnabled() ? NEW_INIT_PROMPT : OLD_INIT_PROMPT,
+        text: INIT_PROMPT,
       },
     ]
   },
