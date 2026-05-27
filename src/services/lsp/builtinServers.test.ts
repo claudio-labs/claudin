@@ -537,6 +537,37 @@ describe('getBuiltinLspServers', () => {
     const result = await getBuiltinLspServers()
     expect(result['typescript-language-server']).toBeUndefined()
   })
+
+  // Regression: when multiple servers claim the same extension (.ts),
+  // result Record must preserve SERVER_DEFINITIONS order so that
+  // LSPServerManager.getServerForFile() routes to the full-featured server.
+  // Previously, parallel detection inserted whichever `which` resolved first,
+  // so biome (diagnostics-only) could shadow typescript-language-server.
+  test('preserves SERVER_DEFINITIONS order regardless of detection latency', async () => {
+    mockGetUserLspSettings.mockReturnValue({})
+    mockReadFile.mockImplementation(async () => { throw new Error('ENOENT') })
+    // Make biome resolve FAST, typescript-language-server SLOW.
+    mockExecFile.mockImplementation(async (...a: unknown[]) => {
+      const [cmd, args] = a as [string, string[]]
+      if (cmd !== 'which') return { code: 1, stdout: '', stderr: '' }
+      if (args[0] === 'biome') {
+        return { code: 0, stdout: '/usr/bin/biome\n', stderr: '' }
+      }
+      if (args[0] === 'typescript-language-server') {
+        await new Promise((r) => setTimeout(r, 30))
+        return { code: 0, stdout: '/usr/bin/typescript-language-server\n', stderr: '' }
+      }
+      return { code: 1, stdout: '', stderr: '' }
+    })
+    const { getBuiltinLspServers } = await freshModule()
+    const result = await getBuiltinLspServers()
+    const keys = Object.keys(result)
+    const tlsIdx = keys.indexOf('typescript-language-server')
+    const biomeIdx = keys.indexOf('biome')
+    expect(tlsIdx).toBeGreaterThanOrEqual(0)
+    expect(biomeIdx).toBeGreaterThanOrEqual(0)
+    expect(tlsIdx).toBeLessThan(biomeIdx)
+  })
 })
 
 // ---------------------------------------------------------------------------

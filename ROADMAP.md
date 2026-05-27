@@ -349,33 +349,16 @@ Claudio já tem LSP forte (13 ops, 12 servers embarcados em `src/services/lsp/bu
 - **Lado Search** — cai em Grep regex (texto ruidoso, sem resolução simbólica) mesmo quando LSP entregaria a resposta correta em 1 chamada (`prepareCallHierarchy`, `findReferences`).
 - **Lado Read** — lê arquivos inteiros (~6k tokens) quando precisa mexer em 40 linhas. Já existe `Read view='outline'` e `Read symbol='nome'` que reduzem 10-20×. Quase não é usado.
 
-Esses dois pontos (**T6.1** e **T6.6**) são o coração do Tier — tweak de tool descriptions, custo de horas, ganho potencialmente desproporcional. Os outros itens (`/review` orquestrado, cache, índice) são consequências derivadas, gated por evidência empírica.
+**T6.6** é agora o coração do Tier — tweak de tool description, custo de horas, ganho potencialmente desproporcional. Os outros itens (`/review` orquestrado, cache, índice) são consequências derivadas, gated por evidência empírica. **T6.1 (descriptions LSP-first) foi descartado por bench A/B** — ver bloco DROPADO abaixo.
 
 Itens nasceram do estudo de `code-review-graph` (`docs/discovery/code-review-graph/00-insights.md` → `09-roadmap-validation.md`) **com revisões críticas aplicadas**: o que parecia infra nova quase sempre vira "fazer o agente usar o que já existe". Evita o overclaim que o próprio CRG comete (ver `02-arquitetura-e-mecanismo.md §9`).
 
-Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 dropado. T6.5 em DEFER.
+Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6.5 em DEFER.
 
-### [ ] T6.1 Tool descriptions de LSPTool/GrepTool com tabela de mapeamento
-- **Arquivos:** `src/tools/LSPTool/prompt.ts`, `src/tools/GrepTool/prompt.ts`
-- **Problema observado:** o agente (e o Explore agent, `src/tools/AgentTool/built-in/exploreAgent.ts:38-54`) cai em Grep para queries simbólicas (callers, refs, definição, hierarquia) mesmo quando o arquivo tem LSP server ativo. Causa: a description do GrepTool é assertiva ("ALWAYS use Grep"), a description do LSPTool não disputa o terreno, e Grep tem latência percebida menor (~100ms vs ~100-500ms da primeira chamada LSP).
-- **Mudança:**
-  - Em **GrepTool**, nota que regex casa **texto** (inclui comentários, strings, docs, homônimos) — para callers/refs de símbolo real, prefira LSPTool quando o arquivo tem server ativo.
-  - Em **LSPTool**, tabela explícita de mapeamento que substitui a heurística "regex resolve":
-
-    | Pergunta do agente | Hoje (Grep) | Melhor (LSP) |
-    |---|---|---|
-    | "Onde X é chamada?" | match textual ruidoso | `findReferences` |
-    | "Quem chama X recursivamente?" | impossível sem N rodadas | `prepareCallHierarchy` + `incomingCalls` (árvore real) |
-    | "Quais funções existem em foo.ts?" | `Grep symbols` (regex) | `documentSymbol` (AST do compilador) |
-    | "Onde está a definição de X?" | Grep + ler arquivos | `goToDefinition` |
-    | "Onde o type X é usado?" | Grep "X" → ruído de variáveis homônimas | `findReferences` resolve tipo vs valor |
-
-  - **Fallback explícito:** linha na description do LSPTool no formato "se o tool retornar `No LSP server available for file type` (`LSPTool.ts:394-399`), o arquivo não tem server — caia em Grep/Read normalmente". Linguagens cobertas listadas em `src/services/lsp/builtinServers.ts:461-609`; fora dessa lista (Ruby, PHP, Swift, Bash, Markdown, etc.) Grep continua sendo o caminho certo.
-  - **NÃO** mexer em system prompt dos agentes (`exploreAgent.ts`/`planAgent.ts`/`generalPurposeAgent.ts`) — risco de bloat sem efeito mensurável (`09-roadmap-validation.md §2 Eixo 1`).
-- **Por que isso pode funcionar:** o agente escolhe tool por descriptions; a heurística "Grep responde rápido" só vale enquanto ele não enxerga que `findReferences` resolve em 1 chamada o que Grep resolve em 3-5 + filtragem manual. A tabela é o ponto de inflexão.
-- **Ganho:** baixo-médio — **Esforço:** trivial (horas) — **Risco:** baixo.
-- **Kill criteria:** se A/B de 1 semana mostrar <5% de aumento em chamadas `LSPTool` por sessão, reverter.
-- **Contexto:** o insight da "árvore mental via LSP" está discutido em detalhe no histórico de discovery — o agente hoje **não constrói árvore**, faz N greps independentes. O caminho de baixo custo para a árvore real é `prepareCallHierarchy` + `incomingCalls` (recursivo, lazy), e isso só será usado se a description disser. Sem nova infra.
+### [~] T6.1 Tool descriptions de LSPTool/GrepTool — **DROPADO**
+- **Razão:** dois benches A/B (claudio e openclaude, `docs/discovery/lsp-vs-grep-ground-truth/`) mostraram **LSP=0 em todas as runs** mesmo com a tabela LSPTool-first reaplicada e o GrepTool sinalizando "para callers/refs prefira LSP". Descriptions globais não deslocam o agente para LSP nesses prompts.
+- **Achado paralelo (não previsto):** o bench expôs um bug crítico de roteamento em `getBuiltinLspServers` — `biome` (linter-only) podia shadowar `typescript-language-server` em arquivos `.ts/.tsx` por ordem não-determinística do `Promise.allSettled`. Corrigido em commit separado com teste de regressão. Sem o fix, qualquer experimento Tier 6.1 era inválido de antemão.
+- **Próxima tentativa lógica:** **T6.6** (description do FileReadTool com cross-ref para LSP `outgoingCalls`) — mais perto do ponto de decisão. Se T6.6 também falhar, mover hipótese para system prompts de Explore/Plan agents (originalmente vetado em T6.1, reavaliar com evidência nova).
 
 ### [ ] T6.2a Parser de hunks no `/review` (sem LSP)
 - **Arquivos:** `src/commands/review.ts:9-31` (consumidor), `src/utils/gitDiff.ts:114,200` (reuso de `fetchGitDiffHunks`/`parseGitDiff` que **já existem**).
@@ -397,7 +380,7 @@ Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 
 - **Mudança:** memoização in-memory keyed por `(path, content-hash)`; invalidar entrada quando `FileEditTool`/`FileWriteTool` toca o path. **Só `documentSymbol`** — não cachear `findReferences` (resultado depende de N arquivos; invalidação fica reverse-deps, complexidade alta, `09-roadmap-validation.md §2 Eixo 4`).
 - **Padrão a reusar:** `src/tools/LSPTool/codeActionCache.ts:30-74` (TTL + eviction) e `src/tools/shared/twoTierCache.ts:102`.
 - **Ganho:** baixo-médio (latência em loops Explore) — **Esforço:** baixo (2-3 dias) — **Risco:** baixo.
-- **Pré-requisito de medição:** rodar **depois** de T6.1. Se T6.1 reduzir queries redundantes, o ganho de T6.3 cai — avaliar antes de comprometer (`09-roadmap-validation.md §3`).
+- **Pré-requisito de medição:** rodar **depois** de T6.6. Se T6.6 reduzir queries redundantes, o ganho de T6.3 cai — avaliar antes de comprometer (`09-roadmap-validation.md §3`).
 - **Kill criteria:** se hit-rate <30% em 100 sessões instrumentadas, remover.
 
 ### [ ] T6.6 Leitura cirúrgica via outline + symbol-targeted reads + call graph
@@ -414,11 +397,11 @@ Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 
   3. Para entender o que X depende: `LSPTool.outgoingCalls(X)` → para cada chamada relevante, `Read symbol='depY'` no arquivo correspondente.
   4. Full file só quando precisa de imports, constantes top-level, ou estrutura completa.
   - Description do `LSPTool` reforça o link inverso: "use `outgoingCalls` para descobrir quais símbolos ler em seguida, evitando Read de arquivos inteiros".
-- **Por que isso pode funcionar:** ganho é **input-side** (tokens de leitura), distinto do T6.1 que é search-side. Em tarefas de modificação localizada em codebase não-familiar, redução estimada de 10-20× no input por ciclo (medir empiricamente).
+- **Por que isso pode funcionar:** ganho é **input-side** (tokens de leitura). Em tarefas de modificação localizada em codebase não-familiar, redução estimada de 10-20× no input por ciclo (medir empiricamente).
 - **Fallback:** se o arquivo não tem outline parseável (linguagem não coberta por `scanSymbols`/LSP), agente cai em `Read` normal. Sem regressão.
 - **Ganho:** **médio-alto em input tokens** (depende muito do tipo de tarefa) — **Esforço:** baixo (horas, só descriptions) — **Risco:** baixo.
 - **Kill criteria:** se em 20 sessões instrumentadas a redução de input tokens for <20% para tarefas de edição localizada, reverter — provavelmente sinal de que o agente está fazendo outline + read symbol + acabando lendo full file mesmo assim (dupla leitura).
-- **Sequenciamento sugerido:** rodar **junto com T6.1**. São complementares: T6.1 ensina como achar o símbolo certo; T6.6 ensina a ler só ele.
+- **Sequenciamento sugerido:** core do Tier 6 agora que T6.1 foi descartado. Se T6.6 também não mover comportamento via description-edit, próxima alavanca é system prompt do Explore agent.
 
 ### [ ] T6.7 Plan dossier com anchors de linha + símbolo + capturas LSP
 - **Arquivos:** `src/services/planDossier.ts` (`Dossier` type linha 70, `DossierEntry` union linha 68, `ReadEntry` linha 31), `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`, `src/tools/ExitPlanModeTool/prompt.ts`.
@@ -429,10 +412,10 @@ Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 
   2. Adicionar `LspEntry` à union `DossierEntry`: resultado de `findReferences`/`incomingCalls`/`documentSymbol` que o planner rodou, anchorado em `(path, line, symbol)`.
   3. `ExitPlanMode` prompt orienta planner: "se você sabe a linha/símbolo onde mexer, declare em `filesToEdit`; se rodou LSP durante o plan, esses resultados ficam no dossier".
   4. Render do dossier prioriza `lineRange` quando presente — passa só o trecho relevante via `Read symbol='X'` ou `Read offset/limit`, não o arquivo todo (sinergia direta com T6.6).
-- **Por que faz sentido agora:** combina T6.1 (LSP para achar o ponto), T6.6 (ler só o símbolo) e o dossier já existente. Sem isso, T6.1 e T6.6 ajudam o planner mas a informação morre na transição plan → implementação.
+- **Por que faz sentido agora:** combina T6.6 (ler só o símbolo) e o dossier já existente. Sem isso, T6.6 ajuda o planner mas a informação morre na transição plan → implementação.
 - **Ganho:** **médio-alto em input tokens do implementador** + reduz tempo de "re-orientação" no início da implementação — **Esforço:** baixo-médio (~3-5 dias; schema change + render change + 1 entry type novo) — **Risco:** baixo (retrocompat preservada).
 - **Kill criteria:** se em 20 sessões de plan o planner não usar `lineRange`/`symbol` em mais que 30% dos `filesToEdit`, reverter para schema só-path. Sinal de que a description não convenceu.
-- **Sequenciamento:** depois de T6.1 e T6.6 (planner precisa estar usando LSP/symbol-read antes de adiantar capturar isso).
+- **Sequenciamento:** depois de T6.6 (planner precisa estar usando symbol-read antes de adiantar capturar isso).
 
 ### [~] T6.4 Wiki auto-gerada — **DROPADO**
 - **Razão:** validação RED (`09-roadmap-validation.md §2 Eixo 3`). Template vazio em `src/services/wiki/init.ts:6-37` é scaffold deliberado, não dor; saída em monorepo TS de 200+ arquivos seria ruidosa; duplica `claude-code-guide` agent + `docs/`.
@@ -483,15 +466,16 @@ Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 
 
 **Tier 6 (LSP-first agent) — ordem por dependência:**
 
-1. T6.1 — tool descriptions LSPTool/GrepTool (horas, medir baseline antes)
-2. T6.6 — leitura cirúrgica via outline+symbol+outgoingCalls (horas, **rodar junto com T6.1**)
-3. Receita doc-only do CRG MCP (paralelo, 30min)
-4. T6.2a — parser de hunks no `/review` (~3 dias)
-5. **Gate de medição** — T6.1+T6.6 mexeram em tool ratios e input tokens? T6.2a foi usado?
-6. T6.2b — risk score com LSP (só se 2a validar)
-7. T6.7 — plan dossier com anchors+LSP captures (depende de T6.1+T6.6 ativos)
-8. T6.3 — cache `documentSymbol` (só se T6.1+T6.6 deixarem ganho residual)
-9. T6.5 — índice persistente (DEFER, reavaliar em 3 meses)
+1. T6.6 — leitura cirúrgica via outline+symbol+outgoingCalls (horas; core do Tier após T6.1 dropado)
+2. Receita doc-only do CRG MCP (paralelo, 30min)
+3. T6.2a — parser de hunks no `/review` (~3 dias)
+4. **Gate de medição** — T6.6 mexeu em input tokens? T6.2a foi usado?
+5. T6.2b — risk score com LSP (só se 2a validar)
+6. T6.7 — plan dossier com anchors+LSP captures (depende de T6.6 ativo)
+7. T6.3 — cache `documentSymbol` (só se T6.6 deixar ganho residual)
+8. T6.5 — índice persistente (DEFER, reavaliar em 3 meses)
+
+T6.1 (descriptions LSPTool/GrepTool) **dropado** — bench A/B mostrou LSP=0 independente da description.
 
 **Tier 5 (discovery ohmypi) — ordem recomendada por ROI:**
 

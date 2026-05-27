@@ -815,9 +815,15 @@ export async function getBuiltinLspServers(): Promise<Record<string, ScopedLspSe
   if (!isLspGloballyEnabled()) return detected
   const userSettings = getUserLspSettings()
 
-  await Promise.allSettled(
-    SERVER_DEFINITIONS.map(async (def) => {
-      if (userSettings[def.name]?.disabled) return
+  // Detect in parallel, but preserve SERVER_DEFINITIONS order when populating
+  // the result Record. Iteration order matters downstream:
+  // LSPServerManager.getServerForFile() picks the first server that claims a
+  // file extension, so a "lightweight" server registered earlier (e.g. biome,
+  // which only handles diagnostics) would shadow a full-featured one (e.g.
+  // typescript-language-server) for `findReferences`, `hover`, etc.
+  const results = await Promise.all(
+    SERVER_DEFINITIONS.map(async (def): Promise<ScopedLspServerConfig | null> => {
+      if (userSettings[def.name]?.disabled) return null
 
       let bin: string | null = null
 
@@ -838,15 +844,20 @@ export async function getBuiltinLspServers(): Promise<Record<string, ScopedLspSe
         ])
       }
 
-      if (!bin) return
+      if (!bin) return null
 
-      detected[def.name] = {
+      return {
         ...def.toConfig(bin),
         scope: 'builtin' as const,
         source: 'builtin',
       }
     }),
   )
+
+  SERVER_DEFINITIONS.forEach((def, i) => {
+    const config = results[i]
+    if (config) detected[def.name] = config
+  })
 
   return detected
 }
