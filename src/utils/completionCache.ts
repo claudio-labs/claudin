@@ -147,12 +147,14 @@ export async function regenerateCompletionCache(): Promise<void> {
   logForDebugging(`update: Regenerating ${shell.name} completion cache`)
 
   const claudeBin = process.argv[1] || 'claude'
-  const result = await execFileNoThrow(claudeBin, [
-    'completion',
-    shell.shellFlag,
-    '--output',
-    shell.cacheFile,
-  ])
+  // Hard timeout + ignored stdin so a freshly-installed binary that doesn't
+  // recognize `completion --output` (or drops into REPL on a piped stdin) can't
+  // hang `claudio update` indefinitely — completion cache regen is best-effort.
+  const result = await execFileNoThrow(
+    claudeBin,
+    ['completion', shell.shellFlag, '--output', shell.cacheFile],
+    { timeout: 5_000, preserveOutputOnError: true, useCwd: true, stdin: 'ignore' },
+  )
 
   if (result.code !== 0) {
     logForDebugging(
