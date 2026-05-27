@@ -340,6 +340,114 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ---
 
+## Tier 6 — LSP-first agent (descoberto via `docs/discovery/code-review-graph/`)
+
+**Tese central — Search + Read são onde está o ganho real.**
+
+Claudio já tem LSP forte (13 ops, 12 servers embarcados em `src/services/lsp/builtinServers.ts:461-609`) e `scanSymbols` regex-puro em `src/tools/shared/codeOutline/scanSymbols.ts`, mas o agente:
+
+- **Lado Search** — cai em Grep regex (texto ruidoso, sem resolução simbólica) mesmo quando LSP entregaria a resposta correta em 1 chamada (`prepareCallHierarchy`, `findReferences`).
+- **Lado Read** — lê arquivos inteiros (~6k tokens) quando precisa mexer em 40 linhas. Já existe `Read view='outline'` e `Read symbol='nome'` que reduzem 10-20×. Quase não é usado.
+
+Esses dois pontos (**T6.1** e **T6.6**) são o coração do Tier — tweak de tool descriptions, custo de horas, ganho potencialmente desproporcional. Os outros itens (`/review` orquestrado, cache, índice) são consequências derivadas, gated por evidência empírica.
+
+Itens nasceram do estudo de `code-review-graph` (`docs/discovery/code-review-graph/00-insights.md` → `09-roadmap-validation.md`) **com revisões críticas aplicadas**: o que parecia infra nova quase sempre vira "fazer o agente usar o que já existe". Evita o overclaim que o próprio CRG comete (ver `02-arquitetura-e-mecanismo.md §9`).
+
+Ordem: **T6.1 + T6.6 em paralelo (core) → medir → decidir tudo mais**. T6.4 dropado. T6.5 em DEFER.
+
+### [ ] T6.1 Tool descriptions de LSPTool/GrepTool com tabela de mapeamento
+- **Arquivos:** `src/tools/LSPTool/prompt.ts`, `src/tools/GrepTool/prompt.ts`
+- **Problema observado:** o agente (e o Explore agent, `src/tools/AgentTool/built-in/exploreAgent.ts:38-54`) cai em Grep para queries simbólicas (callers, refs, definição, hierarquia) mesmo quando o arquivo tem LSP server ativo. Causa: a description do GrepTool é assertiva ("ALWAYS use Grep"), a description do LSPTool não disputa o terreno, e Grep tem latência percebida menor (~100ms vs ~100-500ms da primeira chamada LSP).
+- **Mudança:**
+  - Em **GrepTool**, nota que regex casa **texto** (inclui comentários, strings, docs, homônimos) — para callers/refs de símbolo real, prefira LSPTool quando o arquivo tem server ativo.
+  - Em **LSPTool**, tabela explícita de mapeamento que substitui a heurística "regex resolve":
+
+    | Pergunta do agente | Hoje (Grep) | Melhor (LSP) |
+    |---|---|---|
+    | "Onde X é chamada?" | match textual ruidoso | `findReferences` |
+    | "Quem chama X recursivamente?" | impossível sem N rodadas | `prepareCallHierarchy` + `incomingCalls` (árvore real) |
+    | "Quais funções existem em foo.ts?" | `Grep symbols` (regex) | `documentSymbol` (AST do compilador) |
+    | "Onde está a definição de X?" | Grep + ler arquivos | `goToDefinition` |
+    | "Onde o type X é usado?" | Grep "X" → ruído de variáveis homônimas | `findReferences` resolve tipo vs valor |
+
+  - **Fallback explícito:** linha na description do LSPTool no formato "se o tool retornar `No LSP server available for file type` (`LSPTool.ts:394-399`), o arquivo não tem server — caia em Grep/Read normalmente". Linguagens cobertas listadas em `src/services/lsp/builtinServers.ts:461-609`; fora dessa lista (Ruby, PHP, Swift, Bash, Markdown, etc.) Grep continua sendo o caminho certo.
+  - **NÃO** mexer em system prompt dos agentes (`exploreAgent.ts`/`planAgent.ts`/`generalPurposeAgent.ts`) — risco de bloat sem efeito mensurável (`09-roadmap-validation.md §2 Eixo 1`).
+- **Por que isso pode funcionar:** o agente escolhe tool por descriptions; a heurística "Grep responde rápido" só vale enquanto ele não enxerga que `findReferences` resolve em 1 chamada o que Grep resolve em 3-5 + filtragem manual. A tabela é o ponto de inflexão.
+- **Ganho:** baixo-médio — **Esforço:** trivial (horas) — **Risco:** baixo.
+- **Kill criteria:** se A/B de 1 semana mostrar <5% de aumento em chamadas `LSPTool` por sessão, reverter.
+- **Contexto:** o insight da "árvore mental via LSP" está discutido em detalhe no histórico de discovery — o agente hoje **não constrói árvore**, faz N greps independentes. O caminho de baixo custo para a árvore real é `prepareCallHierarchy` + `incomingCalls` (recursivo, lazy), e isso só será usado se a description disser. Sem nova infra.
+
+### [ ] T6.2a Parser de hunks no `/review` (sem LSP)
+- **Arquivos:** `src/commands/review.ts:9-31` (consumidor), `src/utils/gitDiff.ts:114,200` (reuso de `fetchGitDiffHunks`/`parseGitDiff` que **já existem**).
+- **Problema:** `/review` joga `gh pr diff` cru no LLM — sem ordenação, sem identificação de hub files, mesmo prompt para patch trivial ou refactor crítico.
+- **Mudança:** pipeline que extrai do diff uma tabela estática `arquivo | linhas_mudadas | hunks | é_teste?` e injeta no prompt. **Sem chamadas LSP nesta fase.**
+- **Ganho:** médio (review prioriza arquivos grandes) — **Esforço:** baixo (~3 dias) — **Risco:** baixo. Reusa código existente.
+- **Kill criteria:** se em 5 PRs reais o LLM não usar a tabela injetada (verificar via review do output), parar antes de T6.2b.
+
+### [ ] T6.2b Risk score em `/review` com LSP (gated por T6.2a)
+- **Arquivos:** mesmos de T6.2a + `src/tools/LSPTool/LSPTool.ts` (consumir `findReferences`/`incomingCalls` internamente).
+- **Problema:** mesmo do T6.2a, mas com ranking de impacto.
+- **Mudança:** para cada símbolo modificado no diff (cap em N=20 para evitar N×M blow-up), chamar `LSPTool.findReferences` paralelo (cap 8); compor score com `callerCount + isTestModified + securityKeyword`. **Pesos calibrados empiricamente em ≥10 PRs reais antes de commitar como default** (ver `07-crg-mining-for-roadmap.md` Eixo 2 — CRG usa pesos arbitrários; não copiar).
+- **Ganho:** médio em PRs grandes (>10 arquivos) — **Esforço:** médio (1-2 sem) — **Risco:** **médio-alto** — reproduz o anti-pattern do CRG `get_review_context(default)` se cap não for respeitado (`09-roadmap-validation.md §2 Eixo 2`).
+- **Kill criteria:** se em PRs pequenos (<5 arquivos) o tempo de orquestração > tempo do prompt naive atual, restringir a `--deep` opt-in em vez de default.
+
+### [ ] T6.3 Cache in-memory de `documentSymbol` por sessão
+- **Arquivos:** novo wrapper sobre `src/services/lsp/LSPServerManager.ts:265` (`sendRequest<T>`), invalidação reusando hook em `src/services/tools/toolExecution.ts:1762-1779` (`invalidateCacheForWrite` — **já existe**).
+- **Problema:** loops de exploração repetem `documentSymbol` no mesmo arquivo unchanged.
+- **Mudança:** memoização in-memory keyed por `(path, content-hash)`; invalidar entrada quando `FileEditTool`/`FileWriteTool` toca o path. **Só `documentSymbol`** — não cachear `findReferences` (resultado depende de N arquivos; invalidação fica reverse-deps, complexidade alta, `09-roadmap-validation.md §2 Eixo 4`).
+- **Padrão a reusar:** `src/tools/LSPTool/codeActionCache.ts:30-74` (TTL + eviction) e `src/tools/shared/twoTierCache.ts:102`.
+- **Ganho:** baixo-médio (latência em loops Explore) — **Esforço:** baixo (2-3 dias) — **Risco:** baixo.
+- **Pré-requisito de medição:** rodar **depois** de T6.1. Se T6.1 reduzir queries redundantes, o ganho de T6.3 cai — avaliar antes de comprometer (`09-roadmap-validation.md §3`).
+- **Kill criteria:** se hit-rate <30% em 100 sessões instrumentadas, remover.
+
+### [ ] T6.6 Leitura cirúrgica via outline + symbol-targeted reads + call graph
+- **Arquivos:** `src/tools/FileReadTool/prompt.ts` (description), `src/tools/LSPTool/prompt.ts` (cross-ref para `outgoingCalls`).
+- **Problema observado:** o ciclo típico de edição lê o arquivo inteiro (~6k tokens) mesmo quando a tarefa toca 40 linhas. Para entender dependências, lê mais arquivos inteiros. Custo de input cresce O(arquivos tocados) quando poderia ser O(símbolos relevantes).
+- **Já existe e quase não é usado:**
+  - `Read view='outline'` (`FileReadTool.ts:945-971`) — só assinaturas (~200 tokens vs ~6k).
+  - `Read symbol='nome'` (`FileReadTool.ts:1263`) — só o corpo do símbolo nomeado.
+  - `LSPTool.documentSymbol` — outline com precisão AST.
+  - `LSPTool.outgoingCalls(funcX)` — lista de funções chamadas por `funcX`, com `file:line` exato — permite "navegar" pela call graph e ler **só os símbolos que importam**.
+- **Mudança:** description do `FileReadTool` explicita o padrão:
+  1. Para arquivo desconhecido: comece com `view='outline'` (cheap).
+  2. Para mexer em função X: `Read symbol='X'` em vez de full file.
+  3. Para entender o que X depende: `LSPTool.outgoingCalls(X)` → para cada chamada relevante, `Read symbol='depY'` no arquivo correspondente.
+  4. Full file só quando precisa de imports, constantes top-level, ou estrutura completa.
+  - Description do `LSPTool` reforça o link inverso: "use `outgoingCalls` para descobrir quais símbolos ler em seguida, evitando Read de arquivos inteiros".
+- **Por que isso pode funcionar:** ganho é **input-side** (tokens de leitura), distinto do T6.1 que é search-side. Em tarefas de modificação localizada em codebase não-familiar, redução estimada de 10-20× no input por ciclo (medir empiricamente).
+- **Fallback:** se o arquivo não tem outline parseável (linguagem não coberta por `scanSymbols`/LSP), agente cai em `Read` normal. Sem regressão.
+- **Ganho:** **médio-alto em input tokens** (depende muito do tipo de tarefa) — **Esforço:** baixo (horas, só descriptions) — **Risco:** baixo.
+- **Kill criteria:** se em 20 sessões instrumentadas a redução de input tokens for <20% para tarefas de edição localizada, reverter — provavelmente sinal de que o agente está fazendo outline + read symbol + acabando lendo full file mesmo assim (dupla leitura).
+- **Sequenciamento sugerido:** rodar **junto com T6.1**. São complementares: T6.1 ensina como achar o símbolo certo; T6.6 ensina a ler só ele.
+
+### [ ] T6.7 Plan dossier com anchors de linha + símbolo + capturas LSP
+- **Arquivos:** `src/services/planDossier.ts` (`Dossier` type linha 70, `DossierEntry` union linha 68, `ReadEntry` linha 31), `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`, `src/tools/ExitPlanModeTool/prompt.ts`.
+- **Já existe:** o dossier hoje monitora Read/Grep/Glob durante plan mode e empacota o conteúdo dos arquivos em `filesToEdit` para o implementador (`planDossier.ts:31-77`). O implementador recebe arquivos completos, **não anchors**.
+- **Problema observado:** `filesToEdit` é só lista de paths. Em arquivo de 1000 linhas, o implementador precisa re-localizar o ponto de mudança via Grep/Read. Output de LSP rodado no planejamento (callers, refs, hierarquia) não persiste — se o planner descobriu que `login` em `auth.ts:120-145` é o ponto, isso é jogado fora.
+- **Mudança:**
+  1. Estender `filesToEdit` no schema de `ExitPlanMode` para aceitar `{path, lineRange?, symbol?}` em vez de `string[]` puro (com retrocompatibilidade — `string` continua válido como path puro).
+  2. Adicionar `LspEntry` à union `DossierEntry`: resultado de `findReferences`/`incomingCalls`/`documentSymbol` que o planner rodou, anchorado em `(path, line, symbol)`.
+  3. `ExitPlanMode` prompt orienta planner: "se você sabe a linha/símbolo onde mexer, declare em `filesToEdit`; se rodou LSP durante o plan, esses resultados ficam no dossier".
+  4. Render do dossier prioriza `lineRange` quando presente — passa só o trecho relevante via `Read symbol='X'` ou `Read offset/limit`, não o arquivo todo (sinergia direta com T6.6).
+- **Por que faz sentido agora:** combina T6.1 (LSP para achar o ponto), T6.6 (ler só o símbolo) e o dossier já existente. Sem isso, T6.1 e T6.6 ajudam o planner mas a informação morre na transição plan → implementação.
+- **Ganho:** **médio-alto em input tokens do implementador** + reduz tempo de "re-orientação" no início da implementação — **Esforço:** baixo-médio (~3-5 dias; schema change + render change + 1 entry type novo) — **Risco:** baixo (retrocompat preservada).
+- **Kill criteria:** se em 20 sessões de plan o planner não usar `lineRange`/`symbol` em mais que 30% dos `filesToEdit`, reverter para schema só-path. Sinal de que a description não convenceu.
+- **Sequenciamento:** depois de T6.1 e T6.6 (planner precisa estar usando LSP/symbol-read antes de adiantar capturar isso).
+
+### [~] T6.4 Wiki auto-gerada — **DROPADO**
+- **Razão:** validação RED (`09-roadmap-validation.md §2 Eixo 3`). Template vazio em `src/services/wiki/init.ts:6-37` é scaffold deliberado, não dor; saída em monorepo TS de 200+ arquivos seria ruidosa; duplica `claude-code-guide` agent + `docs/`.
+- **Substituto leve:** se houver demanda real, melhorar o template em `init.ts` com seções pré-populadas a partir de `Read view='outline'` da raiz — sem walker recursivo, sem summarizer LLM.
+
+### [ ] T6.5 Índice persistente cross-sessão — **DEFER**
+- **Bloqueio:** só considerar depois de T6.2b e T6.3 mostrarem valor real e adoção. Único item que tocaria `verify:privacy` (team memory `verify-privacy-bundle-only`).
+- **Doc:** `docs/discovery/code-review-graph/03-fit-no-claudio.md` + `06-onde-ganho-real.md`.
+
+### Receita doc-only (paralelo, custo ~30min)
+- **Arquivo a criar:** `docs/recipes/code-review-graph-mcp.md`
+- **Conteúdo:** snippet de `settings.json` para usuários power plugarem o CRG como MCP server externo opcional, com disclaimer "ganhos variam por commit; rode seu próprio benchmark" (`03-fit-no-claudio.md` caminho (a)).
+
+---
+
 ## Limpeza oportunista
 
 - [ ] **CHICAGO_MCP cleanup duplicado** em `src/query.ts:1060` e `1621` — flag está `false` em `build.ts`; código morto no open build. Unificar ou gate explícito.
@@ -372,6 +480,18 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - Item 2 — paralelizar dynamic imports (cold start)
 - Item 7 — delta-write transcript (escala mal em turnos longos)
 - Item 3 — cache `isEnabled()` (reduz custo do `useMemo` do REPL)
+
+**Tier 6 (LSP-first agent) — ordem por dependência:**
+
+1. T6.1 — tool descriptions LSPTool/GrepTool (horas, medir baseline antes)
+2. T6.6 — leitura cirúrgica via outline+symbol+outgoingCalls (horas, **rodar junto com T6.1**)
+3. Receita doc-only do CRG MCP (paralelo, 30min)
+4. T6.2a — parser de hunks no `/review` (~3 dias)
+5. **Gate de medição** — T6.1+T6.6 mexeram em tool ratios e input tokens? T6.2a foi usado?
+6. T6.2b — risk score com LSP (só se 2a validar)
+7. T6.7 — plan dossier com anchors+LSP captures (depende de T6.1+T6.6 ativos)
+8. T6.3 — cache `documentSymbol` (só se T6.1+T6.6 deixarem ganho residual)
+9. T6.5 — índice persistente (DEFER, reavaliar em 3 meses)
 
 **Tier 5 (discovery ohmypi) — ordem recomendada por ROI:**
 
