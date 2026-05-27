@@ -125,8 +125,9 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Problema:** Coração do agent loop sem cobertura unitária.
 - **Ganho:** alto — **Esforço:** alto — **Risco:** baixo.
 
-### [ ] 13. Cobertura de tools sem teste
-- **Tools alvo:** `WebSearchTool`, `MonitorTool`, `ScheduleCronTool`, `WorkflowTool`, `SkillTool`, MCP tools, Worktree tools, PlanMode tools (~38 dirs sem `.test.ts`).
+### [x] 13. Cobertura de tools sem teste
+- **Coberto:** Task* (6), PlanMode (2), Worktree (2), MCP (4), Cron + Monitor (4), Team mem (2), Glob, Config, ToolSearch, AskUserQuestion, Brief, NotebookEdit, SendMessage, SyntheticOutput — 26 tools, 229 tests, 488 expects.
+- **Restante:** `PowerShellTool` (Windows-only, será tracked à parte). `WebSearchTool`/`WorkflowTool`/`SkillTool` já tinham testes.
 - **Ganho:** alto — **Esforço:** alto — **Risco:** baixo.
 
 ### [ ] 14. Reconciliar doc vs código sobre flag `--provider`
