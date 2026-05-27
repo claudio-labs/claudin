@@ -3,7 +3,14 @@ import type { RGBColor as RGBColorType } from './types.js'
 
 export function getDefaultCharacters(): string[] {
   if (process.env.TERM === 'xterm-ghostty') {
-    return ['·', '✢', '✳', '✶', '✻', '*'] // Use * instead of ✽ for Ghostty because the latter renders in a way that's slightly offset
+    // Ghostty: avoid glyphs that Ink measures as width=1 but the terminal
+    // paints as width=2. When the spinner ticks to such a glyph, the cursor
+    // ends up one cell ahead of where Ink thinks it is, and the next character
+    // written (e.g. the first letter of the verb on the same line) lands on top
+    // of the spinner cell — producing "tthinking", "Bbeaming", etc.
+    // Empirically ✳ U+2733 (and ✽ U+273D) trip this; replace both with widths
+    // that paint consistently as a single cell.
+    return ['·', '✢', '+', '✶', '✻', '*']
   }
   return process.platform === 'darwin'
     ? ['·', '✢', '✳', '✶', '✻', '✽']
