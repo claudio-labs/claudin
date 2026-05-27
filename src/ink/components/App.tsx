@@ -112,6 +112,14 @@ export default class App extends PureComponent<Props, State> {
   // Count how many components enabled raw mode to avoid disabling
   // raw mode until all components don't need it anymore
   rawModeEnabledCount = 0;
+  // Deferred shutdown: when the refcount reaches 0 we don't flip raw mode
+  // off synchronously, because React frequently unmounts + remounts useInput
+  // consumers in the same commit (e.g. overlay closes → REPL input remounts).
+  // If we flipped raw mode off between those two events, the kernel would
+  // briefly echo keystrokes onto stdout — they end up in the scrollback as
+  // stray characters (the "Matrix rain" symptom). Schedule the shutdown on
+  // the next tick and cancel it if a new component grabs raw mode first.
+  pendingRawModeDisable: ReturnType<typeof setImmediate> | null = null;
   internal_eventEmitter = new EventEmitter();
   keyParseState = INITIAL_STATE;
   // Timer for flushing incomplete escape sequences
@@ -215,6 +223,17 @@ export default class App extends PureComponent<Props, State> {
     if (this.isRawModeSupported()) {
       this.handleSetRawMode(false);
     }
+    // Force any pending deferred shutdown to run now — we're tearing down,
+    // so there is no future tick to defer to.
+    if (this.pendingRawModeDisable) {
+      clearImmediate(this.pendingRawModeDisable);
+      this.pendingRawModeDisable = null;
+      try {
+        this.props.stdin.setRawMode(false);
+        this.props.stdin.pause();
+        this.props.stdin.unref();
+      } catch {}
+    }
     // Defensive: handleSetRawMode only stops the watchdog when the refcount
     // reaches 0. If unmount happens while another component still holds
     // raw mode (rawModeEnabledCount > 1), guarantee the timer is cancelled.
@@ -302,25 +321,42 @@ export default class App extends PureComponent<Props, State> {
           });
         });
       }
+      // An enable cancels any pending shutdown — refcount is going back up.
+      if (this.pendingRawModeDisable) {
+        clearImmediate(this.pendingRawModeDisable);
+        this.pendingRawModeDisable = null;
+      }
       this.rawModeEnabledCount++;
       return;
     }
 
-    // Disable raw mode only when no components left that are using it
+    // Disable raw mode only when no components left that are using it.
+    // Defer the actual flip so a same-tick remount can cancel it; otherwise
+    // a tiny window of raw-mode-off lets the kernel echo keystrokes to the
+    // terminal (visible as stray "S", "k", arrow letters in the scrollback).
     if (--this.rawModeEnabledCount === 0) {
-      this.props.stdout.write(DISABLE_MODIFY_OTHER_KEYS);
-      this.props.stdout.write(DISABLE_KITTY_KEYBOARD);
-      // Disable terminal focus reporting (DECSET 1004)
-      this.props.stdout.write(DFE);
-      // Disable bracketed paste mode
-      this.props.stdout.write(DBP);
-      stdin.setRawMode(false);
-      stdin.removeListener('readable', this.handleReadable);
-      stdin.removeListener('data', this.handleDataChunk);
-      stdin.pause();
-      stdin.unref();
-      this.stdinWatchdog?.stop();
-      this.stdinWatchdog = null;
+      if (this.pendingRawModeDisable) {
+        clearImmediate(this.pendingRawModeDisable);
+      }
+      this.pendingRawModeDisable = setImmediate(() => {
+        this.pendingRawModeDisable = null;
+        // Re-check: a synchronous enable in the same tick may have already
+        // taken the refcount back up; in that case, do nothing.
+        if (this.rawModeEnabledCount > 0) return;
+        this.props.stdout.write(DISABLE_MODIFY_OTHER_KEYS);
+        this.props.stdout.write(DISABLE_KITTY_KEYBOARD);
+        // Disable terminal focus reporting (DECSET 1004)
+        this.props.stdout.write(DFE);
+        // Disable bracketed paste mode
+        this.props.stdout.write(DBP);
+        stdin.setRawMode(false);
+        stdin.removeListener('readable', this.handleReadable);
+        stdin.removeListener('data', this.handleDataChunk);
+        stdin.pause();
+        stdin.unref();
+        this.stdinWatchdog?.stop();
+        this.stdinWatchdog = null;
+      });
     }
   };
 
