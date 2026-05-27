@@ -2,6 +2,8 @@
 
 Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit.
 
+> **Errata 2026-05-27 — prefix-invalidation (§1.5, §2, §3):** o gap "toolResultCache faz mtime mas não invalida vizinhos" estava **errado**. `src/services/tools/toolExecution.ts:1245` já chama `invalidateCacheForWrite` após cada tool, e o dispatcher em `:1762-1779` cobre `FileEditTool`/`FileWriteTool`/`NotebookEditTool` (→ `invalidateForPath`) e `BashTool`/`PowerShellTool` (→ `invalidateAll`). `invalidateForPath` faz prefix-match bidirecional (`toolResultCache.ts:150-164`), então write em vizinho derruba Grep/Glob cacheado. `LSPTool/workspaceEdit.ts` estende o padrão para rename/edit LSP. Roadmap T5.10 foi descartado por isso.
+
 ## 1. Caches omp não cobertos pelas análises anteriores
 
 ### 1.1 `packages/ai/src/model-cache.ts` — SQLite cross-process modelCache

@@ -37,11 +37,6 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ## Tier 2 — Alto impacto (esforço médio, payoff grande)
 
-### [ ] 6. Cache de `stableStringify` para prefixo imutável de mensagens
-- **Arquivo:** `src/services/api/openaiShim.ts:1811-1815`
-- **Problema:** `stableStringify(body)` rodado duas vezes consecutivas; `body` contém histórico inteiro. **Maior gargalo CPU/turn** já identificado por bench do próprio repo.
-- **Ganho:** alto — **Esforço:** médio — **Risco:** médio (preservar byte-identity para prefix caching).
-
 ### [ ] 7. Delta-write no `recordTranscript`
 - **Arquivo:** `src/QueryEngine.ts:733-762`
 - **Problema:** Re-serializa array inteiro de mensagens por content block do stream — N×M.
@@ -232,11 +227,8 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Doc:** [docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md)
 - **Extensão:** infra extraída pra `src/tools/shared/twoTierCache.ts` e aplicada também no `WebSearchTool` (paths adapter + codex, modo no-stale, TTL 60s). Native streaming fica fora. Plano: `~/.claudio/plans/immutable-giggling-oasis.md`.
 
-#### [ ] T5.10 Prefix-invalidation triggers em `toolResultCache`
-- **Problema:** `src/services/tools/toolResultCache.ts:63` hoje só revalida via mtime do file próprio. Write em vizinho não invalida nada → resultados estaleados em Grep/Glob.
-- **Ganho:** médio — correção (não performance).
-- **Esforço:** baixo — chamadas de invalidate explícitas em `FileEditTool`/`FileWriteTool`.
-- **Doc:** [docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/gap/02-two-tier-ttl-cache.md) §1.5
+#### [x] ~~T5.10 Prefix-invalidation triggers em `toolResultCache`~~ — **descartado (já implementado)**
+- Validação 2026-05-27: `toolExecution.ts:1245` já chama `invalidateCacheForWrite` após cada tool; dispatcher em `:1762-1779` cobre `FileEditTool`/`FileWriteTool`/`NotebookEditTool` (→ `invalidateForPath`) e `BashTool`/`PowerShellTool` (→ `invalidateAll`). `LSPTool/workspaceEdit.ts` também invalida em rename/edit. `invalidateForPath` faz prefix-match bidirecional (`toolResultCache.ts:150-164`) → write em vizinho derruba Grep/Glob cacheado. Testes em `toolResultCache.test.ts:108-128`. A premissa do roadmap (linha `:63` só checa mtime do próprio file) estava errada: `:63` é o construtor do LRU; o mtime self-check (`:92-105`) só roda pra `Read`.
 
 #### [ ] T5.11 `report_tool_issue` JSONL local-only
 - **Problema:** `isError` propaga em 15 arquivos sem coleta agregada; zero sinal estruturado de bugs de tool.
@@ -391,7 +383,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 6. T5.15-T5.21 — Quick wins (executar em paralelo, ordem por preferência)
 7. T5.8 — MCP tool-list cache (gap real, esforço baixo)
 8. T5.9 — WebFetch contadores (medir antes de qualquer cache estendido)
-9. T5.10 — Prefix-invalidation `toolResultCache` (correção, não perf)
+9. ~~T5.10~~ — descartado (já implementado em `toolExecution.ts:1762`)
 10. T5.6 + T5.7 — Prompts md + formatter (cluster pequeno, após T5.7)
 11. P1 restante (T5.11-T5.14) — só com trigger explícito
 12. P2 (T5.22-T5.29) — bloqueado por demanda ou esforço alto
