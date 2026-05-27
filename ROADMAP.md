@@ -111,9 +111,8 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Ganho:** médio — **Esforço:** médio — **Risco:** médio (hot path do provider Anthropic).
 - **Concluído:** barrel `claude.ts` + `claude/{types,cacheControl,paramBuilders,metadata,messageConverters,nonStreaming,nonStreamingRequest,streaming,convenience}.ts`. `queryModel` mantido íntegro em `streaming.ts` (decomposição interna fica como follow-up futuro). `cacheControl.ts` e `nonStreamingRequest.ts` extraídos como módulos folha para quebrar ciclos (`paramBuilders↔messageConverters` e `streaming↔nonStreaming`). Testes de regressão em `claude/__tests__/regression.test.ts`.
 
-### [ ] 11k. Split de `src/services/api/openaiShim.ts` (~2.274 linhas)
-- **Sugestão:** dividir em `{client, streamParser, messageConverter, toolConverter}`.
-- **Ganho:** manutenibilidade, testabilidade — **Esforço:** alto — **Risco:** médio.
+### [x] 11k. Split de `src/services/api/openaiShim.ts` (2.275 linhas)
+- **Concluído:** barrel `openaiShim.ts` + `openaiShim/{constants,types,helpers,headers,providerModes,urlRedaction,messageConverter,toolConverter,streamParser,messagesClient}.ts`. Surface pública intacta (`createOpenAIShimClient`, `convertTools`). `_doOpenAIRequest` (~570 linhas) mantido íntegro em `messagesClient.ts` — decomposição interna (`bodyBuilder`/`requestRunner`) fica como follow-up se necessário, igual ao padrão 11j. Asserts text-based em `bugfixes.test.ts` migrados na fase 3.
 
 ### [—] 11l. `src/bridge/bridgeMain.ts` (2.975 linhas) — **adiado**
 - Vive sob `feature('BRIDGE_MODE')` desabilitado no build aberto. Refatorar não tem payoff em runtime atual.

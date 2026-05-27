@@ -14,12 +14,36 @@ import { resolve } from 'path'
 const SRC = resolve(import.meta.dir, '..')
 const file = (relative: string) => Bun.file(resolve(SRC, relative))
 
+/**
+ * The openaiShim module was split into a barrel + directory in refactor 11k.
+ * For assertions that grep the shim source text (the original
+ * `services/api/openaiShim.ts` was a 2.2k-line monolith), concatenate the
+ * barrel and every leaf module under `services/api/openaiShim/` (excluding
+ * `__tests__`) so the asserts survive any future internal re-split.
+ *
+ * NOTE: comments are NOT stripped — some asserts here intentionally pin
+ * explanatory comments (see line 56) that justify the fix's intent. If you
+ * add a new assert, prefer matching real code (e.g. `STREAM_IDLE_TIMEOUT_MS\s*=`)
+ * over bare symbol names so a stray JSDoc mention can't make it pass.
+ */
+async function openaiShimSource(): Promise<string> {
+  const barrel = await file('services/api/openaiShim.ts').text()
+  const dir = resolve(SRC, 'services/api/openaiShim')
+  const glob = new Bun.Glob('**/*.ts')
+  const parts: string[] = [barrel]
+  for await (const rel of glob.scan({ cwd: dir, onlyFiles: true })) {
+    if (rel.includes('__tests__')) continue
+    parts.push(await Bun.file(resolve(dir, rel)).text())
+  }
+  return parts.join('\n')
+}
+
 // ---------------------------------------------------------------------------
 // Fix 1: Gemini `store: false` rejection
 // ---------------------------------------------------------------------------
 describe('Gemini store field fix', () => {
   test('isGeminiMode is imported and used in openaiShim', async () => {
-    const content = await file('services/api/openaiShim.ts').text()
+    const content = await openaiShimSource()
 
     // Verify the fix: store deletion should check for Gemini mode
     expect(content).toContain('isGeminiMode()')
@@ -29,7 +53,7 @@ describe('Gemini store field fix', () => {
   })
 
   test('store: false is still set by default (OpenAI needs it)', async () => {
-    const content = await file('services/api/openaiShim.ts').text()
+    const content = await openaiShimSource()
 
     // The body should still have store: false by default
     expect(content).toMatch(/store:\s*false/)
@@ -43,23 +67,23 @@ describe('Gemini store field fix', () => {
 // ---------------------------------------------------------------------------
 describe('Session timeout fix', () => {
   test('openaiShim has idle timeout for SSE streams', async () => {
-    const content = await file('services/api/openaiShim.ts').text()
+    const content = await openaiShimSource()
 
-    expect(content).toContain('STREAM_IDLE_TIMEOUT_MS')
-    expect(content).toContain('readWithTimeout')
+    expect(content).toMatch(/STREAM_IDLE_TIMEOUT_MS\s*=\s*[\d_]+/)
+    expect(content).toMatch(/\b(function\s+readWithTimeout|const\s+readWithTimeout\s*=)\b/)
     expect(content).toMatch(/readWithTimeout\(\)/)
   })
 
   test('codexShim has idle timeout for SSE streams', async () => {
     const content = await file('services/api/codexShim.ts').text()
 
-    expect(content).toContain('STREAM_IDLE_TIMEOUT_MS')
-    expect(content).toContain('readWithTimeout')
+    expect(content).toMatch(/STREAM_IDLE_TIMEOUT_MS\s*=\s*[\d_]+/)
+    expect(content).toMatch(/\b(function\s+readWithTimeout|const\s+readWithTimeout\s*=)\b/)
     expect(content).toMatch(/readWithTimeout\(\)/)
   })
 
   test('idle timeout is set to a reasonable value (>= 60s)', async () => {
-    const content = await file('services/api/openaiShim.ts').text()
+    const content = await openaiShimSource()
 
     // Extract the timeout value (supports numeric separators like 120_000)
     const match = content.match(/STREAM_IDLE_TIMEOUT_MS\s*=\s*([\d_]+)/)
@@ -220,7 +244,7 @@ describe('MCP tool timeout fix', () => {
 // ---------------------------------------------------------------------------
 describe('Regression checks', () => {
   test('store field is still set for OpenAI (not deleted unconditionally)', async () => {
-    const content = await file('services/api/openaiShim.ts').text()
+    const content = await openaiShimSource()
 
     // store: false should exist in body construction
     expect(content).toMatch(/store:\s*false/)
