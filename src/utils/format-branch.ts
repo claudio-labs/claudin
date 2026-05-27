@@ -1,4 +1,5 @@
 import chalk, { type ChalkInstance } from 'chalk'
+import { hasNerdFontGlyphs } from './terminalFont.js'
 import type { Theme } from './theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
@@ -61,6 +62,9 @@ export function buildBranchBorderSegment(
   behind: number,
   theme: Theme,
 ): string {
+  if (!hasNerdFontGlyphs()) {
+    return buildPlainBranchBorderSegment(displayCwd, branch, ahead, behind, theme)
+  }
   const cwdBg = theme.suggestion              // vibrant bg for path
   // In light-ansi, messageActionsBackground = 'ansi:white' which equals the
   // terminal default — the entire branch segment (bg + cap arrow) would be
@@ -106,6 +110,10 @@ export function buildBranchBorderSegment(
  * a border (start, end, or adjacent to other pills).
  */
 export function buildCwdPill(displayCwd: string, theme: Theme): string {
+  if (!hasNerdFontGlyphs()) {
+    const fg = applyColor(chalk, theme.suggestion, 'fg').bold
+    return `[ ${fg(displayCwd)} ]`
+  }
   const cwdBg = theme.suggestion
   const cwdFg = theme.inverseText
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
@@ -119,6 +127,10 @@ export function buildCwdPill(displayCwd: string, theme: Theme): string {
  */
 export function buildProviderPill(label: string, theme: Theme): string {
   if (!label) return ''
+  if (!hasNerdFontGlyphs()) {
+    const fg = applyColor(chalk, theme.suggestion, 'fg')
+    return `[ ${fg(label.trim())} ]`
+  }
   const bg = resolveBranchBg(theme)
   const fg = theme.suggestion
   const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg')
@@ -132,6 +144,10 @@ export function buildProviderPill(label: string, theme: Theme): string {
  */
 export function buildModelPill(label: string, theme: Theme): string {
   if (!label) return ''
+  if (!hasNerdFontGlyphs()) {
+    const fg = applyColor(chalk, theme.suggestion, 'fg').bold
+    return `[ ${fg(label.trim())} ]`
+  }
   const bg = theme.suggestion
   const fg = theme.inverseText
   const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg').bold
@@ -151,6 +167,18 @@ export function buildBranchPill(
   theme: Theme,
 ): string {
   if (!branch) return ''
+  if (!hasNerdFontGlyphs()) {
+    const fg = applyColor(chalk, theme.suggestion, 'fg')
+    let inner = fg(branch)
+    if (ahead > 0 || behind > 0) {
+      inner += ' ('
+      if (ahead > 0) inner += applyColor(chalk, theme.success, 'fg')(`↑${ahead}`)
+      if (ahead > 0 && behind > 0) inner += ' '
+      if (behind > 0) inner += applyColor(chalk, theme.warning, 'fg')(`↓${behind}`)
+      inner += ')'
+    }
+    return `[ ${inner} ]`
+  }
   const branchBg = resolveBranchBg(theme)
   const branchFg = theme.suggestion
   const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
@@ -187,6 +215,21 @@ export type PrPillState =
  * background for visual cohesion; the `#n` is coloured by review state.
  */
 export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme): string {
+  if (!hasNerdFontGlyphs()) {
+    const numberFg =
+      state === 'approved'
+        ? theme.success
+        : state === 'changes_requested'
+          ? theme.error
+          : state === 'pending'
+            ? theme.warning
+            : state === 'merged'
+              ? theme.merged
+              : theme.inactive
+    const num = applyColor(chalk, numberFg, 'fg')(`#${prNumber}`)
+    const label = applyColor(chalk, theme.inactive, 'fg')('PR')
+    return `[ ${label} ${num} ]`
+  }
   const branchBg = resolveBranchBg(theme)
   const numberFg =
     state === 'approved'
@@ -209,4 +252,33 @@ export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme):
     labelChalk(' ') +
     capChalk(SEP)
   )
+}
+
+/**
+ * Nerd-Font-free fallback for `buildBranchBorderSegment`. Produces
+ * `[ ~/path ]  [ branch (↑N ↓M) ]` with the same colour palette but no
+ * Powerline caps, branch glyph, or pill background.
+ */
+function buildPlainBranchBorderSegment(
+  displayCwd: string,
+  branch: string,
+  ahead: number,
+  behind: number,
+  theme: Theme,
+): string {
+  const cwdFg = applyColor(chalk, theme.suggestion, 'fg').bold
+  let seg = `[ ${cwdFg(displayCwd)} ]`
+  if (branch) {
+    const branchFg = applyColor(chalk, theme.suggestion, 'fg')
+    let inner = branchFg(branch)
+    if (ahead > 0 || behind > 0) {
+      inner += ' ('
+      if (ahead > 0) inner += applyColor(chalk, theme.success, 'fg')(`↑${ahead}`)
+      if (ahead > 0 && behind > 0) inner += ' '
+      if (behind > 0) inner += applyColor(chalk, theme.warning, 'fg')(`↓${behind}`)
+      inner += ')'
+    }
+    seg += `  [ ${inner} ]`
+  }
+  return seg
 }
