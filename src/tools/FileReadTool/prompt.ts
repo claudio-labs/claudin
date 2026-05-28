@@ -36,7 +36,7 @@ Reading strategy for code files (TS/JS/Python/Go):
 Default to surgical reads — full-file reads waste tokens proportionally to file size, while targeted reads cost ~95% less. Follow this order:
 1. Unknown file → start with view='outline' (cheap, ~200 tokens, returns every function/class signature with line ranges).
 2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file).
-3. Need to trace what X depends on → call LSP.outgoingCalls(X) first to discover the callees with their (file, line) anchors, then symbol='depY' on each callee. Avoids reading whole dependency files.
+3. Need lines around a known location → use offset/limit (range read) instead of full file.
 4. Full file only when you genuinely need top-level imports, module-level constants, or the entire structure end-to-end.
 Example: to refactor 'login' in src/auth/index.ts, prefer view='outline' → symbol='login' over reading the whole file.
 
