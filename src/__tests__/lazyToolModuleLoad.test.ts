@@ -113,7 +113,6 @@ const CURRENT_BASELINE = [
   'FileWriteTool',
   'GlobTool',
   'GrepTool',
-  'LSPTool',
   'ListMcpResourcesTool',
   'MCPTool',
   'McpAuthTool',

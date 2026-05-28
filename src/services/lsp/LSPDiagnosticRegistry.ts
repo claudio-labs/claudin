@@ -580,9 +580,7 @@ export function clearDeliveredDiagnosticsForFile(fileUri: string): void {
  */
 /**
  * Read the most recent pending diagnostics for a given file URI, without
- * marking them delivered or removing them from the registry. Used by
- * LSPTool.codeActions to populate CodeActionContext.diagnostics so
- * servers can emit quickfix actions tied to those diagnostics.
+ * marking them delivered or removing them from the registry.
  *
  * Returns [] if no pending entry references the URI. Note: this only
  * covers diagnostics that arrived since the last attachment sweep — if

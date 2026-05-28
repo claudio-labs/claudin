@@ -53,9 +53,6 @@ const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
   // Search / read-only
   GREP_TOOL_NAME,
   GLOB_TOOL_NAME,
-  // LSP_TOOL_NAME intentionally NOT here: LSPTool now supports write-ops
-  // (rename / applyCodeAction / renameFile) that need permission checks
-  // in auto mode just like FileEditTool.
   TOOL_SEARCH_TOOL_NAME,
   LIST_MCP_RESOURCES_TOOL_NAME,
   'ReadMcpResourceTool', // no exported constant

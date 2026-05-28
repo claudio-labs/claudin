@@ -27,7 +27,7 @@ export function getUserLspSettings(): Record<string, UserLspServerSetting> {
 
 /**
  * Master toggle for the LSP subsystem. Default: true (enabled).
- * When false: no servers connect, LSPTool is hidden, no diagnostics emitted.
+ * When false: no servers connect, no diagnostics emitted.
  */
 export function isLspGloballyEnabled(): boolean {
   try {

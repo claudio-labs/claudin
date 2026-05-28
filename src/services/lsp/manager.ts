@@ -117,7 +117,6 @@ export function getInitializationStatus():
 
 /**
  * Check whether at least one language server is connected and healthy.
- * Backs LSPTool.isEnabled().
  */
 export function isLspConnected(): boolean {
   if (initializationState === 'failed') return false

@@ -61,18 +61,6 @@ const getSendMessageTool = () =>
     .SendMessageTool as typeof import('./tools/SendMessageTool/SendMessageTool.js').SendMessageTool
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { AskUserQuestionTool } from './tools/AskUserQuestionTool/AskUserQuestionTool.js'
-import { isLspConnected } from './services/lsp/manager.js'
-import { isLspGloballyEnabled } from './services/lsp/userSettings.js'
-// Lazy require: defers LSPTool + formatters + schemas + UI evaluation
-// (~80-150 KB of retained heap) until LSP is globally enabled AND at least
-// one server is connected. The LSP service layer (manager.ts,
-// LSPServerManager.ts, passiveFeedback.ts) stays eager because it's
-// imported by main.tsx, FileEditTool, FileWriteTool, and others.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const getLSPTool = () =>
-  require('./tools/LSPTool/LSPTool.js')
-    .LSPTool as typeof import('./tools/LSPTool/LSPTool.js').LSPTool
-/* eslint-enable @typescript-eslint/no-require-imports */
 import { ListMcpResourcesTool } from './tools/ListMcpResourcesTool/ListMcpResourcesTool.js'
 import { ReadMcpResourceTool } from './tools/ReadMcpResourceTool/ReadMcpResourceTool.js'
 import { ToolSearchTool } from './tools/ToolSearchTool/ToolSearchTool.js'
@@ -242,7 +230,6 @@ export function getAllBaseTools(): Tools {
     ...(OverflowTestTool ? [OverflowTestTool] : []),
     ...(CtxInspectTool ? [CtxInspectTool] : []),
     ...(TerminalCaptureTool ? [TerminalCaptureTool] : []),
-    ...(isLspGloballyEnabled() && isLspConnected() ? [getLSPTool()] : []),
     ...(isWorktreeModeEnabled() ? [EnterWorktreeTool, ExitWorktreeTool] : []),
     getSendMessageTool(),
     ...(ListPeersTool ? [ListPeersTool] : []),

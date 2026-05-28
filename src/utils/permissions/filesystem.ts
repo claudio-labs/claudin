@@ -1433,11 +1433,9 @@ export function checkBatchWritePermission(
   toolPermissionContext: ToolPermissionContext,
   options?: { confirmThreshold?: number },
 ): PermissionDecision {
-  // bypassPermissions opts out of every prompt. The framework normally
-  // short-circuits here at hasPermissionsToUseTool, but this helper is also
-  // invoked from tool.checkPermissions (LSPTool preflight), which sits
-  // upstream of that gate. Honor the bypass directly so per-path 'ask'
-  // results inside a working directory don't surface as prompts.
+  // bypassPermissions opts out of every prompt. Honor the bypass directly so
+  // per-path 'ask' results inside a working directory don't surface as
+  // prompts even when invoked from a tool's checkPermissions preflight.
   if (toolPermissionContext.mode === 'bypassPermissions') {
     return {
       behavior: 'allow',
