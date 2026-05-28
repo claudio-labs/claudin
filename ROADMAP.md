@@ -383,7 +383,26 @@ Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6
 - **Pré-requisito de medição:** rodar **depois** de T6.6. Se T6.6 reduzir queries redundantes, o ganho de T6.3 cai — avaliar antes de comprometer (`09-roadmap-validation.md §3`).
 - **Kill criteria:** se hit-rate <30% em 100 sessões instrumentadas, remover.
 
-### [ ] T6.6 Leitura cirúrgica via outline + symbol-targeted reads + call graph
+### [x] T6.6 Leitura cirúrgica via outline + symbol-targeted reads + call graph — **SHIPPED (2026-05-28)**
+- **Branch:** `feat/fileread-surgical-reading-strategy` (commit `26922e5`).
+- **Resultado do bench A/B/C** (24 invocações, sonnet-4-6, openclaude, 4 prompts read-heavy):
+
+  | Variant | Δ avg input cost tokens | Δ wall | Δ cost |
+  |---|---:|---:|---:|
+  | A baseline | - | - | - |
+  | **B description-only** (shipped) | **-16.7%** | **-23.1%** | **-15.5%** |
+  | C auto-outline ≥700 lines (dropado) | -4.3% | -20.0% | +4.5% |
+
+- **Comportamento mudou em prática:** Read mode totals saíram de A `outline=1 symbol=1 range=10 full=4` para B `outline=4 symbol=5 range=5 full=0` — agente seguiu o playbook.
+- **Quebra o folklore de T6.1** ("description não move comportamento"). Diferença: T6.6 deu **playbook numerado + exemplo concreto** (`refactor 'login' in src/auth/index.ts → outline → symbol='login'`), não descrição geral. Aplicar essa receita antes de mexer em código quando o ganho é em *como* o agente usa um tool existente.
+- **Dropados (sem evidência):**
+  - **C auto-outline** — arquivo ≥700 linhas em Read default vira outline automático. Disparou só 1× em 8 runs (agente prefere Grep/range a plain Read em arquivo grande). +4.5% cost. Não compensa o código novo.
+  - **Edit no `LSPTool/prompt.ts`** referenciando `outgoingCalls` como discovery — LSP=0 em todas as variantes nos 4 prompts. Sem evidência empírica de movimento. Mantido fora.
+- **Artefatos:** harness em `scripts/bench/fileread-outline-3way.ts`, report em `scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md`.
+
+<details>
+<summary>Plano original (mantido para histórico)</summary>
+
 - **Arquivos:** `src/tools/FileReadTool/prompt.ts` (description), `src/tools/LSPTool/prompt.ts` (cross-ref para `outgoingCalls`).
 - **Problema observado:** o ciclo típico de edição lê o arquivo inteiro (~6k tokens) mesmo quando a tarefa toca 40 linhas. Para entender dependências, lê mais arquivos inteiros. Custo de input cresce O(arquivos tocados) quando poderia ser O(símbolos relevantes).
 - **Já existe e quase não é usado:**
@@ -402,6 +421,8 @@ Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6
 - **Ganho:** **médio-alto em input tokens** (depende muito do tipo de tarefa) — **Esforço:** baixo (horas, só descriptions) — **Risco:** baixo.
 - **Kill criteria:** se em 20 sessões instrumentadas a redução de input tokens for <20% para tarefas de edição localizada, reverter — provavelmente sinal de que o agente está fazendo outline + read symbol + acabando lendo full file mesmo assim (dupla leitura).
 - **Sequenciamento sugerido:** core do Tier 6 agora que T6.1 foi descartado. Se T6.6 também não mover comportamento via description-edit, próxima alavanca é system prompt do Explore agent.
+
+</details>
 
 ### [ ] T6.7 Plan dossier com anchors de linha + símbolo + capturas LSP
 - **Arquivos:** `src/services/planDossier.ts` (`Dossier` type linha 70, `DossierEntry` union linha 68, `ReadEntry` linha 31), `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts`, `src/tools/ExitPlanModeTool/prompt.ts`.
