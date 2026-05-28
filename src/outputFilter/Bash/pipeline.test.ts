@@ -82,6 +82,41 @@ describe("hasCompound", () => {
   test("returns false for 'echo task done' (P2: done as argument word)", () => {
     expect(hasCompound('echo "task done"')).toBe(false);
   });
+
+  // Redirection forms that contain `&` but are not command separators.
+  // Without these branches in splitTopLevelSegments, the filter was skipping
+  // every `bun run build 2>&1` invocation observed in the A/B bench.
+  test("returns false for 2>&1 (fd dup)", () => {
+    expect(hasCompound("bun run build 2>&1")).toBe(false);
+  });
+
+  test("returns false for >&2 (stdout to stderr)", () => {
+    expect(hasCompound("echo error >&2")).toBe(false);
+  });
+
+  test("returns false for &> (bash stdout+stderr to file)", () => {
+    expect(hasCompound("cmd &> /tmp/log")).toBe(false);
+  });
+
+  test("returns false for &>> (bash append both)", () => {
+    expect(hasCompound("cmd &>> /tmp/log")).toBe(false);
+  });
+
+  test("still returns true for backgrounded command (cmd &)", () => {
+    expect(hasCompound("long-running &")).toBe(true);
+  });
+
+  test("still returns true for cmd1 & cmd2 (background separator)", () => {
+    expect(hasCompound("cmd1 & cmd2")).toBe(true);
+  });
+
+  test("still returns true for |& (bash pipe with stderr)", () => {
+    expect(hasCompound("cmd1 |& cmd2")).toBe(true);
+  });
+
+  test("returns true when redirection is combined with && (compound wins)", () => {
+    expect(hasCompound("bun run build 2>&1 && echo ok")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

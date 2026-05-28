@@ -119,14 +119,24 @@ describe("corner cases: redirects (must NOT bail)", () => {
     expect(splitTopLevelSegments("while read l; do echo $l; done")).toBeNull();
   });
 
-  // KNOWN GAP: `2>&1` contains a literal `&` followed by `1` — splitter bails.
-  test("KNOWN GAP: 2>&1 redirect causes bypass", () => {
-    expect(splitTopLevelSegments("ls 2>&1 && cat")).toBeNull();
+  // Previously a KNOWN GAP: `2>&1` contains a literal `&` followed by `1` and
+  // the splitter bailed. Fixed by treating `>&` and `&>` as redirection tokens
+  // (pipeline.ts) — this was the dominant false-positive in the bash-filter
+  // bench (~50% of "compound" commands were just `cmd 2>&1`).
+  test("2>&1 redirect does not cause bypass", () => {
+    expect(splitTopLevelSegments("ls 2>&1 && cat")).toEqual([
+      "ls 2>&1",
+      "cat",
+    ]);
   });
 
-  // KNOWN GAP: `&>` is a bash redirect (stdout+stderr), splitter sees `&` first.
-  test("KNOWN GAP: &> redirect causes bypass", () => {
-    expect(splitTopLevelSegments("ls &> /tmp/out && cat /tmp/out")).toBeNull();
+  // Previously a KNOWN GAP: `&>` is a bash redirect (stdout+stderr). Now the
+  // splitter keeps the redirection as part of its segment.
+  test("&> redirect does not cause bypass", () => {
+    expect(splitTopLevelSegments("ls &> /tmp/out && cat /tmp/out")).toEqual([
+      "ls &> /tmp/out",
+      "cat /tmp/out",
+    ]);
   });
 });
 

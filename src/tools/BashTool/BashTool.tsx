@@ -280,6 +280,22 @@ type InputSchema = ReturnType<typeof inputSchema>;
 // Use fullInputSchema for the type to always include run_in_background
 // (even when it's omitted from the schema, the code needs to handle it)
 export type BashToolInput = z.infer<ReturnType<typeof fullInputSchema>>;
+
+/**
+ * Wrap SandboxManager.annotateStderrWithSandboxFailures so a non-string return
+ * value (notably the `() => null` no-op from the open build's sandbox stub)
+ * falls back to the raw output. Without this, exit≠0 commands lose all stdout/
+ * stderr in the resulting ShellError: only "Exit code N" reaches the model.
+ *
+ * Exported for unit testing — keep the body in sync with the call site below.
+ */
+export function safeAnnotateStderrWithSandboxFailures(
+  command: string,
+  rawOutput: string,
+): string {
+  const annotated = SandboxManager.annotateStderrWithSandboxFailures(command, rawOutput);
+  return typeof annotated === 'string' ? annotated : rawOutput;
+}
 const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'wget', 'build', 'test', 'serve', 'watch', 'dev'] as const;
 function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
   const parts = splitCommand_DEPRECATED(command);
@@ -729,8 +745,8 @@ export const BashTool = buildTool({
         }
       }
 
-      // Annotate output with sandbox violations if any (stderr is in stdout)
-      const outputWithSbFailures = SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout || '');
+      // Annotate output with sandbox violations if any (stderr is in stdout).
+      const outputWithSbFailures = safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
       if (result.preSpawnError) {
         throw new Error(result.preSpawnError);
       }

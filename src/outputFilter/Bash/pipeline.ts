@@ -322,7 +322,20 @@ export function splitTopLevelSegments(command: string): string[] | null {
       i++;
       continue;
     }
-    if (c === "&") return null; // background — output ordering undefined
+    // Redirection forms that contain `&` but are NOT command separators:
+    //   - `N>&M` / `>&FILE` — dup or merge file descriptors (e.g. `cmd 2>&1`)
+    //   - `&>FILE` / `&>>FILE` — bash shortcut for redirecting stdout+stderr
+    // BashTool already merges stderr into stdout (BashTool.tsx:725), so users
+    // append `2>&1` out of habit; treating these as compound was making the
+    // output filter skip otherwise-atomic commands.
+    if (c === "&") {
+      const lastBufChar = buf.length > 0 ? buf[buf.length - 1] : "";
+      if (lastBufChar === ">" || next === ">") {
+        buf += c;
+        continue;
+      }
+      return null; // background — output ordering undefined
+    }
     if (c === ";" || c === "\n") {
       segments.push(buf);
       buf = "";
