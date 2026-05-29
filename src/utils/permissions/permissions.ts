@@ -803,27 +803,31 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       }
 
       if (classifierResult.shouldBlock) {
-        // Transcript exceeded the classifier's context window — deterministic
-        // error, won't recover on retry. Skip iron_gate and fall back to
-        // normal prompting so the user can approve/deny manually.
-        if (classifierResult.transcriptTooLong) {
+        // Deterministic classifier failures won't recover on retry: the
+        // transcript exceeded the context window, or the API returned a
+        // deterministic 4xx (malformed request, bad header, auth failure).
+        // Skip iron_gate and fall back to normal prompting so the user can
+        // approve/deny manually, rather than looping in fail-closed retries.
+        if (classifierResult.transcriptTooLong || classifierResult.deterministic) {
+          const cause = classifierResult.transcriptTooLong
+            ? 'transcript exceeded context window'
+            : 'request failed with a deterministic error'
           if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
-            // Permanent condition (transcript only grows) — deny-retry-deny
-            // wastes tokens without ever hitting the denial-limit abort.
+            // Permanent condition — deny-retry-deny wastes tokens without ever
+            // hitting the denial-limit abort.
             throw new AbortError(
-              'Agent aborted: auto mode classifier transcript exceeded context window in headless mode',
+              `Agent aborted: auto mode classifier ${cause} in headless mode`,
             )
           }
           logForDebugging(
-            'Auto mode classifier transcript too long, falling back to normal permission handling',
+            `Auto mode classifier ${cause}, falling back to normal permission handling`,
             { level: 'warn' },
           )
           return {
             ...result,
             decisionReason: {
               type: 'other',
-              reason:
-                'Auto mode classifier transcript exceeded context window — falling back to manual approval',
+              reason: `Auto mode classifier ${cause} — falling back to manual approval`,
             },
           }
         }

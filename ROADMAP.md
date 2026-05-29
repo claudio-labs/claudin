@@ -458,17 +458,30 @@ Modelo `claude-opus-4-8` lançado 2026-05-28. No Claude API o contexto de **1M �
 
 ### Bug P0 — auto mode trava o Bash com Opus 4.8
 
-#### [ ] T7.1 — Sufixo `[1m]` dispara header `context-1m` que Opus 4.8 rejeita
+#### [x] T7.1 — Sufixo `[1m]` dispara header `context-1m` que Opus 4.8 rejeita
+> **Resolvido** em `1b885d1` (promote Opus 4.8): `opus-4-8` foi adicionado a `modelSupports1M` (`context.ts:75`), confirmando que o modelo **suporta** o header `context-1m`. A premissa do bug ("rejeita") deixou de valer — o header é válido e não causa mais 400. A supressão proposta no fix candidato não foi necessária.
 - **Arquivos:** `src/utils/model/model.ts:358,363` (anexa `[1m]` p/ Max/Team Premium via `isOpus1mMergeEnabled()`), `src/utils/context.ts:58-63` (`has1mContext` detecta `[1m]`), `src/utils/betas.ts:223-224` (envia `CONTEXT_1M_BETA_HEADER`).
 - **Problema:** cadeia `getDefaultMainLoopModelSetting` → `[1m]` → `has1mContext=true` → header `context-1m` enviado. Como 1M é default no 4.8, o endpoint pode responder **400 a toda request**. No auto mode isso faz o classificador de segurança do Bash falhar → fail-closed → **Bash bloqueado** ("temporarily unavailable, so auto mode cannot determine the safety"). Bate exatamente com o sintoma reportado.
 - **Fix candidato:** não enviar `CONTEXT_1M_BETA_HEADER` quando o canonical for `opus-4-8` (1M nativo); e/ou não anexar `[1m]` para modelos que já têm 1M default. Validar contra `getAllModelBetas` em provider firstParty.
 - **Ganho:** desbloqueia auto mode (crítico) — **Esforço:** baixo — **Risco:** médio (mexe em betas/header; testar com `/provider doctor` no provider real). Rodar `bun run test:provider`.
 
-#### [ ] T7.2 — Classificador sem fallback em erro determinístico
-- **Arquivos:** `src/utils/permissions/yoloClassifier.ts:1399-1444` (catch → `unavailable:true`), `src/utils/permissions/permissions.ts:832-862` (gate `tengu_iron_gate_closed`, default fail-closed).
-- **Problema:** quando o classificador erra, o gate fail-closed (default no open build, GrowthBook stub) bloqueia Bash sem fallback de modelo nem heurística. Um 400 persistente (ex.: header ruim) não é "temporário" mas é tratado como tal — loop infinito de denial. Não cai no denial-limit fallback (o branch `unavailable` retorna antes).
-- **Fix candidato:** distinguir erro transitório (5xx/429/timeout) de determinístico (400/auth); em determinístico, fallback p/ small-fast model ou prompt manual em vez de bloquear silenciosamente. Relacionado ao item 15.
-- **Ganho:** robustez do auto mode — **Esforço:** médio — **Risco:** médio (caminho de segurança; não enfraquecer o gate).
+#### [x] T7.2 — Classificador sem fallback em erro determinístico
+> **Implementado:** helper `detectDeterministicApiError` (`yoloClassifier.ts`) classifica 4xx (exceto 408/409/429) via `instanceof APIError` + `.status`; flag `deterministic?` em `YoloClassifierResult`; ambos os catch (single-stage + XML 2-stage, com guard `stage1Usage === undefined`) setam a flag; `permissions.ts` degrada o erro determinístico para aprovação manual (headless → `AbortError`), antes do gate `iron_gate`. Cobre Anthropic e providers OpenAI-compat (shim usa `APIError.generate`). Testes: `yoloClassifier.deterministicError.test.ts`.
+- **Pré-condição confirmada (não é dead-code):** os templates `.txt` do classificador *estão* presentes neste build (`src/utils/permissions/yolo-classifier-prompts/auto_mode_system_prompt.txt` 3 KB + `permissions_external.txt` 6.8 KB) e `TRANSCRIPT_CLASSIFIER: true` (`scripts/build.ts:55`). Logo `CLASSIFIER_PROMPTS_BUNDLED === true` (`yoloClassifier.ts:74`) — o classificador realmente chama a API e o caminho fail-closed abaixo é exercitado. (Se os prompts fossem removidos, `classifyYoloAction` curto-circuitaria em `shouldBlock:false` auto-allow, `yoloClassifier.ts:1159-1166`, e este item viraria inerte.)
+- **Arquivos:**
+  - `src/utils/permissions/yoloClassifier.ts:1399-1444` (catch do tool_use single-stage → `unavailable:true`) **e** `:1089-1131` (catch do XML 2-stage → mesmo `unavailable`). Os **dois** precisam classificar o erro; o abort em `:1400-1409` já retorna `unavailable` e deve continuar como está (abort não é erro de API).
+  - `src/utils/permissions/permissions.ts:832-862` (gate `tengu_iron_gate_closed`, default `true` no open build pois GrowthBook é stub → sempre fail-closed; retorna `buildClassifierUnavailableMessage`).
+  - `src/types/permissions.ts:346-356` (`YoloClassifierResult`; já tem `unavailable?` e o precedente `transcriptTooLong?`).
+- **Problema:** num erro de API o catch devolve `unavailable:true` e o gate fail-closed nega o Bash sem distinguir a *causa*. Para 5xx/429 isso está certo (genuinamente indisponível). Mas um **400 determinístico** (ex.: header `context-1m` ruim do T7.1, request malformado, auth 401/403) é tratado como "temporário" — a mensagem manda "wait and retry" (`rejection.ts:56`), o agente re-tenta, recebe o mesmo 400, e entra em **loop de denial**. Pior: o branch `unavailable` retorna em `permissions.ts:862` **antes** de `recordDenial`/`handleDenialLimitExceeded` (`:865-888`), então nem o denial-limit fallback dispara — não há saída automática.
+- **Precedente a copiar:** `transcriptTooLong` já implementa exatamente o degrade desejado para *seu* erro determinístico — `permissions.ts:809-829` pula o `iron_gate` e cai em prompt manual normal (e em headless, `shouldAvoidPermissionPrompts`, lança `AbortError` em vez de loopar, `:810-816`). T7.2 deve generalizar esse padrão para 4xx.
+- **Fix candidato:**
+  1. Nos dois catch, classificar o erro com helper existente (`categorizeRetryableAPIError`, `errors.ts:1281`, ou `shouldRetry`, `withRetry.ts:786`): transitório = 429/529/5xx/timeout/overloaded (retries internos do `sideQuery` já se esgotaram — manter fail-closed, é real); determinístico = 400/401/403/422.
+  2. Adicionar flag `deterministic?: boolean` em `YoloClassifierResult` (espelhando `transcriptTooLong`) setada só no caso 4xx.
+  3. Em `permissions.ts`, antes do branch `unavailable`, tratar `deterministic` como `transcriptTooLong`: pular `iron_gate`, fallback p/ prompt manual; em headless, `AbortError` com mensagem clara em vez de loop.
+  4. Mensagem dedicada (não reusar `buildClassifierUnavailableMessage`, que diz "temporarily… retry"): algo como "classificador rejeitou a request de forma determinística (HTTP 4xx) — aprovação manual necessária". Aproveitar a normalização do model do T7.3 aqui.
+- **Não enfraquecer o gate:** transitórios continuam fail-closed via `iron_gate`; só 4xx degradam para manual. É defesa-em-profundidade — o fix de raiz do header ruim é o T7.1; T7.2 garante que *qualquer* 400 futuro (não só o do header) degrade para aprovação manual em vez de loop infinito.
+- **Teste:** adicionar caso em `src/utils/permissions/*.test.ts` simulando `APIError` 400 vs 503 e verificando deterministic→manual, transient→fail-closed. Rodar `bun run test:provider`.
+- **Ganho:** robustez do auto mode (elimina loop de denial) — **Esforço:** médio — **Risco:** médio (caminho de segurança; cobrir com teste e não relaxar o gate p/ transitórios).
 
 #### [ ] T7.3 — Mensagem de erro mostra model não-normalizado (`[1m]`)
 - **Arquivo:** `src/utils/permissions/yoloClassifier.ts:1439` (retorna model cru), `src/utils/messages/rejection.ts:51-61`.

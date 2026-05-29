@@ -1,5 +1,6 @@
 import { feature } from 'bun:bundle'
 import type Anthropic from '@anthropic-ai/sdk'
+import { APIError } from '@anthropic-ai/sdk'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
@@ -1087,6 +1088,12 @@ async function classifyYoloActionXml(
       }
     }
     const tooLong = detectPromptTooLong(error)
+    // Only treat as deterministic when there's no stage-1 fallback to lean on:
+    // a stage-2-only failure still has a valid stage-1 assessment to block on.
+    const deterministic =
+      !tooLong &&
+      stage1Usage === undefined &&
+      detectDeterministicApiError(error)
     logForDebugging(
       `Auto mode classifier (XML) error: ${errorMessage(error)}`,
       {
@@ -1111,10 +1118,13 @@ async function classifyYoloActionXml(
         ? 'Classifier transcript exceeded context window'
         : stage1Usage
           ? 'Stage 2 classifier error - blocking based on stage 1 assessment'
-          : 'Classifier unavailable - blocking for safety',
+          : deterministic
+            ? 'Classifier request failed with a deterministic error'
+            : 'Classifier unavailable - blocking for safety',
       model,
       unavailable: stage1Usage === undefined,
       transcriptTooLong: Boolean(tooLong),
+      deterministic,
       stage: stage1Usage ? 'thinking' : undefined,
       durationMs: Date.now() - overallStart,
       errorDumpPath,
@@ -1408,6 +1418,7 @@ export async function classifyYoloAction(
       }
     }
     const tooLong = detectPromptTooLong(error)
+    const deterministic = !tooLong && detectDeterministicApiError(error)
     logForDebugging(`Auto mode classifier error: ${errorMessage(error)}`, {
       level: 'warn',
     })
@@ -1435,10 +1446,13 @@ export async function classifyYoloAction(
       shouldBlock: true,
       reason: tooLong
         ? 'Classifier transcript exceeded context window'
-        : 'Classifier unavailable - blocking for safety',
+        : deterministic
+          ? 'Classifier request failed with a deterministic error'
+          : 'Classifier unavailable - blocking for safety',
       model,
       unavailable: true,
       transcriptTooLong: Boolean(tooLong),
+      deterministic,
       errorDumpPath,
     }
   }
@@ -1592,6 +1606,28 @@ function detectPromptTooLong(
     return undefined
   }
   return parsePromptTooLongTokenCounts(error.message)
+}
+
+// 4xx statuses that are still transient: 408 (request timeout), 409 (conflict),
+// 429 (rate limit). Everything else in 400-499 won't recover on retry.
+const TRANSIENT_4XX_STATUSES = new Set([408, 409, 429])
+
+/**
+ * True when the classifier API call failed with a deterministic 4xx error
+ * (malformed request, bad header, auth failure). These won't recover on retry,
+ * so callers fall back to manual approval rather than the fail-closed retry-loop
+ * reserved for transient outages (5xx/429/timeout). Covers both Anthropic and
+ * OpenAI-compatible providers, since the shim surfaces errors via APIError.generate.
+ */
+function detectDeterministicApiError(error: unknown): boolean {
+  if (!(error instanceof APIError)) return false
+  const status = error.status
+  return (
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500 &&
+    !TRANSIENT_4XX_STATUSES.has(status)
+  )
 }
 
 /**

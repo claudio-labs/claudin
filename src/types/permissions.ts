@@ -354,6 +354,13 @@ export type YoloClassifierResult = {
    * callers should fall back to normal prompting rather than retry/fail-closed.
    */
   transcriptTooLong?: boolean
+  /**
+   * API returned a deterministic 4xx (excluding 408/409/429) — the request
+   * won't recover on retry (e.g. malformed request, bad header, auth failure).
+   * Like transcriptTooLong, callers fall back to manual prompting instead of
+   * the fail-closed retry-loop reserved for transient outages.
+   */
+  deterministic?: boolean
   /** The model used for this classifier call */
   model: string
   /** Token usage from the classifier API call (for overhead telemetry) */
