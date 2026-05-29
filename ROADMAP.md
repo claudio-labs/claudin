@@ -1,6 +1,6 @@
 # Roadmap — Claudio
 
-Itens priorizados por ROI (ganho / esforço). Atualizado em 2026-05-16.
+Itens priorizados por ROI (ganho / esforço). Atualizado em 2026-05-29.
 
 Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, **Risco** e checkbox de status.
 
@@ -452,6 +452,94 @@ Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6
 
 ---
 
+## Tier 7 — Otimização para Opus 4.8
+
+Modelo `claude-opus-4-8` lançado 2026-05-28. No Claude API o contexto de **1M é default, sem beta header** — a Anthropic recomenda *remover* o header `context-1m` legado (pode causar 400). Sem breaking changes de API; effort default subiu para `high`. Fontes: [What's new 4.8](https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8), [migration guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).
+
+### Bug P0 — auto mode trava o Bash com Opus 4.8
+
+#### [ ] T7.1 — Sufixo `[1m]` dispara header `context-1m` que Opus 4.8 rejeita
+- **Arquivos:** `src/utils/model/model.ts:358,363` (anexa `[1m]` p/ Max/Team Premium via `isOpus1mMergeEnabled()`), `src/utils/context.ts:58-63` (`has1mContext` detecta `[1m]`), `src/utils/betas.ts:223-224` (envia `CONTEXT_1M_BETA_HEADER`).
+- **Problema:** cadeia `getDefaultMainLoopModelSetting` → `[1m]` → `has1mContext=true` → header `context-1m` enviado. Como 1M é default no 4.8, o endpoint pode responder **400 a toda request**. No auto mode isso faz o classificador de segurança do Bash falhar → fail-closed → **Bash bloqueado** ("temporarily unavailable, so auto mode cannot determine the safety"). Bate exatamente com o sintoma reportado.
+- **Fix candidato:** não enviar `CONTEXT_1M_BETA_HEADER` quando o canonical for `opus-4-8` (1M nativo); e/ou não anexar `[1m]` para modelos que já têm 1M default. Validar contra `getAllModelBetas` em provider firstParty.
+- **Ganho:** desbloqueia auto mode (crítico) — **Esforço:** baixo — **Risco:** médio (mexe em betas/header; testar com `/provider doctor` no provider real). Rodar `bun run test:provider`.
+
+#### [ ] T7.2 — Classificador sem fallback em erro determinístico
+- **Arquivos:** `src/utils/permissions/yoloClassifier.ts:1399-1444` (catch → `unavailable:true`), `src/utils/permissions/permissions.ts:832-862` (gate `tengu_iron_gate_closed`, default fail-closed).
+- **Problema:** quando o classificador erra, o gate fail-closed (default no open build, GrowthBook stub) bloqueia Bash sem fallback de modelo nem heurística. Um 400 persistente (ex.: header ruim) não é "temporário" mas é tratado como tal — loop infinito de denial. Não cai no denial-limit fallback (o branch `unavailable` retorna antes).
+- **Fix candidato:** distinguir erro transitório (5xx/429/timeout) de determinístico (400/auth); em determinístico, fallback p/ small-fast model ou prompt manual em vez de bloquear silenciosamente. Relacionado ao item 15.
+- **Ganho:** robustez do auto mode — **Esforço:** médio — **Risco:** médio (caminho de segurança; não enfraquecer o gate).
+
+#### [ ] T7.3 — Mensagem de erro mostra model não-normalizado (`[1m]`)
+- **Arquivo:** `src/utils/permissions/yoloClassifier.ts:1439` (retorna model cru), `src/utils/messages/rejection.ts:51-61`.
+- **Problema:** usuário vê `claude-opus-4-8[1m] is temporarily unavailable` — o `[1m]` é alias de UI, não ID de API real, confunde o diagnóstico.
+- **Ganho:** cosmético/diagnóstico — **Esforço:** trivial (`normalizeModelStringForAPI(model)`) — **Risco:** nenhum.
+
+### Aproveitar features novas do 4.8
+
+#### [ ] T7.4 — Mid-conversation system messages
+- **Arquivo:** `src/services/api/` (caminho Anthropic em `claude.ts` / construção de `messages`).
+- **Problema:** atualizar instruções no meio da sessão hoje exige reescrever histórico → quebra prompt-cache. 4.8 aceita `role:"system"` no array de `messages` (sem beta header), preservando cache hits nas turns anteriores.
+- **Ganho:** alto (custo de input em loops agênticos longos) — **Esforço:** médio — **Risco:** médio (gate por canonical 4.8; 4.7 e anteriores dão 400). Confirmar [regras de posicionamento](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages#limitations).
+
+#### [ ] T7.5 — Effort `xhigh` default para loops de coding
+- **Problema:** Anthropic recomenda `xhigh` explícito p/ coding/alta autonomia; default `high` no 4.8 é recalibrado (pensa menos que o `high` do 4.7).
+- **Ganho:** qualidade de coding — **Esforço:** baixo — **Risco:** baixo/médio (re-baselinar custo/latência; talvez opt-in via settings).
+
+#### [ ] T7.6 — Limpar header `context-1m` legado e retry de sampling params
+- **Problema:** migration guide manda remover `context-1m-2025-08-07` (era 4.6) e qualquer retry de `temperature/top_p` em 400. Parcialmente coberto por T7.1.
+- **Ganho:** evita 400s — **Esforço:** baixo — **Risco:** baixo.
+
+### Skills/comandos padrão (model-invocable)
+
+#### [ ] T7.7 — Promover `/review`, `/security-review`, `/auto-fix` a bundled skills
+- **Arquivos:** `src/commands/review.ts:33`, `src/commands/security-review.ts:6`, `src/commands/auto-fix.ts:3` (hoje `source:'builtin'`); padrão em `src/skills/bundled/code-review.ts:131-157`; registro em `src/skills/bundled/index.ts:18-60`; gate em `src/commands.ts:556-567` (exclui `source:'builtin'` da lista de skills do modelo).
+- **Problema:** comandos `builtin` são tipáveis pelo usuário mas **não** aparecem na lista de skills model-invocable (excluídos em `commands.ts:563`). Com 4.8 disparando skills melhor, reimplementá-los como bundled skills (ou reclassificar) os torna invocáveis pelo modelo.
+- **Ganho:** roteamento automático de tarefas (review/fix/security) — **Esforço:** médio (1 arquivo bundled por skill + teste colocado) — **Risco:** baixo.
+
+#### [ ] T7.8 — Consolidar `code-review` / `/code-review` canônico
+- **Arquivo:** `src/skills/bundled/code-review.ts` (já é bundled skill, `userInvocable:true`).
+- **Problema:** já existe como skill; alinhar naming com o futuro `/review` bundled p/ não duplicar (evitar `/review` builtin + `code-review` skill confundindo o modelo).
+- **Ganho:** clareza — **Esforço:** baixo — **Risco:** baixo.
+
+**Ordem sugerida:** T7.1 (desbloqueia auto mode, P0) → T7.3 (trivial, ajuda diagnóstico) → T7.2 (robustez) → T7.7 (skills) → T7.4/T7.5 (features API) → T7.6/T7.8 (limpeza). Confirmar T7.1 com bench/`/provider doctor` antes de qualquer trabalho nas features.
+
+---
+
+## Spike S1 — Prompts/tools sob Opus 4.8: vale adaptar?
+
+**Tipo:** spike time-boxed (investigação + medição, SEM compromisso de shippar). **Pergunta:** com o primário agora em `claude-opus-4-8`, há ganho *real* em adaptar descrições de tool / system prompt — e onde?
+
+**Premissa corrigida (importante):** "modelo mais forte → pode tirar hand-holding" é a categoria de mudança que **historicamente deu inerte ou pior** nos A/B do time (ver memórias `*-inert`, `grep-symbols-nudge-inert`, `bash-filter-nudge-rejected`). A introspecção do próprio modelo sobre o que o ajuda **não é evidência** — só A/B conta. O spike NÃO deve perseguir "encurtar prompt".
+
+**A única alavanca com track record** é ensinar o modelo a usar um **modo de tool mecanicamente mais barato que ele subusa** — foi o que pagou em `t6.6-fileread-surgical` (−16.7% tokens, −23% wall) ao ensinar `view='outline'`/`symbol=`. O spike replica *esse padrão*, não a remoção de muletas.
+
+### Objetivos do spike (entregáveis, não código de produção)
+1. **Baseline de subuso:** medir, em sessões/benches reais, com que frequência os modos baratos já são usados vs os caros. Sem subuso medido, não há ganho a capturar (regra aprendida em `outline-nudge-...-inert`: nudge só move se o tool-alvo for usado no cenário).
+2. **Shortlist priorizada** de candidatos (B-type) com file:line.
+3. **Decisão:** para cada candidato, GO (vale A/B ≥3 reps) ou NO-GO (arquivar como os outros `*-inert`).
+
+### Mapa de candidatos (já levantado — categoria B "ensina modo barato")
+- **[ ] S1.a — GrepTool `output_mode="symbols"` / `head_limit`.** `src/tools/GrepTool/prompt.ts:13` apenas *lista* `symbols`; não ensina **quando** preferir `symbols` (mapear código) a `content`+paginação. É o análogo direto do FileReadTool — **candidato nº1**. Hipótese: description ensina o roteiro `symbols` → outputs menores. Medir baseline de uso de `symbols` antes.
+- **[ ] S1.b — GlobTool.** `src/tools/GlobTool/prompt.ts:3-7` é mínimo; não menciona `head_limit`/escopo via `path`. Ganho provável baixo (output de Glob já é barato) — provável NO-GO, confirmar.
+- **[ ] S1.c — Parallelismo de tool calls.** System prompt manda "chame em paralelo" sem exemplo concreto de batch. 4.8 é melhor nisso; medir taxa de calls paralelos vs sequenciais — se já alta, NO-GO.
+- **[ ] S1.d — Bash output / `head_limit` em leituras grandes.** Já há filtro de output ligado por default (ver CLAUDE.md); checar se sobra subuso de pedir menos output de cara. Provável redundante com o filtro — confirmar.
+- **Referência (não tocar):** FileReadTool `prompt.ts:35-41` é o exemplo que funcionou; usar como template de redação, não reabrir.
+
+### Fora de escopo (já investigado/descartado)
+- Dedup determinístico e trim de hand-holding (Explore/Plan READ-ONLY, "be concise" repetido): ganho ~baixas centenas de tokens, e Explore roda em **Haiku** (`src/.../exploreAgent.ts`), não toca o 4.8. Não é o foco do spike.
+- Git playbook do Bash: já otimizado (injetado como attachment fora do schema; `scripts/measure-tool-schemas.test.ts` garante bytes idênticos).
+
+### Protocolo (não-negociável)
+- Bench em `scripts/bench/` no estilo dos existentes; **≥3 replicações** antes de crer em qualquer efeito (regra `grep-symbols-nudge-inert`).
+- Randomizar ordem A/B ou medir direto p/ evitar cache-warming skew (`ab-bench-cache-warming-skew`).
+- Métrica primária = tokens de **output**/wall; veredito separa medido de teórico (`no-overclaim-performance`).
+- **Esforço:** médio (1-2 dias de bench) — **Risco:** nenhum (spike não altera produto). Saída vira itens GO no roadmap ou memórias `*-inert`.
+
+**Primeiro passo concreto:** medir baseline de uso de `symbols`/`outline`/`head_limit` (S1.a) antes de escrever qualquer description — se o subuso for ~0, o spike encerra cedo com NO-GO geral.
+
+---
+
 ## Limpeza oportunista
 
 - [ ] **CHICAGO_MCP cleanup duplicado** em `src/query.ts:1060` e `1621` — flag está `false` em `build.ts`; código morto no open build. Unificar ou gate explícito.
@@ -462,6 +550,8 @@ Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6
 ---
 
 ## Ordem sugerida de execução
+
+**P0 imediato (Tier 7 — Opus 4.8):** T7.1 (auto mode bloqueando Bash) antes de tudo — é regressão ativa que trava o CLI. Depois T7.3, T7.2, e o restante do Tier 7.
 
 **Prioridade nova (Tier 3 — quebra de arquivos gigantes), por ROI/risco:**
 
