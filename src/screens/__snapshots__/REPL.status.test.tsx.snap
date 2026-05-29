@@ -4,7 +4,7 @@ exports[`<REPL> status baseline idle status (default mount) 1`] = `
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 
@@ -34,7 +34,7 @@ exports[`<REPL> status baseline idle status, wide terminal (160 cols) 1`] = `
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 

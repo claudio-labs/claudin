@@ -15,6 +15,7 @@ export const EFFORT_LEVELS = [
   'low',
   'medium',
   'high',
+  'xhigh',
   'max',
 ] as const satisfies readonly EffortLevel[]
 
@@ -42,7 +43,7 @@ export function modelSupportsEffort(model: string): boolean {
     return true
   }
   // Supported by a subset of Claude 4 models
-  if (m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
+  if (m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
     return true
   }
   // Exclude any other known legacy models (haiku, older opus/sonnet variants)
@@ -68,10 +69,17 @@ export function modelSupportsMaxEffort(model: string): boolean {
     return supported3P
   }
   const m = model.toLowerCase()
-  if (m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
   }
   return false
+}
+
+// @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'xhigh' effort.
+// Per API docs, 'xhigh' is available on Opus 4.7 and Opus 4.8 only.
+export function modelSupportsXhighEffort(model: string): boolean {
+  const m = model.toLowerCase()
+  return m.includes('opus-4-8') || m.includes('opus-4-7')
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {
@@ -95,6 +103,9 @@ export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIE
     return [...OPENAI_EFFORT_LEVELS] as OpenAIEffortLevel[]
   }
   const levels: EffortLevel[] = ['low', 'medium', 'high']
+  if (modelSupportsXhighEffort(model)) {
+    levels.push('xhigh')
+  }
   if (modelSupportsMaxEffort(model)) {
     levels.push('max')
   }
@@ -102,7 +113,13 @@ export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIE
 }
 
 export function getEffortLevelLabel(level: EffortLevel | OpenAIEffortLevel): string {
-  if (level === 'xhigh') return 'Extra High'
+  // Anthropic ("xhigh") and Codex ("xhigh") share the same wire value; label by provider.
+  // On firstParty/Bedrock/Vertex/Foundry we render "Extra" (matches claude.ai UI for Opus 4.7/4.8).
+  // On OpenAI/Codex we keep "Extra High" to avoid breaking the existing label.
+  if (level === 'xhigh') {
+    const provider = getAPIProvider()
+    return provider === 'openai' || provider === 'codex' ? 'Extra High' : 'Extra'
+  }
   if (level === 'max') return 'Max'
   return capitalize(level)
 }
@@ -151,7 +168,7 @@ export function toPersistableEffort(
   if (value === 'low' || value === 'medium' || value === 'high') {
     return value
   }
-  if (value === 'max') {
+  if (value === 'xhigh' || value === 'max') {
     return value
   }
   return undefined
@@ -214,6 +231,10 @@ export function resolveAppliedEffort(
     envOverride ?? appStateEffortValue ?? getDefaultEffortForModel(model)
   // API rejects 'max' on non-Opus-4.6 models — downgrade to 'high'.
   if (resolved === 'max' && !modelSupportsMaxEffort(model)) {
+    return 'high'
+  }
+  // API rejects 'xhigh' on models that don't support it — downgrade to 'high'.
+  if (resolved === 'xhigh' && !modelSupportsXhighEffort(model) && !modelUsesOpenAIEffort(model)) {
     return 'high'
   }
   return resolved
@@ -283,9 +304,9 @@ export function getEffortLevelDescription(level: EffortLevel | OpenAIEffortLevel
     case 'high':
       return 'Comprehensive implementation with extensive testing and documentation'
     case 'max':
-      return 'Maximum capability with deepest reasoning (Opus 4.7/4.6 only)'
+      return 'Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8 only)'
     case 'xhigh':
-      return 'Extra high reasoning effort for complex tasks (OpenAI/Codex)'
+      return 'Extended capability for long-horizon work (Opus 4.7/4.8, OpenAI/Codex)'
   }
 }
 
@@ -336,7 +357,7 @@ export function getDefaultEffortForModel(
   // Default effort on Opus 4.6/4.7 to medium for Pro.
   // Max/Team also get medium when the tengu_grey_step2 config is enabled.
   const lowerModel = model.toLowerCase()
-  if (lowerModel.includes('opus-4-7') || lowerModel.includes('opus-4-6')) {
+  if (lowerModel.includes('opus-4-8') || lowerModel.includes('opus-4-7') || lowerModel.includes('opus-4-6')) {
     if (isProSubscriber()) {
       return 'medium'
     }

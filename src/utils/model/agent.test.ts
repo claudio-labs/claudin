@@ -1,9 +1,17 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 
+// Real modules captured up-front so afterEach can restore them instead of
+// leaving an empty `{}` mock behind. Bun's mock.module is process-global and
+// leaks across parallel test files; resetting to `{}` would strip exports the
+// modelOptions → ollamaModels chain depends on. See team memory
+// bun-test-global-config-isolation.md.
+const realProvidersModule = await import('./providers.js')
+const realModelOptionsModule = await import('./modelOptions.js')
+
 describe('getAgentModel provider-aware fallback', () => {
   // Restore all mocks after each test
   afterEach(() => {
-    mock.module('./providers.js', () => ({}))
+    mock.module('./providers.js', () => realProvidersModule)
   })
 
   describe('Claude-native providers', () => {
@@ -262,7 +270,7 @@ describe('getAgentModel provider-aware fallback', () => {
 
 describe('getAgentModelOptions picker', () => {
   afterEach(() => {
-    mock.module('./modelOptions.js', () => ({}))
+    mock.module('./modelOptions.js', () => realModelOptionsModule)
   })
 
   test('falls back to Claude aliases + inherit when getModelOptions returns no string values', async () => {
@@ -334,7 +342,7 @@ describe('getAgentModelDisplay text', () => {
 
 describe('getAgentModel with provider-specific models', () => {
   afterEach(() => {
-    mock.module('./providers.js', () => ({}))
+    mock.module('./providers.js', () => realProvidersModule)
   })
 
   test('does not inherit-shortcut a provider-specific model on non-Claude-native provider', async () => {

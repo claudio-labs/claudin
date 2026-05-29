@@ -4,7 +4,7 @@ exports[`<REPL> dialogs baseline disabled prop (suppresses prompt, dialog contai
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 "
 `;
@@ -13,7 +13,7 @@ exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 
@@ -28,7 +28,22 @@ exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path re
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
+   ▘▘ ▝▝     ~/projects/claudio
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudio 
+  ? for shortcuts"
+`;
+
+exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 2`] = `
+"
+          
+  ▐▛███▜▌    Claudio v0.0.0-test
+  ▐█████▌    Not configured · claude-sonnet-4-6
    ▘▘ ▝▝     ~/projects/claudio
 
 

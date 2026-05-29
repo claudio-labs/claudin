@@ -5,22 +5,23 @@ import { useTheme } from './design-system/ThemeProvider.js';
 import { onGlobalConfigChange } from '../utils/config.js';
 import type { ProviderProfile } from '../utils/config.js';
 import { getActiveProviderProfile } from '../utils/providerProfiles.js';
-import { getMainLoopModel } from '../utils/model/model.js';
+import { getMainLoopModel, renderModelName } from '../utils/model/model.js';
 import { buildModelPill, buildProviderPill } from '../utils/format-branch.js';
 import { getTheme } from '../utils/theme.js';
 import { logError } from '../utils/log.js';
+import { toError } from '../utils/errors.js';
 
 type Snapshot = {
   provider: string;
   model: string;
 };
 
-function readSnapshot(): Snapshot | null {
+export function readSnapshot(): Snapshot | null {
   let profile: ProviderProfile | undefined;
   try {
     profile = getActiveProviderProfile();
   } catch (e) {
-    logError('ProviderModelIndicator: failed to resolve active provider profile', e);
+    logError(new Error(`ProviderModelIndicator: failed to resolve active provider profile: ${toError(e).message}`));
     return null;
   }
   if (!profile) return null;
@@ -28,12 +29,12 @@ function readSnapshot(): Snapshot | null {
   try {
     modelId = getMainLoopModel() || profile.model || '';
   } catch (e) {
-    logError('ProviderModelIndicator: failed to resolve main loop model, falling back to profile model', e);
+    logError(new Error(`ProviderModelIndicator: failed to resolve main loop model, falling back to profile model: ${toError(e).message}`));
     modelId = profile.model || '';
   }
   return {
     provider: profile.name || profile.provider,
-    model: modelId,
+    model: modelId ? renderModelName(modelId) : '',
   };
 }
 

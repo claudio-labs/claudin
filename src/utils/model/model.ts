@@ -83,7 +83,8 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
     model === getModelStrings().opus41 ||
     model === getModelStrings().opus45 ||
     model === getModelStrings().opus46 ||
-    model === getModelStrings().opus47
+    model === getModelStrings().opus47 ||
+    model === getModelStrings().opus48
   )
 }
 
@@ -199,12 +200,12 @@ export function getDefaultOpusModel(): ModelName {
   // 3P providers (Bedrock, Vertex, Foundry) — kept as a separate branch
   // even when values match, since 3P availability lags firstParty and
   // these will diverge again at the next model launch.
-  // 4.7 is freshly launched and may not be available on 3P yet, so 3P
-  // stays on 4.6 as default. Users can still pick 4.7 manually.
+  // 4.8 is freshly launched and may not be available on 3P yet, so 3P
+  // stays on 4.6 as default. Users can still pick 4.7/4.8 manually.
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().opus46
   }
-  return getModelStrings().opus47
+  return getModelStrings().opus48
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
@@ -385,7 +386,10 @@ export function getDefaultMainLoopModel(): ModelName {
 export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   name = name.toLowerCase()
   // Special cases for Claude 4+ models to differentiate versions
-  // Order matters: check more specific versions first (4-7 before 4-6 before 4)
+  // Order matters: check more specific versions first (4-8 before 4-7 before 4-6 before 4)
+  if (name.includes('claude-opus-4-8')) {
+    return 'claude-opus-4-8'
+  }
   if (name.includes('claude-opus-4-7')) {
     return 'claude-opus-4-7'
   }
@@ -459,9 +463,9 @@ export function getClaudeAiUserDefaultModelDescription(
 ): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
     if (isOpus1mMergeEnabled()) {
-      return `Opus 4.7 with 1M context · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+      return `Opus 4.8 with 1M context · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
     }
-    return `Opus 4.7 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    return `Opus 4.8 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
   }
   return 'Sonnet 4.6 · Best for everyday tasks'
 }
@@ -470,7 +474,7 @@ export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
   if (setting === 'opusplan') {
-    return 'Opus 4.7 in plan mode, else Sonnet 4.6'
+    return 'Opus 4.8 in plan mode, else Sonnet 4.6'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
@@ -539,14 +543,20 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'GPT-5.4'
     case 'gpt-5.3-codex-spark':
       return 'GPT-5.3 Codex Spark'
+    case getModelStrings().opus48:
+      return 'Opus 4.8'
+    case getModelStrings().opus48 + '[1m]':
+      // With the Opus 1M merge active, 1M is the implicit default, so the
+      // "(1M context)" annotation is redundant — show the plain name.
+      return isOpus1mMergeEnabled() ? 'Opus 4.8' : 'Opus 4.8 (1M context)'
     case getModelStrings().opus47:
       return 'Opus 4.7'
     case getModelStrings().opus47 + '[1m]':
-      return 'Opus 4.7 (1M context)'
+      return isOpus1mMergeEnabled() ? 'Opus 4.7' : 'Opus 4.7 (1M context)'
     case getModelStrings().opus46:
       return 'Opus 4.6'
     case getModelStrings().opus46 + '[1m]':
-      return 'Opus 4.6 (1M context)'
+      return isOpus1mMergeEnabled() ? 'Opus 4.6' : 'Opus 4.6 (1M context)'
     case getModelStrings().opus45:
       return 'Opus 4.5'
     case getModelStrings().opus41:

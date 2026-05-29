@@ -4,7 +4,7 @@ exports[`<REPL> resume baseline resume props all empty (default) 1`] = `
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 
@@ -19,7 +19,7 @@ exports[`<REPL> resume baseline resume with agent context (name + color) 1`] = `
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 

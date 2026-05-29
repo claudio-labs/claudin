@@ -4,7 +4,7 @@ exports[`<REPL> lifecycle baseline mount + unmount without throwing (snapshot fi
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 
@@ -19,7 +19,7 @@ exports[`<REPL> lifecycle baseline mount with non-empty initial tools (alternate
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 

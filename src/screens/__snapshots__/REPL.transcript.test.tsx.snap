@@ -4,7 +4,7 @@ exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 
@@ -19,7 +19,7 @@ exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent 
 "
           
   ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-7[1m]
+  ▐█████▌    Not configured · claude-opus-4-8[1m]
    ▘▘ ▝▝     ~/projects/claudio
 
 

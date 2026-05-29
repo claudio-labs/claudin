@@ -1,7 +1,15 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'bun:test'
 import { isModelCacheValid, getCachedModelsFromDisk, saveModelsToCache } from '../model/modelCache.js'
 
+// Bun's `vi.mock` is process-global and leaks across parallel test files. A
+// bare `{ isOllamaProvider }` mock would strip every other export from
+// ollamaModels.js (e.g. getCachedOllamaModelOptions) and break sibling tests.
+// Spread the real module so only isOllamaProvider is overridden. See team
+// memory bun-test-global-config-isolation.md.
+const realOllamaModels = await import('../model/ollamaModels.js')
+
 vi.mock('../model/ollamaModels.js', () => ({
+  ...realOllamaModels,
   isOllamaProvider: vi.fn(() => true),
 }))
 
