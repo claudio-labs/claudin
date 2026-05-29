@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
 import { DENIAL_WORKAROUND_GUIDANCE } from './constants.js'
 
 export function AUTO_REJECT_MESSAGE(toolName: string): string {
@@ -52,8 +53,11 @@ export function buildClassifierUnavailableMessage(
   toolName: string,
   classifierModel: string,
 ): string {
+  // classifierModel may carry a UI-only alias suffix (e.g. "[1m]"); strip it so
+  // the user sees the real API model ID, not the alias.
+  const displayModel = normalizeModelStringForAPI(classifierModel)
   return (
-    `${classifierModel} is temporarily unavailable, so auto mode cannot determine the safety of ${toolName} right now. ` +
+    `${displayModel} is temporarily unavailable, so auto mode cannot determine the safety of ${toolName} right now. ` +
     `Wait briefly and then try this action again. ` +
     `If it keeps failing, continue with other tasks that don't require this action and come back to it later. ` +
     `Note: reading files, searching code, and other read-only operations do not require the classifier and can still be used.`

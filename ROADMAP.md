@@ -483,7 +483,7 @@ Modelo `claude-opus-4-8` lançado 2026-05-28. No Claude API o contexto de **1M �
 - **Teste:** adicionar caso em `src/utils/permissions/*.test.ts` simulando `APIError` 400 vs 503 e verificando deterministic→manual, transient→fail-closed. Rodar `bun run test:provider`.
 - **Ganho:** robustez do auto mode (elimina loop de denial) — **Esforço:** médio — **Risco:** médio (caminho de segurança; cobrir com teste e não relaxar o gate p/ transitórios).
 
-#### [ ] T7.3 — Mensagem de erro mostra model não-normalizado (`[1m]`)
+#### [x] T7.3 — Mensagem de erro mostra model não-normalizado (`[1m]`)
 - **Arquivo:** `src/utils/permissions/yoloClassifier.ts:1439` (retorna model cru), `src/utils/messages/rejection.ts:51-61`.
 - **Problema:** usuário vê `claude-opus-4-8[1m] is temporarily unavailable` — o `[1m]` é alias de UI, não ID de API real, confunde o diagnóstico.
 - **Ganho:** cosmético/diagnóstico — **Esforço:** trivial (`normalizeModelStringForAPI(model)`) — **Risco:** nenhum.
