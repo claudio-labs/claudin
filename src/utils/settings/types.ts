@@ -741,6 +741,15 @@ export const SettingsSchema = lazySchema(() =>
         .optional()
         .catch(undefined)
         .describe('Persisted effort level for supported models.'),
+      codingLoopXhighDefault: z
+        .boolean()
+        .optional()
+        .catch(undefined)
+        .describe(
+          'When true, defaults effort to xhigh for Opus 4.8 (coding/high-autonomy loops). ' +
+            'Overrides the medium default for Pro/Max/Team and ultrathink. Opus 4.8 only; ' +
+            'other models are unaffected. Defaults to false.',
+        ),
       advisorModel: z
         .string()
         .optional()

@@ -490,14 +490,18 @@ Modelo `claude-opus-4-8` lançado 2026-05-28. No Claude API o contexto de **1M �
 
 ### Aproveitar features novas do 4.8
 
-#### [ ] T7.4 — Mid-conversation system messages
+#### [~] T7.4 — Mid-conversation system messages — **DESCARTADO (2026-05-29)**
 - **Arquivo:** `src/services/api/` (caminho Anthropic em `claude.ts` / construção de `messages`).
-- **Problema:** atualizar instruções no meio da sessão hoje exige reescrever histórico → quebra prompt-cache. 4.8 aceita `role:"system"` no array de `messages` (sem beta header), preservando cache hits nas turns anteriores.
-- **Ganho:** alto (custo de input em loops agênticos longos) — **Esforço:** médio — **Risco:** médio (gate por canonical 4.8; 4.7 e anteriores dão 400). Confirmar [regras de posicionamento](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages#limitations).
+- **Premissa original (incorreta):** "atualizar instruções no meio da sessão quebra prompt-cache; `role:"system"` preservaria cache". Na verdade o `system` top-level já é estável na sessão (`getSystemContext` memoizado) e info dinâmica já vai como `<system-reminder>` em mensagens `user` — **o ganho nunca foi cache**, e sim *autoridade de instrução* (`system` > `user`), uma mudança comportamental.
+- **Por que foi descartado:** protótipo gated (flag `MID_CONVERSATION_SYSTEM`) promovendo o reminder de auto-mode a `role:"system"` **falhou com HTTP 400 em 100% das invocações** no smoke A/B:
+  `messages.N: role 'system' must precede an 'assistant' message or end the array`.
+  O reminder de auto-mode é estruturalmente **sempre a última mensagem do turno** (injetado depois do prompt do usuário, aguardando a resposta do modelo). Promovido a `system`, encerra o array — e a API **não gera resposta após um `system` terminal**. As posições válidas (`primeira` = papel do system top-level; `antes de um assistant` = só existe em turns ≥2 e mesmo assim o reminder continua trailing) **não cobrem nenhum turno real**. Pior que inerte: 400 garantido.
+- **Conclusão:** o ponto de injeção do auto-mode (sempre terminal) é incompatível com `role:"system"` mid-conversation. Reaproveitar exigiria um *consumidor diferente* — uma instrução que naturalmente fique antes de um `assistant` turn — sem caso de uso atual que justifique. Plumbing revertido; nada shipado. Ver [limitações da API](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages#limitations).
 
-#### [ ] T7.5 — Effort `xhigh` default para loops de coding
-- **Problema:** Anthropic recomenda `xhigh` explícito p/ coding/alta autonomia; default `high` no 4.8 é recalibrado (pensa menos que o `high` do 4.7).
+#### [x] T7.5 — Effort `xhigh` default para loops de coding
+- **Problema:** Anthropic recomenda `xhigh` explícito p/ coding/alta autonomia; default `high` no 4.8 é recalibrado (pensa menos que o `high` do 4.7). Sintoma: 4.8 lê arquivo-por-arquivo sequencialmente em vez de batar `Read` em paralelo como o 4.7.
 - **Ganho:** qualidade de coding — **Esforço:** baixo — **Risco:** baixo/médio (re-baselinar custo/latência; talvez opt-in via settings).
+- **Entregue:** opt-in via `codingLoopXhighDefault` em `settings.json` (default off). Quando ligado, `getDefaultEffortForModel` retorna `xhigh` **só para Opus 4.8**, vencendo os defaults `medium` de Pro/Max/Team e ultrathink. 4.7/4.6 e demais modelos inalterados (compatibilidade). Testes em `src/utils/effort.xhighDefault.test.ts`.
 
 #### [ ] T7.6 — Limpar header `context-1m` legado e retry de sampling params
 - **Problema:** migration guide manda remover `context-1m-2025-08-07` (era 4.6) e qualquer retry de `temperature/top_p` em 400. Parcialmente coberto por T7.1.
@@ -515,7 +519,7 @@ Modelo `claude-opus-4-8` lançado 2026-05-28. No Claude API o contexto de **1M �
 - **Problema:** já existe como skill; alinhar naming com o futuro `/review` bundled p/ não duplicar (evitar `/review` builtin + `code-review` skill confundindo o modelo).
 - **Ganho:** clareza — **Esforço:** baixo — **Risco:** baixo.
 
-**Ordem sugerida:** T7.1 (desbloqueia auto mode, P0) → T7.3 (trivial, ajuda diagnóstico) → T7.2 (robustez) → T7.7 (skills) → T7.4/T7.5 (features API) → T7.6/T7.8 (limpeza). Confirmar T7.1 com bench/`/provider doctor` antes de qualquer trabalho nas features.
+**Ordem sugerida:** T7.1 (desbloqueia auto mode, P0) → T7.3 (trivial, ajuda diagnóstico) → T7.2 (robustez) → T7.7 (skills) → T7.5 (feature API; T7.4 descartado) → T7.6/T7.8 (limpeza). Confirmar T7.1 com bench/`/provider doctor` antes de qualquer trabalho nas features.
 
 ---
 

@@ -357,6 +357,18 @@ export function getDefaultEffortForModel(
   // Default effort on Opus 4.6/4.7 to medium for Pro.
   // Max/Team also get medium when the tengu_grey_step2 config is enabled.
   const lowerModel = model.toLowerCase()
+
+  // Opt-in: coding/high-autonomy loops on Opus 4.8 default to xhigh. The 4.8
+  // `high` was recalibrated to think less than 4.7's, so without this the agent
+  // under-plans (e.g. reads files one-by-one instead of batching). Wins over the
+  // medium defaults below (Pro/Max/Team) and ultrathink. Opus 4.8 only.
+  if (
+    lowerModel.includes('opus-4-8') &&
+    getInitialSettings().codingLoopXhighDefault === true
+  ) {
+    return 'xhigh'
+  }
+
   if (lowerModel.includes('opus-4-8') || lowerModel.includes('opus-4-7') || lowerModel.includes('opus-4-6')) {
     if (isProSubscriber()) {
       return 'medium'
