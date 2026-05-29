@@ -1,13 +1,16 @@
 import {
+  EFFORT_ADAPTIVE,
   EFFORT_HIGH,
   EFFORT_LOW,
   EFFORT_MAX,
   EFFORT_MEDIUM,
 } from '../constants/figures.js'
 import {
+  type AdaptiveEffort,
   type EffortLevel,
   type EffortValue,
-  getDisplayedEffortLevel,
+  getDisplayedEffortLabel,
+  isAdaptiveEffort,
   modelSupportsEffort,
 } from '../utils/effort.js'
 
@@ -20,11 +23,14 @@ export function getEffortNotificationText(
   model: string,
 ): string | undefined {
   if (!modelSupportsEffort(model)) return undefined
-  const level = getDisplayedEffortLevel(model, effortValue)
+  const level = getDisplayedEffortLabel(model, effortValue)
   return `${effortLevelToSymbol(level)} ${level} · /effort`
 }
 
-export function effortLevelToSymbol(level: EffortLevel): string {
+export function effortLevelToSymbol(level: EffortLevel | AdaptiveEffort): string {
+  if (isAdaptiveEffort(level)) {
+    return EFFORT_ADAPTIVE
+  }
   switch (level) {
     case 'low':
       return EFFORT_LOW

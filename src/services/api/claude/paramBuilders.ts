@@ -21,7 +21,7 @@ import {
   CAPPED_DEFAULT_MAX_TOKENS,
   getModelMaxOutputTokens,
 } from "src/utils/context.js";
-import { type EffortValue, modelSupportsEffort } from "src/utils/effort.js";
+import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/utils/effort.js";
 import { isEnvTruthy } from "src/utils/envUtils.js";
 import { validateBoundedIntEnvVar } from "src/utils/envValidation.js";
 import { errorMessage } from "src/utils/errors.js";
@@ -226,7 +226,10 @@ export function configureEffortParams(
     return;
   }
 
-  if (effortValue === undefined) {
+  if (effortValue === undefined || isAdaptiveEffort(effortValue)) {
+    // 'adaptive' (and unset) send no effort field — the server scales per
+    // request. resolveAppliedEffort already maps adaptive→undefined upstream,
+    // so this is belt-and-suspenders for direct callers.
     betas.push(EFFORT_BETA_HEADER);
   } else if (typeof effortValue === "string") {
     // Send string effort level as is

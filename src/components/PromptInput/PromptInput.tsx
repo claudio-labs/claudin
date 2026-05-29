@@ -2005,22 +2005,11 @@ function PromptInput({
   const showFastIconHint = useShowFastIconHint(showFastIcon ?? false);
   const { cwd: cwdSegment, branch: branchSegment, pr: prSegment } = useCwdBranchSegment({ isLoading, withPr: true });
 
-  // Show effort notification on startup and when effort changes.
+  // Effort is shown persistently below the branch segment (see bottom-right
+  // status row), so users track the effort the model uses in real time.
   // Suppressed in brief/assistant mode — the value reflects the local
   // client's effort, not the connected agent's.
-  const effortNotificationText = briefOwnsGap ? undefined : getEffortNotificationText(effortValue, mainLoopModel);
-  useEffect(() => {
-    if (!effortNotificationText) {
-      removeNotification('effort-level');
-      return;
-    }
-    addNotification({
-      key: 'effort-level',
-      text: effortNotificationText,
-      priority: 'high',
-      timeoutMs: 12_000
-    });
-  }, [effortNotificationText, addNotification, removeNotification]);
+  const effortStatusText = briefOwnsGap ? undefined : getEffortNotificationText(effortValue, mainLoopModel);
   useBuddyNotification();
   const companionSpeaking = isBuddyEnabled() ?
   useAppState(s => s.companionReaction !== undefined) : false;
@@ -2352,7 +2341,10 @@ function PromptInput({
                   <ProviderModelIndicator />
                   <SessionTokensIndicator messages={messages} />
                 </Box>
-                <Box>{bottomRight ? <Text>{bottomRight}</Text> : null}</Box>
+                <Box flexDirection="column" alignItems="flex-end">
+                  {bottomRight ? <Text>{bottomRight}</Text> : null}
+                  {effortStatusText ? <Text dimColor>{effortStatusText}</Text> : null}
+                </Box>
               </Box>;
           })()}
         </>}

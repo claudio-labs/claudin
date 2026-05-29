@@ -27,7 +27,21 @@ export const OPENAI_EFFORT_LEVELS = [
 ] as const
 
 export type OpenAIEffortLevel = typeof OPENAI_EFFORT_LEVELS[number]
-export type EffortValue = EffortLevel | number
+
+/**
+ * Sentinel effort value meaning "don't pin an effort level — let the server
+ * scale per request". Resolves to no `effort` field on the API request
+ * (configureEffortParams omits it), so the model picks its own effort.
+ * Distinct from `undefined` (which falls through to the model default,
+ * e.g. medium on Opus 4.8 Pro).
+ */
+export const ADAPTIVE_EFFORT = 'adaptive' as const
+export type AdaptiveEffort = typeof ADAPTIVE_EFFORT
+export type EffortValue = EffortLevel | number | AdaptiveEffort
+
+export function isAdaptiveEffort(value: unknown): value is AdaptiveEffort {
+  return value === ADAPTIVE_EFFORT
+}
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports the effort parameter.
 export function modelSupportsEffort(model: string): boolean {
@@ -164,17 +178,20 @@ export function parseEffortValue(value: unknown): EffortValue | undefined {
  */
 export function toPersistableEffort(
   value: EffortValue | undefined,
-): EffortLevel | undefined {
+): EffortLevel | AdaptiveEffort | undefined {
   if (value === 'low' || value === 'medium' || value === 'high') {
     return value
   }
   if (value === 'xhigh' || value === 'max') {
     return value
   }
+  if (isAdaptiveEffort(value)) {
+    return value
+  }
   return undefined
 }
 
-export function getInitialEffortSetting(): EffortLevel | undefined {
+export function getInitialEffortSetting(): EffortLevel | AdaptiveEffort | undefined {
   // toPersistableEffort validates 'max' on read, so a manually
   // edited settings.json with an invalid level doesn't leak into a fresh session.
   return toPersistableEffort(getInitialSettings().effortLevel)
@@ -196,7 +213,7 @@ export function getInitialEffortSetting(): EffortLevel | undefined {
 export function resolvePickerEffortPersistence(
   picked: EffortLevel | undefined,
   modelDefault: EffortLevel,
-  priorPersisted: EffortLevel | undefined,
+  priorPersisted: EffortLevel | AdaptiveEffort | undefined,
   toggledInPicker: boolean,
 ): EffortLevel | undefined {
   const hadExplicit = priorPersisted !== undefined || toggledInPicker
@@ -229,6 +246,10 @@ export function resolveAppliedEffort(
   }
   const resolved =
     envOverride ?? appStateEffortValue ?? getDefaultEffortForModel(model)
+  // 'adaptive' means "send no effort field" so the server scales per request.
+  if (isAdaptiveEffort(resolved)) {
+    return undefined
+  }
   // API rejects 'max' on non-Opus-4.6 models — downgrade to 'high'.
   if (resolved === 'max' && !modelSupportsMaxEffort(model)) {
     return 'high'
@@ -254,6 +275,19 @@ export function getDisplayedEffortLevel(
 }
 
 /**
+ * Display string for the effort surfaces (status bar, /effort output,
+ * startup screen). Returns the literal 'adaptive' when the user picked the
+ * adaptive mode (which has no fixed level), otherwise the resolved level.
+ */
+export function getDisplayedEffortLabel(
+  model: string,
+  appStateEffort: EffortValue | undefined,
+): EffortLevel | AdaptiveEffort {
+  if (isAdaptiveEffort(appStateEffort)) return ADAPTIVE_EFFORT
+  return getDisplayedEffortLevel(model, appStateEffort)
+}
+
+/**
  * Build the ` with {level} effort` suffix shown in Logo/Spinner.
  * Returns empty string if the user hasn't explicitly set an effort value.
  * Delegates to resolveAppliedEffort() so the displayed level matches what
@@ -264,6 +298,7 @@ export function getEffortSuffix(
   effortValue: EffortValue | undefined,
 ): string {
   if (effortValue === undefined) return ''
+  if (isAdaptiveEffort(effortValue)) return ' with adaptive effort'
   const resolved = resolveAppliedEffort(model, effortValue)
   if (resolved === undefined) return ''
   return ` with ${convertEffortValueToLevel(resolved)} effort`
@@ -317,6 +352,9 @@ export function getEffortLevelDescription(level: EffortLevel | OpenAIEffortLevel
  * @returns Human-readable description
  */
 export function getEffortValueDescription(value: EffortValue): string {
+  if (isAdaptiveEffort(value)) {
+    return 'Model picks effort per request (low–xhigh, never max)'
+  }
   if (typeof value === 'string') {
     return getEffortLevelDescription(value)
   }

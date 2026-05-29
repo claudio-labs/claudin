@@ -9,7 +9,7 @@ import { tryGetActiveProvider } from '../services/api/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from '../services/api/providerConfig.js'
 import { getLocalOpenAICompatibleProviderLabel } from '../utils/providerDiscovery.js'
 import { parseUserSpecifiedModel } from '../utils/model/model.js'
-import { getDisplayedEffortLevel, getInitialEffortSetting, modelSupportsEffort, type EffortLevel } from '../utils/effort.js'
+import { getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from '../utils/effort.js'
 import { effortLevelToSymbol } from './EffortIndicator.js'
 
 const UNCONFIGURED_PLACEHOLDER = '—'
@@ -59,7 +59,7 @@ const LOGO_WIDTH = LOGO_LINES[0].length
 
 // ─── Provider detection ───────────────────────────────────────────────────────
 
-export function detectProvider(modelOverride?: string): { name: string; model: string; baseUrl: string; isLocal: boolean; effort?: EffortLevel } {
+export function detectProvider(modelOverride?: string): { name: string; model: string; baseUrl: string; isLocal: boolean; effort?: EffortLevel | AdaptiveEffort } {
   const provider = tryGetActiveProvider()
 
   // No active profile — keep the banner honest instead of guessing Anthropic.
@@ -91,7 +91,7 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
     case 'anthropic': {
       const resolvedModel = parseUserSpecifiedModel(rawModel)
       const effort = modelSupportsEffort(resolvedModel)
-        ? getDisplayedEffortLevel(resolvedModel, getInitialEffortSetting())
+        ? getDisplayedEffortLabel(resolvedModel, getInitialEffortSetting())
         : undefined
       return { name: provider.name ?? 'Anthropic', model: resolvedModel, baseUrl, isLocal, effort }
     }

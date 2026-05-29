@@ -737,10 +737,13 @@ export const SettingsSchema = lazySchema(() =>
             'enabled automatically for supported models.',
         ),
       effortLevel: z
-        .enum(['low', 'medium', 'high', 'max'])
+        .enum(['low', 'medium', 'high', 'xhigh', 'max', 'adaptive'])
         .optional()
         .catch(undefined)
-        .describe('Persisted effort level for supported models.'),
+        .describe(
+          'Persisted effort level for supported models. ' +
+            "'adaptive' sends no effort field so the model scales per request.",
+        ),
       codingLoopXhighDefault: z
         .boolean()
         .optional()

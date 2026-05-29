@@ -4,7 +4,7 @@ import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { type EffortValue, getDisplayedEffortLevel, getEffortEnvOverride, getEffortValueDescription, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
+import { ADAPTIVE_EFFORT, type EffortValue, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isAdaptiveEffort, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
 import { EffortPicker } from '../../components/EffortPicker.js';
 import { updateSettingsForSource } from '../../utils/settings/settings.js';
 const COMMON_HELP_ARGS = ['help', '-h', '--help'];
@@ -64,7 +64,7 @@ export function showCurrentEffort(appStateEffort: EffortValue | undefined, model
   const envOverride = getEffortEnvOverride();
   const effectiveValue = envOverride === null ? undefined : envOverride ?? appStateEffort;
   if (effectiveValue === undefined) {
-    const level = getDisplayedEffortLevel(model, appStateEffort);
+    const level = getDisplayedEffortLabel(model, appStateEffort);
     return {
       message: `Effort level: auto (currently ${level})`
     };
@@ -110,6 +110,9 @@ export function executeEffort(args: string): EffortCommandResult {
   if (normalized === 'auto' || normalized === 'unset') {
     return unsetEffortLevel();
   }
+  if (isAdaptiveEffort(normalized)) {
+    return setEffortValue(ADAPTIVE_EFFORT);
+  }
   if (isEffortLevel(normalized)) {
     return setEffortValue(normalized);
   }
@@ -117,7 +120,7 @@ export function executeEffort(args: string): EffortCommandResult {
     return setEffortValue(normalized);
   }
   return {
-    message: `Invalid argument: ${args}. Valid options are: low, medium, high, max, xhigh, auto`
+    message: `Invalid argument: ${args}. Valid options are: adaptive, low, medium, high, max, xhigh, auto`
   };
 }
 function ShowCurrentEffort(t0) {
@@ -175,7 +178,7 @@ function ApplyEffortAndClose(t0) {
 export async function call(onDone: LocalJSXCommandOnDone, _context: unknown, args?: string): Promise<React.ReactNode> {
   args = args?.trim() || '';
   if (COMMON_HELP_ARGS.includes(args)) {
-    onDone('Usage: /effort [low|medium|high|max|auto]\n\nEffort levels:\n- low: Quick, straightforward implementation\n- medium: Balanced approach with standard testing\n- high: Comprehensive implementation with extensive testing\n- max: Maximum capability with deepest reasoning (Opus 4.6/4.7 only)\n- auto: Use the default effort level for your model');
+    onDone('Usage: /effort [adaptive|low|medium|high|xhigh|max|auto]\n\nEffort levels:\n- adaptive: Model picks effort per request (low–xhigh, never max)\n- low: Quick, straightforward implementation\n- medium: Balanced approach with standard testing\n- high: Comprehensive implementation with extensive testing\n- xhigh: Extended capability for long-horizon work (Opus 4.7/4.8, OpenAI/Codex)\n- max: Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8 only)\n- auto: Use the default effort level for your model');
     return;
   }
   if (args === 'current' || args === 'status') {

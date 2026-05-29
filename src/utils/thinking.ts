@@ -6,6 +6,7 @@ import { getCanonicalName } from './model/model.js'
 import { get3PModelCapabilityOverride } from './model/modelSupportOverrides.js'
 import { getAPIProvider } from './model/providers.js'
 import { getSettingsWithErrors } from './settings/settings.js'
+import { isEnvTruthy } from './envUtils.js'
 
 export type ThinkingConfig =
   | { type: 'adaptive' }
@@ -147,6 +148,22 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
   // for their model strings.
   const provider = getAPIProvider()
   return provider === 'firstParty' || provider === 'foundry'
+}
+
+/**
+ * Whether this model *would* use adaptive thinking (`thinking: { type:
+ * 'adaptive' }`) when thinking is on. Mirrors the model/env side of the gate in
+ * src/services/api/claude/streaming.ts (do not change that selection here —
+ * this is a display-only helper). It deliberately does NOT decide whether
+ * thinking is enabled at all (config/`thinkingConfig.type`); callers must
+ * already know thinking is on (e.g. the spinner only shows the verb while
+ * `thinkingStatus === 'thinking'`). The name says "would", not "is active",
+ * precisely because the enabled-decision lives with the caller.
+ */
+export function modelWouldUseAdaptiveThinking(model: string): boolean {
+  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING)) return false
+  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING)) return false
+  return modelSupportsThinking(model) && modelSupportsAdaptiveThinking(model)
 }
 
 export function shouldEnableThinkingByDefault(): boolean {
