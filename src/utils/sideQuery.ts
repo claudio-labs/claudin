@@ -16,7 +16,10 @@ import { getAPIMetadata } from '../services/api/claude.js'
 import { getAnthropicClient } from '../services/api/client.js'
 import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
 import { computeFingerprint } from './fingerprint.js'
-import { normalizeModelStringForAPI } from './model/model.js'
+import {
+  modelRejectsSamplingParams,
+  normalizeModelStringForAPI,
+} from './model/model.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam
@@ -177,10 +180,10 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
   }
 
   const normalizedModel = normalizeModelStringForAPI(model)
-  // Anthropic deprecated `temperature` for Opus 4.7 (the API rejects it with
-  // 400 invalid_request_error). Strip it for that family rather than push the
-  // gate into every caller.
-  const acceptsTemperature = !/claude-opus-4-7/i.test(normalizedModel)
+  // Anthropic rejects non-default `temperature` for the Opus 4.7+ family with a
+  // 400 invalid_request_error. Strip it for those models rather than push the
+  // gate into every caller. (See modelRejectsSamplingParams.)
+  const acceptsTemperature = !modelRejectsSamplingParams(normalizedModel)
   const start = Date.now()
   // biome-ignore lint/plugin: this IS the wrapper that handles OAuth attribution
   const response = await client.beta.messages.create(

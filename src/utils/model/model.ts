@@ -808,3 +808,12 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
 export function normalizeModelStringForAPI(model: string): string {
   return model.replace(/\[(1|2)m\]/gi, '')
 }
+
+// @[MODEL LAUNCH]: Add the new model here if its API rejects non-default sampling
+// params (temperature/top_p/top_k → 400 invalid_request_error). Applies to the
+// Opus 4.7+ family; other providers' models never canonicalize to opus, so they
+// keep their existing temperature behavior.
+export function modelRejectsSamplingParams(model: string): boolean {
+  const canonical = getCanonicalName(model)
+  return canonical.includes('opus-4-7') || canonical.includes('opus-4-8')
+}
