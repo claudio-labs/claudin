@@ -41,6 +41,7 @@ import {
   getBytesPerTokenForModel,
 } from '../../tokenEstimation.js'
 import { makeMessageId } from './helpers.js'
+import { extractReasoningDelta } from './reasoningNormalizer.js'
 import type { OpenAIStreamChunk } from './types.js'
 
 export function convertChunkUsage(
@@ -229,9 +230,15 @@ export async function* openaiStreamToAnthropic(
         const delta = choice.delta
 
         // Reasoning models (e.g. GLM-5, DeepSeek) may stream chain-of-thought
-        // in `reasoning_content` before the actual reply appears in `content`.
-        // Emit reasoning as a thinking block and content as a text block.
-        if (delta.reasoning_content != null && delta.reasoning_content !== '') {
+        // in a reasoning field before the actual reply appears in `content`.
+        // Different providers use different aliases (`reasoning_content`,
+        // `reasoning`, `reasoning_text`, `thinking`) — normalize via
+        // extractReasoningDelta so they all surface as a thinking block
+        // instead of leaking into visible text.
+        const reasoningDelta = extractReasoningDelta(
+          delta as unknown as Record<string, unknown>,
+        )
+        if (reasoningDelta != null) {
           if (!hasEmittedThinkingStart) {
             yield {
               type: 'content_block_start',
@@ -243,7 +250,7 @@ export async function* openaiStreamToAnthropic(
           yield {
             type: 'content_block_delta',
             index: contentBlockIndex,
-            delta: { type: 'thinking_delta', thinking: delta.reasoning_content },
+            delta: { type: 'thinking_delta', thinking: reasoningDelta },
           }
         }
 

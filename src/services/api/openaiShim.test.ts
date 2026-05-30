@@ -2601,6 +2601,95 @@ test('streaming: thinking block closed before tool call', async () => {
   expect(thinkingStart?.content_block?.type).toBe('thinking')
 })
 
+test('streaming: bare `reasoning` alias (OpenRouter) emits thinking_delta', async () => {
+  // OpenRouter forwards reasoning under the bare `reasoning` key rather than
+  // `reasoning_content`. The shim must normalize both into a thinking block,
+  // otherwise CoT leaks into visible text and looks like inter-tool-call
+  // narration to the user.
+  globalThis.fetch = (async (_input, _init) => {
+    const chunks = makeStreamChunks([
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'openrouter/some-model',
+        choices: [
+          {
+            index: 0,
+            // bare `reasoning` (no `_content` suffix) — OpenRouter shape
+            delta: { role: 'assistant', reasoning: 'Pondering...' } as unknown as {
+              role: string
+              content?: string | null
+            },
+            finish_reason: null,
+          },
+        ],
+      },
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'openrouter/some-model',
+        choices: [
+          {
+            index: 0,
+            delta: { content: 'Done.' },
+            finish_reason: null,
+          },
+        ],
+      },
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'openrouter/some-model',
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: 'stop',
+          },
+        ],
+      },
+    ])
+
+    return makeSseResponse(chunks)
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+
+  const result = await client.beta.messages
+    .create({
+      model: 'openrouter/some-model',
+      system: 'test system',
+      messages: [{ role: 'user', content: 'hi' }],
+      max_tokens: 64,
+      stream: true,
+    })
+    .withResponse()
+
+  const events: Array<Record<string, unknown>> = []
+  for await (const event of result.data) {
+    events.push(event)
+  }
+
+  // A thinking_delta block must be emitted with the reasoning text.
+  const thinkingDeltas = events
+    .map(e => (e as { delta?: { type?: string; thinking?: string } }).delta)
+    .filter(
+      (d): d is { type: 'thinking_delta'; thinking: string } =>
+        d?.type === 'thinking_delta' && typeof d.thinking === 'string',
+    )
+  expect(thinkingDeltas.length).toBeGreaterThan(0)
+  expect(thinkingDeltas.map(d => d.thinking).join('')).toBe('Pondering...')
+
+  // And the reasoning text must NOT leak into visible text deltas.
+  const textDeltas = events
+    .map(e => (e as { delta?: { type?: string; text?: string } }).delta)
+    .filter(
+      (d): d is { type: 'text_delta'; text: string } =>
+        d?.type === 'text_delta' && typeof d.text === 'string',
+    )
+  expect(textDeltas.map(d => d.text).join('')).toBe('Done.')
+})
+
 test('streaming: strips <think> tag block from assistant content deltas', async () => {
   globalThis.fetch = (async () => {
     const chunks = makeStreamChunks([

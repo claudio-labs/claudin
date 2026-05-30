@@ -940,6 +940,13 @@ export async function* queryModel(
     const logBetas = useBetas ? (queryParams.betas ?? []) : [];
     const logThinkingType = queryParams.thinking?.type ?? "disabled";
     const logEffortValue = queryParams.output_config?.effort;
+    // Observability for the reasoning-channel: if Anthropic-native requests
+    // ever stop opting into the `thinking` block, CoT can leak into visible
+    // text. Mirroring the [OpenAIShim] log style so regressions show up in
+    // CLAUDE_DEBUG output without ad-hoc instrumentation.
+    logForDebugging(
+      `[Claude] thinking=${logThinkingType} model=${options.model}`,
+    );
     void options.getToolPermissionContext().then((permissionContext) => {
       logAPIQuery({
         model: options.model,

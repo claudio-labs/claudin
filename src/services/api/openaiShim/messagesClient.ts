@@ -81,6 +81,7 @@ import {
   isMoonshotCompatibleBaseUrl,
   normalizeDeepSeekReasoningEffort,
 } from './providerModes.js'
+import { extractReasoningMessage } from './reasoningNormalizer.js'
 import { openaiStreamToAnthropic, OpenAIShimStream } from './streamParser.js'
 import { convertTools } from './toolConverter.js'
 import type { SecretValueSource } from './types.js'
@@ -859,6 +860,9 @@ class OpenAIShimMessages {
             | null
             | Array<{ type?: string; text?: string }>
           reasoning_content?: string | null
+          // Aliases used by other OpenAI-compat providers (OpenRouter, etc.).
+          reasoning?: string | null
+          reasoning_text?: string | null
           tool_calls?: Array<{
             id: string
             function: { name: string; arguments: string }
@@ -880,11 +884,15 @@ class OpenAIShimMessages {
     const choice = data.choices?.[0]
     const content: Array<Record<string, unknown>> = []
 
-    // Some reasoning models (e.g. GLM-5) put their chain-of-thought in
-    // reasoning_content while content stays null. Preserve it as a thinking
-    // block, but do not surface it as visible assistant text.
-    const reasoningText = choice?.message?.reasoning_content
-    if (typeof reasoningText === 'string' && reasoningText) {
+    // Some reasoning models (e.g. GLM-5) put their chain-of-thought in a
+    // reasoning field while content stays null. Different providers use
+    // different aliases (`reasoning_content`, `reasoning`, `reasoning_text`,
+    // `thinking`) — normalize via extractReasoningMessage. Preserve it as a
+    // thinking block; do not surface it as visible assistant text.
+    const reasoningText = extractReasoningMessage(
+      (choice?.message ?? {}) as Record<string, unknown>,
+    )
+    if (reasoningText) {
       content.push({ type: 'thinking', thinking: reasoningText })
     }
     const rawContent =

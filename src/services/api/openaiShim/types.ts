@@ -58,6 +58,11 @@ export interface OpenAIStreamChunk {
       role?: string
       content?: string | null
       reasoning_content?: string | null
+      // Aliases used by other OpenAI-compat providers (OpenRouter, etc.).
+      // Normalized via reasoningNormalizer.ts so all variants land in the
+      // thinking block rather than leaking to visible text.
+      reasoning?: string | null
+      reasoning_text?: string | null
       tool_calls?: Array<{
         index: number
         id?: string
