@@ -179,18 +179,26 @@ export function getToolSearchMode(): ToolSearchMode {
   // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API
   // features. Tool search emits defer_loading on tool definitions and
   // tool_reference content blocks — both require the API to accept a beta
-  // header, which proxy gateways often reject. When the kill switch is set we
-  // force 'standard' so no beta shapes reach the wire — UNLESS the user has
-  // explicitly opted in via ENABLE_TOOL_SEARCH (true / auto / auto:N), which
-  // asserts their provider accepts these betas (the same assertion the
-  // first-party-base-url gate in isToolSearchEnabledOptimistic relies on).
-  // This lets first-party Anthropic users recover the ~10K of deferrable tool
-  // schemas the kill switch otherwise forces inline. github.com/anthropics/claude-code/issues/20031
+  // header, which proxy gateways and non-Anthropic providers often reject.
+  // When the kill switch is set we force 'standard' so no beta shapes reach
+  // the wire — EXCEPT in two cases where we know the provider accepts them:
+  //   1. genuine first-party Anthropic (provider + first-party base URL):
+  //      enabled by default to recover the ~10K of deferrable tool schemas
+  //      the kill switch otherwise forces inline (measured ~22% lower
+  //      per-call cost). Validated against the public API; no beta 400.
+  //   2. explicit ENABLE_TOOL_SEARCH (true / auto / auto:N): the user asserts
+  //      their provider/proxy accepts these betas.
+  // A non-anthropic base URL on a 'firstParty' provider (a proxy) is still
+  // gated off downstream by isToolSearchEnabledOptimistic.
+  // github.com/anthropics/claude-code/issues/20031
   const explicitlyEnabled =
     autoPercent === 0 || isAutoToolSearchMode(value) || isEnvTruthy(value)
+  const genuineFirstParty =
+    getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()
   if (
     isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS) &&
-    !explicitlyEnabled
+    !explicitlyEnabled &&
+    !genuineFirstParty
   ) {
     return 'standard'
   }
@@ -204,18 +212,6 @@ export function getToolSearchMode(): ToolSearchMode {
   if (isEnvTruthy(value)) return 'tst'
   if (isEnvDefinedFalsy(process.env.ENABLE_TOOL_SEARCH)) return 'standard'
   return 'tst' // default: always defer MCP and shouldDefer tools
-}
-
-/**
- * True when the user has explicitly opted into tool search via
- * ENABLE_TOOL_SEARCH (true / auto / auto:N). Used to let the explicit opt-in
- * override the CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS field-strip in api.ts so
- * defer_loading survives to the wire (it would otherwise be stripped).
- */
-export function isToolSearchExplicitlyEnabled(): boolean {
-  const value = process.env.ENABLE_TOOL_SEARCH
-  const autoPercent = value ? parseAutoPercentage(value) : null
-  return autoPercent === 0 || isAutoToolSearchMode(value) || isEnvTruthy(value)
 }
 
 /**
