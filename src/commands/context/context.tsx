@@ -1,13 +1,47 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import type { LocalJSXCommandContext } from '../../commands.js';
+import { Box, Text, useInput } from '../../ink.js';
 import { ContextVisualization } from '../../components/ContextVisualization.js';
+import { useExitOnCtrlCDWithKeybindings } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import { microcompactMessages } from '../../services/compact/microCompact.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 import type { Message } from '../../types/message.js';
-import { analyzeContextUsage } from '../../utils/analyzeContext.js';
+import { analyzeContextUsage, type ContextData } from '../../utils/analyzeContext.js';
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
-import { renderToAnsiString } from '../../utils/staticRender.js';
+
+/**
+ * Wraps the context grid so the panel can dismiss itself. A bare
+ * <ContextVisualization> mounted as command output has no way to call onDone,
+ * so the REPL keeps the local-jsx slot open and the user can't return to the
+ * prompt. Esc/Enter (and ctrl+c twice) close it.
+ */
+function ContextPanel({
+  data,
+  onDone,
+}: {
+  data: ContextData;
+  onDone: LocalJSXCommandOnDone;
+}): React.ReactNode {
+  const close = React.useCallback(
+    () => onDone('Context dialog dismissed', { display: 'system' }),
+    [onDone],
+  );
+  const exitState = useExitOnCtrlCDWithKeybindings(close);
+  useInput((_input, key) => {
+    if (key.escape || key.return) close();
+  });
+  return (
+    <Box flexDirection="column">
+      <ContextVisualization data={data} />
+      <Text dimColor>
+        {exitState.pending
+          ? `Press ${exitState.keyName} again to exit`
+          : 'Press esc or enter to close'}
+      </Text>
+    </Box>
+  );
+}
 
 /**
  * Apply the same context transforms query.ts does before the API call, so
@@ -56,8 +90,9 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
   apiView // Original messages for API usage extraction
   );
 
-  // Render to ANSI string to preserve colors and pass to onDone like local commands do
-  const output = await renderToAnsiString(<ContextVisualization data={data} />);
-  onDone(output);
-  return null;
+  // Return the panel as JSX so the REPL mounts it as a dismissible command
+  // output above the prompt. Routing it through onDone(string) instead would
+  // funnel the multi-line grid into the footer's one-line truncated
+  // notification slot, where it auto-dismisses and renders blank.
+  return <ContextPanel data={data} onDone={onDone} />;
 }
