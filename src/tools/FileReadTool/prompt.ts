@@ -51,8 +51,13 @@ ${lineFormat}
       : ''
   }
 - This tool can read Jupyter notebooks (.ipynb files) and returns all cells with their outputs, combining code, text, and visualizations.
-- For large code files (TS/JS/Python/Go), pass view='outline' to read just the function/class signatures, then symbol='name' to expand one of them. A file that exceeds the read cap returns this outline automatically.
+- For large code files (TS/JS/Python/Go), pass view='outline' to read just the function/class signatures, then symbol='name' to expand one of them. A file that exceeds the read cap returns this outline automatically. Large-file Reads without an explicit view also auto-pivot to the outline by default (the body would otherwise be head-tail elided in transit); pass view='full' to force the body, or use offset/limit/symbol to target a specific range.
 - This tool can only read files, not directories. To read a directory, use an ls command via the ${BASH_TOOL_NAME} tool.
 - You will regularly be asked to read screenshots. If the user provides a path to a screenshot, ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths.
-- If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.`
+- If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.
+
+Multi-file investigations. When the task spans more than ~2 files (tracing a feature, mapping a subsystem, finding call sites), prefer one of these over a serial chain of single Reads:
+- Dispatch the Explore agent (via the Agent tool with subagent_type='Explore') with the question — it returns excerpts in one turn and keeps your context clean.
+- Otherwise, emit the Reads as parallel tool_use blocks in the same assistant message. Same-turn parallel Reads are first-class.
+A serial loop of Read → short comment → Read → short comment is the wrong shape.`
 }

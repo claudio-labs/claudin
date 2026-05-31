@@ -1,4 +1,5 @@
 import type { Base64ImageSource } from '@anthropic-ai/sdk/resources/index.mjs'
+import { feature } from 'bun:bundle'
 import { readdir, readFile as readFileAsync } from 'fs/promises'
 import * as path from 'path'
 import { posix, win32 } from 'path'
@@ -75,6 +76,11 @@ import {
   type ReadFileRangeResult,
   readFileInRange,
 } from '../../utils/readFileInRange.js'
+import {
+  detectSerialReadPattern,
+  markFiredAndCheck,
+  SERIAL_READ_NUDGE_REMINDER,
+} from './serialReadNudge.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLang,
@@ -251,10 +257,10 @@ const inputSchema = lazySchema(() =>
         `Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files. Maximum ${PDF_MAX_PAGES_PER_READ} pages per request.`,
       ),
     view: z
-      .enum(['outline'])
+      .enum(['outline', 'full'])
       .optional()
       .describe(
-        "Set to 'outline' to read only the structural skeleton of a code file — every function/class signature with its line range — instead of the full contents. Cheap way to navigate a large file before expanding one part.",
+        "Set to 'outline' to read only the structural skeleton of a code file — every function/class signature with its line range — instead of the full contents. Set to 'full' to force a full-body read even on large files that would otherwise auto-pivot to an outline. Cheap way to navigate a large file before expanding one part.",
       ),
     symbol: z
       .string()
@@ -362,6 +368,12 @@ const outputSchema = lazySchema(() => {
         symbolCount: z
           .number()
           .describe('Number of symbols in the outline'),
+        autoPivot: z
+          .boolean()
+          .optional()
+          .describe(
+            'True when this outline was produced by AUTO_OUTLINE_ON_ELISION because the vanilla full-body Read would have been head-tail elided. Triggers an extra footer hint in the tool_result.',
+          ),
       }),
     }),
   ])
@@ -632,7 +644,7 @@ export const FileReadTool = buildTool({
     }
 
     try {
-      return await callInner(
+      const result = await callInner(
         file_path,
         fullFilePath,
         fullFilePath,
@@ -648,6 +660,8 @@ export const FileReadTool = buildTool({
         context,
         parentMessage?.message.id,
       )
+      maybeFlagSerialReadNudge(result?.data, context)
+      return result
     } catch (error) {
       // Handle file-not-found: suggest similar files
       const code = getErrnoCode(error)
@@ -657,7 +671,7 @@ export const FileReadTool = buildTool({
         const altPath = getAlternateScreenshotPath(fullFilePath)
         if (altPath) {
           try {
-            return await callInner(
+            const altResult = await callInner(
               file_path,
               fullFilePath,
               altPath,
@@ -673,6 +687,8 @@ export const FileReadTool = buildTool({
               context,
               parentMessage?.message.id,
             )
+            maybeFlagSerialReadNudge(altResult?.data, context)
+            return altResult
           } catch (altError) {
             if (!isENOENT(altError)) {
               throw altError
@@ -736,11 +752,15 @@ export const FileReadTool = buildTool({
         }
       case 'outline':
         // Pre-rendered skeleton — no cat -n line prefixes, no mitigation
-        // reminder. Sent verbatim.
+        // reminder. Sent verbatim. AUTO_OUTLINE_ON_ELISION pivots append a
+        // one-line footer so the model knows the body was withheld
+        // intentionally and how to opt in to the full content.
         return {
           tool_use_id: toolUseID,
           type: 'tool_result',
-          content: data.file.content,
+          content: data.file.autoPivot
+            ? data.file.content + AUTO_OUTLINE_PIVOT_FOOTER
+            : data.file.content,
         }
       case 'text': {
         let content: string
@@ -751,7 +771,8 @@ export const FileReadTool = buildTool({
             formatFileLines(data.file) +
             (shouldIncludeFileReadMitigation()
               ? CYBER_RISK_MITIGATION_REMINDER
-              : '')
+              : '') +
+            (serialReadNudgeFlagged.has(data) ? SERIAL_READ_NUDGE_REMINDER : '')
         } else {
           // Determine the appropriate warning message
           content =
@@ -777,6 +798,38 @@ function pickLineFormatInstruction(): string {
 /** Format file content with line numbers. */
 function formatFileLines(file: { content: string; startLine: number }): string {
   return addLineNumbers(file)
+}
+
+/**
+ * Footer appended to outline tool_results produced by AUTO_OUTLINE_ON_ELISION
+ * — kept as a single declarative line so it survives any downstream text
+ * normalisation and shows up identically in transcripts. Exported for tests
+ * and for the optional UI badge that mirrors the same wording.
+ */
+export const AUTO_OUTLINE_PIVOT_FOOTER =
+  "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>"
+
+/**
+ * Read result is large enough that toolResultSummarizer (~10 KB) would
+ * head-tail elide the middle when the model receives it. Kept as a local
+ * constant rather than importing from toolResultSummarizer to avoid a
+ * dependency cycle between the tool and its own post-processor.
+ */
+const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
+
+/**
+ * Single source of truth for the AUTO_OUTLINE_ON_ELISION gate. Tests can
+ * force-enable via `CLAUDIO_FORCE_AUTO_OUTLINE_ON_ELISION=1` because the
+ * test-preload (src/stubs/test-preload.ts) stubs every `feature()` call to
+ * `false` and a local `mock.module('bun:bundle', …)` runs too late to win
+ * against it. Production behavior is unchanged: the build-time preprocessor
+ * folds `feature('AUTO_OUTLINE_ON_ELISION')` to its flag value.
+ */
+function autoOutlineOnElisionEnabled(): boolean {
+  if (process.env.CLAUDIO_FORCE_AUTO_OUTLINE_ON_ELISION === '1') return true
+  if (process.env.CLAUDIO_DISABLE_AUTO_OUTLINE_ON_ELISION === '1') return false
+  if (feature('AUTO_OUTLINE_ON_ELISION')) return true
+  return false
 }
 
 export const CYBER_RISK_MITIGATION_REMINDER =
@@ -806,6 +859,45 @@ function memoryFileFreshnessPrefix(data: object): string {
   const mtimeMs = memoryFileMtimes.get(data)
   if (mtimeMs === undefined) return ''
   return memoryFreshnessNote(mtimeMs)
+}
+
+// Side-channel from call() to mapToolResultToToolResultBlockParam: flag the
+// `data` object whose tool_result should carry the serial-read nudge.
+// Same pattern as memoryFileMtimes — keyed on data identity, GCs naturally.
+const serialReadNudgeFlagged: WeakSet<object> = new WeakSet()
+
+function shouldEmitSerialReadNudge(): boolean {
+  if (isEnvTruthy(process.env.CLAUDIO_DISABLE_TOOL_REMINDERS)) return false
+  // feature() from bun:bundle must appear directly in if/ternary; the build
+  // preprocessor replaces it with a boolean literal before bundling.
+  return feature('SERIAL_READ_NUDGE') ? true : false
+}
+
+/**
+ * Inspects the recent assistant history on context.messages and, if the
+ * serial-Read narration pattern is present and we haven't already fired
+ * this turn, marks the data object so the mapper appends the nudge.
+ *
+ * Only applies to plain `text` reads — that's the path that carries the
+ * narration cost in practice. Outline/image/PDF/notebook/file_unchanged
+ * results stay clean.
+ */
+function maybeFlagSerialReadNudge(
+  data: unknown,
+  context: ToolUseContext,
+): void {
+  if (!shouldEmitSerialReadNudge()) return
+  if (!data || typeof data !== 'object') return
+  // Limit injection to the standard text read result; the nudge talks about
+  // "sequential single-file Reads", so attaching it to an outline/image/PDF
+  // would be off-message.
+  const type = (data as { type?: string }).type
+  if (type !== 'text') return
+  const messages = context.messages
+  if (!Array.isArray(messages)) return
+  if (!detectSerialReadPattern(messages)) return
+  if (!markFiredAndCheck(messages)) return
+  serialReadNudgeFlagged.add(data as object)
 }
 
 async function validateContentTokens(
@@ -952,6 +1044,7 @@ function makeOutlineData(
   fullFilePath: string,
   readFileState: ToolUseContext['readFileState'],
   overCap: boolean,
+  autoPivot = false,
 ): { data: Output } {
   const content = renderOutline(
     scanned.entries,
@@ -974,6 +1067,7 @@ function makeOutlineData(
         content,
         totalLines: scanned.lines.length,
         symbolCount: scanned.entries.length,
+        ...(autoPivot ? { autoPivot: true } : {}),
       },
     },
   }
@@ -1024,7 +1118,7 @@ async function callInner(
   offset: number,
   limit: number | undefined,
   pages: string | undefined,
-  view: 'outline' | undefined,
+  view: 'outline' | 'full' | undefined,
   symbol: string | undefined,
   maxSizeBytes: number,
   maxTokens: number,
@@ -1313,6 +1407,41 @@ async function callInner(
 
   const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
     readResult
+
+  // AUTO_OUTLINE_ON_ELISION: a vanilla full-file Read whose body would be
+  // head-tail elided by toolResultSummarizer (>~10 KB) becomes a structural
+  // outline instead. The model otherwise sees a mid-elided body and starts
+  // narrating ("preciso do trecho do meio") while it re-targets smaller
+  // windows — by far the dominant narration pattern on Opus 4.8 in bench
+  // samples. Returning the outline removes the stimulus entirely; the
+  // appended footer tells the model how to opt back in to the full body.
+  //
+  // Skip when the caller already targeted a slice (offset/limit), explicitly
+  // asked for the full body (view==='full'), asked for outline themselves
+  // (handled above), pinned a symbol, or the file is small enough that
+  // toolResultSummarizer would pass it through untouched.
+  if (
+    autoOutlineOnElisionEnabled() &&
+    outlineLang &&
+    symbol === undefined &&
+    view === undefined &&
+    offset === 1 &&
+    limit === undefined &&
+    content.length >= READ_AUTO_OUTLINE_THRESHOLD_CHARS
+  ) {
+    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+    if (scanned) {
+      return makeOutlineData(
+        scanned,
+        file_path,
+        fullFilePath,
+        readFileState,
+        true,
+        true,
+      )
+    }
+    // scan empty — fall through to the normal text return below
+  }
 
   readFileState.set(fullFilePath, {
     content,

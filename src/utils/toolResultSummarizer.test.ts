@@ -438,7 +438,10 @@ test('bash: head+tail without error emits omitted marker', () => {
   expect(lines.length).toBeGreaterThan(8_000)
   const out = maybeSummarizeToolResult(makeBlock(lines), 'Bash')
   const body = asString(out)
-  expect(body).toContain('bash output omitted')
+  // New metadata-shaped marker (was: "[…bash output omitted: N lines, X…]").
+  // Anti-regression: the old prose marker must not reappear.
+  expect(body).toMatch(/<omitted lines="\d+" bytes="[^"]+"\/>/)
+  expect(body).not.toContain('bash output omitted')
   // Head captured (first line).
   expect(body).toContain('apple row 0 payload')
   // Tail captured (last line — 499 % 7 = 2 → cherry).
@@ -561,7 +564,9 @@ test('webfetch: markdown passthrough to head+tail strategy', () => {
   expect(lines.length).toBeGreaterThan(12_000)
   const out = maybeSummarizeToolResult(makeBlock(lines), 'WebFetch')
   const body = asString(out)
-  expect(body).toContain('webfetch content omitted')
+  // New metadata-shaped marker (was: "[…webfetch content omitted: …]").
+  expect(body).toMatch(/<omitted lines="\d+" bytes="[^"]+"\/>/)
+  expect(body).not.toContain('webfetch content omitted')
   expect(body).toContain('paragraph with some content 0')
   const evt = loggedEvents.find(e => e.name === 'claudio_tool_result_summarized')
   expect(evt?.metadata.strategyId).toBe(4)
@@ -613,10 +618,13 @@ test('read: oversized numbered content is summarized with head + omission + tail
   expect(body).toContain('50→')
   // Tail present
   expect(body).toContain('500→')
-  // Omission marker
-  expect(body).toContain('read content omitted')
-  // Footer
-  expect(body).toContain('Read summary:')
+  // New metadata-shaped elision marker (was: "[…read content omitted: …]").
+  // Anti-regression: prose markers must be absent.
+  expect(body).toMatch(/<elision lines="\d+-\d+" count="\d+" bytes="[^"]+"\/>/)
+  expect(body).not.toContain('read content omitted')
+  // Footer reshaped from "[Read summary: …]" prose to <read-summary .../> meta.
+  expect(body).toMatch(/<read-summary total="\d+" shown="[^"]+"\/>/)
+  expect(body).not.toContain('Read summary:')
 })
 
 test('read: summarizes padded line-number format (compact-prefix killswitch path)', () => {
@@ -628,7 +636,8 @@ test('read: summarizes padded line-number format (compact-prefix killswitch path
   const out = maybeSummarizeToolResult(makeBlock(lines), 'Read')
   const body = asString(out)
   expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
-  expect(body).toContain('read content omitted')
+  expect(body).toMatch(/<elision lines="\d+-\d+"/)
+  expect(body).not.toContain('read content omitted')
 })
 
 test('read: preserves prefix and suffix lines verbatim', () => {
@@ -691,8 +700,10 @@ test('read: boundary — exactly 101 numbered lines → omission marker with lin
   expect(content.length).toBeGreaterThan(10_000)
   const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
   const body = asString(out)
-  expect(body).toContain('read content omitted')
-  expect(body).toContain('lines 51–51')
+  // Metadata-shaped elision marker with ASCII range separator (was en-dash
+  // "lines 51–51" in inline prose; now `<elision lines="51-51" .../>`).
+  expect(body).toMatch(/<elision lines="51-51"/)
+  expect(body).not.toContain('read content omitted')
 })
 
 test('read: snapshot — marker shape and strategy attribute', () => {
@@ -702,10 +713,15 @@ test('read: snapshot — marker shape and strategy attribute', () => {
   ).join('\n')
   const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
   const body = asString(out)
+  // Envelope carries the strategy + new elision metadata attrs (elided, hint).
+  // The leading attribute quad (tool/original/kept/strategy) stays stable for
+  // log parsers; new attrs append after.
   expect(body).toMatch(
-    /^<tool-result-summary tool="Read" original="\d+(\.\d)?(KB|MB|bytes)" kept="\d+(\.\d)?(KB|MB|bytes)" strategy="read-head-tail">\n/,
+    /^<tool-result-summary tool="Read" original="\d+(\.\d)?(KB|MB|bytes)" kept="\d+(\.\d)?(KB|MB|bytes)" strategy="read-head-tail" elided="\d+-\d+" hint="[^"]+">\n/,
   )
   expect(body).toContain('strategy="read-head-tail"')
+  expect(body).toContain('elided="')
+  expect(body).toContain('hint="')
 })
 
 test('read: analytics — strategyId=5 and errorWindowPreserved is undefined', () => {
@@ -764,7 +780,9 @@ test('glob: oversized (120 paths) → summarized with header + omission + strate
   const body = asString(out)
   expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
   expect(body).toContain('Glob summary: 120 paths found, showing first 50')
-  expect(body).toContain('paths omitted')
+  // New metadata-shaped marker (was: "[…70 paths omitted…]").
+  expect(body).toMatch(/<omitted paths="\d+"\/>/)
+  expect(body).not.toContain('paths omitted…')
   const evt = loggedEvents.find(e => e.name === 'claudio_tool_result_summarized')
   expect(evt?.metadata.strategyId).toBe(6)
 })
@@ -818,7 +836,7 @@ test('glob: boundary — exactly 51 paths → 1 path omitted', () => {
   const out = maybeSummarizeToolResult(makeBlock(content), 'Glob')
   const body = asString(out)
   expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
-  expect(body).toContain('[…1 path omitted…]')
+  expect(body).toContain('<omitted paths="1"/>')
 })
 
 test('glob: pathological — all lines are truncation notice → passthrough (bail)', () => {
@@ -1086,7 +1104,7 @@ test('agentTool: trailer with <usage> preserved verbatim at end', () => {
   const out = maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
   const body = asString(out)
   expect(body).toContain(trailerText)
-  expect(body).toContain('[…')
+  expect(body).toMatch(/<omitted lines="\d+"\/>/)
 })
 
 test('agentTool: LEGACY_AGENT_TOOL_NAME also triggers', () => {
@@ -1166,7 +1184,7 @@ test('agentTool: false-positive trailer — only last block is candidate', () =>
   const out = maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
   // lastText doesn't contain <usage> or start with agentId: → no trailer detected
   const body = asString(out)
-  expect(body).toContain('[…')
+  expect(body).toMatch(/<omitted lines="\d+"\/>/)
   // The "fake trailer" block (first block) is main content — its text must appear in the output body
   expect(body).toContain(firstText.slice(0, 20))
 })
@@ -1284,7 +1302,9 @@ test('AgentTool savings: 20KB report → >50% reduction and correct omission mar
   expect((evt?.metadata.estimatedSummarizedTokens as number)).toBeLessThan(
     evt?.metadata.estimatedOriginalTokens as number,
   )
-  expect(body).toContain('[…300 lines omitted…]')
+  // Metadata-shaped marker (was: "[…300 lines omitted…]").
+  expect(body).toContain('<omitted lines="300"/>')
+  expect(body).not.toMatch(/lines omitted…\]/)
 })
 
 test('AgentTool savings: trailer preserved and size reflects all content', () => {
@@ -1300,7 +1320,7 @@ test('AgentTool savings: trailer preserved and size reflects all content', () =>
   const body = asString(result)
 
   expect(body).toContain(trailerText)
-  expect(body).toContain('[…')
+  expect(body).toMatch(/<omitted lines="\d+"\/>/)
   const evt = loggedEvents.find(e => e.name === 'claudio_tool_result_summarized')
   // originalSizeBytes = joinTextBlocks(all blocks) = mainText + '\n' + trailerText
   expect(evt?.metadata.originalSizeBytes).toBe(mainText.length + trailerText.length + 1)

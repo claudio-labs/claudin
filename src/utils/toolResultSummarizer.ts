@@ -63,6 +63,22 @@ type StrategyResult = {
   body: string
   strategy: StrategyName
   errorWindowPreserved?: boolean
+  /**
+   * Optional envelope-level metadata describing the elision. Placed as
+   * attributes on the opening `<tool-result-summary>` tag so the model sees
+   * structured key/value pairs rather than narratable prose.
+   *
+   * DESIGN: Elision is communicated via envelope attributes and self-closing
+   * metadata tags (e.g. `<omitted lines="361"/>`) rather than inline prose
+   * markers (e.g. "[…middle elided, lines 51-411 omitted…]"). Bench data on
+   * Opus 4.8 (see scripts/bench/results/serial-read-nudge-ab-claude-opus-4-8-
+   * 2026-05-30T16-53-58-546Z.md) showed ~80% of residual inter-tool-call
+   * narration was elision-reaction commentary ("o miolo foi omitido, vou ler
+   * em janelas menores", "the summarizer cut the two most important
+   * sections"). Models commentate on prose; they rarely commentate on
+   * attribute-style metadata. Same information, different shape.
+   */
+  envelopeAttrs?: Record<string, string>
 }
 
 /**
@@ -133,6 +149,7 @@ export function maybeSummarizeToolResult(
       strategyResult.body.length,
       strategyResult.strategy,
       strategyResult.body,
+      strategyResult.envelopeAttrs,
     )
 
     // No-win guard: if wrapping didn't actually save bytes (tiny inputs,
@@ -202,14 +219,29 @@ function wrapMarker(
   keptBytes: number,
   strategy: StrategyName,
   body: string,
+  envelopeAttrs?: Record<string, string>,
 ): string {
   const original = formatFileSize(originalBytes)
   const kept = formatFileSize(keptBytes)
+  // Append optional elision metadata as attributes on the envelope. Stable
+  // insertion order: extras come after the always-present tool/original/
+  // kept/strategy quad so log parsers keying off the leading attributes
+  // still match. See StrategyResult.envelopeAttrs for the design rationale.
+  let extras = ''
+  if (envelopeAttrs) {
+    for (const [k, v] of Object.entries(envelopeAttrs)) {
+      extras += ` ${k}="${escapeAttr(v)}"`
+    }
+  }
   return (
-    `${TOOL_RESULT_SUMMARY_TAG} tool="${toolName}" original="${original}" kept="${kept}" strategy="${strategy}">\n` +
+    `${TOOL_RESULT_SUMMARY_TAG} tool="${toolName}" original="${original}" kept="${kept}" strategy="${strategy}"${extras}>\n` +
     body +
     `\n${TOOL_RESULT_SUMMARY_CLOSING_TAG}`
   )
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 }
 
 // ---------- shared guards (local to avoid import cycle into toolResultStorage) ----------
@@ -269,6 +301,7 @@ function maybeSummarizeArrayContent(
     strategyResult.body.length,
     strategyResult.strategy,
     strategyResult.body,
+    strategyResult.envelopeAttrs,
   )
 
   if (wrapped.length >= originalSizeBytes) return block
@@ -317,14 +350,20 @@ function joinTextBlocks(blocks: Array<{ type: string; text?: string }>): string 
     .join('\n')
 }
 
-/** Generic head + tail with omission marker. */
+/**
+ * Generic head + tail with a metadata-shaped omission marker.
+ *
+ * The marker is a self-closing XML-ish tag (`<omitted lines="N"/>`) rather
+ * than inline prose ("[…N lines omitted…]"). See StrategyResult.envelopeAttrs
+ * for the design rationale (avoid eliciting narration commentary on Opus 4.8).
+ */
 function applyHeadTail(text: string, headLines: number, tailLines: number): string {
   const lines = text.split('\n')
   if (lines.length <= headLines + tailLines) return text
   const omitted = lines.length - headLines - tailLines
   return [
     ...lines.slice(0, headLines),
-    `[…${omitted} lines omitted…]`,
+    `<omitted lines="${omitted}"/>`,
     ...lines.slice(-tailLines),
   ].join('\n')
 }
@@ -464,7 +503,7 @@ function summarizeBashOutput(text: string): StrategyResult | null {
     }
     const skippedLines = j - i
     parts.push(
-      `[…bash output omitted: ${skippedLines} lines, ${formatFileSize(skippedChars)}…]`,
+      `<omitted lines="${skippedLines}" bytes="${formatFileSize(skippedChars)}"/>`,
     )
     i = j
   }
@@ -715,7 +754,7 @@ function summarizeWebFetchOutput(text: string): StrategyResult {
       j++
     }
     parts.push(
-      `[…webfetch content omitted: ${j - i} lines, ${formatFileSize(skippedChars)}…]`,
+      `<omitted lines="${j - i}" bytes="${formatFileSize(skippedChars)}"/>`,
     )
     i = j
   }
@@ -764,6 +803,12 @@ function summarizeReadOutput(text: string): StrategyResult | null {
     parts.push(truncateLine(contentLines[i] ?? ''))
   }
 
+  // Capture elision metadata for both the inline `<elision/>` marker AND the
+  // envelope attributes. Read is the dominant narration trigger on Opus 4.8;
+  // shaping the marker as metadata (rather than prose like "[...lines X-Y
+  // omitted...]") and lifting the same data into envelope attrs moves it out
+  // of "prose the model reacts to". See StrategyResult.envelopeAttrs.
+  let elidedRange: string | null = null
   if (tailStart > headEnd) {
     // Extract the actual source line numbers from the N→ prefixes for the marker.
     const firstOmittedMatch = /^\s*(\d+)→/.exec(contentLines[headEnd] ?? '')
@@ -775,8 +820,9 @@ function summarizeReadOutput(text: string): StrategyResult | null {
     for (let i = headEnd; i < tailStart; i++) {
       omittedChars += (contentLines[i] ?? '').length + 1
     }
+    elidedRange = `${firstLine}-${lastLine}`
     parts.push(
-      `[…read content omitted: lines ${firstLine}–${lastLine}, ${omittedCount} lines, ${formatFileSize(omittedChars)}…]`,
+      `<elision lines="${firstLine}-${lastLine}" count="${omittedCount}" bytes="${formatFileSize(omittedChars)}"/>`,
     )
   }
 
@@ -795,19 +841,25 @@ function summarizeReadOutput(text: string): StrategyResult | null {
   const lastHeadNum = lastHeadMatch ? lastHeadMatch[1] : String(headEnd)
   const lastLineNum = lastShownMatch ? lastShownMatch[1] : String(numberedCount)
 
+  // Footer reshaped as metadata: same totals/range data, attribute-style,
+  // no prose for the model to commentate on.
   if (tailStart > headEnd) {
     const firstTailMatch = /^\s*(\d+)→/.exec(contentLines[tailStart] ?? '')
     const firstTailNum = firstTailMatch ? firstTailMatch[1] : String(tailStart + 1)
     parts.push(
-      `[Read summary: ${numberedCount} total lines in file, showing lines ${firstLineNum}–${lastHeadNum} and ${firstTailNum}–${lastLineNum}]`,
+      `<read-summary total="${numberedCount}" shown="${firstLineNum}-${lastHeadNum},${firstTailNum}-${lastLineNum}"/>`,
     )
   } else {
     parts.push(
-      `[Read summary: ${numberedCount} total lines in file, showing lines ${firstLineNum}–${lastLineNum}]`,
+      `<read-summary total="${numberedCount}" shown="${firstLineNum}-${lastLineNum}"/>`,
     )
   }
 
-  return { body: parts.join('\n'), strategy: 'read-head-tail' }
+  const envelopeAttrs: Record<string, string> | undefined = elidedRange
+    ? { elided: elidedRange, hint: 'use offset/limit to re-read omitted range' }
+    : undefined
+
+  return { body: parts.join('\n'), strategy: 'read-head-tail', envelopeAttrs }
 }
 
 // ============================================================
@@ -841,7 +893,7 @@ function summarizeGlobOutput(text: string): StrategyResult | null {
   for (const p of kept) parts.push(p)
 
   if (omitted > 0) {
-    parts.push(`[…${omitted} path${omitted === 1 ? '' : 's'} omitted…]`)
+    parts.push(`<omitted paths="${omitted}"/>`)
   }
 
   for (const notice of truncationNotices) parts.push(notice)
