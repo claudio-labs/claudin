@@ -95,6 +95,7 @@ import {
   AFK_MODE_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
   CONTEXT_MANAGEMENT_BETA_HEADER,
+  EXTENDED_CACHE_TTL_BETA_HEADER,
   FAST_MODE_BETA_HEADER,
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
@@ -197,6 +198,7 @@ import {
   type RetryContext,
   withRetry,
 } from "../withRetry.js";
+import { should1hCacheTTL } from "./cacheControl.js";
 import {
   addCacheBreakpoints,
   buildSystemPromptBlocks,
@@ -764,6 +766,20 @@ export async function* queryModel(
     // the closure to avoid mid-retry GB flips changing the cache key).
     if (!betasParams.includes(CONTEXT_1M_BETA_HEADER) && sonnet1mExpLatched) {
       betasParams.push(CONTEXT_1M_BETA_HEADER);
+    }
+
+    // When the request emits cache_control ttl:'1h' (large-prompt path, see
+    // getCacheControl), the API only honors it with this beta header — without
+    // it the TTL silently downgrades to 5m and the ~47K cached prefix gets
+    // re-written on any pause >5m. The decision rides the session-stable
+    // large-prompt latch, so the header stays put across retries/turns.
+    // Bedrock carries its 1h opt-in via extraBodyParams, not the betas array.
+    if (
+      should1hCacheTTL(options.querySource) &&
+      getAPIProvider() !== "bedrock" &&
+      !betasParams.includes(EXTENDED_CACHE_TTL_BETA_HEADER)
+    ) {
+      betasParams.push(EXTENDED_CACHE_TTL_BETA_HEADER);
     }
 
     // For Bedrock, include both model-based betas and dynamically-added tool search header

@@ -22,7 +22,7 @@ export function getCacheControl({
   };
 }
 
-function should1hCacheTTL(_querySource?: QuerySource): boolean {
+export function should1hCacheTTL(_querySource?: QuerySource): boolean {
   const provider = getAPIProvider();
 
   if (
