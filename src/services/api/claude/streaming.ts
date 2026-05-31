@@ -38,7 +38,7 @@ import {
 } from "src/utils/betas.js";
 import { getGlobalConfig } from "src/utils/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/utils/context.js";
-import { resolveAppliedEffort } from "src/utils/effort.js";
+import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
 import { isEnvTruthy } from "src/utils/envUtils.js";
 import { errorMessage } from "src/utils/errors.js";
 import { computeFingerprintFromMessages } from "src/utils/fingerprint.js";
@@ -117,7 +117,6 @@ import {
   shouldIncludeFirstPartyOnlyBetas,
   shouldUseGlobalCacheScope,
 } from "src/utils/betas.js";
-import { getMaxThinkingTokensForModel } from "src/utils/context.js";
 import { logForDebugging } from "src/utils/debug.js";
 import { logForDiagnosticsNoPII } from "src/utils/diagLogs.js";
 import {
@@ -824,9 +823,10 @@ export async function* queryModel(
           type: "adaptive",
         } satisfies BetaMessageStreamParams["thinking"];
       } else {
-        // For models that do not support adaptive thinking, use the default
-        // thinking budget unless explicitly specified.
-        let thinkingBudget = getMaxThinkingTokensForModel(options.model);
+        // Derive the thinking budget from /effort so the user has direct
+        // control over first-token latency. Explicit budgetTokens (set via
+        // settings or MAX_THINKING_TOKENS) still wins.
+        let thinkingBudget = getThinkingBudgetForEffort(options.effortValue);
         if (
           thinkingConfig.type === "enabled" &&
           thinkingConfig.budgetTokens !== undefined

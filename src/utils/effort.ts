@@ -308,6 +308,31 @@ export function isValidNumericEffort(value: number): boolean {
   return Number.isInteger(value)
 }
 
+/**
+ * Map the user-selected /effort to a thinking-token budget. The default
+ * (`upperLimit - 1` ≈ 32k on Opus) made sense only under adaptive thinking
+ * where the server ignored the number; under fixed-budget thinking it
+ * dominates first-token latency. Tying budget to effort makes /effort a
+ * real latency knob: low → fast, max → deep reasoning.
+ *
+ * Undefined (user never set /effort) and the legacy adaptive sentinel both
+ * resolve to medium — sane default that matches the "auto" UX bucket.
+ */
+export function getThinkingBudgetForEffort(
+  effortValue: EffortValue | undefined,
+): number {
+  if (effortValue === undefined || isAdaptiveEffort(effortValue)) {
+    return 4096
+  }
+  switch (convertEffortValueToLevel(effortValue)) {
+    case 'low': return 1024
+    case 'medium': return 4096
+    case 'high': return 8192
+    case 'xhigh': return 16384
+    case 'max': return 32768
+  }
+}
+
 export function convertEffortValueToLevel(value: EffortValue): EffortLevel {
   if (typeof value === 'string') {
     // Runtime guard: value may come from remote config (GrowthBook) where
