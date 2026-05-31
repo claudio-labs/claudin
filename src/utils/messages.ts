@@ -77,6 +77,7 @@ export {
   stripSignatureBlocks,
   ensureToolResultPairing,
   stripAdvisorBlocks,
+  stripOldNarrationBlocks,
   stripOldThinkingBlocks,
 } from './messages/normalize.js'
 

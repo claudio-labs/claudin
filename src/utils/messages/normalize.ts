@@ -2472,3 +2472,81 @@ export function stripOldThinkingBlocks(
 
   return changed ? result : messages
 }
+
+/**
+ * Strip narration `text` blocks from old assistant messages, keeping only the
+ * most recent `keepRecentTurns` assistant messages that mix text with a tool
+ * call intact.
+ *
+ * Narration = a `text` block in an assistant turn that ALSO contains a
+ * `tool_use` block (the model talked while working). A `text` block in a turn
+ * with no `tool_use` is the final answer and is never stripped. Turns with a
+ * `tool_use` never become empty after dropping their text, so no placeholder is
+ * needed (unlike stripOldThinkingBlocks).
+ *
+ * Used across all providers to keep the inter-tool-call narration out of the
+ * cached prefix — it never participates in cache_write or recurring input.
+ *
+ * Skips turns that also contain `thinking` / `redacted_thinking` blocks.
+ * Stripping `text` from such a turn shifts the indices of the remaining
+ * blocks, which invalidates the position chain that the server requires for
+ * signed thinking blocks. The API then 400s with "thinking or
+ * redacted_thinking blocks in the latest assistant message cannot be
+ * modified." (Diagnosed on Opus 4.8 + adaptive thinking — see bench failures
+ * in scripts/bench/results/serial-read-nudge-ab-...14-28-52-454Z.md.)
+ */
+export function stripOldNarrationBlocks(
+  messages: (UserMessage | AssistantMessage)[],
+  keepRecentTurns: number,
+): (UserMessage | AssistantMessage)[] {
+  // Collect indices of assistant messages that mix a text block with a tool_use
+  // AND have no thinking blocks (stripping text from a thinking-bearing turn
+  // shifts block indices and invalidates the signed-thinking position chain).
+  const narrationTurnIndices: number[] = []
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
+    if (msg === undefined || msg.type !== 'assistant') continue
+    const content = msg.message.content
+    const hasText = content.some((b: BetaContentBlock) => b.type === 'text')
+    const hasToolUse = content.some(
+      (b: BetaContentBlock) => b.type === 'tool_use',
+    )
+    const hasThinking = content.some(
+      (b: BetaContentBlock) =>
+        b.type === 'thinking' || b.type === 'redacted_thinking',
+    )
+    if (hasText && hasToolUse && !hasThinking) {
+      narrationTurnIndices.push(i)
+    }
+  }
+
+  // Nothing to strip if there are fewer narration turns than the keep threshold.
+  if (narrationTurnIndices.length <= keepRecentTurns) return messages
+
+  // The oldest narration turns (all but the last keepRecentTurns) get stripped.
+  const stripSet = new Set(
+    narrationTurnIndices.slice(
+      0,
+      narrationTurnIndices.length - keepRecentTurns,
+    ),
+  )
+
+  let changed = false
+  const result = messages.map((msg, i) => {
+    if (!stripSet.has(i) || msg.type !== 'assistant') return msg
+
+    // Drop only `text` blocks; the tool_use (and anything else) stays. The turn
+    // keeps its tool_use, so it can never become empty.
+    const filtered = msg.message.content.filter(
+      (b: BetaContentBlock) => b.type !== 'text',
+    )
+
+    changed = true
+    return {
+      ...msg,
+      message: { ...msg.message, content: filtered },
+    } as typeof msg
+  })
+
+  return changed ? result : messages
+}

@@ -297,6 +297,24 @@ export function Config({
       });
     }
   }, {
+    id: 'narrationHistoryRedactionEnabled',
+    label: 'Narration history redaction',
+    value: globalConfig.narrationHistoryRedactionEnabled,
+    type: 'boolean' as const,
+    onChange(narrationHistoryRedactionEnabled: boolean) {
+      saveGlobalConfig(current => ({
+        ...current,
+        narrationHistoryRedactionEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        narrationHistoryRedactionEnabled
+      });
+      logEvent('claudio_narration_history_redaction_setting_changed', {
+        enabled: narrationHistoryRedactionEnabled
+      });
+    }
+  }, {
     id: 'showCacheStats',
     label: 'Cache stats display',
     value: globalConfig.showCacheStats,
@@ -1222,6 +1240,9 @@ export function Config({
     }
     if (globalConfig.thinkingHistoryRedactionEnabled !== initialConfig.current.thinkingHistoryRedactionEnabled) {
       formattedChanges.push(`${globalConfig.thinkingHistoryRedactionEnabled ? 'Enabled' : 'Disabled'} thinking history redaction`);
+    }
+    if (globalConfig.narrationHistoryRedactionEnabled !== initialConfig.current.narrationHistoryRedactionEnabled) {
+      formattedChanges.push(`${globalConfig.narrationHistoryRedactionEnabled ? 'Enabled' : 'Disabled'} narration history redaction`);
     }
     if (globalConfig.toolResultSummarizerEnabled !== initialConfig.current.toolResultSummarizerEnabled) {
       formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result summarizer`);

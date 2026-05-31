@@ -50,6 +50,7 @@ import {
   normalizeContentFromAPI,
   normalizeMessagesForAPI,
   stripAdvisorBlocks,
+  stripOldNarrationBlocks,
   stripOldThinkingBlocks,
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
@@ -538,6 +539,14 @@ export async function* queryModel(
   // 1P Anthropic also has server-side clear_thinking; this is additive.
   if (getGlobalConfig().thinkingHistoryRedactionEnabled) {
     messagesForAPI = stripOldThinkingBlocks(messagesForAPI, 2);
+  }
+
+  // Client-side narration history redaction. Strips old inter-tool-call text
+  // (the model talking while it works) so it never enters the cached prefix.
+  // The text block is dropped only from assistant turns that also hold a
+  // tool_use; final-answer text (no tool_use in the turn) is kept.
+  if (getGlobalConfig().narrationHistoryRedactionEnabled) {
+    messagesForAPI = stripOldNarrationBlocks(messagesForAPI, 2);
   }
 
   // Strip excess media items before making the API call.

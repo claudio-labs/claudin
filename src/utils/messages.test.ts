@@ -3,6 +3,7 @@ import {
   createAssistantMessage,
   createUserMessage,
   normalizeAttachmentForAPI,
+  stripOldNarrationBlocks,
   stripOldThinkingBlocks,
 } from './messages.js'
 
@@ -208,6 +209,211 @@ describe('stripOldThinkingBlocks', () => {
     ]
     const result = stripOldThinkingBlocks(msgs, 2)
     expect(result).toBe(msgs)
+  })
+})
+
+// Assistant turn that narrates (text) AND calls a tool in the same message.
+function assistantNarrationWithTool(text: string, toolId = text) {
+  return createAssistantMessage({
+    content: [
+      { type: 'text', text } as any,
+      { type: 'tool_use', id: `toolu_${toolId}`, name: 'Read', input: {} } as any,
+    ],
+  })
+}
+
+function assistantNarrationWithThinkingAndTool(text: string, toolId = text) {
+  return createAssistantMessage({
+    content: [
+      { type: 'thinking', thinking: `reasoning-${text}`, signature: `sig-${text}` } as any,
+      { type: 'text', text } as any,
+      { type: 'tool_use', id: `toolu_${toolId}`, name: 'Read', input: {} } as any,
+    ],
+  })
+}
+
+describe('stripOldNarrationBlocks', () => {
+  test('strips narration text from old turns, keeps last N', () => {
+    // 5 narration turns (text + tool_use); keepRecentTurns=2 → first 3 stripped
+    const msgs = [
+      userMsg(),
+      assistantNarrationWithTool('n1'),
+      userMsg(),
+      assistantNarrationWithTool('n2'),
+      userMsg(),
+      assistantNarrationWithTool('n3'),
+      userMsg(),
+      assistantNarrationWithTool('n4'),
+      userMsg(),
+      assistantNarrationWithTool('n5'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+
+    // Assistant indices: 1, 3, 5, 7, 9. Last 2 (7, 9) kept; first 3 (1, 3, 5) stripped.
+    for (const i of [1, 3, 5]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'text')).toBe(false)
+      // tool_use survives — turn never becomes empty
+      expect(msg.message.content.some((b: any) => b.type === 'tool_use')).toBe(true)
+    }
+    for (const i of [7, 9]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'text')).toBe(true)
+      expect(msg.message.content.some((b: any) => b.type === 'tool_use')).toBe(true)
+    }
+  })
+
+  test('never strips final-answer text (text without tool_use)', () => {
+    // Old assistant turns with ONLY text (no tool_use) are final answers, kept.
+    const msgs = [
+      userMsg(),
+      assistantTextOnly('answer-1'),
+      userMsg(),
+      assistantNarrationWithTool('n1'),
+      userMsg(),
+      assistantNarrationWithTool('n2'),
+      userMsg(),
+      assistantNarrationWithTool('n3'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    // The text-only message at index 1 is untouched (not a narration turn).
+    const answer = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(answer.message.content.some((b: any) => b.type === 'text')).toBe(true)
+  })
+
+  test('stripped narration turn keeps its tool_use (never empty)', () => {
+    const msgs = [
+      userMsg(),
+      assistantNarrationWithTool('old'),
+      userMsg(),
+      assistantNarrationWithTool('keep1'),
+      userMsg(),
+      assistantNarrationWithTool('keep2'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    const stripped = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(stripped.message.content).toEqual([
+      { type: 'tool_use', id: 'toolu_old', name: 'Read', input: {} },
+    ])
+  })
+
+  test('passthrough when no narration turns (text-only / tool-only)', () => {
+    const toolOnly = createAssistantMessage({
+      content: [{ type: 'tool_use', id: 'toolu_x', name: 'Read', input: {} } as any],
+    })
+    const msgs = [
+      userMsg('a'),
+      assistantTextOnly('r1'),
+      userMsg('b'),
+      toolOnly,
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    // No turn mixes text + tool_use → same reference, no mutation.
+    expect(result).toBe(msgs)
+  })
+
+  test('passthrough when fewer narration turns than keepRecentTurns', () => {
+    const msgs = [
+      userMsg(),
+      assistantNarrationWithTool('only-one'),
+      userMsg(),
+      assistantTextOnly('plain'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    expect(result).toBe(msgs)
+  })
+
+  test('user messages are never modified', () => {
+    const user1 = userMsg('first')
+    const user2 = userMsg('second')
+    const msgs = [
+      user1,
+      assistantNarrationWithTool('n1'),
+      user2,
+      assistantNarrationWithTool('n2'),
+      userMsg(),
+      assistantNarrationWithTool('keep'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 1)
+    expect(result[0]).toBe(user1)
+    expect(result[2]).toBe(user2)
+  })
+
+  // Regression: stripping text from a [thinking, text, tool_use] turn shifts
+  // the remaining block indices, which invalidates the signed-thinking
+  // position chain the API requires byte-identical. Server rejects with 400:
+  // "thinking or redacted_thinking blocks in the latest assistant message
+  // cannot be modified." Diagnosed on Opus 4.8 + adaptive thinking.
+  test('never strips text from turns that also contain a thinking block', () => {
+    const msgs = [
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('t1'),
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('t2'),
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('t3'),
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('t4'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    // None of the thinking-bearing turns should lose their text block.
+    for (const i of [1, 3, 5, 7]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'text')).toBe(true)
+      expect(msg.message.content.some((b: any) => b.type === 'thinking')).toBe(true)
+    }
+    // No mutation — same reference passes through.
+    expect(result).toBe(msgs)
+  })
+
+  test('strips only thinking-free narration turns when history is mixed', () => {
+    const msgs = [
+      userMsg(),
+      assistantNarrationWithTool('plain-1'),               // index 1: strippable
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('thinks-1'),   // index 3: protected
+      userMsg(),
+      assistantNarrationWithTool('plain-2'),               // index 5: strippable
+      userMsg(),
+      assistantNarrationWithThinkingAndTool('thinks-2'),   // index 7: protected
+      userMsg(),
+      assistantNarrationWithTool('keep'),                  // index 9: kept (last 1)
+    ]
+    const result = stripOldNarrationBlocks(msgs, 1)
+    // Plain narration turns 1 and 5 get stripped; 9 kept.
+    expect((result[1] as ReturnType<typeof createAssistantMessage>).message.content.some((b: any) => b.type === 'text')).toBe(false)
+    expect((result[5] as ReturnType<typeof createAssistantMessage>).message.content.some((b: any) => b.type === 'text')).toBe(false)
+    expect((result[9] as ReturnType<typeof createAssistantMessage>).message.content.some((b: any) => b.type === 'text')).toBe(true)
+    // Thinking-bearing turns stay intact regardless of position.
+    for (const i of [3, 7]) {
+      const msg = result[i] as ReturnType<typeof createAssistantMessage>
+      expect(msg.message.content.some((b: any) => b.type === 'text')).toBe(true)
+      expect(msg.message.content.some((b: any) => b.type === 'thinking')).toBe(true)
+    }
+  })
+
+  test('treats redacted_thinking the same as thinking (also protects the turn)', () => {
+    const withRedacted = createAssistantMessage({
+      content: [
+        { type: 'redacted_thinking', data: 'opaque' } as any,
+        { type: 'text', text: 'narration' } as any,
+        { type: 'tool_use', id: 'toolu_r', name: 'Read', input: {} } as any,
+      ],
+    })
+    const msgs = [
+      userMsg(),
+      withRedacted,
+      userMsg(),
+      assistantNarrationWithTool('k1'),
+      userMsg(),
+      assistantNarrationWithTool('k2'),
+      userMsg(),
+      assistantNarrationWithTool('k3'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    const protectedMsg = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(protectedMsg.message.content.some((b: any) => b.type === 'text')).toBe(true)
+    expect(protectedMsg.message.content.some((b: any) => b.type === 'redacted_thinking')).toBe(true)
   })
 })
 
