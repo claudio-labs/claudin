@@ -25,10 +25,7 @@ import { getProjectDir } from '../utils/sessionStorage.js'
 import { getInitialSettings } from '../utils/settings/settings.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
-  TRUSTING_RECALL_SECTION,
-  TYPES_SECTION_INDIVIDUAL,
   WHAT_NOT_TO_SAVE_SECTION,
-  WHEN_TO_ACCESS_SECTION,
 } from './memoryTypes.js'
 
 export const ENTRYPOINT_NAME = 'MEMORY.md'
@@ -202,59 +199,39 @@ export function buildMemoryLines(
   extraGuidelines?: string[],
   skipIndex = false,
 ): string[] {
-  const howToSave = skipIndex
-    ? [
-        '## How to save memories',
-        '',
-        'Write each memory to its own file (e.g., `user_role.md`, `feedback_testing.md`) using this frontmatter format:',
-        '',
-        ...MEMORY_FRONTMATTER_EXAMPLE,
-        '',
-        '- Keep the name, description, and type fields in memory files up-to-date with the content',
-        '- Organize memory semantically by topic, not chronologically',
-        '- Update or remove memories that turn out to be wrong or outdated',
-        '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
-      ]
-    : [
-        '## How to save memories',
-        '',
-        'Saving a memory is a two-step process:',
-        '',
-        '**Step 1** — write the memory to its own file (e.g., `user_role.md`, `feedback_testing.md`) using this frontmatter format:',
-        '',
-        ...MEMORY_FRONTMATTER_EXAMPLE,
-        '',
-        `**Step 2** — add a pointer to that file in \`${ENTRYPOINT_NAME}\`. \`${ENTRYPOINT_NAME}\` is an index, not a memory — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. It has no frontmatter. Never write memory content directly into \`${ENTRYPOINT_NAME}\`.`,
-        '',
-        `- \`${ENTRYPOINT_NAME}\` is always loaded into your conversation context — lines after ${MAX_ENTRYPOINT_LINES} will be truncated, so keep the index concise`,
-        '- Keep the name, description, and type fields in memory files up-to-date with the content',
-        '- Organize memory semantically by topic, not chronologically',
-        '- Update or remove memories that turn out to be wrong or outdated',
-        '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
-      ]
+  // Compact, dense prose (Claude Code style). The verbose XML taxonomy in
+  // memoryTypes.ts (TYPES_SECTION_INDIVIDUAL etc.) is ~3.7K tokens and ships
+  // in the main system prompt every turn; this conveys the same four types and
+  // the eval-tuned cues (explicit-save, feedback Why/How, absolute dates,
+  // verify-before-recommend, ignore-irrelevant) in ~600 tokens. Those verbose
+  // constants are kept for the background extraction agent + team-memory path,
+  // where prompt size matters far less.
+  const indexGuidance = skipIndex
+    ? '- Keep each memory in its own file; keep its `name`, `description`, and `type` accurate as the content changes. Organize by topic, not chronologically.'
+    : `- After writing a memory file, add a one-line pointer in \`${ENTRYPOINT_NAME}\`: \`- [Title](file.md) — one-line hook\` (under ~150 chars, no frontmatter, never memory content). \`${ENTRYPOINT_NAME}\` is the index loaded into context every session — keep it concise (lines past ${MAX_ENTRYPOINT_LINES} are truncated). Keep each file's \`name\`/\`description\`/\`type\` accurate; organize by topic, not chronologically.`
 
   const lines: string[] = [
     `# ${displayName}`,
     '',
-    `You have a persistent, file-based memory system at \`${memoryDir}\`. ${DIR_EXISTS_GUIDANCE}`,
+    `You have a persistent, file-based memory at \`${memoryDir}\`. ${DIR_EXISTS_GUIDANCE} Build it up over time so future conversations know who the user is, how they like to collaborate, what to avoid or repeat, and the context behind their work. If the user explicitly asks you to remember something, save it now as whichever type fits; if they ask you to forget something, find and remove it.`,
     '',
-    "You should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.",
+    'Each memory is one file holding one fact, with frontmatter:',
     '',
-    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
+    ...MEMORY_FRONTMATTER_EXAMPLE,
     '',
-    ...TYPES_SECTION_INDIVIDUAL,
-    ...WHAT_NOT_TO_SAVE_SECTION,
+    'Pick the `type` that fits:',
+    "- `user` — who the user is: role, expertise, goals, preferences. Use it to tailor how you work with them (a senior engineer vs. a first-time coder). Don't record negative judgments or anything irrelevant to the work.",
+    '- `feedback` — guidance on how to approach work, from corrections ("no, don\'t do X") AND confirmed approaches ("yes, keep doing that" — quieter, watch for them; saving only corrections makes you drift cautious). Lead with the rule, then **Why:** and **How to apply:** lines so you can judge edge cases instead of following blindly.',
+    '- `project` — ongoing work, decisions, bugs, or constraints not derivable from the code or git history. Convert relative dates to absolute ("Thursday" → "2026-03-05"). Include the why; project context decays fast.',
+    '- `reference` — pointers to external systems (a Linear project, a Slack channel, a dashboard) and what they hold, so you know where to look later.',
     '',
-    ...howToSave,
+    indexGuidance,
+    '- Before writing, check for an existing memory to update rather than duplicating. Update or delete memories that turn out wrong or outdated.',
+    "- Don't save what's derivable from the code, git history, or this conversation alone, nor anything that only matters to the current task.",
     '',
-    ...WHEN_TO_ACCESS_SECTION,
+    'Before recommending something from memory, remember it reflects what was true when written: verify load-bearing claims against the current state first — if a memory names a file, function, or flag, confirm it still exists, and treat a memory that contradicts what you now see as likely stale. Ignore memories irrelevant to the current task.',
     '',
-    ...TRUSTING_RECALL_SECTION,
-    '',
-    '## Memory and other forms of persistence',
-    'Memory is one of several persistence mechanisms available to you as you assist the user in a given conversation. The distinction is often that memory can be recalled in future conversations and should not be used for persisting information that is only useful within the scope of the current conversation.',
-    '- When to use or update a plan instead of memory: If you are about to start a non-trivial implementation task and would like to reach alignment with the user on your approach you should use a Plan rather than saving this information to memory. Similarly, if you already have a plan within the conversation and you have changed your approach persist that change by updating the plan rather than saving a memory.',
-    '- When to use or update tasks instead of memory: When you need to break your work in current conversation into discrete steps or keep track of your progress use tasks instead of saving to memory. Tasks are great for persisting information about the work that needs to be done in the current conversation, but memory should be reserved for information that will be useful in future conversations.',
+    "Memory is for future conversations. For the current conversation's approach use a Plan, and to track discrete steps use tasks — don't put either in memory.",
     '',
     ...(extraGuidelines ?? []),
     '',

@@ -4,13 +4,7 @@ import {
   ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_LINES,
 } from './memdir.js'
-import {
-  MEMORY_DRIFT_CAVEAT,
-  MEMORY_FRONTMATTER_EXAMPLE,
-  TRUSTING_RECALL_SECTION,
-  TYPES_SECTION_COMBINED,
-  WHAT_NOT_TO_SAVE_SECTION,
-} from './memoryTypes.js'
+import { MEMORY_FRONTMATTER_EXAMPLE } from './memoryTypes.js'
 import { getAutoMemPath } from './paths.js'
 import { getTeamMemPath } from './teamMemPaths.js'
 
@@ -26,71 +20,37 @@ export function buildCombinedMemoryPrompt(
   const autoDir = getAutoMemPath()
   const teamDir = getTeamMemPath()
 
-  const howToSave = skipIndex
-    ? [
-        '## How to save memories',
-        '',
-        "Write each memory to its own file in the chosen directory (private or team, per the type's scope guidance) using this frontmatter format:",
-        '',
-        ...MEMORY_FRONTMATTER_EXAMPLE,
-        '',
-        '- Keep the name, description, and type fields in memory files up-to-date with the content',
-        '- Organize memory semantically by topic, not chronologically',
-        '- Update or remove memories that turn out to be wrong or outdated',
-        '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
-      ]
-    : [
-        '## How to save memories',
-        '',
-        'Saving a memory is a two-step process:',
-        '',
-        "**Step 1** — write the memory to its own file in the chosen directory (private or team, per the type's scope guidance) using this frontmatter format:",
-        '',
-        ...MEMORY_FRONTMATTER_EXAMPLE,
-        '',
-        `**Step 2** — add a pointer to that file in the same directory's \`${ENTRYPOINT_NAME}\`. Each directory (private and team) has its own \`${ENTRYPOINT_NAME}\` index — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. They have no frontmatter. Never write memory content directly into a \`${ENTRYPOINT_NAME}\`.`,
-        '',
-        `- Both \`${ENTRYPOINT_NAME}\` indexes are loaded into your conversation context — lines after ${MAX_ENTRYPOINT_LINES} will be truncated, so keep them concise`,
-        '- Keep the name, description, and type fields in memory files up-to-date with the content',
-        '- Organize memory semantically by topic, not chronologically',
-        '- Update or remove memories that turn out to be wrong or outdated',
-        '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
-      ]
+  // Compact, dense prose (Claude Code style). Mirrors buildMemoryLines but adds
+  // the private/team scope distinction. The verbose XML taxonomy in
+  // memoryTypes.ts (TYPES_SECTION_COMBINED etc.) is kept for the background
+  // extraction agent; here it would ship in the main system prompt every turn.
+  const indexGuidance = skipIndex
+    ? '- Keep each memory in its own file (in the private or team dir per its scope); keep its `name`/`description`/`type` accurate; organize by topic, not chronologically.'
+    : `- After writing a memory file (in the private or team dir per its scope), add a one-line pointer in that directory's \`${ENTRYPOINT_NAME}\`: \`- [Title](file.md) — one-line hook\` (under ~150 chars, no frontmatter, never memory content). Each dir has its own index and both load every session, so keep them concise (lines past ${MAX_ENTRYPOINT_LINES} are truncated). Keep each file's \`name\`/\`description\`/\`type\` accurate; organize by topic, not chronologically.`
 
   const lines = [
     '# Memory',
     '',
-    `You have a persistent, file-based memory system with two directories: a private directory at \`${autoDir}\` and a shared team directory at \`${teamDir}\`. ${DIRS_EXIST_GUIDANCE}`,
+    `You have a persistent, file-based memory with two directories: a private one at \`${autoDir}\` (just you and this user) and a shared team one at \`${teamDir}\` (contributed by everyone who works in this project, synced at the start of each session). ${DIRS_EXIST_GUIDANCE} Build it up over time so future conversations know who the user is, how they like to collaborate, and the context behind their work. If the user explicitly asks you to remember something, save it now; if they ask you to forget something, find and remove it.`,
     '',
-    "You should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.",
+    'Each memory is one file holding one fact, with frontmatter:',
     '',
-    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
+    ...MEMORY_FRONTMATTER_EXAMPLE,
     '',
-    '## Memory scope',
+    'Pick the `type` (and scope) that fits:',
+    '- `user` (always private) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',
+    '- `feedback` (default private; team only for a project-wide convention every contributor should follow — a testing policy, a build invariant — not personal style) — guidance on how to work, from corrections ("don\'t do X") AND confirmed approaches ("yes, keep doing that"). Lead with the rule, then **Why:** and **How to apply:** lines.',
+    '- `project` (bias toward team) — ongoing work, decisions, bugs, or constraints not derivable from the code or git history. Convert relative dates to absolute. Include the why; project context decays fast.',
+    '- `reference` (usually team) — pointers to external systems (a Linear project, a Slack channel, a dashboard) and what they hold.',
     '',
-    'There are two scope levels:',
+    indexGuidance,
+    '- Before writing, check for an existing memory to update rather than duplicating; update or delete memories that turn out wrong or outdated.',
+    "- Don't save what's derivable from the code, git history, or this conversation alone, nor anything that only matters to the current task. NEVER put secrets (API keys, credentials) in team memory.",
     '',
-    `- private: memories that are private between you and the current user. They persist across conversations with only this specific user and are stored at the root \`${autoDir}\`.`,
-    `- team: memories that are shared with and contributed by all of the users who work within this project directory. Team memories are synced at the beginning of every session and they are stored at \`${teamDir}\`.`,
+    'When to use it: apply relevant memories (private or team), and you MUST check memory when the user asks you to recall or remember. If the user says to ignore memory, proceed as if it were empty. Before recommending from a memory, verify it against the current state first — a memory naming a file, function, or flag should still match reality; trust what you observe now over a stale memory and update or remove it.',
     '',
-    ...TYPES_SECTION_COMBINED,
-    ...WHAT_NOT_TO_SAVE_SECTION,
-    '- You MUST avoid saving sensitive data within shared team memories. For example, never save API keys or user credentials.',
+    "Memory is for future conversations. For the current conversation's approach use a Plan, and to track discrete steps use tasks — don't put either in memory.",
     '',
-    ...howToSave,
-    '',
-    '## When to access memories',
-    '- When memories (personal or team) seem relevant, or the user references prior work with them or others in their organization.',
-    '- You MUST access memory when the user explicitly asks you to check, recall, or remember.',
-    '- If the user says to *ignore* or *not use* memory: proceed as if MEMORY.md were empty. Do not apply remembered facts, cite, compare against, or mention memory content.',
-    MEMORY_DRIFT_CAVEAT,
-    '',
-    ...TRUSTING_RECALL_SECTION,
-    '',
-    '## Memory and other forms of persistence',
-    'Memory is one of several persistence mechanisms available to you as you assist the user in a given conversation. The distinction is often that memory can be recalled in future conversations and should not be used for persisting information that is only useful within the scope of the current conversation.',
-    '- When to use or update a plan instead of memory: If you are about to start a non-trivial implementation task and would like to reach alignment with the user on your approach you should use a Plan rather than saving this information to memory. Similarly, if you already have a plan within the conversation and you have changed your approach persist that change by updating the plan rather than saving a memory.',
-    '- When to use or update tasks instead of memory: When you need to break your work in current conversation into discrete steps or keep track of your progress use tasks instead of saving to memory. Tasks are great for persisting information about the work that needs to be done in the current conversation, but memory should be reserved for information that will be useful in future conversations.',
     ...(extraGuidelines ?? []),
     '',
     ...buildSearchingPastContextSection(autoDir),
