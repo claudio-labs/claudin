@@ -266,6 +266,65 @@ export function buildMemoryLines(
 }
 
 /**
+ * True if this memory dir already holds memories — a non-empty MEMORY.md index
+ * or any other `.md` file besides the index. Used to decide whether to ship the
+ * full taxonomy or the compact stub (see buildMemoryStubLines).
+ */
+export function hasExistingMemories(memoryDir: string): boolean {
+  const fs = getFsImplementation()
+  try {
+    // eslint-disable-next-line custom-rules/no-sync-fs
+    if (fs.readFileSync(memoryDir + ENTRYPOINT_NAME, { encoding: 'utf-8' }).trim()) {
+      return true
+    }
+  } catch {
+    // No index yet.
+  }
+  try {
+    // eslint-disable-next-line custom-rules/no-sync-fs
+    return fs
+      .readdirSync(memoryDir)
+      .some(d => d.isFile() && d.name.endsWith('.md') && d.name !== ENTRYPOINT_NAME)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Compact memory instructions for a dir with no memories yet. The full
+ * ~3.7K-token taxonomy (worked examples, what-not-to-save, recall guidance) is
+ * write/recall reference that's inert until memories exist — and it ships in
+ * the system prompt every turn. When memory is empty we drop it for a ~400-tok
+ * stub that still tells the model the system exists and how to start one, so
+ * the full block (buildMemoryLines) loads once the first memory is written.
+ * Recall sections are intentionally omitted: there is nothing to recall yet.
+ */
+export function buildMemoryStubLines(
+  displayName: string,
+  memoryDir: string,
+  extraGuidelines?: string[],
+  skipIndex = false,
+): string[] {
+  const indexStep = skipIndex
+    ? ''
+    : ` Then add a one-line pointer in \`${ENTRYPOINT_NAME}\` (the index: \`- [Title](file.md) — hook\`, no frontmatter, never memory content).`
+  return [
+    `# ${displayName}`,
+    '',
+    `You have a persistent, file-based memory system at \`${memoryDir}\`. ${DIR_EXISTS_GUIDANCE}`,
+    '',
+    'It is currently empty. Build it up over time so future conversations know who the user is, how they like to work, and the context behind their tasks.',
+    '',
+    'If the user explicitly asks you to remember something, save it now. Save a memory as its own `.md` file with `name`, `description`, and a `metadata.type` of one of: `user` (who they are), `feedback` (how you should work — include the why), `project` (ongoing work/constraints not in the code), or `reference` (links to external resources). Skip anything derivable from the code, git history, or this conversation alone.' +
+      indexStep,
+    '',
+    ...(extraGuidelines ?? []),
+    '',
+    ...buildSearchingPastContextSection(memoryDir),
+  ]
+}
+
+/**
  * Build the typed-memory prompt with MEMORY.md content included.
  * Used by agent memory (which has no getClaudeMds() equivalent).
  */
@@ -481,12 +540,12 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       memory_type:
         'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
     })
-    return buildMemoryLines(
-      'auto memory',
-      autoDir,
-      extraGuidelines,
-      skipIndex,
-    ).join('\n')
+    // Empty memory → compact stub (~400 tok) instead of the full taxonomy
+    // (~3.7K). The full block loads automatically once the first memory exists.
+    const build = hasExistingMemories(autoDir)
+      ? buildMemoryLines
+      : buildMemoryStubLines
+    return build('auto memory', autoDir, extraGuidelines, skipIndex).join('\n')
   }
 
   logEvent('tengu_memdir_disabled', {
