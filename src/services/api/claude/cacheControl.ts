@@ -1,4 +1,3 @@
-import { getLargeSystemPromptDetected } from "src/bootstrap/state.js";
 import type { QuerySource } from "src/constants/querySource.js";
 import type { CacheScope } from "src/utils/api.js";
 import { isEnvTruthy } from "src/utils/envUtils.js";
@@ -33,5 +32,11 @@ export function should1hCacheTTL(_querySource?: QuerySource): boolean {
   }
 
   if (provider !== "firstParty" && provider !== "vertex") return false;
-  return getLargeSystemPromptDetected() === true;
+  // Always use 1h on first-party/vertex (matches Claude Code). The previous
+  // >8k *system-prompt* gate measured the wrong thing: claudio's system prompt
+  // is ~3.4k so it never qualified, leaving 1h effectively dead and the cached
+  // prefix expiring at 5m (re-written on any pause >5m). The real cached prefix
+  // (system + ~9-20k of tools + file content) is always large enough that the
+  // 2x write surcharge amortizes against avoided re-writes across a session.
+  return true;
 }
