@@ -29,13 +29,8 @@ export const SLIDER_MARKER = '^'
 /** Rule character drawn across the full slider width. */
 export const SLIDER_RULE = '─'
 
-export const AUTO_LABEL = 'Auto'
 export const FASTER_LABEL = 'Faster'
 export const SMARTER_LABEL = 'Smarter'
-
-/** Zone divider in the header, between the leftmost "Auto" cell and the speed
- * gradient. ASCII pipe — unambiguous width (see SLIDER_MARKER note). */
-export const HEADER_DIVIDER = '|'
 
 export type SliderLayout = {
   /** Total printable width of the slider (last label end column). */
@@ -49,8 +44,7 @@ export type SliderLayout = {
   markerColumn: number
   /** The rule line with the marker already placed. */
   ruleLine: string
-  /** The header line: "Auto" over the first cell, a "|" divider, then "Faster"
-   * over the speed zone and "Smarter" right-aligned. */
+  /** The header line: "Faster" flush left, "Smarter" right-aligned. */
   headerLine: string
 }
 
@@ -117,37 +111,14 @@ export function fitSliderLayout(
 }
 
 /**
- * Header row: "Auto" sits over the leftmost (index 0, adaptive) cell, a "|"
- * divider separates it from the speed gradient, "Faster" begins over index 1,
- * and "Smarter" is flush right. Falls back to a plain "Faster…Smarter" header
- * when there's no second cell to anchor the divider/Faster to.
+ * Header row: "Faster" is flush left and "Smarter" is flush right, framing the
+ * speed gradient. No "Auto" cell or zone divider.
  */
 function buildHeaderLine(
-  labels: string[],
-  labelStarts: number[],
+  _labels: string[],
+  _labelStarts: number[],
   totalWidth: number,
 ): string {
-  if (labels.length < 2) {
-    const pad = Math.max(1, totalWidth - FASTER_LABEL.length - SMARTER_LABEL.length)
-    return FASTER_LABEL + ' '.repeat(pad) + SMARTER_LABEL
-  }
-
-  const cells = Array.from({ length: totalWidth }, () => ' ')
-  const place = (col: number, text: string) => {
-    for (let i = 0; i < text.length; i++) {
-      const c = col + i
-      if (c >= 0 && c < totalWidth) cells[c] = text[i]!
-    }
-  }
-
-  place(labelStarts[0]!, AUTO_LABEL)
-
-  const autoEnd = labelStarts[0]! + labels[0]!.length
-  const speedStart = labelStarts[1]!
-  place(Math.floor((autoEnd + speedStart) / 2), HEADER_DIVIDER)
-
-  place(speedStart, FASTER_LABEL)
-  place(totalWidth - SMARTER_LABEL.length, SMARTER_LABEL)
-
-  return cells.join('').trimEnd()
+  const pad = Math.max(1, totalWidth - FASTER_LABEL.length - SMARTER_LABEL.length)
+  return FASTER_LABEL + ' '.repeat(pad) + SMARTER_LABEL
 }

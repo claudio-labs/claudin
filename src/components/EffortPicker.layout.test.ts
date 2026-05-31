@@ -1,10 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  AUTO_LABEL,
   computeSliderLayout,
   FASTER_LABEL,
   fitSliderLayout,
-  HEADER_DIVIDER,
   SLIDER_GAP,
   SLIDER_GAP_MIN,
   SLIDER_MARKER,
@@ -47,19 +45,11 @@ describe('computeSliderLayout', () => {
     expect([...ruleLine].filter(c => c === SLIDER_MARKER).length).toBe(1)
   })
 
-  test('header: Auto over the first cell, divider, Faster, Smarter flush right', () => {
-    const { headerLine, totalWidth, labelStarts } = computeSliderLayout(LABELS, 0)
-    expect(headerLine.startsWith(AUTO_LABEL)).toBe(true)
+  test('header: Faster flush left, Smarter flush right', () => {
+    const { headerLine, totalWidth } = computeSliderLayout(LABELS, 0)
+    expect(headerLine.startsWith(FASTER_LABEL)).toBe(true)
     expect(headerLine.endsWith(SMARTER_LABEL)).toBe(true)
-    expect(headerLine).toContain(HEADER_DIVIDER)
-    expect(headerLine).toContain(FASTER_LABEL)
     expect(headerLine.length).toBe(totalWidth)
-    // "Faster" anchors over the second (speed) cell.
-    expect(headerLine.indexOf(FASTER_LABEL)).toBe(labelStarts[1]!)
-    // Divider sits between the Auto cell and the speed zone.
-    const divider = headerLine.indexOf(HEADER_DIVIDER)
-    expect(divider).toBeGreaterThan(AUTO_LABEL.length - 1)
-    expect(divider).toBeLessThan(labelStarts[1]!)
   })
 
   test('header falls back to Faster…Smarter for a single label', () => {
