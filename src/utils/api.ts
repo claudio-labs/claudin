@@ -29,6 +29,7 @@ import type { AgentId } from 'src/types/ids.js'
 import type { z } from 'zod/v4'
 import { CLI_SYSPROMPT_PREFIXES } from '../constants/system.js'
 import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
+import { isToolSearchExplicitlyEnabled } from './toolSearch.js'
 import type { Tool, ToolPermissionContext, Tools } from '../Tool.js'
 import { AGENT_TOOL_NAME } from '../tools/AgentTool/constants.js'
 import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js'
@@ -298,6 +299,13 @@ export async function toolToAPISchema(
       'input_schema',
       'cache_control',
     ])
+    // defer_loading is a beta shape, but an explicit ENABLE_TOOL_SEARCH opt-in
+    // asserts the provider accepts it (see getToolSearchMode). Keep it so tool
+    // deferral actually reaches the wire instead of being stripped here, which
+    // would silently send every "deferred" tool inline at full token cost.
+    const keepDeferLoading =
+      'defer_loading' in schema && isToolSearchExplicitlyEnabled()
+    if (keepDeferLoading) allowed.add('defer_loading')
     const stripped = Object.keys(schema).filter(k => !allowed.has(k))
     if (stripped.length > 0) {
       logStripOnce(stripped)
@@ -306,6 +314,9 @@ export async function toolToAPISchema(
         description: schema.description,
         input_schema: schema.input_schema,
         ...(schema.cache_control && { cache_control: schema.cache_control }),
+        ...(keepDeferLoading && {
+          defer_loading: (schema as { defer_loading?: boolean }).defer_loading,
+        }),
       }
     }
   }

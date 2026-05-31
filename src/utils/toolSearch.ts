@@ -171,22 +171,30 @@ export type ToolSearchMode = 'tst' | 'tst-auto' | 'standard'
  *   (unset)               tst (default: always defer MCP and shouldDefer tools)
  */
 export function getToolSearchMode(): ToolSearchMode {
-  // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API
-  // features. Tool search emits defer_loading on tool definitions and
-  // tool_reference content blocks — both require the API to accept a beta
-  // header. When the kill switch is set, force 'standard' so no beta shapes
-  // reach the wire, even if ENABLE_TOOL_SEARCH is also set. This is the
-  // explicit escape hatch for proxy gateways that the heuristic in
-  // isToolSearchEnabledOptimistic doesn't cover.
-  // github.com/anthropics/claude-code/issues/20031
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)) {
-    return 'standard'
-  }
-
   const value = process.env.ENABLE_TOOL_SEARCH
 
   // Handle auto:N syntax - check edge cases first
   const autoPercent = value ? parseAutoPercentage(value) : null
+
+  // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API
+  // features. Tool search emits defer_loading on tool definitions and
+  // tool_reference content blocks — both require the API to accept a beta
+  // header, which proxy gateways often reject. When the kill switch is set we
+  // force 'standard' so no beta shapes reach the wire — UNLESS the user has
+  // explicitly opted in via ENABLE_TOOL_SEARCH (true / auto / auto:N), which
+  // asserts their provider accepts these betas (the same assertion the
+  // first-party-base-url gate in isToolSearchEnabledOptimistic relies on).
+  // This lets first-party Anthropic users recover the ~10K of deferrable tool
+  // schemas the kill switch otherwise forces inline. github.com/anthropics/claude-code/issues/20031
+  const explicitlyEnabled =
+    autoPercent === 0 || isAutoToolSearchMode(value) || isEnvTruthy(value)
+  if (
+    isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS) &&
+    !explicitlyEnabled
+  ) {
+    return 'standard'
+  }
+
   if (autoPercent === 0) return 'tst' // auto:0 = always enabled
   if (autoPercent === 100) return 'standard'
   if (isAutoToolSearchMode(value)) {
@@ -196,6 +204,18 @@ export function getToolSearchMode(): ToolSearchMode {
   if (isEnvTruthy(value)) return 'tst'
   if (isEnvDefinedFalsy(process.env.ENABLE_TOOL_SEARCH)) return 'standard'
   return 'tst' // default: always defer MCP and shouldDefer tools
+}
+
+/**
+ * True when the user has explicitly opted into tool search via
+ * ENABLE_TOOL_SEARCH (true / auto / auto:N). Used to let the explicit opt-in
+ * override the CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS field-strip in api.ts so
+ * defer_loading survives to the wire (it would otherwise be stripped).
+ */
+export function isToolSearchExplicitlyEnabled(): boolean {
+  const value = process.env.ENABLE_TOOL_SEARCH
+  const autoPercent = value ? parseAutoPercentage(value) : null
+  return autoPercent === 0 || isAutoToolSearchMode(value) || isEnvTruthy(value)
 }
 
 /**
