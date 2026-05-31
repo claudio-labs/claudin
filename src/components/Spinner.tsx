@@ -30,7 +30,6 @@ import { describeTeammateActivity } from './tasks/taskStatusUtils.js';
 import { isBackgroundTask } from '../tasks/types.js';
 import { getAllInProcessTeammateTasks } from '../tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { getEffortSuffix, isAdaptiveEffort } from '../utils/effort.js';
-import { modelWouldUseAdaptiveThinking } from '../utils/thinking.js';
 import { getMainLoopModel } from '../utils/model/model.js';
 import { getViewedTeammateTask } from '../state/selectors.js';
 import { TEARDROP_ASTERISK } from '../constants/figures.js';
@@ -183,11 +182,11 @@ function SpinnerWithVerbInner({
     };
   }, [mode]);
   const effortValue = useAppState(s_4 => s_4.effortValue);
-  // Drop the effort suffix when effort is adaptive: the verb already reads
-  // "adaptive thinking", so appending "with adaptive effort" is redundant.
-  // Pinned levels (e.g. "with medium effort") still show.
+  // Adaptive effort is no longer surfaced in the UI but legacy settings may
+  // still hold the value; treat it as unset so the pinned-level suffix path
+  // applies once the user picks a level.
   const effortSuffix = isAdaptiveEffort(effortValue) ? '' : getEffortSuffix(getMainLoopModel(), effortValue);
-  const thinkingVerb = modelWouldUseAdaptiveThinking(getMainLoopModel()) ? 'adaptive thinking' : 'thinking';
+  const thinkingVerb = 'thinking';
 
   // Check if any running in-process teammates exist (needed for both modes)
   const runningTeammates = getAllInProcessTeammateTasks(tasks).filter(t => t.status === 'running');

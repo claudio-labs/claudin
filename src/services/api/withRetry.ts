@@ -138,6 +138,24 @@ export interface RetryContext {
   model: string
   thinkingConfig: ThinkingConfig
   fastMode?: boolean
+  /**
+   * Set when the API rejects a request because the latest assistant message's
+   * thinking blocks were "modified" — this happens when the user changes the
+   * thinking config (e.g. adaptive ↔ budget via /effort) mid-session. The
+   * streaming layer reads this flag and strips all thinking blocks from history
+   * before retrying. One-shot: once set, we don't try a second strip.
+   */
+  stripThinkingFromHistory?: boolean
+}
+
+export function isThinkingBlockMismatchError(error: unknown): boolean {
+  if (!(error instanceof APIError) || error.status !== 400 || !error.message) {
+    return false
+  }
+  return (
+    error.message.includes('thinking') &&
+    error.message.includes('cannot be modified')
+  )
 }
 
 interface RetryOptions {
@@ -406,6 +424,19 @@ export async function* withRetry<T>(
         (!(error instanceof APIError) || !shouldRetry(error, attempt))
       ) {
         throw new CannotRetryError(error, retryContext)
+      }
+
+      // Handle thinking-block mismatch (400) by stripping thinking from history
+      // and retrying once. Happens when thinking config changes mid-session
+      // (adaptive ↔ budget via /effort) — the prior assistant message's
+      // thinking blocks become incompatible with the new request shape.
+      if (
+        isThinkingBlockMismatchError(error) &&
+        !retryContext.stripThinkingFromHistory
+      ) {
+        retryContext.stripThinkingFromHistory = true
+        logEvent('tengu_api_thinking_mismatch_recovery', {})
+        continue
       }
 
       // Handle max tokens context overflow errors by adjusting max_tokens for the next attempt
@@ -815,6 +846,11 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
 
   // Check for max tokens context overflow errors that we can handle
   if (parseMaxTokensContextOverflowError(error)) {
+    return true
+  }
+
+  // Thinking-block mismatch: we recover by stripping thinking from history.
+  if (isThinkingBlockMismatchError(error)) {
     return true
   }
 

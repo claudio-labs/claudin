@@ -815,7 +815,7 @@ export async function* queryModel(
     // setting that can greatly affect model quality and bashing.
     if (hasThinking && modelSupportsThinking(options.model)) {
       if (
-        !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING) &&
+        isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING) &&
         modelSupportsAdaptiveThinking(options.model)
       ) {
         // For models that support adaptive thinking, always use adaptive
@@ -900,7 +900,9 @@ export async function* queryModel(
       // producing a different system prompt on each request and breaking cache.
       system,
       messages: addCacheBreakpoints(
-        messagesForAPI,
+        retryContext.stripThinkingFromHistory
+          ? stripOldThinkingBlocks(messagesForAPI, 0)
+          : messagesForAPI,
         enablePromptCaching,
         options.querySource,
         options.skipCacheWrite,

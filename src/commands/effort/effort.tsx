@@ -4,7 +4,7 @@ import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { ADAPTIVE_EFFORT, type EffortValue, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isAdaptiveEffort, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
+import { type EffortValue, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
 import { EffortPicker } from '../../components/EffortPicker.js';
 import { updateSettingsForSource } from '../../utils/settings/settings.js';
 const COMMON_HELP_ARGS = ['help', '-h', '--help'];
@@ -110,9 +110,6 @@ export function executeEffort(args: string): EffortCommandResult {
   if (normalized === 'auto' || normalized === 'unset') {
     return unsetEffortLevel();
   }
-  if (isAdaptiveEffort(normalized)) {
-    return setEffortValue(ADAPTIVE_EFFORT);
-  }
   if (isEffortLevel(normalized)) {
     return setEffortValue(normalized);
   }
@@ -120,7 +117,7 @@ export function executeEffort(args: string): EffortCommandResult {
     return setEffortValue(normalized);
   }
   return {
-    message: `Invalid argument: ${args}. Valid options are: adaptive, low, medium, high, max, xhigh, auto`
+    message: `Invalid argument: ${args}. Valid options are: low, medium, high, max, xhigh, auto`
   };
 }
 function ShowCurrentEffort(t0) {

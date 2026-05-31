@@ -5,7 +5,6 @@ import { useTerminalSize } from '../hooks/useTerminalSize.js'
 import { useAppState, useSetAppState } from '../state/AppState.js'
 import type { Theme } from '../utils/theme.js'
 import {
-  ADAPTIVE_EFFORT,
   type EffortValue,
   getAvailableEffortLevels,
   getDisplayedEffortLabel,
@@ -50,23 +49,16 @@ export function EffortPicker({ onSelect, onCancel }: Props) {
   const supportsEffort = modelSupportsEffort(model)
   const availableLevels = getAvailableEffortLevels(model)
 
-  const options: SliderOption[] = [
-    {
-      value: ADAPTIVE_EFFORT,
-      label: 'adaptive',
-      description: getEffortValueDescription(ADAPTIVE_EFFORT),
-    },
-    ...availableLevels.map(level => {
-      // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
-      // but the applied value stays the raw level.
-      const label = usesOpenAIEffort && level === 'xhigh' ? 'max' : level
-      return {
-        value: level as EffortValue,
-        label,
-        description: getEffortValueDescription(level as EffortValue),
-      }
-    }),
-  ]
+  const options: SliderOption[] = availableLevels.map(level => {
+    // OpenAI/Codex 'xhigh' is surfaced as 'max' (matches the rest of the UI),
+    // but the applied value stays the raw level.
+    const label = usesOpenAIEffort && level === 'xhigh' ? 'max' : level
+    return {
+      value: level as EffortValue,
+      label,
+      description: getEffortValueDescription(level as EffortValue),
+    }
+  })
 
   const [focusedIndex, setFocusedIndex] = useState(() =>
     initialFocusIndex(options, appStateEffort, usesOpenAIEffort, model),
@@ -216,9 +208,6 @@ function LabelsLine({
 
 function renderFocusedLabel(opt: SliderOption, timeOffset: number) {
   const key = String(opt.value)
-  if (key === ADAPTIVE_EFFORT) {
-    return renderShimmerLabel(opt.label, timeOffset)
-  }
   const rainbow = FOCUSED_RAINBOW[key]
   if (rainbow) {
     const sweep = Math.floor(timeOffset * rainbow.speed)
@@ -239,33 +228,11 @@ function renderFocusedLabel(opt: SliderOption, timeOffset: number) {
   )
 }
 
-// A white "light" that sweeps across the dim label, evoking the model
-// adapting in real time. The bright head moves with timeOffset and trails a
-// short gradient; everything else stays dim. A gap after the text lets the
-// light travel off the end before wrapping, so the sweep reads as periodic.
-const SHIMMER_TRAIL = 2
-const SHIMMER_GAP = 6
-
-function renderShimmerLabel(label: string, timeOffset: number) {
-  const chars = [...label]
-  const period = chars.length + SHIMMER_GAP
-  const head = Math.floor(timeOffset) % period
-  return chars.map((char, i) => {
-    const dist = head - i
-    if (dist === 0) {
-      return <Text key={i} bold={true} color="white">{char}</Text>
-    }
-    if (dist > 0 && dist <= SHIMMER_TRAIL) {
-      return <Text key={i} color="gray">{char}</Text>
-    }
-    return <Text key={i} dimColor={true} color="subtle">{char}</Text>
-  })
-}
-
 /**
- * Focus the saved effort when set; otherwise (never configured) focus the
- * leftmost 'Adaptive' position. Opening the picker never mutates state — the
- * value only changes on Enter.
+ * Focus the saved effort when set; otherwise (never configured, or legacy
+ * 'adaptive' value) focus the model's default level, falling back to the
+ * leftmost option. Opening the picker never mutates state — the value only
+ * changes on Enter.
  */
 function initialFocusIndex(
   options: SliderOption[],
@@ -273,8 +240,7 @@ function initialFocusIndex(
   usesOpenAIEffort: boolean,
   model: string,
 ): number {
-  if (isAdaptiveEffort(appStateEffort)) return 0
-  if (appStateEffort === undefined) {
+  if (appStateEffort === undefined || isAdaptiveEffort(appStateEffort)) {
     // OpenAI/Codex: focus the model's default reasoning effort if any.
     if (usesOpenAIEffort) {
       const reasoning = getReasoningEffortForModel(model)

@@ -162,7 +162,7 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
  */
 export function modelWouldUseAdaptiveThinking(model: string): boolean {
   if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING)) return false
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING)) return false
+  if (!isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)) return false
   return modelSupportsThinking(model) && modelSupportsAdaptiveThinking(model)
 }
 
