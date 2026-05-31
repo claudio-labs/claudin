@@ -205,6 +205,7 @@ export function dropTextInBriefTurns<T extends {
     return t === undefined || !turnsWithBrief.has(t);
   });
 }
+
 type Props = {
   messages: MessageType[];
   tools: Tools;
