@@ -18,6 +18,7 @@ import { tryGetActiveProvider } from '../activeProvider.js'
 import {
   DEEPSEEK_API_HOSTS,
   GEMINI_API_HOST,
+  GLM_API_HOSTS,
   KIMI_CODE_API_HOST,
   MOONSHOT_API_HOSTS,
 } from './constants.js'
@@ -56,6 +57,15 @@ export function isMoonshotCompatibleBaseUrl(baseUrl: string | undefined): boolea
       (hostname === KIMI_CODE_API_HOST &&
         parsed.pathname.toLowerCase().startsWith('/coding'))
     )
+  } catch {
+    return false
+  }
+}
+
+export function isGlmCompatibleBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    return GLM_API_HOSTS.has(new URL(baseUrl).hostname.toLowerCase())
   } catch {
     return false
   }

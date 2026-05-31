@@ -31,6 +31,7 @@ import {
 import {
   hasGeminiApiHost,
   isDeepSeekBaseUrl,
+  isGlmCompatibleBaseUrl,
   isMoonshotCompatibleBaseUrl,
   normalizeDeepSeekReasoningEffort,
 } from '../providerModes.js'
@@ -178,6 +179,15 @@ describe('providerModes — URL-driven detectors', () => {
     expect(isDeepSeekBaseUrl('https://api.deepseek.com/v1')).toBe(true)
     expect(isDeepSeekBaseUrl('https://deepseek.com/v1')).toBe(false)
     expect(isDeepSeekBaseUrl(undefined)).toBe(false)
+  })
+
+  test('isGlmCompatibleBaseUrl matches all GLM hosts', () => {
+    expect(isGlmCompatibleBaseUrl('https://api.z.ai/v1')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://open.bigmodel.cn/api/paas/v4')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://bigmodel.cn/api/paas/v4')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://api.zhipuai.cn/v1')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://example.com/v1')).toBe(false)
+    expect(isGlmCompatibleBaseUrl(undefined)).toBe(false)
   })
 
   test('normalizeDeepSeekReasoningEffort maps xhigh→max, everything else→high', () => {

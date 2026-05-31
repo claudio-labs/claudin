@@ -23,6 +23,10 @@ import {
 import { getSkillToolCommands } from 'src/commands.js'
 import { SKILL_TOOL_NAME } from '../tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from './outputStyles.js'
+import {
+  getFamilyAddendum,
+  getFamilyForLogging,
+} from './familyAddendums/index.js'
 import type {
   MCPServerConnection,
   ConnectedMCPServer,
@@ -111,6 +115,15 @@ const CLAUDE_LATEST_MODEL_IDS = {
   opus: 'claude-opus-4-8',
   sonnet: 'claude-sonnet-4-6',
   haiku: 'claude-haiku-4-5-20251001',
+}
+
+function resolveFamilyAddendum(model: string): string | null {
+  const addendum = getFamilyAddendum(model)
+  if (addendum) {
+    const family = getFamilyForLogging(model)
+    logForDebugging(`[SystemPrompt] family=${family}`)
+  }
+  return addendum
 }
 
 function getHooksSection(): string {
@@ -493,6 +506,7 @@ ${CYBER_RISK_INSTRUCTION}`,
     getUsingYourToolsSection(enabledTools),
     getSimpleToneAndStyleSection(),
     getOutputEfficiencySection(),
+    feature('FAMILY_PROMPT_ADDENDUMS') ? resolveFamilyAddendum(model) : null,
     // === BOUNDARY MARKER - DO NOT MOVE OR REMOVE ===
     ...(shouldUseGlobalCacheScope() ? [SYSTEM_PROMPT_DYNAMIC_BOUNDARY] : []),
     // --- Dynamic content (registry-managed) ---

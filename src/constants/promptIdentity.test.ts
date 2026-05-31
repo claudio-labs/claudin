@@ -14,6 +14,10 @@ import { afterEach, expect, test } from 'bun:test'
 import { clearSystemPromptSections } from './systemPromptSections.js'
 import { getSystemPrompt, DEFAULT_AGENT_PROMPT } from './prompts.js'
 import { CLI_SYSPROMPT_PREFIXES, getCLISyspromptPrefix } from './system.js'
+import { GEMINI_ADDENDUM } from './familyAddendums/gemini.js'
+import { GLM_ADDENDUM } from './familyAddendums/glm.js'
+import { KIMI_ADDENDUM } from './familyAddendums/kimi.js'
+import { OPENAI_REASONING_ADDENDUM } from './familyAddendums/openaiReasoning.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from '../tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import { GENERAL_PURPOSE_AGENT } from '../tools/AgentTool/built-in/generalPurposeAgent.js'
 import { EXPLORE_AGENT } from '../tools/AgentTool/built-in/exploreAgent.js'
@@ -61,6 +65,32 @@ test('system prompt model identity updates when model changes mid-session', asyn
   expect(firstText).toContain('You are powered by the model old-test-model.')
   expect(secondText).toContain('You are powered by the model new-test-model.')
   expect(secondText).not.toContain('You are powered by the model old-test-model.')
+})
+
+test('Anthropic-family system prompt does not include any non-Anthropic family addendum', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  clearSystemPromptSections()
+
+  // In the test environment there is no active provider profile, so
+  // getAPIProvider() falls back to 'firstParty'. A claude-* model on
+  // firstParty MUST resolve to the 'anthropic' family, whose addendum is
+  // null. We assert that none of the other families' content leaks into
+  // the prompt — this protects Claude users from accidental regressions.
+  const prompt = await getSystemPrompt([], 'claude-opus-4-8')
+  const text = prompt.join('\n')
+
+  const sentinels = [
+    // First non-empty bullet of each non-Anthropic addendum
+    GEMINI_ADDENDUM.split('\n').find(l => l.startsWith('- ')) ?? '',
+    GLM_ADDENDUM.split('\n').find(l => l.startsWith('- ')) ?? '',
+    KIMI_ADDENDUM.split('\n').find(l => l.startsWith('- ')) ?? '',
+    OPENAI_REASONING_ADDENDUM.split('\n').find(l => l.startsWith('- ')) ?? '',
+  ]
+
+  for (const sentinel of sentinels) {
+    expect(sentinel.length).toBeGreaterThan(20)
+    expect(text).not.toContain(sentinel)
+  }
 })
 
 test('built-in agent prompts describe Claudio instead of Claude Code', () => {

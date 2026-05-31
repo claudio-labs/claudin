@@ -13,3 +13,5 @@ package-lock.json
 /.openclaude
 coverage/
 agent.log
+dist-baseline/
+dist-bench-baseline/

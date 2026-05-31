@@ -77,6 +77,7 @@ import {
   isDeepSeekBaseUrl,
   isGeminiMode,
   isGithubModelsMode,
+  isGlmCompatibleBaseUrl,
   isMistralMode,
   isMoonshotCompatibleBaseUrl,
   normalizeDeepSeekReasoningEffort,
@@ -303,7 +304,8 @@ class OpenAIShimMessages {
       // thinking block we captured on the inbound response.
       preserveReasoningContent:
         isMoonshotCompatibleBaseUrl(request.baseUrl) ||
-        isDeepSeekBaseUrl(request.baseUrl),
+        isDeepSeekBaseUrl(request.baseUrl) ||
+        isGlmCompatibleBaseUrl(request.baseUrl),
     })
 
     const body: Record<string, unknown> = {
@@ -343,7 +345,9 @@ class OpenAIShimMessages {
     const isMoonshot = isMoonshotCompatibleBaseUrl(request.baseUrl)
     const isDeepSeek = isDeepSeekBaseUrl(request.baseUrl)
 
-    if ((isGithub || isMistral || isLocal || isMoonshot || isDeepSeek) && body.max_completion_tokens !== undefined) {
+    const isGlm = isGlmCompatibleBaseUrl(request.baseUrl)
+
+    if ((isGithub || isMistral || isLocal || isMoonshot || isDeepSeek || isGlm) && body.max_completion_tokens !== undefined) {
       body.max_tokens = body.max_completion_tokens
       delete body.max_completion_tokens
     }
@@ -354,7 +358,7 @@ class OpenAIShimMessages {
     // and DeepSeek have not published support for the parameter either;
     // strip it preemptively to avoid the same class of error on strict-parse
     // providers.
-    if (isMistral || isGeminiMode() || isMoonshot || isDeepSeek) {
+    if (isMistral || isGeminiMode() || isMoonshot || isDeepSeek || isGlm) {
       delete body.store
     }
 
