@@ -123,8 +123,8 @@ describe('buildStartupBannerLines', () => {
   it('returns a stable line count for snapshot-style assertions', async () => {
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
-    // Banner shape: leading blank + 4 logo rows + trailing blank = 6 lines.
-    expect(lines.length).toBe(6)
+    // Banner shape: 4 logo rows (no leading/trailing blank).
+    expect(lines.length).toBe(4)
   })
 
   it('appends an update-available notice when one is passed', async () => {
@@ -136,7 +136,7 @@ describe('buildStartupBannerLines', () => {
     expect(text).toContain('▲ New version 9.9.9 available')
     expect(text).toContain('claudio update')
     // Adds exactly one extra line vs. the no-notice case.
-    expect(lines.length).toBe(7)
+    expect(lines.length).toBe(5)
   })
 
   it('omits the notice line when none is provided', async () => {

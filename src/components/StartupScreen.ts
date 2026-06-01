@@ -5,6 +5,8 @@
 
 import os from 'os'
 
+import { readLatestVersion } from '../utils/latestVersionCache.js'
+import { gt } from '../utils/semver.js'
 import { tryGetActiveProvider } from '../services/api/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from '../services/api/providerConfig.js'
 import { getLocalOpenAICompatibleProviderLabel } from '../utils/providerDiscovery.js'
@@ -180,8 +182,6 @@ export function buildStartupBannerLines(
   const p = detectProvider(modelOverride)
   const out: string[] = []
 
-  out.push('')
-
   const version = MACRO.DISPLAY_VERSION ?? MACRO.VERSION
   const sep = `${DIM}·${RESET}`
 
@@ -196,7 +196,6 @@ export function buildStartupBannerLines(
     headerLine,   // top of head — Claudio vX.Y.Z
     providerLine, // face — Provider · model
     cwdLine,      // mouth — cwd
-    undefined,    // legs row, no text
   ]
   const GAP = '   '
 
@@ -212,12 +211,24 @@ export function buildStartupBannerLines(
     )
   }
 
-  out.push('')
-
   return out
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+
+function resolveUpdateNotice(): UpdateNotice | undefined {
+  const cache = readLatestVersion()
+  if (!cache) return undefined
+  const current = MACRO.DISPLAY_VERSION ?? MACRO.VERSION
+  if (!current) return undefined
+  if (cache.current !== current) return undefined
+  try {
+    if (!gt(cache.latest, current)) return undefined
+  } catch {
+    return undefined
+  }
+  return { latest: cache.latest }
+}
 
 let bannerPrinted = false
 
@@ -226,7 +237,7 @@ export function printStartupScreen(modelOverride?: string): void {
   if (bannerPrinted) return
   bannerPrinted = true
 
-  const out = buildStartupBannerLines(modelOverride)
+  const out = buildStartupBannerLines(modelOverride, resolveUpdateNotice())
   process.stdout.write(out.join('\n') + '\n')
 }
 
