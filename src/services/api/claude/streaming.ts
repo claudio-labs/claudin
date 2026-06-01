@@ -39,7 +39,7 @@ import {
 import { getGlobalConfig } from "src/utils/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/utils/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
-import { isEnvTruthy } from "src/utils/envUtils.js";
+import { isEnvDefinedFalsy, isEnvTruthy } from "src/utils/envUtils.js";
 import { errorMessage } from "src/utils/errors.js";
 import { computeFingerprintFromMessages } from "src/utils/fingerprint.js";
 import { captureAPIRequest } from "src/utils/log.js";
@@ -1112,11 +1112,12 @@ export async function* queryModel(
     // kill hung streams. Without this, a silently dropped connection can hang
     // the session indefinitely since the SDK's request timeout only covers the
     // initial fetch(), not the streaming body.
-    const streamWatchdogEnabled = isEnvTruthy(
+    // On by default; set CLAUDE_ENABLE_STREAM_WATCHDOG=0 to opt out.
+    const streamWatchdogEnabled = !isEnvDefinedFalsy(
       process.env.CLAUDE_ENABLE_STREAM_WATCHDOG,
     );
     const STREAM_IDLE_TIMEOUT_MS =
-      parseInt(process.env.CLAUDE_STREAM_IDLE_TIMEOUT_MS || "", 10) || 90_000;
+      parseInt(process.env.CLAUDE_STREAM_IDLE_TIMEOUT_MS || "", 10) || 65_000;
     const STREAM_IDLE_WARNING_MS = STREAM_IDLE_TIMEOUT_MS / 2;
     let streamIdleAborted = false;
     // performance.now() snapshot when watchdog fires, for measuring abort propagation delay
