@@ -26,6 +26,7 @@ import {
 import { jsonStringify } from '../utils/slowOperations.js'
 import { isToolReferenceBlock } from '../utils/toolSearch.js'
 import { getAnthropicClient } from './api/client.js'
+import { getCachedAnthropicClient } from './api/clientCache.js'
 import { withTokenCountVCR } from './vcr.js'
 
 // Minimal values for token counting with thinking enabled
@@ -159,7 +160,7 @@ export async function countMessagesTokensWithAPI(
         })
       }
 
-      const anthropic = await getAnthropicClient({
+      const anthropic = await getCachedAnthropicClient(getAnthropicClient, {
         maxRetries: 1,
         model,
         source: 'count_tokens',
@@ -396,7 +397,7 @@ export async function countTokensViaHaikuFallback(
     isVertexGlobalEndpoint || isBedrockWithThinking || isVertexWithThinking
       ? getDefaultSonnetModel()
       : getSmallFastModel()
-  const anthropic = await getAnthropicClient({
+  const anthropic = await getCachedAnthropicClient(getAnthropicClient, {
     maxRetries: 1,
     model,
     source: 'count_tokens',

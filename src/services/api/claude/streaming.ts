@@ -171,6 +171,7 @@ import {
 import { getInitializationStatus } from "src/services/lsp/manager.js";
 import { withStreamingVCR } from "src/services/vcr.js";
 import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "../client.js";
+import { getCachedAnthropicClient, invalidateClientCache } from "../clientCache.js";
 import {
   API_ERROR_MESSAGE_PREFIX,
   CUSTOM_OFF_SWITCH_MESSAGE,
@@ -1019,7 +1020,7 @@ export async function* queryModel(
     queryCheckpoint("query_client_creation_start");
     const generator = withRetry(
       () =>
-        getAnthropicClient({
+        getCachedAnthropicClient(getAnthropicClient, {
           maxRetries: 0, // Disabled auto-retry in favor of manual implementation
           model: options.model,
           fetchOverride: options.fetchOverride,

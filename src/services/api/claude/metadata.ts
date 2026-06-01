@@ -10,6 +10,7 @@ import { logError } from 'src/utils/log.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getAnthropicClient } from '../client.js'
+import { getCachedAnthropicClient } from '../clientCache.js'
 import { getExtraBodyParams } from './paramBuilders.js'
 import { CannotRetryError, withRetry } from '../withRetry.js'
 
@@ -61,7 +62,7 @@ export async function verifyApiKey(
     return await returnValue(
       withRetry(
         () =>
-          getAnthropicClient({
+          getCachedAnthropicClient(getAnthropicClient, {
             apiKey,
             maxRetries: 3,
             model,

@@ -13,6 +13,7 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { logEvent } from './analytics/index.js'
 import { getAPIMetadata } from './api/claude.js'
 import { getAnthropicClient } from './api/client.js'
+import { getCachedAnthropicClient } from './api/clientCache.js'
 import {
   processRateLimitHeaders,
   shouldProcessRateLimits,
@@ -199,7 +200,7 @@ export function emitStatusChange(limits: ClaudeAILimits) {
 
 async function makeTestQuery() {
   const model = getSmallFastModel()
-  const anthropic = await getAnthropicClient({
+  const anthropic = await getCachedAnthropicClient(getAnthropicClient, {
     maxRetries: 0,
     model,
     source: 'quota_check',

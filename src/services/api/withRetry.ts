@@ -23,6 +23,7 @@ import {
 } from '../../utils/auth.js'
 import { isEnvTruthy } from '../../utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
+import { invalidateClientCache } from './clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
 import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
 import { errorMessage } from '../../utils/errors.js'
@@ -288,6 +289,9 @@ export async function* withRetry<T>(
             })
           }
         }
+        // Invalidate the client cache before getClient() so it creates a fresh
+        // client with the refreshed credentials, not a stale cached one.
+        invalidateClientCache()
         client = await getClient()
       }
 

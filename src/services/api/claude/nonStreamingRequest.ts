@@ -15,6 +15,7 @@ import {
   logEvent,
 } from '../../analytics/index.js'
 import { getAnthropicClient } from '../client.js'
+import { getCachedAnthropicClient } from '../clientCache.js'
 import { type RetryContext, withRetry } from '../withRetry.js'
 import {
   MAX_NON_STREAMING_TOKENS,
@@ -72,7 +73,7 @@ export async function* executeNonStreamingRequest(
   const fallbackTimeoutMs = getNonstreamingFallbackTimeoutMs()
   const generator = withRetry(
     () =>
-      getAnthropicClient({
+      getCachedAnthropicClient(getAnthropicClient, {
         maxRetries: 0,
         model: clientOptions.model,
         fetchOverride: clientOptions.fetchOverride,
