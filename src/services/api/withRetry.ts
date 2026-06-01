@@ -211,6 +211,8 @@ export async function* withRetry<T>(
   options: RetryOptions,
 ): AsyncGenerator<SystemAPIErrorMessage, T> {
   const maxRetries = getMaxRetries(options)
+  // Resolve provider/transport once — they don't change during a retry loop.
+  const transport = tryGetActiveProvider()?.transport
   const retryContext: RetryContext = {
     model: options.model,
     thinkingConfig: options.thinkingConfig,
@@ -257,8 +259,8 @@ export async function* withRetry<T>(
         client === null ||
         (lastError instanceof APIError && lastError.status === 401) ||
         isOAuthTokenRevokedError(lastError) ||
-        isBedrockAuthError(lastError) ||
-        isVertexAuthError(lastError) ||
+        isBedrockAuthError(lastError, transport) ||
+        isVertexAuthError(lastError, transport) ||
         isStaleConnection
       ) {
         // On 401 "token expired" or 403 "token revoked", force a token refresh
@@ -272,12 +274,12 @@ export async function* withRetry<T>(
           }
           // For GitHub Copilot, refresh the short-lived Copilot token using the
           // stored OAuth token so the next getClient() picks up the fresh token.
-          if (tryGetActiveProvider()?.transport === 'github_copilot') {
+          if (transport === 'github_copilot') {
             await refreshGithubModelsTokenIfNeeded()
           }
           // For Codex OAuth, force-refresh on 401 even if the JWT clock says the
           // token is still valid — server-side revocation won't match the clock.
-          if (tryGetActiveProvider()?.transport === 'codex_responses') {
+          if (transport === 'codex_responses') {
             await refreshCodexAccessTokenIfNeeded({ force: true }).catch(e => {
               logForDebugging(
                 `[codex] force-refresh on 401 failed: ${e instanceof Error ? e.message : String(e)}`,
@@ -749,8 +751,8 @@ function isOAuthTokenRevokedError(error: unknown): boolean {
   )
 }
 
-function isBedrockAuthError(error: unknown): boolean {
-  if (tryGetActiveProvider()?.transport === 'bedrock') {
+function isBedrockAuthError(error: unknown, transport?: string): boolean {
+  if ((transport ?? tryGetActiveProvider()?.transport) === 'bedrock') {
     // AWS libs reject without an API call if .aws holds a past Expiration value
     // otherwise, API calls that receive expired tokens give generic 403
     // "The security token included in the request is invalid"
@@ -788,8 +790,8 @@ function isGoogleAuthLibraryCredentialError(error: unknown): boolean {
   )
 }
 
-function isVertexAuthError(error: unknown): boolean {
-  if (tryGetActiveProvider()?.transport === 'vertex') {
+function isVertexAuthError(error: unknown, transport?: string): boolean {
+  if ((transport ?? tryGetActiveProvider()?.transport) === 'vertex') {
     // SDK-level: google-auth-library fails in prepareOptions() before the HTTP call
     if (isGoogleAuthLibraryCredentialError(error)) {
       return true
