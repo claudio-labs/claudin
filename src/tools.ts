@@ -81,10 +81,6 @@ const getSendMessageTool = () =>
     .SendMessageTool as typeof import('./tools/SendMessageTool/SendMessageTool.js').SendMessageTool
 const getAskUserQuestionTool = () =>
   require('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
-const getListMcpResourcesTool = () =>
-  require('./tools/ListMcpResourcesTool/ListMcpResourcesTool.js').ListMcpResourcesTool as typeof import('./tools/ListMcpResourcesTool/ListMcpResourcesTool.js').ListMcpResourcesTool
-const getReadMcpResourceTool = () =>
-  require('./tools/ReadMcpResourceTool/ReadMcpResourceTool.js').ReadMcpResourceTool as typeof import('./tools/ReadMcpResourceTool/ReadMcpResourceTool.js').ReadMcpResourceTool
 const getToolSearchTool = () =>
   require('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool as typeof import('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool
 const getEnterPlanModeTool = () =>
@@ -107,8 +103,7 @@ const VerifyPlanExecutionTool =
     ? require('./tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
         .VerifyPlanExecutionTool
     : null
-const getSyntheticOutputToolName = () =>
-  require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').SYNTHETIC_OUTPUT_TOOL_NAME as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').SYNTHETIC_OUTPUT_TOOL_NAME
+const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
   ? require('./tools/OverflowTestTool/OverflowTestTool.js').OverflowTestTool
   : null
@@ -275,8 +270,8 @@ export function getAllBaseTools(): Tools {
     ...(getPowerShellTool() ? [getPowerShellTool()] : []),
     ...(SnipTool ? [SnipTool] : []),
     ...(process.env.NODE_ENV === 'test' ? [getTestingPermissionTool()] : []),
-    getListMcpResourcesTool(),
-    getReadMcpResourceTool(),
+    // MCP resource tools are added conditionally by fetchCapabilities.ts
+    // when an MCP server supports resources — not via getAllBaseTools().
     // Include ToolSearchTool when tool search might be enabled (optimistic check)
     // The actual decision to defer tools happens at request time in claude.ts
     ...(isToolSearchEnabledOptimistic() ? [getToolSearchTool()] : []),
@@ -330,14 +325,18 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     return filterToolsByDenyRules(simpleTools, permissionContext)
   }
 
-  // Get all base tools and filter out special tools that get added conditionally
-  const specialTools = new Set([
-    getListMcpResourcesTool().name,
-    getReadMcpResourceTool().name,
-    getSyntheticOutputToolName(),
+  // Tools that are added conditionally (MCP resources via fetchCapabilities.ts,
+  // StructuredOutput via agent hooks) — filter them out of the base set so they
+  // don't appear in tool listings until the right runtime context attaches them.
+  const CONDITIONAL_TOOL_NAMES = new Set([
+    'ListMcpResourcesTool',
+    'ReadMcpResourceTool',
+    SYNTHETIC_OUTPUT_TOOL_NAME,
   ])
 
-  const tools = getAllBaseTools().filter(tool => !specialTools.has(tool.name))
+  const tools = getAllBaseTools().filter(
+    tool => !CONDITIONAL_TOOL_NAMES.has(tool.name),
+  )
 
   // Filter out tools that are denied by the deny rules
   let allowedTools = filterToolsByDenyRules(tools, permissionContext)
