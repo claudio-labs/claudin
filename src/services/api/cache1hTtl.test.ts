@@ -61,18 +61,22 @@ describe('getCacheControl — 1h TTL gating', () => {
     expect(claude.getCacheControl()).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
-  test('firstParty + latch false → no ttl', async () => {
+  test('firstParty → ttl=1h regardless of latch false', async () => {
+    // The large-system-prompt latch no longer gates getCacheControl: as of
+    // "always use 1h cache TTL on first-party/vertex" the old >8k gate was
+    // removed (it measured the system prompt, ~3.4k, so 1h was effectively
+    // dead). first-party always gets 1h now.
     setProvider('firstParty')
     const { claude, state } = await importFresh()
     state.setLargeSystemPromptDetected(false)
-    expect(claude.getCacheControl()).toEqual({ type: 'ephemeral' })
+    expect(claude.getCacheControl()).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
-  test('firstParty + latch null (not yet detected) → no ttl', async () => {
+  test('firstParty → ttl=1h regardless of latch null (not yet detected)', async () => {
     setProvider('firstParty')
     const { claude } = await importFresh()
-    // No setLargeSystemPromptDetected call — latch starts null.
-    expect(claude.getCacheControl()).toEqual({ type: 'ephemeral' })
+    // No setLargeSystemPromptDetected call — latch starts null; ttl still applies.
+    expect(claude.getCacheControl()).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
   test('vertex + latch true → ttl=1h', async () => {
@@ -168,21 +172,23 @@ describe('buildSystemPromptBlocks integration — large prompt → cache_control
     const blocks = claude.buildSystemPromptBlocks(sysPrompt, true)
     // At least one block must carry the 1h TTL marker.
     const has1hBlock = blocks.some(
-      (b: { cache_control?: { ttl?: string } }) =>
+      (b: { cache_control?: { ttl?: string } | null }) =>
         b.cache_control?.ttl === '1h',
     )
     expect(has1hBlock).toBe(true)
   })
 
-  test('firstParty small prompt produces blocks without ttl', async () => {
-    setProvider('firstParty')
+  test('non-whitelisted provider (openai) produces blocks without ttl', async () => {
+    // The 1h marker is gated on provider, not prompt size. A non-whitelisted
+    // provider never carries the 1h TTL even for a large prompt.
+    setProvider('openai')
     const { claude } = await importFresh()
-    const sysPrompt = ['short'] as unknown as readonly string[] & {
+    const sysPrompt = ['x'.repeat(40_000)] as unknown as readonly string[] & {
       readonly __brand: 'SystemPrompt'
     }
     const blocks = claude.buildSystemPromptBlocks(sysPrompt, true)
     const has1hBlock = blocks.some(
-      (b: { cache_control?: { ttl?: string } }) =>
+      (b: { cache_control?: { ttl?: string } | null }) =>
         b.cache_control?.ttl === '1h',
     )
     expect(has1hBlock).toBe(false)
