@@ -557,17 +557,19 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
     case getModelStrings().opus48:
       return 'Opus 4.8'
     case getModelStrings().opus48 + '[1m]':
-      // With the Opus 1M merge active, 1M is the implicit default, so the
-      // "(1M context)" annotation is redundant — show the plain name.
-      return isOpus1mMergeEnabled() ? 'Opus 4.8' : 'Opus 4.8 (1M context)'
+      // Always annotate the 1M variant. The picker now offers both the 200k
+      // and the [1m] flavor of each Opus generation (even for merged accounts),
+      // so the "(1M context)" suffix is what distinguishes them — matching the
+      // always-on annotation for Sonnet [1m] below.
+      return 'Opus 4.8 (1M context)'
     case getModelStrings().opus47:
       return 'Opus 4.7'
     case getModelStrings().opus47 + '[1m]':
-      return isOpus1mMergeEnabled() ? 'Opus 4.7' : 'Opus 4.7 (1M context)'
+      return 'Opus 4.7 (1M context)'
     case getModelStrings().opus46:
       return 'Opus 4.6'
     case getModelStrings().opus46 + '[1m]':
-      return isOpus1mMergeEnabled() ? 'Opus 4.6' : 'Opus 4.6 (1M context)'
+      return 'Opus 4.6 (1M context)'
     case getModelStrings().opus45:
       return 'Opus 4.5'
     case getModelStrings().opus41:
