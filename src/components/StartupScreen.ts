@@ -42,10 +42,10 @@ const PINK_DARK: RGB = [170, 65, 110]
  * See LOGO_LINES for the character layout (4 rows).
  */
 const LOGO_LINES: string[] = [
-  '          ',
-  '  ▐▛███▜▌ ',
-  '  ▐█████▌ ',
-  '   ▘▘ ▝▝  ',
+  '       ',
+  '▐▛███▜▌',
+  '▐█████▌',
+  ' ▘▘ ▝▝ ',
 ]
 
 const LOGO_SHADES: RGB[] = [PINK_LIGHT, PINK, PINK, PINK, PINK_DARK]
