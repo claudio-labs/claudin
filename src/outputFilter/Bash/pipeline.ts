@@ -357,6 +357,116 @@ export function splitTopLevelSegments(command: string): string[] | null {
   return cleaned;
 }
 
+/**
+ * `tail`/`cat` consume their entire stdin, so `BASE | tail -40` (or `| cat`) runs BASE
+ * identically to BASE alone — the trailing pipe is a *manual* version of what the output
+ * filter already does, only worse (a blind line cap can drop the failing line above it).
+ *
+ * `head` is deliberately excluded: it closes the pipe early (SIGPIPE), so stripping it would
+ * turn an early-exit command (`grep -r`, `ls -R`, `find`) into a full scan — see plan D3.
+ *
+ * A "pure" reducer is `tail` with only count flags (`-N`, `-nN`, `-n N`, `-c N`) or bare `cat`
+ * (no args). Anything else (`tail -f`, `tail file`, `cat -A`, `cat file`) disqualifies.
+ */
+const PURE_TAIL_ARGS_RE = /^(?:-n\s*\d+|-\d+|-c\s*\d+)?$/;
+
+function isPureReducer(segment: string): boolean {
+  const trimmed = segment.trim();
+  const verb = trimmed.split(WHITESPACE_RE, 1)[0] ?? "";
+  const rest = trimmed.slice(verb.length).trim();
+  if (verb === "cat") return rest === "";
+  if (verb === "tail") return PURE_TAIL_ARGS_RE.test(rest);
+  return false;
+}
+
+/**
+ * Detects a command shaped exactly as `BASE | <pure reducer>` at the top level and returns
+ * `{ base }` (the command without the trailing reducer pipe), or `null` otherwise.
+ *
+ * Reuses the same quote-/escape-/redirection-aware scan as `splitTopLevelSegments` and bails
+ * on every construct that function bails on. Unlike it, a *single* top-level `|` is captured
+ * as a split point instead of aborting. Any other top-level operator (`&&`, `||`, `;`, newline,
+ * background, a second `|`) disqualifies, keeping this strictly to the `BASE | REDUCER` shape.
+ */
+export function splitTrailingReducerPipe(command: string): { base: string } | null {
+  const segments: string[] = [];
+  let buf = "";
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i] ?? "";
+    const next = command[i + 1] ?? "";
+    if (inSingle) {
+      if (c === "'") inSingle = false;
+      buf += c;
+      continue;
+    }
+    if (inDouble) {
+      if (c === "\\" && next) {
+        buf += c + next;
+        i++;
+        continue;
+      }
+      if (c === '"') inDouble = false;
+      buf += c;
+      continue;
+    }
+    if (c === "'") {
+      inSingle = true;
+      buf += c;
+      continue;
+    }
+    if (c === '"') {
+      inDouble = true;
+      buf += c;
+      continue;
+    }
+    if (c === "\\" && next) {
+      if (next === "\n") {
+        i++;
+        continue;
+      }
+      buf += next;
+      i++;
+      continue;
+    }
+    // Same bail-outs as splitTopLevelSegments.
+    if (c === "`") return null;
+    if (c === "$" && next === "(") return null;
+    if ((c === "<" || c === ">") && next === "(") return null;
+    if (c === "<" && next === "<") return null;
+    if (c === "[" && next === "[") return null;
+    if (c === "(" && next === "(") return null;
+    if (c === "|" && next === "&") return null;
+    if (c === "|" && next === "|") return null; // `||` is a separator, not the shape we want
+    if (c === "|") {
+      // Top-level single pipe — a split point. A second one disqualifies.
+      if (segments.length > 0) return null;
+      segments.push(buf);
+      buf = "";
+      continue;
+    }
+    if (c === "&" && next === "&") return null;
+    if (c === "&") {
+      const lastBufChar = buf.length > 0 ? buf[buf.length - 1] : "";
+      if (lastBufChar === ">" || next === ">") {
+        buf += c;
+        continue;
+      }
+      return null; // background
+    }
+    if (c === ";" || c === "\n") return null;
+    buf += c;
+  }
+  if (inSingle || inDouble) return null;
+  if (segments.length !== 1) return null; // need exactly one top-level pipe
+  const base = segments[0]?.trim() ?? "";
+  const reducer = buf.trim();
+  if (base === "" || reducer === "") return null;
+  if (!isPureReducer(reducer)) return null;
+  return { base };
+}
+
 // ---------------------------------------------------------------------------
 // Rewrite
 // ---------------------------------------------------------------------------
@@ -388,6 +498,14 @@ const HEAD_TAIL_OMIT_MARKER = "…N lines omitted…";
 const DEFAULT_HEAD_LINES = 15;
 const DEFAULT_TAIL_LINES = 15;
 
+/** Counts lines for the marker's `lines="body/original"` evidence. Empty → 0; a single
+ * trailing newline is not counted as an extra line so counts match what a human would say. */
+function countLines(text: string): number {
+  if (text === "") return 0;
+  const trimmed = text.endsWith("\n") ? text.slice(0, -1) : text;
+  return trimmed.split("\n").length;
+}
+
 // Hard cap on raw input size fed into the pipeline. Anything larger is passed
 // through unchanged with a tail-truncation marker — the regex engine has no
 // timeout, so an unbounded input combined with a marginally-greedy user regex
@@ -407,6 +525,8 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
       applied: [],
       shortCircuited: false,
       reductionPct: 0,
+      originalLines: countLines(raw),
+      bodyLines: countLines(raw),
     };
   }
   const originalLength = raw.length;
@@ -595,5 +715,7 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
     applied,
     shortCircuited,
     reductionPct,
+    originalLines: countLines(raw),
+    bodyLines: countLines(text),
   };
 }

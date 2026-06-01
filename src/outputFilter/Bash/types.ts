@@ -25,6 +25,10 @@ export interface PipelineResult {
   readonly applied: readonly string[];
   readonly shortCircuited: boolean;
   readonly reductionPct: number;
+  /** Line count of the raw input — surfaced in the marker as concrete evidence the filter ran. */
+  readonly originalLines: number;
+  /** Line count of the filtered body — `lines="bodyLines/originalLines"` tells the model what it would have gotten raw. */
+  readonly bodyLines: number;
 }
 
 export interface PreExecPlan {

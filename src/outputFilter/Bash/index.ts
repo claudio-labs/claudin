@@ -1,7 +1,12 @@
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
 import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "./markers.js";
-import { applyPipeline, hasCompound, maybeRewrite } from "./pipeline.js";
+import {
+  applyPipeline,
+  hasCompound,
+  maybeRewrite,
+  splitTrailingReducerPipe,
+} from "./pipeline.js";
 import { findFilterForCommand } from "./registry.js";
 import type { PipelineResult, PreExecPlan } from "./types.js";
 
@@ -31,6 +36,19 @@ export function planBashFilter(command: string): PreExecPlan {
     "planBashFilter",
     () => {
       const filter = findFilterForCommand(command);
+
+      // `BASE | tail -N` / `BASE | cat`: tail/cat consume all stdin, so running BASE alone is
+      // equivalent — strip the trailing reducer pipe and let the filter (resolved against BASE)
+      // run on the full output. The marker reports original="BASE | tail -N" actual="BASE".
+      const reducer = filter ? splitTrailingReducerPipe(command) : null;
+      if (reducer) {
+        return {
+          effectiveCommand: reducer.base,
+          filter,
+          rewrite: { from: command, to: reducer.base },
+        };
+      }
+
       // Skip rewriteCommand for chained commands — the filter only knows about its
       // own verb's arguments, so rewriting could mangle adjacent segments.
       const rewrite =

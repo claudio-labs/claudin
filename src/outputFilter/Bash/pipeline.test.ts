@@ -123,7 +123,10 @@ describe("hasCompound", () => {
 // splitTopLevelSegments
 // ---------------------------------------------------------------------------
 
-import { splitTopLevelSegments } from "./pipeline.js";
+import {
+  splitTopLevelSegments,
+  splitTrailingReducerPipe,
+} from "./pipeline.js";
 
 describe("splitTopLevelSegments", () => {
   test("splits on &&", () => {
@@ -203,6 +206,84 @@ describe("splitTopLevelSegments", () => {
 
   test("drops empty segments", () => {
     expect(splitTopLevelSegments("ls;; pwd")).toEqual(["ls", "pwd"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// splitTrailingReducerPipe
+// ---------------------------------------------------------------------------
+
+describe("splitTrailingReducerPipe", () => {
+  test("strips `| tail -N`", () => {
+    expect(splitTrailingReducerPipe("bun test src/x | tail -40")).toEqual({
+      base: "bun test src/x",
+    });
+  });
+
+  test("strips `| tail -n N`", () => {
+    expect(splitTrailingReducerPipe("git log | tail -n 5")).toEqual({
+      base: "git log",
+    });
+  });
+
+  test("strips `| tail -1` (any count)", () => {
+    expect(splitTrailingReducerPipe("git log --oneline | tail -1")).toEqual({
+      base: "git log --oneline",
+    });
+  });
+
+  test("strips `| cat` (bare)", () => {
+    expect(splitTrailingReducerPipe("ls -R src | cat")).toEqual({
+      base: "ls -R src",
+    });
+  });
+
+  test("keeps redirection in the base (2>&1)", () => {
+    expect(splitTrailingReducerPipe("git diff 2>&1 | tail -50")).toEqual({
+      base: "git diff 2>&1",
+    });
+  });
+
+  test("returns null for `| head` (SIGPIPE early-exit)", () => {
+    expect(splitTrailingReducerPipe("ls -R src | head -200")).toBeNull();
+  });
+
+  test("returns null for `tail -f`", () => {
+    expect(splitTrailingReducerPipe("cmd | tail -f")).toBeNull();
+  });
+
+  test("returns null for `cat` with args", () => {
+    expect(splitTrailingReducerPipe("cmd | cat -A")).toBeNull();
+    expect(splitTrailingReducerPipe("cmd | cat file")).toBeNull();
+  });
+
+  test("returns null when a non-reducer sits between (sort)", () => {
+    expect(
+      splitTrailingReducerPipe("git diff --stat | sort -rn | tail"),
+    ).toBeNull();
+  });
+
+  test("returns null for two top-level pipes to a reducer", () => {
+    expect(splitTrailingReducerPipe("a | b | tail -5")).toBeNull();
+  });
+
+  test("returns null when && is present", () => {
+    expect(splitTrailingReducerPipe("cmd && other | tail -5")).toBeNull();
+  });
+
+  test("returns null for a bare atomic command (no pipe)", () => {
+    expect(splitTrailingReducerPipe("git log")).toBeNull();
+  });
+
+  test("returns null for subshell / background / heredoc", () => {
+    expect(splitTrailingReducerPipe("echo $(date) | tail -5")).toBeNull();
+    expect(splitTrailingReducerPipe("cmd & | tail -5")).toBeNull();
+  });
+
+  test("respects quotes around the pipe", () => {
+    expect(splitTrailingReducerPipe("echo 'a | tail' | tail -5")).toEqual({
+      base: "echo 'a | tail'",
+    });
   });
 });
 

@@ -37,10 +37,16 @@ export function wrapStdoutWithMarkers(
   const body = pipelineResult?.body ?? rawStdout;
   const original = truncateAttr(rewrite?.from ?? "");
   const reduction = pipelineResult?.reductionPct ?? 0;
+  // Concrete line-count evidence: "you got <bodyLines> of <originalLines> lines, errors
+  // preserved". This is what tells the model the filter already trimmed the output, so
+  // piping to head/tail is redundant (and would risk cutting the preserved error tail).
+  const lines = pipelineResult
+    ? ` lines="${pipelineResult.bodyLines}/${pipelineResult.originalLines}"`
+    : "";
 
   if (hasRewrite && hasFilter) {
     const actual = truncateAttr(rewrite.to);
-    return `<bash-output-filtered original="${original}" actual="${actual}" reduction="${reduction}%">${body}</bash-output-filtered>`;
+    return `<bash-output-filtered original="${original}" actual="${actual}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
   }
 
   if (hasRewrite) {
@@ -49,5 +55,5 @@ export function wrapStdoutWithMarkers(
   }
 
   // Filter only
-  return `<bash-output-filtered original="${original}" reduction="${reduction}%">${body}</bash-output-filtered>`;
+  return `<bash-output-filtered original="${original}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
 }

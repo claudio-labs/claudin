@@ -124,6 +124,55 @@ describe("structural (Phase 1)", () => {
     expect(result).not.toContain("<bash-output-rewritten");
   });
 
+  test("emits lines=\"shown/total\" evidence in the marker when a filter trims output", () => {
+    // A filter that keeps only lines containing "keep" — deterministic line math.
+    const filter: FilterSpec = {
+      name: "test-keep",
+      matchCommand: /^demo$/,
+      keepLinesMatching: [/keep/],
+    };
+    const plan = { effectiveCommand: "demo", filter, rewrite: null };
+    const raw = ["keep 1", "drop a", "drop b", "keep 2", "drop c"].join("\n");
+    const result = applyBashFilterToStdout(raw, false, plan);
+    expect(result).toContain("<bash-output-filtered");
+    // 5 input lines in, 2 kept → the model sees exactly how much was trimmed.
+    expect(result).toContain('lines="2/5"');
+  });
+
+  test("strips trailing `| tail -N` and filters the base command", () => {
+    // `git status | tail -40` should plan to run `git status` (a filtered verb) raw, with the
+    // marker recording the original piped command and the actual executed one.
+    const plan = planBashFilter("git status | tail -40");
+    expect(plan.filter).not.toBeNull();
+    expect(plan.effectiveCommand).toBe("git status");
+    expect(plan.rewrite).toEqual({ from: "git status | tail -40", to: "git status" });
+  });
+
+  test("does not strip `| head` (SIGPIPE early-exit guard)", () => {
+    const plan = planBashFilter("git status | head -40");
+    expect(plan.effectiveCommand).toBe("git status | head -40");
+    expect(plan.rewrite).toBeNull();
+  });
+
+  test("does not strip trailing reducer when base has no filter", () => {
+    const plan = planBashFilter(`${NO_FILTER_CMD} | tail -40`);
+    expect(plan.filter).toBeNull();
+    expect(plan.effectiveCommand).toBe(`${NO_FILTER_CMD} | tail -40`);
+    expect(plan.rewrite).toBeNull();
+  });
+
+  test("does not emit lines attr on error output (content is not filtered)", () => {
+    const filter: FilterSpec = { name: "test", matchCommand: /^demo$/, stripAnsi: true };
+    const plan = {
+      effectiveCommand: "demo",
+      filter,
+      rewrite: { from: "demo", to: "demo --verbose" },
+    };
+    const result = applyBashFilterToStdout("boom\nerror: failed", true, plan);
+    // Error path wraps with the rewrite marker only — no pipeline ran, so no line counts.
+    expect(result).not.toContain("lines=");
+  });
+
   test("module init + first filter lookup completes under 50ms", async () => {
     const start = performance.now();
     const mod = await import("./index.js");
@@ -3699,4 +3748,78 @@ describe("phase 12.5 — ruff-format", () => {
     // ruff check is handled by the pre-existing ruff-check filter.
     expect(findFilterForCommand("ruff check .")?.name).toBe("ruff-check");
   });
+});
+
+// ---------------------------------------------------------------------------
+// Trailing reducer pipe (`| tail -N` / `| cat`) per filter family.
+//
+// `tail`/`cat` consume all stdin, so `BASE | tail -N` runs BASE identically —
+// the trailing reducer should be stripped and the BASE filter applied. We assert
+// this holds for ~3 representative commands of every filter family, across the
+// tail/`tail -n N`/cat reducer variants. `head` is NOT stripped (SIGPIPE).
+// ---------------------------------------------------------------------------
+
+describe("trailing reducer pipe — per family", () => {
+  // [family label, expected filter name, [representative base commands]]
+  const FAMILIES: Array<[string, string, string[]]> = [
+    ["pkg/bundle", "bundle-install", ["bundle install"]],
+    ["tests/pytest", "pytest", ["pytest", "pytest -q", "pytest tests/"]],
+    ["tests/rspec", "rspec", ["rspec", "rspec spec/", "rspec --format progress"]],
+    ["tests/go", "go-test", ["go test ./...", "go test -run X", "go test -v"]],
+    ["tests-js/bun", "bun-test", ["bun test", "bun test src/x", "bun test --coverage"]],
+    ["tests-js/jest", "jest", ["jest", "jest --ci", "jest path/to/x"]],
+    ["tests-js/vitest", "vitest", ["vitest", "vitest run", "vitest --coverage"]],
+    ["tsc", "tsc", ["tsc", "tsc --noEmit", "tsc -p tsconfig.json"]],
+    ["system/ps", "ps-aux", ["ps aux"]],
+    ["system/df", "df", ["df -h", "df", "df -h /"]],
+    ["system/du", "du", ["du -sh .", "du -h", "du -sh node_modules"]],
+    ["system/find", "find", ["find . -name x", "find src -type f", "find . -maxdepth 2"]],
+    ["linters/rubocop", "rubocop", ["rubocop", "rubocop -a", "rubocop app/"]],
+    ["linters/ruff", "ruff-check", ["ruff check", "ruff check .", "ruff check src/"]],
+    ["linters/mypy", "mypy", ["mypy", "mypy .", "mypy src/"]],
+    ["ls", "ls-la", ["ls -la", "ls -la src", "ls -la /tmp"]],
+    ["grep", "grep-rg", ["grep -r foo .", "rg foo", "rg -n pattern src/"]],
+    ["git/log", "git-log", ["git log", "git log --stat", "git log -n 20"]],
+    ["git/status", "git-status", ["git status", "git status -v"]],
+    ["git/diff", "git-diff", ["git diff", "git diff HEAD~1", "git diff --cached"]],
+    ["gh/pr", "gh-pr-list", ["gh pr list", "gh pr list --state open"]],
+    ["vcs/jj", "jj", ["jj log", "jj status", "jj diff"]],
+    ["java/gradle", "gradle", ["gradle build", "gradle test", "gradle :app:assemble"]],
+    ["iac/terraform", "terraform", ["terraform plan", "terraform apply"]],
+    ["cargo/test", "cargo-test", ["cargo test", "cargo test --release", "cargo test foo"]],
+    ["cargo/build", "cargo-build", ["cargo build", "cargo build --release"]],
+    ["go/build", "go-build", ["go build ./...", "go build", "go build -v ./..."]],
+    ["containers/ps", "docker-ps", ["docker ps", "docker ps -a"]],
+    ["network/curl", "curl-plain", ["curl http://x", "curl https://api/y"]],
+    ["js-pkg/npm-run", "npm-run", ["npm run build", "npm run test", "npm run lint"]],
+  ];
+
+  // Reducer suffixes that MUST be stripped (tail/cat, all lossless).
+  const STRIP_VARIANTS = ["| tail -40", "| tail -n 5", "| cat"];
+
+  for (const [label, expectedFilter, bases] of FAMILIES) {
+    for (const base of bases) {
+      test(`${label}: \`${base}\` resolves filter through tail/cat`, () => {
+        // Sanity: the bare base resolves to the expected family filter.
+        expect(findFilterForCommand(base)?.name).toBe(expectedFilter);
+
+        for (const suffix of STRIP_VARIANTS) {
+          const piped = `${base} ${suffix}`;
+          // Filter is resolved against the base despite the trailing reducer.
+          expect(findFilterForCommand(piped)?.name).toBe(expectedFilter);
+          // The planner strips the reducer and runs the base raw, recording the rewrite.
+          const plan = planBashFilter(piped);
+          expect(plan.filter?.name).toBe(expectedFilter);
+          expect(plan.effectiveCommand).toBe(base);
+          expect(plan.rewrite).toEqual({ from: piped, to: base });
+        }
+
+        // `head` is never stripped — the command runs untouched (SIGPIPE early-exit guard).
+        const headPiped = `${base} | head -40`;
+        const headPlan = planBashFilter(headPiped);
+        expect(headPlan.effectiveCommand).toBe(headPiped);
+        expect(headPlan.rewrite).toBeNull();
+      });
+    }
+  }
 });

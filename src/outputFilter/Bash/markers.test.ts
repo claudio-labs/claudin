@@ -40,10 +40,13 @@ describe("wrapStdoutWithMarkers", () => {
       applied: ["stripAnsi"],
       shortCircuited: false,
       reductionPct: 50,
+      originalLines: 40,
+      bodyLines: 8,
     };
     const result = wrapStdoutWithMarkers("raw output", plan, pipelineResult);
     expect(result).toContain("<bash-output-filtered");
     expect(result).toContain('reduction="50%"');
+    expect(result).toContain('lines="8/40"');
     expect(result).toContain("</bash-output-filtered>");
   });
 
@@ -61,11 +64,14 @@ describe("wrapStdoutWithMarkers", () => {
       applied: ["stripAnsi"],
       shortCircuited: false,
       reductionPct: 30,
+      originalLines: 20,
+      bodyLines: 5,
     };
     const result = wrapStdoutWithMarkers("raw", plan, pipelineResult);
     expect(result).toContain("<bash-output-filtered");
     expect(result).toContain("actual=");
     expect(result).toContain('reduction="30%"');
+    expect(result).toContain('lines="5/20"');
   });
 
   test("does not double-wrap persisted-output", () => {

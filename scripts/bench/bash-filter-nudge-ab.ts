@@ -29,15 +29,42 @@ const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cl
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '5')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6'
 const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
+const PER_INVOCATION_TIMEOUT_MS = Number(process.env.CLAUDIO_BENCH_TIMEOUT_MS ?? '120000')
 
+// v3 HYBRID — junta TENTACAO (output longo/ruidoso, onde nasce o impulso de pipar pra
+// tail) com FRAMING JUSTO (o usuario pede VEREDITO/RESUMO; truncar seria decisao espuria
+// do modelo, nao pedido). Roda num worktree isolado (CLAUDIO_BENCH_TARGET_CWD) com timeout
+// por invocacao, entao build/test podem rodar de verdade sem mutar o repo vivo nem travar.
+// Dois prompts multi-step de proposito: a 1a chamada Bash mostra o marker lines="x/y",
+// dando a evidencia (a) chance de influenciar a 2a chamada na mesma sessao.
 const PROMPTS: { id: string; text: string }[] = [
   {
-    id: 'build-output-inspect',
-    text: 'Rode `bun run build` neste repositorio e me diga se houve algum warning ou aviso durante a compilacao. Responda sim/nao e cite os warnings se houver.',
+    id: 'build-verdict',
+    text: 'Rode `bun run build` e me diga so se a compilacao terminou limpa, sem erro. Sim ou nao, e se falhou qual foi o erro. Nao preciso do log inteiro.',
   },
   {
-    id: 'test-failure-triage',
-    text: 'Rode `bun test src/utils/log.test.ts` e me resuma o resultado: quantos testes passaram, quantos falharam, e qual o tempo total.',
+    id: 'test-bash-suite',
+    text: 'Rode `bun test src/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?',
+  },
+  {
+    id: 'bigfile-summary',
+    text: 'Rode `cat src/services/api/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.',
+  },
+  {
+    id: 'log-themes',
+    text: 'Rode `git log --stat -50` e me resuma em 3 bullets os temas das mudancas recentes. Nao liste commit por commit.',
+  },
+  {
+    id: 'src-tree-overview',
+    text: 'Rode `ls -R src` e me diga em uma frase como o diretorio src esta organizado. Quero o panorama, nao a arvore inteira.',
+  },
+  {
+    id: 'build-then-test',
+    text: 'Rode `bun run build` e depois `bun test src/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.',
+  },
+  {
+    id: 'diff-biggest-file',
+    text: 'Rode `git diff HEAD~15 HEAD` e me diga qual arquivo teve mais mudancas nesse intervalo. So o nome do arquivo e por que, nao precisa do diff todo.',
   },
 ]
 
@@ -60,11 +87,16 @@ interface RunResult {
   bashCommands: string[]
   bashAtomic: number
   bashCompound: number
+  bashTruncator: number
   resultText: string
 }
 
 function projectDirForCwd(cwd: string): string {
-  return cwd.replace(/[\/]/g, '-')
+  // Must match claudio's real transcript-dir encoding (src/services/vcr.ts): EVERY
+  // non-alphanumeric char becomes '-', not just '/'. The old `/`-only rule silently
+  // produced a wrong path whenever cwd had '_' or '.' (e.g. /tmp/bench_wt -> -tmp-bench_wt,
+  // but the real dir is -tmp-bench-wt), making analyzeSession return Bash=0 for every session.
+  return cwd.replace(/[^a-zA-Z0-9]/g, '-')
 }
 
 /**
@@ -91,6 +123,40 @@ function isCompoundCommand(cmd: string): boolean {
     if (c === '`') return true            // backtick
     if (c === '<' && cmd[i + 1] === '(') return true   // process sub
     if (c === '>' && cmd[i + 1] === '(') return true
+  }
+  return false
+}
+
+/**
+ * KPI focado deste bench: o nudge ataca especificamente pipe para head/tail/cat
+ * usado para encurtar output (o bypass real do output filter). `cat <<EOF`,
+ * `cat > file`, redirecionamentos e `cat arquivo` sozinho nao contam — so o
+ * padrao "<algo> | (head|tail|cat) ..." que existe para truncar o stream.
+ */
+function pipesToTruncator(cmd: string): boolean {
+  // segmenta por pipe nao-quotado (reaproveita a logica de quotes de isCompoundCommand)
+  const segments: string[] = []
+  let cur = ''
+  let inS = false
+  let inD = false
+  let escaped = false
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i]
+    if (escaped) { cur += c; escaped = false; continue }
+    if (c === '\\') { cur += c; escaped = true; continue }
+    if (!inD && c === "'") { inS = !inS; cur += c; continue }
+    if (!inS && c === '"') { inD = !inD; cur += c; continue }
+    if (!inS && !inD && c === '|' && cmd[i + 1] !== '|' && cmd[i - 1] !== '|') {
+      segments.push(cur); cur = ''; continue
+    }
+    cur += c
+  }
+  segments.push(cur)
+  if (segments.length < 2) return false // sem pipe -> nao e o caso que o nudge ataca
+  // basta um segmento DOWNSTREAM (apos o 1o pipe) comecar com head/tail/cat
+  for (let s = 1; s < segments.length; s++) {
+    const head = segments[s].trim().split(/\s+/)[0] ?? ''
+    if (head === 'head' || head === 'tail' || head === 'cat') return true
   }
   return false
 }
@@ -127,6 +193,23 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   return { toolCounts: counts, bashCommands }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// Poll the transcript until the Bash tool_use count is stable across two reads (the file is
+// still being flushed at child 'close'). Caps at ~3s so a missing transcript can't stall.
+async function waitForStableTranscript(sessionId: string, cwd: string): Promise<SessionAnalysis> {
+  let prev = -1
+  let last: SessionAnalysis = { toolCounts: {}, bashCommands: [] }
+  for (let i = 0; i < 15; i++) {
+    last = analyzeSession(sessionId, cwd)
+    const n = last.bashCommands.length
+    if (n === prev && n > 0) return last
+    prev = n
+    await sleep(200)
+  }
+  return last
+}
+
 function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; text: string }, runIdx: number): Promise<RunResult> {
   const variantLabel = variant === 'A' ? 'baseline' : 'feature'
   process.stdout.write(`  [${variant}/${variantLabel}] ${prompt.id} run#${runIdx + 1} ... `)
@@ -139,10 +222,22 @@ function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; te
     })
     let stdoutBuf = ''
     let stderrBuf = ''
+    // Safety timeout: this harness has hung before with no upper bound (see team memory
+    // narration-ab-cant-measure-frente1). Kill any invocation that runs past the cap so a
+    // single stuck child can't wedge the whole run.
+    let timedOut = false
+    const killTimer = setTimeout(() => {
+      timedOut = true
+      child.kill('SIGKILL')
+    }, PER_INVOCATION_TIMEOUT_MS)
     child.stdout.on('data', (chunk) => { stdoutBuf += chunk.toString() })
     child.stderr.on('data', (chunk) => { stderrBuf += chunk.toString() })
-    child.on('close', (code) => {
+    child.on('close', async (code) => {
+      clearTimeout(killTimer)
       const wall = Date.now() - start
+      if (timedOut) {
+        process.stdout.write(`TIMEOUT (>${PER_INVOCATION_TIMEOUT_MS / 1000}s)\n`)
+      }
       let parsed: any = null
       try {
         parsed = JSON.parse(stdoutBuf.trim().split('\n').filter(Boolean).pop() ?? '{}')
@@ -156,12 +251,20 @@ function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; te
       const sessionId: string = parsed?.session_id ?? ''
       const usageRecord = parsed?.modelUsage ?? {}
       const usageEntry: any = Object.values(usageRecord)[0] ?? {}
-      const analysis = sessionId ? analyzeSession(sessionId, TARGET_CWD) : { toolCounts: {}, bashCommands: [] }
+      // RACE FIX: the transcript .jsonl is still being flushed when the child emits 'close'.
+      // Reading immediately undercounts tool_use (we saw Bash=0 across all sessions while the
+      // on-disk transcripts actually contained the commands). Poll until the parsed Bash count
+      // stops growing for two consecutive reads (or we give up after ~3s).
+      const analysis = sessionId
+        ? await waitForStableTranscript(sessionId, TARGET_CWD)
+        : { toolCounts: {}, bashCommands: [] }
       let bashAtomic = 0
       let bashCompound = 0
+      let bashTruncator = 0
       for (const c of analysis.bashCommands) {
         if (isCompoundCommand(c)) bashCompound++
         else bashAtomic++
+        if (pipesToTruncator(c)) bashTruncator++
       }
       if (ok) {
         const bashN = analysis.toolCounts['Bash'] ?? 0
@@ -186,6 +289,7 @@ function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; te
         bashCommands: analysis.bashCommands,
         bashAtomic,
         bashCompound,
+        bashTruncator,
         resultText: typeof parsed?.result === 'string' ? parsed.result : '',
       })
     })
@@ -216,6 +320,7 @@ function summarize(results: RunResult[], variant: 'A' | 'B') {
   }
   const totalBashAtomic = sum((r) => r.bashAtomic)
   const totalBashCompound = sum((r) => r.bashCompound)
+  const totalBashTruncator = sum((r) => r.bashTruncator)
   const totalBash = totalBashAtomic + totalBashCompound
   return {
     n: v.length,
@@ -231,7 +336,9 @@ function summarize(results: RunResult[], variant: 'A' | 'B') {
     totalBash,
     totalBashAtomic,
     totalBashCompound,
+    totalBashTruncator,
     pctCompound: totalBash === 0 ? 0 : (totalBashCompound / totalBash) * 100,
+    pctTruncator: totalBash === 0 ? 0 : (totalBashTruncator / totalBash) * 100,
   }
 }
 
@@ -286,7 +393,7 @@ async function main() {
     md += `| ${(r.durationMs / 1000).toFixed(1)} `
     md += `| ${r.numTurns} `
     md += `| ${formatToolCounts(r.toolCounts)} `
-    md += `| ${r.bashAtomic}/${r.bashCompound} `
+    md += `| ${r.bashAtomic}/${r.bashCompound} (trunc=${r.bashTruncator}) `
     md += `| ${r.sessionId.slice(0, 8)} |\n`
   }
 
@@ -302,30 +409,37 @@ async function main() {
     md += `- Avg cost: $${s.avgCost.toFixed(4)} (total $${s.totalCost.toFixed(4)})\n`
     md += `- Avg turns: ${s.avgTurns.toFixed(1)}\n`
     md += `- Tool call totals: ${formatToolCounts(s.totalToolCounts)}\n`
-    md += `- Bash totals: ${s.totalBash} (atomic=${s.totalBashAtomic}, compound=${s.totalBashCompound}, ${s.pctCompound.toFixed(1)}% composto)\n\n`
+    md += `- Bash totals: ${s.totalBash} (atomic=${s.totalBashAtomic}, compound=${s.totalBashCompound}, ${s.pctCompound.toFixed(1)}% composto)\n`
+    md += `- **Pipe->truncator (head/tail/cat): ${s.totalBashTruncator} (${s.pctTruncator.toFixed(1)}% dos Bash)** [KPI focado do nudge]\n\n`
   }
 
   if (summaryA && summaryB) {
+    // KPI focado: contagem absoluta de pipe->truncator (head/tail/cat). E o
+    // comportamento exato que o nudge ataca; % composto fica como metrica de contexto.
+    const truncA = summaryA.totalBashTruncator
+    const truncB = summaryB.totalBashTruncator
+    const truncDeltaRel = truncA === 0 ? 0 : ((truncB - truncA) / truncA) * 100
     const pctDeltaAbs = summaryB.pctCompound - summaryA.pctCompound
-    const pctDeltaRel = summaryA.pctCompound === 0 ? 0 : ((summaryB.pctCompound - summaryA.pctCompound) / summaryA.pctCompound) * 100
     const costDelta = summaryA.avgCost === 0 ? 0 : ((summaryB.avgCost - summaryA.avgCost) / summaryA.avgCost) * 100
     const tokDelta = summaryA.avgInputTokens === 0 ? 0 : ((summaryB.avgInputTokens - summaryA.avgInputTokens) / summaryA.avgInputTokens) * 100
     md += `### Delta\n\n`
-    md += `- % composto: ${summaryA.pctCompound.toFixed(1)}% -> ${summaryB.pctCompound.toFixed(1)}% (abs ${pctDeltaAbs.toFixed(1)}pp, rel ${pctDeltaRel.toFixed(1)}%)\n`
+    md += `- **Pipe->truncator: ${truncA} -> ${truncB}** (rel ${truncDeltaRel.toFixed(1)}%) [KPI primario]\n`
+    md += `- % composto (contexto): ${summaryA.pctCompound.toFixed(1)}% -> ${summaryB.pctCompound.toFixed(1)}% (abs ${pctDeltaAbs.toFixed(1)}pp)\n`
     md += `- Bash compound: ${summaryA.totalBashCompound} -> ${summaryB.totalBashCompound}\n`
     md += `- Avg input tokens delta: ${tokDelta.toFixed(1)}%\n`
     md += `- Avg cost delta: ${costDelta.toFixed(1)}%\n\n`
 
     md += `### Kill criteria\n\n`
-    md += `- SHIP se B reduz % composto em >=15% rel E avg cost nao piora (<+5%).\n`
-    md += `- KILL se B reduz % composto <15% rel (nudge inerte).\n`
-    md += `- KILL se cost piora >+5% mesmo com menos compostos (nudge causou regressao em outro lugar).\n\n`
+    md += `- KPI = numero de pipes para head/tail/cat (o bypass exato que o nudge ataca).\n`
+    md += `- SHIP se B reduz pipe->truncator em >=30% rel E avg cost nao piora (<+5%).\n`
+    md += `- KILL se reducao <30% rel (nudge inerte) OU se cost piora >+5%.\n`
+    md += `- NOTA: n=5x2 e sinal preliminar. Regra de time: >=3 replicacoes antes de decidir.\n\n`
 
-    const compoundOk = pctDeltaRel <= -15
+    const truncOk = truncDeltaRel <= -30
     const costOk = costDelta <= 5
-    const verdict = compoundOk && costOk ? 'SHIP candidate' : (compoundOk ? 'INVESTIGAR (compoundOK mas cost piorou)' : 'INERT/REVERT')
+    const verdict = truncOk && costOk ? 'SHIP candidate (preliminar)' : (truncOk ? 'INVESTIGAR (KPI OK mas cost piorou)' : 'INERT/REVERT (preliminar)')
     md += `- Veredito: **${verdict}**\n`
-    md += `  - compound delta rel: ${pctDeltaRel.toFixed(1)}% (${compoundOk ? 'OK' : 'fail'})\n`
+    md += `  - pipe->truncator delta rel: ${truncDeltaRel.toFixed(1)}% (${truncOk ? 'OK' : 'fail'})\n`
     md += `  - cost delta: ${costDelta.toFixed(1)}% (${costOk ? 'OK' : 'fail'})\n\n`
   }
 

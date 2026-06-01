@@ -6,6 +6,7 @@ import {
   LEADING_PREFIX_RE,
   matchesAtomicCommand,
   splitTopLevelSegments,
+  splitTrailingReducerPipe,
 } from "./pipeline.js";
 import type { FilterSpec } from "./types.js";
 import { loadUserFilters } from "./userFilters.js";
@@ -47,6 +48,11 @@ function findAtomicFilter(canon: string): FilterSpec | null {
  */
 export function findFilterForCommand(command: string): FilterSpec | null {
   const canon = canonicalizeForMatching(command);
+
+  // `BASE | tail -N` / `BASE | cat` is a manual reducer the filter does better — resolve the
+  // filter against BASE so the trailing pipe doesn't bypass it (see plan / pipeline helper).
+  const reducer = splitTrailingReducerPipe(canon);
+  if (reducer) return findFilterForCommand(reducer.base);
 
   if (hasCompound(canon)) {
     const segments = splitTopLevelSegments(canon);
