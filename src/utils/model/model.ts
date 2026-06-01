@@ -122,10 +122,21 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
       // When a project-level provider override is set, prefer the project-
       // scoped model and skip the global `settings.model` fallback so `/model`
       // choices in another project don't bleed in here.
+      //
+      // When `activeModelForProject` is empty (e.g. the user picked the
+      // "Default (recommended)" option, which persists nothing), DON'T fall
+      // back to the profile's pinned `model` field — that field can hold a
+      // stale value (e.g. an Anthropic profile pinned to `claude-opus-4-7`)
+      // that would resurface and override the subscription default the user
+      // actually expects from "Default". Leaving it undefined lets
+      // `getMainLoopModel` resolve via `getDefaultMainLoopModel`, which is
+      // already provider-aware (returns the profile model for 3P transports
+      // and the subscription default for first-party Anthropic), so the
+      // cross-provider-leak guard still holds.
       const projectModel = normalizeModelSetting(
         getCurrentProjectConfig().activeModelForProject,
       )
-      specifiedModel = projectModel || profileModel || undefined
+      specifiedModel = projectModel || undefined
     } else {
       specifiedModel = profileModel || setting || undefined
     }
