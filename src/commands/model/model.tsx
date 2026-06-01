@@ -246,8 +246,12 @@ function isOpus1mUnavailable(model: string): boolean {
 function isSonnet1mUnavailable(model: string): boolean {
   const m = model.toLowerCase();
   // Warn about Sonnet and Sonnet 4.6, but not Sonnet 4.5 since that had
-  // a different access criteria.
-  return !checkSonnet1mAccess() && (m.includes('sonnet[1m]') || m.includes('sonnet-4-6[1m]'));
+  // a different access criteria. Mirror isOpus1mUnavailable: the Opus 1M merge
+  // means the account already runs 1M (same extra-usage entitlement, and
+  // checkSonnet1mAccess/checkOpus1mAccess are identical), so don't block Sonnet
+  // 1M for merged accounts — otherwise the picker shows a 1M entry that can't
+  // be selected. validateModel still backstops a genuine API rejection.
+  return !checkSonnet1mAccess() && !isOpus1mMergeEnabled() && (m.includes('sonnet[1m]') || m.includes('sonnet-4-6[1m]'));
 }
 function ShowModelAndClose(t0) {
   const {

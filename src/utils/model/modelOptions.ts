@@ -268,25 +268,6 @@ function getMaxOpusOption(fastMode = false): ModelOption {
   }
 }
 
-export function getMaxSonnet46_1MOption(): ModelOption {
-  const is3P = getAPIProvider() !== 'firstParty'
-  const billingInfo = isClaudeAISubscriber() ? ' · Billed as extra usage' : ''
-  return {
-    value: 'sonnet[1m]',
-    label: 'Sonnet (1M context)',
-    description: `Sonnet 4.6 with 1M context${billingInfo}${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
-  }
-}
-
-export function getMaxOpus46_1MOption(fastMode = false): ModelOption {
-  const billingInfo = isClaudeAISubscriber() ? ' · Billed as extra usage' : ''
-  return {
-    value: 'opus[1m]',
-    label: 'Opus (1M context)',
-    description: `Opus 4.8 with 1M context${billingInfo}${getOpus46PricingSuffix(fastMode)}`,
-  }
-}
-
 function getMergedOpus1MOption(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
@@ -297,10 +278,44 @@ function getMergedOpus1MOption(fastMode = false): ModelOption {
   }
 }
 
-const MaxSonnet46Option: ModelOption = {
-  value: 'sonnet',
-  label: 'Sonnet',
-  description: 'Sonnet 4.6 · Best for everyday tasks',
+// Explicit 200k + 1M entries for every current Claude generation, using full
+// model strings (not the 'opus'/'sonnet' aliases) so each entry's context
+// window is unambiguous and selectable per session. The 1M variant is listed
+// when the account can use 1M, otherwise the API rejects it. The Opus 1M merge
+// being enabled means the account already runs 1M by default (the "Default"
+// entry resolves to opus[1m]), so it's a stronger signal than checkOpus1mAccess
+// — which reads isExtraUsageEnabled() and returns a false negative whenever the
+// extra-usage reason hasn't been cached yet, hiding the variants even though 1M
+// works. Fall back to the per-model access check when the merge is off.
+function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
+  const ms = getModelStrings()
+  const billing = isClaudeAISubscriber() ? ' · Billed as extra usage' : ''
+  const opusPrice = getOpus46PricingSuffix(fastMode)
+  const merge1m = isOpus1mMergeEnabled()
+  const opus1m = merge1m || checkOpus1mAccess()
+  const sonnet1m = merge1m || checkSonnet1mAccess()
+  const opts: ModelOption[] = []
+  const addPair = (
+    label: string,
+    base: string,
+    desc: string,
+    can1m: boolean,
+    priceSuffix: string,
+  ) => {
+    opts.push({ value: base, label, description: `${desc}${priceSuffix}` })
+    if (can1m) {
+      opts.push({
+        value: `${base}[1m]`,
+        label: `${label} (1M context)`,
+        description: `${desc} · 1M context${billing}${priceSuffix}`,
+      })
+    }
+  }
+  addPair('Opus 4.8', ms.opus48, 'Opus 4.8 · Most capable for complex work', opus1m, opusPrice)
+  addPair('Opus 4.7', ms.opus47, 'Opus 4.7 · Previous Opus', opus1m, opusPrice)
+  addPair('Opus 4.6', ms.opus46, 'Opus 4.6 · Previous Opus', opus1m, opusPrice)
+  addPair('Sonnet 4.6', ms.sonnet46, 'Sonnet 4.6 · Best for everyday tasks', sonnet1m, '')
+  return opts
 }
 
 const MaxHaiku45Option: ModelOption = {
@@ -450,44 +465,22 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
 
   if (isClaudeAISubscriber()) {
     if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
-      // Max and Team Premium users: Opus is default, show Sonnet as alternative
-      const premiumOptions = [getDefaultOptionForUser(fastMode)]
-      if (!isOpus1mMergeEnabled() && checkOpus1mAccess()) {
-        premiumOptions.push(getMaxOpus46_1MOption(fastMode))
-      }
-
-      premiumOptions.push(MaxSonnet46Option)
-      if (checkSonnet1mAccess()) {
-        premiumOptions.push(getMaxSonnet46_1MOption())
-      }
-
-      // Previous Opus generation (4.7) as legacy / opt-in entry
-      premiumOptions.push(getOpus47Option(fastMode))
-
-      premiumOptions.push(MaxHaiku45Option)
-      return premiumOptions
+      // Max and Team Premium users: Opus is default. List every Claude
+      // generation in both 200k and 1M flavors so the window is selectable.
+      return [
+        getDefaultOptionForUser(fastMode),
+        ...getClaudeDualContextOptions(fastMode),
+        MaxHaiku45Option,
+      ]
     }
 
-    // Pro/Team Standard/Enterprise users: Sonnet is default, show Opus as alternative
-    const standardOptions = [getDefaultOptionForUser(fastMode)]
-    if (checkSonnet1mAccess()) {
-      standardOptions.push(getMaxSonnet46_1MOption())
-    }
-
-    if (isOpus1mMergeEnabled()) {
-      standardOptions.push(getMergedOpus1MOption(fastMode))
-    } else {
-      standardOptions.push(getMaxOpusOption(fastMode))
-      if (checkOpus1mAccess()) {
-        standardOptions.push(getMaxOpus46_1MOption(fastMode))
-      }
-    }
-
-    // Previous Opus generation (4.7) as legacy / opt-in entry
-    standardOptions.push(getOpus47Option(fastMode))
-
-    standardOptions.push(MaxHaiku45Option)
-    return standardOptions
+    // Pro/Team Standard/Enterprise users: Sonnet is default. List every Claude
+    // generation in both 200k and 1M flavors so the window is selectable.
+    return [
+      getDefaultOptionForUser(fastMode),
+      ...getClaudeDualContextOptions(fastMode),
+      MaxHaiku45Option,
+    ]
   }
 
   if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {

@@ -1,0 +1,73 @@
+import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
+
+// Regression: a per-project model selection must round-trip through the saved
+// project config WITHOUT losing the `[1m]` suffix, otherwise a saved 1M pick
+// silently reloads as a 200k window. Drives the real load path
+// (getUserSpecifiedModelSetting → project branch) and the window resolution.
+
+const realState = await import('../../bootstrap/state.js')
+const realProfiles = await import('../providerProfiles.js')
+const realConfig = await import('../config.js')
+const realAllowlist = await import('./modelAllowlist.js')
+
+const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+
+// Load model.ts fresh with the project branch forced: an existing project
+// provider profile + the given activeModelForProject value.
+async function importWithProjectModel(activeModelForProject: string | undefined) {
+  mock.module('../../bootstrap/state.js', () => ({
+    ...realState,
+    getMainLoopModelOverride: () => undefined, // no session/CLI override → read project config
+  }))
+  mock.module('../providerProfiles.js', () => ({
+    ...realProfiles,
+    getProjectActiveProviderProfileId: () => 'provider_test', // truthy → project-scoped branch
+  }))
+  mock.module('../config.js', () => ({
+    ...realConfig,
+    getCurrentProjectConfig: () => ({ activeModelForProject }),
+  }))
+  mock.module('./modelAllowlist.js', () => ({
+    ...realAllowlist,
+    isModelAllowed: () => true,
+  }))
+  const nonce = `${Date.now()}-${Math.random()}`
+  return import(`./model.js?ts=${nonce}`)
+}
+
+beforeEach(() => {
+  delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+})
+
+afterEach(() => {
+  mock.restore()
+  process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m
+})
+
+test('per-project [1m] selection round-trips with its suffix intact', async () => {
+  for (const saved of [
+    'claude-opus-4-8[1m]',
+    'claude-opus-4-7[1m]',
+    'claude-sonnet-4-6[1m]',
+    'claude-opus-4-6', // 200k flavor stays 200k
+  ]) {
+    const { getUserSpecifiedModelSetting } = await importWithProjectModel(saved)
+    expect(getUserSpecifiedModelSetting()).toBe(saved)
+    mock.restore()
+  }
+})
+
+test('surrounding whitespace is trimmed but the [1m] suffix survives', async () => {
+  const { getUserSpecifiedModelSetting } = await importWithProjectModel(
+    '  claude-sonnet-4-6[1m]  ',
+  )
+  expect(getUserSpecifiedModelSetting()).toBe('claude-sonnet-4-6[1m]')
+})
+
+test('a resolved [1m] model maps to a 1M window; the plain flavor stays 200k', async () => {
+  const { getContextWindowForModel } = await import('../context.js')
+  expect(getContextWindowForModel('claude-opus-4-8[1m]')).toBe(1_000_000)
+  expect(getContextWindowForModel('claude-opus-4-7[1m]')).toBe(1_000_000)
+  expect(getContextWindowForModel('claude-sonnet-4-6[1m]')).toBe(1_000_000)
+  expect(getContextWindowForModel('claude-opus-4-8')).toBe(200_000)
+})
