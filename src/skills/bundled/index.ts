@@ -2,9 +2,13 @@ import { feature } from 'bun:bundle'
 import { registerBatchSkill } from './batch.js'
 import { registerCodeReviewSkill } from './code-review.js'
 import { registerDebugSkill } from './debug.js'
+import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
 import { registerKeybindingsSkill } from './keybindings.js'
 import { registerLoopSkill } from './loop.js'
+import { registerRunSkill } from './run.js'
+import { registerSimplifySkill } from './simplify.js'
 import { registerUpdateConfigSkill } from './updateConfig.js'
+import { registerVerifySkill } from './verify.js'
 
 /**
  * Initialize all bundled skills.
@@ -21,6 +25,12 @@ export function initBundledSkills(): void {
   registerDebugSkill()
   registerCodeReviewSkill()
   registerBatchSkill()
+  // Ported from the upstream built-in skills. All provider-agnostic
+  // (pure agent-loop behavior), so they register unconditionally.
+  registerSimplifySkill()
+  registerVerifySkill()
+  registerRunSkill()
+  registerFewerPermissionPromptsSkill()
   if (feature('KAIROS') || feature('KAIROS_DREAM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerDreamSkill } = require('./dream.js')
