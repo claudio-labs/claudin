@@ -21,16 +21,14 @@ startKeychainPrefetch();
 import { feature } from 'bun:bundle';
 import { Command as CommanderCommand, InvalidArgumentError, Option } from '@commander-js/extra-typings';
 import type { Root } from './ink.js';
-import { launchRepl } from './replLauncher.js';
+import { launchRepl, setPreloadedChunks } from './replLauncher.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from './services/mcp/types.js';
 import type { ToolInputJSONSchema } from './Tool.js';
-import { createSyntheticOutputTool, isSyntheticOutputToolEnabled } from './tools/SyntheticOutputTool/SyntheticOutputTool.js';
 import { getTools } from './tools.js';
 import { stopCapturingEarlyInput } from './utils/earlyInput.js';
 import { applyConfigEnvironmentVariables } from './utils/managedEnv.js';
-import { createSystemMessage } from './utils/messages.js';
-import { jsonParse } from './utils/slowOperations.js';
 import { installLifecycleHandlers } from './main/lifecycleHandlers.js';
+import { init as initBootstrap } from './entrypoints/init.js';
 
 // Lazy require to avoid circular dependency: teammate.ts -> AppState.tsx -> ... -> main.tsx
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -47,23 +45,35 @@ const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('./coordinat
 const assistantModule = feature('KAIROS') ? require('./assistant/index.js') as typeof import('./assistant/index.js') : null;
 const kairosGate = feature('KAIROS') ? require('./assistant/gate.js') as typeof import('./assistant/gate.js') : null;
 import { resolve } from 'path';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import type { StatsStore } from './context/stats.js';
 import { renderAndRun } from './interactiveHelpers.js';
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { buildDeepLinkBanner } from './utils/deepLink/banner.js';
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js';
 import type { FpsMetrics } from './utils/fpsTracker.js';
-import { PERMISSION_MODES } from './utils/permissions/PermissionMode.js';
-import { cleanupOrphanedPluginVersionsInBackground } from './utils/plugins/cacheUtils.js';
-import { initializeVersionedPlugins } from './utils/plugins/installedPluginsManager.js';
-import { getGlobExclusionsForPluginCache } from './utils/plugins/orphanedPluginFilter.js';
-import { processSessionStartHooks, processSetupHooks } from './utils/sessionStart.js';
-import { saveMode } from './utils/sessionStorage.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
 import { getCwd } from 'src/utils/cwd.js';
-import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
+
+// Action-handler-only imports: these are needed after commander parse and action
+// dispatch, not during module evaluation. Lazy-loading them defers their
+// dependency chains until the REPL is ready to mount.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const getCreateSyntheticOutputTool = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
+const getIsSyntheticOutputToolEnabled = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
+const getJsonParse = () => require('./utils/slowOperations.js').jsonParse as typeof import('./utils/slowOperations.js').jsonParse
+const getCreateSystemMessage = () => require('./utils/messages.js').createSystemMessage as typeof import('./utils/messages.js').createSystemMessage
+const getBuildDeepLinkBanner = () => require('./utils/deepLink/banner.js').buildDeepLinkBanner as typeof import('./utils/deepLink/banner.js').buildDeepLinkBanner
+const getPermissionModes = () => require('./utils/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('./utils/permissions/PermissionMode.js').PERMISSION_MODES
+const getLogEvent = () => require('src/services/analytics/index.js').logEvent as typeof import('src/services/analytics/index.js').logEvent
+type AnalyticsMetadata = import('src/services/analytics/index.js').AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+const getInitializeVersionedPlugins = () => require('./utils/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('./utils/plugins/installedPluginsManager.js').initializeVersionedPlugins
+const getCleanupOrphanedPluginVersionsInBackground = () => require('./utils/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('./utils/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
+const getGlobExclusionsForPluginCacheFn = () => require('./utils/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('./utils/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
+const getProcessSessionStartHooks = () => require('./utils/sessionStart.js').processSessionStartHooks as typeof import('./utils/sessionStart.js').processSessionStartHooks
+const getProcessSetupHooks = () => require('./utils/sessionStart.js').processSetupHooks as typeof import('./utils/sessionStart.js').processSetupHooks
+const getSaveMode = () => require('./utils/sessionStorage.js').saveMode as typeof import('./utils/sessionStorage.js').saveMode
+const getGracefulShutdownSync = () => require('src/utils/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/utils/gracefulShutdown.js').gracefulShutdownSync
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('./utils/permissions/autoModeState.js') as typeof import('./utils/permissions/autoModeState.js') : null;
@@ -166,8 +176,24 @@ export async function main() {
 
   // Parse and load settings flags early, before init()
   eagerLoadSettings();
+
+  // Start init() early — overlapping with commander parse/setup.
+  // init() is memoized, so the await in preActionHook resolves instantly
+  // if this promise already settled, cutting ~80-150ms off startup latency.
+  const earlyInitPromise = initBootstrap();
+
+  // Preload REPL/App dynamic import chunks in parallel with commander setup.
+  // launchRepl() dynamically imports these; starting the imports early means
+  // the chunks are likely already resolved when launchRepl runs, saving ~30-50ms.
+  const replChunkPromise = import('./screens/REPL.js');
+  const appChunkPromise = import('./components/App.js');
+  setPreloadedChunks(appChunkPromise as Promise<typeof import('./components/App.js')>, replChunkPromise as Promise<typeof import('./screens/REPL.js')>);
+
   profileCheckpoint('main_before_run');
+  // Commander parse + preAction hook runs; the hook awaits init() which
+  // resolves immediately if earlyInitPromise already settled.
   await run();
+  await earlyInitPromise; // Ensure any init() error propagates
   profileCheckpoint('main_after_run');
 }
 // getInputPrompt moved to src/main/helpers.ts (ROADMAP 11g Fase 1)
@@ -214,7 +240,7 @@ async function run(): Promise<CommanderCommand> {
       throw new Error('--task-budget must be a positive integer');
     }
     return tokens;
-  }).hideHelp()).option('--replay-user-messages', 'Re-emit user messages from stdin back on stdout for acknowledgment (only works with --input-format=stream-json and --output-format=stream-json)', () => true).addOption(new Option('--enable-auth-status', 'Enable auth status messages in SDK mode').default(false).hideHelp()).option('--allowedTools, --allowed-tools <tools...>', 'Comma or space-separated list of tool names to allow (e.g. "Bash(git:*) Edit")').option('--tools <tools...>', 'Specify the list of available tools from the built-in set. Use "" to disable all tools, "default" to use all tools, or specify tool names (e.g. "Bash,Edit,Read").').option('--disallowedTools, --disallowed-tools <tools...>', 'Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")').option('--mcp-config <configs...>', 'Load MCP servers from JSON files or strings (space-separated)').addOption(new Option('--permission-prompt-tool <tool>', 'MCP tool to use for permission prompts (only works with --print)').argParser(String).hideHelp()).addOption(new Option('--system-prompt <prompt>', 'System prompt to use for the session').argParser(String)).addOption(new Option('--system-prompt-file <file>', 'Read system prompt from a file').argParser(String).hideHelp()).addOption(new Option('--append-system-prompt <prompt>', 'Append a system prompt to the default system prompt').argParser(String)).addOption(new Option('--append-system-prompt-file <file>', 'Read system prompt from a file and append to the default system prompt').argParser(String).hideHelp()).addOption(new Option('--permission-mode <mode>', 'Permission mode to use for the session').argParser(String).choices(PERMISSION_MODES)).option('-c, --continue', 'Continue the most recent conversation in the current directory', () => true).option('-r, --resume [value]', 'Resume a conversation by session ID, or open interactive picker with optional search term', value => value || true).option('--fork-session', 'When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)', () => true).addOption(new Option('--prefill <text>', 'Pre-fill the prompt input with text without submitting it').hideHelp()).addOption(new Option('--deep-link-origin', 'Signal that this session was launched from a deep link').hideHelp()).addOption(new Option('--deep-link-repo <slug>', 'Repo slug the deep link ?repo= parameter resolved to the current cwd').hideHelp()).addOption(new Option('--deep-link-last-fetch <ms>', 'FETCH_HEAD mtime in epoch ms, precomputed by the deep link trampoline').argParser(v => {
+  }).hideHelp()).option('--replay-user-messages', 'Re-emit user messages from stdin back on stdout for acknowledgment (only works with --input-format=stream-json and --output-format=stream-json)', () => true).addOption(new Option('--enable-auth-status', 'Enable auth status messages in SDK mode').default(false).hideHelp()).option('--allowedTools, --allowed-tools <tools...>', 'Comma or space-separated list of tool names to allow (e.g. "Bash(git:*) Edit")').option('--tools <tools...>', 'Specify the list of available tools from the built-in set. Use "" to disable all tools, "default" to use all tools, or specify tool names (e.g. "Bash,Edit,Read").').option('--disallowedTools, --disallowed-tools <tools...>', 'Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")').option('--mcp-config <configs...>', 'Load MCP servers from JSON files or strings (space-separated)').addOption(new Option('--permission-prompt-tool <tool>', 'MCP tool to use for permission prompts (only works with --print)').argParser(String).hideHelp()).addOption(new Option('--system-prompt <prompt>', 'System prompt to use for the session').argParser(String)).addOption(new Option('--system-prompt-file <file>', 'Read system prompt from a file').argParser(String).hideHelp()).addOption(new Option('--append-system-prompt <prompt>', 'Append a system prompt to the default system prompt').argParser(String)).addOption(new Option('--append-system-prompt-file <file>', 'Read system prompt from a file and append to the default system prompt').argParser(String).hideHelp()).addOption(new Option('--permission-mode <mode>', 'Permission mode to use for the session').argParser(String).choices(getPermissionModes())).option('-c, --continue', 'Continue the most recent conversation in the current directory', () => true).option('-r, --resume [value]', 'Resume a conversation by session ID, or open interactive picker with optional search term', value => value || true).option('--fork-session', 'When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)', () => true).addOption(new Option('--prefill <text>', 'Pre-fill the prompt input with text without submitting it').hideHelp()).addOption(new Option('--deep-link-origin', 'Signal that this session was launched from a deep link').hideHelp()).addOption(new Option('--deep-link-repo <slug>', 'Repo slug the deep link ?repo= parameter resolved to the current cwd').hideHelp()).addOption(new Option('--deep-link-last-fetch <ms>', 'FETCH_HEAD mtime in epoch ms, precomputed by the deep link trampoline').argParser(v => {
     const n = Number(v);
     return Number.isFinite(n) ? n : undefined;
   }).hideHelp()).option('--from-pr [value]', 'Resume a session linked to a PR by PR number/URL, or open interactive picker with optional search term', value => value || true).option('--no-session-persistence', 'Disable session persistence - sessions will not be saved to disk and cannot be resumed (only works with --print)').addOption(new Option('--resume-session-at <message id>', 'When resuming, only messages up to and including the assistant message with <message.id> (use with --resume in print mode)').argParser(String).hideHelp()).addOption(new Option('--rewind-files <user-message-id>', 'Restore files to state at the specified user message and exit (requires --resume)').hideHelp())
@@ -341,25 +367,24 @@ async function run(): Promise<CommanderCommand> {
     }
     profileCheckpoint('action_tools_loaded');
     let jsonSchema: ToolInputJSONSchema | undefined;
-    if (isSyntheticOutputToolEnabled({
+    if (getIsSyntheticOutputToolEnabled()({
       isNonInteractiveSession
     }) && options.jsonSchema) {
-      jsonSchema = jsonParse(options.jsonSchema) as ToolInputJSONSchema;
+      jsonSchema = getJsonParse()(options.jsonSchema) as ToolInputJSONSchema;
     }
     if (jsonSchema) {
-      const syntheticOutputResult = createSyntheticOutputTool(jsonSchema);
+      const syntheticOutputResult = getCreateSyntheticOutputTool()(jsonSchema);
       if ('tool' in syntheticOutputResult) {
         // Add SyntheticOutputTool to the tools array AFTER getTools() filtering.
         // This tool is excluded from normal filtering (see tools.ts) because it's
         // an implementation detail for structured output, not a user-controlled tool.
         tools = [...tools, syntheticOutputResult.tool];
-        logEvent('tengu_structured_output_enabled', {
-          schema_property_count: Object.keys(jsonSchema.properties as Record<string, unknown> || {}).length as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          has_required_fields: Boolean(jsonSchema.required) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+        getLogEvent()('tengu_structured_output_enabled', {
+          schema_property_count: Object.keys(jsonSchema.properties as Record<string, unknown> || {}).length as AnalyticsMetadata,
         });
       } else {
-        logEvent('tengu_structured_output_failure', {
-          error: 'Invalid JSON schema' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+        getLogEvent()('tengu_structured_output_failure', {
+          error: 'Invalid JSON schema' as AnalyticsMetadata
         });
       }
     }
@@ -531,28 +556,28 @@ async function run(): Promise<CommanderCommand> {
       // skip — no-op
     } else if (isNonInteractiveSession) {
       // In headless mode, await to ensure plugin sync completes before CLI exits
-      await initializeVersionedPlugins();
+      await getInitializeVersionedPlugins()();
       profileCheckpoint('action_after_plugins_init');
-      void cleanupOrphanedPluginVersionsInBackground().then(() => getGlobExclusionsForPluginCache());
+      void getCleanupOrphanedPluginVersionsInBackground()().then(() => getGlobExclusionsForPluginCacheFn()());
     } else {
       // In interactive mode, fire-and-forget — this is purely bookkeeping
       // that doesn't affect runtime behavior of the current session
-      void initializeVersionedPlugins().then(async () => {
+      void getInitializeVersionedPlugins()().then(async () => {
         profileCheckpoint('action_after_plugins_init');
-        await cleanupOrphanedPluginVersionsInBackground();
-        void getGlobExclusionsForPluginCache();
+        await getCleanupOrphanedPluginVersionsInBackground()();
+        void getGlobExclusionsForPluginCacheFn()();
       });
     }
     const setupTrigger = initOnly || init ? 'init' : maintenance ? 'maintenance' : null;
     if (initOnly) {
       applyConfigEnvironmentVariables();
-      await processSetupHooks('init', {
+      await getProcessSetupHooks()('init', {
         forceSyncExecution: true
       });
-      await processSessionStartHooks('startup', {
+      await getProcessSessionStartHooks()('startup', {
         forceSyncExecution: true
       });
-      gracefulShutdownSync(0);
+      getGracefulShutdownSync()(0);
       return;
     }
 
@@ -679,7 +704,7 @@ async function run(): Promise<CommanderCommand> {
       maybeActivateBrief(options);
       // Persist the current mode for fresh sessions so future resumes know what mode was used
       if (feature('COORDINATOR_MODE')) {
-        saveMode(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
+        getSaveMode()(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
       }
 
       // If launched via a deep link, show a provenance banner so the user
@@ -688,21 +713,21 @@ async function run(): Promise<CommanderCommand> {
       // confirmation, so this is the only signal the user gets that the
       // prompt — and the working directory / CLAUDE.md it implies — came
       // from an external source rather than something they typed.
-      let deepLinkBanner: ReturnType<typeof createSystemMessage> | null = null;
+      let deepLinkBanner: ReturnType<ReturnType<typeof getCreateSystemMessage>> | null = null;
       if (feature('LODESTONE')) {
         if (options.deepLinkOrigin) {
-          logEvent('tengu_deep_link_opened', {
+          getLogEvent()('tengu_deep_link_opened', {
             has_prefill: Boolean(options.prefill),
             has_repo: Boolean(options.deepLinkRepo)
           });
-          deepLinkBanner = createSystemMessage(buildDeepLinkBanner({
+          deepLinkBanner = getCreateSystemMessage()(getBuildDeepLinkBanner()({
             cwd: getCwd(),
             prefillLength: options.prefill?.length,
             repo: options.deepLinkRepo,
             lastFetch: options.deepLinkLastFetch !== undefined ? new Date(options.deepLinkLastFetch) : undefined
           }), 'warning');
         } else if (options.prefill) {
-          deepLinkBanner = createSystemMessage('Launched with a pre-filled prompt — review it before pressing Enter.', 'warning');
+          deepLinkBanner = getCreateSystemMessage()('Launched with a pre-filled prompt — review it before pressing Enter.', 'warning');
         }
       }
       const initialMessages = deepLinkBanner ? [deepLinkBanner, ...hookMessages] : hookMessages.length > 0 ? hookMessages : undefined;

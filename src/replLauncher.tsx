@@ -9,13 +9,33 @@ type AppWrapperProps = {
   stats?: StatsStore;
   initialState: AppState;
 };
+
+/**
+ * Pre-resolved chunk promises — set by main.tsx during startup to overlap
+ * dynamic import resolution with other async work. When set, launchRepl
+ * reuses them instead of issuing fresh import() calls, saving ~30-50ms.
+ */
+type AppModule = typeof import('./components/App.js');
+type REPLModule = typeof import('./screens/REPL.js');
+
+let preloadedApp: Promise<AppModule> | undefined;
+let preloadedREPL: Promise<REPLModule> | undefined;
+
+export function setPreloadedChunks(
+  app: Promise<AppModule>,
+  repl: Promise<REPLModule>,
+): void {
+  preloadedApp = app;
+  preloadedREPL = repl;
+}
+
 export async function launchRepl(root: Root, appProps: AppWrapperProps, replProps: REPLProps, renderAndRun: (root: Root, element: React.ReactNode) => Promise<void>): Promise<void> {
-  const {
-    App
-  } = await import('./components/App.js');
-  const {
-    REPL
-  } = await import('./screens/REPL.js');
+  const appImport = preloadedApp ?? import('./components/App.js');
+  const replImport = preloadedREPL ?? import('./screens/REPL.js');
+  // Clear refs so a second call (unlikely) falls back to fresh imports
+  preloadedApp = undefined;
+  preloadedREPL = undefined;
+  const [{ App }, { REPL }] = await Promise.all([appImport, replImport]);
   await renderAndRun(root, <App {...appProps}>
       <REPL {...replProps} />
     </App>);
