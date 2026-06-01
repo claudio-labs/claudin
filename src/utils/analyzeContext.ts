@@ -169,7 +169,7 @@ interface SlashCommandInfo {
 /** Individual skill detail for context display */
 interface SkillFrontmatter {
   name: string
-  source: SettingSource | 'plugin'
+  source: SettingSource | 'plugin' | 'bundled'
   tokens: number
 }
 
@@ -569,7 +569,8 @@ async function countSkillTokens(
       name: getCommandName(skill),
       source: (skill.type === 'prompt' ? skill.source : 'plugin') as
         | SettingSource
-        | 'plugin',
+        | 'plugin'
+        | 'bundled',
       tokens: estimateSkillFrontmatterTokens(skill),
     }))
 

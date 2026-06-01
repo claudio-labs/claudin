@@ -44,7 +44,7 @@ export function getSettingSourceName(source: SettingSource): string {
  * @returns Short capitalized display name like 'User', 'Project', 'Plugin'
  */
 export function getSourceDisplayName(
-  source: SettingSource | 'plugin' | 'built-in',
+  source: SettingSource | 'plugin' | 'built-in' | 'bundled',
 ): string {
   switch (source) {
     case 'userSettings':
@@ -59,6 +59,11 @@ export function getSourceDisplayName(
       return 'Managed'
     case 'plugin':
       return 'Plugin'
+    // Bundled CLI skills and built-in plugin skills both carry source 'bundled'
+    // (see skillDefinitionToCommand / bundledSkills.ts). They display under the
+    // 'Built-in' group; without this case they'd fall through to undefined and
+    // get silently dropped from the /context skills listing.
+    case 'bundled':
     case 'built-in':
       return 'Built-in'
   }
