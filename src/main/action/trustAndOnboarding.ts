@@ -177,13 +177,13 @@ export async function runTrustAndOnboarding(
     logForDebugging(`[provider-wizard] auto-wizard failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // Ctrl+L-style clear after the first-run wizard finishes — cli.tsx
-  // skipped clearing because there was no active provider yet. The banner
-  // itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so it
+  // Ctrl+L-style clear after the first-run wizard finishes. Disabled by
+  // default (matches cli.tsx); opt in with CLAUDIO_CLEAR_ON_START=1. The
+  // banner itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so it
   // scrolls naturally into scrollback as content grows.
   try {
     const { tryGetActiveProvider } = await import('../../services/api/activeProvider.js');
-    if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIO_NO_CLEAR_ON_START !== '1') {
+    if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIO_CLEAR_ON_START === '1') {
       const { clearTerminal } = await import('../../ink/clearTerminal.js');
       process.stdout.write(clearTerminal);
     }

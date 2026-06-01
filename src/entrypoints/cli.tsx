@@ -166,19 +166,18 @@ async function main(): Promise<void> {
 
   await validateProviderEnvForStartupOrExit()
 
-  // Ctrl+L-style clear before mounting the REPL — gives the user a clean
-  // viewport on every launch. Scrollback is preserved (no \x1b[3J).
-  // The banner itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so
-  // it scrolls naturally into scrollback when content grows, instead of
-  // being wiped by Ink's fullReset on the first keystroke. Opt out with
-  // CLAUDIO_NO_CLEAR_ON_START=1.
+  // Ctrl+L-style clear before mounting the REPL. Disabled by default so the
+  // launch preserves the user's existing terminal contents; opt in with
+  // CLAUDIO_CLEAR_ON_START=1. Scrollback is preserved either way (no \x1b[3J).
+  // The banner is rendered by Ink (<StartupBanner /> in REPL.tsx) so it scrolls
+  // naturally into scrollback as content grows.
   const { tryGetActiveProvider } = await import(
     '../services/api/activeProvider.js'
   )
   if (
     tryGetActiveProvider() &&
     process.stdout.isTTY &&
-    process.env.CLAUDIO_NO_CLEAR_ON_START !== '1'
+    process.env.CLAUDIO_CLEAR_ON_START === '1'
   ) {
     const { clearTerminal } = await import('../ink/clearTerminal.js')
     process.stdout.write(clearTerminal)
