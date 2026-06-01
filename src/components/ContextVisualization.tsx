@@ -12,6 +12,16 @@ import { ContextSuggestions } from './ContextSuggestions.js';
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer';
 
 /**
+ * Tree connector for a list item: '├' for every item except the last, which
+ * gets '└'. Relies on Array.prototype.map passing (item, index, array) to the
+ * render callbacks, so a connected spine is drawn without threading the list
+ * length through each renderer.
+ */
+function branchPrefix(index: number, arr: readonly unknown[]): string {
+  return index === arr.length - 1 ? '└' : '├';
+}
+
+/**
  * One-liner for the legend header showing what context-collapse has done.
  * Returns null when nothing's summarized/staged so we don't add visual
  * noise in the common case. This is the one place a user can see that
@@ -75,7 +85,7 @@ const SOURCE_DISPLAY_ORDER = ['Project', 'User', 'Managed', 'Plugin', 'Built-in'
 
 /** Group items by source type for display, sorted by tokens descending within each group */
 function groupBySource<T extends {
-  source: SettingSource | 'plugin' | 'built-in';
+  source: SettingSource | 'plugin' | 'built-in' | 'bundled';
   tokens: number;
 }>(items: T[]): Map<string, T[]> {
   const groups = new Map<string, T[]>();
@@ -391,34 +401,34 @@ export function ContextVisualization(t0) {
   }
   return t18;
 }
-function _temp27(attachment, i_10) {
-  return <Box key={i_10} marginLeft={1}><Text>└ {attachment.name}: </Text><Text dimColor={true}>{formatTokens(attachment.tokens)} tokens</Text></Box>;
+function _temp27(attachment, i_10, arr) {
+  return <Box key={i_10} marginLeft={1}><Text>{branchPrefix(i_10, arr)} {attachment.name}: </Text><Text dimColor={true}>{formatTokens(attachment.tokens)} tokens</Text></Box>;
 }
-function _temp26(tool_5, i_9) {
-  return <Box key={i_9} marginLeft={1}><Text>└ {tool_5.name}: </Text><Text dimColor={true}>calls {formatTokens(tool_5.callTokens)}, results{" "}{formatTokens(tool_5.resultTokens)}</Text></Box>;
+function _temp26(tool_5, i_9, arr) {
+  return <Box key={i_9} marginLeft={1}><Text>{branchPrefix(i_9, arr)} {tool_5.name}: </Text><Text dimColor={true}>calls {formatTokens(tool_5.callTokens)}, results{" "}{formatTokens(tool_5.resultTokens)}</Text></Box>;
 }
 function _temp25(t0) {
   const [sourceDisplay_0, sourceSkills] = t0;
   return <Box key={sourceDisplay_0} flexDirection="column" marginTop={1}><Text dimColor={true}>{sourceDisplay_0}</Text>{sourceSkills.map(_temp24)}</Box>;
 }
-function _temp24(skill, i_8) {
-  return <Box key={i_8}><Text>└ {skill.name}: </Text><Text dimColor={true}>{formatTokens(skill.tokens)} tokens</Text></Box>;
+function _temp24(skill, i_8, arr) {
+  return <Box key={i_8}><Text>{branchPrefix(i_8, arr)} {skill.name}: </Text><Text dimColor={true}>{formatTokens(skill.tokens)} tokens</Text></Box>;
 }
-function _temp23(file, i_7) {
-  return <Box key={i_7}><Text>└ {getDisplayPath(file.path)}: </Text><Text dimColor={true}>{formatTokens(file.tokens)} tokens</Text></Box>;
+function _temp23(file, i_7, arr) {
+  return <Box key={i_7}><Text>{branchPrefix(i_7, arr)} {getDisplayPath(file.path)}: </Text><Text dimColor={true}>{formatTokens(file.tokens)} tokens</Text></Box>;
 }
 function _temp22(t0) {
   const [sourceDisplay, sourceAgents] = t0;
   return <Box key={sourceDisplay} flexDirection="column" marginTop={1}><Text dimColor={true}>{sourceDisplay}</Text>{sourceAgents.map(_temp21)}</Box>;
 }
-function _temp21(agent, i_6) {
-  return <Box key={i_6}><Text>└ {agent.agentType}: </Text><Text dimColor={true}>{formatTokens(agent.tokens)} tokens</Text></Box>;
+function _temp21(agent, i_6, arr) {
+  return <Box key={i_6}><Text>{branchPrefix(i_6, arr)} {agent.agentType}: </Text><Text dimColor={true}>{formatTokens(agent.tokens)} tokens</Text></Box>;
 }
-function _temp20(section, i_5) {
-  return <Box key={i_5}><Text>└ {section.name}: </Text><Text dimColor={true}>{formatTokens(section.tokens)} tokens</Text></Box>;
+function _temp20(section, i_5, arr) {
+  return <Box key={i_5}><Text>{branchPrefix(i_5, arr)} {section.name}: </Text><Text dimColor={true}>{formatTokens(section.tokens)} tokens</Text></Box>;
 }
-function _temp19(tool_4, i_4) {
-  return <Box key={i_4}><Text dimColor={true}>└ {tool_4.name}</Text></Box>;
+function _temp19(tool_4, i_4, arr) {
+  return <Box key={i_4}><Text dimColor={true}>{branchPrefix(i_4, arr)} {tool_4.name}</Text></Box>;
 }
 function _temp18(t_4) {
   return !t_4.isLoaded;
@@ -426,20 +436,20 @@ function _temp18(t_4) {
 function _temp17(t_5) {
   return !t_5.isLoaded;
 }
-function _temp16(tool_3, i_3) {
-  return <Box key={`def-${i_3}`}><Text>└ {tool_3.name}: </Text><Text dimColor={true}>{formatTokens(tool_3.tokens)} tokens</Text></Box>;
+function _temp16(tool_3, i_3, arr) {
+  return <Box key={`def-${i_3}`}><Text>{branchPrefix(i_3, arr)} {tool_3.name}: </Text><Text dimColor={true}>{formatTokens(tool_3.tokens)} tokens</Text></Box>;
 }
 function _temp15(t_3) {
   return t_3.isLoaded;
 }
-function _temp14(tool_2, i_2) {
-  return <Box key={`sys-${i_2}`}><Text>└ {tool_2.name}: </Text><Text dimColor={true}>{formatTokens(tool_2.tokens)} tokens</Text></Box>;
+function _temp14(tool_2, i_2, arr) {
+  return <Box key={`sys-${i_2}`}><Text>{branchPrefix(i_2, arr)} {tool_2.name}: </Text><Text dimColor={true}>{formatTokens(tool_2.tokens)} tokens</Text></Box>;
 }
-function _temp13(tool_1, i_1) {
-  return <Box key={i_1}><Text>└ {tool_1.name}: </Text><Text dimColor={true}>{formatTokens(tool_1.tokens)} tokens</Text></Box>;
+function _temp13(tool_1, i_1, arr) {
+  return <Box key={i_1}><Text>{branchPrefix(i_1, arr)} {tool_1.name}: </Text><Text dimColor={true}>{formatTokens(tool_1.tokens)} tokens</Text></Box>;
 }
-function _temp12(tool_0, i_0) {
-  return <Box key={i_0}><Text dimColor={true}>└ {tool_0.name}</Text></Box>;
+function _temp12(tool_0, i_0, arr) {
+  return <Box key={i_0}><Text dimColor={true}>{branchPrefix(i_0, arr)} {tool_0.name}</Text></Box>;
 }
 function _temp11(t_1) {
   return !t_1.isLoaded;
@@ -447,8 +457,8 @@ function _temp11(t_1) {
 function _temp10(t_2) {
   return !t_2.isLoaded;
 }
-function _temp1(tool, i) {
-  return <Box key={i}><Text>└ {tool.name}: </Text><Text dimColor={true}>{formatTokens(tool.tokens)} tokens</Text></Box>;
+function _temp1(tool, i, arr) {
+  return <Box key={i}><Text>{branchPrefix(i, arr)} {tool.name}: </Text><Text dimColor={true}>{formatTokens(tool.tokens)} tokens</Text></Box>;
 }
 function _temp0(t) {
   return t.isLoaded;
