@@ -13,6 +13,9 @@ export const GITHUB_MODELS_STORAGE_KEY = 'githubModels' as const
 export const GITHUB_MODELS_HYDRATED_ENV_MARKER =
   'CLAUDE_CODE_GITHUB_TOKEN_HYDRATED' as const
 
+// Single-flight dedup: concurrent callers share the same in-flight refresh
+let inFlightGithubRefresh: Promise<boolean> | null = null
+
 export type GithubModelsCredentialBlob = {
   accessToken: string
   oauthAccessToken?: string
@@ -103,54 +106,66 @@ export async function refreshGithubModelsTokenIfNeeded(): Promise<boolean> {
     return false
   }
 
-  try {
-    const secureStorage = getSecureStorage()
-    const data = secureStorage.read() as
-      | ({ githubModels?: GithubModelsCredentialBlob } & Record<string, unknown>)
-      | null
-    const blob = data?.githubModels
-    const accessToken = blob?.accessToken?.trim() || ''
-    const oauthToken = blob?.oauthAccessToken?.trim() || ''
-
-    if (!accessToken && !oauthToken) {
-      return false
-    }
-
-    const status = accessToken ? checkGithubTokenStatus(accessToken) : 'expired'
-    if (status === 'valid') {
-      return false
-    }
-
-    if (!oauthToken) {
-      return false
-    }
-
-    const refreshed = await exchangeForCopilotToken(oauthToken)
-    const saved = saveGithubModelsToken(refreshed.token, oauthToken)
-    if (!saved.success) {
-      return false
-    }
-
-    // Update the active Copilot profile's extras.githubToken so the API shim
-    // picks up the fresh token on the next request without requiring a reconnect.
-    const copilotProfile = getProviderProfiles().find(
-      p => p.provider === 'openai' && p.extras?.githubToken !== undefined,
-    )
-    if (copilotProfile) {
-      updateProviderProfile(copilotProfile.id, {
-        provider: 'openai',
-        name: copilotProfile.name,
-        baseUrl: copilotProfile.baseUrl,
-        model: copilotProfile.model,
-        apiKey: refreshed.token,
-        extras: { ...copilotProfile.extras, githubToken: refreshed.token },
-      })
-    }
-
-    return true
-  } catch {
-    return false
+  // Single-flight dedup: if a refresh is already in flight, return the
+  // same promise so concurrent callers don't fire duplicate HTTP requests.
+  if (inFlightGithubRefresh) {
+    return inFlightGithubRefresh
   }
+
+  inFlightGithubRefresh = (async () => {
+    try {
+      const secureStorage = getSecureStorage()
+      const data = secureStorage.read() as
+        | ({ githubModels?: GithubModelsCredentialBlob } & Record<string, unknown>)
+        | null
+      const blob = data?.githubModels
+      const accessToken = blob?.accessToken?.trim() || ''
+      const oauthToken = blob?.oauthAccessToken?.trim() || ''
+
+      if (!accessToken && !oauthToken) {
+        return false
+      }
+
+      const status = accessToken ? checkGithubTokenStatus(accessToken) : 'expired'
+      if (status === 'valid') {
+        return false
+      }
+
+      if (!oauthToken) {
+        return false
+      }
+
+      const refreshed = await exchangeForCopilotToken(oauthToken)
+      const saved = saveGithubModelsToken(refreshed.token, oauthToken)
+      if (!saved.success) {
+        return false
+      }
+
+      // Update the active Copilot profile's extras.githubToken so the API shim
+      // picks up the fresh token on the next request without requiring a reconnect.
+      const copilotProfile = getProviderProfiles().find(
+        p => p.provider === 'openai' && p.extras?.githubToken !== undefined,
+      )
+      if (copilotProfile) {
+        updateProviderProfile(copilotProfile.id, {
+          provider: 'openai',
+          name: copilotProfile.name,
+          baseUrl: copilotProfile.baseUrl,
+          model: copilotProfile.model,
+          apiKey: refreshed.token,
+          extras: { ...copilotProfile.extras, githubToken: refreshed.token },
+        })
+      }
+
+      return true
+    } catch {
+      return false
+    } finally {
+      inFlightGithubRefresh = null
+    }
+  })()
+
+  return inFlightGithubRefresh
 }
 
 export function saveGithubModelsToken(
