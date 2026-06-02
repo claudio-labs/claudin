@@ -7,6 +7,7 @@ import { EXPLORE_AGENT } from './built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from './built-in/planAgent.js'
 import { WEB_RESEARCHER_AGENT } from './built-in/webResearcherAgent.js'
+import { WEB_RESEARCHER_MANAGER_AGENT } from './built-in/webResearcherManagerAgent.js'
 import type { AgentDefinition } from './loadAgentsDir.js'
 
 export function areExplorePlanAgentsEnabled(): boolean {
@@ -50,6 +51,11 @@ export function getBuiltInAgents(): AgentDefinition[] {
   // Multi-page web research subagent — isolated context so the parent does not
   // accumulate raw HTML. See docs/tech/web-researcher/README.md.
   agents.push(WEB_RESEARCHER_AGENT)
+
+  // Deep-research orchestrator — fans out WebResearcher workers across angles,
+  // verifies claims, and synthesizes a cited report. Sync built-in agent that
+  // spawns WebResearcher sub-agents (see resolveAgentTools orchestrator path).
+  agents.push(WEB_RESEARCHER_MANAGER_AGENT)
 
   // Include Code Guide agent for non-SDK entrypoints
   const isNonSdkEntrypoint =

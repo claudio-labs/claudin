@@ -193,14 +193,30 @@ export function resolveAgentTools(
         // Parse comma-separated agent types: "worker, researcher" → ["worker", "researcher"]
         allowedAgentTypes = ruleContent.split(',').map(s => s.trim())
       }
-      // For sub-agents, Agent is excluded by filterToolsForAgent — mark the spec
-      // valid for allowedAgentTypes tracking but skip tool resolution.
-      if (!isMainThread) {
+      // For sub-agents we normally only track the Agent spec for allowedAgentTypes
+      // and skip resolving the tool — historically via the unconditional
+      // `continue` below, which is what kept sub-agents from spawning (NOT the
+      // filter: for a *sync* sub-agent filterToolsForAgent does not strip Agent,
+      // since the async branch is skipped and AGENT_TOOL_NAME ∉
+      // ALL_AGENT_DISALLOWED_TOOLS). Exception: a sync *built-in* orchestrator
+      // (e.g. WebResearcherManager) — Agent survived filtering (in
+      // availableToolMap) AND source === 'built-in' — falls through to resolve
+      // the tool so it can fan out to its allowedAgentTypes workers.
+      //   - async sub-agents: filterToolsForAgent strips Agent → not in
+      //     availableToolMap → stay blocked.
+      //   - custom/plugin sync agents: Agent survives filtering, so the
+      //     `source === 'built-in'` half of the gate is what blocks them.
+      // NOTE: this carve-out depends on AGENT_TOOL_NAME NOT being in
+      // ALL_AGENT_DISALLOWED_TOOLS — add it there and this path goes silently
+      // dead. agentToolUtils.test.ts pins the allowed/blocked matrix.
+      const isSyncBuiltInOrchestrator =
+        source === 'built-in' && availableToolMap.has(toolName)
+      if (!isMainThread && !isSyncBuiltInOrchestrator) {
         validTools.push(toolSpec)
         continue
       }
-      // For main thread, filtering was skipped so Agent is in availableToolMap —
-      // fall through to normal resolution below.
+      // Main thread (filtering skipped) or sync built-in orchestrator (Agent
+      // survived filtering) — fall through to normal resolution below.
     }
 
     const tool = availableToolMap.get(toolName)
@@ -222,6 +238,25 @@ export function resolveAgentTools(
     resolvedTools: resolved,
     allowedAgentTypes,
   }
+}
+
+/**
+ * Scope a spawned child's agentDefinitions to the spawn allowlist it declared
+ * via `Agent(types)` in its own tools. When `declaredAllowedAgentTypes` is set,
+ * the child may only spawn those agent types (enforced at AgentTool.call via
+ * agentDefinitions.allowedAgentTypes); the rest of the parent's agentDefinitions
+ * — notably `activeAgents` — is preserved. When undefined, the parent's scope is
+ * inherited unchanged (no restriction added). This is the load-bearing recursion
+ * cap for orchestrator agents like WebResearcherManager: drop it and the
+ * orchestrator can spawn ANY agent (incl. itself). Extracted + exported so the
+ * threading is unit-testable without the full runAgent machinery.
+ */
+export function scopeChildAgentDefinitions<
+  T extends { allowedAgentTypes?: string[] },
+>(parentAgentDefinitions: T, declaredAllowedAgentTypes: string[] | undefined): T {
+  return declaredAllowedAgentTypes
+    ? { ...parentAgentDefinitions, allowedAgentTypes: declaredAllowedAgentTypes }
+    : parentAgentDefinitions
 }
 
 export const agentToolResultSchema = lazySchema(() =>

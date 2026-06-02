@@ -85,7 +85,10 @@ import {
 } from '../../utils/telemetry/perfettoTracing.js'
 import type { ContentReplacementState } from '../../utils/toolResultStorage.js'
 import { createAgentId } from '../../utils/uuid.js'
-import { resolveAgentTools } from './agentToolUtils.js'
+import {
+  resolveAgentTools,
+  scopeChildAgentDefinitions,
+} from './agentToolUtils.js'
 import { type AgentDefinition, isBuiltInAgent } from './loadAgentsDir.js'
 
 /**
@@ -545,9 +548,15 @@ export async function* runAgent({
     }
   }
 
-  const resolvedTools = useExactTools
-    ? availableTools
-    : resolveAgentTools(agentDefinition, availableTools, isAsync).resolvedTools
+  // declaredAllowedAgentTypes: when this agent declares `Agent(TypeA, TypeB)` in
+  // its tools, restrict which agent types IT may spawn. Threaded into the child's
+  // agentDefinitions below so AgentTool.call() enforces it (without this, the
+  // parsed restriction is discarded and the agent can spawn ANY type — incl.
+  // itself, i.e. unbounded recursion). Fork children inherit the parent's scope.
+  const { resolvedTools, allowedAgentTypes: declaredAllowedAgentTypes } =
+    useExactTools
+      ? { resolvedTools: availableTools, allowedAgentTypes: undefined }
+      : resolveAgentTools(agentDefinition, availableTools, isAsync)
 
   const additionalWorkingDirectories = Array.from(
     appState.toolPermissionContext.additionalWorkingDirectories.keys(),
@@ -732,7 +741,14 @@ export async function* runAgent({
       : { type: 'disabled' as const },
     mcpClients: mergedMcpClients,
     mcpResources: toolUseContext.options.mcpResources,
-    agentDefinitions: toolUseContext.options.agentDefinitions,
+    // When the spawned agent declared a spawn allowlist via `Agent(types)`,
+    // scope ITS agentDefinitions to those types so its own AgentTool calls are
+    // restricted (enforced at AgentTool.tsx via allowedAgentTypes). Otherwise
+    // inherit the parent's scope unchanged (no regression for wildcard agents).
+    agentDefinitions: scopeChildAgentDefinitions(
+      toolUseContext.options.agentDefinitions,
+      declaredAllowedAgentTypes,
+    ),
     // Fork children (useExactTools path) need querySource on context.options
     // for the recursive-fork guard at AgentTool.tsx call() — it checks
     // options.querySource === 'agent:builtin:fork'. This survives autocompact

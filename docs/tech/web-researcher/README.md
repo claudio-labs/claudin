@@ -74,6 +74,53 @@ Se você criar um agent em `.claudio/agents/WebResearcher.md` (mesmo `agentType`
 
 Quando o build tem a flag `COORDINATOR_MODE` ligada **e** `CLAUDE_CODE_COORDINATOR_MODE` está truthy no ambiente, `getBuiltInAgents()` retorna apenas o conjunto de agents do coordenador (`builtInAgents.ts:34-42`) e o `WebResearcher` não fica disponível. O pai precisa cair em `WebFetch`/`WebSearch` diretos nesse modo.
 
+## WebResearcherManager — orquestrador de deep-research
+
+**Status:** Implementado (2026-06-01)
+**Arquivos:** `src/tools/AgentTool/built-in/webResearcherManagerAgent.ts`
+
+`WebResearcherManager` é uma camada **por cima** do `WebResearcher`: um agente built-in (modelo `'sonnet'`) que pega numa pergunta, a decompõe em 3–4 ângulos, faz **fan-out de `WebResearcher` workers em paralelo** (um por ângulo), **verifica as claims de forma cética**, e sintetiza **um único relatório citado com níveis de confiança**. Tudo isolado: o pai vê só o relatório final.
+
+### Por que é o primeiro built-in que spawna sub-agentes
+
+É deliberado. Até agora nenhum built-in chamava `AgentTool` — os sub-agentes eram folhas. O manager precisa orquestrar, então **declara `Agent(WebResearcher)`** na sua allowlist. Para isso funcionar foi preciso um ajuste mínimo em `resolveAgentTools` (`agentToolUtils.ts`):
+
+- Sub-agentes normalmente só **registam** o spec do `Agent` para metadata (`allowedAgentTypes`); o tool em si é removido pelo `filterToolsForAgent` como guarda de recursão.
+- **Exceção:** um orquestrador **sync + built-in** mantém o `Agent` resolvido (cai no caminho `isSyncBuiltInOrchestrator`), podendo fazer fan-out para os seus `allowedAgentTypes`.
+- **Async e custom/plugin continuam bloqueados** — a recursão arbitrária não é permitida.
+
+> **Nota de degradação (flag-gated).** O caminho de orquestrador depende de o manager correr **sync**. Se a flag de build `FORK_SUBAGENT` for ligada (hoje `false`), `forceAsync` torna todos os spawns async → `filterToolsForAgent` remove o `Agent` → o manager perde silenciosamente a capacidade de fan-out e degrada para um agente só-fetch (sem erro). Não escala privilégios — só degrada. Se reativares fork mode, valida este agente.
+
+**A restrição de spawn é mesmo aplicada (não cosmética).** O `allowedAgentTypes` resolvido (`['WebResearcher']`) é propagado para o contexto do filho em `runAgent.ts` (campo `agentDefinitions.allowedAgentTypes`), e o `AgentTool` filtra os agentes spawnáveis por esse conjunto (`AgentTool.tsx`, filtro `allowedAgentTypes.includes(a.agentType)`). Sem esse threading, o spec seria descartado e o manager poderia spawnar **qualquer** agente — incluindo `general-purpose` (com shell/edit) ou outro `WebResearcherManager` (recursão ilimitada). Com ele, o manager só pode spawnar `WebResearcher`, e o `WebResearcher` não tem `Agent` tool — logo a profundidade é **hard-capped em 2**.
+
+### Manager (Sonnet) vs. Worker (Haiku)
+
+| Camada | Modelo | Papel |
+|---|---|---|
+| `WebResearcherManager` | `'sonnet'` | Decompor, delegar, **verificação adversarial**, síntese — o raciocínio caro |
+| `WebResearcher` (×N) | `'haiku'` | Browsing mecânico por ângulo — barato, em paralelo |
+
+A verificação é **baseada em raciocínio**, não um tally determinístico de N-votos como o harness `Workflow` faria. O prompt é explícito em não apresentar palpites como verificados. Quando/se o `WorkflowTool` deixar de ser stub, vale migrar a orquestração para lá.
+
+### Quando o pai escolhe Manager vs. WebResearcher direto
+
+| Cenário | Escolha |
+|---|---|
+| Pesquisa multi-ângulo que precisa de fact-check / confiança | `Agent(WebResearcherManager)` |
+| Pesquisa multi-página simples (3+ fetches, um tópico) | `Agent(WebResearcher)` |
+| URL específica / descoberta de links | `WebFetch` / `WebSearch` diretos |
+
+### Override de modelo
+
+Mesma mecânica do `WebResearcher` (ver acima): em providers non-Anthropic o alias `'sonnet'` faz fallback para o modelo do pai. Override via `~/.claudio/settings.json` → `agentModelOverrides["built-in:WebResearcherManager"]`.
+
+> **Atenção (importante para este agente).** Em providers que passam pelo `openaiShim` (OpenRouter, Gemini, DeepSeek, Mistral, etc.), **ambos** os aliases `'sonnet'` (manager) e `'haiku'` (workers) fazem fallback para o modelo do pai. Isso **anula a assimetria de custo** que justifica este agente — manager e workers passam a correr todos no mesmo modelo. Se usas um provider OpenAI-shim, define overrides explícitos para `built-in:WebResearcherManager` e `built-in:WebResearcher` apontando para modelos de tiers diferentes do teu provider, ou o split Sonnet/Haiku não acontece.
+
+### Trade-offs específicos do Manager
+
+- **Custo/latência maior**: até 4 workers + verificação. Mitigado por cap de ângulos no prompt (≤4) e por a verificação ser inline no manager, não uma 3ª camada de agentes.
+- **Indisponível em `COORDINATOR_MODE`**: mesmo motivo que o `WebResearcher`.
+
 ## Trade-offs aceitos
 
 - **Latência extra**: queries que dariam 1–2 fetches diretos pagam o overhead de um round-trip de subagent. Mitigação: `whenToUse` explícito sobre quando NÃO usar.
