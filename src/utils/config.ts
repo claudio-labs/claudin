@@ -141,7 +141,10 @@ export type ProjectConfig = {
   disabledMcpServers?: string[]
   // Opt-in list for built-in MCP servers that default to disabled
   enabledMcpServers?: string[]
-  // Worktree session management
+  // Worktree session management. NOTE: this is a narrowed, write-only snapshot —
+  // --resume restores the session from the transcript (PersistedWorktreeSession),
+  // not from here, so fields like `attached`/`worktreeBranch` are intentionally
+  // omitted. If a reader is ever added, reconcile this shape with WorktreeSession.
   activeWorktreeSession?: {
     originalCwd: string
     worktreePath: string

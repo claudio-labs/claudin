@@ -166,6 +166,10 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
   },
   shouldDefer: true,
   isDestructive(input) {
+    // An attached worktree (entered via `path`) is never removed — call()
+    // coerces remove → keep — so it is not destructive. Reporting it as
+    // destructive would surface a spurious "this discards work" confirmation.
+    if (getCurrentWorktreeSession()?.attached) return false
     return input.action === 'remove'
   },
   toAutoClassifierInput(input) {
@@ -187,7 +191,13 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       }
     }
 
-    if (input.action === 'remove' && !input.discard_changes) {
+    // Attached worktrees (entered via EnterWorktree `path`) are never removed —
+    // call() (below) coerces them to keep — so skip the remove safety gate here.
+    if (
+      input.action === 'remove' &&
+      !input.discard_changes &&
+      !session.attached
+    ) {
       const summary = await countWorktreeChanges(
         session.worktreePath,
         session.originalHeadCommit,
@@ -258,7 +268,9 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       originalHeadCommit,
     )) ?? { changedFiles: 0, commits: 0 }
 
-    if (input.action === 'keep') {
+    // Attached worktrees (entered via EnterWorktree `path`) are never removed:
+    // we only created the session, not the worktree, so coerce remove → keep.
+    if (input.action === 'keep' || session.attached) {
       await keepWorktree()
       restoreSessionToOriginalCwd(originalCwd, projectRootIsWorktree)
 
@@ -271,6 +283,10 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       const tmuxNote = tmuxSessionName
         ? ` Tmux session ${tmuxSessionName} is still running; reattach with: tmux attach -t ${tmuxSessionName}`
         : ''
+      const coercedNote =
+        input.action === 'remove' && session.attached
+          ? ` This worktree was entered via \`path\`; ExitWorktree does not remove an externally-managed worktree, so it was left intact.`
+          : ''
       return {
         data: {
           action: 'keep' as const,
@@ -278,7 +294,7 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
           worktreePath,
           worktreeBranch,
           tmuxSessionName,
-          message: `Exited worktree. Your work is preserved at ${worktreePath}${worktreeBranch ? ` on branch ${worktreeBranch}` : ''}. Session is now back in ${originalCwd}.${tmuxNote}`,
+          message: `Exited worktree. Your work is preserved at ${worktreePath}${worktreeBranch ? ` on branch ${worktreeBranch}` : ''}. Session is now back in ${originalCwd}.${coercedNote}${tmuxNote}`,
         },
       }
     }

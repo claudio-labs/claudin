@@ -37,6 +37,23 @@ describe('EnterWorktreeTool', () => {
     ).toBe(false)
   })
 
+  test('input schema accepts path alone (enter existing worktree)', () => {
+    expect(
+      EnterWorktreeTool.inputSchema.safeParse({ path: '../wt-x' }).success,
+    ).toBe(true)
+  })
+
+  test('input schema rejects name and path together (mutually exclusive)', () => {
+    const both = EnterWorktreeTool.inputSchema.safeParse({
+      name: 'feat',
+      path: '../wt-x',
+    })
+    expect(both.success).toBe(false)
+    if (!both.success) {
+      expect(both.error.issues[0]?.message).toContain('mutually exclusive')
+    }
+  })
+
   test('toAutoClassifierInput returns the name or empty string', () => {
     expect(EnterWorktreeTool.toAutoClassifierInput?.({ name: 'feat' })).toBe(
       'feat',

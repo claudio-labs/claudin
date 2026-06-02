@@ -12,6 +12,7 @@ import { getPlanSlug, getPlansDirectory } from '../../utils/plans.js'
 import { setCwd } from '../../utils/Shell.js'
 import { saveWorktreeState } from '../../utils/sessionStorage.js'
 import {
+  attachExistingWorktree,
   createWorktreeForSession,
   getCurrentWorktreeSession,
   validateWorktreeSlug,
@@ -21,21 +22,37 @@ import { getEnterWorktreeToolPrompt } from './prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
 
 const inputSchema = lazySchema(() =>
-  z.strictObject({
-    name: z
-      .string()
-      .superRefine((s, ctx) => {
-        try {
-          validateWorktreeSlug(s)
-        } catch (e) {
-          ctx.addIssue({ code: 'custom', message: (e as Error).message })
-        }
-      })
-      .optional()
-      .describe(
-        'Optional name for the worktree. Each "/"-separated segment may contain only letters, digits, dots, underscores, and dashes; max 64 chars total. A random name is generated if not provided.',
-      ),
-  }),
+  z
+    .strictObject({
+      name: z
+        .string()
+        .superRefine((s, ctx) => {
+          try {
+            validateWorktreeSlug(s)
+          } catch (e) {
+            ctx.addIssue({ code: 'custom', message: (e as Error).message })
+          }
+        })
+        .optional()
+        .describe(
+          'Optional name for a new worktree. Each "/"-separated segment may contain only letters, digits, dots, underscores, and dashes; max 64 chars total. A random name is generated if not provided. Mutually exclusive with `path`.',
+        ),
+      path: z
+        .string()
+        .optional()
+        .describe(
+          'Path to an existing worktree of the current repository to enter instead of creating one. Must appear in `git worktree list` for the current repo. Mutually exclusive with `name`.',
+        ),
+    })
+    .superRefine((input, ctx) => {
+      if (input.name !== undefined && input.path !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            '`name` and `path` are mutually exclusive: pass `name` to create a new worktree, or `path` to enter an existing one.',
+        })
+      }
+    }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
 
@@ -80,16 +97,22 @@ export const EnterWorktreeTool: Tool<InputSchema, Output> = buildTool({
       throw new Error('Already in a worktree session')
     }
 
-    // Resolve to main repo root so worktree creation works from within a worktree
+    // Resolve to main repo root so worktree creation / listing works from
+    // within a worktree.
     const mainRepoRoot = findCanonicalGitRoot(getCwd())
     if (mainRepoRoot && mainRepoRoot !== getCwd()) {
       process.chdir(mainRepoRoot)
       setCwd(mainRepoRoot)
     }
 
-    const slug = input.name ?? getPlanSlug()
-
-    const worktreeSession = await createWorktreeForSession(getSessionId(), slug)
+    // `path` enters a pre-existing worktree (attach); otherwise create a new one.
+    const worktreeSession =
+      input.path !== undefined
+        ? await attachExistingWorktree(input.path, getSessionId())
+        : await createWorktreeForSession(
+            getSessionId(),
+            input.name ?? getPlanSlug(),
+          )
 
     process.chdir(worktreeSession.worktreePath)
     setCwd(worktreeSession.worktreePath)
@@ -109,11 +132,15 @@ export const EnterWorktreeTool: Tool<InputSchema, Output> = buildTool({
       ? ` on branch ${worktreeSession.worktreeBranch}`
       : ''
 
+    const message = worktreeSession.attached
+      ? `Entered existing worktree at ${worktreeSession.worktreePath}${branchInfo}. The session is now working in it. Use ExitWorktree (action: "keep") to return to the original directory — ExitWorktree will not remove a worktree entered this way.`
+      : `Created worktree at ${worktreeSession.worktreePath}${branchInfo}. The session is now working in the worktree. Use ExitWorktree to leave mid-session, or exit the session to be prompted.`
+
     return {
       data: {
         worktreePath: worktreeSession.worktreePath,
         worktreeBranch: worktreeSession.worktreeBranch,
-        message: `Created worktree at ${worktreeSession.worktreePath}${branchInfo}. The session is now working in the worktree. Use ExitWorktree to leave mid-session, or exit the session to be prompted.`,
+        message,
       },
     }
   },

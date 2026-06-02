@@ -156,6 +156,12 @@ export type PersistedWorktreeSession = {
   sessionId: string
   tmuxSessionName?: string
   hookBased?: boolean
+  /**
+   * True when the session entered a pre-existing worktree via EnterWorktree's
+   * `path` parameter. Must survive --resume so ExitWorktree keeps refusing to
+   * remove an externally-managed worktree after a session restore.
+   */
+  attached?: boolean
 }
 
 /**

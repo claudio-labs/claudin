@@ -18,13 +18,18 @@ export function getEnterWorktreeToolPrompt(): string {
 
 ## Behavior
 
-- In a git repository: creates a new git worktree inside \`.claudio/worktrees/\` with a new branch based on HEAD
+- In a git repository: creates a new git worktree inside \`.claudio/worktrees/\` on a new branch. The base ref is governed by the \`worktree.baseRef\` setting: \`fresh\` (default) branches from origin/<default-branch>; \`head\` branches from your current local HEAD
 - Outside a git repository: delegates to WorktreeCreate/WorktreeRemove hooks for VCS-agnostic isolation
 - Switches the session's working directory to the new worktree
 - Use ExitWorktree to leave the worktree mid-session (keep or remove). On session exit, if still in the worktree, the user will be prompted to keep or remove it
 
+## Entering an existing worktree
+
+Pass \`path\` instead of \`name\` to switch the session into a worktree that already exists (e.g., one you just created with \`git worktree add\`). The path must appear in \`git worktree list\` for the current repository — paths that are not registered worktrees of this repo, and the main worktree itself, are rejected. ExitWorktree will NOT remove a worktree entered this way; an \`action: "remove"\` is coerced to \`keep\`, returning the session to the original directory without deleting anything.
+
 ## Parameters
 
-- \`name\` (optional): A name for the worktree. If not provided, a random name is generated.
+- \`name\` (optional): A name for a new worktree. If neither \`name\` nor \`path\` is provided, a random name is generated. Mutually exclusive with \`path\`.
+- \`path\` (optional): Path to an existing worktree of the current repository to enter instead of creating one. Mutually exclusive with \`name\`.
 `
 }

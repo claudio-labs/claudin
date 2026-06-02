@@ -6,6 +6,7 @@ import {
   mkdir,
   readdir,
   readFile,
+  realpath,
   stat,
   symlink,
   utimes,
@@ -151,6 +152,12 @@ export type WorktreeSession = {
   creationDurationMs?: number
   /** True if git sparse-checkout was applied via settings.worktree.sparsePaths. */
   usedSparsePaths?: boolean
+  /**
+   * True when the session entered a PRE-EXISTING worktree via EnterWorktree's
+   * `path` parameter (not one we created). ExitWorktree must NOT remove an
+   * attached worktree — it only chdir's back to the original directory.
+   */
+  attached?: boolean
 }
 
 let currentWorktreeSession: WorktreeSession | null = null
@@ -315,7 +322,14 @@ async function getOrCreateWorktree(
         )
       }
       baseBranch = 'FETCH_HEAD'
+    } else if ((getInitialSettings().worktree?.baseRef ?? 'fresh') === 'head') {
+      // baseRef: 'head' — branch from the current local HEAD instead of
+      // origin/<default>. The user opted into basing the worktree on their
+      // local state (uncommitted commits, a feature branch, etc.). baseSha is
+      // resolved by the `if (!baseSha)` block below via `git rev-parse HEAD`.
+      baseBranch = 'HEAD'
     } else {
+      // baseRef: 'fresh' (default) — base on origin/<default-branch>.
       // If origin/<branch> already exists locally, skip fetch. In large repos
       // (210k files, 16M objects) fetch burns ~6-8s on a local commit-graph
       // scan before even hitting the network. A slightly stale base is fine —
@@ -811,6 +825,112 @@ export async function createWorktreeForSession(
   }
 
   // Save to project config for persistence
+  saveCurrentProjectConfig(current => ({
+    ...current,
+    activeWorktreeSession: currentWorktreeSession ?? undefined,
+  }))
+
+  return currentWorktreeSession
+}
+
+/**
+ * Normalize a path for comparison, resolving symlinks when the path exists.
+ * Falls back to the raw path if realpath fails (e.g. path doesn't exist).
+ */
+async function normalizePath(p: string): Promise<string> {
+  try {
+    return await realpath(p)
+  } catch {
+    return p
+  }
+}
+
+/**
+ * Enter a PRE-EXISTING git worktree (e.g. one created by `git worktree add`)
+ * instead of creating a new one. The path must be a registered worktree of the
+ * current repository (it must appear in `git worktree list`); the main worktree
+ * itself is rejected. The resulting session is marked `attached: true` so
+ * ExitWorktree never removes it.
+ */
+export async function attachExistingWorktree(
+  path: string,
+  sessionId: string,
+): Promise<WorktreeSession> {
+  const gitRoot = findGitRoot(getCwd())
+  if (!gitRoot) {
+    throw new Error('Cannot enter a worktree: not in a git repository.')
+  }
+
+  const targetPath = await normalizePath(path)
+
+  // Enumerate registered worktrees of this repo. Use `-z` (NUL-delimited): the
+  // plain `--porcelain` form does NOT quote paths, so a path containing a
+  // newline would be split mid-value. With `-z` every attribute line is
+  // NUL-terminated, so a `worktree <path>` value can hold any byte except NUL.
+  // The FIRST `worktree` entry is always the main worktree.
+  const { code, stdout, stderr } = await execFileNoThrowWithCwd(
+    gitExe(),
+    ['worktree', 'list', '--porcelain', '-z'],
+    { cwd: gitRoot },
+  )
+  if (code !== 0) {
+    throw new Error(`Failed to list worktrees: ${stderr.trim()}`)
+  }
+
+  // Don't trim the path value — a leading/trailing space can be a real path
+  // char, and the NUL split already stripped the terminator.
+  const listedPaths = stdout
+    .split('\0')
+    .filter(field => field.startsWith('worktree '))
+    .map(field => field.slice('worktree '.length))
+  const normalizedListed = await Promise.all(listedPaths.map(normalizePath))
+
+  const matchIdx = normalizedListed.findIndex(p => p === targetPath)
+  if (matchIdx === -1) {
+    throw new Error(
+      `${path} is not a registered worktree of this repository. ` +
+        `Create it first with \`git worktree add\`, or use EnterWorktree with a \`name\` to create a fresh one.`,
+    )
+  }
+  // The first entry in `git worktree list` is the main worktree — entering it
+  // is a no-op that would later let ExitWorktree chdir to a stale originalCwd.
+  if (matchIdx === 0) {
+    throw new Error(
+      `${path} is the main worktree, not a linked worktree — there is nothing to enter.`,
+    )
+  }
+
+  const [originalBranch, worktreeHead, branchResult] = await Promise.all([
+    getBranch(),
+    readWorktreeHeadSha(targetPath),
+    execFileNoThrowWithCwd(
+      gitExe(),
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      { cwd: targetPath },
+    ),
+  ])
+  const worktreeBranch =
+    branchResult.code === 0 ? branchResult.stdout.trim() : undefined
+
+  currentWorktreeSession = {
+    originalCwd: getCwd(),
+    worktreePath: targetPath,
+    worktreeName: basename(targetPath),
+    worktreeBranch: worktreeBranch && worktreeBranch !== 'HEAD'
+      ? worktreeBranch
+      : undefined,
+    originalBranch,
+    // NOTE: for created worktrees this is the BASE commit (diff origin for
+    // countWorktreeChanges). For an attached worktree there is no base — it's
+    // the worktree's current HEAD. Harmless: attached sessions always coerce to
+    // keep, so this is only ever read for keep-path analytics, never to gate a
+    // removal.
+    originalHeadCommit: worktreeHead ?? undefined,
+    sessionId,
+    hookBased: false,
+    attached: true,
+  }
+
   saveCurrentProjectConfig(current => ({
     ...current,
     activeWorktreeSession: currentWorktreeSession ?? undefined,
