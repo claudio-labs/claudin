@@ -2578,6 +2578,23 @@ describe("phase 11 — gradle", () => {
     assertReduction("gradle", "./gradlew build", "gradle-build-cold", 70);
   });
 
+  test("ROI: gradle-clean-build (multi-project) reduces ≥ 70%", () => {
+    assertReduction("gradle", "gradle clean build", "gradle-clean-build", 70);
+  });
+
+  // strict success sentinel ----------------------------------------------
+  test("sentinel: gradle build success collapses to ✓ gradle (strict)", () => {
+    const raw = loadSample("gradle-build-incremental");
+    const body = runFilterBody("gradle", "gradle build", raw);
+    expect(body.trim()).toBe("✓ gradle: BUILD SUCCESSFUL");
+  });
+
+  test("sentinel: gradle clean build success collapses to ✓ gradle (strict)", () => {
+    const raw = loadSample("gradle-clean-build");
+    const body = runFilterBody("gradle", "gradle clean build", raw);
+    expect(body.trim()).toBe("✓ gradle: BUILD SUCCESSFUL"); // body é EXATAMENTE o sentinel
+  });
+
   // safety ----------------------------------------------------------------
   test("safety: test failure preserves stack trace and FAILED (P0)", () => {
     const raw = loadSample("gradle-test-failure");
@@ -2586,6 +2603,9 @@ describe("phase 11 — gradle", () => {
     expect(body).toContain("AssertionError");
     expect(body).toContain("BUILD FAILED");
     expect(body).not.toMatch(/^✓ gradle/);
+    // anti-noise: configure-project chatter must be stripped.
+    expect(body).not.toContain("> Configure project");
+    expect(body).not.toMatch(/^✓ gradle/m);
   });
 
   test("safety: compile error preserves what went wrong block (P0)", () => {
@@ -2593,6 +2613,11 @@ describe("phase 11 — gradle", () => {
     const body = runFilterBody("gradle", "./gradlew build", raw);
     expect(body).toContain("Could not resolve");
     expect(body).toContain("BUILD FAILED");
+    // anti-noise: daemon/configure/resolving chatter must be stripped.
+    expect(body).not.toContain("Starting a Gradle Daemon");
+    expect(body).not.toContain("> Configure project");
+    expect(body).not.toContain("> Resolving dependencies");
+    expect(body).not.toMatch(/^✓ gradle/m);
   });
 
   test("safety: task without status suffix is not stripped (P0)", () => {
@@ -2701,6 +2726,23 @@ describe("phase 11 — mvn", () => {
     assertReduction("mvn", "mvn test", "mvn-test-success", 85);
   });
 
+  test("ROI: mvn-clean-install (multi-module) reduces ≥ 85%", () => {
+    assertReduction("mvn", "mvn clean install", "mvn-clean-install", 85);
+  });
+
+  // strict success sentinel ----------------------------------------------
+  test("sentinel: mvn clean install success collapses to ✓ mvn (strict)", () => {
+    const raw = loadSample("mvn-clean-install");
+    const body = runFilterBody("mvn", "mvn clean install", raw);
+    expect(body.trim()).toBe("✓ mvn: BUILD SUCCESS");
+  });
+
+  test("sentinel: mvn package success collapses to ✓ mvn (strict)", () => {
+    const raw = loadSample("mvn-build-success");
+    const body = runFilterBody("mvn", "mvn package", raw);
+    expect(body.trim()).toBe("✓ mvn: BUILD SUCCESS");
+  });
+
   // safety ----------------------------------------------------------------
   test("safety: compile error preserves [ERROR] with path and line (P0)", () => {
     const raw = loadSample("mvn-compile-error");
@@ -2709,6 +2751,13 @@ describe("phase 11 — mvn", () => {
     expect(body).toContain("cannot find symbol");
     expect(body).toContain("BUILD FAILURE");
     expect(body).not.toMatch(/^✓ mvn/);
+    // anti-noise: success-build chatter must be stripped on failure too.
+    expect(body).not.toContain("Scanning for projects");
+    expect(body).not.toContain("--- maven-compiler-plugin");
+    expect(body).not.toContain("Copying 1 resource");
+    expect(body).not.toContain("Changes detected");
+    expect(body).not.toContain("Compiling 5 source files");
+    expect(body).not.toMatch(/^✓ mvn/m);
   });
 
   test("safety: test failure preserves Surefire summary (P0)", () => {
@@ -2717,6 +2766,10 @@ describe("phase 11 — mvn", () => {
     expect(body).toContain("Failures:");
     expect(body).toContain("BUILD FAILURE");
     expect(body).not.toMatch(/^✓ mvn/);
+    // anti-noise: plumbing lines must not survive.
+    expect(body).not.toContain("Scanning for projects");
+    expect(body).not.toContain("--- maven-surefire-plugin");
+    expect(body).not.toMatch(/^✓ mvn/m);
   });
 
   test("safety: [WARNING] is not stripped when build fails (P0)", () => {
@@ -3784,7 +3837,8 @@ describe("trailing reducer pipe — per family", () => {
     ["git/diff", "git-diff", ["git diff", "git diff HEAD~1", "git diff --cached"]],
     ["gh/pr", "gh-pr-list", ["gh pr list", "gh pr list --state open"]],
     ["vcs/jj", "jj", ["jj log", "jj status", "jj diff"]],
-    ["java/gradle", "gradle", ["gradle build", "gradle test", "gradle :app:assemble"]],
+    ["java/gradle", "gradle", ["gradle build", "gradle test", "gradle :app:assemble", "gradle clean build"]],
+    ["java/mvn", "mvn", ["mvn package", "mvn test", "mvn clean install"]],
     ["iac/terraform", "terraform", ["terraform plan", "terraform apply"]],
     ["cargo/test", "cargo-test", ["cargo test", "cargo test --release", "cargo test foo"]],
     ["cargo/build", "cargo-build", ["cargo build", "cargo build --release"]],
