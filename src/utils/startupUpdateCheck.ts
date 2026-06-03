@@ -48,7 +48,7 @@ export function getEarlySkipReason(argv: string[]): string | null {
 }
 
 /**
- * Check npm for a newer published version of @claudinlabs/claudin and
+ * Check npm for a newer published version of @claudiolabs/claudin and
  * persist the result to `~/.claudin/latest-version.json` so the startup
  * banner can show a "new version available" hint on the next render.
  *

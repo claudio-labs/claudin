@@ -9,7 +9,7 @@ A coding-agent CLI that works across multiple model providers — Anthropic, Ope
 ## Install
 
 ```bash
-npm install -g @claudinlabs/claudin@latest
+npm install -g @claudiolabs/claudin@latest
 ```
 
 Requires Node 20+. Works on Linux, macOS, and Windows.

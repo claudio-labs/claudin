@@ -1,4 +1,4 @@
-@claudinlabs/claudin@0.1.10 /home/viudes/projects/claudin
+@claudiolabs/claudin@0.1.10 /home/viudes/projects/claudin
 ├── @alcalzone/ansi-tokenize@0.3.0
 ├── @anthropic-ai/bedrock-sdk@0.26.4
 ├── @anthropic-ai/foundry-sdk@0.2.3

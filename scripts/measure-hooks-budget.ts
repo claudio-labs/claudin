@@ -35,7 +35,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
       BUILD_TIME: new Date().toISOString(),
       ISSUES_EXPLAINER:
         'report the issue at https://github.com/anthropics/claude-code/issues',
-      PACKAGE_URL: '@claudinlabs/claudin',
+      PACKAGE_URL: '@claudiolabs/claudin',
     },
   })
 }

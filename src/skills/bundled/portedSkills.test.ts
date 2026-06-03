@@ -8,7 +8,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
   DISPLAY_VERSION: '0.0.0-test',
   BUILD_TIME: '1970-01-01T00:00:00.000Z',
   ISSUES_EXPLAINER: 'report the issue',
-  PACKAGE_URL: '@claudinlabs/claudin',
+  PACKAGE_URL: '@claudiolabs/claudin',
   NATIVE_PACKAGE_URL: undefined,
 }
 

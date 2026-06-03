@@ -28,7 +28,7 @@ A practical VS Code companion for Claudin with a project-aware **Control Center*
 ## Requirements
 
 - VS Code `1.95+`
-- `claudin` available in your terminal PATH (`npm install -g @claudinlabs/claudin`)
+- `claudin` available in your terminal PATH (`npm install -g @claudiolabs/claudin`)
 
 ## Commands
 

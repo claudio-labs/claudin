@@ -18,7 +18,7 @@ npm --version
 ## 2. Install Claudin
 
 ```bash
-npm install -g @claudinlabs/claudin
+npm install -g @claudiolabs/claudin
 ```
 
 ## 3. Run Claudin
@@ -76,13 +76,13 @@ Run `/provider doctor` from inside the REPL. It reports reachability, auth, and 
 ## 8. Updating Claudin
 
 ```bash
-npm install -g @claudinlabs/claudin@latest
+npm install -g @claudiolabs/claudin@latest
 ```
 
 ## 9. Uninstalling Claudin
 
 ```bash
-npm uninstall -g @claudinlabs/claudin
+npm uninstall -g @claudiolabs/claudin
 ```
 
 Claudin config lives in `~/.claudin/`. Remove that directory to wipe all saved profiles, tokens, and settings.

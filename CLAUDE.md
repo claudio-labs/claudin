@@ -47,7 +47,7 @@ After install (npm) or local build, the launcher is `bin/claudin` — it require
 
 To keep the published release usable while iterating on unreleased features, this environment uses two binaries on `$PATH`:
 
-- **`claudin`** → globally installed npm package (`@claudinlabs/claudin`) — stable release, only updated via `bun install -g @claudinlabs/claudin`.
+- **`claudin`** → globally installed npm package (`@claudiolabs/claudin`) — stable release, only updated via `bun install -g @claudiolabs/claudin`.
 - **`claudindev`** → symlink to `/home/viudes/projects/claudin/bin/claudin` — always runs the latest local `bun run build` output (`dist/cli.mjs`) from this repo.
 
 Implication for agents: if a user reports that a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudindev` (after `bun run build`); `claudin` keeps the pinned release version regardless of repo state.

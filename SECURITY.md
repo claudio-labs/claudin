@@ -60,7 +60,7 @@ This policy applies to:
 
 - the Claudin source code in this repository
 - official release artifacts published from this repository
-- the `@claudinlabs/claudin` npm package
+- the `@claudiolabs/claudin` npm package
 
 This policy does not cover:
 

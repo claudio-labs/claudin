@@ -22,7 +22,7 @@
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  22) ### Install
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  23) 
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  24) ```bash
-88601ce6 (Viudes 2026-05-03 23:19:19 -0300  25) npm install -g @claudinlabs/claudin@latest
+88601ce6 (Viudes 2026-05-03 23:19:19 -0300  25) npm install -g @claudiolabs/claudin@latest
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  26) ```
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  27) 
 41022703 (Viudes 2026-05-02 16:07:23 -0300  28) Works on Linux, macOS, and Windows (Node 20+). Or build from source — see [Source Build And Local Development](#source-build-and-local-development).

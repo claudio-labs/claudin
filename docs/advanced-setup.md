@@ -7,7 +7,7 @@ This guide covers source builds, multi-profile workflows, custom headers, OAuth 
 ### Option A: npm
 
 ```bash
-npm install -g @claudinlabs/claudin
+npm install -g @claudiolabs/claudin
 ```
 
 ### Option B: From source with Bun

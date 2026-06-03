@@ -69,7 +69,7 @@ describe('getEarlySkipReason', () => {
   })
 
   test('skips when invoked via npx (_npx in path)', () => {
-    process.argv[1] = '/home/user/.npm/_npx/abc123/node_modules/@claudinlabs/claudin/bin/claudin'
+    process.argv[1] = '/home/user/.npm/_npx/abc123/node_modules/@claudiolabs/claudin/bin/claudin'
     expect(getEarlySkipReason([])).toBe('npx')
   })
 

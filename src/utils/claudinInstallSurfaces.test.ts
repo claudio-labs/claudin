@@ -50,7 +50,7 @@ test('install command displays claudin.exe path on Windows', async () => {
 test('cleanupNpmInstallations removes both claudin and legacy claude local install dirs', async () => {
   const removedPaths: string[] = []
   ;(globalThis as Record<string, unknown>).MACRO = {
-    PACKAGE_URL: '@claudinlabs/claudin',
+    PACKAGE_URL: '@claudiolabs/claudin',
   }
 
   mock.module('fs/promises', () => ({

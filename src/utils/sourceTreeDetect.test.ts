@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isInvokedFromSourceTree } from 'src/utils/sourceTreeDetect.js'
 
-const PACKAGE_NAME = '@claudinlabs/claudin'
+const PACKAGE_NAME = '@claudiolabs/claudin'
 
 describe('isInvokedFromSourceTree', () => {
   let root: string

@@ -67,6 +67,6 @@ jobs:
           {
             echo "## Published ${{ inputs.tag }}"
             echo
-            echo "- npm: https://www.npmjs.com/package/@claudinlabs/claudin"
-            echo "- install: \`npm install -g @claudinlabs/claudin\`"
+            echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudin"
+            echo "- install: \`npm install -g @claudiolabs/claudin\`"
           } >> "$GITHUB_STEP_SUMMARY"
