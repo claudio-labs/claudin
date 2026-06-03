@@ -130,6 +130,8 @@ const PRESET_ORDER = [
   'Moonshot AI - API',
   'Moonshot AI - Kimi Code',
   'NVIDIA NIM',
+  'OpenCode GO',
+  'OpenCode Zen',
   'Ollama',
   'OpenAI',
   'OpenRouter',

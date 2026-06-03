@@ -1557,6 +1557,16 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         description: 'NVIDIA NIM endpoint',
       },
       {
+        value: 'opencode-go',
+        label: 'OpenCode GO',
+        description: 'OpenCode GO OpenAI-compatible endpoint',
+      },
+      {
+        value: 'opencode-zen',
+        label: 'OpenCode Zen',
+        description: 'OpenCode Zen OpenAI-compatible endpoint',
+      },
+      {
         value: 'ollama',
         label: 'Ollama',
         description: 'Local or remote Ollama endpoint',

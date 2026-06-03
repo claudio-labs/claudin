@@ -186,6 +186,8 @@ describe('providerModes — URL-driven detectors', () => {
     expect(isGlmCompatibleBaseUrl('https://open.bigmodel.cn/api/paas/v4')).toBe(true)
     expect(isGlmCompatibleBaseUrl('https://bigmodel.cn/api/paas/v4')).toBe(true)
     expect(isGlmCompatibleBaseUrl('https://api.zhipuai.cn/v1')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://opencode.ai/zen/v1')).toBe(true)
+    expect(isGlmCompatibleBaseUrl('https://opencode.ai/zen/go/v1')).toBe(true)
     expect(isGlmCompatibleBaseUrl('https://example.com/v1')).toBe(false)
     expect(isGlmCompatibleBaseUrl(undefined)).toBe(false)
   })

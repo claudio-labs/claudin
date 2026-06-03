@@ -24,6 +24,7 @@ export const GLM_API_HOSTS = new Set([
   'open.bigmodel.cn',
   'bigmodel.cn',
   'api.zhipuai.cn',
+  'opencode.ai',
 ])
 
 export const DEEPSEEK_API_HOSTS = new Set([

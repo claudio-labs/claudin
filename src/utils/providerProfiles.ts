@@ -33,6 +33,8 @@ export type ProviderPreset =
   | 'bedrock'
   | 'vertex'
   | 'foundry'
+  | 'opencode-zen'
+  | 'opencode-go'
 
 export type ProviderProfileInput = {
   provider?: ProviderProfile['provider']
@@ -409,6 +411,24 @@ export function getProviderPresetDefaults(
         model: 'claude-sonnet-4-6',
         apiKey: '',
         requiresApiKey: false,
+      }
+    case 'opencode-zen':
+      return {
+        provider: 'openai',
+        name: 'OpenCode Zen',
+        baseUrl: 'https://opencode.ai/zen/v1',
+        model: 'glm-5.1',
+        apiKey: '',
+        requiresApiKey: true,
+      }
+    case 'opencode-go':
+      return {
+        provider: 'openai',
+        name: 'OpenCode GO',
+        baseUrl: 'https://opencode.ai/zen/go/v1',
+        model: 'glm-5.1',
+        apiKey: '',
+        requiresApiKey: true,
       }
     case 'ollama':
     default:

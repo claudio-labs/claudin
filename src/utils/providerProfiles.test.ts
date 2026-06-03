@@ -248,6 +248,31 @@ describe('getProviderPresetDefaults', () => {
     )
     expect(defaults.requiresApiKey).toBe(true)
   })
+  test('opencode-zen preset defaults to OpenCode Zen endpoint', async () => {
+    const { getProviderPresetDefaults } = await importFreshProviderProfileModules()
+    delete process.env.OPENAI_MODEL
+
+    const defaults = getProviderPresetDefaults('opencode-zen')
+
+    expect(defaults.provider).toBe('openai')
+    expect(defaults.name).toBe('OpenCode Zen')
+    expect(defaults.baseUrl).toBe('https://opencode.ai/zen/v1')
+    expect(defaults.model).toBe('glm-5.1')
+    expect(defaults.requiresApiKey).toBe(true)
+  })
+
+  test('opencode-go preset defaults to OpenCode GO endpoint', async () => {
+    const { getProviderPresetDefaults } = await importFreshProviderProfileModules()
+    delete process.env.OPENAI_MODEL
+
+    const defaults = getProviderPresetDefaults('opencode-go')
+
+    expect(defaults.provider).toBe('openai')
+    expect(defaults.name).toBe('OpenCode GO')
+    expect(defaults.baseUrl).toBe('https://opencode.ai/zen/go/v1')
+    expect(defaults.model).toBe('glm-5.1')
+    expect(defaults.requiresApiKey).toBe(true)
+  })
 })
 
 
