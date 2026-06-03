@@ -1200,7 +1200,16 @@ export function diffEach(
   const endX = Math.min(region.x + region.width, maxWidth)
 
   if (prevWidth === nextWidth) {
-    return diffSameWidth(prev, next, region.x, endX, region.y, endY, cb)
+    // Damage X-bounds come from cells WRITTEN to `next`, so they miss cells
+    // that `prev` had but `next` leaves empty — i.e. a line shrinking at a
+    // constant terminal width (an owner/spinner suffix vanishing, a subject
+    // re-truncating, a wide tool-output row replaced by a shorter task row).
+    // Those stale cells sit to the right of the damage and would never be
+    // diffed nor cleared, leaking characters on screen. Widen the X-scan to
+    // the full row for the rows already in the damaged Y-range; findNextDiff
+    // skips equal cells with integer compares, so this stays cheap and only
+    // emits the removals that need clearing.
+    return diffSameWidth(prev, next, 0, maxWidth, region.y, endY, cb)
   }
   return diffDifferentWidth(prev, next, region.x, endX, region.y, endY, cb)
 }
