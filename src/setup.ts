@@ -367,6 +367,10 @@ export async function setup(
   void prefetchApiKeyFromApiKeyHelperIfSafe(getIsNonInteractiveSession()) // Prefetch safely - only executes if trust already confirmed
   profileCheckpoint('setup_after_prefetch')
 
+  // Wave 6 audit — split the +40ms total of action_after_setup vs +6ms of
+  // setup_after_prefetch into: (a) release notes + recent activity I/O, and
+  // (b) permission-mode safety check + tengu_exit emit. Helps decide whether
+  // to lazy-load checkForReleaseNotes / getRecentActivity in a later wave.
   // Pre-fetch data for Logo v2 - await to ensure it's ready before logo renders.
   // --bare / SIMPLE: skip — release notes are interactive-UI display data,
   // and getRecentActivity() reads up to 10 session JSONL files.
@@ -378,6 +382,7 @@ export async function setup(
       await getRecentActivity()
     }
   }
+  profileCheckpoint('setup_after_release_notes')
 
   // If permission mode is set to bypass, verify we're in a safe environment
   if (

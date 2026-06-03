@@ -32,6 +32,7 @@ import type { PermissionMode } from './utils/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from './utils/renderOptions.js';
 import { getSettingsWithAllErrors } from './utils/settings/allErrors.js';
 import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from './utils/settings/settings.js';
+import { profileCheckpoint } from './utils/startupProfiler.js';
 export function completeOnboarding(): void {
   saveGlobalConfig(current => ({
     ...current,
@@ -110,6 +111,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     return false;
   }
 
+  profileCheckpoint('setupScreens_start');
   const usesAnthropicSetup = usesAnthropicAccountFlow();
   let onboardingShown = false;
 
@@ -165,6 +167,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     // Critical for third-party providers: without this, downstream config lookups
     // may fail silently, preventing the REPL from mounting (frozen terminal).
     setSessionTrustAccepted(true);
+    profileCheckpoint('setupScreens_after_trust_accepted');
 
     // Reset and reinitialize GrowthBook after trust is established.
     // Defense for login/logout: clears any prior client so the next init
@@ -174,6 +177,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
 
     // Now that trust is established, prefetch system context if it wasn't already
     void getSystemContext();
+    profileCheckpoint('setupScreens_after_growthbook_kick');
 
     // Skip MCP approval dialogs for third-party providers (no interactive auth prompts)
     if (usesAnthropicSetup) {
@@ -184,9 +188,12 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       if (allErrors.length === 0) {
         await handleMcpjsonServerApprovals(root);
       }
+      profileCheckpoint('setupScreens_after_mcp_approvals');
 
       // Check for claude.md includes that need approval
-      if (await shouldShowClaudeMdExternalIncludesWarning()) {
+      const shouldShowExternalIncludesWarning = await shouldShowClaudeMdExternalIncludesWarning();
+      profileCheckpoint('setupScreens_after_claudemd_check');
+      if (shouldShowExternalIncludesWarning) {
         const externalIncludes = getExternalClaudeMdIncludes(await getMemoryFiles(true));
         const {
           ClaudeMdExternalIncludesDialog
@@ -208,13 +215,17 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // In normal mode, this happens after the trust dialog is accepted
   // This includes potentially dangerous environment variables from untrusted sources
   applyConfigEnvironmentVariables();
+  profileCheckpoint('setupScreens_after_env_applied');
 
   // Initialize telemetry after env vars are applied so OTEL endpoint env vars and
   // otelHeadersHelper (which requires trust to execute) are available.
   // Defer to next tick so the OTel dynamic import resolves after first render
   // instead of during the pre-render microtask queue.
   setImmediate(() => initializeTelemetryAfterTrust());
-  if (await isQualifiedForGrove()) {
+  const qualifiedForGrove = await isQualifiedForGrove();
+  profileCheckpoint('setupScreens_after_grove_check');
+  if (qualifiedForGrove) {
+    profileCheckpoint('setupScreens_grove_block_enter');
     const {
       GroveDialog
     } = await import('src/components/grove/Grove.js');
@@ -229,11 +240,13 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // Check for a custom API key surfaced by the active Anthropic profile.
   {
     const profile = tryGetActiveProvider();
+    profileCheckpoint('setupScreens_after_tryGetActiveProvider');
     const profileKey =
       profile?.transport === 'anthropic' ? profile.apiKey?.trim() : undefined;
     if (profileKey && !isRunningOnHomespace()) {
       const customApiKeyTruncated = normalizeApiKeyForConfig(profileKey);
       const keyStatus = getCustomApiKeyStatus(customApiKeyTruncated);
+      profileCheckpoint('setupScreens_after_keyStatus');
       if (keyStatus === 'new') {
         const { ApproveApiKey } = await import('./components/ApproveApiKey.js');
         await showSetupDialog<boolean>(
@@ -244,6 +257,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       }
     }
   }
+  profileCheckpoint('setupScreens_after_custom_api_key');
   if ((permissionMode === 'bypassPermissions' || allowDangerouslySkipPermissions) && !hasSkipDangerousModePermissionPrompt()) {
     const {
       BypassPermissionsModeDialog
@@ -316,6 +330,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     }
   }
 
+  profileCheckpoint('setupScreens_end');
   return onboardingShown;
 }
 export function getRenderContext(exitOnCtrlC: boolean): {

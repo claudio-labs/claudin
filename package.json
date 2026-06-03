@@ -10,10 +10,12 @@
     "bin/",
     "dist/",
     "scripts/v8cache-gc.mjs",
+    "scripts/postinstall-warmup.mjs",
     "README.md"
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
+    "postinstall": "node scripts/postinstall-warmup.mjs",
     "setup": "bun install && bun run build && bun link",
     "link": "bun link",
     "dev": "bun run build && node dist/cli.mjs",
@@ -33,6 +35,7 @@
     "profile:streaming": "bun run scripts/profile/streaming-bench.ts --compare",
     "profile:input": "bun run scripts/profile/input-bench.ts",
     "profile:cold-start": "bun run scripts/profile/cold-start-bench.ts",
+    "profile:startup-phases": "bun run scripts/profile/startup-phases-bench.ts",
     "profile:memory": "bun run scripts/profile/memory-bench.ts",
     "profile:transcript": "bun run scripts/profile/transcript-bench.ts --with-code",
     "profile:long-session": "bun --expose-gc run scripts/profile/long-session-bench.ts",

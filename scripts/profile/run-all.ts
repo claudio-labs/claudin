@@ -71,6 +71,14 @@ async function main(): Promise<void> {
     console.error('cold-start-bench skipped:', (e as Error).message)
   }
 
+  console.log('Running startup-phases-bench...')
+  let startupPhases: any = null
+  try {
+    startupPhases = runJson('startup-phases-bench.ts', [])
+  } catch (e) {
+    console.error('startup-phases-bench skipped:', (e as Error).message)
+  }
+
   console.log('Running long-session-bench...')
   let longSession: any = null
   try {
@@ -95,6 +103,7 @@ async function main(): Promise<void> {
     memory,
     transcript,
     coldStart,
+    startupPhases,
     longSession,
   }
 
@@ -127,6 +136,26 @@ async function main(): Promise<void> {
       console.log(`  --help    launcher: ${fmt(helpLauncher.p50Ms)} ms   (warm cache: −${fmt(helpDirect.p50Ms - helpLauncher.p50Ms)} ms)`)
     }
     console.log('')
+  }
+
+  // Startup phases — where the cold-start ms are spent, per checkpoint
+  if (startupPhases) {
+    const longest = startupPhases.results.reduce(
+      (acc: any, r: any) =>
+        r.totalMs.median > (acc?.totalMs.median ?? 0) ? r : acc,
+      startupPhases.results[0],
+    )
+    if (longest && longest.checkpoints.length > 0) {
+      console.log(`STARTUP PHASES      (per-checkpoint, "${longest.invocation}" invocation)`)
+      const top = [...longest.checkpoints]
+        .sort((a: any, b: any) => b.medianDeltaMs - a.medianDeltaMs)
+        .slice(0, 8)
+      for (const c of top) {
+        console.log(`  ${fmt(c.medianDeltaMs).padStart(8)} ms   ${c.name}`)
+      }
+      console.log(`  → run \`bun run profile:startup-phases\` for the full timeline`)
+      console.log('')
+    }
   }
 
   // Streaming — real cumulative per code block

@@ -96,6 +96,11 @@ import { useBackgroundTaskNavigation } from '../hooks/useBackgroundTaskNavigatio
 import { useSwarmInitialization } from '../hooks/useSwarmInitialization.js';
 import { useTeammateViewAutoExit } from '../hooks/useTeammateViewAutoExit.js';
 import { errorMessage } from '../utils/errors.js';
+import { profileCheckpoint } from '../utils/startupProfiler.js';
+
+// Wave 6 audit — module-level guard so repl_first_paint fires exactly once,
+// even under StrictMode double-invoke or HMR remounts. Not exported.
+let _replFirstPaintMarked = false;
 import { isHumanTurn } from '../utils/messagePredicates.js';
 import { logError } from '../utils/log.js';
 // Dead code elimination: conditional imports
@@ -390,6 +395,14 @@ export function REPL({
   sshSession,
   thinkingConfig
 }: Props): React.ReactNode {
+  // Wave 6 audit — repl_first_paint fires exactly once on initial mount.
+  // Module-level guard avoids React StrictMode double-invoke. This is the
+  // earliest reliable signal that the user is looking at REPL UI; everything
+  // up to this point is "loading" wall-clock from the user's perspective.
+  if (!_replFirstPaintMarked) {
+    _replFirstPaintMarked = true;
+    profileCheckpoint('repl_first_paint');
+  }
   const isRemoteSession = !!remoteSessionConfig;
 
   // Wire up Ctrl+C / Ctrl+D double-press to exit. Ink raw mode disables ISIG,

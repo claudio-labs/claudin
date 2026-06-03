@@ -29,6 +29,7 @@ import type { ChannelEntry } from '../../bootstrap/state.js';
 import type { InternalPermissionMode } from '../../types/permissions.js';
 import { launchSnapshotUpdateDialog } from '../../dialogLaunchers.js';
 import { exitWithError, getRenderContext, showSetupScreens } from '../../interactiveHelpers.js';
+import { profileCheckpoint } from '../../utils/startupProfiler.js';
 import type { AgentDefinitionsBundle } from './setupAgent.js';
 
 export type RunTrustAndOnboardingInput = {
@@ -69,11 +70,19 @@ export async function runTrustAndOnboarding(
   let prompt = input.prompt;
   let inputPrompt = input.inputPrompt;
 
+  profileCheckpoint('trust_onboarding_start');
+  // Grove HTTP prefetch lives in cli.tsx (wave 7) so it overlaps with
+  // main.tsx parse + setup() — we're already ~500 ms past that kick by
+  // the time we reach here, so the memoized cache should be warm before
+  // GroveDialog mounts inside showSetupScreens.
   const renderCtx = getRenderContext(false);
   const getFpsMetrics = renderCtx.getFpsMetrics;
   const stats = renderCtx.stats;
+  profileCheckpoint('trust_render_ctx_ready');
   const { createRoot } = await import('../../ink.js');
+  profileCheckpoint('trust_ink_imported');
   const root = await createRoot(renderCtx.renderOptions);
+  profileCheckpoint('trust_ink_root_created');
 
   // Log startup time now, before any blocking dialog renders. Logging
   // from REPL's first render (the old location) included however long
@@ -90,6 +99,7 @@ export async function runTrustAndOnboarding(
     commands,
     devChannels,
   );
+  profileCheckpoint('trust_setup_screens_done');
 
   // Now that trust is established and GrowthBook has auth headers,
   // resolve the --remote-control / --rc entitlement gate.
@@ -191,7 +201,9 @@ export async function runTrustAndOnboarding(
     logForDebugging(`[startup-clear] failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
+  profileCheckpoint('trust_before_org_validation');
   const orgValidation = await validateForceLoginOrg();
+  profileCheckpoint('trust_after_org_validation');
   if (!orgValidation.valid) {
     await exitWithError(root, orgValidation.message);
   }

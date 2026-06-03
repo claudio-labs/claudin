@@ -21,14 +21,26 @@ startKeychainPrefetch();
 import { feature } from 'bun:bundle';
 import { Command as CommanderCommand, InvalidArgumentError, Option } from '@commander-js/extra-typings';
 import type { Root } from './ink.js';
-import { launchRepl, setPreloadedChunks } from './replLauncher.js';
+// launchRepl/setPreloadedChunks pull React+Ink — only needed for interactive
+// launch path. getTools pulls every tool's transitive graph. initBootstrap
+// pulls undici/growthbook/OAuth populate. All three are gated by argv: cold
+// paths (--help/--version/subcommands) never need them. (Phase D.)
+import type * as ReplLauncherMod from './replLauncher.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from './services/mcp/types.js';
 import type { ToolInputJSONSchema } from './Tool.js';
-import { getTools } from './tools.js';
+import type * as ToolsMod from './tools.js';
+import type * as InitMod from './entrypoints/init.js';
+const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
+  (await import('./replLauncher.js')).launchRepl;
+const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
+  (await import('./replLauncher.js')).setPreloadedChunks;
+const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
+  (await import('./tools.js')).getTools;
+const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
+  (await import('./entrypoints/init.js')).init;
 import { stopCapturingEarlyInput } from './utils/earlyInput.js';
 import { applyConfigEnvironmentVariables } from './utils/managedEnv.js';
 import { installLifecycleHandlers } from './main/lifecycleHandlers.js';
-import { init as initBootstrap } from './entrypoints/init.js';
 
 // Lazy require to avoid circular dependency: teammate.ts -> AppState.tsx -> ... -> main.tsx
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -46,7 +58,13 @@ const assistantModule = feature('KAIROS') ? require('./assistant/index.js') as t
 const kairosGate = feature('KAIROS') ? require('./assistant/gate.js') as typeof import('./assistant/gate.js') : null;
 import { resolve } from 'path';
 import type { StatsStore } from './context/stats.js';
-import { renderAndRun } from './interactiveHelpers.js';
+// renderAndRun is loaded lazily inside the default action — it pulls React,
+// Ink, KeybindingSetup, AppStateProvider, growthbook, mcpServerApproval, and
+// ~20 transitive utilities. None of those are needed for `--help`, `--version`,
+// or any non-interactive subcommand path, so deferring this single import
+// keeps that whole graph out of `main_tsx_entry`. (Phase B of cold-start plan.)
+const getRenderAndRun = async () =>
+  (await import('./interactiveHelpers.js')).renderAndRun;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js';
 import type { FpsMetrics } from './utils/fpsTracker.js';
@@ -121,18 +139,24 @@ import {
   runSshArgvStash,
 } from './main/argvPreparse.js';
 import { applyClientType, resolveClientType } from './main/clientType.js';
-import { registerPreActionHook } from './main/preActionHook.js';
-import { registerRootOptions } from './main/rootOptions.js';
-import { registerSubcommands } from './main/registerSubcommands.js';
-import { type ActionOptions, parseActionOptions } from './main/action/parseOptions.js';
-import { runMcpAndPerms } from './main/action/mcpAndPerms.js';
-import { runActionAgentSetup, runActionPostSetup, runActionSetup } from './main/action/setupAgent.js';
-import { runTrustAndOnboarding } from './main/action/trustAndOnboarding.js';
-import { runInteractiveStartupBlock, runMcpHooksAndTelemetry, runPostHeadlessGuards } from './main/action/startupSequence.js';
+// All three registrars touch heavy graphs (preActionHook pulls policyLimits +
+// remoteManagedSettings; registerSubcommands pulls every command's transitive
+// closure — that's the bulk of the 5.2 MB shared chunk). Defer them so they
+// only evaluate inside run(), not during module load. (Phase F.)
+const getRegisterPreActionHook = async () =>
+  (await import('./main/preActionHook.js')).registerPreActionHook;
+const getRegisterRootOptions = async () =>
+  (await import('./main/rootOptions.js')).registerRootOptions;
+const getRegisterSubcommands = async () =>
+  (await import('./main/registerSubcommands.js')).registerSubcommands;
+// Default-action deps are loaded lazily via './main/defaultActionDeps.js' —
+// see the dynamic import at the top of program.action() below. Keeping these
+// as type-only imports preserves the type-checking surface while letting the
+// bundler keep them out of `main_tsx_entry`. (Phase C of cold-start plan.)
+import type { ActionOptions } from './main/action/parseOptions.js';
 // Subcommands extracted to src/main/commands/ (ROADMAP 11g Fase 5a) and bundled
 // via registerSubcommands in src/main/registerSubcommands.ts (ROADMAP 11g Fase 7b).
 // Default-action branches extracted to src/main/defaultAction/ (ROADMAP 11g Fase 5b).
-import { runDefaultActionDispatch } from './main/defaultAction/dispatch.js';
 // loadSettingsFromFlag, loadSettingSourcesFromFlag moved to src/main/helpers.ts (ROADMAP 11g Fase 1)
 // eagerLoadSettings, initializeEntrypoint moved to src/main/lifecycle.ts (ROADMAP 11g Fase 2)
 
@@ -180,14 +204,25 @@ export async function main() {
   // Start init() early — overlapping with commander parse/setup.
   // init() is memoized, so the await in preActionHook resolves instantly
   // if this promise already settled, cutting ~80-150ms off startup latency.
-  const earlyInitPromise = initBootstrap();
+  // Module is now dynamic (Phase D) so the import resolution is chained in.
+  const earlyInitPromise = getInitBootstrap().then(init => init());
 
-  // Preload REPL/App dynamic import chunks in parallel with commander setup.
-  // launchRepl() dynamically imports these; starting the imports early means
-  // the chunks are likely already resolved when launchRepl runs, saving ~30-50ms.
-  const replChunkPromise = import('./screens/REPL.js');
-  const appChunkPromise = import('./components/App.js');
-  setPreloadedChunks(appChunkPromise as Promise<typeof import('./components/App.js')>, replChunkPromise as Promise<typeof import('./screens/REPL.js')>);
+  // Preload REPL/App dynamic import chunks in parallel with commander setup —
+  // but only when argv looks interactive. `--help`/`--version`/`-h`/`-V` exit
+  // before launchRepl ever runs, so paying for these preloads (and for the
+  // replLauncher module that holds them) is pure waste on those paths.
+  const argv = process.argv;
+  const looksHelpOrVersion = argv.some(a =>
+    a === '--help' || a === '-h' || a === '--version' || a === '-V',
+  );
+  if (!looksHelpOrVersion) {
+    const replChunkPromise = import('./screens/REPL.js');
+    const appChunkPromise = import('./components/App.js');
+    void getSetPreloadedChunks().then(set => set(
+      appChunkPromise as Promise<typeof import('./components/App.js')>,
+      replChunkPromise as Promise<typeof import('./screens/REPL.js')>,
+    ));
+  }
 
   profileCheckpoint('main_before_run');
   // Commander parse + preAction hook runs; the hook awaits init() which
@@ -219,7 +254,7 @@ async function run(): Promise<CommanderCommand> {
   profileCheckpoint('run_commander_initialized');
 
   // preAction hook extracted to src/main/preActionHook.ts (ROADMAP 11g Fase 7b).
-  registerPreActionHook(program);
+  (await getRegisterPreActionHook())(program);
   program.name('claude').description(`Claude Code - starts an interactive session by default, use -p/--print for non-interactive output`).allowExcessArguments().argument('[prompt]', 'Your prompt', String)
   // Subcommands inherit helpOption via commander's copyInheritedSettings —
   // setting it once here covers mcp, plugin, auth, and all other subcommands.
@@ -260,6 +295,23 @@ async function run(): Promise<CommanderCommand> {
   // --plugin-dir takes exactly one arg; repeat the flag for multiple dirs.
   .option('--plugin-dir <path>', 'Load plugins from a directory for this session only (repeatable: --plugin-dir A --plugin-dir B)', (val: string, prev: string[]) => [...prev, val], [] as string[]).option('--disable-slash-commands', 'Disable all skills', () => true).option('--file <specs...>', 'File resources to download at startup. Format: file_id:relative_path (e.g., --file file_abc:doc.txt file_def:img.png)').action(async (prompt, options) => {
     profileCheckpoint('action_handler_start');
+
+    // Lazy-load the default-action graph here — see defaultActionDeps.ts for
+    // the rationale. This single dynamic import keeps interactiveHelpers
+    // (React/Ink/AppState/...) and the dispatch graph out of `main_tsx_entry`
+    // so cold paths (--help, subcommands) don't pay for them.
+    const {
+      parseActionOptions,
+      runMcpAndPerms,
+      runActionAgentSetup,
+      runActionPostSetup,
+      runActionSetup,
+      runTrustAndOnboarding,
+      runInteractiveStartupBlock,
+      runMcpHooksAndTelemetry,
+      runPostHeadlessGuards,
+      runDefaultActionDispatch,
+    } = await import('./main/defaultActionDeps.js');
 
     // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the three
     // pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) populated by argv
@@ -355,7 +407,7 @@ async function run(): Promise<CommanderCommand> {
     // (which returns isProactiveActive()) passes and Sleep is included.
     // The later REPL-path maybeActivateProactive() calls are idempotent.
     maybeActivateProactive(options);
-    let tools = getTools(toolPermissionContext);
+    let tools = (await getGetTools())(toolPermissionContext);
 
     // Apply coordinator mode tool filtering for headless path
     // (mirrors useMergedTools.ts filtering for REPL/interactive path)
@@ -447,6 +499,10 @@ async function run(): Promise<CommanderCommand> {
     systemPrompt = agentSetup.systemPrompt;
     appendSystemPrompt = agentSetup.appendSystemPrompt;
     inputPrompt = agentSetup.inputPrompt;
+    // Wave 6 audit — split the +33ms gap between action_commands_loaded and
+    // action_mcp_configs_loaded into three measurable segments: agent setup,
+    // trust/onboarding, post-headless guards (MCP configs parse).
+    profileCheckpoint('action_after_agent_setup');
 
 
     // Ink root is only needed for interactive sessions — patchConsole in the
@@ -477,6 +533,10 @@ async function run(): Promise<CommanderCommand> {
       prompt = trustResult.prompt;
       inputPrompt = trustResult.inputPrompt;
     }
+    // Wave 6 audit checkpoint (after trust dialog + onboarding + login +
+    // orgValidation). Headless sessions skip the block entirely, so Δ is ~0
+    // there; interactive cold path is where the cost concentrates.
+    profileCheckpoint('action_after_trust_onboarding');
 
     // Block F-1 — exitCode guard + LSP + invalid settings + startup prefetches
     // + MCP config split (ROADMAP 11g Fase 7c.5). Extracted to
@@ -731,6 +791,7 @@ async function run(): Promise<CommanderCommand> {
         }
       }
       const initialMessages = deepLinkBanner ? [deepLinkBanner, ...hookMessages] : hookMessages.length > 0 ? hookMessages : undefined;
+      const launchRepl = await getLaunchRepl();
       await launchRepl(root, {
         getFpsMetrics,
         stats,
@@ -739,12 +800,12 @@ async function run(): Promise<CommanderCommand> {
         ...sessionConfig,
         initialMessages,
         pendingHookMessages,
-      } as Parameters<typeof launchRepl>[2], renderAndRun);
+      } as Parameters<typeof launchRepl>[2], await getRenderAndRun());
     }
   }).version(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudin)`, '-v, --version', 'Output the version number');
 
   // Post-action root options extracted to src/main/rootOptions.ts (ROADMAP 11g Fase 7b).
-  registerRootOptions(program);
+  (await getRegisterRootOptions())(program);
   profileCheckpoint('run_main_options_built');
 
   // -p/--print mode: skip subcommand registration. The 52 subcommands
@@ -765,7 +826,7 @@ async function run(): Promise<CommanderCommand> {
   }
 
   // Subcommand registration extracted to src/main/registerSubcommands.ts (ROADMAP 11g Fase 7b).
-  registerSubcommands(program, { pendingConnect });
+  (await getRegisterSubcommands())(program, { pendingConnect });
 
   profileCheckpoint('run_before_parse');
   await program.parseAsync(process.argv);

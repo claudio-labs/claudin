@@ -55,6 +55,18 @@ const PHASE_DEFINITIONS = {
 if (SHOULD_PROFILE) {
   // eslint-disable-next-line custom-rules/no-top-level-side-effects
   profileCheckpoint('profiler_initialized')
+  // Flush on any process exit so paths that bypass gracefulShutdown (e.g.
+  // commander's --help / --version which call process.exit directly) still
+  // produce a startup-perf timeline file. Idempotent: profileReport() guards
+  // with a `reported` flag.
+  // eslint-disable-next-line custom-rules/no-top-level-side-effects
+  process.on('exit', () => {
+    try {
+      profileReport()
+    } catch {
+      // Ignore profiling errors during exit
+    }
+  })
 }
 
 /**

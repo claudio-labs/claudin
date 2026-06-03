@@ -9,7 +9,13 @@ import { feature } from 'bun:bundle';
 import type { Command as CommanderCommand } from '@commander-js/extra-typings';
 
 import { setInlinePlugins } from '../bootstrap/state.js';
-import { init } from '../entrypoints/init.js';
+// init.ts is the heaviest module in the bundle (undici + growthbook + OAuth
+// populate + mTLS + scratchpad/swarm bootstrap). Loading it statically here
+// pulled it into the main chunk and made `--help` evaluate the whole graph.
+// Defer it — the preAction hook only fires for *executing* commands, so the
+// dynamic import cost is paid exactly when it would have been anyway.
+const getInit = async (): Promise<typeof import('../entrypoints/init.js').init> =>
+  (await import('../entrypoints/init.js')).init;
 import { loadPolicyLimits } from '../services/policyLimits/index.js';
 import { loadRemoteManagedSettings } from '../services/remoteManagedSettings/index.js';
 import { logForDebugging } from '../utils/debug.js';
@@ -30,7 +36,7 @@ import { runMigrations } from './lifecycle.js';
 export function registerPreActionHook(program: CommanderCommand<any, any, any>): CommanderCommand<any, any, any> {
   program.hook('preAction', async thisCommand => {
     await Promise.all([ensureMdmSettingsLoaded(), ensureKeychainPrefetchCompleted()]);
-    await init();
+    await (await getInit())();
     profileCheckpoint('preAction_after_init');
 
     // process.title on Windows sets the console title directly; on POSIX,

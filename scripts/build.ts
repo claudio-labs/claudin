@@ -649,6 +649,79 @@ if (!result.success) {
   }
 
   console.log(`✓ Built claudin v${version} → dist/cli.mjs`)
+
+  // Wave 11 — capture `--help` output into dist/help.txt so the fast-path
+  // in cli.tsx can serve `--help`/`-h` with a single readFileSync instead
+  // of loading the entire commander program (~500 ms saved on warm cold
+  // start). The capture runs the freshly-built bundle; if it fails we
+  // skip silently so a broken --help doesn't break the whole build.
+  //
+  // Wave 12 extends the same trick to every subcommand: parse the captured
+  // root help to discover subcommand names (including `|`-separated
+  // aliases like `plugin|plugins`, `update|upgrade`), then run
+  // `node cli.mjs <name> --help` for each and save to `dist/help-<name>.txt`.
+  // The entrypoint serves the matching snapshot whenever the user runs
+  // `claudin <cmd> --help` (`args.length === 2`).
+  try {
+    const { spawnSync } = await import('child_process')
+    const cliPath = join(distDir, 'cli.mjs')
+    const res = spawnSync('node', [cliPath, '--help'], {
+      encoding: 'utf-8',
+      timeout: 30_000,
+      env: { ...process.env, NO_COLOR: '1', CLAUDIN_HELP_CAPTURE: '1' },
+    })
+    if (res.status === 0 && res.stdout.length > 100) {
+      writeFileSync(join(distDir, 'help.txt'), res.stdout)
+      console.log(`  📄 captured --help → dist/help.txt (${res.stdout.length} bytes)`)
+
+      // Wave 12 — discover subcommands from the root help text.
+      // Commander emits lines like:
+      //   "  agents [options]            List configured agents"
+      //   "  plugin|plugins              Manage Claude Code plugins"
+      // We grab the leading token (split on whitespace), then expand the
+      // `name1|name2|...` alias syntax. Strict whitelist: only `[a-z][a-z0-9-]*`
+      // names are accepted, so a stray help-text line can't smuggle a path
+      // segment into the snapshot filename.
+      const subNames = new Set<string>()
+      const helpLines = res.stdout.split('\n')
+      // Find the "Commands:" section (commander prints subcommands after it).
+      const cmdsIdx = helpLines.findIndex(l => /^Commands:\s*$/.test(l))
+      const startIdx = cmdsIdx >= 0 ? cmdsIdx + 1 : 0
+      for (let i = startIdx; i < helpLines.length; i++) {
+        const line = helpLines[i]
+        const m = line.match(/^ {2,}([a-z][a-z0-9-]*(?:\|[a-z][a-z0-9-]*)*)\b/)
+        if (!m) continue
+        for (const name of m[1].split('|')) {
+          if (/^[a-z][a-z0-9-]*$/.test(name)) subNames.add(name)
+        }
+      }
+      // Skip a handful that are interactive or have side effects.
+      // `prompt` is the default command — its help is identical to root
+      // and would also start the REPL if we ran it without --help guards.
+      const SKIP = new Set(['prompt'])
+      let captured = 0
+      let skipped = 0
+      for (const name of subNames) {
+        if (SKIP.has(name)) { skipped++; continue }
+        const sub = spawnSync('node', [cliPath, name, '--help'], {
+          encoding: 'utf-8',
+          timeout: 30_000,
+          env: { ...process.env, NO_COLOR: '1', CLAUDIN_HELP_CAPTURE: '1' },
+        })
+        if (sub.status === 0 && sub.stdout.length > 50) {
+          writeFileSync(join(distDir, `help-${name}.txt`), sub.stdout)
+          captured++
+        } else {
+          skipped++
+        }
+      }
+      console.log(`  📄 captured ${captured} subcommand help snapshots (${skipped} skipped)`)
+    } else {
+      console.warn('  ⚠ --help capture failed; fast-path will fall through to full load')
+    }
+  } catch (e) {
+    console.warn('  ⚠ --help capture errored; fast-path will fall through to full load')
+  }
 }
 
 } finally {

@@ -1,5 +1,9 @@
 import { feature } from 'bun:bundle';
-import { validateProviderEnvForStartupOrExit } from '../utils/providerValidation.js'
+// NOTE: `validateProviderEnvForStartupOrExit` is dynamic-imported below
+// (inside `main()`) on purpose. The static graph of providerValidation
+// → providerConfig pulls a ~580 KB chunk (zod schemas eagerly built at
+// top-level, preset definitions, OAuth glue) which would otherwise
+// bloat the cold-start parse path for `--version`/`--help`.
 
 // Claudin: polyfill globalThis.File for Node < 20.
 // undici v7 references `File` at module evaluation time (webidl type
@@ -104,6 +108,13 @@ if (feature('ABLATION_BASELINE') && process.env.CLAUDE_CODE_ABLATION_BASELINE) {
   }
 }
 
+// Wave 12 — strict whitelist for subcommand names accepted by the
+// `<cmd> --help` fast-path. Must match the regex used in scripts/build.ts
+// (capture loop) so a name accepted here is guaranteed to have a snapshot
+// (or the readFileSync falls through to the slow path). Keeping this
+// module-level avoids re-compiling the pattern on every CLI launch.
+const SUBCOMMAND_NAME_RE = /^[a-z][a-z0-9-]*$/;
+
 /**
  * Bootstrap entrypoint - checks for special flags before loading the full CLI.
  * All imports are dynamic to minimize module evaluation for fast paths.
@@ -120,6 +131,48 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Wave 11 — Fast-path for --help/-h. The full commander program takes
+  // ~500 ms warm to load+evaluate+render the help text because configuring
+  // all subcommands and their options still drags in providerValidation,
+  // permission modes, command registries, and dialogs. The help text itself
+  // is static given a build, so we capture it once during `bun run build`
+  // (see scripts/build.ts) into dist/help.txt and serve it here with a
+  // single readFileSync + stdout write. Falls through to the slow path if
+  // the snapshot file is missing or the user passes additional flags.
+  // CLAUDIN_HELP_CAPTURE is set when build.ts is harvesting the help text
+  // itself — in that case we must take the slow path so commander actually
+  // emits the help output for us to capture.
+  //
+  // Wave 12 extends the fast-path to `claudin <cmd> --help`. The build
+  // captures each subcommand's help into dist/help-<cmd>.txt; we serve
+  // those whenever args.length === 2 and the first arg passes the same
+  // strict whitelist used during capture.
+  if (
+    !process.env.CLAUDIN_HELP_CAPTURE &&
+    (
+      (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) ||
+      (
+        args.length === 2 &&
+        (args[1] === '--help' || args[1] === '-h') &&
+        SUBCOMMAND_NAME_RE.test(args[0])
+      )
+    )
+  ) {
+    try {
+      const { readFileSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { join, dirname } = await import('node:path');
+      const distDir = dirname(fileURLToPath(import.meta.url));
+      const snapshotName = args.length === 1 ? 'help.txt' : `help-${args[0]}.txt`;
+      const help = readFileSync(join(distDir, snapshotName), 'utf-8');
+      process.stdout.write(help);
+      return;
+    } catch {
+      // Snapshot missing or unreadable — fall through to the full commander
+      // path so the user still gets help, just slower.
+    }
+  }
+
   // --provider one-shot is no longer supported. Provider selection is
   // profile-driven via /provider; users with the flag in their shell are
   // pointed at the wizard.
@@ -130,6 +183,19 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
+
+  // Kick off the heavy main.js import in parallel with the lightweight prep
+  // work below. This is the single biggest chunk in the bundle (~320ms of ESM
+  // evaluation); starting it now lets its parse/eval overlap with the small
+  // sequential awaits that follow. The result is awaited at the end of this
+  // function — see `cli_before_main_import`. Fast-path branches (--daemon, etc.)
+  // return before reaching that await, so we attach a no-op catch to avoid
+  // PromiseRejection warnings if the orphaned import ever rejects.
+  // (Phase A of cold-start plan.)
+  const mainImportPromise = import('../main.js')
+  mainImportPromise.catch(() => {
+    /* fast-path exited before main was needed; swallow */
+  })
 
   // Enable configs first so we can read settings
   {
@@ -164,6 +230,9 @@ async function main(): Promise<void> {
     hydrateGithubModelsTokenFromSecureStorage()
   }
 
+  const { validateProviderEnvForStartupOrExit } = await import(
+    '../utils/providerValidation.js'
+  )
   await validateProviderEnvForStartupOrExit()
 
   // Ctrl+L-style clear before mounting the REPL. Disabled by default so the
@@ -174,8 +243,22 @@ async function main(): Promise<void> {
   const { tryGetActiveProvider } = await import(
     '../services/api/activeProvider.js'
   )
+  const activeProvider = tryGetActiveProvider()
+  // Wave 7 prefetch (earlier kick) — only meaningful for Anthropic OAuth
+  // consumer subscribers, the audience the GroveDialog targets. Fired here
+  // (instead of inside trustAndOnboarding) so the two HTTP GETs overlap
+  // with main.tsx parse + setup() + commander dispatch — roughly +500 ms
+  // of headroom vs. +66 ms when kicked from trust_onboarding_start. Errors
+  // are already swallowed inside each memoized fn.
+  if (activeProvider && activeProvider.transport === 'anthropic') {
+    void (async () => {
+      const grove = await import('../services/api/grove.js')
+      void grove.getGroveSettings()
+      void grove.getGroveNoticeConfig()
+    })()
+  }
   if (
-    tryGetActiveProvider() &&
+    activeProvider &&
     process.stdout.isTTY &&
     process.env.CLAUDIN_CLEAR_ON_START === '1'
   ) {
@@ -420,9 +503,12 @@ async function main(): Promise<void> {
     startCapturingEarlyInput();
   }
   profileCheckpoint('cli_before_main_import');
+  // mainImportPromise was started at the top of main() to overlap with the
+  // sequential prep work above (Phase A). It's almost certainly resolved by
+  // now, so this await is effectively free.
   const {
     main: cliMain
-  } = await import('../main.js');
+  } = await mainImportPromise;
   profileCheckpoint('cli_after_main_import');
   await cliMain();
   profileCheckpoint('cli_after_main_complete');
