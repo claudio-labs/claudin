@@ -172,7 +172,7 @@ export function PromptInputFooterSuggestions({
   overlay,
 }: Props): ReactNode {
   const { rows } = useTerminalSize()
-  const maxVisibleItems = overlay ? OVERLAY_MAX_ITEMS : Math.min(10, Math.max(1, rows - 3))
+  const maxVisibleItems = overlay ? OVERLAY_MAX_ITEMS : Math.min(14, Math.max(1, rows - 2))
 
   if (suggestions.length === 0) {
     return null
