@@ -42,7 +42,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
     trimmedArgs === '-h'
   ) {
     onDone(
-      'Run /provider to add, edit, delete, or activate provider profiles. The active provider controls base URL, model, and API key. Subcommands: `migrate [--force]` to copy ~/.claude/ -> ~/.claudio/, `doctor` to probe the active profile.',
+      'Run /provider to add, edit, delete, or activate provider profiles. The active provider controls base URL, model, and API key. Subcommands: `migrate [--force]` to copy ~/.claude/ -> ~/.claudin/, `doctor` to probe the active profile.',
       { display: 'system' },
     )
     return

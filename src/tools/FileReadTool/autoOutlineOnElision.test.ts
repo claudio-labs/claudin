@@ -3,7 +3,7 @@
 // `mock.module('bun:bundle', …)` runs too late to override the preload.
 // FileReadTool exposes a test-only env-var override so we can exercise the
 // real gated branch end-to-end. Must be set before importing FileReadTool.
-process.env.CLAUDIO_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
+process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
@@ -38,7 +38,7 @@ import {
 // ---------------------------------------------------------------------------
 
 process.env.CLAUDE_CODE_SIMPLE = '1'
-process.env.CLAUDIO_DISABLE_TOOL_RESULT_CACHE = '1'
+process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
 
 let dir: string
 

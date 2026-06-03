@@ -109,7 +109,7 @@ const TEAMMATE_ENV_VARS = [
   // Custom API endpoint
   'ANTHROPIC_BASE_URL',
   // Config directory override
-  'CLAUDIO_CONFIG_DIR',
+  'CLAUDIN_CONFIG_DIR',
   // CCR marker — teammates need this for CCR-aware code paths. Auth finds
   // its own way via /home/claude/.claude/remote/.oauth_token regardless;
   // the FD env var wouldn't help (pipe FDs don't cross tmux).
@@ -147,7 +147,7 @@ export function buildInheritedEnvVars(): string {
     'CLAUDECODE=1',
     'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1',
     // Teammates should inherit the leader-selected provider route instead of
-    // replaying persisted ~/.claudio or settings.env provider defaults.
+    // replaying persisted ~/.claudin or settings.env provider defaults.
     'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1',
   ]
 

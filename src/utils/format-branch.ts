@@ -53,7 +53,7 @@ function applyColor(c: ChalkInstance, raw: string, type: 'fg' | 'bg'): ChalkInst
  *
  * Path: vibrant suggestion bg with dark bold text.
  * Branch: very faint messageActionsBackground with muted inactive text.
- * Colors are resolved from the active Claudio theme.
+ * Colors are resolved from the active Claudin theme.
  */
 export function buildBranchBorderSegment(
   displayCwd: string,

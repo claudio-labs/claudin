@@ -25,7 +25,7 @@
 | **Drop 4 arquivos** (safety/analytics/debug/parse) | Cada <30 LoC, single-digit callers — inline (review §"Over-engineering #2-6") |
 | **Reusar `escapeXmlAttr`** de `src/utils/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
 | **Reusar `collapseIdenticalRuns`/`collapseDigitTemplates`** de `toolResultSummarizer.ts` | Saves ~80 LoC duplicação (review §"Over-engineering #3") |
-| **Tests colocados** ao invés de `__tests__/` | Viola `.claudio/rules/testing.md` (review §"Misalignments #7") |
+| **Tests colocados** ao invés de `__tests__/` | Viola `.claudin/rules/testing.md` (review §"Misalignments #7") |
 | **Config keys flat** (`bashOutputFilterEnabled`) | Match `toolResultSummarizerEnabled` precedent (review §"Missed conventions #4") |
 | **Drop `extractBaseCommand` reuse claim** | Função é private + não tem redaction (review §"Misalignments #4") |
 | **Single integration harness**, não per-filter test files | Duplica assertions (review §"Testing strategy") |
@@ -82,10 +82,10 @@ Movidos pra v2 (precisam native parser):
 - ✅ `bun test src/outputFilter/Bash` — 100% pass (single harness + 5 unit test files)
 - ✅ `bun run verify:privacy` clean
 - ✅ `scripts/regex-redos-scan.test.ts` — no denylisted patterns
-- ✅ Smoke: 5 comandos com `CLAUDIO_BASH_FILTER_DEBUG=1`
+- ✅ Smoke: 5 comandos com `CLAUDIN_BASH_FILTER_DEBUG=1`
 - ✅ Compound: `git log -5 | wc -l` — no rewrite
 - ✅ Error-exit: `cargo build` falha — rewrite marker shown (não pipeline)
-- ✅ User filter `~/.claudio/filters.json` carrega + aplica
+- ✅ User filter `~/.claudin/filters.json` carrega + aplica
 - ✅ Sandbox annotations preservadas em todos built-ins
 - ✅ Coverage ≥ 80%
 - ✅ `processToolResultBlock` test surface cobre filter+summarizer interaction

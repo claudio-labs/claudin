@@ -1,5 +1,5 @@
 /**
- * Tests for Bug Fixes applied to claudio.
+ * Tests for Bug Fixes applied to claudin.
  *
  * Covers:
  * 1. Gemini `store: false` rejection fix

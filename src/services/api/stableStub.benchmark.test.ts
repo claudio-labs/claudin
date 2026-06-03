@@ -73,7 +73,7 @@ type AnyMsg = {
 const TOOL_NAMES = ['Read', 'Bash', 'Grep', 'Glob']
 
 interface SyntheticSession {
-  /** Wrapped Claudio-style messages with the {type, message} envelope. */
+  /** Wrapped Claudin-style messages with the {type, message} envelope. */
   wrapped: AnyMsg[]
   /** Flat {role, content} messages — the shape OpenAI shims accept. */
   flat: AnyMsg[]
@@ -223,7 +223,7 @@ function captureOpenAIResponsesBody(messages: AnyMsg[]): string {
  * Anthropic native: drive applyStableStubs + addCacheBreakpoints (the same
  * two functions claude.ts calls right before the SDK serializes), then JSON
  * stringify the resulting body. This is one transform short of the SDK's own
- * fetch — but addCacheBreakpoints is the only Claudio-side mutation that
+ * fetch — but addCacheBreakpoints is the only Claudin-side mutation that
  * affects wire bytes for the Anthropic engine. Driving the SDK itself would
  * add zero signal and a lot of mocking.
  */

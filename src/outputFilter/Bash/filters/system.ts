@@ -5,10 +5,10 @@
 // ps/top are dominated by kernel threads (VIRT/RSS=0) that are rarely relevant
 // to a coding agent. journalctl repeats the hostname on every line — strip it.
 // Phase 9 (system utilities) adds 9 declarative specs that cover commands the
-// RTK reference filter covered but Claudio did not — see
+// RTK reference filter covered but Claudin did not — see
 // docs/discovery/bash-output-filter/system-utils-deep-dive-2026-05.md.
 //
-// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

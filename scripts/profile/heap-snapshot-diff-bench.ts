@@ -12,7 +12,7 @@
 //
 // Usage:
 //   bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts
-//   bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts --turns=2000 --out=/tmp/claudio-heap
+//   bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts --turns=2000 --out=/tmp/claudin-heap
 
 import { mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -28,7 +28,7 @@ type Args = {
 function parseArgs(argv: string[]): Args {
   const args: Args = {
     turns: 1000,
-    out: join(tmpdir(), 'claudio-heap'),
+    out: join(tmpdir(), 'claudin-heap'),
     help: false,
   }
   for (const a of argv) {
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
 Options:
   --turns=N    number of synthetic turns to simulate (default 1000)
-  --out=PATH   directory for .heapsnapshot files (default: $TMPDIR/claudio-heap)
+  --out=PATH   directory for .heapsnapshot files (default: $TMPDIR/claudin-heap)
   --help       this message
 
 Output: two .heapsnapshot files; load both into Chrome DevTools (Memory tab,

@@ -420,7 +420,7 @@ export function hasInstructionsLoadedHook(): boolean {
 
 /**
  * Execute InstructionsLoaded hooks when an instruction file (CLAUDE.md or
- * .claudio/rules/*.md) is loaded into context. Fire-and-forget — this hook is
+ * .claudin/rules/*.md) is loaded into context. Fire-and-forget — this hook is
  * for observability/audit only and does not support blocking.
  *
  * Dispatch sites:

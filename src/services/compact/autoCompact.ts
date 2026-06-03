@@ -90,7 +90,7 @@ const DEFAULT_HEAP_PRESSURE_RATIO = 0.7
 const MIN_MESSAGES_FOR_HEAP_TRIGGER = 20
 
 function getHeapPressureRatio(): number {
-  const override = process.env.CLAUDIO_HEAP_PRESSURE_RATIO
+  const override = process.env.CLAUDIN_HEAP_PRESSURE_RATIO
   if (override) {
     const parsed = parseFloat(override)
     if (!isNaN(parsed) && parsed > 0 && parsed < 1) return parsed

@@ -84,7 +84,7 @@ test('withGitWorktreeMutationLock does not serialize different repos', async () 
 // attach HAPPY path (which mutates currentWorktreeSession + writes project
 // config + chdir) is left to the manual e2e steps in the plan.
 test('attachExistingWorktree rejects a path that is not a registered worktree', async () => {
-  const repo = mkdtempSync(join(tmpdir(), 'claudio-wt-'))
+  const repo = mkdtempSync(join(tmpdir(), 'claudin-wt-'))
   const prevCwd = getCwd()
   try {
     const git = (...args: string[]) =>
@@ -106,7 +106,7 @@ test('attachExistingWorktree rejects a path that is not a registered worktree', 
 })
 
 test('attachExistingWorktree rejects the main worktree', async () => {
-  const repo = mkdtempSync(join(tmpdir(), 'claudio-wt-'))
+  const repo = mkdtempSync(join(tmpdir(), 'claudin-wt-'))
   const prevCwd = getCwd()
   try {
     const git = (...args: string[]) =>

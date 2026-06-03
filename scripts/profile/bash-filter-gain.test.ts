@@ -9,9 +9,9 @@
 // runs; `bun run` does not apply that preload.
 //
 // Default behaviour: skipped on `bun test`. Run explicitly with:
-//   CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts
-//   CLAUDIO_BENCH=1 CLAUDIO_BENCH_DIFF=git-blame bun test scripts/profile/bash-filter-gain.test.ts
-//   CLAUDIO_BENCH=1 CLAUDIO_BENCH_JSON=1 bun test scripts/profile/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=git-blame bun test scripts/profile/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_JSON=1 bun test scripts/profile/bash-filter-gain.test.ts
 
 import { describe, test } from 'bun:test'
 import { existsSync, readFileSync } from 'node:fs'
@@ -248,9 +248,9 @@ const showTable = (rows: Row[]): void => {
   )
 }
 
-const ENABLED = process.env.CLAUDIO_BENCH === '1'
-const DIFF_FOR = process.env.CLAUDIO_BENCH_DIFF
-const AS_JSON = process.env.CLAUDIO_BENCH_JSON === '1'
+const ENABLED = process.env.CLAUDIN_BENCH === '1'
+const DIFF_FOR = process.env.CLAUDIN_BENCH_DIFF
+const AS_JSON = process.env.CLAUDIN_BENCH_JSON === '1'
 
 describe('bash-filter-gain', () => {
   test.skipIf(!ENABLED)('per-command gain report', () => {
@@ -269,7 +269,7 @@ describe('bash-filter-gain', () => {
     )
     console.log('        ✓ = meets target (within −5pp); ✗ = misses target.')
     console.log(
-      'Inspect a single filter:  CLAUDIO_BENCH=1 CLAUDIO_BENCH_DIFF=<filter> bun test scripts/profile/bash-filter-gain.test.ts',
+      'Inspect a single filter:  CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=<filter> bun test scripts/profile/bash-filter-gain.test.ts',
     )
   })
 })

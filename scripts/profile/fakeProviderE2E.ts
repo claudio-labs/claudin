@@ -140,7 +140,7 @@ export function createFakeCallModel(
     onCall?: (callIndex: number, turn: TurnScript) => void
   } = {},
 ): typeof queryModelWithStreaming {
-  const model = opts.model ?? 'claudio-fake-model'
+  const model = opts.model ?? 'claudin-fake-model'
   let callIndex = 0
 
   // We have to satisfy the full signature of queryModelWithStreaming.

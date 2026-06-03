@@ -23,9 +23,9 @@ const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const BASELINE_A = join(REPO_ROOT, 'dist', 'baseline-a', 'cli.mjs')
 const FEATURE_B = join(REPO_ROOT, 'dist', 'feature-b-shipped', 'cli.mjs')
 const FEATURE_D = join(REPO_ROOT, 'dist', 'feature-b', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '2')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '2')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? '/home/viudes/projects/openclaude'
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? '/home/viudes/projects/openclaude'
 
 type Variant = 'A' | 'B' | 'D'
 const VARIANTS: { id: Variant; label: string; entry: string }[] = [
@@ -78,7 +78,7 @@ function classifyReadInput(input: any): keyof ReadModeCounts {
 }
 
 function extractFromSession(sessionId: string, cwd: string) {
-  const path = join(homedir(), '.claudio', 'projects', projectDirForCwd(cwd), `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDirForCwd(cwd), `${sessionId}.jsonl`)
   const toolCounts: Record<string, number> = {}
   const readModes: ReadModeCounts = { outline: 0, symbol: 0, range: 0, full: 0, viewFull: 0 }
   const lspOps: LspOpCounts = {}

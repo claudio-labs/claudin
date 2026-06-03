@@ -1,6 +1,6 @@
 import { execaSync } from 'execa'
 import { join } from 'path'
-import { getClaudioConfigHomeDir } from '../envUtils.js'
+import { getClaudinConfigHomeDir } from '../envUtils.js'
 import { jsonParse, jsonStringify } from '../slowOperations.js'
 import {
   CREDENTIALS_SERVICE_SUFFIX,
@@ -27,7 +27,7 @@ function getWindowsSecureStorageEntropy(): string {
 
 function getWindowsSecureStorageFilePath(): string {
   const resourceName = getLegacyResourceName().replace(/[^a-zA-Z0-9._-]/g, '_')
-  return join(getClaudioConfigHomeDir(), `${resourceName}.secure.dpapi`)
+  return join(getClaudinConfigHomeDir(), `${resourceName}.secure.dpapi`)
 }
 
 function runPowerShell(

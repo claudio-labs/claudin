@@ -56,7 +56,7 @@ export type ClaudeMdDelta = {
 // bytes for unchanged static context, ≥25% savings over a 10-turn
 // session) and per-engine wire-level checks in
 // `staticDedup.shim.integration.test.ts`. The earlier
-// CLAUDIO_STATIC_DEDUP env gate has been removed.
+// CLAUDIN_STATIC_DEDUP env gate has been removed.
 
 type ScannableMessage = {
   type: string
@@ -99,7 +99,7 @@ export function getClaudeMdDelta(
   // Unchanged from last announcement — copy elision.
   if (lastAnnouncedHash === currentHash) return null
 
-  logEvent('claudio_claude_md_delta', {
+  logEvent('claudin_claude_md_delta', {
     changed: true,
     priorAnnounced: lastAnnouncedHash !== null,
     currentLength: normalized.length,

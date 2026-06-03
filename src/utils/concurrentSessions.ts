@@ -8,7 +8,7 @@ import {
 } from '../bootstrap/state.js'
 import { registerCleanup } from './cleanupRegistry.js'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { errorMessage, isFsInaccessible } from './errors.js'
 import { isProcessRunning } from './genericProcessUtils.js'
 import { getPlatform } from './platform.js'
@@ -19,7 +19,7 @@ export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'
 export type SessionStatus = 'busy' | 'idle' | 'waiting'
 
 function getSessionsDir(): string {
-  return join(getClaudioConfigHomeDir(), 'sessions')
+  return join(getClaudinConfigHomeDir(), 'sessions')
 }
 
 /**
@@ -193,8 +193,8 @@ export async function countConcurrentSessions(): Promise<number> {
       count++
     } else if (getPlatform() !== 'wsl') {
       // Stale file from a crashed session — sweep it. Skip on WSL: if
-      // sessions/ is shared with Windows-native Claudio (symlink or
-      // CLAUDIO_CONFIG_DIR), a Windows PID won't be probeable from WSL
+      // sessions/ is shared with Windows-native Claudin (symlink or
+      // CLAUDIN_CONFIG_DIR), a Windows PID won't be probeable from WSL
       // and we'd falsely delete a live session's file. This is just
       // telemetry so conservative undercount is acceptable.
       void unlink(join(dir, file)).catch(() => {})

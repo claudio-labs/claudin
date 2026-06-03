@@ -77,7 +77,7 @@ export function detectOutlineLang(ext: string): OutlineLang | null {
 const MAX_SIGNATURE_CHARS = 160
 
 // Declaration regexes — module level (recompiling per call is banned, see
-// .claudio/rules/typescript-patterns.md). Tested on the trimmed line.
+// .claudin/rules/typescript-patterns.md). Tested on the trimmed line.
 const RE_CLASS =
   /^(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?class\s+([A-Za-z_$][\w$]*)/
 const RE_FUNCTION =

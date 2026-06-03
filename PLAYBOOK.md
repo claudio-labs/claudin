@@ -1,21 +1,21 @@
-# Claudio Local Agent Playbook
+# Claudin Local Agent Playbook
 
-This playbook is a practical guide to running Claudio with a local model (Ollama) and getting strong day-to-day results. All provider configuration goes through the `/provider` slash command inside the REPL.
+This playbook is a practical guide to running Claudin with a local model (Ollama) and getting strong day-to-day results. All provider configuration goes through the `/provider` slash command inside the REPL.
 
 ## 1. What You Have
 
 - A CLI agent loop that can read/write files, run terminal commands, and help with coding workflows.
 - A multi-profile provider system managed entirely from `/provider`.
 - Built-in health checks via `/provider doctor`.
-- Profiles persisted under `~/.claudio/settings.json`.
+- Profiles persisted under `~/.claudin/settings.json`.
 
 ## 2. Daily Start (Fast Path)
 
 ```bash
-claudio
+claudin
 ```
 
-Claudio boots straight into the REPL with the active profile. Switch profiles, edit credentials, or add new ones with:
+Claudin boots straight into the REPL with the active profile. Switch profiles, edit credentials, or add new ones with:
 
 ```
 /provider
@@ -25,7 +25,7 @@ Claudio boots straight into the REPL with the active profile. Switch profiles, e
 
 ### 3.1 Pick a local model preset
 
-Inside Claudio:
+Inside Claudin:
 
 1. Run `/provider`
 2. Pick `Add profile` -> preset `ollama`
@@ -44,7 +44,7 @@ ollama pull llama3.1:8b
 
 ### 3.3 Validate the profile
 
-Inside Claudio:
+Inside Claudin:
 
 ```
 /provider doctor
@@ -86,7 +86,7 @@ Expected behavior:
 
 ### 5.3 Anthropic (web sign-in)
 
-`/provider` -> preset `anthropic` -> choose `Sign in with web`. Tokens are stored under `~/.claudio/.credentials.json`.
+`/provider` -> preset `anthropic` -> choose `Sign in with web`. Tokens are stored under `~/.claudin/.credentials.json`.
 
 ### 5.4 Codex (ChatGPT OAuth)
 
@@ -98,7 +98,7 @@ Expected behavior:
 
 ## 6. Troubleshooting Matrix
 
-### 6.1 `claudio` command not found
+### 6.1 `claudin` command not found
 
 Cause:
 
@@ -106,7 +106,7 @@ Cause:
 
 Fix:
 
-- Open a new terminal and run `claudio` again
+- Open a new terminal and run `claudin` again
 
 ### 6.2 Ollama not reachable
 
@@ -120,7 +120,7 @@ Fix:
 ollama serve
 ```
 
-Then in Claudio, run `/provider doctor`.
+Then in Claudin, run `/provider doctor`.
 
 ### 6.3 Provider stops working mid-session
 
@@ -173,8 +173,8 @@ Switch model:
 ## 9. Safe Working Rules
 
 - Run `/provider doctor` before debugging provider issues.
-- Switch profiles via `/provider` rather than editing `~/.claudio/settings.json` by hand.
-- Treat `~/.claudio/settings.json` as private — it stores plaintext API keys.
+- Switch profiles via `/provider` rather than editing `~/.claudin/settings.json` by hand.
+- Treat `~/.claudin/settings.json` as private — it stores plaintext API keys.
 
 ## 10. Quick Recovery Checklist
 
@@ -194,7 +194,7 @@ When something breaks, in order:
 /provider migrate     # rerun legacy ~/.claude/ migration
 
 # from the shell
-claudio            # launch
+claudin            # launch
 bun run smoke         # build + version check
 bun run typecheck     # tsc --noEmit
 bun test              # full unit suite
@@ -206,5 +206,5 @@ bun run test:provider # provider integration tests
 Your setup is healthy when:
 
 - `/provider doctor` passes reachability, auth, and model checks for the active profile
-- `claudio` launches into the REPL with the expected model in the status line
+- `claudin` launches into the REPL with the expected model in the status line
 - The model shown in the UI matches the active profile's `Model` field

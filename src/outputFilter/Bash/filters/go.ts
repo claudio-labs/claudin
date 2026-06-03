@@ -5,7 +5,7 @@
 // `go vet` and golangci-lint output is dominated by diagnostics; we keep
 // them and just strip ANSI / collapse runs of blank lines.
 //
-// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

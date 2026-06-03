@@ -20,8 +20,8 @@
  *   KILL se narrationChars cai <20% rel OU wall time sobe >+15%.
  *
  * Uso:
- *   CLAUDIO_BENCH_BASELINE=dist-bench-baseline/cli.mjs \
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs \
+ *   CLAUDIN_BENCH_BASELINE=dist-bench-baseline/cli.mjs \
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs \
  *   ANTHROPIC_MODEL=claude-opus-4-8 \
  *   bun run scripts/bench/serial-read-nudge-ab.ts
  */
@@ -32,12 +32,12 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const BASELINE = process.env.CLAUDIO_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-bench-baseline', 'cli.mjs')
-const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '3')
+const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-bench-baseline', 'cli.mjs')
+const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
-const MAX_PROMPTS = Number(process.env.CLAUDIO_BENCH_PROMPTS ?? '0')
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
+const MAX_PROMPTS = Number(process.env.CLAUDIN_BENCH_PROMPTS ?? '0')
 
 const PROMPTS: { id: string; text: string }[] = [
   {
@@ -50,7 +50,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'explain-provider-resolution',
-    text: 'Como o Claudio resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
+    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
   },
 ]
 
@@ -108,7 +108,7 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
     exploreInvocations: 0,
   }
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return empty
 
   const counts: Record<string, number> = {}

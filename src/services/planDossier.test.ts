@@ -472,8 +472,8 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
     expect(result!.text).toContain('</plan-dossier>')
   })
 
-  test('renders text for claudio-dev subagent', () => {
-    const result = renderDossierForSubagent(smallDossier(), 'claudio-dev', 'claude-opus-4-7')
+  test('renders text for claudin-dev subagent', () => {
+    const result = renderDossierForSubagent(smallDossier(), 'claudin-dev', 'claude-opus-4-7')
     expect(result).not.toBeNull()
     expect(result!.text).toContain('<plan-dossier>')
   })
@@ -532,7 +532,7 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
 describe('renderDossierForSubagent — tier 3 degrade and overflow', () => {
   test('Tier 1 over budget → larger entries degrade to structural summary', () => {
     const captured = new Date().toISOString()
-    // Build many huge willEdit entries that overflow claudio-dev's tier1 budget.
+    // Build many huge willEdit entries that overflow claudin-dev's tier1 budget.
     const huge = 'x'.repeat(20_000) // 20KB each — small file
     const truly = 'y'.repeat(200_000) // 200KB — larger
     const dossier: Dossier = {
@@ -596,7 +596,7 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
   ]
 
   const SUBAGENT_TYPES: string[] = [
-    'claudio-dev',
+    'claudin-dev',
     'Code',
     '__customDefault',
     'Explore',
@@ -679,7 +679,7 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
 })
 
 describe('renderDossierForSubagent — budget compliance', () => {
-  test('rendered text token estimate stays under hard cap for claudio-dev', () => {
+  test('rendered text token estimate stays under hard cap for claudin-dev', () => {
     const captured = new Date().toISOString()
     // Build a willEdit set well over the budget to force tier-1 + degrade
     const blob = 'b'.repeat(50_000)
@@ -695,7 +695,7 @@ describe('renderDossierForSubagent — budget compliance', () => {
         { source: 'Read', path: '/c.ts', content: blob, mtime: 1, capturedAt: captured, kind: 'text' },
       ],
     }
-    const result = renderDossierForSubagent(dossier, 'claudio-dev', 'claude-opus-4-7')!
+    const result = renderDossierForSubagent(dossier, 'claudin-dev', 'claude-opus-4-7')!
     const window = getEffectiveContextWindowSize('claude-opus-4-7')
     const hardCap = Math.floor(window * HARD_CAP_PCT)
     // Plan content + header + tier 2 lines add overhead beyond the tier-1
@@ -716,7 +716,7 @@ describe('renderDossierForSubagent — budget compliance', () => {
         { source: 'Read', path: '/big.ts', content: fivehundredKB, mtime: 1, capturedAt: captured, kind: 'text' },
       ],
     }
-    const result = renderDossierForSubagent(dossier, 'claudio-dev', 'claude-opus-4-7[1m]')!
+    const result = renderDossierForSubagent(dossier, 'claudin-dev', 'claude-opus-4-7[1m]')!
     expect(result.text).not.toContain('structural summary')
     expect(result.text).not.toContain('dossier truncated')
     // Full content of /big.ts should be inline

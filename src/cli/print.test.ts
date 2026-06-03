@@ -7,7 +7,7 @@
  * stay byte-equivalent. Mocks only at module boundaries (MCP client,
  * StructuredIO/RemoteIO), never on internal logic.
  *
- * See plan: /home/viudes/.claudio/plans/valiant-watching-hanrahan.md
+ * See plan: /home/viudes/.claudin/plans/valiant-watching-hanrahan.md
  */
 import { afterAll, describe, expect, mock, test } from 'bun:test'
 

@@ -16,7 +16,7 @@
 //   bun run scripts/profile/long-session-bench.ts
 //   bun run scripts/profile/long-session-bench.ts --cycles=10000 --json
 //
-// Required: --expose-gc for honest heap deltas (bin/claudio enables it
+// Required: --expose-gc for honest heap deltas (bin/claudin enables it
 // by default). Bench falls back to no-gc and warns.
 
 import { performance } from 'node:perf_hooks'
@@ -212,7 +212,7 @@ async function exerciseImageStore(cycles: number): Promise<CacheResult> {
     getSessionId: () => 'bench-session',
   }))
   mock.module('../../src/utils/envUtils.js', () => ({
-    getClaudioConfigHomeDir: () => '/tmp/claudio-bench',
+    getClaudinConfigHomeDir: () => '/tmp/claudin-bench',
     isEnvTruthy: () => false,
   }))
   // Note: fsOperations intentionally not mocked — cacheImagePath does no fs I/O,
@@ -285,7 +285,7 @@ async function exerciseLSPDelivered(cycles: number): Promise<CacheResult> {
 async function exerciseFileReadCache(cycles: number): Promise<CacheResult> {
   // Real fs path: build N tiny fixtures in tmpdir, read each via the cache.
   // No mocks — measures the real production path.
-  const dir = join(tmpdir(), `claudio-long-session-${process.pid}`)
+  const dir = join(tmpdir(), `claudin-long-session-${process.pid}`)
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
 
@@ -312,7 +312,7 @@ async function exerciseFileReadCache(cycles: number): Promise<CacheResult> {
 }
 
 /**
- * Mixed-session exerciser. Simulates a long Claudio session on a large
+ * Mixed-session exerciser. Simulates a long Claudin session on a large
  * project — each "turn" interleaves the workload mix observed in real
  * sessions:
  *   - 5 file reads via fileReadCache (Read/Edit/Grep tool results)
@@ -390,7 +390,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
 
   // Real fs fixtures for fileReadCache: create a pool of files larger than
   // the cap so we trigger evictions (turns × 5 reads / 1000 cap = many evictions).
-  const dir = join(tmpdir(), `claudio-mixed-session-${process.pid}`)
+  const dir = join(tmpdir(), `claudin-mixed-session-${process.pid}`)
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
   const POOL_SIZE = 5000 // unique files; reads pick `turn*5+i` so we sweep through

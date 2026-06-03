@@ -1,5 +1,5 @@
 /**
- * Claudio startup screen — compact pixel-art logo + provider/cwd lines.
+ * Claudin startup screen — compact pixel-art logo + provider/cwd lines.
  * Called once at CLI startup before the Ink UI renders.
  */
 
@@ -185,7 +185,7 @@ export function buildStartupBannerLines(
   const version = MACRO.DISPLAY_VERSION ?? MACRO.VERSION
   const sep = `${DIM}·${RESET}`
 
-  const headerLine = `${BOLD}Claudio${RESET} ${DIM}v${version}${RESET}`
+  const headerLine = `${BOLD}Claudin${RESET} ${DIM}v${version}${RESET}`
   const providerLine = p.effort
     ? `${p.name} ${sep} ${p.model} ${sep} ${effortLevelToSymbol(p.effort)} ${p.effort}`
     : `${p.name} ${sep} ${p.model}`
@@ -193,7 +193,7 @@ export function buildStartupBannerLines(
 
   const textRows: (string | undefined)[] = [
     undefined,    // sparkle row, no text
-    headerLine,   // top of head — Claudio vX.Y.Z
+    headerLine,   // top of head — Claudin vX.Y.Z
     providerLine, // face — Provider · model
     cwdLine,      // mouth — cwd
   ]
@@ -207,7 +207,7 @@ export function buildStartupBannerLines(
 
   if (updateNotice) {
     out.push(
-      `${YELLOW}▲ New version ${updateNotice.latest} available${RESET} ${DIM}— run: claudio update${RESET}`,
+      `${YELLOW}▲ New version ${updateNotice.latest} available${RESET} ${DIM}— run: claudin update${RESET}`,
     )
   }
 

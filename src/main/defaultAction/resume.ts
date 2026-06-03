@@ -1,4 +1,4 @@
-// Resume branch — `claudio --resume`, `--from-pr`, `--teleport`, `--remote`.
+// Resume branch — `claudin --resume`, `--from-pr`, `--teleport`, `--remote`.
 // Handles resume flow from file, session ID, interactive selector, plus
 // remote/teleport (CCR) session creation. Extracted from src/main.tsx
 // (ROADMAP 11g Fase 5b).

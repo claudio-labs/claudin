@@ -2,7 +2,7 @@ import memoize from 'lodash-es/memoize.js'
 import { dirname, join } from 'path'
 import { fileSuffixForOauthConfig } from '../constants/oauth.js'
 import { isRunningWithBun } from './bundledMode.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { findExecutable } from './findExecutable.js'
 import { getFsImplementation } from './fsOperations.js'
 import { which } from './which.js'
@@ -11,12 +11,12 @@ type Platform = 'win32' | 'darwin' | 'linux'
 
 export const getGlobalClaudeFile = memoize((): string => {
   const suffix = fileSuffixForOauthConfig()
-  const configDir = getClaudioConfigHomeDir()
+  const configDir = getClaudinConfigHomeDir()
   const newPath = join(configDir, `config${suffix}.json`)
   if (!getFsImplementation().existsSync(newPath)) {
-    const envOverride = process.env.CLAUDIO_CONFIG_DIR
+    const envOverride = process.env.CLAUDIN_CONFIG_DIR
     const legacyDir = envOverride ? configDir : dirname(configDir)
-    const legacyPath = join(legacyDir, `.claudio${suffix}.json`)
+    const legacyPath = join(legacyDir, `.claudin${suffix}.json`)
     if (getFsImplementation().existsSync(legacyPath)) {
       return legacyPath
     }

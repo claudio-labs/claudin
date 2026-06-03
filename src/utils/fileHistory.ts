@@ -22,7 +22,7 @@ import type { LogOption } from 'src/types/logs.js'
 import { inspect } from 'util'
 import { getGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { getErrnoCode, isENOENT } from './errors.js'
 import { pathExists } from './file.js'
 import { logError } from './log.js'
@@ -731,7 +731,7 @@ function getBackupFileName(filePath: string, version: number): string {
 }
 
 function resolveBackupPath(backupFileName: string, sessionId?: string): string {
-  const configDir = getClaudioConfigHomeDir()
+  const configDir = getClaudinConfigHomeDir()
   return join(
     configDir,
     'file-history',
@@ -951,7 +951,7 @@ export async function copyFileHistoryForResume(log: LogOption): Promise<void> {
     // All backups share the same directory: {configDir}/file-history/{sessionId}/
     // Create it once upfront instead of once per backup file
     const newBackupDir = join(
-      getClaudioConfigHomeDir(),
+      getClaudinConfigHomeDir(),
       'file-history',
       sessionId,
     )

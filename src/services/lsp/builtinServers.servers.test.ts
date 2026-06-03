@@ -53,7 +53,7 @@ let configDir = '/tmp/fake-config-dir'
 const realEnvUtilsServers = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsServers,
-  getClaudioConfigHomeDir: () => configDir,
+  getClaudinConfigHomeDir: () => configDir,
   isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
 }))
 

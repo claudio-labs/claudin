@@ -3,7 +3,7 @@ import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
 import { applyStableStubs } from '../compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
 import { stableStringify } from '../../utils/stableStringify.js'
-import { getClaudioUserAgent } from '../../utils/userAgent.js'
+import { getClaudinUserAgent } from '../../utils/userAgent.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,
@@ -551,14 +551,14 @@ export async function performCodexRequest(options: {
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'User-Agent': getClaudioUserAgent(),
+    'User-Agent': getClaudinUserAgent(),
     ...options.defaultHeaders,
     Authorization: `Bearer ${options.credentials.apiKey}`,
   }
   if (options.credentials.accountId) {
     headers['chatgpt-account-id'] = options.credentials.accountId
   }
-  headers.originator ??= 'claudio'
+  headers.originator ??= 'claudin'
 
   const response = await fetchWithProxyRetry(
     `${options.request.baseUrl}/responses`,

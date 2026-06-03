@@ -57,7 +57,7 @@ export function shouldEnablePromptSuggestion(): boolean {
   }
 
   // Upstream gates this on a GrowthBook flag ('tengu_chomp_inflection').
-  // Claudio strips GrowthBook via noTelemetryPlugin, so the flag would always
+  // Claudin strips GrowthBook via noTelemetryPlugin, so the flag would always
   // return its default (false) and disable the entire feature. Skip the gate.
 
   // Disable in non-interactive mode (print mode, piped input, SDK)
@@ -131,7 +131,7 @@ export async function tryGenerateSuggestion(
   }
 
   // Need at least one assistant message to base a suggestion on. Upstream
-  // required 2 to skip the very first exchange in a fresh session; in Claudio
+  // required 2 to skip the very first exchange in a fresh session; in Claudin
   // we also want suggestions to fire on `--resume` where the user lands with
   // an existing history and may only type one new turn before expecting one.
   const assistantTurnCount = count(messages, m => m.type === 'assistant')
@@ -247,7 +247,7 @@ export async function executePromptSuggestion(
   }
 }
 
-// Upstream Anthropic build used 10_000 here to keep the demo cheap; in Claudio
+// Upstream Anthropic build used 10_000 here to keep the demo cheap; in Claudin
 // the user is paying their own provider bill and the fork agent runs on the
 // small/fast model (typically Haiku), so a single fork costs cents at worst.
 // Raising the ceiling to 100k lets the feature actually fire in real working

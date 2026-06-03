@@ -19,8 +19,8 @@ const NERD_FONT_TERM_PATTERNS = ['kitty', 'ghostty', 'wezterm']
  * Returns true when the active terminal is likely to render Nerd Font /
  * Powerline glyphs (U+E0A0–U+E0D7, etc.). Resolution order:
  *
- *   1. `CLAUDIO_NERD_FONT=on/1/true` → force on
- *   2. `CLAUDIO_NERD_FONT=off/0/false` → force off
+ *   1. `CLAUDIN_NERD_FONT=on/1/true` → force on
+ *   2. `CLAUDIN_NERD_FONT=off/0/false` → force off
  *   3. `TERM_PROGRAM` in the known-good list → on
  *   4. `TERM` contains a known-good keyword (e.g. `xterm-kitty`) → on
  *   5. otherwise → off (Alacritty, xterm, gnome-terminal, generic ssh)
@@ -30,7 +30,7 @@ const NERD_FONT_TERM_PATTERNS = ['kitty', 'ghostty', 'wezterm']
  * outside the known set opt in via the env var.
  */
 export function hasNerdFontGlyphs(): boolean {
-  const override = process.env.CLAUDIO_NERD_FONT
+  const override = process.env.CLAUDIN_NERD_FONT
   if (isEnvTruthy(override)) return true
   if (isEnvDefinedFalsy(override)) return false
 

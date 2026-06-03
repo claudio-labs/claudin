@@ -1,31 +1,27 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`<REPL> resume baseline resume props all empty (default) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;
 
 exports[`<REPL> resume baseline resume with agent context (name + color) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;

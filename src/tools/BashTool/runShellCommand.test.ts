@@ -117,7 +117,7 @@ describe('runShellCommand — happy paths', () => {
     async () => {
       const harness = makeStateHarness()
       const ac = new AbortController()
-      const input: BashToolInput = { command: 'echo hello-claudio' }
+      const input: BashToolInput = { command: 'echo hello-claudin' }
 
       const gen = runShellCommand({
         input,
@@ -129,7 +129,7 @@ describe('runShellCommand — happy paths', () => {
       const result = await consume(gen)
 
       expect(result.code).toBe(0)
-      expect(result.stdout).toContain('hello-claudio')
+      expect(result.stdout).toContain('hello-claudin')
       expect(result.backgroundTaskId).toBeUndefined()
       expect(result.interrupted).toBe(false)
       // No foreground task should have been registered (command finished

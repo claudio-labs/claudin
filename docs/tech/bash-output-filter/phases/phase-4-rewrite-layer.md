@@ -67,7 +67,7 @@ Adiciona o rewrite layer — comandos podem ser **substituídos** antes da execu
      if (!filter.rewriteCommand) return { effectiveCommand: command, filter, rewrite: null }
 
      // No rewrite if env var disables it
-     if (isEnvTruthy(process.env.CLAUDIO_DISABLE_REWRITE)) return { effectiveCommand: command, filter, rewrite: null }
+     if (isEnvTruthy(process.env.CLAUDIN_DISABLE_REWRITE)) return { effectiveCommand: command, filter, rewrite: null }
      if (getGlobalConfig().bashOutputFilterRewriteEnabled === false) return { effectiveCommand: command, filter, rewrite: null }
 
      try {
@@ -181,7 +181,7 @@ bun test src/tools/BashTool/BashTool.test.ts
 bun run typecheck
 
 # Smoke (manual)
-CLAUDIO_BASH_FILTER_DEBUG=1 bun run dev
+CLAUDIN_BASH_FILTER_DEBUG=1 bun run dev
 # Run: git log -10
 # Expect: <bash-output-rewritten filter="git-log" original="git log -10" actual="git log --oneline -10"> + oneline output
 
@@ -198,7 +198,7 @@ CLAUDIO_BASH_FILTER_DEBUG=1 bun run dev
 - [ ] `git log -10` → `git log --oneline -10` produces 92%+ reduction
 - [ ] `git log -5 | wc -l` (compound) — no rewrite, no marker
 - [ ] `git log -1` (rejected by matchCommandReject) — no rewrite
-- [ ] `CLAUDIO_DISABLE_REWRITE=1` disables rewrite but keeps pipeline
+- [ ] `CLAUDIN_DISABLE_REWRITE=1` disables rewrite but keeps pipeline
 - [ ] Permission check still uses original command
 - [ ] Determinism: each rewrite filter has determinism test (2x same input → same output)
 - [ ] All 5 rewrite tests pass in harness
@@ -243,7 +243,7 @@ Adds command rewriting — `BashTool.call` substitutes `input.command` before `r
 - **Permission check** runs on ORIGINAL command (user/agent intent preserved at the auth boundary)
 - **Compound commands** (`|`, `&&`, `;`) bypass rewrite (preserves pipe semantics like `git log | wc -l`)
 - **Post-rewrite validation**: rewritten command must be non-empty + start with same verb. Failure → no rewrite.
-- **Env opt-out**: `CLAUDIO_DISABLE_REWRITE=1` disables rewrite while keeping pipeline
+- **Env opt-out**: `CLAUDIN_DISABLE_REWRITE=1` disables rewrite while keeping pipeline
 - **Marker shown**: `<bash-output-rewritten filter="..." original="..." actual="...">` so model sees the substitution
 
 ### Tests

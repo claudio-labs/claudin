@@ -36,7 +36,7 @@ export const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   // Grok
   'github:copilot:grok-code-fast-1':          256_000,
 
-  // LiteLLM format — when Claudio talks to a LiteLLM proxy, Copilot models
+  // LiteLLM format — when Claudin talks to a LiteLLM proxy, Copilot models
   // keep their "<provider>/<model>" naming convention (standard LiteLLM routing)
   // instead of the "github:copilot:<model>" namespaced form used by /provider.
   // Mirrors the namespaced entries above; values are sourced from

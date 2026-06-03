@@ -5,7 +5,7 @@
 // We strip the ceremony, preserve warnings/deprecations/errors and the
 // final "what happened" line (added N packages / Done in Xs).
 //
-// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 // Fail-open: all rules are line-level strips; a malformed sample falls
 // back to raw passthrough via safeApply (no throws).
 

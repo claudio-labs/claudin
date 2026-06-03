@@ -37,7 +37,7 @@ import {
 import type { TranscriptMessage } from 'src/types/logs.js'
 
 const ORIGINAL_CWD = process.cwd()
-const ORIGINAL_CONFIG_DIR = process.env.CLAUDIO_CONFIG_DIR
+const ORIGINAL_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
 const ORIGINAL_TEST_PERSIST = process.env.TEST_ENABLE_SESSION_PERSISTENCE
 
@@ -51,7 +51,7 @@ beforeEach(async () => {
   process.env.NODE_ENV = 'test'
   process.env.TEST_ENABLE_SESSION_PERSISTENCE = '1'
   tmpDir = await mkdtemp(join(tmpdir(), 'sessstor-resume-'))
-  process.env.CLAUDIO_CONFIG_DIR = tmpDir
+  process.env.CLAUDIN_CONFIG_DIR = tmpDir
   // See team memory bun-test-global-config-isolation.md: reset the in-memory
   // global config singleton to defend against state leaked by upstream tests
   // in the same worker (--max-concurrency=1).
@@ -60,7 +60,7 @@ beforeEach(async () => {
   resetProjectForTesting()
   resetProjectFlushStateForTesting()
   // See pure.test.ts: clear the lodash memoize on getProjectDir so a prior
-  // suite's CLAUDIO_CONFIG_DIR doesn't leak into this run via the cwd key.
+  // suite's CLAUDIN_CONFIG_DIR doesn't leak into this run via the cwd key.
   ;(
     getProjectDir as unknown as { cache: { clear: () => void } }
   ).cache.clear()
@@ -79,8 +79,8 @@ afterEach(async () => {
 })
 
 afterAll(() => {
-  if (ORIGINAL_CONFIG_DIR === undefined) delete process.env.CLAUDIO_CONFIG_DIR
-  else process.env.CLAUDIO_CONFIG_DIR = ORIGINAL_CONFIG_DIR
+  if (ORIGINAL_CONFIG_DIR === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+  else process.env.CLAUDIN_CONFIG_DIR = ORIGINAL_CONFIG_DIR
   if (ORIGINAL_NODE_ENV === undefined) delete process.env.NODE_ENV
   else process.env.NODE_ENV = ORIGINAL_NODE_ENV
   if (ORIGINAL_TEST_PERSIST === undefined)

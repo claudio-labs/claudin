@@ -1,10 +1,10 @@
-# Plan — Port upstream built-in skills into Claudio
+# Plan — Port upstream built-in skills into Claudin
 
 Branch: `feat/port-builtin-skills`
 
 Goal: bring the high-value, provider-agnostic built-in skills from the upstream
-Claude Code harness (v2.1.156) into Claudio as **bundled skills**, adapted for
-the multi-provider runtime and Claudio's config conventions.
+Claude Code harness (v2.1.156) into Claudin as **bundled skills**, adapted for
+the multi-provider runtime and Claudin's config conventions.
 
 Scope (this branch): `simplify`, `verify`, `run`, `fewer-permission-prompts`,
 and reconcile the existing `init`.
@@ -48,8 +48,8 @@ git, with **zero dependency on Anthropic cloud infrastructure**. Contrast with
 | **simplify** | High — spawns 4 Agent-tool reviewers in parallel; provider-agnostic | Keep as-is. Reference to `/code-review` is valid (exists as bundled skill). Consider scaling agent count for weaker/cheaper providers (optional). |
 | **verify** | High — runtime observation only | Carry both `examples/*.md` via `files:`. Soften/remove the `/run-skill-generator` references (that skill is gated off in the open build — see Open Questions). Wording: "Claude Code" → neutral. |
 | **run** | High — launch & drive the app | Carry all 6 `examples/*.md` via `files:`. Same `/run-skill-generator` handling as verify. |
-| **fewer-permission-prompts** | Medium — needs path adaptation | **Transcript path** and **settings path** must match Claudio (see Open Questions — confirm `~/.claude/projects` vs `~/.claudio`). The `readOnlyValidation.ts` / `readOnlyCommandValidation.ts` source-of-truth references are **valid in Claudio** (same paths). Respect `CLAUDIO_CONFIG_DIR`. |
-| **init** | Already exists | `src/commands/init.ts` already implements `name: 'init'`. **Do not duplicate.** Reconcile: compare its prompt against `captured/init.md`, fold in any missing guidance (esp. Cursor/Copilot rule extraction), and adapt "Claude Code" wording to Claudio. |
+| **fewer-permission-prompts** | Medium — needs path adaptation | **Transcript path** and **settings path** must match Claudin (see Open Questions — confirm `~/.claude/projects` vs `~/.claudin`). The `readOnlyValidation.ts` / `readOnlyCommandValidation.ts` source-of-truth references are **valid in Claudin** (same paths). Respect `CLAUDIN_CONFIG_DIR`. |
+| **init** | Already exists | `src/commands/init.ts` already implements `name: 'init'`. **Do not duplicate.** Reconcile: compare its prompt against `captured/init.md`, fold in any missing guidance (esp. Cursor/Copilot rule extraction), and adapt "Claude Code" wording to Claudin. |
 
 ## Work items
 
@@ -61,7 +61,7 @@ git, with **zero dependency on Anthropic cloud infrastructure**. Contrast with
 3. **`src/skills/bundled/run.ts`** — new. Prompt from `captured/run.md`;
    `files:` = the six `run-examples/*.md`.
 4. **`src/skills/bundled/fewerPermissionPrompts.ts`** — new. Port
-   `captured/fewer-permission-prompts.md` with Claudio-correct paths.
+   `captured/fewer-permission-prompts.md` with Claudin-correct paths.
 5. **`src/commands/init.ts`** — edit. Reconcile with `captured/init.md`.
 6. **`src/skills/bundled/index.ts`** — register the 4 new skills (unconditional,
    like `code-review`; no feature flag — these need no Anthropic infra).
@@ -71,8 +71,8 @@ git, with **zero dependency on Anthropic cloud infrastructure**. Contrast with
 
 ## Wording / branding pass
 
-Every captured prompt says "Claude Code". For Claudio, replace user-facing
-mentions with neutral phrasing ("the agent" / "Claudio") so skills don't
+Every captured prompt says "Claude Code". For Claudin, replace user-facing
+mentions with neutral phrasing ("the agent" / "Claudin") so skills don't
 misrepresent the tool. Keep tool names (Agent, Bash, Grep) and git commands as-is.
 
 ## Open questions (resolve before implementing)
@@ -82,9 +82,9 @@ misrepresent the tool. Keep tool names (Agent, Bash, Grep) and git commands as-i
    references, (b) keep them as soft suggestions (harmless no-op), (c) port
    `runSkillGenerator` too in a follow-up. → *Recommend (a) for this branch.*
 2. **Transcript + settings paths** for `fewer-permission-prompts`: confirm where
-   Claudio writes session JSONL and project settings. Memory shows transcripts
-   under `~/.claude/projects/...` while config is `~/.claudio/`. Must verify the
-   real runtime path (and `CLAUDIO_CONFIG_DIR` override) before hardcoding.
+   Claudin writes session JSONL and project settings. Memory shows transcripts
+   under `~/.claude/projects/...` while config is `~/.claudin/`. Must verify the
+   real runtime path (and `CLAUDIN_CONFIG_DIR` override) before hardcoding.
 3. **`init` duplication**: confirm the existing command is the only `init`
    registration and that we're improving it in place, not shipping a second one.
 4. **Agent-count scaling**: should `simplify`/`verify` reduce parallel agents on
@@ -99,7 +99,7 @@ bun run smoke
 bun test src/skills/bundled/        # focused on new skills
 ```
 
-Then from `bun run dev` (→ `claudiodev`): invoke `/simplify`, `/verify`,
+Then from `bun run dev` (→ `claudindev`): invoke `/simplify`, `/verify`,
 `/run`, `/fewer-permission-prompts` against a small diff on a non-Anthropic
 provider via `/provider doctor`, to confirm they work off the Anthropic path.
 Note which provider was exercised in the PR description.

@@ -69,24 +69,24 @@ test('applyToolResultReplacementsToMessages is idempotent when messages are alre
 
 describe('unlinkSessionSpillDir', () => {
   // Isolate filesystem side effects in a hermetic config dir so the test
-  // never touches ~/.claudio. CLAUDIO_CONFIG_DIR flows through
-  // getClaudioConfigHomeDir → getProjectsDir → getProjectDir.
-  const prevConfigDir = process.env.CLAUDIO_CONFIG_DIR
+  // never touches ~/.claudin. CLAUDIN_CONFIG_DIR flows through
+  // getClaudinConfigHomeDir → getProjectsDir → getProjectDir.
+  const prevConfigDir = process.env.CLAUDIN_CONFIG_DIR
   const testConfigDir = join(
     tmpdir(),
-    `claudio-test-spill-${process.pid}-${Date.now()}`,
+    `claudin-test-spill-${process.pid}-${Date.now()}`,
   )
 
   beforeAll(() => {
-    process.env.CLAUDIO_CONFIG_DIR = testConfigDir
+    process.env.CLAUDIN_CONFIG_DIR = testConfigDir
     mkdirSync(testConfigDir, { recursive: true })
   })
 
   afterAll(() => {
     if (prevConfigDir === undefined) {
-      delete process.env.CLAUDIO_CONFIG_DIR
+      delete process.env.CLAUDIN_CONFIG_DIR
     } else {
-      process.env.CLAUDIO_CONFIG_DIR = prevConfigDir
+      process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
     }
     rmSync(testConfigDir, { recursive: true, force: true })
   })

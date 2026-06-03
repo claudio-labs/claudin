@@ -31,10 +31,10 @@ export function isCrossMajor(current: string, next: string): boolean {
  * effects.
  */
 export function getEarlySkipReason(argv: string[]): string | null {
-  if (process.env.CLAUDIO_SKIP_STARTUP_UPDATE === '1') return 'env-skip'
+  if (process.env.CLAUDIN_SKIP_STARTUP_UPDATE === '1') return 'env-skip'
   if (!process.stdout.isTTY) return 'not-tty'
   // Only argv[0] can be a subcommand. Checking the whole argv would false-
-  // positive on flag values like `claudio -p "tell me about the update flow"`.
+  // positive on flag values like `claudin -p "tell me about the update flow"`.
   if (argv[0] && SKIP_SUBCOMMANDS.has(argv[0])) return 'subcommand'
   // Flags (--help/--version/-h/-v/-V) can appear anywhere.
   if (argv.some(a => SKIP_FLAGS.has(a))) return 'flag'
@@ -48,12 +48,12 @@ export function getEarlySkipReason(argv: string[]): string | null {
 }
 
 /**
- * Check npm for a newer published version of @claudiolabs/claudio and
- * persist the result to `~/.claudio/latest-version.json` so the startup
+ * Check npm for a newer published version of @claudinlabs/claudin and
+ * persist the result to `~/.claudin/latest-version.json` so the startup
  * banner can show a "new version available" hint on the next render.
  *
  * This function NEVER installs anything and NEVER respawns the process.
- * The user updates manually via `claudio update`.
+ * The user updates manually via `claudin update`.
  *
  * Fail-open: any error here is swallowed so a broken update path never
  * prevents the CLI from starting.
@@ -70,7 +70,7 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       { getCurrentInstallationType },
       { getLatestVersion },
       { logForDebugging },
-      { getClaudioConfigHomeDir },
+      { getClaudinConfigHomeDir },
       { isENOENT },
       { writeLatestVersion },
       { getInitialSettings },
@@ -89,9 +89,9 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     // Disabling the auto-updater means "no npm network calls on startup".
     if (isAutoUpdaterDisabled()) return
 
-    // Skip in development (claudiodev / source-tree runs). For every other
+    // Skip in development (claudindev / source-tree runs). For every other
     // install type we still surface the notice; the message is generic
-    // (`run: claudio update`) so it makes sense for npm, native, brew, etc.
+    // (`run: claudin update`) so it makes sense for npm, native, brew, etc.
     const installType = await getCurrentInstallationType()
     if (installType === 'development') {
       logForDebugging(
@@ -101,10 +101,10 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     }
 
     const getThrottleFilePath = (): string =>
-      join(getClaudioConfigHomeDir(), 'last-update-check')
+      join(getClaudinConfigHomeDir(), 'last-update-check')
 
     const isThrottled = async (): Promise<boolean> => {
-      if (process.env.CLAUDIO_FORCE_UPDATE_CHECK === '1') return false
+      if (process.env.CLAUDIN_FORCE_UPDATE_CHECK === '1') return false
       try {
         const raw = await readFile(getThrottleFilePath(), 'utf8')
         const last = Number.parseInt(raw.trim(), 10)
@@ -124,7 +124,7 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       } catch (err) {
         if (isENOENT(err)) {
           try {
-            await mkdir(getClaudioConfigHomeDir(), { recursive: true })
+            await mkdir(getClaudinConfigHomeDir(), { recursive: true })
             await writeFile(path, String(Date.now()), 'utf8')
           } catch (e) {
             logForDebugging(

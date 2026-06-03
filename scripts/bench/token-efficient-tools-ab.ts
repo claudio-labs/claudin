@@ -21,12 +21,12 @@
  *
  * Vars:
  *   ANTHROPIC_MODEL=claude-opus-4-8   (default)
- *   CLAUDIO_BENCH_RUNS=2              (runs por prompt por variante; 3 prompts*2*2 = 12)
- *   CLAUDIO_BENCH_ENTRY=dist/cli.mjs  (binario unico; default = dist atual)
- *   CLAUDIO_BENCH_TARGET_CWD=<repo>   (default = repo root)
- *   CLAUDIO_BENCH_PROMPTS=0           (limita prompts; 0 = todos)
- *   CLAUDIO_BENCH_PARALLEL=1          (invocacoes concorrentes; cada uma e' sessao isolada)
- *   CLAUDIO_BENCH_RESUME=<path.md>    (re-roda apenas FAILs do report anterior, merge no novo)
+ *   CLAUDIN_BENCH_RUNS=2              (runs por prompt por variante; 3 prompts*2*2 = 12)
+ *   CLAUDIN_BENCH_ENTRY=dist/cli.mjs  (binario unico; default = dist atual)
+ *   CLAUDIN_BENCH_TARGET_CWD=<repo>   (default = repo root)
+ *   CLAUDIN_BENCH_PROMPTS=0           (limita prompts; 0 = todos)
+ *   CLAUDIN_BENCH_PARALLEL=1          (invocacoes concorrentes; cada uma e' sessao isolada)
+ *   CLAUDIN_BENCH_RESUME=<path.md>    (re-roda apenas FAILs do report anterior, merge no novo)
  */
 
 import { spawn } from 'node:child_process'
@@ -35,14 +35,14 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const ENTRY = process.env.CLAUDIO_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '2')
+const ENTRY = process.env.CLAUDIN_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '2')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
-const MAX_PROMPTS = Number(process.env.CLAUDIO_BENCH_PROMPTS ?? '0')
-const PROMPT_IDS_FILTER = (process.env.CLAUDIO_BENCH_PROMPT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-const PARALLEL = Math.max(1, Number(process.env.CLAUDIO_BENCH_PARALLEL ?? '1'))
-const RESUME_FROM = process.env.CLAUDIO_BENCH_RESUME ?? ''
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
+const MAX_PROMPTS = Number(process.env.CLAUDIN_BENCH_PROMPTS ?? '0')
+const PROMPT_IDS_FILTER = (process.env.CLAUDIN_BENCH_PROMPT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+const PARALLEL = Math.max(1, Number(process.env.CLAUDIN_BENCH_PARALLEL ?? '1'))
+const RESUME_FROM = process.env.CLAUDIN_BENCH_RESUME ?? ''
 
 interface ResumeJob { promptId: string; variant: 'A' | 'B'; runIdx: number }
 
@@ -89,7 +89,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'explain-provider-resolution',
-    text: 'Como o Claudio resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
+    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
   },
 ]
 
@@ -131,7 +131,7 @@ interface SessionAnalysis {
 function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const empty: SessionAnalysis = { toolCounts: {}, toolUseTurns: 0, narrationBlocks: 0, narrationChars: 0, answerChars: 0, narrationSamples: [] }
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return empty
 
   const counts: Record<string, number> = {}
@@ -203,11 +203,11 @@ function runOnce(variant: 'A' | 'B', prompt: { id: string; text: string }, runId
     // Destrancar betas tambem habilita global-cache-scope, que esta bugado
     // no caminho atual ("system[0] global mas tools renderizam antes" -> 400).
     // Mantemos especificamente desligado para isolar o efeito de token-efficient.
-    env.CLAUDIO_DISABLE_GLOBAL_CACHE_SCOPE = '1'
+    env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE = '1'
   } else {
     delete env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
     delete env.CLAUDE_CODE_JSON_TOOL_USE
-    delete env.CLAUDIO_DISABLE_GLOBAL_CACHE_SCOPE
+    delete env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE
   }
   return new Promise((resolvePromise) => {
     const child = spawn('node', [ENTRY, '-p', prompt.text, '--model', MODEL, '--output-format', 'json'], {

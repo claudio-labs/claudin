@@ -72,8 +72,8 @@ function findCliPath(): string {
 
 function findLauncherPath(): string | null {
   const candidates = [
-    resolve(process.cwd(), 'bin/claudio'),
-    resolve(import.meta.dir, '../../bin/claudio'),
+    resolve(process.cwd(), 'bin/claudin'),
+    resolve(import.meta.dir, '../../bin/claudin'),
   ]
   for (const p of candidates) {
     if (existsSync(p)) return p
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
     ['--version (direct)', cliPath],
     ['--help (direct)', cliPath],
   ]
-  // Through bin/claudio: includes whatever the launcher does (e.g. enabling
+  // Through bin/claudin: includes whatever the launcher does (e.g. enabling
   // V8 compile cache). This is the actual user-facing path.
   const launcherInvocations: Array<[string, string]> = launcherPath
     ? [

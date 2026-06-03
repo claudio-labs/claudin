@@ -100,7 +100,7 @@ describe('cache bounds invariants', () => {
       getSessionId: () => 'test-session',
     }))
     mock.module('./envUtils.js', () => ({
-      getClaudioConfigHomeDir: () => '/tmp/test-claudio',
+      getClaudinConfigHomeDir: () => '/tmp/test-claudin',
       isEnvTruthy: () => false,
     }))
     mock.module('./fsOperations.js', () => ({

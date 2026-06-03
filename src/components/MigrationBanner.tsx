@@ -6,7 +6,7 @@ import {
   markMigrationSkipped,
   migrateLegacyClaudeDir,
   type MigrationReport,
-} from '../utils/claudioMigration.js'
+} from '../utils/claudinMigration.js'
 import { Select } from './CustomSelect/index.js'
 
 type Phase =
@@ -37,7 +37,7 @@ export function MigrationBanner({
     return (
       <Box flexDirection="column" marginBottom={1}>
         <Text color="warning" bold>
-          Migrating ~/.claude/ to ~/.claudio/...
+          Migrating ~/.claude/ to ~/.claudin/...
         </Text>
         <Text dimColor>
           Copying tokens, settings, theme, MCP servers, skills, agents, slash commands, plugins, and keybindings.
@@ -66,7 +66,7 @@ export function MigrationBanner({
         Found Claude Code config at ~/.claude/
       </Text>
       <Text>
-        Import API tokens, settings, theme, MCP servers, skills, agents, slash commands, plugins, and keybindings into ~/.claudio/?
+        Import API tokens, settings, theme, MCP servers, skills, agents, slash commands, plugins, and keybindings into ~/.claudin/?
       </Text>
       <Select
         options={[

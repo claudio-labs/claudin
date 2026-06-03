@@ -18,7 +18,7 @@
 ./CLAUDE.md
 ./package.json
 ./.github/pull_request_template.md
-./bin/claudio
+./bin/claudin
 ./docs/hook-chains.md
 ./docs/litellm-setup.md
 ./docs/non-technical-setup.md
@@ -101,5 +101,5 @@
 ./src/tools.ts
 ./src/replLauncher.tsx
 ./src/main.tsx
-./.claudio/settings.local.json
+./.claudin/settings.local.json
 ./.claude/settings.local.json

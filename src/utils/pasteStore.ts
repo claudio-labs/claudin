@@ -2,7 +2,7 @@ import { createHash } from 'crypto'
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'
 
 const PASTE_STORE_DIR = 'paste-cache'
@@ -11,7 +11,7 @@ const PASTE_STORE_DIR = 'paste-cache'
  * Get the paste store directory (persistent across sessions).
  */
 function getPasteStoreDir(): string {
-  return join(getClaudioConfigHomeDir(), PASTE_STORE_DIR)
+  return join(getClaudinConfigHomeDir(), PASTE_STORE_DIR)
 }
 
 /**

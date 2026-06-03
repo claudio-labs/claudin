@@ -397,7 +397,7 @@ export function runMcpHooksAndTelemetry(
   void logContextMetrics(regularMcpConfigs, toolPermissionContext as Parameters<typeof logContextMetrics>[1]);
   logManagedSettings();
 
-  // Register PID file for concurrent-session detection (~/.claudio/sessions/)
+  // Register PID file for concurrent-session detection (~/.claudin/sessions/)
   // and fire multi-clauding telemetry. Lives here (not init.ts) so only the
   // REPL path registers — not subcommands like `claude doctor`. Chained:
   // count must run after register's write completes or it misses our own file.

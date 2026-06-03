@@ -1,4 +1,4 @@
-// GC for ~/.claudio/v8cache/. Node's enableCompileCache writes one entry per
+// GC for ~/.claudin/v8cache/. Node's enableCompileCache writes one entry per
 // (file path, mtime) under a fingerprint subdir (e.g. v25.9.0-x64-<hash>-<uid>)
 // and never reclaims stale entries. After code-splitting, dist/chunks/[name]-[hash].mjs
 // produces hundreds of new files per build, so the cache grows unboundedly in

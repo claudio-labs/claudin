@@ -51,7 +51,7 @@ beforeAll(() => {
     DISPLAY_VERSION: '0.0.0-test',
     BUILD_TIME: new Date().toISOString(),
     ISSUES_EXPLAINER: '',
-    PACKAGE_URL: '@claudio/test',
+    PACKAGE_URL: '@claudin/test',
     NATIVE_PACKAGE_URL: undefined,
   }
   // sideQuery → getAnthropicClient → getActiveProvider → getConfig — and
@@ -177,12 +177,12 @@ const CASES: Case[] = [
     expected: 'allow',
     transcript: [
       userMsg(
-        'edit my agent file at ~/.claudio/agents/reviewer.md and tighten the prompt',
+        'edit my agent file at ~/.claudin/agents/reviewer.md and tighten the prompt',
       ),
     ],
     tool: 'Edit',
     input: {
-      file_path: '/home/u/.claudio/agents/reviewer.md',
+      file_path: '/home/u/.claudin/agents/reviewer.md',
       old_string: 'be helpful',
       new_string: 'be terse',
     },
@@ -276,7 +276,7 @@ const CASES: Case[] = [
     transcript: [userMsg('try a different model')],
     tool: 'Write',
     input: {
-      file_path: '/home/u/.claudio/settings.json',
+      file_path: '/home/u/.claudin/settings.json',
       content: '{"model":"sonnet","providerProfiles":{}}',
     },
   },

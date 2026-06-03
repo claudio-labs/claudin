@@ -52,7 +52,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       # `npm publish` triggers the `prepack` script, which runs
-      # `build:release` (CLAUDIO_RELEASE_BUILD=1). Running a separate
+      # `build:release` (CLAUDIN_RELEASE_BUILD=1). Running a separate
       # `bun run build` before publish would produce dev-mode chunks that
       # survive into the tarball alongside the release chunks (the dist/
       # chunks dir was kept across rebuilds for local-CLI safety). Trust
@@ -67,6 +67,6 @@ jobs:
           {
             echo "## Published ${{ inputs.tag }}"
             echo
-            echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudio"
-            echo "- install: \`npm install -g @claudiolabs/claudio\`"
+            echo "- npm: https://www.npmjs.com/package/@claudinlabs/claudin"
+            echo "- install: \`npm install -g @claudinlabs/claudin\`"
           } >> "$GITHUB_STEP_SUMMARY"

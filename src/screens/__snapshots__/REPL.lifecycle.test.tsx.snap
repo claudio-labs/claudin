@@ -1,31 +1,27 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`<REPL> lifecycle baseline mount + unmount without throwing (snapshot final frame) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;
 
 exports[`<REPL> lifecycle baseline mount with non-empty initial tools (alternate path) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;

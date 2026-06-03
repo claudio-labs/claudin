@@ -218,7 +218,7 @@ export const DeniedMcpServerEntrySchema = lazySchema(() =>
  *
  * ⚠️ BACKWARD COMPATIBILITY NOTICE ⚠️
  *
- * This schema defines the structure of user settings files (.claudio/settings.json).
+ * This schema defines the structure of user settings files (.claudin/settings.json).
  * We support backward-compatible changes! Here's how:
  *
  * ✅ ALLOWED CHANGES:
@@ -478,7 +478,7 @@ export const SettingsSchema = lazySchema(() =>
             .optional()
             .describe(
               'Per-edit diagnostic injection timeout in ms (default 1500, min 100, max 5000). ' +
-                'After FileEdit/FileWrite, Claudio waits up to this duration for the LSP server ' +
+                'After FileEdit/FileWrite, Claudin waits up to this duration for the LSP server ' +
                 'to publish diagnostics so they can be attached to the same turn.',
             ),
         })
@@ -639,7 +639,7 @@ export const SettingsSchema = lazySchema(() =>
         })
         .optional()
         .describe(
-          'Additional marketplaces to make available for this repository. Typically used in repository .claudio/settings.json to ensure team members have required plugin sources.',
+          'Additional marketplaces to make available for this repository. Typically used in repository .claudin/settings.json to ensure team members have required plugin sources.',
         ),
       // Enterprise strict list of allowed marketplace sources (policy settings only)
       // When set, ONLY these exact sources can be added. Check happens BEFORE download.

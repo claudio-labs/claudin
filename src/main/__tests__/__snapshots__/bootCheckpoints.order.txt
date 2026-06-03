@@ -30,7 +30,7 @@
 904     preAction_after_init                    preAction hook
 922     preAction_after_sinks                   preAction hook
 938     preAction_after_migrations              preAction hook
-950     preAction_after_claudio_migrations      preAction hook
+950     preAction_after_claudin_migrations      preAction hook
 958     preAction_after_remote_settings         preAction hook
 965     preAction_after_settings_sync           preAction hook
 

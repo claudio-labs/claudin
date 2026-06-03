@@ -11,9 +11,9 @@
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-sonnet-4-6  (default)
- *   CLAUDIO_BENCH_RUNS=2               (runs por prompt por variante)
- *   CLAUDIO_BENCH_BASELINE=dist/baseline/cli.mjs
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs
+ *   CLAUDIN_BENCH_RUNS=2               (runs por prompt por variante)
+ *   CLAUDIN_BENCH_BASELINE=dist/baseline/cli.mjs
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs
  */
 
 import { spawn } from 'node:child_process'
@@ -22,11 +22,11 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const BASELINE = process.env.CLAUDIO_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
-const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '2')
+const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
+const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '2')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
 
 // Grep-natural prompts. Each is designed to expose the key lever (output_mode).
 const PROMPTS: { id: string; text: string }[] = [
@@ -80,7 +80,7 @@ function readToolCountsFromSession(
   cwd: string,
 ): { tools: Record<string, number>; grepModes: Record<string, number> } {
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return { tools: {}, grepModes: {} }
   const tools: Record<string, number> = {}
   const grepModes: Record<string, number> = {}

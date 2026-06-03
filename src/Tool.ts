@@ -824,7 +824,7 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
 
 /**
  * Wraps a tool.call with the local result cache. Bypasses on:
- *   - CLAUDIO_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
+ *   - CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
  *   - newMessages or contextModifier present (declared side effects)
  * Hit replay returns a fresh ToolResult with the cached data + mcpMeta;
  * tool_use_id is reapplied at the mapToolResultToToolResultBlockParam

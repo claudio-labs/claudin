@@ -1,5 +1,5 @@
 /**
- * Wire-level integration test for CLAUDIO_STATIC_DEDUP.
+ * Wire-level integration test for CLAUDIN_STATIC_DEDUP.
  *
  * WHY this file exists beyond `src/utils/staticDedup.integration.test.ts`:
  * the tests in that file assert the deltas + injection functions in
@@ -14,7 +14,7 @@
  * in place, so the captured body reflects exactly what a provider
  * would see.
  *
- * The test toggles `CLAUDIO_STATIC_DEDUP` and compares wire sizes
+ * The test toggles `CLAUDIN_STATIC_DEDUP` and compares wire sizes
  * for two otherwise-identical requests. If `filterStaticDedupKeys` or
  * the delta scanners regress, the wire byte counts stop moving and
  * the test fails.
@@ -36,7 +36,7 @@ const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
-  CLAUDIO_STATIC_DEDUP: process.env.CLAUDIO_STATIC_DEDUP,
+  CLAUDIN_STATIC_DEDUP: process.env.CLAUDIN_STATIC_DEDUP,
 }
 
 // Keep the shim path deterministic — no compression noise.
@@ -117,14 +117,14 @@ afterAll(() => {
   else process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY
   if (originalEnv.OPENAI_MODEL === undefined) delete process.env.OPENAI_MODEL
   else process.env.OPENAI_MODEL = originalEnv.OPENAI_MODEL
-  if (originalEnv.CLAUDIO_STATIC_DEDUP === undefined)
-    delete process.env.CLAUDIO_STATIC_DEDUP
-  else process.env.CLAUDIO_STATIC_DEDUP = originalEnv.CLAUDIO_STATIC_DEDUP
+  if (originalEnv.CLAUDIN_STATIC_DEDUP === undefined)
+    delete process.env.CLAUDIN_STATIC_DEDUP
+  else process.env.CLAUDIN_STATIC_DEDUP = originalEnv.CLAUDIN_STATIC_DEDUP
   mock.module('../../utils/config.js', () => realConfig_staticDedup)
 })
 
 beforeEach(() => {
-  delete process.env.CLAUDIO_STATIC_DEDUP
+  delete process.env.CLAUDIN_STATIC_DEDUP
 })
 
 afterEach(() => {
@@ -168,7 +168,7 @@ test('wire-level savings: ≥90% reduction when dedup strips static context', as
 })
 
 /**
- * Coverage by ENGINE, not by provider: Claudio has 3 distinct
+ * Coverage by ENGINE, not by provider: Claudin has 3 distinct
  * request body builders, and all 11+ providers share one of them.
  *   - OpenAI Chat Completions engine (openaiShim) — covered above.
  *   - OpenAI Responses API engine (codexShim) — covered here.

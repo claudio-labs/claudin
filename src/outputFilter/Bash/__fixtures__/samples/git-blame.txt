@@ -1,6 +1,6 @@
-^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudio
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudin
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   2) 
-23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Claudio is a coding-agent CLI for cloud and local model providers.
+23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Claudin is a coding-agent CLI for cloud and local model providers.
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   4) 
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   5) Use OpenAI-compatible APIs, Gemini, GitHub Models, Codex OAuth, Codex, Ollama, Atomic Chat, and other supported backends while keeping one terminal-first workflow: prompts, tools, agents, MCP, slash commands, and streaming output.
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   6) 
@@ -9,7 +9,7 @@
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   9) 
 23551ecd (Viudes 2026-05-02 11:28:25 -0300  10) [Quick Start](#quick-start) | [Setup Guides](#setup-guides) | [Providers](#supported-providers) | [Source Build](#source-build-and-local-development) | [VS Code Extension](#vs-code-extension)
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  11) 
-^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  12) ## Why Claudio
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  12) ## Why Claudin
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  13) 
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  14) - Use one CLI across cloud APIs and local model backends
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  15) - Configure providers and models entirely from inside the app via `/provider`
@@ -22,7 +22,7 @@
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  22) ### Install
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300  23) 
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  24) ```bash
-88601ce6 (Viudes 2026-05-03 23:19:19 -0300  25) npm install -g @claudiolabs/claudio@latest
+88601ce6 (Viudes 2026-05-03 23:19:19 -0300  25) npm install -g @claudinlabs/claudin@latest
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  26) ```
 abcdf5b1 (Viudes 2026-05-02 16:01:07 -0300  27) 
 41022703 (Viudes 2026-05-02 16:07:23 -0300  28) Works on Linux, macOS, and Windows (Node 20+). Or build from source — see [Source Build And Local Development](#source-build-and-local-development).

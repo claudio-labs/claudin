@@ -13,9 +13,9 @@ import {
  * users can pin a model without rewriting the `.md` (which is usually
  * checked into the project's git and shared with the team).
  *
- * For a project agent at `<project>/.claudio/agents/<name>.md` the
- * overrides file is `<project>/.claudio/settings.agents.json`. The same
- * scheme works for user agents (`~/.claudio/agents/...`) and local
+ * For a project agent at `<project>/.claudin/agents/<name>.md` the
+ * overrides file is `<project>/.claudin/settings.agents.json`. The same
+ * scheme works for user agents (`~/.claudin/agents/...`) and local
  * agents — the file always sits in `dirname(baseDir)`.
  *
  * Schema (mirrors the global built-in shape):

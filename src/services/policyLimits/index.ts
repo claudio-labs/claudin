@@ -29,7 +29,7 @@ import {
 } from '../../utils/auth.js'
 import { registerCleanup } from '../../utils/cleanupRegistry.js'
 import { logForDebugging } from '../../utils/debug.js'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 import { classifyAxiosError } from '../../utils/errors.js'
 import { safeParseJSON } from '../../utils/json.js'
 import {
@@ -117,7 +117,7 @@ export function initializePolicyLimitsLoadingPromise(): void {
  * Get the path to the policy limits cache file
  */
 function getCachePath(): string {
-  return join(getClaudioConfigHomeDir(), CACHE_FILENAME)
+  return join(getClaudinConfigHomeDir(), CACHE_FILENAME)
 }
 
 /**

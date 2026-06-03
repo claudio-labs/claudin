@@ -15,7 +15,7 @@ src/QueryEngine.ts(1096,42): error TS2339: Property 'type' does not exist on typ
 src/QueryEngine.ts(1156,22): error TS2339: Property 'type' does not exist on type '{}'.
 src/QueryEngine.ts(1157,45): error TS2339: Property 'text' does not exist on type '{}'.
 src/QueryEngine.ts(1159,34): error TS2339: Property 'text' does not exist on type '{}'.
-src/QueryEngine.ts(1317,32): error TS2339: Property 'snipCompactIfNeeded' does not exist on type 'typeof import("/home/viudes/projects/claudio/src/services/compact/snipCompact")'.
+src/QueryEngine.ts(1317,32): error TS2339: Property 'snipCompactIfNeeded' does not exist on type 'typeof import("/home/viudes/projects/claudin/src/services/compact/snipCompact")'.
 src/Tool.ts(46,8): error TS2307: Cannot find module './types/message.js' or its corresponding type declarations.
 src/Tool.ts(64,8): error TS2307: Cannot find module './types/tools.js' or its corresponding type declarations.
 src/Tool.ts(82,34): error TS2307: Cannot find module './constants/querySource.js' or its corresponding type declarations.
@@ -43,7 +43,7 @@ src/bridge/bridgeMessaging.ts(182,69): error TS2339: Property 'type' does not ex
 src/bridge/bridgeMessaging.ts(188,52): error TS2339: Property 'type' does not exist on type 'never'.
 src/bridge/bridgeMessaging.ts(191,16): error TS2339: Property 'type' does not exist on type 'never'.
 src/bridge/bridgeMessaging.ts(200,73): error TS2339: Property 'type' does not exist on type 'never'.
-src/bridge/bridgeUI.ts(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+src/bridge/bridgeUI.ts(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudin/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
 src/bridge/bridgeUI.ts(296,50): error TS2304: Cannot find name 'MACRO'.
 src/bridge/createSession.ts(1,15): error TS2460: Module '"../entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as 'SDKControlRequest'.
@@ -135,10 +135,10 @@ src/cli/transports/HybridTransport.ts(2,36): error TS2307: Cannot find module 's
 src/cli/transports/SSETransport.ts(2,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
 src/cli/transports/SSETransport.ts(10,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
 src/cli/transports/WebSocketTransport.ts(1,36): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
-src/cli/transports/WebSocketTransport.ts(2,30): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudio/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
+src/cli/transports/WebSocketTransport.ts(2,30): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudin/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
   Try `npm i --save-dev @types/ws` if it exists or add a new declaration (.d.ts) file containing `declare module 'ws';`
 src/cli/transports/WebSocketTransport.ts(18,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
-src/cli/transports/WebSocketTransport.ts(178,44): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudio/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
+src/cli/transports/WebSocketTransport.ts(178,44): error TS7016: Could not find a declaration file for module 'ws'. '/home/viudes/projects/claudin/node_modules/ws/wrapper.mjs' implicitly has an 'any' type.
   Try `npm i --save-dev @types/ws` if it exists or add a new declaration (.d.ts) file containing `declare module 'ws';`
 src/cli/transports/ccrClient.ts(5,8): error TS2307: Cannot find module 'src/entrypoints/sdk/controlTypes.js' or its corresponding type declarations.
 src/cli/transports/transportUtils.ts(5,32): error TS2307: Cannot find module './Transport.js' or its corresponding type declarations.
@@ -171,28 +171,28 @@ src/commands.test.ts(4,3): error TS2582: Cannot find name 'test'. Do you need to
 src/commands.test.ts(12,5): error TS2304: Cannot find name 'expect'.
 src/commands.test.ts(15,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
 src/commands.test.ts(28,5): error TS2304: Cannot find name 'expect'.
-src/commands.ts(3,23): error TS7016: Could not find a declaration file for module './commands/autofix-pr/index.js'. '/home/viudes/projects/claudio/src/commands/autofix-pr/index.js' implicitly has an 'any' type.
-src/commands.ts(4,30): error TS7016: Could not find a declaration file for module './commands/backfill-sessions/index.js'. '/home/viudes/projects/claudio/src/commands/backfill-sessions/index.js' implicitly has an 'any' type.
-src/commands.ts(6,24): error TS7016: Could not find a declaration file for module './commands/good-claude/index.js'. '/home/viudes/projects/claudio/src/commands/good-claude/index.js' implicitly has an 'any' type.
-src/commands.ts(7,19): error TS7016: Could not find a declaration file for module './commands/issue/index.js'. '/home/viudes/projects/claudio/src/commands/issue/index.js' implicitly has an 'any' type.
-src/commands.ts(21,21): error TS7016: Could not find a declaration file for module './commands/ctx_viz/index.js'. '/home/viudes/projects/claudio/src/commands/ctx_viz/index.js' implicitly has an 'any' type.
-src/commands.ts(33,24): error TS7016: Could not find a declaration file for module './commands/break-cache/index.js'. '/home/viudes/projects/claudio/src/commands/break-cache/index.js' implicitly has an 'any' type.
-src/commands.ts(39,24): error TS7016: Could not find a declaration file for module './commands/onboarding/index.js'. '/home/viudes/projects/claudio/src/commands/onboarding/index.js' implicitly has an 'any' type.
-src/commands.ts(46,19): error TS7016: Could not find a declaration file for module './commands/share/index.js'. '/home/viudes/projects/claudio/src/commands/share/index.js' implicitly has an 'any' type.
-src/commands.ts(50,22): error TS7016: Could not find a declaration file for module './commands/teleport/index.js'. '/home/viudes/projects/claudio/src/commands/teleport/index.js' implicitly has an 'any' type.
-src/commands.ts(53,23): error TS7016: Could not find a declaration file for module './commands/bughunter/index.js'. '/home/viudes/projects/claudio/src/commands/bughunter/index.js' implicitly has an 'any' type.
+src/commands.ts(3,23): error TS7016: Could not find a declaration file for module './commands/autofix-pr/index.js'. '/home/viudes/projects/claudin/src/commands/autofix-pr/index.js' implicitly has an 'any' type.
+src/commands.ts(4,30): error TS7016: Could not find a declaration file for module './commands/backfill-sessions/index.js'. '/home/viudes/projects/claudin/src/commands/backfill-sessions/index.js' implicitly has an 'any' type.
+src/commands.ts(6,24): error TS7016: Could not find a declaration file for module './commands/good-claude/index.js'. '/home/viudes/projects/claudin/src/commands/good-claude/index.js' implicitly has an 'any' type.
+src/commands.ts(7,19): error TS7016: Could not find a declaration file for module './commands/issue/index.js'. '/home/viudes/projects/claudin/src/commands/issue/index.js' implicitly has an 'any' type.
+src/commands.ts(21,21): error TS7016: Could not find a declaration file for module './commands/ctx_viz/index.js'. '/home/viudes/projects/claudin/src/commands/ctx_viz/index.js' implicitly has an 'any' type.
+src/commands.ts(33,24): error TS7016: Could not find a declaration file for module './commands/break-cache/index.js'. '/home/viudes/projects/claudin/src/commands/break-cache/index.js' implicitly has an 'any' type.
+src/commands.ts(39,24): error TS7016: Could not find a declaration file for module './commands/onboarding/index.js'. '/home/viudes/projects/claudin/src/commands/onboarding/index.js' implicitly has an 'any' type.
+src/commands.ts(46,19): error TS7016: Could not find a declaration file for module './commands/share/index.js'. '/home/viudes/projects/claudin/src/commands/share/index.js' implicitly has an 'any' type.
+src/commands.ts(50,22): error TS7016: Could not find a declaration file for module './commands/teleport/index.js'. '/home/viudes/projects/claudin/src/commands/teleport/index.js' implicitly has an 'any' type.
+src/commands.ts(53,23): error TS7016: Could not find a declaration file for module './commands/bughunter/index.js'. '/home/viudes/projects/claudin/src/commands/bughunter/index.js' implicitly has an 'any' type.
 src/commands.ts(88,65): error TS2307: Cannot find module './commands/workflows/index.js' or its corresponding type declarations.
 src/commands.ts(98,73): error TS2307: Cannot find module './services/skillSearch/localSearch.js' or its corresponding type declarations.
 src/commands.ts(110,61): error TS2307: Cannot find module './commands/peers/index.js' or its corresponding type declarations.
 src/commands.ts(115,60): error TS2307: Cannot find module './commands/fork/index.js' or its corresponding type declarations.
-src/commands.ts(140,24): error TS7016: Could not find a declaration file for module './commands/mock-limits/index.js'. '/home/viudes/projects/claudio/src/commands/mock-limits/index.js' implicitly has an 'any' type.
-src/commands.ts(143,21): error TS7016: Could not find a declaration file for module './commands/summary/index.js'. '/home/viudes/projects/claudio/src/commands/summary/index.js' implicitly has an 'any' type.
-src/commands.ts(147,8): error TS7016: Could not find a declaration file for module './commands/reset-limits/index.js'. '/home/viudes/projects/claudio/src/commands/reset-limits/index.js' implicitly has an 'any' type.
-src/commands.ts(148,22): error TS7016: Could not find a declaration file for module './commands/ant-trace/index.js'. '/home/viudes/projects/claudio/src/commands/ant-trace/index.js' implicitly has an 'any' type.
-src/commands.ts(149,23): error TS7016: Could not find a declaration file for module './commands/perf-issue/index.js'. '/home/viudes/projects/claudio/src/commands/perf-issue/index.js' implicitly has an 'any' type.
-src/commands.ts(173,17): error TS7016: Could not find a declaration file for module './commands/env/index.js'. '/home/viudes/projects/claudio/src/commands/env/index.js' implicitly has an 'any' type.
-src/commands.ts(203,26): error TS7016: Could not find a declaration file for module './commands/oauth-refresh/index.js'. '/home/viudes/projects/claudio/src/commands/oauth-refresh/index.js' implicitly has an 'any' type.
-src/commands.ts(204,27): error TS7016: Could not find a declaration file for module './commands/debug-tool-call/index.js'. '/home/viudes/projects/claudio/src/commands/debug-tool-call/index.js' implicitly has an 'any' type.
+src/commands.ts(140,24): error TS7016: Could not find a declaration file for module './commands/mock-limits/index.js'. '/home/viudes/projects/claudin/src/commands/mock-limits/index.js' implicitly has an 'any' type.
+src/commands.ts(143,21): error TS7016: Could not find a declaration file for module './commands/summary/index.js'. '/home/viudes/projects/claudin/src/commands/summary/index.js' implicitly has an 'any' type.
+src/commands.ts(147,8): error TS7016: Could not find a declaration file for module './commands/reset-limits/index.js'. '/home/viudes/projects/claudin/src/commands/reset-limits/index.js' implicitly has an 'any' type.
+src/commands.ts(148,22): error TS7016: Could not find a declaration file for module './commands/ant-trace/index.js'. '/home/viudes/projects/claudin/src/commands/ant-trace/index.js' implicitly has an 'any' type.
+src/commands.ts(149,23): error TS7016: Could not find a declaration file for module './commands/perf-issue/index.js'. '/home/viudes/projects/claudin/src/commands/perf-issue/index.js' implicitly has an 'any' type.
+src/commands.ts(173,17): error TS7016: Could not find a declaration file for module './commands/env/index.js'. '/home/viudes/projects/claudin/src/commands/env/index.js' implicitly has an 'any' type.
+src/commands.ts(203,26): error TS7016: Could not find a declaration file for module './commands/oauth-refresh/index.js'. '/home/viudes/projects/claudin/src/commands/oauth-refresh/index.js' implicitly has an 'any' type.
+src/commands.ts(204,27): error TS7016: Could not find a declaration file for module './commands/debug-tool-call/index.js'. '/home/viudes/projects/claudin/src/commands/debug-tool-call/index.js' implicitly has an 'any' type.
 src/commands.ts(405,81): error TS2307: Cannot find module './tools/WorkflowTool/createWorkflowCommand.js' or its corresponding type declarations.
 src/commands/add-dir/add-dir.tsx(15,22): error TS7006: Parameter 't0' implicitly has an 'any' type.
 src/commands/benchmark.ts(9,10): error TS2724: '"../utils/model/ollamaModels.js"' has no exported member named 'getOllamaModelOptions'. Did you mean 'getCachedOllamaModelOptions'?
@@ -204,7 +204,7 @@ src/commands/benchmark.ts(44,12): error TS2339: Property 'stdout' does not exist
 src/commands/benchmark.ts(50,9): error TS2353: Object literal may only specify known properties, and 'onExecute' does not exist in type 'Command'.
 src/commands/benchmark.ts(51,26): error TS2339: Property 'args' does not exist on type 'ToolUseContext'.
 src/commands/branch/branch.ts(47,12): error TS7006: Parameter 'block' implicitly has an 'any' type.
-src/commands/bridge/bridge.tsx(3,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+src/commands/bridge/bridge.tsx(3,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudin/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
 src/commands/bridge/bridge.tsx(38,23): error TS7006: Parameter 't0' implicitly has an 'any' type.
 src/commands/bridge/bridge.tsx(120,7): error TS7034: Variable 't2' implicitly has type 'any[]' in some locations where its type cannot be determined.
@@ -254,7 +254,7 @@ src/commands/compact/compact.ts(23,30): error TS2307: Cannot find module '../../
 src/commands/compact/compact.ts(36,76): error TS2307: Cannot find module '../../services/compact/reactiveCompact.js' or its corresponding type declarations.
 src/commands/context/context-noninteractive.ts(6,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
 src/commands/context/context-noninteractive.ts(53,80): error TS2307: Cannot find module '../../services/contextCollapse/operations.js' or its corresponding type declarations.
-src/commands/context/context-noninteractive.ts(112,13): error TS2339: Property 'getStats' does not exist on type 'typeof import("/home/viudes/projects/claudio/src/services/contextCollapse/index")'.
+src/commands/context/context-noninteractive.ts(112,13): error TS2339: Property 'getStats' does not exist on type 'typeof import("/home/viudes/projects/claudin/src/services/contextCollapse/index")'.
 src/commands/context/context.tsx(7,30): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
 src/commands/context/context.tsx(24,82): error TS2307: Cannot find module '../../services/contextCollapse/operations.js' or its corresponding type declarations.
 src/commands/copy/copy.tsx(19,48): error TS2307: Cannot find module '../../types/message.js' or its corresponding type declarations.
@@ -381,7 +381,7 @@ src/commands/mcp/mcp.tsx(31,58): error TS7006: Parameter 'c_0' implicitly has an
 src/commands/mcp/mcp.tsx(31,146): error TS7006: Parameter 'c_1' implicitly has an 'any' type.
 src/commands/mcp/mcp.tsx(56,17): error TS7006: Parameter 'c' implicitly has an 'any' type.
 src/commands/mcp/mcp.tsx(59,16): error TS7006: Parameter 's' implicitly has an 'any' type.
-src/commands/mobile/mobile.tsx(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudio/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
+src/commands/mobile/mobile.tsx(2,40): error TS7016: Could not find a declaration file for module 'qrcode'. '/home/viudes/projects/claudin/node_modules/qrcode/lib/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/qrcode` if it exists or add a new declaration (.d.ts) file containing `declare module 'qrcode';`
 src/commands/mobile/mobile.tsx(24,23): error TS7006: Parameter 't0' implicitly has an 'any' type.
 src/commands/mobile/mobile.tsx(43,7): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Record<Platform, { url: string; }>'.

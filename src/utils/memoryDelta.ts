@@ -130,7 +130,7 @@ export function getMemoryDelta(
   added.sort((a, b) => a.name.localeCompare(b.name))
   removed.sort()
 
-  logEvent('claudio_memory_delta', {
+  logEvent('claudin_memory_delta', {
     addedCount: added.length,
     removedCount: removed.length,
     priorAnnouncedCount: announcedHashByPath.size,

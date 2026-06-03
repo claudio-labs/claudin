@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { getClaudioConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { isENOENT } from 'src/utils/errors.js'
 
 const CACHE_FILENAME = 'latest-version.json'
@@ -14,7 +14,7 @@ export type LatestVersionCache = {
 }
 
 function getCachePath(): string {
-  return join(getClaudioConfigHomeDir(), CACHE_FILENAME)
+  return join(getClaudinConfigHomeDir(), CACHE_FILENAME)
 }
 
 function isValidCache(value: unknown): value is LatestVersionCache {
@@ -59,7 +59,7 @@ export async function writeLatestVersion(
     await writeFile(path, body, 'utf8')
   } catch (err) {
     if (isENOENT(err)) {
-      await mkdir(getClaudioConfigHomeDir(), { recursive: true })
+      await mkdir(getClaudinConfigHomeDir(), { recursive: true })
       await writeFile(path, body, 'utf8')
       return
     }

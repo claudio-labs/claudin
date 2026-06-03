@@ -11,7 +11,7 @@ import {
   isClaudeAISubscriber,
 } from './auth.js'
 import { getAPIProvider } from './model/providers.js'
-import { getClaudeCodeUserAgent, getClaudioUserAgent } from './userAgent.js'
+import { getClaudeCodeUserAgent, getClaudinUserAgent } from './userAgent.js'
 
 // WARNING: We rely on `claude-cli` in the user agent for log filtering.
 // Please do NOT change this without making sure that logging also gets updated!
@@ -50,7 +50,7 @@ export function getWebFetchUserAgent(): string {
   if (getAPIProvider() === 'firstParty') {
     return `Claude-User (${getClaudeCodeUserAgent()}; +https://support.anthropic.com/)`
   }
-  return `Claudio-User (${getClaudioUserAgent()})`
+  return `Claudin-User (${getClaudinUserAgent()})`
 }
 
 export type AuthHeaders = {

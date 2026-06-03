@@ -18,7 +18,7 @@ import {
 } from '../services/lsp/LSPDiagnosticRegistry.js'
 
 // Force-enable the LSP master toggle so this suite is deterministic regardless
-// of the local user's ~/.claudio/settings.json (lsp.enabled may be false).
+// of the local user's ~/.claudin/settings.json (lsp.enabled may be false).
 const realUserSettings = { ...(await import('../services/lsp/userSettings.js')) }
 mock.module('../services/lsp/userSettings.js', () => ({
   ...realUserSettings,

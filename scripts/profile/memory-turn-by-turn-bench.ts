@@ -7,7 +7,7 @@
 // and 5bdbfc1 (evictOldStubbedMessages) did not close the gap.
 //
 // Approach: run a parametric multi-turn session with synthetic payloads
-// but REAL Claudio memory components (ContentReplacementState from
+// but REAL Claudin memory components (ContentReplacementState from
 // toolResultStorage, applyStableStubs-shaped substitution that mirrors
 // the production path). Measure per-turn:
 //   - total heap + RSS + external
@@ -36,7 +36,7 @@
 //     --with-compact --with-clear --inflection \
 //     --output=mem.json --csv=mem.csv
 //
-// Required: --expose-gc (bin/claudio sets this by default in production).
+// Required: --expose-gc (bin/claudin sets this by default in production).
 
 import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
@@ -625,7 +625,7 @@ type InflectionReport = {
 // tool_results can live in V8's off-heap buffers or be reclaimed between
 // the synchronous gc() call and memoryUsage() sampling, leaving heapUsed
 // misleadingly flat while the process grows. RSS is the bottom-line
-// "memory the OS sees Claudio consuming" — that is the user-visible leak.
+// "memory the OS sees Claudin consuming" — that is the user-visible leak.
 // We additionally inspect heapUsed as a secondary signal.
 
 type Metric = 'rss' | 'heapUsed'

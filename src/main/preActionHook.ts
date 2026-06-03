@@ -37,7 +37,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // terminal shell integration may mirror the process name to the tab.
     // After init() so settings.json env can also gate this (gh-4765).
     if (!isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE)) {
-      process.title = 'claudio';
+      process.title = 'claudin';
     }
 
     // Attach logging sinks so subcommand handlers can use logEvent/logError.
@@ -65,17 +65,17 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     runMigrations();
     profileCheckpoint('preAction_after_migrations');
 
-    // Copy legacy .claudio-profile.json sidecar into providerProfiles[]
+    // Copy legacy .claudin-profile.json sidecar into providerProfiles[]
     // (one-shot, idempotent), then rescue CLAUDE_CODE_USE_* envs into
     // /provider when no active profile is set.
     try {
-      const { runClaudioStartupMigrations } = require('../utils/claudioStartupMigrations.js') as typeof import('../utils/claudioStartupMigrations.js');
-      runClaudioStartupMigrations();
+      const { runClaudinStartupMigrations } = require('../utils/claudinStartupMigrations.js') as typeof import('../utils/claudinStartupMigrations.js');
+      runClaudinStartupMigrations();
     } catch (e) {
       // Migrations are best-effort; never block startup on them.
       logForDebugging(`[startup-migrations] failed: ${e instanceof Error ? e.message : String(e)}`);
     }
-    profileCheckpoint('preAction_after_claudio_migrations');
+    profileCheckpoint('preAction_after_claudin_migrations');
 
     // Load remote managed settings for enterprise customers (non-blocking)
     // Fails open - if fetch fails, continues without remote settings

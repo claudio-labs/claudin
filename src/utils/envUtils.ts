@@ -2,7 +2,7 @@ import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
 import { join } from 'path'
 
-export function resolveClaudioConfigHomeDir(options?: {
+export function resolveClaudinConfigHomeDir(options?: {
   configDirEnv?: string
   homeDir?: string
 }): string {
@@ -11,24 +11,24 @@ export function resolveClaudioConfigHomeDir(options?: {
   }
 
   const homeDir = options?.homeDir ?? homedir()
-  return join(homeDir, '.claudio').normalize('NFC')
+  return join(homeDir, '.claudin').normalize('NFC')
 }
 
 export function readConfigDirEnv(): string | undefined {
-  return process.env.CLAUDIO_CONFIG_DIR
+  return process.env.CLAUDIN_CONFIG_DIR
 }
 
 // Memoized: 150+ callers, many on hot paths. Keyed off the env var so tests
 // that change it get a fresh value without explicit cache.clear.
-export const getClaudioConfigHomeDir = memoize(
-  (): string => resolveClaudioConfigHomeDir({
+export const getClaudinConfigHomeDir = memoize(
+  (): string => resolveClaudinConfigHomeDir({
     configDirEnv: readConfigDirEnv(),
   }),
-  () => process.env.CLAUDIO_CONFIG_DIR ?? '',
+  () => process.env.CLAUDIN_CONFIG_DIR ?? '',
 )
 
 export function getTeamsDir(): string {
-  return join(getClaudioConfigHomeDir(), 'teams')
+  return join(getClaudinConfigHomeDir(), 'teams')
 }
 
 /**

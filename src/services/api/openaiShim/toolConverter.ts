@@ -10,7 +10,7 @@
  *    Anthropic server-side tools, promotes Agent sub-fields, runs the
  *    schema through `normalizeSchemaForOpenAI`.
  *
- * Reads `CLAUDIO_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
+ * Reads `CLAUDIN_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
  */
 
 import { isEnvTruthy } from '../../../utils/envUtils.js'
@@ -107,7 +107,7 @@ export function convertTools(
           description: t.description ?? '',
           parameters: normalizeSchemaForOpenAI(
             schema,
-            !isGemini && !isEnvTruthy(process.env.CLAUDIO_DISABLE_STRICT_TOOLS),
+            !isGemini && !isEnvTruthy(process.env.CLAUDIN_DISABLE_STRICT_TOOLS),
           ),
         },
       }

@@ -11,15 +11,15 @@ import {
 import { clearPluginOutputStyleCache } from '../utils/plugins/loadPluginOutputStyles.js'
 
 /**
- * Loads markdown files from .claudio/output-styles directories throughout the project
- * and from ~/.claudio/output-styles directory and converts them to output styles.
+ * Loads markdown files from .claudin/output-styles directories throughout the project
+ * and from ~/.claudin/output-styles directory and converts them to output styles.
  *
  * Each filename becomes a style name, and the file content becomes the style prompt.
  * The frontmatter provides name and description.
  *
  * Structure:
- * - Project .claudio/output-styles/*.md -> project styles
- * - User ~/.claudio/output-styles/*.md -> user styles (overridden by project styles)
+ * - Project .claudin/output-styles/*.md -> project styles
+ * - User ~/.claudin/output-styles/*.md -> user styles (overridden by project styles)
  *
  * @param cwd Current working directory for project directory traversal
  */

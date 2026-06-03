@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Coding Rules
 
-Patterns, error handling, and anti-patterns are defined in `.claudio/rules/` (auto-loaded into context):
+Patterns, error handling, and anti-patterns are defined in `.claudin/rules/` (auto-loaded into context):
 
-- [typescript-patterns.md](.claudio/rules/typescript-patterns.md) — TypeScript idioms, error handling, zod schemas, provider abstraction, privacy rules
-- [testing.md](.claudio/rules/testing.md) — Bun test runner, snapshot testing, provider tests, pre-PR checklist
-- [search-strategy.md](.claudio/rules/search-strategy.md) — Module map, navigation patterns, common Grep/Glob queries
+- [typescript-patterns.md](.claudin/rules/typescript-patterns.md) — TypeScript idioms, error handling, zod schemas, provider abstraction, privacy rules
+- [testing.md](.claudin/rules/testing.md) — Bun test runner, snapshot testing, provider tests, pre-PR checklist
+- [search-strategy.md](.claudin/rules/search-strategy.md) — Module map, navigation patterns, common Grep/Glob queries
 
 ## Project Overview
 
-Claudio is an open-source coding-agent CLI forked from the Claude Code codebase, retargeted to work across many model providers (Anthropic, OpenAI-compatible, Gemini, Mistral, GitHub Copilot, Codex OAuth, Ollama, Bedrock, Vertex, Foundry, etc.). The runtime is the same agent loop (tools, MCP, slash commands, streaming, sub-agents) but provider selection and credentials are managed entirely from inside the REPL via `/provider`, with profiles persisted under `~/.claudio/settings.json`.
+Claudin is an open-source coding-agent CLI forked from the Claude Code codebase, retargeted to work across many model providers (Anthropic, OpenAI-compatible, Gemini, Mistral, GitHub Copilot, Codex OAuth, Ollama, Bedrock, Vertex, Foundry, etc.). The runtime is the same agent loop (tools, MCP, slash commands, streaming, sub-agents) but provider selection and credentials are managed entirely from inside the REPL via `/provider`, with profiles persisted under `~/.claudin/settings.json`.
 
 The project is **not affiliated with Anthropic**. Telemetry/phone-home paths from upstream are replaced with no-op stubs at build time (see `scripts/no-telemetry-plugin.ts`) and `bun run verify:privacy` enforces this on the bundle.
 
@@ -37,20 +37,20 @@ bun run build:verified      # build + verify:privacy
 gRPC headless mode:
 
 ```bash
-bun run dev:grpc            # start gRPC server on localhost:50051 (proto: src/proto/claudio.proto)
+bun run dev:grpc            # start gRPC server on localhost:50051 (proto: src/proto/claudin.proto)
 bun run dev:grpc:cli        # streaming CLI client over gRPC
 ```
 
-After install (npm) or local build, the launcher is `bin/claudio` — it requires `dist/cli.mjs` to exist; otherwise it prints a "build first" hint. There is no separate dev runner that bypasses the bundle.
+After install (npm) or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist; otherwise it prints a "build first" hint. There is no separate dev runner that bypasses the bundle.
 
-### `claudio` vs `claudiodev` (dev convention)
+### `claudin` vs `claudindev` (dev convention)
 
 To keep the published release usable while iterating on unreleased features, this environment uses two binaries on `$PATH`:
 
-- **`claudio`** → globally installed npm package (`@claudiolabs/claudio`) — stable release, only updated via `bun install -g @claudiolabs/claudio`.
-- **`claudiodev`** → symlink to `/home/viudes/projects/claudio/bin/claudio` — always runs the latest local `bun run build` output (`dist/cli.mjs`) from this repo.
+- **`claudin`** → globally installed npm package (`@claudinlabs/claudin`) — stable release, only updated via `bun install -g @claudinlabs/claudin`.
+- **`claudindev`** → symlink to `/home/viudes/projects/claudin/bin/claudin` — always runs the latest local `bun run build` output (`dist/cli.mjs`) from this repo.
 
-Implication for agents: if a user reports that a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudiodev` (after `bun run build`); `claudio` keeps the pinned release version regardless of repo state.
+Implication for agents: if a user reports that a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudindev` (after `bun run build`); `claudin` keeps the pinned release version regardless of repo state.
 
 ## Build System (Critical)
 
@@ -72,7 +72,7 @@ When in doubt about whether a feature is alive, check the flag in `build.ts` bef
 
 ## Architecture
 
-Single entrypoint, single-file bundle. The CLI is bundled to `dist/cli.mjs` and launched by `bin/claudio`.
+Single entrypoint, single-file bundle. The CLI is bundled to `dist/cli.mjs` and launched by `bin/claudin`.
 
 - `src/entrypoints/cli.tsx` — process entrypoint. Polyfills `globalThis.File` for older Node, sets defaults like `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=true`, fast-paths `--version`, then dynamically imports the rest. Most imports are deferred so cold paths (version, errors, simple flags) don't pay full module-eval cost.
 - `src/QueryEngine.ts` + `src/query.ts` — the agent loop. Drives the model, tool dispatch, streaming SDK message generation (`SDKMessage`, `SDKStatus`, etc. from `src/entrypoints/agentSdkTypes.ts`), accumulates usage, and handles compaction/permission/coordination flows.
@@ -87,21 +87,21 @@ Single entrypoint, single-file bundle. The CLI is bundled to `dist/cli.mjs` and 
 - `src/services/mcp/` — MCP client + server connection management. `src/services/mcpServerApproval.tsx` is the trust dialog.
 - `src/coordinator/` — multi-agent coordinator (`coordinatorMode.ts`, `workerAgent.ts`); active when `COORDINATOR_MODE` is on.
 - `src/components/` + `src/screens/` + `src/ink/` — Ink-based React TUI. `src/main.tsx` mounts the app; `src/screens/REPL.tsx` is the main loop. `src/native-ts/yoga-layout` is a TS port to avoid a native-addon dep.
-- `src/grpc/server.ts` + `src/proto/claudio.proto` — headless gRPC service. Bidirectional streaming: text chunks, tool calls, `action_required` permission prompts.
-- `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: scoped per-project under `~/.claudio/projects/<dir>/memory/`, written as `.md` files indexed by `MEMORY.md`.
+- `src/grpc/server.ts` + `src/proto/claudin.proto` — headless gRPC service. Bidirectional streaming: text chunks, tool calls, `action_required` permission prompts.
+- `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: scoped per-project under `~/.claudin/projects/<dir>/memory/`, written as `.md` files indexed by `MEMORY.md`.
 - `src/skills/` — user-invocable skills (`/<skill-name>`).
-- `src/utils/claudioMigration.ts` + `claudioStartupMigrations.ts` — one-time migration of legacy `~/.claude/` and `~/.openclaude/` configs into `~/.claudio/`. Triggered automatically and rerunnable via `/provider migrate`. Override the config dir with `CLAUDIO_CONFIG_DIR`.
+- `src/utils/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` and `~/.openclaude/` configs into `~/.claudin/`. Triggered automatically and rerunnable via `/provider migrate`. Override the config dir with `CLAUDIN_CONFIG_DIR`.
 
 ## Configuration & Credentials
 
-- Config dir: `~/.claudio/` (override with `CLAUDIO_CONFIG_DIR=/path/to/dir`).
-- `~/.claudio/settings.json` holds **plaintext API keys** for active profiles. Treat as a secret — never commit, never paste into chat.
-- `~/.claudio/.credentials.json` holds OAuth tokens (Anthropic web sign-in, Codex/ChatGPT, GitHub Copilot device flow).
+- Config dir: `~/.claudin/` (override with `CLAUDIN_CONFIG_DIR=/path/to/dir`).
+- `~/.claudin/settings.json` holds **plaintext API keys** for active profiles. Treat as a secret — never commit, never paste into chat.
+- `~/.claudin/.credentials.json` holds OAuth tokens (Anthropic web sign-in, Codex/ChatGPT, GitHub Copilot device flow).
 - Provider profiles are the source of truth; environment variables are mostly fallbacks. The historical `--provider` CLI flag is removed — users get redirected to `/provider`.
 - `FIRECRAWL_API_KEY` (optional) upgrades `WebSearch`/`WebFetch` from the DuckDuckGo+raw-HTTP defaults to Firecrawl. Anthropic-native backends keep the provider-native web search behavior.
-- `~/.claudio/v8cache/` (~5 MB) holds V8 bytecode cache for the bundle. `bin/claudio` enables it via `module.enableCompileCache()` and saves ~250 ms per warm launch (measured). Disable with `NODE_DISABLE_COMPILE_CACHE=1`. Invalidated on every `bun run build`, so the first run after a build is ~120 ms slower than baseline (re-populates).
-- Streaming-highlight deferral is **on by default**: syntax highlighting on a fenced code block is skipped while the fence is still open during streaming, with one final pass when the fence closes. Measured ~8× lower cumulative cost in `scripts/profile/streaming-bench.ts` (~27 ms → ~3 ms for a typical TS code block); per-snapshot cost is sub-frame in both modes, so the win is CPU/battery, not perceived smoothness. Trade-off: user sees plain monospace code mid-stream and a one-shot color flash on close. Set `CLAUDIO_DEFER_HIGHLIGHT=0` to restore the always-highlight behavior.
-- **Bash output filter** is **on by default**: before returning Bash tool results to the model, Claudio applies command-aware filters that strip noise (progress bars, download lines, verbose headers, test "ok" lines, etc.) while preserving errors, warnings, and actionable output. Measured savings: ~50k tokens per typical 30-min session, ~72% input-cost reduction across the top 35 commands. Toggle via `/config` → "Bash output filter", or set `bashOutputFilterEnabled: false` in `~/.claudio/settings.json` to opt out. User-defined filters: `~/.claudio/filters.json`. Architecture: `docs/tech/bash-output-filter/`.
+- `~/.claudin/v8cache/` (~5 MB) holds V8 bytecode cache for the bundle. `bin/claudin` enables it via `module.enableCompileCache()` and saves ~250 ms per warm launch (measured). Disable with `NODE_DISABLE_COMPILE_CACHE=1`. Invalidated on every `bun run build`, so the first run after a build is ~120 ms slower than baseline (re-populates).
+- Streaming-highlight deferral is **on by default**: syntax highlighting on a fenced code block is skipped while the fence is still open during streaming, with one final pass when the fence closes. Measured ~8× lower cumulative cost in `scripts/profile/streaming-bench.ts` (~27 ms → ~3 ms for a typical TS code block); per-snapshot cost is sub-frame in both modes, so the win is CPU/battery, not perceived smoothness. Trade-off: user sees plain monospace code mid-stream and a one-shot color flash on close. Set `CLAUDIN_DEFER_HIGHLIGHT=0` to restore the always-highlight behavior.
+- **Bash output filter** is **on by default**: before returning Bash tool results to the model, Claudin applies command-aware filters that strip noise (progress bars, download lines, verbose headers, test "ok" lines, etc.) while preserving errors, warnings, and actionable output. Measured savings: ~50k tokens per typical 30-min session, ~72% input-cost reduction across the top 35 commands. Toggle via `/config` → "Bash output filter", or set `bashOutputFilterEnabled: false` in `~/.claudin/settings.json` to opt out. User-defined filters: `~/.claudin/filters.json`. Architecture: `docs/tech/bash-output-filter/`.
 
 ## Tests
 

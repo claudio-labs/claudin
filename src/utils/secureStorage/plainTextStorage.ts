@@ -1,6 +1,6 @@
 import { chmodSync } from 'fs'
 import { join } from 'path'
-import { getClaudioConfigHomeDir } from '../envUtils.js'
+import { getClaudinConfigHomeDir } from '../envUtils.js'
 import { getErrnoCode } from '../errors.js'
 import { getFsImplementation } from '../fsOperations.js'
 import {
@@ -11,7 +11,7 @@ import {
 import type { SecureStorage, SecureStorageData } from './index.js'
 
 function getStoragePath(): { storageDir: string; storagePath: string } {
-  const storageDir = getClaudioConfigHomeDir()
+  const storageDir = getClaudinConfigHomeDir()
   const storageFileName = '.credentials.json'
   return { storageDir, storagePath: join(storageDir, storageFileName) }
 }

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
 import { expect, test } from 'bun:test'
 
-// Regression guard for ROADMAP item 10.1. `.claudio/rules/typescript-patterns.md`
+// Regression guard for ROADMAP item 10.1. `.claudin/rules/typescript-patterns.md`
 // mandates `from 'zod/v4'` everywhere because `@anthropic-ai/sdk@0.96.0`+
 // requires zod v4 types explicitly — any schema that leaks into the SDK can
 // break silently on future upgrades if it was built with the bare `'zod'`
@@ -54,7 +54,7 @@ test("all 'zod' imports use the 'zod/v4' subpath", () => {
   if (offenders.length > 0) {
     throw new Error(
       `Found ${offenders.length} file(s) importing from bare 'zod' instead of 'zod/v4'. ` +
-        `See .claudio/rules/typescript-patterns.md. Offenders:\n  ` +
+        `See .claudin/rules/typescript-patterns.md. Offenders:\n  ` +
         offenders.join('\n  '),
     )
   }

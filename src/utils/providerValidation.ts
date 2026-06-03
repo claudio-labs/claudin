@@ -178,6 +178,6 @@ export async function validateProviderEnvForStartupOrExit(
   }
 
   console.error(
-    `Warning: provider configuration is incomplete.\n${error}\nClaudio will continue starting so you can run /provider and repair the saved provider settings.`,
+    `Warning: provider configuration is incomplete.\n${error}\nClaudin will continue starting so you can run /provider and repair the saved provider settings.`,
   )
 }

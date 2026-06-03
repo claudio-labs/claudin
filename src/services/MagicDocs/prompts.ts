@@ -1,5 +1,5 @@
 import { join } from 'path'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 import { getFsImplementation } from '../../utils/fsOperations.js'
 
 /**
@@ -60,12 +60,12 @@ REMEMBER: Only update if there is substantial new information. The Magic Doc hea
 
 /**
  * Load custom Magic Docs prompt from file if it exists
- * Custom prompts can be placed at ~/.claudio/magic-docs/prompt.md
+ * Custom prompts can be placed at ~/.claudin/magic-docs/prompt.md
  * Use {{variableName}} syntax for variable substitution (e.g., {{docContents}}, {{docPath}}, {{docTitle}})
  */
 async function loadMagicDocsPrompt(): Promise<string> {
   const fs = getFsImplementation()
-  const promptPath = join(getClaudioConfigHomeDir(), 'magic-docs', 'prompt.md')
+  const promptPath = join(getClaudinConfigHomeDir(), 'magic-docs', 'prompt.md')
 
   try {
     return await fs.readFile(promptPath, { encoding: 'utf-8' })

@@ -25,18 +25,18 @@
  * KPI secundario: output_tokens, cost, n de blocos de narracao, answer chars.
  *
  * Uso:
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs \
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs \
  *   ANTHROPIC_MODEL=claude-opus-4-8 \
  *   bun run scripts/bench/narration-effort-ab.ts
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-opus-4-8    (default — narracao e' Opus-4.8-specific)
- *   CLAUDIO_BENCH_RUNS=3               (runs por prompt por variante; min 3 por regra de bench)
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs (mesmo bundle nas duas variantes)
- *   CLAUDIO_BENCH_TARGET_CWD=<repo>    (cwd das invocacoes; default = repo root)
- *   CLAUDIO_BENCH_PROMPTS=0            (limita N prompts; 0 = todos)
- *   CLAUDIO_BENCH_EFFORT_A=adaptive    (effort da variante A)
- *   CLAUDIO_BENCH_EFFORT_B=xhigh       (effort da variante B)
+ *   CLAUDIN_BENCH_RUNS=3               (runs por prompt por variante; min 3 por regra de bench)
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs (mesmo bundle nas duas variantes)
+ *   CLAUDIN_BENCH_TARGET_CWD=<repo>    (cwd das invocacoes; default = repo root)
+ *   CLAUDIN_BENCH_PROMPTS=0            (limita N prompts; 0 = todos)
+ *   CLAUDIN_BENCH_EFFORT_A=adaptive    (effort da variante A)
+ *   CLAUDIN_BENCH_EFFORT_B=xhigh       (effort da variante B)
  */
 
 import { spawn } from 'node:child_process'
@@ -45,13 +45,13 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '3')
+const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
-const MAX_PROMPTS = Number(process.env.CLAUDIO_BENCH_PROMPTS ?? '0')
-const EFFORT_A = process.env.CLAUDIO_BENCH_EFFORT_A ?? 'adaptive'
-const EFFORT_B = process.env.CLAUDIO_BENCH_EFFORT_B ?? 'xhigh'
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
+const MAX_PROMPTS = Number(process.env.CLAUDIN_BENCH_PROMPTS ?? '0')
+const EFFORT_A = process.env.CLAUDIN_BENCH_EFFORT_A ?? 'adaptive'
+const EFFORT_B = process.env.CLAUDIN_BENCH_EFFORT_B ?? 'xhigh'
 
 // Tarefas de EXPLORACAO read-only (forcam varios reads/greps sem mutar o repo).
 // Pedem explicacao/descricao para provocar o padrao le->narra->le->narra.
@@ -66,7 +66,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'explain-provider-resolution',
-    text: 'Como o Claudio resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
+    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
   },
 ]
 
@@ -116,7 +116,7 @@ interface SessionAnalysis {
 function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const empty: SessionAnalysis = { toolCounts: {}, narrationBlocks: 0, narrationChars: 0, answerChars: 0, narrationSamples: [] }
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return empty
 
   const counts: Record<string, number> = {}

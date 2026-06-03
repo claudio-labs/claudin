@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### BREAKING
+
+- Rebrand Claudio → Claudin: npm package `@claudiolabs/claudio` → `@claudinlabs/claudin`; binary `claudio` → `claudin`; config dir `~/.claudio` → `~/.claudin`; env vars `CLAUDIO_*` → `CLAUDIN_*`; VSCode extension publisher and id changed. Reinstall and re-authenticate required.
+
 ## [unreleased]
 
 ### feat

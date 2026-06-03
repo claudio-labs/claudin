@@ -4,7 +4,7 @@ import type { AnyObjectSchema } from '@modelcontextprotocol/sdk/server/zod-compa
 /**
  * The MCP SDK declares `peerDependencies: zod "^3.25 || ^4.0"` and its internal
  * `AnyObjectSchema` type is a union of v3 (`z3.AnyZodObject`) and v4
- * (`z4.$ZodObject`) shapes. Claudio is on zod v4, but TypeScript's generic
+ * (`z4.$ZodObject`) shapes. Claudin is on zod v4, but TypeScript's generic
  * inference can't always reconcile our `z.ZodObject<...>` instances with the
  * SDK union — concrete object schemas have brand types (`$strip`, `$loose`)
  * that don't structurally match `z4.$ZodObject` in every position.

@@ -8,7 +8,7 @@ function isGithubCopilotProfileActive(): boolean {
   return tryGetActiveProvider()?.transport === 'github_copilot'
 }
 
-/** JSON key in the shared Claudio secure storage blob. */
+/** JSON key in the shared Claudin secure storage blob. */
 export const GITHUB_MODELS_STORAGE_KEY = 'githubModels' as const
 export const GITHUB_MODELS_HYDRATED_ENV_MARKER =
   'CLAUDE_CODE_GITHUB_TOKEN_HYDRATED' as const

@@ -1,4 +1,4 @@
-# Claudio for Non-Technical Users
+# Claudin for Non-Technical Users
 
 This guide is for people who want the easiest setup path.
 
@@ -6,9 +6,9 @@ You do not need to build from source. You do not need Bun. You do not need to un
 
 If you can copy and paste commands into a terminal, you can set this up.
 
-## What Claudio Does
+## What Claudin Does
 
-Claudio lets you use an AI coding assistant with different model providers, including:
+Claudin lets you use an AI coding assistant with different model providers, including:
 
 - Anthropic (Claude)
 - OpenAI
@@ -31,8 +31,8 @@ You need:
 
 ## Fastest Path
 
-1. Install Claudio with npm
-2. Run `claudio`
+1. Install Claudin with npm
+2. Run `claudin`
 3. Follow the `/provider` wizard that opens on first run
 
 There are no environment variables to set.
@@ -81,7 +81,7 @@ Choose this if:
 
 ## What Success Looks Like
 
-After you run `claudio`, the `/provider` wizard opens. Once you save a profile, the CLI starts and waits for your prompt.
+After you run `claudin`, the `/provider` wizard opens. Once you save a profile, the CLI starts and waits for your prompt.
 
 At that point, you can ask it to:
 
@@ -92,7 +92,7 @@ At that point, you can ask it to:
 
 ## Common Problems
 
-### `claudio` command not found
+### `claudin` command not found
 
 Cause:
 
@@ -102,7 +102,7 @@ Fix:
 
 1. Close the terminal
 2. Open a new terminal
-3. Run `claudio` again
+3. Run `claudin` again
 
 ### Invalid API key
 
@@ -112,12 +112,12 @@ Cause:
 
 Fix:
 
-1. Run `/provider` inside Claudio
+1. Run `/provider` inside Claudin
 2. Edit the active profile and paste a fresh key
 
 ### A provider stops working
 
-Run `/provider doctor` inside Claudio. It checks reachability, auth, and model availability for the active profile.
+Run `/provider doctor` inside Claudin. It checks reachability, auth, and model availability for the active profile.
 
 ### Ollama not working
 
@@ -129,7 +129,7 @@ Fix:
 
 1. Install Ollama from `https://ollama.com/download`
 2. Start Ollama
-3. Run `/provider doctor` inside Claudio
+3. Run `/provider doctor` inside Claudin
 
 ## Want More Control?
 

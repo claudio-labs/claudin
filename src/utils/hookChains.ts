@@ -24,7 +24,7 @@ type HookEvent = (typeof HOOK_EVENTS)[number]
 
 const HOOK_CHAINS_CONFIG_ENV_PATH = 'CLAUDE_CODE_HOOK_CHAINS_CONFIG_PATH'
 const HOOK_CHAINS_ENABLED_ENV = 'CLAUDE_CODE_ENABLE_HOOK_CHAINS'
-const DEFAULT_HOOK_CHAINS_RELATIVE_PATH = join('.claudio', 'hook-chains.json')
+const DEFAULT_HOOK_CHAINS_RELATIVE_PATH = join('.claudin', 'hook-chains.json')
 const DEFAULT_MAX_CHAIN_DEPTH = 2
 const DEFAULT_RULE_COOLDOWN_MS = 30_000
 const DEFAULT_DEDUP_WINDOW_MS = 30_000
@@ -1057,7 +1057,7 @@ export async function executeWarmRemoteCapacityAction(args: {
       action.createDefaultEnvironmentIfMissing === true
     ) {
       const created = await envApi.createDefaultCloudEnvironment(
-        'Claudio Self-Healing Warmup',
+        'Claudin Self-Healing Warmup',
       )
       selection = {
         availableEnvironments: [created],

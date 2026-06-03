@@ -36,40 +36,40 @@ function makeIO(initialFiles: Record<string, string> = {}) {
 describe('getProjectAgentOverridesPath', () => {
   test('places settings.agents.json next to the agents directory', () => {
     expect(
-      getProjectAgentOverridesPath('/home/u/proj/.claudio/agents'),
-    ).toBe(`/home/u/proj/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`)
+      getProjectAgentOverridesPath('/home/u/proj/.claudin/agents'),
+    ).toBe(`/home/u/proj/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`)
   })
 })
 
 describe('readProjectAgentOverrides', () => {
   test('returns empty when file does not exist', () => {
     const { io } = makeIO()
-    expect(readProjectAgentOverrides('/x/.claudio/agents', io)).toEqual({})
+    expect(readProjectAgentOverrides('/x/.claudin/agents', io)).toEqual({})
   })
 
   test('returns overrides map from valid JSON', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io } = makeIO({
       [path]: JSON.stringify({
         agentModelOverrides: { 'dev-app': 'claude-sonnet-4-6' },
       }),
     })
-    expect(readProjectAgentOverrides('/x/.claudio/agents', io)).toEqual({
+    expect(readProjectAgentOverrides('/x/.claudin/agents', io)).toEqual({
       'dev-app': 'claude-sonnet-4-6',
     })
   })
 
   test('returns empty and logs on malformed JSON', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io, errors } = makeIO({ [path]: '{ not json' })
-    expect(readProjectAgentOverrides('/x/.claudio/agents', io)).toEqual({})
+    expect(readProjectAgentOverrides('/x/.claudin/agents', io)).toEqual({})
     expect(errors).toHaveLength(1)
   })
 
   test('returns empty when agentModelOverrides is missing/invalid', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io } = makeIO({ [path]: JSON.stringify({ unrelated: true }) })
-    expect(readProjectAgentOverrides('/x/.claudio/agents', io)).toEqual({})
+    expect(readProjectAgentOverrides('/x/.claudin/agents', io)).toEqual({})
   })
 })
 
@@ -77,19 +77,19 @@ describe('writeProjectAgentOverride', () => {
   test('creates file with single override when none exists', () => {
     const { io, files } = makeIO()
     writeProjectAgentOverride(
-      '/x/.claudio/agents',
+      '/x/.claudin/agents',
       'dev-app',
       'claude-sonnet-4-6',
       io,
     )
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     expect(JSON.parse(files.get(path)!)).toEqual({
       agentModelOverrides: { 'dev-app': 'claude-sonnet-4-6' },
     })
   })
 
   test('merges into existing file without touching other keys', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io, files } = makeIO({
       [path]: JSON.stringify({
         agentModelOverrides: { 'dev-app': 'opus' },
@@ -97,7 +97,7 @@ describe('writeProjectAgentOverride', () => {
       }),
     })
     writeProjectAgentOverride(
-      '/x/.claudio/agents',
+      '/x/.claudin/agents',
       'product-strategist',
       'sonnet',
       io,
@@ -112,40 +112,40 @@ describe('writeProjectAgentOverride', () => {
   })
 
   test('overwrites existing entry for the same agent', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io, files } = makeIO({
       [path]: JSON.stringify({
         agentModelOverrides: { 'dev-app': 'opus' },
       }),
     })
-    writeProjectAgentOverride('/x/.claudio/agents', 'dev-app', 'inherit', io)
+    writeProjectAgentOverride('/x/.claudin/agents', 'dev-app', 'inherit', io)
     expect(JSON.parse(files.get(path)!)).toEqual({
       agentModelOverrides: { 'dev-app': 'inherit' },
     })
   })
 
   test('undefined deletes the entry', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io, files } = makeIO({
       [path]: JSON.stringify({
         agentModelOverrides: { 'dev-app': 'opus', other: 'haiku' },
       }),
     })
-    writeProjectAgentOverride('/x/.claudio/agents', 'dev-app', undefined, io)
+    writeProjectAgentOverride('/x/.claudin/agents', 'dev-app', undefined, io)
     expect(JSON.parse(files.get(path)!)).toEqual({
       agentModelOverrides: { other: 'haiku' },
     })
   })
 
   test('removes agentModelOverrides key when last entry deleted', () => {
-    const path = `/x/.claudio/${PROJECT_AGENT_OVERRIDES_FILENAME}`
+    const path = `/x/.claudin/${PROJECT_AGENT_OVERRIDES_FILENAME}`
     const { io, files } = makeIO({
       [path]: JSON.stringify({
         agentModelOverrides: { 'dev-app': 'opus' },
         unrelated: { keep: true },
       }),
     })
-    writeProjectAgentOverride('/x/.claudio/agents', 'dev-app', undefined, io)
+    writeProjectAgentOverride('/x/.claudin/agents', 'dev-app', undefined, io)
     expect(JSON.parse(files.get(path)!)).toEqual({ unrelated: { keep: true } })
   })
 })
@@ -186,12 +186,12 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
-      mkDeps({ '/x/.claudio/agents': { 'dev-app': 'claude-sonnet-4-6' } }),
+      mkDeps({ '/x/.claudin/agents': { 'dev-app': 'claude-sonnet-4-6' } }),
     )
     expect(out[0]?.model).toBe('claude-sonnet-4-6')
   })
@@ -201,7 +201,7 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
         model: 'opus',
       },
     ]
@@ -215,13 +215,13 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
         model: 'opus',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
-      mkDeps({ '/x/.claudio/agents': { 'dev-app': 'haiku' } }),
+      mkDeps({ '/x/.claudin/agents': { 'dev-app': 'haiku' } }),
     )
     expect(out[0]?.model).toBe('haiku')
   })
@@ -231,13 +231,13 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
       mkDeps(
-        { '/x/.claudio/agents': { 'dev-app': 'deepseek-chat' } },
+        { '/x/.claudin/agents': { 'dev-app': 'deepseek-chat' } },
         new Set(['claude-sonnet-4-6', 'claude-opus-4-7']),
       ),
     )
@@ -249,13 +249,13 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
       mkDeps(
-        { '/x/.claudio/agents': { 'dev-app': 'sonnet' } },
+        { '/x/.claudin/agents': { 'dev-app': 'sonnet' } },
         new Set(['gpt-5']),
       ),
     )
@@ -268,17 +268,17 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'a',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
       {
         agentType: 'b',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
       {
         agentType: 'c',
         source: 'userSettings',
-        baseDir: '/home/u/.claudio/agents',
+        baseDir: '/home/u/.claudin/agents',
       },
     ]
     applyProjectAgentOverrides(agents, {
@@ -293,8 +293,8 @@ describe('applyProjectAgentOverrides', () => {
       },
     })
     expect(calls).toEqual([
-      '/x/.claudio/agents',
-      '/home/u/.claudio/agents',
+      '/x/.claudin/agents',
+      '/home/u/.claudin/agents',
     ])
   })
 
@@ -303,12 +303,12 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
-      mkDeps({ '/x/.claudio/agents': { 'dev-app': '  haiku  ' } }),
+      mkDeps({ '/x/.claudin/agents': { 'dev-app': '  haiku  ' } }),
     )
     expect(out[0]?.model).toBe('haiku')
   })
@@ -318,13 +318,13 @@ describe('applyProjectAgentOverrides', () => {
       {
         agentType: 'dev-app',
         source: 'projectSettings',
-        baseDir: '/x/.claudio/agents',
+        baseDir: '/x/.claudin/agents',
         model: 'opus',
       },
     ]
     const out = applyProjectAgentOverrides(
       agents,
-      mkDeps({ '/x/.claudio/agents': { 'dev-app': '   ' } }),
+      mkDeps({ '/x/.claudin/agents': { 'dev-app': '   ' } }),
     )
     expect(out[0]?.model).toBe('opus')
   })

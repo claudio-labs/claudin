@@ -68,7 +68,7 @@ export function getGitStatusDelta(
   // immutable by design (see getGitStatus in src/context.ts).
   if (priorAttachmentCount > 0) return null
 
-  logEvent('claudio_git_status_delta', {
+  logEvent('claudin_git_status_delta', {
     emitted: true,
     contentLength: currentGitStatus.length,
   })

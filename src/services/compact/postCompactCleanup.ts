@@ -159,7 +159,7 @@ export function runPostCompactCleanup(
   // After clearing all the per-conversation caches above, hint V8 to mark-
   // sweep so dropped messages/tool-results are released back to the OS now
   // rather than waiting for the next allocation-driven GC. No-op unless
-  // launched with --expose-gc (default in bin/claudio's re-exec path).
+  // launched with --expose-gc (default in bin/claudin's re-exec path).
   // Safe to call on the main thread; subagent compacts share the heap so
   // they benefit too.
   globalThis.gc?.()

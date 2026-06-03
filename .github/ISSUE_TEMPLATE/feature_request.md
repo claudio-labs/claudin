@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an improvement or new capability for Claudio
+about: Suggest an improvement or new capability for Claudin
 title: ""
 labels: ""
 assignees: ""
@@ -8,7 +8,7 @@ assignees: ""
 
 ## Summary
 
-What would you like Claudio to do?
+What would you like Claudin to do?
 
 ## Problem
 

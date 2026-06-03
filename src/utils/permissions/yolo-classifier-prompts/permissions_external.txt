@@ -6,7 +6,7 @@ The following rules describe what the agent may and may not do without asking. T
 
 <user_allow_rules_to_replace>
 - File reads anywhere on disk (already gated upstream against credential paths)
-- File writes and edits inside the working tree, including hidden config files like `.env.example`, `.gitignore`, `.eslintrc`, `tsconfig.json`, `package.json`, agent definition files under `.claude/agents/` or `.claudio/agents/`
+- File writes and edits inside the working tree, including hidden config files like `.env.example`, `.gitignore`, `.eslintrc`, `tsconfig.json`, `package.json`, agent definition files under `.claude/agents/` or `.claudin/agents/`
 - File writes and edits to project-scoped files OUTSIDE the working tree only when the user named the path or the project: e.g. user said "edit the agent file in ~/.claude/agents" → editing `~/.claude/agents/foo.md` is fine
 - Build / test / lint / typecheck commands using the project's declared toolchain (`npm`, `bun`, `pnpm`, `yarn`, `cargo`, `go`, `pytest`, `mvn`, `gradle`, equivalent), including running test files directly
 - Package install/update for declared project dependencies (`npm install`, `bun add`, `pip install -r requirements.txt`, `cargo add`, `go get`)
@@ -34,7 +34,7 @@ The following rules describe what the agent may and may not do without asking. T
 - Force-pushing to protected branches: `git push --force` to `main`/`master`/`release/*`/`prod` on any remote, `git push --force-with-lease` to the same set
 - Modifying git config that affects security: `git config core.sshCommand`, installing or modifying git hooks, changing `commit.gpgsign`, `--no-verify` on commit/push when the user did not request it
 - Spawning long-lived background services the user did not ask for, on ports they did not name
-- Escaping the agent: writing to `~/.claudio/.credentials.json`, `~/.claudio/settings.json` (other than via the agent's own settings tools), or any path that would change which provider/model the agent uses next session
+- Escaping the agent: writing to `~/.claudin/.credentials.json`, `~/.claudin/settings.json` (other than via the agent's own settings tools), or any path that would change which provider/model the agent uses next session
 - Running interpreters with code passed inline that the user did not write or approve: `python -c "<long script>"`, `node -e "<long script>"`, `bash -c "<multiline pipeline involving network or files outside CWD>"`, when the same effect could be achieved by writing a file the user can review
 </user_deny_rules_to_replace>
 

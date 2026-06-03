@@ -63,7 +63,7 @@ import {
 } from '../providerConfig.js'
 import { stripThinkTags } from '../thinkTagSanitizer.js'
 import { normalizeToolArguments } from '../toolArgumentNormalization.js'
-import { getClaudioUserAgent } from '../../../utils/userAgent.js'
+import { getClaudinUserAgent } from '../../../utils/userAgent.js'
 import {
   COPILOT_HEADERS,
   GITHUB_429_BASE_DELAY_SEC,
@@ -115,7 +115,7 @@ class OpenAIShimMessages {
         // Estimate input tokens from request messages + system prompt so the
         // fallback path (providers that don't emit usage) can report non-zero
         // input instead of 0. The messages may be in either the internal
-        // Claudio format ({ type, message: { content } }) or the Anthropic
+        // Claudin format ({ type, message: { content } }) or the Anthropic
         // SDK format ({ role, content }) — extract content and delegate to
         // roughTokenCountEstimationForContent which handles all block types
         // (text, tool_use, tool_result, image, etc.).
@@ -419,8 +419,8 @@ class OpenAIShimMessages {
       'Content-Type': 'application/json',
       ...this.defaultHeaders,
       ...filterAnthropicHeaders(options?.headers),
-      // Override upstream "claude-cli" User-Agent with Claudio branding
-      'User-Agent': getClaudioUserAgent(),
+      // Override upstream "claude-cli" User-Agent with Claudin branding
+      'User-Agent': getClaudinUserAgent(),
     }
 
     const isGemini = isGeminiMode()

@@ -401,7 +401,7 @@ Uninstall an installed plugin
 Options:
   -h, --help           Display help for command
   --keep-data          Preserve the plugin's persistent data directory
-                       (~/.claudio/plugins/data/{id}/)
+                       (~/.claudin/plugins/data/{id}/)
   -s, --scope <scope>  Uninstall from scope: user, project, or local (default:
                        "user")
 

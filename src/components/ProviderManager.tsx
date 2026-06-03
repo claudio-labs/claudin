@@ -54,7 +54,7 @@ import {
   legacyClaudeDirExists,
   migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
-} from '../utils/claudioMigration.js'
+} from '../utils/claudinMigration.js'
 
 export type ProviderManagerResult = {
   action: 'saved' | 'cancelled' | 'activated'
@@ -390,7 +390,7 @@ function CodexOAuthSetup({
         Codex OAuth
       </Text>
       <Text>
-        Sign in with your ChatGPT account in the browser. Claudio will store
+        Sign in with your ChatGPT account in the browser. Claudin will store
         the resulting Codex credentials securely and switch this session to the
         new Codex login when setup completes.
       </Text>
@@ -756,10 +756,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     }
 
     if (options.warnings.length > 0) {
-      return `${options.prefix}. Claudio switched to it for this session with warnings: ${options.warnings.join('; ')}.`
+      return `${options.prefix}. Claudin switched to it for this session with warnings: ${options.warnings.join('; ')}.`
     }
 
-    return `${options.prefix}. Claudio switched to it for this session.`
+    return `${options.prefix}. Claudin switched to it for this session.`
   }
 
   async function activateCodexOAuthSession(tokens?: {
@@ -788,7 +788,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   }
 
   function clearPersistedCodexOAuthProfile(): void {
-    // Removes the legacy .claudio-profile.json sidecar if present;
+    // Removes the legacy .claudin-profile.json sidecar if present;
     // current profiles live in providerProfiles[] inside settings.
     deleteProfileFile()
   }
@@ -1682,7 +1682,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               value: 'oauth',
               label: 'Sign in with web (OAuth)',
               description:
-                'Open a browser, sign in to Claude, and store tokens in ~/.claudio/.credentials.json',
+                'Open a browser, sign in to Claude, and store tokens in ~/.claudin/.credentials.json',
             },
             {
               value: 'apiKey',

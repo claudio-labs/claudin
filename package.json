@@ -1,10 +1,10 @@
 {
-  "name": "@claudiolabs/claudio",
+  "name": "@claudinlabs/claudin",
   "version": "0.5.5",
-  "description": "Claudio — Claude Code opened to any LLM (OpenAI, Gemini, DeepSeek, Ollama, and 200+ models)",
+  "description": "Claudin — Claude Code opened to any LLM (OpenAI, Gemini, DeepSeek, Ollama, and 200+ models)",
   "type": "module",
   "bin": {
-    "claudio": "./bin/claudio"
+    "claudin": "./bin/claudin"
   },
   "files": [
     "bin/",
@@ -26,8 +26,8 @@
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
-    "build:extension": "mkdir -p dist && cd vscode-extension/claudio-vscode && bun install --frozen-lockfile && npx --yes @vscode/vsce@^3 package --out ../../dist/claudio-vscode.vsix",
-    "build:release": "bun run build:extension && CLAUDIO_RELEASE_BUILD=1 bun run build",
+    "build:extension": "mkdir -p dist && cd vscode-extension/claudin-vscode && bun install --frozen-lockfile && npx --yes @vscode/vsce@^3 package --out ../../dist/claudin-vscode.vsix",
+    "build:release": "bun run build:extension && CLAUDIN_RELEASE_BUILD=1 bun run build",
     "test:provider": "bun test src/services/api/*.test.ts src/utils/context.test.ts",
     "profile": "bun run scripts/profile/run-all.ts",
     "profile:streaming": "bun run scripts/profile/streaming-bench.ts --compare",

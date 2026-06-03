@@ -30,7 +30,7 @@ export function createWhatsNewFeed(releaseNotes: string[]): FeedConfig {
   }));
   const emptyMessage = 'Check /release-notes for recent updates';
   return {
-    title: "Claudio Updates",
+    title: "Claudin Updates",
     lines,
     footer: lines.length > 0 ? '/release-notes for more' : undefined,
     emptyMessage
@@ -62,7 +62,7 @@ export function createProjectOnboardingFeed(steps: Step[]): FeedConfig {
 }
 export function createGuestPassesFeed(): FeedConfig {
   const reward = getCachedReferrerReward();
-  const subtitle = reward ? `Share Claudio and earn ${formatCreditAmount(reward)} of extra usage` : 'Share Claudio with friends';
+  const subtitle = reward ? `Share Claudin and earn ${formatCreditAmount(reward)} of extra usage` : 'Share Claudin with friends';
   return {
     title: '3 guest passes',
     lines: [],

@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { getGlobalConfig } from "src/utils/config.js";
-import { getClaudioConfigHomeDir } from "src/utils/envUtils.js";
+import { getClaudinConfigHomeDir } from "src/utils/envUtils.js";
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
 import { z } from "zod/v4";
@@ -194,10 +194,10 @@ const USER_FILTERS_FILENAME = "bash-filters.json";
 let _cachedFilters: FilterSpec[] | null = null;
 let _cachedConfigDir: string | null = null;
 
-/** Loads and compiles user filters from `~/.claudio/bash-filters.json` (or `$CLAUDIO_CONFIG_DIR/bash-filters.json`). Returns empty array if the file doesn't exist or is invalid. Result is cached for the lifetime of the process. */
+/** Loads and compiles user filters from `~/.claudin/bash-filters.json` (or `$CLAUDIN_CONFIG_DIR/bash-filters.json`). Returns empty array if the file doesn't exist or is invalid. Result is cached for the lifetime of the process. */
 export function loadUserFilters(): FilterSpec[] {
   if (getGlobalConfig().bashOutputFilterUserEnabled === false) return [];
-  const configDir = getClaudioConfigHomeDir();
+  const configDir = getClaudinConfigHomeDir();
   if (_cachedFilters !== null && _cachedConfigDir === configDir) {
     return _cachedFilters;
   }

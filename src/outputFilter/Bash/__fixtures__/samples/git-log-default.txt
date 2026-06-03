@@ -12,24 +12,24 @@ Date:   Tue May 5 15:11:45 2026 -0300
       to 2 attempts, excluding model_not_found (model genuinely missing)
     - claude.ts excludes model_not_found from non-streaming fallback too
     - Uses extractOpenAICategoryMarker() instead of duplicated regex
-    - Add MACRO global to 4 test files broken by getClaudioUserAgent()
+    - Add MACRO global to 4 test files broken by getClaudinUserAgent()
     - Add 5 shouldRetry tests for 404 retry logic
 
 commit eed74e1f79bfba2fac06a25b9c27149644d6e163
 Author: Viudes <andersonvieiraviudes@gmail.com>
 Date:   Tue May 5 14:52:32 2026 -0300
 
-    fix(providers): use claudio branding in User-Agent for non-Anthropic providers
+    fix(providers): use claudin branding in User-Agent for non-Anthropic providers
     
     OpenAI-compat providers (DeepSeek, Groq, OpenRouter, etc.) and the Codex
     OAuth path were leaking "claude-cli/99.0.0" or "claude-code/99.0.0" in the
-    User-Agent header. Add getClaudioUserAgent() that returns
-    "claudio/<version> (cli)" and override the header in openaiShim, codexShim,
+    User-Agent header. Add getClaudinUserAgent() that returns
+    "claudin/<version> (cli)" and override the header in openaiShim, codexShim,
     MiniMax usage, and WebFetch for non-first-party providers. Copilot headers
     remain unchanged (COPILOT_HEADERS override the default via spread order).
 
 commit bb98dbfd00d7244b2e0fa4cdb8da6a02c87d34c8
-Author: claudio-release-bot <release@claudio.local>
+Author: claudin-release-bot <release@claudin.local>
 Date:   Tue May 5 02:28:59 2026 +0000
 
     chore(release): v0.1.10
@@ -79,7 +79,7 @@ Date:   Mon May 4 22:28:17 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/13
+    Reviewed-on: http://git.house.server:3000/viudes/claudin/pulls/13
     Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
     Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
 
@@ -124,7 +124,7 @@ Date:   Mon May 4 21:11:03 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/12
+    Reviewed-on: http://git.house.server:3000/viudes/claudin/pulls/12
     Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
     Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
 
@@ -195,7 +195,7 @@ Date:   Mon May 4 18:36:05 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/11
+    Reviewed-on: http://git.house.server:3000/viudes/claudin/pulls/11
     Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
     Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
 
@@ -227,6 +227,6 @@ Date:   Mon May 4 16:46:20 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/10
+    Reviewed-on: http://git.house.server:3000/viudes/claudin/pulls/10
     Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
     Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>

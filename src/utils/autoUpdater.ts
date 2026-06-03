@@ -9,7 +9,7 @@ import {
 import { type ReleaseChannel, saveGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
 import { env } from './env.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { ClaudeError, getErrnoCode, isENOENT } from './errors.js'
 import { execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { getFsImplementation } from './fsOperations.js'
@@ -28,7 +28,7 @@ class AutoUpdaterError extends ClaudeError {}
 
 /**
  * Detect a Bun global install even when the launcher re-exec'd into Node.
- * `bin/claudio` swaps to `process.execPath` (Node) for the heap bump, which
+ * `bin/claudin` swaps to `process.execPath` (Node) for the heap bump, which
  * means `isRunningWithBun()` returns false; we fall back to inspecting the
  * launcher path to keep the package manager aligned with the install source.
  */
@@ -84,7 +84,7 @@ export type MaxVersionConfig = {
  * This approach keeps version comparison logic simple while maintaining traceability via the SHA.
  */
 export async function assertMinVersion(): Promise<void> {
-  // Claudio: the upstream min-version kill-switch is Anthropic-specific
+  // Claudin: the upstream min-version kill-switch is Anthropic-specific
   // (gated by their Growthbook tenant). Neutralized for multi-provider builds.
 }
 
@@ -95,7 +95,7 @@ export async function assertMinVersion(): Promise<void> {
  * This is used as a server-side kill switch to pause auto-updates during incidents.
  * Returns undefined if no cap is configured.
  */
-// Claudio: max-version kill-switch is Anthropic-specific (Growthbook tenant).
+// Claudin: max-version kill-switch is Anthropic-specific (Growthbook tenant).
 // Neutralized — no cap is ever applied in open builds.
 export async function getMaxVersion(): Promise<string | undefined> {
   return undefined
@@ -134,7 +134,7 @@ const LOCK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minute timeout for locks
  * This is a function to ensure it's evaluated at runtime after test setup
  */
 export function getLockFilePath(): string {
-  return join(getClaudioConfigHomeDir(), '.update.lock')
+  return join(getClaudinConfigHomeDir(), '.update.lock')
 }
 
 /**
@@ -197,7 +197,7 @@ async function acquireLock(): Promise<boolean> {
         // fs.mkdir from getFsImplementation() is always recursive:true and
         // swallows EEXIST internally, so a dir-creation race cannot reach the
         // catch below — only writeFile's EEXIST (true lock contention) can.
-        await fs.mkdir(getClaudioConfigHomeDir())
+        await fs.mkdir(getClaudinConfigHomeDir())
         await writeFile(lockPath, `${process.pid}`, {
           encoding: 'utf8',
           flag: 'wx',
@@ -347,7 +347,7 @@ export async function getNpmDistTags(): Promise<NpmDistTags> {
   }
 }
 
-// Claudio: GCS endpoints below pointed at Anthropic-owned distribution infra.
+// Claudin: GCS endpoints below pointed at Anthropic-owned distribution infra.
 // Neutralized so the native installer path never phones home — callers
 // already treat null as "no GCS info available".
 export async function getLatestVersionFromGcs(

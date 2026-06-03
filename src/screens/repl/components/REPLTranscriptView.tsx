@@ -1,6 +1,6 @@
 // Transcript-mode early-return view, extracted from `REPL.tsx` in Etapa 5
 // of ROADMAP 11e. See plan:
-//   /home/viudes/.claudio/plans/starry-discovering-shannon.md
+//   /home/viudes/.claudin/plans/starry-discovering-shannon.md
 //
 // React-identity guarantees (the *point* of this extraction; see the team
 // memory `activity-toggle-driven-only` and the plan's risk table):

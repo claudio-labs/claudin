@@ -883,8 +883,8 @@ function isPathAllowed(
   }
 
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
-  // This MUST come before checkPathSafetyForAutoEdit since .claudio is a dangerous directory
-  // and internal editable paths live under ~/.claudio/ — matching the ordering in
+  // This MUST come before checkPathSafetyForAutoEdit since .claudin is a dangerous directory
+  // and internal editable paths live under ~/.claudin/ — matching the ordering in
   // checkWritePermissionForTool (filesystem.ts step 1.5)
   if (operationType !== 'read') {
     const internalEditResult = checkEditableInternalPath(resolvedPath, {})
@@ -1581,13 +1581,13 @@ function checkPathConstraintsForStatement(
   // New-PSDrive, relative paths in later statements resolve against the
   // CHANGED cwd at runtime, but this validator resolves them against the
   // STALE getCwd() snapshot. Example attack (finding #3):
-  //   Set-Location ./.claudio; Set-Content ./settings.json '...'
+  //   Set-Location ./.claudin; Set-Content ./settings.json '...'
   // Validator sees ./settings.json → /project/settings.json (not a config file).
-  // Runtime writes /project/.claudio/settings.json (Claude's permission config).
+  // Runtime writes /project/.claudin/settings.json (Claude's permission config).
   //
   // ALTERNATIVE APPROACH (rejected): simulate cwd through the statement chain
-  // — after `Set-Location ./.claudio`, validate subsequent statements with
-  // cwd='./.claudio'. This would be more permissive but requires careful
+  // — after `Set-Location ./.claudin`, validate subsequent statements with
+  // cwd='./.claudin'. This would be more permissive but requires careful
   // handling of:
   //   - Push-Location/Pop-Location stack semantics
   //   - Set-Location with no args (→ home on some platforms)

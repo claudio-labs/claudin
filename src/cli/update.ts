@@ -243,7 +243,7 @@ export async function update() {
 
       if (result.latestVersion === MACRO.DISPLAY_VERSION) {
         writeToStdout(
-          chalk.green(`Claudio is up to date (${MACRO.DISPLAY_VERSION})`) + '\n',
+          chalk.green(`Claudin is up to date (${MACRO.DISPLAY_VERSION})`) + '\n',
         )
       } else {
         writeToStdout(
@@ -309,7 +309,7 @@ export async function update() {
   // Check if versions match exactly, including any build metadata (like SHA)
   if (latestVersion === MACRO.DISPLAY_VERSION) {
     writeToStdout(
-      chalk.green(`Claudio is up to date (${MACRO.DISPLAY_VERSION})`) + '\n',
+      chalk.green(`Claudin is up to date (${MACRO.DISPLAY_VERSION})`) + '\n',
     )
     await gracefulShutdown(0)
   }
@@ -387,12 +387,12 @@ export async function update() {
       if (useLocalUpdate) {
         process.stderr.write('Try manually updating with:\n')
         process.stderr.write(
-          `  cd ~/.claudio/local && npm update ${MACRO.PACKAGE_URL}\n`,
+          `  cd ~/.claudin/local && npm update ${MACRO.PACKAGE_URL}\n`,
         )
       } else {
         process.stderr.write('Try running with sudo or fix npm permissions\n')
         process.stderr.write(
-          'Or consider using native installation with: claudio install\n',
+          'Or consider using native installation with: claudin install\n',
         )
       }
       await gracefulShutdown(1)
@@ -402,11 +402,11 @@ export async function update() {
       if (useLocalUpdate) {
         process.stderr.write('Try manually updating with:\n')
         process.stderr.write(
-          `  cd ~/.claudio/local && npm update ${MACRO.PACKAGE_URL}\n`,
+          `  cd ~/.claudin/local && npm update ${MACRO.PACKAGE_URL}\n`,
         )
       } else {
         process.stderr.write(
-          'Or consider using native installation with: claudio install\n',
+          'Or consider using native installation with: claudin install\n',
         )
       }
       await gracefulShutdown(1)

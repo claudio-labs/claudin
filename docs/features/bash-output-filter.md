@@ -1,12 +1,12 @@
 # Bash Output Filter
 
-Claudio intercepts every Bash tool result before it reaches the model and removes noise — progress bars, download lines, verbose headers, passing test lines — while preserving errors, warnings, and actionable output.
+Claudin intercepts every Bash tool result before it reaches the model and removes noise — progress bars, download lines, verbose headers, passing test lines — while preserving errors, warnings, and actionable output.
 
 **On by default. No configuration required.**
 
 ## The problem
 
-CLI tools are built for humans. They're chatty by design. When Claudio runs a command, all of that noise goes straight into the model's context — costing tokens and crowding out the signal that actually matters.
+CLI tools are built for humans. They're chatty by design. When Claudin runs a command, all of that noise goes straight into the model's context — costing tokens and crowding out the signal that actually matters.
 
 ## The gain
 
@@ -1040,9 +1040,9 @@ The `gh pr|issue|run list` filters and `git status` are **rewrites**, not stripp
 
 ## How to activate / deactivate
 
-Open `/config` inside the Claudio REPL and toggle **Bash output filter**.
+Open `/config` inside the Claudin REPL and toggle **Bash output filter**.
 
-Or edit `~/.claudio/settings.json` directly:
+Or edit `~/.claudin/settings.json` directly:
 
 ```json
 {
@@ -1056,7 +1056,7 @@ Omit the key (or set `true`) to keep it on. The change takes effect immediately 
 
 ## User-defined filters
 
-Add your own rules on top of the built-ins. Create `~/.claudio/bash-filters.json`:
+Add your own rules on top of the built-ins. Create `~/.claudin/bash-filters.json`:
 
 ```json
 {

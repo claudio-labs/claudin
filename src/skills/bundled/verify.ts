@@ -78,14 +78,14 @@ the app. Checking that assertions match source is code review.
 
 ## Get a handle
 
-**Check \`.claudio/skills/\` first — even if you already know how to
+**Check \`.claudin/skills/\` first — even if you already know how to
 build and run.** A matching \`verifier-*\` skill is the repo's
 evidence-capture protocol: it wraps the session so a reviewer can
 replay what you saw (recording, screenshots). Drive the surface
 without it and you get a verdict with no replay.
 
 \`\`\`bash
-ls .claudio/skills/
+ls .claudin/skills/
 \`\`\`
 
 - **\`verifier-*\` matching your surface** (CLI verifier for a CLI

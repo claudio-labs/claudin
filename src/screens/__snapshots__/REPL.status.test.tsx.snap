@@ -1,46 +1,41 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`<REPL> status baseline idle status (default mount) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;
 
 exports[`<REPL> status baseline idle status, narrow terminal (40 cols) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opu
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────
 ❯
 
                    ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts
+   ◐ medium · /effort"
 `;
 
 exports[`<REPL> status baseline idle status, wide terminal (160 cols) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                                                                            ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                                                                                           ◐ medium · /effort"
 `;

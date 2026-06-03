@@ -1291,10 +1291,10 @@ export function getAutoModeUnavailableReason(): AutoModeUnavailableReason | null
  */
 export type AutoModeEnabledState = 'enabled' | 'disabled' | 'opt-in'
 
-// Claudio: GrowthBook is stubbed so the upstream config never resolves.
+// Claudin: GrowthBook is stubbed so the upstream config never resolves.
 // Default to 'enabled' so the shift+tab carousel can reach auto mode out
 // of the box. Users opt out with `disableAutoMode: 'disable'` in
-// ~/.claudio/settings.json.
+// ~/.claudin/settings.json.
 const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'enabled'
 
 function parseAutoModeEnabledState(value: unknown): AutoModeEnabledState {

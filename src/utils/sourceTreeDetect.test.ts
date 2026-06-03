@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isInvokedFromSourceTree } from 'src/utils/sourceTreeDetect.js'
 
-const PACKAGE_NAME = '@claudiolabs/claudio'
+const PACKAGE_NAME = '@claudinlabs/claudin'
 
 describe('isInvokedFromSourceTree', () => {
   let root: string
 
   beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), 'claudio-source-detect-'))
+    root = await mkdtemp(join(tmpdir(), 'claudin-source-detect-'))
   })
 
   afterAll(async () => {
@@ -30,7 +30,7 @@ describe('isInvokedFromSourceTree', () => {
     if (opts.withGit) {
       await mkdir(join(pkgDir, '.git'), { recursive: true })
     }
-    const binPath = join(pkgDir, 'bin', 'claudio')
+    const binPath = join(pkgDir, 'bin', 'claudin')
     await writeFile(binPath, '#!/usr/bin/env node\n')
     return binPath
   }
@@ -51,7 +51,7 @@ describe('isInvokedFromSourceTree', () => {
 
   test('returns true when invoked via a symlink into a dev tree', async () => {
     const binPath = await makePkg('dev-linked', { withGit: true })
-    const symlinkPath = join(root, 'claudio-link')
+    const symlinkPath = join(root, 'claudin-link')
     await symlink(binPath, symlinkPath)
     expect(await isInvokedFromSourceTree(symlinkPath, PACKAGE_NAME)).toBe(true)
   })
@@ -71,7 +71,7 @@ describe('isInvokedFromSourceTree', () => {
   test('returns false when invokedPath does not exist', async () => {
     expect(
       await isInvokedFromSourceTree(
-        join(root, 'nope', 'claudio'),
+        join(root, 'nope', 'claudin'),
         PACKAGE_NAME,
       ),
     ).toBe(false)

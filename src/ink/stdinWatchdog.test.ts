@@ -52,24 +52,24 @@ function asStdin(s: FakeStdin): NodeJS.ReadStream {
 }
 
 describe('StdinWatchdog', () => {
-  const originalEnv = process.env.CLAUDIO_STDIN_WATCHDOG
+  const originalEnv = process.env.CLAUDIN_STDIN_WATCHDOG
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.CLAUDIO_STDIN_WATCHDOG
+      delete process.env.CLAUDIN_STDIN_WATCHDOG
     } else {
-      process.env.CLAUDIO_STDIN_WATCHDOG = originalEnv
+      process.env.CLAUDIN_STDIN_WATCHDOG = originalEnv
     }
   })
 
   test('is enabled by default', () => {
-    delete process.env.CLAUDIO_STDIN_WATCHDOG
+    delete process.env.CLAUDIN_STDIN_WATCHDOG
     expect(isStdinWatchdogEnabled()).toBe(true)
   })
 
   test('respects opt-out env values', () => {
     for (const off of ['0', 'false', 'off', 'no', 'OFF']) {
-      process.env.CLAUDIO_STDIN_WATCHDOG = off
+      process.env.CLAUDIN_STDIN_WATCHDOG = off
       expect(isStdinWatchdogEnabled()).toBe(false)
     }
   })

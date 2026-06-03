@@ -1,10 +1,10 @@
 # LiteLLM Setup
 
-Claudio can connect to LiteLLM through LiteLLM's OpenAI-compatible proxy.
+Claudin can connect to LiteLLM through LiteLLM's OpenAI-compatible proxy.
 
 ## Overview
 
-LiteLLM is an open-source LLM gateway that provides a unified API to 100+ model providers. By running the LiteLLM Proxy, you can route Claudio requests through LiteLLM to access any of its supported providers — all while using Claudio's existing OpenAI-compatible provider path.
+LiteLLM is an open-source LLM gateway that provides a unified API to 100+ model providers. By running the LiteLLM Proxy, you can route Claudin requests through LiteLLM to access any of its supported providers — all while using Claudin's existing OpenAI-compatible provider path.
 
 ## Prerequisites
 
@@ -55,11 +55,11 @@ litellm --config litellm_config.yaml --port 4000
 
 The proxy will start at `http://localhost:4000` by default.
 
-## 2. Point Claudio to LiteLLM
+## 2. Point Claudin to LiteLLM
 
-LiteLLM is wired into Claudio through the `custom` preset (or any OpenAI-compatible preset) in `/provider`. There are no environment variables to set.
+LiteLLM is wired into Claudin through the `custom` preset (or any OpenAI-compatible preset) in `/provider`. There are no environment variables to set.
 
-1. Run `claudio`
+1. Run `claudin`
 2. Type `/provider`
 3. Pick `Add profile` -> preset `custom` (or `openai` and override the base URL)
 4. Set the **Base URL** to `http://localhost:4000` (or wherever your proxy is running)
@@ -107,9 +107,9 @@ Then in `/provider`, set the LiteLLM profile's **API key** to `sk-my-master-key`
 
 ## 4. Notes
 
-- The Claudio profile **Model** must match a `model_name` from your LiteLLM config, not the upstream raw provider model name.
+- The Claudin profile **Model** must match a `model_name` from your LiteLLM config, not the upstream raw provider model name.
 - If your proxy requires authentication, use the proxy key (or `master_key`) as the profile's API key.
-- LiteLLM's OpenAI-compatible endpoint accepts the same request format as OpenAI, so Claudio works without any code changes.
+- LiteLLM's OpenAI-compatible endpoint accepts the same request format as OpenAI, so Claudin works without any code changes.
 - Switch upstream providers by editing the profile's `Model` field — no need to reconfigure anything else.
 
 ## 5. Troubleshooting
@@ -122,7 +122,7 @@ Then in `/provider`, set the LiteLLM profile's **API key** to `sk-my-master-key`
 | Upstream provider error | The backend provider key is missing or invalid | Ensure the upstream API key (e.g., `OPENAI_API_KEY`) is set in your LiteLLM proxy process environment |
 | Tools fail but chat works | The selected model has weak function/tool calling support | Switch to a model with strong tool support (e.g., GPT-4o, Claude Sonnet) |
 
-You can also run `/provider doctor` inside Claudio to check the active profile.
+You can also run `/provider doctor` inside Claudin to check the active profile.
 
 ## 6. Resources
 

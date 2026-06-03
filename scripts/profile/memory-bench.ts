@@ -4,7 +4,7 @@
 // Measures `scanMemoryFiles(memoryDir, signal)` — called on every turn that
 // invokes findRelevantMemories AND every ~15 turns for extractMemories. The
 // cost scales linearly with the number of `.md` files in
-// `~/.claudio/projects/<dir>/memory/`. Heavy users accumulate 30–100+ files.
+// `~/.claudin/projects/<dir>/memory/`. Heavy users accumulate 30–100+ files.
 //
 // Builds a synthetic memory dir under os.tmpdir() with N files, runs the
 // real scanMemoryFiles against it. Reports wall ms per N, syscall
@@ -134,7 +134,7 @@ async function measureSize(
   iters: number,
   warmup: number,
 ): Promise<SizeResult> {
-  const dir = join(tmpdir(), `claudio-mem-bench-${size}-${process.pid}`)
+  const dir = join(tmpdir(), `claudin-mem-bench-${size}-${process.pid}`)
   await rm(dir, { recursive: true, force: true })
   await buildFixture(dir, size)
 

@@ -63,7 +63,7 @@ import {
   tokenCountFromLastAPIResponse,
 } from '../tokens.js'
 import { getEffectiveContextWindowSize } from '../../services/compact/autoCompact.js'
-import { isEnvTruthy, getClaudioConfigHomeDir } from '../envUtils.js'
+import { isEnvTruthy, getClaudinConfigHomeDir } from '../envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from './types.js'
@@ -412,7 +412,7 @@ export function getTeamContextAttachment(messages: Message[]): Attachment[] {
     return []
   }
 
-  const configDir = getClaudioConfigHomeDir()
+  const configDir = getClaudinConfigHomeDir()
   const teamConfigPath = `${configDir}/teams/${teamName}/config.json`
   const taskListPath = `${configDir}/tasks/${teamName}/`
 

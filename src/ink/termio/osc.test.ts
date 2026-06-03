@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 const originalEnv = { ...process.env }
 const originalPlatform = process.platform
-const mockedClipboardPath = join(process.cwd(), 'claudio-clipboard.txt')
+const mockedClipboardPath = join(process.cwd(), 'claudin-clipboard.txt')
 
 const generateTempFilePathMock = mock(() => mockedClipboardPath)
 
@@ -91,7 +91,7 @@ describe('Windows clipboard fallback', () => {
     expect(windowsCall?.[2]).not.toMatchObject({ input: 'Привет мир' })
     expect(windowsCall?.[2]).not.toMatchObject({
       env: expect.objectContaining({
-        CLAUDIO_CLIPBOARD_TEXT_B64: expect.any(String),
+        CLAUDIN_CLIPBOARD_TEXT_B64: expect.any(String),
       }),
     })
     expect(windowsCall?.[1]).toContain(

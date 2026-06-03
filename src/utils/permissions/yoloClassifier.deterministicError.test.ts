@@ -73,7 +73,7 @@ beforeAll(() => {
     DISPLAY_VERSION: '0.0.0-test',
     BUILD_TIME: new Date().toISOString(),
     ISSUES_EXPLAINER: '',
-    PACKAGE_URL: '@claudio/test',
+    PACKAGE_URL: '@claudin/test',
     NATIVE_PACKAGE_URL: undefined,
   }
   enableConfigs()

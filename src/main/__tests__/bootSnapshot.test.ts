@@ -4,7 +4,7 @@
 // (profileCheckpoint, MDM prefetch, keychain prefetch, gate
 // `isBeingDebugged()` que mata o teste sob `bun --inspect`).
 //
-// Help snapshots vêm via subprocess de ./bin/claudio. Dispatch table
+// Help snapshots vêm via subprocess de ./bin/claudin. Dispatch table
 // é uma estrutura inerte declarada manualmente a partir da inspeção
 // de main.tsx (ver dispatchTable.ts). Os snapshots existem para
 // detectar regressão (subcomando some, alias muda) durante o split.
@@ -17,7 +17,7 @@ import { join } from 'node:path'
 import { DISPATCH_TABLE, type SubcommandSpec } from './dispatchTable.js'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
-const BIN = join(REPO_ROOT, 'bin', 'claudio')
+const BIN = join(REPO_ROOT, 'bin', 'claudin')
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
 function runHelp(args: readonly string[]): string {

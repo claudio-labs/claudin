@@ -4,7 +4,7 @@
 // filename + type is the signal. We also keep the `total N` header intact
 // because it's one line and occasionally useful.
 //
-// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

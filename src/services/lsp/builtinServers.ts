@@ -7,7 +7,7 @@ import { join } from 'path'
 import { pipeline } from 'stream/promises'
 import { createGunzip } from 'zlib'
 import { logError } from '../../utils/log.js'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 import { execFileNoThrowWithCwd } from '../../utils/execFileNoThrow.js'
 import { reinitializeLspServerManager } from './manager.js'
 import { getUserLspSettings, isLspGloballyEnabled } from './userSettings.js'
@@ -30,7 +30,7 @@ export async function whichBinary(name: string): Promise<string | null> {
 }
 
 function lspDir(name: string): string {
-  return join(getClaudioConfigHomeDir(), 'lsp', name)
+  return join(getClaudinConfigHomeDir(), 'lsp', name)
 }
 
 // ---------------------------------------------------------------------------
@@ -565,7 +565,7 @@ const SERVER_DEFINITIONS: BuiltinServerDef[] = [
         '--add-opens', 'java.base/java.util=ALL-UNNAMED',
         '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
         '-jar', jarPath,
-        '-data', join(getClaudioConfigHomeDir(), 'lsp', 'jdtls', 'workspace'),
+        '-data', join(getClaudinConfigHomeDir(), 'lsp', 'jdtls', 'workspace'),
       ],
       extensionToLanguage: { '.java': 'java' },
     }),
@@ -666,7 +666,7 @@ export type LspServerRow = {
 
 export async function getLspServerRows(): Promise<LspServerRow[]> {
   const userSettings = getUserLspSettings()
-  const lspBase = join(getClaudioConfigHomeDir(), 'lsp') + '/'
+  const lspBase = join(getClaudinConfigHomeDir(), 'lsp') + '/'
 
   const rows = await Promise.all(
     SERVER_DEFINITIONS.map(async (def): Promise<LspServerRow> => {

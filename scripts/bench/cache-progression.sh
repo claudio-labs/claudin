@@ -24,7 +24,7 @@
 #     should grow within an invocation (call N reads what call N-1 wrote).
 #
 # Usage: scripts/bench/cache-progression.sh
-#   CLIS="claudiodev claude"   which binaries to compare
+#   CLIS="claudindev claude"   which binaries to compare
 #   READ_TURNS / EDIT_TURNS    invocation counts
 #   STRICT_MCP=1               ignore user MCP config (deterministic prefix)
 set -euo pipefail
@@ -32,7 +32,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-CLIS="${CLIS:-claudiodev claude}"
+CLIS="${CLIS:-claudindev claude}"
 MODEL="${MODEL:-claude-opus-4-8}"
 READ_TURNS="${READ_TURNS:-6}"
 EDIT_TURNS="${EDIT_TURNS:-3}"

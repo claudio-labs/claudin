@@ -3,7 +3,7 @@ import { join } from 'path'
 import { getSessionId } from '../bootstrap/state.js'
 import type { PastedContent } from './config.js'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { getFsImplementation } from './fsOperations.js'
 
 const IMAGE_STORE_DIR = 'image-cache'
@@ -16,7 +16,7 @@ const storedImagePaths = new Map<number, string>()
  * Get the image store directory for the current session.
  */
 function getImageStoreDir(): string {
-  return join(getClaudioConfigHomeDir(), IMAGE_STORE_DIR, getSessionId())
+  return join(getClaudinConfigHomeDir(), IMAGE_STORE_DIR, getSessionId())
 }
 
 /**
@@ -133,7 +133,7 @@ function evictOldestIfAtCap(): void {
  */
 export async function cleanupOldImageCaches(): Promise<void> {
   const fsImpl = getFsImplementation()
-  const baseDir = join(getClaudioConfigHomeDir(), IMAGE_STORE_DIR)
+  const baseDir = join(getClaudinConfigHomeDir(), IMAGE_STORE_DIR)
   const currentSessionId = getSessionId()
 
   try {

@@ -1,6 +1,6 @@
-# Claudio on Android (Termux)
+# Claudin on Android (Termux)
 
-A complete guide to running Claudio on Android using Termux + proot Ubuntu.
+A complete guide to running Claudin on Android using Termux + proot Ubuntu.
 
 ---
 
@@ -14,7 +14,7 @@ A complete guide to running Claudio on Android using Termux + proot Ubuntu.
 
 ## Why This Setup?
 
-Claudio requires [Bun](https://bun.sh) to build, and Bun does not support Android natively. The workaround is running a real Ubuntu environment inside Termux via `proot-distro`, where Bun's Linux binary works correctly.
+Claudin requires [Bun](https://bun.sh) to build, and Bun does not support Android natively. The workaround is running a real Ubuntu environment inside Termux via `proot-distro`, where Bun's Linux binary works correctly.
 
 ---
 
@@ -39,11 +39,11 @@ Verify Node.js:
 node --version  # should be v20+
 ```
 
-### Step 3 — Clone Claudio
+### Step 3 — Clone Claudin
 
 ```bash
-git clone <claudio-repo-url>
-cd claudio
+git clone <claudin-repo-url>
+cd claudin
 npm install
 npm link
 ```
@@ -65,19 +65,19 @@ source ~/.bashrc
 bun --version  # should show 1.3.11+
 ```
 
-### Step 6 — Build Claudio
+### Step 6 — Build Claudin
 
 ```bash
-cd /data/data/com.termux/files/home/claudio
+cd /data/data/com.termux/files/home/claudin
 bun run build
 ```
 
 You should see:
 ```
-✓ Built claudio v0.1.6 → dist/cli.mjs
+✓ Built claudin v0.1.6 → dist/cli.mjs
 ```
 
-### Step 7 — Run Claudio
+### Step 7 — Run Claudin
 
 ```bash
 node dist/cli.mjs
@@ -92,7 +92,7 @@ On first run with no saved profile, the `/provider` wizard opens automatically. 
 5. Set **Model** to a free OpenRouter alias such as `qwen/qwen3.6-plus-preview:free`
 6. Save and activate
 
-The profile persists under `~/.claudio/settings.json` inside the proot Ubuntu environment, so you only need to do this once.
+The profile persists under `~/.claudin/settings.json` inside the proot Ubuntu environment, so you only need to do this once.
 
 ---
 
@@ -102,7 +102,7 @@ Every time you reopen Termux after killing it, run:
 
 ```bash
 proot-distro login ubuntu
-cd /data/data/com.termux/files/home/claudio
+cd /data/data/com.termux/files/home/claudin
 node dist/cli.mjs
 ```
 
@@ -131,13 +131,13 @@ node dist/cli.mjs
 | `nvidia/nemotron-3-super-120b-a12b:free` | 262K | Hybrid MoE, good general use |
 | `meta-llama/llama-3.3-70b-instruct:free` | 66K | Reliable, widely tested |
 
-Switch models anytime by running `/provider` inside Claudio, editing the OpenRouter profile, and changing the **Model** field.
+Switch models anytime by running `/provider` inside Claudin, editing the OpenRouter profile, and changing the **Model** field.
 
 ---
 
 ## Why Not Groq or Cerebras?
 
-Both were tested and fail due to Claudio's large system prompt (~50K tokens):
+Both were tested and fail due to Claudin's large system prompt (~50K tokens):
 
 - **Groq free tier**: TPM limits too low (6K–12K tokens/min)
 - **Cerebras free tier**: TPM limits exceeded, even on `llama3.1-8b`
@@ -150,4 +150,4 @@ OpenRouter free models have no TPM restrictions — only 20 req/min and 200 req/
 
 - **Don't swipe Termux away** from recent apps mid-session — use the home button to minimize instead.
 - The Ubuntu environment persists between Termux sessions; your build and config are saved.
-- Run `bun run build` again only if you pull updates to the Claudio repo.
+- Run `bun run build` again only if you pull updates to the Claudin repo.

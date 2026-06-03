@@ -23,7 +23,7 @@ driver. Use it instead of rediscovering.
 
 \`\`\`bash
 d=$PWD; while :; do
-  grep -Hm1 '^description:' "$d"/.claudio/skills/*/SKILL.md 2>/dev/null
+  grep -Hm1 '^description:' "$d"/.claudin/skills/*/SKILL.md 2>/dev/null
   [ -e "$d/.git" ] || [ "$d" = / ] && break
   d=$(dirname "$d")
 done

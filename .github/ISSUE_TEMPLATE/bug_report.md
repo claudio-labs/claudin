@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible problem in Claudio
+about: Report a reproducible problem in Claudin
 title: ""
 labels: ""
 assignees: ""
@@ -26,7 +26,7 @@ What happened instead?
 
 ## Environment
 
-- Claudio version:
+- Claudin version:
 - OS:
 - Terminal:
 - Provider:

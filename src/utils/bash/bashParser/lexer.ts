@@ -497,7 +497,7 @@ export function nextToken(L: Lexer, ctx: 'cmd' | 'arg' = 'arg'): Token {
 }
 
 /** Matches integer literal (optional sign). Hoisted to module scope per
- * `.claudio/rules/typescript-patterns.md` — was inline in legacy code. */
+ * `.claudin/rules/typescript-patterns.md` — was inline in legacy code. */
 const NUMBER_RE = /^-?\d+$/
 
 /** Packed as (b << 16) | i — avoids heap alloc on every backtrack. */

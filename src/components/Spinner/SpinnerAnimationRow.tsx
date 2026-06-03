@@ -16,7 +16,7 @@ import type { SpinnerMode } from './types.js';
 import { useStalledAnimation } from './useStalledAnimation.js';
 import { interpolateColor, toRGBColor } from './utils.js';
 const SEP_WIDTH = stringWidth(' · ');
-// Claudio: upstream waits 30s before surfacing the timer + token count, so on
+// Claudin: upstream waits 30s before surfacing the timer + token count, so on
 // short responses the spinner never shows them. Drop to ~3s — still skips the
 // pre-stream warmup, but every multi-second turn surfaces "(Ns · ↓ Nk tokens
 // · thinking)" the way users expect.

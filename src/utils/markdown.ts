@@ -23,8 +23,8 @@ const EOL = '\n'
 // 50-line TypeScript block). Per-snapshot cost is sub-frame in both modes,
 // so the gain is CPU/battery, not perceived smoothness. Trade-off: user
 // sees plain monospace code mid-stream and a one-shot color flash on
-// fence close. Set CLAUDIO_DEFER_HIGHLIGHT=0 to restore the old behavior.
-const DEFER_OPEN_FENCE_HIGHLIGHT = process.env.CLAUDIO_DEFER_HIGHLIGHT !== '0'
+// fence close. Set CLAUDIN_DEFER_HIGHLIGHT=0 to restore the old behavior.
+const DEFER_OPEN_FENCE_HIGHLIGHT = process.env.CLAUDIN_DEFER_HIGHLIGHT !== '0'
 
 function isOpenFence(rawText: string): boolean {
   return !rawText.trimEnd().endsWith('```')

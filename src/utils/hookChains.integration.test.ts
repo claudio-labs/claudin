@@ -32,7 +32,7 @@ const tempDirs: string[] = []
 const originalHookChainsEnabled = process.env.CLAUDE_CODE_ENABLE_HOOK_CHAINS
 
 async function createConfigFile(config: unknown): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'claudio-hook-chains-int-'))
+  const dir = await mkdtemp(join(tmpdir(), 'claudin-hook-chains-int-'))
   tempDirs.push(dir)
   const filePath = join(dir, 'hook-chains.json')
   await writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8')
@@ -59,7 +59,7 @@ async function importHookChainsHarness(
     },
   }))
 
-  // Inline the real isEnvTruthy and getClaudioConfigHomeDir to avoid stale
+  // Inline the real isEnvTruthy and getClaudinConfigHomeDir to avoid stale
   // captures from other files that may have mocked envUtils.js in the same worker.
   mock.module('./envUtils.js', () => ({
     ...realEnvUtils,
@@ -69,7 +69,7 @@ async function importHookChainsHarness(
       const n = String(v).toLowerCase().trim()
       return n === '1' || n === 'true' || n === 'yes' || n === 'on'
     },
-    getClaudioConfigHomeDir: () => process.env.CLAUDIO_CONFIG_DIR ?? `${process.env.HOME ?? '~'}/.claudio`,
+    getClaudinConfigHomeDir: () => process.env.CLAUDIN_CONFIG_DIR ?? `${process.env.HOME ?? '~'}/.claudin`,
   }))
 
   mock.module('../services/analytics/index.js', () => ({

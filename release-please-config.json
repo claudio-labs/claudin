@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "@claudiolabs/claudio",
+      "package-name": "@claudinlabs/claudin",
       "bump-minor-pre-major": true,
       "include-v-in-tag": true
     }

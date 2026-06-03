@@ -49,7 +49,7 @@ function getBackgroundUsageNote(): string | null {
  * inline behavior. Default = true (attachment on).
  *
  * Note: the upstream `tengu_bash_git_attach` GrowthBook gate is intentionally
- * skipped here because Claudio's getFeatureValue_CACHED_MAY_BE_STALE is a
+ * skipped here because Claudin's getFeatureValue_CACHED_MAY_BE_STALE is a
  * stub that always returns the default — adding a gate would be cargo-cult
  * without the GrowthBook server. Env var is the only toggle.
  */

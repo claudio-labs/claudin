@@ -741,7 +741,7 @@ async function run(): Promise<CommanderCommand> {
         pendingHookMessages,
       } as Parameters<typeof launchRepl>[2], renderAndRun);
     }
-  }).version(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudio)`, '-v, --version', 'Output the version number');
+  }).version(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudin)`, '-v, --version', 'Output the version number');
 
   // Post-action root options extracted to src/main/rootOptions.ts (ROADMAP 11g Fase 7b).
   registerRootOptions(program);

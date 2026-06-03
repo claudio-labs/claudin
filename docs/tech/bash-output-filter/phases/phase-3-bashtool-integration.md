@@ -26,7 +26,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
 ### Notas
 
 - Em Phase 3, `planFilter` ainda não é usado (rewrite é Phase 4). Só `applyFilterToStdout` com plan stub. **Mas reservamos o nome `plan` aqui** pra Phase 4 só substituir o stub pelo `planFilter(input.command)` real.
-- O env var `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER` é checado dentro de `applyFilterToStdout` (centraliza no módulo) — BashTool não precisa fazer check.
+- O env var `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER` é checado dentro de `applyFilterToStdout` (centraliza no módulo) — BashTool não precisa fazer check.
 
 ## Steps
 
@@ -65,7 +65,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
 
    Nota: `applyFilterToStdout` retorna `result.stdout` unchanged se:
    - `bashOutputFilterEnabled: false` (default em Phase 3)
-   - `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1`
+   - `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1`
    - `filterPlan.filter === null` (no match)
    - **`rawStdout.trim() === ''`** (empty output — `mkdir`, `touch`, etc.)
    - Pipeline throws (fail-open)
@@ -88,8 +88,8 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
        // Assert stdout starts with `<bash-output-filtered name="ls-la"`
      })
 
-     test('CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1 overrides config', async () => {
-       // process.env.CLAUDIO_DISABLE_BASH_OUTPUT_FILTER = '1'
+     test('CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1 overrides config', async () => {
+       // process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER = '1'
        // Mock config enable
        // Run ls -la
        // Assert stdout has NO marker (env var wins)
@@ -110,7 +110,7 @@ Wire o pipeline (Phase 1+2) ao BashTool real. Pipeline only — rewrite vem em P
 5. **Smoke test manual:**
    ```bash
    bun run build
-   CLAUDIO_BASH_FILTER_DEBUG=1 bun run dev
+   CLAUDIN_BASH_FILTER_DEBUG=1 bun run dev
    # In the agent, ask it to run `ls -la /tmp`
    # Verify debug log shows filter chosen + reduction
    # Verify model sees `<bash-output-filtered name="ls-la" reduction="...">` at start of output
@@ -129,8 +129,8 @@ bun run build:verified  # confirma privacy verifier ainda passa
 
 - [ ] BashTool.tsx mudou em exatamente 2 lugares: imports + call() body (~10 LoC total com guards)
 - [ ] Default config (`enabled: false`): nenhum marker aparece em output normal
-- [ ] Env var `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1` desliga mesmo com config enabled
-- [ ] Env var `CLAUDIO_BASH_FILTER_DEBUG=1` emite log lines para cada filter decision
+- [ ] Env var `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1` desliga mesmo com config enabled
+- [ ] Env var `CLAUDIN_BASH_FILTER_DEBUG=1` emite log lines para cada filter decision
 - [ ] Smoke test manual: `ls -la /tmp` com filter enabled produz `<bash-output-filtered>` marker
 - [ ] **Skip guards funcionando:**
   - [ ] `backgroundTaskId` set → no filter, no marker
@@ -156,7 +156,7 @@ Connects the bash-output-filter module to `BashTool.call()`. Pipeline runs after
 
 ### Tests
 - 3 new BashTool tests: default-off, env-enabled, kill-switch
-- Smoke: `CLAUDIO_BASH_FILTER_DEBUG=1` shows filter decisions
+- Smoke: `CLAUDIN_BASH_FILTER_DEBUG=1` shows filter decisions
 - Existing tests pass (no snapshot changes — filter is off by default)
 
 ### Refs

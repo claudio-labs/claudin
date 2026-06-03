@@ -292,7 +292,7 @@ export function Config({
         ...getGlobalConfig(),
         thinkingHistoryRedactionEnabled
       });
-      logEvent('claudio_thinking_history_redaction_setting_changed', {
+      logEvent('claudin_thinking_history_redaction_setting_changed', {
         enabled: thinkingHistoryRedactionEnabled
       });
     }
@@ -310,7 +310,7 @@ export function Config({
         ...getGlobalConfig(),
         narrationHistoryRedactionEnabled
       });
-      logEvent('claudio_narration_history_redaction_setting_changed', {
+      logEvent('claudin_narration_history_redaction_setting_changed', {
         enabled: narrationHistoryRedactionEnabled
       });
     }
@@ -348,7 +348,7 @@ export function Config({
         ...getGlobalConfig(),
         toolResultSummarizerEnabled
       });
-      logEvent('claudio_tool_result_summarizer_setting_changed', {
+      logEvent('claudin_tool_result_summarizer_setting_changed', {
         enabled: toolResultSummarizerEnabled
       });
     }
@@ -368,7 +368,7 @@ export function Config({
         bashOutputFilterEnabled,
         bashOutputFilterUserEnabled: bashOutputFilterEnabled
       });
-      logEvent('claudio_bash_output_filter_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+      logEvent('claudin_bash_output_filter_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
         enabled: bashOutputFilterEnabled
       });
     }
@@ -388,7 +388,7 @@ export function Config({
         ...getGlobalConfig(),
         inlineImagesMode
       });
-      logEvent('claudio_inline_images_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+      logEvent('claudin_inline_images_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
         mode: inlineImagesMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }

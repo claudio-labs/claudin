@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const originalEnv = {
-  CLAUDIO_CONFIG_DIR: process.env.CLAUDIO_CONFIG_DIR,
+  CLAUDIN_CONFIG_DIR: process.env.CLAUDIN_CONFIG_DIR,
   CLAUDE_CODE_CUSTOM_OAUTH_URL: process.env.CLAUDE_CODE_CUSTOM_OAUTH_URL,
   USER_TYPE: process.env.USER_TYPE,
 }
@@ -12,18 +12,18 @@ const originalEnv = {
 let tempDir: string
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), 'claudio-env-test-'))
-  process.env.CLAUDIO_CONFIG_DIR = tempDir
+  tempDir = mkdtempSync(join(tmpdir(), 'claudin-env-test-'))
+  process.env.CLAUDIN_CONFIG_DIR = tempDir
   delete process.env.CLAUDE_CODE_CUSTOM_OAUTH_URL
   delete process.env.USER_TYPE
 })
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true })
-  if (originalEnv.CLAUDIO_CONFIG_DIR === undefined) {
-    delete process.env.CLAUDIO_CONFIG_DIR
+  if (originalEnv.CLAUDIN_CONFIG_DIR === undefined) {
+    delete process.env.CLAUDIN_CONFIG_DIR
   } else {
-    process.env.CLAUDIO_CONFIG_DIR = originalEnv.CLAUDIO_CONFIG_DIR
+    process.env.CLAUDIN_CONFIG_DIR = originalEnv.CLAUDIN_CONFIG_DIR
   }
   if (originalEnv.CLAUDE_CODE_CUSTOM_OAUTH_URL === undefined) {
     delete process.env.CLAUDE_CODE_CUSTOM_OAUTH_URL
@@ -42,7 +42,7 @@ async function importFreshEnvModule() {
 }
 
 // getGlobalClaudeFile prefers <configDir>/config.json. Until startup
-// migration runs, falls back to the pre-rebrand sibling .claudio.json
+// migration runs, falls back to the pre-rebrand sibling .claudin.json
 // so getGlobalConfig() reads the user's existing data instead of defaults.
 // Legacy ~/.claude.json is never read or written at runtime.
 
@@ -57,14 +57,14 @@ test('getGlobalClaudeFile: returns config.json even when legacy .claude.json sit
   expect(getGlobalClaudeFile()).toBe(join(tempDir, 'config.json'))
 })
 
-test('getGlobalClaudeFile: falls back to .claudio.json when only the pre-rebrand sibling exists', async () => {
-  writeFileSync(join(tempDir, '.claudio.json'), '{}')
+test('getGlobalClaudeFile: falls back to .claudin.json when only the pre-rebrand sibling exists', async () => {
+  writeFileSync(join(tempDir, '.claudin.json'), '{}')
   const { getGlobalClaudeFile } = await importFreshEnvModule()
-  expect(getGlobalClaudeFile()).toBe(join(tempDir, '.claudio.json'))
+  expect(getGlobalClaudeFile()).toBe(join(tempDir, '.claudin.json'))
 })
 
 test('getGlobalClaudeFile: prefers in-dir config.json once it exists', async () => {
-  writeFileSync(join(tempDir, '.claudio.json'), '{}')
+  writeFileSync(join(tempDir, '.claudin.json'), '{}')
   writeFileSync(join(tempDir, 'config.json'), '{}')
   const { getGlobalClaudeFile } = await importFreshEnvModule()
   expect(getGlobalClaudeFile()).toBe(join(tempDir, 'config.json'))

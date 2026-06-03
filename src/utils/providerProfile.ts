@@ -1,10 +1,10 @@
 /**
- * Legacy `.claudio-profile.json` sidecar shim.
+ * Legacy `.claudin-profile.json` sidecar shim.
  *
  * The active provider config lives in `providerProfiles[]` inside settings,
- * but older single-profile installs may still have a `.claudio-profile.json`
+ * but older single-profile installs may still have a `.claudin-profile.json`
  * file on disk. This module exposes the load/delete helpers that
- * `claudioStartupMigrations` uses to convert that sidecar into the new
+ * `claudinStartupMigrations` uses to convert that sidecar into the new
  * schema and remove it, plus the `ProviderProfile` enum / default URLs that
  * the migration code path consumes.
  *
@@ -21,7 +21,7 @@ export {
   sanitizeProviderConfigValue,
 } from './providerSecrets.js'
 
-const PROFILE_FILE_NAME = '.claudio-profile.json'
+const PROFILE_FILE_NAME = '.claudin-profile.json'
 
 export const DEFAULT_GEMINI_BASE_URL =
   'https://generativelanguage.googleapis.com/v1beta/openai'

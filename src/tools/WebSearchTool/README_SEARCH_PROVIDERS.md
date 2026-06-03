@@ -1,6 +1,6 @@
 # Web Search Providers
 
-Claudio supports multiple search backends through a provider adapter system.
+Claudin supports multiple search backends through a provider adapter system.
 
 ## Supported Providers
 

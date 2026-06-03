@@ -1,4 +1,4 @@
-# Roadmap — Claudio
+# Roadmap — Claudin
 
 Itens priorizados por ROI (ganho / esforço). Atualizado em 2026-05-29.
 
@@ -10,7 +10,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ### [x] 1. Regex em escopo de módulo
 - **Arquivos:** `src/services/api/providerConfig.ts:237-240,295,362,395,566`, `src/services/api/withRetry.ts:63`, `src/services/api/cacheMetrics.ts:147-152,526-527`
-- **Problema:** Regex compilada dentro de funções em hot path. Viola `.claudio/rules/typescript-patterns.md`.
+- **Problema:** Regex compilada dentro de funções em hot path. Viola `.claudin/rules/typescript-patterns.md`.
 - **Ganho:** baixo (CPU) — **Esforço:** trivial — **Risco:** nenhum.
 
 ### [x] 2. Paralelizar dynamic imports do startup
@@ -150,7 +150,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 ## Tier 5 — Insights do discovery ohmypi
 
-> Adicionado em 2026-05-25. Síntese de 3 ondas de análise (insight → deep-dive → fit → gap) comparando `oh-my-pi` com Claudio. Cada item aponta para o doc de estudo mais profundo (preferindo `gap/` quando ele revisa o original, depois `fit/`, depois raw).
+> Adicionado em 2026-05-25. Síntese de 3 ondas de análise (insight → deep-dive → fit → gap) comparando `oh-my-pi` com Claudin. Cada item aponta para o doc de estudo mais profundo (preferindo `gap/` quando ele revisa o original, depois `fit/`, depois raw).
 >
 > Convenção: priorização cross-ondas — as melhores ideias vieram dos `gap/`, não dos insights originais.
 
@@ -207,7 +207,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Doc:** [docs/discovery/ohmypi/fit/03-prompts-as-md.md](docs/discovery/ohmypi/fit/03-prompts-as-md.md)
 
 #### [ ] T5.7 `prompt.format` + CI check (sem engine)
-- **Problema:** Sem convenção uniforme em `.claudio/rules/*.md` e skills — `**MUST**` vs `NEVER`, ASCII triplo-ponto vs `…`, etc.
+- **Problema:** Sem convenção uniforme em `.claudin/rules/*.md` e skills — `**MUST**` vs `NEVER`, ASCII triplo-ponto vs `…`, etc.
 - **Ganho:** linter de prompt cross-projeto. ~150 LOC port (subset `normalizeRfc2119` + `replaceAsciiSymbols`), zero dep Handlebars.
 - **Esforço:** baixo — **Risco:** nenhum (fail-open).
 - **Doc:** [docs/discovery/ohmypi/gap/03-prompts-as-md.md](docs/discovery/ohmypi/gap/03-prompts-as-md.md) §3.2
@@ -225,7 +225,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 - **Ganho:** médio — sem persistência em disco na v1 (privacidade), só instrumentação.
 - **Esforço:** baixo — **Risco:** baixo. Medir hit-ratio antes de estender pra disco.
 - **Doc:** [docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md](docs/discovery/ohmypi/fit/02-two-tier-ttl-cache.md)
-- **Extensão:** infra extraída pra `src/tools/shared/twoTierCache.ts` e aplicada também no `WebSearchTool` (paths adapter + codex, modo no-stale, TTL 60s). Native streaming fica fora. Plano: `~/.claudio/plans/immutable-giggling-oasis.md`.
+- **Extensão:** infra extraída pra `src/tools/shared/twoTierCache.ts` e aplicada também no `WebSearchTool` (paths adapter + codex, modo no-stale, TTL 60s). Native streaming fica fora. Plano: `~/.claudin/plans/immutable-giggling-oasis.md`.
 
 #### [x] ~~T5.10 Prefix-invalidation triggers em `toolResultCache`~~ — **descartado (já implementado)**
 - Validação 2026-05-27: `toolExecution.ts:1245` já chama `invalidateCacheForWrite` após cada tool; dispatcher em `:1762-1779` cobre `FileEditTool`/`FileWriteTool`/`NotebookEditTool` (→ `invalidateForPath`) e `BashTool`/`PowerShellTool` (→ `invalidateAll`). `LSPTool/workspaceEdit.ts` também invalida em rename/edit. `invalidateForPath` faz prefix-match bidirecional (`toolResultCache.ts:150-164`) → write em vizinho derruba Grep/Glob cacheado. Testes em `toolResultCache.test.ts:108-128`. A premissa do roadmap (linha `:63` só checa mtime do próprio file) estava errada: `:63` é o construtor do LRU; o mtime self-check (`:92-105`) só roda pra `Read`.
@@ -233,7 +233,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 #### [ ] T5.11 `report_tool_issue` JSONL local-only
 - **Problema:** `isError` propaga em 15 arquivos sem coleta agregada; zero sinal estruturado de bugs de tool.
 - **Ganho:** médio — feedback loop interno (especialmente filter / plan mode / openai shim).
-- **Storage:** JSONL append-only em `~/.claudio/projects/<dir>/tool-issues/YYYY-MM.jsonl` (fora do scan de memdir, que só ingere `.md`).
+- **Storage:** JSONL append-only em `~/.claudin/projects/<dir>/tool-issues/YYYY-MM.jsonl` (fora do scan de memdir, que só ingere `.md`).
 - **Esforço:** ~300-500 LOC — **Risco:** baixo (gate `REPORT_TOOL_ISSUE` default OFF; settings checked-in liga só pro próprio repo — dogfooding).
 - **Doc:** [docs/discovery/ohmypi/fit/04-report-tool-issue.md](docs/discovery/ohmypi/fit/04-report-tool-issue.md)
 
@@ -259,7 +259,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 #### [ ] T5.15 Terminal breadcrumb (auto-resume por tty)
 - **Problema:** Resume sem id por terminal não existe; usuário tem que escolher na lista.
-- **Ganho:** DX — `~/.claudio/projects/<dir>/breadcrumbs/<tty-hash>.txt` com último session id.
+- **Ganho:** DX — `~/.claudin/projects/<dir>/breadcrumbs/<tty-hash>.txt` com último session id.
 - **Esforço:** ~50 LOC — **Risco:** nenhum (aditivo, sem schema change).
 - **Doc:** [docs/discovery/ohmypi/gap/05-cas-blob-store.md](docs/discovery/ohmypi/gap/05-cas-blob-store.md) §1 (Terminal breadcrumb)
 
@@ -344,7 +344,7 @@ Convenção: cada item tem **Arquivo**, **Problema**, **Ganho**, **Esforço**, *
 
 **Tese central — Search + Read são onde está o ganho real.**
 
-Claudio já tem LSP forte (13 ops, 12 servers embarcados em `src/services/lsp/builtinServers.ts:461-609`) e `scanSymbols` regex-puro em `src/tools/shared/codeOutline/scanSymbols.ts`, mas o agente:
+Claudin já tem LSP forte (13 ops, 12 servers embarcados em `src/services/lsp/builtinServers.ts:461-609`) e `scanSymbols` regex-puro em `src/tools/shared/codeOutline/scanSymbols.ts`, mas o agente:
 
 - **Lado Search** — cai em Grep regex (texto ruidoso, sem resolução simbólica) mesmo quando LSP entregaria a resposta correta em 1 chamada (`prepareCallHierarchy`, `findReferences`).
 - **Lado Read** — lê arquivos inteiros (~6k tokens) quando precisa mexer em 40 linhas. Já existe `Read view='outline'` e `Read symbol='nome'` que reduzem 10-20×. Quase não é usado.
@@ -356,7 +356,7 @@ Itens nasceram do estudo de `code-review-graph` (`docs/discovery/code-review-gra
 Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6.5 em DEFER.
 
 ### [~] T6.1 Tool descriptions de LSPTool/GrepTool — **DROPADO**
-- **Razão:** dois benches A/B (claudio e openclaude, `docs/discovery/lsp-vs-grep-ground-truth/`) mostraram **LSP=0 em todas as runs** mesmo com a tabela LSPTool-first reaplicada e o GrepTool sinalizando "para callers/refs prefira LSP". Descriptions globais não deslocam o agente para LSP nesses prompts.
+- **Razão:** dois benches A/B (claudin e openclaude, `docs/discovery/lsp-vs-grep-ground-truth/`) mostraram **LSP=0 em todas as runs** mesmo com a tabela LSPTool-first reaplicada e o GrepTool sinalizando "para callers/refs prefira LSP". Descriptions globais não deslocam o agente para LSP nesses prompts.
 - **Achado paralelo (não previsto):** o bench expôs um bug crítico de roteamento em `getBuiltinLspServers` — `biome` (linter-only) podia shadowar `typescript-language-server` em arquivos `.ts/.tsx` por ordem não-determinística do `Promise.allSettled`. Corrigido em commit separado com teste de regressão. Sem o fix, qualquer experimento Tier 6.1 era inválido de antemão.
 - **Próxima tentativa lógica:** **T6.6** (description do FileReadTool com cross-ref para LSP `outgoingCalls`) — mais perto do ponto de decisão. Se T6.6 também falhar, mover hipótese para system prompts de Explore/Plan agents (originalmente vetado em T6.1, reavaliar com evidência nova).
 
@@ -444,11 +444,11 @@ Ordem: **T6.6 (core) → medir → decidir tudo mais**. T6.1 e T6.4 dropados. T6
 
 ### [ ] T6.5 Índice persistente cross-sessão — **DEFER**
 - **Bloqueio:** só considerar depois de T6.2b e T6.3 mostrarem valor real e adoção. Único item que tocaria `verify:privacy` (team memory `verify-privacy-bundle-only`).
-- **Doc:** `docs/discovery/code-review-graph/03-fit-no-claudio.md` + `06-onde-ganho-real.md`.
+- **Doc:** `docs/discovery/code-review-graph/03-fit-no-claudin.md` + `06-onde-ganho-real.md`.
 
 ### Receita doc-only (paralelo, custo ~30min)
 - **Arquivo a criar:** `docs/recipes/code-review-graph-mcp.md`
-- **Conteúdo:** snippet de `settings.json` para usuários power plugarem o CRG como MCP server externo opcional, com disclaimer "ganhos variam por commit; rode seu próprio benchmark" (`03-fit-no-claudio.md` caminho (a)).
+- **Conteúdo:** snippet de `settings.json` para usuários power plugarem o CRG como MCP server externo opcional, com disclaimer "ganhos variam por commit; rode seu próprio benchmark" (`03-fit-no-claudin.md` caminho (a)).
 
 ---
 

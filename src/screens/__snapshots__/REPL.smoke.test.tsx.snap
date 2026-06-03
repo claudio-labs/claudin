@@ -1,40 +1,34 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`<REPL> smoke baseline default mount (prompt mode, empty conversation) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts"
+  ? for shortcuts                                                               ◐ medium · /effort"
 `;
 
 exports[`<REPL> smoke baseline disabled prop (no prompt input) 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-"
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio"
 `;
 
 exports[`<REPL> smoke baseline debug mode on 1`] = `
-"
-          
-  ▐▛███▜▌    Claudio vtest-version
-  ▐█████▌    Not configured · claude-opus-4-8[1m]
-   ▘▘ ▝▝     ~/projects/claudio
-
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-opus-4-8[1m]
+ ▘▘ ▝▝    ~/projects/claudio
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
                                                                                ~/projects/claudio 
-  ? for shortcuts                                                                       Debug mode"
+  ? for shortcuts                                                    Debug mode ◐ medium · /effort"
 `;

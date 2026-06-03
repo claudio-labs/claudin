@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 // ---------------------------------------------------------------------------
-// Guard: release builds (CLAUDIO_RELEASE_BUILD=1) embed the package version
+// Guard: release builds (CLAUDIN_RELEASE_BUILD=1) embed the package version
 // into chunk filenames so a stack trace like `cli-0.1.5-abc123.mjs:42`
 // identifies the published release without requiring sourcemaps. Local dev
 // builds keep the shorter `cli-abc123.mjs` form.
@@ -21,8 +21,8 @@ const pkg = JSON.parse(
 )
 
 describe('release chunk naming', () => {
-  test('build.ts gates chunk naming on CLAUDIO_RELEASE_BUILD', () => {
-    expect(buildSrc).toContain("process.env.CLAUDIO_RELEASE_BUILD === '1'")
+  test('build.ts gates chunk naming on CLAUDIN_RELEASE_BUILD', () => {
+    expect(buildSrc).toContain("process.env.CLAUDIN_RELEASE_BUILD === '1'")
   })
 
   test('release branch interpolates the package version into the template', () => {
@@ -35,9 +35,9 @@ describe('release chunk naming', () => {
     expect(buildSrc).toMatch(/chunks\/\[name\]-\$\{buildId\}-\[hash\]\.mjs/)
   })
 
-  test('package.json build:release sets CLAUDIO_RELEASE_BUILD=1', () => {
+  test('package.json build:release sets CLAUDIN_RELEASE_BUILD=1', () => {
     expect(pkg.scripts['build:release']).toContain(
-      'CLAUDIO_RELEASE_BUILD=1',
+      'CLAUDIN_RELEASE_BUILD=1',
     )
   })
 })

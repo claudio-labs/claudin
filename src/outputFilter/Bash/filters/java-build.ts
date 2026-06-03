@@ -13,7 +13,7 @@
 // Downloading/Downloaded lines) but keep `[WARNING]` and `[ERROR]` intact
 // as they are always signal.
 //
-// Regex are declared at module level — see .claudio/rules/typescript-patterns.md #3.
+// Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from '../types.js'
 

@@ -21,13 +21,13 @@ Use AskUserQuestion to find out what the user wants:
   Options: "Yes — propose from codebase" | "No"
   Description for Yes: "Subagents are specialized AI workers Claude can dispatch (e.g., \`frontend-reviewer\`, \`backend-tester\`, \`db-migration-expert\`). Particularly useful in monorepos with distinct workspaces."
 
-- "Configure guardrails (things Claudio should refuse or always ask before doing)?"
+- "Configure guardrails (things Claudin should refuse or always ask before doing)?"
   Options: "Yes — propose from common categories" | "No, use defaults"
   Description for Yes: "Add \`permissions.ask\` / \`permissions.deny\` rules to block or confirm risky commands (e.g., git commits, force-push, docker, rm -rf, terraform apply). You can also opt into a real git pre-commit hook."
 
 ## Phase 2: Explore the codebase
 
-Launch a subagent to survey the codebase, and ask it to read key files to understand the project: manifest files (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, etc.), README, Makefile/build configs, CI config, existing CLAUDE.md, .claudio/rules/, AGENTS.md, .cursor/rules or .cursorrules, .github/copilot-instructions.md, .windsurfrules, .clinerules, .mcp.json.
+Launch a subagent to survey the codebase, and ask it to read key files to understand the project: manifest files (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, etc.), README, Makefile/build configs, CI config, existing CLAUDE.md, .claudin/rules/, AGENTS.md, .cursor/rules or .cursorrules, .github/copilot-instructions.md, .windsurfrules, .clinerules, .mcp.json.
 
 Detect:
 - Build, test, and lint commands (especially non-standard ones)
@@ -35,7 +35,7 @@ Detect:
 - Project structure (monorepo with workspaces, multi-module, or single project). Check **all** of: \`package.json\` \`workspaces\` field (npm/yarn), \`pnpm-workspace.yaml\`, \`turbo.json\`, \`nx.json\`, \`Cargo.toml\` \`[workspace]\` (Rust), \`go.work\` (Go), \`pom.xml\` with \`<modules>\` (Maven multi-module), \`settings.gradle\` / \`settings.gradle.kts\` with \`include\` (Gradle multi-project). For each workspace found, capture path + dominant language/role.
 - Code style rules that differ from language defaults
 - Non-obvious gotchas, required env vars, or workflow quirks
-- Existing \`.claudio/agents/\`, \`.claudio/skills/\`, and \`.claudio/rules/\` directories
+- Existing \`.claudin/agents/\`, \`.claudin/skills/\`, and \`.claudin/rules/\` directories
 - Formatter configuration (prettier, biome, ruff, black, gofmt, rustfmt, or a unified format script like \`npm run format\` / \`make fmt\`)
 - Sensitive areas (only relevant if guardrails were opted in): \`Dockerfile\` / \`docker-compose.yml\` / \`compose.yml\`, \`.github/workflows/\`, \`terraform/\` or \`*.tf\`, \`migrations/\`, npm/make scripts whose name contains \`prod\`, \`deploy\`, \`release\`, \`publish\`
 - Git worktree usage: run \`git worktree list\` to check if this repo has multiple worktrees (only relevant if the user wants a personal CLAUDE.local.md)
@@ -52,7 +52,7 @@ If the user chose personal CLAUDE.local.md or both: ask about them, not the code
   - What's their role on the team? (e.g., "backend engineer", "data scientist", "new hire onboarding")
   - How familiar are they with this codebase and its languages/frameworks? (so Claude can calibrate explanation depth)
   - Do they have personal sandbox URLs, test accounts, API key paths, or local setup details Claude should know?
-  - Only if Phase 2 found multiple git worktrees: ask whether their worktrees are nested inside the main repo (e.g., \`.claudio/worktrees/<name>/\`) or siblings/external (e.g., \`../myrepo-feature/\`). If nested, the upward file walk finds the main repo's CLAUDE.local.md automatically — no special handling needed. If sibling/external, the personal content should live in a home-directory file (e.g., \`~/.claudio/<project-name>-instructions.md\`) and each worktree gets a one-line CLAUDE.local.md stub that imports it: \`@~/.claudio/<project-name>-instructions.md\`. Never put this import in the project AGENTS.md — that would check a personal reference into the team-shared file.
+  - Only if Phase 2 found multiple git worktrees: ask whether their worktrees are nested inside the main repo (e.g., \`.claudin/worktrees/<name>/\`) or siblings/external (e.g., \`../myrepo-feature/\`). If nested, the upward file walk finds the main repo's CLAUDE.local.md automatically — no special handling needed. If sibling/external, the personal content should live in a home-directory file (e.g., \`~/.claudin/<project-name>-instructions.md\`) and each worktree gets a one-line CLAUDE.local.md stub that imports it: \`@~/.claudin/<project-name>-instructions.md\`. Never put this import in the project AGENTS.md — that would check a personal reference into the team-shared file.
   - Any communication preferences? (e.g., "be terse", "always explain tradeoffs", "don't summarize at the end")
 
 **Synthesize a proposal from Phase 2 findings** — e.g., format-on-edit if a formatter exists, a project verification workflow if tests exist, an AGENTS.md note for anything from the gap-fill answers that's a guideline rather than a workflow. For each, pick the artifact type that fits, **constrained by the Phase 1 skills+hooks choice**:
@@ -117,7 +117,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 If AGENTS.md already exists: read it, propose specific changes as diffs, and explain why each change improves it. Do not silently overwrite.
 
-For projects with multiple concerns, suggest organizing instructions into \`.claudio/rules/\` as separate focused files (e.g., \`code-style.md\`, \`testing.md\`, \`security.md\`). These are loaded automatically alongside AGENTS.md and can be scoped to specific file paths using \`paths\` frontmatter.
+For projects with multiple concerns, suggest organizing instructions into \`.claudin/rules/\` as separate focused files (e.g., \`code-style.md\`, \`testing.md\`, \`security.md\`). These are loaded automatically alongside AGENTS.md and can be scoped to specific file paths using \`paths\` frontmatter.
 
 For projects with distinct subdirectories (monorepos, multi-module projects, etc.): mention that subdirectory AGENTS.md files can be added for module-specific instructions (they're loaded automatically when Claude works in those directories). Offer to create them if the user wants.
 
@@ -134,7 +134,7 @@ Include:
 
 Keep it short — only include what would make Claude's responses noticeably better for this user.
 
-If Phase 2 found multiple git worktrees and the user confirmed they use sibling/external worktrees (not nested inside the main repo): the upward file walk won't find a single CLAUDE.local.md from all worktrees. Write the actual personal content to \`~/.claudio/<project-name>-instructions.md\` and make CLAUDE.local.md a one-line stub that imports it: \`@~/.claudio/<project-name>-instructions.md\`. The user can copy this one-line stub to each sibling worktree. Never put this import in the project AGENTS.md. If worktrees are nested inside the main repo (e.g., \`.claudio/worktrees/\`), no special handling is needed — the main repo's CLAUDE.local.md is found automatically.
+If Phase 2 found multiple git worktrees and the user confirmed they use sibling/external worktrees (not nested inside the main repo): the upward file walk won't find a single CLAUDE.local.md from all worktrees. Write the actual personal content to \`~/.claudin/<project-name>-instructions.md\` and make CLAUDE.local.md a one-line stub that imports it: \`@~/.claudin/<project-name>-instructions.md\`. The user can copy this one-line stub to each sibling worktree. Never put this import in the project AGENTS.md. If worktrees are nested inside the main repo (e.g., \`.claudin/worktrees/\`), no special handling is needed — the main repo's CLAUDE.local.md is found automatically.
 
 If CLAUDE.local.md already exists: read it, propose specific additions, and do not silently overwrite.
 
@@ -142,9 +142,9 @@ If CLAUDE.local.md already exists: read it, propose specific additions, and do n
 
 Skip this phase entirely if the user said "No" to subagents.
 
-Subagents are stored as markdown files with YAML frontmatter. Project-scoped → \`.claudio/agents/<slug>.md\`; personal-scoped → \`~/.claudio/agents/<slug>.md\`. The loader requires only \`name\` and \`description\`; everything else is optional.
+Subagents are stored as markdown files with YAML frontmatter. Project-scoped → \`.claudin/agents/<slug>.md\`; personal-scoped → \`~/.claudin/agents/<slug>.md\`. The loader requires only \`name\` and \`description\`; everything else is optional.
 
-1. **Inventory** existing agents (if any) under \`.claudio/agents/\` and \`~/.claudio/agents/\`. Read their \`name\` from frontmatter. **Never propose a slug that already exists** — propose a different name or skip the area.
+1. **Inventory** existing agents (if any) under \`.claudin/agents/\` and \`~/.claudin/agents/\`. Read their \`name\` from frontmatter. **Never propose a slug that already exists** — propose a different name or skip the area.
 
 2. **Propose agents** based on Phase 2 findings:
 
@@ -166,8 +166,8 @@ Subagents are stored as markdown files with YAML frontmatter. Project-scoped →
 3. **Confirm via a single \`AskUserQuestion\` with \`multiSelect: true\`.** Each option = one proposed agent. Use the \`preview\` field to show, for each focused option, the full file contents that would be written (slug, scope/paths, description, tools, justification, body). Add a "None — skip" option (auto-added "Other" handles custom slug requests).
 
 4. **Scope choice** follows the Phase 1 instruction-file choice:
-   - "Project AGENTS.md" or "Both" → write under \`.claudio/agents/\`.
-   - "Personal CLAUDE.local.md" only → write under \`~/.claudio/agents/\`.
+   - "Project AGENTS.md" or "Both" → write under \`.claudin/agents/\`.
+   - "Personal CLAUDE.local.md" only → write under \`~/.claudin/agents/\`.
 
 5. **Write each accepted agent** as a minimal file:
 
@@ -210,9 +210,9 @@ Skills add capabilities Claude can use on demand without bloating every session.
 
 For each suggested skill, provide: name, one-line purpose, and why it fits this repo.
 
-If \`.claudio/skills/\` already exists with skills, review them first. Do not overwrite existing skills — only propose new ones that complement what is already there.
+If \`.claudin/skills/\` already exists with skills, review them first. Do not overwrite existing skills — only propose new ones that complement what is already there.
 
-Create each skill at \`.claudio/skills/<skill-name>/SKILL.md\`:
+Create each skill at \`.claudin/skills/<skill-name>/SKILL.md\`:
 
 \`\`\`yaml
 ---
@@ -256,11 +256,11 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
      **Overlap between categories is fine.** Picking both "No git push" (\`ask\` on \`Bash(git push:*)\`) and "No destructive git" (\`deny\` on \`Bash(git push --force:*)\`) coexists as two separate rules — the more specific deny wins for force-push, the ask still gates regular push. Do not warn the user about this.
 
   2. **Per-category scope.** For each accepted category, ask where to persist (project-shared vs personal) with a sensible default:
-     - **Default project** (\`projectSettings\` → \`.claudio/settings.json\`): terraform/docker/prod scripts, dangerous fs — these are repo rules that protect the whole team.
-     - **Default personal** (\`userSettings\` → \`~/.claudio/settings.json\`): commits, push, rebase — these are individual workflow preferences.
+     - **Default project** (\`projectSettings\` → \`.claudin/settings.json\`): terraform/docker/prod scripts, dangerous fs — these are repo rules that protect the whole team.
+     - **Default personal** (\`userSettings\` → \`~/.claudin/settings.json\`): commits, push, rebase — these are individual workflow preferences.
      Offer the default first; let the user flip.
 
-     If you would write to \`.claudio/settings.json\` (project scope): check whether \`.claudio/\` or \`.claudio/settings.json\` is matched by \`.gitignore\`. If ignored, do NOT prompt to commit the file. If not ignored, mention to the user that this file is intended to be committed (team-shared rules).
+     If you would write to \`.claudin/settings.json\` (project scope): check whether \`.claudin/\` or \`.claudin/settings.json\` is matched by \`.gitignore\`. If ignored, do NOT prompt to commit the file. If not ignored, mention to the user that this file is intended to be committed (team-shared rules).
 
   3. **Persist the rules.** Use \`addPermissionRulesToSettings({ ruleValues, ruleBehavior }, source)\` from \`src/utils/permissions/permissionsLoader.ts\` (it deduplicates and preserves existing entries). \`ruleBehavior\` is \`'ask'\` or \`'deny'\`; \`source\` is \`'projectSettings'\` or \`'userSettings'\`. Construct each \`ruleValue\` as \`{ toolName: 'Bash', ruleContent: '<command>:*' }\` (or omit \`ruleContent\` for the whole tool).
 
@@ -273,13 +273,13 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
      - **"Skip — just mention \`/commit\` in AGENTS.md"** — lightweight fallback.
      - **"Print install instructions for husky / pre-commit / lefthook and continue"** — \`/init\` outputs the commands the user can run later; nothing else is written.
 
-     Reminder (already in this prompt): \`PreToolUse\` hooks cannot filter \`Bash\` by command content, so a real commit gate must be a git hook, not a Claudio hook. The permission rules from step 1 above DO work for matching \`git commit\` invocations from Claudio's side because they're glob-based at the matcher level.
+     Reminder (already in this prompt): \`PreToolUse\` hooks cannot filter \`Bash\` by command content, so a real commit gate must be a git hook, not a Claudin hook. The permission rules from step 1 above DO work for matching \`git commit\` invocations from Claudin's side because they're glob-based at the matcher level.
 
 - **Proposal-sourced hooks** (if user chose "Skills + hooks" or "Hooks only"): Consume \`hook\` entries from the Phase 3 preference queue. If Phase 2 found a formatter and the queue has no formatting hook, offer format-on-edit as a fallback. If the user chose "Neither" or "Skills only" in Phase 1, skip this bullet entirely.
 
   For each hook preference (from the queue or the formatter fallback):
 
-  1. Target file: default based on the Phase 1 instruction-file choice — project → \`.claudio/settings.json\` (team-shared, committed); personal → \`.claudio/settings.local.json\`. Only ask if the user chose "both" in Phase 1 or the preference is ambiguous. Ask once for all hooks, not per-hook.
+  1. Target file: default based on the Phase 1 instruction-file choice — project → \`.claudin/settings.json\` (team-shared, committed); personal → \`.claudin/settings.local.json\`. Only ask if the user chose "both" in Phase 1 or the preference is ambiguous. Ask once for all hooks, not per-hook.
 
   2. Pick the event and matcher from the preference:
      - "after every edit" → \`PostToolUse\` with matcher \`Write|Edit\`
@@ -288,7 +288,7 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
      - "before committing" (literal git-commit gate) → **not a hooks.json hook.** Matchers can't filter Bash by command content, so there's no way to target only \`git commit\`. Route this to a git pre-commit hook (\`.git/hooks/pre-commit\`, husky, pre-commit framework) instead — offer to write one. If the user actually means "before I review and commit Claude's output", that's \`Stop\` — probe to disambiguate.
      Probe if the preference is ambiguous.
 
-  3. **Load the hook reference** (once per \`/init\` run, before the first hook): invoke the Skill tool with \`skill: 'update-config'\` and args starting with \`[hooks-only]\` followed by a one-line summary of what you're building — e.g., \`[hooks-only] Constructing a PostToolUse/Write|Edit format hook for .claudio/settings.json using ruff\`. This loads the hooks schema and verification flow into context. Subsequent hooks reuse it — don't re-invoke.
+  3. **Load the hook reference** (once per \`/init\` run, before the first hook): invoke the Skill tool with \`skill: 'update-config'\` and args starting with \`[hooks-only]\` followed by a one-line summary of what you're building — e.g., \`[hooks-only] Constructing a PostToolUse/Write|Edit format hook for .claudin/settings.json using ruff\`. This loads the hooks schema and verification flow into context. Subsequent hooks reuse it — don't re-invoke.
 
   4. Follow the skill's **"Constructing a Hook"** flow: dedup check → construct for THIS project → pipe-test raw → wrap → write JSON → \`jq -e\` validate → live-proof (for \`Pre|PostToolUse\` on triggerable matchers) → cleanup → handoff. Target file and event/matcher come from steps 1–2 above.
 
@@ -315,7 +315,7 @@ If you created any of these in the project tree, ensure \`.gitignore\` covers th
 - \`CLAUDE.local.md\` (always — it's personal)
 - Any personal-scoped agents written under the home directory do NOT need a project gitignore entry. Skip.
 
-Note: \`.claudio/settings.json\` (project-scoped guardrails written in Phase 7) is intended to be **committed** so the rules apply to every contributor — do NOT add it to \`.gitignore\` unless the user explicitly asked for personal-only rules.
+Note: \`.claudin/settings.json\` (project-scoped guardrails written in Phase 7) is intended to be **committed** so the rules apply to every contributor — do NOT add it to \`.gitignore\` unless the user explicitly asked for personal-only rules.
 
 ### 8c: Recap
 

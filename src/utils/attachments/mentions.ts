@@ -1,7 +1,7 @@
 import { uniq } from '../array.js'
 
 // Two patterns: quoted paths and regular paths. Hoisted to module level so the
-// regexes compile once at import time instead of on every call (Claudio rule:
+// regexes compile once at import time instead of on every call (Claudin rule:
 // "Regex at module level").
 const QUOTED_AT_MENTION_RE = /(^|\s)@"([^"]+)"/g
 const REGULAR_AT_MENTION_RE = /(^|\s)@([^\s]+)\b/g

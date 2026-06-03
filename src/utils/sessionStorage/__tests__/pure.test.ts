@@ -39,7 +39,7 @@ import {
 } from 'src/utils/sessionStorage.js'
 
 const ORIGINAL_CWD = process.cwd()
-const ORIGINAL_CONFIG_DIR = process.env.CLAUDIO_CONFIG_DIR
+const ORIGINAL_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
 
 let tmpDir: string
@@ -47,12 +47,12 @@ let tmpDir: string
 beforeEach(async () => {
   process.env.NODE_ENV = 'test'
   tmpDir = await mkdtemp(join(tmpdir(), 'sessstor-pure-'))
-  process.env.CLAUDIO_CONFIG_DIR = tmpDir
+  process.env.CLAUDIN_CONFIG_DIR = tmpDir
   resetStateForTests()
   resetProjectForTesting()
   // getProjectDir is a module-level lodash memoize keyed off cwd; without
   // a manual cache.clear() it returns stale paths derived from a prior
-  // test's CLAUDIO_CONFIG_DIR, breaking the getProjectsDir() containment
+  // test's CLAUDIN_CONFIG_DIR, breaking the getProjectsDir() containment
   // check in #2.
   ;(
     getProjectDir as unknown as { cache: { clear: () => void } }
@@ -68,9 +68,9 @@ afterEach(async () => {
 
 afterAll(() => {
   if (ORIGINAL_CONFIG_DIR === undefined) {
-    delete process.env.CLAUDIO_CONFIG_DIR
+    delete process.env.CLAUDIN_CONFIG_DIR
   } else {
-    process.env.CLAUDIO_CONFIG_DIR = ORIGINAL_CONFIG_DIR
+    process.env.CLAUDIN_CONFIG_DIR = ORIGINAL_CONFIG_DIR
   }
   if (ORIGINAL_NODE_ENV === undefined) {
     delete process.env.NODE_ENV
@@ -254,7 +254,7 @@ test('isEphemeralToolProgress: true for known progress kinds, false for everythi
 // Block #2 — Paths
 // =========================================================================
 
-test('getProjectsDir: resolves to <CLAUDIO_CONFIG_DIR>/projects', () => {
+test('getProjectsDir: resolves to <CLAUDIN_CONFIG_DIR>/projects', () => {
   expect(getProjectsDir()).toBe(join(tmpDir, 'projects'))
 })
 

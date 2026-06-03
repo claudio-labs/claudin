@@ -55,7 +55,7 @@ import { asAgentId } from 'src/types/ids.js'
 import type { TranscriptMessage } from 'src/types/logs.js'
 
 const ORIGINAL_CWD = process.cwd()
-const ORIGINAL_CONFIG_DIR = process.env.CLAUDIO_CONFIG_DIR
+const ORIGINAL_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
 const ORIGINAL_TEST_PERSIST = process.env.TEST_ENABLE_SESSION_PERSISTENCE
 
@@ -70,10 +70,10 @@ beforeEach(async () => {
   process.env.NODE_ENV = 'test'
   process.env.TEST_ENABLE_SESSION_PERSISTENCE = '1'
   tmpDir = await mkdtemp(join(tmpdir(), 'sessstor-proj-'))
-  process.env.CLAUDIO_CONFIG_DIR = tmpDir
+  process.env.CLAUDIN_CONFIG_DIR = tmpDir
   // Reset the in-memory global config singleton; upstream tests in the same
   // worker (--max-concurrency=1) leak state via saveGlobalConfig that the
-  // CLAUDIO_CONFIG_DIR swap alone doesn't clear. See team memory
+  // CLAUDIN_CONFIG_DIR swap alone doesn't clear. See team memory
   // bun-test-global-config-isolation.md.
   resetGlobalConfigForTests()
   resetStateForTests()
@@ -81,7 +81,7 @@ beforeEach(async () => {
   resetProjectFlushStateForTesting()
   // getProjectDir is a module-level lodash memoize keyed off cwd; without
   // a manual cache.clear() it returns stale paths derived from a prior
-  // suite's CLAUDIO_CONFIG_DIR (e.g. toolResultStorage.test.ts spill dir),
+  // suite's CLAUDIN_CONFIG_DIR (e.g. toolResultStorage.test.ts spill dir),
   // causing EEXIST on append. Mirrors the guard in pure.test.ts.
   ;(
     getProjectDir as unknown as { cache: { clear: () => void } }
@@ -102,9 +102,9 @@ afterEach(async () => {
 
 afterAll(() => {
   if (ORIGINAL_CONFIG_DIR === undefined) {
-    delete process.env.CLAUDIO_CONFIG_DIR
+    delete process.env.CLAUDIN_CONFIG_DIR
   } else {
-    process.env.CLAUDIO_CONFIG_DIR = ORIGINAL_CONFIG_DIR
+    process.env.CLAUDIN_CONFIG_DIR = ORIGINAL_CONFIG_DIR
   }
   if (ORIGINAL_NODE_ENV === undefined) {
     delete process.env.NODE_ENV

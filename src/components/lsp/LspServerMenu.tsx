@@ -10,7 +10,7 @@ import { updateSettingsForSource } from '../../utils/settings/settings.js'
 import { Select } from '../CustomSelect/index.js'
 import { Byline } from '../design-system/Byline.js'
 import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 
 type Props = {
   server: LspServerRow
@@ -64,7 +64,7 @@ export function LspServerMenu({ server, onCancel, onComplete }: Props): React.Re
     }
 
     if (value === 'uninstall') {
-      const dir = join(getClaudioConfigHomeDir(), 'lsp', server.name)
+      const dir = join(getClaudinConfigHomeDir(), 'lsp', server.name)
       await rm(dir, { recursive: true, force: true })
       reinitializeLspServerManager()
       onCancel()

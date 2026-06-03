@@ -58,9 +58,9 @@ report.
 
 This policy applies to:
 
-- the Claudio source code in this repository
+- the Claudin source code in this repository
 - official release artifacts published from this repository
-- the `@claudiolabs/claudio` npm package
+- the `@claudinlabs/claudin` npm package
 
 This policy does not cover:
 

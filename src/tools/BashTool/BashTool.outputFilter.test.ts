@@ -3,7 +3,7 @@
 // These tests verify that applyBashOutputFilter() — the Phase 3 integration
 // helper exported from BashTool.tsx — correctly honours the
 // `bashOutputFilterEnabled` config flag, the
-// `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER` kill switch, and the backgroundTaskId
+// `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER` kill switch, and the backgroundTaskId
 // guard.
 //
 // The outputFilter internals (pipeline stages, individual filters, markers)

@@ -4,7 +4,7 @@
 >
 > Mapa exato das ramificações de alto nível dentro do default action
 > registrado em `src/main.tsx:1005` (chamado quando o usuário roda
-> `claudio [prompt]` sem subcomando).
+> `claudin [prompt]` sem subcomando).
 >
 > Base para a **Fase 5b**, que extrai cada branch para
 > `src/main/defaultAction/<branch>.ts`.
@@ -112,7 +112,7 @@ Cada commit:
 bun run typecheck
 bun run build
 bun run smoke
-./bin/claudio --help | diff - src/main/__tests__/__snapshots__/help.txt
+./bin/claudin --help | diff - src/main/__tests__/__snapshots__/help.txt
 bun test src/main/__tests__/bootSnapshot.test.ts
 ```
 

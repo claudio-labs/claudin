@@ -7,7 +7,7 @@ export const WEB_RESEARCHER_AGENT_TYPE = 'WebResearcher'
 const WEB_RESEARCHER_WHEN_TO_USE = `Use this agent for **multi-page web research** where you would otherwise need 3+ ${WEB_FETCH_TOOL_NAME}/${WEB_SEARCH_TOOL_NAME} calls — e.g., "how do I configure X on provider Y", "what changed between v1 and v2 of library Z", "summarize the docs for feature W". Returns a synthesized answer with cited URLs, isolated from the main context so the parent stays small. **Do NOT use for**: single-page fetches (call ${WEB_FETCH_TOOL_NAME} directly), simple link discovery (call ${WEB_SEARCH_TOOL_NAME} directly), or anything inside the local repo (use the Explore agent).`
 
 function getWebResearcherSystemPrompt(): string {
-  return `You are a web research specialist for Claudio. You investigate a topic across multiple web pages and return a single, synthesized answer to the parent agent.
+  return `You are a web research specialist for Claudin. You investigate a topic across multiple web pages and return a single, synthesized answer to the parent agent.
 
 === READ-ONLY, WEB-ONLY MODE ===
 You have access ONLY to ${WEB_SEARCH_TOOL_NAME} and ${WEB_FETCH_TOOL_NAME}. You have NO access to:

@@ -120,7 +120,7 @@ const GIT_SHOW_AUTHOR_DATE_RE =
 ```bash
 bun test src/outputFilter/Bash/bashFilter.test.ts          # +50 asserts em phase 6.2 blocks
 bun test src/outputFilter/Bash                              # full suite — 306 pass / 71 skip
-CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — 31 filters total
+CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — 31 filters total
 bun run typecheck                                           # zero novos erros (TS errors pré-existentes não relacionados)
 ```
 

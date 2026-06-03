@@ -1,5 +1,5 @@
 /**
- * Model Caching for Claudio
+ * Model Caching for Claudin
  * 
  * Caches model lists to disk for faster startup and offline access.
  * Uses async fs operations to avoid blocking the event loop.
@@ -9,7 +9,7 @@ import { access, readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { getClaudioConfigHomeDir } from '../envUtils.js'
+import { getClaudinConfigHomeDir } from '../envUtils.js'
 import { getAPIProvider } from './providers.js'
 
 function getActiveBaseUrl(): string {
@@ -28,7 +28,7 @@ interface ModelCache {
 }
 
 function getCacheDir(): string {
-  const cacheDir = join(getClaudioConfigHomeDir(), CACHE_DIR_NAME)
+  const cacheDir = join(getClaudinConfigHomeDir(), CACHE_DIR_NAME)
   if (!existsSync(cacheDir)) {
     mkdir(cacheDir, { recursive: true })
   }

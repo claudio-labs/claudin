@@ -1,7 +1,7 @@
 /**
  * User keybinding configuration loader with hot-reload support.
  *
- * Loads keybindings from ~/.claudio/keybindings.json and watches
+ * Loads keybindings from ~/.claudin/keybindings.json and watches
  * for changes to reload them automatically.
  *
  * NOTE: User keybinding customization is currently only available for
@@ -17,7 +17,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growt
 import { logEvent } from '../services/analytics/index.js'
 import { registerCleanup } from '../utils/cleanupRegistry.js'
 import { logForDebugging } from '../utils/debug.js'
-import { getClaudioConfigHomeDir } from '../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../utils/envUtils.js'
 import { errorMessage, isENOENT } from '../utils/errors.js'
 import { createSignal } from '../utils/signal.js'
 import { jsonParse } from '../utils/slowOperations.js'
@@ -113,7 +113,7 @@ function isKeybindingBlockArray(arr: unknown): arr is KeybindingBlock[] {
  * Get the path to the user keybindings file.
  */
 export function getKeybindingsPath(): string {
-  return join(getClaudioConfigHomeDir(), 'keybindings.json')
+  return join(getClaudinConfigHomeDir(), 'keybindings.json')
 }
 
 /**

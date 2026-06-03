@@ -234,7 +234,7 @@ isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS);
 // process lifetime — a child cannot silently re-enable filtering after the
 // operator sets the kill switch before starting the agent.
 // eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
-const isBashOutputFilterDisabled = isEnvTruthy(process.env.CLAUDIO_DISABLE_BASH_OUTPUT_FILTER);
+const isBashOutputFilterDisabled = isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER);
 const fullInputSchema = lazySchema(() => z.strictObject({
   command: z.string().describe('The command to execute'),
   timeout: semanticNumber(z.number().optional()).describe(`Optional timeout in milliseconds (max ${getMaxTimeoutMs()})`),

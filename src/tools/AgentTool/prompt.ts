@@ -149,15 +149,15 @@ ${AGENT_TOOL_NAME}({
   const currentExamples = `Example usage:
 
 <example_agent_descriptions>
-"claudio-guide": use this agent when the user asks how Claude Code works or how to use its features
+"claudin-guide": use this agent when the user asks how Claude Code works or how to use its features
 </example_agent_descriptions>
 
 <example>
 user: "How do I configure Claude Code hooks?"
 <commentary>
-This is a Claude Code usage question, so use the claudio-guide agent
+This is a Claude Code usage question, so use the claudin-guide agent
 </commentary>
-assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claudio-guide agent
+assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claudin-guide agent
 </example>
 `
 

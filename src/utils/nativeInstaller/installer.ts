@@ -41,7 +41,7 @@ import { logForDebugging } from '../debug.js'
 import { getCurrentInstallationType } from '../doctorDiagnostic.js'
 import { env } from '../env.js'
 import { envDynamic } from '../envDynamic.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from '../envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from '../envUtils.js'
 import { errorMessage, getErrnoCode, isENOENT, toError } from '../errors.js'
 import { execFileNoThrowWithCwd } from '../execFileNoThrow.js'
 import { getShellType } from '../localInstaller.js'
@@ -1690,9 +1690,9 @@ export async function cleanupNpmInstallations(): Promise<{
 
   // Legacy ~/.claude/local cleanup — back-compat with pre-migration Claude Code
   // installs. The active config dir is also checked so cleanup still works
-  // under CLAUDIO_CONFIG_DIR overrides.
+  // under CLAUDIN_CONFIG_DIR overrides.
   const localInstallDirs = Array.from(
-    new Set([join(getClaudioConfigHomeDir(), 'local'), join(homedir(), '.claude', 'local')]),
+    new Set([join(getClaudinConfigHomeDir(), 'local'), join(homedir(), '.claude', 'local')]),
   )
 
   for (const localInstallDir of localInstallDirs) {

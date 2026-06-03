@@ -155,7 +155,7 @@ export function runSshArgvStash(pendingSSH: PendingSSH | undefined): void {
     }
     // Forward session-resume + model flags to the remote CLI's initial spawn.
     // --continue/-c and --resume <uuid> operate on the REMOTE session history
-    // (which persists under the remote's ~/.claudio/projects/<cwd>/).
+    // (which persists under the remote's ~/.claudin/projects/<cwd>/).
     // --model controls which model the remote uses.
     const extractFlag = (
       flag: string,

@@ -44,8 +44,8 @@ jobs:
 
       - name: Configure git identity
         run: |
-          git config user.name "claudio-release-bot"
-          git config user.email "release@claudio.local"
+          git config user.name "claudin-release-bot"
+          git config user.email "release@claudin.local"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -175,7 +175,7 @@ jobs:
             -F "attachment=@${TARBALL}" \
             | jq -r '.browser_download_url // .message // .'
 
-      - name: Append changelog to claudio-labs/claudio
+      - name: Append changelog to claudin-labs/claudin
         env:
           GH_TOKEN: ${{ secrets.GH_CHANGELOG_TOKEN }}
           BODY: ${{ steps.changelog.outputs.body }}
@@ -190,8 +190,8 @@ jobs:
             "https://oauth2:${GH_TOKEN}@github.com/claudio-labs/claudio.git" \
             "$WORK/repo"
           cd "$WORK/repo"
-          git config user.name "claudio-release-bot"
-          git config user.email "release@claudio.local"
+          git config user.name "claudin-release-bot"
+          git config user.email "release@claudin.local"
           DATE=$(date -u +%Y-%m-%d)
           {
             echo "## ${TAG} — ${DATE}"
@@ -241,6 +241,6 @@ jobs:
             echo "- Tag: ${{ steps.bump.outputs.tag }}"
             echo "- Version: ${{ steps.bump.outputs.version }}"
             echo "- Release page: ${GITEA_REPO_URL}/releases/tag/${{ steps.bump.outputs.tag }}"
-            echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudio"
-            echo "- install: \`npm install -g @claudiolabs/claudio@${{ steps.bump.outputs.version }}\`"
+            echo "- npm: https://www.npmjs.com/package/@claudinlabs/claudin"
+            echo "- install: \`npm install -g @claudinlabs/claudin@${{ steps.bump.outputs.version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,4 @@
-// Direct-connect branch — `claudio open cc://...`. Connects the interactive
+// Direct-connect branch — `claudin open cc://...`. Connects the interactive
 // TUI to a remote server. Gated by feature('DIRECT_CONNECT'); dead-code in
 // the open build. Extracted from src/main.tsx (ROADMAP 11g Fase 5b).
 

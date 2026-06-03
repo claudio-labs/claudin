@@ -62,8 +62,8 @@ describe('xmlEscape', () => {
 
 describe('buildWindowsToastScript', () => {
   test('embeds title and message inside the toast XML', () => {
-    const script = buildWindowsToastScript('Claudio', 'task done')
-    expect(script).toContain('<text>Claudio</text>')
+    const script = buildWindowsToastScript('Claudin', 'task done')
+    expect(script).toContain('<text>Claudin</text>')
     expect(script).toContain('<text>task done</text>')
     expect(script).toContain('ToastNotificationManager')
   })

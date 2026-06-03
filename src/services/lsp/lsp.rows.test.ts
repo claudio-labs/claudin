@@ -52,7 +52,7 @@ mock.module('os', () => ({ ...realOsRows, default: realOsRows, homedir: () => '/
 const realEnvUtilsRows = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsRows,
-  getClaudioConfigHomeDir: () => '/home/test/.claudio',
+  getClaudinConfigHomeDir: () => '/home/test/.claudin',
 }))
 
 type AsyncFn = (...args: unknown[]) => Promise<unknown>
@@ -169,11 +169,11 @@ describe('getLspServerRows', () => {
     expect(row?.status).toBe('⏳ installing')
   })
 
-  test('managed: true when binary is under getClaudioConfigHomeDir', async () => {
+  test('managed: true when binary is under getClaudinConfigHomeDir', async () => {
     mockExecFile.mockImplementation(async (_cmd: unknown, args: unknown) => {
       const [name] = args as string[]
       if (name === 'rust-analyzer') {
-        return { code: 0, stdout: '/home/test/.claudio/lsp/rust-analyzer/bin/rust-analyzer\n', stderr: '' }
+        return { code: 0, stdout: '/home/test/.claudin/lsp/rust-analyzer/bin/rust-analyzer\n', stderr: '' }
       }
       return { code: 1, stdout: '', stderr: '' }
     })

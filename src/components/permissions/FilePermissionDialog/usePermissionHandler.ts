@@ -101,7 +101,7 @@ function handleAcceptSession(
 
   logPermissionEvent('accept', completionType, languageName, messageId)
 
-  // For claude-folder scope, grant session-level access to all .claudio/ files
+  // For claude-folder scope, grant session-level access to all .claudin/ files
   if (
     options?.scope === 'claude-folder' ||
     options?.scope === 'global-claude-folder'

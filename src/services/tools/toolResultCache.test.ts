@@ -18,7 +18,7 @@ import {
 let tmp: string
 beforeEach(() => {
   __resetForTests()
-  delete process.env.CLAUDIO_DISABLE_TOOL_RESULT_CACHE
+  delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
   tmp = mkdtempSync(join(tmpdir(), 'tool-result-cache-'))
 })
 
@@ -44,9 +44,9 @@ describe('whitelist', () => {
 })
 
 describe('opt-out', () => {
-  test('respects CLAUDIO_DISABLE_TOOL_RESULT_CACHE=1', () => {
+  test('respects CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1', () => {
     expect(isCacheDisabled()).toBe(false)
-    process.env.CLAUDIO_DISABLE_TOOL_RESULT_CACHE = '1'
+    process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
     expect(isCacheDisabled()).toBe(true)
   })
 })

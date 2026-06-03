@@ -45,7 +45,7 @@ test('init prompt includes Phase 5.5 subagent creation flow', async () => {
   const text = String(blocks[0]?.text)
 
   expect(text).toContain('Phase 5.5')
-  expect(text).toContain('.claudio/agents/<slug>.md')
+  expect(text).toContain('.claudin/agents/<slug>.md')
   expect(text).toContain('/agents')
 })
 

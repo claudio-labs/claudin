@@ -6,19 +6,19 @@ import { access, chmod, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import { type ReleaseChannel, saveGlobalConfig } from './config.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { getErrnoCode } from './errors.js'
 import { execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { getFsImplementation } from './fsOperations.js'
 import { logError } from './log.js'
 import { jsonStringify } from './slowOperations.js'
 
-// Lazy getters: getClaudioConfigHomeDir() is memoized and reads process.env.
+// Lazy getters: getClaudinConfigHomeDir() is memoized and reads process.env.
 // Evaluating at module scope would capture the value before entrypoints like
-// hfi.tsx get a chance to set CLAUDIO_CONFIG_DIR in main(), and would also
+// hfi.tsx get a chance to set CLAUDIN_CONFIG_DIR in main(), and would also
 // populate the memoize cache with that stale value for all 150+ other callers.
 function getLocalInstallDir(): string {
-  return join(getClaudioConfigHomeDir(), 'local')
+  return join(getClaudinConfigHomeDir(), 'local')
 }
 
 function getLegacyLocalInstallDir(homeDir = homedir()): string {
@@ -30,7 +30,7 @@ export function getCandidateLocalInstallDirs(options?: {
   homeDir?: string
 }): string[] {
   const homeDir = options?.homeDir ?? homedir()
-  const configHomeDir = options?.configHomeDir ?? getClaudioConfigHomeDir()
+  const configHomeDir = options?.configHomeDir ?? getClaudinConfigHomeDir()
   return Array.from(
     new Set([join(configHomeDir, 'local'), getLegacyLocalInstallDir(homeDir)]),
   )
@@ -38,7 +38,7 @@ export function getCandidateLocalInstallDirs(options?: {
 
 function getCandidateLocalBinaryPaths(localInstallDir: string): string[] {
   return [
-    join(localInstallDir, 'node_modules', '.bin', 'claudio'),
+    join(localInstallDir, 'node_modules', '.bin', 'claudin'),
     join(localInstallDir, 'node_modules', '.bin', 'claude'),
   ]
 }
@@ -46,13 +46,13 @@ function getCandidateLocalBinaryPaths(localInstallDir: string): string[] {
 export function isManagedLocalInstallationPath(execPath: string): boolean {
   const normalizedExecPath = execPath.replace(/\\+/g, '/')
   return (
-    normalizedExecPath.includes('/.claudio/local/node_modules/') ||
+    normalizedExecPath.includes('/.claudin/local/node_modules/') ||
     normalizedExecPath.includes('/.claude/local/node_modules/')
   )
 }
 
 export function getLocalClaudePath(): string {
-  return join(getLocalInstallDir(), 'claudio')
+  return join(getLocalInstallDir(), 'claudin')
 }
 
 /**
@@ -95,7 +95,7 @@ export async function ensureLocalPackageEnvironment(): Promise<boolean> {
     await writeIfMissing(
       join(localInstallDir, 'package.json'),
       jsonStringify(
-        { name: 'claudio-local', version: '0.0.1', private: true },
+        { name: 'claudin-local', version: '0.0.1', private: true },
         null,
         2,
       ),
@@ -105,7 +105,7 @@ export async function ensureLocalPackageEnvironment(): Promise<boolean> {
     const wrapperPath = getLocalClaudePath()
     const created = await writeIfMissing(
       wrapperPath,
-      `#!/bin/sh\nexec "${localInstallDir}/node_modules/.bin/claudio" "$@"`,
+      `#!/bin/sh\nexec "${localInstallDir}/node_modules/.bin/claudin" "$@"`,
       0o755,
     )
     if (created) {

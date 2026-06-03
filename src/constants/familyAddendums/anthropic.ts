@@ -1,5 +1,5 @@
 // The base system prompt in src/constants/prompts.ts is already calibrated
-// for Claude models (Claudio promotes several Claude-tuned bullets that
+// for Claude models (Claudin promotes several Claude-tuned bullets that
 // openclaude keeps gated behind USER_TYPE === 'ant'). Adding another block
 // here would double-dose the no-comments rule, false-claims mitigation, and
 // verify-before-completion guidance. Kept as null on purpose — file exists

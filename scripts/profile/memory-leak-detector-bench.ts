@@ -170,11 +170,11 @@ function diffListeners(a: ListenerSnapshot, b: ListenerSnapshot): ListenerSnapsh
 // ---- Disk-spill measurement (standalone dir under os tmpdir) --------------
 
 // We deliberately DO NOT use the real getToolResultsDir() from
-// toolResultStorage.ts because (a) it writes under the user's ~/.claudio
+// toolResultStorage.ts because (a) it writes under the user's ~/.claudin
 // and we don't want to pollute it, and (b) it lazily initialises via the
 // full config stack, which loads a big module subgraph. A fresh tmp dir
 // gives identical on-disk semantics for the purpose of measuring growth.
-const BENCH_SPILL_DIR = join(tmpdir(), `claudio-leak-bench-${process.pid}`)
+const BENCH_SPILL_DIR = join(tmpdir(), `claudin-leak-bench-${process.pid}`)
 
 function ensureBenchDir(): void {
   mkdirSync(BENCH_SPILL_DIR, { recursive: true })
@@ -403,7 +403,7 @@ async function run(args: Args): Promise<{
     //   - crState goes out of scope here — if anything outside held a ref,
     //     we'd see it in the post-clear snapshot.
     // NOTE: we intentionally do NOT rm the disk dir by default. Real /clear
-    // in Claudio historically did not unlink spill files. If --simulate-unlink
+    // in Claudin historically did not unlink spill files. If --simulate-unlink
     // is set we rm it here (mirrors A2: unlinkSessionSpillDir) to measure the
     // fix's disk impact.
     messages = []

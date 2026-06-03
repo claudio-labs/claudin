@@ -37,7 +37,7 @@ function user(uuid: string, content: string) {
 }
 
 async function writeJsonl(entry: unknown): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'claudio-conversation-recovery-hooks-'))
+  const dir = await mkdtemp(join(tmpdir(), 'claudin-conversation-recovery-hooks-'))
   tempDirs.push(dir)
   const filePath = join(dir, 'resume.jsonl')
   await writeFile(filePath, `${JSON.stringify(entry)}\n`)

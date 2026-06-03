@@ -55,11 +55,11 @@ mock.module('os', () => ({
   version: () => '#1 SMP',
 }))
 
-const mockConfigDir = '/tmp/fake-claudio-lsp-test'
+const mockConfigDir = '/tmp/fake-claudin-lsp-test'
 const realEnvUtilsBuiltin = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsBuiltin,
-  getClaudioConfigHomeDir: () => mockConfigDir,
+  getClaudinConfigHomeDir: () => mockConfigDir,
   isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
 }))
 

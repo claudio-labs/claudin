@@ -118,12 +118,12 @@ test('toolToAPISchema removes extra required keys not in properties (MCP schema 
  * file just guarantees the placement contract isn't accidentally moved.
  */
 describe('splitSysPromptPrefix attribution header placement', () => {
-  const claudioPrefix = 'You are Claudio, an open-source coding agent and CLI.'
+  const claudinPrefix = 'You are Claudin, an open-source coding agent and CLI.'
 
   test('attribution header is block 0 with cacheScope=null', () => {
     const blocks = splitSysPromptPrefix([
       'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
-      claudioPrefix,
+      claudinPrefix,
       'You are working in a git repository at /tmp/x',
     ])
     expect(blocks.length).toBeGreaterThan(0)
@@ -135,7 +135,7 @@ describe('splitSysPromptPrefix attribution header placement', () => {
     const blocks = splitSysPromptPrefix(
       [
         'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
-        claudioPrefix,
+        claudinPrefix,
         'extra context block',
       ],
       { skipGlobalCacheForSystemPrompt: true },
@@ -147,11 +147,11 @@ describe('splitSysPromptPrefix attribution header placement', () => {
   test('two distinct attribution headers (interactive vs cron-tagged) produce DIFFERENT block 0 bytes', () => {
     const interactive = splitSysPromptPrefix([
       'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
-      claudioPrefix,
+      claudinPrefix,
     ])
     const cron = splitSysPromptPrefix([
       'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli; cc_workload=cron;',
-      claudioPrefix,
+      claudinPrefix,
     ])
     // Block 0 differs: this is the byte shift that breaks every
     // downstream cache_control breakpoint on alternation.

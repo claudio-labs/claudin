@@ -13,9 +13,9 @@
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-sonnet-4-6  (default)
- *   CLAUDIO_BENCH_RUNS=5               (runs por prompt por variante)
- *   CLAUDIO_BENCH_BASELINE=dist/baseline/cli.mjs
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs
+ *   CLAUDIN_BENCH_RUNS=5               (runs por prompt por variante)
+ *   CLAUDIN_BENCH_BASELINE=dist/baseline/cli.mjs
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs
  */
 
 import { spawn } from 'node:child_process'
@@ -24,16 +24,16 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const BASELINE = process.env.CLAUDIO_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
-const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '5')
+const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
+const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '5')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
-const PER_INVOCATION_TIMEOUT_MS = Number(process.env.CLAUDIO_BENCH_TIMEOUT_MS ?? '120000')
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
+const PER_INVOCATION_TIMEOUT_MS = Number(process.env.CLAUDIN_BENCH_TIMEOUT_MS ?? '120000')
 
 // v3 HYBRID — junta TENTACAO (output longo/ruidoso, onde nasce o impulso de pipar pra
 // tail) com FRAMING JUSTO (o usuario pede VEREDITO/RESUMO; truncar seria decisao espuria
-// do modelo, nao pedido). Roda num worktree isolado (CLAUDIO_BENCH_TARGET_CWD) com timeout
+// do modelo, nao pedido). Roda num worktree isolado (CLAUDIN_BENCH_TARGET_CWD) com timeout
 // por invocacao, entao build/test podem rodar de verdade sem mutar o repo vivo nem travar.
 // Dois prompts multi-step de proposito: a 1a chamada Bash mostra o marker lines="x/y",
 // dando a evidencia (a) chance de influenciar a 2a chamada na mesma sessao.
@@ -92,7 +92,7 @@ interface RunResult {
 }
 
 function projectDirForCwd(cwd: string): string {
-  // Must match claudio's real transcript-dir encoding (src/services/vcr.ts): EVERY
+  // Must match claudin's real transcript-dir encoding (src/services/vcr.ts): EVERY
   // non-alphanumeric char becomes '-', not just '/'. The old `/`-only rule silently
   // produced a wrong path whenever cwd had '_' or '.' (e.g. /tmp/bench_wt -> -tmp-bench_wt,
   // but the real dir is -tmp-bench-wt), making analyzeSession return Bash=0 for every session.
@@ -168,7 +168,7 @@ interface SessionAnalysis {
 
 function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return { toolCounts: {}, bashCommands: [] }
   const counts: Record<string, number> = {}
   const bashCommands: string[] = []

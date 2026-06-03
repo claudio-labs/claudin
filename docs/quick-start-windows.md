@@ -1,4 +1,4 @@
-# Claudio Quick Start for Windows
+# Claudin Quick Start for Windows
 
 This guide uses Windows PowerShell.
 
@@ -15,21 +15,21 @@ node --version
 npm --version
 ```
 
-## 2. Install Claudio
+## 2. Install Claudin
 
 ```powershell
-npm install -g @claudiolabs/claudio
+npm install -g @claudinlabs/claudin
 ```
 
-## 3. Run Claudio
+## 3. Run Claudin
 
 ```powershell
-claudio
+claudin
 ```
 
-On first run with no saved profile, the `/provider` wizard opens automatically. Pick a preset (Anthropic, OpenAI, DeepSeek, Gemini, Mistral, Ollama, Codex, GitHub Copilot, Bedrock, Vertex, Foundry, or Custom), supply credentials when prompted, and Claudio saves it as the active profile.
+On first run with no saved profile, the `/provider` wizard opens automatically. Pick a preset (Anthropic, OpenAI, DeepSeek, Gemini, Mistral, Ollama, Codex, GitHub Copilot, Bedrock, Vertex, Foundry, or Custom), supply credentials when prompted, and Claudin saves it as the active profile.
 
-If you previously used Claude Code (or an older Claudio that lived under `~/.claude/`), the wizard offers to migrate tokens, settings, theme, plugins, and keybindings into `%USERPROFILE%\.claudio\`. Accept or skip — your choice is remembered.
+If you previously used Claude Code (or an older Claudin that lived under `~/.claude/`), the wizard offers to migrate tokens, settings, theme, plugins, and keybindings into `%USERPROFILE%\.claudin\`. Accept or skip — your choice is remembered.
 
 ## 4. Reconfigure Later
 
@@ -47,7 +47,7 @@ Inside the REPL:
 
 ### Anthropic OAuth (web sign-in)
 
-`/provider` -> preset `anthropic` -> choose `Sign in with web`. The flow opens in your browser and stores tokens under `%USERPROFILE%\.claudio\.credentials.json`.
+`/provider` -> preset `anthropic` -> choose `Sign in with web`. The flow opens in your browser and stores tokens under `%USERPROFILE%\.claudin\.credentials.json`.
 
 ### OpenAI / DeepSeek / Groq / OpenRouter
 
@@ -55,37 +55,37 @@ Inside the REPL:
 
 ### Local Ollama
 
-Install Ollama from `https://ollama.com/download/windows`, pull a model (e.g. `ollama pull llama3.1:8b`), then inside Claudio run `/provider` -> preset `ollama`. No API key required.
+Install Ollama from `https://ollama.com/download/windows`, pull a model (e.g. `ollama pull llama3.1:8b`), then inside Claudin run `/provider` -> preset `ollama`. No API key required.
 
 ### LM Studio
 
 Start the LM Studio server with a model loaded, then `/provider` -> preset `custom` (or `lmstudio` if listed) -> set `baseUrl` to `http://localhost:1234/v1` and the model name shown in LM Studio.
 
-## 6. If `claudio` Is Not Found
+## 6. If `claudin` Is Not Found
 
 Close PowerShell, open a new one, and try again:
 
 ```powershell
-claudio
+claudin
 ```
 
 ## 7. If a Provider Fails
 
 Run `/provider doctor` from inside the REPL. It reports reachability, auth, and model availability for the active profile.
 
-## 8. Updating Claudio
+## 8. Updating Claudin
 
 ```powershell
-npm install -g @claudiolabs/claudio@latest
+npm install -g @claudinlabs/claudin@latest
 ```
 
-## 9. Uninstalling Claudio
+## 9. Uninstalling Claudin
 
 ```powershell
-npm uninstall -g @claudiolabs/claudio
+npm uninstall -g @claudinlabs/claudin
 ```
 
-Claudio config lives in `%USERPROFILE%\.claudio\`. Remove that directory to wipe all saved profiles, tokens, and settings.
+Claudin config lives in `%USERPROFILE%\.claudin\`. Remove that directory to wipe all saved profiles, tokens, and settings.
 
 ## Need Advanced Setup?
 

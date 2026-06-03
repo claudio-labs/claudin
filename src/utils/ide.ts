@@ -14,7 +14,7 @@ import type {
 } from '../services/mcp/types.js'
 import { getGlobalConfig, saveGlobalConfig } from './config.js'
 import { env } from './env.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import {
   execFileNoThrow,
   execFileNoThrowWithCwd,
@@ -291,7 +291,7 @@ export function getTerminalIdeType(): IdeType | null {
 }
 
 /**
- * Gets sorted IDE lockfiles from ~/.claudio/ide directory
+ * Gets sorted IDE lockfiles from ~/.claudin/ide directory
  * @returns Array of full lockfile paths sorted by modification time (newest first)
  */
 export async function getSortedIdeLockfiles(): Promise<string[]> {
@@ -459,7 +459,7 @@ const getWindowsUserProfile = memoize(async (): Promise<string | undefined> => {
  * stat loop compounded startup latency.
  */
 export async function getIdeLockfilesPaths(): Promise<string[]> {
-  const paths: string[] = [join(getClaudioConfigHomeDir(), 'ide')]
+  const paths: string[] = [join(getClaudinConfigHomeDir(), 'ide')]
 
   if (getPlatform() !== 'wsl') {
     return paths
@@ -473,7 +473,7 @@ export async function getIdeLockfilesPaths(): Promise<string[]> {
   if (windowsHome) {
     const converter = new WindowsToWSLConverter(process.env.WSL_DISTRO_NAME)
     const wslPath = converter.toLocalPath(windowsHome)
-    paths.push(resolve(wslPath, '.claudio', 'ide'))
+    paths.push(resolve(wslPath, '.claudin', 'ide'))
   }
 
   // Construct the path based on the standard Windows WSL locations
@@ -498,7 +498,7 @@ export async function getIdeLockfilesPaths(): Promise<string[]> {
       ) {
         continue // Skip system directories
       }
-      paths.push(join(usersDir, user.name, '.claudio', 'ide'))
+      paths.push(join(usersDir, user.name, '.claudin', 'ide'))
     }
   } catch (error: unknown) {
     if (isFsInaccessible(error)) {
@@ -843,16 +843,16 @@ export function hasAccessToIDEExtensionDiffFeature(
   )
 }
 
-const EXTENSION_ID = 'devnull-bootloader.claudio-vscode'
+const EXTENSION_ID = 'devnull-bootloader.claudin-vscode'
 
 const LEGACY_EXTENSION_IDS = ['anthropic.claude-code', 'anthropic.claude-code-internal']
 
 declare const MACRO: { IDE_EXTENSION_VERSION: string }
 
 function getBundledIdeExtensionVsixPath(): string {
-  // dist/cli.mjs has dist/claudio-vscode.vsix as a sibling after a release build.
+  // dist/cli.mjs has dist/claudin-vscode.vsix as a sibling after a release build.
   const cliDir = dirname(fileURLToPath(import.meta.url))
-  return join(cliDir, 'claudio-vscode.vsix')
+  return join(cliDir, 'claudin-vscode.vsix')
 }
 
 export async function isIDEExtensionInstalled(

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const BIN = join(import.meta.dir, '..', 'bin', 'claudio')
+const BIN = join(import.meta.dir, '..', 'bin', 'claudin')
 
 function runHelp(args: readonly string[]): string {
   const res = spawnSync(BIN, [...args, '--help'], {

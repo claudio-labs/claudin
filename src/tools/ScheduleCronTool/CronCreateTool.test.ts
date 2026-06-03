@@ -16,14 +16,14 @@ let priorEnabled = false
 
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'croncreate-'))
-  process.env.CLAUDIO_CONFIG_DIR = configDir
+  process.env.CLAUDIN_CONFIG_DIR = configDir
   delete process.env.CLAUDE_CODE_DISABLE_CRON
   priorEnabled = getScheduledTasksEnabled()
 })
 
 afterAll(() => {
   rmSync(configDir, { recursive: true, force: true })
-  delete process.env.CLAUDIO_CONFIG_DIR
+  delete process.env.CLAUDIN_CONFIG_DIR
   setScheduledTasksEnabled(priorEnabled)
 })
 

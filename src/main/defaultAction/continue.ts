@@ -1,4 +1,4 @@
-// Continue branch — `claudio --continue`. Loads the most recent conversation
+// Continue branch — `claudin --continue`. Loads the most recent conversation
 // and launches the REPL with it. Extracted from src/main.tsx (ROADMAP 11g
 // Fase 5b). Pure code-motion: signatures match the original closure variables.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # cli-token-footprint.sh — compare the per-turn token footprint of two
-# Claude Code-family CLIs (claude vs claudiodev) on the same workload.
+# Claude Code-family CLIs (claude vs claudindev) on the same workload.
 #
 # For each CLI it:
 #   1. runs N "read this file and summarize it" turns headless (--output-format
@@ -19,7 +19,7 @@
 #   READ_FILES="src/a.ts src/b.ts" EDIT_FILES="src/c.ts" scripts/bench/cli-token-footprint.sh
 #
 # Env:
-#   CLIS="claudiodev claude"   # which binaries to compare (space-separated)
+#   CLIS="claudindev claude"   # which binaries to compare (space-separated)
 #   MODEL=claude-opus-4-8      # force same model on both (default: each CLI's default)
 #   PROMPT_TMPL="Read the file %s and give a 3-sentence summary of what it does."
 #   EDIT_PROMPT_TMPL='Add a single-line comment "// bench touch" at the very top of %s and save the file.'
@@ -32,7 +32,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-CLIS="${CLIS:-claudiodev claude}"
+CLIS="${CLIS:-claudindev claude}"
 PROMPT_TMPL="${PROMPT_TMPL:-Read the file %s and give a 3-sentence summary of what it does.}"
 EDIT_PROMPT_TMPL="${EDIT_PROMPT_TMPL:-Add a single-line comment \"// bench touch\" at the very top of %s and save the file.}"
 TIMEOUT="${TIMEOUT:-240}"

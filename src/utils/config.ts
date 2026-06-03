@@ -16,7 +16,7 @@ import { registerCleanup } from './cleanupRegistry.js'
 import { logForDebugging } from './debug.js'
 import { logForDiagnosticsNoPII } from './diagLogs.js'
 import { getGlobalClaudeFile } from './env.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { ConfigParseError, getErrnoCode } from './errors.js'
 import { writeFileSyncAndFlush } from './file.js'
 import { getFsImplementation } from './fsOperations.js'
@@ -531,7 +531,7 @@ export type GlobalConfig = {
 
   // Whether the auto-memory extractor surfaces a "Saved N memory" system
   // notice in the chat after each save. undefined/false → silent (default in
-  // Claudio because the message fired on nearly every turn). Set to true to
+  // Claudin because the message fired on nearly every turn). Set to true to
   // restore upstream's behaviour.
   notifyMemorySaved?: boolean
 
@@ -661,11 +661,11 @@ export type GlobalConfig = {
   // (avoiding 11× saveGlobalConfig lock+re-read on every startup).
   migrationVersion?: number
 
-  // ~/.claude/ -> ~/.claudio/ migration tracking. Set when the user
+  // ~/.claude/ -> ~/.claudin/ migration tracking. Set when the user
   // accepts the banner in /provider (or runs `/provider migrate`); the
   // banner won't show again afterwards. Independent from migrationVersion
   // because it's a one-shot user action, not a schema migration.
-  claudeToClaudioMigratedAt?: string
+  claudeToClaudinMigratedAt?: string
   // Set when the user explicitly skips the legacy /provider migration banner
   // ("Skip — start fresh"). Suppresses the banner for future sessions.
   legacyMigrationSkipped?: boolean
@@ -1088,7 +1088,7 @@ let configCacheHits = 0
 let configCacheMisses = 0
 // Session-total count of actual disk writes to the global config file.
 // Exposed for internal-only dev diagnostics (see inc-4552) so anomalous write
-// rates surface in the UI before they corrupt ~/.claudio/config.json.
+// rates surface in the UI before they corrupt ~/.claudin/config.json.
 let globalConfigWriteCount = 0
 
 export function getGlobalConfigWriteCount(): number {
@@ -1427,7 +1427,7 @@ function saveConfigWithLock<A extends object>(
     const currentConfig = getConfig(file, createDefault)
     if (file === getGlobalClaudeFile() && wouldLoseAuthState(currentConfig)) {
       logForDebugging(
-        'saveConfigWithLock: re-read config is missing auth that cache has; refusing to write to avoid wiping ~/.claudio/config.json. See GH #3117.',
+        'saveConfigWithLock: re-read config is missing auth that cache has; refusing to write to avoid wiping ~/.claudin/config.json. See GH #3117.',
         { level: 'error' },
       )
       logEvent('tengu_config_auth_loss_prevented', {})
@@ -1571,7 +1571,7 @@ export function enableConfigs(): void {
  * Uses ~/.claude/backups/ to keep the home directory clean.
  */
 function getConfigBackupDir(): string {
-  return join(getClaudioConfigHomeDir(), 'backups')
+  return join(getClaudinConfigHomeDir(), 'backups')
 }
 
 /**
@@ -2029,7 +2029,7 @@ export function getMemoryPath(memoryType: MemoryType): string {
 
   switch (memoryType) {
     case 'User':
-      return join(getClaudioConfigHomeDir(), 'CLAUDE.md')
+      return join(getClaudinConfigHomeDir(), 'CLAUDE.md')
     case 'Local':
       return join(cwd, 'CLAUDE.local.md')
     case 'Project':
@@ -2047,11 +2047,11 @@ export function getMemoryPath(memoryType: MemoryType): string {
 }
 
 export function getManagedClaudeRulesDir(): string {
-  return join(getManagedFilePath(), '.claudio', 'rules')
+  return join(getManagedFilePath(), '.claudin', 'rules')
 }
 
 export function getUserClaudeRulesDir(): string {
-  return join(getClaudioConfigHomeDir(), 'rules')
+  return join(getClaudinConfigHomeDir(), 'rules')
 }
 
 // Exported for testing only

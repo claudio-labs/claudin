@@ -105,15 +105,15 @@ describe("loadUserFilters", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `claudio-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `claudin-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
-    process.env.CLAUDIO_CONFIG_DIR = tmpDir;
+    process.env.CLAUDIN_CONFIG_DIR = tmpDir;
     clearUserFiltersCache();
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
-    delete process.env.CLAUDIO_CONFIG_DIR;
+    delete process.env.CLAUDIN_CONFIG_DIR;
     clearUserFiltersCache();
   });
 

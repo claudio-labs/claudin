@@ -109,7 +109,7 @@ function getLogWriter(path: string): JsonlWriter {
 }
 
 function appendToLog(_path: string, _message: object): void {
-  // Error log sink disabled in open Claudio builds.
+  // Error log sink disabled in open Claudin builds.
 }
 
 function extractServerMessage(data: unknown): string | undefined {

@@ -5,7 +5,7 @@
  * isolation. This file asserts the CLAIM of Phase 2 — that a session
  * with unchanged static context (CLAUDE.md, gitStatus, nested memory
  * files, todo list) sends measurably fewer bytes on turns 2+ when
- * CLAUDIO_STATIC_DEDUP is active.
+ * CLAUDIN_STATIC_DEDUP is active.
  *
  * Without this, the Phase 2 -30 to -40% body-JSON target is a
  * hypothesis with no guardrail. A future refactor could silently

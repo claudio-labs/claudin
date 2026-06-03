@@ -52,9 +52,9 @@ Hardcode de provider específico violaria a regra "no hardcoded provider logic" 
 
 Em providers que não são Claude-native (qualquer coisa que passe pelo `openaiShim`: OpenRouter, Gemini, DeepSeek, Mistral, LM Studio, Together, etc.), `resolveAgentModel` em `src/utils/model/agent.ts` (procure pela checagem `checkIsClaudeNativeProvider`) faz fallback do alias `'haiku'` para o modelo do pai. Ou seja: se você está em OpenRouter+Opus sem override, o WebResearcher também roda em Opus — anulando a economia.
 
-**Solução**: defina um override explícito em `~/.claudio/settings.json`:
+**Solução**: defina um override explícito em `~/.claudin/settings.json`:
 
-Adicione em `~/.claudio/settings.json`:
+Adicione em `~/.claudin/settings.json`:
 
 ```json
 {
@@ -68,7 +68,7 @@ Ou qualquer outro modelo do seu provider ativo. A resolução é feita por `src/
 
 ## Override por custom agent
 
-Se você criar um agent em `.claudio/agents/WebResearcher.md` (mesmo `agentType`), ele **sobrescreve** o built-in. Isso é feature, não bug: a ordem de merge em `loadAgentsDir.ts:207-211` é `built-in → plugin → userSettings → projectSettings → flagSettings → policySettings`, com cada fonte sobrepondo a anterior. Útil para customizar o system prompt sem fork.
+Se você criar um agent em `.claudin/agents/WebResearcher.md` (mesmo `agentType`), ele **sobrescreve** o built-in. Isso é feature, não bug: a ordem de merge em `loadAgentsDir.ts:207-211` é `built-in → plugin → userSettings → projectSettings → flagSettings → policySettings`, com cada fonte sobrepondo a anterior. Útil para customizar o system prompt sem fork.
 
 ## Indisponibilidade em `COORDINATOR_MODE`
 
@@ -112,7 +112,7 @@ A verificação é **baseada em raciocínio**, não um tally determinístico de 
 
 ### Override de modelo
 
-Mesma mecânica do `WebResearcher` (ver acima): em providers non-Anthropic o alias `'sonnet'` faz fallback para o modelo do pai. Override via `~/.claudio/settings.json` → `agentModelOverrides["built-in:WebResearcherManager"]`.
+Mesma mecânica do `WebResearcher` (ver acima): em providers non-Anthropic o alias `'sonnet'` faz fallback para o modelo do pai. Override via `~/.claudin/settings.json` → `agentModelOverrides["built-in:WebResearcherManager"]`.
 
 > **Atenção (importante para este agente).** Em providers que passam pelo `openaiShim` (OpenRouter, Gemini, DeepSeek, Mistral, etc.), **ambos** os aliases `'sonnet'` (manager) e `'haiku'` (workers) fazem fallback para o modelo do pai. Isso **anula a assimetria de custo** que justifica este agente — manager e workers passam a correr todos no mesmo modelo. Se usas um provider OpenAI-shim, define overrides explícitos para `built-in:WebResearcherManager` e `built-in:WebResearcher` apontando para modelos de tiers diferentes do teu provider, ou o split Sonnet/Haiku não acontece.
 

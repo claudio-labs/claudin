@@ -197,7 +197,7 @@ export async function parseActionOptions(
     });
   }
 
-  // Assistant mode: when .claudio/settings.json has assistant: true AND
+  // Assistant mode: when .claudin/settings.json has assistant: true AND
   // the tengu_kairos GrowthBook gate is on, force brief on. Permission
   // mode is left to the user — settings defaultMode or --permission-mode
   // apply as normal. REPL-typed messages already default to 'next'
@@ -207,10 +207,10 @@ export async function parseActionOptions(
   // kairosEnabled is computed once here and reused at the
   // getAssistantSystemPromptAddendum() call site further down.
   //
-  // Trust gate: .claudio/settings.json is attacker-controllable in an
+  // Trust gate: .claudin/settings.json is attacker-controllable in an
   // untrusted clone. We run ~1000 lines before showSetupScreens() shows
   // the trust dialog, and by then we've already appended
-  // .claudio/agents/assistant.md to the system prompt. Refuse to activate
+  // .claudin/agents/assistant.md to the system prompt. Refuse to activate
   // until the directory has been explicitly trusted.
   if (feature('KAIROS') && options.assistant && assistant.assistantModule) {
     assistant.assistantModule.markAssistantForced();

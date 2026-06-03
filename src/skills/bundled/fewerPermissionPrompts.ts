@@ -3,12 +3,12 @@ import { registerBundledSkill } from '../bundledSkills.js'
 
 /**
  * `/fewer-permission-prompts` — scan recent transcripts and propose a
- * read-only Bash/MCP allowlist for the project's `.claudio/settings.json`.
+ * read-only Bash/MCP allowlist for the project's `.claudin/settings.json`.
  *
- * Ported from the upstream built-in skill, adapted for Claudio:
+ * Ported from the upstream built-in skill, adapted for Claudin:
  *  - transcripts live under <config>/projects/ (resolved at runtime, honoring
- *    CLAUDIO_CONFIG_DIR), not ~/.claude/projects
- *  - project settings target is `.claudio/settings.json`, not `.claude/...`
+ *    CLAUDIN_CONFIG_DIR), not ~/.claude/projects
+ *  - project settings target is `.claudin/settings.json`, not `.claude/...`
  * The readOnlyValidation source-of-truth references are valid in this repo.
  */
 function buildPrompt(): string {
@@ -20,11 +20,11 @@ Look through my transcripts' MCP and bash tool calls, and based on those, make a
 
 The format for permissions is: \`Bash(foo*)\`, \`Bash(foo)\`, \`Bash(foo bar *)\`, \`mcp__slack__slack_read_thread\`, etc.
 
-Then, add these to the project \`.claudio/settings.json\` under \`permissions.allow\`.
+Then, add these to the project \`.claudin/settings.json\` under \`permissions.allow\`.
 
 ## Steps
 
-1. **Locate transcripts.** Session transcripts live under \`${projectsDir}/<sanitized-cwd>/*.jsonl\` (this is Claudio's projects dir, honoring \`CLAUDIO_CONFIG_DIR\`). Each line is a JSON object. Tool calls appear as \`assistant\` messages with \`message.content[]\` entries of \`type: "tool_use"\`. The \`name\` field identifies the tool (e.g. \`"Bash"\`, \`"mcp__slack__slack_read_thread"\`); for Bash, \`input.command\` is the shell string.
+1. **Locate transcripts.** Session transcripts live under \`${projectsDir}/<sanitized-cwd>/*.jsonl\` (this is Claudin's projects dir, honoring \`CLAUDIN_CONFIG_DIR\`). Each line is a JSON object. Tool calls appear as \`assistant\` messages with \`message.content[]\` entries of \`type: "tool_use"\`. The \`name\` field identifies the tool (e.g. \`"Bash"\`, \`"mcp__slack__slack_read_thread"\`); for Bash, \`input.command\` is the shell string.
 
    Scan the recent transcripts across the projects dir — not just the current project — so the allowlist reflects their actual usage. Cap the scan at a reasonable number of recent sessions (e.g. 50 most-recently-modified JSONL files) so this stays fast.
 
@@ -44,7 +44,7 @@ Then, add these to the project \`.claudio/settings.json\` under \`permissions.al
    - Task-runner wildcards: \`npm run *\`, \`yarn run *\`, \`pnpm run *\`, \`bun run *\`, \`make *\`, \`just *\`, \`cargo run *\`, \`go run *\`, etc. — an exact \`Bash(bun run typecheck)\` is fine, \`Bash(bun run *)\` is not
    - \`gh api *\`, \`docker run\`/\`exec\`, \`kubectl exec\`, \`sudo\`, and similar
 
-4. **Drop commands Claudio already auto-allows.** These don't need an allowlist entry — they never prompt. If you see any of these in the transcripts, skip them; don't suggest them to the user.
+4. **Drop commands Claudin already auto-allows.** These don't need an allowlist entry — they never prompt. If you see any of these in the transcripts, skip them; don't suggest them to the user.
 
    - **Always auto-allowed (any args):** \`cal\`, \`uptime\`, \`cat\`, \`head\`, \`tail\`, \`wc\`, \`stat\`, \`strings\`, \`hexdump\`, \`od\`, \`nl\`, \`id\`, \`uname\`, \`free\`, \`df\`, \`du\`, \`locale\`, \`groups\`, \`nproc\`, \`basename\`, \`dirname\`, \`realpath\`, \`cut\`, \`paste\`, \`tr\`, \`column\`, \`tac\`, \`rev\`, \`fold\`, \`expand\`, \`unexpand\`, \`fmt\`, \`comm\`, \`cmp\`, \`numfmt\`, \`readlink\`, \`diff\`, \`true\`, \`false\`, \`sleep\`, \`which\`, \`type\`, \`expr\`, \`test\`, \`getconf\`, \`seq\`, \`tsort\`, \`pr\`, \`echo\`, \`printf\`, \`ls\`, \`cd\`, \`find\`.
    - **Auto-allowed with zero args only:** \`pwd\`, \`whoami\`, \`alias\`.
@@ -72,7 +72,7 @@ Then, add these to the project \`.claudio/settings.json\` under \`permissions.al
    | 2 | \`Bash(gh pr view *)\` | 87 | PR inspection |
    | 3 | \`mcp__slack__slack_read_thread\` | 54 | Slack thread reads |
 
-8. **Merge into \`.claudio/settings.json\`** in the current project (not the user-level \`settings.json\`, not \`.claudio/settings.local.json\`). Create the file if it doesn't exist. Preserve existing keys and existing entries in \`permissions.allow\`; de-duplicate against what's already there; don't remove anything; don't reorder unrelated fields.
+8. **Merge into \`.claudin/settings.json\`** in the current project (not the user-level \`settings.json\`, not \`.claudin/settings.local.json\`). Create the file if it doesn't exist. Preserve existing keys and existing entries in \`permissions.allow\`; de-duplicate against what's already there; don't remove anything; don't reorder unrelated fields.
 
 9. **Report back.** Tell the user what you added (count + a few examples), what was already in the allowlist, and what you skipped and why (e.g. "dropped \`rm\` and \`git push\` — not read-only; dropped \`cat\`/\`ls\`/\`git status\` — already auto-allowed, no rule needed").
 
@@ -83,7 +83,7 @@ export function registerFewerPermissionPromptsSkill(): void {
   registerBundledSkill({
     name: 'fewer-permission-prompts',
     description:
-      "Scan recent transcripts for common read-only Bash/MCP calls and add a prioritized allowlist to the project's .claudio/settings.json to reduce permission prompts.",
+      "Scan recent transcripts for common read-only Bash/MCP calls and add a prioritized allowlist to the project's .claudin/settings.json to reduce permission prompts.",
     whenToUse:
       'When the user wants to cut down on permission prompts by allowlisting their frequent read-only commands.',
     userInvocable: true,

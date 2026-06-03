@@ -49,7 +49,7 @@ mock.module('os', () => ({ ...realOsIntegration, default: realOsIntegration, hom
 const realEnvUtilsIntegration = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsIntegration,
-  getClaudioConfigHomeDir: () => '/tmp/fake-config-integ',
+  getClaudinConfigHomeDir: () => '/tmp/fake-config-integ',
   isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
 }))
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

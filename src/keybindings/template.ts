@@ -1,6 +1,6 @@
 /**
  * Keybindings template generator.
- * Generates a well-documented template file for ~/.claudio/keybindings.json
+ * Generates a well-documented template file for ~/.claudin/keybindings.json
  */
 
 import { jsonStringify } from '../utils/slowOperations.js'

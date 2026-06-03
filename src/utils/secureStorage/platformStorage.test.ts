@@ -38,10 +38,10 @@ describe("Secure Storage Platform Implementations", () => {
   };
 
   describe("Config-Dir Isolation", () => {
-    test("service name changes with CLAUDIO_CONFIG_DIR", () => {
+    test("service name changes with CLAUDIN_CONFIG_DIR", () => {
       const defaultName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
-      process.env.CLAUDIO_CONFIG_DIR = "/tmp/other-config";
+      process.env.CLAUDIN_CONFIG_DIR = "/tmp/other-config";
       const otherName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
       expect(otherName).not.toBe(defaultName);
@@ -50,7 +50,7 @@ describe("Secure Storage Platform Implementations", () => {
     });
 
     test("Linux storage uses scoped service name", () => {
-      process.env.CLAUDIO_CONFIG_DIR = "/tmp/linux-scoped";
+      process.env.CLAUDIN_CONFIG_DIR = "/tmp/linux-scoped";
       const expectedName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
       linuxSecretStorage.update(testData);
@@ -60,7 +60,7 @@ describe("Secure Storage Platform Implementations", () => {
     });
 
     test("Windows storage uses scoped resource name", () => {
-      process.env.CLAUDIO_CONFIG_DIR = "/tmp/win-scoped";
+      process.env.CLAUDIN_CONFIG_DIR = "/tmp/win-scoped";
       const expectedName = getSecureStorageServiceName(CREDENTIALS_SERVICE_SUFFIX);
 
       windowsCredentialStorage.update(testData);

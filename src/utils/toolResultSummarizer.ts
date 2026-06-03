@@ -103,7 +103,7 @@ export function maybeSummarizeToolResult(
 ): ToolResultBlockParam {
   try {
     // Guard 1: env var kill switch (highest precedence).
-    if (isEnvTruthy(process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER)) {
+    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER)) {
       return block
     }
 
@@ -158,7 +158,7 @@ export function maybeSummarizeToolResult(
 
     const summarizedSizeBytes = wrapped.length
 
-    logEvent('claudio_tool_result_summarized', {
+    logEvent('claudin_tool_result_summarized', {
       toolName: sanitizeToolNameForAnalytics(toolName),
       originalSizeBytes,
       summarizedSizeBytes,
@@ -306,7 +306,7 @@ function maybeSummarizeArrayContent(
 
   if (wrapped.length >= originalSizeBytes) return block
 
-  logEvent('claudio_tool_result_summarized', {
+  logEvent('claudin_tool_result_summarized', {
     toolName: sanitizeToolNameForAnalytics(toolName),
     originalSizeBytes,
     summarizedSizeBytes: wrapped.length,

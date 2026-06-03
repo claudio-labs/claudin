@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
  *
  * The disambiguator is `.git/` at the package root: dev checkouts have it,
  * `bun add -g` / `npm i -g` ship the package without a `.git` directory.
- * Without the `.git` requirement, every global install of @claudiolabs/claudio
+ * Without the `.git` requirement, every global install of @claudinlabs/claudin
  * is misread as "development" (its installed package.json has the matching
  * name), which suppresses auto-update.
  */

@@ -66,8 +66,8 @@ function renderSuccessPage(): string {
   </head>
   <body>
     <h1>Codex login complete</h1>
-    <p>You can return to Claudio now.</p>
-    <p>Claudio will finish activating your new Codex OAuth login.</p>
+    <p>You can return to Claudin now.</p>
+    <p>Claudin will finish activating your new Codex OAuth login.</p>
   </body>
 </html>`
 }
@@ -88,7 +88,7 @@ function renderErrorPage(message: string): string {
   <body>
     <h1>Codex login failed</h1>
     <p>${safeMessage}</p>
-    <p>You can close this window and try again in Claudio.</p>
+    <p>You can close this window and try again in Claudin.</p>
   </body>
 </html>`
 }
@@ -107,7 +107,7 @@ function renderCancelledPage(): string {
   </head>
   <body>
     <h1>Codex login cancelled</h1>
-    <p>You can close this window and retry in Claudio.</p>
+    <p>You can close this window and retry in Claudin.</p>
   </body>
 </html>`
 }

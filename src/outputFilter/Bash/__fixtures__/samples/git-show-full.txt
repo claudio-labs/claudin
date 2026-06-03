@@ -12,7 +12,7 @@ Date:   Tue May 5 15:11:45 2026 -0300
       to 2 attempts, excluding model_not_found (model genuinely missing)
     - claude.ts excludes model_not_found from non-streaming fallback too
     - Uses extractOpenAICategoryMarker() instead of duplicated regex
-    - Add MACRO global to 4 test files broken by getClaudioUserAgent()
+    - Add MACRO global to 4 test files broken by getClaudinUserAgent()
     - Add 5 shouldRetry tests for 404 retry logic
 
 diff --git a/src/services/api/claude.ts b/src/services/api/claude.ts

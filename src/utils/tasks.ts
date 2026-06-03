@@ -4,7 +4,7 @@ import { z } from 'zod/v4'
 import { getIsNonInteractiveSession, getSessionId } from '../bootstrap/state.js'
 import { uniq } from './array.js'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir, getTeamsDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, getTeamsDir, isEnvTruthy } from './envUtils.js'
 import { errorMessage, getErrnoCode } from './errors.js'
 import { lazySchema } from './lazySchema.js'
 import * as lockfile from './lockfile.js'
@@ -220,7 +220,7 @@ export function sanitizePathComponent(input: string): string {
 
 export function getTasksDir(taskListId: string): string {
   return join(
-    getClaudioConfigHomeDir(),
+    getClaudinConfigHomeDir(),
     'tasks',
     sanitizePathComponent(taskListId),
   )

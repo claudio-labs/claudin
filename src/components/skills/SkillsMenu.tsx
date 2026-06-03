@@ -106,7 +106,7 @@ export function SkillsMenu(t0) {
   if (skills.length === 0) {
     let t3;
     if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-      t3 = <FullWidthRow><Text dimColor={true}>Create skills in .claudio/skills/ or ~/.claudio/skills/</Text></FullWidthRow>;
+      t3 = <FullWidthRow><Text dimColor={true}>Create skills in .claudin/skills/ or ~/.claudin/skills/</Text></FullWidthRow>;
       $[6] = t3;
     } else {
       t3 = $[6];

@@ -44,11 +44,11 @@ export function getInstallationPath(): string {
   const homeDir = homedir();
   if (isWindows) {
     // Convert to Windows-style path
-    const windowsPath = join(homeDir, '.local', 'bin', 'claudio.exe');
+    const windowsPath = join(homeDir, '.local', 'bin', 'claudin.exe');
     // Replace forward slashes with backslashes for Windows display
     return windowsPath.replace(/\//g, '\\');
   }
-  return '~/.local/bin/claudio';
+  return '~/.local/bin/claudin';
 }
 function SetupNotes(t0) {
   const $ = _c(5);

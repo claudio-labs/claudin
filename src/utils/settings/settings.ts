@@ -12,7 +12,7 @@ import { getRemoteManagedSettingsSyncFromCache } from '../../services/remoteMana
 import { uniq } from '../array.js'
 import { logForDebugging } from '../debug.js'
 import { logForDiagnosticsNoPII } from '../diagLogs.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from '../envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from '../envUtils.js'
 import { getErrnoCode, isENOENT } from '../errors.js'
 import { writeFileSyncAndFlush } from '../file.js'
 import { readFileSync } from '../fileRead.js'
@@ -239,7 +239,7 @@ function parseSettingsFileUncached(path: string): {
 export function getSettingsRootPathForSource(source: SettingSource): string {
   switch (source) {
     case 'userSettings':
-      return resolve(getClaudioConfigHomeDir())
+      return resolve(getClaudinConfigHomeDir())
     case 'policySettings':
     case 'projectSettings':
     case 'localSettings': {
@@ -300,9 +300,9 @@ export function getRelativeSettingsFilePathForSource(
 ): string {
   switch (source) {
     case 'projectSettings':
-      return '.claudio/settings.json'
+      return '.claudin/settings.json'
     case 'localSettings':
-      return '.claudio/settings.local.json'
+      return '.claudin/settings.local.json'
   }
 }
 

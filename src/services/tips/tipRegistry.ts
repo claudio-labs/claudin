@@ -400,7 +400,7 @@ const externalTips: Tip[] = [
   {
     id: 'custom-commands',
     content: async () =>
-      'Create skills by adding .md files to .claudio/skills/ in your project or ~/.claudio/skills/ for skills that work in any project',
+      'Create skills by adding .md files to .claudin/skills/ in your project or ~/.claudin/skills/ for skills that work in any project',
     cooldownSessions: 15,
     async isRelevant() {
       const config = getGlobalConfig()

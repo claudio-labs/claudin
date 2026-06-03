@@ -51,7 +51,7 @@ export function isCacheableTool(toolName: string): boolean {
 }
 
 export function isCacheDisabled(): boolean {
-  return process.env.CLAUDIO_DISABLE_TOOL_RESULT_CACHE === '1'
+  return process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE === '1'
 }
 
 const counters = {

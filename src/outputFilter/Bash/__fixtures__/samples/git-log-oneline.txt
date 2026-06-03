@@ -1,5 +1,5 @@
 a200d7d fix(providers): retry transient 404s from OpenAI-compat providers
-eed74e1 fix(providers): use claudio branding in User-Agent for non-Anthropic providers
+eed74e1 fix(providers): use claudin branding in User-Agent for non-Anthropic providers
 bb98dbf chore(release): v0.1.10
 3c1ce42 fix(cache): skip model-options cache scope for non-local provider URLs
 41c5b06 fix(providers): accurate token metrics for OpenAI-compat providers (#13)

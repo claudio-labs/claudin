@@ -1,7 +1,7 @@
 """
 smart_router.py
 ---------------
-Intelligent auto-router for claudio.
+Intelligent auto-router for claudin.
 
 Instead of always using one fixed provider, the smart router:
 - Pings all configured providers on startup

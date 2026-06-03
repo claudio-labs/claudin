@@ -35,7 +35,7 @@ export type AttributionTexts = {
 
 /**
  * Returns attribution text for commits and PRs based on user settings.
- * Claudio does not add a Co-Authored-By trailer by default; users who want
+ * Claudin does not add a Co-Authored-By trailer by default; users who want
  * one can set `attribution.commit` in settings.json.
  */
 export function getAttributionTexts(): AttributionTexts {
@@ -52,7 +52,7 @@ export function getAttributionTexts(): AttributionTexts {
     return { commit: '', pr: '' }
   }
 
-  const defaultAttribution = '🤖 Generated with Claudio'
+  const defaultAttribution = '🤖 Generated with Claudin'
   const settings = getInitialSettings()
 
   if (settings.attribution) {
@@ -284,7 +284,7 @@ export async function getEnhancedPRAttribution(
     return settings.attribution.pr
   }
 
-  const defaultAttribution = '🤖 Generated with Claudio'
+  const defaultAttribution = '🤖 Generated with Claudin'
 
   // Get AppState first
   const appState = getAppState()
@@ -330,7 +330,7 @@ export async function getEnhancedPRAttribution(
     memoryAccessCount > 0
       ? `, ${memoryAccessCount} ${memoryAccessCount === 1 ? 'memory' : 'memories'} recalled`
       : ''
-  const summary = `🤖 Generated with Claudio (${claudePercent}% ${promptCount}-shotted by ${shortModelName}${memSuffix})`
+  const summary = `🤖 Generated with Claudin (${claudePercent}% ${promptCount}-shotted by ${shortModelName}${memSuffix})`
 
   // Append trailer lines for squash-merge survival. Only for allowlisted repos
   // (INTERNAL_MODEL_REPOS) and only in builds with COMMIT_ATTRIBUTION enabled —

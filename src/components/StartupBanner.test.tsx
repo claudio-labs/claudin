@@ -41,7 +41,7 @@ describe('buildStartupBannerLines', () => {
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     const text = stripAnsi(lines.join('\n'))
 
-    expect(text).toContain('Claudio')
+    expect(text).toContain('Claudin')
     expect(text).toContain('vtest-version')
     expect(text).toContain('Not configured')
     expect(text).toContain('claude-sonnet-4-6')
@@ -134,7 +134,7 @@ describe('buildStartupBannerLines', () => {
     })
     const text = stripAnsi(lines.join('\n'))
     expect(text).toContain('▲ New version 9.9.9 available')
-    expect(text).toContain('claudio update')
+    expect(text).toContain('claudin update')
     // Adds exactly one extra line vs. the no-notice case.
     expect(lines.length).toBe(5)
   })
@@ -144,7 +144,7 @@ describe('buildStartupBannerLines', () => {
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     const text = stripAnsi(lines.join('\n'))
     expect(text).not.toContain('New version')
-    expect(text).not.toContain('claudio update')
+    expect(text).not.toContain('claudin update')
   })
 })
 
@@ -166,7 +166,7 @@ describe('<StartupBanner />', () => {
       100,
     )
 
-    expect(output).toContain('Claudio')
+    expect(output).toContain('Claudin')
     expect(output).toContain('Not configured')
     expect(output).toContain('claude-sonnet-4-6')
   })

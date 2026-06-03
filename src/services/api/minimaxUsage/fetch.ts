@@ -1,6 +1,6 @@
 import { tryGetActiveProvider } from '../activeProvider.js'
 import { logForDebugging } from '../../../utils/debug.js'
-import { getClaudioUserAgent } from '../../../utils/userAgent.js'
+import { getClaudinUserAgent } from '../../../utils/userAgent.js'
 import {
   DEFAULT_MINIMAX_BASE_URL,
   DEFAULT_MINIMAX_UNAVAILABLE_MESSAGE,
@@ -92,7 +92,7 @@ export async function fetchMiniMaxUsage(): Promise<MiniMaxUsageData> {
           Accept: 'application/json',
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'User-Agent': getClaudioUserAgent(),
+          'User-Agent': getClaudinUserAgent(),
         },
         signal: AbortSignal.timeout(5000),
       })

@@ -83,7 +83,7 @@ export function setupReplMocks(): void {
     useRemoteSession: () => ({ state: 'idle', error: null }),
   }))
 
-  // Direct connect — connects to a claudio server.
+  // Direct connect — connects to a claudin server.
   mock.module('src/hooks/useDirectConnect.js', () => ({
     useDirectConnect: () => ({ state: 'idle', error: null }),
   }))
@@ -149,7 +149,7 @@ export function setupReplMocks(): void {
     }),
   }))
 
-  // File history snapshot init — writes to ~/.claudio.
+  // File history snapshot init — writes to ~/.claudin.
   mock.module('src/hooks/useFileHistorySnapshotInit.js', () => ({
     useFileHistorySnapshotInit: noop,
   }))

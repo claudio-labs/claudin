@@ -80,7 +80,7 @@ afterEach(() => {
 })
 
 function createTempAuthJson(payload: Record<string, unknown>): string {
-  const dir = mkdtempSync(join(tmpdir(), 'claudio-codex-'))
+  const dir = mkdtempSync(join(tmpdir(), 'claudin-codex-'))
   tempDirs.push(dir)
   const authPath = join(dir, 'auth.json')
   writeFileSync(authPath, JSON.stringify(payload), 'utf8')
@@ -660,8 +660,8 @@ describe('Codex request translation', () => {
             type: 'web_search_call',
             sources: [
               {
-                title: 'Claudio repo',
-                url: 'https://github.com/example/claudio',
+                title: 'Claudin repo',
+                url: 'https://github.com/example/claudin',
               },
             ],
           },
@@ -671,11 +671,11 @@ describe('Codex request translation', () => {
             content: [
               {
                 type: 'text',
-                text: 'Claudio is available on GitHub.',
+                text: 'Claudin is available on GitHub.',
                 sources: [
                   {
                     title: 'Docs',
-                    url: 'https://docs.example.com/claudio',
+                    url: 'https://docs.example.com/claudin',
                   },
                 ],
               },
@@ -683,22 +683,22 @@ describe('Codex request translation', () => {
           },
         ],
       },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.42,
     )
 
     expect(output.results).toEqual([
-      'Claudio is available on GitHub.',
+      'Claudin is available on GitHub.',
       {
         tool_use_id: 'codex-web-search',
         content: [
           {
-            title: 'Claudio repo',
-            url: 'https://github.com/example/claudio',
+            title: 'Claudin repo',
+            url: 'https://github.com/example/claudin',
           },
           {
             title: 'Docs',
-            url: 'https://docs.example.com/claudio',
+            url: 'https://docs.example.com/claudin',
           },
         ],
       },
@@ -708,7 +708,7 @@ describe('Codex request translation', () => {
   test('falls back to a non-empty Codex web search result message', () => {
     const output = webSearchToolTest.makeOutputFromCodexWebSearchResponse(
       { output: [] },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.11,
     )
 
@@ -726,7 +726,7 @@ describe('Codex request translation', () => {
           },
         ],
       },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.05,
     )
 
@@ -746,7 +746,7 @@ describe('Codex request translation', () => {
           },
         ],
       },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.05,
     )
 
@@ -763,7 +763,7 @@ describe('Codex request translation', () => {
           },
         ],
       },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.05,
     )
 
@@ -787,14 +787,14 @@ describe('Codex request translation', () => {
                 type: 'output_text',
                 text: 'Partial results below.',
                 sources: [
-                  { title: 'Docs', url: 'https://docs.example.com/claudio' },
+                  { title: 'Docs', url: 'https://docs.example.com/claudin' },
                 ],
               },
             ],
           },
         ],
       },
-      'Claudio GitHub 2026',
+      'Claudin GitHub 2026',
       0.05,
     )
 
@@ -804,7 +804,7 @@ describe('Codex request translation', () => {
       {
         tool_use_id: 'codex-web-search',
         content: [
-          { title: 'Docs', url: 'https://docs.example.com/claudio' },
+          { title: 'Docs', url: 'https://docs.example.com/claudin' },
         ],
       },
     ])

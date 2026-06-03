@@ -1,8 +1,8 @@
-# Contributing to Claudio
+# Contributing to Claudin
 
 Thanks for contributing.
 
-Claudio is a fast-moving open-source coding-agent CLI with support for multiple providers, local backends, MCP, and a terminal-first workflow. The best contributions here are focused, well-tested, and easy to review.
+Claudin is a fast-moving open-source coding-agent CLI with support for multiple providers, local backends, MCP, and a terminal-first workflow. The best contributions here are focused, well-tested, and easy to review.
 
 ## Before You Start
 
@@ -68,7 +68,7 @@ Focused tests:
 bun test ./path/to/test-file.test.ts
 ```
 
-When working on provider/runtime setup, run `/provider doctor` from inside Claudio to probe the active profile (reachability, auth, and model availability).
+When working on provider/runtime setup, run `/provider doctor` from inside Claudin to probe the active profile (reachability, auth, and model availability).
 
 ## Pull Requests
 
@@ -92,7 +92,7 @@ If the PR changes provider behavior, mention which provider path was tested.
 
 ## Provider Changes
 
-Claudio supports multiple provider paths. If you change provider logic:
+Claudin supports multiple provider paths. If you change provider logic:
 
 - be explicit about which providers are affected
 - avoid breaking third-party providers while fixing first-party behavior

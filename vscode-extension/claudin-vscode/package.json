@@ -1,0 +1,183 @@
+{
+  "name": "claudin-vscode",
+  "displayName": "Claudin",
+  "description": "Practical VS Code companion for Claudin with project-aware launch behavior and a real Control Center.",
+  "version": "0.1.0",
+  "publisher": "devnull-bootloader",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:claudin.start",
+    "onCommand:claudin.startInWorkspaceRoot",
+    "onCommand:claudin.openDocs",
+    "onCommand:claudin.openSetupDocs",
+    "onCommand:claudin.openWorkspaceProfile",
+    "onCommand:claudin.openControlCenter",
+    "onCommand:claudin.newChat",
+    "onCommand:claudin.openChat",
+    "onCommand:claudin.resumeSession",
+    "onCommand:claudin.abortChat",
+    "onView:claudin.controlCenter",
+    "onView:claudin.chat"
+  ],
+  "main": "./src/extension.js",
+  "files": [
+    "README.md",
+    "media/**",
+    "node_modules/ws/**",
+    "src/extension.js",
+    "src/presentation.js",
+    "src/state.js",
+    "src/chat/**",
+    "src/mcp/**",
+    "themes/**"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudin.start",
+        "title": "Claudin: Launch in Terminal",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.startInWorkspaceRoot",
+        "title": "Claudin: Launch in Workspace Root",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.openDocs",
+        "title": "Claudin: Open Repository",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.openSetupDocs",
+        "title": "Claudin: Open Setup Guide",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.openWorkspaceProfile",
+        "title": "Claudin: Open Workspace Profile",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.openControlCenter",
+        "title": "Claudin: Open Control Center",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.newChat",
+        "title": "Claudin: New Chat",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.openChat",
+        "title": "Claudin: Open Chat Panel",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.resumeSession",
+        "title": "Claudin: Resume Session",
+        "category": "Claudin"
+      },
+      {
+        "command": "claudin.abortChat",
+        "title": "Claudin: Abort Generation",
+        "category": "Claudin"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudin",
+          "title": "Claudin",
+          "icon": "media/claudin.svg"
+        }
+      ]
+    },
+    "views": {
+      "claudin": [
+        {
+          "id": "claudin.chat",
+          "name": "Chat",
+          "type": "webview"
+        },
+        {
+          "id": "claudin.controlCenter",
+          "name": "Control Center",
+          "type": "webview"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "claudin.openChat",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l"
+      }
+    ],
+    "configuration": {
+      "title": "Claudin",
+      "properties": {
+        "claudin.launchCommand": {
+          "type": "string",
+          "default": "claudin",
+          "description": "Command run in the integrated terminal when launching Claudin."
+        },
+        "claudin.terminalName": {
+          "type": "string",
+          "default": "Claudin",
+          "description": "Integrated terminal tab name for Claudin sessions."
+        },
+        "claudin.useOpenAIShim": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optionally set CLAUDE_CODE_USE_OPENAI=1 in launched Claudin terminals."
+        },
+        "claudin.permissionMode": {
+          "type": "string",
+          "default": "acceptEdits",
+          "enum": ["default", "acceptEdits", "bypassPermissions", "plan"],
+          "enumDescriptions": [
+            "Prompt for permission on each tool use (requires manual approval)",
+            "Auto-approve file edits, prompt for other operations (recommended)",
+            "Auto-approve all operations without prompting",
+            "Read-only mode — no file modifications allowed"
+          ],
+          "description": "Permission mode for chat sessions. Controls which tool operations are auto-approved."
+        }
+      }
+    },
+    "themes": [
+      {
+        "label": "Claudin Terminal Black",
+        "uiTheme": "vs-dark",
+        "path": "./themes/Claudin-Terminal-Black.json"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "bun test ./src/",
+    "lint": "node scripts/lint.js",
+    "package": "npx --yes @vscode/vsce@^3 package"
+  },
+  "keywords": [
+    "claudin",
+    "terminal",
+    "theme",
+    "cli",
+    "llm"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

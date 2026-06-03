@@ -144,7 +144,7 @@ export function getTodoReminderDelta(
     .map(item => ({ id: item.id, status: item.status }))
     .sort((a, b) => a.id.localeCompare(b.id))
 
-  logEvent('claudio_todo_reminder_delta', {
+  logEvent('claudin_todo_reminder_delta', {
     addedCount: added.length,
     statusChangedCount: statusChanged.length,
     removedCount: removedIds.length,

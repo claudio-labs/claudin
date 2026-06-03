@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function makeProjectDir(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'claudio-wiki-init-'))
+  const dir = await mkdtemp(join(tmpdir(), 'claudin-wiki-init-'))
   tempDirs.push(dir)
   return dir
 }
@@ -26,17 +26,17 @@ test('initializeWiki creates the expected wiki scaffold', async () => {
 
   expect(result.alreadyExisted).toBe(false)
   expect(result.createdFiles).toEqual([
-    join('.claudio', 'wiki', 'schema.md'),
-    join('.claudio', 'wiki', 'index.md'),
-    join('.claudio', 'wiki', 'log.md'),
-    join('.claudio', 'wiki', 'pages', 'architecture.md'),
+    join('.claudin', 'wiki', 'schema.md'),
+    join('.claudin', 'wiki', 'index.md'),
+    join('.claudin', 'wiki', 'log.md'),
+    join('.claudin', 'wiki', 'pages', 'architecture.md'),
   ])
   expect(await readFile(paths.schemaFile, 'utf8')).toContain(
-    '# Claudio Wiki Schema',
+    '# Claudin Wiki Schema',
   )
   expect(await readFile(paths.indexFile, 'utf8')).toContain('Wiki')
   expect(await readFile(paths.logFile, 'utf8')).toContain(
-    'Wiki initialized by Claudio',
+    'Wiki initialized by Claudin',
   )
   expect(await readFile(join(paths.pagesDir, 'architecture.md'), 'utf8')).toContain(
     '# Architecture',

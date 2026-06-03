@@ -27,7 +27,7 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 
 ### Não-arquivos
 
-- **Telemetria observation period** (1 semana): coletar métricas dos 3 eventos `claudio_bash_filter_*` e analisar ROI real vs medido.
+- **Telemetria observation period** (1 semana): coletar métricas dos 3 eventos `claudin_bash_filter_*` e analisar ROI real vs medido.
 - **Documentação user-facing** (curta): adicionar 1 paragraph em `CLAUDE.md` ou `README.md` explicando o feature + env vars de opt-out.
 
 ## Steps
@@ -60,16 +60,16 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
    - Mencionar: feature ativa por default, env vars de opt-out, link pra `docs/tech/bash-output-filter/`
 
 5. **Soak observation (1 semana):**
-   - Coletar `claudio_bash_filter_applied` events: agregação por `filter_name` × `reduction_pct` (mediana, p99)
-   - Coletar `claudio_bash_rewrite_applied`: contagem por `filter_name`
-   - Coletar `claudio_bash_filter_skipped`: contagem por `reason_code`
+   - Coletar `claudin_bash_filter_applied` events: agregação por `filter_name` × `reduction_pct` (mediana, p99)
+   - Coletar `claudin_bash_rewrite_applied`: contagem por `filter_name`
+   - Coletar `claudin_bash_filter_skipped`: contagem por `reason_code`
    - Comparar ROI medido em produção vs predicted no `optimization-matrix.md`. Se desvio >10pp em algum filter, abrir issue de revisão.
    - Escutar ativamente por user feedback (Discord, Issues): "filter swallowed my error", "command output looks weird"
 
 6. **Run end-to-end smoke** (Phase 7 acceptance):
    ```bash
    bun run build
-   CLAUDIO_BASH_FILTER_DEBUG=1 bun run dev
+   CLAUDIN_BASH_FILTER_DEBUG=1 bun run dev
    # In agent, run all of:
    git status
    git log -10
@@ -112,7 +112,7 @@ bun run typecheck
 - [ ] Compound bypass: `git log -5 | wc -l` → no marker
 - [ ] Error-exit: `cargo build` fail shows `<bash-output-rewritten>` marker
 - [ ] Snapshot updates only where marker is intentionally injected
-- [ ] User filter at `~/.claudio/filters.json` loads + applies
+- [ ] User filter at `~/.claudin/filters.json` loads + applies
 - [x] `processToolResultBlock` test surface covers filter+summarizer interaction
 - [ ] User documentation updated (CLAUDE.md or README.md)
 - [ ] Soak: 1 week of telemetry shows ≤10pp deviation from predicted ROI

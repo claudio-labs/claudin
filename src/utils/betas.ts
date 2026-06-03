@@ -202,7 +202,7 @@ export function shouldIncludeFirstPartyOnlyBetas(): boolean {
  * treatment data is firstParty-only.
  */
 export function shouldUseGlobalCacheScope(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIO_DISABLE_GLOBAL_CACHE_SCOPE)) return false
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE)) return false
   return (
     getAPIProvider() === 'firstParty' &&
     !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)

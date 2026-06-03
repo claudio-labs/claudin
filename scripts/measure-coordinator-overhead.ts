@@ -5,7 +5,7 @@
  * the main agent loop runs in "coordinator" shape:
  *
  *   - A *replacement* system prompt (`getCoordinatorSystemPrompt()`) — not
- *     the regular Claudio system prompt. Smaller in some sections, larger
+ *     the regular Claudin system prompt. Smaller in some sections, larger
  *     in others.
  *   - Extra coordinator-only tools: `TeamCreate`, `TeamDelete`,
  *     `SendMessage`, `SyntheticOutput`. Each carries its own schema bytes.
@@ -46,7 +46,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
       BUILD_TIME: new Date().toISOString(),
       ISSUES_EXPLAINER:
         'report the issue at https://github.com/anthropics/claude-code/issues',
-      PACKAGE_URL: '@claudiolabs/claudio',
+      PACKAGE_URL: '@claudinlabs/claudin',
     },
   })
 }

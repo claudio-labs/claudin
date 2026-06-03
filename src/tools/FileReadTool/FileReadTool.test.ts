@@ -20,7 +20,7 @@ import { FileReadTool, MaxFileReadTokenExceededError } from './FileReadTool.js'
 process.env.CLAUDE_CODE_SIMPLE = '1'
 // The tool-result cache short-circuits call() on identical inputs, which would
 // mask the in-call dedup path we want to exercise. Disable it for this suite.
-process.env.CLAUDIO_DISABLE_TOOL_RESULT_CACHE = '1'
+process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
 
 // Frozen body for the token-cap test — the VCR fixture key depends on it.
 const TOKEN_CAP_BODY =

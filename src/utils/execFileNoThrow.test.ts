@@ -9,7 +9,7 @@ async function importFreshExecFileNoThrowModule() {
 
 test('execFileNoThrowWithCwd rejects shell-like executable names', async () => {
   const { execFileNoThrowWithCwd } = await importFreshExecFileNoThrowModule()
-  const result = await execFileNoThrowWithCwd('claudio && whoami', [])
+  const result = await execFileNoThrowWithCwd('claudin && whoami', [])
 
   expect(result.code).toBe(1)
   expect(result.error).toContain('Unsafe executable')
@@ -54,7 +54,7 @@ test('execFileNoThrowWithCwd preserves Windows .cmd compatibility', async () => 
   }
   const { execFileNoThrowWithCwd } = await importFreshExecFileNoThrowModule()
 
-  const dir = mkdtempSync(join(tmpdir(), 'claudio-execfile-'))
+  const dir = mkdtempSync(join(tmpdir(), 'claudin-execfile-'))
   const file = join(dir, 'hello.cmd')
   writeFileSync(file, '@echo off\r\necho hello\r\n')
 

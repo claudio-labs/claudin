@@ -2,7 +2,7 @@ total 336
 drwxr-xr-x 1 viudes viudes    680 May  5 14:20 .
 drwxr-xr-x 1 viudes viudes    126 May  4 23:34 ..
 drwxr-xr-x 1 viudes viudes     66 May  4 23:41 .claude
-drwxr-xr-x 1 viudes viudes     38 May  5 14:46 .claudio
+drwxr-xr-x 1 viudes viudes     38 May  5 14:46 .claudin
 -rw-r--r-- 1 viudes viudes    143 Apr 29 18:13 .dockerignore
 -rw-r--r-- 1 viudes viudes  17961 Apr 29 18:13 .env.example
 drwxr-xr-x 1 viudes viudes    238 May  5 15:14 .git

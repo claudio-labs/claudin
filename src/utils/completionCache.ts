@@ -6,7 +6,7 @@ import { pathToFileURL } from 'url'
 import { color } from '../components/design-system/color.js'
 import { supportsHyperlinks } from '../ink/supports-hyperlinks.js'
 import { logForDebugging } from './debug.js'
-import { getClaudioConfigHomeDir } from './envUtils.js'
+import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'
 import { execFileNoThrow } from './execFileNoThrow.js'
 import { logError } from './log.js'
@@ -25,7 +25,7 @@ type ShellInfo = {
 function detectShell(): ShellInfo | null {
   const shell = process.env.SHELL || ''
   const home = homedir()
-  const claudeDir = getClaudioConfigHomeDir()
+  const claudeDir = getClaudinConfigHomeDir()
 
   if (shell.endsWith('/zsh') || shell.endsWith('/zsh.exe')) {
     const cacheFile = join(claudeDir, 'completion.zsh')
@@ -149,7 +149,7 @@ export async function regenerateCompletionCache(): Promise<void> {
   const claudeBin = process.argv[1] || 'claude'
   // Hard timeout + ignored stdin so a freshly-installed binary that doesn't
   // recognize `completion --output` (or drops into REPL on a piped stdin) can't
-  // hang `claudio update` indefinitely — completion cache regen is best-effort.
+  // hang `claudin update` indefinitely — completion cache regen is best-effort.
   const result = await execFileNoThrow(
     claudeBin,
     ['completion', shell.shellFlag, '--output', shell.cacheFile],

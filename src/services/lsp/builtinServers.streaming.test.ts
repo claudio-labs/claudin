@@ -62,7 +62,7 @@ mock.module('os', () => ({ ...realOsStreaming, default: realOsStreaming, homedir
 const realEnvUtilsStreaming = { ...(await import('../../utils/envUtils.js')) }
 mock.module('../../utils/envUtils.js', () => ({
   ...realEnvUtilsStreaming,
-  getClaudioConfigHomeDir: () => '/tmp/fake-config-streaming',
+  getClaudinConfigHomeDir: () => '/tmp/fake-config-streaming',
   isEnvTruthy: (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false',
 }))
 

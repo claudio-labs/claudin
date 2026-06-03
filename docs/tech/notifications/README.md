@@ -1,10 +1,10 @@
 # Notifications
 
-Claudio surfaces "needs attention" events (input required, long task finished, hook-driven custom events) through whatever channel the host environment supports. The router lives in `src/services/notifier.ts`; the in-band terminal sequences live in `src/ink/useTerminalNotification.ts`; pure helpers are in `src/services/notifierHelpers.ts`.
+Claudin surfaces "needs attention" events (input required, long task finished, hook-driven custom events) through whatever channel the host environment supports. The router lives in `src/services/notifier.ts`; the in-band terminal sequences live in `src/ink/useTerminalNotification.ts`; pure helpers are in `src/services/notifierHelpers.ts`.
 
 ## Channels
 
-Configured via `preferredNotifChannel` in `~/.claudio/settings.json` (`/config` → "Notifications").
+Configured via `preferredNotifChannel` in `~/.claudin/settings.json` (`/config` → "Notifications").
 
 | Channel | What it does |
 |---|---|
@@ -57,4 +57,4 @@ The PowerShell payload is built by `buildWindowsToastScript()` and base64-encode
 
 ## Hooks
 
-The orchestrator fires `executeNotificationHooks()` **before** the debounce check, so users can wire any custom backend (Slack, Pushover, ntfy) via `~/.claudio/settings.json` hook config and trust that off-device delivery is never silently coalesced. The channel above runs in addition to, not instead of, the hook.
+The orchestrator fires `executeNotificationHooks()` **before** the debounce check, so users can wire any custom backend (Slack, Pushover, ntfy) via `~/.claudin/settings.json` hook config and trust that off-device delivery is never silently coalesced. The channel above runs in addition to, not instead of, the hook.

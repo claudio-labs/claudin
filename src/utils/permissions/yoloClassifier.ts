@@ -107,7 +107,7 @@ function warnClassifierDisabledOnce(): void {
   if (warnedClassifierDisabled) return
   warnedClassifierDisabled = true
   process.stderr.write(
-    'claudio: auto-mode classifier prompts are not bundled in this build. ' +
+    'claudin: auto-mode classifier prompts are not bundled in this build. ' +
       'Falling back to auto-allow for non-allowlisted tools. ' +
       'safetyCheck (sensitive paths) and your permissions.deny rules still apply.\n',
   )

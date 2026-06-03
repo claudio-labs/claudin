@@ -1,4 +1,4 @@
-// SSH remote branch — `claudio ssh <host> [dir]`. Probes the remote, deploys
+// SSH remote branch — `claudin ssh <host> [dir]`. Probes the remote, deploys
 // the binary if needed, opens an ssh connection with a unix-socket -R forward
 // to a local auth proxy and hands the REPL an SSHSession. Tools run remotely,
 // UI renders locally. `--local` skips probe/deploy/ssh and spawns the current

@@ -1,4 +1,4 @@
-// Assistant chat branch — `claudio assistant [sessionId]`. REPL as a pure
+// Assistant chat branch — `claudin assistant [sessionId]`. REPL as a pure
 // viewer client of a remote assistant session. Gated by feature('KAIROS').
 // Dead-code in the open build. Extracted from src/main.tsx (ROADMAP 11g
 // Fase 5b).

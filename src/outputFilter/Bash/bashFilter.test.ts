@@ -16,7 +16,7 @@ import type { FilterSpec } from "./types.js";
 // ---------------------------------------------------------------------------
 // Phase 6.1.2 harness helpers — load real shell output captured in
 // docs/discovery/.../samples/ and measure byte-reduction against the
-// predicted ROI (see .claudio/plans/fizzy-churning-stearns.md, decision D1).
+// predicted ROI (see .claudin/plans/fizzy-churning-stearns.md, decision D1).
 // ---------------------------------------------------------------------------
 const SAMPLES_DIR = resolve(
   import.meta.dir,
@@ -1067,7 +1067,7 @@ describe("phase 6.1.5 — gitBlame", () => {
   });
 
   test("strips author+timezone, keeps hash+date+line", () => {
-    const raw = "^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudio\n23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Coding agent\n";
+    const raw = "^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudin\n23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Coding agent\n";
     const body = runFilterBody("git-blame", "git blame README.md", raw);
     expect(body).toContain("^b8dc2bb");
     expect(body).toContain("2026-04-29");
@@ -2190,7 +2190,7 @@ describe("phase 9 — jq", () => {
   test("safety: jq-pretty-deep sample is preserved verbatim", () => {
     const raw = loadSample("jq-pretty-deep");
     const body = runFilterBody("jq", "jq '.'", raw);
-    expect(body).toContain('"name": "claudio"');
+    expect(body).toContain('"name": "claudin"');
     expect(body).toContain('"nested"');
   });
 
@@ -3530,7 +3530,7 @@ describe("phase 12.3 — git-worktree", () => {
       "utf8",
     );
     const body = runFilterBody("git-worktree", "git worktree list", raw);
-    expect(body).toContain("/home/viudes/projects/claudio");
+    expect(body).toContain("/home/viudes/projects/claudin");
   });
 
   test("match: git worktree list ✓; --porcelain rejects; add/remove not matched", () => {

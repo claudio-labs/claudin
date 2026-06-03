@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle';
 import { validateProviderEnvForStartupOrExit } from '../utils/providerValidation.js'
 
-// Claudio: polyfill globalThis.File for Node < 20.
+// Claudin: polyfill globalThis.File for Node < 20.
 // undici v7 references `File` at module evaluation time (webidl type
 // assertions). Node 18 lacks the global, causing a ReferenceError inside
 // the bundled __commonJS require chain which deadlocks the process when a
@@ -29,7 +29,7 @@ if (typeof globalThis.File === 'undefined') {
   }
 }
 
-// Claudio: polyfill Promise.withResolvers for Node < 22.
+// Claudin: polyfill Promise.withResolvers for Node < 22.
 // undici v8+ (used by the bundled fetch) calls Promise.withResolvers at
 // runtime during the first HTTP request. Node 21 and earlier lack it,
 // causing every API call to fail with "Promise.withResolvers is not a
@@ -49,7 +49,7 @@ if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function'
   }
 }
 
-// Claudio: polyfill util.markAsUncloneable for Node < 22.4.
+// Claudin: polyfill util.markAsUncloneable for Node < 22.4.
 // undici v8 calls util.markAsUncloneable on Response/Request internals to
 // prevent structured-clone copies. Node 22.3 and earlier (and all 20.x)
 // lack it, causing every HTTP call to throw "util.markAsUncloneable is
@@ -64,14 +64,14 @@ if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function'
   }
 }
 
-// Claudio: disable experimental API betas by default.
+// Claudin: disable experimental API betas by default.
 // Tool search (defer_loading), global cache scope, and context management
 // require internal API support not available to external accounts → 500.
 // Users can opt-in with CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=false.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 
-// Claudio: enable fine-grained tool streaming on Anthropic 1P by default.
+// Claudin: enable fine-grained tool streaming on Anthropic 1P by default.
 // Without it, the API buffers each tool_use input until complete before
 // emitting input_json_delta — freezes spinner counter and delays tool render.
 // GrowthBook gate (`tengu_fgts`) is stubbed in open build, so we default the
@@ -116,7 +116,7 @@ async function main(): Promise<void> {
   if (args.length === 1 && (args[0] === '--version' || args[0] === '-v' || args[0] === '-V')) {
     // MACRO.VERSION is inlined at build time
     // biome-ignore lint/suspicious/noConsole:: intentional console output
-    console.log(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudio)`);
+    console.log(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudin)`);
     return;
   }
 
@@ -126,7 +126,7 @@ async function main(): Promise<void> {
   if (args.includes('--provider')) {
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.error(
-      'The --provider CLI flag was removed. Run "claudio" and use /provider to choose a profile.',
+      'The --provider CLI flag was removed. Run "claudin" and use /provider to choose a profile.',
     );
     process.exit(1);
   }
@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     applySafeConfigEnvironmentVariables()
   }
 
-  // Fire-and-forget update check: writes ~/.claudio/latest-version.json in the
+  // Fire-and-forget update check: writes ~/.claudin/latest-version.json in the
   // background so the *next* launch's StartupBanner can render the notice.
   // Never awaited — must not gate boot on npm view latency. Self-swallows all
   // errors (see runStartupUpdateCheck).
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
 
   // Ctrl+L-style clear before mounting the REPL. Disabled by default so the
   // launch preserves the user's existing terminal contents; opt in with
-  // CLAUDIO_CLEAR_ON_START=1. Scrollback is preserved either way (no \x1b[3J).
+  // CLAUDIN_CLEAR_ON_START=1. Scrollback is preserved either way (no \x1b[3J).
   // The banner is rendered by Ink (<StartupBanner /> in REPL.tsx) so it scrolls
   // naturally into scrollback as content grows.
   const { tryGetActiveProvider } = await import(
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
   if (
     tryGetActiveProvider() &&
     process.stdout.isTTY &&
-    process.env.CLAUDIO_CLEAR_ON_START === '1'
+    process.env.CLAUDIN_CLEAR_ON_START === '1'
   ) {
     const { clearTerminal } = await import('../ink/clearTerminal.js')
     process.stdout.write(clearTerminal)
@@ -308,7 +308,7 @@ async function main(): Promise<void> {
   }
 
   // Fast-path for `claude ps|logs|attach|kill` and `--bg`/`--background`.
-  // Session management against the ~/.claudio/sessions/ registry. Flag
+  // Session management against the ~/.claudin/sessions/ registry. Flag
   // literals are inlined so bg.js only loads when actually dispatching.
   if (feature('BG_SESSIONS') && (args[0] === 'ps' || args[0] === 'logs' || args[0] === 'attach' || args[0] === 'kill' || args.includes('--bg') || args.includes('--background'))) {
     profileCheckpoint('cli_bg_path');
@@ -413,7 +413,7 @@ async function main(): Promise<void> {
   }
 
   // No special flags detected, load and run the full CLI
-  if (process.env.CLAUDIO_DISABLE_EARLY_INPUT !== '1') {
+  if (process.env.CLAUDIN_DISABLE_EARLY_INPUT !== '1') {
     const {
       startCapturingEarlyInput
     } = await import('../utils/earlyInput.js');

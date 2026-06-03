@@ -1,5 +1,5 @@
 /**
- * Claudio build script — bundles the TypeScript source into a single
+ * Claudin build script — bundles the TypeScript source into a single
  * distributable JS file using Bun's bundler.
  *
  * Handles:
@@ -16,7 +16,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 const version = pkg.version
 
 const ideExtensionPkg = JSON.parse(
-  readFileSync('./vscode-extension/claudio-vscode/package.json', 'utf-8'),
+  readFileSync('./vscode-extension/claudin-vscode/package.json', 'utf-8'),
 )
 const ideExtensionVersion = ideExtensionPkg.version
 
@@ -149,7 +149,7 @@ function restoreModifiedFiles() {
 // stale dev chunks behind would cause them to ship in the npm tarball
 // alongside fresh release chunks (duplicates observed in v0.2.5).
 const distDir = join(import.meta.dir, '..', 'dist')
-const isReleaseBuild = process.env.CLAUDIO_RELEASE_BUILD === '1'
+const isReleaseBuild = process.env.CLAUDIN_RELEASE_BUILD === '1'
 const staleArtifacts = isReleaseBuild
   ? ['cli.mjs', 'cli.mjs.map', 'chunks']
   : ['cli.mjs', 'cli.mjs.map']
@@ -186,12 +186,12 @@ const result = await Bun.build({
   // Release builds (npm publish) drop sourcemaps entirely and minify, so the
   // tarball stays small and source isn't shipped. Local dev keeps external
   // sourcemaps + unminified output for stack traces / debugging.
-  sourcemap: process.env.CLAUDIO_RELEASE_BUILD === '1' ? 'none' : 'external',
+  sourcemap: process.env.CLAUDIN_RELEASE_BUILD === '1' ? 'none' : 'external',
   // Release builds minify everything (identifiers + whitespace + syntax) for
   // smallest tarball. Dev builds drop only whitespace/syntax — identifiers
   // stay readable for stack traces and source-mapped debugging. Measured:
   // 21 MB → 15 MB (-29%) with no cold-start regression.
-  minify: process.env.CLAUDIO_RELEASE_BUILD === '1'
+  minify: process.env.CLAUDIN_RELEASE_BUILD === '1'
     ? true
     : { whitespace: true, syntax: true, identifiers: false },
   naming: {
@@ -200,8 +200,8 @@ const result = await Bun.build({
     // stack trace from a published bundle (`cli-0.1.5-abc123.mjs:42`)
     // identifies the release without requiring sourcemaps. Local dev
     // builds keep the shorter `cli-abc123.mjs` form. Toggled by
-    // CLAUDIO_RELEASE_BUILD=1 (set in package.json `build:release`).
-    chunk: process.env.CLAUDIO_RELEASE_BUILD === '1'
+    // CLAUDIN_RELEASE_BUILD=1 (set in package.json `build:release`).
+    chunk: process.env.CLAUDIN_RELEASE_BUILD === '1'
       ? `chunks/[name]-${version}-[hash].mjs`
       : `chunks/[name]-${buildId}-[hash].mjs`,
     asset: 'assets/[name]-[hash][ext]',
@@ -217,7 +217,7 @@ const result = await Bun.build({
     'process.env.NODE_ENV': JSON.stringify('production'),
     // Inline USER_TYPE so Bun constant-folds and tree-shakes every
     // `process.env.USER_TYPE === 'ant'` branch. USER_TYPE is an
-    // Anthropic-internal env that is never set in Claudio; this acts as
+    // Anthropic-internal env that is never set in Claudin; this acts as
     // a safety net even after the source is cleaned of those gates.
     'process.env.USER_TYPE': JSON.stringify('open'),
     // MACRO.* build-time constants
@@ -229,7 +229,7 @@ const result = await Bun.build({
     'MACRO.BUILD_TIME': JSON.stringify(new Date().toISOString()),
     'MACRO.ISSUES_EXPLAINER':
       JSON.stringify('report the issue at https://github.com/anthropics/claude-code/issues'),
-    'MACRO.PACKAGE_URL': JSON.stringify('@claudiolabs/claudio'),
+    'MACRO.PACKAGE_URL': JSON.stringify('@claudinlabs/claudin'),
     'MACRO.NATIVE_PACKAGE_URL': 'undefined',
     'MACRO.IDE_EXTENSION_VERSION': JSON.stringify(ideExtensionVersion),
   },
@@ -648,7 +648,7 @@ if (!result.success) {
     }
   }
 
-  console.log(`✓ Built claudio v${version} → dist/cli.mjs`)
+  console.log(`✓ Built claudin v${version} → dist/cli.mjs`)
 }
 
 } finally {

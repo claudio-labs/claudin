@@ -1167,7 +1167,7 @@ export const AgentDefinitionSchema = lazySchema(() =>
         .enum(['user', 'project', 'local'])
         .optional()
         .describe(
-          "Scope for auto-loading agent memory files. 'user' - ~/.claudio/agent-memory/<agentType>/, 'project' - .claudio/agent-memory/<agentType>/, 'local' - .claudio/agent-memory-local/<agentType>/",
+          "Scope for auto-loading agent memory files. 'user' - ~/.claudin/agent-memory/<agentType>/, 'project' - .claudin/agent-memory/<agentType>/, 'local' - .claudin/agent-memory-local/<agentType>/",
         ),
       effort: z
         .union([z.enum(['low', 'medium', 'high', 'max']), z.number().int()])
@@ -1195,9 +1195,9 @@ export const SettingSourceSchema = lazySchema(() =>
     .enum(['user', 'project', 'local'])
     .describe(
       'Source for loading filesystem-based settings. ' +
-        "'user' - Global user settings (~/.claudio/settings.json). " +
-        "'project' - Project settings (.claudio/settings.json). " +
-        "'local' - Local settings (.claudio/settings.local.json).",
+        "'user' - Global user settings (~/.claudin/settings.json). " +
+        "'project' - Project settings (.claudin/settings.json). " +
+        "'local' - Local settings (.claudin/settings.local.json).",
     ),
 )
 

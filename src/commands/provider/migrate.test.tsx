@@ -11,7 +11,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const ORIGINAL_CLAUDIO_CONFIG_DIR = process.env.CLAUDIO_CONFIG_DIR
+const ORIGINAL_CLAUDIN_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
 
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
@@ -34,11 +34,11 @@ afterAll(() => {
 import { parseMigrateArgs, runProviderMigrate } from './migrate.js'
 
 function makeTempHome(): { home: string; legacy: string; next: string } {
-  const home = mkdtempSync(join(tmpdir(), 'claudio-migrate-cmd-'))
+  const home = mkdtempSync(join(tmpdir(), 'claudin-migrate-cmd-'))
   return {
     home,
     legacy: join(home, '.claude'),
-    next: join(home, '.claudio'),
+    next: join(home, '.claudin'),
   }
 }
 
@@ -61,15 +61,15 @@ describe('runProviderMigrate', () => {
   beforeEach(() => {
     dirs = makeTempHome()
     process.env.HOME = dirs.home
-    process.env.CLAUDIO_CONFIG_DIR = dirs.next
+    process.env.CLAUDIN_CONFIG_DIR = dirs.next
     resetConfig()
   })
 
   afterEach(() => {
-    if (ORIGINAL_CLAUDIO_CONFIG_DIR === undefined) {
-      delete process.env.CLAUDIO_CONFIG_DIR
+    if (ORIGINAL_CLAUDIN_CONFIG_DIR === undefined) {
+      delete process.env.CLAUDIN_CONFIG_DIR
     } else {
-      process.env.CLAUDIO_CONFIG_DIR = ORIGINAL_CLAUDIO_CONFIG_DIR
+      process.env.CLAUDIN_CONFIG_DIR = ORIGINAL_CLAUDIN_CONFIG_DIR
     }
     resetConfig()
     try {

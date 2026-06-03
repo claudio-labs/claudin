@@ -22,7 +22,7 @@
  */
 
 import { join } from 'path'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 import { readFileSync } from '../../utils/fileRead.js'
 import { stripBOM } from '../../utils/jsonRead.js'
 import { resetSettingsCache } from '../../utils/settings/settingsCache.js'
@@ -49,7 +49,7 @@ export function setEligibility(v: boolean): boolean {
 }
 
 export function getSettingsPath(): string {
-  return join(getClaudioConfigHomeDir(), SETTINGS_FILENAME)
+  return join(getClaudinConfigHomeDir(), SETTINGS_FILENAME)
 }
 
 // sync IO — settings pipeline is sync. fileRead and jsonRead are leaves;

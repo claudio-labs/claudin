@@ -1,6 +1,6 @@
 /**
  * Measure the per-turn token cost of every attachment type that ships with
- * Claudio.
+ * Claudin.
  *
  * Each attachment kind is constructed with a *realistic* fixture (not a
  * pathological worst case), routed through the production renderer
@@ -37,7 +37,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
       BUILD_TIME: new Date().toISOString(),
       ISSUES_EXPLAINER:
         'report the issue at https://github.com/anthropics/claude-code/issues',
-      PACKAGE_URL: '@claudiolabs/claudio',
+      PACKAGE_URL: '@claudinlabs/claudin',
     },
   })
 }
@@ -173,10 +173,10 @@ function fixtures(profile: Profile): Attachment[] {
 
   result.push({
     type: 'nested_memory',
-    path: '/home/u/.claudio/projects/x/memory/CLAUDE.md',
+    path: '/home/u/.claudin/projects/x/memory/CLAUDE.md',
     displayPath: 'CLAUDE.md',
     content: {
-      path: '/home/u/.claudio/projects/x/memory/CLAUDE.md',
+      path: '/home/u/.claudin/projects/x/memory/CLAUDE.md',
       content: bodyOfSize(med),
       // biome-ignore lint/suspicious/noExplicitAny: simplified fixture
     } as any,
@@ -185,7 +185,7 @@ function fixtures(profile: Profile): Attachment[] {
   result.push({
     type: 'relevant_memories',
     memories: Array.from({ length: fileN }, (_, i) => ({
-      path: `/home/u/.claudio/projects/x/memory/m${i}.md`,
+      path: `/home/u/.claudin/projects/x/memory/m${i}.md`,
       content: bodyOfSize(small),
       mtimeMs: Date.now() - i * 86400_000,
       header: `Saved ${i}d ago — m${i}.md`,

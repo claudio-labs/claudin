@@ -230,7 +230,7 @@ function makeLog(overrides: Partial<LogOption> = {}): LogOption {
     firstPrompt: '',
     messageCount: 0,
     isSidechain: false,
-    fullPath: '/tmp/test/.claudio/projects/x/abc.jsonl',
+    fullPath: '/tmp/test/.claudin/projects/x/abc.jsonl',
     ...overrides,
   }
 }

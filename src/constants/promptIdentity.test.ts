@@ -7,7 +7,7 @@ import { afterEach, expect, test } from 'bun:test'
   DISPLAY_VERSION: '0.0.0-test',
   BUILD_TIME: new Date().toISOString(),
   ISSUES_EXPLAINER: 'report the issue at https://github.com/anthropics/claude-code/issues',
-  PACKAGE_URL: '@claudiolabs/claudio',
+  PACKAGE_URL: '@claudinlabs/claudin',
   NATIVE_PACKAGE_URL: undefined,
 }
 
@@ -30,24 +30,24 @@ afterEach(() => {
   clearSystemPromptSections()
 })
 
-test('CLI identity prefixes describe Claudio instead of Claude Code', () => {
-  expect(getCLISyspromptPrefix()).toContain('Claudio')
+test('CLI identity prefixes describe Claudin instead of Claude Code', () => {
+  expect(getCLISyspromptPrefix()).toContain('Claudin')
   expect(getCLISyspromptPrefix()).not.toContain('Claude Code')
   expect(getCLISyspromptPrefix()).not.toContain("Anthropic's official CLI for Claude")
 
   for (const prefix of CLI_SYSPROMPT_PREFIXES) {
-    expect(prefix).toContain('Claudio')
+    expect(prefix).toContain('Claudin')
     expect(prefix).not.toContain('Claude Code')
     expect(prefix).not.toContain("Anthropic's official CLI for Claude")
   }
 })
 
-test('simple mode identity describes Claudio instead of Claude Code', async () => {
+test('simple mode identity describes Claudin instead of Claude Code', async () => {
   process.env.CLAUDE_CODE_SIMPLE = '1'
 
   const prompt = await getSystemPrompt([], 'gpt-4o')
 
-  expect(prompt[0]).toContain('Claudio')
+  expect(prompt[0]).toContain('Claudin')
   expect(prompt[0]).not.toContain('Claude Code')
   expect(prompt[0]).not.toContain("Anthropic's official CLI for Claude")
 })
@@ -93,29 +93,29 @@ test('Anthropic-family system prompt does not include any non-Anthropic family a
   }
 })
 
-test('built-in agent prompts describe Claudio instead of Claude Code', () => {
-  expect(DEFAULT_AGENT_PROMPT).toContain('Claudio')
+test('built-in agent prompts describe Claudin instead of Claude Code', () => {
+  expect(DEFAULT_AGENT_PROMPT).toContain('Claudin')
   expect(DEFAULT_AGENT_PROMPT).not.toContain('Claude Code')
   expect(DEFAULT_AGENT_PROMPT).not.toContain("Anthropic's official CLI for Claude")
 
   const generalPrompt = GENERAL_PURPOSE_AGENT.getSystemPrompt({
     toolUseContext: { options: {} as never },
   })
-  expect(generalPrompt).toContain('Claudio')
+  expect(generalPrompt).toContain('Claudin')
   expect(generalPrompt).not.toContain('Claude Code')
   expect(generalPrompt).not.toContain("Anthropic's official CLI for Claude")
 
   const explorePrompt = EXPLORE_AGENT.getSystemPrompt({
     toolUseContext: { options: {} as never },
   })
-  expect(explorePrompt).toContain('Claudio')
+  expect(explorePrompt).toContain('Claudin')
   expect(explorePrompt).not.toContain('Claude Code')
   expect(explorePrompt).not.toContain("Anthropic's official CLI for Claude")
 
   const planPrompt = PLAN_AGENT.getSystemPrompt({
     toolUseContext: { options: {} as never },
   })
-  expect(planPrompt).toContain('Claudio')
+  expect(planPrompt).toContain('Claudin')
   expect(planPrompt).not.toContain('Claude Code')
 
   const guidePrompt = CLAUDE_CODE_GUIDE_AGENT.getSystemPrompt({
@@ -127,8 +127,8 @@ test('built-in agent prompts describe Claudio instead of Claude Code', () => {
       } as never,
     },
   })
-  expect(guidePrompt).toContain('Claudio')
-  expect(guidePrompt).toContain('You are the Claudio guide agent.')
-  expect(guidePrompt).toContain('**Claudio** (the CLI tool)')
+  expect(guidePrompt).toContain('Claudin')
+  expect(guidePrompt).toContain('You are the Claudin guide agent.')
+  expect(guidePrompt).toContain('**Claudin** (the CLI tool)')
   expect(guidePrompt).not.toContain('You are the Claude guide agent.')
 })

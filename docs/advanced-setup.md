@@ -1,4 +1,4 @@
-# Claudio Advanced /provider Usage
+# Claudin Advanced /provider Usage
 
 This guide covers source builds, multi-profile workflows, custom headers, OAuth flows, migration from legacy `~/.claude/`, and the fresh-install wizard. Day-to-day setup goes through `/provider` inside the REPL — no environment variables required.
 
@@ -7,7 +7,7 @@ This guide covers source builds, multi-profile workflows, custom headers, OAuth 
 ### Option A: npm
 
 ```bash
-npm install -g @claudiolabs/claudio
+npm install -g @claudinlabs/claudin
 ```
 
 ### Option B: From source with Bun
@@ -15,8 +15,8 @@ npm install -g @claudiolabs/claudio
 Use Bun `1.3.11` or newer for source builds on Windows. Older Bun versions can fail during `bun run build`.
 
 ```bash
-git clone <claudio-repo-url>
-cd claudio
+git clone <claudin-repo-url>
+cd claudin
 
 bun install
 bun run build
@@ -26,8 +26,8 @@ npm link
 ### Option C: Run directly with Bun
 
 ```bash
-git clone <claudio-repo-url>
-cd claudio
+git clone <claudin-repo-url>
+cd claudin
 
 bun install
 bun run dev
@@ -35,27 +35,27 @@ bun run dev
 
 ## Configuration Directory
 
-Claudio stores all credentials, settings, OAuth tokens, plugins, and keybindings under `~/.claudio/`. The directory layout matches the upstream Claude Code layout but is fully isolated, so Claudio and Claude Code can coexist on the same machine without overwriting each other.
+Claudin stores all credentials, settings, OAuth tokens, plugins, and keybindings under `~/.claudin/`. The directory layout matches the upstream Claude Code layout but is fully isolated, so Claudin and Claude Code can coexist on the same machine without overwriting each other.
 
 Override the location with:
 
 ```bash
-export CLAUDIO_CONFIG_DIR=/path/to/dir
+export CLAUDIN_CONFIG_DIR=/path/to/dir
 ```
 
 ## Fresh Install Wizard
 
-On first run with no saved profile, Claudio opens the `/provider` wizard automatically before the REPL. Pick a preset, paste credentials when prompted, and the chosen profile is saved as the active one.
+On first run with no saved profile, Claudin opens the `/provider` wizard automatically before the REPL. Pick a preset, paste credentials when prompted, and the chosen profile is saved as the active one.
 
-After that, `claudio` boots straight into the REPL. To reconfigure later:
+After that, `claudin` boots straight into the REPL. To reconfigure later:
 
 - `/provider` — list, edit, switch, and add provider profiles
 - `/provider doctor` — health check the active profile (reachability, auth, model availability)
 - `/provider migrate` — rerun the legacy `~/.claude/` migration
 
-## Migrating From Claude Code or Older Claudio
+## Migrating From Claude Code or Older Claudin
 
-If `~/.claude/` exists and `~/.claudio/` does not, the first `/provider` invocation shows a yellow banner offering to migrate:
+If `~/.claude/` exists and `~/.claudin/` does not, the first `/provider` invocation shows a yellow banner offering to migrate:
 
 - Anthropic OAuth tokens (`.credentials.json`, `chmod 0600` after copy)
 - Whitelisted settings keys (`theme`, `model`, `customApiKeyResponses`, `permissions`, `verbose`, `editorMode`, `mcpServers`, `providerProfiles`, `activeProviderProfileId`)
@@ -82,7 +82,7 @@ If you skip the banner, the choice is remembered and the banner is not shown aga
 - **Local vs remote** — local Ollama profile for offline work, cloud profile for connectivity-dependent tasks.
 - **Role split** — separate profiles for `dev` and `review`, switched manually between sessions.
 
-Profiles live under `providerProfiles[]` in `~/.claudio/settings.json`. The active profile is referenced by `activeProviderProfileId`. All sessions and sub-agents share the same active profile — there is no per-agent routing.
+Profiles live under `providerProfiles[]` in `~/.claudin/settings.json`. The active profile is referenced by `activeProviderProfileId`. All sessions and sub-agents share the same active profile — there is no per-agent routing.
 
 Switch between profiles at any time inside the REPL with `/provider`. The change takes effect on the next request.
 
@@ -92,14 +92,14 @@ Switch between profiles at any time inside the REPL with `/provider`. The change
 
 The `anthropic` preset offers two paths:
 
-1. **Sign in with web** — embeds the OAuth flow in `/provider`. Tokens are written to `~/.claudio/.credentials.json`.
+1. **Sign in with web** — embeds the OAuth flow in `/provider`. Tokens are written to `~/.claudin/.credentials.json`.
 2. **API key** — paste your API key directly; saved on the profile.
 
 Both paths produce a profile that is interchangeable with the rest of the REPL.
 
 ### Codex (ChatGPT OAuth)
 
-The `codex` preset opens ChatGPT sign-in in your browser and stores the resulting tokens on the profile. If you already use the Codex CLI, Claudio can read `~/.codex/auth.json` automatically — point it elsewhere with the `Codex auth path` field on the profile.
+The `codex` preset opens ChatGPT sign-in in your browser and stores the resulting tokens on the profile. If you already use the Codex CLI, Claudin can read `~/.codex/auth.json` automatically — point it elsewhere with the `Codex auth path` field on the profile.
 
 `codexplan` maps to the Codex backend with high reasoning. `codexspark` maps to the faster Spark variant.
 
@@ -115,7 +115,7 @@ These presets only collect routing info on the profile (AWS region, GCP project 
 - Vertex — Application Default Credentials (`gcloud auth application-default login`)
 - Foundry — `DefaultAzureCredential` (Azure CLI, managed identity, environment, etc.)
 
-There are no provider-specific environment variables managed by Claudio in this path. Configure cloud credentials with the official tools.
+There are no provider-specific environment variables managed by Claudin in this path. Configure cloud credentials with the official tools.
 
 ### Ollama and other local servers
 

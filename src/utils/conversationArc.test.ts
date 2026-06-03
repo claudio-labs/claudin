@@ -57,13 +57,13 @@ describe('conversationArc', () => {
     it('generates a knowledge graph summary', () => {
       initializeArc()
       const e1 = addEntity('system', 'RHEL9', { os: 'linux' })
-      const e2 = addEntity('feature', 'Claudio')
+      const e2 = addEntity('feature', 'Claudin')
       addRelation(e2.id, e1.id, 'runs_on')
 
       const summary = getArcSummary()
       expect(summary).toContain('Knowledge Graph:')
       expect(summary).toContain('[system] RHEL9 (os: linux)')
-      expect(summary).toContain('Claudio --(runs_on)--> RHEL9')
+      expect(summary).toContain('Claudin --(runs_on)--> RHEL9')
     })
 
     it('automatically learns facts from message content', () => {

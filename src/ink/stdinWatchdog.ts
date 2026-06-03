@@ -20,7 +20,7 @@
 // `now - lastStdinTime > stale threshold`. The fix is identity-preserving
 // (same listener function before/after) and cheap, so a false trigger during
 // normal idle is harmless. The default behavior is on; set
-// `CLAUDIO_STDIN_WATCHDOG=0` to disable.
+// `CLAUDIN_STDIN_WATCHDOG=0` to disable.
 
 export interface StdinWatchdogOptions {
   readonly stdin: NodeJS.ReadStream
@@ -59,7 +59,7 @@ function parsePositiveIntEnv(name: string): number | undefined {
 
 export function isStdinWatchdogEnabled(): boolean {
   // Disabled only when explicitly set to "0" / "false" / "off". Default on.
-  const raw = process.env.CLAUDIO_STDIN_WATCHDOG
+  const raw = process.env.CLAUDIN_STDIN_WATCHDOG
   if (raw == null || raw === '') return true
   return !['0', 'false', 'off', 'no'].includes(raw.toLowerCase())
 }
@@ -76,11 +76,11 @@ export class StdinWatchdog {
     this.now = opts.now ?? Date.now
     this.staleThresholdMs =
       opts.staleThresholdMs ??
-      parsePositiveIntEnv('CLAUDIO_STDIN_WATCHDOG_STALE_MS') ??
+      parsePositiveIntEnv('CLAUDIN_STDIN_WATCHDOG_STALE_MS') ??
       DEFAULT_STALE_THRESHOLD_MS
     this.checkIntervalMs =
       opts.checkIntervalMs ??
-      parsePositiveIntEnv('CLAUDIO_STDIN_WATCHDOG_INTERVAL_MS') ??
+      parsePositiveIntEnv('CLAUDIN_STDIN_WATCHDOG_INTERVAL_MS') ??
       DEFAULT_CHECK_INTERVAL_MS
   }
 

@@ -240,18 +240,18 @@ export function convertToSandboxRuntimeConfig(
   const cwd = getCwdState()
   const originalCwd = getOriginalCwd()
   if (cwd !== originalCwd) {
-    denyWrite.push(resolve(cwd, '.claudio', 'settings.json'))
-    denyWrite.push(resolve(cwd, '.claudio', 'settings.local.json'))
+    denyWrite.push(resolve(cwd, '.claudin', 'settings.json'))
+    denyWrite.push(resolve(cwd, '.claudin', 'settings.local.json'))
   }
 
-  // Block writes to .claudio/skills in both original and current working directories.
-  // The sandbox-runtime's getDangerousDirectories() protects .claudio/commands and
-  // .claudio/agents but not .claudio/skills. Skills have the same privilege level
-  // (auto-discovered, auto-loaded, full Claudio capabilities) so they need the
+  // Block writes to .claudin/skills in both original and current working directories.
+  // The sandbox-runtime's getDangerousDirectories() protects .claudin/commands and
+  // .claudin/agents but not .claudin/skills. Skills have the same privilege level
+  // (auto-discovered, auto-loaded, full Claudin capabilities) so they need the
   // same OS-level sandbox protection.
-  denyWrite.push(resolve(originalCwd, '.claudio', 'skills'))
+  denyWrite.push(resolve(originalCwd, '.claudin', 'skills'))
   if (cwd !== originalCwd) {
-    denyWrite.push(resolve(cwd, '.claudio', 'skills'))
+    denyWrite.push(resolve(cwd, '.claudin', 'skills'))
   }
 
   // SECURITY: Git's is_git_directory() treats cwd as a bare repo if it has
@@ -459,7 +459,7 @@ const checkDependencies = memoize((): SandboxDependencyCheck => {
 /**
  * Read sandbox.enabled only from trusted settings sources.
  * projectSettings is intentionally excluded — a malicious repo could
- * otherwise disable the sandbox via .claudio/settings.json.
+ * otherwise disable the sandbox via .claudin/settings.json.
  */
 function getSandboxEnabledSetting(): boolean {
   try {

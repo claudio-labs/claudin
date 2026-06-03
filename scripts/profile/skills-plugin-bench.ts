@@ -101,7 +101,7 @@ ${i}-body-marker
 
 // ---- Mode: raw (parse + retain) ----
 async function runRaw(skills: number, bodyKb: number) {
-  const root = join(tmpdir(), `claudio-skills-bench-raw-${process.pid}`)
+  const root = join(tmpdir(), `claudin-skills-bench-raw-${process.pid}`)
   makeFixture(root, skills, bodyKb)
 
   gc()
@@ -171,7 +171,7 @@ async function runReal(skills: number, bodyKb: number) {
     _resetForTesting: () => {},
   }))
 
-  const root = join(tmpdir(), `claudio-skills-bench-real-${process.pid}`)
+  const root = join(tmpdir(), `claudin-skills-bench-real-${process.pid}`)
   makeFixture(root, skills, bodyKb)
 
   gc()

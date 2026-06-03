@@ -4,9 +4,9 @@
 > **Parent spec:** [`../architecture.md`](../architecture.md)
 > **Discovery refs:**
 > - [`../../../discovery/bash-output-filter/rtk-refinement-2026-05.md`](../../../discovery/bash-output-filter/rtk-refinement-2026-05.md)
-> - Plan file: `/home/viudes/.claudio/plans/cozy-tinkering-gray.md`
+> - Plan file: `/home/viudes/.claudin/plans/cozy-tinkering-gray.md`
 
-Auditoria comparativa Claudio vs **rtk** (Rust CLI proxy de filtragem) revelou ~30 comandos de alto uso ainda passando *raw* pelo BashTool. Esta fase fecha o gap por ROI, em 5 commits dentro da mesma branch.
+Auditoria comparativa Claudin vs **rtk** (Rust CLI proxy de filtragem) revelou ~30 comandos de alto uso ainda passando *raw* pelo BashTool. Esta fase fecha o gap por ROI, em 5 commits dentro da mesma branch.
 
 ## Resumo agregado (medido)
 

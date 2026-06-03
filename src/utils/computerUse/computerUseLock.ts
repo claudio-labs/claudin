@@ -3,7 +3,7 @@ import { join } from 'path'
 import { getSessionId } from '../../bootstrap/state.js'
 import { registerCleanup } from '../../utils/cleanupRegistry.js'
 import { logForDebugging } from '../../utils/debug.js'
-import { getClaudioConfigHomeDir } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
 import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
 import { getErrnoCode } from '../errors.js'
 
@@ -42,7 +42,7 @@ function isComputerUseLock(value: unknown): value is ComputerUseLock {
 }
 
 function getLockPath(): string {
-  return join(getClaudioConfigHomeDir(), LOCK_FILENAME)
+  return join(getClaudinConfigHomeDir(), LOCK_FILENAME)
 }
 
 async function readLock(): Promise<ComputerUseLock | undefined> {
@@ -153,7 +153,7 @@ export async function tryAcquireComputerUseLock(): Promise<AcquireResult> {
     acquiredAt: Date.now(),
   }
 
-  await mkdir(getClaudioConfigHomeDir(), { recursive: true })
+  await mkdir(getClaudinConfigHomeDir(), { recursive: true })
 
   // Fresh acquisition.
   if (await tryCreateExclusive(lock)) {

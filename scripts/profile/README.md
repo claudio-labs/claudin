@@ -1,6 +1,6 @@
 # Performance profile harness
 
-Reproducible benchmarks for the user-perceived hot paths in claudio. Three
+Reproducible benchmarks for the user-perceived hot paths in claudin. Three
 dimensions of latency are covered today; each one writes a JSON baseline to
 `baselines/` so changes can be A/B compared with real numbers.
 
@@ -14,10 +14,10 @@ proposals can be validated empirically before being implemented.
 
 ```
 COLD START          (every launch)                                ~525 ms direct
-  • paid every time `claudio` is invoked
+  • paid every time `claudin` is invoked
   • biggest absolute number of any path measured
   • dominated by V8 parse of the 21 MB bundle, not Node boot
-  • bin/claudio enables NODE_COMPILE_CACHE → ~282 ms warm (−243 ms)
+  • bin/claudin enables NODE_COMPILE_CACHE → ~282 ms warm (−243 ms)
 
 STREAMING RENDER    (per code block in assistant output)         ~27–40 ms
   • ~85% of the work is cli-highlight re-tokenizing the growing fence
@@ -25,7 +25,7 @@ STREAMING RENDER    (per code block in assistant output)         ~27–40 ms
   • per-snapshot cost is sub-frame — user does not perceive a hitch
   • the win is CPU/battery, not visible smoothness
   • UX trade-off: plain monospace mid-stream, color flash on fence close
-  • on by default; opt out via CLAUDIO_DEFER_HIGHLIGHT=0
+  • on by default; opt out via CLAUDIN_DEFER_HIGHLIGHT=0
 
 INPUT LATENCY       (per keystroke, even at 10 KB buffer)        <0.5 ms
   • not the bottleneck; well under one frame
@@ -140,7 +140,7 @@ highlight.
 - **UX trade-off**: with defer-fence on, the user sees plain monospace code
   during streaming and a one-shot color flash when the fence closes.
 - The defer-fence path is the production default. Set
-  `CLAUDIO_DEFER_HIGHLIGHT=0` to fall back to status-quo (always-highlight).
+  `CLAUDIN_DEFER_HIGHLIGHT=0` to fall back to status-quo (always-highlight).
   In this harness, `--strategy=status-quo` reproduces the opt-out behavior
   and `--strategy=defer-fence` reproduces the default — production code
   matches the harness's measured win exactly.
@@ -264,7 +264,7 @@ total heap delta: 5.3 MB across all five caches at 10k cycles each
 ```
 
 **Mixed-session mode** (`--mode=mixed --turns=2000`) — closest thing to a
-real Claudio session on a large project. Each turn interleaves: 5 file
+real Claudin session on a large project. Each turn interleaves: 5 file
 reads, 3 markdown renders, 2 LSP diagnostics, 2 tool progress events,
 +1 image every 50 turns. Snapshots heap every 10% of turns to surface
 the *growth curve*, not just start vs end. Saturation check passes if
@@ -288,7 +288,7 @@ caches; it was mitigated by the heap-pressure trigger + 8 GB bump in 5.0.
 self-cleanup; verified by inspection at `src/utils/auth.ts:1383-1390`).
 Other module-level Maps in 179 files are reachable through the discovery
 pattern in this bench if a future regression appears — the systematic
-sweep is documented in `~/.claudio/plans/immutable-jingling-hare.md`.
+sweep is documented in `~/.claudin/plans/immutable-jingling-hare.md`.
 
 ## Caveats
 

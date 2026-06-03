@@ -1,4 +1,4 @@
-# Claudio
+# Claudin
 
 A coding-agent CLI that works across multiple model providers — Anthropic, OpenAI-compatible APIs, Gemini, Mistral, GitHub Copilot, ChatGPT, Ollama, Bedrock, Vertex, Foundry, and more — with one consistent terminal workflow.
 
@@ -9,7 +9,7 @@ A coding-agent CLI that works across multiple model providers — Anthropic, Ope
 ## Install
 
 ```bash
-npm install -g @claudiolabs/claudio@latest
+npm install -g @claudinlabs/claudin@latest
 ```
 
 Requires Node 20+. Works on Linux, macOS, and Windows.
@@ -17,10 +17,10 @@ Requires Node 20+. Works on Linux, macOS, and Windows.
 ## Quick Start
 
 ```bash
-claudio
+claudin
 ```
 
-On first run, Claudio opens the `/provider` wizard. Pick a preset, enter credentials, and start working — no environment variables required.
+On first run, Claudin opens the `/provider` wizard. Pick a preset, enter credentials, and start working — no environment variables required.
 
 ## Providers
 
@@ -62,9 +62,9 @@ Run `/provider doctor` to check your active profile, or `/provider migrate` to i
 - **Tools** — file I/O, grep, glob, bash, web search/fetch, notebook editing
 - **Sub-agents** — spawn specialized agents in parallel
 - **MCP** — connect external tool servers (filesystem, databases, APIs)
-- **Auto-memory** — persistent per-project notes under `~/.claudio/projects/`
-- **gRPC headless** — run `claudio --grpc` for programmatic access
-- **VS Code** — [extension](vscode-extension/claudio-vscode) for launch integration and themes
+- **Auto-memory** — persistent per-project notes under `~/.claudin/projects/`
+- **gRPC headless** — run `claudin --grpc` for programmatic access
+- **VS Code** — [extension](vscode-extension/claudin-vscode) for launch integration and themes
 
 ## Source Build
 
@@ -84,7 +84,7 @@ bun run verify:privacy   # scan for phone-home patterns
 
 ## Disclaimer
 
-Claudio is an independent project and is not affiliated with, endorsed by, or sponsored by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic PBC.
+Claudin is an independent project and is not affiliated with, endorsed by, or sponsored by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic PBC.
 
 ## License
 

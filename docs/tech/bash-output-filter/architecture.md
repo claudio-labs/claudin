@@ -50,7 +50,7 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 
 ---
 
-## 2. Where it plugs into claudio
+## 2. Where it plugs into claudin
 
 **Files modified:**
 
@@ -84,7 +84,7 @@ src/outputFilter/Bash/
 ├── pipeline.ts                 # 11 stages (port of validation/pipeline.ts)
 ├── registry.ts                 # findFilterForCommand: linear scan
 ├── markers.ts                  # wrapStdoutWithMarkers, uses escapeXmlAttr from src/utils/xml.ts
-├── userFilters.ts              # zod schema + safe loader for ~/.claudio/filters.json
+├── userFilters.ts              # zod schema + safe loader for ~/.claudin/filters.json
 ├── filters/
 │   ├── index.ts                # builtInFilters: FilterSpec[] (alphabetized export)
 │   ├── git.ts                  # git-status, git-log, git-blame, git-pull, git-add-commit-push
@@ -110,7 +110,7 @@ src/outputFilter/Bash/
 
 1. **One file per command family**, not per command. `git.ts` exports 5 specs that share `^git\b` infrastructure. This keeps each file 50–150 LoC and the module flat.
 2. **All specs statically imported.** Total spec data <8 KB; lazy-loading complicates the bundler with no runtime win.
-3. **Tests colocated** per `.claudio/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudio for cross-cutting tests at `src/__tests__/`.
+3. **Tests colocated** per `.claudin/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudin for cross-cutting tests at `src/__tests__/`.
 4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/services/api/__fixtures__/`.
 5. **No subclasses, no plugins.** A custom-code filter (e.g. `tsc` parsing, JSON reformat) is a v2 native parser — see §17.
 6. **No standalone `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Each was <30 LoC; inline at callers (review §"Over-engineering #2-6").
@@ -351,7 +351,7 @@ User filters are second priority after built-ins. Same-name conflicts: built-in 
 
 ## 8. User-defined filters via JSON
 
-`~/.claudio/filters.json` is the v1 surface. Schema validated with zod (zod/v4, the standard import in this codebase per ~112 occurrences).
+`~/.claudin/filters.json` is the v1 surface. Schema validated with zod (zod/v4, the standard import in this codebase per ~112 occurrences).
 
 ```ts
 // src/outputFilter/Bash/userFilters.ts
@@ -514,9 +514,9 @@ Three events. All names use the privacy convention from `BashTool.tsx:766` (suff
 
 | Event | When | Payload |
 |---|---|---|
-| `claudio_bash_filter_applied` | Pipeline ran | `filter_name: string` (filter ID), `reduction_pct: number` (0–100), `applied_stage_count: number`, `was_short_circuited: boolean`, `is_error: boolean` |
-| `claudio_bash_rewrite_applied` | Rewrite fired and changed the command | `filter_name: string` |
-| `claudio_bash_filter_skipped` | Filter matched but errored or yielded zero reduction | `filter_name: string`, `reason_code: number` (1=no-reduction, 2=error, 3=json-passthrough) |
+| `claudin_bash_filter_applied` | Pipeline ran | `filter_name: string` (filter ID), `reduction_pct: number` (0–100), `applied_stage_count: number`, `was_short_circuited: boolean`, `is_error: boolean` |
+| `claudin_bash_rewrite_applied` | Rewrite fired and changed the command | `filter_name: string` |
+| `claudin_bash_filter_skipped` | Filter matched but errored or yielded zero reduction | `filter_name: string`, `reason_code: number` (1=no-reduction, 2=error, 3=json-passthrough) |
 
 `logEvent` only accepts `boolean | number | undefined` metadata values (`src/services/analytics/index.ts:60-61`); the spec's payload uses only those types. No string values except via the suffix-cast pattern, which is reserved for IDs in our enumerated set.
 
@@ -530,7 +530,7 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
 **Volume:** existing `tengu_bash_command` already fires on every bash call (`BashTool.tsx:765`) — ~100/session. Our 3 events add ~30-60/session in a typical workflow (filter matches happen on ~50-70% of bash calls; not every call gets a filter). No sampling needed for v1.
 
-**Avoid no-op events:** when filter matches but yields `reductionPct === 0` AND no rewrite fired, emit `claudio_bash_filter_skipped { reason_code: 1 }` instead of `claudio_bash_filter_applied`. Keeps the `applied` event meaningful (always represents real compression). Document the routing logic in `analytics.ts` (or inline in `index.ts` orchestrator).
+**Avoid no-op events:** when filter matches but yields `reductionPct === 0` AND no rewrite fired, emit `claudin_bash_filter_skipped { reason_code: 1 }` instead of `claudin_bash_filter_applied`. Keeps the `applied` event meaningful (always represents real compression). Document the routing logic in `analytics.ts` (or inline in `index.ts` orchestrator).
 
 ---
 
@@ -538,15 +538,15 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
 **Precedence (highest first):**
 
-1. `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1` — global kill switch (rewrite + pipeline both off). Hot-path test: `isEnvTruthy(process.env.CLAUDIO_DISABLE_BASH_OUTPUT_FILTER)`.
-2. `CLAUDIO_DISABLE_REWRITE=1` — pipeline still runs, rewrite suppressed.
-3. `CLAUDIO_BASH_FILTER_DEBUG=1` — emits `logForDebugging` for every filter decision. Debug-only.
+1. `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1` — global kill switch (rewrite + pipeline both off). Hot-path test: `isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER)`.
+2. `CLAUDIN_DISABLE_REWRITE=1` — pipeline still runs, rewrite suppressed.
+3. `CLAUDIN_BASH_FILTER_DEBUG=1` — emits `logForDebugging` for every filter decision. Debug-only.
 4. Per-call: `is_error: true` skips pipeline (always; not configurable).
 5. Global config (cached via `getGlobalConfig()`):
    ```ts
    bashOutputFilterEnabled: boolean         // default true
    bashOutputFilterRewriteEnabled: boolean  // default true
-   bashOutputFilterUserEnabled: boolean     // default true (reads ~/.claudio/filters.json)
+   bashOutputFilterUserEnabled: boolean     // default true (reads ~/.claudin/filters.json)
    ```
    **Flat keys**, matching the existing `toolResultSummarizerEnabled` precedent. Every config field in `GLOBAL_CONFIG_KEYS` (`config.ts:705`) is flat. Nested objects break the convention.
 6. Built-in filter set (always available unless `enabled: false`).
@@ -557,7 +557,7 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
 **Install-only:** the set of built-in filters. No way to disable a single built-in via config in v1. Workaround: define a user filter with the same `name` (last-wins). v2 may add `disabledBuiltins: string[]`.
 
-**`/filters` slash command:** **deferred to v2.** `CLAUDIO_BASH_FILTER_DEBUG=1` covers the v1 debugging needs.
+**`/filters` slash command:** **deferred to v2.** `CLAUDIN_BASH_FILTER_DEBUG=1` covers the v1 debugging needs.
 
 ---
 
@@ -601,7 +601,7 @@ No silent swallow. Every catch calls `logError(e)`.
 
 ## 14. Testing strategy
 
-Tests **colocated** per `.claudio/rules/testing.md`. Layout:
+Tests **colocated** per `.claudin/rules/testing.md`. Layout:
 
 ```
 src/outputFilter/Bash/
@@ -623,7 +623,7 @@ src/outputFilter/Bash/
 - Rewrite tests → `describe('rewrite', ...)` block. Each asserts `effectiveCommand`.
 - Samples are checked in to `__fixtures__/samples/`. Discovery samples are the source of truth; we copy at Phase 1.
 
-**Coverage targets** (from `.claudio/rules/testing.md` `src/utils/*` 75%+ guideline):
+**Coverage targets** (from `.claudin/rules/testing.md` `src/utils/*` 75%+ guideline):
 
 - `pipeline.ts` 90%+ (pure logic)
 - `registry.ts` 85%+
@@ -671,7 +671,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 3. **TOML for built-in filters (mirror rtk).** Rejected: TS gets type-checking, autocomplete, syntax highlighting. TOML for users only because they can't author TS.
 4. **Builder API for FilterSpec.** Rejected: object literals are simpler.
 5. **Native parsers in v1** (`ls -la` → tree, etc.). Rejected: declarative gets 80%+; +6pp not worth ~200 LoC each.
-6. **Project-local `.claudio/filters.json` with trust dialog.** Rejected for v1: trust UX non-trivial. v2.
+6. **Project-local `.claudin/filters.json` with trust dialog.** Rejected for v1: trust UX non-trivial. v2.
 7. **`filterMeta` on `Out` type to carry markers.** Rejected: zod schema change with transcript-replay risk; markers in stdout achieve the same goal more naturally and survive the error path.
 8. **Caching pipeline results.** Rejected: hot path is fast already; cache-key is large.
 9. **`re2-wasm` for ReDoS-proof regex.** Rejected for v1: 1 MB+ WASM bundle. Length cap + denylist + build scan suffices.
@@ -681,7 +681,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 13. **Per-filter `Promise.race` timeout.** Rejected: doesn't interrupt sync regex anyway. Build-time scan + length cap is the real defense.
 14. **`verb: string` field on FilterSpec for hash lookup.** Rejected: linear scan over 20 filters is sub-microsecond and dominated by regex cost. Hashmap optimization deferred.
 15. **Standalone files for `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Rejected: each <30 LoC with single-digit callers; inline at use sites.
-16. **`__tests__/` subdir layout.** Rejected: violates `.claudio/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
+16. **`__tests__/` subdir layout.** Rejected: violates `.claudin/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
 17. **Per-filter `.test.ts` smoke files.** Rejected: duplicates the harness. One harness is the source of truth.
 18. **Nested config keys (`bashOutputFilter.{enabled, ...}`).** Rejected: every existing key in `GLOBAL_CONFIG_KEYS` is flat.
 19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/utils/xml.ts`.
@@ -737,7 +737,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 
 **Phase 3 — BashTool integration (pipeline only, no rewrite) (1 PR, ~30 LoC).**
 - Insert `applyFilterToStdout(result.stdout, result.isError, plan)` after stdout capture in `BashTool.call()`.
-- Wire env vars (`CLAUDIO_DISABLE_BASH_OUTPUT_FILTER`, `CLAUDIO_BASH_FILTER_DEBUG`).
+- Wire env vars (`CLAUDIN_DISABLE_BASH_OUTPUT_FILTER`, `CLAUDIN_BASH_FILTER_DEBUG`).
 - Default config: `bashOutputFilterEnabled: false`.
 - Smoke test by setting true locally and running 5 commands. Verify: `<bash-output-filtered>` markers appear, no marker when disabled, error commands carry the filter marker through `ShellError`.
 
@@ -747,7 +747,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 - 6 rewrite filters: `git-log` (force `--oneline`), `git-status` (force `--porcelain`), `ruff` (force `--output-format=json` — note: this requires JSON parsing in the pipeline, which we **don't** want in v1 — drop ruff rewrite; document as v2), `gh` (force `--json`).
 - Final v1 rewrite list: **git-log, git-status, gh-pr-list, gh-issue-list, gh-run-list**. The JSON-parsing rewrites (ruff, kubectl, cargo build) move to v2 native parsers.
 - `<bash-output-rewritten>` marker.
-- `CLAUDIO_DISABLE_REWRITE` env var.
+- `CLAUDIN_DISABLE_REWRITE` env var.
 - Compound-command skip test.
 
 **Phase 5 — Built-in filters batch 2 (1 PR, ~250 LoC).**
@@ -761,7 +761,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 
 **Phase 7 — Default-on (1 PR, ~3 LoC).**
 - Flip `bashOutputFilterEnabled` default to `true` in `getGlobalConfig` defaults.
-- Run a real-world session for one week; review `claudio_bash_filter_applied` event metrics.
+- Run a real-world session for one week; review `claudin_bash_filter_applied` event metrics.
 - Update `BashTool.test.ts` and `processToolResultBlock` test surface (in `toolResultStorage.test.ts` if it exists, else new test) to cover filter+summarizer interaction.
 
 **Total:** 7 PRs. Phase 0 is throwaway plumbing; the meat is Phases 1–6. Phase 7 is the flip.
@@ -774,7 +774,7 @@ Each has a stable path forward without rearchitecture.
 
 | Feature | Why deferred | v2 hook |
 |---|---|---|
-| Project-local filters (`.claudio/filters.json`) with trust dialog | Trust UX non-trivial (sha256 storage, edit invalidation). | `userFilters.ts` separates load from merge; adding a third source is one extra `load()` + trust-check. |
+| Project-local filters (`.claudin/filters.json`) with trust dialog | Trust UX non-trivial (sha256 storage, edit invalidation). | `userFilters.ts` separates load from merge; adding a third source is one extra `load()` + trust-check. |
 | Cycle detection in dedup | ~5% of remaining cases. | New stage between `dedupGlobal` and `matchOutput` in `pipeline.ts`. |
 | Native parsers (`ls -la` → tree, `kubectl get -o json` → compact rows, `ruff --output-format=json` → text) | ~200 LoC per parser; declarative gets 80%+ already. | `FilterSpec` adds optional `nativeFormatter?: (raw: string) => string`. |
 | JSON rewrite + reformat for ruff/cargo/kubectl | Requires parser + reformat code. | `rewriteCommand` (already there) + `nativeFormatter` (v2). |
@@ -813,10 +813,10 @@ When you write a new filter (built-in or PR):
 - [ ] `bun run verify:privacy` — passes (3 new event names with the suffix proof).
 - [ ] `bun run typecheck` — zero errors.
 - [ ] `scripts/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
-- [ ] Smoke test (Phase 7): `bun run dev` then 5 commands across `git status`, `cargo build`, `pytest`, `ls -la`, `bundle install`. Debug logs (`CLAUDIO_BASH_FILTER_DEBUG=1`) show the right filter chosen for each. Marker injected. Reduction matches the matrix.
+- [ ] Smoke test (Phase 7): `bun run dev` then 5 commands across `git status`, `cargo build`, `pytest`, `ls -la`, `bundle install`. Debug logs (`CLAUDIN_BASH_FILTER_DEBUG=1`) show the right filter chosen for each. Marker injected. Reduction matches the matrix.
 - [ ] `git log -5 | wc -l` (compound) — no rewrite (no `<bash-output-rewritten>` marker), output count unchanged.
 - [ ] `cargo build` on intentionally broken code (exit 1) — `<bash-output-rewritten>` marker IS shown (rewrite committed pre-execution); pipeline skipped (errors preserved).
-- [ ] User filter at `~/.claudio/filters.json` with one custom rule for `make` — loads, applies, takes precedence on the verb `make` only when no built-in matches.
+- [ ] User filter at `~/.claudin/filters.json` with one custom rule for `make` — loads, applies, takes precedence on the verb `make` only when no built-in matches.
 - [ ] Sandbox annotation preserved across all built-in filters (one test per filter that adds `stripLines`).
 - [ ] Existing `BashTool.test` snapshots updated only where the marker is intentionally injected (post-Phase-7).
 - [ ] `bun run build:verified` clean (privacy verifier on dist).

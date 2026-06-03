@@ -12,7 +12,7 @@ type AgentLike = { agentType: string; model?: string }
 
 /**
  * Storage key for a built-in agent's model override in
- * `~/.claudio/settings.json` → `agentModelOverrides`. Namespaced by source
+ * `~/.claudin/settings.json` → `agentModelOverrides`. Namespaced by source
  * so a user `.md` agent with the same name doesn't collide.
  */
 export function builtInOverrideKey(agentType: string): string {
@@ -31,7 +31,7 @@ const defaultDeps: BuiltInModelOverrideDeps = {
 }
 
 /**
- * Apply user-configured model overrides (~/.claudio/settings.json
+ * Apply user-configured model overrides (~/.claudin/settings.json
  * `agentModelOverrides`) to built-in agent definitions. Only the `model`
  * field is overridden; everything else (prompt, tools, etc.) is preserved
  * so that the built-in's dynamic `getSystemPrompt` continues to work.

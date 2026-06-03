@@ -12,14 +12,14 @@ let tmp: string
 let originalEnv: string | undefined
 
 beforeEach(async () => {
-  tmp = await mkdtemp(join(tmpdir(), 'claudio-latest-version-'))
-  originalEnv = process.env.CLAUDIO_CONFIG_DIR
-  process.env.CLAUDIO_CONFIG_DIR = tmp
+  tmp = await mkdtemp(join(tmpdir(), 'claudin-latest-version-'))
+  originalEnv = process.env.CLAUDIN_CONFIG_DIR
+  process.env.CLAUDIN_CONFIG_DIR = tmp
 })
 
 afterEach(async () => {
-  if (originalEnv === undefined) delete process.env.CLAUDIO_CONFIG_DIR
-  else process.env.CLAUDIO_CONFIG_DIR = originalEnv
+  if (originalEnv === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+  else process.env.CLAUDIN_CONFIG_DIR = originalEnv
   await rm(tmp, { recursive: true, force: true })
 })
 
@@ -50,7 +50,7 @@ describe('latestVersionCache', () => {
 
   test('writeLatestVersion creates the config directory if missing', async () => {
     const nested = join(tmp, 'does', 'not', 'exist')
-    process.env.CLAUDIO_CONFIG_DIR = nested
+    process.env.CLAUDIN_CONFIG_DIR = nested
     const cache = { latest: '1.0.0', checkedAt: 1, current: '0.9.0' }
     await writeLatestVersion(cache)
     expect(readLatestVersion()).toEqual(cache)

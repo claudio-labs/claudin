@@ -6,7 +6,7 @@
  * of the 14 suspect retainers directly with N iterations, measures growth
  * and caps, and reports per-retainer memory cost.
  *
- * Goal: answer the question "which singleton grows when a real Claudio
+ * Goal: answer the question "which singleton grows when a real Claudin
  * session runs for hours?" without requiring a full provider setup.
  *
  * Usage:

@@ -3,7 +3,7 @@
  * Memory E2E Bench — exercises REAL QueryEngine with a fake model.
  *
  * This bench runs a parametric multi-turn agent session using the real
- * Claudio QueryEngine (not a synthetic mirror like
+ * Claudin QueryEngine (not a synthetic mirror like
  * memory-turn-by-turn-bench.ts). It injects a fake callModel via
  * QueryDeps to avoid network, and measures heap growth turn-by-turn
  * with a breakdown across 14 retainers.

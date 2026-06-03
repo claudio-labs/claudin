@@ -28,7 +28,7 @@ import { getSettingsForSource } from './settings/settings.js'
  * is lazy-initialized) and ensure Node.js compatibility.
  *
  * This is safe to call before the trust dialog because we only read from
- * user-controlled files (~/.claude/settings.json and ~/.claudio/config.json),
+ * user-controlled files (~/.claude/settings.json and ~/.claudin/config.json),
  * not from project-level settings.
  */
 export function applyExtraCACertsFromConfig(): void {
@@ -52,7 +52,7 @@ export function applyExtraCACertsFromConfig(): void {
  * after the trust dialog. But we need the CA cert early to establish the TLS
  * connection to an HTTPS proxy during init().
  *
- * We read from global config (~/.claudio/config.json) and user settings
+ * We read from global config (~/.claudin/config.json) and user settings
  * (~/.claude/settings.json). These are user-controlled files that don't
  * require trust approval.
  */

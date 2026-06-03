@@ -158,7 +158,7 @@ async function navigateToPreset(
 const realProviderProfilesForPm = { ...(await import('../utils/providerProfiles.js')) }
 const realProviderProfileForPm = { ...(await import('../utils/providerProfile.js')) }
 const realSettingsForPm = { ...(await import('../utils/settings/settings.js')) }
-const realClaudioMigrationForPm = { ...(await import('../utils/claudioMigration.js')) }
+const realClaudinMigrationForPm = { ...(await import('../utils/claudinMigration.js')) }
 const realProviderDiscoveryForPm = { ...(await import('../utils/providerDiscovery.js')) }
 const realGithubModelsCredentialsForPm = { ...(await import('../utils/githubModelsCredentials.js')) }
 const realCodexCredentialsForPm = { ...(await import('../utils/codexCredentials.js')) }
@@ -333,8 +333,8 @@ function mockProviderManagerDependencies(
   // compete with the preset / menu Select for stdin in tests. Individual tests
   // that exercise the migration option override this mock after calling
   // mockProviderManagerDependencies().
-  mock.module('../utils/claudioMigration.js', () => ({
-    ...realClaudioMigrationForPm,
+  mock.module('../utils/claudinMigration.js', () => ({
+    ...realClaudinMigrationForPm,
     shouldShowMigrationBanner: () => false,
     legacyClaudeDirExists: () => false,
   }))
@@ -454,7 +454,7 @@ afterEach(() => {
 afterAll(() => {
   // Restore module mocks so they don't bleed into other test files.
   // mock.restore() does not reset mock.module() calls.
-  mock.module('../utils/claudioMigration.js', () => realClaudioMigrationForPm)
+  mock.module('../utils/claudinMigration.js', () => realClaudinMigrationForPm)
   mock.module('../utils/providerProfiles.js', () => realProviderProfilesForPm)
   mock.module('../utils/providerProfile.js', () => realProviderProfileForPm)
   mock.module('../utils/settings/settings.js', () => realSettingsForPm)
@@ -1159,8 +1159,8 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
   // config.js (that mock leaks into toolResultSummarizer.test.ts).
-  mock.module('../utils/claudioMigration.js', () => ({
-    ...realClaudioMigrationForPm,
+  mock.module('../utils/claudinMigration.js', () => ({
+    ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => true,
     shouldShowMigrationBanner: () => false,
   }))
@@ -1184,8 +1184,8 @@ test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is abse
 
   mockProviderManagerDependencies()
 
-  mock.module('../utils/claudioMigration.js', () => ({
-    ...realClaudioMigrationForPm,
+  mock.module('../utils/claudinMigration.js', () => ({
+    ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => false,
     shouldShowMigrationBanner: () => false,
   }))

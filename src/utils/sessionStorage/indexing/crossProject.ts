@@ -2,7 +2,7 @@
  * Cross-project / cross-worktree session listings — extracted Wave 4 of the
  * 11c sessionStorage split.
  *
- * `loadAllProjectsMessageLogs*` walks every `~/.claudio/projects/<dir>/`
+ * `loadAllProjectsMessageLogs*` walks every `~/.claudin/projects/<dir>/`
  * subdirectory. `loadSameRepoMessageLogs*` is the worktree-aware variant
  * driven by `getWorktreePaths`. Both share the lite-stat → enrich path with
  * `getSessionFilesLite` from `liteMetadata.ts`.

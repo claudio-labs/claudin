@@ -64,7 +64,7 @@ const { saveGlobalConfig, resetGlobalConfigForTests } = await import('./config.j
 
 let tempRoot = ''
 const createdProjectDirs = new Set<string>()
-const originalEnv = process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER
+const originalEnv = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
 const originalCwd = getOriginalCwd()
 
 afterAll(async () => {
@@ -88,7 +88,7 @@ beforeEach(async () => {
   // distinct project dir per input, so isolation is per-test rather than
   // per-file. Other test files in the full suite may mutate state/session
   // between our tests, but our files always land in a fresh dir.
-  tempRoot = await mkdtemp(join(tmpdir(), 'claudio-summarizer-int-'))
+  tempRoot = await mkdtemp(join(tmpdir(), 'claudin-summarizer-int-'))
   setOriginalCwd(tempRoot)
   createdProjectDirs.add(getProjectDir(tempRoot))
   try {
@@ -97,7 +97,7 @@ beforeEach(async () => {
     // config module may be mocked by a sibling test file without
     // saveGlobalConfig; env-var path + default still cover the flag.
   }
-  delete process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER
+  delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
 })
 
 afterEach(() => {
@@ -107,9 +107,9 @@ afterEach(() => {
     // See beforeEach: saveGlobalConfig may be absent under sibling-file mocks.
   }
   if (originalEnv === undefined) {
-    delete process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER
+    delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
   } else {
-    process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER = originalEnv
+    process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = originalEnv
   }
 })
 
@@ -270,7 +270,7 @@ test('integration: oversized Glob is summarized, no disk write when <50K after',
 })
 
 test('integration: env-var kill switch restores pre-summarizer behavior', async () => {
-  process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER = '1'
+  process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = '1'
   const words = ['alpha', 'beta', 'gamma', 'delta']
   const content = Array.from(
     { length: 800 },
@@ -368,7 +368,7 @@ test('integration: MCPTool array 20k chars → summarized, no disk write', async
 })
 
 test('integration: env-var kill switch → AgentTool array passes through unchanged', async () => {
-  process.env.CLAUDIO_DISABLE_TOOL_RESULT_SUMMARIZER = '1'
+  process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = '1'
   const text = Array.from(
     { length: 600 },
     (_, i) => `agent output line ${i} ${'z'.repeat(40)}`,

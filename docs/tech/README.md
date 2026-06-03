@@ -1,6 +1,6 @@
 # Technical Design Docs
 
-Pasta para documentos técnicos de **arquitetura e implementação** de features do claudio. Diferente de `docs/discovery/` (que mapeia o problema e valida estratégias), aqui mora **a solução**.
+Pasta para documentos técnicos de **arquitetura e implementação** de features do claudin. Diferente de `docs/discovery/` (que mapeia o problema e valida estratégias), aqui mora **a solução**.
 
 ## Estrutura
 

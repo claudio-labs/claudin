@@ -28,7 +28,7 @@ export const DEFAULT_MAX_AGE_DAYS =
  */
 export function isKairosCronEnabled(): boolean {
   if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_CRON)) return false
-  // Claudio open builds do not rely on Anthropic's internal runtime gates.
+  // Claudin open builds do not rely on Anthropic's internal runtime gates.
   // Expose cron support by default unless explicitly disabled.
   return true
 }
@@ -56,7 +56,7 @@ export const CRON_LIST_TOOL_NAME = 'CronList'
 
 export function buildCronCreateDescription(durableEnabled: boolean): string {
   return durableEnabled
-    ? 'Schedule a prompt to run at a future time — either recurring on a cron schedule, or once at a specific time. Pass durable: true to persist to .claudio/scheduled_tasks.json; otherwise session-only.'
+    ? 'Schedule a prompt to run at a future time — either recurring on a cron schedule, or once at a specific time. Pass durable: true to persist to .claudin/scheduled_tasks.json; otherwise session-only.'
     : 'Schedule a prompt to run at a future time within this Claude session — either recurring on a cron schedule, or once at a specific time.'
 }
 
@@ -64,13 +64,13 @@ export function buildCronCreatePrompt(durableEnabled: boolean): string {
   const durabilitySection = durableEnabled
     ? `## Durability
 
-By default (durable: false) the job lives only in this Claude session — nothing is written to disk, and the job is gone when Claude exits. Pass durable: true to write to .claudio/scheduled_tasks.json so the job survives restarts. Only use durable: true when the user explicitly asks for the task to persist ("keep doing this every day", "set this up permanently"). Most "remind me in 5 minutes" / "check back in an hour" requests should stay session-only.`
+By default (durable: false) the job lives only in this Claude session — nothing is written to disk, and the job is gone when Claude exits. Pass durable: true to write to .claudin/scheduled_tasks.json so the job survives restarts. Only use durable: true when the user explicitly asks for the task to persist ("keep doing this every day", "set this up permanently"). Most "remind me in 5 minutes" / "check back in an hour" requests should stay session-only.`
     : `## Session-only
 
 Jobs live only in this Claude session — nothing is written to disk, and the job is gone when Claude exits.`
 
   const durableRuntimeNote = durableEnabled
-    ? 'Durable jobs persist to .claudio/scheduled_tasks.json and survive session restarts — on next launch they resume automatically. One-shot durable tasks that were missed while the REPL was closed are surfaced for catch-up. Session-only jobs die with the process. '
+    ? 'Durable jobs persist to .claudin/scheduled_tasks.json and survive session restarts — on next launch they resume automatically. One-shot durable tasks that were missed while the REPL was closed are surfaced for catch-up. Session-only jobs die with the process. '
     : ''
 
   return `Schedule a prompt to be enqueued at a future time. Use for both recurring schedules and one-shot reminders.
@@ -105,13 +105,13 @@ Returns a job ID you can pass to ${CRON_DELETE_TOOL_NAME}.`
 export const CRON_DELETE_DESCRIPTION = 'Cancel a scheduled cron job by ID'
 export function buildCronDeletePrompt(durableEnabled: boolean): string {
   return durableEnabled
-    ? `Cancel a cron job previously scheduled with ${CRON_CREATE_TOOL_NAME}. Removes it from .claudio/scheduled_tasks.json (durable jobs) or the in-memory session store (session-only jobs).`
+    ? `Cancel a cron job previously scheduled with ${CRON_CREATE_TOOL_NAME}. Removes it from .claudin/scheduled_tasks.json (durable jobs) or the in-memory session store (session-only jobs).`
     : `Cancel a cron job previously scheduled with ${CRON_CREATE_TOOL_NAME}. Removes it from the in-memory session store.`
 }
 
 export const CRON_LIST_DESCRIPTION = 'List scheduled cron jobs'
 export function buildCronListPrompt(durableEnabled: boolean): string {
   return durableEnabled
-    ? `List all cron jobs scheduled via ${CRON_CREATE_TOOL_NAME}, both durable (.claudio/scheduled_tasks.json) and session-only.`
+    ? `List all cron jobs scheduled via ${CRON_CREATE_TOOL_NAME}, both durable (.claudin/scheduled_tasks.json) and session-only.`
     : `List all cron jobs scheduled via ${CRON_CREATE_TOOL_NAME} in this session.`
 }

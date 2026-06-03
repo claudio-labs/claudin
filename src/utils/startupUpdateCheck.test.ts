@@ -11,12 +11,12 @@ describe('getEarlySkipReason', () => {
   const originalArgv1 = process.argv[1]
 
   beforeEach(() => {
-    delete process.env.CLAUDIO_SKIP_STARTUP_UPDATE
+    delete process.env.CLAUDIN_SKIP_STARTUP_UPDATE
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
       value: true,
     })
-    process.argv[1] = '/usr/local/bin/claudio'
+    process.argv[1] = '/usr/local/bin/claudin'
   })
 
   afterEach(() => {
@@ -32,8 +32,8 @@ describe('getEarlySkipReason', () => {
     expect(getEarlySkipReason([])).toBeNull()
   })
 
-  test('skips when CLAUDIO_SKIP_STARTUP_UPDATE=1', () => {
-    process.env.CLAUDIO_SKIP_STARTUP_UPDATE = '1'
+  test('skips when CLAUDIN_SKIP_STARTUP_UPDATE=1', () => {
+    process.env.CLAUDIN_SKIP_STARTUP_UPDATE = '1'
     expect(getEarlySkipReason([])).toBe('env-skip')
   })
 
@@ -69,7 +69,7 @@ describe('getEarlySkipReason', () => {
   })
 
   test('skips when invoked via npx (_npx in path)', () => {
-    process.argv[1] = '/home/user/.npm/_npx/abc123/node_modules/@claudiolabs/claudio/bin/claudio'
+    process.argv[1] = '/home/user/.npm/_npx/abc123/node_modules/@claudinlabs/claudin/bin/claudin'
     expect(getEarlySkipReason([])).toBe('npx')
   })
 
@@ -79,7 +79,7 @@ describe('getEarlySkipReason', () => {
   })
 
   test('does not treat subcommand word as skip when it is a flag value', () => {
-    // `claudio -p "update"` — "update" is the value of -p, not a subcommand.
+    // `claudin -p "update"` — "update" is the value of -p, not a subcommand.
     // Strict positional check (argv[0] non-flag) prevents the false positive.
     expect(getEarlySkipReason(['-p', 'update'])).toBeNull()
   })
@@ -90,7 +90,7 @@ describe('getEarlySkipReason', () => {
   })
 
   test('priority: env-skip beats subcommand check', () => {
-    process.env.CLAUDIO_SKIP_STARTUP_UPDATE = '1'
+    process.env.CLAUDIN_SKIP_STARTUP_UPDATE = '1'
     expect(getEarlySkipReason(['update'])).toBe('env-skip')
   })
 })
@@ -119,7 +119,7 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
   const originalIsTTY = process.stdout.isTTY
 
   beforeEach(() => {
-    delete process.env.CLAUDIO_SKIP_STARTUP_UPDATE
+    delete process.env.CLAUDIN_SKIP_STARTUP_UPDATE
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
       value: true,
@@ -135,7 +135,7 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
   })
 
   test('returns silently when skip env is set', async () => {
-    process.env.CLAUDIO_SKIP_STARTUP_UPDATE = '1'
+    process.env.CLAUDIN_SKIP_STARTUP_UPDATE = '1'
     await expect(runStartupUpdateCheck(['update'])).resolves.toBeUndefined()
   })
 

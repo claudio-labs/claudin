@@ -214,7 +214,7 @@ export const call: LocalCommandCall = async (args) => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
-    originator: 'claudio',
+    originator: 'claudin',
   }
   if (isGithub) {
     Object.assign(headers, COPILOT_HEADERS)

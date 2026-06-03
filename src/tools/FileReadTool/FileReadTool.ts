@@ -29,7 +29,7 @@ import {
 import type { ToolUseContext } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
-import { getClaudioConfigHomeDir, isEnvTruthy } from '../../utils/envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from '../../utils/envUtils.js'
 import { getErrnoCode, isAbortError, isENOENT } from '../../utils/errors.js'
 import {
   addLineNumbers,
@@ -206,15 +206,15 @@ const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
 
 /**
  * Detects if a file path is a session-related file for analytics logging.
- * Only matches files within the Claudio config directory (e.g., ~/.claudio).
+ * Only matches files within the Claudin config directory (e.g., ~/.claudin).
  * Returns the type of session file or null if not a session file.
  */
 function detectSessionFileType(
   filePath: string,
 ): 'session_memory' | 'session_transcript' | null {
-  const configDir = getClaudioConfigHomeDir()
+  const configDir = getClaudinConfigHomeDir()
 
-  // Only match files within the Claudio config directory
+  // Only match files within the Claudin config directory
   if (!filePath.startsWith(configDir)) {
     return null
   }
@@ -222,7 +222,7 @@ function detectSessionFileType(
   // Normalize path to use forward slashes for consistent matching across platforms
   const normalizedPath = filePath.split(win32.sep).join(posix.sep)
 
-  // Session memory files: ~/.claudio/session-memory/*.md (including summary.md)
+  // Session memory files: ~/.claudin/session-memory/*.md (including summary.md)
   if (
     normalizedPath.includes('/session-memory/') &&
     normalizedPath.endsWith('.md')
@@ -230,7 +230,7 @@ function detectSessionFileType(
     return 'session_memory'
   }
 
-  // Session JSONL transcript files: ~/.claudio/projects/*/*.jsonl
+  // Session JSONL transcript files: ~/.claudin/projects/*/*.jsonl
   if (
     normalizedPath.includes('/projects/') &&
     normalizedPath.endsWith('.jsonl')
@@ -819,15 +819,15 @@ const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
 
 /**
  * Single source of truth for the AUTO_OUTLINE_ON_ELISION gate. Tests can
- * force-enable via `CLAUDIO_FORCE_AUTO_OUTLINE_ON_ELISION=1` because the
+ * force-enable via `CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION=1` because the
  * test-preload (src/stubs/test-preload.ts) stubs every `feature()` call to
  * `false` and a local `mock.module('bun:bundle', …)` runs too late to win
  * against it. Production behavior is unchanged: the build-time preprocessor
  * folds `feature('AUTO_OUTLINE_ON_ELISION')` to its flag value.
  */
 function autoOutlineOnElisionEnabled(): boolean {
-  if (process.env.CLAUDIO_FORCE_AUTO_OUTLINE_ON_ELISION === '1') return true
-  if (process.env.CLAUDIO_DISABLE_AUTO_OUTLINE_ON_ELISION === '1') return false
+  if (process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION === '1') return true
+  if (process.env.CLAUDIN_DISABLE_AUTO_OUTLINE_ON_ELISION === '1') return false
   if (feature('AUTO_OUTLINE_ON_ELISION')) return true
   return false
 }
@@ -839,7 +839,7 @@ export const CYBER_RISK_MITIGATION_REMINDER =
 const MITIGATION_EXEMPT_MODELS = new Set(['claude-opus-4-6', 'claude-opus-4-7'])
 
 function shouldIncludeFileReadMitigation(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIO_DISABLE_TOOL_REMINDERS)) {
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) {
     return false
   }
   const shortName = getCanonicalName(getMainLoopModel())
@@ -867,7 +867,7 @@ function memoryFileFreshnessPrefix(data: object): string {
 const serialReadNudgeFlagged: WeakSet<object> = new WeakSet()
 
 function shouldEmitSerialReadNudge(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIO_DISABLE_TOOL_REMINDERS)) return false
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) return false
   // feature() from bun:bundle must appear directly in if/ternary; the build
   // preprocessor replaces it with a boolean literal before bundling.
   return feature('SERIAL_READ_NUDGE') ? true : false

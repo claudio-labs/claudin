@@ -8,7 +8,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
   DISPLAY_VERSION: '0.0.0-test',
   BUILD_TIME: '1970-01-01T00:00:00.000Z',
   ISSUES_EXPLAINER: 'report the issue',
-  PACKAGE_URL: '@claudiolabs/claudio',
+  PACKAGE_URL: '@claudinlabs/claudin',
   NATIVE_PACKAGE_URL: undefined,
 }
 
@@ -103,13 +103,13 @@ describe('run skill', () => {
 })
 
 describe('fewer-permission-prompts skill', () => {
-  test('targets Claudio paths, not .claude', async () => {
+  test('targets Claudin paths, not .claude', async () => {
     registerFewerPermissionPromptsSkill()
     const text = await promptText('fewer-permission-prompts')
-    expect(text).toContain('.claudio/settings.json')
-    // transcript dir is injected from Claudio's runtime projects dir
+    expect(text).toContain('.claudin/settings.json')
+    // transcript dir is injected from Claudin's runtime projects dir
     expect(text).toContain('/projects/')
-    expect(text).toContain('CLAUDIO_CONFIG_DIR')
+    expect(text).toContain('CLAUDIN_CONFIG_DIR')
     // does not instruct writing to the legacy .claude/settings.json
     expect(text).not.toContain('`.claude/settings.json`')
   })

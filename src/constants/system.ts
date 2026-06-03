@@ -7,11 +7,11 @@ import { isEnvDefinedFalsy } from '../utils/envUtils.js'
 import { getAPIProvider } from '../utils/model/providers.js'
 
 const DEFAULT_PREFIX =
-  `You are Claudio, an open-source coding agent and CLI.`
+  `You are Claudin, an open-source coding agent and CLI.`
 const AGENT_SDK_CLAUDE_CODE_PRESET_PREFIX =
-  `You are Claudio, an open-source coding agent and CLI running within the Claude Agent SDK.`
+  `You are Claudin, an open-source coding agent and CLI running within the Claude Agent SDK.`
 const AGENT_SDK_PREFIX =
-  `You are Claudio, built on the Claude Agent SDK.`
+  `You are Claudin, built on the Claude Agent SDK.`
 
 const CLI_SYSPROMPT_PREFIX_VALUES = [
   DEFAULT_PREFIX,

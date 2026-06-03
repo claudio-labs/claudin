@@ -5,7 +5,7 @@
 > **PR:** _(preencher)_
 > **Parent spec:** [`../architecture.md` §8](../architecture.md)
 
-Abre superfície de extensão: usuário cria `~/.claudio/filters.json` com filtros customizados. Schema validado por zod, hardening contra ReDoS, sem `rewriteCommand` permitido (segurança).
+Abre superfície de extensão: usuário cria `~/.claudin/filters.json` com filtros customizados. Schema validado por zod, hardening contra ReDoS, sem `rewriteCommand` permitido (segurança).
 
 ## Pré-requisitos
 
@@ -61,7 +61,7 @@ Abre superfície de extensão: usuário cria `~/.claudio/filters.json` com filtr
    export function loadUserFilters(): FilterSpec[] {
      if (getGlobalConfig().bashOutputFilterUserEnabled === false) return []
 
-     const path = join(getClaudioConfigHomeDir(), 'filters.json')
+     const path = join(getClaudinConfigHomeDir(), 'filters.json')
      if (!existsSync(path)) return []
 
      try {
@@ -161,8 +161,8 @@ Abre superfície de extensão: usuário cria `~/.claudio/filters.json` com filtr
 6. **Smoke manual:**
    ```bash
    # Create test config
-   mkdir -p ~/.claudio
-   cat > ~/.claudio/filters.json <<'EOF'
+   mkdir -p ~/.claudin
+   cat > ~/.claudin/filters.json <<'EOF'
    {
      "filters": [
        {
@@ -180,7 +180,7 @@ Abre superfície de extensão: usuário cria `~/.claudio/filters.json` com filtr
    }
    EOF
 
-   # Run claudio with filter enabled
+   # Run claudin with filter enabled
    bun run dev
    # Run: make release
    # Expect: <bash-output-filtered name="my-make"> marker if filter activates
@@ -197,7 +197,7 @@ bun run verify:privacy
 
 ## Acceptance criteria
 
-- [ ] User filter at `~/.claudio/filters.json` loads, validates, compiles
+- [ ] User filter at `~/.claudin/filters.json` loads, validates, compiles
 - [ ] Built-in filters take precedence over user filters with same name
 - [ ] Malformed JSON → empty load + error log; built-ins still work
 - [ ] Bad regex in user filter → individual entry dropped; others load
@@ -212,7 +212,7 @@ bun run verify:privacy
 ```markdown
 ## feat(bash-filter): user-defined filters via JSON (Phase 6)
 
-Adds `~/.claudio/filters.json` as the user-defined filter surface. Schema validated with zod, hardened against ReDoS via length cap + denylist.
+Adds `~/.claudin/filters.json` as the user-defined filter surface. Schema validated with zod, hardened against ReDoS via length cap + denylist.
 
 ### Format
 ```json

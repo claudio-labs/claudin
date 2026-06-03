@@ -6,11 +6,11 @@
 > **Priority rationale:** maior ganho de tokens remanescente após Phase 8 — ping/rsync/tree são comandos comuns que despejam centenas de linhas sem filtro hoje. 4 sub-PRs (9a-9d) sem bloqueio de framework, cada um ~30 LOC e shippable independentemente.
 > **Parent spec:** [`../architecture.md`](../architecture.md)
 > **Discovery refs (leitura obrigatória antes de pegar):**
-> - [`system-coverage-detail-2026-05.md`](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md) — gap analysis Claudio × RTK, FilterSpec proposta por comando, bloqueios de framework
+> - [`system-coverage-detail-2026-05.md`](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md) — gap analysis Claudin × RTK, FilterSpec proposta por comando, bloqueios de framework
 > - [`system-utils-deep-dive-2026-05.md`](../../../discovery/bash-output-filter/system-utils-deep-dive-2026-05.md) — análise individual de cada comando com FilterSpec e ROI estimado
 > - [`rtk-refinement-2026-05.md`](../../../discovery/bash-output-filter/rtk-refinement-2026-05.md) — visão das 6 famílias
 
-Continuação da auditoria post-Phase 8: cobre os comandos de sistema (utilitários de FS, rede, processos) que o RTK trata mas o Claudio ainda não. Levantamento empírico em maio/2026 mostrou **8 gaps acionáveis sem bloqueio de framework** + **1 parcialmente cobertos** (curl) + **4 bloqueados por RFC**.
+Continuação da auditoria post-Phase 8: cobre os comandos de sistema (utilitários de FS, rede, processos) que o RTK trata mas o Claudin ainda não. Levantamento empírico em maio/2026 mostrou **8 gaps acionáveis sem bloqueio de framework** + **1 parcialmente cobertos** (curl) + **4 bloqueados por RFC**.
 
 ## Pré-requisitos
 
@@ -263,7 +263,7 @@ export const curlPlain: FilterSpec = {
 ```bash
 bun test src/outputFilter/Bash/bashFilter.test.ts          # +10 describe blocks
 bun test src/outputFilter/Bash                              # full suite — verificar zero regressões
-CLAUDIO_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — +10 linhas
+CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — +10 linhas
 bun run typecheck
 ```
 
@@ -300,7 +300,7 @@ Cada `describe('phase 9 — <filter>')` cobre (template de [§6 do system-covera
 ## feat(bash-filter): system utilities — ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain (Phase 9)
 
 Adds 10 declarative FilterSpecs covering system utilities (filesystem, network, process)
-that RTK covers but Claudio did not. Auditoria de gaps em maio/2026
+that RTK covers but Claudin did not. Auditoria de gaps em maio/2026
 (docs/discovery/bash-output-filter/system-coverage-detail-2026-05.md).
 
 ### Filters added
@@ -348,7 +348,7 @@ Shipped 2026-05-13 in a single PR (não usou sub-PRs 9a–9d — escopo manejáv
 - **`du`**: `DU_DEEP_NOISE` ajustado para `(?:^|\/)\.git\/(?:refs|objects)\/|node_modules\/[^/]+\/node_modules\/`. Comparado ao spec original (`\.git\/(?:refs|objects)\/`), o `(?:^|\/)` ancora à raiz do path para não casar nomes de arquivos contendo a sub-string `.git/refs/`. Não houve fixture com essa colisão, mas é defesa preventiva.
 - **Test ajustado em `curlV`**: o test "no match: curl https://example.com (no -v, should passthrough)" tinha como invariante que comando `curl` sem flag não tinha filtro. Phase 9 quebra essa invariante de propósito (curl-plain agora cobre exatamente esse caso). Test atualizado para verificar que `curl <URL>` retorna `curl-plain` e `curl -v <URL>` continua indo pro `curlV`.
 
-Gain table (CLAUDIO_BENCH=1, fixtures reais):
+Gain table (CLAUDIN_BENCH=1, fixtures reais):
 
 | Filter | RAW | OUT | RED% | PRED% |
 |---|---|---|---|---|

@@ -3222,7 +3222,7 @@ test('preserves valid tool_result and drops orphan tool_result', async () => {
             type: 'tool_use',
             id: 'valid_call_1',
             name: 'Search',
-            input: { query: 'claudio' },
+            input: { query: 'claudin' },
           },
         ],
       },
@@ -4288,7 +4288,7 @@ test('fallback estimates input tokens from system prompt', async () => {
   )
 })
 
-test('fallback estimates input tokens from Claudio internal message format', async () => {
+test('fallback estimates input tokens from Claudin internal message format', async () => {
   process.env.OPENAI_BASE_URL = 'http://localhost:11434/v1'
 
   globalThis.fetch = (async (_input, init) => {
@@ -4327,7 +4327,7 @@ test('fallback estimates input tokens from Claudio internal message format', asy
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
-  // Use Claudio internal format: { type, message: { role, content } }
+  // Use Claudin internal format: { type, message: { role, content } }
   const result = await client.beta.messages
     .create({
       model: 'llama3.1:8b',

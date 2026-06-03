@@ -1,5 +1,5 @@
 /**
- * Not a real test — a runnable analysis. Maps claudio's per-turn context
+ * Not a real test — a runnable analysis. Maps claudin's per-turn context
  * overhead down to individual offenders so we know what to trim:
  *   1. built-in tool schemas, ranked by tokens (the "System tools" category)
  *   2. system-prompt sections, ranked by tokens

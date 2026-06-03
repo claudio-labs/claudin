@@ -17,7 +17,7 @@
 import { createHash } from 'crypto'
 import { userInfo } from 'os'
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { getClaudioConfigHomeDir } from '../envUtils.js'
+import { getClaudinConfigHomeDir } from '../envUtils.js'
 import type { SecureStorageData } from './index.js'
 
 // Suffix distinguishing the OAuth credentials keychain entry from the legacy
@@ -27,14 +27,14 @@ import type { SecureStorageData } from './index.js'
 export const CREDENTIALS_SERVICE_SUFFIX = '-credentials'
 
 /**
- * Get the service/resource name for secure storage, scoped by CLAUDIO_CONFIG_DIR
+ * Get the service/resource name for secure storage, scoped by CLAUDIN_CONFIG_DIR
  * if it's set to a non-default location.
  */
 export function getSecureStorageServiceName(
   serviceSuffix: string = '',
 ): string {
-  const configDir = getClaudioConfigHomeDir()
-  const isDefaultDir = !process.env.CLAUDIO_CONFIG_DIR
+  const configDir = getClaudinConfigHomeDir()
+  const isDefaultDir = !process.env.CLAUDIN_CONFIG_DIR
 
   // Use a hash of the config dir path to create a unique but stable suffix
   // Only add suffix for non-default directories to maintain backwards compatibility

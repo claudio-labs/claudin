@@ -17,7 +17,7 @@ const DOSSIER_VERSION = 1 as const
 export const HARD_CAP_PCT = 0.25
 
 export const SUBAGENT_BUDGET_PCT: Record<string, number> = {
-  'claudio-dev': 0.25,
+  'claudin-dev': 0.25,
   'Code': 0.2,
   __customDefault: 0.2,
   Explore: 0,
@@ -100,7 +100,7 @@ const PDF_EXTENSIONS = new Set(['pdf'])
 
 export function getDossierPath(planSlug: string): string {
   // Derive from getPlanFilePath() so the dossier follows whatever base dir
-  // the user has configured (settings.plansDirectory, ~/.claudio/plans, etc).
+  // the user has configured (settings.plansDirectory, ~/.claudin/plans, etc).
   // We replace the final {slug}.md with {slug}.dossier.json inside the same
   // directory rather than recomputing it — this keeps the two paths in sync.
   const planPath = getPlanFilePath()

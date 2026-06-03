@@ -6,11 +6,11 @@ import {
   getSessionProjectDir,
 } from 'src/bootstrap/state.js'
 import type { AgentId } from 'src/types/ids.js'
-import { getClaudioConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { sanitizePath } from 'src/utils/path.js'
 
 export function getProjectsDir(): string {
-  return join(getClaudioConfigHomeDir(), 'projects')
+  return join(getClaudinConfigHomeDir(), 'projects')
 }
 
 export function getTranscriptPath(): string {
@@ -77,10 +77,10 @@ export function getAgentTranscriptPath(agentId: AgentId): string {
 // stable for a given input. Worktree switches just change the key — no
 // cache clear needed.
 //
-// CACHE WARNING: the memoize key is ONLY the cwd string. CLAUDIO_CONFIG_DIR
-// is read at compute time via getProjectsDir() → getClaudioConfigHomeDir(),
+// CACHE WARNING: the memoize key is ONLY the cwd string. CLAUDIN_CONFIG_DIR
+// is read at compute time via getProjectsDir() → getClaudinConfigHomeDir(),
 // but changes to that env var DO NOT invalidate the cache. Tests that switch
-// CLAUDIO_CONFIG_DIR while keeping the same cwd MUST call
+// CLAUDIN_CONFIG_DIR while keeping the same cwd MUST call
 // getProjectDir.cache.clear() between cases or they will read stale paths.
 export const getProjectDir = memoize((projectDir: string): string => {
   return join(getProjectsDir(), sanitizePath(projectDir))

@@ -59,7 +59,7 @@ export function generatePrompt(): string {
 ## Configurable settings list
 The following settings are available for you to change:
 
-### Global Settings (stored in ~/.claudio/config.json)
+### Global Settings (stored in ~/.claudin/config.json)
 ${globalSettings.join('\n')}
 
 ### Project Settings (stored in settings.json)

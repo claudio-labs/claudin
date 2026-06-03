@@ -88,7 +88,7 @@ Options:
   console.log(`  cap: 1000 entries × 256 KB max → theoretical ceiling 256 MB`)
   console.log('')
 
-  const dir = join(tmpdir(), `claudio-frc-bench-${process.pid}`)
+  const dir = join(tmpdir(), `claudin-frc-bench-${process.pid}`)
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
 

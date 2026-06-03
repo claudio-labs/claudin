@@ -15,15 +15,15 @@
  * KPI secundario: tokens / cost / wall (sanity).
  *
  * Uso:
- *   CLAUDIO_BENCH_BASELINE=dist-baseline/cli.mjs \
+ *   CLAUDIN_BENCH_BASELINE=dist-baseline/cli.mjs \
  *   bun run scripts/bench/auto-mode-plan-adherence-ab.ts
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-opus-4-8     (default)
- *   CLAUDIO_BENCH_RUNS=3                (runs por prompt por variante)
- *   CLAUDIO_BENCH_BASELINE=dist-baseline/cli.mjs
- *   CLAUDIO_BENCH_FEATURE=dist/cli.mjs
- *   CLAUDIO_BENCH_TARGET_CWD=<repo>
+ *   CLAUDIN_BENCH_RUNS=3                (runs por prompt por variante)
+ *   CLAUDIN_BENCH_BASELINE=dist-baseline/cli.mjs
+ *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs
+ *   CLAUDIN_BENCH_TARGET_CWD=<repo>
  */
 
 import { spawn } from 'node:child_process'
@@ -32,11 +32,11 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const BASELINE = process.env.CLAUDIO_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-baseline', 'cli.mjs')
-const FEATURE = process.env.CLAUDIO_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
-const RUNS_PER_PROMPT = Number(process.env.CLAUDIO_BENCH_RUNS ?? '3')
+const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-baseline', 'cli.mjs')
+const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'
-const TARGET_CWD = process.env.CLAUDIO_BENCH_TARGET_CWD ?? REPO_ROOT
+const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
 
 type PromptKind = 'plan' | 'control'
 
@@ -110,7 +110,7 @@ interface SessionAnalysis {
 
 function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const projectDir = projectDirForCwd(cwd)
-  const path = join(homedir(), '.claudio', 'projects', projectDir, `${sessionId}.jsonl`)
+  const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
   if (!existsSync(path)) return { toolCounts: {}, enteredPlanMode: false }
   const counts: Record<string, number> = {}
   let enteredPlanMode = false

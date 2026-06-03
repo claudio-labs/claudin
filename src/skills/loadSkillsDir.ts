@@ -30,7 +30,7 @@ import {
   parseEffortValue,
 } from '../utils/effort.js'
 import {
-  getClaudioConfigHomeDir,
+  getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
 } from '../utils/envUtils.js'
@@ -73,7 +73,7 @@ export type LoadedFrom =
   | 'mcp'
 
 /**
- * Returns a claudio config directory path for a given source.
+ * Returns a claudin config directory path for a given source.
  */
 export function getSkillsPath(
   source: SettingSource | 'plugin',
@@ -81,11 +81,11 @@ export function getSkillsPath(
 ): string {
   switch (source) {
     case 'policySettings':
-      return join(getManagedFilePath(), '.claudio', dir)
+      return join(getManagedFilePath(), '.claudin', dir)
     case 'userSettings':
-      return join(getClaudioConfigHomeDir(), dir)
+      return join(getClaudinConfigHomeDir(), dir)
     case 'projectSettings':
-      return `.claudio/${dir}`
+      return `.claudin/${dir}`
     case 'plugin':
       return 'plugin'
     default:
@@ -722,8 +722,8 @@ async function loadSkillsFromCommandsDir(
  */
 export const getSkillDirCommands = memoize(
   async (cwd: string): Promise<Command[]> => {
-    const userSkillsDir = join(getClaudioConfigHomeDir(), 'skills')
-    const managedSkillsDir = join(getManagedFilePath(), '.claudio', 'skills')
+    const userSkillsDir = join(getClaudinConfigHomeDir(), 'skills')
+    const managedSkillsDir = join(getManagedFilePath(), '.claudin', 'skills')
     const projectSkillsDirs = getProjectDirsUpToHome('skills', cwd)
 
     logForDebugging(
@@ -750,7 +750,7 @@ export const getSkillDirCommands = memoize(
       const additionalSkillsNested = await Promise.all(
         additionalDirs.map(dir =>
           loadSkillsFromSkillsDir(
-            join(dir, '.claudio', 'skills'),
+            join(dir, '.claudin', 'skills'),
             'projectSettings',
           ),
         ),
@@ -785,7 +785,7 @@ export const getSkillDirCommands = memoize(
         ? Promise.all(
             additionalDirs.map(dir =>
               loadSkillsFromSkillsDir(
-                join(dir, '.claudio', 'skills'),
+                join(dir, '.claudin', 'skills'),
                 'projectSettings',
               ),
             ),
@@ -959,7 +959,7 @@ export async function discoverSkillDirsForPaths(
     // CWD-level skills are already loaded at startup, so we only discover nested ones
     // Use prefix+separator check to avoid matching /project-backup when cwd is /project
     while (currentDir.startsWith(resolvedCwd + pathSep)) {
-      const skillDir = join(currentDir, '.claudio', 'skills')
+      const skillDir = join(currentDir, '.claudin', 'skills')
 
       // Skip if we've already checked this path (hit or miss) — avoids
       // repeating the same failed stat on every Read/Write/Edit call when
@@ -969,7 +969,7 @@ export async function discoverSkillDirsForPaths(
         try {
           await fs.stat(skillDir)
           // Skills dir exists. Before loading, check if the containing dir
-          // is gitignored — blocks e.g. node_modules/pkg/.claudio/skills from
+          // is gitignored — blocks e.g. node_modules/pkg/.claudin/skills from
           // loading silently. `git check-ignore` handles nested .gitignore,
           // .git/info/exclude, and global gitignore. Fails open outside a
           // git repo (exit 128 → false); the invocation-time trust dialog

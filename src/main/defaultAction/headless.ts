@@ -1,4 +1,4 @@
-// Print/headless branch — `claudio -p` / `--print` / SDK mode. Sets up the
+// Print/headless branch — `claudin -p` / `--print` / SDK mode. Sets up the
 // non-interactive AppState, connects MCP per-server with incremental push,
 // dedupes claude.ai connectors, and dispatches to cli/print's runHeadless.
 // Extracted from src/main.tsx (ROADMAP 11g Fase 5c).

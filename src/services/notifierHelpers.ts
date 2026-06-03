@@ -69,7 +69,7 @@ export function buildWindowsToastScript(
     '$xml = New-Object Windows.Data.Xml.Dom.XmlDocument',
     `$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>${safeTitle}</text><text>${safeMessage}</text></binding></visual></toast>')`,
     '$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)',
-    '$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Claudio")',
+    '$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Claudin")',
     '$notifier.Show($toast)',
   ].join('; ')
 }

@@ -14,13 +14,13 @@ let configDir: string
 
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'cronlist-'))
-  process.env.CLAUDIO_CONFIG_DIR = configDir
+  process.env.CLAUDIN_CONFIG_DIR = configDir
   delete process.env.CLAUDE_CODE_DISABLE_CRON
 })
 
 afterAll(() => {
   rmSync(configDir, { recursive: true, force: true })
-  delete process.env.CLAUDIO_CONFIG_DIR
+  delete process.env.CLAUDIN_CONFIG_DIR
 })
 
 afterEach(() => {

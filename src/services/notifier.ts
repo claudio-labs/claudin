@@ -22,7 +22,7 @@ export type NotificationOptions = {
   notificationType: string
 }
 
-const DEFAULT_TITLE = 'Claudio'
+const DEFAULT_TITLE = 'Claudin'
 const debouncer = makeDebouncer()
 
 function shouldDebounce(opts: NotificationOptions): boolean {
@@ -105,7 +105,7 @@ async function sendAuto(
   const sshSession = env.isSSH()
 
   // In headless mode there is no terminal to receive OSC; jump straight to
-  // the desktop backend (still useful for `claudio` running as a daemon).
+  // the desktop backend (still useful for `claudin` running as a daemon).
   if (isHeadless) {
     return sendOsNative({ ...opts, title })
   }
@@ -213,7 +213,7 @@ async function sendMacOsNotification(
   if (await commandExists('terminal-notifier')) {
     const { code, error } = await execFileNoThrow(
       'terminal-notifier',
-      ['-title', title, '-message', opts.message, '-group', 'claudio'],
+      ['-title', title, '-message', opts.message, '-group', 'claudin'],
       { useCwd: false, timeout: 5000 },
     )
     if (code === 0) return 'os_native:terminal-notifier'
@@ -240,7 +240,7 @@ async function sendLinuxNotification(
     const { code, error } = await execFileNoThrow(
       'notify-send',
       [
-        '--app-name=Claudio',
+        '--app-name=Claudin',
         '--category=im.received',
         '--expire-time=5000',
         title,
