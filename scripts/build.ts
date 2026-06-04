@@ -67,6 +67,7 @@ const featureFlags: Record<string, boolean> = {
   SERIAL_READ_NUDGE: false,           // KILL'd again in the post-fix bench (serial-read-nudge-ab-...15-57.md): -17% narration but +7% cost, +19% wall, and 2/9 B-side runs still failing with answerChars=308 — auto-memory + Explore subagent specifically. The thinking-signature invalidation has a second cause beyond stripOldNarrationBlocks. Flip back on only after the Explore-interaction root cause lands.
   AUTO_OUTLINE_ON_ELISION: true,      // On a vanilla Read whose body would be head-tail elided by toolResultSummarizer, return the structural outline instead — kills the "preciso do meio" re-read loop documented in narration bench samples
   FAMILY_PROMPT_ADDENDUMS: true,      // Append a small per-family system-prompt block (openai-reasoning/gemini/kimi/glm/codex) — anthropic stays untouched. Gate kept so we can flip OFF for A/B benches.
+  ANTI_NARRATION: true,               // Append anti-narration bullets to the universal harness + fill the anthropic family addendum with a transcript-shape contract. Kill switch for narration-cost A/B benches.
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────

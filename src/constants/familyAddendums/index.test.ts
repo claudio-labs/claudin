@@ -97,6 +97,11 @@ describe('getModelFamily', () => {
 
 describe('addendum contents', () => {
   const named: Array<{ name: ModelFamily; value: string | null; expectString: boolean }> = [
+    // anthropic addendum is gated on feature('ANTI_NARRATION') which the
+    // test preload (src/stubs/test-preload.ts) stubs to false — so under
+    // tests we expect null here. Production builds set the flag to true
+    // via scripts/build.ts and the resolved string is exercised by the
+    // dedicated test below.
     { name: 'anthropic', value: ANTHROPIC_ADDENDUM, expectString: false },
     { name: 'default', value: DEFAULT_ADDENDUM, expectString: false },
     { name: 'openai-reasoning', value: OPENAI_REASONING_ADDENDUM, expectString: true },
