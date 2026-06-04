@@ -13,7 +13,11 @@ import { validateModel } from '../../utils/model/validateModel.js'
 import { THEME_NAMES, THEME_SETTINGS } from '../../utils/theme.js'
 
 /** AppState keys that can be synced for immediate UI effect */
-type SyncableAppStateKey = 'verbose' | 'mainLoopModel' | 'thinkingEnabled'
+type SyncableAppStateKey =
+  | 'verbose'
+  | 'mainLoopModel'
+  | 'thinkingEnabled'
+  | 'collapseSubagentProgress'
 
 type SettingConfig = {
   source: 'global' | 'settings'
@@ -58,6 +62,17 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
     source: 'global',
     type: 'boolean',
     description: 'Auto-compact when context is full',
+  },
+  collapseSubagentProgress: {
+    source: 'global',
+    type: 'boolean',
+    description: 'Collapse subagent progress to a single line on the main thread',
+    appStateKey: 'collapseSubagentProgress',
+  },
+  summarizeSubagentResult: {
+    source: 'global',
+    type: 'boolean',
+    description: 'Summarize a subagent result before returning it to the parent (slower, lossy)',
   },
   autoMemoryEnabled: {
     source: 'settings',

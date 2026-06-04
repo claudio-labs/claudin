@@ -9,7 +9,8 @@ import { z } from 'zod/v4';
 import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled } from '../../bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from '../../constants/prompts.js';
 import { isCoordinatorMode } from '../../coordinator/coordinatorMode.js';
-import { startAgentSummarization } from '../../services/AgentSummary/agentSummary.js';
+import { startAgentSummarization, summarizeAgentResult } from '../../services/AgentSummary/agentSummary.js';
+import { getGlobalConfig } from '../../utils/config.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { clearDumpState } from '../../services/api/dumpPrompts.js';
@@ -811,6 +812,15 @@ export const AgentTool = buildTool({
         let stopForegroundSummarization: (() => void) | undefined;
         // const capture for sound type narrowing inside the callback below
         const summaryTaskId = foregroundTaskId;
+        // Opt-in: summarize this foreground subagent's final result before
+        // returning it to the parent, to shrink the tokens it occupies in the
+        // parent's context. Skip one-shot built-ins (Explore/Plan) — their
+        // output is already condensed prose by design. Lossy; fallback to raw.
+        const wantsResultSummary = getGlobalConfig().summarizeSubagentResult === true && !ONE_SHOT_BUILTIN_AGENT_TYPES.has(selectedAgent.agentType);
+        // Cache-safe params captured for the result-summary fork (shares the
+        // subagent's prompt cache). Set on the first onCacheSafeParams call.
+        let resultSummaryCacheSafeParams: CacheSafeParams | undefined;
+        const wantsProgressSummary = Boolean(summaryTaskId && getSdkAgentProgressSummariesEnabled());
 
         // Get async iterator for the agent
         const agentIterator = runAgent({
@@ -819,11 +829,16 @@ export const AgentTool = buildTool({
             ...runAgentParams.override,
             agentId: syncAgentId
           },
-          onCacheSafeParams: summaryTaskId && getSdkAgentProgressSummariesEnabled() ? (params: CacheSafeParams) => {
-            const {
-              stop
-            } = startAgentSummarization(summaryTaskId, syncAgentId, params, rootSetAppState);
-            stopForegroundSummarization = stop;
+          onCacheSafeParams: wantsProgressSummary || wantsResultSummary ? (params: CacheSafeParams) => {
+            if (wantsResultSummary && !resultSummaryCacheSafeParams) {
+              resultSummaryCacheSafeParams = params;
+            }
+            if (summaryTaskId && wantsProgressSummary) {
+              const {
+                stop
+              } = startAgentSummarization(summaryTaskId, syncAgentId, params, rootSetAppState);
+              stopForegroundSummarization = stop;
+            }
           } : undefined
         })[Symbol.asyncIterator]();
 
@@ -1203,6 +1218,17 @@ export const AgentTool = buildTool({
           logForDebugging(`Sync agent recovering from error with ${agentMessages.length} messages`);
         }
         const agentResult = finalizeAgentTool(agentMessages, syncAgentId, metadata);
+        // Opt-in result summarization (see wantsResultSummary above). Lossy —
+        // any failure/abort/empty result falls back to the raw content.
+        if (wantsResultSummary && resultSummaryCacheSafeParams && agentResult.content.length > 0 && !toolUseContext.abortController.signal.aborted) {
+          const summary = await summarizeAgentResult(resultSummaryCacheSafeParams, agentMessages, toolUseContext.abortController.signal);
+          if (summary) {
+            agentResult.content = [{
+              type: 'text' as const,
+              text: summary
+            }];
+          }
+        }
         if (feature('TRANSCRIPT_CLASSIFIER')) {
           const currentAppState = toolUseContext.getAppState();
           const handoffWarning = await classifyHandoffIfNeeded({

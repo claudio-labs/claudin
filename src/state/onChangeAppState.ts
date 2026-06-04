@@ -211,6 +211,19 @@ export function onChangeAppState({
     }))
   }
 
+  // collapseSubagentProgress
+  if (
+    newState.collapseSubagentProgress !== oldState.collapseSubagentProgress &&
+    getGlobalConfig().collapseSubagentProgress !==
+      newState.collapseSubagentProgress
+  ) {
+    const collapseSubagentProgress = newState.collapseSubagentProgress
+    saveGlobalConfig(current => ({
+      ...current,
+      collapseSubagentProgress,
+    }))
+  }
+
   // settings: clear auth-related caches when settings change
   // This ensures apiKeyHelper and AWS/GCP credential changes take effect immediately
   if (newState.settings !== oldState.settings) {

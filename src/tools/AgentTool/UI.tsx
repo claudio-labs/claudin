@@ -19,6 +19,7 @@ import { findToolByName, type Tools } from '../../Tool.js';
 import type { Message, ProgressMessage } from '../../types/message.js';
 import type { AgentToolProgress } from '../../types/tools.js';
 import { count } from '../../utils/array.js';
+import { getGlobalConfig } from '../../utils/config.js';
 import { getSearchOrReadFromContent, getSearchReadSummaryText, summarizeRecentActivities } from '../../utils/collapseReadSearch.js';
 import { formatDuration, formatNumber, truncateToWidth } from '../../utils/format.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
@@ -455,9 +456,13 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
   }
 
   // Checks to see if we should show a super condensed progress message summary.
-  // This prevents flickers when the terminal size is too small to render all the dynamic content
+  // This prevents flickers when the terminal size is too small to render all the dynamic content,
+  // and is also forced when the user opts into collapsing subagent progress (unless verbose
+  // or transcript mode, where the full stream is shown on demand).
   const toolToolRenderLinesEstimate = (inProgressToolCallCount ?? 1) * ESTIMATED_LINES_PER_TOOL + TERMINAL_BUFFER_LINES;
-  const shouldUseCondensedMode = !isTranscriptMode && terminalSize && terminalSize.rows && terminalSize.rows < toolToolRenderLinesEstimate;
+  const collapseSubagentProgress = !verbose && (getGlobalConfig().collapseSubagentProgress ?? true);
+  const terminalTooSmall = Boolean(terminalSize && terminalSize.rows && terminalSize.rows < toolToolRenderLinesEstimate);
+  const shouldUseCondensedMode = !isTranscriptMode && (collapseSubagentProgress || terminalTooSmall);
   const getProgressStats = () => {
     const toolUseCount = count(progressMessages, msg => {
       if (!hasProgressMessage(msg.data)) {

@@ -25,6 +25,97 @@ import { getAgentTranscript } from '../../utils/sessionStorage.js'
 
 const SUMMARY_INTERVAL_MS = 30_000
 
+const RESULT_SUMMARY_PROMPT = `Produce a concise, actionable summary of your final result above, for the agent that delegated this task. Preserve: files touched (with paths), key decisions, and any next steps or caveats. Drop step-by-step narration and intermediate exploration. Do not use tools. Respond with the summary only.`
+
+// Deny all tools via callback (NOT tools:[]) so the fork keeps the same cache
+// key as the parent agent — an empty tools array would bust the shared prompt
+// cache. Shared by both the periodic progress fork and the result fork.
+const denySummaryTools = async () => ({
+  behavior: 'deny' as const,
+  message: 'No tools needed for summary',
+  decisionReason: { type: 'other' as const, reason: 'summary only' },
+})
+
+// Return the first non-error assistant text block (trimmed), or null.
+// onSkipApiError, if given, fires for each API-error message skipped (the
+// periodic fork logs a debug breadcrumb here; the result fork never did).
+function extractSummaryText(
+  messages: Awaited<ReturnType<typeof runForkedAgent>>['messages'],
+  onSkipApiError?: () => void,
+): string | null {
+  for (const msg of messages) {
+    if (msg.type !== 'assistant') continue
+    if (msg.isApiErrorMessage) {
+      onSkipApiError?.()
+      continue
+    }
+    const textBlock = msg.message.content.find(b => b.type === 'text')
+    if (textBlock?.type === 'text' && textBlock.text.trim()) {
+      return textBlock.text.trim()
+    }
+  }
+  return null
+}
+
+/**
+ * Summarize a foreground subagent's final result before it is returned to the
+ * parent, to reduce the tokens the result occupies in the parent's context.
+ *
+ * Forks the subagent's conversation with runForkedAgent() — the same cache-safe
+ * mechanism startAgentSummarization() uses — so the summary call shares the
+ * subagent's prompt cache (system, tools, model, messages prefix) and the
+ * incremental cost is mostly the summary's output tokens. The subagent's own
+ * messages (already in memory) are used as the fork context; no transcript read.
+ *
+ * Opt-in and lossy: callers must fall back to the raw result on null/throw.
+ * Returns the summary text, or null if no usable summary was produced.
+ */
+export async function summarizeAgentResult(
+  cacheSafeParams: CacheSafeParams,
+  agentMessages: CacheSafeParams['forkContextMessages'],
+  abortSignal: AbortSignal,
+): Promise<string | null> {
+  if (abortSignal.aborted) return null
+  const cleanMessages = filterIncompleteToolCalls(agentMessages)
+  if (cleanMessages.length === 0) return null
+
+  // Drop the original forkContextMessages from cacheSafeParams (same reason as
+  // startAgentSummarization) and rebuild from the subagent's clean messages.
+  const { forkContextMessages: _drop, ...baseParams } = cacheSafeParams
+  const forkParams: CacheSafeParams = {
+    ...baseParams,
+    forkContextMessages: cleanMessages,
+  }
+
+  // Abort the fork if the parent aborts (e.g. user hits ESC during the summary).
+  const summaryAbortController = new AbortController()
+  const onParentAbort = () => summaryAbortController.abort()
+  abortSignal.addEventListener('abort', onParentAbort, { once: true })
+
+  try {
+    // DO NOT set maxOutputTokens — it would clamp budget_tokens and invalidate
+    // the shared prompt cache (thinking config is part of the cache key).
+    const result = await runForkedAgent({
+      promptMessages: [createUserMessage({ content: RESULT_SUMMARY_PROMPT })],
+      cacheSafeParams: forkParams,
+      canUseTool: denySummaryTools,
+      querySource: 'agent_summary',
+      forkLabel: 'agent_result_summary',
+      overrides: { abortController: summaryAbortController },
+      skipTranscript: true,
+    })
+
+    if (abortSignal.aborted) return null
+
+    return extractSummaryText(result.messages)
+  } catch (e) {
+    if (e instanceof Error) logError(e)
+    return null
+  } finally {
+    abortSignal.removeEventListener('abort', onParentAbort)
+  }
+}
+
 function buildSummaryPrompt(previousSummary: string | null): string {
   const prevLine = previousSummary
     ? `\nPrevious: "${previousSummary}" — say something NEW.\n`
@@ -90,13 +181,6 @@ export function startAgentSummarization(
       // Create abort controller for this summary
       summaryAbortController = new AbortController()
 
-      // Deny tools via callback, NOT by passing tools:[] - that busts cache
-      const canUseTool = async () => ({
-        behavior: 'deny' as const,
-        message: 'No tools needed for summary',
-        decisionReason: { type: 'other' as const, reason: 'summary only' },
-      })
-
       // DO NOT set maxOutputTokens here. The fork piggybacks on the main
       // thread's prompt cache by sending identical cache-key params (system,
       // tools, model, messages prefix, thinking config). Setting maxOutputTokens
@@ -111,7 +195,7 @@ export function startAgentSummarization(
           createUserMessage({ content: buildSummaryPrompt(previousSummary) }),
         ],
         cacheSafeParams: forkParams,
-        canUseTool,
+        canUseTool: denySummaryTools,
         querySource: 'agent_summary',
         forkLabel: 'agent_summary',
         overrides: { abortController: summaryAbortController },
@@ -121,25 +205,17 @@ export function startAgentSummarization(
       if (stopped) return
 
       // Extract summary text from result
-      for (const msg of result.messages) {
-        if (msg.type !== 'assistant') continue
-        // Skip API error messages
-        if (msg.isApiErrorMessage) {
-          logForDebugging(
-            `[AgentSummary] Skipping API error message for ${taskId}`,
-          )
-          continue
-        }
-        const textBlock = msg.message.content.find(b => b.type === 'text')
-        if (textBlock?.type === 'text' && textBlock.text.trim()) {
-          const summaryText = textBlock.text.trim()
-          logForDebugging(
-            `[AgentSummary] Summary result for ${taskId}: ${summaryText}`,
-          )
-          previousSummary = summaryText
-          updateAgentSummary(taskId, summaryText, setAppState)
-          break
-        }
+      const summaryText = extractSummaryText(result.messages, () =>
+        logForDebugging(
+          `[AgentSummary] Skipping API error message for ${taskId}`,
+        ),
+      )
+      if (summaryText) {
+        logForDebugging(
+          `[AgentSummary] Summary result for ${taskId}: ${summaryText}`,
+        )
+        previousSummary = summaryText
+        updateAgentSummary(taskId, summaryText, setAppState)
       }
     } catch (e) {
       if (!stopped && e instanceof Error) {

@@ -26,6 +26,7 @@ import {
   type AttributionState,
   createEmptyAttributionState,
 } from '../utils/commitAttribution.js'
+import { getGlobalConfig } from '../utils/config.js'
 import type { EffortValue } from '../utils/effort.js'
 import type { FileHistoryState } from '../utils/fileHistory.js'
 import type { REPLHookContext } from '../utils/hooks/postSamplingHooks.js'
@@ -89,6 +90,7 @@ export type FooterItem =
 export type AppState = DeepImmutable<{
   settings: SettingsJson
   verbose: boolean
+  collapseSubagentProgress: boolean
   mainLoopModel: ModelSetting
   mainLoopModelForSession: ModelSetting
   statusLineText: string | undefined
@@ -470,6 +472,7 @@ export function getDefaultAppState(): AppState {
     tasks: {},
     agentNameRegistry: new Map(),
     verbose: false,
+    collapseSubagentProgress: getGlobalConfig().collapseSubagentProgress ?? true,
     mainLoopModel: null, // alias, full name (as with --model or env var), or null (default)
     mainLoopModelForSession: null,
     statusLineText: undefined,

@@ -1,4 +1,3 @@
-import { c as _c } from "react-compiler-runtime";
 /**
  * CoordinatorTaskPanel — Steerable list of background agents.
  *
@@ -9,7 +8,10 @@ import { c as _c } from "react-compiler-runtime";
 
 import figures from 'figures';
 import * as React from 'react';
+import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
+import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from '../constants/figures.js';
+import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
 import { Box, Text, wrapText } from '../ink.js';
@@ -89,49 +91,37 @@ export function useCoordinatorTaskCount() {
 function _temp(s) {
   return s.tasks;
 }
-function MainLine(t0) {
-  const $ = _c(10);
+function MainLine(t0: {
+  isSelected?: boolean;
+  isViewed?: boolean;
+  onClick?: () => void;
+}) {
   const {
     isSelected,
     isViewed,
     onClick
   } = t0;
+  const { columns } = useTerminalSize();
   const [hover, setHover] = React.useState(false);
   const prefix = isSelected || hover ? figures.pointer + " " : "  ";
   const bullet = isViewed ? BLACK_CIRCLE : figures.circle;
-  let t1;
-  let t2;
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = () => setHover(true);
-    t2 = () => setHover(false);
-    $[0] = t1;
-    $[1] = t2;
-  } else {
-    t1 = $[0];
-    t2 = $[1];
+  const dim = !isSelected && !isViewed && !hover;
+  // Persistent navigation hint on the main row. Render the live up/down
+  // bindings (Footer context, same mechanism as the neighboring view hint) so a
+  // remap is reflected here too, instead of a hardcoded ↑/↓.
+  const upKey = useShortcutDisplay('footer:up', 'Footer', '↑');
+  const downKey = useShortcutDisplay('footer:down', 'Footer', '↓');
+  const line = <Box width={columns} justifyContent="space-between">
+      <Text dimColor={dim} bold={isViewed}>{prefix}{bullet} main</Text>
+      <Text dimColor={true}>
+        <KeyboardShortcutHint shortcut={`${upKey}/${downKey}`} action="select" />{" · "}
+        <ConfigurableShortcutHint action="footer:openSelected" context="Footer" fallback="enter" description="view" />
+      </Text>
+    </Box>;
+  if (!onClick) {
+    return line;
   }
-  const t3 = !isSelected && !isViewed && !hover;
-  let t4;
-  if ($[2] !== bullet || $[3] !== isViewed || $[4] !== prefix || $[5] !== t3) {
-    t4 = <Text dimColor={t3} bold={isViewed}>{prefix}{bullet} main</Text>;
-    $[2] = bullet;
-    $[3] = isViewed;
-    $[4] = prefix;
-    $[5] = t3;
-    $[6] = t4;
-  } else {
-    t4 = $[6];
-  }
-  let t5;
-  if ($[7] !== onClick || $[8] !== t4) {
-    t5 = <Box onClick={onClick} onMouseEnter={t1} onMouseLeave={t2}>{t4}</Box>;
-    $[7] = onClick;
-    $[8] = t4;
-    $[9] = t5;
-  } else {
-    t5 = $[9];
-  }
-  return t5;
+  return <Box onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>{line}</Box>;
 }
 type AgentLineProps = {
   task: LocalAgentTaskState;
@@ -140,8 +130,7 @@ type AgentLineProps = {
   isViewed?: boolean;
   onClick?: () => void;
 };
-function AgentLine(t0) {
-  const $ = _c(32);
+function AgentLine(t0: AgentLineProps) {
   const {
     task,
     name,
@@ -156,28 +145,16 @@ function AgentLine(t0) {
   const isRunning = !isTerminalStatus(task.status);
   const pausedMs = task.totalPausedMs ?? 0;
   const elapsedMs = Math.max(0, isRunning ? Date.now() - task.startTime - pausedMs : (task.endTime ?? task.startTime) - task.startTime - pausedMs);
-  let t1;
-  if ($[0] !== elapsedMs) {
-    t1 = formatDuration(elapsedMs);
-    $[0] = elapsedMs;
-    $[1] = t1;
-  } else {
-    t1 = $[1];
-  }
-  const elapsed = t1;
+  const elapsed = formatDuration(elapsedMs);
+  // Live token count — same source the backgrounded AgentProgressLine reads, kept
+  // in the identical `· ↓ N tokens` format (the ↓/↑ arrow signals output activity).
   const tokenCount = task.progress?.tokenCount;
   const lastActivity = task.progress?.lastActivity;
   const arrow = lastActivity ? figures.arrowDown : figures.arrowUp;
-  let t2;
-  if ($[2] !== arrow || $[3] !== tokenCount) {
-    t2 = tokenCount !== undefined && tokenCount > 0 ? ` · ${arrow} ${formatNumber(tokenCount)} tokens` : "";
-    $[2] = arrow;
-    $[3] = tokenCount;
-    $[4] = t2;
-  } else {
-    t2 = $[4];
-  }
-  const tokenText = t2;
+  const tokenText = tokenCount !== undefined && tokenCount > 0 ? ` · ${arrow} ${formatNumber(tokenCount)} tokens` : "";
+  // Tool-use count gives an at-a-glance sense of how far along the agent is.
+  const toolUseCount = task.progress?.toolUseCount ?? 0;
+  const toolText = toolUseCount > 0 ? ` · ${toolUseCount} tool ${toolUseCount === 1 ? "use" : "uses"}` : "";
   const queuedCount = task.pendingMessages.length;
   const queuedText = queuedCount > 0 ? ` · ${queuedCount} queued` : "";
   const displayDescription = task.progress?.summary || task.description;
@@ -188,85 +165,17 @@ function AgentLine(t0) {
   const sep = isRunning ? PLAY_ICON : PAUSE_ICON;
   const namePart = name ? `${name}: ` : "";
   const hintPart = isSelected && !isViewed ? ` · x to ${isRunning ? "stop" : "clear"}` : "";
-  const suffixPart = ` ${sep} ${elapsed}${tokenText}${queuedText}${hintPart}`;
-  const availableForDesc = columns - stringWidth(prefix) - stringWidth(`${bullet} `) - stringWidth(namePart) - stringWidth(suffixPart);
-  const t3 = Math.max(0, availableForDesc);
-  let t4;
-  if ($[5] !== displayDescription || $[6] !== t3) {
-    t4 = wrapText(displayDescription, t3, "truncate-end");
-    $[5] = displayDescription;
-    $[6] = t3;
-    $[7] = t4;
-  } else {
-    t4 = $[7];
-  }
-  const truncated = t4;
-  let t5;
-  if ($[8] !== name) {
-    t5 = name && <><Text dimColor={false} bold={true}>{name}</Text>{": "}</>;
-    $[8] = name;
-    $[9] = t5;
-  } else {
-    t5 = $[9];
-  }
-  let t6;
-  if ($[10] !== queuedCount || $[11] !== queuedText) {
-    t6 = queuedCount > 0 && <Text color="warning">{queuedText}</Text>;
-    $[10] = queuedCount;
-    $[11] = queuedText;
-    $[12] = t6;
-  } else {
-    t6 = $[12];
-  }
-  let t7;
-  if ($[13] !== hintPart) {
-    t7 = hintPart && <Text dimColor={true}>{hintPart}</Text>;
-    $[13] = hintPart;
-    $[14] = t7;
-  } else {
-    t7 = $[14];
-  }
-  let t8;
-  if ($[15] !== bullet || $[16] !== dim || $[17] !== elapsed || $[18] !== isViewed || $[19] !== prefix || $[20] !== sep || $[21] !== t5 || $[22] !== t6 || $[23] !== t7 || $[24] !== tokenText || $[25] !== truncated) {
-    t8 = <Text dimColor={dim} bold={isViewed}>{prefix}{bullet}{" "}{t5}{truncated} {sep} {elapsed}{tokenText}{t6}{t7}</Text>;
-    $[15] = bullet;
-    $[16] = dim;
-    $[17] = elapsed;
-    $[18] = isViewed;
-    $[19] = prefix;
-    $[20] = sep;
-    $[21] = t5;
-    $[22] = t6;
-    $[23] = t7;
-    $[24] = tokenText;
-    $[25] = truncated;
-    $[26] = t8;
-  } else {
-    t8 = $[26];
-  }
-  const line = t8;
+  // Metrics are right-aligned (space-between) so they form a consistent column
+  // regardless of description length. The description truncates to whatever space
+  // the left side has after reserving the metrics width.
+  const suffixPart = ` ${sep} ${elapsed}${toolText}${tokenText}${queuedText}${hintPart}`;
+  const availableForDesc = Math.max(0, columns - stringWidth(prefix) - stringWidth(`${bullet} `) - stringWidth(namePart) - stringWidth(suffixPart));
+  const truncated = wrapText(displayDescription, availableForDesc, "truncate-end");
+  const leftText = <Text dimColor={dim} bold={isViewed}>{prefix}{bullet}{" "}{name && <><Text dimColor={false} bold={true}>{name}</Text>{": "}</>}{truncated}</Text>;
+  const rightText = <Text dimColor={dim}> {sep} {elapsed}{toolText}{tokenText}{queuedCount > 0 && <Text color="warning">{queuedText}</Text>}{hintPart && <Text dimColor={true}>{hintPart}</Text>}</Text>;
+  const line = <Box width={columns} justifyContent="space-between">{leftText}{rightText}</Box>;
   if (!onClick) {
     return line;
   }
-  let t10;
-  let t9;
-  if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = () => setHover(true);
-    t10 = () => setHover(false);
-    $[27] = t10;
-    $[28] = t9;
-  } else {
-    t10 = $[27];
-    t9 = $[28];
-  }
-  let t11;
-  if ($[29] !== line || $[30] !== onClick) {
-    t11 = <Box onClick={onClick} onMouseEnter={t9} onMouseLeave={t10}>{line}</Box>;
-    $[29] = line;
-    $[30] = onClick;
-    $[31] = t11;
-  } else {
-    t11 = $[31];
-  }
-  return t11;
+  return <Box onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>{line}</Box>;
 }

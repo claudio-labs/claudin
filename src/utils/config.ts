@@ -289,6 +289,8 @@ export type GlobalConfig = {
   bypassPermissionsModeAccepted?: boolean
   hasUsedBackslashReturn?: boolean
   autoCompactEnabled: boolean // Controls whether auto-compact is enabled
+  collapseSubagentProgress: boolean // Collapse foreground subagent progress to a single line on the main thread
+  summarizeSubagentResult: boolean // Summarize a foreground subagent's final result before returning it to the parent (opt-in, lossy)
   thinkingHistoryRedactionEnabled: boolean // Strip old thinking blocks before API call
   narrationHistoryRedactionEnabled: boolean // Strip old inter-tool-call narration text before API call
   toolResultSummarizerEnabled: boolean // Summarize oversized Bash/Grep/WebFetch outputs as they enter history
@@ -699,6 +701,8 @@ function createDefaultGlobalConfig(): GlobalConfig {
     verbose: false,
     editorMode: 'normal',
     autoCompactEnabled: true,
+    collapseSubagentProgress: true,
+    summarizeSubagentResult: false,
     thinkingHistoryRedactionEnabled: true,
     narrationHistoryRedactionEnabled: true,
     toolResultSummarizerEnabled: true,
