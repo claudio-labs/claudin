@@ -19,7 +19,6 @@ import {
   type InProcessTeammateTaskState,
   isInProcessTeammateTask,
 } from '../tasks/InProcessTeammateTask/types.js'
-import { isBackgroundTask } from '../tasks/types.js'
 
 // Step teammate selection by delta, wrapping across leader(-1)..teammates(0..n-1)..hide(n).
 // First step from a collapsed tree expands it and parks on leader.
@@ -59,28 +58,28 @@ function stepTeammateSelection(
 }
 
 /**
- * Custom hook that handles Shift+Up/Down keyboard navigation for background tasks.
- * When teammates (swarm) are present, navigates between leader and teammates.
- * When only non-teammate background tasks exist, opens the background tasks dialog.
- * Also handles Enter to confirm selection, 'f' to view transcript, and 'k' to kill.
+ * Custom hook that handles Shift+Up/Down keyboard navigation between teammate
+ * (swarm) transcripts, plus Enter to confirm selection, 'f' to view transcript,
+ * and 'k' to kill. Non-teammate background tasks are navigated separately via
+ * the unified footer cursor (coordinatorTaskIndex) in PromptInput.
  */
-export function useBackgroundTaskNavigation(options?: {
-  onOpenBackgroundTasks?: () => void
-}): { handleKeyDown: (e: KeyboardEvent) => void } {
+export function useBackgroundTaskNavigation(): { handleKeyDown: (e: KeyboardEvent) => void } {
   const tasks = useAppState(s => s.tasks)
   const viewSelectionMode = useAppState(s => s.viewSelectionMode)
   const viewingAgentTaskId = useAppState(s => s.viewingAgentTaskId)
   const selectedIPAgentIndex = useAppState(s => s.selectedIPAgentIndex)
   const setAppState = useSetAppState()
 
+  // NOTE: footer background-task tree navigation (cursor + enter/x) is no longer
+  // handled here. It was unified into the footer cursor (coordinatorTaskIndex)
+  // in PromptInput, so the agent panel and the task tree share one focus model
+  // and the Footer-context keybindings (down/ctrl+n, enter, x) act on the
+  // selection instead of typing into the prompt. This hook now only owns
+  // teammate transcript selection (shift+↑/↓, f, k, escape).
+
   // Filter to running teammates and sort alphabetically to match TeammateSpinnerTree display
   const teammateTasks = getRunningTeammatesSorted(tasks)
   const teammateCount = teammateTasks.length
-
-  // Check for non-teammate background tasks (local_agent, local_bash, etc.)
-  const hasNonTeammateBackgroundTasks = Object.values(tasks).some(
-    t => isBackgroundTask(t) && t.type !== 'in_process_teammate',
-  )
 
   // Track previous teammate count to detect when teammates are removed
   const prevTeammateCountRef = useRef<number>(teammateCount)
@@ -177,13 +176,13 @@ export function useBackgroundTaskNavigation(options?: {
 
     // Shift+Up/Down for teammate transcript switching (with wrapping)
     // Index -1 represents the leader, 0+ are teammates
-    // When showSpinnerTree is true, index === teammateCount is the "hide" row
+    // When showSpinnerTree is true, index === teammateCount is the "hide" row.
+    // The non-teammate footer task tree is navigated separately via the Footer
+    // context (down/ctrl+n on the unified coordinatorTaskIndex cursor).
     if (e.shift && (e.key === 'up' || e.key === 'down')) {
-      e.preventDefault()
       if (teammateCount > 0) {
+        e.preventDefault()
         stepTeammateSelection(e.key === 'down' ? 1 : -1, setAppState)
-      } else if (hasNonTeammateBackgroundTasks) {
-        options?.onOpenBackgroundTasks?.()
       }
       return
     }

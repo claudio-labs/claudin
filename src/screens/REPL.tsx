@@ -3906,12 +3906,9 @@ export function REPL({
   const transcriptMessages = frozenTranscriptState ? deferredMessages.slice(0, frozenTranscriptState.messagesLength) : deferredMessages;
   const transcriptStreamingToolUses = frozenTranscriptState ? streamingToolUses.slice(0, frozenTranscriptState.streamingToolUsesLength) : streamingToolUses;
 
-  // Handle shift+down for teammate navigation and background task management.
-  // Guard onOpenBackgroundTasks when a local-jsx dialog (e.g. /mcp) is open —
-  // otherwise Shift+Down stacks BackgroundTasksDialog on top and deadlocks input.
-  useBackgroundTaskNavigation({
-    onOpenBackgroundTasks: isShowingLocalJSXCommand ? undefined : () => setShowBashesDialog(true)
-  });
+  // Handle shift+up/down for teammate transcript navigation. (Non-teammate
+  // background tasks are navigated via the unified footer cursor in PromptInput.)
+  useBackgroundTaskNavigation();
   // Auto-exit viewing mode when teammate completes or errors
   useTeammateViewAutoExit();
   if (screen === 'transcript') {

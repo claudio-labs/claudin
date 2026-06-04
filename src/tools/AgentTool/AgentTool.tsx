@@ -6,7 +6,7 @@ import { getQuerySourceForAgent } from 'src/utils/promptCategory.js';
 import { getAgentPlanSlug } from '../../services/planDossier.js';
 import { getPlan, getPlanSlug } from '../../utils/plans.js';
 import { z } from 'zod/v4';
-import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled } from '../../bootstrap/state.js';
+import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled, getIsNonInteractiveSession } from '../../bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from '../../constants/prompts.js';
 import { isCoordinatorMode } from '../../coordinator/coordinatorMode.js';
 import { startAgentSummarization, summarizeAgentResult } from '../../services/AgentSummary/agentSummary.js';
@@ -79,6 +79,18 @@ function getAutoBackgroundMs(): number {
   return 0;
 }
 
+// When on (default), every spawned agent launches directly in the background
+// instead of running inline. Read per-invocation so the /config toggle takes
+// effect immediately. undefined → on; env var forces on.
+function isAutoBackgroundAgentsEnabled(): boolean {
+  // In-process teammates can't own background agents — their lifecycle is tied
+  // to the leader's process (see the guard near line 289). Auto-background must
+  // not route their subagents async, or they'd orphan the agent.
+  if (isInProcessTeammate()) return false;
+  if (isEnvTruthy(process.env.CLAUDE_AUTO_BACKGROUND_TASKS)) return true;
+  return getGlobalConfig().autoBackgroundAgentsEnabled !== false;
+}
+
 // Multi-agent type constants are defined inline inside gated blocks to enable dead code elimination
 
 // Base input schema without multi-agent parameters
@@ -115,14 +127,15 @@ export const inputSchema = lazySchema(() => {
     cwd: true
   });
 
-  // GrowthBook-in-lazySchema is acceptable here (unlike subagent_type, which
-  // was removed in 906da6c723): the divergence window is one-session-per-
-  // gate-flip via _CACHED_MAY_BE_STALE disk read, and worst case is either
-  // "schema shows a no-op param" (gate flips on mid-session: param ignored
-  // by forceAsync) or "schema hides a param that would've worked" (gate
-  // flips off mid-session: everything still runs async via memoized
-  // forceAsync). No Zod rejection, no crash — unlike required→optional.
-  return isBackgroundTasksDisabled || isForkSubagentEnabled() ? schema.omit({
+  // run_in_background is hidden when background tasks are unavailable. Headless
+  // (-p) also hides it: `claudin -p` has no event loop driving the bg-task
+  // drain, so an explicit run_in_background:true there would orphan the child
+  // (see team-memory: headless-bg-agents-not-drained). Fork no longer forces
+  // async — without the param, fork runs inline and stays drainable in -p.
+  // getIsNonInteractiveSession() is stable for a process lifetime, so caching
+  // its value at first schema access is correct.
+  const hideRunInBackground = isBackgroundTasksDisabled || getIsNonInteractiveSession();
+  return hideRunInBackground ? schema.omit({
     run_in_background: true
   }) : schema;
 });
@@ -322,7 +335,13 @@ export const AgentTool = buildTool({
     // - subagent_type set: use it (explicit wins)
     // - subagent_type omitted, gate on: fork path (undefined)
     // - subagent_type omitted, gate off: default code
-    const effectiveType = subagent_type ?? (isForkSubagentEnabled() ? undefined : GENERAL_PURPOSE_AGENT.agentType);
+    // Fork requires the parent's assistantMessage to clone tool_use blocks
+    // (see buildForkedMessages). Programmatic callers (SDK) may omit it; in
+    // that case FORK_AGENT.getSystemPrompt returns "" and the child would
+    // run with an empty system prompt. Demote to general-purpose so the
+    // child boots with a real prompt instead of a silent no-op.
+    const forkGateOn = isForkSubagentEnabled() && assistantMessage !== undefined;
+    const effectiveType = subagent_type ?? (forkGateOn ? undefined : GENERAL_PURPOSE_AGENT.agentType);
     const isForkPath = effectiveType === undefined;
     let selectedAgent: AgentDefinition;
     if (isForkPath) {
@@ -446,7 +465,11 @@ export const AgentTool = buildTool({
     let enhancedSystemPrompt: string[] | undefined;
     let forkParentSystemPrompt: ReturnType<typeof buildEffectiveSystemPrompt> | undefined;
     let promptMessages: MessageType[];
-    if (isForkPath) {
+    // Fork requires the parent's assistant message to clone its tool_use blocks.
+    // Programmatic callers may omit it; fall back to the normal isolated path
+    // rather than dereferencing undefined in buildForkedMessages.
+    const canFork = isForkPath && assistantMessage !== undefined;
+    if (canFork) {
       if (toolUseContext.renderedSystemPrompt) {
         forkParentSystemPrompt = toolUseContext.renderedSystemPrompt;
       } else {
@@ -496,6 +519,9 @@ export const AgentTool = buildTool({
       isBuiltInAgent: isBuiltInAgent(selectedAgent),
       startTime,
       agentType: selectedAgent.agentType,
+      // Provisional; overwritten with the authoritative shouldRunAsync below
+      // (which also covers coordinator/fork/auto-background) so telemetry can't
+      // diverge from how the agent actually ran.
       isAsync: (run_in_background === true || selectedAgent.background === true) && !isBackgroundTasksDisabled
     };
 
@@ -503,9 +529,18 @@ export const AgentTool = buildTool({
     // dependency issues during test module loading.
     const isCoordinator = feature('COORDINATOR_MODE') ? isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE) : false;
 
-    // Fork subagent experiment: force ALL spawns async for a unified
-    // <task-notification> interaction model (not just fork spawns — all of them).
-    const forceAsync = isForkSubagentEnabled();
+    // Fork subagents inherit the parent's context/cache but are NOT forced
+    // async — execution mode (inline vs background) is governed independently by
+    // run_in_background / the auto-background toggle below.
+    //
+    // Headless (-p) has no TUI loop to drain <task-notification> re-entry, so
+    // *implicit* auto-background would orphan the agent (and a forked agent that
+    // never drains also loses its shared-cache payoff). Suppress only the
+    // implicit toggle in non-interactive sessions → forks run inline there,
+    // matching the "inherit context+cache, drain in-process" contract. Explicit
+    // opt-ins (run_in_background, agent.background) and coordinator/proactive
+    // re-entry stay honored — those have their own drain paths.
+    const autoBackgroundImplicit = isAutoBackgroundAgentsEnabled() && !getIsNonInteractiveSession();
 
     // Assistant mode: force all agents async. Synchronous subagents hold the
     // main loop's turn open until they complete — the daemon's inputQueue
@@ -515,7 +550,9 @@ export const AgentTool = buildTool({
     // <task-notification> re-entry there is handled by the else branch
     // below (registerAsyncAgentTask + notifyOnCompletion).
     const assistantForceAsync = feature('KAIROS') ? appState.kairosEnabled : false;
-    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || forceAsync || assistantForceAsync || (proactiveModule?.isProactiveActive() ?? false)) && !isBackgroundTasksDisabled;
+    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || assistantForceAsync || autoBackgroundImplicit || (proactiveModule?.isProactiveActive() ?? false)) && !isBackgroundTasksDisabled;
+    // Keep telemetry's isAsync truthful to how the agent actually ran.
+    metadata.isAsync = shouldRunAsync;
     // Assemble the worker's tool pool independently of the parent's.
     // Workers always get their tools from assembleToolPool with their own
     // permission mode, so they aren't affected by the parent's tool

@@ -244,8 +244,8 @@ function getSessionSpecificGuidanceSection(
     getIsNonInteractiveSession()
       ? null
       : `If you need the user to run a shell command themselves (e.g., an interactive login like \`gcloud auth login\`), suggest they type \`! <command>\` in the prompt — the \`!\` prefix runs the command in this session so its output lands directly in the conversation.`,
-    // isForkSubagentEnabled() reads getIsNonInteractiveSession() — must be
-    // post-boundary or it fragments the static prefix on session type.
+    // isForkSubagentEnabled() reads getGlobalConfig() (the auto-background
+    // toggle) — must be post-boundary or it fragments the static prefix.
     hasAgentTool ? getAgentToolSection() : null,
     ...(hasAgentTool &&
     areExplorePlanAgentsEnabled() &&

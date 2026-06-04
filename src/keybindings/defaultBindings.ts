@@ -240,6 +240,13 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       right: 'footer:next',
       left: 'footer:previous',
       enter: 'footer:openSelected',
+      // x stops/dismisses the selected task row (agent panel + task tree).
+      // On the viewed-agent steering row the handler manually inserts 'x'
+      // into the prompt input (preserving the typed-through feel of viewing
+      // an agent), then consumes the key. On a tree header it's a no-op but
+      // still consumed; only the global "no target" fall-through returns
+      // false to let x type into the prompt as normal.
+      x: 'footer:close',
       escape: 'footer:clearSelection',
     },
   },

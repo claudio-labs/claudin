@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { randomUUID } from 'crypto'
-import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
+import { getGlobalConfig, isConfigReadingAllowed } from '../../utils/config.js'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
@@ -22,8 +22,8 @@ import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
  * - `subagent_type` becomes optional on the Agent tool schema
  * - Omitting `subagent_type` triggers an implicit fork: the child inherits
  *   the parent's full conversation context and system prompt
- * - All agent spawns run in the background (async) for a unified
- *   `<task-notification>` interaction model
+ * - Fork does NOT force async — spawns run inline unless run_in_background or
+ *   the auto-background toggle routes them to the background
  * - `/fork <directive>` slash command is available
  *
  * Mutually exclusive with coordinator mode — coordinator already owns the
@@ -32,8 +32,13 @@ import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
 export function isForkSubagentEnabled(): boolean {
   if (feature('FORK_SUBAGENT')) {
     if (isCoordinatorMode()) return false
-    if (getIsNonInteractiveSession()) return false
-    return true
+    // This getter runs at tool-schema build time (Agent inputSchema) — before
+    // enableConfigs() unlocks config reads. Default to enabled until config is
+    // readable, then honor the same /config toggle as auto-background agents:
+    // turning it off reverts to plain isolated subagents. Fork no longer forces
+    // async, so it runs inline in headless (-p) without orphaning.
+    if (!isConfigReadingAllowed()) return true
+    return getGlobalConfig().autoBackgroundAgentsEnabled !== false
   }
   return false
 }

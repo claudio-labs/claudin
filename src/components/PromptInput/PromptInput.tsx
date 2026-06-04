@@ -98,7 +98,10 @@ import { findUltraplanTriggerPositions, findUltrareviewTriggerPositions } from '
 import { AutoModeOptInDialog } from '../AutoModeOptInDialog.js';
 import { BridgeDialog } from '../BridgeDialog.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
-import { getVisibleAgentTasks, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
+import { useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
+import { footerTreeBaseIndex, getVisibleAgentTasks } from '../tasks/footerTaskGeometry.js';
+import { resolveFooterTreeRow } from '../tasks/footerSelection.js';
+import { killBackgroundTask } from '../tasks/taskActions.js';
 import { getEffortNotificationText } from '../EffortIndicator.js';
 import { getFastIconString } from '../FastIcon.js';
 import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
@@ -300,6 +303,11 @@ function PromptInput({
   const store = useAppStateStore();
   const setAppState = useSetAppState();
   const tasks = useAppState(s => s.tasks);
+  // Footer task-tree geometry: the unified footer cursor (coordinatorTaskIndex)
+  // can land on grouped tree rows past the agent rows; these feed the open/stop
+  // handlers so x/enter act on tree rows instead of typing into the prompt.
+  const foregroundedTaskId = useAppState(s => s.foregroundedTaskId);
+  const collapsedTaskGroups = useAppState(s => s.collapsedTaskGroups);
   const replBridgeConnected = useAppState(s => s.replBridgeConnected);
   const replBridgeExplicit = useAppState(s => s.replBridgeExplicit);
   const replBridgeReconnecting = useAppState(s => s.replBridgeReconnecting);
@@ -400,10 +408,11 @@ function PromptInput({
   }), [setAppState]);
   const coordinatorTaskCount = useCoordinatorTaskCount();
   // The pill (BackgroundTaskStatus) only renders when non-local_agent bg tasks
-  // exist. When only local_agent tasks are running (coordinator/fork mode), the
-  // pill is absent, so the -1 sentinel would leave nothing visually selected.
-  // In that case, skip -1 and treat 0 as the minimum selectable index.
-  const hasBgTaskPill = useMemo(() => Object.values(tasks).some(t => isBackgroundTask(t)), [tasks]);
+  // exist — panel agents now live in CoordinatorTaskPanel, not the pill. When
+  // only panel agents are present, the pill is absent, so the -1 sentinel would
+  // leave nothing visually selected. In that case, skip -1 and treat 0 (the
+  // main line) as the minimum selectable index.
+  const hasBgTaskPill = useMemo(() => Object.values(tasks).some(t => isBackgroundTask(t) && !isPanelAgentTask(t)), [tasks]);
   const minCoordinatorIndex = hasBgTaskPill ? -1 : 0;
   // Clamp index when tasks complete and the list shrinks beneath the cursor
   useEffect(() => {
@@ -468,7 +477,8 @@ function PromptInput({
   // Panel shows retained-completed agents too (getVisibleAgentTasks), so the
   // pill must stay navigable whenever the panel has rows — not just when
   // something is running.
-  const tasksFooterVisible = runningTaskCount > 0 && !shouldHideTasksFooter(tasks, showSpinnerTree);
+  const hasPanelRows = useMemo(() => getVisibleAgentTasks(tasks).length > 0, [tasks]);
+  const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
   const teamsFooterVisible = cachedTeams.length > 0;
   const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', bagelFooterVisible && 'bagel', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, bagelFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
 
@@ -1801,11 +1811,25 @@ function PromptInput({
   // selected — its useInput is inactive, so this is the only path.
   useKeybindings({
     'footer:up': () => {
-      // ↑ scrolls within the coordinator task list before leaving the pill
+      // ↑ walks back up the coordinator task rows (agents → main → pill)
+      // before leaving the pill entirely.
+      if (tasksSelected && !isTeammateMode && coordinatorTaskIndex > minCoordinatorIndex) {
+        setCoordinatorTaskIndex(i => Math.max(minCoordinatorIndex, i - 1));
+        return;
+      }
       navigateFooter(-1, true);
     },
     'footer:down': () => {
       if (tasksSelected && !isTeammateMode) {
+        // ↓ steps down through the coordinator task rows (main → agents).
+        // Only once past the last row do we fall through to the full bashes
+        // dialog, preserving the previous quick-access behavior. Guard on
+        // coordinatorTaskCount > 0 so a stale `tasksFooterVisible` can't
+        // drive the cursor below minCoordinatorIndex when the list is empty.
+        if (coordinatorTaskCount > 0 && coordinatorTaskIndex < coordinatorTaskCount - 1) {
+          setCoordinatorTaskIndex(i => Math.max(minCoordinatorIndex, Math.min(coordinatorTaskCount - 1, i + 1)));
+          return;
+        }
         setShowBashesDialog(true);
         selectFooterItem(null);
         return;
@@ -1849,8 +1873,27 @@ function PromptInput({
               const teammate = inProcessTeammates[teammateFooterIndex - 1];
               if (teammate) enterTeammateView(teammate.id, setAppState);
             }
-          } else if (coordinatorTaskIndex === 0 && coordinatorTaskCount > 0) {
+          } else if (coordinatorTaskIndex === 0 && footerTreeBaseIndex(tasks) > 0) {
+            // Index 0 is `● main` ONLY when an agent partition exists (base > 0).
+            // With no agents, base is 0 and index 0 is the first tree row, so this
+            // branch must not fire — fall through to the tree handler below.
             exitTeammateView(setAppState);
+          } else if (coordinatorTaskIndex >= footerTreeBaseIndex(tasks)) {
+            // Cursor is on a grouped task-tree row (shells/monitors/etc.).
+            // Enter toggles a group header's collapse; on an item it opens the
+            // full background-tasks dialog (the inline tree has no inline view).
+            const row = resolveFooterTreeRow(tasks, foregroundedTaskId, collapsedTaskGroups, coordinatorTaskIndex);
+            if (row?.kind === 'header') {
+              const groupKey = row.groupKey;
+              setAppState(prev => {
+                const set = new Set(prev.collapsedTaskGroups);
+                if (set.has(groupKey)) set.delete(groupKey); else set.add(groupKey);
+                return { ...prev, collapsedTaskGroups: [...set] };
+              });
+            } else {
+              setShowBashesDialog(true);
+              selectFooterItem(null);
+            }
           } else {
             const selectedTaskId = getVisibleAgentTasks(tasks)[coordinatorTaskIndex - 1]?.id;
             if (selectedTaskId) {
@@ -1879,6 +1922,23 @@ function PromptInput({
       selectFooterItem(null);
     },
     'footer:close': () => {
+      if (tasksSelected && coordinatorTaskIndex >= footerTreeBaseIndex(tasks)) {
+        // Cursor is on a grouped task-tree row. x stops/dismisses a task item;
+        // on a group header it's a no-op (but still consumed so x doesn't type).
+        const row = resolveFooterTreeRow(tasks, foregroundedTaskId, collapsedTaskGroups, coordinatorTaskIndex);
+        if (row?.kind === 'item') {
+          // killBackgroundTask flips to 'killing' first and only later removes
+          // the row from AppState.tasks. Mirror the agent-row path below: only
+          // decrement the cursor when the row is already terminal (dismiss),
+          // so we don't land on a header mid-kill. The clamp useEffect picks
+          // up the index when the row finally evicts.
+          killBackgroundTask(row.task, setAppState);
+          if (row.task.status !== 'running') {
+            setCoordinatorTaskIndex(i => Math.max(minCoordinatorIndex, i - 1));
+          }
+        }
+        return;
+      }
       if (tasksSelected && coordinatorTaskIndex >= 1) {
         const task = getVisibleAgentTasks(tasks)[coordinatorTaskIndex - 1];
         if (!task) return false;

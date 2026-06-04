@@ -16,7 +16,8 @@ import type { Message } from '../../types/message.js';
 import type { PromptInputMode, VimMode } from '../../types/textInputTypes.js';
 import type { AutoUpdaterResult } from '../../utils/autoUpdater.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
-import { useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
+import { CoordinatorTaskPanel, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
+import { BackgroundTaskGroupTree } from '../tasks/BackgroundTaskGroupTree.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from '../StatusLine.js';
 import { Notifications } from './Notifications.js';
 import { PromptInputFooterLeftSide } from './PromptInputFooterLeftSide.js';
@@ -136,6 +137,11 @@ function PromptInputFooter({
   if (helpOpen) {
     return <PromptInputHelpMenu dimColor={true} fixedWidth={true} paddingX={2} />;
   }
+  // Footer stacking order (top → bottom): the single-line byline ("auto mode on
+  // · … · shift+↓ to navigate" + right-side notifications/effort) ALWAYS first,
+  // then the agent panel (`● main` + per-agent metric lines), then the grouped
+  // background-task tree (shells/monitors/etc.). Panel and tree are multi-line
+  // and self-gate (render null when empty).
   return <>
       <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingX={2} gap={isNarrow ? 0 : 1}>
         <Box flexDirection="column" flexShrink={isNarrow ? 0 : 1}>
@@ -147,6 +153,10 @@ function PromptInputFooter({
           <BridgeStatusIndicator bridgeSelected={bridgeSelected} />
           {effortStatusText ? <Text dimColor>{effortStatusText}</Text> : null}
         </Box>
+      </Box>
+      <CoordinatorTaskPanel />
+      <Box paddingX={2} flexDirection="column">
+        <BackgroundTaskGroupTree />
       </Box>
     </>;
 }

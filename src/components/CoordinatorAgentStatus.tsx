@@ -15,24 +15,14 @@ import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
 import { Box, Text, wrapText } from '../ink.js';
-import { type AppState, useAppState, useSetAppState } from '../state/AppState.js';
+import { useAppState, useSetAppState } from '../state/AppState.js';
 import { enterTeammateView, exitTeammateView } from '../state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from '../tasks/LocalAgentTask/LocalAgentTask.js';
 import { formatDuration, formatNumber } from '../utils/format.js';
 import { evictTerminalTask } from '../utils/task/framework.js';
 import { isTerminalStatus } from './tasks/taskStatusUtils.js';
-
-/**
- * Which panel-managed tasks currently have a visible row.
- * Presence in AppState.tasks IS visibility — the 1s tick in
- * CoordinatorTaskPanel evicts tasks past their evictAfter deadline. The
- * evictAfter !== 0 check handles immediate dismiss (x key) without making
- * the filter time-dependent. Shared by panel render, useCoordinatorTaskCount,
- * and index resolvers so the math can't drift.
- */
-export function getVisibleAgentTasks(tasks: AppState['tasks']): LocalAgentTaskState[] {
-  return Object.values(tasks).filter((t): t is LocalAgentTaskState => isPanelAgentTask(t) && t.evictAfter !== 0).sort((a, b) => a.startTime - b.startTime);
-}
+import { countFooterTaskRows } from './tasks/footerSelection.js';
+import { getVisibleAgentTasks } from './tasks/footerTaskGeometry.js';
 export function CoordinatorTaskPanel(): React.ReactNode {
   const tasks = useAppState(s => s.tasks);
   const viewingAgentTaskId = useAppState(s_0 => s_0.viewingAgentTaskId);
@@ -71,9 +61,20 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   if (visibleTasks.length === 0) {
     return null;
   }
-  return <Box flexDirection="column" marginTop={1}>
+  // Layout mirrors the BackgroundTaskGroupTree below: `● main` first, then an
+  // `Agents (N)` group label, then one connector-prefixed row per agent
+  // (├─/└─). The label is purely visual (no collapse) — render it WITHOUT the
+  // tree's chevron so users don't expect Enter to toggle it. The other tree
+  // headers (Shells/Monitors) DO toggle and keep the chevron. Selection model:
+  // index 0 = main, 1..N = agents.
+  return <Box flexDirection="column">
       <MainLine isSelected={selectedIndex === 0} isViewed={viewingAgentTaskId === undefined} onClick={() => exitTeammateView(setAppState)} />
-      {visibleTasks.map((task, i) => <AgentLine key={task.id} task={task} name={nameByAgentId.get(task.id)} isSelected={selectedIndex === i + 1} isViewed={viewingAgentTaskId === task.id} onClick={() => enterTeammateView(task.id, setAppState)} />)}
+      <Box flexDirection="row">
+        <Text dimColor>{"    "}</Text>
+        <Text bold>Agents</Text>
+        <Text dimColor> ({visibleTasks.length})</Text>
+      </Box>
+      {visibleTasks.map((task, i) => <AgentLine key={task.id} task={task} name={nameByAgentId.get(task.id)} connector={i === visibleTasks.length - 1 ? "└─" : "├─"} isSelected={selectedIndex === i + 1} isViewed={viewingAgentTaskId === task.id} onClick={() => enterTeammateView(task.id, setAppState)} />)}
     </Box>;
 }
 
@@ -83,13 +84,21 @@ export function CoordinatorTaskPanel(): React.ReactNode {
  * stays accurate without needing its own tick.
  */
 export function useCoordinatorTaskCount() {
-  const tasks = useAppState(_temp);
-  let t0;
-  t0 = 0;
-  return t0;
-}
-function _temp(s) {
-  return s.tasks;
+  // Total selectable footer rows under the tasks pill — the upper bound for the
+  // coordinatorTaskIndex cursor. Agent portion: index 0 = main, 1..N = agents,
+  // so N agents contribute N + 1 (0 when there are none, so the panel renders
+  // nothing). Tree portion: the grouped shells/monitors/etc. rows sit right
+  // after agents, so they're folded into the same count — this is what lets ↓
+  // walk the cursor into the tree (and keeps x/enter acting on tree rows).
+  return useAppState(s => {
+    const n = getVisibleAgentTasks(s.tasks).length;
+    const agentPart = n === 0 ? 0 : n + 1;
+    // countFooterTaskRows is a cheap counter — no row-list allocation. Hot path:
+    // this selector runs on every AppState change AND on the panel's 1s tick,
+    // so the previous buildFooterTaskRows().rows.length per call was wasteful.
+    const treePart = countFooterTaskRows(s.tasks, s.foregroundedTaskId, s.collapsedTaskGroups);
+    return agentPart + treePart;
+  });
 }
 function MainLine(t0: {
   isSelected?: boolean;
@@ -126,6 +135,9 @@ function MainLine(t0: {
 type AgentLineProps = {
   task: LocalAgentTaskState;
   name?: string;
+  /** Tree connector glyph (├─ / └─) rendered before the bullet to group the
+   * agent rows under the `▼ Agents (N)` header, matching BackgroundTaskGroupTree. */
+  connector?: string;
   isSelected?: boolean;
   isViewed?: boolean;
   onClick?: () => void;
@@ -134,6 +146,7 @@ function AgentLine(t0: AgentLineProps) {
   const {
     task,
     name,
+    connector,
     isSelected,
     isViewed,
     onClick
@@ -157,21 +170,37 @@ function AgentLine(t0: AgentLineProps) {
   const toolText = toolUseCount > 0 ? ` · ${toolUseCount} tool ${toolUseCount === 1 ? "use" : "uses"}` : "";
   const queuedCount = task.pendingMessages.length;
   const queuedText = queuedCount > 0 ? ` · ${queuedCount} queued` : "";
-  const displayDescription = task.progress?.summary || task.description;
+  // Live activity shown after the name, e.g. `Reading AgentTool.tsx`. Falls back
+  // to `Starting…` during the boot window before the agent reports progress, so
+  // the row doesn't render as `(name)` with a dangling trailing space.
+  const displayDescription = task.progress?.summary ?? (isRunning ? "Starting\u2026" : "");
   const highlighted = isSelected || hover;
   const prefix = highlighted ? figures.pointer + " " : "  ";
+  // Tree connector (├─/└─) groups the row under the `▼ Agents (N)` header.
+  const connectorPart = connector ? `${connector} ` : "";
   const bullet = isViewed ? BLACK_CIRCLE : figures.circle;
   const dim = !highlighted && !isViewed;
   const sep = isRunning ? PLAY_ICON : PAUSE_ICON;
-  const namePart = name ? `${name}: ` : "";
+  // Agent name in parentheses, rendered before the live activity so the row
+  // reads `● (Whole-feature review) Reading AgentTool.tsx`. This is the same
+  // launch name shown in the "background agents launched" line — task.description
+  // — so the panel row stays identifiable even after progress text changes. A
+  // registry/custom name (if present) wins, falling back to the agent type.
+  // Cap the paren label so a long launch description doesn't crowd out the
+  // live activity text. 30 chars is enough to keep "Whole-feature review",
+  // "Coding-standards review", and similar names intact while truncating the
+  // rare model-generated multi-sentence descriptions.
+  const rawParenLabel = name || task.description || task.agentType;
+  const parenLabel = rawParenLabel.length > 30 ? rawParenLabel.slice(0, 29) + "\u2026" : rawParenLabel;
+  const namePart = `(${parenLabel}) `;
   const hintPart = isSelected && !isViewed ? ` · x to ${isRunning ? "stop" : "clear"}` : "";
   // Metrics are right-aligned (space-between) so they form a consistent column
   // regardless of description length. The description truncates to whatever space
   // the left side has after reserving the metrics width.
   const suffixPart = ` ${sep} ${elapsed}${toolText}${tokenText}${queuedText}${hintPart}`;
-  const availableForDesc = Math.max(0, columns - stringWidth(prefix) - stringWidth(`${bullet} `) - stringWidth(namePart) - stringWidth(suffixPart));
+  const availableForDesc = Math.max(0, columns - stringWidth(prefix) - stringWidth(connectorPart) - stringWidth(`${bullet} `) - stringWidth(namePart) - stringWidth(suffixPart));
   const truncated = wrapText(displayDescription, availableForDesc, "truncate-end");
-  const leftText = <Text dimColor={dim} bold={isViewed}>{prefix}{bullet}{" "}{name && <><Text dimColor={false} bold={true}>{name}</Text>{": "}</>}{truncated}</Text>;
+  const leftText = <Text dimColor={dim} bold={isViewed}>{prefix}<Text dimColor>{connectorPart}</Text>{bullet}{" "}<Text dimColor={false} bold={true}>{namePart}</Text>{truncated}</Text>;
   const rightText = <Text dimColor={dim}> {sep} {elapsed}{toolText}{tokenText}{queuedCount > 0 && <Text color="warning">{queuedText}</Text>}{hintPart && <Text dimColor={true}>{hintPart}</Text>}</Text>;
   const line = <Box width={columns} justifyContent="space-between">{leftText}{rightText}</Box>;
   if (!onClick) {

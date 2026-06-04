@@ -86,11 +86,11 @@ Fork yourself (omit \`subagent_type\`) when the intermediate tool output isn't w
 - **Research**: fork open-ended questions. If research can be broken into independent questions, launch parallel forks in one message. A fork beats a fresh subagent for this \u2014 it inherits context and shares your cache.
 - **Implementation**: prefer to fork implementation work that requires more than a couple of edits. Do research before jumping to implementation.
 
-Forks are cheap because they share your prompt cache. Don't set \`model\` on a fork \u2014 a different model can't reuse the parent's cache. Pass a short \`name\` (one or two words, lowercase) so the user can see the fork in the teams panel and steer it mid-run.
+Forks are cheap because they share your prompt cache. Don't set \`model\` on a fork \u2014 a different model can't reuse the parent's cache. Pass a short \`name\` (one or two words, lowercase) so the user can see the fork in the panel and steer it mid-run.
 
-**Don't peek.** The tool result includes an \`output_file\` path — do not Read or tail it unless the user explicitly asks for a progress check. You get a completion notification; trust it. Reading the transcript mid-flight pulls the fork's tool noise into your context, which defeats the point of forking.
+**Foreground vs background.** By default a fork runs **inline**: you wait for its report and consume the result in the same turn — like any other tool call. Pass \`run_in_background: true\` only when you have genuinely independent work to do in parallel; then the fork returns immediately with an \`output_file\` path and you'll be notified when it completes.
 
-**Don't race.** After launching, you know nothing about what the fork found. Never fabricate or predict fork results in any format — not as prose, summary, or structured output. The notification arrives as a user-role message in a later turn; it is never something you write yourself. If the user asks a follow-up before the notification lands, tell them the fork is still running — give status, not a guess.
+**When backgrounded, don't peek.** If you set \`run_in_background: true\`, do not Read or tail the \`output_file\` unless the user explicitly asks for a progress check. Trust the completion notification; reading the transcript mid-flight pulls the fork's tool noise into your context, defeating the point. After launching a background fork, you know nothing about what it found — never fabricate or predict its result. If the user asks a follow-up before the notification lands, say the fork is still running, not a guess.
 
 **Writing a fork prompt.** Since the fork inherits your context, the prompt is a *directive* — what to do, not what the situation is. Be specific about scope: what's in, what's out, what another agent is handling. Don't re-explain background.
 `
@@ -115,20 +115,31 @@ ${AGENT_TOOL_NAME}({
   description: "Branch ship-readiness audit",
   prompt: "Audit what's left before this branch can ship. Check: uncommitted changes, commits ahead of main, whether tests exist, whether the GrowthBook gate is wired up, whether CI-relevant files changed. Report a punch list \u2014 done vs. missing. Under 200 words."
 })
-assistant: Ship-readiness audit running.
 <commentary>
-Turn ends here. The coordinator knows nothing about the findings yet. What follows is a SEPARATE turn \u2014 the notification arrives from outside, as a user-role message. It is not something the coordinator writes.
+Inline fork \u2014 no run_in_background. The tool returns the audit report in this same turn, and the coordinator answers from it directly.
 </commentary>
-[later turn \u2014 notification arrives as user message]
 assistant: Audit's back. Three blockers: no tests for the new prompt path, GrowthBook gate wired but not in build_flags.yaml, and one uncommitted file.
 </example>
 
 <example>
-user: "so is the gate wired up or not"
+user: "Run the migration audit AND the perf benchmark \u2014 they're independent."
+assistant: <thinking>Two independent jobs. Background both so they run in parallel while I keep working.</thinking>
+${AGENT_TOOL_NAME}({
+  name: "mig-audit",
+  description: "Migration audit",
+  run_in_background: true,
+  prompt: "..."
+})
+${AGENT_TOOL_NAME}({
+  name: "perf-bench",
+  description: "Perf benchmark",
+  run_in_background: true,
+  prompt: "..."
+})
+assistant: Migration audit and perf benchmark running in the background. I'll report back when they finish.
 <commentary>
-User asks mid-wait. The audit fork was launched to answer exactly this, and it hasn't returned. The coordinator does not have this answer. Give status, not a fabricated result.
+Turn ends here. Coordinator does NOT have results yet \u2014 the notifications arrive as user-role messages in a later turn. Until then, give status, not a guess.
 </commentary>
-assistant: Still waiting on the audit \u2014 that's one of the things it's checking. Should land shortly.
 </example>
 
 <example>

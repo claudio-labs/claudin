@@ -99,7 +99,19 @@ export type AppState = DeepImmutable<{
   // Optional - only present when ENABLE_AGENT_SWARMS is true (for dead code elimination)
   showTeammateMessagePreview?: boolean
   selectedIPAgentIndex: number
-  // CoordinatorTaskPanel selection: -1 = pill, 0 = main, 1..N = agent rows.
+  // Footer background-task tree (BackgroundTaskGroupTree, non-teammate tasks).
+  // Group keys the user (or the >4 auto-rule) has collapsed. Cursor selection
+  // for the tree rows is unified into coordinatorTaskIndex (see below) so the
+  // whole footer shares one focus model — NOT a separate index/engaged flag.
+  collapsedTaskGroups: string[]
+  // Group keys the auto-collapse rule has already seeded — survives across
+  // tree unmount/remount (e.g. a fullscreen dialog opening) so a user expand
+  // doesn't get re-collapsed when the tree comes back. Distinct from
+  // collapsedTaskGroups because the user can later expand a seeded group; the
+  // group still stays "seeded" and won't re-collapse on remount.
+  seededTaskGroups: string[]
+  // CoordinatorTaskPanel + footer task tree selection. Index 0 = main (only
+  // when agents exist), 1..A = agent rows, then A.. = footer tree rows.
   // AppState (not local) so the panel can read it directly without prop-drilling
   // through PromptInput → PromptInputFooter.
   coordinatorTaskIndex: number
@@ -480,6 +492,8 @@ export function getDefaultAppState(): AppState {
     isBriefOnly: false,
     showTeammateMessagePreview: false,
     selectedIPAgentIndex: -1,
+    collapsedTaskGroups: [],
+    seededTaskGroups: [],
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
     footerSelection: null,

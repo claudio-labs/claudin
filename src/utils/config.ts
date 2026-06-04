@@ -680,6 +680,11 @@ export type GlobalConfig = {
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean
 
+  // Auto-background agents — when on (default), all subagents launch directly in
+  // the background (task-notification on completion) instead of running inline.
+  // undefined → on. Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
+  autoBackgroundAgentsEnabled?: boolean
+
   // Inline terminal images (T5.29). 'auto' (default) detects Kitty-family
   // terminals; 'enable' is semantically auto with explicit intent; 'disable'
   // forces the legacy text/hyperlink fallback even on supported terminals.
@@ -738,6 +743,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     openaiAdditionalModelOptionsCacheByProfile: {},
     knowledgeGraphEnabled: true,
     inlineImagesMode: 'auto',
+    autoBackgroundAgentsEnabled: true,
   }
   return config
 }
@@ -793,6 +799,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterEnabled',
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
+  'autoBackgroundAgentsEnabled',
   'inlineImagesMode',
 ] as const
 
@@ -1545,6 +1552,10 @@ function saveConfigWithLock<A extends object>(
 
 // Flag to track if config reading is allowed
 let configReadingAllowed = false
+
+export function isConfigReadingAllowed(): boolean {
+  return configReadingAllowed
+}
 
 export function enableConfigs(): void {
   if (configReadingAllowed) {

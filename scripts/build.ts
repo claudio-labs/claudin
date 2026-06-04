@@ -59,7 +59,7 @@ const featureFlags: Record<string, boolean> = {
   QUICK_SEARCH: true,                 // Ctrl+G quick search across prompts
   SHOT_STATS: true,                   // Shot distribution stats in session summary
   EXTRACT_MEMORIES: true,             // Auto-extract durable memories from conversations
-  FORK_SUBAGENT: false,               // Disabled: forces ALL Agent dispatches async via <task-notification>, adding 1-2 extra parent round-trips per spawn (~15-30k tokens per "research X, review Y, compare Z" wave). Re-enable to opt back into the unified async/fork experiment.
+  FORK_SUBAGENT: true,                // Default spawn (no subagent_type) forks: child inherits parent context+prompt-cache. Named subagent_type stays a fresh isolated agent. No longer forces async (runs inline unless run_in_background / auto-background toggle); gated on the autoBackgroundAgentsEnabled /config toggle.
   PROMPT_CACHE_BREAK_DETECTION: true, // Detect & log unexpected prompt cache invalidations
   HOOK_PROMPTS: true,                 // Allow tools to request interactive user prompts
   BASH_CLASSIFIER: true,              // AI matching for Bash(prompt:'description') rules — paired with auto-mode

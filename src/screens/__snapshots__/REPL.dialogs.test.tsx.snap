@@ -4,19 +4,19 @@ exports[`<REPL> dialogs baseline disabled prop (suppresses prompt, dialog contai
 "       
 ▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudio"
+ ▘▘ ▝▝    ~/projects/claudin"
 `;
 
 exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1`] = `
 "       
 ▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudio
+ ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
-                                                                               ~/projects/claudio 
+                                                                               ~/projects/claudin 
   ? for shortcuts                                                               ◐ medium · /effort"
 `;
 
@@ -24,11 +24,11 @@ exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path re
 "       
 ▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudio
+ ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
-                                                                               ~/projects/claudio 
+                                                                               ~/projects/claudin 
   ? for shortcuts                                                               ◐ medium · /effort"
 `;

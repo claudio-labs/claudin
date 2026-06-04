@@ -15,9 +15,12 @@ import { isVimModeEnabled } from './utils.js';
 import { useShortcutDisplay } from '../../keybindings/useShortcutDisplay.js';
 import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from '../../utils/permissions/PermissionMode.js';
 import { BackgroundTaskStatus } from '../tasks/BackgroundTaskStatus.js';
+import { footerTreeBaseIndex, getVisibleAgentTasks } from '../tasks/footerTaskGeometry.js';
+import { isPanelAgentTask } from '../../tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask } from '../../tasks/types.js';
 import { count } from '../../utils/array.js';
 import { shouldHideTasksFooter } from '../tasks/taskStatusUtils.js';
+import { resolveFooterTreeRow } from '../tasks/footerSelection.js';
 import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
 import { TeamStatus } from '../teams/TeamStatus.js';
 import { isInProcessEnabled } from '../../utils/swarm/backends/registry.js';
@@ -256,6 +259,22 @@ function ModeIndicator({
   const viewSelectionMode = useAppState(s_1 => s_1.viewSelectionMode);
   const viewingAgentTaskId = useAppState(s_2 => s_2.viewingAgentTaskId);
   const expandedView = useAppState(s_3 => s_3.expandedView);
+  // Cursor row kind drives the byline hint verbs. Without this, the hint
+  // shows "enter/x expand/stop" on every engaged row, but: headers only
+  // expand (no stop target), items only stop (no expand target), and the
+  // `● main` / agent rows have their own verbs ("enter view" / "x dismiss").
+  // Reading the cursor + resolving its row here keeps the byline truthful.
+  const cursorRowKind = useAppState(s_curkind => {
+    if (s_curkind.footerSelection !== 'tasks') return 'none' as const;
+    const i = s_curkind.coordinatorTaskIndex;
+    if (i < 0) return 'pill' as const;
+    const base = footerTreeBaseIndex(s_curkind.tasks);
+    if (i < base) return 'agent' as const;
+    const row = resolveFooterTreeRow(s_curkind.tasks, s_curkind.foregroundedTaskId, s_curkind.collapsedTaskGroups, i);
+    if (row?.kind === 'header') return 'tree-header' as const;
+    if (row?.kind === 'item') return 'tree-item' as const;
+    return 'none' as const;
+  });
   const showSpinnerTree = expandedView === 'teammates';
   const prStatus = usePrStatus(isLoading, isPrStatusEnabled());
   const hasTmuxSession = false;
@@ -272,7 +291,10 @@ function ModeIndicator({
   const selGetState = useSelection().getState;
   const hasNextTick = nextTickAt !== null;
   const isCoordinator = feature('COORDINATOR_MODE') ? coordinatorModule?.isCoordinatorMode() === true : false;
-  const runningTaskCount = useMemo(() => count(Object.values(tasks), t => isBackgroundTask(t)), [tasks]);
+  // Panel agent tasks live in CoordinatorTaskPanel, not the footer pill — exclude
+  // them here so a lone agent doesn't render an empty pill (a stray " · " left by
+  // BackgroundTaskStatus returning null) instead of just the "↓ to manage" hint.
+  const runningTaskCount = useMemo(() => count(Object.values(tasks), t => isBackgroundTask(t) && !isPanelAgentTask(t)), [tasks]);
   const tasksV2 = useTasksV2();
   const hasTaskItems = tasksV2 !== undefined && tasksV2.length > 0;
   const escShortcut = useShortcutDisplay('chat:cancel', 'Chat', 'esc').toLowerCase();
@@ -386,9 +408,16 @@ function ModeIndicator({
 
   // When we have teammate pills, always render them on their own line above other parts
   if (hasTeammatePills) {
+    // Even with teammate pills, surface a tasks-nav hint when non-teammate bg
+    // tasks (shells/monitors/etc.) are also running — otherwise the user has
+    // no discoverable path to the tree that's rendering below the byline.
+    const hasNonTeammateBg = Object.values(tasks).some(t_bgnt => isBackgroundTask(t_bgnt) && t_bgnt.type !== 'in_process_teammate');
+    const tasksNavHint = hasNonTeammateBg && showHint ? [<Text dimColor key="manage-tasks-tm">
+        <KeyboardShortcutHint shortcut="↓" action="navigate tasks" />
+      </Text>] : [];
     // Don't append spinner hints when viewing a completed teammate —
     // the "esc to return to team lead" hint already replaces "esc to interrupt"
-    const otherParts = [...(modePart ? [modePart] : []), ...parts, ...(isViewingCompletedTeammate ? [] : hintParts)];
+    const otherParts = [...(modePart ? [modePart] : []), ...parts, ...tasksNavHint, ...(isViewingCompletedTeammate ? [] : hintParts)];
     return <Box flexDirection="column">
         <Box>
           <BackgroundTaskStatus tasksSelected={tasksSelected} isViewingTeammate={isViewingTeammate} teammateFooterIndex={teammateFooterIndex} isLeaderIdle={!isLoading} onOpenDialog={onOpenTasksDialog} />
@@ -399,14 +428,15 @@ function ModeIndicator({
       </Box>;
   }
 
-  const hasCoordinatorTasks = false;
+  const hasCoordinatorTasks = getVisibleAgentTasks(tasks).length > 0;
 
-  // Tasks pill renders as a Box sibling (not a parts entry) so its
-  // click-target Box isn't nested inside <Text wrap="truncate"> — the
-  // reconciler throws on Box-in-Text. Computed here so the empty-checks
-  // below still treat "pill present" as non-empty.
-  const tasksPart = hasBackgroundTasks && !hasTeammatePills && !shouldHideTasksFooter(tasks, showSpinnerTree) ? <BackgroundTaskStatus tasksSelected={tasksSelected} isViewingTeammate={isViewingTeammate} teammateFooterIndex={teammateFooterIndex} isLeaderIdle={!isLoading} onOpenDialog={onOpenTasksDialog} /> : null;
-  if (parts.length === 0 && !tasksPart && !modePart && showHint) {
+  // Background tasks render as the inline group tree (grouped by type, with
+  // ├─/└─ children). The tree itself is rendered at the footer level (below the
+  // agent panel — see PromptInputFooter), NOT here: this byline must stay a
+  // single top-of-footer line. `showTasksTree` is kept only to drive the
+  // navigate hint and the empty-state height guards below.
+  const showTasksTree = hasBackgroundTasks && !hasTeammatePills && !shouldHideTasksFooter(tasks, showSpinnerTree);
+  if (parts.length === 0 && !showTasksTree && !modePart && showHint) {
     parts.push(<Text dimColor key="shortcuts-hint">
         ? for shortcuts
       </Text>);
@@ -447,10 +477,32 @@ function ModeIndicator({
         hold {voiceKeyShortcut} to speak
       </Text>);
   }
-  if ((tasksPart || hasCoordinatorTasks) && showHint && !hasTeams) {
-    parts.push(<Text dimColor key="manage-tasks">
-        {tasksSelected ? <KeyboardShortcutHint shortcut="Enter" action="view tasks" /> : <KeyboardShortcutHint shortcut="↓" action="manage" />}
-      </Text>);
+  // Tasks-tree nav hint. When the tree (or panel) has rows, surface the right
+  // verbs for what the cursor is currently on:
+  //   - not engaged          → "↓ navigate"   (enter the tree)
+  //   - on pill / main / agent → "enter view · x dismiss"
+  //   - on a group header    → "enter expand/collapse"
+  //   - on a tree item       → "x stop"
+  // We render the hint even with teammates present — the teammate row sits in
+  // its own line above the byline, and the tasks tree needs a discoverable
+  // entry path regardless.
+  if ((showTasksTree || hasCoordinatorTasks) && showHint) {
+    let hint: React.ReactElement;
+    switch (cursorRowKind) {
+      case 'tree-header':
+        hint = <KeyboardShortcutHint shortcut="enter" action="expand/collapse" />;
+        break;
+      case 'tree-item':
+        hint = <KeyboardShortcutHint shortcut="x" action="stop" />;
+        break;
+      case 'pill':
+      case 'agent':
+        hint = <KeyboardShortcutHint shortcut="enter/x" action="view/dismiss" />;
+        break;
+      default:
+        hint = <KeyboardShortcutHint shortcut="↓" action="navigate" />;
+    }
+    parts.push(<Text dimColor key="manage-tasks">{hint}</Text>);
   }
 
   // In fullscreen the bottom section is flexShrink:0 — every row here
@@ -461,25 +513,25 @@ function ModeIndicator({
   // part (e.g. the selection copy/native-select hints) grow the column
   // from 0→1 row. Always render 1 row in fullscreen; return a space when
   // empty so Yoga reserves the row without painting anything visible.
-  if (parts.length === 0 && !tasksPart && !modePart) {
+  if (parts.length === 0 && !showTasksTree && !modePart) {
     return isFullscreenEnvEnabled() ? <Text> </Text> : null;
   }
 
-  // flexShrink=0 keeps mode + pill at natural width; the remaining parts
-  // truncate at the tail as one string inside the Text wrapper.
-  return <Box height={1} overflow="hidden">
+  // The byline row (mode + hint parts) is a single truncated line. flexShrink=0
+  // keeps mode at natural width; the remaining parts truncate at the tail.
+  const bylineRow = <Box height={1} overflow="hidden">
       {modePart && <Box flexShrink={0}>
           {modePart}
-          {(tasksPart || parts.length > 0) && <Text dimColor> · </Text>}
-        </Box>}
-      {tasksPart && <Box flexShrink={0}>
-          {tasksPart}
           {parts.length > 0 && <Text dimColor> · </Text>}
         </Box>}
       {parts.length > 0 && <Text wrap="truncate">
           <Byline>{parts}</Byline>
         </Text>}
     </Box>;
+
+  // The byline is always a single line — the background-task tree and the agent
+  // panel are rendered separately by PromptInputFooter, below this byline.
+  return bylineRow;
 }
 function getSpinnerHintParts(isLoading: boolean, escShortcut: string, todosShortcut: string, killAgentsShortcut: string, hasTaskItems: boolean, expandedView: 'none' | 'tasks' | 'teammates', hasTeammates: boolean, hasRunningAgentTasks: boolean, isKillAgentsConfirmShowing: boolean): React.ReactElement[] {
   let toggleAction: string;

@@ -373,6 +373,24 @@ export function Config({
       });
     }
   }, {
+    id: 'autoBackgroundAgentsEnabled',
+    label: 'Auto-background agents',
+    value: globalConfig.autoBackgroundAgentsEnabled !== false,
+    type: 'boolean' as const,
+    onChange(autoBackgroundAgentsEnabled: boolean) {
+      saveGlobalConfig(current => ({
+        ...current,
+        autoBackgroundAgentsEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        autoBackgroundAgentsEnabled
+      });
+      logEvent('claudin_auto_background_agents_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        enabled: autoBackgroundAgentsEnabled
+      });
+    }
+  }, {
     id: 'inlineImagesMode',
     label: 'Inline terminal images',
     value: globalConfig.inlineImagesMode ?? 'auto',
@@ -1246,6 +1264,9 @@ export function Config({
     }
     if (globalConfig.toolResultSummarizerEnabled !== initialConfig.current.toolResultSummarizerEnabled) {
       formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result summarizer`);
+    }
+    if (globalConfig.autoBackgroundAgentsEnabled !== initialConfig.current.autoBackgroundAgentsEnabled) {
+      formattedChanges.push(`${globalConfig.autoBackgroundAgentsEnabled !== false ? 'Enabled' : 'Disabled'} auto-background agents`);
     }
     if (globalConfig.bashOutputFilterEnabled !== initialConfig.current.bashOutputFilterEnabled) {
       formattedChanges.push(`${globalConfig.bashOutputFilterEnabled !== false ? 'Enabled' : 'Disabled'} bash output filter`);
