@@ -1,6 +1,6 @@
-# System Utils — Cobertura Detalhada Claudio × RTK (2026-05)
+# System Utils — Cobertura Detalhada Claudin × RTK (2026-05)
 
-Documento de refinamento para o roadmap de filtros de comandos de sistema. Comparação comando-a-comando entre o que o **Claudio** (`src/outputFilter/Bash/filters/`) já implementa e o que o **RTK** (`rtk/src/cmds/system/` + `rtk/src/filters/*.toml`) cobre. Cada seção tem detalhes suficientes para um implementador pegar e executar sem precisar re-explorar os dois repos.
+Documento de refinamento para o roadmap de filtros de comandos de sistema. Comparação comando-a-comando entre o que o **Claudin** (`src/outputFilter/Bash/filters/`) já implementa e o que o **RTK** (`rtk/src/cmds/system/` + `rtk/src/filters/*.toml`) cobre. Cada seção tem detalhes suficientes para um implementador pegar e executar sem precisar re-explorar os dois repos.
 
 Documentos relacionados:
 - [`system-utils-deep-dive-2026-05.md`](./system-utils-deep-dive-2026-05.md) — análise de cada comando isoladamente com FilterSpec proposta
@@ -8,7 +8,7 @@ Documentos relacionados:
 
 ---
 
-## 0. Limites estruturais do framework Claudio
+## 0. Limites estruturais do framework Claudin
 
 Levantamento confirmado pelo agente em `src/outputFilter/Bash/types.ts` (34 LOC) e `pipeline.ts` (587 LOC):
 
@@ -34,15 +34,15 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ## 1. Resumo executivo
 
-| Comando | Claudio | RTK | Gap | Prioridade |
+| Comando | Claudin | RTK | Gap | Prioridade |
 |---|---|---|---|---|
 | `ls` | ✅ `lsLa` | ✅ `ls.rs` (runner) | menor (RTK estima width terminal) | — |
 | `grep` / `rg` | ✅ `grepRg` | ✅ `grep_cmd.rs` (runner) | RTK injeta `--color=never`, deduplica path | baixo |
 | `ps aux` | ✅ `psAux` | ✅ TOML `ps.toml` | similares | baixo |
-| `top` | ✅ `top` (batch) | ❌ sem filtro RTK | Claudio à frente | — |
-| `journalctl` | ✅ `journalctl` | ❌ sem filtro RTK | Claudio à frente | — |
+| `top` | ✅ `top` (batch) | ❌ sem filtro RTK | Claudin à frente | — |
+| `journalctl` | ✅ `journalctl` | ❌ sem filtro RTK | Claudin à frente | — |
 | `curl` | ⚠ `curlV` apenas (modo `-v`) | ⚠ runner externo ao `system/` | ALTO — falta progress bar, body trunc | **P1** |
-| `dig` | ✅ `dig` | ❌ sem filtro RTK | Claudio à frente | — |
+| `dig` | ✅ `dig` | ❌ sem filtro RTK | Claudin à frente | — |
 | `find` | ❌ | ✅ `find_cmd.rs` (runner) | medido ROI 0% no RTK | **SKIP** |
 | `tree` | ❌ | ✅ `tree.rs` (runner) | médio | **P2** |
 | `df` | ❌ | ✅ TOML `df.toml` | alto | **P1** |
@@ -67,7 +67,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ### 2.1 `ls -la` — `src/outputFilter/Bash/filters/ls.ts` (37 LOC)
 
-**Claudio:**
+**Claudin:**
 - `matchCommand`: `/^ls\b/`
 - `matchCommandReject`: `/-1\b|--format=single/`
 - Estratégia: `replace` que colapsa linhas detalhadas em formato curto, mantendo permissões + nome
@@ -75,7 +75,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 **RTK (`ls.rs`):** runner completo. Calcula largura do terminal, formata em colunas, omite metadados quando exit != 0 (`skip_filter_on_failure`).
 
-**Gap residual:** Claudio não tem awareness de TTY (sempre captura). RTK consegue degradar para listagem simples em pipe. Para nós, isso é não-aplicável — sempre estamos em modo capture.
+**Gap residual:** Claudin não tem awareness de TTY (sempre captura). RTK consegue degradar para listagem simples em pipe. Para nós, isso é não-aplicável — sempre estamos em modo capture.
 
 **Verdict:** ✅ paridade funcional. Sem ação.
 
@@ -83,7 +83,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ### 2.2 `grep` / `rg` — `src/outputFilter/Bash/filters/grep-rg.ts` (36 LOC)
 
-**Claudio:**
+**Claudin:**
 - `matchCommand`: `/^(?:grep|rg)\b/`
 - Estratégia: `replace` que encurta paths longos
 - Sem stripping de matches
@@ -91,7 +91,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 **RTK (`grep_cmd.rs`):** runner Rust. Injeta `--color=never`, normaliza paths, opera em `Vec<char>` para UTF-8 safety, deduplica linhas idênticas com counter.
 
 **Gap residual menor:**
-- Claudio não força `--color=never` → se o usuário rodar `grep --color=always foo file`, ANSI vai vazar. (Mitigável adicionando `stripAnsi: true` na spec.)
+- Claudin não força `--color=never` → se o usuário rodar `grep --color=always foo file`, ANSI vai vazar. (Mitigável adicionando `stripAnsi: true` na spec.)
 - Sem dedup por linha.
 
 **Verdict:** ✅ ok. Melhoria possível: adicionar `stripAnsi: true` e `dedupGlobal: true` opcional. **~3 LOC, P3.**
@@ -100,7 +100,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ### 2.3 `ps aux` — `src/outputFilter/Bash/filters/system.ts` (compartilhado, 69 LOC)
 
-**Claudio:**
+**Claudin:**
 - Strip de kernel threads (linhas com `[kthreadd]`, `[ksoftirqd/N]`, etc.)
 - `maxLines: 50`
 
@@ -112,31 +112,31 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ### 2.4 `top` — `src/outputFilter/Bash/filters/system.ts`
 
-**Claudio:**
+**Claudin:**
 - Strip de kthreads
 - `maxLines: 60`
 
 **RTK:** ❌ nenhum filtro. Provavelmente intencional (top é TUI; comando one-shot é `top -b -n 1`).
 
-**Verdict:** ✅ Claudio à frente. Sem ação.
+**Verdict:** ✅ Claudin à frente. Sem ação.
 
 ---
 
 ### 2.5 `journalctl` — `src/outputFilter/Bash/filters/system.ts`
 
-**Claudio:**
+**Claudin:**
 - `replace` que normaliza hostname para `<host>`
 - `stripLinesMatching` para banners e separadores
 
 **RTK:** ❌ nenhum filtro de `journalctl` (apenas `systemctl status`).
 
-**Verdict:** ✅ Claudio à frente. Sem ação.
+**Verdict:** ✅ Claudin à frente. Sem ação.
 
 ---
 
 ### 2.6 `curl -v` — `src/outputFilter/Bash/filters/network.ts` (77 LOC compartilhado)
 
-**Claudio:**
+**Claudin:**
 - `matchCommand`: `/^curl\b.*(?:-v|--verbose)\b/`
 - `stripAnsi: true`
 - 9 regexes de `stripLinesMatching` cobrindo TLS/SSL/IPv/ALPN/CAfile/Trying/Connection/handshake
@@ -156,7 +156,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ### 2.7 `dig` — `src/outputFilter/Bash/filters/network.ts`
 
-**Claudio:**
+**Claudin:**
 - `stripAnsi: true`
 - 2 regex de strip: `;;` (linhas de comentário duplo) e `;\s` (banners/EDNS)
 - `maxLines: 50`
@@ -164,13 +164,13 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 **RTK:** ❌ nenhum filtro.
 
-**Verdict:** ✅ Claudio à frente. Sem ação.
+**Verdict:** ✅ Claudin à frente. Sem ação.
 
 ---
 
 ## 3. Comandos FALTANDO — detalhe completo por gap
 
-Para cada um: o que RTK faz, o que precisaria no Claudio, FilterSpec proposta, bloqueios.
+Para cada um: o que RTK faz, o que precisaria no Claudin, FilterSpec proposta, bloqueios.
 
 ### 3.1 `tree` — P2
 

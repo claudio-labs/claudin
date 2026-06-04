@@ -45,27 +45,27 @@ Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit
 
 ## 2. Padrões novos a considerar
 
-| Padrão | omp file:line | Adotar Claudio? |
+| Padrão | omp file:line | Adotar Claudin? |
 |---|---|---|
 | **Negative caching** (cache de "null"/"empty") | `mermaid-cache.ts:19-21`, `fs_cache.rs:444-446` | Sim, condicional. WebFetch 404/timeout merece cache curto. |
 | **Empty-result fast recheck** (cache curto + bust se age > N) | `fs_cache.rs:80-82,447-484` | Condicional — útil em GrepTool/GlobTool quando atualizam logo após write. |
 | **Config-hash invalidation** (SHA-256 stable stringify) | `tool-cache.ts:20-51,86` | Sim para `modelCache` (já tem version mas não hash de presets) e cache MCP. |
 | **Static fingerprint embed** (versão do input estático na row) | `model-cache.ts:35,91,116` | Sim — substitui hard-invalidate por dataset versionado. |
-| **Prefix-based invalidation triggers** chamados por tool sites | `fs-cache-invalidation.ts:5-28`, `fs_cache.rs:523-532` | Sim, alto valor. Falta total em Claudio — toolResultCache faz mtime mas não invalida vizinhos. |
-| **Conflict-driven self-invalidation** (compare-then-drop) | `file-read-cache.ts:62-68,79-85` | Não — Claudio `fileReadCache` já usa mtime; pattern só ganha sem mtime confiável. |
+| **Prefix-based invalidation triggers** chamados por tool sites | `fs-cache-invalidation.ts:5-28`, `fs_cache.rs:523-532` | Sim, alto valor. Falta total em Claudin — toolResultCache faz mtime mas não invalida vizinhos. |
+| **Conflict-driven self-invalidation** (compare-then-drop) | `file-read-cache.ts:62-68,79-85` | Não — Claudin `fileReadCache` já usa mtime; pattern só ganha sem mtime confiável. |
 | **`getStale()` API explícita + durable retention** (>1 TTL) | `auth-storage.ts:519-529` | Sim — mais simples que soft/hard se quiser "last-good" fallback. |
-| **In-place schema migration via ALTER COLUMN** | `model-cache.ts:69-75` | Sim se algum cache Claudio for a SQLite. Atual JSON-per-key drop+rebuild. |
+| **In-place schema migration via ALTER COLUMN** | `model-cache.ts:69-75` | Sim se algum cache Claudin for a SQLite. Atual JSON-per-key drop+rebuild. |
 | **Atomic staging-rename para tree caches** | `cache.ts:77-81` | Não aplicável hoje, mas referência se v8cache/paste mudar. |
 | **Path-component whitelist em cache keys** | `cache.ts:23-29` | Sim se houver cache por nome de plugin/skill em disco. |
 | **Cross-process via SQLite WAL + busy_timeout** | `model-cache.ts:50-51`, `auth-storage.ts:3284-3286` | Não — repo evita `bun:sqlite` runtime (build/verify constraints). |
 | **`idx_cache_expires` + statement-prepared GC** | `auth-storage.ts:3259,3296` | Condicional — só se migrar para SQLite. |
-| **LRU por oldest-`created_at` (sem touch on read)** | `fs_cache.rs:136-145` | Não — Claudio já usa `lru-cache` proper. |
+| **LRU por oldest-`created_at` (sem touch on read)** | `fs_cache.rs:136-145` | Não — Claudin já usa `lru-cache` proper. |
 | **Env-var-driven cache policy** | `fs_cache.rs:62-68` | Condicional — settings.json é mais discoverable que env. |
-| **Cache stats/observability** | (omp tem `cache_age_ms`, sem dashboard) | Claudio já tem `cacheStatsTracker.ts`, `cacheMetrics.ts`, `/cache-probe` — mais avançado que omp. |
+| **Cache stats/observability** | (omp tem `cache_age_ms`, sem dashboard) | Claudin já tem `cacheStatsTracker.ts`, `cacheMetrics.ts`, `/cache-probe` — mais avançado que omp. |
 | **Stampede protection além de `queueMicrotask`** | (não usado em omp) | Sim — já flagado no fit (in-flight `Map<key,Promise>` obrigatório). |
 | **Two-tier hard TTL durable (last-good)** | `auth-storage.ts:527-528` | Sim — variante mais simples que soft/hard com refresh ativo. |
 
-## 3. Encaixe Claudio (caches relacionados)
+## 3. Encaixe Claudin (caches relacionados)
 
 - **Negative cache + path-prefix invalidate** → `src/services/tools/toolResultCache.ts:63` (Grep/Glob/Read). Não tem invalidate por write-em-vizinho; hoje só mtime do file próprio.
 - **Config-hash invalidation** → `src/utils/model/modelCache.ts:20,47` (hoje só `version` numérico) e `src/utils/settings/settingsCache.ts`.
@@ -73,8 +73,8 @@ Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit
 - **`getStale()` durable retention** → `src/utils/latestVersionCache.ts:38,53` (banner serve último valor bom indefinidamente, refresh em background).
 - **Empty-result fast recheck** → `src/tools/GlobTool/` + `src/tools/GrepTool/`.
 - **MCP tool cache (config-hash + TTL longo)** → gap real: `src/services/mcp/client/authCache.ts:6,29` cobre só "needs auth"; não existe cache de tool-list/schema MCP. omp tem 30 dias com config-hash.
-- **Native fs cache layer** → Claudio evita native deps; replicar empty-recheck e prefix-invalidate em **TypeScript layer** sobre `GrepTool`/`GlobTool` é viável e barato.
-- **Stale-on-demand explicit API** → todos os caches Claudio hoje são fresh-or-miss. Padronizar `getStale()` opcional é refactor de baixo risco.
+- **Native fs cache layer** → Claudin evita native deps; replicar empty-recheck e prefix-invalidate em **TypeScript layer** sobre `GrepTool`/`GlobTool` é viável e barato.
+- **Stale-on-demand explicit API** → todos os caches Claudin hoje são fresh-or-miss. Padronizar `getStale()` opcional é refactor de baixo risco.
 
 ## 4. Síntese do que é NOVO em relação ao deep/fit
 

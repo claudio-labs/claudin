@@ -10,8 +10,8 @@ que é session-local e usa IDs numéricos. As duas camadas existem de propósito
 blob otimiza dedupe global, artifact otimiza retrieval por ID estável dentro da
 sessão.
 
-Claudio hoje **não tem nada content-addressed**. Tool results grandes são
-salvos em `~/.claudio/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
+Claudin hoje **não tem nada content-addressed**. Tool results grandes são
+salvos em `~/.claudin/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
 (sem hash, sem dedupe). Mesma leitura de arquivo em duas sessões = duas cópias.
 Cleanup é puramente time-based (30 dias por padrão), não refcount.
 
@@ -133,7 +133,7 @@ O pipeline persistência → rehidratação:
 
 JSONL persistido fica compacto; runtime vê dados completos.
 
-## Estado atual Claudio
+## Estado atual Claudin
 
 ### O que existe
 
@@ -149,7 +149,7 @@ Comportamento concreto:
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`
   (`src/constants/toolLimits.ts:13`).
 - **Path** (`toolResultStorage.ts:118`):
-  `~/.claudio/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
+  `~/.claudin/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
   com ext = `txt` para string, `json` para array de blocks.
 - **Naming** (`toolResultStorage.ts:188, 196`): chave é o `toolUseId` —
   UUID gerado por turn, garantido único por invocação. Write é `wx` (fail on
@@ -248,7 +248,7 @@ export class BlobStore {
 contrato com o modelo, só muda o que aparece em "Full output saved to":
 
 ```
-Full output saved to: blob:sha256:abc123...  (or read at: ~/.claudio/.../blobs/ab/c123...)
+Full output saved to: blob:sha256:abc123...  (or read at: ~/.claudin/.../blobs/ab/c123...)
 ```
 
 Ou — mais conservador — mantemos o filepath absoluto na mensagem (modelo já
@@ -258,10 +258,10 @@ para a transcript persistida.
 ### Layout em disco
 
 ```
-~/.claudio/projects/<dir>/blobs/<hash[:2]>/<hash[2:]>
+~/.claudin/projects/<dir>/blobs/<hash[:2]>/<hash[2:]>
 ```
 
-**Fanout-2** (256 subdirs), diferente do omp que é flat. Razão: Claudio pode
+**Fanout-2** (256 subdirs), diferente do omp que é flat. Razão: Claudin pode
 acumular significativamente mais blobs (Bash + Read + Grep + WebFetch é muito
 mais volume que só imagens), e flat com 100k+ arquivos degrada `readdir` em
 ext4. Fanout-2 mantém ~400 arquivos por dir num cenário de 100k blobs.
@@ -270,7 +270,7 @@ Escopo `<projectDir>` (não global por usuário como omp) porque:
 
 - Privacidade: dados de um projeto não vazam para outro via cross-session
   dedupe.
-- Cleanup mais fácil: apagar `~/.claudio/projects/<dir>/` (já suportado) leva
+- Cleanup mais fácil: apagar `~/.claudin/projects/<dir>/` (já suportado) leva
   os blobs junto.
 - Trade-off: perde-se dedupe entre projetos (ex: mesmo node_modules em dois
   worktrees). Aceitável — projetos diferentes geralmente têm conteúdo
@@ -313,15 +313,15 @@ Refcount em SQLite seria correto teoricamente mas:
    background no startup. Adicionar uma fase nova depois da limpeza de sessões
    antigas.
 2. Mark: varre todos os JSONL de sessão sobreviventes em
-   `~/.claudio/projects/<dir>/`, regex para `blob:sha256:[0-9a-f]{64}`, coleta
+   `~/.claudin/projects/<dir>/`, regex para `blob:sha256:[0-9a-f]{64}`, coleta
    em `Set<string>`.
-3. Sweep: lista `~/.claudio/projects/<dir>/blobs/**/*`, se hash não está no
+3. Sweep: lista `~/.claudin/projects/<dir>/blobs/**/*`, se hash não está no
    set **e** `mtime > 24h` (margem para sessions ativas que ainda não fizeram
    flush para JSONL), unlink.
 4. Logar `tengu_blob_gc_swept` com bytes liberados.
 
 Vantagem: zero state. Desvantagem: O(N) onde N = total de blobs no projeto.
-Como o cleanup já é "rodar uma vez por sessão de claudio", não é problema.
+Como o cleanup já é "rodar uma vez por sessão de claudin", não é problema.
 
 ### Tamanho mínimo
 
@@ -383,7 +383,7 @@ falsificados sem perceber.
 
 ### Race em writes concorrentes
 
-Dois processos `claudio` (duas sessões abertas no mesmo projeto) gravam o mesmo
+Dois processos `claudin` (duas sessões abertas no mesmo projeto) gravam o mesmo
 hash simultaneamente. Ambos escrevem o mesmo path.
 
 Análise:
@@ -409,7 +409,7 @@ Mitigações sugeridas:
 - Cap superior de tamanho por blob: se `content.size > 10MB`, recusar e cair
   no comportamento atual (truncate + preview), ou armazenar com extensão
   `.large` e GC mais agressivo (e.g. 7 dias em vez de 30).
-- Settings: expor `blobStoreMaxBytes` em `~/.claudio/settings.json`. Quando o
+- Settings: expor `blobStoreMaxBytes` em `~/.claudin/settings.json`. Quando o
   total ultrapassa, o sweep deleta os blobs com `mtime` mais antigo (LRU
   approximada).
 - Verificar `statfs` antes de write — se < 100MB livres, recusar e logar
@@ -419,7 +419,7 @@ Mitigações sugeridas:
 
 CAS guarda payloads exatos das tools. Arquivos com segredos (`.env`,
 `credentials.json`, OAuth tokens lidos por engano) podem ficar em
-`~/.claudio/.../blobs/` por 30 dias. Comportamento idêntico ao atual
+`~/.claudin/.../blobs/` por 30 dias. Comportamento idêntico ao atual
 `tool-results/`, mas com path menos óbvio. **Não é uma regressão**, mas vale
 documentar no `README` da pasta.
 
@@ -446,25 +446,25 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
 - `/home/viudes/projects/oh-my-pi/docs/blob-artifact-architecture.md:94–109` —
   rehydration on load.
 
-### claudio
+### claudin
 
-- `/home/viudes/projects/claudio/src/utils/toolResultStorage.ts:118` —
+- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:118` —
   layout atual de tool-results.
-- `/home/viudes/projects/claudio/src/utils/toolResultStorage.ts:146` —
+- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:146` —
   `unlinkSessionSpillDir` (deletado no `/clear`).
-- `/home/viudes/projects/claudio/src/utils/toolResultStorage.ts:171` —
+- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:171` —
   `persistToolResult`.
-- `/home/viudes/projects/claudio/src/utils/toolResultStorage.ts:223` —
+- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:223` —
   formato `<persisted-output>` que o modelo vê.
-- `/home/viudes/projects/claudio/src/utils/toolResultStorage.ts:308–369` —
+- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:308–369` —
   trigger por threshold.
-- `/home/viudes/projects/claudio/src/constants/toolLimits.ts:13` —
+- `/home/viudes/projects/claudin/src/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.
-- `/home/viudes/projects/claudio/src/utils/cleanup.ts:155` —
+- `/home/viudes/projects/claudin/src/utils/cleanup.ts:155` —
   `cleanupOldSessionFiles` (time-based, 30d default).
-- `/home/viudes/projects/claudio/src/utils/cleanup.ts:196–203` —
+- `/home/viudes/projects/claudin/src/utils/cleanup.ts:196–203` —
   varre tool-results dentro de session dirs.
-- `/home/viudes/projects/claudio/src/services/compact/postCompactCleanup.ts:42` —
+- `/home/viudes/projects/claudin/src/services/compact/postCompactCleanup.ts:42` —
   `runPostCompactCleanup` (não toca em tool-results).
-- `/home/viudes/projects/claudio/src/services/compact/postCompactCleanup.ts:159–165` —
+- `/home/viudes/projects/claudin/src/services/compact/postCompactCleanup.ts:159–165` —
   comentário explícito: arquivos persistidos sobrevivem ao compact.

@@ -3,7 +3,7 @@
 ## Resumo executivo
 
 - omp (`oh-my-pi`) usa BM25 sobre nome/label/summary/schemaKeys das tools, mas o ranking **não roda automaticamente por turno**: ele é exposto como uma tool (`search_tool_bm25`) que a LLM chama explicitamente para "descobrir e ativar" tools `loadMode: "discoverable"`. Uma vez ativadas, persistem no set ativo da sessão.
-- Claudio já tem o **mesmo padrão arquitetural** implementado (`ToolSearchTool` + `shouldDefer`/`alwaysLoad`), mas hoje ele só roda em provedores Anthropic 1P (depende do content-block beta `tool_reference`). Em DeepSeek/Groq/OpenRouter/etc. ele é desligado por `isToolSearchEnabledOptimistic()`.
+- Claudin já tem o **mesmo padrão arquitetural** implementado (`ToolSearchTool` + `shouldDefer`/`alwaysLoad`), mas hoje ele só roda em provedores Anthropic 1P (depende do content-block beta `tool_reference`). Em DeepSeek/Groq/OpenRouter/etc. ele é desligado por `isToolSearchEnabledOptimistic()`.
 - Wire-size real medido (`bun test scripts/measure-tool-schemas.test.ts` rodado localmente): **~18.3 k tokens** de schema por turno (anthropic), com top‑10 tools consumindo ~10.3 k. Cortar a cauda longa para ~5 tools defer-able salvaria ~4–6 k tokens/turno em provedores OpenAI-compat.
 - Oportunidade real, e MVP enxuto: estender o gating já existente para **provedores não‑Anthropic**, sem `tool_reference` — ativar tools mutando o tool-set da próxima request em vez de injetar via content block.
 - Métrica de sucesso: redução de **≥25%** nos `schemaBytes` enviados na 1ª request de um turno em OpenAI-compat, sem regressão de tool-calling em um eval básico (Bash/Read/Edit em 95% dos turnos).
@@ -42,18 +42,18 @@ Resultado: o índice BM25 é **construído sob demanda** (cache em `#discoverabl
 
 omp **não tem mecânica de prompt-cache da Anthropic** no caminho de discovery — ele roda sobre o tool-set ativo da sessão, e ativações mutam esse set entre requests. Nenhum hook para preservar prefix; a mudança do tool-set é assumida como um "tier change" normal.
 
-## Encaixe arquitetural em Claudio
+## Encaixe arquitetural em Claudin
 
 ### O que já existe
 
-Claudio implementou um equivalente quase 1:1 da ideia — não é "BM25" mas é a mesma topologia "deferred tools + search tool":
+Claudin implementou um equivalente quase 1:1 da ideia — não é "BM25" mas é a mesma topologia "deferred tools + search tool":
 
-- **Categoria por tool** (`/home/viudes/projects/claudio/src/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
-- **Critério de deferir** (`/home/viudes/projects/claudio/src/tools/ToolSearchTool/prompt.ts:63‑109`, `isDeferredTool`): MCP tools são sempre deferred, mais qualquer `shouldDefer: true`; tools com `alwaysLoad: true` ou `name === TOOL_SEARCH_TOOL_NAME` nunca são deferred. Várias hard-exceptions para Brief/SendUserFile/Agent.
-- **Ranking** (`/home/viudes/projects/claudio/src/tools/ToolSearchTool/ToolSearchTool.ts:186‑302`, `searchToolsWithKeywords`): **NÃO é BM25** — é scoring linear ad-hoc com pesos manuais (10/12 para match exato em parte do nome, 5/6 para substring, 4 para searchHint, 2 para descrição, 3 para fallback full‑name) e suporte a `+term` required, `select:` direto e prefix MCP. Tokenização: lowercase + split por whitespace, sem normalização Unicode.
-- **Gating de ativação por threshold** (`/home/viudes/projects/claudio/src/utils/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
-- **Wire mechanism**: usa o content block `tool_reference` da Anthropic (`/home/viudes/projects/claudio/src/tools/ToolSearchTool/ToolSearchTool.ts:444‑469`). É aqui que tudo emperra em provedores não‑Anthropic.
-- **Optimistic disable em terceiros** (`/home/viudes/projects/claudio/src/utils/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
+- **Categoria por tool** (`/home/viudes/projects/claudin/src/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
+- **Critério de deferir** (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/prompt.ts:63‑109`, `isDeferredTool`): MCP tools são sempre deferred, mais qualquer `shouldDefer: true`; tools com `alwaysLoad: true` ou `name === TOOL_SEARCH_TOOL_NAME` nunca são deferred. Várias hard-exceptions para Brief/SendUserFile/Agent.
+- **Ranking** (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:186‑302`, `searchToolsWithKeywords`): **NÃO é BM25** — é scoring linear ad-hoc com pesos manuais (10/12 para match exato em parte do nome, 5/6 para substring, 4 para searchHint, 2 para descrição, 3 para fallback full‑name) e suporte a `+term` required, `select:` direto e prefix MCP. Tokenização: lowercase + split por whitespace, sem normalização Unicode.
+- **Gating de ativação por threshold** (`/home/viudes/projects/claudin/src/utils/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
+- **Wire mechanism**: usa o content block `tool_reference` da Anthropic (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:444‑469`). É aqui que tudo emperra em provedores não‑Anthropic.
+- **Optimistic disable em terceiros** (`/home/viudes/projects/claudin/src/utils/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
 
 ### Onde injetar a versão BM25 (provider-agnostic)
 
@@ -98,11 +98,11 @@ Top‑5 ofensores (anthropic): Agent (1,357), Bash (1,203), EnterPlanMode (1,127
 ## Riscos concretos
 
 1. **Esconder Bash/Read/Edit num turno em que seriam óbvias.** Mitigado se a categorização for declarativa (`shouldDefer`/`alwaysLoad`/novo `loadMode`) e BM25 só rankear o pool deferred. **Não usar BM25 sobre o pool inteiro.** Concretamente: se o user diz "abra o README", o BM25 sobre o pool todo pode rankear `FileReadTool` abaixo de `Skill` por causa de match em "open" no description do Skill — só evita-se isso se Read estiver no always-on set.
-2. **Multi-step plans que precisam de tool ainda não ativada.** User pede "rode os testes e abra um PR" — turno 1 ativa Bash; turno 2 precisa de `gh` (que não foi rankeado no turno 1). Solução: a LLM emite `ToolSearchTool` num tool-call extra antes de poder abrir o PR. Custo: +1 round-trip + tokens da call. Em modelos pequenos (DeepSeek-V3, Qwen 2.5-Coder, Llama-4) a probabilidade de a LLM **esquecer** que essa tool existe é não-trivial — o prompt do ToolSearchTool tem que ser persuasivo. Já é em Claudio (`ToolSearchTool/prompt.ts:27‑52`).
+2. **Multi-step plans que precisam de tool ainda não ativada.** User pede "rode os testes e abra um PR" — turno 1 ativa Bash; turno 2 precisa de `gh` (que não foi rankeado no turno 1). Solução: a LLM emite `ToolSearchTool` num tool-call extra antes de poder abrir o PR. Custo: +1 round-trip + tokens da call. Em modelos pequenos (DeepSeek-V3, Qwen 2.5-Coder, Llama-4) a probabilidade de a LLM **esquecer** que essa tool existe é não-trivial — o prompt do ToolSearchTool tem que ser persuasivo. Já é em Claudin (`ToolSearchTool/prompt.ts:27‑52`).
 3. **Conflito com prompt cache da Anthropic.** O `claude_code_system_cache_policy` coloca um cache breakpoint após o último built-in tool no schema (`tools.ts:374‑381`). Se o tool-set muda a cada turno (rerank por user message), **invalida todo o downstream cache** — perda de cache hit pode custar mais que o gating economiza (anthropic-1P paga input tokens cacheados a 10% do preço). Para Anthropic 1P, manter `tool_reference` (que preserva o prefix). Para third-party (sem cache equivalente), o BM25 ganha. Portanto o flag deve ramificar por provider.
-4. **`searchHint` faltando.** Tools Claudio que não declaram `searchHint` (`grep` em `src/tools/` confirma que a maioria não declara) viram pouco descobríveis pelo BM25 do omp, que só pesa name+label+summary+schemaKeys. Mitigação: porte o `description.slice(0, 200)` fallback do omp (`tool-index.ts:183`).
-5. **MCP tool churn.** MCP servers conectam async; o índice precisa ser invalidado quando o pool muda. Já existe `maybeInvalidateCache` em `ToolSearchTool.ts:91`; o cache BM25 novo precisa do mesmo hook + sentinel para `pending_mcp_servers` (já tratado no Claudio em `ToolSearchTool.ts:336‑339`).
-6. **Tokenização Unicode.** Tokenizer atual do Claudio (`parseToolName` em `ToolSearchTool.ts:132‑161`) não normaliza NFKD/accents. omp normaliza. Codebases com paths/comentários em pt-BR (caso deste repo) podem ranquear pior. Baixo risco, fácil de portar.
+4. **`searchHint` faltando.** Tools Claudin que não declaram `searchHint` (`grep` em `src/tools/` confirma que a maioria não declara) viram pouco descobríveis pelo BM25 do omp, que só pesa name+label+summary+schemaKeys. Mitigação: porte o `description.slice(0, 200)` fallback do omp (`tool-index.ts:183`).
+5. **MCP tool churn.** MCP servers conectam async; o índice precisa ser invalidado quando o pool muda. Já existe `maybeInvalidateCache` em `ToolSearchTool.ts:91`; o cache BM25 novo precisa do mesmo hook + sentinel para `pending_mcp_servers` (já tratado no Claudin em `ToolSearchTool.ts:336‑339`).
+6. **Tokenização Unicode.** Tokenizer atual do Claudin (`parseToolName` em `ToolSearchTool.ts:132‑161`) não normaliza NFKD/accents. omp normaliza. Codebases com paths/comentários em pt-BR (caso deste repo) podem ranquear pior. Baixo risco, fácil de portar.
 
 ## Proposta de feature flag + escopo MVP
 
@@ -110,7 +110,7 @@ Top‑5 ofensores (anthropic): Agent (1,357), Bash (1,203), EnterPlanMode (1,127
 
 `BM25_TOOL_GATING` em `scripts/build.ts:featureFlags`. **Default `false`**. Quando true, ativa apenas para `getAPIProvider() !== 'firstParty' || !isFirstPartyAnthropicBaseUrl()` — em Anthropic 1P o caminho existente (`tool_reference`) continua sendo o canônico para preservar prompt cache.
 
-Sub‑configuração via `~/.claudio/settings.json`:
+Sub‑configuração via `~/.claudin/settings.json`:
 
 - `toolGating.mode`: `"off" | "search-only" | "auto-rerank"` (default `"search-only"`, paridade omp).
 - `toolGating.alwaysLoad`: lista de nomes que nunca são deferred (override de classificação).
@@ -119,7 +119,7 @@ Sub‑configuração via `~/.claudio/settings.json`:
 ### Escopo MVP (em ordem, ~3 PRs)
 
 **PR 1 — Índice BM25 portado, sem ativar.**
-- Novo módulo `src/utils/bm25ToolIndex.ts` com `tokenize`, `buildDiscoverableToolSearchIndex`, `searchDiscoverableTools`, copiado do omp com adaptações para o shape `Tool` do Claudio (use `tool.searchHint` se presente, senão `tool.prompt(...).slice(0,200)`).
+- Novo módulo `src/utils/bm25ToolIndex.ts` com `tokenize`, `buildDiscoverableToolSearchIndex`, `searchDiscoverableTools`, copiado do omp com adaptações para o shape `Tool` do Claudin (use `tool.searchHint` se presente, senão `tool.prompt(...).slice(0,200)`).
 - Teste colocado: `src/utils/bm25ToolIndex.test.ts` com fixtures determinísticos (corpus pequeno, queries conhecidas, assertions sobre ordering).
 - Sem mudança em produção. Verifica que o ranking devolve o que esperamos para 10‑15 queries representativas (`"open file"` → FileReadTool topo; `"run command"` → Bash; `"schedule cron"` → CronCreate).
 
@@ -155,10 +155,10 @@ Sub‑configuração via `~/.claudio/settings.json`:
 - `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:3048-3151` (discovery mode resolution, getDiscoverableTools, activateDiscoveredTools).
 - `loadMode` declarações: `:essential` em `tools/bash.ts:228`, `tools/read.ts:679`, `edit/index.ts:278`, `tools/search-tool-bm25.ts:211`. Resto é `discoverable`.
 
-### claudio
-- `/home/viudes/projects/claudio/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
-- `/home/viudes/projects/claudio/src/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
-- `/home/viudes/projects/claudio/src/tools/ToolSearchTool/ToolSearchTool.ts:132-302` (tokenizer + scoring linear atual), `:304-471` (tool wrapper, `tool_reference` output).
-- `/home/viudes/projects/claudio/src/tools/ToolSearchTool/prompt.ts:55-109` (`isDeferredTool`).
-- `/home/viudes/projects/claudio/src/utils/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
-- `/home/viudes/projects/claudio/scripts/measure-tool-schemas.ts` + `.test.ts` (baseline mensurável).
+### claudin
+- `/home/viudes/projects/claudin/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
+- `/home/viudes/projects/claudin/src/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
+- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:132-302` (tokenizer + scoring linear atual), `:304-471` (tool wrapper, `tool_reference` output).
+- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/prompt.ts:55-109` (`isDeferredTool`).
+- `/home/viudes/projects/claudin/src/utils/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
+- `/home/viudes/projects/claudin/scripts/measure-tool-schemas.ts` + `.test.ts` (baseline mensurável).

@@ -8,8 +8,8 @@ Cinco perguntas em aberto. Cada uma muda escopo em ordens de grandeza. Resposta 
 
 | Opção | Pró | Contra |
 |---|---|---|
-| **TOML** (cópia rtk) | Declarativo, autoexplicativo, copy-paste de exemplos funciona, comunidade rtk tem catálogo pronto | Nova dep (`smol-toml`), claudio só usa JSON em `~/.claudio/` hoje |
-| **JSON em `settings.json`** | Zero deps, encaixa em `claudioMigration.ts`, schema com zod | Regex em string JSON é feio (escapes duplos), config grande fica ilegível |
+| **TOML** (cópia rtk) | Declarativo, autoexplicativo, copy-paste de exemplos funciona, comunidade rtk tem catálogo pronto | Nova dep (`smol-toml`), claudin só usa JSON em `~/.claudin/` hoje |
+| **JSON em `settings.json`** | Zero deps, encaixa em `claudinMigration.ts`, schema com zod | Regex em string JSON é feio (escapes duplos), config grande fica ilegível |
 | **TS built-in + JSON user override** | Built-ins expressivos (podem fazer parsing real), user mexe via JSON simples | Duas mentalidades pra manter |
 
 **Inclinação atual:** TS built-in + JSON user. TOML só se quisermos paridade com rtk e PRs da comunidade direto em TOML.
@@ -39,13 +39,13 @@ A tabela do rtk (README) sugere que ~80% do ganho vem de ~10 comandos: `git stat
 
 ## Q3. Filtros de projeto na v1?
 
-`.claudio/filters.json` no repo permite cada time customizar (ex: time tem um wrapper de teste com banner de 50 linhas que ninguém precisa).
+`.claudin/filters.json` no repo permite cada time customizar (ex: time tem um wrapper de teste com banner de 50 linhas que ninguém precisa).
 
 Mas é a **maior superfície de ataque**: PR malicioso commita filtro que esconde "deletei seu .ssh/" do output do bash. rtk levou isso a sério com SHA-256 trust + dialog de aprovação.
 
 **Opções:**
 
-- (a) **v1 só built-in + user-global** (`~/.claudio/filters.json`). Filtros de projeto fica pra v2.
+- (a) **v1 só built-in + user-global** (`~/.claudin/filters.json`). Filtros de projeto fica pra v2.
 - (b) **v1 com filtros de projeto + trust dialog** (paralelo direto do `mcpServerApproval`).
 
 **Inclinação atual:** (a) conservador. Filtros de projeto são a feature "killer" do rtk, mas trazer trust system é trabalho real e vale ver se user-global resolve antes de assumir o custo.
@@ -55,20 +55,20 @@ Mas é a **maior superfície de ataque**: PR malicioso commita filtro que escond
 ## Q4. Default on ou opt-in inicial?
 
 - **Default on** (`bashOutputFilterEnabled: true`): adoção máxima, mas qualquer regressão silenciosa atinge todo mundo.
-- **Opt-in via `/provider` ou env var**: zero risco, mas adoção lenta. Histórico do projeto: streaming-highlight foi default-on (CLAUDE.md menciona `CLAUDIO_DEFER_HIGHLIGHT=0` para reverter).
+- **Opt-in via `/provider` ou env var**: zero risco, mas adoção lenta. Histórico do projeto: streaming-highlight foi default-on (CLAUDE.md menciona `CLAUDIN_DEFER_HIGHLIGHT=0` para reverter).
 
 **Tradeoff específico:** o `toolResultSummarizer` JÁ é default-on com kill switch, e nunca vimos issue dele. Se o filtro novo seguir o mesmo padrão de "fail open + log + kill switch", default-on é defensável.
 
 **Inclinação atual:** default-on, com:
-- `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1` para kill switch global
-- `bashOutputFilterEnabled: false` em `~/.claudio/settings.json` para opt-out persistente
-- `CLAUDIO_BASH_FILTER_DEBUG=1` para o usuário ver antes/depois quando algo parecer estranho
+- `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1` para kill switch global
+- `bashOutputFilterEnabled: false` em `~/.claudin/settings.json` para opt-out persistente
+- `CLAUDIN_BASH_FILTER_DEBUG=1` para o usuário ver antes/depois quando algo parecer estranho
 
 ---
 
 ## Q5. Comando `/savings` ou `/gain` na v1?
 
-rtk tem `rtk gain` mostrando cumulative savings. Sem isso, usuário não confia: "filtrou alguma coisa importante?". Hoje o summarizer só loga via `logEvent('claudio_tool_result_summarized', ...)` que ninguém vê.
+rtk tem `rtk gain` mostrando cumulative savings. Sem isso, usuário não confia: "filtrou alguma coisa importante?". Hoje o summarizer só loga via `logEvent('claudin_tool_result_summarized', ...)` que ninguém vê.
 
 **Opções:**
 
@@ -86,11 +86,11 @@ Antes de qualquer código de filtro, queremos responder com dados:
 
 ### Pergunta 1: Quais comandos dominam o uso real de Bash?
 
-**Hipótese:** top-10 do rtk casa com top-10 do claudio.
+**Hipótese:** top-10 do rtk casa com top-10 do claudin.
 **Risco se hipótese falhar:** investimos em filtros de comandos que ninguém usa.
 
 **Instrumentação:**
-- Adicionar `logEvent('claudio_bash_command_first_verb_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS', { verb, outputBytes, exitCode })` em `BashTool.call()`.
+- Adicionar `logEvent('claudin_bash_command_first_verb_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS', { verb, outputBytes, exitCode })` em `BashTool.call()`.
 - `verb` = primeiro token do `splitCommand_DEPRECATED(input.command)[0]`, sanitizado (só nomes de comandos conhecidos passam, resto vira `_other_`).
 - Rodar 1 semana em uso pessoal + pedir 3-5 contributors pra rodar também.
 - Top-20 verbos por count e por bytes acumulados.
@@ -116,7 +116,7 @@ Antes de qualquer código de filtro, queremos responder com dados:
 ### Saída esperada
 
 Atualizar `analysis.md` com:
-- Tabela "top-20 verbos no claudio" (real data, não tabela rtk)
+- Tabela "top-20 verbos no claudin" (real data, não tabela rtk)
 - Histograma de tamanhos por verbo
 - Recomendação revisada de quais filtros priorizar na v1
 

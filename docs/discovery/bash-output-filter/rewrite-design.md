@@ -1,4 +1,4 @@
-# Design: Command Rewrite no claudio
+# Design: Command Rewrite no claudin
 
 > Documenta **como tecnicamente** plugar a estratégia Rewrite (R) no fluxo do BashTool.
 > Decisão: Q2 do open-questions = ✅ aceita Rewrite na v1.
@@ -86,7 +86,7 @@ async call(input: BashToolInput, toolUseContext, _canUseTool, parentMessage, onP
   let actualCommand = input.command
   let rewriteInfo: { from: string; to: string; filterName: string } | null = null
 
-  if (!isEnvTruthy(process.env.CLAUDIO_DISABLE_BASH_OUTPUT_FILTER)) {
+  if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER)) {
     const filter = findMatchingFilter(input.command)
     if (filter?.rewriteCommand) {
       const parsed = parseBashCommand(input.command)  // existing helper
@@ -181,7 +181,7 @@ cd foo && git log -10      # mesmo
 git log -10 ; date         # mesmo
 ```
 
-claudio já tem `splitCommandWithOperators` em `src/utils/bash/commands.ts`. Approach:
+claudin já tem `splitCommandWithOperators` em `src/utils/bash/commands.ts`. Approach:
 - Rewrite **só o componente que casa**, recompõe o pipe
 - Se output do `git log` vai pra `wc -l`, rewrite ainda funciona (oneline tem N linhas vs verbose tem M linhas — wc count muda!)
 
@@ -218,7 +218,7 @@ git log --no-decorate       # user quer formato custom
 Decisão: **rewrite ainda aplica**, pipeline filter NÃO aplica em is_error. Por quê:
 - Exit ≠ 0 com rewrite ainda nos dá output do comando reescrito (ex: `git log --oneline` falhou? user precisa do erro original)
 - Mas o erro do comando reescrito É o mesmo erro do comando original
-- Se user precisa de mais detalhe, pode rerodar com `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1`
+- Se user precisa de mais detalhe, pode rerodar com `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1`
 
 Alternativa: **rewrite skip em is_error retroativamente** — rerodar comando original. Desperdício de tempo. Não vale.
 
@@ -247,9 +247,9 @@ Filtros R devem:
 
 ### Env vars
 
-- `CLAUDIO_DISABLE_BASH_OUTPUT_FILTER=1` — desliga TUDO (rewrite + pipeline)
-- `CLAUDIO_BASH_FILTER_DEBUG=1` — log inline do que foi reescrito (pra debug do user)
-- `CLAUDIO_DISABLE_REWRITE=1` — desliga só rewrite (pipeline continua) ⭐ **opt-out granular**
+- `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1` — desliga TUDO (rewrite + pipeline)
+- `CLAUDIN_BASH_FILTER_DEBUG=1` — log inline do que foi reescrito (pra debug do user)
+- `CLAUDIN_DISABLE_REWRITE=1` — desliga só rewrite (pipeline continua) ⭐ **opt-out granular**
 
 ### Settings.json
 
@@ -316,7 +316,7 @@ Baseado na matriz:
 
 **Modelo perde fidelidade ao output cru** que pediu. Mitigação:
 - Marker explícito `<bash-output-rewritten>` torna a transformação visível
-- `CLAUDIO_DISABLE_REWRITE=1` opt-out granular
+- `CLAUDIN_DISABLE_REWRITE=1` opt-out granular
 - Filters R só ativam quando ROI ≥ 50pp acima do P-only (não vale a pena rewrite por 10pp)
 
 ## Próximos passos concretos
@@ -329,4 +329,4 @@ Baseado na matriz:
 
 ## Resumo de uma linha
 
-**Rewrite no claudio = mutar `input.command` em `BashTool.call()` antes de `runShellCommand`, propagando `rewriteInfo` pro `mapToolResult` que injeta marker `<bash-output-rewritten>` no output.** ~25 LoC no BashTool + filter specs.
+**Rewrite no claudin = mutar `input.command` em `BashTool.call()` antes de `runShellCommand`, propagando `rewriteInfo` pro `mapToolResult` que injeta marker `<bash-output-rewritten>` no output.** ~25 LoC no BashTool + filter specs.

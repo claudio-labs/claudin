@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (REAL: claudio repo, 5 May 2026)
+## Saída crua representativa (REAL: claudin repo, 5 May 2026)
 
 ### Amostra 1 — `git show HEAD --stat` (1.353 bytes)
 

@@ -4,14 +4,14 @@
 **Família:** build
 **Tier:** 1.5
 **Estratégia provável:** declarative (strip echo + Entering directory + recipe noise)
-**Status:** **NOT analyzed** (make instalado mas claudio não usa Makefile)
+**Status:** **NOT analyzed** (make instalado mas claudin não usa Makefile)
 **Estimated reduction:** **~50-80%**
 
 ---
 
 ## Saída crua representativa (estrutura conhecida)
 
-⚠️ Não capturado em ambiente claudio. Estrutura típica:
+⚠️ Não capturado em ambiente claudin. Estrutura típica:
 
 ### `make` em projeto C
 

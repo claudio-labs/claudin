@@ -45,15 +45,15 @@ Varredura de `packages/coding-agent/src/session/` omp além do CAS blob store j�
 - `session-storage.ts:48-56` `FinalizationRegistry` cleanup de FDs vazados.
 
 ### History DB SQLite + FTS5
-- `history-storage.ts:1-312` — `~/.claudio/history.db` SQLite + FTS5 `unicode61`, substring search com escape LIKE, prepared stmts cacheados.
+- `history-storage.ts:1-312` — `~/.claudin/history.db` SQLite + FTS5 `unicode61`, substring search com escape LIKE, prepared stmts cacheados.
 - Histórico de **prompts** global, não outputs.
 
 ### Concurrency
 - `:2160-2191` `#queuePersistTask` + `#ensurePersistWriter` — uma sessão = um writer, fila linear.
 
-## 2. Vale pra Claudio?
+## 2. Vale pra Claudin?
 
-| omp tem | Claudio tem? | Vale portar? |
+| omp tem | Claudin tem? | Vale portar? |
 |---|---|---|
 | ArtifactManager IDs sequenciais | Não — `toolResultStorage.ts` chaveia por `toolUseId` UUID | **Não.** UUID já é único; ganho marginal |
 | Subagents share parent artifact dir | Parcial — `sessionStorage/resume/subagents.ts` separado | **Diagnóstico primeiro** |
@@ -61,11 +61,11 @@ Varredura de `packages/coding-agent/src/session/` omp além do CAS blob store j�
 | **Compaction inline append-only** | **Parcial** — transcript fica pré-compact mas sem entry tipado; sem tooling pra navegar pré/pós | **Sim, baixo custo** |
 | Branch / leaf pointer / tree | Parcial — `src/commands/branch/branch.ts:61-173` `createFork` por cópia; sem árvore navegável | **Talvez** — `parentEntryId` em cada msg = árvore grátis. Mudança de schema, risco |
 | **Terminal breadcrumb** | Não | **Sim, ~50 linhas** — DX win |
-| `recoverOrphanedBackups` | Não — Claudio append-only | N/A |
+| `recoverOrphanedBackups` | Não — Claudin append-only | N/A |
 | **Draft persistence** | Não | **Sim, pequeno** — buffer no Ctrl+C |
 | **`titleSource: auto\|user`** | Parcial — title existe, flag "user set" não | **Sim, trivial** — 1 bool impede extractMemories sobrescrever título manual |
 | `moveTo(newCwd)` | Não | Condicional — nicho |
-| **NdjsonFileWriter sync hot path** | Parcial — async append, sem sync sobrevivente SIGKILL | **Sim** — Claudio perde últimos turns em crash |
+| **NdjsonFileWriter sync hot path** | Parcial — async append, sem sync sobrevivente SIGKILL | **Sim** — Claudin perde últimos turns em crash |
 | **History DB SQLite + FTS substring** | Parcial — `liteMetadata.ts` JSON; `transcriptSearch.ts` faz scan | **Sim, médio** — substitui scan de N jsonls toda vez `/resume` |
 
 ## 3. Encaixe (file:line)

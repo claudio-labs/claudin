@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (claudio repo, 5 May 2026)
+## Saída crua representativa (claudin repo, 5 May 2026)
 
 ### Amostra 1 — `bun run typecheck` em projeto com erros (REAL: **590.700 bytes**, ~6.000 linhas)
 
@@ -131,7 +131,7 @@ Se output > 100 erros, mostrar os primeiros 50 + linha final `[+N more errors wi
 |---|---|---|---|
 | 0 erros | ~20 | 20 (passthrough) | 0% |
 | 2 erros (típico PR) | ~250 | ~230 | ~8% |
-| **6.000 erros (REAL claudio em estado quebrado)** | **590.700** | ~500.000 (Opção A) / ~400.000 (com agrupamento v2) | **~15%** / ~32% |
+| **6.000 erros (REAL claudin em estado quebrado)** | **590.700** | ~500.000 (Opção A) / ~400.000 (com agrupamento v2) | **~15%** / ~32% |
 
 **ACHADO IMPORTANTE:** mesmo após filtro, output **continua massivo** (500KB). O **summarizer existente** já cobre via threshold (8KB) com head-tail genérico. Talvez para `tsc` o melhor seja deixar pro summarizer com threshold específico mais alto (50KB?) e estratégia de agrupamento por código de erro. Discutir.
 

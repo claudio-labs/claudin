@@ -10,12 +10,12 @@ Windows block clone/ProjFS) e cai para uma cópia recursiva (`Rcopy`) como
 fallback universal. Isso é exposto ao TS por `@oh-my-pi/pi-natives`
 (`isoResolve`, `isoStart`, `isoStop`, `isoDiff`).
 
-Claudio hoje usa `git worktree add` + hooks `WorktreeCreate`/`WorktreeRemove`
+Claudin hoje usa `git worktree add` + hooks `WorktreeCreate`/`WorktreeRemove`
 opcionais. O custo de spawn é dominado pelo `checkout` (escrita do working
 tree) — barato em repos pequenos e cache quente, mas começa a doer com vários
 sub-agents simultâneos ou repos grandes (`dist/`, `node_modules`, V8 caches).
 
-A oportunidade concreta para Claudio não é "substituir" o git worktree, e sim
+A oportunidade concreta para Claudin não é "substituir" o git worktree, e sim
 adicionar um **caminho COW opt-in** para sub-agents paralelos onde branch
 git/PR workflow não importa.
 
@@ -75,7 +75,7 @@ Uso pelo coding-agent (`packages/coding-agent/src/task/worktree.ts`):
 
 ---
 
-## Claudio: EnterWorktreeTool atual
+## Claudin: EnterWorktreeTool atual
 
 - `src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127` — fluxo:
   1. recusa se já há sessão worktree;
@@ -99,9 +99,9 @@ Uso pelo coding-agent (`packages/coding-agent/src/task/worktree.ts`):
 Medição rápida no próprio repo (cache quente, btrfs):
 
 ```
-$ time git worktree add /tmp/claudio-test-wt HEAD
+$ time git worktree add /tmp/claudin-test-wt HEAD
 real    0m0.124s
-$ time cp --reflink=auto -r . /tmp/claudio-reflink-test  # 636 MB com dist/
+$ time cp --reflink=auto -r . /tmp/claudin-reflink-test  # 636 MB com dist/
 real    0m5.610s
 ```
 
@@ -125,7 +125,7 @@ Duas formas, não exclusivas:
 Adicionar ao `createWorktreeForSession` um caminho opt-in que, **antes** de
 escolher git worktree vs hook, tenta criar a árvore via COW e depois roda
 `git worktree add --no-checkout` apontando para esse diretório, fazendo o
-checkout virar no-op. Ganho: o `dist/`, `node_modules`, `.claudio/v8cache/`
+checkout virar no-op. Ganho: o `dist/`, `node_modules`, `.claudin/v8cache/`
 viajam de graça via reflink/clonefile.
 
 Trade-off: continua sendo um worktree git de verdade, branch existe, PR
@@ -209,11 +209,11 @@ Por que não FFI direto em `clonefile(2)`/`FICLONE`:
 ```
 [1] detectCow(repoRoot) === 'apfs-clonefile'  → cp -c -a src dst
 [2] detectCow(repoRoot) === 'linux-reflink'   → cp --reflink=always -a src dst
-[3] git worktree add  (caminho atual de Claudio)
+[3] git worktree add  (caminho atual de Claudin)
 [4] cp -a (cópia profunda — só se git falhar e usuário pediu isolamento)
 ```
 
-A cadeia respeita o invariante de Claudio: nunca bloquear o usuário. Falha
+A cadeia respeita o invariante de Claudin: nunca bloquear o usuário. Falha
 em [1]/[2] desce para [3] silenciosamente; [4] só com flag explícita.
 
 ---
@@ -221,7 +221,7 @@ em [1]/[2] desce para [3] silenciosamente; [4] só com flag explícita.
 ## Trade-off: COW dá file isolation mas perde branch
 
 - COW puro materializa um diretório independente. **Não há ref git nova.**
-- O fluxo de PR de Claudio (`/review`, `gh pr create`) assume branch.
+- O fluxo de PR de Claudin (`/review`, `gh pr create`) assume branch.
 - Sub-agents que só rodam tools (sem intenção de virar PR) não precisam
   de branch; aí o COW é puro ganho.
 - O melhor dos dois mundos é a **Forma A** acima: COW seeda o working
@@ -232,10 +232,10 @@ em [1]/[2] desce para [3] silenciosamente; [4] só com flag explícita.
 ## Riscos / arestas
 
 1. **Cleanup de orphan clones.** APFS `clonefile` cria árvore independente.
-   Se o processo morrer entre `start` e o registro em `~/.claudio/.../activeWorktreeSession`,
+   Se o processo morrer entre `start` e o registro em `~/.claudin/.../activeWorktreeSession`,
    o diretório fica órfão. Mitigar com `ExitWorktreeTool` resiliente +
    prune periódico (`worktree.ts:1172` já chama `git worktree prune`; o
-   análogo COW seria varrer um diretório fixo tipo `~/.claudio/worktrees/cow/`).
+   análogo COW seria varrer um diretório fixo tipo `~/.claudin/worktrees/cow/`).
 2. **Dono/permissão.** `cp -a` preserva uid/gid/mode/xattr; `clonefile`
    preserva. `cp --reflink=always` preserva quando combinado com `-a`.
    Cuidado com setuid em `node_modules/.bin` (não é típico, mas pode
@@ -255,7 +255,7 @@ em [1]/[2] desce para [3] silenciosamente; [4] só com flag explícita.
 
 ---
 
-## Caso de uso real em Claudio: sub-agents paralelos
+## Caso de uso real em Claudin: sub-agents paralelos
 
 Cenário concreto: um `AgentTool` spawn-ando 4 sub-agents para investigar
 diferentes módulos do repo simultaneamente.
@@ -306,9 +306,9 @@ Critério de "vale a pena enviar":
 - `/home/viudes/projects/oh-my-pi/crates/pi-iso/src/linux_reflink.rs:1-9,41-64`
 - `/home/viudes/projects/oh-my-pi/crates/pi-natives/src/iso.rs:25-180`
 - `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/task/worktree.ts:238-350`
-- `/home/viudes/projects/claudio/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127`
-- `/home/viudes/projects/claudio/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts:1-50,281-329`
-- `/home/viudes/projects/claudio/src/utils/worktree.ts:744-820,1052,1172`
-- `/home/viudes/projects/claudio/src/utils/hooks/events.ts:578-631`
-- `/home/viudes/projects/claudio/src/utils/hooks/executors.ts:244-378`
+- `/home/viudes/projects/claudin/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127`
+- `/home/viudes/projects/claudin/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts:1-50,281-329`
+- `/home/viudes/projects/claudin/src/utils/worktree.ts:744-820,1052,1172`
+- `/home/viudes/projects/claudin/src/utils/hooks/events.ts:578-631`
+- `/home/viudes/projects/claudin/src/utils/hooks/executors.ts:244-378`
 - `clonefile(2)` (man), `ioctl_ficlone(2)` (man), `cp(1)` `--reflink`.

@@ -1,8 +1,8 @@
-# 07-fit — Tree-sitter AST edits: encaixe e ganho real em Claudio
+# 07-fit — Tree-sitter AST edits: encaixe e ganho real em Claudin
 
 > Avaliação concreta. Não é plano de implementação. Lê o discovery (`../07-tree-sitter-ast-edits.md`)
 > e o deep-dive (`../deep/07-tree-sitter-ast-edits.md`), confronta com o estado real do código
-> de Claudio em `src/tools/FileEditTool/` e com o que o omp (`packages/coding-agent/src/tools/ast-edit.md`,
+> de Claudin em `src/tools/FileEditTool/` e com o que o omp (`packages/coding-agent/src/tools/ast-edit.md`,
 > `crates/pi-ast`) já entrega.
 
 ---
@@ -88,7 +88,7 @@ Deep-dive estava certo: "quase não tem teste". Confirmado em 1 arquivo.
 
 ---
 
-## 3. Tree-sitter já existe em Claudio?
+## 3. Tree-sitter já existe em Claudin?
 
 - `package.json` — **zero** ocorrências de `tree-sitter` ou `web-tree-sitter`.
 - `bun.lock` — idem.
@@ -107,7 +107,7 @@ Deep-dive estava certo: "quase não tem teste". Confirmado em 1 arquivo.
 Implicação: o deep-dive subestima o trabalho de bootstrap. Não é "já temos tree-sitter, é só
 adicionar tools". É **introduzir uma dependência runtime nova** (`web-tree-sitter`), criar
 diretório `dist/wasm/`, ensinar `scripts/build.ts` a copiar/embutir grammars, e garantir que
-`bin/claudio` resolve esses arquivos.
+`bin/claudin` resolve esses arquivos.
 
 ---
 
@@ -210,13 +210,13 @@ trivial, mas também não é maioria.
 ## 7. Risco de adoção
 
 1. **Confusão "Edit vs AstEdit" no modelo.** Real. omp mitigou com prompts cruzados, mas omp
-   tem usuário power-user; Claudio mira público mais amplo. Cada `AstEdit` que falha e cai em
+   tem usuário power-user; Claudin mira público mais amplo. Cada `AstEdit` que falha e cai em
    `Edit` é um round-trip perdido. Telemetria local (count `astEdit_fallback_to_edit`) é
    necessária — não opcional.
 2. **Bundle.** ~700 KB gzip estimado pelo deep-dive, com 3 grammars + runtime. CLAUDE.md vende
    "single-file bundle" — adicionar `dist/wasm/*` quebra esse contrato visualmente, ainda que
-   `bin/claudio` resolva relativo. Risco de regressão no `bun run smoke` se o launcher não
-   achar `dist/wasm/` em instalações npm globais (`@claudiolabs/claudio`).
+   `bin/claudin` resolva relativo. Risco de regressão no `bun run smoke` se o launcher não
+   achar `dist/wasm/` em instalações npm globais (`@claudiolabs/claudin`).
 3. **Manutenção de grammars WASM.** Cada bump de `web-tree-sitter` exige re-baixar grammars
    compatíveis. 3 hoje, virará 6-8 em 6 meses por demanda. Sem CI dedicado, isso vira
    technical debt.
@@ -231,7 +231,7 @@ trivial, mas também não é maioria.
 
 ## 8. Veredito
 
-Para o usuário típico de Claudio — alguém escrevendo features ou corrigindo bugs, edits
+Para o usuário típico de Claudin — alguém escrevendo features ou corrigindo bugs, edits
 predominantemente locais — o ganho concreto é **~28%** dos edits e essencialmente concentrado
 em três operações (rename amplo, add_import, replace_body). As outras duas (codemod
 multi-arquivo, refactor de função) são caso de power-user/refactor agent.
@@ -240,9 +240,9 @@ O custo é real: dependência nova (`web-tree-sitter`), pipeline WASM no bundler
 artefato, mais uma decisão "qual tool?" no contexto do modelo, e manutenção de 3+ grammars.
 
 omp já validou o padrão de **tool separado** (não inflar `FileEditTool`). Se for fazer, é
-assim. Mas o ROI para Claudio hoje é claramente menor que para omp, porque (a) Claudio não
+assim. Mas o ROI para Claudin hoje é claramente menor que para omp, porque (a) Claudin não
 tem ainda a base nativa que omp já paga, e (b) o caso "codemod multi-arquivo" — onde o ganho
-é maior — é exatamente o tipo de uso menos comum no público atual de Claudio (review,
+é maior — é exatamente o tipo de uso menos comum no público atual de Claudin (review,
 provider-switching, sessões interativas).
 
 Caminho mais barato e que entrega ~70% do valor desta feature **sem** introduzir tree-sitter:
@@ -257,6 +257,6 @@ Isso resolve a maior parte dos casos dolorosos sem WASM, sem 700 KB, sem confus�
 **Vale a pena: CONDICIONAL — porque** o ganho real concentra-se em ~28% dos edits e em 3
 operações específicas (rename amplo, add_import, replace_body), e há caminho determinístico
 mais barato que entrega ~70% desse valor sem introduzir `web-tree-sitter`, WASM no bundler ou
-um segundo tool de edit no schema; só investir em `AstEditTool` completo se/quando Claudio
+um segundo tool de edit no schema; só investir em `AstEditTool` completo se/quando Claudin
 mirar use-cases de codemod multi-arquivo como produto, ou quando a infra LSP já presente para
 diagnostics não conseguir cobrir rename estrutural.

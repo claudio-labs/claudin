@@ -38,7 +38,7 @@
 
 | rtk | Status | Razão / próximo passo |
 |---|---|---|
-| `rtk read -l aggressive` (signatures only) | ❌ NÃO COBERTO | **Feature diferente** — não é filter de output, é **transformação de file content**. Strip de function bodies. claudio tem FileReadTool — feature pertenceria lá, não no filter Bash. |
+| `rtk read -l aggressive` (signatures only) | ❌ NÃO COBERTO | **Feature diferente** — não é filter de output, é **transformação de file content**. Strip de function bodies. claudin tem FileReadTool — feature pertenceria lá, não no filter Bash. |
 | `rtk smart file.rs` (2-line summary) | ❌ NÃO COBERTO | Idem — feature de file-content, não output filter. |
 | `rtk git pull → "ok 3 files +10 -2"` | ❌ não testado real | Só `--dry-run` (0 bytes). Estimar similar ao git-push. |
 | `rtk gh pr view 42` | ❌ separado | Filter mais agressivo do `gh pr list` — cobrir junto. |
@@ -91,7 +91,7 @@
 2. **`unless` clause** em `match_output` pra não engolir errors — copiado verbatim de rtk.
 3. **Strip patterns idênticos** em vários filtros (ex: `gradle.toml` do rtk → nosso `gradle.md`).
 4. **Match-command regex ancorado** em `^cmd\b`.
-5. **Dedup de runs consecutivos** + **collapse digit templates** — claudio já tinha em `toolResultSummarizer.ts`, alinha com rtk.
+5. **Dedup de runs consecutivos** + **collapse digit templates** — claudin já tinha em `toolResultSummarizer.ts`, alinha com rtk.
 
 ### ⚠️ Estratégias DIFERENTES (intencionalmente)
 
@@ -100,7 +100,7 @@
 | **Command rewrite** (forçar `-json`/`--format`) | Sim — `kubectl` força `-o json`, `cargo` força `--message-format=json`, `ruff` usa `--output-format=json`, `golangci-lint` força `-json` | **Não na v1** | Quebra "preserve user intent". Adiar pra v2. **Importante:** rtk reporta 80% em ruff e 90% em go test PRECISAMENTE porque faz isso — sem rewrite, ROI cai pra 11% e ~70% (medido). |
 | **Native parser** (Rust) pra parser JSON / multi-step | Sim — `rtk/src/cmds/cloud/container.rs::run_kubectl_json` | **Não na v1** (TS pure só) | Custo de manutenção. v2 considerar. |
 | **`rtk read` / `rtk smart`** (file content) | Feature integrada | **Não — file content é FileReadTool** | Domínio diferente. |
-| **`rtk err` / `rtk test` / `rtk summary`** (wrappers genéricos) | Wrapper command | **Não — feature de proxy** | Filosoficamente diferente: rtk é proxy CLI explícito; claudio é integração transparente. |
+| **`rtk err` / `rtk test` / `rtk summary`** (wrappers genéricos) | Wrapper command | **Não — feature de proxy** | Filosoficamente diferente: rtk é proxy CLI explícito; claudin é integração transparente. |
 
 ## Por que rtk reporta % maior em ruff e go test
 
@@ -122,7 +122,7 @@ rtk **força `--output-format=json` por trás** em ruff/golangci-lint/rspec, dep
 
 **Easy wins (sem instalar):**
 - `git pull` real (após git fetch real)
-- `pnpm list` (mas claudio usa bun — sem deps pnpm)
+- `pnpm list` (mas claudin usa bun — sem deps pnpm)
 - `wget`: ✅ já validado (72%)
 - `pip list/outdated`: ✅ já validados (0%)
 - `env -f`: ✅ comportamento testado (passthrough)

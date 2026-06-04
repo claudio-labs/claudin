@@ -11,7 +11,7 @@
 
 ## Saída crua representativa
 
-### Amostra 1 — `git push --dry-run` (REAL claudio, 22 bytes)
+### Amostra 1 — `git push --dry-run` (REAL claudin, 22 bytes)
 
 ```
 Everything up-to-date
@@ -203,7 +203,7 @@ Opção A é mais agressiva mas perde info real (URL de PR), e o ganho de B (~80
 
 ## Open questions
 
-- [ ] **Capturar amostra real de push** com auth funcional (claudio repo no gitea local poderia funcionar, ou usar repo público).
+- [ ] **Capturar amostra real de push** com auth funcional (claudin repo no gitea local poderia funcionar, ou usar repo público).
 - [ ] **Opção A vs Opção B** definitiva — vale perder PR URL pra ganhar 10% extra de redução? Provável que não.
 - [ ] **Push de tags** — output específico, talvez precise stripping diferente.
 - [ ] **LFS objects** upload progress — strip sim/não?

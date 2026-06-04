@@ -10,7 +10,7 @@
 - Componente `Image` reserva `rows-1` linhas vazias + cursor-up + raw sequence — padrão idêntico ao que `ink-picture` faz.
 - **Fallback textual**: `[Image: filename [mime] WxH]`.
 
-## Claudio (estado atual)
+## Claudin (estado atual)
 
 - `src/tools/FileReadTool/FileReadTool.ts:705-712` empacota imagem como Anthropic multimodal block (`type:'image', source:{base64,media_type}`); só vai pro modelo.
 - UI para o usuário (`src/components/FileReadTool/UI.tsx:80-89`) é literal `Read image (size)`.

@@ -53,18 +53,18 @@ Há filtragem, mas é lógica de *exclusão*, não threshold:
 
 ## Por que isso economiza tokens
 
-O Claudio **já carrega** `CLAUDE.md` aninhado de forma lazy — arquivos de subpasta só entram no contexto quando o agente trabalha naquela subárvore. Conhecimento de `src/services/api/` não custa nada enquanto o agente mexe em `src/components/`. O que o claude-mem adiciona é a **escrita automática** desses arquivos.
+O Claudin **já carrega** `CLAUDE.md` aninhado de forma lazy — arquivos de subpasta só entram no contexto quando o agente trabalha naquela subárvore. Conhecimento de `src/services/api/` não custa nada enquanto o agente mexe em `src/components/`. O que o claude-mem adiciona é a **escrita automática** desses arquivos.
 
 Em vez de um `CLAUDE.md` raiz monolítico pago em toda sessão, o conhecimento fica **co-localizado e lazy-loaded**.
 
-## Proposta para o Claudio
+## Proposta para o Claudin
 
-O Claudio hoje escreve memória só em `~/.claudio/projects/<dir>/memory/` (fora do git). Portar a escrita automática em `CLAUDE.md` versionado tem risco real.
+O Claudin hoje escreve memória só em `~/.claudin/projects/<dir>/memory/` (fora do git). Portar a escrita automática em `CLAUDE.md` versionado tem risco real.
 
 ### Riscos — por que isto é tier médio, não alto
 
 1. **`CLAUDE.md` é versionado em git.** Escrita automática nele = commits gerados por máquina em arquivo revisado por humanos. O claude-mem mitiga com (a) tags `<claude-mem-context>` que isolam a região gerenciada, (b) opção `CLAUDE.local.md`, (c) doc dizendo para gitignorar. Ainda assim foi contencioso o suficiente para virar opt-in.
-2. **Atividade de arquivos é sinal fraco.** O claude-mem regenera por *qualquer* arquivo tocado — sem heurística de relevância. Para o Claudio, isso geraria ruído.
+2. **Atividade de arquivos é sinal fraco.** O claude-mem regenera por *qualquer* arquivo tocado — sem heurística de relevância. Para o Claudin, isso geraria ruído.
 
 ### Recomendação
 
@@ -78,7 +78,7 @@ Caminho mais seguro que o do claude-mem:
 ## Decisões abertas
 
 1. **Escrever, sugerir, ou só em `.local.md`?** Recomendação: sugerir na v1.
-2. **Trigger por quê?** O claude-mem usa "qualquer arquivo tocado". Para o Claudio, melhor disparar a partir de uma memória `project` já extraída cujos `files_modified` apontam para uma subpasta — sinal mais forte que atividade bruta.
+2. **Trigger por quê?** O claude-mem usa "qualquer arquivo tocado". Para o Claudin, melhor disparar a partir de uma memória `project` já extraída cujos `files_modified` apontam para uma subpasta — sinal mais forte que atividade bruta.
 3. **Interação com o store de memória existente** — a memória vai para `CLAUDE.md` da subpasta *em vez de* `memory/`, ou *além de*? Recomendação: ou um ou outro, evitar duplicação.
 
 ## Correções pós-verificação (2026-05-19)

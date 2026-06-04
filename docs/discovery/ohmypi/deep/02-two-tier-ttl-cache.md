@@ -14,7 +14,7 @@ revalidation rewrites it from the live source. Storage is **SQLite on disk**
 (`bun:sqlite`, WAL, 0o600), namespaced by an auth-key hash so cache hits
 never cross account/token boundaries.
 
-Claudio already has *three* independent disk caches under `~/.claudio/`
+Claudin already has *three* independent disk caches under `~/.claudin/`
 (`model-cache/`, `image-cache/`, `latest-version.json`) plus an in-process
 `LRUCache` for `WebFetchTool`. None of them implement the soft/hard tier;
 they are all binary (fresh or expired). Adopting a generic `twoTierCache`
@@ -42,7 +42,7 @@ Single file. SQLite-backed; one process-wide connection opened lazily.
 - Failure modes: every helper swallows DB errors and logs at `debug`, then degrades to "no cache" — a corrupt DB never blocks a `gh` call (see banner comment at `:6-15`).
 - Call sites: `gh.ts:2520`, `gh.ts:2547`, `gh.ts:2841` (issue view, PR view, PR diff). All three pass the same `fetchFresh` shape, so the wrapper is genuinely reusable inside omp.
 
-## Estado atual em Claudio
+## Estado atual em Claudin
 
 Caches exist; the soft/hard tier does not. Inventory:
 
@@ -53,14 +53,14 @@ Caches exist; the soft/hard tier does not. Inventory:
 - `src/tools/WebSearchTool/WebSearchTool.ts` — **no result cache**. Each query hits the search provider every time. Only growthbook feature flags are cached upstream (`getFeatureValue_CACHED_MAY_BE_STALE`, `:9, :706`).
 - `src/services/api/providerConfig.ts:592` — `getAdditionalModelOptionsCacheScope()` returns a scope key used by *other* caches; preset metadata itself is computed per call. No persisted provider-metadata cache.
 
-### Persisted under `~/.claudio/`
+### Persisted under `~/.claudin/`
 
 Verified present on this host:
 
-- `~/.claudio/model-cache/` — `src/utils/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
-- `~/.claudio/latest-version.json` — `src/utils/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
-- `~/.claudio/image-cache/`, `~/.claudio/paste-cache/`, `~/.claudio/file-history/` — caches but content-addressed (not TTL-bound).
-- `~/.claudio/v8cache/` — V8 bytecode, invalidated by build, not in scope.
+- `~/.claudin/model-cache/` — `src/utils/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
+- `~/.claudin/latest-version.json` — `src/utils/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
+- `~/.claudin/image-cache/`, `~/.claudin/paste-cache/`, `~/.claudin/file-history/` — caches but content-addressed (not TTL-bound).
+- `~/.claudin/v8cache/` — V8 bytecode, invalidated by build, not in scope.
 
 ### Gap
 
@@ -115,8 +115,8 @@ export async function twoTierCache<K, V>(
 
 Two reference implementations of `TwoTierStore` would live alongside:
 
-- `createMemoryStore<V>(maxSize?)` — wraps `lru-cache` (already a Claudio dep, see `WebFetchTool/utils.ts:2`). Drop-in for callers that don't want disk.
-- `createJsonStore<V>(dirname, { schemaVersion })` — one JSON file per key under `~/.claudio/cache/<dirname>/`. Matches the `model-cache/` shape that already exists (`modelCache.ts:21 CACHE_DIR_NAME`). Avoids adding `bun:sqlite` as a hard runtime dep; SQLite would be a future `createSqliteStore` if a high-cardinality call site demands it.
+- `createMemoryStore<V>(maxSize?)` — wraps `lru-cache` (already a Claudin dep, see `WebFetchTool/utils.ts:2`). Drop-in for callers that don't want disk.
+- `createJsonStore<V>(dirname, { schemaVersion })` — one JSON file per key under `~/.claudin/cache/<dirname>/`. Matches the `model-cache/` shape that already exists (`modelCache.ts:21 CACHE_DIR_NAME`). Avoids adding `bun:sqlite` as a hard runtime dep; SQLite would be a future `createSqliteStore` if a high-cardinality call site demands it.
 
 Behavior parity with omp's `getOrFetchView`:
 1. `scope === null` or both TTLs zero → bypass, return `disabled` + live fetch.
@@ -173,24 +173,24 @@ wired, not as a cached value itself.
 ## Riscos
 
 - **Race no refresh.** Two concurrent stale reads schedule two refreshes.
-  omp accepts this (`:453 queueMicrotask` is fire-and-forget). Claudio
+  omp accepts this (`:453 queueMicrotask` is fire-and-forget). Claudin
   should add an in-flight `Map` keyed by storage-key to coalesce. Without
   it, a flapping search query inside a tight loop could amplify upstream
   load 10×.
 - **Conteúdo sensível.** A persisted cache for `WebFetch`/`WebSearch`
-  results stores raw third-party content under `~/.claudio/`. omp keys
-  by an auth-key hash to prevent cross-account leakage; Claudio doesn't
+  results stores raw third-party content under `~/.claudin/`. omp keys
+  by an auth-key hash to prevent cross-account leakage; Claudin doesn't
   have an equivalent identity for arbitrary web URLs, so per-host
   scoping is the closest analogue. Recommendation for the first
   iteration: in-memory store only for WebFetch/WebSearch, disk store
   only for low-sensitivity caches (model lists, provider metadata).
   Re-evaluate after auditing what URLs the agent actually re-visits.
 - **Storage growth.** omp caps exposure via the throttled sweep
-  (`:156-163`). A JSON-per-key store on Claudio side has no such sweep
+  (`:156-163`). A JSON-per-key store on Claudin side has no such sweep
   unless `evictOlderThan` is implemented. Without it, a long-lived
-  install accumulates dead `~/.claudio/cache/web-fetch/*.json` files.
+  install accumulates dead `~/.claudin/cache/web-fetch/*.json` files.
   The utility must require `evictOlderThan` or document the leak.
-- **Privacy/telemetry surface.** Anything written to `~/.claudio/cache/`
+- **Privacy/telemetry surface.** Anything written to `~/.claudin/cache/`
   must survive `bun run verify:privacy`. Cache file *contents* aren't
   scanned today, but adding paste/URL bodies on disk widens the user's
   exposure if a developer later does e.g. crash-report bundling.
@@ -233,9 +233,9 @@ so users can see whether the cache is actually helping their workflow.
 
 - omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/github-cache.ts`
 - omp call sites: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/gh.ts:2520, :2547, :2841`
-- Claudio WebFetch cache: `/home/viudes/projects/claudio/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
-- Claudio WebSearch (no cache): `/home/viudes/projects/claudio/src/tools/WebSearchTool/WebSearchTool.ts`
-- Claudio model cache: `/home/viudes/projects/claudio/src/utils/model/modelCache.ts`
-- Claudio latest-version cache: `/home/viudes/projects/claudio/src/utils/latestVersionCache.ts`
-- Claudio provider metadata: `/home/viudes/projects/claudio/src/services/api/providerConfig.ts:592`
-- Config-dir helper: `/home/viudes/projects/claudio/src/utils/envUtils.ts` (`getClaudioConfigHomeDir`)
+- Claudin WebFetch cache: `/home/viudes/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
+- Claudin WebSearch (no cache): `/home/viudes/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
+- Claudin model cache: `/home/viudes/projects/claudin/src/utils/model/modelCache.ts`
+- Claudin latest-version cache: `/home/viudes/projects/claudin/src/utils/latestVersionCache.ts`
+- Claudin provider metadata: `/home/viudes/projects/claudin/src/services/api/providerConfig.ts:592`
+- Config-dir helper: `/home/viudes/projects/claudin/src/utils/envUtils.ts` (`getClaudinConfigHomeDir`)

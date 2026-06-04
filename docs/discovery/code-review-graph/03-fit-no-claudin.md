@@ -1,8 +1,8 @@
-# Fit-analysis: `code-review-graph` no Claudio
+# Fit-analysis: `code-review-graph` no Claudin
 
 **Data:** 2026-05-27
 **Repo avaliado:** `/home/viudes/projects/code-review-graph` (v2.3.5, commit `0c9a5ff`)
-**Claudio:** `main` em `c541013`
+**Claudin:** `main` em `c541013`
 **Escopo:** decidir se vale trazer ideia ou integração; sem plano de implementação.
 
 ---
@@ -78,30 +78,30 @@ Multi-hop retrieval: anchor sempre encontrado, neighbor_recall 1.0 em 2 amostras
 
 ### A.6 O que mediria se rodasse
 
-Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado pesa). A própria architecture (`docs/architecture.md:49-69`) descreve que o full-build varre `git ls-files`, parseia todos com tree-sitter, persiste em SQLite. Não há número público para "indexar o Claudio (1.870 arquivos `.test.ts`+`.ts`) dá X MB de DB / Y nós / Z minutos" — teria que ser medido.
+Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado pesa). A própria architecture (`docs/architecture.md:49-69`) descreve que o full-build varre `git ls-files`, parseia todos com tree-sitter, persiste em SQLite. Não há número público para "indexar o Claudin (1.870 arquivos `.test.ts`+`.ts`) dá X MB de DB / Y nós / Z minutos" — teria que ser medido.
 
 ---
 
-## Parte B — Fit no Claudio
+## Parte B — Fit no Claudin
 
 ### B.4 Onde a abordagem ajudaria mais (mapeado ao código real)
 
-| Superfície do Claudio | Onde | Hipótese de ganho | Quão sólida é? |
+| Superfície do Claudin | Onde | Hipótese de ganho | Quão sólida é? |
 |---|---|---|---|
-| **Agente Explore** | `src/tools/AgentTool/built-in/exploreAgent.ts:13-57` (83 LOC) — hoje só usa Grep/Glob/Read/Bash | Em vez de N rodadas de grep+read, primeira query bate num índice de símbolos: "quem chama X?" sai em 1 hop | Plausível em monorepos grandes. Não mensurada em Claudio. |
+| **Agente Explore** | `src/tools/AgentTool/built-in/exploreAgent.ts:13-57` (83 LOC) — hoje só usa Grep/Glob/Read/Bash | Em vez de N rodadas de grep+read, primeira query bate num índice de símbolos: "quem chama X?" sai em 1 hop | Plausível em monorepos grandes. Não mensurada em Claudin. |
 | **`/review`** | `src/commands/review.ts` (57 LOC) | Listar blast-radius de um diff antes de gerar review reduz "ah, esqueci de olhar o caller Y" | Plausível. O fluxo de `skills/review-pr/SKILL.md` é exatamente isso. |
 | **`/security-review`** | `src/commands/security-review.ts` (243 LOC) | Mesmo argumento: para auditar fluxo de tainted data, seguir edges `callers_of`/`callees_of` é mais barato que grep recursivo | Plausível mas não medido. |
-| **FileEditTool** | `src/tools/FileEditTool/FileEditTool.ts` (649 LOC) | Antes de renomear símbolo, listar callers para preview/guard | Valor real, mas o uso típico de FileEditTool é edição local; renames cross-file no Claudio hoje usam Grep e o usuário valida — o ganho é em UX, não em correctness. |
+| **FileEditTool** | `src/tools/FileEditTool/FileEditTool.ts` (649 LOC) | Antes de renomear símbolo, listar callers para preview/guard | Valor real, mas o uso típico de FileEditTool é edição local; renames cross-file no Claudin hoje usam Grep e o usuário valida — o ganho é em UX, não em correctness. |
 | **Compaction** | `src/services/contextCompaction*` (não citei, evito over-claim) | Substituir "snapshot dos arquivos lidos" por "lista de qualified-names tocados" no resumo da compaction | Ideia atraente, mas o overhead de manter o grafo sincronizado durante uma sessão pode comer o ganho. **Não medido.** |
-| **MCP client nativo** | `src/services/mcp/client.ts` (66 LOC) — já fala MCP fora-da-caixa | Ponto óbvio: o projeto JÁ se serve como MCP server. Não precisa de código no Claudio para o usuário plugar. | **Sólido.** Zero esforço de engenharia. |
+| **MCP client nativo** | `src/services/mcp/client.ts` (66 LOC) — já fala MCP fora-da-caixa | Ponto óbvio: o projeto JÁ se serve como MCP server. Não precisa de código no Claudin para o usuário plugar. | **Sólido.** Zero esforço de engenharia. |
 
 ### B.5 Caminhos de integração — leve → pesado
 
-**(a) Documentar como MCP server externo opcional (zero código no Claudio)**
-- **Esforço:** ~1h de doc (README ou `docs/recipes/`) com snippet de `~/.claudio/settings.json` apontando para `code-review-graph serve`.
-- **Valor:** usuário decide se quer rodar; sem custo de manutenção pro Claudio.
+**(a) Documentar como MCP server externo opcional (zero código no Claudin)**
+- **Esforço:** ~1h de doc (README ou `docs/recipes/`) com snippet de `~/.claudin/settings.json` apontando para `code-review-graph serve`.
+- **Valor:** usuário decide se quer rodar; sem custo de manutenção pro Claudin.
 - **Risco:** nenhum — é literalmente a finalidade do MCP. Privacidade: tudo local-first (SQLite no repo do usuário).
-- **O que aprenderíamos primeiro:** indexar o próprio Claudio leva quanto tempo? DB fica de que tamanho? Em 3-4 sessões reais de dev, quantas vezes o usuário invocou um tool do CRG vs Grep nativo?
+- **O que aprenderíamos primeiro:** indexar o próprio Claudin leva quanto tempo? DB fica de que tamanho? Em 3-4 sessões reais de dev, quantas vezes o usuário invocou um tool do CRG vs Grep nativo?
 
 **(b) Recomendar via skill / docs como complemento ao Explore**
 - **Esforço:** doc + talvez uma nota no prompt do `exploreAgent` ("if a code-graph MCP server is connected, prefer its `callers_of`/`callees_of` before grep").
@@ -114,30 +114,30 @@ Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado
 - **Valor:** controle total + integração elegante. Bom para um produto vertical.
 - **Risco:** **alto e múltiplo**:
   - Tamanho do bundle (`tree-sitter` + 14 grammars) infla `dist/cli.mjs` substancialmente — checar contra `bun run build` e `bun run smoke` (hoje o bundle todo cabe em poucos MB).
-  - Manutenção de schema de DB vira responsabilidade do Claudio.
-  - Privacidade: cache de DB em `~/.claudio/projects/<repo>/graph.db` cai fora do gate atual do `verify:privacy` (que só inspeciona `dist/cli.mjs` — ver memória `verify-privacy-bundle-only`). Não é phone-home, mas é mais 1 superfície de runtime para auditar.
+  - Manutenção de schema de DB vira responsabilidade do Claudin.
+  - Privacidade: cache de DB em `~/.claudin/projects/<repo>/graph.db` cai fora do gate atual do `verify:privacy` (que só inspeciona `dist/cli.mjs` — ver memória `verify-privacy-bundle-only`). Não é phone-home, mas é mais 1 superfície de runtime para auditar.
   - Vai duplicar trabalho que o autor original já mantém upstream e em pace alto (464 commits, último de hoje).
 - **Aprenderíamos primeiro:** roda o caminho (a) por 4-6 semanas; conta uso; se a tool virar pilar real do workflow → considera; se virou novidade-de-1-semana → não.
 
 **(d) Não trazer nada — usuário pluga via MCP se quiser**
 - **Esforço:** zero.
-- **Valor:** zero direto, mas mantém o Claudio enxuto e respeita a separação de responsabilidades (Claudio é agente; CRG é infra de indexação).
+- **Valor:** zero direto, mas mantém o Claudin enxuto e respeita a separação de responsabilidades (Claudin é agente; CRG é infra de indexação).
 - **Risco:** zero.
 
 ### B.6 Bandeiras vermelhas
 
-1. **Linguagem.** Claudio é TS-puro; CRG é Python puro com binários nativos do tree-sitter. Portar é projeto independente; usar como dep externa via MCP é o caminho de menor atrito.
-2. **Dependências.** Adicionar tree-sitter + 14 grammars + (opcional) sentence-transformers/igraph/jedi como dep do Claudio é fora-de-escopo para um agent CLI distribuído como bundle único.
+1. **Linguagem.** Claudin é TS-puro; CRG é Python puro com binários nativos do tree-sitter. Portar é projeto independente; usar como dep externa via MCP é o caminho de menor atrito.
+2. **Dependências.** Adicionar tree-sitter + 14 grammars + (opcional) sentence-transformers/igraph/jedi como dep do Claudin é fora-de-escopo para um agent CLI distribuído como bundle único.
 3. **Escopo restrito.** O nome é "code-**review**-graph". Os skills, prompts e MCP tools são todos centrados em PR/diff/refactor. Para navegação ad-hoc ("quem chama essa função?") funciona, mas o framing é diff-first.
-4. **Maturidade vs hype.** O projeto é sério (CI completo, schema-sync gate, testes, multi-versão de Python), mas **os benchmarks do README sobre-vendem** o ganho médio: a tabela do README diz 38×–528×, mas as CSVs canônicas do próprio repo mostram graph_tokens > naive_tokens em vários commits. Isso casa com a memória `no-overclaim-performance`: se trouxer para o Claudio, **não usar os números do marketing como justificativa**; rodar a própria medida.
-5. **Sobreposição com o que o Claudio já faz bem.** Grep+Glob com ripgrep em projeto bem-organizado resolve a vasta maioria das perguntas de navegação. O agent Explore já paraleliza. O ganho marginal precisa ser demonstrado, não assumido — especialmente em repos < 50k LOC onde grep é instantâneo.
-6. **Manutenibilidade.** O CRG está mudando rápido (release 2.3.5 e novo commit hoje). Acoplar o Claudio ao schema de SQLite dele expõe a quebras semanais; via MCP, a interface é mais estável.
-7. **Privacidade/runtime.** `~/.claudio/v8cache/` e settings já são as únicas escritas auditadas; um DB SQLite por repo seria mais 1 superfície persistida. Caminho (a) empurra essa responsabilidade pro CRG, que é o lugar certo.
+4. **Maturidade vs hype.** O projeto é sério (CI completo, schema-sync gate, testes, multi-versão de Python), mas **os benchmarks do README sobre-vendem** o ganho médio: a tabela do README diz 38×–528×, mas as CSVs canônicas do próprio repo mostram graph_tokens > naive_tokens em vários commits. Isso casa com a memória `no-overclaim-performance`: se trouxer para o Claudin, **não usar os números do marketing como justificativa**; rodar a própria medida.
+5. **Sobreposição com o que o Claudin já faz bem.** Grep+Glob com ripgrep em projeto bem-organizado resolve a vasta maioria das perguntas de navegação. O agent Explore já paraleliza. O ganho marginal precisa ser demonstrado, não assumido — especialmente em repos < 50k LOC onde grep é instantâneo.
+6. **Manutenibilidade.** O CRG está mudando rápido (release 2.3.5 e novo commit hoje). Acoplar o Claudin ao schema de SQLite dele expõe a quebras semanais; via MCP, a interface é mais estável.
+7. **Privacidade/runtime.** `~/.claudin/v8cache/` e settings já são as únicas escritas auditadas; um DB SQLite por repo seria mais 1 superfície persistida. Caminho (a) empurra essa responsabilidade pro CRG, que é o lugar certo.
 
 ### B.7 Próximos passos (max 5, acionáveis, sem prometer implementação)
 
-1. **Medir custo de indexação no próprio Claudio.** Rodar `code-review-graph build` em `/home/viudes/projects/claudio` e anotar: tempo, tamanho do `.code-review-graph/graph.db`, contagem de nodes/edges. Sem isso, qualquer claim de "ajuda no Explore" é especulação.
-2. **Rodar a pipeline de eval do CRG sobre 5 commits reais do Claudio** (ex.: 5 últimos PRs mergeados que mudam >1 arquivo) usando os benchmarks `token_efficiency` + `impact_accuracy`. Se o `graph_tokens` for > `naive_tokens` na maioria — como aconteceu no auto-eval do próprio repo do CRG — a tese cai.
+1. **Medir custo de indexação no próprio Claudin.** Rodar `code-review-graph build` em `/home/viudes/projects/claudin` e anotar: tempo, tamanho do `.code-review-graph/graph.db`, contagem de nodes/edges. Sem isso, qualquer claim de "ajuda no Explore" é especulação.
+2. **Rodar a pipeline de eval do CRG sobre 5 commits reais do Claudin** (ex.: 5 últimos PRs mergeados que mudam >1 arquivo) usando os benchmarks `token_efficiency` + `impact_accuracy`. Se o `graph_tokens` for > `naive_tokens` na maioria — como aconteceu no auto-eval do próprio repo do CRG — a tese cai.
 3. **Adicionar uma receita doc-only** (`docs/recipes/code-review-graph-mcp.md`) com snippet de `settings.json` e disclaimer ("ganhos variam por commit; rode o seu próprio benchmark"). Caminho (a). Zero código.
 4. **Usar 3-4 sessões reais de dev** com o MCP server conectado e logar: quantos tool-calls foram pro CRG, quantos pro Grep nativo, qual prompt-shape o agente usou. Memória de team `discovery-workflow` pede ganhos medidos; aqui é a etapa "medida".
 5. **Só considerar caminhos (b) ou (c) se** os passos 2 e 4 mostrarem ganho consistente E o uso for >20% das navegações. Caso contrário, fica em (a) ou (d).
@@ -146,8 +146,8 @@ Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado
 
 ## Veredito
 
-**Interessante, mas não trazer nada para dentro do Claudio agora.** A integração via MCP externo (caminho **a**) é o único movimento defensável hoje: respeita a separação Claudio-como-agente / CRG-como-infra, tem custo de engenharia zero, e não compromete o bundle nem o gate de privacidade.
+**Interessante, mas não trazer nada para dentro do Claudin agora.** A integração via MCP externo (caminho **a**) é o único movimento defensável hoje: respeita a separação Claudin-como-agente / CRG-como-infra, tem custo de engenharia zero, e não compromete o bundle nem o gate de privacidade.
 
-Os benchmarks do README do CRG não se sustentam quando se olha os CSVs canônicos do próprio repo — em vários commits, `graph_tokens` é uma ordem de grandeza MAIOR que ler tudo. Portanto, antes de qualquer trabalho de portar para TS (caminho c), o passo correto é **medir no próprio Claudio** e decidir com número, não com diagrama promocional.
+Os benchmarks do README do CRG não se sustentam quando se olha os CSVs canônicos do próprio repo — em vários commits, `graph_tokens` é uma ordem de grandeza MAIOR que ler tudo. Portanto, antes de qualquer trabalho de portar para TS (caminho c), o passo correto é **medir no próprio Claudin** e decidir com número, não com diagrama promocional.
 
-Em projetos pequenos ou médios (Claudio cabe nessa categoria para o agent Explore atual), ripgrep + Grep nativo são imbatíveis em latência. A tese do grafo só fica forte em codebases grandes/multi-linguagem com revisão frequente de PR — perfil que não é o uso dominante do Claudio em modo CLI.
+Em projetos pequenos ou médios (Claudin cabe nessa categoria para o agent Explore atual), ripgrep + Grep nativo são imbatíveis em latência. A tese do grafo só fica forte em codebases grandes/multi-linguagem com revisão frequente de PR — perfil que não é o uso dominante do Claudin em modo CLI.

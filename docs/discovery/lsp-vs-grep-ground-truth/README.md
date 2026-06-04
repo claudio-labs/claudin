@@ -2,9 +2,9 @@
 
 **Objetivo**: medir, sem agente no loop, se LSP entrega resultados qualitativamente melhores que Grep nos 5 cenários simbólicos canônicos.
 
-**Motivação**: o Tier 6.1 do roadmap (editar tool descriptions pra preferir LSP) foi testado empiricamente em 2 rodadas de bench A/B. Resultado: description não muda comportamento (rodada 1, claudio) ou muda pro lado errado (rodada 2, openclaude — agente fica mais elaborado mas não migra pra LSP, custo +57%). Antes de iterar incentivo, validar a premissa: **LSP é de fato melhor?**
+**Motivação**: o Tier 6.1 do roadmap (editar tool descriptions pra preferir LSP) foi testado empiricamente em 2 rodadas de bench A/B. Resultado: description não muda comportamento (rodada 1, claudin) ou muda pro lado errado (rodada 2, openclaude — agente fica mais elaborado mas não migra pra LSP, custo +57%). Antes de iterar incentivo, validar a premissa: **LSP é de fato melhor?**
 
-**Repo de medição**: `claudio` (este repo). TS-only, ~250 arquivos. LSP server: `typescript-language-server`.
+**Repo de medição**: `claudin` (este repo). TS-only, ~250 arquivos. LSP server: `typescript-language-server`.
 
 ## Critérios de avaliação por cenário
 

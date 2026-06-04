@@ -35,11 +35,11 @@ O header do schema (`schema.sql:16-17,54`) chama explicitamente a janela de temp
 
 O dedup do claude-mem é exact-content — só evita gravar duas vezes a *exata mesma* observação dentro de uma sessão. Isso é mais uma feature de **correção/storage** do que de economia de tokens. O caso que mais infla memória — loop de debug gerando N observações *parecidas mas não idênticas* — o claude-mem **não** resolve.
 
-→ Tier baixo. Mas há um espaço de melhoria que o Claudio poderia ocupar **indo além do claude-mem**: dedup fuzzy.
+→ Tier baixo. Mas há um espaço de melhoria que o Claudin poderia ocupar **indo além do claude-mem**: dedup fuzzy.
 
-## Aplicabilidade no Claudio
+## Aplicabilidade no Claudin
 
-O `extractMemories` do Claudio roda por turno/sessão. Em sessões de debug iterativo pode produzir memórias `project` redundantes que inflam o `MEMORY.md` — e índice maior = mais custo no boot de toda sessão futura (ver [`tiered-memory-rendering.md`](tiered-memory-rendering.md) e [`progressive-memory-recall.md`](progressive-memory-recall.md)).
+O `extractMemories` do Claudin roda por turno/sessão. Em sessões de debug iterativo pode produzir memórias `project` redundantes que inflam o `MEMORY.md` — e índice maior = mais custo no boot de toda sessão futura (ver [`tiered-memory-rendering.md`](tiered-memory-rendering.md) e [`progressive-memory-recall.md`](progressive-memory-recall.md)).
 
 **Proposta — dois níveis:**
 
@@ -57,16 +57,16 @@ O claude-mem **não tem isto** e é onde o ganho real está. Antes de gravar:
 
 ## Sobre o "Nível 2" do rascunho anterior (colapso de linhas de log)
 
-O rascunho citava `collapseRuns`/`collapseDigitTemplates`/`dedupGlobal` como sendo do claude-mem. **Eles não existem no claude-mem** (busca exaustiva no repo: zero matches). Esses nomes pertencem ao discovery do **próprio Claudio** — `docs/discovery/bash-output-filter/`, que já especifica colapso de linhas para output de shell.
+O rascunho citava `collapseRuns`/`collapseDigitTemplates`/`dedupGlobal` como sendo do claude-mem. **Eles não existem no claude-mem** (busca exaustiva no repo: zero matches). Esses nomes pertencem ao discovery do **próprio Claudin** — `docs/discovery/bash-output-filter/`, que já especifica colapso de linhas para output de shell.
 
-→ **Nada a portar nesse nível.** O `BashOutputFilter` do Claudio já cobre colapso de linhas de log; não é uma técnica do claude-mem. Registrar só como nota: o claude-mem **não** faz compressão de log por colapso de linhas.
+→ **Nada a portar nesse nível.** O `BashOutputFilter` do Claudin já cobre colapso de linhas de log; não é uma técnica do claude-mem. Registrar só como nota: o claude-mem **não** faz compressão de log por colapso de linhas.
 
 ## Decisões abertas
 
 1. **Nível A já vale sozinho?** Sim — barato e correto. Implementar junto com `structured-extraction`.
 2. **Nível B: colapsar ou substituir?** Recomendação: atualizar a existente, descartar a nova.
 3. **Métrica de similaridade do Nível B** — Jaccard de tokens do título é suficiente? Ou comparar `files_modified`?
-4. **Incluir `memorySessionId` no hash?** O claude-mem inclui (dedup intra-sessão). Para o Claudio, memória é persistente entre sessões — **não** incluir session id, senão re-extração idêntica em outra sessão não dedupa.
+4. **Incluir `memorySessionId` no hash?** O claude-mem inclui (dedup intra-sessão). Para o Claudin, memória é persistente entre sessões — **não** incluir session id, senão re-extração idêntica em outra sessão não dedupa.
 
 ## Correções pós-verificação (2026-05-19)
 
@@ -75,7 +75,7 @@ O rascunho citava `collapseRuns`/`collapseDigitTemplates`/`dedupGlobal` como sen
 | Janela de dedup de 30s | ❌ | Não existe. Dedup é `SHA256` de conteúdo + UNIQUE `(memory_session_id, content_hash)` |
 | "observações quase-idênticas colapsam" | ❌ | Só byte-idênticas colapsam. Sem fuzzy/similaridade |
 | `architecture-overview.md:103` documenta os 30s | ⚠️ | O doc deles tem a linha, mas é **stale** — o próprio schema chama a janela de "legacy/replaced" |
-| `collapseRuns`/`collapseDigitTemplates`/`dedupGlobal` são do claude-mem | ❌ | Não existem no claude-mem. São do discovery `bash-output-filter/` do próprio Claudio |
+| `collapseRuns`/`collapseDigitTemplates`/`dedupGlobal` são do claude-mem | ❌ | Não existem no claude-mem. São do discovery `bash-output-filter/` do próprio Claudin |
 
 ## Arquivos de referência (claude-mem)
 

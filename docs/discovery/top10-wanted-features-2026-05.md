@@ -108,14 +108,14 @@ Features pedidas em **ao menos 2 dos 3** projetos — alvo prioritário porque d
 
 ---
 
-## Como isso se relaciona com Claudio (estado atual)
+## Como isso se relaciona com Claudin (estado atual)
 
 **Já temos parcial ou total — marketing pode capitalizar:**
 - ✅ Multi-provider/profile via `/provider` (cobre Claude Code #18435 e openclaude #519/#695 parcialmente)
-- ✅ `CLAUDIO_CONFIG_DIR` override + migração `~/.claude/`→`~/.claudio/` (resolve openclaude #454, Claude Code #1455 espirito)
+- ✅ `CLAUDIN_CONFIG_DIR` override + migração `~/.claude/`→`~/.claudin/` (resolve openclaude #454, Claude Code #1455 espirito)
 - ✅ Coordinator + worker agents (`COORDINATOR_MODE`) — opencode #12661, openclaude #526
 - ✅ Bash output filter (~50K tokens/sessão, -72% input cost) — endereça openclaude #1, #3
-- ✅ AGENTS.md poderia ser trivial — issue #6235 do Claude Code é a #1 mais reagida (3.856 👍); Claudio já lê CLAUDE.md, adicionar fallback é low-effort/high-impact
+- ✅ AGENTS.md poderia ser trivial — issue #6235 do Claude Code é a #1 mais reagida (3.856 👍); Claudin já lê CLAUDE.md, adicionar fallback é low-effort/high-impact
 - ✅ Telemetria stub-out — endereça preocupações pós-vazamento Claude Code
 
 **Gaps com demanda comprovada (oportunidade):**

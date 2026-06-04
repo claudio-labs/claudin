@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (claudio repo, 5 May 2026)
+## Saída crua representativa (claudin repo, 5 May 2026)
 
 ### Amostra 1 — `git log -10 --oneline` (680 bytes)
 
@@ -34,7 +34,7 @@ Mesmos 10 commits, **13× mais bytes** porque cada commit tem:
 
 ```
 commit bb98dbfd00d7244b2e0fa4cdb8da6a02c87d34c8        ← hash full + label "commit"
-Author: claudio-release-bot <release@claudio.local>     ← nome + email completo
+Author: claudin-release-bot <release@claudin.local>     ← nome + email completo
 Date:   Tue May 5 02:28:59 2026 +0000                   ← timestamp absoluto
 
     chore(release): v0.1.10                              ← subject indentado
@@ -167,6 +167,6 @@ Estimativa Opção B: ~40-50% (cortar trailers + templates). Bem menos que Opç�
 
 ## Findings empíricos (deste discovery)
 
-1. **Templates de PR vazios infestam o log**: `## Summary\n- what changed\n- why it changed` aparece em 6/10 commits do claudio. Ruído puro, mas é específico desse repo (template do gitea/github).
+1. **Templates de PR vazios infestam o log**: `## Summary\n- what changed\n- why it changed` aparece em 6/10 commits do claudin. Ruído puro, mas é específico desse repo (template do gitea/github).
 2. **Trailers (`Reviewed-on`, `Co-*`)** valem strip global — comuns em qualquer repo com PR workflow.
 3. **A diferença entre formato default e `--oneline` é massiva** (13×). Isso justifica forçar `--oneline` mesmo sob princípio "preserve intent".

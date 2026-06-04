@@ -1,16 +1,16 @@
-# Onde há ganho real para o Claudio (dado que já temos LSP)
+# Onde há ganho real para o Claudin (dado que já temos LSP)
 
-**Síntese cruzada de `04-crg-capabilities-vs-lsp.md` + `05-claudio-baseline-gaps.md`.**
+**Síntese cruzada de `04-crg-capabilities-vs-lsp.md` + `05-claudin-baseline-gaps.md`.**
 
-Pergunta-guia: o Claudio já tem LSP completo (13 ops, 12 servers embarcados), Grep `output_mode="symbols"`, Read `view='outline'`, Explore agent. Onde, concretamente, o CRG agregaria algo?
+Pergunta-guia: o Claudin já tem LSP completo (13 ops, 12 servers embarcados), Grep `output_mode="symbols"`, Read `view='outline'`, Explore agent. Onde, concretamente, o CRG agregaria algo?
 
 ---
 
 ## Conclusão direta
 
 Dos **18 itens** comparados:
-- **5 itens** Claudio já cobre bem (LSP + Grep symbols + outline)
-- **4 itens** são cosméticos ou de baixa demanda no perfil Claudio
+- **5 itens** Claudin já cobre bem (LSP + Grep symbols + outline)
+- **4 itens** são cosméticos ou de baixa demanda no perfil Claudin
 - **9 itens** são gaps reais — mas **só 3** justificam trabalho:
 
 | Gap | Frequência | Severidade hoje | Cabe nativo TS? |
@@ -23,9 +23,9 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 
 ---
 
-## O que NÃO é gap (Claudio já resolve)
+## O que NÃO é gap (Claudin já resolve)
 
-| Capacidade | Como o Claudio faz |
+| Capacidade | Como o Claudin faz |
 |---|---|
 | goToDefinition / findReferences / hover / rename | `LSPTool` 13 ops (`src/tools/LSPTool/schemas.ts:269-283`) |
 | Workspace symbol search | `LSPTool.workspaceSymbol` + `GrepTool` symbols mode |
@@ -34,7 +34,7 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 | Listar símbolos por padrão | `Grep output_mode="symbols"` em TS/JS/Py/Go (`GrepTool.ts:408-419`, `scanSymbols.ts`) |
 | Refactor seguro | `LSPTool.rename` + `applyCodeAction` + `renameFile` |
 
-**Insight:** dos "29 tools do CRG", ~10 são equivalentes funcionais de LSP. Claudio já tem.
+**Insight:** dos "29 tools do CRG", ~10 são equivalentes funcionais de LSP. Claudin já tem.
 
 ---
 
@@ -52,7 +52,7 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 
 ### Gap 2 — Wiki é template vazio
 
-**Hoje** (`src/services/wiki/init.ts:6-37`, `src/commands/wiki/wiki.tsx`): `/wiki` gera placeholder; usuário preenche manual. `claude-code-guide` agent fala do produto Claudio, não do repo do usuário.
+**Hoje** (`src/services/wiki/init.ts:6-37`, `src/commands/wiki/wiki.tsx`): `/wiki` gera placeholder; usuário preenche manual. `claude-code-guide` agent fala do produto Claudin, não do repo do usuário.
 
 **O que o CRG faz que falta:** `generate_wiki_tool` (`main.py:693`) percorre communities Leiden e gera markdown por subsistema com membros + relações.
 
@@ -62,15 +62,15 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 
 ### Gap 3 — Índice persistente cross-sessão
 
-**Hoje:** Claudio não tem DB de código. Cada sessão re-grepa. `~/.claudio/v8cache/` é só bytecode. `.claudio/wiki/` é manual.
+**Hoje:** Claudin não tem DB de código. Cada sessão re-grepa. `~/.claudin/v8cache/` é só bytecode. `.claudin/wiki/` é manual.
 
 **O que o CRG faz que falta:** SQLite por repo (`.code-review-graph/graph.db`), atualizado incremental via hash SHA-256, hookado em `PostToolUse(Edit|Write|Bash)` (`hooks/hooks.json:25-32`), recarregado em `SessionStart`.
 
-**Caminho nativo TS:** reusar `src/tools/shared/codeOutline/scanSymbols.ts` (já é tree-sitter-free, regex puro, cobre TS/JS/Py/Go) — persistir output em SQLite leve em `.claudio/` + import edges. Hooks em `PostToolUse` para invalidar por arquivo. **Esforço: 1-2 semanas.**
+**Caminho nativo TS:** reusar `src/tools/shared/codeOutline/scanSymbols.ts` (já é tree-sitter-free, regex puro, cobre TS/JS/Py/Go) — persistir output em SQLite leve em `.claudin/` + import edges. Hooks em `PostToolUse` para invalidar por arquivo. **Esforço: 1-2 semanas.**
 
-**Atenção a memória existente:** `verify-privacy-bundle-only` — escritas em `~/.claudio/` ficam fora do gate de privacidade atual. Tratar como problema separado se mexer aqui.
+**Atenção a memória existente:** `verify-privacy-bundle-only` — escritas em `~/.claudin/` ficam fora do gate de privacidade atual. Tratar como problema separado se mexer aqui.
 
-**Só grafo persistente daria** (e Claudio NÃO daria com wrapper simples): se o índice virar grafo de chamadas com queries de community/centralidade. Mas isso é overkill para perfil dominante.
+**Só grafo persistente daria** (e Claudin NÃO daria com wrapper simples): se o índice virar grafo de chamadas com queries de community/centralidade. Mas isso é overkill para perfil dominante.
 
 ---
 
@@ -82,7 +82,7 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 | Hub/Bridge centrality | Caso de uso raro fora de arquitetura review |
 | Surprising connections | Cosmético; user nunca pede |
 | Suggested questions | Cosmético |
-| Cross-repo search | Claudio é per-cwd por design |
+| Cross-repo search | Claudin é per-cwd por design |
 | Transitive impact BFS automático | Wrapper sobre `LSPTool.incomingCalls` recursivo até depth=3 resolve, sem precisar do grafo persistente |
 | Embeddings (semantic search) | Bundle de sentence-transformers ~5GB; opt-in caro; embeddings opt-in via provider (Gemini) é melhor caminho se um dia for relevante |
 | Wiki LLM summarization | Já temos Skills e Plan agent; reusar |
@@ -99,7 +99,7 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 2. **Gap 2 (wiki auto)** — segundo lugar. Reusa Read outline. Sem storage novo se gerar on-demand.
 3. **Gap 3 (índice persistente)** — terceiro. Único que introduz storage; só fazer se 1 e 2 mostrarem valor real e usuários pedirem.
 
-**Manter a porta aberta:** doc-only `docs/recipes/code-review-graph-mcp.md` para usuários power que queiram plugar CRG via MCP externo (caminho (a) do `03-fit-no-claudio.md`). Custo: ~30min de doc, zero código.
+**Manter a porta aberta:** doc-only `docs/recipes/code-review-graph-mcp.md` para usuários power que queiram plugar CRG via MCP externo (caminho (a) do `03-fit-no-claudin.md`). Custo: ~30min de doc, zero código.
 
 ---
 
@@ -107,6 +107,6 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 
 `00-insights.md` já dizia "não trazer código". Esta rodada adiciona:
 
-1. **Mapeamento explícito dos 18 itens × Claudio atual** — antes era "Claudio tem Explore"; agora é "Claudio tem 13 ops LSP + scanSymbols regex + outline + agentes built-in com arquivo:linha exato".
+1. **Mapeamento explícito dos 18 itens × Claudin atual** — antes era "Claudin tem Explore"; agora é "Claudin tem 13 ops LSP + scanSymbols regex + outline + agentes built-in com arquivo:linha exato".
 2. **Reclassificação dos 18 em 5/4/9** — a maioria dos diferenciais do CRG já está coberta ou é cosmética.
 3. **3 gaps acionáveis, todos viáveis em TS nativo em <2 semanas cada.** A integração MCP externa continua sendo o caminho default; trabalho nativo só nos 3 gaps.

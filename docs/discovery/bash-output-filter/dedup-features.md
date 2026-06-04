@@ -2,7 +2,7 @@
 
 Comandos com erros/logs frequentemente têm **conteúdo duplicado** que regex command-aware não cobre — porque a duplicação depende do que aconteceu em runtime, não do comando em si. Esta página documenta as 3 features de dedup propostas para o filter pipeline.
 
-> **Status:** prototipadas em `validation/pipeline.ts`, validadas com 6 test cases. Já existem no claudio (`src/utils/toolResultSummarizer.ts:475-533`) mas só ativam acima do threshold de 8KB. A proposta é **trazer pro filter declarativo** para aplicar mesmo em outputs pequenos.
+> **Status:** prototipadas em `validation/pipeline.ts`, validadas com 6 test cases. Já existem no claudin (`src/utils/toolResultSummarizer.ts:475-533`) mas só ativam acima do threshold de 8KB. A proposta é **trazer pro filter declarativo** para aplicar mesmo em outputs pequenos.
 
 ## 3 estratégias, do mais conservador ao mais agressivo
 
@@ -141,7 +141,7 @@ Para o MVP da v1:
 
 **Casos onde `dedupGlobal: true` faz sentido:**
 - Filters de "fallback genérico" (catch-all para comandos desconhecidos)
-- Filters de scripts customizados pelo user via `~/.claudio/filters.json`
+- Filters de scripts customizados pelo user via `~/.claudin/filters.json`
 
 **Casos onde NÃO usar `dedupGlobal`:**
 - Logs onde repetição é informativa
@@ -174,14 +174,14 @@ Implementação ~30 linhas. **Adiar pra v2** — não bloqueia o MVP.
 
 ## Comparativo com `toolResultSummarizer` atual
 
-claudio já tem `collapseIdenticalRuns` + `collapseDigitTemplates` em `src/utils/toolResultSummarizer.ts:475-533`. Diferenças entre o existente e o proposto:
+claudin já tem `collapseIdenticalRuns` + `collapseDigitTemplates` em `src/utils/toolResultSummarizer.ts:475-533`. Diferenças entre o existente e o proposto:
 
 | Aspecto | Summarizer atual | Filter proposto |
 |---|---|---|
 | Quando ativa | Threshold 8KB | Sempre (per-filter spec) |
 | Granularidade | Bash inteiro | Por filter, opt-in |
 | `dedupGlobal` | Não tem | Adicionado |
-| Configurável pelo user | Não | Sim (via `~/.claudio/filters.json`) |
+| Configurável pelo user | Não | Sim (via `~/.claudin/filters.json`) |
 | Marker no output | `<tool-result-summary>` | `(×N)` inline ou `[N duplicates...]` footer |
 
 **Não há conflito** — summarizer continua atuando acima do threshold; pré-filter declarativo cobre abaixo.

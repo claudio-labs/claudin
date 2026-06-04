@@ -93,12 +93,12 @@ Comandos onde a medição real mostrou ROI muito menor que o esperado pela tabel
 |---|---|---|---|---|
 | `docker ps` | docker | ~30% | Nomes/imagens/portas são incompressíveis; rtk reporta 80% mas só em casos com muitos exited | [`docker-ps.md`](docker-ps.md) |
 | `git diff` | git | ~5% | Diff é puro sinal; só index hashes removíveis | [`git-diff.md`](git-diff.md) |
-| `find` | fs | ~0% (user-filtered) | Em uso real users já passam `-not -path`; claudio tem `GlobTool` | [`find.md`](find.md) |
+| `find` | fs | ~0% (user-filtered) | Em uso real users já passam `-not -path`; claudin tem `GlobTool` | [`find.md`](find.md) |
 | `bun install` | js | **0%** (não criar filtro) | Output já máximo de compacto (96 bytes pra 505 packages) | [`npm-install.md`](npm-install.md) |
 
 ## Tier 1.5 — promover após Fase 0 se uso real for alto
 
-Comandos com **ROI intuitivo alto** mas que dependem de uso real do agent claudio. Telemetria da Fase 0 deve confirmar antes de virar Tier 1.
+Comandos com **ROI intuitivo alto** mas que dependem de uso real do agent claudin. Telemetria da Fase 0 deve confirmar antes de virar Tier 1.
 
 | Comando | Domínio | ROI medido / esperado | Status | Arquivo |
 |---|---|---|---|---|
@@ -315,7 +315,7 @@ Listados sem arquivo dedicado ainda. Agrupados por domínio.
 
 ## Fora de escopo
 
-Comandos onde não vale fazer filtro Bash porque já há tool dedicada no claudio:
+Comandos onde não vale fazer filtro Bash porque já há tool dedicada no claudin:
 
 | Comando | Razão |
 |---|---|

@@ -1,4 +1,4 @@
-# 08 — Claudio touchpoints for the LSP-first roadmap
+# 08 — Claudin touchpoints for the LSP-first roadmap
 
 **Data:** 2026-05-27
 **Repo:** `main @ c541013`
@@ -230,7 +230,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   resolvendo via `tsconfig.json` paths (alias `src/*` documentado em
   `CLAUDE.md`).
 - `paths.ts` (em `src/services/wiki/paths.ts`) já centraliza
-  `.claudio/wiki/` paths; cache de output cabe lá.
+  `.claudin/wiki/` paths; cache de output cabe lá.
 
 ### 4. Tests to copy patterns from
 
@@ -241,10 +241,10 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 5. Hidden coupling risks
 
-- `paths.ts` resolve `.claudio/wiki/` relativo a `cwd` — em PRs
+- `paths.ts` resolve `.claudin/wiki/` relativo a `cwd` — em PRs
   rodados de subdir o destino muda. `cwd` é passado pelo
   `runWikiCommand` em `wiki.tsx:76-114` a partir do context do REPL.
-- `.gitignore` (raiz, linha `/.claudio`) ignora wiki gerada por padrão
+- `.gitignore` (raiz, linha `/.claudin`) ignora wiki gerada por padrão
   — geração auto deve avisar usuário que vai ficar fora do commit. OK
   pro princípio mas confunde quem espera ver `pages/*.md` no `git add`.
 - `ensureFile` em `init.ts:91-110` usa `flag: 'wx'` (não sobrescreve).
@@ -293,7 +293,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 ### 3. Existing helpers to reuse
 
 - `createTwoTierCache` — `src/tools/shared/twoTierCache.ts:102`.
-  `TwoTierCacheOptions<V>` em `:45-73`. Padrão Claudio-nativo.
+  `TwoTierCacheOptions<V>` em `:45-73`. Padrão Claudin-nativo.
 - `decideCacheAction` — `:23`.
 - `invalidateForPath` / `invalidateAll` — funções importadas no
   branch `invalidateCacheForWrite` (`toolExecution.ts:1768/1777`); são
@@ -332,9 +332,9 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ## Eixo 5 — Índice persistente cross-sessão (DEFER, sanity check)
 
-### 1. `.claudio/` runtime writes?
+### 1. `.claudin/` runtime writes?
 
-Sim, intensivamente. `~/.claudio/` listado contém:
+Sim, intensivamente. `~/.claudin/` listado contém:
 
 ```
 backups, cache, config.json, file-history, history.jsonl,
@@ -343,12 +343,12 @@ plans, plugins, projects, session-env, sessions, settings.json,
 shell-snapshots, tasks, v8cache
 ```
 
-Também há `.claudio/` no repo (gitignored em `/.claudio` na raiz do
+Também há `.claudin/` no repo (gitignored em `/.claudin` na raiz do
 `.gitignore`) com `rules/`, `settings.local.json`, `worktrees/`.
 
 Confirmação da preocupação `verify-privacy-bundle-only` (memória):
 `bun run verify:privacy` só grepa `dist/cli.mjs`. Tudo que é escrito em
-runtime em `~/.claudio/` está fora do gate. Persistir índice cross-sessão
+runtime em `~/.claudin/` está fora do gate. Persistir índice cross-sessão
 adiciona mais um diretório com conteúdo derivado de código do usuário
 (potencialmente sensível).
 
@@ -366,7 +366,7 @@ discovery) e o ROADMAP — nenhum import real em `src/` ou
   "single-file `dist/cli.mjs`" descrito em `CLAUDE.md`.
 
 Alternativa sem dep nativa: serializar `Map<symbol, file:line[]>` para
-JSON gz em `~/.claudio/cache/<project-hash>/lsp-index.json.gz`. Caminho
+JSON gz em `~/.claudin/cache/<project-hash>/lsp-index.json.gz`. Caminho
 mais barato, mas escala pior em monorepos.
 
 Confirmando defer: ROADMAP já anota T5.10 descartado e CRG discovery

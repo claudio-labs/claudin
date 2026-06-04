@@ -64,17 +64,17 @@ function buildAgentContent(def) {
 ### 1.10 Testes enforçando convenção
 `test/prompt-format.test.ts` valida invariants. `test/system-prompt-templates.test.ts` cobre expansion.
 
-## 2. Vale pra Claudio?
+## 2. Vale pra Claudin?
 
 | Mecanismo | Vale? | Justificativa |
 |---|---|---|
 | Handlebars engine | Não na maioria | `fit/03:103-107` vetou — `${}` (34 em coordinator) tem typecheck que `{{}}` perde |
 | Helpers `{{#xml}}` / `{{#codeblock}}` | Parcial | Útil se extractMemories migrar com fragments, mas custa engine |
 | **`prompt.format` + `--check` CI** | **Sim, alto valor** | Aplicável **sem engine**. Normaliza `.md` existentes. ~150 LOC port |
-| **`normalizeRfc2119`** | **Sim, baixo custo** | `.claudio/rules/*.md` cheios de `**MUST**`/`**NEVER**`. Sub-regra de format |
+| **`normalizeRfc2119`** | **Sim, baixo custo** | `.claudin/rules/*.md` cheios de `**MUST**`/`**NEVER**`. Sub-regra de format |
 | **Frontmatter agent wrapper** | **Sim** | `src/tools/AgentTool/built-in/*.ts` (5 arquivos, 25KB) — todos inline. Pattern omp dá zero-code composição |
 | Slash-command user/project overrides | Sim, fora deste gap | Útil mas escopo `/commands` |
-| Goals system prompts | Não | Claudio não tem goals |
+| Goals system prompts | Não | Claudin não tem goals |
 | **Memories 2-stage .md-driven** | **Sim, alto valor** | `src/services/extractMemories/prompts.ts` (7944 chars, 16 `${}`) — pipeline já existe. Top candidato |
 | Plan-mode fragments | Sim | EnterPlanMode/ExitPlanMode/VerifyPlanExecution — fragmentação ajuda diff/test |
 | TTSR-style reminders | N/A | Mecanismo de orquestração diferente |
@@ -83,7 +83,7 @@ function buildAgentContent(def) {
 | Snapshot tests por prompt | Sim | Já citado em `deep/03:200-216`; gap adiciona validação **semântica** |
 | I18n / pt-BR | omp não tem | Gap real mas não importado de omp |
 
-## 3. Encaixe Claudio
+## 3. Encaixe Claudin
 
 ### 3.1 Migrar memories prompts (highest ROI)
 - `src/services/extractMemories/prompts.ts:1-156` (7944 chars, 16 interpolações) → `src/prompts/memories/{consolidation,extract,stage1-system,stage1-input}.md` espelhando omp.
@@ -118,4 +118,4 @@ function buildAgentContent(def) {
 - omp formatter: `/oh-my-pi/packages/coding-agent/scripts/format-prompts.ts:19-60`
 - omp frontmatter wrap: `/oh-my-pi/packages/coding-agent/src/task/agents.ts:38-42`
 - omp memories: `/oh-my-pi/packages/coding-agent/src/memories/index.ts:11-14`
-- Claudio: `src/services/extractMemories/prompts.ts`, `src/tools/AgentTool/built-in/*.ts`, `src/tools/{EnterPlanModeTool,ExitPlanModeTool,VerifyPlanExecutionTool}/prompt.ts`
+- Claudin: `src/services/extractMemories/prompts.ts`, `src/tools/AgentTool/built-in/*.ts`, `src/tools/{EnterPlanModeTool,ExitPlanModeTool,VerifyPlanExecutionTool}/prompt.ts`

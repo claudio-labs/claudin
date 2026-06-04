@@ -8,25 +8,25 @@ Cada entrada: comando + tamanho típico do output + razão.
 
 ## `du -h --max-depth=1` (e variantes)
 
-- **Medido:** 584 bytes / 14 linhas (no claudio)
+- **Medido:** 584 bytes / 14 linhas (no claudin)
 - **Razão:** já vem alinhado e compacto. As únicas economias seriam micro (truncate de tabs), <5%.
 - **Recomendação:** passthrough sempre.
 
 ```
-9.0M	/home/viudes/projects/claudio/.git
-16K	/home/viudes/projects/claudio/.github
-4.0K	/home/viudes/projects/claudio/bin
-176K	/home/viudes/projects/claudio/docs
-72K	/home/viudes/projects/claudio/python
-680K	/home/viudes/projects/claudio/scripts
-25M	/home/viudes/projects/claudio/src
-448K	/home/viudes/projects/claudio/vscode-extension
-385M	/home/viudes/projects/claudio/node_modules
-8.0K	/home/viudes/projects/claudio/.claudio
-86M	/home/viudes/projects/claudio/.claude
-20K	/home/viudes/projects/claudio/.gitea
-62M	/home/viudes/projects/claudio/dist
-568M	/home/viudes/projects/claudio
+9.0M	/home/viudes/projects/claudin/.git
+16K	/home/viudes/projects/claudin/.github
+4.0K	/home/viudes/projects/claudin/bin
+176K	/home/viudes/projects/claudin/docs
+72K	/home/viudes/projects/claudin/python
+680K	/home/viudes/projects/claudin/scripts
+25M	/home/viudes/projects/claudin/src
+448K	/home/viudes/projects/claudin/vscode-extension
+385M	/home/viudes/projects/claudin/node_modules
+8.0K	/home/viudes/projects/claudin/.claudin
+86M	/home/viudes/projects/claudin/.claude
+20K	/home/viudes/projects/claudin/.gitea
+62M	/home/viudes/projects/claudin/dist
+568M	/home/viudes/projects/claudin
 ```
 
 ## `df -h`
@@ -81,7 +81,7 @@ Cada entrada: comando + tamanho típico do output + razão.
 ## `cat` / `head` / `tail` (não-interativo)
 
 - **Medido:** `cat CLAUDE.md` = 12.175 bytes — 100% conteúdo do arquivo (signal puro).
-- **Razão:** output é o file content. claudio tem `FileReadTool` dedicado.
+- **Razão:** output é o file content. claudin tem `FileReadTool` dedicado.
 - **Recomendação:** **não criar filtro** — passthrough sempre. Summarizer existente já cobre output >10KB via threshold.
 - **Detalhe:** ver `cat.md`.
 
@@ -99,7 +99,7 @@ Cada entrada: comando + tamanho típico do output + razão.
 - **Recomendação:** filter aplicar só em `grep` (paths absolutos), pular `rg`.
 - **Detalhe:** ver `grep-rg.md`.
 
-## `bun test` (no claudio repo)
+## `bun test` (no claudin repo)
 
 - Análogo a `bun install`.
 - **Razão:** bun é compacto by design. Filter wrap só adiciona overhead.

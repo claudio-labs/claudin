@@ -160,7 +160,7 @@ README.md  4.5K
 
 ## Estimativa de redução
 
-Validado empiricamente no claudio repo (5 May 2026):
+Validado empiricamente no claudin repo (5 May 2026):
 
 | Amostra | Antes (bytes) | Depois (bytes) | Redução |
 |---|---|---|---|
@@ -187,5 +187,5 @@ Validado empiricamente no claudio repo (5 May 2026):
 - **O que copiamos:** abordagem geral (parse → categorize → reformat), regex de data como âncora, `NOISE_DIRS` set, sumário por extensão.
 - **O que mudamos:**
   - rtk força `ls -la` por trás (mesmo se user pediu `ls`); nós só ativamos quando user pede com `-l` ou variantes.
-  - rtk omite sumário em pipe (não-TTY); claudio sempre vai pra LLM, então sempre mostrar sumário.
-- **Adaptações pra TS/Node:** sem `lazy_static`, criar regex como module-level `const` (regra do projeto, `.claudio/rules/typescript-patterns.md`).
+  - rtk omite sumário em pipe (não-TTY); claudin sempre vai pra LLM, então sempre mostrar sumário.
+- **Adaptações pra TS/Node:** sem `lazy_static`, criar regex como module-level `const` (regra do projeto, `.claudin/rules/typescript-patterns.md`).

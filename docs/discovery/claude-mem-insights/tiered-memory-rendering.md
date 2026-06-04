@@ -39,9 +39,9 @@ Controlado por settings de inteiro puro:
 
 ## O insight aproveitável
 
-O que vale copiar do claude-mem aqui é **modesto**: o conceito de renderizar memória em níveis (linha compacta vs detalhe completo) num único bloco de boot. O **token budget** é uma melhoria que o Claudio adicionaria **por cima** — o claude-mem não tem.
+O que vale copiar do claude-mem aqui é **modesto**: o conceito de renderizar memória em níveis (linha compacta vs detalhe completo) num único bloco de boot. O **token budget** é uma melhoria que o Claudin adicionaria **por cima** — o claude-mem não tem.
 
-## Como o Claudio faz hoje
+## Como o Claudin faz hoje
 
 `src/memdir/` injeta o `MEMORY.md` inteiro (já é one-liner por entrada — isso já é "tier compacto" de fato) **mais** os arquivos `.md` de memória julgados relevantes, em conteúdo completo.
 
@@ -68,7 +68,7 @@ Algoritmo de boot:
 3. Promove memórias `project`/`reference` para `summary` enquanto `budget` permitir
 4. Para no teto — restante fica em `index`
 
-Budget configurável, default conservador (ex: ~4-6k tokens para o bloco de memória inteiro). Esta é a parte que o claude-mem **não** tem — o Claudio entrega a degradação por budget que falta lá.
+Budget configurável, default conservador (ex: ~4-6k tokens para o bloco de memória inteiro). Esta é a parte que o claude-mem **não** tem — o Claudin entrega a degradação por budget que falta lá.
 
 ## Relação com os outros docs
 
@@ -79,8 +79,8 @@ Budget configurável, default conservador (ex: ~4-6k tokens para o bloco de mem�
 
 ## Decisões abertas
 
-1. **Estimador de tokens:** `4 chars/token` (heurística do claude-mem) é grosseiro mas zero-custo. Claudio já tem contagem real de tokens em `src/utils/` — usar a real ou a heurística no caminho de boot (onde latência importa)? Recomendação: heurística no boot, é só pra caber no budget.
-2. **Budget fixo ou % do context window?** Provider abstraction do Claudio expõe context window por modelo — budget como `min(6k, 3% do window)` adapta a modelos pequenos (Haiku) vs grandes.
+1. **Estimador de tokens:** `4 chars/token` (heurística do claude-mem) é grosseiro mas zero-custo. Claudin já tem contagem real de tokens em `src/utils/` — usar a real ou a heurística no caminho de boot (onde latência importa)? Recomendação: heurística no boot, é só pra caber no budget.
+2. **Budget fixo ou % do context window?** Provider abstraction do Claudin expõe context window por modelo — budget como `min(6k, 3% do window)` adapta a modelos pequenos (Haiku) vs grandes.
 3. **Tier `summary` exige campo novo?** Precisa de `description` no frontmatter (já existe) + 1ª linha do corpo (derivável). Sem schema change.
 
 ## Correções pós-verificação (2026-05-19)

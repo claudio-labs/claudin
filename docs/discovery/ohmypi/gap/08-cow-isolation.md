@@ -1,7 +1,7 @@
 # 08 — Gap: padrões além do COW em isolation/sandbox/worktree
 
 Cobertura COW já em `08-cow-filesystem-isolation.md`, `deep/`, `fit/`.
-omp tem camadas em volta que Claudio não tem.
+omp tem camadas em volta que Claudin não tem.
 
 ---
 
@@ -13,7 +13,7 @@ omp tem camadas em volta que Claudio não tem.
 e `:1046-1051` (sync). Setting `task.maxConcurrency` em
 `config/settings-schema.ts:2366`.
 
-**Claudio**: `AgentTool.tsx:250-432` dispara sub-agents com `Promise.all`
+**Claudin**: `AgentTool.tsx:250-432` dispara sub-agents com `Promise.all`
 sem cap; `coordinator/coordinatorMode.ts:215` só fala no prompt, sem
 enforcement. Satura rate limit em fan-out grande.
 
@@ -30,7 +30,7 @@ staged + unstaged + untracked); `:127-136` inclui nested repos;
 baseline e comparar com tree atual; `:138-156` `captureRepoDeltaPatch`
 extrai só o delta da task (não acumulado).
 
-**Claudio**: `ExitWorktreeTool` só preserva ou deleta — não emite patch
+**Claudin**: `ExitWorktreeTool` só preserva ou deleta — não emite patch
 consumível pelo parent.
 
 **Encaixe**: `src/utils/worktreeDelta.ts` com `captureBaseline(cwd)` +
@@ -52,7 +52,7 @@ finally, se falha → merge failure preservando branches. `:378-424`
 `commitToBranch` com commit-message callback async (`commitStyle: "ai"`
 → LLM). `:1206-1242` `applyNestedPatches` separado para gitlinks.
 
-**Claudio**: ausente. Worktree de sub-agent fica dangling.
+**Claudin**: ausente. Worktree de sub-agent fica dangling.
 
 **Encaixe**: condicional ao fan-out com auto-merge. Stash dance é a
 parte não-óbvia que vale copiar literal. ~150 linhas.
@@ -66,7 +66,7 @@ requestAbort("timeout"))`. Defense-in-depth contra stream hang que
 escapou do provider watchdog; `:776-781` distingue "timeout" vs
 "cancelled".
 
-**Claudio**: `AgentTool` só respeita `AbortSignal` do parent. Stream
+**Claudin**: `AgentTool` só respeita `AbortSignal` do parent. Stream
 hang = zumbi indefinido.
 
 **Encaixe**: setting `agent.maxRuntimeMs` (default 0), em
@@ -79,7 +79,7 @@ hang = zumbi indefinido.
 **omp** (`task/index.ts:223,254,774-779`): env `PI_BLOCKED_AGENT` —
 agent não spawn de si mesmo, erro claro.
 
-**Claudio**: `taskDepth` existe mas sem guard. Explore chamando Explore
+**Claudin**: `taskDepth` existe mas sem guard. Explore chamando Explore
 recursivo é possível.
 
 **Encaixe**: `AgentTool.tsx:250` checar
@@ -96,7 +96,7 @@ recursivo é possível.
 `AgentProgress.retryState` (sleeping em 429 com retry-after) e
 `retryFailure` — UI mostra "blocked: rate-limited".
 
-**Claudio**: `services/api/withRetry.ts` faz retry mas estado não vaza
+**Claudin**: `services/api/withRetry.ts` faz retry mas estado não vaza
 para UI. Sub-agent dormindo 30s é silencioso.
 
 **Encaixe**: campo `retryState` em `SDKStatus` (`agentSdkTypes.ts`),
@@ -109,9 +109,9 @@ emitido de `withRetry.ts` no início do sleep.
 **omp** (`task/output-manager.ts:24-107`): IDs sequenciais
 (`0-Parent.0-Child`), scan no resume.
 
-**Claudio**: usa sessionId + index transient.
+**Claudin**: usa sessionId + index transient.
 
-**Encaixe**: pular. Só cabe se Claudio adotar `agent://` URL scheme.
+**Encaixe**: pular. Só cabe se Claudin adotar `agent://` URL scheme.
 
 ---
 
@@ -125,7 +125,7 @@ Para fechar escopo — nada a importar daqui:
 - Snapshot/restore de processo — `pi-iso` é só start/stop do FS view.
 - IPC entre tasks — falam via patches no final.
 - Pause/resume granular — lifecycle de 4 estados, sem pause.
-- Bash restricted shell / read-only — Claudio tem
+- Bash restricted shell / read-only — Claudin tem
   `BashTool/readOnlyValidation.ts` + `utils/sandbox/sandbox-adapter.ts`
   (`SandboxManager`); omp não tem.
 

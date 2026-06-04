@@ -72,7 +72,7 @@ Distribuição de interpolação (43 arquivos com `prompt.ts` ou equivalente):
 
 ## 4. Encaixe — template engine?
 
-Não existe template engine no Claudio. Prompts hoje resolvem variáveis de quatro maneiras:
+Não existe template engine no Claudin. Prompts hoje resolvem variáveis de quatro maneiras:
 
 1. **Template literal puro** com `${expr}` (a maioria). Ex.: `BashTool/prompt.ts` interpola `AGENT_TOOL_NAME`, `getMaxBashTimeoutMs()`, condicionais via `${cond ? '...' : ''}`.
 2. **Concatenação condicional** dentro da função. Ex.: `coordinatorMode.ts:104-106` (`content += ...`).

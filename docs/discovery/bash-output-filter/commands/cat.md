@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (claudio repo, 5 May 2026)
+## Saída crua representativa (claudin repo, 5 May 2026)
 
 ### Amostra REAL — `cat CLAUDE.md` (12.175 bytes)
 
@@ -38,7 +38,7 @@ Output é o conteúdo literal do arquivo. **100% sinal por definição.**
 ### **Não criar filtro.**
 
 Razões:
-1. **claudio tem `FileReadTool`** que é o mecanismo correto pra ler arquivos. Bash `cat` é fallback (em pipes ou contextos onde FileReadTool não cabe).
+1. **claudin tem `FileReadTool`** que é o mecanismo correto pra ler arquivos. Bash `cat` é fallback (em pipes ou contextos onde FileReadTool não cabe).
 2. Output é o file content — qualquer modificação é perigosa.
 3. O **summarizer existente** já cobre quando o output for >10KB (threshold READ).
 
@@ -75,13 +75,13 @@ User pode fazer `cat /usr/bin/something` — output é binário, lixo no termina
 ## Comparativo com rtk
 
 - rtk: `cmds/system/read.rs` — implementa filtro (provavelmente truncate em arquivos grandes).
-- **Diferença:** rtk substitui `cat` por sua versão; claudio tem FileReadTool dedicada que faz papel similar **sem precisar de Bash filter**.
+- **Diferença:** rtk substitui `cat` por sua versão; claudin tem FileReadTool dedicada que faz papel similar **sem precisar de Bash filter**.
 
 ---
 
 ## Findings empíricos
 
 1. **`cat` é incompressível** — content é signal puro.
-2. **claudio's FileReadTool** já é o caminho correto pra reads diretos.
+2. **claudin's FileReadTool** já é o caminho correto pra reads diretos.
 3. **summarizer existente** cobre o caso "cat de file gigante" via threshold.
 4. **Recomendação final:** adicionar `^(cat|head|tail|less)\s` ao match-pattern do filtro Bash como **default reject** (não tentar aplicar nenhum filtro).

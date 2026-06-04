@@ -152,14 +152,14 @@ Substituir `May 05 12:18:04` por `12:18:04` se todas as entradas são do mesmo d
 
 - [ ] Quão útil é o boot marker `-- Boot xxxx --` pra LLM? Provavelmente "houve reboot, info acima é de antes" é tudo que importa. Comprimir pra `[reboot]` seguro.
 - [ ] Como detectar `--machine` corretamente sem parser de bash completo?
-- [ ] **Frequência de uso real?** Agente típico no claudio mexe com web/CLI dev, raramente com systemd. Tier 1.5 ou 2?
+- [ ] **Frequência de uso real?** Agente típico no claudin mexe com web/CLI dev, raramente com systemd. Tier 1.5 ou 2?
 
 ---
 
 ## Comparativo com rtk
 
 - rtk: não vi `journalctl` na lista de filtros nem em `cmds/`. Provavelmente não cobre.
-- **Possível win exclusivo do claudio** — usuários de SRE/ops podem ganhar muito.
+- **Possível win exclusivo do claudin** — usuários de SRE/ops podem ganhar muito.
 
 ---
 

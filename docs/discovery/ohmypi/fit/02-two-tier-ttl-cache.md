@@ -7,7 +7,7 @@ implementação — apenas onde encaixa, quanto se ganha, e onde NÃO encaixa.
 ## 1. Inventário de caches existentes
 
 Levantamento por `Grep "new LRUCache"`, `cache|TTL` em paths candidatos, e
-`ls ~/.claudio/`. Coluna **in-flight coalescing** = existe `Map<key, Promise>`
+`ls ~/.claudin/`. Coluna **in-flight coalescing** = existe `Map<key, Promise>`
 para deduplicar fetches concorrentes? (resposta = "não" em todos os casos
 abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 
@@ -27,7 +27,7 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 | Image-store dedup | `src/utils/imageStore.ts` (cap 200, FIFO) | `Set` | sem TTL | n/a |
 | Memoize utility (genérico) | `src/utils/memoize.ts:242` | `LRUCache` | opcional | não |
 
-### Persistido em disco (`~/.claudio/`)
+### Persistido em disco (`~/.claudin/`)
 
 | Site | file:line | Storage | TTL | In-flight coalescing |
 |---|---|---|---|---|
@@ -37,19 +37,19 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 | Paste store | `src/utils/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |
 | File history | `src/utils/fileHistory.ts:54` | `file-history/` por sessão | cap 100 snapshots | n/a |
 | Tool result spill | `src/utils/toolResultStorage.ts` | files in `cache/` | sem TTL | n/a |
-| V8 bytecode | `~/.claudio/v8cache/` (via `bin/claudio`) | bytecode | invalidado por build | n/a |
+| V8 bytecode | `~/.claudin/v8cache/` (via `bin/claudin`) | bytecode | invalidado por build | n/a |
 | Outros: `backups/`, `sessions/`, `plans/`, `projects/`, `tasks/`, `shell-snapshots/` | — | conteúdo persistente, não TTL-caches | — | — |
 
 ### Padrões duplicados (consolidação possível)
 
 - **TTL ad-hoc** em 7+ módulos com timestamps inline: `Date.now() - data.timestamp < TTL_MS` aparece em `modelCache.ts`, `authCache.ts`, `latestVersionCache.ts` (via caller), `directoryCompletion.ts` (delegado ao lru-cache), `toolResultCache.ts`. Cada um reimplementa "valid?".
-- **JSON-per-key em `~/.claudio/`** existe duas vezes: `model-cache/<provider>.json` e `latest-version.json`. Schema/version handling é por arquivo. Um `createJsonStore` substituiria ambos com 1 arquivo de utility.
+- **JSON-per-key em `~/.claudin/`** existe duas vezes: `model-cache/<provider>.json` e `latest-version.json`. Schema/version handling é por arquivo. Um `createJsonStore` substituiria ambos com 1 arquivo de utility.
 - **Single TTL hard-binário** é universal: nenhum cache existente serve stale + revalida em background. Todos são fresh-or-miss.
 - **Tamanho de inventário**: 8 LRUCaches in-process + 5+ caches persistidos. Soft/hard-tier não existe em nenhum.
 
 ## 2. Ganhos MEDIDOS (e não-medidos, honestamente)
 
-### Tamanho atual no disco (`du -sh` em `~/.claudio/`, esta máquina)
+### Tamanho atual no disco (`du -sh` em `~/.claudin/`, esta máquina)
 
 ```
 4.0K   model-cache/      ← praticamente vazio (provider nativo Anthropic não cacheia)
@@ -126,19 +126,19 @@ Estimativas, não medidas neste ambiente:
 
 ### 5.1 Persistência de conteúdo web em disco
 
-**O ataque concreto**: se WebFetch/WebSearch passassem a persistir resultados em `~/.claudio/cache/web-fetch/*.json`:
+**O ataque concreto**: se WebFetch/WebSearch passassem a persistir resultados em `~/.claudin/cache/web-fetch/*.json`:
 
-- **Leak via crash bundler / log share / `/bug` report**: hoje o repo NÃO tem crash-reporter automático (telemetria stubada), mas o caminho `~/.claudio/cache/` não é listado em nenhum exclude doc. Qualquer dev futuro que adicione "include `~/.claudio/cache/` no diagnostic bundle" vaza conteúdo de terceiros vistos pelo usuário (URLs internas, search queries privadas).
-- **Cross-user leak em ambientes multi-tenant**: arquivos sob `~/.claudio/` herdam umask. omp usa `0o600` explícito em `github-cache.ts:82`. Claudio precisa do mesmo se for ao disco.
+- **Leak via crash bundler / log share / `/bug` report**: hoje o repo NÃO tem crash-reporter automático (telemetria stubada), mas o caminho `~/.claudin/cache/` não é listado em nenhum exclude doc. Qualquer dev futuro que adicione "include `~/.claudin/cache/` no diagnostic bundle" vaza conteúdo de terceiros vistos pelo usuário (URLs internas, search queries privadas).
+- **Cross-user leak em ambientes multi-tenant**: arquivos sob `~/.claudin/` herdam umask. omp usa `0o600` explícito em `github-cache.ts:82`. Claudin precisa do mesmo se for ao disco.
 - **Chave não-namespaced**: omp namespaces por hash de `GH_TOKEN`. WebFetch não tem identity natural por URL — risco menor de cross-account leak, mas conteúdo `https://internal.company.com/...` ainda é sensível. **Per-host como pseudo-scope é defesa mais fraca que per-auth-key.**
 
-**Compatibilidade com `verify:privacy`**: o script (`scripts/verify-no-phone-home.ts`) escaneia `dist/cli.mjs` por banned patterns de phone-home. **Ele NÃO inspeciona conteúdo persistido em runtime sob `~/.claudio/`.** Adicionar cache de web em disco não falha o gate atual — mas é exatamente o tipo de superfície que o gate NÃO cobre, então a salvaguarda recai 100% sobre code review e documentação.
+**Compatibilidade com `verify:privacy`**: o script (`scripts/verify-no-phone-home.ts`) escaneia `dist/cli.mjs` por banned patterns de phone-home. **Ele NÃO inspeciona conteúdo persistido em runtime sob `~/.claudin/`.** Adicionar cache de web em disco não falha o gate atual — mas é exatamente o tipo de superfície que o gate NÃO cobre, então a salvaguarda recai 100% sobre code review e documentação.
 
 **Recomendação concreta para fit**: **WebFetch/WebSearch → in-memory only.** Disco fica reservado para `modelCache` / metadados não-sensíveis. Re-avaliar após audit de quais URLs o agente realmente re-visita.
 
 ### 5.2 Sweep concorrente entre múltiplas sessões
 
-omp usa SQLite single-writer com WAL — múltiplos processos podem ler em paralelo, escritas serializam. Claudio com JSON-per-key:
+omp usa SQLite single-writer com WAL — múltiplos processos podem ler em paralelo, escritas serializam. Claudin com JSON-per-key:
 
 - **Race write/write**: dois processos rodando `setMcpAuthCacheEntry` simultaneamente sobrescrevem (cada um lê snapshot, escreve seu). `authCache.ts` resolve com `writeChain` interno mas só *dentro do mesmo processo*. Entre processos é race.
 - **Race sweep/read**: processo A apaga arquivo expirado durante processo B lendo → ENOENT silencioso, falha para "miss". Aceitável.
@@ -146,7 +146,7 @@ omp usa SQLite single-writer com WAL — múltiplos processos podem ler em paral
 
 ### 5.3 Race no refresh (in-process)
 
-Dois reads stale concorrentes agendam 2 `queueMicrotask(refresh)` → 2 HTTP calls. omp aceita; Claudio em loop apertado (LLM emite mesma URL 5x num turn) amplifica upstream 5×. **In-flight `Map<key, Promise>` é obrigatório**, não opcional.
+Dois reads stale concorrentes agendam 2 `queueMicrotask(refresh)` → 2 HTTP calls. omp aceita; Claudin em loop apertado (LLM emite mesma URL 5x num turn) amplifica upstream 5×. **In-flight `Map<key, Promise>` é obrigatório**, não opcional.
 
 ## 6. Veredito
 
@@ -176,4 +176,4 @@ Antes de implementar: adicionar counters `{ hits, misses, stale, miss, disabled 
 
 ---
 
-**Vale a pena: CONDICIONAL** — porque o ganho técnico é claro e isolado em WebFetch + WebSearch (instantaneidade em re-visita + economia de tokens no secondary model), mas o repo não tem hoje instrumentação de hit/miss nem bench de re-visita; adotar sem medir é otimização cega. Implementar twoTier in-memory para WebFetch primeiro, com contadores expostos via `/provider doctor` ou comando similar, e só estender a WebSearch/modelCache depois de observar hit-ratio real em sessão de uso. Persistência em disco para conteúdo web fica explicitamente fora do escopo da v1 por razão de privacidade (`~/.claudio/cache/` não está coberto por `verify:privacy` nem documentado como excluído de eventuais bundles diagnósticos).
+**Vale a pena: CONDICIONAL** — porque o ganho técnico é claro e isolado em WebFetch + WebSearch (instantaneidade em re-visita + economia de tokens no secondary model), mas o repo não tem hoje instrumentação de hit/miss nem bench de re-visita; adotar sem medir é otimização cega. Implementar twoTier in-memory para WebFetch primeiro, com contadores expostos via `/provider doctor` ou comando similar, e só estender a WebSearch/modelCache depois de observar hit-ratio real em sessão de uso. Persistência em disco para conteúdo web fica explicitamente fora do escopo da v1 por razão de privacidade (`~/.claudin/cache/` não está coberto por `verify:privacy` nem documentado como excluído de eventuais bundles diagnósticos).

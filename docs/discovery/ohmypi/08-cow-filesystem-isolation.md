@@ -11,9 +11,9 @@
 
 Resultado: spawn de worker isolado em ms, não em segundos (git worktree precisa checkout completo).
 
-## Por que importa para Claudio
+## Por que importa para Claudin
 
-- `EnterWorktreeTool` usa `git worktree add` — cria branch + checkout. Em repo grande (claudio mesmo tem dist/ etc), demora.
+- `EnterWorktreeTool` usa `git worktree add` — cria branch + checkout. Em repo grande (claudin mesmo tem dist/ etc), demora.
 - Sub-agents Code/Plan rodando em paralelo se beneficiariam de isolamento real sem custo de checkout.
 - Hoje sub-agents compartilham CWD, o que cria race condition em FileWrite.
 
@@ -28,5 +28,5 @@ Resultado: spawn de worker isolado em ms, não em segundos (git worktree precisa
 ## Referência
 
 - `crates/pi-iso/` (omp)
-- `src/tools/EnterWorktreeTool/` (claudio)
+- `src/tools/EnterWorktreeTool/` (claudin)
 - `clonefile(2)` no APFS, `cp --reflink` no coreutils

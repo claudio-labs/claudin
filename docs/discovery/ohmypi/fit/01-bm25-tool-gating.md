@@ -1,24 +1,24 @@
 # 01 — BM25 tool gating: análise de encaixe e ganhos reais
 
-Escopo: avaliar se portar o índice BM25 do `oh-my-pi` (`packages/coding-agent/src/tool-discovery/tool-index.ts`) para o Claudio entrega ganho real além do que `ToolSearchTool` já oferece, e em que provedores faz sentido ligar. Sem plano de implementação.
+Escopo: avaliar se portar o índice BM25 do `oh-my-pi` (`packages/coding-agent/src/tool-discovery/tool-index.ts`) para o Claudin entrega ganho real além do que `ToolSearchTool` já oferece, e em que provedores faz sentido ligar. Sem plano de implementação.
 
 ## 1. Encaixe arquitetural real
 
 ### 1.1 Pontos de inserção naturais
 
-Toda a topologia "deferred tools + search tool" já existe no Claudio. Um BM25 substituiria/aumentaria o scorer linear atual, sem rearquitetura. Pontos concretos:
+Toda a topologia "deferred tools + search tool" já existe no Claudin. Um BM25 substituiria/aumentaria o scorer linear atual, sem rearquitetura. Pontos concretos:
 
-- `/home/viudes/projects/claudio/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`). Já é o contrato. BM25 consumiria os mesmos campos como corpus (nome + searchHint + primeiros 200 chars de `prompt()`/`description()`), pesados como em `tool-index.ts:93-100` (FIELD_WEIGHTS).
-- `/home/viudes/projects/claudio/src/tools/ToolSearchTool/ToolSearchTool.ts:186-302` (`searchToolsWithKeywords`). Atual: soma linear `parts.includes(term) ×10/12`, `searchHint match +4`, `desc match +2`, com word-boundary regex pré-compilados. Sub seria substituído por `searchDiscoverableTools` (`tool-index.ts:262-297`), mantendo o mesmo callsite no `:328-471` (`ToolSearchTool.call`). Sem mudança de schema, sem mudança de retorno.
-- `/home/viudes/projects/claudio/src/tools/ToolSearchTool/prompt.ts:63-109` (`isDeferredTool`). Continua sendo a fonte da partição `alwaysLoad` vs `deferred`. BM25 nunca decide esconder Bash — categorização permanece estática no source, igual ao omp (`loadMode: "essential"` para Bash/Read/Edit).
-- `/home/viudes/projects/claudio/src/tools.ts:365-387` (`assembleToolPool`). Não muda no MVP "drop-in BM25 scorer". Só mudaria se houvesse um modo "gating real em provedores OpenAI-compat", aí precisaria filtrar deferred ∉ (`alwaysLoad ∪ sessionActivatedTools`) **antes** de devolver a lista — porque hoje o gating real depende de `defer_loading: true` na request à Anthropic 1P, e shim OpenAI **não tem** equivalente (ver `/home/viudes/projects/claudio/src/services/api/openaiShim.ts` — zero ocorrências de `defer_loading`/`tool_reference`; `/home/viudes/projects/claudio/src/utils/api.ts:274-276` mostra que `defer_loading` é só Anthropic-shape).
-- `/home/viudes/projects/claudio/src/utils/toolSearch.ts:271-313` (`isToolSearchEnabledOptimistic`). Hoje desliga tool-search para non-firstParty quando `ENABLE_TOOL_SEARCH` não está setado. Sub‑rotina para "BM25-gating ativo em OpenAI-compat" precisaria de um modo novo (`BM25_TOOL_GATING` flag) que ignore esse gate.
-- `/home/viudes/projects/claudio/src/services/api/claude/streaming.ts:450-465` (montagem dos toolSchemas com `deferLoading: willDefer(tool)`). Esse callsite é exclusivo do Anthropic-1P path. Sem espelho no `openaiShim.ts`.
+- `/home/viudes/projects/claudin/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`). Já é o contrato. BM25 consumiria os mesmos campos como corpus (nome + searchHint + primeiros 200 chars de `prompt()`/`description()`), pesados como em `tool-index.ts:93-100` (FIELD_WEIGHTS).
+- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:186-302` (`searchToolsWithKeywords`). Atual: soma linear `parts.includes(term) ×10/12`, `searchHint match +4`, `desc match +2`, com word-boundary regex pré-compilados. Sub seria substituído por `searchDiscoverableTools` (`tool-index.ts:262-297`), mantendo o mesmo callsite no `:328-471` (`ToolSearchTool.call`). Sem mudança de schema, sem mudança de retorno.
+- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/prompt.ts:63-109` (`isDeferredTool`). Continua sendo a fonte da partição `alwaysLoad` vs `deferred`. BM25 nunca decide esconder Bash — categorização permanece estática no source, igual ao omp (`loadMode: "essential"` para Bash/Read/Edit).
+- `/home/viudes/projects/claudin/src/tools.ts:365-387` (`assembleToolPool`). Não muda no MVP "drop-in BM25 scorer". Só mudaria se houvesse um modo "gating real em provedores OpenAI-compat", aí precisaria filtrar deferred ∉ (`alwaysLoad ∪ sessionActivatedTools`) **antes** de devolver a lista — porque hoje o gating real depende de `defer_loading: true` na request à Anthropic 1P, e shim OpenAI **não tem** equivalente (ver `/home/viudes/projects/claudin/src/services/api/openaiShim.ts` — zero ocorrências de `defer_loading`/`tool_reference`; `/home/viudes/projects/claudin/src/utils/api.ts:274-276` mostra que `defer_loading` é só Anthropic-shape).
+- `/home/viudes/projects/claudin/src/utils/toolSearch.ts:271-313` (`isToolSearchEnabledOptimistic`). Hoje desliga tool-search para non-firstParty quando `ENABLE_TOOL_SEARCH` não está setado. Sub‑rotina para "BM25-gating ativo em OpenAI-compat" precisaria de um modo novo (`BM25_TOOL_GATING` flag) que ignore esse gate.
+- `/home/viudes/projects/claudin/src/services/api/claude/streaming.ts:450-465` (montagem dos toolSchemas com `deferLoading: willDefer(tool)`). Esse callsite é exclusivo do Anthropic-1P path. Sem espelho no `openaiShim.ts`.
 
 ### 1.2 Atritos identificados
 
-- **Prompt-cache Anthropic 1P** (`/home/viudes/projects/claudio/src/tools.ts:374-385`): a ordenação separa built-ins de MCP para preservar o cache breakpoint do `claude_code_system_cache_policy`. Mudar o set de tools entre turnos invalida o cache. **Logo**: modo "rerank por turno" (BM25 escolhendo set diferente cada turno) é incompatível com 1P caching. Modo "ativação acumulativa estilo omp" (set só cresce) preserva o cache até a 1ª ativação — depois recompõe uma vez e estabiliza. omp já assume esse tier-change como normal.
-- **AgentTool** (`/home/viudes/projects/claudio/src/tools/AgentTool/AgentTool.tsx:527`, `resumeAgent.ts:166`): sub-agentes chamam `assembleToolPool` com permissão própria. Se BM25 ativa tools no nível do worker, o set persistido é por-sub-agente — Code/Explore herdariam o critério, mas cada worker começaria de novo com só `alwaysLoad`. Aceitável (omp tem o mesmo comportamento por sessão), mas adiciona round-trip extra em cada sub-agent. Trade-off real: cada Agent invocation paga 1 turno extra de "discovery" antes de Bash/Read/Edit ficarem implícitos. Para `BUILTIN_EXPLORE_PLAN_AGENTS` (flag ativa no `scripts/build.ts`) isso pode ser caro — Explore lê muita coisa.
+- **Prompt-cache Anthropic 1P** (`/home/viudes/projects/claudin/src/tools.ts:374-385`): a ordenação separa built-ins de MCP para preservar o cache breakpoint do `claude_code_system_cache_policy`. Mudar o set de tools entre turnos invalida o cache. **Logo**: modo "rerank por turno" (BM25 escolhendo set diferente cada turno) é incompatível com 1P caching. Modo "ativação acumulativa estilo omp" (set só cresce) preserva o cache até a 1ª ativação — depois recompõe uma vez e estabiliza. omp já assume esse tier-change como normal.
+- **AgentTool** (`/home/viudes/projects/claudin/src/tools/AgentTool/AgentTool.tsx:527`, `resumeAgent.ts:166`): sub-agentes chamam `assembleToolPool` com permissão própria. Se BM25 ativa tools no nível do worker, o set persistido é por-sub-agente — Code/Explore herdariam o critério, mas cada worker começaria de novo com só `alwaysLoad`. Aceitável (omp tem o mesmo comportamento por sessão), mas adiciona round-trip extra em cada sub-agent. Trade-off real: cada Agent invocation paga 1 turno extra de "discovery" antes de Bash/Read/Edit ficarem implícitos. Para `BUILTIN_EXPLORE_PLAN_AGENTS` (flag ativa no `scripts/build.ts`) isso pode ser caro — Explore lê muita coisa.
 - **Permission gates** (`canUseTool`, sandbox, plan mode): ortogonal. BM25 só ranqueia; permissões continuam decidindo se o `call` roda. Sem conflito.
 - **Coordinator** (`src/coordinator/`): workers via `runAgent` usam `assembleToolPool`. Mesma análise do AgentTool. Sem conflito direto, mas o overhead se multiplica por worker.
 - **MCP tools**: hoje todas as MCP são `isDeferredTool === true` (regra em `prompt.ts:69`). BM25 já indexa server name e tool name (omp `FIELD_WEIGHTS` dá ×4 para mcpToolName e ×2 para serverName). Encaixa naturalmente — `fetchCapabilities.ts:152` já popula `searchHint` em MCP tools.
@@ -27,7 +27,7 @@ Toda a topologia "deferred tools + search tool" já existe no Claudio. Um BM25 s
 
 ### 2.1 Wire-size baseline (`bun test scripts/measure-tool-schemas.test.ts`)
 
-Rodando agora (Claudio main, sem provedor ativo):
+Rodando agora (Claudin main, sem provedor ativo):
 
 - **30 built-in tools** medidos (todos engines).
 - Totais por engine: anthropic 18 384 tokens / 64 438 bytes; openai 18 082 / 63 378; codex 18 055 / 63 283.
@@ -65,7 +65,7 @@ Rodando agora (Claudio main, sem provedor ativo):
 
 Soma dos deferred tokens visíveis: **~11 948 tokens** (~65 % do total de 18 384). Em Anthropic 1P **com tool-search ativo**, esses ~12k tokens **já saem do prompt inicial** (vão via `defer_loading: true`). Em OpenAI-compat (DeepSeek/Groq/Codex etc.) hoje **todos esses ~12k são enviados em todo turno** porque `isToolSearchEnabledOptimistic` retorna `false` e o shim não conhece `defer_loading`.
 
-Conclusão: o "alvo do BM25" no Claudio **não é melhorar o scorer** (o linear já funciona bem; eval no PR descritivo "exp_xenhnnmn0smrx4" mostrou que searchHint A/B não moveu nada). O alvo é **estender o gating para provedores não-Anthropic**, e BM25 vira só o motor de ranking — qualquer scorer razoável serve, o ganho vem do **gate, não do ranqueador**.
+Conclusão: o "alvo do BM25" no Claudin **não é melhorar o scorer** (o linear já funciona bem; eval no PR descritivo "exp_xenhnnmn0smrx4" mostrou que searchHint A/B não moveu nada). O alvo é **estender o gating para provedores não-Anthropic**, e BM25 vira só o motor de ranking — qualquer scorer razoável serve, o ganho vem do **gate, não do ranqueador**.
 
 ### 2.3 Redução plausível por provedor
 
@@ -81,7 +81,7 @@ Conclusão: o "alvo do BM25" no Claudio **não é melhorar o scorer** (o linear 
 - IDF (tokens raros pesam mais — útil para distinguir "schedule" de "task").
 - Length normalization (`b=0.75`, evita tools com descrição longa dominarem).
 
-Em corpus de 30 tools com vocabulário pequeno e descrições curtas/curadas, o ganho de qualidade é **marginal**. omp usa BM25 num corpus maior (~50 tools + MCP) onde IDF importa mais. Para o set do Claudio hoje, scorer linear empata em testes manuais nas queries canônicas ("schedule cron", "open file", "run command", "edit notebook"). Conclusão: **BM25 como melhor scorer não vale o porte sozinho**.
+Em corpus de 30 tools com vocabulário pequeno e descrições curtas/curadas, o ganho de qualidade é **marginal**. omp usa BM25 num corpus maior (~50 tools + MCP) onde IDF importa mais. Para o set do Claudin hoje, scorer linear empata em testes manuais nas queries canônicas ("schedule cron", "open file", "run command", "edit notebook"). Conclusão: **BM25 como melhor scorer não vale o porte sozinho**.
 
 ## 3. Onde ganha de verdade
 
@@ -110,7 +110,7 @@ Em corpus de 30 tools com vocabulário pequeno e descrições curtas/curadas, o 
 - **Round-trip extra (latência)**: cada ativação custa 1 turno (LLM chama `tool_search` → recebe lista → chama tool real). Em Anthropic 1P, omp e Claude Code já consideram esse custo aceitável. Em DeepSeek/Groq via OpenRouter, a latência por turno é maior (300-800ms p50) — pior UX se o usuário pede algo que precisa de 3 deferred tools (Worktree + Bash + Cron) num único pedido. Mitigação: prompt do `ToolSearchTool` (`prompt.ts`) deveria estimular `select:A,B,C` multi-tool numa única chamada — já existe (`ToolSearchTool.ts:363-406`).
 - **Invalidação de prompt cache (Anthropic 1P)**: se o modo BM25 for "rerank por turno" (escolher set diferente cada user-turn), invalida o cache de tools schema toda vez. **Catastrófico** num provedor onde cache hit rate é fonte primária de economia. Solução: rerank por turno fica **off por padrão**, gated em `toolGating.mode === "auto-rerank"`. Modo default é "ativação acumulativa" (igual omp).
 - **Fluxos multi-step**: usuário diz "abra worktree, rode `git status`, depois agende um cron diário". 3 deferred tools (EnterWorktree, Bash, CronCreate). Sem `select:A,B,C` o modelo paga 3 round-trips. Com `select:` (single search call) pagaria 1. Risco: modelos pequenos (DeepSeek-V3 base, Groq Llama-3.1-8B) podem não usar `select:` consistentemente — eval observado no omp não cobre OpenAI-compat.
-- **MCP tools dinâmicas**: hoje todas viram deferred. Se um MCP server expõe 50 tools (ex: GitHub MCP), BM25 ajuda muito mais que scorer linear (IDF separa "issue" de "pr" de "review"). Aqui sim BM25 vale o porte por si — mas só quando o ecossistema MCP esquentar no Claudio (hoje pouco usado).
+- **MCP tools dinâmicas**: hoje todas viram deferred. Se um MCP server expõe 50 tools (ex: GitHub MCP), BM25 ajuda muito mais que scorer linear (IDF separa "issue" de "pr" de "review"). Aqui sim BM25 vale o porte por si — mas só quando o ecossistema MCP esquentar no Claudin (hoje pouco usado).
 
 ## 5. Veredito ponderado
 
@@ -138,4 +138,4 @@ Em corpus de 30 tools com vocabulário pequeno e descrições curtas/curadas, o 
 
 ### Frase final
 
-**Vale a pena: CONDICIONAL — porque** o ganho real (~30-55 % de wire-size em provedores OpenAI-compat) vem do **gate de tools**, não do scorer BM25. Em Anthropic 1P o gating já existe via `defer_loading` e BM25 puro não move tokens; o porte se justifica apenas se o roadmap inclui ligar tool-gating em DeepSeek/Groq/Codex/Ollama, e nesse caso BM25 é só o motor de ranking conveniente (qualquer scorer razoável serviria — o porte do omp custa pouco porque o módulo é autocontido em ~250 linhas). Se o Claudio quer ser bom em provedores não-Anthropic, ligue; caso contrário, priorize outro insight.
+**Vale a pena: CONDICIONAL — porque** o ganho real (~30-55 % de wire-size em provedores OpenAI-compat) vem do **gate de tools**, não do scorer BM25. Em Anthropic 1P o gating já existe via `defer_loading` e BM25 puro não move tokens; o porte se justifica apenas se o roadmap inclui ligar tool-gating em DeepSeek/Groq/Codex/Ollama, e nesse caso BM25 é só o motor de ranking conveniente (qualquer scorer razoável serviria — o porte do omp custa pouco porque o módulo é autocontido em ~250 linhas). Se o Claudin quer ser bom em provedores não-Anthropic, ligue; caso contrário, priorize outro insight.

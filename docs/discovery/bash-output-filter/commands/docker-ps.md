@@ -23,9 +23,9 @@ Passthrough (já mínimo).
 
 ```
 CONTAINER ID   IMAGE                          COMMAND                  CREATED        STATUS                  PORTS                                       NAMES
-a3f8c9d2e1b7   postgres:16-alpine             "docker-entrypoint.s…"   2 hours ago    Up 2 hours              0.0.0.0:5432->5432/tcp                      claudio-db
-9b8c7d6e5f4a   redis:7-alpine                 "docker-entrypoint.s…"   2 hours ago    Up 2 hours              0.0.0.0:6379->6379/tcp                      claudio-cache
-1e2f3a4b5c6d   ghcr.io/anthropics/foo:v1.2.3  "/usr/local/bin/foo …"   3 days ago     Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, 0.0.0.0:9090/tcp   claudio-api
+a3f8c9d2e1b7   postgres:16-alpine             "docker-entrypoint.s…"   2 hours ago    Up 2 hours              0.0.0.0:5432->5432/tcp                      claudin-db
+9b8c7d6e5f4a   redis:7-alpine                 "docker-entrypoint.s…"   2 hours ago    Up 2 hours              0.0.0.0:6379->6379/tcp                      claudin-cache
+1e2f3a4b5c6d   ghcr.io/anthropics/foo:v1.2.3  "/usr/local/bin/foo …"   3 days ago     Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, 0.0.0.0:9090/tcp   claudin-api
 ```
 
 ### Amostra 3 — `docker ps -a` com 20+ containers (~3-6KB)
@@ -83,9 +83,9 @@ Não capturado. Em CI/dev típico facilmente passa de 5KB.
 
 ```
 IMAGE                          COMMAND   STATUS                  PORTS                                       NAMES
-postgres:16-alpine             "…"       Up 2 hours              0.0.0.0:5432->5432/tcp                      claudio-db
-redis:7-alpine                 "…"       Up 2 hours              0.0.0.0:6379->6379/tcp                      claudio-cache
-ghcr.io/anthropics/foo:v1.2.3  "…"       Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, 0.0.0.0:9090/tcp   claudio-api
+postgres:16-alpine             "…"       Up 2 hours              0.0.0.0:5432->5432/tcp                      claudin-db
+redis:7-alpine                 "…"       Up 2 hours              0.0.0.0:6379->6379/tcp                      claudin-cache
+ghcr.io/anthropics/foo:v1.2.3  "…"       Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, 0.0.0.0:9090/tcp   claudin-api
 ```
 
 ~430 bytes vs 600 → ~28% de redução. **Aquém da meta de 80%**. Por quê?
@@ -103,9 +103,9 @@ docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 Saída:
 ```
 NAMES            IMAGE                          STATUS                  PORTS
-claudio-db       postgres:16-alpine             Up 2 hours              0.0.0.0:5432->5432/tcp
-claudio-cache    redis:7-alpine                 Up 2 hours              0.0.0.0:6379->6379/tcp
-claudio-api      ghcr.io/anthropics/foo:v1.2.3  Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, ...
+claudin-db       postgres:16-alpine             Up 2 hours              0.0.0.0:5432->5432/tcp
+claudin-cache    redis:7-alpine                 Up 2 hours              0.0.0.0:6379->6379/tcp
+claudin-api      ghcr.io/anthropics/foo:v1.2.3  Up 2 hours (healthy)    0.0.0.0:8080->8080/tcp, ...
 ```
 
 ~280 bytes vs 600 → **~53% de redução**. Mais limpo, mais determinístico.

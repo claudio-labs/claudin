@@ -151,7 +151,7 @@ M  src/utils/toolResultSummarizer.ts
 
 ## Estimativa de redução
 
-Validado empiricamente no claudio repo (5 May 2026):
+Validado empiricamente no claudin repo (5 May 2026):
 
 | Amostra | Antes (bytes) | Depois (bytes) | Redução |
 |---|---|---|---|

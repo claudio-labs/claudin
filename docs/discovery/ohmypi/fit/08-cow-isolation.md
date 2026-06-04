@@ -1,6 +1,6 @@
 # 08 — Fit: COW filesystem isolation
 
-Análise concreta de encaixe da ideia "pi-iso" (omp) em Claudio: substituir/
+Análise concreta de encaixe da ideia "pi-iso" (omp) em Claudin: substituir/
 complementar `git worktree add` por COW filesystem (APFS clonefile, btrfs
 FICLONE, overlayfs) para isolar sub-agents.
 
@@ -10,7 +10,7 @@ Referências: `docs/discovery/ohmypi/08-cow-filesystem-isolation.md`,
 
 ---
 
-## 1. Worktree hoje em Claudio
+## 1. Worktree hoje em Claudin
 
 `src/utils/worktree.ts:744` `createWorktreeForSession(sessionId, slug, ...)`:
 
@@ -24,7 +24,7 @@ Referências: `docs/discovery/ohmypi/08-cow-filesystem-isolation.md`,
    - aponta `core.hooksPath` para o repo principal (husky);
    - opcionalmente symlinka diretórios (`worktree.symlinkDirectories`);
    - aplica `.worktreeinclude` (gitignored files que valem a pena copiar).
-4. Grava em `~/.claudio/projects/<dir>/projectConfig.activeWorktreeSession`.
+4. Grava em `~/.claudin/projects/<dir>/projectConfig.activeWorktreeSession`.
 
 `createAgentWorktree(slug)` (`:944`) é o caminho usado por `AgentTool`
 quando `isolation: 'worktree'` é solicitado (`AgentTool.tsx:540-554`).
@@ -55,7 +55,7 @@ Quatro `git worktree add` **sequenciais**: `real 0.454s` (~110 ms cada).
 - `dist/` 178M
 - `node_modules/` 385M
 - `.git/` 14M
-- `.claudio/v8cache/` ausente (limpo pelo build atual)
+- `.claudin/v8cache/` ausente (limpo pelo build atual)
 - Total repo: 637M
 
 O `git worktree add` **não copia** `dist/`/`node_modules/` (ficam fora
@@ -65,7 +65,7 @@ o GB de `node_modules`.
 
 ---
 
-## 2. Sub-agents paralelos em Claudio
+## 2. Sub-agents paralelos em Claudin
 
 `src/coordinator/workerAgent.ts` existe mas é minúsculo (`WORKER_AGENT`,
 14 linhas) — define uma agent built-in para o `COORDINATOR_MODE`. O motor
@@ -113,7 +113,7 @@ Sistema: btrfs em `/home/viudes/projects`, ext4 em `/`, tmpfs em `/tmp`.
   cai para deep copy.
 
 **O ganho prometido (50–100 ms COW vs 100–800 ms worktree) não se
-materializa neste repo neste FS.** O worktree do Claudio já é
+materializa neste repo neste FS.** O worktree do Claudin já é
 deliberadamente magro (gitignore esconde `node_modules`/`dist`); COW
 copiaria *tudo*, inclusive os 385M de `node_modules`.
 
@@ -130,9 +130,9 @@ a) **Seedar `node_modules`/`dist` no worktree sem deep copy.** Hoje o
    compartilhado → escritas do agente em `node_modules/.bin` vazam para
    o repo principal). **COW resolveria isso com isolamento real.**
 
-b) **`dist/cli.mjs` + `.claudio/v8cache/`** seedados no worktree fazem
-   o `claudiodev` rodar dentro do worktree sem rebuild. Útil para o
-   próprio agente lançar `claudiodev` (loop).
+b) **`dist/cli.mjs` + `.claudin/v8cache/`** seedados no worktree fazem
+   o `claudindev` rodar dentro do worktree sem rebuild. Útil para o
+   próprio agente lançar `claudindev` (loop).
 
 c) **Múltiplos sub-agents paralelos com FS isolado**, em repos sem
    gitignore agressivo (mono-repo onde tudo é tracked). Aí o `git
@@ -143,11 +143,11 @@ d) **Worktree disposable** para `/skill loop` ou tarefas curtas: criar
 
 ---
 
-## 5. Onde COW NÃO ganha (caso típico Claudio)
+## 5. Onde COW NÃO ganha (caso típico Claudin)
 
 a) **Usuário single-thread sem sub-agents paralelos.** É a maioria.
    Worktree atual já é rápido (100 ms); COW seria pior (1.3 s no
-   repo claudio em btrfs).
+   repo claudin em btrfs).
 
 b) **FS sem suporte.** ext4 (sem reflink) é o default na maioria das
    instalações Linux desktop/servidor (Ubuntu, Debian, Fedora < 40).
@@ -179,7 +179,7 @@ d) **Repos com `.gitignore` agressivo** (`node_modules`, `dist`, caches).
    filesystems falha. Em distros onde `/tmp` é tmpfs e o user está em
    `/home` (btrfs/zfs), nenhum destino em `/tmp` funciona. O wrapper
    teria que escolher destino no mesmo mountpoint do source (típico
-   `<repo>/.claudio/worktrees-cow/`) — viável, mas mais código.
+   `<repo>/.claudin/worktrees-cow/`) — viável, mas mais código.
 
 3. **Hook precedence (hook > COW > builtin).** A linha 757 do
    `worktree.ts` mostra que o hook do usuário já tem prioridade.
@@ -197,7 +197,7 @@ d) **Repos com `.gitignore` agressivo** (`node_modules`, `dist`, caches).
    ambos com gotchas de detecção de capability.
 
 5. **Cleanup de órfãos.** `git worktree prune` já existe (`worktree.ts:
-   1172`). Para COW precisa varrer `~/.claudio/worktrees-cow/`
+   1172`). Para COW precisa varrer `~/.claudin/worktrees-cow/`
    periodicamente, sem sentinela git para "estes ainda estão vivos".
 
 ---
@@ -206,15 +206,15 @@ d) **Repos com `.gitignore` agressivo** (`node_modules`, `dist`, caches).
 
 `hasWorktreeCreateHook()` + `executeWorktreeCreateHook()` (`utils/hooks/
 events.ts:578-631`, executor especial em `executors.ts:244-378`) **já
-permitem ao usuário rolar COW próprio** sem mudar nenhum código Claudio:
+permitem ao usuário rolar COW próprio** sem mudar nenhum código Claudin:
 
 ```jsonc
-// ~/.claudio/settings.json
+// ~/.claudin/settings.json
 {
   "hooks": {
     "WorktreeCreate": [{
       "type": "command",
-      "command": "cp --reflink=auto -r $CLAUDIO_REPO_ROOT $CLAUDIO_REPO_ROOT/.claudio/cow/$CLAUDIO_SLUG && echo $CLAUDIO_REPO_ROOT/.claudio/cow/$CLAUDIO_SLUG"
+      "command": "cp --reflink=auto -r $CLAUDIN_REPO_ROOT $CLAUDIN_REPO_ROOT/.claudin/cow/$CLAUDIN_SLUG && echo $CLAUDIN_REPO_ROOT/.claudin/cow/$CLAUDIN_SLUG"
     }]
   }
 }
@@ -234,13 +234,13 @@ explicando o snippet, EXDEV, cleanup) — não código.
 
 ## 8. Veredito
 
-Para o usuário típico de Claudio:
+Para o usuário típico de Claudin:
 - Single-thread, FS `/` ext4, repo com `node_modules` gitignored.
 - `git worktree` resolve em 100 ms hoje.
 - Sub-agents paralelos com `isolation: 'worktree'` é opt-in raro.
 
 Implementar `pi-iso`-style PAL nativo (Rust + NAPI + detecção) em
-Claudio é:
+Claudin é:
 - Custo: alto (FFI, matriz de FS, capability probing, cleanup,
   paths macOS/Linux/Windows).
 - Ganho mediano: ~zero (worktree atual já é leve, FS típico = ext4).
@@ -248,7 +248,7 @@ Claudio é:
   4+ sub-agents paralelos editando — caso power-user.
 
 O hook `WorktreeCreate` **já é a extensibilidade certa**. O que
-encaixa em Claudio é:
+encaixa em Claudin é:
 
 1. **Doc curta** com snippet de hook COW (btrfs `--reflink=auto`,
    APFS `cp -c`), warnings de EXDEV e cleanup, e teste de matriz

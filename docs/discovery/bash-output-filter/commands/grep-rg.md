@@ -2,25 +2,25 @@
 
 **Match pattern:** `^(grep|rg|ag|ack)\b`
 **Família:** search
-**Tier:** 2 (claudio tem GrepTool dedicado; Bash usage é fallback)
+**Tier:** 2 (claudin tem GrepTool dedicado; Bash usage é fallback)
 **Estratégia provável:** declarative (cap em maxLines + truncate de path absoluto longo)
 **Status:** analyzed (real data)
 **Estimated reduction:** **~0-30%** dependendo de match count
 
 ---
 
-## Saída crua representativa (claudio repo, 5 May 2026)
+## Saída crua representativa (claudin repo, 5 May 2026)
 
 ### Amostra REAL — `grep -rn "isAbortError" src --include="*.ts"` (589 bytes, 7 matches)
 
 ```
-/home/viudes/projects/claudio/src/services/api/openaiShim.ts:1909:        const isAbortError =
-/home/viudes/projects/claudio/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
-/home/viudes/projects/claudio/src/services/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
-/home/viudes/projects/claudio/src/utils/errors.ts:27:export function isAbortError(e: unknown): boolean {
-/home/viudes/projects/claudio/src/utils/attachments.ts:122:import { isAbortError } from './errors.js'
-/home/viudes/projects/claudio/src/utils/attachments.ts:2627:    if (!isAbortError(e)) {
-/home/viudes/projects/claudio/src/utils/errors.ts:32:    return e instanceof TypeError && e.message.includes('aborted')
+/home/viudes/projects/claudin/src/services/api/openaiShim.ts:1909:        const isAbortError =
+/home/viudes/projects/claudin/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
+/home/viudes/projects/claudin/src/services/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
+/home/viudes/projects/claudin/src/utils/errors.ts:27:export function isAbortError(e: unknown): boolean {
+/home/viudes/projects/claudin/src/utils/attachments.ts:122:import { isAbortError } from './errors.js'
+/home/viudes/projects/claudin/src/utils/attachments.ts:2627:    if (!isAbortError(e)) {
+/home/viudes/projects/claudin/src/utils/errors.ts:32:    return e instanceof TypeError && e.message.includes('aborted')
 ```
 
 ### Amostra REAL — `rg "isAbortError" src --type ts` (564 bytes)
@@ -48,7 +48,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 - Path:linha:conteúdo — coordenada + match. Quase 100% sinal.
 
 **Ruído potencial:**
-- **Path absoluto longo** quando user passou path absoluto (`/home/viudes/projects/claudio/src/...`) — pode virar relativo. ~30-50 chars/match.
+- **Path absoluto longo** quando user passou path absoluto (`/home/viudes/projects/claudin/src/...`) — pode virar relativo. ~30-50 chars/match.
 - **Matches em arquivos noise** (`node_modules/`, `dist/`, `.git/`) se user esqueceu `--exclude-dir`
 - Linhas de erro `grep: ...: Permission denied` — dedup
 - Para `rg`: ANSI colors no terminal — `stripAnsi`
@@ -79,7 +79,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 }
 ```
 
-**Saída esperada:** path absoluto vira últimos 3 segmentos (ex: `/home/viudes/projects/claudio/src/utils/errors.ts:27:` → `claudio/src/utils/errors.ts:27:`).
+**Saída esperada:** path absoluto vira últimos 3 segmentos (ex: `/home/viudes/projects/claudin/src/utils/errors.ts:27:` → `claudin/src/utils/errors.ts:27:`).
 
 ---
 
@@ -93,7 +93,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 - [ ] `-o` (only matching) — output diferente, só os matches sem contexto
 - [ ] Multiple files explícitos (`grep X file1 file2`) — output tem `file:line:content`. Same filter funciona.
 - [ ] Output gigante (10K+ matches) — `maxLines: 200` corta agressivo. **Tradeoff aceito** (user deveria refinar query).
-- [ ] **claudio tem `GrepTool`** — agente sofisticado deveria usar. Bash grep é fallback.
+- [ ] **claudin tem `GrepTool`** — agente sofisticado deveria usar. Bash grep é fallback.
 
 ---
 
@@ -112,7 +112,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 
 ## Open questions
 
-- [ ] Vale a pena filtrar mesmo? **claudio tem `GrepTool`** que cobre 90% dos casos. Bash grep é fallback raro.
+- [ ] Vale a pena filtrar mesmo? **claudin tem `GrepTool`** que cobre 90% dos casos. Bash grep é fallback raro.
 - [ ] Como reduzir match count em grep huge sem perder info? Talvez "first 100 + count + files affected".
 - [ ] **`fzf` / `z` / `fd`** — outros search tools. Adicionar match pattern?
 
@@ -131,5 +131,5 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 
 1. **`rg` já é compacto** — paths relativos, sem decoração. Filter dá ~0%.
 2. **`grep -rn`** com paths absolutos pode reduzir ~20% trocando absoluto por relativo.
-3. **claudio tem `GrepTool`** — Bash grep é fallback, ROI marginal.
+3. **claudin tem `GrepTool`** — Bash grep é fallback, ROI marginal.
 4. **Recomendação:** Tier 2; implementar só se telemetria mostrar uso real significativo.

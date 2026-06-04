@@ -14,7 +14,7 @@
 ### Amostra 1 — commit normal (estimado, ~150-300 bytes)
 
 ```
-[fix/user-agent-openai-shim a3f8c9d] fix(api): use claudio branding in User-Agent
+[fix/user-agent-openai-shim a3f8c9d] fix(api): use claudin branding in User-Agent
  7 files changed, 30 insertions(+), 4 deletions(-)
  create mode 100644 src/utils/userAgent.ts
 ```
@@ -36,7 +36,7 @@ husky - pre-commit
  create mode 100644 src/api/endpoint.test.ts
 ```
 
-### Amostra 3 — `git commit --dry-run` (REAL no claudio, 520 bytes)
+### Amostra 3 — `git commit --dry-run` (REAL no claudin, 520 bytes)
 
 ```
 On branch fix/user-agent-openai-shim
@@ -136,7 +136,7 @@ husky - pre-commit hook exited with code 1 (error)
 **Saída esperada:**
 
 ```
-[fix/user-agent-openai-shim a3f8c9d] fix(api): use claudio branding in User-Agent
+[fix/user-agent-openai-shim a3f8c9d] fix(api): use claudin branding in User-Agent
  7 files changed, 30 insertions(+), 4 deletions(-)
 ```
 
@@ -173,7 +173,7 @@ Se output contém `husky |  pre-commit | lefthook | running tests | running pret
 
 ## Estimativa de redução
 
-Validado contra rtk + estimativa pra claudio:
+Validado contra rtk + estimativa pra claudin:
 
 | Cenário | Antes (bytes) | Depois (Opção A) | Redução |
 |---|---|---|---|

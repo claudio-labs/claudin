@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (claudio repo)
+## Saída crua representativa (claudin repo)
 
 ### Amostra 1 — `find . -maxdepth 2 -type f -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*"` (107 paths, ~3KB)
 
@@ -34,7 +34,7 @@
 ./CLAUDE.md
 ./package.json
 ./.github/pull_request_template.md
-./bin/claudio
+./bin/claudin
 ./docs/hook-chains.md
 ./docs/litellm-setup.md
 ...
@@ -144,7 +144,7 @@ Se output > 100 linhas, agrupar:
 
 ## Open questions
 
-- [ ] **Mover pra Tier 2?** Análise empírica sugere que sim — usuários sofisticados já filtram, e o claudio tem `GlobTool` dedicado.
+- [ ] **Mover pra Tier 2?** Análise empírica sugere que sim — usuários sofisticados já filtram, e o claudin tem `GlobTool` dedicado.
 - [ ] Vale o agrupamento por prefixo? Adiciona complexidade.
 - [ ] Considerar `fd` (modern find) — mesmo regex de match cobre `^fd\b`? Adicionar `^(find|fd)\b`?
 
@@ -161,5 +161,5 @@ Se output > 100 linhas, agrupar:
 
 1. **`find` user-filtered é puro sinal** — 0% economizável.
 2. **`find` cego (sem `-not -path`)** é o único caso onde compressão importa, e isso é mau hábito do user, não algo que filtro deve "consertar" automaticamente.
-3. **claudio já tem `GlobTool`** — usuários sofisticados deveriam usar isso. `find` em Bash é fallback, ROI baixo.
+3. **claudin já tem `GlobTool`** — usuários sofisticados deveriam usar isso. `find` em Bash é fallback, ROI baixo.
 4. **Recomendação:** Tier 2 com prioridade baixa. v1 pode pular.

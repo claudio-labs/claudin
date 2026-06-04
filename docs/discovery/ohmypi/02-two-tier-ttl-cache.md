@@ -10,7 +10,7 @@
 
 Pattern stale-while-revalidate, mas explícito como camada interna do agente.
 
-## Por que importa para Claudio
+## Por que importa para Claudin
 
 - `WebFetchTool` hoje tem cache de 15min auto-clean (segundo a doc do tool) — mas é binário.
 - `WebSearchTool` (DuckDuckGo ou Firecrawl) não cacheia entre chamadas.
@@ -19,7 +19,7 @@ Pattern stale-while-revalidate, mas explícito como camada interna do agente.
 
 ## Perguntas em aberto
 
-- Onde mora o cache? `~/.claudio/cache/` ou SQLite?
+- Onde mora o cache? `~/.claudin/cache/` ou SQLite?
 - Política de invalidação cruzada (ex: usuário muda profile → invalidar metadata?)
 - Vale para resultados de Grep/Glob em monorepos grandes?
 - Como interagir com `Firecrawl` que já tem seu próprio cache?
@@ -27,4 +27,4 @@ Pattern stale-while-revalidate, mas explícito como camada interna do agente.
 ## Referência
 
 - `packages/agent/src/tools/github-cache.ts` (omp)
-- `src/tools/WebFetchTool/`, `src/tools/WebSearchTool/` (claudio)
+- `src/tools/WebFetchTool/`, `src/tools/WebSearchTool/` (claudin)

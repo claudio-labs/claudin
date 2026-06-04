@@ -24,7 +24,7 @@ O `claude-mem` **não usa as bindings nativas do tree-sitter nem WASM**. Ele faz
 - Resolução do binário (`getTreeSitterBin`, `:470`): tenta `tree-sitter-cli/package.json`, cai para `tree-sitter` no `$PATH`.
 - Usa arquivos de query `.scm` escritos num temp dir (`getQueryFile`, `:455`).
 
-**Gotcha de portabilidade:** parsing depende do executável `tree-sitter` + os pacotes de grammar resolvíveis em disco. NÃO é uma lib in-process. Portar = ou bundlar CLI + grammars, ou aceitar dependência de `$PATH`. Para o Claudio (política de evitar `.node` e deps externas), isto é exatamente o que **não** se quer copiar — ver proposta v2 abaixo.
+**Gotcha de portabilidade:** parsing depende do executável `tree-sitter` + os pacotes de grammar resolvíveis em disco. NÃO é uma lib in-process. Portar = ou bundlar CLI + grammars, ou aceitar dependência de `$PATH`. Para o Claudin (política de evitar `.node` e deps externas), isto é exatamente o que **não** se quer copiar — ver proposta v2 abaixo.
 
 **Trick de performance:** `parseFilesBatch` (`:804`) agrupa arquivos por linguagem e dispara **uma** chamada `tree-sitter query` por linguagem com todos os arquivos como args. Um spawn de processo por linguagem, não por arquivo.
 
@@ -56,7 +56,7 @@ Grammars custom via `<projectRoot>/.claude-mem.json` (`loadUserGrammars`, `parse
 { "grammars": { "solidity": { "package": "tree-sitter-solidity", "extensions": [".sol"], "query": "optional/path.scm" } } }
 ```
 
-## Aplicabilidade no Claudio
+## Aplicabilidade no Claudin
 
 **Onde dói hoje:** `FileReadTool` sempre devolve arquivo inteiro (ou range manual via `offset`/`limit`). Arquivos grandes do próprio repo — `openaiShim.ts` (~2.2k LoC), `QueryEngine.ts`, `providerConfig.ts` (~925 LoC) — custam muito quando o agente quer ver uma função específica.
 
@@ -69,7 +69,7 @@ Grammars custom via `<projectRoot>/.claude-mem.json` (`loadUserGrammars`, `parse
 
 **Proposta v2 (tree-sitter via WASM — divergir do claude-mem aqui):**
 
-- `web-tree-sitter` (puro WASM, sem `.node` addon, **sem shell-out para CLI** — o claude-mem faz shell-out, que o Claudio deve evitar)
+- `web-tree-sitter` (puro WASM, sem `.node` addon, **sem shell-out para CLI** — o claude-mem faz shell-out, que o Claudin deve evitar)
 - Custo: +~2 MB no bundle, parsing real ao invés de regex
 - Cobre as 24 linguagens com gramáticas WASM pré-compiladas
 - Faz sentido depois que v1 provar o caso
@@ -94,12 +94,12 @@ Ambos coexistem. `GrepTool` continua para texto livre/imports/strings.
 ## Decisões abertas
 
 1. **v1 regex vs v2 tree-sitter direto?** Recomendação: v1 primeiro pra medir ganho real, decidir v2 com dado.
-2. **Heurística no prompt ou auto-degradação?** Claude-mem deixa o LLM decidir. Claudio pode auto-degradar `Read` para outline quando `lines > N` com flag `expand=true`. Trade-off: simplicidade pro modelo vs surpresa pro usuário.
+2. **Heurística no prompt ou auto-degradação?** Claude-mem deixa o LLM decidir. Claudin pode auto-degradar `Read` para outline quando `lines > N` com flag `expand=true`. Trade-off: simplicidade pro modelo vs surpresa pro usuário.
 3. **Que linguagens na v1?** TS/JS/Python/Go cobrem ~80% do trabalho típico nesta base.
 
 ## Medição esperada
 
-Sem benchmark próprio ainda. Plano de validação: rodar 10 sessões reais sobre o próprio Claudio antes/depois, medir `prompt_tokens` agregado por chamadas de `FileReadTool`.
+Sem benchmark próprio ainda. Plano de validação: rodar 10 sessões reais sobre o próprio Claudin antes/depois, medir `prompt_tokens` agregado por chamadas de `FileReadTool`.
 
 ## Correções pós-verificação (2026-05-19)
 

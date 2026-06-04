@@ -23,7 +23,7 @@ remote: Counting objects: 100% (47/47), done.
 remote: Compressing objects: 100% (25/25), done.
 remote: Total 29 (delta 18), reused 0 (delta 0), pack-reused 0
 Unpacking objects: 100% (29/29), 4.32 KiB | 1.08 MiB/s, done.
-From git.house.server:viudes/claudio
+From git.house.server:viudes/claudin
    3c1ce42..bb98dbf  main       -> origin/main
 Updating 3c1ce42..bb98dbf
 Fast-forward
@@ -96,7 +96,7 @@ Automatic merge failed; fix conflicts and then commit the result.
 **Saída esperada (sample sintético, 507 → ~280 bytes, ~45%):**
 
 ```
-From git.house.server:viudes/claudio
+From git.house.server:viudes/claudin
    3c1ce42..bb98dbf  main       -> origin/main
 Updating 3c1ce42..bb98dbf
 Fast-forward

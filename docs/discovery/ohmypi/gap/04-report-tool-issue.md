@@ -12,7 +12,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - Gating: `settings.get("memory.backend") === "hindsight"`. Default-off.
 - **Fail-open** (retain.ts:43-44) — batch failure vira UI warning, LLM não sabe.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Parcial.** `src/services/extractMemories/` já cobre retain automático (extração pós-turno). `reflect` (forçar pausa pra introspecção) é o ganho novo.
 - **Privacy red flag**: `client.ts` é RPC HTTP. Portar exige backend 100% local (SQLite ou flat-file).
 - Risco de duplicar com infra existente.
@@ -26,7 +26,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `:94-150` — `rewind({ report })`: descarta mensagens pós-checkpoint, preserva só `report` consolidado. Top-level session only.
 - Pattern = sandbox cognitivo: modelo explora livre, descarta dead-ends, só o relatório entra na história.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Sim, alto valor.** Não há equivalente. Reduz drift em investigações longas.
 - 100% local, sem phone-home.
 - Sinergia com `src/services/contextCollapse/` e `src/services/compact/`.
@@ -40,7 +40,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `tools/review.ts:54-78` — `report_finding({title, body, priority, confidence, file_path, line_start, line_end})` exposta SÓ ao reviewer agent.
 - Confidence scoring obrigatório + priority taxonomy.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Sim.** `src/commands/review/` e `src/commands/security-review/` existem mas sem structured output/confidence. Team memory hint: "Review agent as quality gate".
 - Local por construção.
 
@@ -52,7 +52,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `prompts/agents/oracle.md:1-55` — agent senior consultado quando outro "stuck/uncertain". `model: pi/slow`, `thinking-level: xhigh`, `blocking: true`.
 - Forces "MUST identify root causes", "MUST consider 2+ hypotheses".
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Médio-alto.** `src/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
 - Útil em fallback chain (primário + escalation a modelo mais forte).
 
@@ -66,7 +66,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `state.ts` `computeConfidence` — multiplos do noise floor.
 - `flag_runs` para reward hacking detection.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Só vale com modo benchmark/optimization explícito.** Hoje não existe.
 - Postpone.
 
@@ -76,7 +76,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `edit/index.ts:489-511` `#beginDeferredDiagnosticsForPath` — após cada edit, AbortController colhe diagnostics tardios.
 - `:513-527` `#injectLateDiagnostics` — enfileira `lsp-late-diagnostic` (`role: custom, display: false`) no histórico. **Modelo recebe feedback automático sem chamar tool.**
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Sim, 80% da infra existe.** `src/services/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
 - **Falta:** canal de injeção *deferred* (mensagens que chegam depois do tool result ter retornado).
 
@@ -89,7 +89,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - Comentário (`:450-453`): "Models occasionally loop on a single line (~16 reports)".
 - Fail-open detection — não para o modelo, comprime output ofensivo.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Sim, baixíssimo custo.** Defensiva contra OpenAI-compat providers que loop mais.
 - Aplicável em `src/outputFilter/Bash/` e streaming text.
 
@@ -100,18 +100,18 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 **omp**:
 - `reviewer.md:19-22, 41-44` — `confidence: number` obrigatório no output structured. Mesmo padrão em `autoresearch/state.ts`.
 
-**Vale pra Claudio?**
+**Vale pra Claudin?**
 - **Sim como convenção de schema**, não como infra.
 - Exemplo: `src/tools/VerifyPlanExecutionTool/` deveria incluir confidence.
 
-**Encaixe**: bullet em `.claudio/rules/typescript-patterns.md`: "Tools que retornam veredito devem incluir `confidence: z.number().min(0).max(1)`".
+**Encaixe**: bullet em `.claudin/rules/typescript-patterns.md`: "Tools que retornam veredito devem incluir `confidence: z.number().min(0).max(1)`".
 
 ## 9. NÃO portar
 
-- `eval/` Jupyter-style kernel — Claudio não tem use case (REPLTool é genérico).
+- `eval/` Jupyter-style kernel — Claudin não tem use case (REPLTool é genérico).
 - `autoresearch/` completo — sem caso de uso.
 - `hindsight/client.ts` RPC — viola privacy hard rule.
-- Telemetria de tool execution — Claudio já bate omp em privacy.
+- Telemetria de tool execution — Claudin já bate omp em privacy.
 
 ## 10. Priorização por ROI
 

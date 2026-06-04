@@ -149,7 +149,7 @@ Isso preserva exatamente os blocks que importam, descartando o "progress dots" e
 - [x] `-v` / `-vv` → output muito maior; **considerar não filtrar** ou usar maxLines maior
 - [x] `--co` (collect-only) → comportamento diferente, passthrough
 - [x] `is_error: true` (exit code 1+ = falha de teste) → **NÃO** passthrough automático aqui — pytest exit 1 é "tests failed", e o user PRECISA do output filtrado pra entender. Esse é caso especial onde `is_error: true` ainda merece filtro.
-  - Ver `commandSemantics.ts` no claudio — ele sabe que pytest exit 1 é "tests failed", não "comando falhou".
+  - Ver `commandSemantics.ts` no claudin — ele sabe que pytest exit 1 é "tests failed", não "comando falhou".
 - [ ] `--lf` (last failed) → output curto, passthrough
 - [ ] `-x` (stop at first failure) → output curto, passthrough
 - [ ] **Doctests** interleaved → não testado, provavelmente OK

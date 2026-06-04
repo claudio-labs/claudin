@@ -5,21 +5,21 @@
 
 ## Contexto
 
-Trazer para o claudio a ideia central do [rtk (Rust Token Killer)](https://github.com/rtk-ai/rtk): filtrar a saída de comandos shell **antes** de enviá-la ao modelo, usando regras específicas por comando, para economizar tokens.
+Trazer para o claudin a ideia central do [rtk (Rust Token Killer)](https://github.com/rtk-ai/rtk): filtrar a saída de comandos shell **antes** de enviá-la ao modelo, usando regras específicas por comando, para economizar tokens.
 
-Hoje o claudio tem um `toolResultSummarizer` (`src/utils/toolResultSummarizer.ts`) que comprime saídas grandes — mas é **reativo por threshold** e **agnóstico ao comando**. A proposta é adicionar um filtro **proativo** e **command-aware** que rode antes do summarizer.
+Hoje o claudin tem um `toolResultSummarizer` (`src/utils/toolResultSummarizer.ts`) que comprime saídas grandes — mas é **reativo por threshold** e **agnóstico ao comando**. A proposta é adicionar um filtro **proativo** e **command-aware** que rode antes do summarizer.
 
 ## Por que vale o discovery (e não cair direto no código)
 
 - Muitas decisões abertas que mudam o escopo em ordens de grandeza (TOML vs JSON, filtros de projeto vs só global, native filters vs pipeline declarativo).
 - Risco real de regressão: filtro mal calibrado engole stack trace, mascara warning relevante, ou trunca JSON.
-- Sem dado nenhum sobre quais comandos realmente dominam o uso de Bash em sessões claudio reais — pode ser que a long tail seja maior que os top-10 do rtk.
+- Sem dado nenhum sobre quais comandos realmente dominam o uso de Bash em sessões claudin reais — pode ser que a long tail seja maior que os top-10 do rtk.
 
 ## Arquivos
 
 | Arquivo | O que tem |
 |---|---|
-| [`analysis.md`](analysis.md) | O que já sabemos: problema, estado atual do claudio, prior art do rtk, pontos de integração concretos no código |
+| [`analysis.md`](analysis.md) | O que já sabemos: problema, estado atual do claudin, prior art do rtk, pontos de integração concretos no código |
 | [`open-questions.md`](open-questions.md) | Decisões abertas (formato, escopo, trust, default on/off) + plano de validação Fase 0 |
 | [`commands/`](commands/README.md) | Catálogo de comandos compressíveis — um arquivo por comando candidato com sample output, sinal vs ruído, estratégia, edge cases |
 | [`optimization-matrix.md`](optimization-matrix.md) | **Matriz consolidada P/R/M/D por comando** — tabela mestre com cada estratégia aplicável e seu ROI. Saída direta pra spec da v1. |
@@ -39,7 +39,7 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 1. **Usuário responder as 5 perguntas em [`open-questions.md`](open-questions.md)** — formato (TS+JSON vs TOML), escopo v1 (3 nativos + 7 declarativos?), filtros de projeto, default on/off, comando `/savings`.
 2. **Spec detalhada em `docs/plans/bash-output-filter.md`** com base nas respostas + tier ranking medido + design do pipeline (já speccado em `validation/pipeline.ts`).
 3. **Tier 1.5 vira backlog** — comandos sem dados reais ficam como follow-up:
-   - Via Fase 0 telemetria (medir uso real em produção via `claudio_bash_command_first_verb` event)
+   - Via Fase 0 telemetria (medir uso real em produção via `claudin_bash_command_first_verb` event)
    - Via installs locais conforme demanda
    - Via PRs de comunidade que tenham os tools instalados
 4. **MVP da v1 implementa Tier 1 validado** (~20 comandos com ROI medido) — `validation/pipeline.ts` é literalmente a base.
@@ -58,7 +58,7 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 | Data | Decisão | Quem | Por quê |
 |------|---------|------|---------|
 | 2026-05-05 | `git diff` rebaixado pra Tier 2 | discovery | Medição: 6.677 bytes → ~6.400 (4% redução). Diff é puro sinal, só index hashes removíveis. |
-| 2026-05-05 | `find` rebaixado pra Tier 2 | discovery | Medição: user-filtered já é puro sinal (0% redução). claudio tem `GlobTool` dedicado. |
+| 2026-05-05 | `find` rebaixado pra Tier 2 | discovery | Medição: user-filtered já é puro sinal (0% redução). claudin tem `GlobTool` dedicado. |
 | 2026-05-05 | `docker ps` rebaixado pra Tier 2 | discovery | Medição: 30% redução real vs 80% reportado por rtk. Nomes/imagens/portas incompressíveis. |
 | 2026-05-05 | `bun install` excluído do conjunto built-in | discovery | Output já máximo compacto (96 bytes pra 505 packages). Filtro só adicionaria overhead. |
 | 2026-05-05 | `git log` confirmado Tier 1 com Opção A (`--oneline`) | discovery | Medição: 9.220 bytes → 680 bytes = **92% redução**. ROI mais alto medido. |
@@ -75,7 +75,7 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 | 2026-05-05 | `git commit` Tier 1 com `match_output` agressivo | discovery | rtk colapsa pra `ok HASH`. Adoção de Opção A: ~90-99% redução, ganho cumulativo (commits são frequentes). |
 | 2026-05-05 | `git push` Tier 1 com Opção B (preserva PR URL) | discovery | rtk colapsa pra `ok branch -> branch`; preferimos preservar `remote:` warnings + PR creation URL. ~80% redução, mais segurança que rtk. |
 | 2026-05-05 | `unless` clause é a feature crítica de segurança | discovery | Confirmado em git-commit (hooks failure), git-push (rejection), terraform (apply errors), mvn/gradle (build failed). Engolir error sem `unless` quebra workflow. |
-| 2026-05-05 | `cat`/`head`/`tail`/`read` movidos pra zero-ROI skiplist | discovery | Output é file content puro. claudio tem FileReadTool. summarizer cobre big files via threshold. |
+| 2026-05-05 | `cat`/`head`/`tail`/`read` movidos pra zero-ROI skiplist | discovery | Output é file content puro. claudin tem FileReadTool. summarizer cobre big files via threshold. |
 | 2026-05-05 | `git add` movido pra zero-ROI skiplist | discovery | Silent on success no caso normal. Cumulative win <1KB/sessão. |
 | 2026-05-05 | `rg` (ripgrep) movido pra zero-ROI skiplist | discovery | Já compacto by design — 564 bytes pra 7 matches. Filter só faz sentido pra `grep` legacy com paths absolutos. |
 | 2026-05-05 | `cargo test` Tier 1 com `match_output` all-passed | discovery | Compile lines + test ... ok lines = 95%+ noise. Same approach que pytest. Filter delega `--no-run` pro cargo-build. |
@@ -102,6 +102,6 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 - Projeto rtk: `/home/viudes/projects/rtk/` (clone local)
 - rtk pipeline declarativo: `src/core/toml_filter.rs`
 - rtk trust system: `src/hooks/trust.rs`
-- claudio summarizer: `src/utils/toolResultSummarizer.ts`
-- claudio chokepoint: `src/utils/toolResultStorage.ts:225` (`processToolResultBlock`)
-- claudio Bash mapeamento: `src/tools/BashTool/BashTool.tsx:563`
+- claudin summarizer: `src/utils/toolResultSummarizer.ts`
+- claudin chokepoint: `src/utils/toolResultStorage.ts:225` (`processToolResultBlock`)
+- claudin Bash mapeamento: `src/tools/BashTool/BashTool.tsx:563`

@@ -14,7 +14,7 @@ Esses 9 git subcommands têm output **já compacto** por design (1 entrada por l
 
 ## Cada comando — sample real
 
-### `git branch -a` (1.202 bytes, claudio repo)
+### `git branch -a` (1.202 bytes, claudin repo)
 
 ```
 * fix/user-agent-openai-shim
@@ -41,8 +41,8 @@ v0.1.8
 ### `git remote -v` (131 bytes)
 
 ```
-origin	ssh://git@git.house.server:2222/viudes/claudio.git (fetch)
-origin	ssh://git@git.house.server:2222/viudes/claudio.git (push)
+origin	ssh://git@git.house.server:2222/viudes/claudin.git (fetch)
+origin	ssh://git@git.house.server:2222/viudes/claudin.git (push)
 ```
 
 2 linhas por remote. Mínimo.
@@ -65,7 +65,7 @@ diff.algorithm=histogram
 
 ```
 a200d7d HEAD@{0}: commit: fix(providers): retry transient 404s
-eed74e1 HEAD@{1}: commit: fix(providers): use claudio branding
+eed74e1 HEAD@{1}: commit: fix(providers): use claudin branding
 bb98dbf HEAD@{2}: reset: moving to HEAD
 3c1ce42 HEAD@{5}: pull --rebase origin main (finish): returning to refs/heads/main
 ...
@@ -76,8 +76,8 @@ Formato `hash HEAD@{N}: action: message` — já compacto. Cada linha é coorden
 ### `git worktree list` (197 bytes)
 
 ```
-/home/viudes/projects/claudio                                  a200d7d [fix/user-agent-openai-shim]
-/home/viudes/projects/claudio/.claude/worktrees/agent-ab5c48be aad73b1 [worktree-agent-ab5c48be]
+/home/viudes/projects/claudin                                  a200d7d [fix/user-agent-openai-shim]
+/home/viudes/projects/claudin/.claude/worktrees/agent-ab5c48be aad73b1 [worktree-agent-ab5c48be]
 ```
 
 1 worktree por linha. Compacto.

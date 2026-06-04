@@ -133,4 +133,4 @@ Versão alternativa sem strip do code:
 
 1. **`mypy` é compacto by design** — formato uniforme `path:line: severity: msg [code]`.
 2. **`match_output` "Success"** é o win principal.
-3. **Tier 1.5 baixa prioridade** — frequência depende do user base Python claudio.
+3. **Tier 1.5 baixa prioridade** — frequência depende do user base Python claudin.

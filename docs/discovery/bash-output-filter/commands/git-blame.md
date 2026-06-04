@@ -4,7 +4,7 @@
 **Família:** git
 **Tier:** 1 (validado)
 **Estratégia provável:** declarative (replace do block author+timezone)
-**Status:** **VALIDATED** — sample real claudio repo
+**Status:** **VALIDATED** — sample real claudin repo
 **Estimated reduction:** **25%** (medido)
 
 ---
@@ -12,9 +12,9 @@
 ## Saída crua representativa (REAL: README.md head -30, 2.867 bytes)
 
 ```
-^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudio
+^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   1) # Claudin
 ^b8dc2bb (Viudes 2026-04-29 18:08:59 -0300   2) 
-23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Claudio is a coding-agent CLI for cloud and local model providers.
+23551ecd (Viudes 2026-05-02 11:28:25 -0300   3) Claudin is a coding-agent CLI for cloud and local model providers.
 ... (mais linhas)
 ```
 
@@ -55,9 +55,9 @@ Cada linha tem `^?hash (Author Name YYYY-MM-DD HH:MM:SS +TZ N)` ~50 chars de met
 **Saída esperada (Amostra 1, 25% redução):**
 
 ```
-^b8dc2bb 2026-04-29 1) # Claudio
+^b8dc2bb 2026-04-29 1) # Claudin
 ^b8dc2bb 2026-04-29 2) 
-23551ecd 2026-05-02 3) Claudio is a coding-agent CLI for cloud and local model providers.
+23551ecd 2026-05-02 3) Claudin is a coding-agent CLI for cloud and local model providers.
 ```
 
 ---

@@ -1,4 +1,4 @@
-# 07-deep — Tree-sitter AST edits: omp vs Claudio
+# 07-deep — Tree-sitter AST edits: omp vs Claudin
 
 > Aprofundamento do insight #7. Pesquisa, não implementação.
 
@@ -6,8 +6,8 @@
 
 - **omp** já roda em produção um par de tools complementares: `Replace` (string-edit clássico, fuzzy whitespace) e `AstEdit` (ast-grep nativo, codemods estruturais). As duas convivem; o prompt de `AstEdit` instrui explicitamente: *"For one-off local text edits, prefer the Edit tool."*
 - O motor AST mora em Rust (`crates/pi-ast` + `crates/pi-natives/src/ast.rs`), exposto a TS via NAPI (`@oh-my-pi/pi-natives`). 55 grammars tree-sitter linkadas estaticamente no `.node`.
-- **Claudio** só usa tree-sitter hoje para análise de segurança de Bash (`src/utils/bash/treeSitterAnalysis.ts`, via NAPI nativo). `FileEditTool` é 100% string match + normalização de aspas curvas + fuzzy whitespace via `findActualString` — nenhum AST.
-- Conclusão pragmática: a posição correta para Claudio espelha omp — **adicionar um novo tool `AstEditTool` em vez de inflar `FileEditTool`**. Modelo continua escolhendo `Edit` para mudanças locais e `AstEdit` para codemods/refactors. Stack proposto: `web-tree-sitter` (WASM) com lazy-load por extensão, não napi.
+- **Claudin** só usa tree-sitter hoje para análise de segurança de Bash (`src/utils/bash/treeSitterAnalysis.ts`, via NAPI nativo). `FileEditTool` é 100% string match + normalização de aspas curvas + fuzzy whitespace via `findActualString` — nenhum AST.
+- Conclusão pragmática: a posição correta para Claudin espelha omp — **adicionar um novo tool `AstEditTool` em vez de inflar `FileEditTool`**. Modelo continua escolhendo `Edit` para mudanças locais e `AstEdit` para codemods/refactors. Stack proposto: `web-tree-sitter` (WASM) com lazy-load por extensão, não napi.
 
 ---
 
@@ -28,7 +28,7 @@
 
 - `packages/coding-agent/src/tools/ast-edit.ts:1-543` — `AstEditTool` (zod schema com `ops: [{pat, out}]` + `paths: string[]`).
 - Prompt em `packages/coding-agent/src/prompts/tools/ast-edit.md:1-39` — descreve metavars (`$NAME`, `$$$ARGS`), regras de identidade do mesmo `$A` em dois lugares, e o critério de quando escolher cada tool.
-- Coexiste com `Replace` (`prompts/tools/replace.md`) — params `{ path, edits[] }`, exigência de unicidade de `old_text`, `all: true` para multi-match. Quase o mesmo contrato do `FileEditTool` de Claudio.
+- Coexiste com `Replace` (`prompts/tools/replace.md`) — params `{ path, edits[] }`, exigência de unicidade de `old_text`, `all: true` para multi-match. Quase o mesmo contrato do `FileEditTool` de Claudin.
 
 ### Custo no binário
 
@@ -36,7 +36,7 @@
 
 ---
 
-## Claudio: `FileEditTool` hoje
+## Claudin: `FileEditTool` hoje
 
 ### Contrato
 
@@ -64,7 +64,7 @@
 - Apenas um `.test.ts`: `FileEditTool.diagnostics.test.ts`. Cobre o *contrato de injeção de diagnósticos LSP pós-edit* (linhas 1-60), não a lógica de match/edit. O próprio comentário do arquivo (linha 4-18) confirma: "We do NOT exercise FileEditTool.call directly here. Other LSP tests in the same shard globally mock fs and fs/promises, which leaks across files…".
 - Lógica de match (replace_all, fuzzy whitespace, quote normalization, mtime-staleness) atualmente não tem teste unitário direto no diretório. As validações vivem por inspeção do `errorCode` retornado em integração — superfície coberta de fato pelos `bugfixes.test.ts` e suites E2E, não localmente.
 
-### Tree-sitter atual em Claudio
+### Tree-sitter atual em Claudin
 
 - Já existe binding NAPI tree-sitter consumido em `src/utils/bash/treeSitterAnalysis.ts` e `src/tools/BashTool/bashSecurity.ts` (~10 referências). Usado *exclusivamente* para análise de segurança de comandos Bash — não para edição.
 - Não há dependência `tree-sitter`/`web-tree-sitter` em `package.json`. O backend tree-sitter Bash atual vem provavelmente como native addon stubado (pre-scan do `scripts/build.ts` substitui imports ausentes).
@@ -93,7 +93,7 @@ Operações que **não** entram no MVP: `move_function`, `extract_variable`, `in
 
 ### Linguagens MVP
 
-- **TypeScript / TSX** — superfície primária do próprio repo Claudio (`src/**/*.ts`/`.tsx`); valida o tool em dogfood.
+- **TypeScript / TSX** — superfície primária do próprio repo Claudin (`src/**/*.ts`/`.tsx`); valida o tool em dogfood.
 - **Python** — segunda linguagem mais comum em codebases de usuários; grammar estável.
 - **JSON** — `add_import`/`remove_import` não se aplicam, mas `rename_symbol` (renomear key) e `replace_value` cobrem casos como `package.json`/configs.
 
@@ -104,7 +104,7 @@ Grammars deferidas: Rust, Go, Markdown (precisam ajuste de pattern strictness pa
 **Motivos para escolher WASM em vez de NAPI nativo:**
 
 1. **Single-file bundle.** CLAUDE.md exige bundle único `dist/cli.mjs`. NAPI addons quebram esse contrato (precisam de `.node` por plataforma + pre-builts). WASM é só um `.wasm` que pode ser embutido base64 ou carregado de `node_modules`.
-2. **Cross-platform sem CI matrix.** WASM roda igual em macOS arm64, Linux x64, Windows. O Bash tree-sitter atual de Claudio já paga o custo de NAPI; adicionar mais não-Bash via NAPI multiplica esse custo.
+2. **Cross-platform sem CI matrix.** WASM roda igual em macOS arm64, Linux x64, Windows. O Bash tree-sitter atual de Claudin já paga o custo de NAPI; adicionar mais não-Bash via NAPI multiplica esse custo.
 3. **Lazy-load barato.** `Parser.Language.load('tree-sitter-typescript.wasm')` é chamado on-demand. Cold start do CLI não paga nada para tools que não rodam.
 
 **Tamanho estimado (web-tree-sitter v0.25, dados públicos):**
@@ -114,7 +114,7 @@ Grammars deferidas: Rust, Go, Markdown (precisam ajuste de pattern strictness pa
 - `tree-sitter-python.wasm`: ~600 KB.
 - `tree-sitter-json.wasm`: ~80 KB.
 
-Total MVP descomprimido ~2.3 MB; gzip ~700 KB. Distribuído como arquivos separados em `dist/wasm/` (não embutidos em `cli.mjs`) — o launcher `bin/claudio` já resolve `dist/` relativo, então não há regressão de "single-file" do ponto de vista de instalação npm.
+Total MVP descomprimido ~2.3 MB; gzip ~700 KB. Distribuído como arquivos separados em `dist/wasm/` (não embutidos em `cli.mjs`) — o launcher `bin/claudin` já resolve `dist/` relativo, então não há regressão de "single-file" do ponto de vista de instalação npm.
 
 **Lazy-load por extensão:**
 
@@ -145,12 +145,12 @@ Cache por linguagem em `Map<string, Language>` no escopo do módulo. Não há TT
    - Prompt do `FileEditTool` ganha uma frase reciprocal mencionando AstEdit para refactors multi-arquivo. Frase curta, não inflar.
    - Telemetria local: contar `astEdit_fallback_to_edit` quando AstEdit retorna 0 matches e a próxima chamada do modelo é um Edit no mesmo path. Sinal pra ajustar prompt.
 3. **Parse errors silenciosos.** ast-grep tolera (omp loga em `parse_errors`). Replicar: retornar `parseErrors: string[]` no result em vez de mascarar. Modelo aprende a re-tentar com pattern diferente.
-4. **Bundle inflado para usuários que nunca rodam o tool.** WASM em `dist/wasm/` resolve — não está no `cli.mjs`. Mas usuários reportarão "claudio cresceu 2 MB no `npm i`". Documentar no CHANGELOG; opcional gate `feature('AST_EDIT')` em `scripts/build.ts` para builds enxutos.
+4. **Bundle inflado para usuários que nunca rodam o tool.** WASM em `dist/wasm/` resolve — não está no `cli.mjs`. Mas usuários reportarão "claudin cresceu 2 MB no `npm i`". Documentar no CHANGELOG; opcional gate `feature('AST_EDIT')` em `scripts/build.ts` para builds enxutos.
 
 ### Não-objetivos
 
 - **Não substituir `FileEditTool`.** Ele continua sendo a ferramenta padrão para edição. AST é especializada.
-- **Não implementar refactors LSP-grade.** "rename across files com resolução de escopo" não é objetivo do MVP — para isso existe LSP rename e está fora do escopo (a infra LSP de Claudio já é usada para diagnostics, não para refactor).
+- **Não implementar refactors LSP-grade.** "rename across files com resolução de escopo" não é objetivo do MVP — para isso existe LSP rename e está fora do escopo (a infra LSP de Claudin já é usada para diagnostics, não para refactor).
 - **Não cobrir 50 linguagens.** Começar com 3, expandir por demanda real.
 - **Não tocar no `BashTool` tree-sitter atual.** Stack diferente (NAPI, propósito de segurança), não consolidar agora.
 
@@ -164,10 +164,10 @@ Cache por linguagem em `Map<string, Language>` no escopo do módulo. Não há TT
 - omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/ast-edit.ts`
 - omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/ast-edit.md`
 - omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/replace.md`
-- claudio: `/home/viudes/projects/claudio/src/tools/FileEditTool/FileEditTool.ts:87-610`
-- claudio: `/home/viudes/projects/claudio/src/tools/FileEditTool/utils.ts` (`findActualString`, `normalizeQuotes`)
-- claudio: `/home/viudes/projects/claudio/src/tools/FileEditTool/types.ts`
-- claudio: `/home/viudes/projects/claudio/src/tools/FileEditTool/prompt.ts`
-- claudio: `/home/viudes/projects/claudio/src/tools/FileEditTool/FileEditTool.diagnostics.test.ts` (única coverage local)
-- claudio: `/home/viudes/projects/claudio/src/utils/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
-- spec original: `/home/viudes/projects/claudio/docs/discovery/ohmypi/07-tree-sitter-ast-edits.md`
+- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/FileEditTool.ts:87-610`
+- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/utils.ts` (`findActualString`, `normalizeQuotes`)
+- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/types.ts`
+- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/prompt.ts`
+- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/FileEditTool.diagnostics.test.ts` (única coverage local)
+- claudin: `/home/viudes/projects/claudin/src/utils/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
+- spec original: `/home/viudes/projects/claudin/docs/discovery/ohmypi/07-tree-sitter-ast-edits.md`

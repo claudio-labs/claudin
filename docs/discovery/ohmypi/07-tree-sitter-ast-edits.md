@@ -4,7 +4,7 @@
 
 `crates/pi-natives/` empacota tree-sitter com 50+ grammars. Edits e refactors usam AST quando disponível, fallback para texto.
 
-## Por que importa para Claudio
+## Por que importa para Claudin
 
 - `FileEditTool` hoje é match exato de string com replace_all opcional + sed-parser.
 - Falha modos conhecidos:
@@ -28,5 +28,5 @@
 ## Referência
 
 - `crates/pi-natives/src/ast*` (omp)
-- `src/tools/FileEditTool/` (claudio)
+- `src/tools/FileEditTool/` (claudin)
 - https://github.com/tree-sitter/tree-sitter

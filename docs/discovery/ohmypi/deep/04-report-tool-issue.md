@@ -15,13 +15,13 @@ settings, (3) o "spam" do modelo é absorvido com `Noted, thanks!` e
 silent-drop para tools fora do allowlist — sem rate-limit, sem custo no
 loop, sem erro de volta.
 
-Para Claudio o ganho é simétrico: hoje o feedback flui só humano→agente,
+Para Claudin o ganho é simétrico: hoje o feedback flui só humano→agente,
 e o agente jamais sinaliza "a descrição da tool X me confundiu" ou "o
 filtro de bash escondeu sinal que eu precisava". Encaixa em
-`src/tools/ReportToolIssueTool/`, grava em `~/.claudio/projects/<dir>/memory/tool-issues/`
+`src/tools/ReportToolIssueTool/`, grava em `~/.claudin/projects/<dir>/memory/tool-issues/`
 (uma linha JSONL por relato, NÃO `.md` por arquivo — relatos são append-only
 e não devem virar memórias indexadas), atrás de feature flag
-`REPORT_TOOL_ISSUE`. Sem push remoto, sem consent dialog — Claudio é
+`REPORT_TOOL_ISSUE`. Sem push remoto, sem consent dialog — Claudin é
 local-only por design. Privacidade é o ponto crítico (paths/snippets
 podem vazar no campo `report`), tratado por (a) prompt que proíbe PII e
 (b) sanitização defensiva no execute path antes do write.
@@ -98,7 +98,7 @@ Não existe rate-limit explícito. As defesas são todas estruturais:
 Ou seja, o design aposta em: "let it be noisy locally; sample/analyze
 offline; o ship é gated por consent + batch + cooldown".
 
-## Onde encaixar em Claudio
+## Onde encaixar em Claudin
 
 ### Estrutura sugerida
 
@@ -149,9 +149,9 @@ function buildSchema(activeToolNames: readonly string[]) {
 }
 ```
 
-A categoria `filter_hid_signal` é específica de Claudio (engata com
+A categoria `filter_hid_signal` é específica de Claudin (engata com
 `bashOutputFilterEnabled` — feedback loop direto sobre quando o filtro
-prejudica). `permission_friction` capta o que omp não tem mas Claudio
+prejudica). `permission_friction` capta o que omp não tem mas Claudin
 tem muito (plan mode hard gate, sandbox).
 
 A construção do enum por turno espelha omp: a factory recebe a lista
@@ -160,7 +160,7 @@ e o enum é snapshot. Drift (MCP carregando depois) cai no silent-drop.
 
 ### Destino: JSONL append-only
 
-**Recomendado:** JSONL append-only em `~/.claudio/projects/<dir>/memory/tool-issues.jsonl`,
+**Recomendado:** JSONL append-only em `~/.claudin/projects/<dir>/memory/tool-issues.jsonl`,
 **NÃO** um `.md` por relato dentro de `memory/`.
 
 Justificativa:
@@ -181,7 +181,7 @@ Justificativa:
    gitignorado, já tem o ciclo de vida certo), só não como `.md`
    indexado.
 
-Alternativa: `~/.claudio/projects/<dir>/tool-issues.jsonl` (fora de
+Alternativa: `~/.claudin/projects/<dir>/tool-issues.jsonl` (fora de
 `memory/`). Trade-off: perde a co-localização com o resto da memória
 do projeto, ganha separação clara de domínio. Eu ficaria com o
 caminho dentro de `memory/` mas como `.jsonl` plano — o memdir scan
@@ -209,11 +209,11 @@ linhas JSONL ficam tranquilamente abaixo disso).
 
 ### Privacidade
 
-Este é o ponto onde Claudio diverge fundamentalmente de omp. omp pode
-shippar pro `qa.omp.sh`; Claudio não shippa pra lugar nenhum. Mas
+Este é o ponto onde Claudin diverge fundamentalmente de omp. omp pode
+shippar pro `qa.omp.sh`; Claudin não shippa pra lugar nenhum. Mas
 mesmo só gravando localmente, o relato é texto livre que o modelo
 escreveu — pode conter path absoluto, snippet de código, nome de função
-proprietária, conteúdo de `~/.claudio/settings.json` (se um relato for
+proprietária, conteúdo de `~/.claudin/settings.json` (se um relato for
 sobre `ConfigTool`).
 
 Defesas em camadas:
@@ -235,9 +235,9 @@ Defesas em camadas:
    garantindo que `ReportToolIssueTool` nunca chama `fetch` é barato e
    à prova de regressão.
 4. **Sem `installId`/`hostname`/`platform` no record** — diferente do
-   payload de push omp (`report-tool-issue.ts:354-362`), Claudio não
+   payload de push omp (`report-tool-issue.ts:354-362`), Claudin não
    precisa fingerprint nenhum. `sessionId` é interno e suficiente para
-   correlacionar com `~/.claudio/logs/`.
+   correlacionar com `~/.claudin/logs/`.
 
 Conflito direto com `verify:privacy`: nenhum. O script
 (`scripts/verify-no-phone-home.ts:6-18`) checa o bundle por strings
@@ -262,10 +262,10 @@ Quando ON, a tool é injetada em todos os agentes (main + sub-agents
 via `AgentTool`), espelhando omp (`tools/index.ts:516-527`). Nunca é
 sujeita a tool selection no prompt — é meta-infra.
 
-Setting de runtime: `~/.claudio/settings.json` ganha
+Setting de runtime: `~/.claudin/settings.json` ganha
 `reportToolIssue.enabled: boolean` (default `false` mesmo com flag
 ON, opt-in explícito) e `reportToolIssue.path: string` (override do
-destino do JSONL, default `~/.claudio/projects/<dir>/memory/tool-issues.jsonl`).
+destino do JSONL, default `~/.claudin/projects/<dir>/memory/tool-issues.jsonl`).
 Não precisa de `consent` enum (omp precisa porque ship é remoto).
 
 ### Como o humano consome
@@ -277,15 +277,15 @@ Três caminhos, dos quais o (1) é o mvp:
    `--category filter_hid_signal`. Lê o JSONL, agrupa por tool+category,
    imprime contagem + amostras. Vive em `src/commands/tool-issues/`.
 2. **`grep` manual no JSONL** — sempre disponível, formato é texto.
-3. **CLI subcommand `claudio tool-issues`** (out of REPL) — mais
+3. **CLI subcommand `claudin tool-issues`** (out of REPL) — mais
    adiante, para análise em batch. Pode entrar no mesmo subcomando
-   tipo `claudio tool-issues export --json`.
+   tipo `claudin tool-issues export --json`.
 
 Não há equivalente ao `omp grievances push` — não há push, ponto.
 
 ### Risco: modelo abusar da tool para "reclamar"
 
-Real, mas as mitigações herdadas de omp + ajustes pra Claudio cobrem:
+Real, mas as mitigações herdadas de omp + ajustes pra Claudin cobrem:
 
 1. **Custo no modelo é mínimo** — tool call → resposta curta
    ("Noted.") → próximo turno. Modelo não "ganha" nada chamando, então
@@ -299,7 +299,7 @@ Real, mas as mitigações herdadas de omp + ajustes pra Claudio cobrem:
 4. **Janela de 500 chars no description** — limita o blast radius.
 5. **Quota opcional futura** — se observarmos abuse na prática,
    adicionar contador em memória "max N reports/turno" e silent-drop
-   o resto é trivial. omp não precisou; provavelmente Claudio também
+   o resto é trivial. omp não precisou; provavelmente Claudin também
    não.
 6. **Custo de tokens é real**: cada tool call gasta ~150 tokens
    ida+volta. A 10 reports/sessão isso é ~1.5k tokens, irrelevante
@@ -309,7 +309,7 @@ Real, mas as mitigações herdadas de omp + ajustes pra Claudio cobrem:
 
 O risco maior, na verdade, é o oposto: modelo NUNCA chamar a tool
 mesmo quando deveria. omp resolveu isso colocando a section no
-prompt como `<critical>` (system-prompt.md:195-197). Claudio deve
+prompt como `<critical>` (system-prompt.md:195-197). Claudin deve
 fazer igual.
 
 ## Arquivos relevantes (refs)
@@ -322,11 +322,11 @@ omp:
 - `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/config/settings-schema.ts:2716-2759`
 - `/home/viudes/projects/oh-my-pi/packages/coding-agent/test/tools/report-tool-issue-consent.test.ts`
 
-Claudio (onde encaixar):
-- `/home/viudes/projects/claudio/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
-- `/home/viudes/projects/claudio/src/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
-- `/home/viudes/projects/claudio/src/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
-- `/home/viudes/projects/claudio/src/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
-- `/home/viudes/projects/claudio/scripts/build.ts` — featureFlags (adicionar `REPORT_TOOL_ISSUE`)
-- `/home/viudes/projects/claudio/scripts/verify-no-phone-home.ts:6-18` — banlist (nada a adicionar enquanto for local-only)
-- `/home/viudes/projects/claudio/src/tools/BashTool/` — exemplo canônico de estrutura de tool
+Claudin (onde encaixar):
+- `/home/viudes/projects/claudin/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
+- `/home/viudes/projects/claudin/src/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
+- `/home/viudes/projects/claudin/src/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
+- `/home/viudes/projects/claudin/src/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
+- `/home/viudes/projects/claudin/scripts/build.ts` — featureFlags (adicionar `REPORT_TOOL_ISSUE`)
+- `/home/viudes/projects/claudin/scripts/verify-no-phone-home.ts:6-18` — banlist (nada a adicionar enquanto for local-only)
+- `/home/viudes/projects/claudin/src/tools/BashTool/` — exemplo canônico de estrutura de tool

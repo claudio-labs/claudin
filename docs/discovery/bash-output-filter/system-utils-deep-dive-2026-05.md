@@ -49,7 +49,7 @@ Conteúdo literal do arquivo. Não há ruído estrutural.
 
 **Estratégia RTK:** handler [`cmds/system/read.rs`](../../../../rtk/src/cmds/system/read.rs) implementa `rtk read` com `FilterLevel` opcional + `max_lines/tail_lines`. RTK **não filtra `cat` automaticamente** — substitui pelo subcomando `rtk read` apenas quando o usuário escolhe.
 
-**Recomendação Claudio:** **SKIP**. Já documentado em [`commands/cat.md`](./commands/cat.md). Claudio tem `FileReadTool` dedicado; `cat` no Bash é fallback raro e o summarizer global já cobre output >10KB.
+**Recomendação Claudin:** **SKIP**. Já documentado em [`commands/cat.md`](./commands/cat.md). Claudin tem `FileReadTool` dedicado; `cat` no Bash é fallback raro e o summarizer global já cobre output >10KB.
 
 **matchCommandReject obrigatório:** N/A (sem filter).
 
@@ -76,7 +76,7 @@ head -n 20 README.md
 
 **Estratégia RTK:** sem spec dedicada (`read.rs` aceita `--tail-lines`/`--max-lines` no subcomando `rtk read`).
 
-**Recomendação Claudio:** **SKIP**. O usuário já escolheu o tamanho. Filtrar seria duplo-corte.
+**Recomendação Claudin:** **SKIP**. O usuário já escolheu o tamanho. Filtrar seria duplo-corte.
 
 **ROI estimado:** BAIXO — output já é limitado por design.
 
@@ -97,7 +97,7 @@ tail -f app.log     # follow
 
 **Estratégia RTK:** sem spec dedicada. `rtk log` (handler [`cmds/system/log_cmd.rs`](../../../../rtk/src/cmds/system/log_cmd.rs)) faz dedup com normalização (TIMESTAMP, UUID, HEX, NUM, PATH) — mas o usuário precisa pedir explicitamente.
 
-**Recomendação Claudio:** **SKIP** no v1. `tail -f` nem entra em filter (stream contínuo). Para `tail` sobre logs com repetição podemos considerar v2: um modo opcional de dedup similar ao `log_cmd.rs`, mas só vale se medirmos volume real.
+**Recomendação Claudin:** **SKIP** no v1. `tail -f` nem entra em filter (stream contínuo). Para `tail` sobre logs com repetição podemos considerar v2: um modo opcional de dedup similar ao `log_cmd.rs`, mas só vale se medirmos volume real.
 
 **ROI estimado:** BAIXO — user já limitou o tamanho. Patrões repetitivos em logs ficam para um filter dedicado a `journalctl`/`dmesg`, não a `tail`.
 
@@ -127,7 +127,7 @@ find: './restricted': Permission denied
 
 **Estratégia RTK:** handler [`find_cmd.rs`](../../../../rtk/src/cmds/system/find_cmd.rs) usa `ignore::WalkBuilder` e agrupa por diretório — substitui o `find` nativo. Não há spec declarativa.
 
-**Recomendação Claudio:** **SKIP**. Doc detalhado em [`commands/find.md`](./commands/find.md) mediu **ROI ~0%** no uso real (usuários já filtram com `-not -path`). Claudio tem `GlobTool` dedicado. Manter passthrough; se aparecer demanda, reintroduzir como Tier-3.
+**Recomendação Claudin:** **SKIP**. Doc detalhado em [`commands/find.md`](./commands/find.md) mediu **ROI ~0%** no uso real (usuários já filtram com `-not -path`). Claudin tem `GlobTool` dedicado. Manter passthrough; se aparecer demanda, reintroduzir como Tier-3.
 
 **matchCommandReject obrigatório (se reintroduzir):** `-print0|-exec\b|-printf\b|-quit\b` para não tocar saídas estruturadas / NUL-separated.
 
@@ -167,7 +167,7 @@ tree src/
 
 **Estratégia RTK:** handler [`tree.rs`](../../../../rtk/src/cmds/system/tree.rs) injeta `-I <noise_dirs>` no comando antes de executar (command rewrite) e pós-processa removendo a linha de sumário. Reutiliza `NOISE_DIRS` de [`constants.rs`](../../../../rtk/src/cmds/system/constants.rs).
 
-**Recomendação Claudio:** **PORT** (declarativo + rewrite opcional). Spec mínima cobre 80% do ganho via `stripLinesMatching` + cap. Em v2 considerar `rewriteCommand` para injetar `-I` quando o usuário não passou `--all`/`-a`/`-I`.
+**Recomendação Claudin:** **PORT** (declarativo + rewrite opcional). Spec mínima cobre 80% do ganho via `stripLinesMatching` + cap. Em v2 considerar `rewriteCommand` para injetar `-I` quando o usuário não passou `--all`/`-a`/`-I`.
 
 **matchCommandReject obrigatório:** `--json\b|--xml\b|--noreport\b` (output estruturado ou já sem sumário) e `-J\b`.
 
@@ -215,7 +215,7 @@ wc file.py
 
 **Estratégia RTK:** handler [`wc_cmd.rs`](../../../../rtk/src/cmds/system/wc_cmd.rs) detecta `WcMode` (Full/Lines/Words/Bytes/Chars/Mixed), strip de prefixo comum em paths, e comprime para formato `30L 96W 978B`. **Não há TOML** — é parser custom.
 
-**Recomendação Claudio:** **SKIP** na v1. Output já é compacto (uma linha por arquivo) e fazer compressão equivalente exigiria handler dedicado. ROI insuficiente.
+**Recomendação Claudin:** **SKIP** na v1. Output já é compacto (uma linha por arquivo) e fazer compressão equivalente exigiria handler dedicado. ROI insuficiente.
 
 **matchCommandReject obrigatório (se um dia portar):** `--bytes\b|--max-line-length\b` quando combinado com flags machine-readable.
 
@@ -236,7 +236,7 @@ cat foo.json | jq '.users[] | select(.active)'
 
 ```
 {
-  "name": "claudio",
+  "name": "claudin",
   "version": "0.2.1",
   "dependencies": {
     "zod": "^4.0.0",
@@ -252,7 +252,7 @@ cat foo.json | jq '.users[] | select(.active)'
 
 **Estratégia RTK:** [`jq.toml`](../../../../rtk/src/filters/jq.toml) — `max_lines=40`, `truncate_lines_at=120`, `strip_ansi`, strip de linhas vazias. Modelo cru: cap duro de altura sem mexer no shape.
 
-**Recomendação Claudio:** **ADAPT**. O cap por linhas é seguro **só se preservarmos JSON parseável** — qualquer corte no meio do output gera JSON inválido. Solução: aplicar `maxLines` apenas com `onEmpty`/marker explícito ("output truncado, JSON pode estar incompleto"), e bloquear via `matchCommandReject` quando o usuário pedir output cru ou compacto.
+**Recomendação Claudin:** **ADAPT**. O cap por linhas é seguro **só se preservarmos JSON parseável** — qualquer corte no meio do output gera JSON inválido. Solução: aplicar `maxLines` apenas com `onEmpty`/marker explícito ("output truncado, JSON pode estar incompleto"), e bloquear via `matchCommandReject` quando o usuário pedir output cru ou compacto.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:-c|--compact-output|-r|--raw-output|-R|--raw-input|-j|--join-output|--slurp|-s|--tab|--seq)\b`. Em modos `-r`/`-j`/`-c` o output é uma única linha ou stream linha-a-linha — cortar quebra parsing.
 
@@ -307,7 +307,7 @@ efivarfs        128K  120K  4.0K  97% /sys/firmware/efi/efivars
 
 **Estratégia RTK:** [`df.toml`](../../../../rtk/src/filters/df.toml) — `max_lines=20`, `truncate_lines_at=80`, `strip_ansi=true`. Sem `strip_lines_matching` nem `match_output` — só guarda contra `df` em servidores com 100+ mounts (NFS farm, containers).
 
-**Recomendação Claudio:** **PORT** direto. Tradução 1:1 da spec TOML.
+**Recomendação Claudin:** **PORT** direto. Tradução 1:1 da spec TOML.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--output=|--json\b)` quando aplicável (df do `coreutils` aceita `--output=field,…` para CSV-like e plugins têm JSON).
 
@@ -355,7 +355,7 @@ du -h --max-depth=2 /var/log
 
 **Estratégia RTK:** [`du.toml`](../../../../rtk/src/filters/du.toml) — `max_lines=40`, `truncate_lines_at=120`, `strip_lines_matching=["^\s*$"]`.
 
-**Recomendação Claudio:** **PORT** direto. Cap de 40 linhas cobre o caso `du -h --max-depth=N` que é o uso comum.
+**Recomendação Claudin:** **PORT** direto. Cap de 40 linhas cobre o caso `du -h --max-depth=N` que é o uso comum.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--null|-0|--inodes)\b` (NUL-separated quebra contagem de linha; `--inodes` muda a semântica mas a forma é a mesma — manter no escopo).
 
@@ -409,7 +409,7 @@ Change: 2026-03-10 11:00:00.000000000 +0100
 
 **Estratégia RTK:** [`stat.toml`](../../../../rtk/src/filters/stat.toml) — strip de `Device:` e `Birth:`, blank lines, `truncate=120`, `max_lines=20`.
 
-**Recomendação Claudio:** **PORT** direto.
+**Recomendação Claudin:** **PORT** direto.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:-c|--format=|--printf=|--terse|-t)\b` — esses modos produzem output single-line formatado pelo usuário; nada para stripar.
 
@@ -469,7 +469,7 @@ round-trip min/avg/max/stddev = 13.8/14.0/14.2/0.2 ms
 
 **Estratégia RTK:** [`ping.toml`](../../../../rtk/src/filters/ping.toml) — `strip_lines_matching` cobre os 4 padrões acima + blank, e usa `tail_lines=4` para garantir as estatísticas. O test inclui caso de `Request timeout` em que erros sobrevivem porque o strip é por linha (ackq não toca lines que não matcham).
 
-**Recomendação Claudio:** **PORT** direto. Conjugar `stripLinesMatching` + `tailLines` exatamente como o TOML — note que `tailLines` no Claudio é aplicado **depois** do strip, então erros não-strippados que caíram fora das últimas 4 linhas seriam perdidos. **Cuidado:** confirmar a ordem do pipeline atual antes do PR; se necessário, usar `maxLines` em vez de `tailLines` para evitar engolir `Request timeout` em pings longos.
+**Recomendação Claudin:** **PORT** direto. Conjugar `stripLinesMatching` + `tailLines` exatamente como o TOML — note que `tailLines` no Claudin é aplicado **depois** do strip, então erros não-strippados que caíram fora das últimas 4 linhas seriam perdidos. **Cuidado:** confirmar a ordem do pipeline atual antes do PR; se necessário, usar `maxLines` em vez de `tailLines` para evitar engolir `Request timeout` em pings longos.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:-q|--quiet|-D\b|-O\b|-A\b)\b` — `-q` já produz só o sumário; nada para filtrar.
 
@@ -540,7 +540,7 @@ total size is 98,765  speedup is 77.31
 
 **Estratégia RTK:** [`rsync.toml`](../../../../rtk/src/filters/rsync.toml) — combina `strip_lines_matching` + `match_output` com `unless="error|failed|No such file"` (short-circuit para `ok (synced)`). Os testes confirmam que erros **não** são engolidos pelo short-circuit graças ao `unless`.
 
-**Recomendação Claudio:** **ADAPT**. O Claudio já suporta `matchOutput` com `unless` (ver [`linters.ts`](../../../src/outputFilter/Bash/filters/linters.ts) — `ruffCheck` usa o mesmo padrão). Adaptar para usar a regex `unless` reforçada (incluir também `Permission denied` e `code \d+`).
+**Recomendação Claudin:** **ADAPT**. O Claudin já suporta `matchOutput` com `unless` (ver [`linters.ts`](../../../src/outputFilter/Bash/filters/linters.ts) — `ruffCheck` usa o mesmo padrão). Adaptar para usar a regex `unless` reforçada (incluir também `Permission denied` e `code \d+`).
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--progress|-P|--info=progress2|-v{2,}|--itemize-changes|-i)\b` — `--progress` muda o formato (carriage returns, percentuais), e `-i`/`--itemize-changes` produz output estruturado que vale preservar.
 
@@ -625,7 +625,7 @@ Connection to host.example.com closed.
 
 **Estratégia RTK:** [`ssh.toml`](../../../../rtk/src/filters/ssh.toml) — todas as regex acima + `max_lines=200`, `truncate=120`. Sem `match_output` (não há "ok" universal num ssh).
 
-**Recomendação Claudio:** **PORT** com pequena melhoria: estender `^debug1:` para `^debug\d+:` para cobrir `-vv`/`-vvv`. Cap em 200 linhas é generoso e seguro.
+**Recomendação Claudin:** **PORT** com pequena melhoria: estender `^debug1:` para `^debug\d+:` para cobrir `-vv`/`-vvv`. Cap em 200 linhas é generoso e seguro.
 
 **matchCommandReject obrigatório:**
 - `(?:^|\s)(?:-T|-N|-q)\b` — `-q` já suprime warnings; `-N`/`-T` produz output mínimo
@@ -698,7 +698,7 @@ sudo dmesg -T --level=err,warn
 
 **Estratégia RTK:** **sem TOML dedicado**. RTK não tem `dmesg.toml` — passthrough nativo. Há overlap parcial com `log_cmd.rs` (handler `rtk log`) que faz dedup via normalização de timestamp/UUID/HEX/NUM/PATH, mas só quando o usuário invoca `rtk log` explicitamente.
 
-**Recomendação Claudio:** **ADAPT** — não há referência RTK direta, mas o padrão de `journalctl` em [`system.ts`](../../../src/outputFilter/Bash/filters/system.ts) serve de molde. Strip do prefixo de timestamp `^\[ *\d+\.\d+\] ` via `replace` ajuda dedup downstream e economiza ~20 chars/linha, mas perde info temporal. Decisão conservadora: **só strip blank + cap por linhas**, sem mexer no timestamp.
+**Recomendação Claudin:** **ADAPT** — não há referência RTK direta, mas o padrão de `journalctl` em [`system.ts`](../../../src/outputFilter/Bash/filters/system.ts) serve de molde. Strip do prefixo de timestamp `^\[ *\d+\.\d+\] ` via `replace` ajuda dedup downstream e economiza ~20 chars/linha, mas perde info temporal. Decisão conservadora: **só strip blank + cap por linhas**, sem mexer no timestamp.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--follow|-w|--json\b|-J)\b` — modo follow é stream, JSON é estruturado.
 
@@ -752,13 +752,13 @@ GITHUB_TOKEN=ghp_...
 
 **O que preservar:** tudo.
 
-**Cuidado crítico:** **secrets**. `env` em CI/local exibe `AWS_ACCESS_KEY_ID`, `GITHUB_TOKEN`, `OPENAI_API_KEY`, etc. O `rtk env_cmd.rs` faz mask em valores cujo nome bate com `(key|secret|password|token|credential|auth|private|jwt)`. Replicar isso no Claudio seria desejável **mas é decisão de produto**, não de filtro de output:
+**Cuidado crítico:** **secrets**. `env` em CI/local exibe `AWS_ACCESS_KEY_ID`, `GITHUB_TOKEN`, `OPENAI_API_KEY`, etc. O `rtk env_cmd.rs` faz mask em valores cujo nome bate com `(key|secret|password|token|credential|auth|private|jwt)`. Replicar isso no Claudin seria desejável **mas é decisão de produto**, não de filtro de output:
 - Se mascararmos, mudamos o contrato (usuário pediu `env`, recebe mascarado).
 - Se não mascararmos, o secret entra no histórico/contexto do modelo.
 
 **Estratégia RTK:** [`env_cmd.rs`](../../../../rtk/src/cmds/system/env_cmd.rs) categoriza vars (PATH/lang/cloud/tool/other), trunca valores >100 chars, mascara secrets. Substitui o `env` nativo.
 
-**Recomendação Claudio:** **SKIP** na v1. Não é problema de tokens, é problema de privacy — fora do escopo deste filtro. Open question separada: criar uma camada de masking de secrets aplicada **antes** de output entrar no contexto (cross-tool, não só Bash). Ver issue futura.
+**Recomendação Claudin:** **SKIP** na v1. Não é problema de tokens, é problema de privacy — fora do escopo deste filtro. Open question separada: criar uma camada de masking de secrets aplicada **antes** de output entrar no contexto (cross-tool, não só Bash). Ver issue futura.
 
 **matchCommandReject obrigatório (se um dia portar):** `(?:^|\s)(?:-0|--null|-u|--unset)\b` — `-0` é NUL-separated, `-u` muda semântica.
 
@@ -818,7 +818,7 @@ Mantemos hoje só o caminho `curl -v` (TLS/handshake stripping em [`network.ts`]
 
 ### Cobertura
 
-| Dimensão | RTK | Claudio | Gap |
+| Dimensão | RTK | Claudin | Gap |
 |---|---|---|---|
 | `curl -v` TLS/SSL/handshake | n/a (RTK injeta `-s`) | ✅ `curlV` strip | — |
 | Progress bar (`% Total %Received`) em `curl URL` sem `-s` | suprimido via `-s` automático | ❌ passa cru | ALTO |
@@ -870,7 +870,7 @@ Antes de implementar `curlBody`, abrir RFC no framework para essas extensões. S
 
 ## Cuidados especiais
 
-- **`find` tem ROI medido 0%** no uso real do Claudio (ver [`commands/find.md`](./commands/find.md) — usuários já filtram com `-not -path` e Claudio tem `GlobTool` dedicado). Não reintroduzir sem nova evidência.
+- **`find` tem ROI medido 0%** no uso real do Claudin (ver [`commands/find.md`](./commands/find.md) — usuários já filtram com `-not -path` e Claudin tem `GlobTool` dedicado). Não reintroduzir sem nova evidência.
 - **`jq` precisa preservar JSON parseável** em modos não-pretty. `matchCommandReject` deve cobrir `-c`/`--compact-output`/`-r`/`--raw-output`/`-j`/`--join-output`/`-R`/`--raw-input`/`-s`/`--slurp`. Em modo pretty default, `truncateLineAt` corta strings — aceitável porque o modelo lê, não consome.
 - **`ping`/`rsync` precisam preservar status final**. Para `ping`, manter `Request timeout` e `0 packets received`; para `rsync`, manter `rsync error:` e `Permission denied`. Em ambos, a regex `unless` (rsync) e a escolha entre `maxLines` vs `tailLines` (ping) são o ponto crítico. Os tests do RTK em [`ping.toml`](../../../../rtk/src/filters/ping.toml) e [`rsync.toml`](../../../../rtk/src/filters/rsync.toml) cobrem esses casos e devem ser portados como snapshots.
 - **`ssh` sob `StrictHostKeyChecking=no` com `-v`/`-vv`/`-vvv`** gera ~30 linhas densas de banner antes do output útil. Confirmar que `^debug\d+:` (não apenas `^debug1:` como no TOML do RTK) cobre os três níveis.
@@ -879,13 +879,13 @@ Antes de implementar `curlBody`, abrir RFC no framework para essas extensões. S
 
 ## Padrão de teste
 
-Seguir [`.claudio/rules/testing.md`](../../../.claudio/rules/testing.md):
+Seguir [`.claudin/rules/testing.md`](../../../.claudin/rules/testing.md):
 
 - Spec test colocada: `src/outputFilter/Bash/filters/system.test.ts` (cobre `tree`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`) e `system.test.ts` deve crescer com cada port.
 - Para `jq` considerar arquivo próprio `jq.test.ts` por causa do `matchCommandReject` extenso.
 - Padrão Arrange/Act/Assert com `toMatchSnapshot()` para outputs filtrados; assertions diretas para `matchCommandReject` (caminho de passthrough).
 - Cada caso de teste do TOML RTK ([`ping.toml`](../../../../rtk/src/filters/ping.toml), [`rsync.toml`](../../../../rtk/src/filters/rsync.toml), [`stat.toml`](../../../../rtk/src/filters/stat.toml) etc.) vira um `test()` no Bun.
-- Validar fallback: spec inválida não deve quebrar o pipeline — garantir via teste que `filterOutput()` retorna raw em caso de erro interno (ver [`typescript-patterns.md`](../../../.claudio/rules/typescript-patterns.md#fallback-pattern-mandatory-for-tools-that-wrap-external-commands)).
+- Validar fallback: spec inválida não deve quebrar o pipeline — garantir via teste que `filterOutput()` retorna raw em caso de erro interno (ver [`typescript-patterns.md`](../../../.claudin/rules/typescript-patterns.md#fallback-pattern-mandatory-for-tools-that-wrap-external-commands)).
 
 Execução focada:
 

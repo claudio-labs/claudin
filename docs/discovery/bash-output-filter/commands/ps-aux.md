@@ -20,7 +20,7 @@ root           2  0.0  0.0      0     0 ?        S    12:23   0:00 [kthreadd]
 root           3  0.0  0.0      0     0 ?        I<   12:23   0:00 [rcu_gp]
 root           4  0.0  0.0      0     0 ?        I<   12:23   0:00 [rcu_par_gp]
 ... (~440 mais)
-viudes  1234567  2.3  1.5  543210 234567 pts/3   Sl+  14:22   0:01 node /home/viudes/projects/claudio/dist/cli.mjs --some-very-long-arg=value-that-keeps-going /path/to/some/file.ts ...
+viudes  1234567  2.3  1.5  543210 234567 pts/3   Sl+  14:22   0:01 node /home/viudes/projects/claudin/dist/cli.mjs --some-very-long-arg=value-that-keeps-going /path/to/some/file.ts ...
 ```
 
 ### Amostra 2 — `ps -ef` (estimado, similar com colunas diferentes)
@@ -49,7 +49,7 @@ User já filtrou — output curto, passthrough.
 - **TIME** (CPU time) — relevante mas formato `0:00` é noise quando todos zero
 
 **Ambíguo:**
-- COMMAND com path absoluto — `/home/viudes/projects/claudio/dist/cli.mjs ...` (60+ chars), pode truncar?
+- COMMAND com path absoluto — `/home/viudes/projects/claudin/dist/cli.mjs ...` (60+ chars), pode truncar?
 
 ---
 

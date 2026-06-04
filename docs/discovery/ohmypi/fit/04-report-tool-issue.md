@@ -1,7 +1,7 @@
 # Fit analysis — `report_tool_issue`
 
 Análise concreta de encaixe e ganhos reais de portar a meta-tool
-`report_tool_issue` do oh-my-pi (omp) para Claudio. **Sem plano de
+`report_tool_issue` do oh-my-pi (omp) para Claudin. **Sem plano de
 implementação, sem modificar código.**
 
 ## 1. Encaixe arquitetural
@@ -36,7 +36,7 @@ injeção extra: built-in significa "todos os agentes herdam".
 
 O ponto delicado é o **enum dinâmico**: omp gera
 `z.enum([...activeBuiltinNames])` por turno
-(`report-tool-issue.ts:30-41`). Para Claudio, o schema teria que ser
+(`report-tool-issue.ts:30-41`). Para Claudin, o schema teria que ser
 construído com base no `ToolUseContext` no `execute` ou via construtor
 factory recebendo a lista — a infra atual usa schemas estáticos
 (`buildTool` espera `inputSchema` fixo). Solução prática: usar
@@ -71,8 +71,8 @@ ajudar o modelo da próxima sessão.
 
 Destino correto: arquivo JSONL append-only fora do scan de memória.
 `getAutoMemPath()` (`memdir/paths.ts:223-235`) retorna
-`~/.claudio/projects/<sanitized>/memory/`. Um subdir irmão
-`~/.claudio/projects/<sanitized>/tool-issues/YYYY-MM.jsonl`
+`~/.claudin/projects/<sanitized>/memory/`. Um subdir irmão
+`~/.claudin/projects/<sanitized>/tool-issues/YYYY-MM.jsonl`
 (uma linha por relato) fica naturalmente fora porque o memoryScan só
 ingere `.md` no dir `memory/`. Confere com a recomendação do deep dive
 (linhas 21-24).
@@ -113,7 +113,7 @@ real é o campo `report` (free-text 500ch) vazar:
 3. **Identifiers de usuário** — nomes em paths, var de ambiente
    ecoada. Cobertura via path sanitization acima resolve a maioria.
 
-Como Claudio é local-only por design, o JSONL nunca sai do disco do
+Como Claudin é local-only por design, o JSONL nunca sai do disco do
 user. Privacidade aqui é mais **higiene** (não poluir os próprios
 logs do user com PII) do que ameaça externa.
 
@@ -130,14 +130,14 @@ chamadas de `logForDebugging` esparsas (vide
 não como agregado.
 
 Inverso disso: **`MEMORY.md` do projeto não tem uma única entrada de
-tool-issue** (lido em `/home/viudes/.claudio/projects/-home-viudes-projects-claudio/memory/MEMORY.md`).
+tool-issue** (lido em `/home/viudes/.claudin/projects/-home-viudes-projects-claudin/memory/MEMORY.md`).
 Categorias atuais: indentação, review-agent, git identity, idioma,
 versionamento, "plan elegance". Tudo direção human→agent. Confirma o
 gap descrito em `04-report-tool-issue.md:12`.
 
 ### Quem consumiria
 
-- **Humano (dev de Claudio)**: principal consumidor. CLI tipo `claudio
+- **Humano (dev de Claudin)**: principal consumidor. CLI tipo `claudin
   tool-issues --since 7d` (sugerido em `04-report-tool-issue.md:21`)
   ou simplesmente `jq` no JSONL. Caso de uso: "modelo X reclama de
   schema do BashTool em 12 sessões — vou rever a descrição".
@@ -165,14 +165,14 @@ gap descrito em `04-report-tool-issue.md:12`.
    GPT/Gemini interpretando mal `inputSchema` de uma tool seria
    capturado naturalmente como `wrong_schema | unclear_description`.
    Diferencial vs. Anthropic (que treina junto): essa população de
-   bugs **só Claudio tem** — omp foca um modelo único.
+   bugs **só Claudin tem** — omp foca um modelo único.
 
 ## 5. Onde NÃO ganha ou pode dar errado
 
 1. **Modelo nunca reporta** — risco real, depende muito do modelo.
    Modelos OpenAI-compat tendem a ser tímidos com tools meta. omp
    mitiga via `<critical>` no system prompt
-   (`system-prompt.md:195-197`). Para Claudio default-off, ninguém vai
+   (`system-prompt.md:195-197`). Para Claudin default-off, ninguém vai
    ativar e nada é coletado. Ganho zero.
 2. **Modelo reporta tudo (ruído)** — menos provável (omp documenta no
    deep-dive linhas 290-296: tool não dá recompensa, sem gradiente
@@ -232,8 +232,8 @@ Conforme acima, não cobre direção agent→tool feedback.
 captura ZERO sinal — exatamente o problema do gap atual. Sugestão (sem
 prescrever plano): flag em `build.ts` default `false`, mas settings
 key `dev.reportToolIssue: true` por default em ambiente de dev
-(`bun run dev`), ou ligar para o próprio repositório do Claudio via
-`.claudio/settings.json` checked-in. Assim Anthropic-style "dogfooding"
+(`bun run dev`), ou ligar para o próprio repositório do Claudin via
+`.claudin/settings.json` checked-in. Assim Anthropic-style "dogfooding"
 acontece sem expor para usuários finais.
 
 Vale a pena: **CONDICIONAL — porque** o encaixe arquitetural é limpo e
@@ -242,5 +242,5 @@ permanece off em todo lugar OU (b) não houver consumidor humano (CLI
 ou hábito de `jq`) que feche o loop. Sem (a) ou (b) resolvidos, é
 infra sem usuário. Com ambos resolvidos, é o canal que falta para
 capturar a categoria de bug que `extractMemories` e logs já não
-capturam — especialmente nos pontos onde Claudio diverge de omp:
+capturam — especialmente nos pontos onde Claudin diverge de omp:
 openai-compat schemas, bash filter, plan mode hard-gate.

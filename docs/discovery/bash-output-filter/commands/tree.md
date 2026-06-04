@@ -91,7 +91,7 @@ Mais agressivo: forçar `tree -L 3 -I 'node_modules|.git|...'` por trás. Análo
 
 - [ ] **Instalar `tree` localmente** pra capturar amostras
 - [ ] Forçar `-L 3` por trás se user não passou `-L`?
-- [ ] Adicionar `tree` à dep do claudio? Não, é responsabilidade do user.
+- [ ] Adicionar `tree` à dep do claudin? Não, é responsabilidade do user.
 
 ---
 

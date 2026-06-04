@@ -102,7 +102,7 @@
 
 ## Open questions
 
-- [ ] **Capturar amostras reais** — claudio usa bun test, capturar saída.
+- [ ] **Capturar amostras reais** — claudin usa bun test, capturar saída.
 - [ ] **`bun test`** outputs differ from vitest? Provável; padrão é mais conservador.
 - [ ] **`jest --silent`** — passthrough.
 - [ ] **Vitest UI mode (`--ui`)** — abre browser, fora de escopo.
@@ -118,4 +118,4 @@
 
 ## Findings empíricos
 
-**ZERO empirical findings** — não capturado. Próximo passo: rodar `bun test` no claudio com algum subset que termine rápido.
+**ZERO empirical findings** — não capturado. Próximo passo: rodar `bun test` no claudin com algum subset que termine rápido.

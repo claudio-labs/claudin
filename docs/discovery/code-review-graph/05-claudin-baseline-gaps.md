@@ -1,16 +1,16 @@
-# 05 — Claudio baseline e gaps reais vs. code-review-graph
+# 05 — Claudin baseline e gaps reais vs. code-review-graph
 
 **Data:** 2026-05-27
-**Repo Claudio:** `main @ c541013`
-**Escopo:** mapear o que o Claudio já oferece para navegação/review e cruzar com cada capacidade do CRG (`/home/viudes/projects/code-review-graph` v2.3.5) para isolar gaps reais.
+**Repo Claudin:** `main @ c541013`
+**Escopo:** mapear o que o Claudin já oferece para navegação/review e cruzar com cada capacidade do CRG (`/home/viudes/projects/code-review-graph` v2.3.5) para isolar gaps reais.
 
 ---
 
-## 1. Inventário das capacidades atuais do Claudio
+## 1. Inventário das capacidades atuais do Claudin
 
 ### 1.1 LSP — operações disponíveis
 
-Claudio expõe um `LSPTool` único com 13 operações via discriminated union (`src/tools/LSPTool/schemas.ts:269-283`, type guard em `:296-311`):
+Claudin expõe um `LSPTool` único com 13 operações via discriminated union (`src/tools/LSPTool/schemas.ts:269-283`, type guard em `:296-311`):
 
 | Operação | R/W | Schema | Linha |
 |---|---|---|---|
@@ -92,7 +92,7 @@ Explore tem `omitClaudeMd: true` + `omitGitStatus: true` para reduzir prompt (`e
 Outros:
 
 - `/diff` (`src/commands/diff/`), `/passes` (`src/commands/passes/`), `/wiki`, `/knowledge`, `/insights`, `/brief`.
-- `/wiki init|status|ingest` (`src/commands/wiki/wiki.tsx`, serviço `src/services/wiki/`): cria `.claudio/wiki/` com `index.md`, `log.md`, `pages/`, `sources/`. **Knowledge base manual**, não derivada de grafo — template + ingestão de arquivos (`src/services/wiki/init.ts:6-37`).
+- `/wiki init|status|ingest` (`src/commands/wiki/wiki.tsx`, serviço `src/services/wiki/`): cria `.claudin/wiki/` com `index.md`, `log.md`, `pages/`, `sources/`. **Knowledge base manual**, não derivada de grafo — template + ingestão de arquivos (`src/services/wiki/init.ts:6-37`).
 
 ### 1.5 Git / diff / risk
 
@@ -106,7 +106,7 @@ Outros:
 
 ## 2. Mapa de gaps vs. CRG
 
-| Capacidade do CRG | Claudio tem? | Como (tool + arquivo:linha) | Gap real? |
+| Capacidade do CRG | Claudin tem? | Como (tool + arquivo:linha) | Gap real? |
 |---|---|---|---|
 | Roteador de contexto ~100 tokens (`get_minimal_context`) | Não | Grep+Glob+LSP exigem várias roundtrips | Sim (baixa severidade — Explore já faz em 2-3 calls) |
 | Diff-aware risk score (`detect_changes`) | Não | `/review` e `/security-review` passam diff cru pra LLM | **Sim** |
@@ -123,7 +123,7 @@ Outros:
 | Suggested questions | Não | — | Cosmético |
 | Codebase wiki | Parcial | `/wiki` template manual (`src/commands/wiki/wiki.tsx:1-60`) | **Sim** (geração automática) |
 | Dead code detection via grafo | Parcial | LSP `findReferences` 1-por-1 (manual) | **Sim** (não bulk) |
-| Persistent graph across sessions | Não | Sem DB de código; `~/.claudio/v8cache/` é só bytecode | **Sim** |
+| Persistent graph across sessions | Não | Sem DB de código; `~/.claudin/v8cache/` é só bytecode | **Sim** |
 | Pre-merge prompt | Parcial | `/review`, `/security-review` (LLM-on-diff, sem grafo) | Sim, mas funcional |
 | Onboarding prompt | Parcial | `claude-code-guide` agent + `/wiki` | Sim, mas funcional |
 
@@ -131,7 +131,7 @@ Dos **18** itens: **9** são gaps reais notáveis — transitive impact, risk sc
 
 ---
 
-## 3. Gaps que importam para o trabalho do Claudio
+## 3. Gaps que importam para o trabalho do Claudin
 
 Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool calls), e tamanho-alvo do repo onde o gap aparece.
 
@@ -148,7 +148,7 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 ### 3.3 Semantic search (embeddings)
 - **Frequência:** média — pergunta por conceito quando o termo exato não está no código.
 - **Severidade hoje:** alta em > 50k LOC — Grep com sinônimos vira 4-6 queries; em <50k, OR resolve.
-- **Tamanho-alvo:** > 100k LOC vale; <50k é overkill (Claudio próprio cabe aqui).
+- **Tamanho-alvo:** > 100k LOC vale; <50k é overkill (Claudin próprio cabe aqui).
 
 ### 3.4 Untested hotspots / knowledge gaps
 - **Frequência:** baixa — auditoria de qualidade, não fluxo diário.
@@ -157,7 +157,7 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 
 ### 3.5 Persistent graph entre sessões
 - **Frequência:** alta — toda sessão nova começa cega.
-- **Severidade hoje:** média — Claudio re-grepa, e LSP re-indexa (servidores cacheam internamente, mas Claudio não persiste resultados).
+- **Severidade hoje:** média — Claudin re-grepa, e LSP re-indexa (servidores cacheam internamente, mas Claudin não persiste resultados).
 - **Tamanho-alvo:** qualquer; benefício percebido sobe com o tamanho.
 
 ### 3.6 Wiki auto-gerada
@@ -170,7 +170,7 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 - **Severidade hoje:** alta — `findReferences` 1-por-1 inviável em milhares de símbolos.
 - **Tamanho-alvo:** > 50k LOC.
 
-**Síntese:** os gaps que aparecem em **<50k LOC** (categoria do próprio Claudio: ~25k LOC `.ts`/`.tsx` excluindo testes) e são frequentes são: **risk score** e **persistência leve**. O resto só retorna em codebases maiores.
+**Síntese:** os gaps que aparecem em **<50k LOC** (categoria do próprio Claudin: ~25k LOC `.ts`/`.tsx` excluindo testes) e são frequentes são: **risk score** e **persistência leve**. O resto só retorna em codebases maiores.
 
 ---
 
@@ -179,7 +179,7 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 ### 4.1 `/review` em PR de 30 arquivos num monorepo
 - **Hoje:** `gh pr diff` despeja na LLM (`src/commands/review.ts:9-31`). LLM lê linearmente; sem saber qual arquivo é hub (50 importadores) vs folha (1 importador).
 - **Falta:** ordenação de severidade por impacto transitivo + identificação de hub files.
-- **Nativo TS sem CRG:** **médio (1-2 semanas)**. BFS de imports via `tsc` API ou `ts-morph` para TS/JS; cache em `.claudio/` por commit hash. Não cobre Python/Go/Rust.
+- **Nativo TS sem CRG:** **médio (1-2 semanas)**. BFS de imports via `tsc` API ou `ts-morph` para TS/JS; cache em `.claudin/` por commit hash. Não cobre Python/Go/Rust.
 - **Só grafo persistente daria:** multi-linguagem real + cache cross-session.
 
 ### 4.2 Refactor com blast radius
@@ -195,33 +195,33 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 - **Só grafo daria:** mesma resposta.
 
 ### 4.4 Onboarding: "explica essa codebase"
-- **Hoje:** `/wiki` é template vazio (`src/services/wiki/init.ts:6-37`). `claude-code-guide` fala do produto Claudio, não do repo do usuário.
+- **Hoje:** `/wiki` é template vazio (`src/services/wiki/init.ts:6-37`). `claude-code-guide` fala do produto Claudin, não do repo do usuário.
 - **Falta:** geração automática de "principais módulos + relações" partindo do grafo.
 - **Nativo TS:** **médio (1 semana)** — Read `view='outline'` + import graph simples + LLM summarizer. Funciona em TS/JS/Py/Go.
 - **Só grafo daria:** communities (Leiden) destacando subsistemas que não emergem só do file tree.
 
 ### 4.5 Sessão longa de dev — perguntas repetidas
-- **Hoje:** cada sessão re-grepa. Sem memória de "o que já indexamos". `.claudio/wiki/` é o único storage durável (manual).
+- **Hoje:** cada sessão re-grepa. Sem memória de "o que já indexamos". `.claudin/wiki/` é o único storage durável (manual).
 - **Falta:** índice persistente leve (mapa symbol→file:line + import graph) recarregado em SessionStart.
-- **Nativo TS:** **médio (1-2 semanas)**. Padrão dos hooks do CRG (`SessionStart` → status, `PostToolUse` em `Edit|Write|Bash` → update — ver `docs/discovery/code-review-graph/03-fit-no-claudio.md:46-48`). Reusar `scanSymbols` que já existe (`src/tools/shared/codeOutline/`).
+- **Nativo TS:** **médio (1-2 semanas)**. Padrão dos hooks do CRG (`SessionStart` → status, `PostToolUse` em `Edit|Write|Bash` → update — ver `docs/discovery/code-review-graph/03-fit-no-claudin.md:46-48`). Reusar `scanSymbols` que já existe (`src/tools/shared/codeOutline/`).
 - **Só grafo daria:** se o índice virar grafo de chamadas + queries de community/centralidade, aí sim só CRG-like resolve.
 
 ---
 
 ## 5. Veredito honesto
 
-**O CRG resolve dor real em uma fatia específica do uso do Claudio, mas para o caso dominante (CLI dev em repos <50k LOC, sessões curtas, edição de TS/Python) é overkill.**
+**O CRG resolve dor real em uma fatia específica do uso do Claudin, mas para o caso dominante (CLI dev em repos <50k LOC, sessões curtas, edição de TS/Python) é overkill.**
 
 Evidências:
 
-1. **Claudio já tem LSP completo com 13 ops** (`src/tools/LSPTool/schemas.ts:269-283`) incluindo `findReferences`, `incomingCalls`, `outgoingCalls`. Pra 80% das perguntas "quem chama X?", a resposta nativa é cirúrgica. O gap real é UX/orquestração (BFS automático, ranking), não capacidade bruta.
+1. **Claudin já tem LSP completo com 13 ops** (`src/tools/LSPTool/schemas.ts:269-283`) incluindo `findReferences`, `incomingCalls`, `outgoingCalls`. Pra 80% das perguntas "quem chama X?", a resposta nativa é cirúrgica. O gap real é UX/orquestração (BFS automático, ranking), não capacidade bruta.
 
-2. **Grep symbols + Read outline cobrem o resto** (`src/tools/GrepTool/GrepTool.ts:408-419`, `src/tools/FileReadTool/FileReadTool.ts:1263`) em TS/JS/Python/Go — as 4 linguagens da maioria dos usuários-alvo. CRG cobre mais (14+) mas isso é vantagem só pra C#/Java/Kotlin/Rust/Scala — público minoritário no perfil Claudio CLI.
+2. **Grep symbols + Read outline cobrem o resto** (`src/tools/GrepTool/GrepTool.ts:408-419`, `src/tools/FileReadTool/FileReadTool.ts:1263`) em TS/JS/Python/Go — as 4 linguagens da maioria dos usuários-alvo. CRG cobre mais (14+) mas isso é vantagem só pra C#/Java/Kotlin/Rust/Scala — público minoritário no perfil Claudin CLI.
 
 3. **`/review` é primitivo** (`src/commands/review.ts:9-31`) — só passa diff pra LLM. Aqui o CRG (ou clone nativo simples) daria ganho real e mensurável, mas o ganho está em **agregar score/ranking**, não em ter grafo. Wrapper que (a) chama LSP `findReferences` em cada símbolo modificado, (b) conta resultados, (c) injeta tabela "arquivos afetados por símbolo" no prompt — entrega 70% do valor sem nada de SQLite/tree-sitter.
 
-4. **Persistência é o único item que pede arquitetura nova.** O resto pode ser construído incrementalmente em cima do existente (`scanSymbols` é tree-sitter-free, regex puro, cobre 4 linguagens-alvo). Persistir o output do `scanSymbols` + import edges em SQLite leve no `.claudio/` daria ~60% do benefício do CRG sem o custo de bundle. Lembrar memória `verify-privacy-bundle-only`: escritas em `~/.claudio/` ficam fora do gate atual — é custo adicional a considerar.
+4. **Persistência é o único item que pede arquitetura nova.** O resto pode ser construído incrementalmente em cima do existente (`scanSymbols` é tree-sitter-free, regex puro, cobre 4 linguagens-alvo). Persistir o output do `scanSymbols` + import edges em SQLite leve no `.claudin/` daria ~60% do benefício do CRG sem o custo de bundle. Lembrar memória `verify-privacy-bundle-only`: escritas em `~/.claudin/` ficam fora do gate atual — é custo adicional a considerar.
 
-5. **A discovery anterior (`03-fit-no-claudio.md:147-153`) já concluiu "interessante, não trazer agora"** porque os benchmarks do CRG não se sustentam contra Grep+LSP em repos pequenos. Este baseline confirma: a sobreposição é maior do que parecia (especialmente LSP, que `01`/`02` não enfatizaram), e o delta líquido fica nos itens 4.1 (review score), 4.4 (wiki auto) e 4.5 (índice persistente entre sessões).
+5. **A discovery anterior (`03-fit-no-claudin.md:147-153`) já concluiu "interessante, não trazer agora"** porque os benchmarks do CRG não se sustentam contra Grep+LSP em repos pequenos. Este baseline confirma: a sobreposição é maior do que parecia (especialmente LSP, que `01`/`02` não enfatizaram), e o delta líquido fica nos itens 4.1 (review score), 4.4 (wiki auto) e 4.5 (índice persistente entre sessões).
 
 **Recomendação derivada dos gaps:** se algo for trazido, é **um wrapper de impact/risk para `/review`** (cenário 4.1) usando o LSP que já existe — não a infra completa do CRG. Esforço estimado: 1-2 semanas, zero dependências nativas, não infla bundle. Tudo o resto fica em integração MCP opcional para usuários power, alinhado com a conclusão anterior.

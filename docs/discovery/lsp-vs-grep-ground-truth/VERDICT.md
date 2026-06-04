@@ -22,7 +22,7 @@ Após corrigir o bug (`src/services/lsp/builtinServers.ts` — ordem determinís
 
 Modelo em todas as rodadas: `claude-sonnet-4-6`. Harness: `scripts/bench/lsp-grep-descriptions-ab.ts`.
 
-### Rodada 1 — descriptions editadas, repo claudio (pré-fix LSP)
+### Rodada 1 — descriptions editadas, repo claudin (pré-fix LSP)
 5 prompts × 2 runs. LSP A=2, B=3 (delta +1, irrelevante). 4/5 prompts sem mudança.
 
 ### Rodada 2 — descriptions editadas, openclaude ~2452 arquivos (pré-fix LSP)

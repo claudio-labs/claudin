@@ -44,7 +44,7 @@ A tabela do `search` carrega uma coluna **`Read`** com o custo estimado de fazer
 
 `ChromaSearchStrategy` descarta hits > 90 dias (`RECENCY_WINDOW_MS`, `types.ts:7-8`). Um `search` semântico **não consegue trazer nada com mais de 90 dias** — só o path SQLite filter-only (sem `query`) ou um `dateStart` explícito alcança memória antiga.
 
-## Como o Claudio faz hoje
+## Como o Claudin faz hoje
 
 `src/memdir/` injeta `MEMORY.md` **inteiro** no system prompt + os arquivos `.md` julgados relevantes. Funciona bem com poucas memórias, mas:
 
@@ -52,7 +52,7 @@ A tabela do `search` carrega uma coluna **`Read`** com o custo estimado de fazer
 - Truncamento é cego: corta por ordem de arquivo, não por relevância
 - Memórias de baixa relevância à task atual pagam tokens em **toda** a sessão
 
-A filosofia "memória curada, não transcript" o Claudio já tem. O que falta é o **acesso sob demanda**.
+A filosofia "memória curada, não transcript" o Claudin já tem. O que falta é o **acesso sob demanda**.
 
 ## Proposta
 
@@ -81,16 +81,16 @@ Memórias deixam de ser custo fixo da sessão e viram custo sob demanda.
 
 ## Vector search — fazer ou não?
 
-O `claude-mem` usa ChromaDB (processo separado). Para o Claudio isso seria peso demais.
+O `claude-mem` usa ChromaDB (processo separado). Para o Claudin isso seria peso demais.
 
-**Se** vector search valer a pena: `sqlite-vec` — extensão WASM, ~1 MB, roda dentro do mesmo processo, sem daemon. Mas note que **mesmo no claude-mem o `HybridSearchStrategy` é um stub** — o filtro estrutural via SQLite/FTS5 carrega o trabalho de verdade. **Provavelmente não vale na v1 do Claudio.** Com dezenas (não milhares) de memórias, keyword + filtro estrutural já resolve. Registrar como follow-up, gate por `feature('MEMORY_VECTOR_SEARCH')`.
+**Se** vector search valer a pena: `sqlite-vec` — extensão WASM, ~1 MB, roda dentro do mesmo processo, sem daemon. Mas note que **mesmo no claude-mem o `HybridSearchStrategy` é um stub** — o filtro estrutural via SQLite/FTS5 carrega o trabalho de verdade. **Provavelmente não vale na v1 do Claudin.** Com dezenas (não milhares) de memórias, keyword + filtro estrutural já resolve. Registrar como follow-up, gate por `feature('MEMORY_VECTOR_SEARCH')`.
 
 ## Decisões abertas
 
 1. **Híbrido (injeta feedback/user, recall para project/reference) vs recall total?** Recomendação: híbrido — preserva "feedback nunca esquecido" sem pagar O(N).
 2. **`MemorySearchTool` aparece sempre ou só quando há > N memórias?** Registro condicional no tool registry evita poluir o tool surface de projetos sem memória.
 3. **Como o LLM sabe que deve buscar?** Precisa de guidance no system prompt. Risco: modelo esquece de buscar. Mitigação: manter o índice `MEMORY.md` sempre visível como gatilho.
-4. **Replicar o cliff de 90 dias?** O claude-mem esconde memória antiga do search semântico. Para o Claudio, memória `feedback`/`user` antiga ainda é válida — NÃO copiar o cliff cego; se houver vetor, recência deve ser sinal de rank, não filtro duro.
+4. **Replicar o cliff de 90 dias?** O claude-mem esconde memória antiga do search semântico. Para o Claudin, memória `feedback`/`user` antiga ainda é válida — NÃO copiar o cliff cego; se houver vetor, recência deve ser sinal de rank, não filtro duro.
 
 ## Correções pós-verificação (2026-05-19)
 

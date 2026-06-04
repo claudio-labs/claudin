@@ -11,7 +11,7 @@
 
 ## Saída crua representativa
 
-### Amostra 1 — `bun install` no claudio repo (96 bytes!)
+### Amostra 1 — `bun install` no claudin repo (96 bytes!)
 
 ```
 bun install v1.3.11 (af24e281)
@@ -223,4 +223,4 @@ Nada significativo a filtrar.
 2. **Filtros têm que ser por manager** — outputs incompatíveis.
 3. **`match_output` com `unless` é o motor principal** desses filtros — a maioria das instalações sucede sem incidente, e nesses casos colapsar pra "✓ done" é a economia toda.
 4. **Sample collection pendente** pra npm/pnpm/yarn — nossas estimativas precisam validação.
-5. **Bom candidato pra Fase 0:** medir frequência real de cada manager por sessão claudio.
+5. **Bom candidato pra Fase 0:** medir frequência real de cada manager por sessão claudin.

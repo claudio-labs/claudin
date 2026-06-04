@@ -2,7 +2,7 @@
 
 ## Problema
 
-Sessões com agentes em CLIs como o claudio rodam dezenas de comandos shell por turno. Saídas como `git status`, `ls -la`, `npm install`, `docker ps`, `cargo test` carregam muito **lixo de formatação** que o modelo não usa pra raciocinar (permissões, owners, timestamps de download, banners, ANSI escapes, linhas de progresso). Esse lixo:
+Sessões com agentes em CLIs como o claudin rodam dezenas de comandos shell por turno. Saídas como `git status`, `ls -la`, `npm install`, `docker ps`, `cargo test` carregam muito **lixo de formatação** que o modelo não usa pra raciocinar (permissões, owners, timestamps de download, banners, ANSI escapes, linhas de progresso). Esse lixo:
 
 1. Consome tokens de input em todo turno seguinte (a saída fica no histórico).
 2. Mata o cache de prompt da Anthropic se variar entre chamadas (timestamps, IDs).
@@ -10,7 +10,7 @@ Sessões com agentes em CLIs como o claudio rodam dezenas de comandos shell por 
 
 A tabela do rtk (README) cita **60-90% de redução** nos comandos cobertos. Mesmo descontando otimismo de marketing, qualquer redução >30% nos top-10 já paga o custo do projeto.
 
-## Estado atual do claudio
+## Estado atual do claudin
 
 ### `toolResultSummarizer` (`src/utils/toolResultSummarizer.ts`)
 
@@ -106,7 +106,7 @@ message = "✓ npm install ok"
 unless = "(?i)\\b(error|warning|deprecated)\\b"
 ```
 
-## Peças que claudio já tem (não precisam ser construídas)
+## Peças que claudin já tem (não precisam ser construídas)
 
 | Peça | Onde | Pra que serve |
 |---|---|---|
@@ -146,7 +146,7 @@ Aceitar `command` como meta opcional no `processToolResultBlock`, propagar.
 **Pró:** uniforme.
 **Contra:** mais call sites pra tocar.
 
-**Inclinação inicial: (a)**, justificada pelo princípio claudio "no premature abstraction".
+**Inclinação inicial: (a)**, justificada pelo princípio claudin "no premature abstraction".
 
 ## Cadeia de processamento proposta
 

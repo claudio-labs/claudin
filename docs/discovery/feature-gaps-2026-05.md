@@ -1,4 +1,4 @@
-# Gaps — Features que o Claudio NÃO tem (ou tem parcialmente)
+# Gaps — Features que o Claudin NÃO tem (ou tem parcialmente)
 
 Data: 2026-05-12
 Filtrado de `feature-viability-2026-05.md` — só o que falta.
@@ -12,9 +12,9 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 - **Esforço:** ~30 linhas.
 
 ### 2. XDG Base Directory fallback
-- **Issue:** usuários Linux pedem `$XDG_CONFIG_HOME/claudio` em vez de `~/.claudio`.
+- **Issue:** usuários Linux pedem `$XDG_CONFIG_HOME/claudin` em vez de `~/.claudin`.
 - **Estado:** helpers XDG **já existem** em `src/utils/xdg.ts` mas não são consumidos.
-- **Falta:** plugar em `resolveClaudioConfigHomeDir` (`src/utils/envUtils.ts:5-28`).
+- **Falta:** plugar em `resolveClaudinConfigHomeDir` (`src/utils/envUtils.ts:5-28`).
 - **Esforço:** ~10 linhas.
 
 ### 3. Copy/paste do user prompt `>` vaza no clipboard
@@ -82,9 +82,9 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 ### 13. Multi-account profile switching
 - **Issue:** usuários querem N "perfis de usuário" (cada um com histórico, MCP, credenciais separados), não só N providers.
 - **Estado:** `src/utils/config.ts:624-627` e `providerProfiles.ts` só fazem multi-provider; histórico/MCP/credenciais são globais.
-- **Falta:** namespacing de `~/.claudio/projects/`, `.credentials.json`, MCP config por profile.
+- **Falta:** namespacing de `~/.claudin/projects/`, `.credentials.json`, MCP config por profile.
 - **Esforço:** alto — refactor de paths em ~15-20 arquivos.
-- **Workaround:** `CLAUDIO_CONFIG_DIR` env var por shell (já funciona).
+- **Workaround:** `CLAUDIN_CONFIG_DIR` env var por shell (já funciona).
 
 ### 14. Cursor CLI provider
 - **Estado:** ausente. `src/services/api/providerConfig.ts:569` não tem.
@@ -97,7 +97,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 - **Esforço:** alto, nicho (.NET / game dev).
 
 ### 16. Claude.ai Projects integration
-- **Estado:** ausente. Conflita com postura anti-telemetry do Claudio.
+- **Estado:** ausente. Conflita com postura anti-telemetry do Claudin.
 - **Aproximação possível:** MCP servers Drive/Notion/Gmail já existem via `claudeai-proxy`.
 - **Decisão estratégica:** provavelmente **não fazer** (filosofia do projeto).
 
@@ -126,7 +126,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 **Decisão estratégica antes de gastar esforço:**
 9. Codex OAuth headless (#11) — quantos usuários SSH-only?
 10. Voice backend troca (#9) — Whisper local vale o esforço?
-11. Multi-account (#13) — `CLAUDIO_CONFIG_DIR` workaround é suficiente?
+11. Multi-account (#13) — `CLAUDIN_CONFIG_DIR` workaround é suficiente?
 
 **Provavelmente não vale a pena:**
 - Cursor CLI (#14) — esperar demanda

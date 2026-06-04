@@ -14,7 +14,7 @@ Vantagens observadas:
 - Sem fs-read em runtime
 - AGENTS.md deles explicitamente proíbe prompts inline
 
-## Como Claudio faz hoje
+## Como Claudin faz hoje
 
 Mistura:
 - `src/tools/*/prompt.ts` exportando string literal
@@ -33,4 +33,4 @@ Build system já tem stub para `.md`/`.txt` imports (`scripts/build.ts`) — mas
 ## Referência
 
 - `packages/agent/src/task/agents.ts:9-19` (omp)
-- `scripts/build.ts` (claudio) — onde adicionar loader
+- `scripts/build.ts` (claudin) — onde adicionar loader

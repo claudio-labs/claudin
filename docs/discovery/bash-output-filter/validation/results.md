@@ -94,7 +94,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 | 58 | env (filtered grep) | 1350 | 1349 | 0% | 0% | +0pp | ✓ OK |
 | 59 | json structure (small json) | 202 | 201 | 0% | 0% | +0pp | ✓ OK |
 | 60 | cargo clippy (rtk repo, 40 warnings) | 21346 | 21342 | 0% | 0% | +0pp | ✓ OK |
-| 61 | prettier --check (claudio src/utils/u*) | 353 | 329 | 7% | 0% | +7pp | ✓ OK |
+| 61 | prettier --check (claudin src/utils/u*) | 353 | 329 | 7% | 0% | +7pp | ✓ OK |
 | 62 | rubocop (preamble dominate) | 11002 | 1817 | 83% | 80% | +3pp | ✓ OK |
 | 63 | rspec (clean — todos passam) | 93 | 25 | 73% | 73% | +0pp | ✓ OK |
 | 64 | bundle install | 579 | 26 | 96% | 96% | +0pp | ✓ OK |
@@ -213,7 +213,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 
 ### grep -rn (paths absolutos)
 
-- **Command:** `grep -rn "isAbortError" /home/viudes/projects/claudio/src`
+- **Command:** `grep -rn "isAbortError" /home/viudes/projects/claudin/src`
 - **Sample:** `grep.txt` (589 bytes)
 - **Filter:** `grep-rg`
 - **Match command:** ✓
@@ -225,7 +225,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 
 ### rg (com path absoluto — finding inesperado)
 
-- **Command:** `rg "isAbortError" /home/viudes/projects/claudio/src`
+- **Command:** `rg "isAbortError" /home/viudes/projects/claudin/src`
 - **Sample:** `rg.txt` (564 bytes)
 - **Filter:** `grep-rg`
 - **Match command:** ✓
@@ -590,7 +590,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 - **Predicted:** 90% (delta +5pp)
 - **Pipeline applied:** stripAnsi → matchOutput[✓ pytest: all tests passed]
 - **Short-circuited:** ✓ (matchOutput rule fired)
-- **Notes:** match_output pra "X passed in Ys" colapsa pra mensagem única — 90%+ confirmado pelo summarizer existente do claudio.
+- **Notes:** match_output pra "X passed in Ys" colapsa pra mensagem única — 90%+ confirmado pelo summarizer existente do claudin.
 
 ### ruff check (errors no projeto python)
 
@@ -797,7 +797,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
   - ⚠ [info] all 2 stripLinesMatching regex(es) defensive (didn't match this sample)
 - **Notes:** CORREÇÃO: 21KB com 40 warnings — só 1 Compiling line (do crate principal, corretamente preservada). 40 warnings × source pointer lines = puro sinal. ROI real ~0%. Confirma análise do `cargo-build`: warnings são sinal, build noise era o ganho.
 
-### prettier --check (claudio src/utils/u*)
+### prettier --check (claudin src/utils/u*)
 
 - **Command:** `prettier --check 'src/utils/u*.ts'`
 - **Sample:** `prettier-check.txt` (353 bytes)

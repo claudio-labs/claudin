@@ -4,7 +4,7 @@ Comparação factual entre as capacidades expostas pelo `code-review-graph`
 (CRG) e o que um LSP "decente" (TypeScript, Python, Go, Rust com
 analyzer/rust-analyzer/gopls etc.) já entrega por padrão.
 
-Premissa importante: o Claudio já consome LSP via a tool `LSP` (operations
+Premissa importante: o Claudin já consome LSP via a tool `LSP` (operations
 `goToDefinition`, `findReferences`, `hover`, `documentSymbol`,
 `workspaceSymbol`, `goToImplementation`, `prepareCallHierarchy`,
 `incomingCalls`, `outgoingCalls`, `rename`, `codeActions`,
@@ -332,22 +332,22 @@ realmente caros.
 
 ## 5. Veredito por categoria
 
-Codebase pequeno = ~50k LOC (Claudio: ~200k LOC TS, mas é uma única
+Codebase pequeno = ~50k LOC (Claudin: ~200k LOC TS, mas é uma única
 "comunidade" do ponto de vista de arquitetura — REPL+tools+providers).
 Monorepo grande = milhões de LOC, dezenas de serviços/equipes.
 
-| Capacidade | LSP cobre? | CRG agrega? | Ganho real em codebase pequeno (Claudio, <200k LOC, 1 comunidade) | Ganho em monorepo grande |
+| Capacidade | LSP cobre? | CRG agrega? | Ganho real em codebase pequeno (Claudin, <200k LOC, 1 comunidade) | Ganho em monorepo grande |
 |---|---|---|---|---|
 | goToDefinition / hover / signatureHelp / diagnostics / inlayHints | Sim | Não | Zero (LSP estritamente melhor) | Zero |
 | findReferences / callHierarchy hop-a-hop | Sim | Sim, mas pior | Zero a negativo | Zero a negativo (mais lento) |
 | workspaceSymbol textual | Sim | Sim (equivalente) | Zero | Zero |
 | workspaceSymbol semântico (embeddings) | Não | Sim | Médio (agente pode achar coisa por intenção) | Alto |
 | Rename AST-safe (TS/Python/Go) | Sim | Sim mas pior | Negativo (CRG inseguro) | Negativo |
-| Rename em linguagens sem LSP (Bash, configs) | Não | Sim | Baixo (Claudio quase não tem isso) | Médio |
+| Rename em linguagens sem LSP (Bash, configs) | Não | Sim | Baixo (Claudin quase não tem isso) | Médio |
 | `get_minimal_context` (router 100tk) | Não | Sim | Médio (economiza tokens já no 1º turn) | Médio |
-| `detect_changes` (risk score) | Não | Sim | Baixo/Médio (Claudio tem testes e o agente já lê o diff) | Alto |
+| `detect_changes` (risk score) | Não | Sim | Baixo/Médio (Claudin tem testes e o agente já lê o diff) | Alto |
 | `get_impact_radius` transitivo | Parcial (via callHierarchy em loop) | Sim, mais eficiente | Baixo (1 comunidade, 200k LOC dá pra grep) | Alto |
-| `get_affected_flows` (entry-point aware) | Não | Sim | Baixo (Claudio tem ~2 entry points reais: `cli.tsx` e `grpc/server.ts`) | Alto |
+| `get_affected_flows` (entry-point aware) | Não | Sim | Baixo (Claudin tem ~2 entry points reais: `cli.tsx` e `grpc/server.ts`) | Alto |
 | Communities / architecture overview / hubs / bridges / surprising / knowledge gaps | Não | Sim | Baixo (1 comunidade, hubs já conhecidos: QueryEngine.ts, openaiShim.ts) | Alto |
 | `find_large_functions` | Não diretamente | Sim | Baixo (`Grep -c` resolve) | Médio |
 | `generate_wiki` / `get_wiki_page` | Não | Sim | Baixo (docs/ humano já existe e é melhor) | Médio (onboarding) |
@@ -357,7 +357,7 @@ Monorepo grande = milhões de LOC, dezenas de serviços/equipes.
 
 ### Veredito final
 
-- **Para um repo do tamanho/forma do Claudio**: CRG é
+- **Para um repo do tamanho/forma do Claudin**: CRG é
   **mostly redundante**. O único delta com valor claro é
   `semantic_search_nodes` (com embeddings) + `detect_changes`
   (risk-scored review). Tudo mais é coberto por LSP + Grep + leitura

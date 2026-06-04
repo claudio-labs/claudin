@@ -179,7 +179,7 @@ error: test failed, to rerun pass `--bin rtk`
 
 - [ ] **Capturar amostra real de `cargo test`** rodando (não só `--no-run`).
 - [ ] Como filter trata **`cargo test --workspace`** em workspace com 10 crates? Output tem `Running ... <crate1>`, `Running ... <crate2>`, etc.
-- [ ] **`cargo nextest`** (alternativo, mais rápido) — output completamente diferente. Filter separado se claudio user usar.
+- [ ] **`cargo nextest`** (alternativo, mais rápido) — output completamente diferente. Filter separado se claudin user usar.
 - [ ] **`-- --skip <pattern>`** ou `-- foo::test_bar` (filtro de testes) — output reduzido pelo cargo, filter funciona normalmente.
 
 ---

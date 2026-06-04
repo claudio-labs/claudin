@@ -6,9 +6,9 @@
 
 Resultado: schemas de tools que o modelo provavelmente não vai usar não pagam tokens de input.
 
-## Por que importa para Claudio
+## Por que importa para Claudin
 
-- Hoje Claudio carrega ~25 schemas built-in em todo turno + MCP tools + skills + agents.
+- Hoje Claudin carrega ~25 schemas built-in em todo turno + MCP tools + skills + agents.
 - `scripts/measure-tool-schemas.test.ts` já mede o custo — então a dor é conhecida.
 - Maior alvo: usuários OpenAI-compatible (DeepSeek, Groq, OpenRouter, LM Studio) onde cada token de input dói mais e onde alguns modelos degradam tool-calling com schema grande demais.
 
@@ -22,4 +22,4 @@ Resultado: schemas de tools que o modelo provavelmente não vai usar não pagam 
 ## Referência
 
 - `packages/agent/src/tool-discovery/tool-index.ts` (omp)
-- `scripts/measure-tool-schemas.test.ts` (claudio)
+- `scripts/measure-tool-schemas.test.ts` (claudin)

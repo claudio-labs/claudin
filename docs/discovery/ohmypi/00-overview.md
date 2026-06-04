@@ -1,10 +1,10 @@
-# Visão geral — omp vs Claudio
+# Visão geral — omp vs Claudin
 
 Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
 
 ## 1. Tools
 
-| | oh-my-pi | Claudio |
+| | oh-my-pi | Claudin |
 |---|---|---|
 | Total | 32 built-in | ~25 built-in |
 | Interface | `Tool` em `packages/agent/src/types.ts:390-433` | `buildTool` em `src/Tool.ts` |
@@ -15,9 +15,9 @@ Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
 
 ## 2. Cache
 
-| Camada | omp | Claudio |
+| Camada | omp | Claudin |
 |---|---|---|
-| Bytecode | Bun compile cache + binários `--compile` | `~/.claudio/v8cache/` |
+| Bytecode | Bun compile cache + binários `--compile` | `~/.claudin/v8cache/` |
 | Model metadata | SQLite (`packages/ai/src/model-cache.ts`) | runtime |
 | HTTP externo | Two-tier soft/hard TTL (`tools/github-cache.ts`) | — |
 | MCP tools | `mcp/tool-cache.ts` | reconecta por sessão |
@@ -26,14 +26,14 @@ Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
 
 ## 3. UI
 
-| | omp | Claudio |
+| | omp | Claudin |
 |---|---|---|
 | Framework | Custom TUI TS puro (`packages/tui/`), diff writes, SGR/OSC8, Sixel/Kitty/iTerm2 images, FFI Windows console | Ink + React + yoga port |
-| Streaming highlight | — | deferral on by default (vantagem Claudio) |
+| Streaming highlight | — | deferral on by default (vantagem Claudin) |
 
 ## 4. Agents
 
-| | omp | Claudio |
+| | omp | Claudin |
 |---|---|---|
 | Loop | `agent-loop.ts` 1279 LOC + `agent.ts` 1192 | `QueryEngine.ts` |
 | Sub-agent defs | `.md` bundled via text-import (`task/agents.ts:9-19`) | hard-coded (Explore/Code/Plan/WebResearcher) |
@@ -42,7 +42,7 @@ Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
 
 ## 5. Provider
 
-| | omp | Claudio |
+| | omp | Claudin |
 |---|---|---|
 | Providers | 40+ | ~comparável |
 | Shim | `openai-anthropic-shim.ts` | `openaiShim.ts` ~2.2k linhas |
@@ -52,10 +52,10 @@ Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
 
 ## 6. Runtime / outros
 
-- 27k linhas de Rust (PTY, grep, glob, AST com 50+ tree-sitter grammars, tokens, html→md, SIXEL, iso). Claudio é 100% TS.
+- 27k linhas de Rust (PTY, grep, glob, AST com 50+ tree-sitter grammars, tokens, html→md, SIXEL, iso). Claudin é 100% TS.
 - Loopback Python↔Bun: kernel persistente Python pode chamar `read`/`search`/`task` do agente (REPL stateful).
 - AGENTS.md deles é spec real (regras concretas tipo "use `Promise.withResolvers()`").
-- Telemetry ON com OpenTelemetry — oposto da postura Claudio (`verify:privacy`).
+- Telemetry ON com OpenTelemetry — oposto da postura Claudin (`verify:privacy`).
 
 ## Ranking de retorno por esforço (subjetivo)
 

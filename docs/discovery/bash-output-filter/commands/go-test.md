@@ -177,4 +177,4 @@ FAIL
 1. **Modo `-v` é onde tem ROI** — sem `-v`, output já é compacto.
 2. **`match_output` "all packages passed"** é o win principal.
 3. **FAIL block** tem path + linha + assertion message — preservar inteiro.
-4. **Recomendação:** Tier 1.5 — frequência depende do user base do claudio.
+4. **Recomendação:** Tier 1.5 — frequência depende do user base do claudin.

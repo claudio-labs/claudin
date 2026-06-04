@@ -7,18 +7,18 @@
 
 Esta página combina três técnicas relacionadas. O ganho de tokens é **indireto**: extração mais limpa e melhor classificada → menos memórias ruidosas → menos contexto carregado em toda sessão futura.
 
-**Descoberta importante:** o `claude-mem` define um *contract* de saída forte, mas o implementa do jeito errado — XML em texto livre + regex parser, **sem** `tool_choice`/structured output. O próprio código admite (`src/sdk/parser.ts:5`, `TODO(#2233)`) que tool-use API seria melhor — chama o XML de "bridge". O Claudio deve copiar o *contract* e descartar o *mecanismo*.
+**Descoberta importante:** o `claude-mem` define um *contract* de saída forte, mas o implementa do jeito errado — XML em texto livre + regex parser, **sem** `tool_choice`/structured output. O próprio código admite (`src/sdk/parser.ts:5`, `TODO(#2233)`) que tool-use API seria melhor — chama o XML de "bridge". O Claudin deve copiar o *contract* e descartar o *mecanismo*.
 
 ## Técnica 1 — Taxonomia fechada (copiar)
 
 `plugin/modes/code.json` define enums fechados para classificar cada observação:
 
 - **`type`** — `observation_types` (`code.json:5-62`) tem **8 valores**: `bugfix, feature, refactor, change, discovery, decision, security_alert, security_note`.
-  - **Inconsistência real no claude-mem:** o array de dados tem 8, mas `type_guidance` (`code.json:106`) diz ao LLM "MUST be EXACTLY one of these **6** options" e omite `security_alert`/`security_note`. O parser valida contra os 8 (`parser.ts:106`), então um type de segurança seria aceito — mas o modelo nunca é instruído que pode emiti-lo. Parece um prompt não atualizado quando os types de segurança foram adicionados. **Lição para o Claudio:** enum e prompt-guidance devem ser single-sourced para não divergir.
+  - **Inconsistência real no claude-mem:** o array de dados tem 8, mas `type_guidance` (`code.json:106`) diz ao LLM "MUST be EXACTLY one of these **6** options" e omite `security_alert`/`security_note`. O parser valida contra os 8 (`parser.ts:106`), então um type de segurança seria aceito — mas o modelo nunca é instruído que pode emiti-lo. Parece um prompt não atualizado quando os types de segurança foram adicionados. **Lição para o Claudin:** enum e prompt-guidance devem ser single-sourced para não divergir.
 - **`concepts`** — `observation_concepts` (`code.json:63-99`) tem **7 valores**: `how-it-works, why-it-exists, what-changed, problem-solution, gotcha, pattern, trade-off`.
 - Campos com limites (advisory, **não enforçados**): `subtitle` ≤ 24 palavras (`code.json:114`), `facts[]`, `narrative`, `files_read[]`, `files_modified[]`. O parser não conta nem valida nada além do enum de `type`.
 
-**Estado no Claudio:** memórias já têm `type` (`user | feedback | project | reference`) — mas esse é o eixo de **escopo/audiência**, não de **natureza do conhecimento**. Falta o eixo `concept`.
+**Estado no Claudin:** memórias já têm `type` (`user | feedback | project | reference`) — mas esse é o eixo de **escopo/audiência**, não de **natureza do conhecimento**. Falta o eixo `concept`.
 
 **Proposta:** adicionar campo `concept` opcional ao frontmatter de memória, enum fechado adaptado: `{ gotcha, pattern, trade-off, how-it-works, why-it-exists, decision }`. Ganho: filtro fino no recall (ver [`progressive-memory-recall.md`](progressive-memory-recall.md)) — buscar "todos os gotchas de provider" sem ler tudo.
 
@@ -39,7 +39,7 @@ O prompt (`code.json:105`) manda "return an empty response only" — ou seja, ro
 
 ## Técnica 3 — Output estruturado de verdade (fazer melhor que o claude-mem)
 
-O `claude-mem` faz XML-em-texto porque nasceu antes da tool-use API estável. O Claudio **não tem essa dívida** — `src/services/api/` já abstrai providers (`openaiShim`, `codexShim`) e todos suportam tool calling ou `response_format`.
+O `claude-mem` faz XML-em-texto porque nasceu antes da tool-use API estável. O Claudin **não tem essa dívida** — `src/services/api/` já abstrai providers (`openaiShim`, `codexShim`) e todos suportam tool calling ou `response_format`.
 
 **Proposta:** o `extractMemories` deve usar saída estruturada nativa:
 
@@ -47,7 +47,7 @@ O `claude-mem` faz XML-em-texto porque nasceu antes da tool-use API estável. O 
 - Fallback (provider sem tool calling): `response_format: json_schema` ou, em último caso, prompt + parse zod
 - Parse e validação via zod na saída — não regex
 
-Isso é **literalmente o TODO do `claude-mem`** (`parser.ts:5`, `TODO(#2233)`). O Claudio pode entregar certo desde o início.
+Isso é **literalmente o TODO do `claude-mem`** (`parser.ts:5`, `TODO(#2233)`). O Claudin pode entregar certo desde o início.
 
 **Nota:** no claude-mem, zod existe (`src/core/schemas/`, ~21 arquivos) mas só valida payloads HTTP/storage — `MemoryItemSchema.type` é `z.string()`, **não** enum. Nenhum schema zod toca a saída do LLM. O enum fechado vive só como dados em `code.json` + validação no parser regex.
 
@@ -69,7 +69,7 @@ if (!parsed.valid) {
 
 **Trick relacionado — dedup de concept** (`parser.ts:119`): `cleanedConcepts = concepts.filter(c => c !== finalType)`. O sistema antecipa o LLM confundir os eixos ortogonais "type" e "concept" e remove silenciosamente o overlap.
 
-**Proposta:** o `extractMemories` do Claudio deve seguir o mesmo princípio:
+**Proposta:** o `extractMemories` do Claudin deve seguir o mesmo princípio:
 
 - Saída inválida → loga via `logError`, **não** re-tenta a extração, segue a sessão (a memória daquele turno simplesmente não é gravada)
 - Enum/campo individual inválido → fallback ao default do schema zod + `logError`, grava o resto

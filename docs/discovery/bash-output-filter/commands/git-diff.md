@@ -9,7 +9,7 @@
 
 ---
 
-## Saída crua representativa (claudio repo, 5 May 2026)
+## Saída crua representativa (claudin repo, 5 May 2026)
 
 ### Amostra 1 — `git diff --stat` (291 bytes)
 

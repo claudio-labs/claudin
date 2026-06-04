@@ -1,6 +1,6 @@
 # Pesquisa de Mercado — Claude Code & opencode (maio/2026)
 
-Análise de o que usuários querem, do que reclamam, e onde o Claudio (fork multi-provider) pode se destacar.
+Análise de o que usuários querem, do que reclamam, e onde o Claudin (fork multi-provider) pode se destacar.
 
 Fontes: Reddit (r/ClaudeAI, r/ClaudeCode, r/LocalLLaMA), Hacker News, GitHub issues (anthropics/claude-code, sst/opencode), blogs (Builder.io, MindStudio, The Register, claudefa.st), análises independentes (Stella Laurenzo / anthonymaio.substack.com), DEV.to.
 
@@ -140,7 +140,7 @@ Precisa aumentar `num_ctx`, reiniciar após trocar provider, e escolher modelos 
 
 ---
 
-## 6. Oportunidades para o Claudio
+## 6. Oportunidades para o Claudin
 
 1. **Escopo de MCP por comando** — frontmatter `mcp:` em markdown do comando.
 2. **Contagem honesta de cap semanal + fallback de provider** — cap Anthropic estourou → Codex OAuth → Qwen local.
@@ -153,7 +153,7 @@ Precisa aumentar `num_ctx`, reiniciar após trocar provider, e escolher modelos 
 9. **Rubrica de custo por provider** — $/tokens por sessão por provider; cap "max session cost".
 10. **Promessa "no-undercover-mode"** — diferencial pós-vazamento; `verify:privacy` já valida invariantes similares.
 11. **Hooks em todos os eventos** — paridade com pedidos do opencode.
-12. **Rubrica por comando (paridade com Outcomes)** — small-fast model avalia contra `.claudio/rubrics/<name>.md`.
+12. **Rubrica por comando (paridade com Outcomes)** — small-fast model avalia contra `.claudin/rubrics/<name>.md`.
 13. **Bash output filter** — já shippado; ~50K tokens/sessão, ~72% redução de input cost. Vale destacar no marketing.
 14. **Install Windows-first** — script PowerShell sem WSL, auto-ripgrep, image paste. Cobre opencode #4392.
 15. **Página "O que forkamos, o que mudamos"** — moeda de confiança pós-vazamento.

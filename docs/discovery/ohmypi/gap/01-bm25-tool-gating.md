@@ -26,7 +26,7 @@ Escopo: achados em `oh-my-pi` ainda não cobertos pela trilha `01-bm25-tool-gati
 - `session/agent-session.ts:869-872,2891-2893,3097-3108`: cache `#discoverableToolSearchIndex: DiscoverableToolSearchIndex | null` — construído lazy na 1ª busca, invalidado em **4 callsites específicos**: ativação (`:3146`), refresh de MCP tools (`:2885`), mudança de set ativo (`:3290`), registry mutation (`:3568`). Não tem TTL, não tem cache de queries — só cache do índice. Simplicidade vence.
 
 ### 1.7 `getDiscoverableTools` exclui tools já ativas
-- `session/agent-session.ts:3064-3078`: filtragem por `!activeNames.has(t.name)` **antes** de indexar. BM25 nunca devolve uma tool já no pool — implícito anti-noise. Claudio hoje pode rankar e devolver duplicatas.
+- `session/agent-session.ts:3064-3078`: filtragem por `!activeNames.has(t.name)` **antes** de indexar. BM25 nunca devolve uma tool já no pool — implícito anti-noise. Claudin hoje pode rankar e devolver duplicatas.
 
 ### 1.8 `selected` ⊂ `active` invariant
 - `session/agent-session.ts:3110-3119`: `getSelectedDiscoveredToolNames()` reinterseta `#selectedDiscoveredToolNames` com active toolset toda chamada. Se a tool foi desativada externamente, BM25 pode redescobri-la. Self-healing.
@@ -46,21 +46,21 @@ Escopo: achados em `oh-my-pi` ainda não cobertos pela trilha `01-bm25-tool-gati
 ### 1.13 Descrição da search tool é dinâmica
 - `search-tool-bm25.ts:212-214,169-176`: o `description` da tool é renderizado a cada chamada de `prompt.render(...)` injetando contagem corrente de servers MCP discoverable. Modelo vê "Discoverable MCP servers in this session: github (12 tools), slack (4 tools)" — sinaliza ao modelo *o que ele pode achar* sem custar schema das tools individuais.
 
-## 2. Vale pra Claudio?
+## 2. Vale pra Claudin?
 
 | # | Ideia | Vale? | Razão |
 |---|---|---|---|
-| 1.1 | `summary` field separado | **SIM** | Claudio tem `searchHint` mas ainda usa `prompt().slice(0,200)` no fallback BM25 proposto — adicionar `summary` curado e dropar dependência de prompt melhora ranking. Diff baixo. |
-| 1.2 | Tokenizer NFKD/ACRONYM | **SIM** | Claudio TUI/REPL é pt-BR (`communication-language.md`). Usuário pode digitar "github" mas tools/MCP têm nomes camelCase/snake. Worth porting verbatim. |
-| 1.3 | `discoveryMode: mcp-only \| all` | **CONDICIONAL** | Útil quando MCP cresce. Hoje pouco MCP no Claudio (per `fit/01`). Adicionar só se MCP entrar no roadmap. |
-| 1.4 | Persistência no session log | **SIM** | Claudio tem session resume; hoje set ativo de tools não persiste cross-resume. Em provedores OpenAI-compat com gating ativo (PR2 do MVP), usuário que faz resume perde as ativações e paga round-trips de novo. Win UX. |
+| 1.1 | `summary` field separado | **SIM** | Claudin tem `searchHint` mas ainda usa `prompt().slice(0,200)` no fallback BM25 proposto — adicionar `summary` curado e dropar dependência de prompt melhora ranking. Diff baixo. |
+| 1.2 | Tokenizer NFKD/ACRONYM | **SIM** | Claudin TUI/REPL é pt-BR (`communication-language.md`). Usuário pode digitar "github" mas tools/MCP têm nomes camelCase/snake. Worth porting verbatim. |
+| 1.3 | `discoveryMode: mcp-only \| all` | **CONDICIONAL** | Útil quando MCP cresce. Hoje pouco MCP no Claudin (per `fit/01`). Adicionar só se MCP entrar no roadmap. |
+| 1.4 | Persistência no session log | **SIM** | Claudin tem session resume; hoje set ativo de tools não persiste cross-resume. Em provedores OpenAI-compat com gating ativo (PR2 do MVP), usuário que faz resume perde as ativações e paga round-trips de novo. Win UX. |
 | 1.5 | Seeds por server | **CONDICIONAL** | Idem 1.3 — depende de MCP. |
 | 1.6 | Cache do índice (não de queries) | **SIM** | Confirma decisão arquitetural do MVP. Documenta que cache de *queries* (que o user pediu para explorar) é **deliberadamente** não feito em omp — corpus 30 tools, búsca <1ms, cache de query overkill. |
 | 1.7 | Excluir ativas do corpus | **SIM** | Trivial; evita confusão no ranking. Aplica em `searchToolsWithKeywords` (`ToolSearchTool.ts:186-302`). |
 | 1.8 | `selected ⊂ active` invariant | **SIM** | Self-healing barato. Vira teste de invariant em PR2. |
-| 1.9 | Multi-tool em 1 call | **JÁ EXISTE** | `ToolSearchTool` já aceita seleção múltipla (`prompt.ts:55-109`). Nota: omp usa `query+limit` (auto), Claudio usa `select:` explícito. Considerar híbrido: query devolve top-K e ativa todos (omp-style) — reduz acoplamento entre prompt do ToolSearchTool e capacidade do modelo de seguir DSL `select:`. |
-| 1.10 | `loadMode` local | **SIM** | Claudio usa `shouldDefer`/`alwaysLoad` no `buildTool` — mesmo padrão. Confirma; sem ação. |
-| 1.11 | `createIf` capability gate | **SIM** | Padrão útil quando BM25 gating é flag-gated. Hoje Claudio aborta no `call`; gate no buildTool é mais limpo. |
+| 1.9 | Multi-tool em 1 call | **JÁ EXISTE** | `ToolSearchTool` já aceita seleção múltipla (`prompt.ts:55-109`). Nota: omp usa `query+limit` (auto), Claudin usa `select:` explícito. Considerar híbrido: query devolve top-K e ativa todos (omp-style) — reduz acoplamento entre prompt do ToolSearchTool e capacidade do modelo de seguir DSL `select:`. |
+| 1.10 | `loadMode` local | **SIM** | Claudin usa `shouldDefer`/`alwaysLoad` no `buildTool` — mesmo padrão. Confirma; sem ação. |
+| 1.11 | `createIf` capability gate | **SIM** | Padrão útil quando BM25 gating é flag-gated. Hoje Claudin aborta no `call`; gate no buildTool é mais limpo. |
 | 1.12 | Schema keys sorted | **SIM** | Custo zero; estabiliza hash do corpus para futuro cache cross-session. |
 | 1.13 | Description dinâmica da search tool | **SIM** | Hoje `ToolSearchTool` tem prompt estático. Injetar contagem live ("12 deferred: 3 worktree, 4 cron, 5 mcp") ajuda modelos pequenos a saber *que* buscar. |
 
@@ -68,7 +68,7 @@ Não vale: nada explicitamente. **Não encontrado em omp** (responde perguntas d
 
 ## 3. Encaixe potencial
 
-| Ideia | Onde no Claudio |
+| Ideia | Onde no Claudin |
 |---|---|
 | 1.1 `summary` | `src/Tool.ts:405` — adicionar `summary?: string` ao lado de `searchHint`. Corpus BM25 (módulo novo `src/utils/bm25ToolIndex.ts` per deep §"Escopo MVP") usa `summary` peso 2, fallback `searchHint`, fallback `prompt().slice(0,200)`. |
 | 1.2 Tokenizer NFKD | `src/utils/bm25ToolIndex.ts` — port direto de `tool-index.ts:115-134`. Compartilhar com `ToolSearchTool.ts:132-185` se o scorer linear continuar como fallback. |

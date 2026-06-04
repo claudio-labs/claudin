@@ -1,12 +1,12 @@
 # Deep dive 03 — Prompts em `.md` via text-import
 
-> Continuação de `docs/discovery/ohmypi/03-prompts-as-md-textimport.md`. Foco: como migrar prompts inline do Claudio para arquivos `.md` reaproveitando o padrão omp.
+> Continuação de `docs/discovery/ohmypi/03-prompts-as-md-textimport.md`. Foco: como migrar prompts inline do Claudin para arquivos `.md` reaproveitando o padrão omp.
 
 ## Resumo executivo
 
 - omp tem regra dura em `AGENTS.md:31`: prompts **nunca** vivem em código. Todos viajam como `.md` importados via `with { type: "text" }` e renderizados com Handlebars (`prompt.render`).
 - A regra é seguida com disciplina: ~70+ imports de `.md` rastreados em `packages/coding-agent` e `packages/agent`, organizados em `prompts/{agents,tools,system,commands,memories,goals}/`.
-- Claudio já tem **toda a infraestrutura** para fazer o mesmo: `scripts/build.ts:397-431` inlina `.md`/`.txt` no bundle quando o arquivo existe (`export default <JSON string>`), e o padrão já é usado em `src/skills/bundled/*Content.ts` (40+ arquivos sob `src/skills/bundled/claude-api/`).
+- Claudin já tem **toda a infraestrutura** para fazer o mesmo: `scripts/build.ts:397-431` inlina `.md`/`.txt` no bundle quando o arquivo existe (`export default <JSON string>`), e o padrão já é usado em `src/skills/bundled/*Content.ts` (40+ arquivos sob `src/skills/bundled/claude-api/`).
 - O que falta é convenção e migração: ~7 prompts grandes ainda vivem como template literals dentro de `.ts`, somando >3.000 LOC de string-em-código nos arquivos críticos do agent loop.
 - Não é preciso adicionar `loader: { '.md': 'text' }` nem a sintaxe `with { type: "text" }`: o `onResolve/onLoad` em `scripts/build.ts:403-431` já cobre o caso. Os imports omp-style funcionariam mas a anotação `with` é redundante.
 
@@ -41,7 +41,7 @@ Pontos de entrada bem visíveis:
 
 Dynamic content é injetado via `prompt.render(template, vars)` (Handlebars) — ver `task/agents.ts:38-42`.
 
-## Estado atual no Claudio
+## Estado atual no Claudin
 
 ### O que já existe
 
@@ -77,7 +77,7 @@ Já em uso por:
 - `src/skills/bundled/claudeApiContent.ts` (~25 imports `.md` da árvore `claude-api/`).
 - Runtime txt: `src/utils/permissions/yolo-classifier-prompts/{auto_mode_system_prompt,permissions_external}.txt` é lido com `readFileSync` no test mas inlinado no bundle.
 
-Conclusão: o caminho omp-style **já funciona hoje** no Claudio. Não precisa mudar o build.
+Conclusão: o caminho omp-style **já funciona hoje** no Claudin. Não precisa mudar o build.
 
 ### Mudança em `build.ts` (snippet conceitual)
 
@@ -126,7 +126,7 @@ Candidatos secundários (não recomendados na 1ª onda — são mais "código ge
 
 ## Convenção sugerida
 
-Espelhar omp no Claudio, ajustando ao layout `src/tools/<Name>/`:
+Espelhar omp no Claudin, ajustando ao layout `src/tools/<Name>/`:
 
 ```
 src/prompts/                  # nova raiz canônica para prompts cross-cutting
@@ -215,7 +215,7 @@ describe('agent prompts', () => {
 })
 ```
 
-Contrato adicional (alinhado a `.claudio/rules/testing.md`):
+Contrato adicional (alinhado a `.claudin/rules/testing.md`):
 - Asserts **semânticos** sobre cabeçalhos/placeholders, não bytes:
 
 ```ts
@@ -238,10 +238,10 @@ Bonus: guard de build invariant análogo a `scripts/feature-flags-source-guard.t
 2. Adicionar `src/utils/promptTemplate.ts` com `render(template, vars)` minimalista (`{{name}}` → `vars.name`).
 3. Migrar `src/tools/BashTool/prompt.ts` (próximo em risco baixo, mais variáveis).
 4. Apertar o build: tornar imports sob `src/prompts/` strict (erro se faltando).
-5. Documentar convenção em `.claudio/rules/typescript-patterns.md`: "prompts > 500 chars vivem em `.md`".
+5. Documentar convenção em `.claudin/rules/typescript-patterns.md`: "prompts > 500 chars vivem em `.md`".
 
 ## Referências
 
 - omp: `packages/coding-agent/src/task/agents.ts:9-18`, `AGENTS.md:31`, `packages/coding-agent/DEVELOPMENT.md:886`, `packages/coding-agent/src/prompts/{agents,system,tools,commands,memories,goals}/`
-- Claudio: `scripts/build.ts:397-431` (loader), `src/skills/bundled/verifyContent.ts:1-13` (uso atual), `src/skills/bundled/claudeApiContent.ts:1-29` (uso em escala)
+- Claudin: `scripts/build.ts:397-431` (loader), `src/skills/bundled/verifyContent.ts:1-13` (uso atual), `src/skills/bundled/claudeApiContent.ts:1-29` (uso em escala)
 - Inline-prompt candidatos: `src/coordinator/coordinatorMode.ts:116`, `src/tools/AgentTool/prompt.ts:108`, `src/tools/BashTool/prompt.ts:70`, `src/tools/SkillTool/prompt.ts:138`, `src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts:30`

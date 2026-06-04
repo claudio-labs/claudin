@@ -1,6 +1,6 @@
 # oh-my-pi (omp) — análise comparativa
 
-Discovery comparando `oh-my-pi` (repo em `/home/viudes/projects/oh-my-pi`) com Claudio. Objetivo: extrair padrões/ideias que valem investigação aprofundada, não paridade de features.
+Discovery comparando `oh-my-pi` (repo em `/home/viudes/projects/oh-my-pi`) com Claudin. Objetivo: extrair padrões/ideias que valem investigação aprofundada, não paridade de features.
 
 Snapshot de exploração: 2026-05-25.
 
@@ -10,7 +10,7 @@ Três ondas de agents:
 
 1. **insight** (raw, `0X-*.md`) — primeira leitura comparativa.
 2. **deep** (`deep/0X-*.md`) — aprofundamento técnico de cada insight.
-3. **fit** (`fit/0X-*.md`) — análise de encaixe + ganhos reais medidos no codebase Claudio.
+3. **fit** (`fit/0X-*.md`) — análise de encaixe + ganhos reais medidos no codebase Claudin.
 4. **gap** (`gap/0X-*.md`) — varredura final por ideias laterais que não entraram nas ondas anteriores.
 
 ## Estrutura
@@ -27,7 +27,7 @@ Três ondas de agents:
 
 ## Descartados após deep-dive
 
-- ~~**09 h2-fetch**~~ — Claudio já tem implementação superior (undici 8.3 + pool per-provider + sticky h1-fallback).
+- ~~**09 h2-fetch**~~ — Claudin já tem implementação superior (undici 8.3 + pool per-provider + sticky h1-fallback).
 
 ## Descartados após fit analysis
 
@@ -81,11 +81,11 @@ Inclui ideias dos gaps que escaparam do escopo original dos 10 insights.
 |---|---|
 | BM25 tool gating | Vácuo do `openaiShim` (sem `defer_loading`) |
 | WebFetch in-memory contadores | Medir hit-ratio primeiro, sem disco na v1 |
-| MCP tool-list cache 30d + config-hash | Gap real — Claudio só tem `authCache` |
+| MCP tool-list cache 30d + config-hash | Gap real — Claudin só tem `authCache` |
 | Prefix-invalidation triggers em `toolResultCache` | Hoje só mtime do file próprio |
 | `report_tool_issue` JSONL local-only | Dogfooding settings checked-in |
 | Reviewer structured findings (confidence + priority) | Estende `/review` |
-| Worker pool + Semáforo (cap concurrency) | Claudio usa Promise.all sem cap |
+| Worker pool + Semáforo (cap concurrency) | Claudin usa Promise.all sem cap |
 | Memories pipeline 2-stage `.md` | Migra `extractMemories/prompts.ts` |
 
 ### P2 — nicho ou bloqueado

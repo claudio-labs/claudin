@@ -1,6 +1,6 @@
 # 10 — Inline terminal images (Sixel / Kitty / iTerm2)
 
-omp renderiza imagens diretamente no terminal via protocolos gráficos. Claudio hoje passa a imagem só pro modelo (multimodal block) e exibe ao usuário como `Read image (size)` ou hyperlink OSC 8 que terceiriza pro viewer do SO.
+omp renderiza imagens diretamente no terminal via protocolos gráficos. Claudin hoje passa a imagem só pro modelo (multimodal block) e exibe ao usuário como `Read image (size)` ou hyperlink OSC 8 que terceiriza pro viewer do SO.
 
 ## Onde isso vive em omp
 
@@ -11,7 +11,7 @@ omp renderiza imagens diretamente no terminal via protocolos gráficos. Claudio 
 - Componente `Image` reserva `rows-1` linhas + cursor-up + raw sequence (padrão `ink-picture`).
 - Fallback textual: `[Image: filename [mime] WxH]`.
 
-## Onde isso encaixaria em Claudio
+## Onde isso encaixaria em Claudin
 
 - `src/tools/FileReadTool/FileReadTool.ts:705-712` — hoje empacota imagem como Anthropic multimodal block (`{type:'image', source:{base64,media_type}}`); só vai pro modelo.
 - `src/components/FileReadTool/UI.tsx:80-89` — saída literal `Read image (size)`.

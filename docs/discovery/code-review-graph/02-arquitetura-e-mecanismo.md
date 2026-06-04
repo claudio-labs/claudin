@@ -8,7 +8,7 @@ Investigação do repositório em `/home/viudes/projects/code-review-graph` (v2.
 
 ```
                    ┌──────────────────────────────────────────────┐
-                   │           Cliente AI (Claudio, Codex, …)     │
+                   │           Cliente AI (Claudin, Codex, …)     │
                    └──────────────┬───────────────────────────────┘
                                   │ JSON via stdio (MCP)
                                   ▼
@@ -281,4 +281,4 @@ O ganho real do `code-review-graph` é situacional:
 
 O design é sólido — incremental build, hash-based caching, BFS via SQLite CTE, FTS5, `detail_level` knob, MCP-native. O **marketing está à frente do mecanismo**: o ganho não é universal, depende fortemente do agente saber pedir `detail_level="minimal"` e começar por `get_minimal_context`, e o próprio benchmark do projeto (que ninguém citou no README) mostra ratio ≈ 0 nos casos default.
 
-A integração mais defensável para Claudio é: usar `get_minimal_context` como primeira chamada de sessões de review, usar `get_impact_radius`/`detect_changes` com `detail_level="minimal"` em PRs > 5 arquivos, e **não** usar `get_review_context` com defaults — preferir `Read` direto nesses casos.
+A integração mais defensável para Claudin é: usar `get_minimal_context` como primeira chamada de sessões de review, usar `get_impact_radius`/`detect_changes` com `detail_level="minimal"` em PRs > 5 arquivos, e **não** usar `get_review_context` com defaults — preferir `Read` direto nesses casos.

@@ -4,7 +4,7 @@
 **Família:** github
 **Tier:** 1.5 (alta frequência esperada em workflow PR/issue)
 **Estratégia provável:** declarative (truncate columns + `--json` rewrite considerar)
-**Status:** **NOT analyzed** (`gh` instalado mas claudio não tem remote GitHub configurado)
+**Status:** **NOT analyzed** (`gh` instalado mas claudin não tem remote GitHub configurado)
 **Estimated reduction:** ~60-75% (estimado)
 
 ---

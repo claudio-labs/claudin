@@ -12,7 +12,7 @@ The skill's `SKILL.md` then becomes a short manual for that driver.
 
 ```
 apps/desktop/
-  .claudio/skills/run-desktop/
+  .claudin/skills/run-desktop/
     SKILL.md               ← short. "run the driver, here are the commands"
     driver.mjs             ← REPL: stdin commands → Playwright actions
 ```
@@ -23,7 +23,7 @@ agent can never touch.
 **Graduation path:** if the driver grows launch helpers the project's
 real e2e suite wants to share, move it to `e2e-playwright/driver.mjs`
 (or `scripts/drive.mjs`) and update the skill's paths. The skill stays
-at `.claudio/skills/run-desktop/`; the driver finds a better home.
+at `.claudin/skills/run-desktop/`; the driver finds a better home.
 
 ## Step 1 — get the app to launch AT ALL under xvfb
 
@@ -70,7 +70,7 @@ right shape** because an agent can run it inside tmux and iterate
 without relaunching the (slow) app on every interaction.
 
 ```javascript
-// .claudio/skills/run-<unit>/driver.mjs
+// .claudin/skills/run-<unit>/driver.mjs
 // REPL driver for <app>. Run under xvfb on headless Linux.
 // Designed for agents: wrap in tmux, send-keys commands, capture-pane output.
 import { _electron as electron } from 'playwright-core';
@@ -209,7 +209,7 @@ Run the driver the same way the next agent will:
 
 ```bash
 tmux new-session -d -s app -x 200 -y 50
-tmux send-keys -t app 'cd /workspace/apps/desktop && xvfb-run -a node .claudio/skills/run-desktop/driver.mjs' Enter
+tmux send-keys -t app 'cd /workspace/apps/desktop && xvfb-run -a node .claudin/skills/run-desktop/driver.mjs' Enter
 timeout 20 bash -c 'until tmux capture-pane -t app -p | grep -q "driver>"; do sleep 0.2; done'
 tmux send-keys -t app 'launch' Enter
 timeout 60 bash -c 'until tmux capture-pane -t app -p | grep -q "launched"; do sleep 0.2; done'
@@ -238,7 +238,7 @@ Structure that works:
 > ---
 >
 > <App> is an Electron desktop app. For agent/automated use, drive it
-> via the Playwright REPL at `.claudio/skills/run-desktop/driver.mjs`
+> via the Playwright REPL at `.claudin/skills/run-desktop/driver.mjs`
 > under xvfb. Launch is slow (~10s) and the interesting UI lives in a
 > BrowserView, not the main window — the driver handles both.
 >
@@ -263,14 +263,14 @@ Structure that works:
 >
 > ```bash
 > cd apps/desktop
-> xvfb-run -a node .claudio/skills/run-desktop/driver.mjs
+> xvfb-run -a node .claudin/skills/run-desktop/driver.mjs
 > ```
 >
 > Wrap in tmux for interactive use:
 >
 > ```bash
 > tmux new-session -d -s app -x 200 -y 50
-> tmux send-keys -t app 'cd apps/desktop && xvfb-run -a node .claudio/skills/run-desktop/driver.mjs' Enter
+> tmux send-keys -t app 'cd apps/desktop && xvfb-run -a node .claudin/skills/run-desktop/driver.mjs' Enter
 > timeout 20 bash -c 'until tmux capture-pane -t app -p | grep -q "driver>"; do sleep 0.2; done'
 > tmux send-keys -t app 'launch' Enter
 > timeout 60 bash -c 'until tmux capture-pane -t app -p | grep -q "launched"; do sleep 0.2; done'

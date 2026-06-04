@@ -19,7 +19,7 @@
 
 Não encontrado em omp: AST diff/merge, dead-code analyzer, complexity metrics, formatter via AST, codemod recipe library (recipe/ existe mas é runner de shell scripts, não codemods), lint integration dedicada (lint vem via `lsp diagnostics`).
 
-## 2. Vale pra Claudio?
+## 2. Vale pra Claudin?
 
 | Sistema | Vale? | Razão |
 |---|---|---|
@@ -29,13 +29,13 @@ Não encontrado em omp: AST diff/merge, dead-code analyzer, complexity metrics, 
 | **Selector contextual** | Sim, se AstEdit existir | Truque do `fn __rwp_wrapper` é a diferença entre "pattern não compila" e "funciona". Sem isso AstEdit fica frágil em Rust/TS. |
 | **dry_run / max_replacements / max_files** | Sim, obrigatório se AstEdit | Caps anti-pé-no-chão. omp default-on em `dry_run` é a postura certa pra um agent. |
 | **fail_on_parse_error flag** | Sim | Política explícita ao invés de mascarar. |
-| **AstReplaceChange diff preview** | Sim | UI da Claudio já tem diff renderer (FileEditTool). Mesmo formato — encaixa direto. |
+| **AstReplaceChange diff preview** | Sim | UI da Claudin já tem diff renderer (FileEditTool). Mesmo formato — encaixa direto. |
 | **parse_errors campo** | Sim | Pattern do projeto: fallback pattern (typescript-patterns.md). Encaixa. |
 | **Overlap detection** | Sim | Correção, não feature. |
-| **Token counting (tiktoken)** | **Sim, ortogonal** | Claudio hoje estima tokens via heurística string-length em vários pontos. tiktoken via WASM (`@dqbd/tiktoken` ou similar — pure JS) daria budget exato. Não precisa pi-ast pra isso. Investigar separado. |
-| **LSP rename / code_actions / request** | **Sim, prioridade > AstEdit** | LSPTool de Claudio (`src/tools/LSPTool/schemas.ts:14-166`) só tem read-ops (goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, goToImplementation, callHierarchy). Não tem `rename`, `rename_file`, `code_actions`, `request` raw. O fit doc do AstEdit já notou (`fit:226-228`): "LSP rename já presente cobriria rename cross-file melhor que ast-grep". Adicionar essas ops no LSPTool ataca o mesmo caso de uso (rename amplo) sem WASM, sem tree-sitter, sem novo tool. |
+| **Token counting (tiktoken)** | **Sim, ortogonal** | Claudin hoje estima tokens via heurística string-length em vários pontos. tiktoken via WASM (`@dqbd/tiktoken` ou similar — pure JS) daria budget exato. Não precisa pi-ast pra isso. Investigar separado. |
+| **LSP rename / code_actions / request** | **Sim, prioridade > AstEdit** | LSPTool de Claudin (`src/tools/LSPTool/schemas.ts:14-166`) só tem read-ops (goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, goToImplementation, callHierarchy). Não tem `rename`, `rename_file`, `code_actions`, `request` raw. O fit doc do AstEdit já notou (`fit:226-228`): "LSP rename já presente cobriria rename cross-file melhor que ast-grep". Adicionar essas ops no LSPTool ataca o mesmo caso de uso (rename amplo) sem WASM, sem tree-sitter, sem novo tool. |
 
-## 3. Encaixe em Claudio
+## 3. Encaixe em Claudin
 
 1. **FileReadTool + summary** — primeira porta. Não precisa do crate Rust: implementação em TS puro com `web-tree-sitter` (3 grammars) cabe em `src/tools/FileReadTool/summarize.ts`. Settings já existem em padrão omp (`read.summarize.minBodyLines`). Gate atrás de `feature('READ_AST_SUMMARY')` em `scripts/build.ts:featureFlags`. Footer "read X:1-9999 for raw" segue padrão dos guardrails de erro do FileEditTool.
 
@@ -45,4 +45,4 @@ Não encontrado em omp: AST diff/merge, dead-code analyzer, complexity metrics, 
 
 4. **Token counting tiktoken** — separado dos itens AST. Avaliar `js-tiktoken` ou `@dqbd/tiktoken` no `src/utils/tokens/` para substituir heurísticas de `src/utils/context*`.
 
-Não encaixa em Claudio: recipe runner (omp = scripts shell, ortogonal), summary.rs cobertura de 30 linguagens (mirar 5: TS/JS/Python/Rust/Go), tree-sitter via NAPI (manter WASM coerente com "single-file bundle" promise do CLAUDE.md).
+Não encaixa em Claudin: recipe runner (omp = scripts shell, ortogonal), summary.rs cobertura de 30 linguagens (mirar 5: TS/JS/Python/Rust/Go), tree-sitter via NAPI (manter WASM coerente com "single-file bundle" promise do CLAUDE.md).

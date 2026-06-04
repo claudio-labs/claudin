@@ -25,13 +25,13 @@
 
 **a) Ganho claimado.** Aumentar a taxa de chamadas `LSPTool` vs `GrepTool` para queries do tipo "quem chama X / onde é definido Y", e reduzir Read em N arquivos. Concretamente: tornar `LSPTool` o **default mental** do agente para perguntas de símbolo.
 
-**b) Baseline é straw-man?** **Sim, parcialmente.** O baseline real do Claudio já é:
+**b) Baseline é straw-man?** **Sim, parcialmente.** O baseline real do Claudin já é:
 - `LSPTool` 13 ops registrado e descrito em `src/tools/LSPTool/prompt.ts:1-14` (`04 §1`, `05 §1.1`).
 - 12 servers embarcados auto-instaláveis (`src/services/lsp/builtinServers.ts:461-609`, `05 §1.1`).
 - `GrepTool` com `output_mode="symbols"` cobre TS/JS/Py/Go (`src/tools/GrepTool/GrepTool.ts:408-419`, `06`).
 - Read `view='outline'` para esqueleto de arquivo (`06`).
 
-Um usuário "atento" do Claudio que sabe que LSPTool existe já chama `findReferences`/`incomingCalls` quando convém. O que o roadmap propõe é mudar o **prior probabilístico** do modelo. Esse efeito é difuso, sem mecanismo direto de medição; é exatamente o tipo de claim contra o qual `02 §9` arma contra o CRG ("38×-528× sem CSV que sustente"). Aqui o equivalente seria "LSP-first prompt aumenta X% as chamadas LSP" — sem A/B controlado, é fé.
+Um usuário "atento" do Claudin que sabe que LSPTool existe já chama `findReferences`/`incomingCalls` quando convém. O que o roadmap propõe é mudar o **prior probabilístico** do modelo. Esse efeito é difuso, sem mecanismo direto de medição; é exatamente o tipo de claim contra o qual `02 §9` arma contra o CRG ("38×-528× sem CSV que sustente"). Aqui o equivalente seria "LSP-first prompt aumenta X% as chamadas LSP" — sem A/B controlado, é fé.
 
 **c) Medição mínima.** A/B controlado de 1-2 semanas comparando log de tool-calls em sessões reais (não synthetic). Métrica: ratio `LSP-symbol-ops / (LSP-symbol-ops + Grep-symbol-queries + Read-on-symbol-target)`. Hipótese: tem que subir ≥15 pontos percentuais sem aumentar `total-tokens-per-task` em >5%. Sem essa medida, o eixo é prompt-engineering de fé.
 
@@ -43,7 +43,7 @@ Um usuário "atento" do Claudio que sabe que LSPTool existe já chama `findRefer
 
 **e) Failure modes.**
 - Usuário Rust + TS: `rust-analyzer` instala automático mas pode demorar minutos no primeiro warmup → nudge LSP faz a primeira pergunta travar.
-- Repo Bash-pesado (scripts/ no Claudio): LSP não cobre, agente tenta, erra, cai pra Grep. Custo extra.
+- Repo Bash-pesado (scripts/ no Claudin): LSP não cobre, agente tenta, erra, cai pra Grep. Custo extra.
 - Nudge "ALWAYS use LSP BEFORE Grep" copiado literal do tom CRG (`07 §Eixo 1` adverte contra isso): se o LSP server estiver derrubado o agente fica em loop "LSP não retornou, vou tentar de novo".
 
 **f) Alternativa menor (60-80% do valor / 20% do custo).** Adicionar **uma única frase** nas descriptions de `LSPTool` e `GrepTool` (`src/tools/LSPTool/prompt.ts`, `src/tools/GrepTool/prompt.ts`) — "for symbol navigation prefer this/that" — sem mexer em Explore/Plan/main agents. Isso testa o nudge no menor canal possível antes de inflar 3 system prompts.
@@ -54,7 +54,7 @@ Um usuário "atento" do Claudio que sabe que LSPTool existe já chama `findRefer
 
 **a) Ganho claimado.** Substituir o prompt naive de `src/commands/review.ts:9-31` (que só faz `gh pr diff` → LLM) por: parse hunks → para cada símbolo modificado chama `LSPTool.findReferences`/`incomingCalls` → calcula risk score → injeta tabela no prompt + modo `--minimal`.
 
-**b) Baseline é straw-man?** **Em parte sim.** O baseline atual de `review.ts` é genuinamente primitivo (`05 §4.1`, `06 Gap 1`). Mas um usuário atento, vendo um PR de 3 arquivos pequenos, **lê o diff** — não precisa de risk score. O risk score só agrega quando o PR é grande (>10 arquivos) e cross-package. Esse perfil é minoritário em PRs reais do próprio Claudio (`git log --oneline` mostra commits pequenos).
+**b) Baseline é straw-man?** **Em parte sim.** O baseline atual de `review.ts` é genuinamente primitivo (`05 §4.1`, `06 Gap 1`). Mas um usuário atento, vendo um PR de 3 arquivos pequenos, **lê o diff** — não precisa de risk score. O risk score só agrega quando o PR é grande (>10 arquivos) e cross-package. Esse perfil é minoritário em PRs reais do próprio Claudin (`git log --oneline` mostra commits pequenos).
 
 **c) Medição mínima.** Pegar 10 PRs reais já mergeados (5 pequenos ≤3 arquivos, 5 médios/grandes ≥10 arquivos). Rodar `/review` velho e `/review` novo. Métricas:
 - **Bugs/observações genuínas** encontradas (revisão humana cega de qual veio de qual).
@@ -67,7 +67,7 @@ Critério de ship: nos PRs grandes, novo `/review` precisa achar ≥1 issue extr
 - **N×M chamadas LSP.** Um PR com 30 símbolos modificados → 30 `findReferences`. Cada um custa round-trip ao server. Em repo grande, `findReferences` em símbolo hub (ex: `tryGetActiveProvider` chamado em 80 lugares) volta payload pesado — vai inflar o prompt mais que o diff inteiro inflaria. Mesmo modo de falha do CRG `get_review_context(default)` documentado em `02 §9` (graph_tokens >> naive_tokens em PRs pequenos).
 - **Risk score com pesos arbitrários.** `07 Eixo 2` propõe `tests 0.30 + security 0.20 + callers 0.10 + hunk_size 0.20 + cross_package 0.20`. Calibração? Nenhuma. `02 §8` aponta exatamente isso como ponto frágil do CRG: "risk score é aditivo, não calibrado". Replicar o erro.
 - **`SECURITY_KEYWORDS` falsos positivos.** `07 Eixo 2` já flag que `query/request/http/execute` produz false positives gigantes; mesmo com o filtro proposto, qualquer função `validateInput` vira "security-sensitive".
-- **Detecção de testes heurística.** `02 §8` cita CRG: "falsos negativos prováveis em projetos com convenção atípica". Claudio usa `*.test.ts` colocated (regra `testing.md`), o que ajuda — mas test gap detection é frágil mesmo assim.
+- **Detecção de testes heurística.** `02 §8` cita CRG: "falsos negativos prováveis em projetos com convenção atípica". Claudin usa `*.test.ts` colocated (regra `testing.md`), o que ajuda — mas test gap detection é frágil mesmo assim.
 - **`gh pr diff` parser.** Parser de hunks robusto não é trivial; bordas: renames, binary, diff truncado. Mais código para manter.
 
 **e) Failure modes.**
@@ -90,7 +90,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 
 **b) Baseline é straw-man?** **Sim, fortemente.** A premissa "template vazio = dor" não foi validada. `init.ts` produz `index.md`, `log.md`, `pages/architecture.md` e `wiki-schema.md` — um **scaffold deliberado** para o usuário preencher. É um sistema de notas append-only, não um gerador de doc. Comparar com `claude-code-guide` agent (mencionado em `06 §6`) que já fala do produto, e com `docs/` humano (que `05 §veredito` cita como melhor que qualquer wiki autogen).
 
-**c) Medição mínima.** Rodar o gerador no próprio Claudio (200+ TS files). Checar:
+**c) Medição mínima.** Rodar o gerador no próprio Claudin (200+ TS files). Checar:
 - Quantos módulos gerados? (suspeita: 50-100, ruído).
 - Soma de tokens das páginas vs `CLAUDE.md` atual escrito à mão.
 - Um humano (o maintainer) lê 10 páginas geradas — quantas adiciona conhecimento que não está em `CLAUDE.md` + `docs/`? Critério de ship: ≥4/10. Suspeita: ≤1/10.
@@ -100,7 +100,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 - **Determinismo zero.** Cada regen produz markdown diferente (LLM stochastic). Diff em git fica ruído. Hoje a wiki é editável e estável.
 - **Drift.** Quem mantém? Hoje a wiki é "usuário escreve quando lembra". Auto-wiki cria expectativa de freshness — mas regen automático é custo recorrente que ninguém quer.
 - **Sobreposição com `claude-code-guide` + `docs/` humano.** `05 §veredito` é explícito: "docs/ humano já existe e é melhor".
-- **Import graph regex.** Regex sobre `import` é frágil em TS: dynamic imports, re-exports, path aliases (`src/*`), barrel files. Vai produzir grafo errado em ~10-20% dos arquivos do próprio Claudio.
+- **Import graph regex.** Regex sobre `import` é frágil em TS: dynamic imports, re-exports, path aliases (`src/*`), barrel files. Vai produzir grafo errado em ~10-20% dos arquivos do próprio Claudin.
 
 **e) Failure modes.**
 - Monorepo poliglota (Rust+TS): import graph regex só funciona em uma das linguagens; output omite metade.
@@ -130,7 +130,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 **e) Failure modes.**
 - Invalidation bug: usuário edita arquivo, cache retorna referências antigas, agente sugere fix baseado em info stale. Difícil de debugar.
 - Cache cresce sem cota → sessão de 4h consome GB.
-- Edit externo (usuário no editor) não dispara nenhum hook do Claudio → cache nunca invalida.
+- Edit externo (usuário no editor) não dispara nenhum hook do Claudin → cache nunca invalida.
 
 **f) Alternativa menor.** Memoizar **só `documentSymbol`** (mais cacheável, payload menor, invalidação simples = só o arquivo editado). Skip `findReferences` no cache até medir. Captura 60% do valor com 20% do código e elimina o problema de reverse-deps.
 
@@ -142,8 +142,8 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 
 **b/c/d/e/f)** Roadmap já trata como DEFER. Sustentar. `08 §Eixo 5` e `06 Gap 3` já alertam:
 - SQLite no bundle quebra "single-file `dist/cli.mjs`" (`CLAUDE.md` Architecture).
-- `~/.claudio/<repo>/index.db` fica fora do `verify:privacy` (memória `verify-privacy-bundle-only`).
-- Só justifica em monorepos enormes (`04 §5`) — fora do perfil dominante do Claudio.
+- `~/.claudin/<repo>/index.db` fica fora do `verify:privacy` (memória `verify-privacy-bundle-only`).
+- Só justifica em monorepos enormes (`04 §5`) — fora do perfil dominante do Claudin.
 
 **Veredito:** manter DEFER. Inclusive: condicionar a 2 **e** 3 mostrarem valor **medido em sessões reais**, não em demo.
 
@@ -157,7 +157,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 
 - **Eixo 3 contamina Eixo 2.** Se a wiki autogen entra antes do `/review` melhorado, o `/review` velho tem mais "conteúdo de wiki" para indexar/citar, e o sinal de melhoria do Eixo 2 fica mascarado. Inverso: Eixo 2 primeiro, Eixo 3 nunca (suspeita).
 
-- **Sequencing risk:** o eixo que mais pode envenenar UX se vier primeiro é o **Eixo 3 (wiki)** — gera artefato visível (pasta `.claudio/wiki/` cheia de markdown gerado por LLM), que se for ruim destrói confiança do usuário no comando `/wiki`. Eixo 4 (cache) é o menos arriscado: invisível, falha silenciosa se buggy mas reversível por flag.
+- **Sequencing risk:** o eixo que mais pode envenenar UX se vier primeiro é o **Eixo 3 (wiki)** — gera artefato visível (pasta `.claudin/wiki/` cheia de markdown gerado por LLM), que se for ruim destrói confiança do usuário no comando `/wiki`. Eixo 4 (cache) é o menos arriscado: invisível, falha silenciosa se buggy mas reversível por flag.
 
 ---
 
@@ -166,8 +166,8 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 ### 4.1 PR de 3 arquivos com novo `/review`
 Provável: tabela de risk score injeta 200-400 tokens, mas como são 3 arquivos pequenos a LLM já lia todos. **Valor agregado próximo de zero.** Pior: tempo do review aumenta 5-15s (LSP queries). Casa com o cenário CRG do `02 §9`: graph_tokens > naive_tokens em PRs pequenos.
 
-### 4.2 `/wiki` no próprio Claudio (200+ TS files)
-Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/utils/path.ts`, `src/utils/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudio/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
+### 4.2 `/wiki` no próprio Claudin (200+ TS files)
+Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/utils/path.ts`, `src/utils/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudin/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
 
 ### 4.3 Repo polyglot Rust+TS
 Eixo 1: `rust-analyzer` cold-start lento (`builtinServers.ts:461-609` lista mas warmup é caro) → nudge LSP-first faz primeira query Rust travar. Eixo 2: risk score só usa LSP no que tem server rodando — se Rust LSP não estiver up, o subgraph Rust fica com risk=0 falso (sem callers detectados). Eixo 3: regex import scanner só pega TS (regra `import` JS); módulos Rust ficam fora ou geram placeholders. Eixo 4: cache funciona em ambas, neutro. **Gains são TS-heavy.**
@@ -216,7 +216,7 @@ Agente nudgeado "LSP first" recebe "show me README". Risco baixo de regressão s
 | Eixo | Sinal observável mid-implementation | Ação |
 |------|-------------------------------------|------|
 | 1 | A/B de 1 semana sobre tool descriptions mostra <5pp de aumento na ratio LSP/(LSP+Grep) para queries de símbolo | Abandonar; não mexer em system prompts |
-| 2a | Parser de hunks tem >10% erro em 20 PRs reais do Claudio | Reverter |
+| 2a | Parser de hunks tem >10% erro em 20 PRs reais do Claudin | Reverter |
 | 2b | Em 10 PRs reais, novo /review não acha ≥1 issue extra que velho não acha **OU** consome >2× tokens | Reverter para 2a |
 | 3 | Maintainer (você) abre <3 páginas geradas em 4 semanas | Deletar feature; manter scaffold estático |
 | 4 | Hit rate <20% em 5 sessões reais >10 turnos | Reverter; cache não justifica complexidade |
