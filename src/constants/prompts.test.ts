@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   ANTI_NARRATION_HARNESS_BULLETS,
+  TOOL_BATCHING_HARNESS_BULLET,
   buildHarnessItems,
   getHarnessSection,
   prependBullets,
@@ -33,16 +34,36 @@ describe('getHarnessSection', () => {
   // re-compose the section exactly like `getHarnessSection` does. Guards
   // against accidental nesting / mis-spread of ANTI_NARRATION_HARNESS_BULLETS.
   test('flag-on rendered section snapshot (production wording)', () => {
-    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true))].join(`\n`)
+    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true, true))].join(`\n`)
     expect(rendered).toMatchSnapshot()
   })
 
   test('flag-on rendered section includes every anti-narration bullet', () => {
-    const items = buildHarnessItems(true)
+    const items = buildHarnessItems(true, true)
     for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
       expect(items).toContain(bullet)
     }
-    expect(items).toHaveLength(6 + ANTI_NARRATION_HARNESS_BULLETS.length)
+    // 6 base + 1 batching bullet (flag-on) + ANTI_NARRATION bullets
+    expect(items).toHaveLength(7 + ANTI_NARRATION_HARNESS_BULLETS.length)
+  })
+
+  test('flag-on / batching-off rendered section snapshot (A/B kill-switch path)', () => {
+    // Guards the antiNarration=on, toolBatching=off combination — the
+    // A/B bench path when TOOL_BATCHING_NUDGE is flipped off in
+    // scripts/build.ts. Without this snapshot a regression that only
+    // affects the kill-switch shape ships silently.
+    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true, false))].join(`\n`)
+    expect(rendered).toMatchSnapshot()
+  })
+
+  test('TOOL_BATCHING_NUDGE-on rendered section includes the batching directive', () => {
+    const onItems = buildHarnessItems(false, true)
+    const offItems = buildHarnessItems(false, false)
+    // Flag-on adds the batching directive as its own bullet (so the rule
+    // stands alone and isn't buried inside a sentence about tool choice).
+    expect(onItems).toHaveLength(offItems.length + 1)
+    expect(onItems).toContain(TOOL_BATCHING_HARNESS_BULLET)
+    expect(offItems).not.toContain(TOOL_BATCHING_HARNESS_BULLET)
   })
 })
 
