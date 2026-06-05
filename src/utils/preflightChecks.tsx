@@ -16,6 +16,11 @@ export interface PreflightCheckResult {
   sslHint?: string;
 }
 async function checkEndpoints(): Promise<PreflightCheckResult> {
+  // Claudin is provider-agnostic: skip the Anthropic-endpoint reachability
+  // gate (which fails in regions where api.anthropic.com is blocked) and
+  // let the user proceed to /provider to pick any backend.
+  return { success: true };
+  // eslint-disable-next-line no-unreachable
   try {
     const oauthConfig = getOauthConfig();
     const tokenUrl = new URL(oauthConfig.TOKEN_URL);
