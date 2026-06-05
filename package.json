@@ -79,7 +79,7 @@
     "figures": "6.1.0",
     "fuse.js": "^7.4.1",
     "get-east-asian-width": "^1.6.0",
-    "google-auth-library": "9.15.1",
+    "google-auth-library": "^10.7.0",
     "https-proxy-agent": "9.0.0",
     "ignore": "7.0.5",
     "indent-string": "5.0.0",
