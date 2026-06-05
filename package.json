@@ -106,7 +106,7 @@
     "type-fest": "^5.7.0",
     "undici": "8.3.0",
     "usehooks-ts": "3.1.1",
-    "vscode-languageserver-protocol": "3.17.5",
+    "vscode-languageserver-protocol": "3.18.0",
     "wrap-ansi": "10",
     "ws": "^8.21.0",
     "xss": "1.0.15",

@@ -5,7 +5,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
   Trace,
-} from 'vscode-jsonrpc/node.js'
+} from 'vscode-jsonrpc/node'
 import type {
   InitializeParams,
   InitializeResult,
@@ -367,7 +367,10 @@ export function createLSPClient(
 
       checkStartFailed()
 
-      connection.onRequest(method, handler)
+      connection.onRequest(
+        method,
+        handler as (params: unknown) => unknown | Promise<unknown>,
+      )
     },
 
     async stop(): Promise<void> {
