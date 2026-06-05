@@ -29,6 +29,7 @@ exports[`createAssistantMessage string content → single text block 1`] = `
       "input_tokens": 0,
       "iterations": null,
       "output_tokens": 0,
+      "output_tokens_details": null,
       "server_tool_use": {
         "web_fetch_requests": 0,
         "web_search_requests": 0,
@@ -72,6 +73,7 @@ exports[`createAssistantMessage block content passes through 1`] = `
       "input_tokens": 0,
       "iterations": null,
       "output_tokens": 0,
+      "output_tokens_details": null,
       "server_tool_use": {
         "web_fetch_requests": 0,
         "web_search_requests": 0,
@@ -128,6 +130,7 @@ exports[`createAssistantAPIErrorMessage flags isApiErrorMessage + carries conten
       "input_tokens": 0,
       "iterations": null,
       "output_tokens": 0,
+      "output_tokens_details": null,
       "server_tool_use": {
         "web_fetch_requests": 0,
         "web_search_requests": 0,

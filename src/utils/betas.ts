@@ -14,6 +14,7 @@ import {
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
+  THINKING_TOKEN_COUNT_BETA_HEADER,
   TOKEN_EFFICIENT_TOOLS_BETA_HEADER,
   TOOL_SEARCH_BETA_HEADER_1P,
   TOOL_SEARCH_BETA_HEADER_3P,
@@ -244,6 +245,11 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     getInitialSettings().showThinkingSummaries !== true
   ) {
     betaHeaders.push(REDACT_THINKING_BETA_HEADER)
+    // With thinking display omitted (redact-thinking), the only signal of
+    // reasoning progress is BetaThinkingDelta.estimated_tokens. This header
+    // turns those per-frame counts on so the live token counter keeps moving
+    // during a long redacted thinking phase instead of appearing frozen.
+    betaHeaders.push(THINKING_TOKEN_COUNT_BETA_HEADER)
   }
 
   const thinkingPreservationEnabled = modelSupportsContextManagement(model)

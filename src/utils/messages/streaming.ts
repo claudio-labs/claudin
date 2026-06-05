@@ -170,9 +170,24 @@ export function handleMessageFromStream(
           })
           return
         }
-        case 'thinking_delta':
-          onUpdateLength(message.event.delta.thinking)
+        case 'thinking_delta': {
+          const thinking = message.event.delta.thinking
+          if (thinking) {
+            onUpdateLength(thinking)
+          } else {
+            // redact-thinking omits the thinking text, so `thinking` is empty
+            // and the live token counter would otherwise freeze for the whole
+            // reasoning phase. With the thinking-token-count beta the server
+            // still sends a per-frame `estimated_tokens` increment; bridge it
+            // into the length-based counter (display divides length by 4 to get
+            // tokens, so multiply back up by 4) to keep it moving.
+            const estimated = message.event.delta.estimated_tokens
+            if (typeof estimated === 'number' && estimated > 0) {
+              onUpdateLength(' '.repeat(estimated * 4))
+            }
+          }
           return
+        }
         case 'signature_delta':
           // Signatures are cryptographic authentication strings, not model
           // output. Excluding them from onUpdateLength prevents them from

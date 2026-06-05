@@ -835,6 +835,19 @@ export async function* queryModel(
       !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING);
     let thinking: BetaMessageStreamParams["thinking"] | undefined = undefined;
 
+    // When redact-thinking is active the server already resolves the thinking
+    // display to "omitted"; set it explicitly so the thinking-token-count beta
+    // reliably emits per-frame `estimated_tokens` (whose precondition is an
+    // omitted display) and the live token counter keeps moving during a long
+    // redacted thinking phase. Gated strictly on redact-thinking being active,
+    // so the showThinkingSummaries / non-first-party / non-interactive paths
+    // (where the user wants the thinking text) are never affected.
+    const thinkingDisplay: "omitted" | undefined = betasParams.includes(
+      REDACT_THINKING_BETA_HEADER,
+    )
+      ? "omitted"
+      : undefined;
+
     // IMPORTANT: Do not change the adaptive-vs-budget thinking selection below
     // without notifying the model launch DRI and research. This is a sensitive
     // setting that can greatly affect model quality and bashing.
@@ -847,6 +860,7 @@ export async function* queryModel(
         // thinking without a budget.
         thinking = {
           type: "adaptive",
+          ...(thinkingDisplay ? { display: thinkingDisplay } : {}),
         } satisfies BetaMessageStreamParams["thinking"];
       } else {
         // Derive the thinking budget from /effort so the user has direct
@@ -863,6 +877,7 @@ export async function* queryModel(
         thinking = {
           budget_tokens: thinkingBudget,
           type: "enabled",
+          ...(thinkingDisplay ? { display: thinkingDisplay } : {}),
         } satisfies BetaMessageStreamParams["thinking"];
       }
     }
@@ -2181,6 +2196,11 @@ export function updateUsage(
         ? partUsage.cache_read_input_tokens
         : usage.cache_read_input_tokens,
     output_tokens: partUsage.output_tokens ?? usage.output_tokens,
+    output_tokens_details: {
+      thinking_tokens:
+        partUsage.output_tokens_details?.thinking_tokens ??
+        usage.output_tokens_details.thinking_tokens,
+    },
     server_tool_use: {
       web_search_requests:
         partUsage.server_tool_use?.web_search_requests ??
@@ -2221,6 +2241,11 @@ export function accumulateUsage(
     cache_read_input_tokens:
       totalUsage.cache_read_input_tokens + messageUsage.cache_read_input_tokens,
     output_tokens: totalUsage.output_tokens + messageUsage.output_tokens,
+    output_tokens_details: {
+      thinking_tokens:
+        totalUsage.output_tokens_details.thinking_tokens +
+        messageUsage.output_tokens_details.thinking_tokens,
+    },
     server_tool_use: {
       web_search_requests:
         totalUsage.server_tool_use.web_search_requests +

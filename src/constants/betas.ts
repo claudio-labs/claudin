@@ -23,6 +23,12 @@ export const PROMPT_CACHING_SCOPE_BETA_HEADER =
 export const EXTENDED_CACHE_TTL_BETA_HEADER = 'extended-cache-ttl-2025-04-11'
 export const FAST_MODE_BETA_HEADER = 'fast-mode-2026-02-01'
 export const REDACT_THINKING_BETA_HEADER = 'redact-thinking-2026-02-12'
+// Makes the API emit per-frame thinking-token counts (BetaThinkingDelta
+// .estimated_tokens) even when the raw thinking text is omitted, plus the
+// final usage.output_tokens_details.thinking_tokens. Pairs with
+// redact-thinking: estimated_tokens is only sent when thinking display
+// resolves to "omitted", which is exactly what redact-thinking does.
+export const THINKING_TOKEN_COUNT_BETA_HEADER = 'thinking-token-count-2026-05-13'
 export const TOKEN_EFFICIENT_TOOLS_BETA_HEADER =
   'token-efficient-tools-2026-03-28'
 export const AFK_MODE_BETA_HEADER = feature('TRANSCRIPT_CLASSIFIER')
