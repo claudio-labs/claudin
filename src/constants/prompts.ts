@@ -185,7 +185,7 @@ export const ANTI_NARRATION_HARNESS_BULLETS: readonly string[] = [
 // BashTool, AgentTool) and the glm/kimi family addendums carry related
 // guidance for their own scope — overlap is intentional reinforcement.
 export const TOOL_BATCHING_HARNESS_BULLET =
-  `Batch independent tool calls in a single message — parallel tool_use blocks share one round-trip; one call per turn burns a full turn each. If you already know which files/searches/checks you need and none depends on another's result, issue them together. Serialize only on true data dependency (e.g. reading an import to learn which module to open next). When the target set is unknown, map first with glob/grep instead of opening files speculatively one by one.`
+  `Batch independent tool calls in a single message — parallel tool_use blocks share one round-trip; one call per turn burns a full turn each. If you already know which files/searches/checks you need and none depends on another's result, issue them together. Default to batching: serializing requires an actual unread dependency you can name — caution or thoroughness is not a dependency. If you can't point to the specific prior result the next call needs, batch. When the target set is unknown, map first with glob/grep instead of opening files speculatively one by one.`
 
 // Extracted so tests can render both the flag-on and flag-off shapes without
 // depending on build-time `feature()` substitution (the test preload stubs
