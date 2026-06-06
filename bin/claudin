@@ -14,12 +14,74 @@ import { homedir } from 'os'
 import { join, dirname } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 
+// Minimum Node version. Raised from >=20 to >=22.12.0 when commander v15 went
+// ESM-only; below this, the dynamic import of dist/cli.mjs fails deep inside
+// commander with a cryptic ERR_REQUIRE_ESM. Surface a clear message instead.
+const MIN_NODE = '22.12.0'
+{
+  const cur = process.versions.node.split('.').map(Number)
+  const min = MIN_NODE.split('.').map(Number)
+  const tooOld =
+    cur[0] < min[0] ||
+    (cur[0] === min[0] && cur[1] < min[1]) ||
+    (cur[0] === min[0] && cur[1] === min[1] && cur[2] < min[2])
+  if (tooOld) {
+    console.error(
+      `\n  claudin: requires Node >= ${MIN_NODE} (you have v${process.versions.node}).\n\n` +
+      `  Upgrade Node (e.g. \`nvm install 22\`) and re-run.\n`,
+    )
+    process.exit(1)
+  }
+}
+
 // V8 default old-space cap is 4 GB on 64-bit. Long Opus/Gemini sessions can
 // hit it (parsed bundle + React/Ink tree + tool-result strings + cached file
 // contents) before the heap-pressure autocompact trigger fires. Re-exec
 // once with a higher cap so the trigger has room to run summary before OOM.
 // Override via CLAUDIN_MAX_HEAP_MB; opt out with CLAUDIN_NO_HEAP_BUMP=1.
 const HEAP_BUMP_SENTINEL = '_CLAUDIN_HEAP_BUMPED'
+
+// Warn once if running in a CPU-rendered terminal. Claudin's TUI does a lot of
+// streaming reflow; GPU-accelerated terminals (Ghostty, Kitty, Alacritty,
+// WezTerm, iTerm2, Warp, Windows Terminal) handle this without dropped frames.
+// VTE-based (gnome-terminal), Konsole, Apple Terminal, and VSCode's integrated
+// terminal use CPU rendering and feel noticeably laggier under heavy output.
+// Only warn when we positively detect a known CPU-rendered terminal (avoids
+// false positives on unknown setups). Gated behind the heap-bump sentinel so
+// it prints once in the parent, never in the re-execed child. Suppress with
+// CLAUDIN_NO_TERMINAL_WARN=1.
+if (
+  !process.env[HEAP_BUMP_SENTINEL] &&
+  process.env.CLAUDIN_NO_TERMINAL_WARN !== '1' &&
+  process.stderr.isTTY
+) {
+  const env = process.env
+  const gpu =
+    env.TERM_PROGRAM === 'ghostty' ||
+    env.TERM_PROGRAM === 'iTerm.app' ||
+    env.TERM_PROGRAM === 'WarpTerminal' ||
+    env.TERM_PROGRAM === 'WezTerm' ||
+    env.TERM === 'xterm-kitty' ||
+    !!env.KITTY_WINDOW_ID ||
+    !!env.GHOSTTY_RESOURCES_DIR ||
+    !!env.ALACRITTY_LOG ||
+    !!env.ALACRITTY_WINDOW_ID ||
+    !!env.WEZTERM_EXECUTABLE ||
+    !!env.WT_SESSION
+  const knownCpu =
+    env.TERM_PROGRAM === 'vscode' ||
+    env.TERM_PROGRAM === 'Apple_Terminal' ||
+    !!env.VTE_VERSION ||
+    !!env.KONSOLE_VERSION
+  if (!gpu && knownCpu) {
+    console.warn(
+      '\n  claudin: this terminal uses CPU rendering and may feel laggy under heavy streaming output.\n' +
+      '  For best results, try a GPU-accelerated terminal: Ghostty, Kitty, Alacritty, WezTerm, iTerm2, or Warp.\n' +
+      '  Suppress this warning with CLAUDIN_NO_TERMINAL_WARN=1.\n',
+    )
+  }
+}
+
 if (
   !process.env[HEAP_BUMP_SENTINEL] &&
   process.env.CLAUDIN_NO_HEAP_BUMP !== '1' &&
