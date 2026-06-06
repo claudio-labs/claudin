@@ -175,7 +175,9 @@ function AgentLine(t0: AgentLineProps) {
   // the row doesn't render as `(name)` with a dangling trailing space.
   const displayDescription = task.progress?.summary ?? (isRunning ? "Starting\u2026" : "");
   const highlighted = isSelected || hover;
-  const prefix = highlighted ? figures.pointer + " " : "  ";
+  // 4-wide prefix so the tree connector (└─/├─) sits directly under the `A` of
+  // the `Agents` header, which is itself indented 4 spaces (see CoordinatorTaskPanel).
+  const prefix = highlighted ? figures.pointer + "   " : "    ";
   // Tree connector (├─/└─) groups the row under the `▼ Agents (N)` header.
   const connectorPart = connector ? `${connector} ` : "";
   const bullet = isViewed ? BLACK_CIRCLE : figures.circle;
