@@ -175,6 +175,11 @@ export function isPolicyLimitsEligible(): boolean {
     return false
   }
 
+  // Respect privacy-level kill switch
+  if (isEssentialTrafficOnly()) {
+    return false
+  }
+
   // Console users (API key) are eligible if we can get the actual key
   try {
     const { key: apiKey } = getAnthropicApiKeyWithSource({

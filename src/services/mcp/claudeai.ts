@@ -10,6 +10,7 @@ import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
+import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
 import { clearMcpAuthCache } from './client.js'
 import { normalizeNameForMCP } from './normalization.js'
 import type { ScopedMcpServerConfig } from './types.js'
@@ -46,6 +47,11 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
           state:
             'non_first_party_provider' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         })
+        return {}
+      }
+
+      if (isEssentialTrafficOnly()) {
+        logForDebugging('[claudeai-mcp] Skipped: essential traffic only')
         return {}
       }
 

@@ -10,21 +10,46 @@
  * - essential-traffic:  ALL nonessential network traffic disabled
  *                       (telemetry + auto-updates, grove, release notes, model capabilities, etc.).
  *
- * The resolved level is the most restrictive signal from:
- *   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC  →  essential-traffic
- *   DISABLE_TELEMETRY                         →  no-telemetry
+ * Claudin defaults to `essential-traffic`: as a provider-agnostic fork, the
+ * Anthropic-backend startup probes (bootstrap, quota warm, MCP registry,
+ * fast-mode org status, grove, oauth account settings, …) are dead weight
+ * for the typical user. Set `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0`
+ * (or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=0`) to opt back in to the
+ * upstream behaviour.
+ *
+ * Env-var resolution (most restrictive wins):
+ *   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=0 / ANTHROPIC_…=0  →  default
+ *     (explicit opt-in to nonessential traffic)
+ *   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC / ANTHROPIC_…  →  essential-traffic
+ *   DISABLE_TELEMETRY  →  no-telemetry (only when neither of the above is set)
+ *   unset             →  essential-traffic (Claudin default)
  */
 
 type PrivacyLevel = 'default' | 'no-telemetry' | 'essential-traffic'
 
+function isFalsy(value: string | undefined): boolean {
+  if (value === undefined) return false
+  const v = value.trim().toLowerCase()
+  return v === '0' || v === 'false' || v === 'no' || v === 'off' || v === ''
+}
+
 export function getPrivacyLevel(): PrivacyLevel {
-  if (process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC) {
-    return 'essential-traffic'
+  const claudeCode = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+  const anthropic = process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
+
+  // Explicit opt-in to nonessential traffic.
+  if (
+    (claudeCode !== undefined && isFalsy(claudeCode)) ||
+    (anthropic !== undefined && isFalsy(anthropic))
+  ) {
+    if (process.env.DISABLE_TELEMETRY && !isFalsy(process.env.DISABLE_TELEMETRY)) {
+      return 'no-telemetry'
+    }
+    return 'default'
   }
-  if (process.env.DISABLE_TELEMETRY) {
-    return 'no-telemetry'
-  }
-  return 'default'
+
+  // Anything else (set truthy or unset) → essential-traffic (Claudin default).
+  return 'essential-traffic'
 }
 
 /**
@@ -48,8 +73,15 @@ export function isTelemetryDisabled(): boolean {
  * or null if unrestricted. Used for user-facing "unset X to re-enable" messages.
  */
 export function getEssentialTrafficOnlyReason(): string | null {
-  if (process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC) {
+  if (!isEssentialTrafficOnly()) return null
+  const claudeCode = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+  if (claudeCode !== undefined && !isFalsy(claudeCode)) {
     return 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'
   }
-  return null
+  const anthropic = process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
+  if (anthropic !== undefined && !isFalsy(anthropic)) {
+    return 'ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC'
+  }
+  // Claudin default (no env var set).
+  return 'claudin-default'
 }

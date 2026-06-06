@@ -16,6 +16,7 @@ import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from '../../utils/model/providers.js'
+import { isEssentialTrafficOnly } from '../../utils/privacyLevel.js'
 
 import {
   resetSyncCache as resetLeafCache,
@@ -56,6 +57,11 @@ export function isRemoteManagedSettingsEligible(): boolean {
 
   // Custom base URL users should not hit the settings endpoint
   if (!isFirstPartyAnthropicBaseUrl()) {
+    return (cached = setEligibility(false))
+  }
+
+  // Respect privacy-level kill switch
+  if (isEssentialTrafficOnly()) {
     return (cached = setEligibility(false))
   }
 
