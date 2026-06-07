@@ -37,6 +37,7 @@ import {
   isGithubNativeAnthropicMode,
 } from "src/utils/model/providers.js";
 import type { SystemPrompt } from "src/utils/systemPromptType.js";
+import { roughTokenCountEstimationForMessage } from "src/services/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/types/message.js";
 import { logEvent } from "../../analytics/index.js";
 import { getCacheControl } from "./cacheControl.js";
@@ -180,6 +181,57 @@ export function getPromptCachingEnabled(model: string): boolean {
 const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000;
 
 /**
+ * Defer-cache-marker threshold (in estimated tokens).
+ *
+ * WHY THIS EXISTS — DO NOT REMOVE WITHOUT READING:
+ * Anthropic prompt-caching has an internal minimum size for registering a
+ * usable cache entry (empirically ~1024 tokens of trailing content between
+ * the previous marker and the new one). The baseline policy of always
+ * placing the marker at messages[length-1] means tool-loop turns with small
+ * tool_use/tool_result pairs (~300-800 tok each) silently fall under that
+ * floor: the server bills cache_creation but stores nothing reusable, and
+ * the next turn finds only the system+tools checkpoint (~13k) to read from.
+ *
+ * The fix walks backward through messages summing estimated tokens and
+ * places the marker at the earliest index whose suffix sums to ≥ this
+ * threshold. The marker effectively "lingers" across small turns until the
+ * delta is large enough to justify the write, then advances. While it
+ * lingers, the prior checkpoint stays valid and every turn reads it.
+ *
+ * Bench numbers (scripts/profile/cache-ab-bench.ts, 13 small tool turns):
+ *   threshold=0    → r:w = 0.97:1, $0.50  (baseline, broken)
+ *   threshold=2048 → r:w = 7.81:1, $0.37  (this default)
+ *
+ * Override at runtime: CLAUDIN_DEFER_CACHE_MARKER=<N tokens>
+ *   0          → disable (revert to baseline)
+ *   2048       → current default (sweet spot for tool-loop workloads)
+ *   higher     → checkpoint advances less often (longer tail recompute)
+ *
+ * See addCacheBreakpoints() for the placement logic and the comment block
+ * about why we keep exactly one marker (Mycro KV-cache eviction).
+ *
+ * Related: CLAUDIN_DEFER_HIGHLIGHT (similar runtime perf toggle precedent).
+ */
+const DEFAULT_DEFER_CACHE_MARKER_TOKENS = 2048;
+function readDeferCacheMarkerTokens(): number {
+  const raw = process.env.CLAUDIN_DEFER_CACHE_MARKER;
+  if (raw === undefined) return DEFAULT_DEFER_CACHE_MARKER_TOKENS;
+  const parsed = Number(raw);
+  // Garbage input (e.g. "abc" → NaN) silently falls back to default. Explicit
+  // 0 disables (baseline behavior).
+  return Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : DEFAULT_DEFER_CACHE_MARKER_TOKENS;
+}
+// Memoized once at module load. Tests that flip the env must call
+// _resetDeferCacheMarkerForTesting() to re-read (matches the
+// _resetAllClippedIdsForTesting pattern used elsewhere).
+let DEFER_CACHE_MARKER_TOKENS = readDeferCacheMarkerTokens();
+export function _resetDeferCacheMarkerForTesting(): void {
+  DEFER_CACHE_MARKER_TOKENS = readDeferCacheMarkerTokens();
+}
+
+/**
  * Latches whether the session has ever seen a system prompt large enough
  * (>8k tokens via chars/4 heuristic) to justify 1h cache TTL on
  * firstParty/vertex. High-water mark: once latched `true`, stays `true` for
@@ -287,11 +339,49 @@ export function addCacheBreakpoints(
   // point, so the write is a no-op merge on mycro (entry already exists)
   // and the fork doesn't leave its own tail in the KVCC. Dense pages are
   // refcounted and survive via the new hash either way.
-  const markerIndex = skipCacheWrite
+  const baseMarkerIndex = skipCacheWrite
     ? messages.length - 2
     : messages.length - 1;
+  // Defer the trailing marker until enough trailing tokens have accumulated
+  // to register a usable cache entry on the server. See the long comment on
+  // DEFER_CACHE_MARKER_TOKENS above for the full rationale and bench data.
+  //
+  // Walk backward from the end summing estimated tokens; place the marker at
+  // the earliest index whose suffix sums to >= the threshold. If the suffix
+  // never reaches the threshold (short / early conversation), PIN the marker
+  // at messages[0] — that creates a stable head anchor so the small initial
+  // turns still get a cache hit on the next turn.
+  //
+  // NOTE: an earlier draft "fell back to baseline (length-1) when threshold
+  // not met" on reviewer advice — that regressed the bench all the way back
+  // to r:w=0.78. The reason: every early turn writes a marker too small to
+  // register on the server, so the next turn finds no usable checkpoint
+  // beyond system+tools. Pinning to head fixes early turns at the cost of
+  // a single tiny duplicate write per turn while the conversation is short.
+  let markerIndex = baseMarkerIndex;
+  if (
+    DEFER_CACHE_MARKER_TOKENS > 0 &&
+    !skipCacheWrite &&
+    messages.length > 1
+  ) {
+    let acc = 0;
+    let i = messages.length - 1;
+    for (; i >= 0; i -= 1) {
+      acc += roughTokenCountEstimationForMessage(messages[i]!);
+      if (acc >= DEFER_CACHE_MARKER_TOKENS) break;
+    }
+    // i >= 0 → threshold met; place marker at that index.
+    // i < 0  → loop exhausted; pin to head (index 0) as documented above.
+    markerIndex = Math.max(i, 0);
+  }
+  // Optional second marker pinned to messages[0]. If the deferred marker
+  // happens to also walk back to index 0, the two coalesce silently — that's
+  // fine, it's still one marker on the wire.
+  const anchorHead =
+    process.env.CLAUDIN_ANCHOR_CACHE_HEAD === '1' && messages.length > 1;
   const result = messages.map((msg, index) => {
-    const addCache = index === markerIndex;
+    const addCache =
+      index === markerIndex || (anchorHead && index === 0);
     if (msg.type === "user") {
       return userMessageToMessageParam(
         msg,

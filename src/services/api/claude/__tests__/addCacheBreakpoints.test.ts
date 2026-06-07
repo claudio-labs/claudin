@@ -1,0 +1,155 @@
+/**
+ * Behavioral tests for the defer-cache-marker placement logic in
+ * addCacheBreakpoints. See the long comment on DEFAULT_DEFER_CACHE_MARKER_TOKENS
+ * in paramBuilders.ts for why this matters.
+ *
+ * The threshold is memoized at module load. Each test flips the env then
+ * calls _resetDeferCacheMarkerForTesting() to re-read it.
+ */
+import { afterEach, describe, expect, test } from 'bun:test'
+
+;(globalThis as Record<string, unknown>).MACRO = {
+  VERSION: '99.0.0',
+  DISPLAY_VERSION: '0.0.0-test',
+}
+
+import {
+  _resetDeferCacheMarkerForTesting,
+  addCacheBreakpoints,
+} from '../paramBuilders.js'
+
+type AnyMsg = {
+  type: 'user' | 'assistant'
+  message: { role: 'user' | 'assistant'; content: unknown }
+}
+
+const originalEnv = process.env.CLAUDIN_DEFER_CACHE_MARKER
+
+afterEach(() => {
+  if (originalEnv === undefined) {
+    delete process.env.CLAUDIN_DEFER_CACHE_MARKER
+  } else {
+    process.env.CLAUDIN_DEFER_CACHE_MARKER = originalEnv
+  }
+  _resetDeferCacheMarkerForTesting()
+})
+
+function makeUser(text: string): AnyMsg {
+  return {
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'text', text }] },
+  }
+}
+function makeAssistant(text: string): AnyMsg {
+  return {
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'text', text }] },
+  }
+}
+
+/** Find indices of message params that carry cache_control on their last block. */
+function markerIndices(
+  out: Array<{ content?: unknown }>,
+): number[] {
+  const result: number[] = []
+  for (let i = 0; i < out.length; i += 1) {
+    const content = out[i]?.content
+    if (!Array.isArray(content)) continue
+    const last = content[content.length - 1] as
+      | { cache_control?: unknown }
+      | undefined
+    if (last && last.cache_control) result.push(i)
+  }
+  return result
+}
+
+function setThreshold(value: string): void {
+  process.env.CLAUDIN_DEFER_CACHE_MARKER = value
+  _resetDeferCacheMarkerForTesting()
+}
+
+describe('addCacheBreakpoints — defer-cache-marker placement', () => {
+  test('threshold=0 places marker at messages[length-1] (baseline)', () => {
+    setThreshold('0')
+    const msgs = [
+      makeUser('hello'),
+      makeAssistant('hi'),
+      makeUser('again'),
+      makeAssistant('yes'),
+      makeUser('final'),
+    ]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    expect(markerIndices(out)).toEqual([msgs.length - 1])
+  })
+
+  test('threshold met by small suffix → marker walks back to that index', () => {
+    // ~1k chars per message ≈ 250 tok; threshold=600 → ~3 messages suffice.
+    setThreshold('600')
+    const big = 'x'.repeat(1024)
+    const msgs = [
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+    ]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    const idx = markerIndices(out)
+    expect(idx.length).toBe(1)
+    // Marker should land strictly before the last message because the
+    // suffix [last] alone (~250 tok) is below 600 but a few-message suffix
+    // clears it.
+    expect(idx[0]).toBeLessThan(msgs.length - 1)
+    expect(idx[0]).toBeGreaterThanOrEqual(0)
+  })
+
+  test('threshold never met → pins marker at messages[0] (head anchor)', () => {
+    // Tiny messages + huge threshold → loop exhausts without hitting it.
+    setThreshold('1000000')
+    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    // Intentional: pin to head so early/short conversations still get a
+    // stable byte-prefix the server can latch onto. See the long block
+    // comment in paramBuilders.ts and the bench notes.
+    expect(markerIndices(out)).toEqual([0])
+  })
+
+  test('skipCacheWrite bypasses the defer logic entirely', () => {
+    setThreshold('100000')
+    const big = 'x'.repeat(4096)
+    const msgs = [
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+    ]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      true,
+    )
+    // skipCacheWrite → baseline marker at second-to-last regardless of threshold.
+    expect(markerIndices(out)).toEqual([msgs.length - 2])
+  })
+
+  test('garbage env var value silently falls back to default (does not throw)', () => {
+    setThreshold('not-a-number')
+    const msgs = [makeUser('hi'), makeAssistant('hello'), makeUser('final')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    expect(markerIndices(out).length).toBe(1)
+  })
+})

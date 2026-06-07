@@ -47,7 +47,23 @@ Run `bun run profile` for the unified summary.
 | `memory-bench.ts`       | `scanMemoryFiles` cost across N=10/50/100/200 synthetic memory files   | `bun run profile:memory`     |
 | `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
 | `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
+| `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/profile/cache-ab-bench.ts` |
 | `run-all.ts`            | All six back-to-back with a unified summary + verdict                  | `bun run profile`           |
+
+### Investigation-only scripts
+
+These were written during the 2026-06-07 cache-ratio investigation (which
+shipped as the defer-cache-marker default in `paramBuilders.ts`). They are
+**not** part of `bun run profile` and have no npm script. Kept in-tree so
+future regressions can be diagnosed without re-deriving the toolkit:
+
+| Script                       | Use case |
+| ---------------------------- | -------- |
+| `dump-system-prompt.ts`      | Dump the full system prompt + tool schemas sent on a fresh session — useful for diffing what the wire actually carries |
+| `prefix-anatomy.ts`          | Break down the request prefix into system / tools / messages with token estimates per segment |
+| `eager-tools.ts`             | Estimate which tools could be lazy-loaded to shrink the static prefix |
+| `subagent-cost-bench.ts`     | Per-turn token + $ accounting for a fan-out of sub-agents, to validate fork-vs-fresh cost claims |
+| `wire-diff.ts`               | Side-by-side wire dump (claudin vs. claude-code) for the same prompt — used to confirm prompt parity before benching cache behavior |
 
 ## Usage
 
