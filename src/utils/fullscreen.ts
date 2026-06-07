@@ -1,5 +1,6 @@
 import { spawnSync } from 'child_process'
 import { getIsInteractive } from '../bootstrap/state.js'
+import { shouldUseMainScreenRewrite } from '../ink/terminal.js'
 import { getGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'
@@ -111,11 +112,13 @@ export function _resetTmuxControlModeProbeForTesting(): void {
  * Users can enable via `/config` instead of setting the env.
  *
  * Priority order:
- *   CLAUDE_CODE_NO_FLICKER=0  → always off
- *   CLAUDE_CODE_NO_FLICKER=1  → always on (overrides tmux -CC guard too)
- *   tmux -CC detected         → off (corrupts terminal state)
- *   config flickerFreeMode    → on/off per user preference
- *   default                   → off
+ *   CLAUDE_CODE_NO_FLICKER=0    → always off
+ *   CLAUDE_CODE_NO_FLICKER=1    → always on (overrides tmux -CC guard too)
+ *   tmux -CC detected           → off (corrupts terminal state)
+ *   config flickerFreeMode      → on/off per user preference
+ *   shouldUseMainScreenRewrite  → on (rewrite path needs alt-screen to avoid
+ *                                 snap-to-bottom + stutter — Ghostty today)
+ *   default                     → off
  */
 export function isFullscreenEnvEnabled(): boolean {
   // Explicit env opt-out always wins.
@@ -137,6 +140,12 @@ export function isFullscreenEnvEnabled(): boolean {
   // `/config` without having to set an env var.
   const configValue = getGlobalConfig().flickerFreeMode
   if (configValue !== undefined) return configValue
+  // Terminals that take the main-screen rewrite path (Ghostty today) repaint
+  // the visible prompt block every frame in inline mode. With a 20fps spinner
+  // running, that fights the terminal's native scrollback — viewport snaps to
+  // bottom and rolling up is impossible. Alt-screen + virtualized scroll is
+  // the right fit whenever we're already opting into rewrites.
+  if (shouldUseMainScreenRewrite()) return true
   return false
 }
 

@@ -6,6 +6,7 @@ import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text, useAnimationFrame } from '../../ink.js';
 import type { InProcessTeammateTaskState } from '../../tasks/InProcessTeammateTask/types.js';
 import { formatDuration, formatNumber } from '../../utils/format.js';
+import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { toInkColor } from '../../utils/ink.js';
 import type { Theme } from '../../utils/theme.js';
 import { Byline } from '../design-system/Byline.js';
@@ -107,7 +108,13 @@ export function SpinnerAnimationRow({
   effortSuffix,
   thinkingVerb = 'thinking'
 }: SpinnerAnimationRowProps): React.ReactNode {
-  const [viewportRef, time] = useAnimationFrame(reducedMotion ? null : 50);
+  // In inline (main-screen) mode the 50ms cadence drives ~20fps repaints
+  // that fight the terminal's native scrollback — viewport snaps to bottom,
+  // user can't scroll up. Fullscreen (alt-screen) mode owns the scroll so
+  // 50ms is fine there. Otherwise back off to 250ms — shimmer/glimmer get
+  // visibly slower but the terminal stays usable.
+  const frameMs = reducedMotion ? null : isFullscreenEnvEnabled() ? 50 : 250;
+  const [viewportRef, time] = useAnimationFrame(frameMs);
 
   // === Elapsed time (wall-clock, derived from refs each frame) ===
   const now = Date.now();
