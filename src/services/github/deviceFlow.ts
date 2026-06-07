@@ -3,7 +3,7 @@
  * Uses GitHub Copilot's official OAuth app for device authentication.
  */
 
-import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
+import { openBrowser } from '../../utils/browser.js'
 
 export const DEFAULT_GITHUB_DEVICE_FLOW_CLIENT_ID = 'Iv1.b507a08c87ecfe98'
 
@@ -198,22 +198,11 @@ export async function pollAccessToken(
 
 /**
  * Best-effort open browser / OS handler for the verification URL.
+ * Delegates to the central openBrowser helper so $BROWSER, settings.oauthBrowser,
+ * and Linux default-browser detection are honored uniformly across OAuth flows.
  */
 export async function openVerificationUri(uri: string): Promise<void> {
-  try {
-    if (process.platform === 'darwin') {
-      await execFileNoThrow('open', [uri], { useCwd: false, timeout: 5000 })
-    } else if (process.platform === 'win32') {
-      await execFileNoThrow('cmd', ['/c', 'start', '', uri], {
-        useCwd: false,
-        timeout: 5000,
-      })
-    } else {
-      await execFileNoThrow('xdg-open', [uri], { useCwd: false, timeout: 5000 })
-    }
-  } catch {
-    // User can open the URL manually
-  }
+  await openBrowser(uri)
 }
 
 /**

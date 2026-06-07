@@ -685,6 +685,12 @@ export type GlobalConfig = {
   // undefined → on. Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
   autoBackgroundAgentsEnabled?: boolean
 
+  // Preferred browser binary used by OAuth flows (Anthropic sign-in, Codex,
+  // GitHub Copilot, MCP). Overrides Linux auto-detection but is overridden by
+  // $BROWSER. Path or bare binary name (e.g. "brave-browser"). undefined → use
+  // detection chain in src/utils/browser.ts.
+  oauthBrowser?: string
+
   // Inline terminal images (T5.29). 'auto' (default) detects Kitty-family
   // terminals; 'enable' is semantically auto with explicit intent; 'disable'
   // forces the legacy text/hyperlink fallback even on supported terminals.
@@ -800,6 +806,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
   'autoBackgroundAgentsEnabled',
+  'oauthBrowser',
   'inlineImagesMode',
 ] as const
 
