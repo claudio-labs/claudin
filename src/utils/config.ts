@@ -680,9 +680,9 @@ export type GlobalConfig = {
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean
 
-  // Auto-background agents — when on (default), all subagents launch directly in
-  // the background (task-notification on completion) instead of running inline.
-  // undefined → on. Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
+  // Auto-background agents — when on, all subagents launch directly in the
+  // background (task-notification on completion) instead of running inline.
+  // undefined → off (opt-in). Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
   autoBackgroundAgentsEnabled?: boolean
 
   // Preferred browser binary used by OAuth flows (Anthropic sign-in, Codex,
@@ -749,7 +749,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     openaiAdditionalModelOptionsCacheByProfile: {},
     knowledgeGraphEnabled: true,
     inlineImagesMode: 'auto',
-    autoBackgroundAgentsEnabled: true,
+    autoBackgroundAgentsEnabled: false,
   }
   return config
 }

@@ -79,16 +79,16 @@ function getAutoBackgroundMs(): number {
   return 0;
 }
 
-// When on (default), every spawned agent launches directly in the background
-// instead of running inline. Read per-invocation so the /config toggle takes
-// effect immediately. undefined → on; env var forces on.
+// When on, every spawned agent launches directly in the background instead of
+// running inline. Read per-invocation so the /config toggle takes effect
+// immediately. undefined → off (opt-in); env var forces on.
 function isAutoBackgroundAgentsEnabled(): boolean {
   // In-process teammates can't own background agents — their lifecycle is tied
   // to the leader's process (see the guard near line 289). Auto-background must
   // not route their subagents async, or they'd orphan the agent.
   if (isInProcessTeammate()) return false;
   if (isEnvTruthy(process.env.CLAUDE_AUTO_BACKGROUND_TASKS)) return true;
-  return getGlobalConfig().autoBackgroundAgentsEnabled !== false;
+  return getGlobalConfig().autoBackgroundAgentsEnabled === true;
 }
 
 // Multi-agent type constants are defined inline inside gated blocks to enable dead code elimination
