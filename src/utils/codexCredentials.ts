@@ -1,4 +1,5 @@
 import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+import { logForDebugging } from './debug.js'
 import { isBareMode } from './envUtils.js'
 import { getSecureStorage } from './secureStorage/index.js'
 import {
@@ -294,7 +295,12 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
     return { refreshed: false, credentials: current }
   }
 
-  if (!options?.force && isWithinRefreshFailureCooldown(current)) {
+  // Cooldown applies to BOTH the pre-flight (lazy) and the force-refresh paths.
+  // Bypassing the cooldown on force would let a 401 retry-loop hammer a
+  // degraded /oauth/token endpoint, burning the entire withRetry budget on
+  // every request. If the user genuinely needs to recover sooner they can
+  // re-login via /provider.
+  if (isWithinRefreshFailureCooldown(current)) {
     return { refreshed: false, credentials: current }
   }
 
@@ -348,9 +354,21 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
 
       const idTokenForExchange = next.idToken ?? current.idToken
       if (idTokenForExchange) {
+        // The id-token → API-key exchange is best-effort: when it fails the
+        // request path falls back to using `accessToken` as the bearer (see
+        // resolveStoredCodexCredentials in providerConfig.ts). We MUST NOT
+        // silently swallow the error though — observability matters when a
+        // user reports "requests are 401ing" and the real culprit is a 5xx
+        // on the exchange endpoint.
         next.apiKey = await exchangeCodexIdTokenForApiKey(
           idTokenForExchange,
-        ).catch(() => undefined)
+        ).catch(error => {
+          logForDebugging(
+            `[codex] id-token → API-key exchange failed; falling back to access_token bearer: ${error instanceof Error ? error.message : String(error)}`,
+            { level: 'warn' },
+          )
+          return undefined
+        })
       }
 
       const saveResult = saveCodexCredentials(next)

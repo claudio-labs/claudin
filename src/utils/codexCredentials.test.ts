@@ -277,6 +277,74 @@ describe('codexCredentials', () => {
     expect(refreshAttempts).toBe(1)
   })
 
+  test('refreshCodexAccessTokenIfNeeded honors the cooldown even when force is requested', async () => {
+    // Regression guard: withRetry.ts calls refresh with {force:true} on 401.
+    // If force bypassed the cooldown, a degraded /oauth/token endpoint would
+    // be hammered on every retry — the exact storm the cooldown exists to
+    // prevent. See codexCredentials.ts:295-301.
+    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CODEX_API_KEY
+
+    const expiredToken = makeJwt({
+      exp: Math.floor((Date.now() - 60_000) / 1000),
+      chatgpt_account_id: 'acct_old',
+    })
+
+    let storageState: Record<string, unknown> = {
+      codex: {
+        accessToken: expiredToken,
+        refreshToken: 'refresh-old',
+        accountId: 'acct_old',
+      },
+    }
+
+    mock.module('./secureStorage/index.js', () => ({
+      getSecureStorage: () => ({
+        read: () => storageState,
+        readAsync: async () => storageState,
+        update: (next: Record<string, unknown>) => {
+          storageState = next
+          return { success: true }
+        },
+      }),
+    }))
+
+    let refreshAttempts = 0
+    globalThis.fetch = mock(async () => {
+      refreshAttempts += 1
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: 'invalid_grant',
+            message: 'refresh token expired',
+          },
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+    }) as unknown as typeof fetch
+
+    // @ts-expect-error cache-busting query string for Bun module mocks
+    const { refreshCodexAccessTokenIfNeeded } = await import(
+      './codexCredentials.js?refresh-cooldown-force'
+    )
+
+    await expect(refreshCodexAccessTokenIfNeeded()).rejects.toThrow(
+      'Codex token refresh failed (invalid_grant): refresh token expired',
+    )
+
+    const forcedAttempt = await refreshCodexAccessTokenIfNeeded({
+      force: true,
+    })
+    expect(forcedAttempt.refreshed).toBe(false)
+    expect(forcedAttempt.credentials?.accessToken).toBe(expiredToken)
+    expect(refreshAttempts).toBe(1)
+  })
+
   test('refreshCodexAccessTokenIfNeeded drops a stale api key when id-token exchange fails', async () => {
     delete process.env.CLAUDE_CODE_SIMPLE
     delete process.env.CODEX_API_KEY
@@ -359,6 +427,104 @@ describe('codexCredentials', () => {
     expect(stored?.apiKey).toBeUndefined()
     expect(stored?.refreshToken).toBe('refresh-new')
     expect(stored?.accountId).toBe('acct_new')
+  })
+
+  test('refreshCodexAccessTokenIfNeeded logs a warning when id-token exchange fails', async () => {
+    // Observability guard: the exchange failure must not be silent — when a
+    // user reports "requests are 401ing" we need to see the upstream error
+    // in debug logs instead of mysteriously losing the apiKey. See
+    // codexCredentials.ts:354-372.
+    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CODEX_API_KEY
+
+    const expiredToken = makeJwt({
+      exp: Math.floor((Date.now() - 60_000) / 1000),
+      chatgpt_account_id: 'acct_old',
+    })
+    const freshAccessToken = makeJwt({
+      exp: Math.floor((Date.now() + 3_600_000) / 1000),
+      chatgpt_account_id: 'acct_new',
+    })
+    const freshIdToken = makeJwt({
+      exp: Math.floor((Date.now() + 3_600_000) / 1000),
+      'https://api.openai.com/auth': {
+        chatgpt_account_id: 'acct_new',
+      },
+    })
+
+    let storageState: Record<string, unknown> = {
+      codex: {
+        apiKey: 'stale-api-key',
+        accessToken: expiredToken,
+        refreshToken: 'refresh-old',
+        accountId: 'acct_old',
+      },
+    }
+
+    mock.module('./secureStorage/index.js', () => ({
+      getSecureStorage: () => ({
+        read: () => storageState,
+        readAsync: async () => storageState,
+        update: (next: Record<string, unknown>) => {
+          storageState = next
+          return { success: true }
+        },
+      }),
+    }))
+
+    const debugCalls: Array<{ message: unknown; meta: unknown }> = []
+    mock.module('./debug.js', () => ({
+      logForDebugging: (message: unknown, meta: unknown) => {
+        debugCalls.push({ message, meta })
+      },
+    }))
+
+    globalThis.fetch = mock(async (_input, init) => {
+      const bodyText =
+        typeof init?.body === 'string'
+          ? init.body
+          : init?.body instanceof URLSearchParams
+            ? init.body.toString()
+            : ''
+
+      if (bodyText.includes('grant_type=refresh_token')) {
+        return new Response(
+          JSON.stringify({
+            access_token: freshAccessToken,
+            refresh_token: 'refresh-new',
+            id_token: freshIdToken,
+          }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        )
+      }
+
+      return new Response('exchange failed', {
+        status: 500,
+      })
+    }) as unknown as typeof fetch
+
+    // @ts-expect-error cache-busting query string for Bun module mocks
+    const { refreshCodexAccessTokenIfNeeded } = await import(
+      './codexCredentials.js?refresh-exchange-warn'
+    )
+
+    const result = await refreshCodexAccessTokenIfNeeded()
+    expect(result.refreshed).toBe(true)
+
+    const exchangeWarning = debugCalls.find(
+      call =>
+        typeof call.message === 'string' &&
+        call.message.includes('id-token → API-key exchange failed'),
+    )
+    expect(exchangeWarning).toBeDefined()
+    expect(
+      (exchangeWarning?.meta as { level?: string } | undefined)?.level,
+    ).toBe('warn')
   })
 
   test('refreshCodexAccessTokenIfNeeded deduplicates concurrent refresh attempts', async () => {

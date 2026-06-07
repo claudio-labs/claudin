@@ -70,11 +70,22 @@ export function parseChatgptAccountId(
       ? (payload['https://api.openai.com/auth'] as Record<string, unknown>)
       : undefined
 
+  // Fallback to `organizations[0].id` matches OpenCode (`codex.ts:65-71`).
+  // Some Codex id_tokens omit both `chatgpt_account_id` claims but carry
+  // the organizations array — without this fallback the request would go
+  // out without a `ChatGPT-Account-Id` header and 403.
+  const orgs = nestedAuth?.organizations
+  const firstOrgId =
+    Array.isArray(orgs) && orgs.length > 0 && typeof orgs[0] === 'object'
+      ? (orgs[0] as Record<string, unknown>).id
+      : undefined
+
   return (
     asTrimmedString(
       nestedAuth?.chatgpt_account_id ??
         payload?.['https://api.openai.com/auth.chatgpt_account_id'] ??
-        payload?.chatgpt_account_id,
+        payload?.chatgpt_account_id ??
+        firstOrgId,
     ) ?? undefined
   )
 }

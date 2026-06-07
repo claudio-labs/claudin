@@ -1,13 +1,15 @@
+import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
 import { applyStableStubs } from '../compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
 import { stableStringify } from '../../utils/stableStringify.js'
-import { getClaudinUserAgent } from '../../utils/userAgent.js'
+import { getSessionId } from '../../bootstrap/state.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,
 } from './providerConfig.js'
+declare const MACRO: { VERSION: string; DISPLAY_VERSION?: string }
 import { sanitizeSchemaForOpenAICompat } from './openaiSchemaSanitizer.js'
 import {
   createThinkTagFilter,
@@ -549,19 +551,66 @@ export async function performCodexRequest(options: {
     }
   }
 
+  // Match the Codex CLI's User-Agent shape: `<product>/<version> (<platform>
+  // <release>; <arch>)`. The OpenAI backend soft-gates on this; OpenCode
+  // (`opencode/src/plugin/openai/codex.ts:637`) sends the same parenthesized
+  // OS triple. Our generic getClaudinUserAgent() shape (entrypoint, sdk
+  // version) is fine for non-Codex requests but differs enough that some
+  // proxies log it as "unknown client".
+  const codexUserAgent = `claudin/${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`
+
+  // NOTE on ordering: Codex-specific overrides MUST come after the
+  // `...options.defaultHeaders` spread. The SDK client builds defaultHeaders
+  // with a generic `User-Agent` (see client.ts) which would otherwise win
+  // over our Codex-CLI-shaped one. `Authorization` is last to defeat any
+  // bearer the SDK may have inherited.
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'User-Agent': getClaudinUserAgent(),
     ...options.defaultHeaders,
+    'User-Agent': codexUserAgent,
     Authorization: `Bearer ${options.credentials.apiKey}`,
   }
   if (options.credentials.accountId) {
-    headers['chatgpt-account-id'] = options.credentials.accountId
+    // Canonical casing matches the Codex CLI / OpenCode wire format. HTTP
+    // is case-insensitive on the line, but some intermediate proxies and
+    // log pipelines fingerprint canonical case.
+    headers['ChatGPT-Account-Id'] = options.credentials.accountId
   }
+  // Session affinity + rate-limit/abuse signals on the OpenAI Codex
+  // backend. OpenCode sets this from input.sessionID; we use our own
+  // process-wide session id. Required on long sessions for WS continuity.
+  headers['session-id'] = getSessionId()
+  // NOTE: we intentionally do not set `max_output_tokens` on the body
+  // above. The Codex CLI strips it, and so does OpenCode (`chat.params`
+  // → `output.maxOutputTokens = undefined`). performCodexRequest builds
+  // the body from scratch and only forwards the fields Codex accepts,
+  // so no upstream `params.max_tokens` leak is possible here.
   headers.originator ??= 'claudin'
 
+  // Defensive URL normalization: if a user's profile stored a baseUrl that
+  // already includes `/v1/responses` or `/chat/completions` (a common
+  // OpenAI-compatible-style misconfiguration), naive concatenation would
+  // produce `…/responses/responses` and 404. Match OpenCode
+  // (`codex.ts:500-503`): collapse to the canonical Codex responses
+  // endpoint when those telltale segments appear.
+  const codexUrl = (() => {
+    const raw = `${options.request.baseUrl}/responses`
+    try {
+      const parsed = new URL(raw)
+      if (
+        parsed.pathname.includes('/v1/responses') ||
+        parsed.pathname.includes('/chat/completions')
+      ) {
+        return `${parsed.origin}/backend-api/codex/responses`
+      }
+      return raw
+    } catch {
+      return raw
+    }
+  })()
+
   const response = await fetchWithProxyRetry(
-    `${options.request.baseUrl}/responses`,
+    codexUrl,
     {
       method: 'POST',
       headers,
