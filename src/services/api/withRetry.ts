@@ -26,6 +26,8 @@ import { tryGetActiveProvider } from './activeProvider.js'
 import { invalidateClientCache } from './clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
 import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
+import { refreshXaiAccessTokenIfNeeded } from '../../utils/xaiCredentials.js'
+import { isXaiOAuthBaseUrl } from './providerConfig.js'
 import { errorMessage } from '../../utils/errors.js'
 import {
   type CooldownReason,
@@ -284,6 +286,19 @@ export async function* withRetry<T>(
             await refreshCodexAccessTokenIfNeeded({ force: true }).catch(e => {
               logForDebugging(
                 `[codex] force-refresh on 401 failed: ${e instanceof Error ? e.message : String(e)}`,
+                { level: 'warn' },
+              )
+            })
+          }
+          // xAI / Grok OAuth uses the openai_compat transport; key off the
+          // active profile's baseUrl instead of the transport enum.
+          if (
+            transport === 'openai_compat' &&
+            isXaiOAuthBaseUrl(tryGetActiveProvider()?.baseUrl)
+          ) {
+            await refreshXaiAccessTokenIfNeeded({ force: true }).catch(e => {
+              logForDebugging(
+                `[xai] force-refresh on 401 failed: ${e instanceof Error ? e.message : String(e)}`,
                 { level: 'warn' },
               )
             })

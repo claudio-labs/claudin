@@ -15,6 +15,15 @@ export interface SecureStorageData {
     lastRefreshAt?: number
     lastRefreshFailureAt?: number
   }
+  xai?: {
+    accessToken: string
+    refreshToken?: string
+    idToken?: string
+    profileId?: string
+    expiresAt?: number
+    lastRefreshAt?: number
+    lastRefreshFailureAt?: number
+  }
   mcpOAuth?: Record<
     string,
     {

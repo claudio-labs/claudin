@@ -1,6 +1,6 @@
 # Claudin
 
-A coding-agent CLI that works across multiple model providers — Anthropic, OpenAI-compatible APIs, Gemini, Mistral, GitHub Copilot, ChatGPT, Ollama, Bedrock, Vertex, Foundry, and more — with one consistent terminal workflow.
+A coding-agent CLI that works across multiple model providers — Anthropic, OpenAI, Gemini, Mistral, xAI Grok, GitHub Copilot, ChatGPT, Ollama, LM Studio, Bedrock, Vertex, Foundry, Azure, and 15+ OpenAI-compatible aggregators — with one consistent terminal workflow.
 
 [![License](https://img.shields.io/badge/license-source--available-2563eb)](LICENSE)
 
@@ -27,13 +27,16 @@ On first run, Claudin opens the `/provider` wizard. Pick a preset, enter credent
 Configure from inside the REPL with `/provider`:
 
 - **Anthropic** — API key or OAuth
-- **OpenAI-compatible** — DeepSeek, Groq, OpenRouter, LM Studio, Together, Novita AI, NVIDIA NIM, and any OpenAI-compatible base URL
+- **OpenAI** — API key or any OpenAI-compatible base URL
+- **OpenAI-compatible aggregators** — OpenRouter, Together, Groq, DeepSeek, Moonshot / Kimi, Alibaba DashScope (CN + Intl / Qwen), MiniMax, NVIDIA NIM, Atomic Chat, Bankr, opencode Zen, opencode Go
 - **Google** — Gemini (API key, ADC, or OAuth)
 - **Mistral** — API key
 - **ChatGPT** — Codex OAuth
+- **xAI** — Grok (device-flow OAuth)
 - **GitHub** — Copilot (device flow)
-- **Local** — Ollama
-- **Cloud** — Bedrock, Vertex, Foundry
+- **Microsoft** — Azure OpenAI
+- **Local** — Ollama, LM Studio
+- **Cloud** — AWS Bedrock, Google Vertex AI, Azure AI Foundry
 - **Custom** — any OpenAI-compatible endpoint
 
 Run `/provider doctor` to check your active profile, or `/provider migrate` to import a legacy `~/.claude/` config.

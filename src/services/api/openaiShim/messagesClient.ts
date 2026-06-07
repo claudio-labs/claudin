@@ -22,6 +22,11 @@ import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
 } from '../../../utils/codexCredentials.js'
+import {
+  readXaiCredentialsAsync,
+  refreshXaiAccessTokenIfNeeded,
+} from '../../../utils/xaiCredentials.js'
+import { getXaiUserAgent } from '../../../utils/xaiUserAgent.js'
 import { logForDebugging } from '../../../utils/debug.js'
 import { isBareMode } from '../../../utils/envUtils.js'
 import { resolveGeminiCredential } from '../../../utils/geminiAuth.js'
@@ -57,6 +62,7 @@ import {
   getGithubEndpointType,
   getLocalProviderRetryBaseUrls,
   isLocalProviderUrl,
+  isXaiOAuthBaseUrl,
   resolveProviderRequest,
   resolveRuntimeCodexCredentials,
   shouldAttemptLocalToollessRetry,
@@ -428,9 +434,32 @@ class OpenAIShimMessages {
     // the active profile resolver — no MINIMAX_API_KEY / BNKR_API_KEY /
     // GITHUB_TOKEN env escapes are needed here.
     const profileForKey = tryGetActiveProvider()
+
+    // xAI / Grok OAuth: when the active profile points at api.x.ai and has
+    // no static apiKey, swap in the rotated OAuth access token from secure
+    // storage. Preflight refresh mirrors the Codex path above; a stale
+    // access token here would 401, force-refresh via withRetry, and retry.
+    let xaiOAuthAccessToken: string | undefined
+    if (isXaiOAuthBaseUrl(profileForKey?.baseUrl) && !profileForKey?.apiKey) {
+      const refreshResult = await refreshXaiAccessTokenIfNeeded().catch(
+        async error => {
+          logForDebugging(
+            `[xai] access token refresh failed before request: ${error instanceof Error ? error.message : String(error)}`,
+            { level: 'warn' },
+          )
+          return {
+            refreshed: false,
+            credentials: await readXaiCredentialsAsync(),
+          }
+        },
+      )
+      xaiOAuthAccessToken = refreshResult.credentials?.accessToken
+    }
+
     const apiKey =
       profileForKey?.apiKey ??
       profileForKey?.extras?.githubToken ??
+      xaiOAuthAccessToken ??
       ''
     // Detect Azure endpoints by hostname (not raw URL) to prevent bypass via
     // path segments like https://evil.com/cognitiveservices.azure.com/
@@ -455,6 +484,11 @@ class OpenAIShimMessages {
         headers['X-API-Key'] = apiKey
       } else {
         headers.Authorization = `Bearer ${apiKey}`
+      }
+      // Send an honest Claudin/<version> UA to xAI so traffic isn't
+      // misattributed to whatever client_id the OAuth flow reused.
+      if (xaiOAuthAccessToken && apiKey === xaiOAuthAccessToken) {
+        headers['User-Agent'] = getXaiUserAgent()
       }
     } else if (isGemini) {
       const geminiCredential = await resolveGeminiCredential(process.env)

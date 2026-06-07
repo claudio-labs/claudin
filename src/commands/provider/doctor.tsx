@@ -1,5 +1,13 @@
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { resolveProviderRequest } from '../../services/api/providerConfig.js'
+import {
+  isXaiOAuthBaseUrl,
+  resolveProviderRequest,
+} from '../../services/api/providerConfig.js'
+import {
+  readXaiCredentialsAsync,
+  refreshXaiAccessTokenIfNeeded,
+} from '../../utils/xaiCredentials.js'
+import { getXaiUserAgent } from '../../utils/xaiUserAgent.js'
 import { getCurrentProjectConfig } from '../../utils/config.js'
 import { parseModelList } from '../../utils/providerModels.js'
 import {
@@ -73,6 +81,91 @@ async function checkOllamaProfile(baseUrl: string, model: string): Promise<Check
   } else {
     out.push(pass('Ollama generation', `${readiness.probeModel ?? model} responded.`))
   }
+  return out
+}
+
+async function checkXaiOAuthProfile(baseUrl: string): Promise<CheckResult[]> {
+  const out: CheckResult[] = []
+  // Refresh first so the probe uses a non-stale Bearer; treat refresh
+  // failure as a soft warning (the probe may still succeed if the cached
+  // token is fresh enough) instead of a hard fail.
+  let accessToken: string | undefined
+  try {
+    const refresh = await refreshXaiAccessTokenIfNeeded()
+    accessToken = refresh.credentials?.accessToken
+  } catch (e) {
+    out.push(
+      fail(
+        'xAI OAuth refresh',
+        `Refresh failed: ${e instanceof Error ? e.message : String(e)}`,
+      ),
+    )
+    const stored = await readXaiCredentialsAsync()
+    accessToken = stored?.accessToken
+  }
+  if (!accessToken) {
+    out.push(
+      fail(
+        'xAI OAuth credentials',
+        'No access token stored. Re-run /provider and pick xAI / Grok (OAuth).',
+      ),
+    )
+    return out
+  }
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  const probe = await probeReachability(`${trimmed}/models`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      'User-Agent': getXaiUserAgent(),
+    },
+  })
+  if (!probe.ok) {
+    if (probe.status === 401 || probe.status === 403) {
+      out.push(
+        fail(
+          'xAI /v1/models',
+          `Got ${probe.status} — token may be revoked. Re-run /provider.`,
+        ),
+      )
+    } else if (probe.status) {
+      out.push(
+        fail('xAI /v1/models', `Unexpected status ${probe.status}.`),
+      )
+    } else {
+      out.push(
+        fail('xAI /v1/models', `Could not reach api.x.ai: ${probe.error}`),
+      )
+    }
+    return out
+  }
+  // probeReachability only returns status on success; do a second fetch to
+  // count models (best-effort; failure here doesn't degrade the overall
+  // pass result since /v1/models already responded 200).
+  let modelCount: number | undefined
+  try {
+    const response = await fetch(`${trimmed}/models`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'User-Agent': getXaiUserAgent(),
+      },
+    })
+    if (response.ok) {
+      const body = (await response.json()) as { data?: unknown }
+      if (Array.isArray(body.data)) modelCount = body.data.length
+    }
+  } catch {
+    // best-effort — main check already passed
+  }
+  out.push(
+    pass(
+      'xAI /v1/models',
+      modelCount !== undefined
+        ? `OK (${modelCount} model${modelCount === 1 ? '' : 's'})`
+        : 'OK',
+    ),
+  )
   return out
 }
 
@@ -238,6 +331,8 @@ export async function runProviderDoctor(): Promise<string> {
       const baseUrl = profile.baseUrl.toLowerCase()
       if (baseUrl.includes('localhost:11434') || baseUrl.includes('localhost:11435')) {
         results.push(...(await checkOllamaProfile(profile.baseUrl, profile.model)))
+      } else if (isXaiOAuthBaseUrl(profile.baseUrl)) {
+        results.push(...(await checkXaiOAuthProfile(profile.baseUrl)))
       } else {
         results.push(...(await checkOpenAICompat(profile.baseUrl, profile.apiKey)))
       }

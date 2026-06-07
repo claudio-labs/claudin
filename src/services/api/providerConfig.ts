@@ -14,6 +14,28 @@ import {
 } from './codexOAuthShared.js'
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex'
+export const DEFAULT_XAI_BASE_URL = 'https://api.x.ai/v1'
+
+/**
+ * Detects whether a profile baseUrl points to xAI's OAuth-fronted endpoint.
+ *
+ * Transport stays `openai_compat` for xAI; this helper lets the shim swap
+ * the Bearer token for the rotated OAuth access token (and inject Claudin's
+ * User-Agent) without adding a new `Transport` enum entry. Mirrors the
+ * pattern used for Azure / Bankr detection in `openaiShim/messagesClient.ts`.
+ */
+export function isXaiOAuthBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const { hostname } = new URL(baseUrl)
+    // Exact match only. Subdomain matching (`.api.x.ai`) would let an
+    // adversarial DNS entry (`evil.api.x.ai`) trick the OAuth bearer-swap
+    // into firing for the wrong host.
+    return hostname === 'api.x.ai'
+  } catch {
+    return false
+  }
+}
 /** Default GitHub Copilot API model when user selects copilot / github:copilot */
 export const DEFAULT_GITHUB_MODELS_API_MODEL = 'gpt-4o'
 const CODEX_ALIAS_MODELS: Record<

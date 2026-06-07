@@ -1,7 +1,10 @@
 import figures from 'figures'
 import * as React from 'react'
 import { GithubDeviceFlowStep } from '../commands/provider/GithubDeviceFlowStep.js'
-import { DEFAULT_CODEX_BASE_URL } from '../services/api/providerConfig.js'
+import {
+  DEFAULT_CODEX_BASE_URL,
+  DEFAULT_XAI_BASE_URL,
+} from '../services/api/providerConfig.js'
 import { Box, Text } from '../ink.js'
 import { useKeybinding } from '../keybindings/useKeybinding.js'
 import { useSetAppState } from '../state/AppState.js'
@@ -49,6 +52,11 @@ import { Pane } from './design-system/Pane.js'
 import { MigrationBanner } from './MigrationBanner.js'
 import TextInput from './TextInput.js'
 import { useCodexOAuthFlow } from './useCodexOAuthFlow.js'
+import { useXaiOAuthFlow } from './useXaiOAuthFlow.js'
+import {
+  clearXaiCredentials,
+  readXaiCredentials,
+} from '../utils/xaiCredentials.js'
 import {
   formatMigrationReport,
   legacyClaudeDirExists,
@@ -75,6 +83,7 @@ type Screen =
   | 'select-ollama-model'
   | 'select-atomic-chat-model'
   | 'codex-oauth'
+  | 'xai-oauth'
   | 'github-onboard'
   | 'anthropic-auth-choice'
   | 'anthropic-oauth'
@@ -154,6 +163,11 @@ const FORM_STEPS: Array<{
 
 const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
 const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
+
+const XAI_OAUTH_PROVIDER_NAME = 'xAI / Grok (OAuth)'
+// Default model after sign-in; user can swap via /model. grok-4 is the
+// current flagship — see plan ~/.claudin/plans/luminous-popping-clarke.md.
+const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
 
 function toDraft(profile: ProviderProfile): ProviderDraft {
   return {
@@ -413,6 +427,93 @@ function CodexOAuthSetup({
         </>
       ) : (
         <Text dimColor>Opening your browser...</Text>
+      )}
+      <Text dimColor>Press Esc to cancel and go back.</Text>
+    </Box>
+  )
+}
+
+function XaiOAuthSetup({
+  onBack,
+  onConfigured,
+}: {
+  onBack: () => void
+  onConfigured: (
+    tokens: {
+      accessToken: string
+      refreshToken: string
+      idToken?: string
+    },
+    persistCredentials: (options?: { profileId?: string }) => void,
+  ) => void | Promise<void>
+}): React.ReactNode {
+  const handleAuthenticated = React.useCallback(
+    async (
+      tokens: {
+        accessToken: string
+        refreshToken: string
+        idToken?: string
+      },
+      persistCredentials: (options?: { profileId?: string }) => void,
+    ) => {
+      await onConfigured(tokens, persistCredentials)
+    },
+    [onConfigured],
+  )
+  useKeybinding('confirm:no', onBack, [onBack])
+
+  const status = useXaiOAuthFlow({
+    onAuthenticated: handleAuthenticated,
+  })
+
+  if (status.state === 'error') {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="error" bold>
+          xAI OAuth failed
+        </Text>
+        <Text>{status.message}</Text>
+        <Text dimColor>Press Enter or Esc to go back.</Text>
+        <Select
+          options={[
+            {
+              value: 'back',
+              label: 'Back',
+              description: 'Return to provider presets',
+            },
+          ]}
+          onChange={onBack}
+          onCancel={onBack}
+          visibleOptionCount={1}
+        />
+      </Box>
+    )
+  }
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        xAI / Grok OAuth
+      </Text>
+      {status.state === 'starting' ? (
+        <Text dimColor>Requesting a device code from xAI...</Text>
+      ) : (
+        <>
+          <Text>
+            Open this URL on any device:{' '}
+            <Text bold>{status.verificationUri}</Text>
+          </Text>
+          <Text>
+            Enter code <Text bold>{status.userCode}</Text>
+          </Text>
+          {status.verificationUriComplete &&
+          status.verificationUriComplete !== status.verificationUri ? (
+            <Text dimColor>
+              Or open this prefilled URL: {status.verificationUriComplete}
+            </Text>
+          ) : null}
+          <Text dimColor>Waiting for you to authorize in the browser...</Text>
+        </>
       )}
       <Text dimColor>Press Esc to cancel and go back.</Text>
     </Box>
@@ -1499,6 +1600,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               description:
                 'Sign in with ChatGPT in your browser and store Codex credentials securely',
             },
+            {
+              value: 'xai-oauth',
+              label: 'xAI / Grok (OAuth)',
+              description:
+                'Sign in with xAI in your browser and store Grok credentials securely',
+            },
           ]
         : []),
       {
@@ -1619,6 +1726,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
             if (value === 'codex-oauth') {
               setScreen('codex-oauth')
+              return
+            }
+            if (value === 'xai-oauth') {
+              setScreen('xai-oauth')
               return
             }
             if (value === 'github-onboard') {
@@ -2176,6 +2287,59 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         />
       )
       break
+    case 'xai-oauth':
+      content = (
+        <XaiOAuthSetup
+          onBack={() => setScreen('select-preset')}
+          onConfigured={async (_tokens, persistCredentials) => {
+            const payload: ProviderProfileInput = {
+              provider: 'openai',
+              name: XAI_OAUTH_PROVIDER_NAME,
+              baseUrl: DEFAULT_XAI_BASE_URL,
+              model: XAI_OAUTH_PROVIDER_MODEL,
+              apiKey: '',
+            }
+
+            const saved = addProviderProfile(payload, { makeActive: true })
+            if (!saved) {
+              setErrorMessage(
+                'xAI OAuth login finished, but the provider profile could not be saved.',
+              )
+              returnToMenu()
+              return
+            }
+
+            try {
+              persistCredentials({ profileId: saved.id })
+            } catch (error) {
+              setErrorMessage(
+                error instanceof Error ? error.message : String(error),
+              )
+              returnToMenu()
+              return
+            }
+
+            // Refresh menu state so the new profile shows up and becomes
+            // selectable as the active one.
+            refreshProfiles()
+            const message = `xAI / Grok configured. Claudin switched to it for this session.`
+
+            if (mode === 'first-run') {
+              onDone({
+                action: 'saved',
+                activeProfileId: saved.id,
+                message,
+              })
+              return
+            }
+
+            setStatusMessage(message)
+            setErrorMessage(undefined)
+            returnToMenu()
+          }}
+        />
+      )
+      break
     case 'github-onboard':
       content = (
         <GithubDeviceFlowStep
@@ -2248,6 +2412,17 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               profiles,
               storedCodexOAuthProfileId,
             )?.id === profileId
+          // Only treat this as an OAuth deletion when (a) the profile points at
+          // xAI, (b) it has no static API key (OAuth profiles persist apiKey as
+          // undefined), and (c) the stored OAuth profileId matches. Otherwise
+          // deleting a static-key xAI profile would wipe an unrelated OAuth
+          // session's `.credentials.json` entry.
+          const storedXaiOAuthProfileId = readXaiCredentials()?.profileId
+          const deletedXaiOAuthProfile =
+            targetProfile?.provider === 'openai' &&
+            targetProfile.baseUrl === DEFAULT_XAI_BASE_URL &&
+            !targetProfile.apiKey &&
+            storedXaiOAuthProfileId === profileId
           // Snapshot whether the deletion will change the resolved active
           // profile for this session — used below to push a fresh
           // mainLoopModel so the next request doesn't go out with a
@@ -2277,6 +2452,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
                 warnings.push(
                   cleared.warning ??
                     'could not clear GitHub Copilot token',
+                )
+              }
+            }
+            if (deletedXaiOAuthProfile) {
+              const cleared = clearXaiCredentials()
+              if (!cleared.success) {
+                warnings.push(
+                  cleared.warning ?? 'could not clear xAI OAuth credentials',
                 )
               }
             }
