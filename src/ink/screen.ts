@@ -1200,16 +1200,20 @@ export function diffEach(
   const endX = Math.min(region.x + region.width, maxWidth)
 
   if (prevWidth === nextWidth) {
-    // Damage X-bounds come from cells WRITTEN to `next`, so they miss cells
-    // that `prev` had but `next` leaves empty — i.e. a line shrinking at a
-    // constant terminal width (an owner/spinner suffix vanishing, a subject
-    // re-truncating, a wide tool-output row replaced by a shorter task row).
-    // Those stale cells sit to the right of the damage and would never be
-    // diffed nor cleared, leaking characters on screen. Widen the X-scan to
-    // the full row for the rows already in the damaged Y-range; findNextDiff
+    // Damage X/Y-bounds come from cells WRITTEN to `next`, so they miss cells
+    // that `prev` had but `next` leaves empty. Two flavors of this leak:
+    //   1. A row shrinks at constant terminal width (owner/spinner suffix
+    //      vanishing, subject re-truncating, wide tool-output row replaced by
+    //      a shorter task row) — stale cells sit to the right of the damage.
+    //   2. A whole subtree unmounts (e.g. the AskUserQuestion permission
+    //      dialog closes) with no new content reflowing into its rectangle —
+    //      the vacated rows fall entirely outside the damaged Y-range, so the
+    //      diff never visits them and trailing glyphs like "S … →" from the
+    //      old navigation bar stay painted on the terminal.
+    // Widen both axes to the full screen at constant width; findNextDiff
     // skips equal cells with integer compares, so this stays cheap and only
     // emits the removals that need clearing.
-    return diffSameWidth(prev, next, 0, maxWidth, region.y, endY, cb)
+    return diffSameWidth(prev, next, 0, maxWidth, 0, maxHeight, cb)
   }
   return diffDifferentWidth(prev, next, region.x, endX, region.y, endY, cb)
 }

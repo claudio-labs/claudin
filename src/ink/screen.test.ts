@@ -68,3 +68,43 @@ test('diffEach emits removals for cells vacated by a shrinking row at constant w
     expect(clearedXs).toContain(x)
   }
 })
+
+// Regression for the orphan-row bug: a whole subtree (the AskUserQuestion
+// permission dialog) unmounts and nothing reflows into its rectangle. The
+// vacated rows fall entirely outside `next.damage`'s Y-range, so the diff
+// never visited them and glyphs from the old navigation bar ("S … →" from
+// "← Submit →") stayed painted on the terminal above the status bar.
+test('diffEach emits removals for rows vacated by an unmounted subtree at constant width', () => {
+  const width = 20
+  const prev = makeScreen(width, [
+    'task open',
+    '',
+    '   S        ->   ',
+    '',
+    'status bar',
+  ])
+  const next = makeScreen(width, [
+    'task open',
+    '',
+    '',
+    '',
+    'status bar',
+  ])
+
+  // Render-node-to-output only records damage for cells WRITTEN to next, and
+  // the unmount produced no new content for row 2 — so damage sits elsewhere.
+  next.damage = { x: 0, y: 0, width: 1, height: 1 }
+
+  const clearedXs: number[] = []
+  diffEach(prev, next, (x, y, removed, added) => {
+    if (y === 2 && removed && removed.char !== ' ' && (!added || added.char === ' ')) {
+      clearedXs.push(x)
+    }
+  })
+
+  // Every non-empty column of the orphaned row must be visited so the
+  // renderer can overwrite it with spaces.
+  for (const x of [3, 12, 13]) {
+    expect(clearedXs).toContain(x)
+  }
+})
