@@ -92,6 +92,8 @@ Forks are cheap because they share your prompt cache. Don't set \`model\` on a f
 
 **When backgrounded, don't peek.** If you set \`run_in_background: true\`, do not Read or tail the \`output_file\` unless the user explicitly asks for a progress check. Trust the completion notification; reading the transcript mid-flight pulls the fork's tool noise into your context, defeating the point. After launching a background fork, you know nothing about what it found — never fabricate or predict its result. If the user asks a follow-up before the notification lands, say the fork is still running, not a guess.
 
+**The announcement is not the launch.** Saying "launched X in the background" or "I'll report back when it's done" does nothing on its own — only the \`${AGENT_TOOL_NAME}\` tool call spawns the agent. Only write such an announcement if you actually emitted the tool call(s) in this same turn. If you are about to end a turn with a launch announcement but no \`${AGENT_TOOL_NAME}\` tool_use block, you have launched nothing: emit the call instead of narrating it. This matters most when launching several agents in parallel — write the tool calls first, then announce, never the announcement alone.
+
 **Writing a fork prompt.** Since the fork inherits your context, the prompt is a *directive* — what to do, not what the situation is. Be specific about scope: what's in, what's out, what another agent is handling. Don't re-explain background.
 `
     : ''
@@ -136,9 +138,9 @@ ${AGENT_TOOL_NAME}({
   run_in_background: true,
   prompt: "..."
 })
-assistant: Migration audit and perf benchmark running in the background. I'll report back when they finish.
+assistant: Both running in the background.
 <commentary>
-Turn ends here. Coordinator does NOT have results yet \u2014 the notifications arrive as user-role messages in a later turn. Until then, give status, not a guess.
+The closing line is valid only because both ${AGENT_TOOL_NAME} calls above were actually emitted in this turn \u2014 the words alone launch nothing. Turn ends here. The agent does NOT have results yet \u2014 the notifications arrive as user-role messages in a later turn. Until then, give status, not a guess.
 </commentary>
 </example>
 
@@ -244,6 +246,7 @@ Usage notes:
     !forkEnabled
       ? `
 - You can optionally run agents in the background using the run_in_background parameter. When an agent runs in the background, you will be automatically notified when it completes — do NOT sleep, poll, or proactively check on its progress. Continue with other work or respond to the user instead.
+- Announcing a launch does not perform it. Only tell the user you launched an agent (e.g. "running in the background", "I'll report back") if you actually emitted the ${AGENT_TOOL_NAME} tool call in the same turn — the announcement text spawns nothing. Never end a turn with a launch announcement but no ${AGENT_TOOL_NAME} tool_use block.
 - **Foreground vs background**: Use foreground (default) when you need the agent's results before you can proceed — e.g., research agents whose findings inform your next steps. Use background when you have genuinely independent work to do in parallel.`
       : ''
   }
