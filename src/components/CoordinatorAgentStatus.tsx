@@ -171,10 +171,16 @@ function AgentLine(t0: AgentLineProps) {
   const toolText = toolUseCount > 0 ? ` · ${toolUseCount} tool ${toolUseCount === 1 ? "use" : "uses"}` : "";
   const queuedCount = task.pendingMessages.length;
   const queuedText = queuedCount > 0 ? ` · ${queuedCount} queued` : "";
-  // Live activity shown after the name, e.g. `Reading AgentTool.tsx`. Falls back
-  // to `Starting…` during the boot window before the agent reports progress, so
-  // the row doesn't render as `(name)` with a dangling trailing space.
-  const displayDescription = task.progress?.summary ?? (isRunning ? "Starting\u2026" : "");
+  // Live activity shown after the name, e.g. `Reading AgentTool.tsx`. Prefer
+  // the forked-fork-mini summary (`task.progress.summary`) when the SDK summary
+  // flag is on; otherwise fall back to the latest tool activity (the same source
+  // `AgentProgressLine` uses for `lastToolInfo`), so the row updates live in the
+  // default TUI path instead of being pinned at `Starting…`. Final fallback is
+  // `Starting…` during the boot window before any tool fires, so the row
+  // doesn't render as `(name)` with a dangling trailing space.
+  const displayDescription = task.progress?.summary
+    ?? task.progress?.lastActivity?.activityDescription
+    ?? (isRunning ? "Starting\u2026" : "");
   const highlighted = isSelected || hover;
   // 4-wide prefix so the tree connector (└─/├─) sits directly under the `A` of
   // the `Agents` header, which is itself indented 4 spaces (see CoordinatorTaskPanel).
