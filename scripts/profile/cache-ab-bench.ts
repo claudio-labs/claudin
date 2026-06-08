@@ -27,19 +27,42 @@ import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 import { resolve } from 'node:path'
 
+// 30 files, mixed sizes (small <500B, medium 5-30KB, large 50KB+) to exercise
+// both small-pair walk-back and fat-tail short-circuit branches.
 const TWELVE_FILES = [
+  // large (provider/runtime guts)
+  'src/services/api/client.ts',
+  'src/services/api/providerConfig.ts',
+  'src/QueryEngine.ts',
+  'src/commands.ts',
+  'src/Tool.ts',
+  // medium
+  'src/utils/messages.ts',
+  'src/utils/config.ts',
+  'src/services/api/withRetry.ts',
+  'src/services/api/errors.ts',
+  'src/services/mcp/client.ts',
+  'src/utils/model/model.ts',
+  'src/utils/providerModels.ts',
+  'src/context.ts',
+  'src/query.ts',
   'src/utils/errors.ts',
   'src/utils/log.ts',
   'src/utils/path.ts',
   'src/utils/envUtils.ts',
   'src/utils/Shell.ts',
-  'src/utils/config.ts',
   'src/bootstrap/state.ts',
-  'src/Tool.ts',
-  'src/utils/model/model.ts',
-  'src/utils/providerModels.ts',
-  'src/context.ts',
-  'src/query.ts',
+  // small (constants / tiny utils)
+  'src/constants/messages.ts',
+  'src/constants/keys.ts',
+  'src/ink/constants.ts',
+  'src/utils/protectedNamespace.ts',
+  'src/utils/array.ts',
+  'src/utils/withResolvers.ts',
+  'src/utils/lazySchema.ts',
+  'src/utils/yaml.ts',
+  'src/services/compact/snipCompact.ts',
+  'src/utils/objectGroupBy.ts',
 ]
 
 const SENTINEL = 'BENCH_DONE'
@@ -249,7 +272,7 @@ async function main() {
   if (wantA) sides.push({ label: `claude (${args.a})`, bin: resolveBin(args.a) })
   if (wantB) sides.push({ label: `claudin (${args.b})`, bin: resolveBin(args.b) })
 
-  console.log(`\nCache A/B bench — model=${args.model}, 12 files, 3 rounds, main-loop only`)
+  console.log(`\nCache A/B bench — model=${args.model}, ${TWELVE_FILES.length} files, main-loop only`)
   console.log(`(auth: active profiles; model pinned via --model + ANTHROPIC_MODEL)\n`)
 
   const results: Array<{ label: string; u: Usage }> = []
