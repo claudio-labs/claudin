@@ -372,7 +372,7 @@ const outputSchema = lazySchema(() => {
           .boolean()
           .optional()
           .describe(
-            'True when this outline was produced by AUTO_OUTLINE_ON_ELISION because the vanilla full-body Read would have been head-tail elided. Triggers an extra footer hint in the tool_result.',
+            'True when this outline was produced by AUTO_OUTLINE_ON_ELISION because the vanilla full-body Read crossed the size threshold that induces slice-walk re-reads. Triggers an extra footer hint in the tool_result.',
           ),
       }),
     }),
