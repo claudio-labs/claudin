@@ -22,7 +22,7 @@ const ESC = '\x1b['
 const RESET = `${ESC}0m`
 const DIM = `${ESC}2m`
 const BOLD = `${ESC}1m`
-const YELLOW = `${ESC}33m`
+const GREEN = `${ESC}32m`
 
 type RGB = [number, number, number]
 const rgb = (r: number, g: number, b: number) => `${ESC}38;2;${r};${g};${b}m`
@@ -207,7 +207,7 @@ export function buildStartupBannerLines(
 
   if (updateNotice) {
     out.push(
-      `${YELLOW}▲ New version ${updateNotice.latest} available${RESET} ${DIM}— run: claudin update${RESET}`,
+      `${DIM}▲ New version available ${RESET}${GREEN}(v${updateNotice.latest})${RESET}${DIM}, please run: claudin update${RESET}`,
     )
   }
 
@@ -216,7 +216,7 @@ export function buildStartupBannerLines(
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-function resolveUpdateNotice(): UpdateNotice | undefined {
+export function resolveUpdateNotice(): UpdateNotice | undefined {
   const cache = readLatestVersion()
   if (!cache) return undefined
   const current = MACRO.DISPLAY_VERSION ?? MACRO.VERSION

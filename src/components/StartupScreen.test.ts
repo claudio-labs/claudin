@@ -214,6 +214,122 @@ describe('detectProvider — modelOverride from --model flag', () => {
   })
 })
 
+// --- resolveUpdateNotice: guards against stale/mismatched cache ---
+
+describe('resolveUpdateNotice', () => {
+  // The resolver is the gatekeeper between the on-disk cache and the
+  // banner notice. Each guard clause gets a behavioral test so a
+  // mutation (delete, invert, narrow) is caught.
+
+  const tmpDirs: string[] = []
+  let originalConfigDir: string | undefined
+  let originalMacro: unknown
+
+  const mkTmp = async (): Promise<string> => {
+    const { mkdtemp } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const dir = await mkdtemp(join(tmpdir(), 'claudin-resolve-notice-'))
+    tmpDirs.push(dir)
+    return dir
+  }
+
+  const writeCacheFile = async (
+    dir: string,
+    contents: string,
+  ): Promise<void> => {
+    const { writeFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    await writeFile(join(dir, 'latest-version.json'), contents, 'utf8')
+  }
+
+  beforeEach(() => {
+    originalConfigDir = process.env.CLAUDIN_CONFIG_DIR
+    originalMacro = (globalThis as { MACRO?: unknown }).MACRO
+    ;(globalThis as { MACRO?: { VERSION: string; DISPLAY_VERSION?: string } }).MACRO =
+      { VERSION: '0.0.0', DISPLAY_VERSION: '1.0.0' }
+  })
+
+  afterEach(async () => {
+    if (originalConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = originalConfigDir
+    ;(globalThis as { MACRO?: unknown }).MACRO = originalMacro
+    const { rm } = await import('node:fs/promises')
+    for (const dir of tmpDirs) {
+      await rm(dir, { recursive: true, force: true })
+    }
+    tmpDirs.length = 0
+  })
+
+  test('returns notice when latest > current and cache.current matches', async () => {
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    await writeCacheFile(
+      dir,
+      JSON.stringify({ latest: '1.2.3', current: '1.0.0', checkedAt: 1 }),
+    )
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toEqual({ latest: '1.2.3' })
+  })
+
+  test('suppresses notice when cache.current !== current (user just updated)', async () => {
+    // Critical guard: the cache may point at the *previous* running version
+    // immediately after `claudin update`. Showing "v1.2.3 available" when
+    // the running binary is already 1.2.3 (or higher) is a UX bug.
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    await writeCacheFile(
+      dir,
+      JSON.stringify({ latest: '1.2.3', current: '0.9.0', checkedAt: 1 }),
+    )
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toBeUndefined()
+  })
+
+  test('suppresses notice when latest === current (no upgrade available)', async () => {
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    await writeCacheFile(
+      dir,
+      JSON.stringify({ latest: '1.0.0', current: '1.0.0', checkedAt: 1 }),
+    )
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toBeUndefined()
+  })
+
+  test('suppresses notice when latest < current (downgrade — running ahead of npm)', async () => {
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    await writeCacheFile(
+      dir,
+      JSON.stringify({ latest: '0.9.0', current: '1.0.0', checkedAt: 1 }),
+    )
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toBeUndefined()
+  })
+
+  test('suppresses notice when cache is missing', async () => {
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toBeUndefined()
+  })
+
+  test('suppresses notice when cache.latest is non-semver garbage', async () => {
+    // Defends the try/catch around gt(): isValidCache only checks string
+    // shape, not semver validity. Non-Bun runtimes' semver throws on
+    // garbage input — we must still fail closed (no notice).
+    const dir = await mkTmp()
+    process.env.CLAUDIN_CONFIG_DIR = dir
+    await writeCacheFile(
+      dir,
+      JSON.stringify({ latest: 'not-a-version', current: '1.0.0', checkedAt: 1 }),
+    )
+    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    expect(resolveUpdateNotice()).toBeUndefined()
+  })
+})
+
 describe('detectProvider — no active profile', () => {
   test('reports "Not configured" instead of guessing Anthropic', () => {
     const result = detectProvider()

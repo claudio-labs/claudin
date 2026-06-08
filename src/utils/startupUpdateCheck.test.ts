@@ -1,8 +1,13 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
+import { describe, expect, test, beforeEach, afterEach, mock } from 'bun:test'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
+  __resetForceCheckWarnedForTesting,
   getEarlySkipReason,
   isCrossMajor,
   runStartupUpdateCheck,
+  THROTTLE_MS,
 } from 'src/utils/startupUpdateCheck.js'
 
 describe('getEarlySkipReason', () => {
@@ -160,5 +165,199 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
     // In a test env this will hit getCurrentInstallationType() and likely
     // return 'development', so it exits cleanly via the install-type check.
     await expect(runStartupUpdateCheck([])).resolves.toBeUndefined()
+  })
+})
+
+describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CHECK', () => {
+  const originalEnv = { ...process.env }
+  const originalIsTTY = process.stdout.isTTY
+  const originalConsoleError = console.error
+  let writeCalls: number
+  let getLatestCalls: number
+  let isAutoUpdaterDisabledReturn: boolean
+  let installTypeReturn: string
+  let tmpDir: string
+  let consoleErrorMessages: string[]
+
+  // Real on-disk modules from the production codepath stay real so the test
+  // exercises the throttle file format (last-update-check) authentically.
+  // Only the network boundary, settings opt-out, install-type detection, and
+  // the cache write are mocked.
+  beforeEach(async () => {
+    delete process.env.CLAUDIN_SKIP_STARTUP_UPDATE
+    delete process.env.CLAUDIN_FORCE_UPDATE_CHECK
+    Object.defineProperty(process.stdout, 'isTTY', {
+      configurable: true,
+      value: true,
+    })
+    __resetForceCheckWarnedForTesting()
+    writeCalls = 0
+    getLatestCalls = 0
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    consoleErrorMessages = []
+    console.error = (msg: string) => {
+      consoleErrorMessages.push(String(msg))
+    }
+    // Each test gets a fresh CLAUDIN_CONFIG_DIR so the throttle file
+    // (`last-update-check`) and any incidental cache writes go to a
+    // throwaway directory — never the dev's real ~/.claudin.
+    tmpDir = await mkdtemp(join(tmpdir(), 'claudin-startup-update-check-'))
+    process.env.CLAUDIN_CONFIG_DIR = tmpDir
+    ;(globalThis as { MACRO?: { VERSION: string; DISPLAY_VERSION?: string } }).MACRO = {
+      VERSION: '0.0.0',
+      DISPLAY_VERSION: '0.0.1',
+    }
+    mock.module('src/utils/config.js', () => ({
+      isAutoUpdaterDisabled: () => isAutoUpdaterDisabledReturn,
+    }))
+    mock.module('src/utils/doctorDiagnostic.js', () => ({
+      getCurrentInstallationType: () => Promise.resolve(installTypeReturn),
+    }))
+    mock.module('src/utils/autoUpdater.js', () => ({
+      getLatestVersion: () => {
+        getLatestCalls += 1
+        return Promise.resolve('99.99.99')
+      },
+    }))
+    mock.module('src/utils/latestVersionCache.js', () => ({
+      writeLatestVersion: () => {
+        writeCalls += 1
+        return Promise.resolve()
+      },
+    }))
+    mock.module('src/utils/settings/settings.js', () => ({
+      getInitialSettings: () => ({}),
+    }))
+  })
+
+  afterEach(async () => {
+    process.env = { ...originalEnv }
+    Object.defineProperty(process.stdout, 'isTTY', {
+      configurable: true,
+      value: originalIsTTY,
+    })
+    console.error = originalConsoleError
+    // Restore module mocks so they don't bleed into sibling test files
+    // sharing the same Bun process (Bun's mock.module is process-scoped).
+    mock.restore()
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true })
+  })
+
+  test('force-flag bypasses isAutoUpdaterDisabled() and dev install gate', async () => {
+    process.env.CLAUDIN_FORCE_UPDATE_CHECK = '1'
+    isAutoUpdaterDisabledReturn = true
+    installTypeReturn = 'development'
+    await runStartupUpdateCheck([])
+    expect(writeCalls).toBe(1)
+  })
+
+  test('force-flag emits a one-shot stderr warning (footgun guard)', async () => {
+    process.env.CLAUDIN_FORCE_UPDATE_CHECK = '1'
+    isAutoUpdaterDisabledReturn = true
+    installTypeReturn = 'development'
+    await runStartupUpdateCheck([])
+    expect(
+      consoleErrorMessages.some(m => m.includes('CLAUDIN_FORCE_UPDATE_CHECK=1')),
+    ).toBe(true)
+  })
+
+  test('force-flag warning fires at most once per process across calls (kills "drop the guard" mutation)', async () => {
+    // Without the `!forceCheckWarned` guard, every launch would re-emit
+    // the warning. Asserting count===1 across two invocations is the only
+    // way to catch a mutation that flips `forceCheckWarned = true` to
+    // `forceCheckWarned = forceCheckWarned` or removes the assignment.
+    process.env.CLAUDIN_FORCE_UPDATE_CHECK = '1'
+    isAutoUpdaterDisabledReturn = true
+    installTypeReturn = 'development'
+    await runStartupUpdateCheck([])
+    await runStartupUpdateCheck([])
+    const forceMessages = consoleErrorMessages.filter(m =>
+      m.includes('CLAUDIN_FORCE_UPDATE_CHECK=1 honored'),
+    )
+    expect(forceMessages.length).toBe(1)
+  })
+
+  test('without the flag, opt-out alone short-circuits before write', async () => {
+    isAutoUpdaterDisabledReturn = true
+    installTypeReturn = 'native'
+    await runStartupUpdateCheck([])
+    expect(writeCalls).toBe(0)
+  })
+
+  test('without the flag, dev install alone short-circuits before write', async () => {
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'development'
+    await runStartupUpdateCheck([])
+    expect(writeCalls).toBe(0)
+  })
+
+  test('healthy path (no flag, prod install, no opt-out) writes the cache', async () => {
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    await runStartupUpdateCheck([])
+    expect(writeCalls).toBe(1)
+    expect(getLatestCalls).toBe(1)
+  })
+
+  test('throttle skips when last check was 30min ago', async () => {
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    const thirtyMinAgo = Date.now() - 30 * 60 * 1000
+    await writeFile(join(tmpDir, 'last-update-check'), String(thirtyMinAgo), 'utf8')
+    await runStartupUpdateCheck([])
+    // Throttle short-circuits before getLatestVersion, so neither npm view
+    // nor the cache write fire.
+    expect(getLatestCalls).toBe(0)
+    expect(writeCalls).toBe(0)
+  })
+
+  test('throttle expires after 2h — call goes through', async () => {
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+    await writeFile(join(tmpDir, 'last-update-check'), String(twoHoursAgo), 'utf8')
+    await runStartupUpdateCheck([])
+    expect(getLatestCalls).toBe(1)
+    expect(writeCalls).toBe(1)
+  })
+
+  test('future-timestamp throttle file does not block forever (clock skew)', async () => {
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    // A `last-update-check` file dated in the future (clock skew, NFS,
+    // restored backup) would make `Date.now() - last < THROTTLE_MS` true
+    // for any positive THROTTLE_MS — disabling the check until the wall
+    // clock catches up. The guard must reject future values and let the
+    // call go through.
+    const oneHourAhead = Date.now() + 60 * 60 * 1000
+    await writeFile(join(tmpDir, 'last-update-check'), String(oneHourAhead), 'utf8')
+    await runStartupUpdateCheck([])
+    expect(getLatestCalls).toBe(1)
+    expect(writeCalls).toBe(1)
+  })
+
+  test('force-flag bypasses an otherwise-valid throttle window', async () => {
+    process.env.CLAUDIN_FORCE_UPDATE_CHECK = '1'
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    // A throttle file 1min old would normally block — force-flag overrides.
+    const oneMinAgo = Date.now() - 60 * 1000
+    await writeFile(join(tmpDir, 'last-update-check'), String(oneMinAgo), 'utf8')
+    await runStartupUpdateCheck([])
+    expect(getLatestCalls).toBe(1)
+    expect(writeCalls).toBe(1)
+  })
+})
+
+describe('THROTTLE_MS', () => {
+  test('is exported (consumers and tests can introspect)', () => {
+    // We deliberately do NOT pin THROTTLE_MS to a literal here — that test
+    // is tautological (pinning a constant to its own literal value catches
+    // nothing). The throttle behavior is covered by the "30min ago" and
+    // "2h ago" tests above, which would fail if THROTTLE_MS shifts in
+    // either direction past those boundaries.
+    expect(typeof THROTTLE_MS).toBe('number')
+    expect(THROTTLE_MS).toBeGreaterThan(0)
   })
 })

@@ -1,8 +1,21 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const THROTTLE_MS = 6 * 60 * 60 * 1000 // 6h
+export const THROTTLE_MS = 60 * 60 * 1000 // 1h
 const NPM_VIEW_TIMEOUT_MS = 3000
+
+// Process-scoped guard so the CLAUDIN_FORCE_UPDATE_CHECK footgun warning
+// fires at most once per launch even though `runStartupUpdateCheck` itself
+// is called once per process — the flag exists so a future caller that
+// invokes the function multiple times (e.g. a watch-mode reload) doesn't
+// spam stderr on every iteration.
+let forceCheckWarned = false
+
+// Test-only: reset the process-scoped one-shot guard so each test can
+// observe the warning independently of declaration order.
+export function __resetForceCheckWarnedForTesting(): void {
+  forceCheckWarned = false
+}
 
 const SKIP_SUBCOMMANDS = new Set([
   'update',
@@ -85,15 +98,37 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       import('src/utils/settings/settings.js'),
     ])
 
+    // Dev override: setting CLAUDIN_FORCE_UPDATE_CHECK=1 bypasses the
+    // settings opt-out, dev-install gate, and throttle (see isThrottled
+    // below) so a developer can validate the banner notice without
+    // installing the npm release. NOTE: the earlier `getEarlySkipReason()`
+    // (non-TTY, npx, --version/--help, subcommands) still applies — the
+    // override is only for the runtime gates, not the static skip set.
+    // The cache write stays async; with the StartupBanner subscriber the
+    // notice now also pops in mid-session once npm view lands.
+    const forceCheck = process.env.CLAUDIN_FORCE_UPDATE_CHECK === '1'
+    if (forceCheck && !forceCheckWarned) {
+      forceCheckWarned = true
+      // One-shot diagnostic to stderr so a user who accidentally persisted
+      // the flag (e.g. in ~/.bashrc) notices they're hammering the npm
+      // registry on every launch. logForDebugging alone would be silent
+      // for non-debug runs. stderr (not stdout) so Ink's stdout-bound
+      // alt-screen render isn't disturbed.
+      // eslint-disable-next-line no-console
+      console.error(
+        '[claudin] CLAUDIN_FORCE_UPDATE_CHECK=1 honored — every launch will hit the npm registry. Unset to restore normal throttling.',
+      )
+    }
+
     // Respect the user's opt-out — same flag the legacy auto-updater honored.
     // Disabling the auto-updater means "no npm network calls on startup".
-    if (isAutoUpdaterDisabled()) return
+    if (!forceCheck && isAutoUpdaterDisabled()) return
 
     // Skip in development (claudindev / source-tree runs). For every other
     // install type we still surface the notice; the message is generic
     // (`run: claudin update`) so it makes sense for npm, native, brew, etc.
     const installType = await getCurrentInstallationType()
-    if (installType === 'development') {
+    if (!forceCheck && installType === 'development') {
       logForDebugging(
         `startup-update: skipping for installType=${installType}`,
       )
@@ -104,12 +139,18 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       join(getClaudinConfigHomeDir(), 'last-update-check')
 
     const isThrottled = async (): Promise<boolean> => {
-      if (process.env.CLAUDIN_FORCE_UPDATE_CHECK === '1') return false
+      if (forceCheck) return false
       try {
         const raw = await readFile(getThrottleFilePath(), 'utf8')
         const last = Number.parseInt(raw.trim(), 10)
         if (!Number.isFinite(last)) return false
-        return Date.now() - last < THROTTLE_MS
+        const now = Date.now()
+        // Reject future timestamps (clock skew, NFS, restored backups):
+        // otherwise `now - last < THROTTLE_MS` would be true for any
+        // future `last`, disabling the update check until the clock
+        // catches up. Treat as not-throttled so the caller re-records.
+        if (last > now) return false
+        return now - last < THROTTLE_MS
       } catch (err) {
         if (isENOENT(err)) return false
         logForDebugging(`[startup-update] throttle read failed: ${String(err)}`)
@@ -148,7 +189,7 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     })
     // Record timestamp only when the npm view call returned a usable version.
     // A null result (network error) or empty string (empty stdout) shouldn't
-    // burn the 6h throttle budget — next launch should retry.
+    // burn the 1h throttle budget — next launch should retry.
     if (!latest) return
     await recordCheckTimestamp()
 
