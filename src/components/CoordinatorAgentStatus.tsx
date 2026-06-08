@@ -18,6 +18,7 @@ import { Box, Text, wrapText } from '../ink.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
 import { enterTeammateView, exitTeammateView } from '../state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from '../tasks/LocalAgentTask/LocalAgentTask.js';
+import { getAgentColor } from '../tools/AgentTool/agentColorManager.js';
 import { formatDuration, formatNumber } from '../utils/format.js';
 import { evictTerminalTask } from '../utils/task/framework.js';
 import { isTerminalStatus } from './tasks/taskStatusUtils.js';
@@ -183,26 +184,31 @@ function AgentLine(t0: AgentLineProps) {
   const bullet = isViewed ? BLACK_CIRCLE : figures.circle;
   const dim = !highlighted && !isViewed;
   const sep = isRunning ? PLAY_ICON : PAUSE_ICON;
-  // Agent name in parentheses, rendered before the live activity so the row
-  // reads `● (Whole-feature review) Reading AgentTool.tsx`. This is the same
-  // launch name shown in the "background agents launched" line — task.description
-  // — so the panel row stays identifiable even after progress text changes. A
-  // registry/custom name (if present) wins, falling back to the agent type.
-  // Cap the paren label so a long launch description doesn't crowd out the
-  // live activity text. 30 chars is enough to keep "Whole-feature review",
-  // "Coding-standards review", and similar names intact while truncating the
-  // rare model-generated multi-sentence descriptions.
-  const rawParenLabel = name || task.description || task.agentType;
+  // Render the row as `● dev-anchor(Whole-feature review) Reading AgentTool.tsx`
+  // — a colored badge mirroring AgentProgressLine, then the parenthesized
+  // launch description, then the live activity. Badge text is `agentType` (or
+  // `@<name>` for teammate spawns), badge color is `getAgentColor(agentType)`
+  // (teammates inherit the type's color, matching UI.tsx:682-687). The badge
+  // text is always rendered in bold; only backgroundColor is gated on
+  // `badgeColor`, so built-ins without a registered color (Code, Explore, Plan)
+  // still get a labeled badge — consistent with AgentProgressLine.
+  // The paren label is capped at 30 chars so a long launch description doesn't
+  // crowd out the live activity text.
+  const badgeColor = getAgentColor(task.agentType);
+  const badgeLabel = name ? `@${name}` : task.agentType;
+  const rawParenLabel = task.description || task.agentType;
   const parenLabel = rawParenLabel.length > 30 ? rawParenLabel.slice(0, 29) + "\u2026" : rawParenLabel;
-  const namePart = `(${parenLabel}) `;
+  const badgeWidth = stringWidth(badgeLabel);
+  const parenPart = `(${parenLabel}) `;
   const hintPart = isSelected && !isViewed ? ` · x to ${isRunning ? "stop" : "clear"}` : "";
   // Metrics are right-aligned (space-between) so they form a consistent column
   // regardless of description length. The description truncates to whatever space
   // the left side has after reserving the metrics width.
   const suffixPart = ` ${sep} ${elapsed}${toolText}${tokenText}${queuedText}${hintPart}`;
-  const availableForDesc = Math.max(0, columns - stringWidth(prefix) - stringWidth(connectorPart) - stringWidth(`${bullet} `) - stringWidth(namePart) - stringWidth(suffixPart));
+  const availableForDesc = Math.max(0, columns - stringWidth(prefix) - stringWidth(connectorPart) - stringWidth(`${bullet} `) - badgeWidth - stringWidth(parenPart) - stringWidth(suffixPart));
   const truncated = wrapText(displayDescription, availableForDesc, "truncate-end");
-  const leftText = <Text dimColor={dim} bold={isViewed}>{prefix}<Text dimColor>{connectorPart}</Text>{bullet}{" "}<Text dimColor={false} bold={true}>{namePart}</Text>{truncated}</Text>;
+  const badgeNode = <Text bold={true} backgroundColor={badgeColor} color={badgeColor ? "inverseText" : undefined}>{badgeLabel}</Text>;
+  const leftText = <Text dimColor={dim} bold={isViewed}>{prefix}<Text dimColor>{connectorPart}</Text>{bullet}{" "}{badgeNode}<Text dimColor={false} bold={true}>{parenPart}</Text>{truncated}</Text>;
   const rightText = <Text dimColor={dim}> {sep} {elapsed}{toolText}{tokenText}{queuedCount > 0 && <Text color="warning">{queuedText}</Text>}{hintPart && <Text dimColor={true}>{hintPart}</Text>}</Text>;
   const line = <Box width={columns} justifyContent="space-between">{leftText}{rightText}</Box>;
   if (!onClick) {

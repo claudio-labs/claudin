@@ -1089,15 +1089,15 @@ export const AgentTool = buildTool({
             // Emit task_progress for the VS Code subagent panel
             updateProgressFromMessage(syncTracker, message, syncResolveActivity, toolUseContext.options.tools);
             if (foregroundTaskId) {
+              // Keep AppState task.progress in sync on every message so the
+              // footer "Agents (N)" panel renders live token counts and live
+              // activity (not "Starting…") from the very first assistant
+              // message — not just on tool_use messages. Mirrors the
+              // unconditional write in agentToolUtils.ts:registerAsyncAgent.
+              updateAsyncAgentProgress(foregroundTaskId, getProgressUpdate(syncTracker), rootSetAppState);
               const lastToolName = getLastToolUseName(message);
               if (lastToolName) {
                 emitTaskProgress(syncTracker, foregroundTaskId, toolUseContext.toolUseId, description, agentStartTime, lastToolName);
-                // Keep AppState task.progress in sync so the footer "Agents (N)"
-                // panel renders live token/tool counts (and updateAgentSummary
-                // reads correct values) for foreground agents too, not just
-                // backgrounded ones. Mirrors the unconditional write in
-                // agentToolUtils.ts:registerAsyncAgent.
-                updateAsyncAgentProgress(foregroundTaskId, getProgressUpdate(syncTracker), rootSetAppState);
               }
             }
 
