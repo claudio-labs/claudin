@@ -13,7 +13,6 @@ import { BYTES_PER_TOKEN } from '../constants/toolLimits.js'
 import { logEvent } from '../services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from '../services/analytics/metadata.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
-import { FILE_READ_TOOL_NAME } from '../tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from '../tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from '../tools/GrepTool/prompt.js'
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from '../tools/AgentTool/constants.js'
@@ -32,18 +31,17 @@ export const TOOL_RESULT_SUMMARY_CLOSING_TAG = '</tool-result-summary>'
 const BASH_SUMMARIZE_THRESHOLD = 8_000
 const GREP_SUMMARIZE_THRESHOLD = 6_000
 const WEBFETCH_SUMMARIZE_THRESHOLD = 12_000
-const READ_SUMMARIZE_THRESHOLD = 10_000
 const GLOB_SUMMARIZE_THRESHOLD = 3_000
 const AGENT_SUMMARIZE_THRESHOLD = 8_000
 const MCP_SUMMARIZE_THRESHOLD = 8_000
 
 // Strategy enum numeric IDs (analytics payloads only accept boolean|number).
+// id 5 ('read-head-tail') was retired; do not reuse — analytics continuity.
 const STRATEGY_ID: Record<StrategyName, number> = {
   'head-tail-errors': 1,
   'grep-grouped': 2,
   'webfetch-stripped': 3,
   'webfetch-head-tail': 4,
-  'read-head-tail': 5,
   'glob-top-n': 6,
   'agent-head-tail': 7,
   'mcp-head-tail': 8,
@@ -54,7 +52,6 @@ type StrategyName =
   | 'grep-grouped'
   | 'webfetch-stripped'
   | 'webfetch-head-tail'
-  | 'read-head-tail'
   | 'glob-top-n'
   | 'agent-head-tail'
   | 'mcp-head-tail'
@@ -196,9 +193,11 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
     case WEB_FETCH_TOOL_NAME:
       if (text.length < WEBFETCH_SUMMARIZE_THRESHOLD) return null
       return summarizeWebFetchOutput(text)
-    case FILE_READ_TOOL_NAME:
-      if (text.length < READ_SUMMARIZE_THRESHOLD) return null
-      return summarizeReadOutput(text)
+    // Read has no summarization arm: head/tail elision of large file reads
+    // induced a thrashing loop on dense codebases (subagent re-Reads the same
+    // file in 50-line slices following the elision hint). FileReadTool pivots
+    // to a structural outline via AUTO_OUTLINE_ON_ELISION instead — falls
+    // through to the default `null` here.
     case GLOB_TOOL_NAME:
       if (text.length < GLOB_SUMMARIZE_THRESHOLD) return null
       return summarizeGlobOutput(text)
@@ -760,106 +759,6 @@ function summarizeWebFetchOutput(text: string): StrategyResult {
   }
 
   return { body: parts.join('\n'), strategy }
-}
-
-// ============================================================
-// Strategy 4: Read
-// ============================================================
-
-const READ_HEAD_LINES = 50
-const READ_TAIL_LINES = 50
-
-function summarizeReadOutput(text: string): StrategyResult | null {
-  const lines = text.split('\n')
-
-  // Identify the range of numbered lines — the file content proper.
-  // Lines outside that range are prefix/suffix metadata emitted by FileReadTool.
-  const numberedLineRegex = /^\s*\d+→/
-  let firstNumbered = -1
-  let lastNumbered = -1
-  for (let i = 0; i < lines.length; i++) {
-    if (numberedLineRegex.test(lines[i] ?? '')) {
-      if (firstNumbered === -1) firstNumbered = i
-      lastNumbered = i
-    }
-  }
-
-  // No numbered lines means Read returned an error or a non-file message — pass through unchanged.
-  if (firstNumbered === -1) return null
-
-  const prefixLines = lines.slice(0, firstNumbered)
-  const contentLines = lines.slice(firstNumbered, lastNumbered + 1)
-  const suffixLines = lines.slice(lastNumbered + 1)
-
-  const numberedCount = contentLines.length
-  const headEnd = Math.min(READ_HEAD_LINES, numberedCount)
-  const tailStart = Math.max(headEnd, numberedCount - READ_TAIL_LINES)
-
-  const parts: string[] = []
-
-  for (const line of prefixLines) parts.push(line)
-
-  for (let i = 0; i < headEnd; i++) {
-    parts.push(truncateLine(contentLines[i] ?? ''))
-  }
-
-  // Capture elision metadata for both the inline `<elision/>` marker AND the
-  // envelope attributes. Read is the dominant narration trigger on Opus 4.8;
-  // shaping the marker as metadata (rather than prose like "[...lines X-Y
-  // omitted...]") and lifting the same data into envelope attrs moves it out
-  // of "prose the model reacts to". See StrategyResult.envelopeAttrs.
-  let elidedRange: string | null = null
-  if (tailStart > headEnd) {
-    // Extract the actual source line numbers from the N→ prefixes for the marker.
-    const firstOmittedMatch = /^\s*(\d+)→/.exec(contentLines[headEnd] ?? '')
-    const lastOmittedMatch = /^\s*(\d+)→/.exec(contentLines[tailStart - 1] ?? '')
-    const firstLine = firstOmittedMatch ? firstOmittedMatch[1] : String(headEnd + 1)
-    const lastLine = lastOmittedMatch ? lastOmittedMatch[1] : String(tailStart)
-    const omittedCount = tailStart - headEnd
-    let omittedChars = 0
-    for (let i = headEnd; i < tailStart; i++) {
-      omittedChars += (contentLines[i] ?? '').length + 1
-    }
-    elidedRange = `${firstLine}-${lastLine}`
-    parts.push(
-      `<elision lines="${firstLine}-${lastLine}" count="${omittedCount}" bytes="${formatFileSize(omittedChars)}"/>`,
-    )
-  }
-
-  for (let i = tailStart; i < numberedCount; i++) {
-    parts.push(truncateLine(contentLines[i] ?? ''))
-  }
-
-  for (const line of suffixLines) parts.push(line)
-
-  // Determine shown line range from numbered prefixes for the footer.
-  const firstShownMatch = /^\s*(\d+)→/.exec(contentLines[0] ?? '')
-  const lastHeadMatch = /^\s*(\d+)→/.exec(contentLines[headEnd - 1] ?? '')
-  const lastShownMatch = /^\s*(\d+)→/.exec(contentLines[numberedCount - 1] ?? '')
-
-  const firstLineNum = firstShownMatch ? firstShownMatch[1] : '1'
-  const lastHeadNum = lastHeadMatch ? lastHeadMatch[1] : String(headEnd)
-  const lastLineNum = lastShownMatch ? lastShownMatch[1] : String(numberedCount)
-
-  // Footer reshaped as metadata: same totals/range data, attribute-style,
-  // no prose for the model to commentate on.
-  if (tailStart > headEnd) {
-    const firstTailMatch = /^\s*(\d+)→/.exec(contentLines[tailStart] ?? '')
-    const firstTailNum = firstTailMatch ? firstTailMatch[1] : String(tailStart + 1)
-    parts.push(
-      `<read-summary total="${numberedCount}" shown="${firstLineNum}-${lastHeadNum},${firstTailNum}-${lastLineNum}"/>`,
-    )
-  } else {
-    parts.push(
-      `<read-summary total="${numberedCount}" shown="${firstLineNum}-${lastLineNum}"/>`,
-    )
-  }
-
-  const envelopeAttrs: Record<string, string> | undefined = elidedRange
-    ? { elided: elidedRange, hint: 'use offset/limit to re-read omitted range' }
-    : undefined
-
-  return { body: parts.join('\n'), strategy: 'read-head-tail', envelopeAttrs }
 }
 
 // ============================================================

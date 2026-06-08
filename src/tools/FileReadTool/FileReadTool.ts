@@ -810,10 +810,10 @@ export const AUTO_OUTLINE_PIVOT_FOOTER =
   "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>"
 
 /**
- * Read result is large enough that toolResultSummarizer (~10 KB) would
- * head-tail elide the middle when the model receives it. Kept as a local
- * constant rather than importing from toolResultSummarizer to avoid a
- * dependency cycle between the tool and its own post-processor.
+ * Body size at which a vanilla full-file Read pivots to an outline. ~10 KB is
+ * the empirical floor where Opus starts narrating about needing "the middle"
+ * of a large literal tool_result and re-Reads in slices; below it the full
+ * body fits in working context without inducing the slice-walk loop.
  */
 const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
 
@@ -1408,18 +1408,17 @@ async function callInner(
   const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
     readResult
 
-  // AUTO_OUTLINE_ON_ELISION: a vanilla full-file Read whose body would be
-  // head-tail elided by toolResultSummarizer (>~10 KB) becomes a structural
-  // outline instead. The model otherwise sees a mid-elided body and starts
-  // narrating ("preciso do trecho do meio") while it re-targets smaller
-  // windows — by far the dominant narration pattern on Opus 4.8 in bench
+  // AUTO_OUTLINE_ON_ELISION: a vanilla full-file Read of a large code file
+  // (≥ READ_AUTO_OUTLINE_THRESHOLD_CHARS) returns a structural outline
+  // instead of the full body. With a large literal body in tool_result Opus
+  // 4.8 reliably starts narrating ("preciso do trecho do meio") and re-Reads
+  // in smaller windows — by far the dominant narration pattern in bench
   // samples. Returning the outline removes the stimulus entirely; the
   // appended footer tells the model how to opt back in to the full body.
   //
   // Skip when the caller already targeted a slice (offset/limit), explicitly
   // asked for the full body (view==='full'), asked for outline themselves
-  // (handled above), pinned a symbol, or the file is small enough that
-  // toolResultSummarizer would pass it through untouched.
+  // (handled above), pinned a symbol, or the file is below the threshold.
   if (
     autoOutlineOnElisionEnabled() &&
     outlineLang &&

@@ -595,166 +595,20 @@ test('webfetch: preserves Title: prefix', () => {
 // Read strategy
 // ============================================================
 
-test('read: below threshold passthrough', () => {
-  // 9 999 chars — just under READ_SUMMARIZE_THRESHOLD
-  const content = Array.from({ length: 100 }, (_, i) => `${i + 1}→line content ${i}`).join('\n')
-  expect(content.length).toBeLessThan(10_000)
-  const block = makeBlock(content)
-  const out = maybeSummarizeToolResult(block, 'Read')
-  expect(out).toBe(block)
-})
-
-test('read: oversized numbered content is summarized with head + omission + tail + footer', () => {
-  const content = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'x'.repeat(30)} file content line ${i}`,
-  ).join('\n')
-  expect(content.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
-  // Head present
-  expect(body).toContain('1→')
-  expect(body).toContain('50→')
-  // Tail present
-  expect(body).toContain('500→')
-  // New metadata-shaped elision marker (was: "[…read content omitted: …]").
-  // Anti-regression: prose markers must be absent.
-  expect(body).toMatch(/<elision lines="\d+-\d+" count="\d+" bytes="[^"]+"\/>/)
-  expect(body).not.toContain('read content omitted')
-  // Footer reshaped from "[Read summary: …]" prose to <read-summary .../> meta.
-  expect(body).toMatch(/<read-summary total="\d+" shown="[^"]+"\/>/)
-  expect(body).not.toContain('Read summary:')
-})
-
-test('read: summarizes padded line-number format (compact-prefix killswitch path)', () => {
-  const lines = Array.from(
-    { length: 1000 },
-    (_, i) => `${String(i + 1).padStart(6, ' ')}→${'content line '.repeat(4)}${i}`
-  ).join('\n')
-  expect(lines.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(lines), 'Read')
-  const body = asString(out)
-  expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
-  expect(body).toMatch(/<elision lines="\d+-\d+"/)
-  expect(body).not.toContain('read content omitted')
-})
-
-test('read: preserves prefix and suffix lines verbatim', () => {
-  const prefix = 'memory freshness prefix line'
-  const suffix = 'cyber risk suffix line'
-  const numbered = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'y'.repeat(30)} content ${i}`,
-  ).join('\n')
-  const content = `${prefix}\n${numbered}\n${suffix}`
-  expect(content.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  expect(body).toContain(prefix)
-  expect(body).toContain(suffix)
-})
-
-test('read: no numbered lines → passthrough (bail)', () => {
-  // Simulate Read returning an error message with no N→ lines
-  const content = 'Error: file not found\n'.repeat(600)
-  expect(content.length).toBeGreaterThan(10_000)
-  const block = makeBlock(content)
-  const out = maybeSummarizeToolResult(block, 'Read')
-  expect(out).toBe(block)
-})
-
-test('read: no omission marker when ≤100 numbered lines (even if above threshold)', () => {
-  // 100 lines: headEnd=50, tailStart=50 — no gap, so no omission marker.
-  // If the no-win guard fires (wrapped ≥ original), block passes through —
-  // either way, no "read content omitted" text appears in output.
-  const content = Array.from(
-    { length: 100 },
-    (_, i) => `${i + 1}→${'z'.repeat(120)} line ${i}`,
-  ).join('\n')
-  expect(content.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  expect(body).not.toContain('read content omitted')
-})
-
-test('read: boundary — exactly 100 numbered lines → no omission (headEnd == tailStart)', () => {
-  // headEnd = min(50, 100) = 50, tailStart = max(50, 100-50) = 50 — no gap.
-  const content = Array.from(
-    { length: 100 },
-    (_, i) => `${i + 1}→${'a'.repeat(120)} line ${i}`,
-  ).join('\n')
-  expect(content.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  expect(body).not.toContain('read content omitted')
-})
-
-test('read: boundary — exactly 101 numbered lines → omission marker with lines 51–51', () => {
-  // Each line is long enough that omitting 1 line actually reduces the output,
-  // clearing the wrapped.length >= originalSizeBytes no-win guard.
-  const content = Array.from(
-    { length: 101 },
-    (_, i) => `${i + 1}→${'b'.repeat(300)} line ${i}`,
-  ).join('\n')
-  expect(content.length).toBeGreaterThan(10_000)
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  // Metadata-shaped elision marker with ASCII range separator (was en-dash
-  // "lines 51–51" in inline prose; now `<elision lines="51-51" .../>`).
-  expect(body).toMatch(/<elision lines="51-51"/)
-  expect(body).not.toContain('read content omitted')
-})
-
-test('read: snapshot — marker shape and strategy attribute', () => {
-  const content = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'c'.repeat(30)} line ${i}`,
-  ).join('\n')
-  const out = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const body = asString(out)
-  // Envelope carries the strategy + new elision metadata attrs (elided, hint).
-  // The leading attribute quad (tool/original/kept/strategy) stays stable for
-  // log parsers; new attrs append after.
-  expect(body).toMatch(
-    /^<tool-result-summary tool="Read" original="\d+(\.\d)?(KB|MB|bytes)" kept="\d+(\.\d)?(KB|MB|bytes)" strategy="read-head-tail" elided="\d+-\d+" hint="[^"]+">\n/,
+// Read summarization is disabled: head/tail elision induced a thrashing loop
+// where the subagent re-Reads the same file in 50-line slices following the
+// elision hint (~127× in one observed Rust session). FileReadTool already
+// caps body size on its own; this strategy was redundant and harmful.
+test('read: passthrough at all sizes (summarizer disabled)', () => {
+  const small = makeBlock(
+    Array.from({ length: 100 }, (_, i) => `${i + 1}→line content ${i}`).join('\n'),
   )
-  expect(body).toContain('strategy="read-head-tail"')
-  expect(body).toContain('elided="')
-  expect(body).toContain('hint="')
-})
+  expect(maybeSummarizeToolResult(small, 'Read')).toBe(small)
 
-test('read: analytics — strategyId=5 and errorWindowPreserved is undefined', () => {
-  const content = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'d'.repeat(30)} line ${i}`,
-  ).join('\n')
-  maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt).toBeDefined()
-  expect(evt?.metadata.strategyId).toBe(5)
-  // Read has no error window concept — field must be absent, not a boolean
-  expect(evt?.metadata.errorWindowPreserved).toBeUndefined()
-})
-
-test('read: idempotent (summarize∘summarize = summarize)', () => {
-  const content = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'e'.repeat(30)} line ${i}`,
-  ).join('\n')
-  const first = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const second = maybeSummarizeToolResult(first, 'Read')
-  expect(second).toBe(first)
-})
-
-test('read: deterministic (byte-identical output)', () => {
-  const content = Array.from(
-    { length: 500 },
-    (_, i) => `${i + 1}→${'f'.repeat(30)} line ${i}`,
-  ).join('\n')
-  const a = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  const b = maybeSummarizeToolResult(makeBlock(content), 'Read')
-  expect(asString(a)).toBe(asString(b))
+  const large = makeBlock(
+    Array.from({ length: 500 }, (_, i) => `${i + 1}→${'x'.repeat(30)} line ${i}`).join('\n'),
+  )
+  expect(maybeSummarizeToolResult(large, 'Read')).toBe(large)
 })
 
 // ============================================================

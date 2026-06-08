@@ -231,9 +231,12 @@ test('integration: Grep path summarizes and skips persist', async () => {
   expect(await persistedFileCount()).toBe(0)
 })
 
-test('integration: oversized Read is summarized, no disk write when <50K after', async () => {
+test('integration: oversized Read passes through unchanged, no disk write when <50K', async () => {
 
-  // 500 lines in N→content format: >10k chars (above summarizer threshold), <50k (no persist)
+  // 500 lines in N→content format: >10k chars, <50k (no persist). Read
+  // summarization is disabled (see dispatch() in toolResultSummarizer.ts):
+  // FileReadTool's own AUTO_OUTLINE_ON_ELISION pivot replaces the prior
+  // head/tail elision, so oversized Read content flows through verbatim.
   const content = Array.from(
     { length: 500 },
     (_, i) => `${i + 1}→file content line with enough padding to exceed threshold ${i}`,
@@ -246,7 +249,8 @@ test('integration: oversized Read is summarized, no disk write when <50K after',
     content,
     'toolu_read_1',
   )
-  expect((out.content as string).startsWith(summarizer.TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  expect(out.content).toBe(content)
+  expect(summarizer.isSummarizedContent(out.content)).toBe(false)
   expect(await persistedFileCount()).toBe(0)
 })
 

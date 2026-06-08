@@ -23,11 +23,11 @@ import {
 // ---------------------------------------------------------------------------
 // AUTO_OUTLINE_ON_ELISION coverage.
 //
-// The toolResultSummarizer head-tail-elides any Read whose body is over ~10 KB.
-// Models react by narrating ("preciso do trecho do meio") and re-reading in
-// smaller windows — the dominant narration pattern observed in bench samples.
-// The pivot routes those same vanilla Reads to the structural outline instead,
-// so the model never sees a mid-elided body.
+// When the model receives a literal Read body over ~10 KB it reliably starts
+// narrating ("preciso do trecho do meio") and re-reads in smaller windows —
+// the dominant narration pattern observed in bench samples. The pivot routes
+// those vanilla Reads to the structural outline instead, removing the
+// stimulus entirely.
 //
 // These tests cover the trigger matrix:
 //   - vanilla Read on a >10 KB code file → outline + footer
@@ -178,8 +178,8 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
 
   test('non-code large file does not auto-pivot (no outline language)', async () => {
     // .txt has no outlineLang → the pivot guard skips and the full body is
-    // returned (and will be head-tail elided downstream, as before — the
-    // pivot only helps the code-file case, where we can produce an outline).
+    // returned verbatim (the pivot only helps the code-file case, where we
+    // can produce an outline).
     const p = writeFixture('big.txt', BIG_TS)
     const { data } = await read(p)
 
