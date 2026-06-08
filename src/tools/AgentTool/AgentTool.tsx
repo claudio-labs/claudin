@@ -1092,12 +1092,12 @@ export const AgentTool = buildTool({
               const lastToolName = getLastToolUseName(message);
               if (lastToolName) {
                 emitTaskProgress(syncTracker, foregroundTaskId, toolUseContext.toolUseId, description, agentStartTime, lastToolName);
-                // Keep AppState task.progress in sync when SDK summaries are
-                // enabled, so updateAgentSummary reads correct token/tool counts
-                // instead of zeros.
-                if (getSdkAgentProgressSummariesEnabled()) {
-                  updateAsyncAgentProgress(foregroundTaskId, getProgressUpdate(syncTracker), rootSetAppState);
-                }
+                // Keep AppState task.progress in sync so the footer "Agents (N)"
+                // panel renders live token/tool counts (and updateAgentSummary
+                // reads correct values) for foreground agents too, not just
+                // backgrounded ones. Mirrors the unconditional write in
+                // agentToolUtils.ts:registerAsyncAgent.
+                updateAsyncAgentProgress(foregroundTaskId, getProgressUpdate(syncTracker), rootSetAppState);
               }
             }
 
