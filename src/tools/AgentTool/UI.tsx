@@ -33,6 +33,33 @@ import { inputSchema } from './AgentTool.js';
 import { getAgentColor } from './agentColorManager.js';
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
 const MAX_PROGRESS_MESSAGES_TO_SHOW = 3;
+const AGENT_ERROR_MAX_CHARS = 80;
+const TOOL_USE_ERROR_TAG_RE = /<tool_use_error>([\s\S]*?)<\/tool_use_error>/;
+
+// Pull a one-line summary out of an errored sub-agent's tool_result content so
+// the parent's AgentProgressLine can show *why* it failed (e.g. provider 529
+// overload) instead of "Done · 0 tool uses", which is indistinguishable from a
+// clean text-only completion. Returns undefined if no usable text is found.
+export function extractAgentErrorSummary(content: ToolResultBlockParam['content'] | undefined): string | undefined {
+  if (content === undefined) return undefined;
+  let text: string;
+  if (typeof content === 'string') {
+    text = content;
+  } else {
+    text = content
+      .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+  }
+  const unwrapped = (text.match(TOOL_USE_ERROR_TAG_RE)?.[1] ?? text).replace(/<\/?error>/g, '').trim();
+  if (!unwrapped) return undefined;
+  const firstLine = unwrapped.split('\n')[0]?.trim();
+  if (!firstLine) return undefined;
+  const stripped = firstLine.replace(/^(Error|Cancelled):\s*/i, '');
+  return stripped.length > AGENT_ERROR_MAX_CHARS
+    ? `${stripped.slice(0, AGENT_ERROR_MAX_CHARS - 1)}…`
+    : stripped;
+}
 
 /**
  * Guard: checks if progress data has a `message` field (agent_progress or
@@ -488,9 +515,15 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
       toolUseCount,
       tokens
     } = getProgressStats();
+    // Surface the live current activity (the same source the footer Agents row
+    // and AgentProgressLine's lastToolInfo read) so the condensed line tracks
+    // what the agent is doing instead of being pinned at "In progress…" for the
+    // whole run. Falls back to "In progress…" during the boot window before any
+    // tool fires.
+    const lastToolInfo = extractLastToolInfo(progressMessages, tools);
     return <MessageResponse height={1}>
         <Text dimColor>
-          In progress… · <Text bold>{toolUseCount}</Text> tool{' '}
+          {lastToolInfo ?? 'In progress…'} · <Text bold>{toolUseCount}</Text> tool{' '}
           {toolUseCount === 1 ? 'use' : 'uses'}
           {tokens && ` · ${formatNumber(tokens)} tokens`} ·{' '}
           <ConfigurableShortcutHint action="app:toggleTranscript" context="Global" fallback="ctrl+o" description="expand" parens />
@@ -700,6 +733,7 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
     const backgroundedMidExecution = outputStatus === 'async_launched' || outputStatus === 'remote_launched';
     const isAsync = launchedAsAsync || backgroundedMidExecution || isTeammateSpawn;
     const name = parsedInput.success ? parsedInput.data.name : undefined;
+    const errorMessage = isError ? extractAgentErrorSummary(result?.param.content) : undefined;
     return {
       id: param.id,
       agentType,
@@ -713,7 +747,8 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
       descriptionColor,
       lastToolInfo,
       taskDescription,
-      name
+      name,
+      errorMessage
     };
   });
   const anyUnresolved = toolUses.some(t => !t.isResolved);
@@ -750,7 +785,7 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
         </Text>
         {!allAsync && <CtrlOToExpand />}
       </Box>
-      {agentStats.map((stat, index) => <AgentProgressLine key={stat.id} agentType={stat.agentType} description={stat.description} descriptionColor={stat.descriptionColor} taskDescription={stat.taskDescription} toolUseCount={stat.toolUseCount} tokens={stat.tokens} color={stat.color} isLast={index === agentStats.length - 1} isResolved={stat.isResolved} isError={stat.isError} isAsync={stat.isAsync} shouldAnimate={shouldAnimate} lastToolInfo={stat.lastToolInfo} hideType={allSameType} name={stat.name} />)}
+      {agentStats.map((stat, index) => <AgentProgressLine key={stat.id} agentType={stat.agentType} description={stat.description} descriptionColor={stat.descriptionColor} taskDescription={stat.taskDescription} toolUseCount={stat.toolUseCount} tokens={stat.tokens} color={stat.color} isLast={index === agentStats.length - 1} isResolved={stat.isResolved} isError={stat.isError} isAsync={stat.isAsync} shouldAnimate={shouldAnimate} lastToolInfo={stat.lastToolInfo} hideType={allSameType} name={stat.name} errorMessage={stat.errorMessage} />)}
     </Box>;
 }
 export function userFacingName(input: Partial<{

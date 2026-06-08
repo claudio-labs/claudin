@@ -18,9 +18,10 @@ type Props = {
   shouldAnimate: boolean;
   lastToolInfo?: string | null;
   hideType?: boolean;
+  errorMessage?: string;
 };
 export function AgentProgressLine(t0: Props) {
-  const $ = _c(32);
+  const $ = _c(35);
   const {
     agentType,
     description,
@@ -32,19 +33,24 @@ export function AgentProgressLine(t0: Props) {
     color,
     isLast,
     isResolved,
+    isError,
     isAsync: t1,
     lastToolInfo,
-    hideType: t2
+    hideType: t2,
+    errorMessage
   } = t0;
   const isAsync = t1 === undefined ? false : t1;
   const hideType = t2 === undefined ? false : t2;
   const treeChar = isLast ? "\u2514\u2500" : "\u251C\u2500";
   const isBackgrounded = isAsync && isResolved;
   let t3;
-  if ($[0] !== isBackgrounded || $[1] !== isResolved || $[2] !== lastToolInfo || $[3] !== taskDescription) {
+  if ($[0] !== isBackgrounded || $[1] !== isResolved || $[2] !== lastToolInfo || $[3] !== taskDescription || $[32] !== isError || $[33] !== errorMessage) {
     t3 = () => {
       if (!isResolved) {
         return lastToolInfo || "Initializing\u2026";
+      }
+      if (isError) {
+        return errorMessage ? `Failed: ${errorMessage}` : "Failed";
       }
       if (isBackgrounded) {
         return taskDescription ?? "Running in the background";
@@ -55,6 +61,8 @@ export function AgentProgressLine(t0: Props) {
     $[1] = isResolved;
     $[2] = lastToolInfo;
     $[3] = taskDescription;
+    $[32] = isError;
+    $[33] = errorMessage;
     $[4] = t3;
   } else {
     t3 = $[4];
@@ -114,11 +122,13 @@ export function AgentProgressLine(t0: Props) {
     t9 = $[24];
   }
   let t10;
-  if ($[25] !== getStatusText || $[26] !== isBackgrounded || $[27] !== isLast) {
-    t10 = !isBackgrounded && <Box paddingLeft={3} flexDirection="row"><Text dimColor={true}>{isLast ? "   \u23BF  " : "\u2502  \u23BF  "}</Text><Text dimColor={true}>{getStatusText()}</Text></Box>;
+  const showError = isError && isResolved;
+  if ($[25] !== getStatusText || $[26] !== isBackgrounded || $[27] !== isLast || $[34] !== showError) {
+    t10 = !isBackgrounded && <Box paddingLeft={3} flexDirection="row"><Text dimColor={true}>{isLast ? "   \u23BF  " : "\u2502  \u23BF  "}</Text><Text dimColor={!showError} color={showError ? "error" : undefined}>{getStatusText()}</Text></Box>;
     $[25] = getStatusText;
     $[26] = isBackgrounded;
     $[27] = isLast;
+    $[34] = showError;
     $[28] = t10;
   } else {
     t10 = $[28];
