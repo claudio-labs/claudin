@@ -36,6 +36,31 @@ describe("parseBashCommand", () => {
     expect(ctx.verb).toBe("make");
     expect(ctx.args).toEqual(["build"]);
   });
+
+  test("strips runner prefixes (npx, poetry run, pnpm dlx, …)", () => {
+    expect(parseBashCommand("npx eslint .").verb).toBe("eslint");
+    expect(parseBashCommand("npx -y prettier --check .").verb).toBe("prettier");
+    expect(parseBashCommand("bunx vitest run").verb).toBe("vitest");
+    expect(parseBashCommand("poetry run pytest -x").verb).toBe("pytest");
+    expect(parseBashCommand("uv run ruff check .").verb).toBe("ruff");
+    expect(parseBashCommand("pnpm dlx prettier .").verb).toBe("prettier");
+    expect(parseBashCommand("yarn dlx prettier .").verb).toBe("prettier");
+  });
+
+  test("strips env + wrapper + runner in any interleaving", () => {
+    const ctx = parseBashCommand("sudo CI=1 npx eslint src/");
+    expect(ctx.verb).toBe("eslint");
+    expect(ctx.args).toEqual(["src/"]);
+  });
+
+  test("does not strip script-by-name runners", () => {
+    expect(parseBashCommand("npm run lint").verb).toBe("npm");
+    expect(parseBashCommand("bun run dev").verb).toBe("bun");
+  });
+
+  test("runner with unknown flag stops the strip (fail-open)", () => {
+    expect(parseBashCommand("uv run --with rich pytest").verb).toBe("--with");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -361,6 +386,21 @@ describe("maybeRewrite", () => {
         ctx.args[0] === "build" ? `${ctx.command} --progress=plain` : null,
     };
     expect(maybeRewrite(filter, "docker run .")).toBeNull();
+  });
+
+  test("re-prepends runner prefix onto the rewritten command", () => {
+    // The rewritten command is executed — dropping the runner would change
+    // which binary runs (`fake` from PATH instead of via npx).
+    const filter: FilterSpec = {
+      name: "fake",
+      matchCommand: /^fake\b/,
+      rewriteCommand: (ctx) => `${ctx.command} --quiet`,
+    };
+    const result = maybeRewrite(filter, "npx -y fake build");
+    expect(result).toEqual({
+      rewritten: "npx -y fake build --quiet",
+      original: "npx -y fake build",
+    });
   });
 });
 

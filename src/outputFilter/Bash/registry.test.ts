@@ -37,6 +37,47 @@ describe("canonicalizeForMatching", () => {
   test("returns command as-is without prefixes", () => {
     expect(canonicalizeForMatching("npm install")).toBe("npm install");
   });
+
+  test("strips env assignment placed AFTER a wrapper prefix (interleaving)", () => {
+    expect(canonicalizeForMatching("sudo FOO=1 git status")).toBe("git status");
+  });
+
+  test("strips runner prefixes", () => {
+    expect(canonicalizeForMatching("npx eslint .")).toBe("eslint .");
+    expect(canonicalizeForMatching("npx -y prettier --check .")).toBe(
+      "prettier --check .",
+    );
+    expect(canonicalizeForMatching("bunx vitest run")).toBe("vitest run");
+    expect(canonicalizeForMatching("poetry run pytest -x")).toBe("pytest -x");
+    expect(canonicalizeForMatching("pipenv run pytest")).toBe("pytest");
+    expect(canonicalizeForMatching("uv run ruff check .")).toBe("ruff check .");
+    expect(canonicalizeForMatching("pnpm dlx prettier --check .")).toBe(
+      "prettier --check .",
+    );
+    expect(canonicalizeForMatching("pnpm exec vitest run")).toBe("vitest run");
+    expect(canonicalizeForMatching("yarn dlx prettier --check .")).toBe(
+      "prettier --check .",
+    );
+  });
+
+  test("strips runner nested behind env + wrapper prefixes", () => {
+    expect(canonicalizeForMatching("sudo CI=1 npx eslint .")).toBe("eslint .");
+    expect(canonicalizeForMatching("FOO=bar poetry run pytest")).toBe("pytest");
+  });
+
+  test("does not strip script-by-name runners (argument is not a tool)", () => {
+    expect(canonicalizeForMatching("npm run lint")).toBe("npm run lint");
+    expect(canonicalizeForMatching("pnpm run build")).toBe("pnpm run build");
+    expect(canonicalizeForMatching("bun run dev")).toBe("bun run dev");
+  });
+
+  test("runner with unknown flag stops the strip (fail-open)", () => {
+    // `uv run --with rich pytest` — we can't know where flags end; leave it,
+    // verb becomes `--with` and no filter matches (raw passthrough).
+    expect(canonicalizeForMatching("uv run --with rich pytest")).toBe(
+      "--with rich pytest",
+    );
+  });
 });
 
 describe("findFilterForCommand", () => {
@@ -46,6 +87,21 @@ describe("findFilterForCommand", () => {
 
   test("returns null for command with no built-in filter", () => {
     expect(findFilterForCommand("whoami")).toBeNull();
+  });
+
+  test("runner-invoked tools resolve to the bare tool's filter", () => {
+    expect(findFilterForCommand("poetry run pytest tests/")?.name).toBe("pytest");
+    expect(findFilterForCommand("uv run ruff check .")?.name).toBe("ruff-check");
+    expect(findFilterForCommand("uv run python -m pytest")?.name).toBe("pytest");
+    expect(findFilterForCommand("bunx vitest run")?.name).toBe("vitest");
+    expect(findFilterForCommand("npx -y prettier --check .")?.name).toBe("prettier");
+    expect(findFilterForCommand("pnpm dlx prettier --check .")?.name).toBe("prettier");
+    expect(findFilterForCommand("yarn dlx prettier --check .")?.name).toBe("prettier");
+  });
+
+  test("runner-invoked unknown tool → null (no false positives)", () => {
+    expect(findFilterForCommand("npx some-unknown-tool --flag")).toBeNull();
+    expect(findFilterForCommand("uv run --with rich pytest")).toBeNull();
   });
 });
 

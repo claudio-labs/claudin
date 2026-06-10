@@ -1,9 +1,7 @@
 import { builtInFilters } from "./filters/index.js";
 import {
-  ENV_ASSIGNMENT_RE,
-  findEnvAssignmentEnd,
+  consumeExecutionPrefix,
   hasCompound,
-  LEADING_PREFIX_RE,
   matchesAtomicCommand,
   splitTopLevelSegments,
   splitTrailingReducerPipe,
@@ -11,19 +9,12 @@ import {
 import type { FilterSpec } from "./types.js";
 import { loadUserFilters } from "./userFilters.js";
 
-/** Strips sudo/time/nice prefixes and leading env assignments so `sudo FOO=bar ls` matches the `ls` filter. */
+/** Strips sudo/time/nice prefixes, leading env assignments and runner prefixes
+ * (npx, poetry run, pnpm dlx, …) — in any interleaving — so `sudo FOO=bar ls`
+ * matches the `ls` filter and `poetry run pytest` matches the `pytest` filter. */
 export function canonicalizeForMatching(command: string): string {
-  let s = command.trim();
-  // Strip leading prefixes (sudo, time, nice, etc.)
-  s = s.replace(LEADING_PREFIX_RE, "");
-  // Strip env assignments (FOO=bar, FOO="quoted val", FOO=bar BAZ=qux ...).
-  // Quote-aware via `findEnvAssignmentEnd` so `FOO="a b" git status` doesn't lose the verb.
-  while (ENV_ASSIGNMENT_RE.test(s)) {
-    const end = findEnvAssignmentEnd(s);
-    if (end === -1) break;
-    s = s.slice(end).trimStart();
-  }
-  return s.trim();
+  const s = command.trim();
+  return s.slice(consumeExecutionPrefix(s)).trim();
 }
 
 function findAtomicFilter(canon: string): FilterSpec | null {

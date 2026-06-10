@@ -3227,9 +3227,11 @@ describe("phase 12 — pnpm-run", () => {
     assertReduction("pnpm-run", "pnpm run lint", "pnpm-run", 70);
   });
 
-  test("match: run/exec ✓", () => {
+  test("match: run ✓; exec resolves to the inner tool's filter", () => {
     expect(findFilterForCommand("pnpm run build")?.name).toBe("pnpm-run");
-    expect(findFilterForCommand("pnpm exec eslint .")?.name).toBe("pnpm-run");
+    // `pnpm exec <tool>` runs the bin directly (no pnpm script ceremony) —
+    // runner-prefix canonicalization hands it to the tool's own filter.
+    expect(findFilterForCommand("pnpm exec eslint .")?.name).toBe("eslint");
   });
 });
 

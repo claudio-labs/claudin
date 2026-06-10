@@ -87,9 +87,11 @@ export const pnpmInstall: FilterSpec = {
   collapseRuns: true,
 }
 
-// --- pnpm run / exec --------------------------------------------------------
+// --- pnpm run ----------------------------------------------------------------
+// `pnpm exec <tool>` is consumed by RUNNER_PREFIX_RE canonicalization (the
+// inner tool's own filter matches), so it never reaches this spec.
 
-const PNPM_RUN_MATCH = /^pnpm\s+(run|exec)\b/
+const PNPM_RUN_MATCH = /^pnpm\s+run\b/
 const PNPM_RUN_PASSTHROUGH = /(?:^|\s)--silent\b/
 // `> pkg@version script /path` (pnpm includes cwd, npm does not).
 const PNPM_SCRIPT_HEADER = /^>\s+\S+@\S+\s+\S+/

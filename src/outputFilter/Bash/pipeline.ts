@@ -42,6 +42,16 @@ function debug(label: string, detail?: unknown): void {
 export const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
 export const LEADING_PREFIX_RE =
   /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+)+/;
+// Runner prefixes whose argument IS the tool being invoked — stripping them
+// lets every filter registered for the bare tool match the runner-invoked form
+// (`poetry run pytest` → pytest, `npx eslint` → eslint, `pnpm dlx prettier` →
+// prettier). Deliberately NOT included: script-by-name runners (`npm run`,
+// `pnpm run`, `yarn <script>`, `bun run`) — their argument is a package-script
+// name, not a tool, so the inner command is unknowable. Only zero-config flags
+// are consumed (`npx -y`, `bunx --bun`); any other flag stops the strip and the
+// command falls through to no-filter passthrough (fail-open).
+export const RUNNER_PREFIX_RE =
+  /^(?:npx\s+(?:(?:-y|--yes|--no-install|-q|--quiet)\s+)*|bunx\s+(?:--bun\s+)?|(?:poetry|pipenv|uv|hatch)\s+run\s+|pnpm\s+(?:exec|dlx)\s+|yarn\s+dlx\s+)/;
 // Bash treats `\<LF>` as line continuation (joins lines into a single command).
 // Used by `parseBashCommand` and `extractCommandPrefix` to collapse continuations
 // before tokenization. Module-level so it is compiled once.
@@ -49,7 +59,42 @@ const LINE_CONTINUATION_RE = /\\\n/g;
 const WHITESPACE_RE = /\s+/;
 const DIGIT_TEMPLATE_RE = /\d+/g;
 
-/** Strips env assignments and leading prefixes (sudo, time, nice…) to extract the verb and args.
+/** Returns the offset where the actual command begins, after consuming — in any
+ * interleaving — env assignments (`FOO=bar`), wrapper prefixes (`sudo`, `time`, …)
+ * and runner prefixes (`npx`, `poetry run`, …). Single source of truth for
+ * `parseBashCommand`, `extractCommandPrefix` and `canonicalizeForMatching`, so
+ * stripping and prefix re-prepending (on rewrite) stay in lockstep. */
+export function consumeExecutionPrefix(s: string): number {
+  let i = 0;
+  for (;;) {
+    const rest = s.slice(i);
+    const ws = rest.length - rest.trimStart().length;
+    if (ws > 0) {
+      i += ws;
+      continue;
+    }
+    if (ENV_ASSIGNMENT_RE.test(rest)) {
+      const end = findEnvAssignmentEnd(rest);
+      if (end === -1) return i;
+      i += end;
+      continue;
+    }
+    const lead = rest.match(LEADING_PREFIX_RE);
+    if (lead) {
+      i += lead[0].length;
+      continue;
+    }
+    const runner = rest.match(RUNNER_PREFIX_RE);
+    if (runner) {
+      i += runner[0].length;
+      continue;
+    }
+    return i;
+  }
+}
+
+/** Strips env assignments, leading prefixes (sudo, time, nice…) and runner prefixes
+ * (npx, poetry run, pnpm dlx…) to extract the verb and args.
  *
  * Env stripping is quote-, escape-, and subshell-aware via `findEnvAssignmentEnd` so that
  * `FOO="a b" git status`, `FOO=$(date) git status`, `FOO=a\ b git status` all canonicalize
@@ -59,16 +104,8 @@ const DIGIT_TEMPLATE_RE = /\d+/g;
  */
 export function parseBashCommand(command: string): RewriteContext {
   // Collapse `\<LF>` line continuations into a single space (bash semantics).
-  let trimmed = command.replace(LINE_CONTINUATION_RE, " ").trim();
-  // Strip env assignments using the same quote-aware boundary detector as
-  // `canonicalizeForMatching` to keep both code paths in lockstep.
-  while (ENV_ASSIGNMENT_RE.test(trimmed)) {
-    const end = findEnvAssignmentEnd(trimmed);
-    if (end === -1) break;
-    trimmed = trimmed.slice(end).trimStart();
-  }
-  // Strip leading prefixes
-  trimmed = trimmed.replace(LEADING_PREFIX_RE, "");
+  const collapsed = command.replace(LINE_CONTINUATION_RE, " ");
+  const trimmed = collapsed.slice(consumeExecutionPrefix(collapsed)).trim();
   const parts = trimmed.split(WHITESPACE_RE);
   const verb = parts[0] ?? "";
   const args = parts.slice(1);
@@ -166,24 +203,15 @@ export function hasCompound(command: string): boolean {
   return segments === null || segments.length > 1;
 }
 
-/** Returns the env-assignment + leading-prefix slice of a command (e.g. `GIT_PAGER=cat sudo `
- * for `GIT_PAGER=cat sudo git log`). Used by `maybeRewrite` to re-prepend the prefix onto the
- * rewritten verb so env overrides and `sudo` are not silently dropped. Matches the stripping
- * logic of `parseBashCommand` so the two stay in lockstep. Always returns a string ending at
- * a token boundary (or empty). */
+/** Returns the env-assignment + leading-prefix + runner-prefix slice of a command
+ * (e.g. `GIT_PAGER=cat sudo ` for `GIT_PAGER=cat sudo git log`, `poetry run ` for
+ * `poetry run pytest`). Used by `maybeRewrite` to re-prepend the prefix onto the
+ * rewritten verb so env overrides, `sudo` and runners are not silently dropped.
+ * Shares `consumeExecutionPrefix` with `parseBashCommand` so the two stay in
+ * lockstep. Always returns a string ending at a token boundary (or empty). */
 export function extractCommandPrefix(command: string): string {
   const collapsed = command.replace(LINE_CONTINUATION_RE, " ");
-  let consumed = collapsed.length - collapsed.trimStart().length;
-  while (ENV_ASSIGNMENT_RE.test(collapsed.slice(consumed))) {
-    const end = findEnvAssignmentEnd(collapsed.slice(consumed));
-    if (end === -1) break;
-    consumed += end;
-    const after = collapsed.slice(consumed);
-    consumed += after.length - after.trimStart().length;
-  }
-  const leadingMatch = collapsed.slice(consumed).match(LEADING_PREFIX_RE);
-  if (leadingMatch) consumed += leadingMatch[0].length;
-  return collapsed.slice(0, consumed);
+  return collapsed.slice(0, consumeExecutionPrefix(collapsed));
 }
 
 // ---------------------------------------------------------------------------
