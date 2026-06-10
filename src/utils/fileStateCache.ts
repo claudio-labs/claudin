@@ -12,6 +12,23 @@ export type FileState = {
   // Edit/Write must require an explicit Read first. `content` here holds the
   // RAW disk bytes (for getChangedFiles diffing), not what the model saw.
   isPartialView?: boolean
+  // tool_use id of the Read that carried this content to the model. The
+  // dedup stand-down uses it to check whether that tool_result is still
+  // intact in the transcript (client-side clip paths rewrite old results to
+  // stubs without touching this cache — see FileReadTool's
+  // clientClippingDetection.ts). Absent for entries not written by a Read
+  // tool call (Edit/Write, auto-injection, contexts without a toolUseId),
+  // which keep the pre-existing always-armed dedup behavior.
+  //
+  // Transcript-scoped: the id is only meaningful against the messages array
+  // of the context where the Read ran. A clone that crosses contexts (fork
+  // subagents inherit parent messages, so ids normally still resolve;
+  // resume reloads the same transcript) can in rare flows carry an id whose
+  // tool_result is absent from the new context's messages — the scanner
+  // then reports "missing" and dedup stands down, costing one re-send.
+  // Fail-safe by design; do not rely on the id resolving outside its
+  // original transcript.
+  toolUseId?: string
 }
 
 // Default max entries for read file state caches

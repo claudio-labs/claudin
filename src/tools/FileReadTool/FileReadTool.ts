@@ -81,6 +81,7 @@ import {
   markFiredAndCheck,
   SERIAL_READ_NUDGE_REMINDER,
 } from './serialReadNudge.js'
+import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 import { hasServerClearedToolUses } from './serverClearingDetection.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
@@ -602,6 +603,11 @@ export const FileReadTool = buildTool({
     // Skip dedup for outline/unfold requests: they share the default
     // offset/limit with a prior full Read, so they would wrongly dedup-match
     // and return a file_unchanged stub instead of the requested view.
+    // Set when this Read is a slice-walk candidate (see the else-if below);
+    // consumed after callInner succeeds.
+    let sliceWalkPrior:
+      | { timestamp: number; priorWasFullRead: boolean }
+      | undefined
     if (
       existingState &&
       !existingState.isPartialView &&
@@ -622,8 +628,25 @@ export const FileReadTool = buildTool({
         const serverCleared =
           Array.isArray(context.messages) &&
           hasServerClearedToolUses(context.messages)
+        // The client-side clip paths (age prune, RSS byte-guard, time-based
+        // clear, microcompact stable stubs) rewrite old tool_results to clip
+        // stubs without touching readFileState — same blind-pointer bug,
+        // deterministic under the aggressive profile. Here the stand-down is
+        // per-file: the entry records which tool_use carried the content, so
+        // dedup only disarms when THAT tool_result is clipped or gone. See
+        // clientClippingDetection.ts.
+        const clientClipped =
+          !serverCleared &&
+          existingState.toolUseId !== undefined &&
+          Array.isArray(context.messages) &&
+          isPriorReadClippedOrMissing(
+            context.messages,
+            existingState.toolUseId,
+          )
         if (serverCleared) {
           logEvent('tengu_file_read_dedup_skip_server_clearing', {})
+        } else if (clientClipped) {
+          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
         } else {
           try {
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
@@ -642,6 +665,23 @@ export const FileReadTool = buildTool({
           } catch {
             // stat failed — fall through to full read
           }
+        }
+      } else if (offset > 1 || limit !== undefined) {
+        // Slice-walk telemetry candidate (diagnostic only, no behavior
+        // change): an explicit-range Read of a file whose previous Read used
+        // a DIFFERENT range — the windowing pattern auto-outline cannot
+        // intercept (it only fires on vanilla full-file reads of code files)
+        // and the exact-range dedup cannot see. Measures how often the
+        // bypass happens in the field before designing any mitigation.
+        // The event is logged after callInner succeeds by comparing the
+        // fresh entry's mtime against this snapshot: no extra stat (the read
+        // fetches mtime anyway) and the unchanged-on-disk judgment spans the
+        // read itself. priorWasFullRead distinguishes re-slicing content the
+        // model already saw in full from walking a file window by window.
+        sliceWalkPrior = {
+          timestamp: existingState.timestamp,
+          priorWasFullRead:
+            existingState.offset === 1 && existingState.limit === undefined,
         }
       }
     }
@@ -681,6 +721,20 @@ export const FileReadTool = buildTool({
         context,
         parentMessage?.message.id,
       )
+      if (sliceWalkPrior) {
+        // The read above refreshed the readFileState entry with the mtime it
+        // fetched; equal timestamps mean the file was unchanged across the
+        // prior read, this read, and everything in between.
+        const fresh = readFileState.get(fullFilePath)
+        if (fresh && fresh.timestamp === sliceWalkPrior.timestamp) {
+          const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
+          logEvent('tengu_file_read_slice_walk', {
+            ...(analyticsExt !== undefined && { ext: analyticsExt }),
+            isCode: detectOutlineLang(ext) != null,
+            priorWasFullRead: sliceWalkPrior.priorWasFullRead,
+          })
+        }
+      }
       maybeFlagSerialReadNudge(result?.data, context)
       return result
     } catch (error) {
@@ -1126,6 +1180,7 @@ function makeUnfoldData(
   file_path: string,
   fullFilePath: string,
   readFileState: ToolUseContext['readFileState'],
+  toolUseId: string | undefined,
 ): { data: Output } {
   const slice = scanned.lines
     .slice(entry.startLine - 1, entry.endLine)
@@ -1136,6 +1191,7 @@ function makeUnfoldData(
     timestamp: Math.floor(scanned.mtimeMs),
     offset: entry.startLine,
     limit: numLines,
+    toolUseId,
   })
   return {
     data: {
@@ -1196,6 +1252,7 @@ async function callInner(
       timestamp: Math.floor(stats.mtimeMs),
       offset,
       limit,
+      toolUseId: context.toolUseId,
     })
     context.nestedMemoryAttachmentTriggers?.add(fullFilePath)
 
@@ -1390,6 +1447,7 @@ async function callInner(
         file_path,
         fullFilePath,
         readFileState,
+        context.toolUseId,
       )
     }
     // scan empty — degrade to a normal read
@@ -1489,6 +1547,7 @@ async function callInner(
     timestamp: Math.floor(mtimeMs),
     offset,
     limit,
+    toolUseId: context.toolUseId,
   })
   context.nestedMemoryAttachmentTriggers?.add(fullFilePath)
 

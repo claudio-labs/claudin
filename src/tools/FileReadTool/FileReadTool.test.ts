@@ -7,8 +7,13 @@ import type { ToolUseContext } from '../../Tool.js'
 import { READ_FILE_STATE_CACHE_SIZE } from '../../utils/fileStateCache.js'
 import { createFileStateCacheWithSizeLimit } from '../../utils/fileStateCache.js'
 import {
+  buildClipStub,
+  buildClipStubWithHead,
+} from '../../services/compact/stableStubState.js'
+import {
   assistantWithAppliedEdits,
   assistantWithClearing,
+  userWithToolResult,
 } from './__test-helpers__/contextManagementFixtures.js'
 import { FileReadTool, MaxFileReadTokenExceededError } from './FileReadTool.js'
 
@@ -51,6 +56,7 @@ function writeFixture(name: string, content: string): string {
 type ContextOverrides = {
   fileReadingLimits?: ToolUseContext['fileReadingLimits']
   messages?: unknown[]
+  toolUseId?: string
 }
 
 function makeContext(overrides: ContextOverrides = {}): ToolUseContext {
@@ -61,10 +67,17 @@ function makeContext(overrides: ContextOverrides = {}): ToolUseContext {
     ),
     fileReadingLimits: overrides.fileReadingLimits,
     messages: overrides.messages,
+    toolUseId: overrides.toolUseId,
     getAppState: () => ({ toolPermissionContext: {} }),
     setAppState: () => {},
     options: {},
   } as unknown as ToolUseContext
+}
+
+/** Swap the transcript a context exposes to the dedup scanners mid-test —
+ *  mirrors toolUseContext.messages being reassigned each query iteration. */
+function setContextMessages(ctx: ToolUseContext, messages: unknown[]): void {
+  ;(ctx as unknown as { messages: unknown[] }).messages = messages
 }
 
 type ReadInput = {
@@ -456,6 +469,102 @@ describe('FileReadTool — dedup vs server-side tool clearing', () => {
   test('a context without messages keeps dedup active', async () => {
     const p = writeFixture('dedup-no-messages.txt', 'alpha\nbeta')
     const ctx = makeContext()
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dedup vs client-side clipping — the in-process clip paths (age prune, RSS
+// byte-guard, time-based clear, microcompact stable stubs) rewrite old
+// tool_results to clip stubs without touching readFileState. The entry
+// records the Read's toolUseId; dedup must stand down when THAT tool_result
+// is clipped or gone from the transcript. See clientClippingDetection.ts.
+// ---------------------------------------------------------------------------
+
+describe('FileReadTool — dedup vs client-side clipping', () => {
+  const ID = 'toolu_client_clip'
+
+  test('dedup is suppressed when the prior tool_result was clipped to a pure stub', async () => {
+    const p = writeFixture('dedup-clipped-pure.txt', 'alpha\nbeta')
+    const ctx = makeContext({ toolUseId: ID })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    setContextMessages(ctx, [
+      userWithToolResult(ID, buildClipStub('Read', 1234)),
+    ])
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('text')
+    if (second.type !== 'text') throw new Error('expected text')
+    expect(second.file.content).toBe('alpha\nbeta')
+  })
+
+  test('dedup is suppressed when the prior tool_result was clipped to a head-preserving stub', async () => {
+    const p = writeFixture('dedup-clipped-head.txt', 'alpha\nbeta')
+    const ctx = makeContext({ toolUseId: ID })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    setContextMessages(ctx, [
+      userWithToolResult(ID, buildClipStubWithHead('Read', 1234, 'alpha')),
+    ])
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('text')
+  })
+
+  test('dedup stays active while the prior tool_result is intact in the transcript', async () => {
+    const p = writeFixture('dedup-intact.txt', 'alpha\nbeta')
+    const ctx = makeContext({ toolUseId: ID })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    setContextMessages(ctx, [
+      userWithToolResult(ID, '     1\talpha\n     2\tbeta'),
+    ])
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
+  })
+
+  test('dedup is suppressed when the prior tool_result is missing from the transcript', async () => {
+    const p = writeFixture('dedup-missing.txt', 'alpha\nbeta')
+    const ctx = makeContext({ toolUseId: ID })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    // A present messages array with no trace of the prior Read — the stub
+    // would point at nothing. Fail toward correctness: re-send.
+    setContextMessages(ctx, [])
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('text')
+  })
+
+  test('an entry without a recorded toolUseId keeps the pre-existing dedup behavior', async () => {
+    const p = writeFixture('dedup-no-tooluseid.txt', 'alpha\nbeta')
+    // No toolUseId on the context → the entry records none → the clipping
+    // scan cannot run, even though the transcript holds a clipped result.
+    const ctx = makeContext({
+      messages: [userWithToolResult(ID, buildClipStub('Read', 50))],
+    })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
+  })
+
+  test('a recorded toolUseId with no messages array keeps dedup active', async () => {
+    const p = writeFixture('dedup-id-no-messages.txt', 'alpha\nbeta')
+    const ctx = makeContext({ toolUseId: ID })
 
     const first = (await read(p, {}, ctx)).data
     expect(first.type).toBe('text')

@@ -390,8 +390,11 @@ const HEAD_STUB_MAX_PLAUSIBLE_CHARS = 32_000
 
 /** A tool_result content string that is already in one of the two stable
  * stub forms (pure or head-preserving). Such bytes are final: every rewriter
- * in this module returns them unchanged forever. */
-function isClipStubContent(content: string): boolean {
+ * in this module returns them unchanged forever. Exported for Read's dedup
+ * stand-down (clientClippingDetection.ts), which must recognize the exact
+ * same forms — a drift between the two would re-point the model at clipped
+ * content. */
+export function isClipStubContent(content: string): boolean {
   return (
     CLIP_STUB_PATTERN.test(content) ||
     (content.length <= HEAD_STUB_MAX_PLAUSIBLE_CHARS &&

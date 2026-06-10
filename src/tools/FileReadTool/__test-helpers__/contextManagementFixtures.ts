@@ -38,3 +38,19 @@ export function assistantWithClearing(clearedToolUses: number): unknown {
     },
   ])
 }
+
+/** User message carrying one tool_result block (CliMessage shape) — used by
+ *  the client-clipping scanner tests and the FileReadTool dedup integration
+ *  tests. */
+export function userWithToolResult(
+  toolUseId: string,
+  content: unknown,
+): unknown {
+  return {
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: toolUseId, content }],
+    },
+  }
+}
