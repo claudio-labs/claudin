@@ -79,7 +79,11 @@ export function renderOutline(
   const { body, shown } = renderBody(entries)
   const dropped = entries.length - shown
 
-  const firstSymbol = entries[0]?.name ?? 'name'
+  // Markdown headings can contain a single quote, which would visually break
+  // the `symbol='...'` example below — prefer a quote-free name for the hint.
+  // Code identifiers never contain quotes, so this is a no-op for code files.
+  const firstSymbol =
+    entries.find(e => !e.name.includes("'"))?.name ?? 'name'
   const lead = options.overCap
     ? `File '${filePath}' (${totalLines} lines) exceeds the read cap — showing a structural outline instead of the full contents.`
     : `Structural outline of '${filePath}' (${totalLines} lines).`

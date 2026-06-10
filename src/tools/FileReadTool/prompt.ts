@@ -32,7 +32,7 @@ export function renderPromptTemplate(
   return `Reads a file from the local filesystem. You can access any file directly by using this tool.
 Assume this tool is able to read all files on the machine. If the User provides a path to a file assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
 
-Reading strategy for code files (TS/JS/Python/Go):
+Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust):
 Default to surgical reads — full-file reads waste tokens proportionally to file size, while targeted reads cost ~95% less. Follow this order:
 1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function/class signature with line ranges.
 2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file).
@@ -51,7 +51,7 @@ ${lineFormat}
       : ''
   }
 - This tool can read Jupyter notebooks (.ipynb files) and returns all cells with their outputs, combining code, text, and visualizations.
-- For large code files (TS/JS/Python/Go), pass view='outline' to read just the function/class signatures, then symbol='name' to expand one of them. A file that exceeds the read cap returns this outline automatically. Large-file Reads without an explicit view also auto-pivot to the outline by default (a large literal body in tool_result reliably induces a slice-walk re-read loop); pass view='full' to force the body, or use offset/limit/symbol to target a specific range.
+- For large code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust), pass view='outline' to read just the function/class signatures, then symbol='name' to expand one of them. Markdown files outline by heading the same way. A file that exceeds the read cap returns this outline automatically. Large-file Reads without an explicit view also auto-pivot to the outline by default (a large literal body in tool_result reliably induces a slice-walk re-read loop); pass view='full' to force the body, or use offset/limit/symbol to target a specific range.
 - This tool can only read files, not directories. To read a directory, use an ls command via the ${BASH_TOOL_NAME} tool.
 - You will regularly be asked to read screenshots. If the user provides a path to a screenshot, ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths.
 - If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.

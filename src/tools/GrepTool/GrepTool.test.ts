@@ -34,8 +34,9 @@ beforeAll(() => {
     join(dir, 'beta.ts'),
     'export function helper() {\n  return needle()\n}\n',
   )
-  writeFileSync(join(dir, 'gamma.md'), 'a doc mentioning needle once\n')
+  writeFileSync(join(dir, 'gamma.md'), '# Title\na doc mentioning needle once\n')
   writeFileSync(join(dir, 'sub', 'delta.py'), 'x = "needle"\ny = 2\n')
+  writeFileSync(join(dir, 'epsilon.toml'), 'key = "needle"\n')
 })
 
 afterAll(() => {
@@ -89,7 +90,7 @@ describe('GrepTool — baseline regression', () => {
     const data = await grep()
 
     expect(data.mode).toBe('files_with_matches')
-    expect(data.numFiles).toBe(4)
+    expect(data.numFiles).toBe(5)
     expect(data.filenames.some(f => f.endsWith('alpha.ts'))).toBe(true)
     expect(data.filenames.some(f => f.endsWith('delta.py'))).toBe(true)
   })
@@ -123,7 +124,7 @@ describe('GrepTool — baseline regression', () => {
     expect(data.mode).toBe('count')
     // alpha.ts has "needle" twice on line 1+3 (rg -c counts matching lines).
     expect(data.numMatches).toBeGreaterThanOrEqual(4)
-    expect(data.numFiles).toBe(4)
+    expect(data.numFiles).toBe(5)
   })
 
   test('glob filters the file set', async () => {
@@ -169,11 +170,19 @@ describe('GrepTool — symbols mode', () => {
   })
 
   test('an unsupported language falls back to a bare file listing', async () => {
+    const data = await grep({ output_mode: 'symbols', glob: '*.toml' })
+
+    expect(data.mode).toBe('symbols')
+    expect(data.content).toContain('epsilon.toml')
+    expect(data.content).toContain('language not supported')
+  })
+
+  test('markdown matches map to their enclosing heading', async () => {
     const data = await grep({ output_mode: 'symbols', glob: '*.md' })
 
     expect(data.mode).toBe('symbols')
     expect(data.content).toContain('gamma.md')
-    expect(data.content).toContain('language not supported')
+    expect(data.content).toContain('# Title')
   })
 
   test('works when path targets a single file (not a directory)', async () => {

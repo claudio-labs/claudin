@@ -8,9 +8,16 @@
 // slices one symbol's body — both off the SAME table, so their boundaries
 // always agree.
 //
-// Two strategies:
-//   C-like (TS/JS/Go): brace-depth counting on a string/comment-masked copy.
-//   Python:            indentation tracking on a masked copy.
+// Three strategies, selected per language:
+//   C-like:   brace-depth counting on a string/comment-masked copy. Each
+//             language is a CLikeSpec (mask + detect + filter rules), so
+//             adding one never touches another's path. TS/JS/Go keep their
+//             original behavior bit-for-bit (legacy raw-line detection);
+//             Java/Kotlin/C#/Rust detect on the masked line. C# `namespace`
+//             and Rust `mod` are depth-transparent: members inside them
+//             still gate as top-level.
+//   Python:   indentation tracking on a masked copy.
+//   Markdown: ATX headings with fenced-code-block tracking.
 //
 // Fail-open: any internal error, an unbalanced source, or zero symbols all
 // yield []. Callers treat [] as "degrade to a normal Read".
@@ -37,8 +44,23 @@ export type SymbolKind =
   | 'method'
   | 'const'
   | 'struct'
+  | 'record'
+  | 'object'
+  | 'trait'
+  | 'impl'
+  | 'module'
+  | 'heading'
 
-export type OutlineLang = 'typescript' | 'javascript' | 'python' | 'go'
+export type OutlineLang =
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'go'
+  | 'java'
+  | 'kotlin'
+  | 'csharp'
+  | 'rust'
+  | 'markdown'
 
 export type SymbolEntry = {
   name: string
@@ -67,6 +89,13 @@ const EXT_TO_LANG: Record<string, OutlineLang> = {
   py: 'python',
   pyi: 'python',
   go: 'go',
+  java: 'java',
+  kt: 'kotlin',
+  kts: 'kotlin',
+  cs: 'csharp',
+  rs: 'rust',
+  md: 'markdown',
+  markdown: 'markdown',
 }
 
 /** Maps a file extension (with or without leading dot) to an outline language. */
@@ -100,13 +129,132 @@ const RE_GO_TYPE = /^type\s+([A-Za-z_][\w]*)/
 const RE_PY_DEF = /^(?:async\s+)?def\s+([A-Za-z_]\w*)/
 const RE_PY_CLASS = /^class\s+([A-Za-z_]\w*)/
 
+// --- Java / Kotlin / C# / Rust declaration regexes -------------------------
+
+/** Leading `@Annotation` / `@Annotation(args)` tokens (Java/Kotlin). */
+const RE_LEADING_ANNOTATIONS = /^(?:@[\w.]+(?:\([^)]*\))?\s*)+/
+/** Leading `[Attribute]` tokens (C#). */
+const RE_LEADING_CS_ATTRS = /^(?:\[[^\]]*\]\s*)+/
+
+const RE_JAVA_TYPE =
+  /^(?:(?:public|private|protected|static|final|abstract|sealed|non-sealed|strictfp)\s+)*(class|interface|enum|record)\s+([A-Za-z_$][\w$]*)/
+const JAVA_TYPE_KIND: Record<string, SymbolKind> = {
+  class: 'class',
+  interface: 'interface',
+  enum: 'enum',
+  record: 'record',
+}
+
+/** First identifier directly before a `(` — method-name heuristic. */
+const RE_IDENT_BEFORE_PAREN = /([A-Za-z_$][\w$]*)\s*\(/
+/** Last word of the text before the matched name (rejects `return foo(`). */
+const RE_PREFIX_LAST_WORD = /([A-Za-z_$][\w$]*)\s*$/
+/** A method declaration's prefix (modifiers + return type) never contains these. */
+const RE_PREFIX_DISALLOWED = /[={};()]/
+
+// Words that introduce a statement/expression, never a method declaration.
+const JAVA_CS_CONTROL_KEYWORDS = new Set([
+  'if',
+  'for',
+  'foreach',
+  'while',
+  'switch',
+  'catch',
+  'try',
+  'synchronized',
+  'lock',
+  'using',
+  'fixed',
+  'return',
+  'throw',
+  'throws',
+  'new',
+  'super',
+  'this',
+  'base',
+  'assert',
+  'yield',
+  'await',
+  'case',
+  'else',
+  'do',
+  'goto',
+  'when',
+  'typeof',
+  'nameof',
+  'sizeof',
+  'checked',
+  'unchecked',
+  // As the prefix's last word this rejects C# conversion operators
+  // (`implicit operator int(...)`), whose "method name" is the target type.
+  'operator',
+])
+
+const KT_MODIFIERS =
+  '(?:public|private|protected|internal|open|abstract|final|sealed|data|inner|annotation|enum|value|expect|actual|external|inline|noinline|crossinline|operator|infix|suspend|tailrec|override|const|lateinit|companion)'
+const RE_KT_TYPE = new RegExp(
+  `^(?:${KT_MODIFIERS}\\s+)*(class|interface|object)\\s+([A-Za-z_]\\w*)`,
+)
+const RE_KT_COMPANION = new RegExp(
+  `^(?:${KT_MODIFIERS}\\s+)*companion\\s+object\\b(?:\\s+([A-Za-z_]\\w*))?`,
+)
+const RE_KT_FUN = new RegExp(
+  `^(?:${KT_MODIFIERS}\\s+)*fun\\s*(?:<[^>]*>\\s*)?(?:[\\w.<>?,\\s]*?\\.)?([A-Za-z_]\\w*)\\s*\\(`,
+)
+const RE_KT_TYPEALIAS = new RegExp(
+  `^(?:${KT_MODIFIERS}\\s+)*typealias\\s+([A-Za-z_]\\w*)`,
+)
+const RE_KT_VAL = new RegExp(
+  `^(?:${KT_MODIFIERS}\\s+)*(?:val|var)\\s+([A-Za-z_]\\w*)`,
+)
+const KT_TYPE_KIND: Record<string, SymbolKind> = {
+  class: 'class',
+  interface: 'interface',
+  object: 'object',
+}
+
+const CS_MODIFIERS =
+  '(?:public|private|protected|internal|static|sealed|abstract|partial|readonly|ref|new|unsafe|file|required|virtual|override|extern|async)'
+const RE_CS_NAMESPACE = /^namespace\s+([\w.]+)/
+const RE_CS_TYPE = new RegExp(
+  `^(?:${CS_MODIFIERS}\\s+)*(class|interface|enum|struct|record)(?:\\s+(?:class|struct))?\\s+([A-Za-z_]\\w*)`,
+)
+const CS_TYPE_KIND: Record<string, SymbolKind> = {
+  class: 'class',
+  interface: 'interface',
+  enum: 'enum',
+  struct: 'struct',
+  record: 'record',
+}
+/** Expression-bodied member (`int X() => ...;`) — legitimate without braces. */
+const RE_CS_EXPR_BODY = /=>/
+
+const RUST_VIS = '(?:pub(?:\\([^)]*\\))?\\s+)?'
+const RE_RUST_FN = new RegExp(
+  `^${RUST_VIS}(?:default\\s+)?(?:const\\s+)?(?:async\\s+)?(?:unsafe\\s+)?(?:extern\\s+"[^"]*"\\s+)?fn\\s+([A-Za-z_]\\w*)`,
+)
+const RE_RUST_STRUCT = new RegExp(`^${RUST_VIS}struct\\s+([A-Za-z_]\\w*)`)
+const RE_RUST_ENUM = new RegExp(`^${RUST_VIS}enum\\s+([A-Za-z_]\\w*)`)
+const RE_RUST_TRAIT = new RegExp(
+  `^${RUST_VIS}(?:unsafe\\s+)?(?:auto\\s+)?trait\\s+([A-Za-z_]\\w*)`,
+)
+const RE_RUST_TYPE = new RegExp(`^${RUST_VIS}type\\s+([A-Za-z_]\\w*)`)
+const RE_RUST_CONST = new RegExp(
+  `^${RUST_VIS}(?:const|static)\\s+(?:mut\\s+)?([A-Za-z_]\\w*)\\s*:`,
+)
+const RE_RUST_MOD = new RegExp(`^${RUST_VIS}mod\\s+([A-Za-z_]\\w*)`)
+const RE_RUST_IMPL = /^(?:unsafe\s+)?impl(?:\s*<[^>]*>)?\s+([^{]+?)\s*(?:\{.*)?$/
+const RE_RUST_MACRO = /^macro_rules!\s*([A-Za-z_]\w*)/
+const RE_RUST_WHERE_TAIL = /\bwhere\b.*$/
+const RE_GENERIC_TAIL = /<.*$/
+
 /** Scans a source file and returns its ordered symbol table. */
 export function scanSymbols(source: string, lang: OutlineLang): SymbolEntry[] {
   try {
     if (!source) return []
-    return lang === 'python'
-      ? scanPython(source)
-      : scanCLike(source, lang)
+    if (lang === 'python') return scanPython(source)
+    if (lang === 'markdown') return scanMarkdown(source)
+    return scanCLike(source, CLIKE_SPECS[lang])
   } catch (e) {
     logScanError(e)
     return []
@@ -181,7 +329,37 @@ function regexAllowedAfter(
   return false
 }
 
-function maskCLike(source: string): string {
+type CLikeMaskOptions = {
+  /** JS regex-literal heuristic. On for TS/JS (and Go, legacy behavior). */
+  regexLiterals: boolean
+  /**
+   * `"""` blocks masked as raw text (Java text blocks, Kotlin raw strings,
+   * C# raw strings). No escape processing: Kotlin treats `\` literally; a
+   * Java text block containing an escaped `\"""` closes early here, which
+   * fail-open covers.
+   */
+  tripleQuotes: boolean
+  /** C# verbatim strings — `@"..."` / `$@"..."` with doubled-quote escapes. */
+  verbatimStrings: boolean
+}
+
+const MASK_OPTS_LEGACY: CLikeMaskOptions = {
+  regexLiterals: true,
+  tripleQuotes: false,
+  verbatimStrings: false,
+}
+const MASK_OPTS_JVM: CLikeMaskOptions = {
+  regexLiterals: false,
+  tripleQuotes: true,
+  verbatimStrings: false,
+}
+const MASK_OPTS_CSHARP: CLikeMaskOptions = {
+  regexLiterals: false,
+  tripleQuotes: true,
+  verbatimStrings: true,
+}
+
+function maskCLike(source: string, opts: CLikeMaskOptions): string {
   const out = source.split('')
   const n = source.length
   let i = 0
@@ -208,6 +386,56 @@ function maskCLike(source: string): string {
       }
       continue
     }
+    if (
+      opts.tripleQuotes &&
+      c === '"' &&
+      c2 === '"' &&
+      source[i + 2] === '"'
+    ) {
+      blank(i++)
+      blank(i++)
+      blank(i++)
+      while (
+        i < n &&
+        !(
+          source[i] === '"' &&
+          source[i + 1] === '"' &&
+          source[i + 2] === '"'
+        )
+      ) {
+        blank(i++)
+      }
+      if (i < n) {
+        blank(i++)
+        blank(i++)
+        blank(i++)
+      }
+      prevCode = '"'
+      continue
+    }
+    if (
+      opts.verbatimStrings &&
+      ((c === '@' && c2 === '"') ||
+        (c === '@' && c2 === '$' && source[i + 2] === '"') ||
+        (c === '$' && c2 === '@' && source[i + 2] === '"'))
+    ) {
+      while (i < n && source[i] !== '"') blank(i++)
+      blank(i++) // opening quote
+      while (i < n) {
+        if (source[i] === '"') {
+          if (source[i + 1] === '"') {
+            blank(i++)
+            blank(i++)
+            continue
+          }
+          blank(i++)
+          break
+        }
+        blank(i++)
+      }
+      prevCode = '"'
+      continue
+    }
     if (c === '"' || c === "'" || c === '`') {
       const quote = c
       blank(i++)
@@ -224,7 +452,7 @@ function maskCLike(source: string): string {
       prevCode = '"'
       continue
     }
-    if (c === '/' && regexAllowedAfter(prevCode, source, i)) {
+    if (c === '/' && opts.regexLiterals && regexAllowedAfter(prevCode, source, i)) {
       // Regex literal: blank through the closing unescaped `/` (a `/` inside
       // a [...] char class does not close it), then its flags.
       blank(i++)
@@ -318,16 +546,155 @@ function maskPython(source: string): string {
   return out.join('')
 }
 
+/**
+ * Rust-aware masking. Differs from maskCLike in three ways: block comments
+ * nest, raw strings (`r"..."`, `r#"..."#`, `br#"..."#`) close on the matching
+ * hash count with no escapes, and a lone `'` is a lifetime (`'a`) — only a
+ * real char literal (`'x'`, `'\n'`) is masked. Multi-code-unit char literals
+ * (`'🦀'`) fall through the lifetime path; fail-open covers that edge.
+ */
+function maskRust(source: string): string {
+  const out = source.split('')
+  const n = source.length
+  let i = 0
+  const blank = (k: number) => {
+    if (out[k] !== '\n') out[k] = ' '
+  }
+  const identChar = (k: number) => k >= 0 && RE_IDENT_CHAR.test(source[k]!)
+  while (i < n) {
+    const c = source[i]
+    const c2 = source[i + 1]
+    if (c === '/' && c2 === '/') {
+      while (i < n && source[i] !== '\n') blank(i++)
+      continue
+    }
+    if (c === '/' && c2 === '*') {
+      let depth = 1
+      blank(i++)
+      blank(i++)
+      while (i < n && depth > 0) {
+        if (source[i] === '/' && source[i + 1] === '*') {
+          depth++
+          blank(i++)
+          blank(i++)
+        } else if (source[i] === '*' && source[i + 1] === '/') {
+          depth--
+          blank(i++)
+          blank(i++)
+        } else {
+          blank(i++)
+        }
+      }
+      continue
+    }
+    // Raw (byte) strings — only when r/br starts a token, not ends an ident.
+    const rawStart =
+      !identChar(i - 1) &&
+      ((c === 'r' && (c2 === '"' || c2 === '#')) ||
+        (c === 'b' && c2 === 'r' && (source[i + 2] === '"' || source[i + 2] === '#')))
+    if (rawStart) {
+      let j = i + (c === 'b' ? 2 : 1)
+      let hashes = 0
+      while (j < n && source[j] === '#') {
+        hashes++
+        j++
+      }
+      if (source[j] === '"') {
+        while (i <= j) blank(i++) // prefix, hashes, opening quote
+        const closer = '"' + '#'.repeat(hashes)
+        while (i < n && !source.startsWith(closer, i)) blank(i++)
+        for (let k = 0; k < closer.length && i < n; k++) blank(i++)
+        continue
+      }
+      // `r#ident` raw identifier — not a string; fall through.
+    }
+    if (c === '"') {
+      blank(i++)
+      while (i < n && source[i] !== '"') {
+        if (source[i] === '\\') {
+          blank(i++)
+          if (i < n) blank(i++)
+          continue
+        }
+        blank(i++)
+      }
+      if (i < n) blank(i++)
+      continue
+    }
+    if (c === "'") {
+      if (c2 === '\\') {
+        // Escaped char literal — blank through the closing quote (bounded:
+        // the longest form is '\u{10FFFF}').
+        blank(i++)
+        let steps = 0
+        while (i < n && source[i] !== "'" && steps < 12) {
+          blank(i++)
+          steps++
+        }
+        if (i < n && source[i] === "'") blank(i++)
+        continue
+      }
+      if (c2 !== undefined && source[i + 2] === "'") {
+        blank(i++)
+        blank(i++)
+        blank(i++)
+        continue
+      }
+      // Lifetime or loop label — real code, leave it visible.
+      i++
+      continue
+    }
+    i++
+  }
+  return out.join('')
+}
+
 // ---------------------------------------------------------------------------
-// C-like scanner (TS / JS / Go)
+// C-like scanner — generic brace-depth engine, parameterized per language
 // ---------------------------------------------------------------------------
+
+type CLikeDetection = {
+  name: string
+  /** Method-ness is derived from kind === 'method' — no separate flag. */
+  kind: SymbolKind
+  /**
+   * Drop the candidate when no brace body opens. True for heuristic method
+   * detection (filters TS property / Java field false matches); false for
+   * keyword-led detections (Kotlin `fun`, Rust `fn`) where bodyless
+   * declarations — expression bodies, trait methods — are legitimate.
+   */
+  requiresBody: boolean
+}
+
+type CLikeSpec = {
+  mask: (source: string) => string
+  /**
+   * 'raw' preserves the legacy TS/JS/Go behavior of matching on the raw
+   * source line; 'masked' (new languages) means commented-out code never
+   * becomes a symbol.
+   */
+  detectSource: 'raw' | 'masked'
+  detect: (trimmed: string, depth: number) => CLikeDetection | null
+  /** Symbol kinds whose members are kept as methods. */
+  methodContainers: ReadonlySet<SymbolKind>
+  /** Kinds transparent for depth gating (C# namespace, Rust mod). */
+  namespaceKinds: ReadonlySet<SymbolKind>
+  /** Extra line prefixes (besides comments) that count as doc lines. */
+  docPrefixes: readonly string[]
+  /**
+   * Require a kept method to sit exactly one brace level inside its
+   * container — filters anonymous-class members (Java/C#) and object
+   * expressions (Kotlin). Off for TS/JS to preserve legacy output.
+   */
+  strictMethodDepth: boolean
+}
 
 type Candidate = {
   line: number // 0-indexed
   depth: number
   name: string
   kind: SymbolKind
-  isMethod: boolean
+  requiresBody: boolean
 }
 
 function trimSignature(raw: string): string {
@@ -340,49 +707,161 @@ function trimSignature(raw: string): string {
   return s
 }
 
-function detectCLike(
-  trimmed: string,
-  lang: OutlineLang,
-  depth: number,
-): Omit<Candidate, 'line' | 'depth'> | null {
-  if (lang === 'go') {
-    let m = RE_GO_FUNC.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'function', isMethod: false }
-    m = RE_GO_TYPE.exec(trimmed)
-    if (m) {
-      const kind: SymbolKind = /\bstruct\b/.test(trimmed) ? 'struct' : 'type'
-      return { name: m[1]!, kind, isMethod: false }
-    }
-    return null
-  }
-
-  // TS / JS — only top-level declarations belong in an outline. A function,
-  // class, type, etc. nested inside another body is noise; class methods are
+function detectTsJs(trimmed: string, depth: number): CLikeDetection | null {
+  // Only top-level declarations belong in an outline. A function, class,
+  // type, etc. nested inside another body is noise; class methods are
   // handled separately below via the depth >= 1 branch.
   let m: RegExpExecArray | null
   if (depth === 0) {
     m = RE_CLASS.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'class', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'class', requiresBody: false }
     m = RE_FUNCTION.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'function', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'function', requiresBody: false }
     m = RE_INTERFACE.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'interface', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'interface', requiresBody: false }
     m = RE_ENUM.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'enum', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'enum', requiresBody: false }
     m = RE_TYPE.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'type', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'type', requiresBody: false }
     m = RE_CONST.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'const', isMethod: false }
+    if (m) return { name: m[1]!, kind: 'const', requiresBody: false }
   }
 
   // Methods are only meaningful one level inside a container.
   if (depth >= 1) {
     m = RE_METHOD.exec(trimmed)
     if (m && !isControlKeyword(m[1]!)) {
-      return { name: m[1]!, kind: 'method', isMethod: true }
+      return { name: m[1]!, kind: 'method', requiresBody: true }
     }
     m = RE_METHOD_ARROW.exec(trimmed)
-    if (m) return { name: m[1]!, kind: 'method', isMethod: true }
+    if (m) return { name: m[1]!, kind: 'method', requiresBody: true }
+  }
+  return null
+}
+
+function detectGo(trimmed: string): CLikeDetection | null {
+  let m = RE_GO_FUNC.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'function', requiresBody: false }
+  m = RE_GO_TYPE.exec(trimmed)
+  if (m) {
+    const kind: SymbolKind = /\bstruct\b/.test(trimmed) ? 'struct' : 'type'
+    return { name: m[1]!, kind, requiresBody: false }
+  }
+  return null
+}
+
+/**
+ * Shared Java/C# method-name heuristic: the first identifier directly before
+ * a `(`, provided everything before it looks like modifiers + a return type.
+ */
+function detectJavaCsMethod(t: string): CLikeDetection | null {
+  const m = RE_IDENT_BEFORE_PAREN.exec(t)
+  if (!m || JAVA_CS_CONTROL_KEYWORDS.has(m[1]!)) return null
+  const prefix = t.slice(0, m.index)
+  if (RE_PREFIX_DISALLOWED.test(prefix)) return null
+  const lastWord = RE_PREFIX_LAST_WORD.exec(prefix)?.[1]
+  if (lastWord !== undefined && JAVA_CS_CONTROL_KEYWORDS.has(lastWord)) {
+    return null
+  }
+  return { name: m[1]!, kind: 'method', requiresBody: true }
+}
+
+function detectJava(trimmed: string, depth: number): CLikeDetection | null {
+  const t = trimmed.replace(RE_LEADING_ANNOTATIONS, '')
+  // depth <= 1 admits nested types (static inner classes, Builder pattern).
+  if (depth <= 1) {
+    const m = RE_JAVA_TYPE.exec(t)
+    if (m) {
+      return { name: m[2]!, kind: JAVA_TYPE_KIND[m[1]!]!, requiresBody: false }
+    }
+  }
+  if (depth >= 1) return detectJavaCsMethod(t)
+  return null
+}
+
+function detectKotlin(trimmed: string, depth: number): CLikeDetection | null {
+  const t = trimmed.replace(RE_LEADING_ANNOTATIONS, '')
+  let m: RegExpExecArray | null
+  if (depth <= 1) {
+    m = RE_KT_TYPE.exec(t)
+    if (m) {
+      return { name: m[2]!, kind: KT_TYPE_KIND[m[1]!]!, requiresBody: false }
+    }
+    m = RE_KT_COMPANION.exec(t)
+    if (m) {
+      return { name: m[1] ?? 'companion', kind: 'object', requiresBody: false }
+    }
+  }
+  m = RE_KT_FUN.exec(t)
+  if (m) {
+    // Expression-bodied functions (`fun f() = x`) have no braces — keep them.
+    return depth === 0
+      ? { name: m[1]!, kind: 'function', requiresBody: false }
+      : { name: m[1]!, kind: 'method', requiresBody: false }
+  }
+  if (depth === 0) {
+    m = RE_KT_TYPEALIAS.exec(t)
+    if (m) return { name: m[1]!, kind: 'type', requiresBody: false }
+    m = RE_KT_VAL.exec(t)
+    if (m) return { name: m[1]!, kind: 'const', requiresBody: false }
+  }
+  return null
+}
+
+function detectCSharp(trimmed: string, depth: number): CLikeDetection | null {
+  const t = trimmed.replace(RE_LEADING_CS_ATTRS, '')
+  let m: RegExpExecArray | null
+  if (depth === 0) {
+    m = RE_CS_NAMESPACE.exec(t)
+    if (m) return { name: m[1]!, kind: 'module', requiresBody: false }
+  }
+  if (depth <= 1) {
+    m = RE_CS_TYPE.exec(t)
+    if (m) {
+      return { name: m[2]!, kind: CS_TYPE_KIND[m[1]!]!, requiresBody: false }
+    }
+  }
+  if (depth >= 1) {
+    const hit = detectJavaCsMethod(t)
+    if (hit) {
+      // `int X() => expr;` is a real method without a brace body.
+      return RE_CS_EXPR_BODY.test(t) ? { ...hit, requiresBody: false } : hit
+    }
+  }
+  return null
+}
+
+function detectRust(trimmed: string, depth: number): CLikeDetection | null {
+  let m = RE_RUST_FN.exec(trimmed)
+  if (m) {
+    // Trait method signatures (`fn f(&self);`) have no body — keep them.
+    return depth === 0
+      ? { name: m[1]!, kind: 'function', requiresBody: false }
+      : { name: m[1]!, kind: 'method', requiresBody: false }
+  }
+  if (depth !== 0) return null
+  m = RE_RUST_MOD.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'module', requiresBody: false }
+  m = RE_RUST_STRUCT.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'struct', requiresBody: false }
+  m = RE_RUST_ENUM.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'enum', requiresBody: false }
+  m = RE_RUST_TRAIT.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'trait', requiresBody: false }
+  m = RE_RUST_TYPE.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'type', requiresBody: false }
+  m = RE_RUST_CONST.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'const', requiresBody: false }
+  m = RE_RUST_MACRO.exec(trimmed)
+  if (m) return { name: m[1]!, kind: 'function', requiresBody: false }
+  m = RE_RUST_IMPL.exec(trimmed)
+  if (m) {
+    // `impl Display for Foo` → "Foo"; `impl<T> Vec<T>` → "Vec".
+    let target = m[1]!.replace(RE_RUST_WHERE_TAIL, '').trim()
+    const forIdx = target.indexOf(' for ')
+    if (forIdx >= 0) target = target.slice(forIdx + 5)
+    target = target.replace(RE_GENERIC_TAIL, '').trim()
+    return { name: target || 'impl', kind: 'impl', requiresBody: false }
   }
   return null
 }
@@ -404,9 +883,118 @@ function isControlKeyword(name: string): boolean {
   return CONTROL_KEYWORDS.has(name)
 }
 
-function scanCLike(source: string, lang: OutlineLang): SymbolEntry[] {
+const NO_KINDS: ReadonlySet<SymbolKind> = new Set()
+const TS_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set(['class'])
+const JAVA_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
+  'class',
+  'interface',
+  'enum',
+  'record',
+])
+const KT_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
+  'class',
+  'interface',
+  'object',
+])
+const CS_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
+  'class',
+  'interface',
+  'struct',
+  'record',
+])
+const RUST_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
+  'impl',
+  'trait',
+])
+const MODULE_KINDS: ReadonlySet<SymbolKind> = new Set(['module'])
+
+const maskLegacy = (s: string) => maskCLike(s, MASK_OPTS_LEGACY)
+const maskJvm = (s: string) => maskCLike(s, MASK_OPTS_JVM)
+const maskCSharp = (s: string) => maskCLike(s, MASK_OPTS_CSHARP)
+
+const TS_SPEC: CLikeSpec = {
+  mask: maskLegacy,
+  detectSource: 'raw',
+  detect: detectTsJs,
+  methodContainers: TS_METHOD_CONTAINERS,
+  namespaceKinds: NO_KINDS,
+  docPrefixes: [],
+  strictMethodDepth: false,
+}
+
+const CLIKE_SPECS: Record<
+  Exclude<OutlineLang, 'python' | 'markdown'>,
+  CLikeSpec
+> = {
+  typescript: TS_SPEC,
+  javascript: TS_SPEC,
+  go: {
+    mask: maskLegacy,
+    detectSource: 'raw',
+    detect: detectGo,
+    methodContainers: NO_KINDS,
+    namespaceKinds: NO_KINDS,
+    docPrefixes: [],
+    strictMethodDepth: false,
+  },
+  java: {
+    mask: maskJvm,
+    detectSource: 'masked',
+    detect: detectJava,
+    methodContainers: JAVA_METHOD_CONTAINERS,
+    namespaceKinds: NO_KINDS,
+    docPrefixes: ['@'],
+    strictMethodDepth: true,
+  },
+  kotlin: {
+    mask: maskJvm,
+    detectSource: 'masked',
+    detect: detectKotlin,
+    methodContainers: KT_METHOD_CONTAINERS,
+    namespaceKinds: NO_KINDS,
+    docPrefixes: ['@'],
+    strictMethodDepth: true,
+  },
+  csharp: {
+    mask: maskCSharp,
+    detectSource: 'masked',
+    detect: detectCSharp,
+    methodContainers: CS_METHOD_CONTAINERS,
+    namespaceKinds: MODULE_KINDS,
+    docPrefixes: ['['],
+    strictMethodDepth: true,
+  },
+  rust: {
+    mask: maskRust,
+    detectSource: 'masked',
+    detect: detectRust,
+    methodContainers: RUST_METHOD_CONTAINERS,
+    namespaceKinds: MODULE_KINDS,
+    docPrefixes: ['#'],
+    strictMethodDepth: true,
+  },
+}
+
+/**
+ * Finds the line where a namespace-kind declaration opens its `{` block, or
+ * -1 when it has none (file-scoped `namespace X;`, `mod foo;`). Scans the
+ * masked copy, so braces in strings/comments don't count.
+ */
+function findBlockOpenLine(startLine: number, masked: string[]): number {
+  const limit = Math.min(masked.length, startLine + NOBODY_LOOKAHEAD)
+  for (let i = startLine; i < limit; i++) {
+    const ml = masked[i]!
+    for (let k = 0; k < ml.length; k++) {
+      if (ml[k] === '{') return i
+      if (ml[k] === ';') return -1
+    }
+  }
+  return -1
+}
+
+function scanCLike(source: string, spec: CLikeSpec): SymbolEntry[] {
   const lines = source.split('\n')
-  const masked = maskCLike(source).split('\n')
+  const masked = spec.mask(source).split('\n')
 
   // Per-line brace depth: depth at line start, line end, and peak within line.
   const depthBefore: number[] = []
@@ -431,20 +1019,42 @@ function scanCLike(source: string, lang: OutlineLang): SymbolEntry[] {
   }
   if (depth !== 0) return [] // unbalanced — fail open
 
-  // Pass 1 — collect declaration candidates.
+  // Pass 1 — collect declaration candidates. Namespace-kind blocks
+  // (C# namespace, Rust mod) are transparent: the depth handed to detect()
+  // is reduced by the number of namespace blocks open at that line, so
+  // their members gate as top-level.
   const candidates: Candidate[] = []
+  const hasNamespaces = spec.namespaceKinds.size > 0
+  const nsStack: Array<{ depth: number; fromLine: number }> = []
   for (let L = 0; L < lines.length; L++) {
-    const trimmed = lines[L]!.trim()
-    if (!trimmed) continue
     const d = depthBefore[L]!
-    const hit = detectCLike(trimmed, lang, d)
-    if (hit) {
-      candidates.push({ line: L, depth: d, ...hit })
+    if (hasNamespaces) {
+      while (nsStack.length > 0) {
+        const top = nsStack[nsStack.length - 1]!
+        if (L > top.fromLine && d <= top.depth) nsStack.pop()
+        else break
+      }
+    }
+    const detectLine = spec.detectSource === 'raw' ? lines[L]! : masked[L]!
+    const trimmed = detectLine.trim()
+    if (!trimmed) continue
+    let openNamespaces = 0
+    if (hasNamespaces) {
+      for (const e of nsStack) {
+        if (L > e.fromLine) openNamespaces++
+      }
+    }
+    const hit = spec.detect(trimmed, d - openNamespaces)
+    if (!hit) continue
+    candidates.push({ line: L, depth: d, ...hit })
+    if (hasNamespaces && spec.namespaceKinds.has(hit.kind)) {
+      const open = findBlockOpenLine(L, masked)
+      if (open >= 0) nsStack.push({ depth: d, fromLine: open })
     }
   }
 
   // Pass 2 — resolve bounds and keep only valid symbols.
-  const resolved: Array<SymbolEntry & { _isMethod: boolean }> = []
+  const resolved: SymbolEntry[] = []
   for (let j = 0; j < candidates.length; j++) {
     const c = candidates[j]!
     const nextLine = candidates[j + 1]?.line ?? lines.length
@@ -457,9 +1067,9 @@ function scanCLike(source: string, lang: OutlineLang): SymbolEntry[] {
       depthAfter,
       masked,
     )
-    // A method candidate without a real body is a property/false match.
-    if (c.isMethod && !opened) continue
-    const doc = findDocLineCLike(lines, c.line)
+    // A body-requiring candidate without one is a property/false match.
+    if (c.requiresBody && !opened) continue
+    const doc = findDocLineCLike(lines, c.line, spec.docPrefixes)
     resolved.push({
       name: c.name,
       kind: c.kind,
@@ -467,21 +1077,24 @@ function scanCLike(source: string, lang: OutlineLang): SymbolEntry[] {
       startLine: c.line + 1,
       endLine: endLine + 1,
       depth: c.depth,
-      _isMethod: c.isMethod,
       ...(doc !== undefined && { docLine: doc + 1 }),
     })
   }
 
-  // A method is only kept when its nearest enclosing symbol is a class.
+  // A method is only kept when its nearest enclosing symbol is a container
+  // kind for this language (TS: class; Java: class/interface/enum/record;
+  // Rust: impl/trait; …). strictMethodDepth additionally pins the method to
+  // exactly one brace level inside that container.
   const kept = resolved.filter(s => {
-    if (!s._isMethod) return true
+    if (s.kind !== 'method') return true
     const parent = nearestEnclosing(resolved, s)
-    return parent !== null && parent.kind === 'class'
+    if (parent === null || !spec.methodContainers.has(parent.kind)) {
+      return false
+    }
+    return !spec.strictMethodDepth || s.depth === parent.depth + 1
   })
 
-  return kept
-    .map(({ _isMethod, ...rest }) => rest)
-    .sort((a, b) => a.startLine - b.startLine)
+  return kept.sort((a, b) => a.startLine - b.startLine)
 }
 
 // How far past the declaration to look for a body `{` before concluding the
@@ -513,6 +1126,19 @@ function resolveCLikeBounds(
       // (`type X = ...;`, `const x = 1;`).
       return { endLine: i, opened: false }
     }
+    if (depthAfter[i]! < d) {
+      // The enclosing block closed — a no-body declaration (Kotlin
+      // expression-body fun) cannot run past its container's `}`.
+      //
+      // Intentional divergence from the pre-spec scanner, which kept
+      // scanning here: legacy nested no-body decls (TS statement false
+      // matches, Go `type x int` inside a func) either leaked an endLine
+      // past the container or resurrected as phantom symbols when an
+      // unrelated later block opened braces. Clamping is strictly better;
+      // verified against the old scanner on the full repo (3 TS files
+      // changed, all phantom-symbol removals).
+      return { endLine: Math.max(start, i - 1), opened: false }
+    }
     if (i >= nextCandidate) {
       // Ran into the next declaration without finding a body.
       return { endLine: Math.max(start, i - 1), opened: false }
@@ -527,13 +1153,17 @@ function resolveCLikeBounds(
 
 const RE_DOC_LINE = /^(\/\/|\/\*|\*|\*\/)/
 
-function findDocLineCLike(lines: string[], start: number): number | undefined {
+function findDocLineCLike(
+  lines: string[],
+  start: number,
+  docPrefixes: readonly string[],
+): number | undefined {
   let i = start - 1
   let doc: number | undefined
   while (i >= 0) {
     const t = lines[i]!.trim()
     if (t === '') break
-    if (RE_DOC_LINE.test(t)) {
+    if (RE_DOC_LINE.test(t) || docPrefixes.some(p => t.startsWith(p))) {
       doc = i
       i--
       continue
@@ -692,4 +1322,71 @@ function findDocLinePython(
     break
   }
   return doc
+}
+
+// ---------------------------------------------------------------------------
+// Markdown scanner — ATX headings, fenced code blocks excluded
+// ---------------------------------------------------------------------------
+
+const RE_MD_HEADING = /^(#{1,6})\s+(.+?)\s*$/
+const RE_MD_FENCE = /^ {0,3}(`{3,}|~{3,})/
+const RE_MD_CLOSING_HASHES = /\s+#+$/
+
+function scanMarkdown(source: string): SymbolEntry[] {
+  const lines = source.split('\n')
+  // Phantom empty element from a trailing newline — mirror the caller's
+  // cat -n line accounting so the last heading's endLine stays real.
+  let lineCount = lines.length
+  if (lineCount > 1 && lines[lineCount - 1] === '') lineCount--
+
+  type Heading = { line: number; level: number; name: string }
+  const headings: Heading[] = []
+  // Marker that opened the current fence (null = not inside one). A fence
+  // closes on a marker of the same char at least as long as the opener.
+  let fence: string | null = null
+  for (let L = 0; L < lineCount; L++) {
+    const line = lines[L]!
+    const fm = RE_MD_FENCE.exec(line)
+    if (fm) {
+      const marker = fm[1]!
+      if (fence === null) fence = marker
+      else if (marker[0] === fence[0] && marker.length >= fence.length) {
+        fence = null
+      }
+      continue
+    }
+    if (fence !== null) continue
+    const m = RE_MD_HEADING.exec(line)
+    if (!m) continue
+    const name = m[2]!.replace(RE_MD_CLOSING_HASHES, '').trim()
+    if (!name) continue
+    headings.push({ line: L, level: m[1]!.length, name })
+  }
+
+  // Depth is relative to the shallowest heading in the document, so an
+  // h2-only doc renders flush instead of uniformly indented one level.
+  const minLevel = headings.reduce((m, h) => Math.min(m, h.level), 6)
+
+  return headings.map((h, idx) => {
+    // The section runs until the next heading of the same or a higher level.
+    let end = lineCount - 1
+    for (let j = idx + 1; j < headings.length; j++) {
+      if (headings[j]!.level <= h.level) {
+        end = headings[j]!.line - 1
+        break
+      }
+    }
+    let signature = lines[h.line]!.trim()
+    if (signature.length > MAX_SIGNATURE_CHARS) {
+      signature = signature.slice(0, MAX_SIGNATURE_CHARS).trimEnd() + '…'
+    }
+    return {
+      name: h.name,
+      kind: 'heading' as const,
+      signature,
+      startLine: h.line + 1,
+      endLine: end + 1,
+      depth: h.level - minLevel,
+    }
+  })
 }

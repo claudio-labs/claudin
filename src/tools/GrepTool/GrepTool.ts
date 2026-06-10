@@ -61,7 +61,7 @@ const inputSchema = lazySchema(() =>
       .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
       .describe(
-        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS/Python/Go). Defaults to "files_with_matches".',
+        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS, Python, Go, Java, Kotlin, C#, Rust, Markdown). Defaults to "files_with_matches".',
       ),
     '-B': semanticNumber(z.number().optional()).describe(
       'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.',
