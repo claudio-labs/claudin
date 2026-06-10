@@ -44,6 +44,7 @@ import { trackGitOperations } from '../shared/gitOperationTracking.js';
 import {
   applyBashFilterToStdout,
   planBashFilter,
+  type PreExecPlan,
 } from 'src/outputFilter/Bash/index.js';
 import { getGlobalConfig } from '../../utils/config.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from './bashPermissions.js';
@@ -678,9 +679,18 @@ export const BashTool = buildTool({
     const isMainThread = !toolUseContext.agentId;
     const preventCwdChanges = !isMainThread;
     try {
+      // Pre-exec filter plan: when a filter defines a rewrite (git log →
+      // git log --oneline, BASE | tail → BASE), the rewritten command is the
+      // one we execute, so the marker's original/actual attributes describe
+      // what really ran. Rewrites only ever add read-only formatting flags.
+      const filterPlan = planBashFilterForExecution(input);
+      const execInput =
+        filterPlan.effectiveCommand === input.command
+          ? input
+          : { ...input, command: filterPlan.effectiveCommand };
       // Use the new async generator version of runShellCommand
       const commandGenerator = runShellCommand({
-        input,
+        input: execInput,
         abortController,
         // Use the always-shared task channel so async agents' background
         // bash tasks are actually registered (and killable on agent exit).
@@ -717,7 +727,7 @@ export const BashTool = buildTool({
       // Get the final result from the generator's return value
       result = generatorResult.value;
 
-      result = applyBashOutputFilter(result, input.command);
+      result = applyBashOutputFilter(result, input.command, filterPlan);
 
       trackGitOperations(input.command, result.code, result.stdout);
       const isInterrupt = result.interrupted && abortController.signal.reason === 'interrupt';
@@ -880,10 +890,12 @@ export const BashTool = buildTool({
  * ever reached; when `mapToolResult` detects structured content it short-circuits
  * and `result.stdout` is never forwarded to the model regardless.
  *
- * Note — `planBashFilter` calls `maybeRewrite` internally. `rewriteCommand` is
- * supported and wired since Phase 6.1.4; filters that define it will have their
- * command rewritten before execution. `plan.rewrite` is `null` only for filters
- * that omit the field.
+ * Note — rewrites (`rewriteCommand`, reducer-pipe stripping) are planned
+ * pre-execution by `planBashFilterForExecution` and the rewritten command is
+ * what `call()` actually executes; the plan then flows into this function so
+ * the markers describe the command that really ran. When no plan is supplied
+ * (legacy callers, tests) we re-plan with rewrites off — a rewrite marker must
+ * never claim a command that was not executed.
  */
 // Exported for testing; shouldFilterOutput is extracted as a pure function so the
 // kill-switch path can be tested without a subprocess (module-level const is not
@@ -896,15 +908,31 @@ export function shouldFilterOutput(
   return bashOutputFilterEnabled !== false && !killSwitchActive && !backgroundTaskId
 }
 
+/** Builds the pre-exec filter plan for a Bash invocation. Command rewrites are
+ * only allowed when filtering is active, the rewrite flag is on, and the run is
+ * foreground — background output goes to disk where the user may inspect it, so
+ * we keep the command they asked for. With rewrites off the returned plan keeps
+ * `effectiveCommand === input.command` and `rewrite: null`. */
+export function planBashFilterForExecution(input: BashToolInput): PreExecPlan {
+  const { bashOutputFilterEnabled, bashOutputFilterRewriteEnabled } = getGlobalConfig()
+  const filteringActive = bashOutputFilterEnabled !== false && !isBashOutputFilterDisabled
+  const allowRewrite =
+    filteringActive && bashOutputFilterRewriteEnabled !== false && !input.run_in_background
+  return planBashFilter(input.command, { allowRewrite })
+}
+
 export function applyBashOutputFilter(
   result: ExecResult,
   command: string,
+  plan?: PreExecPlan,
 ): ExecResult {
   const { bashOutputFilterEnabled } = getGlobalConfig()
   if (!shouldFilterOutput(bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) return result
 
   try {
-    const filterPlan = planBashFilter(command)
+    // No plan → the caller did not execute a rewritten command; re-plan with
+    // rewrites off so the markers never claim a rewrite that didn't happen.
+    const filterPlan = plan ?? planBashFilter(command, { allowRewrite: false })
     result.stdout = applyBashFilterToStdout(result.stdout, result.code !== 0, filterPlan)
   } catch (e) {
     // Fail-open: extra defensive layer — planBashFilter and applyBashFilterToStdout

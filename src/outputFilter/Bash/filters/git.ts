@@ -24,11 +24,9 @@ export const gitLog: FilterSpec = {
   name: 'git-log',
   matchCommand: GIT_LOG_MATCH,
   matchCommandReject: GIT_LOG_REJECT,
-  rewriteCommand: (ctx) => {
-    // ctx.args = ["log", ...extras] — skip subverb at index 0
-    const extra = ctx.args.slice(1).join(' ')
-    return extra ? `git log --oneline ${extra}` : 'git log --oneline'
-  },
+  // Prefix-replace on ctx.command (not args.join) so quoted arguments keep
+  // their internal whitespace verbatim — the rewritten command is executed.
+  rewriteCommand: (ctx) => ctx.command.replace(GIT_LOG_MATCH, 'git log --oneline'),
   maxLines: 50,
 }
 
@@ -42,13 +40,9 @@ export const gitStatus: FilterSpec = {
   name: 'git-status',
   matchCommand: GIT_STATUS_MATCH,
   matchCommandReject: GIT_STATUS_REJECT,
-  rewriteCommand: (ctx) => {
-    // ctx.args = ["status", ...extras] — skip subverb at index 0
-    const extra = ctx.args.slice(1).join(' ')
-    return extra
-      ? `git status --porcelain --branch ${extra}`
-      : 'git status --porcelain --branch'
-  },
+  // Prefix-replace on ctx.command — see gitLog for the rationale.
+  rewriteCommand: (ctx) =>
+    ctx.command.replace(GIT_STATUS_MATCH, 'git status --porcelain --branch'),
 }
 
 // --- git blame -------------------------------------------------------------

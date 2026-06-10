@@ -513,8 +513,17 @@ function countLines(text: string): number {
 // anything bigger is almost always a corrupted binary or a runaway loop.
 const PIPELINE_INPUT_MAX_BYTES = 8 * 1024 * 1024;
 
-/** Runs the full filter pipeline (stripAnsi → matchOutput → replace → collapse → dedup → strip/keep → truncate → head/tail → onEmpty) and returns the result with applied-stage names and reduction percentage. */
-export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
+/** Runs the full filter pipeline (stripAnsi → matchOutput → replace → collapse → dedup → strip/keep → truncate → head/tail → onEmpty) and returns the result with applied-stage names and reduction percentage.
+ *
+ * `allowShortCircuit: false` skips the matchOutput stage — used for compound commands,
+ * where the output interleaves several commands and a single-command sentinel
+ * ("✓ already up to date") would swallow the other segments' output. */
+export function applyPipeline(
+  filter: FilterSpec,
+  raw: string,
+  opts?: { allowShortCircuit?: boolean },
+): PipelineResult {
+  const allowShortCircuit = opts?.allowShortCircuit ?? true;
   if (raw.length > PIPELINE_INPUT_MAX_BYTES) {
     debug("input exceeds cap, bypassing pipeline", {
       length: raw.length,
@@ -541,8 +550,8 @@ export function applyPipeline(filter: FilterSpec, raw: string): PipelineResult {
     if (text.length !== before) applied.push("stripAnsi");
   }
 
-  // 2. matchOutput — short-circuit
-  if (filter.matchOutput) {
+  // 2. matchOutput — short-circuit (atomic commands only, see doc comment)
+  if (filter.matchOutput && allowShortCircuit) {
     for (const rule of filter.matchOutput) {
       if (rule.pattern.test(text)) {
         let skip = false;

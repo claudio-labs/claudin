@@ -34,6 +34,20 @@ describe("isSafeRegex", () => {
   test("rejects star-of-star .*.*", () => {
     expect(isSafeRegex(".*.*")).toBe(false);
   });
+
+  test("rejects nested quantifier with optional element (\\w+\\s?)+", () => {
+    // Textbook catastrophic backtracker the original heuristic missed: the
+    // char before `)` is `?`, so the [+*]-only blacklist let it through.
+    expect(isSafeRegex("(\\w+\\s?)+")).toBe(false);
+  });
+
+  test("rejects bounded-repetition nesting (a+){2,}", () => {
+    expect(isSafeRegex("(a+){2,}")).toBe(false);
+  });
+
+  test("rejects quantified group with bounded inner repetition (a{2,})+", () => {
+    expect(isSafeRegex("(a{2,})+")).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

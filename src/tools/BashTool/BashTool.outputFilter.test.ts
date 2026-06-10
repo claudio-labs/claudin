@@ -19,7 +19,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from '../../utils/config.js'
 import type { ExecResult } from '../../utils/ShellCommand.js'
-import { applyBashOutputFilter, shouldFilterOutput } from './BashTool.js'
+import {
+  applyBashOutputFilter,
+  type BashToolInput,
+  planBashFilterForExecution,
+  shouldFilterOutput,
+} from './BashTool.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -173,6 +178,65 @@ describe('bash output filter — guard conditions', () => {
     // date has no registered filter → filter=null + rewrite=null → passthrough
     expect(result.stdout).toBe(output)
     expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 2b — pre-exec rewrite plan (planBashFilterForExecution)
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — pre-exec rewrite plan', () => {
+  let savedRewriteEnabled: boolean | undefined
+
+  beforeEach(() => {
+    savedRewriteEnabled = getGlobalConfig().bashOutputFilterRewriteEnabled
+    enableFilter()
+  })
+
+  afterEach(() => {
+    saveGlobalConfig(c => ({
+      ...c,
+      bashOutputFilterRewriteEnabled: savedRewriteEnabled,
+    }))
+  })
+
+  test('foreground git log → plan rewrites to --oneline (the command that will execute)', () => {
+    const plan = planBashFilterForExecution({ command: 'git log' } as BashToolInput)
+    expect(plan.effectiveCommand).toBe('git log --oneline')
+    expect(plan.rewrite).toEqual({ from: 'git log', to: 'git log --oneline' })
+  })
+
+  test('run_in_background → no rewrite (output goes to disk, keep the asked-for command)', () => {
+    const plan = planBashFilterForExecution({
+      command: 'git log',
+      run_in_background: true,
+    } as BashToolInput)
+    expect(plan.effectiveCommand).toBe('git log')
+    expect(plan.rewrite).toBeNull()
+  })
+
+  test('bashOutputFilterRewriteEnabled: false → filter kept, rewrite suppressed', () => {
+    saveGlobalConfig(c => ({ ...c, bashOutputFilterRewriteEnabled: false }))
+    const plan = planBashFilterForExecution({ command: 'git log' } as BashToolInput)
+    expect(plan.effectiveCommand).toBe('git log')
+    expect(plan.rewrite).toBeNull()
+    expect(plan.filter?.name).toBe('git-log')
+  })
+
+  test('master flag off → no rewrite either (never execute a command the filter will not annotate)', () => {
+    disableFilter()
+    const plan = planBashFilterForExecution({ command: 'git log' } as BashToolInput)
+    expect(plan.effectiveCommand).toBe('git log')
+    expect(plan.rewrite).toBeNull()
+  })
+
+  test('applyBashOutputFilter without a plan never emits a rewrite marker', () => {
+    // Legacy/no-plan callers did not execute a rewritten command — the marker
+    // must not claim one. `git log` would plan a rewrite if allowed.
+    const result = makeResult({ stdout: 'commit abc123\nAuthor: x\n\n    msg\n' })
+    applyBashOutputFilter(result, 'git log')
+    expect(result.stdout).not.toContain('<bash-output-rewritten')
+    expect(result.stdout).not.toContain('actual=')
   })
 })
 

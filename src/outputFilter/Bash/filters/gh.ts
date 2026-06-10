@@ -10,10 +10,15 @@
 import type { RewriteContext } from '../../types.js'
 import type { FilterSpec } from '../types.js'
 
-// ctx.args = ['pr'/'issue'/'run', 'list', ...userFlags] — slice(2) gives filter flags.
-function forwardFlags(ctx: RewriteContext, base: string, fields: string): string {
-  const rest = ctx.args.slice(2).join(' ')
-  return rest ? `${base} --json ${fields} ${rest}` : `${base} --json ${fields}`
+// Prefix-replace on ctx.command (not args.join) so quoted flag values keep
+// their internal whitespace verbatim — the rewritten command is executed.
+function forwardFlags(
+  ctx: RewriteContext,
+  match: RegExp,
+  base: string,
+  fields: string,
+): string {
+  return ctx.command.replace(match, `${base} --json ${fields}`)
 }
 
 // --- gh pr list ------------------------------------------------------------
@@ -28,7 +33,8 @@ export const ghPrList: FilterSpec = {
   name: 'gh-pr-list',
   matchCommand: GH_PR_LIST_MATCH,
   matchCommandReject: GH_PR_LIST_REJECT,
-  rewriteCommand: (ctx) => forwardFlags(ctx, 'gh pr list', GH_PR_LIST_FIELDS),
+  rewriteCommand: (ctx) =>
+    forwardFlags(ctx, GH_PR_LIST_MATCH, 'gh pr list', GH_PR_LIST_FIELDS),
 }
 
 // --- gh issue list ---------------------------------------------------------
@@ -42,7 +48,8 @@ export const ghIssueList: FilterSpec = {
   name: 'gh-issue-list',
   matchCommand: GH_ISSUE_LIST_MATCH,
   matchCommandReject: GH_ISSUE_LIST_REJECT,
-  rewriteCommand: (ctx) => forwardFlags(ctx, 'gh issue list', GH_ISSUE_LIST_FIELDS),
+  rewriteCommand: (ctx) =>
+    forwardFlags(ctx, GH_ISSUE_LIST_MATCH, 'gh issue list', GH_ISSUE_LIST_FIELDS),
 }
 
 // --- gh run list -----------------------------------------------------------
@@ -56,5 +63,6 @@ export const ghRunList: FilterSpec = {
   name: 'gh-run-list',
   matchCommand: GH_RUN_LIST_MATCH,
   matchCommandReject: GH_RUN_LIST_REJECT,
-  rewriteCommand: (ctx) => forwardFlags(ctx, 'gh run list', GH_RUN_LIST_FIELDS),
+  rewriteCommand: (ctx) =>
+    forwardFlags(ctx, GH_RUN_LIST_MATCH, 'gh run list', GH_RUN_LIST_FIELDS),
 }

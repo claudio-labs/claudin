@@ -16,8 +16,10 @@ const REGEX_MAX_LEN = 500;
 // Patterns known to cause catastrophic backtracking. Compiled from
 // safe-regex heuristics + common footguns.
 const REDOS_PATTERNS = [
-  // Nested quantifiers: (a+)+, (a*)*, (a+)*, (a*)+
-  /\([^)]*[+*]\)[+*]/,
+  // Nested quantifiers: (a+)+, (a*)*, (a+)*, (a*)+ — including the optional-
+  // element form (a+b?)+ (textbook catastrophic backtracker) and bounded
+  // repetition as either quantifier: (a{2,})+, (a+){2,}.
+  /\([^)]*(?:[+*?]|\})\)(?:[+*]|\{)/,
   // Quantified overlapping alternation: (a|a)+, (a|a)*
   /\([^)]*\|[^)]*\)[+*]/,
   // Double-quantified character class: [a-z]+[a-z]+

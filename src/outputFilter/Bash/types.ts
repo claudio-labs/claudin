@@ -35,4 +35,9 @@ export interface PreExecPlan {
   readonly effectiveCommand: string;
   readonly filter: FilterSpec | null;
   readonly rewrite: { readonly from: string; readonly to: string } | null;
+  /** True when the command that produced the output is compound (`a && b`, pipes, …).
+   * The pipeline output then interleaves several commands, so `matchOutput`
+   * short-circuits are unsafe — a "✓ up to date" sentinel from one segment would
+   * silently swallow the other segments' output. Optional: absent means atomic. */
+  readonly isCompound?: boolean;
 }

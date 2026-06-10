@@ -232,6 +232,58 @@ describe("structural (Phase 1)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Rewrite gating + compound short-circuit safety
+// ---------------------------------------------------------------------------
+
+describe("planBashFilter — allowRewrite gate", () => {
+  test("allowRewrite: false → filter resolved but command untouched, no rewrite claim", () => {
+    const plan = planBashFilter("git log", { allowRewrite: false });
+    expect(plan.filter?.name).toBe("git-log");
+    expect(plan.rewrite).toBeNull();
+    expect(plan.effectiveCommand).toBe("git log");
+  });
+
+  test("allowRewrite: false → trailing reducer pipe is not stripped either", () => {
+    const plan = planBashFilter("git status | tail -40", { allowRewrite: false });
+    expect(plan.effectiveCommand).toBe("git status | tail -40");
+    expect(plan.rewrite).toBeNull();
+  });
+
+  test("rewrite preserves quoted-argument whitespace verbatim", () => {
+    // args.join(' ') would collapse the double space inside the quotes; the
+    // rewritten command is executed, so it must stay byte-identical.
+    const plan = planBashFilter('git log --grep="a  b"');
+    expect(plan.rewrite?.to).toBe('git log --oneline --grep="a  b"');
+  });
+});
+
+describe("compound commands — matchOutput short-circuit is disabled", () => {
+  test("plan marks compound vs atomic vs reducer-stripped commands", () => {
+    expect(planBashFilter("cd /tmp && git pull").isCompound).toBe(true);
+    expect(planBashFilter("git pull").isCompound).toBe(false);
+    // Reducer-stripped pipe resolves to an atomic base.
+    expect(planBashFilter("git status | tail -40").isCompound).toBe(false);
+  });
+
+  test("sentinel from one segment does not swallow the other segment's output", () => {
+    // Before the fix, `cd /tmp && git pull` with an up-to-date pull replaced the
+    // ENTIRE combined output with "✓ git pull: already up to date".
+    const plan = planBashFilter("cd /tmp && git pull");
+    expect(plan.filter?.name).toBe("git-pull");
+    const raw = "Already up to date.\nbuild artifacts written to dist/\n";
+    const result = applyBashFilterToStdout(raw, false, plan);
+    expect(result).toContain("build artifacts written to dist/");
+    expect(result).not.toContain("✓ git pull: already up to date");
+  });
+
+  test("atomic command keeps the matchOutput short-circuit", () => {
+    const plan = planBashFilter("git pull");
+    const result = applyBashFilterToStdout("Already up to date.\n", false, plan);
+    expect(result).toContain("✓ git pull: already up to date");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Integration harness — 67 cases (skipped until Phase 2)
 // ---------------------------------------------------------------------------
 

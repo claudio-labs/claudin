@@ -30,8 +30,18 @@ function safeApply<T>(label: string, fn: () => T, fallback: T): T {
 // Public API
 // ---------------------------------------------------------------------------
 
-/** Resolves a filter for the command, runs rewrite if applicable, and returns an execution plan — all wrapped in `safeApply` so failures fall back to a no-op plan. */
-export function planBashFilter(command: string): PreExecPlan {
+/** Resolves a filter for the command, runs rewrite if applicable, and returns an execution plan — all wrapped in `safeApply` so failures fall back to a no-op plan.
+ *
+ * `allowRewrite` (default true) gates every path that changes the executed command
+ * (rewriteCommand and reducer-pipe stripping). Callers that did NOT execute
+ * `plan.effectiveCommand` — or could not (rewrite disabled, background run) — must
+ * pass `allowRewrite: false` so the plan never claims a rewrite that didn't happen:
+ * the rewrite markers tell the model which command actually ran. */
+export function planBashFilter(
+  command: string,
+  opts?: { allowRewrite?: boolean },
+): PreExecPlan {
+  const allowRewrite = opts?.allowRewrite ?? true;
   return safeApply(
     "planBashFilter",
     () => {
@@ -40,31 +50,36 @@ export function planBashFilter(command: string): PreExecPlan {
       // `BASE | tail -N` / `BASE | cat`: tail/cat consume all stdin, so running BASE alone is
       // equivalent — strip the trailing reducer pipe and let the filter (resolved against BASE)
       // run on the full output. The marker reports original="BASE | tail -N" actual="BASE".
-      const reducer = filter ? splitTrailingReducerPipe(command) : null;
+      const reducer = allowRewrite && filter ? splitTrailingReducerPipe(command) : null;
       if (reducer) {
         return {
           effectiveCommand: reducer.base,
           filter,
           rewrite: { from: command, to: reducer.base },
+          isCompound: hasCompound(reducer.base),
         };
       }
 
       // Skip rewriteCommand for chained commands — the filter only knows about its
       // own verb's arguments, so rewriting could mangle adjacent segments.
       const rewrite =
-        filter && !hasCompound(command) ? maybeRewrite(filter, command) : null;
+        allowRewrite && filter && !hasCompound(command)
+          ? maybeRewrite(filter, command)
+          : null;
       return {
         effectiveCommand: rewrite?.rewritten ?? command,
         filter,
         rewrite: rewrite
           ? { from: rewrite.original, to: rewrite.rewritten }
           : null,
+        isCompound: hasCompound(rewrite?.rewritten ?? command),
       };
     },
     {
       effectiveCommand: command,
       filter: null,
       rewrite: null,
+      isCompound: false,
     },
   );
 }
@@ -98,6 +113,7 @@ export function applyBashFilterToStdout(
       const pipelineResult: PipelineResult = applyPipeline(
         plan.filter,
         rawStdout,
+        { allowShortCircuit: !plan.isCompound },
       );
       return wrapStdoutWithMarkers(rawStdout, plan, pipelineResult);
     },
