@@ -13,7 +13,13 @@ import { isEnvTruthy } from '../../utils/envUtils.js'
 import { resetCommandQueue } from '../../utils/messageQueueManager.js'
 import { drainSdkEvents } from '../../utils/sdkEventQueue.js'
 import type { ExecResult } from '../../utils/ShellCommand.js'
-import { runShellCommand, type BashToolInput } from './BashTool.js'
+import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import {
+  applyBashOutputFilter,
+  planBashFilterForExecution,
+  runShellCommand,
+  type BashToolInput,
+} from './BashTool.js'
 
 type SetAppStateFn = (f: (prev: AppState) => AppState) => void
 
@@ -141,6 +147,50 @@ describe('runShellCommand — happy paths', () => {
     TEST_TIMEOUT_MS,
   )
 
+})
+
+// ---------------------------------------------------------------------------
+// Bash output filter — pre-exec rewrite, end to end. The plan's
+// effectiveCommand is what call() executes; prove with a real shell that the
+// rewritten command runs (oneline output, no full-format headers) and that
+// the marker then describes the command that actually ran. Uses this repo's
+// own git history, so no fixture setup is needed.
+// ---------------------------------------------------------------------------
+
+describe('bash output filter — pre-exec rewrite integration', () => {
+  test(
+    'git log executes as git log --oneline and the marker reports it',
+    async () => {
+      const savedFlag = getGlobalConfig().bashOutputFilterEnabled
+      saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: true }))
+      try {
+        const input: BashToolInput = { command: 'git log' }
+        const plan = planBashFilterForExecution(input)
+        expect(plan.rewrite?.to).toBe('git log --oneline')
+
+        const harness = makeStateHarness()
+        const gen = runShellCommand({
+          input: { ...input, command: plan.effectiveCommand },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        })
+        const result = await consume(gen)
+        expect(result.code).toBe(0)
+        // Real proof the rewrite executed: oneline format has no Author: header.
+        expect(result.stdout).not.toContain('Author:')
+        expect(result.stdout).toMatch(/^[0-9a-f]{7,}\s/m)
+
+        applyBashOutputFilter(result, input.command, plan)
+        expect(result.stdout).toContain('original="git log"')
+        expect(result.stdout).toContain('actual="git log --oneline"')
+      } finally {
+        saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: savedFlag }))
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
 })
 
 describe('runShellCommand — interrupt-backgrounding (regression for shells-stuck bug)', () => {

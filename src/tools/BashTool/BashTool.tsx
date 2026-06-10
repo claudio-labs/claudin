@@ -727,21 +727,27 @@ export const BashTool = buildTool({
       // Get the final result from the generator's return value
       result = generatorResult.value;
 
-      result = applyBashOutputFilter(result, input.command, filterPlan);
-
-      trackGitOperations(input.command, result.code, result.stdout);
+      // Raw-output consumers run BEFORE the filter so semantic interpretation,
+      // git tracking and the index.lock check never see marker-wrapped or
+      // condensed text. (stderr is interleaved in stdout — merged fd.)
+      const rawStdout = result.stdout || '';
+      trackGitOperations(input.command, result.code, rawStdout);
       const isInterrupt = result.interrupted && abortController.signal.reason === 'interrupt';
 
-      // stderr is interleaved in stdout (merged fd) — result.stdout has both
-      stdoutAccumulator.append((result.stdout || '').trimEnd() + EOL);
-
-      // Interpret the command result using semantic rules
-      interpretationResult = interpretCommandResult(input.command, result.code, result.stdout || '', '');
+      // Interpret the command result using semantic rules (on the raw output)
+      interpretationResult = interpretCommandResult(input.command, result.code, rawStdout, '');
 
       // Check for git index.lock error (stderr is in stdout now)
-      if (result.stdout && result.stdout.includes(".git/index.lock': File exists")) {
+      if (rawStdout.includes(".git/index.lock': File exists")) {
         logEvent('tengu_git_index_lock_error', {});
       }
+
+      // Filter last, with the semantic verdict folded in: output that either
+      // the exit code or the interpreter deems an error skips the pipeline
+      // (errors are sacred).
+      result = applyBashOutputFilter(result, input.command, filterPlan, interpretationResult.isError || result.code !== 0);
+
+      stdoutAccumulator.append((result.stdout || '').trimEnd() + EOL);
       if (interpretationResult.isError && !isInterrupt) {
         // Only add exit code if it's actually an error
         if (result.code !== 0) {
@@ -925,15 +931,28 @@ export function applyBashOutputFilter(
   result: ExecResult,
   command: string,
   plan?: PreExecPlan,
+  isError?: boolean,
 ): ExecResult {
   const { bashOutputFilterEnabled } = getGlobalConfig()
-  if (!shouldFilterOutput(bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) return result
+  if (!shouldFilterOutput(bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) {
+    // Backgrounded mid-run: output goes to disk unfiltered, but a rewrite
+    // already changed what is running — disclose it, or the model will read
+    // the task file assuming the original command produced it. (Config-off /
+    // kill-switch paths never carry a rewrite: planBashFilterForExecution
+    // plans those with allowRewrite: false.)
+    if (result.backgroundTaskId && plan?.rewrite) {
+      const note = `Note: the bash output filter rewrote this command before execution; the background task is running: ${plan.rewrite.to}`
+      const sep = result.stdout && !result.stdout.endsWith('\n') ? '\n' : ''
+      result.stdout = `${result.stdout ?? ''}${sep}${note}`
+    }
+    return result
+  }
 
   try {
     // No plan → the caller did not execute a rewritten command; re-plan with
     // rewrites off so the markers never claim a rewrite that didn't happen.
     const filterPlan = plan ?? planBashFilter(command, { allowRewrite: false })
-    result.stdout = applyBashFilterToStdout(result.stdout, result.code !== 0, filterPlan)
+    result.stdout = applyBashFilterToStdout(result.stdout, isError ?? result.code !== 0, filterPlan)
   } catch (e) {
     // Fail-open: extra defensive layer — planBashFilter and applyBashFilterToStdout
     // both wrap internally with safeApply, so this catch is currently unreachable.

@@ -238,6 +238,28 @@ describe('bash output filter — pre-exec rewrite plan', () => {
     expect(result.stdout).not.toContain('<bash-output-rewritten')
     expect(result.stdout).not.toContain('actual=')
   })
+
+  test('backgrounded run with an executed rewrite → disclosure note, no markers', () => {
+    // The background guard skips filtering (output goes to disk), but the
+    // rewritten command IS what's running — the model must learn that before
+    // it reads the task output file.
+    const plan = planBashFilterForExecution({ command: 'git log' } as BashToolInput)
+    expect(plan.rewrite).not.toBeNull()
+    const result = makeResult({ stdout: 'partial output', backgroundTaskId: 'bg-99' })
+    applyBashOutputFilter(result, 'git log', plan)
+    expect(result.stdout).toContain('partial output')
+    expect(result.stdout).toContain('running: git log --oneline')
+    expect(result.stdout).not.toContain('<bash-output-')
+  })
+
+  test('semantic error verdict (even with exit code 0) skips the pipeline', () => {
+    // call() folds interpretCommandResult.isError into the filter's isError —
+    // semantically-failed output must reach the model untouched.
+    const result = makeResult({ stdout: LS_LA_SAMPLE, code: 0 })
+    applyBashOutputFilter(result, 'ls -la', undefined, true)
+    expect(result.stdout).toBe(LS_LA_SAMPLE)
+    expect(result.stdout).not.toContain('<bash-output-filtered')
+  })
 })
 
 // ---------------------------------------------------------------------------

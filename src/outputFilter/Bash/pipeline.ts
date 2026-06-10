@@ -740,9 +740,14 @@ export function applyPipeline(
     applied.push("onEmpty");
   }
 
+  // Clamped at 0: a matchOutput/onEmpty message can be longer than a tiny
+  // original, and a negative percentage in the marker would only confuse.
   const reductionPct =
     originalLength > 0
-      ? Math.round(((originalLength - text.length) / originalLength) * 100)
+      ? Math.max(
+          0,
+          Math.round(((originalLength - text.length) / originalLength) * 100),
+        )
       : 0;
 
   debug("pipeline result", { applied, reductionPct, shortCircuited });

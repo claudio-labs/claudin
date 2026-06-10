@@ -4,6 +4,12 @@ export interface FilterSpec {
   name: string;
   matchCommand: RegExp;
   matchCommandReject?: RegExp;
+  /** SECURITY INVARIANT: the returned command is EXECUTED in place of the one
+   * the permission system approved. A rewrite must therefore only add
+   * read-only output-formatting flags to the same verb (`--oneline`,
+   * `--porcelain`, `--json <fields>`) — never change which program runs, touch
+   * the filesystem/network semantics, or drop user-supplied arguments. This is
+   * also why user filters (JSON) cannot define rewrites. */
   rewriteCommand?: (ctx: RewriteContext) => string | null | undefined;
   stripAnsi?: boolean;
   replace?: ReplaceRule[];

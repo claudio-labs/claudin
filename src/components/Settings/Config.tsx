@@ -358,15 +358,16 @@ export function Config({
     value: globalConfig.bashOutputFilterEnabled !== false,
     type: 'boolean' as const,
     onChange(bashOutputFilterEnabled: boolean) {
+      // Only the master flag: it already gates everything (user filters
+      // included), so forcing bashOutputFilterUserEnabled here would clobber
+      // a deliberate "built-ins on, user filters off" choice.
       saveGlobalConfig(current => ({
         ...current,
-        bashOutputFilterEnabled,
-        bashOutputFilterUserEnabled: bashOutputFilterEnabled
+        bashOutputFilterEnabled
       }));
       setGlobalConfig({
         ...getGlobalConfig(),
-        bashOutputFilterEnabled,
-        bashOutputFilterUserEnabled: bashOutputFilterEnabled
+        bashOutputFilterEnabled
       });
       logEvent('claudin_bash_output_filter_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
         enabled: bashOutputFilterEnabled

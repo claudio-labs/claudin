@@ -10,9 +10,11 @@ export const ALREADY_WRAPPED_RE =
   /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;
 
 function truncateAttr(value: string): string {
-  const escaped = escapeXmlAttr(value);
-  if (escaped.length <= MAX_ATTR_LEN) return escaped;
-  return `${escaped.slice(0, MAX_ATTR_LEN - 3)}…`;
+  // Truncate the raw value BEFORE escaping so the cut can never land inside
+  // an escape entity (`&quo…`). The escaped result may slightly exceed
+  // MAX_ATTR_LEN — the limit is cosmetic, well-formedness is not.
+  if (value.length <= MAX_ATTR_LEN) return escapeXmlAttr(value);
+  return `${escapeXmlAttr(value.slice(0, MAX_ATTR_LEN - 1))}…`;
 }
 
 /** Wraps filtered/rewritten stdout in XML markers (`<bash-output-filtered>` or `<bash-output-rewritten>`) with truncated `original`/`actual` attrs. Idempotent — skips already-wrapped output. */

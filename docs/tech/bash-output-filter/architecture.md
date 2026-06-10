@@ -510,6 +510,8 @@ Without this, a filtered output >8 KB (the `BASH_SUMMARIZE_THRESHOLD` at line 32
 
 ## 11. Telemetry events
 
+> **Status: not implemented (intentionally).** The module emits no analytics events — `logEvent` calls in the open build are no-op stubs (see `scripts/no-telemetry-plugin.ts`), and adding per-filter events would be dead code. This section is kept as the design that upstream-style telemetry *would* follow if a privacy-preserving local-stats variant (e.g. a `/filter stats` command) is ever built.
+
 Three events. All names use the privacy convention from `BashTool.tsx:766` (suffix on metadata cast, not event name).
 
 | Event | When | Payload |

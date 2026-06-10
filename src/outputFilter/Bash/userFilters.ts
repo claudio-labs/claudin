@@ -56,6 +56,10 @@ const MatchOutputRuleSchema = z.object({
 
 const UserFilterSpecSchema = z.object({
   name: z.string().regex(/^[a-z0-9-]+$/).min(1).max(60),
+  // Matched against the CANONICALIZED command: env assignments, sudo-style
+  // wrappers and runner prefixes (npx, bunx, poetry/pipenv/uv/hatch run,
+  // pnpm exec/dlx, yarn dlx) are stripped first. Write `^my-tool`, not
+  // `^npx my-tool` — the latter will never match.
   matchCommand: z.string().min(1).max(REGEX_MAX_LEN),
   matchCommandReject: z.string().max(REGEX_MAX_LEN).optional(),
   stripAnsi: z.boolean().optional(),
