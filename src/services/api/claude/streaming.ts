@@ -1,5 +1,6 @@
 import type {
   BetaContentBlock,
+  BetaContextManagementResponse,
   BetaJSONOutputFormat,
   BetaMessage,
   BetaMessageDeltaUsage,
@@ -1525,26 +1526,13 @@ export async function* queryModel(
           case "message_delta": {
             usage = updateUsage(usage, part.usage);
 
-            // Write final usage and stop_reason back to the last yielded
-            // message. Messages are created at content_block_stop from
-            // partialMessage, which was set at message_start before any tokens
-            // were generated (output_tokens: 0, stop_reason: null).
-            // message_delta arrives after content_block_stop with the real
-            // values.
-            //
-            // IMPORTANT: Use direct property mutation, not object replacement.
-            // The transcript write queue holds a reference to message.message
-            // and serializes it lazily (100ms flush interval). Object
-            // replacement ({ ...lastMsg.message, usage }) would disconnect
-            // the queued reference; direct mutation ensures the transcript
-            // captures the final values.
             stopReason = part.delta.stop_reason;
-
-            const lastMsg = newMessages.at(-1);
-            if (lastMsg) {
-              lastMsg.message.usage = usage;
-              lastMsg.message.stop_reason = stopReason;
-            }
+            applyMessageDeltaToLastMessage(
+              newMessages.at(-1),
+              usage,
+              stopReason,
+              part.context_management,
+            );
 
             // Update cost
             const costUSDForPart = calculateUSDCost(resolvedModel, usage);
@@ -2230,6 +2218,40 @@ export function cleanupStream(
     }
   } catch {
     // Ignore - stream may already be closed
+  }
+}
+
+/**
+ * Writes message_delta fields back onto the last yielded assistant message.
+ * Messages are created at content_block_stop from partialMessage, which was
+ * set at message_start before any tokens were generated (output_tokens: 0,
+ * stop_reason: null). message_delta arrives after content_block_stop with
+ * the real values.
+ *
+ * context_management (server-side applied edits, e.g. clear_tool_uses under
+ * the retain cache profile) is only delivered on message_delta — without
+ * this copy the evidence never reaches message history, and Read's dedup
+ * cannot tell that an earlier tool_result was cleared server-side (see
+ * FileReadTool/serverClearingDetection.ts).
+ *
+ * IMPORTANT: Use direct property mutation, not object replacement.
+ * The transcript write queue holds a reference to message.message
+ * and serializes it lazily (100ms flush interval). Object
+ * replacement ({ ...lastMsg.message, usage }) would disconnect
+ * the queued reference; direct mutation ensures the transcript
+ * captures the final values.
+ */
+export function applyMessageDeltaToLastMessage(
+  lastMsg: AssistantMessage | undefined,
+  usage: BetaUsage,
+  stopReason: BetaStopReason | null,
+  contextManagement: BetaContextManagementResponse | null | undefined,
+): void {
+  if (!lastMsg) return;
+  lastMsg.message.usage = usage;
+  lastMsg.message.stop_reason = stopReason;
+  if (contextManagement) {
+    lastMsg.message.context_management = contextManagement;
   }
 }
 

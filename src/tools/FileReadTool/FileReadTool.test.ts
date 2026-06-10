@@ -6,6 +6,10 @@ import { join } from 'path'
 import type { ToolUseContext } from '../../Tool.js'
 import { READ_FILE_STATE_CACHE_SIZE } from '../../utils/fileStateCache.js'
 import { createFileStateCacheWithSizeLimit } from '../../utils/fileStateCache.js'
+import {
+  assistantWithAppliedEdits,
+  assistantWithClearing,
+} from './__test-helpers__/contextManagementFixtures.js'
 import { FileReadTool, MaxFileReadTokenExceededError } from './FileReadTool.js'
 
 // ---------------------------------------------------------------------------
@@ -46,6 +50,7 @@ function writeFixture(name: string, content: string): string {
 
 type ContextOverrides = {
   fileReadingLimits?: ToolUseContext['fileReadingLimits']
+  messages?: unknown[]
 }
 
 function makeContext(overrides: ContextOverrides = {}): ToolUseContext {
@@ -55,6 +60,7 @@ function makeContext(overrides: ContextOverrides = {}): ToolUseContext {
       READ_FILE_STATE_CACHE_SIZE,
     ),
     fileReadingLimits: overrides.fileReadingLimits,
+    messages: overrides.messages,
     getAppState: () => ({ toolPermissionContext: {} }),
     setAppState: () => {},
     options: {},
@@ -393,5 +399,68 @@ describe('FileReadTool — line numbering and counting', () => {
 
     if (data.type !== 'outline') throw new Error('expected outline')
     expect(data.file.totalLines).toBe(13)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dedup vs server-side clear_tool_uses — once the API has cleared old
+// tool_results, the file_unchanged stub would point at content the model can
+// no longer see, so dedup must stand down. See serverClearingDetection.ts.
+// ---------------------------------------------------------------------------
+
+describe('FileReadTool — dedup vs server-side tool clearing', () => {
+  test('dedup is suppressed once clearing has been applied in the session', async () => {
+    const p = writeFixture('dedup-cleared.txt', 'alpha\nbeta')
+    const ctx = makeContext({ messages: [assistantWithClearing(4)] })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    // Same file, same range, unchanged on disk — would normally dedup to a
+    // file_unchanged stub. With clearing evidence in the transcript the full
+    // content must be re-sent.
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('text')
+    if (second.type !== 'text') throw new Error('expected text')
+    expect(second.file.content).toBe('alpha\nbeta')
+  })
+
+  test('an applied edit that cleared nothing keeps dedup active', async () => {
+    const p = writeFixture('dedup-noop-clear.txt', 'alpha\nbeta')
+    const ctx = makeContext({ messages: [assistantWithClearing(0)] })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
+  })
+
+  test('a clear_thinking edit keeps dedup active — it leaves tool_results alone', async () => {
+    const p = writeFixture('dedup-clear-thinking.txt', 'alpha\nbeta')
+    const ctx = makeContext({
+      messages: [
+        assistantWithAppliedEdits([
+          { type: 'clear_thinking_20251015', cleared_thinking_turns: 2 },
+        ]),
+      ],
+    })
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
+  })
+
+  test('a context without messages keeps dedup active', async () => {
+    const p = writeFixture('dedup-no-messages.txt', 'alpha\nbeta')
+    const ctx = makeContext()
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('file_unchanged')
   })
 })

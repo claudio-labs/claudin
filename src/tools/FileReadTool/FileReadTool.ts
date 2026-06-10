@@ -81,6 +81,7 @@ import {
   markFiredAndCheck,
   SERIAL_READ_NUDGE_REMINDER,
 } from './serialReadNudge.js'
+import { hasServerClearedToolUses } from './serverClearingDetection.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLang,
@@ -611,22 +612,36 @@ export const FileReadTool = buildTool({
       const rangeMatch =
         existingState.offset === offset && existingState.limit === limit
       if (rangeMatch) {
-        try {
-          const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
-          if (mtimeMs === existingState.timestamp) {
-            const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
-            logEvent('tengu_file_read_dedup', {
-              ...(analyticsExt !== undefined && { ext: analyticsExt }),
-            })
-            return {
-              data: {
-                type: 'file_unchanged' as const,
-                file: { filePath: file_path },
-              },
+        // Server-side clear_tool_uses may have wiped the earlier Read's
+        // tool_result the stub would point at (the API reports only counts,
+        // not which tool uses were cleared) — and an unchanged-file re-Read
+        // is exactly the move a model makes after losing the content. Once
+        // clearing has been applied in this session, stand down and re-send;
+        // the fresh Read becomes a recent (kept) tool_result again. See
+        // serverClearingDetection.ts.
+        const serverCleared =
+          Array.isArray(context.messages) &&
+          hasServerClearedToolUses(context.messages)
+        if (serverCleared) {
+          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
+        } else {
+          try {
+            const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
+            if (mtimeMs === existingState.timestamp) {
+              const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
+              logEvent('tengu_file_read_dedup', {
+                ...(analyticsExt !== undefined && { ext: analyticsExt }),
+              })
+              return {
+                data: {
+                  type: 'file_unchanged' as const,
+                  file: { filePath: file_path },
+                },
+              }
             }
+          } catch {
+            // stat failed — fall through to full read
           }
-        } catch {
-          // stat failed — fall through to full read
         }
       }
     }

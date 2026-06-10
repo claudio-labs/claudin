@@ -58,6 +58,13 @@ Two invariants drive everything:
   windows pinned the frontier with sporadic thinking).
 - Shims (`openaiShim/messagesClient.ts`, `codexShim.ts`) — no marker;
   longest-unchanged-prefix providers benefit from byte-stability alone.
+- `tools/FileReadTool/serverClearingDetection.ts` — Read's dedup
+  (`file_unchanged` stub) stands down once a `clear_tool_uses` edit has been
+  applied: the stub points at an earlier tool_result the server may have
+  wiped, and the API reports only counts, never which ones. The evidence
+  (`context_management.applied_edits`) arrives on the `message_delta` stream
+  event and is written back to the turn's last assistant message by
+  `applyMessageDeltaToLastMessage` (`services/api/claude/streaming.ts`).
 
 ## Bench
 
