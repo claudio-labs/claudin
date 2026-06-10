@@ -660,6 +660,12 @@ export const FileReadTool = buildTool({
                   type: 'file_unchanged' as const,
                   file: { filePath: file_path },
                 },
+                // The stub's validity depends on the transcript (the earlier
+                // tool_result must still be intact), not on the tool input.
+                // Cached replay would bypass the stand-down checks above for
+                // the cache TTL — exactly the window right after a clip or
+                // server clearing, when the model re-reads to recover.
+                noResultCache: true,
               }
             }
           } catch {

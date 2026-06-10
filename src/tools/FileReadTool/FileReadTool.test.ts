@@ -11,6 +11,10 @@ import {
   buildClipStubWithHead,
 } from '../../services/compact/stableStubState.js'
 import {
+  getCached,
+  invalidateAll,
+} from '../../services/tools/toolResultCache.js'
+import {
   assistantWithAppliedEdits,
   assistantWithClearing,
   userWithToolResult,
@@ -571,5 +575,42 @@ describe('FileReadTool — dedup vs client-side clipping', () => {
 
     const second = (await read(p, {}, ctx)).data
     expect(second.type).toBe('file_unchanged')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dedup stub vs the local tool-result cache — a cached file_unchanged would
+// be replayed for the TTL window without running call(), bypassing the
+// server-clearing / client-clipping stand-downs exactly when a clip lands
+// right after a legitimate dedup hit. The stub must never be stored.
+// ---------------------------------------------------------------------------
+
+describe('FileReadTool — dedup stub is not stored in the tool-result cache', () => {
+  test('file_unchanged is recomputed per call; text results still cache', async () => {
+    const p = writeFixture('dedup-nocache.txt', 'alpha\nbeta')
+    const ctx = makeContext()
+    // The suite disables the cache at module load (the wrapper reads the env
+    // per call); enable it for this test only.
+    delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
+    try {
+      const first = (await read(p, {}, ctx)).data
+      expect(first.type).toBe('text')
+      // Normal results keep getting cached — the noResultCache flag must not
+      // widen into a blanket opt-out.
+      expect(getCached('Read', { file_path: p })).toBeDefined()
+
+      // Force the next call through to dedup: a cache hit would replay the
+      // full text and never reach it.
+      invalidateAll()
+      const second = (await read(p, {}, ctx)).data
+      expect(second.type).toBe('file_unchanged')
+
+      // The decisive assertion: the stub was NOT stored, so the next
+      // identical call re-enters call() and re-evaluates the stand-downs.
+      expect(getCached('Read', { file_path: p })).toBeUndefined()
+    } finally {
+      process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
+      invalidateAll()
+    }
   })
 })

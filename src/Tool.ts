@@ -360,6 +360,17 @@ export type ToolResult<T> = {
     _meta?: Record<string, unknown>
     structuredContent?: Record<string, unknown>
   }
+  /** When true, wrapCallWithCache must not store this result in the local
+   * tool-result cache. Set it ONLY on results whose validity depends on a
+   * specific prior tool_result staying intact in the transcript — e.g.
+   * Read's file_unchanged dedup stub, which is only honest while the
+   * earlier Read's tool_result is visible. Replaying such a result from
+   * cache would bypass the freshness checks that live inside call()
+   * (Read's server-clearing / client-clipping stand-downs) for the TTL
+   * window. Do NOT set it broadly "to be safe": results that are a pure
+   * function of tool input + disk state are exactly what the cache exists
+   * for, and a blanket opt-out silently kills its value. */
+  noResultCache?: boolean
 }
 
 export type ToolCallProgress<P extends ToolProgressData = ToolProgressData> = (
@@ -826,9 +837,17 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
  * Wraps a tool.call with the local result cache. Bypasses on:
  *   - CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
  *   - newMessages or contextModifier present (declared side effects)
+ *   - noResultCache on the result (transcript-dependent validity)
  * Hit replay returns a fresh ToolResult with the cached data + mcpMeta;
  * tool_use_id is reapplied at the mapToolResultToToolResultBlockParam
  * call site, so byte-identity rules per-provider are unchanged.
+ *
+ * CRITICAL for tool authors: a cache hit short-circuits BEFORE call(), so
+ * any freshness/validity logic INSIDE call() is silently skipped on replay
+ * for the TTL window. If a result's honesty depends on transcript state
+ * (e.g. a dedup stub pointing at an earlier tool_result that clipping or
+ * server clearing can wipe), return it with noResultCache: true — testing
+ * with the cache disabled will not surface this bypass.
  */
 function wrapCallWithCache<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -842,7 +861,11 @@ function wrapCallWithCache<
       return { data: hit.data, mcpMeta: hit.mcpMeta }
     }
     const result = await origCall(...args)
-    if (!result.newMessages?.length && !result.contextModifier) {
+    if (
+      !result.newMessages?.length &&
+      !result.contextModifier &&
+      !result.noResultCache
+    ) {
       setCached(toolName, input, result.data, result.mcpMeta)
     }
     return result
