@@ -28,6 +28,7 @@ import { getSessionId, onSessionSwitch } from '../../bootstrap/state.js'
 import { getAgentId } from '../../utils/teammate.js'
 import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
 import { roughTokenCountEstimation } from '../tokenEstimation.js'
+import { getCacheProfile } from '../cache/cacheProfile.js'
 
 /** Minimum token count for a tool_result to be immediately stubbed on display. */
 const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000
@@ -284,7 +285,13 @@ export function buildClipStub(toolName: string, originalTokens: number): string 
 export function stubToolResultForDisplay<T extends AnyMessage>(
   message: T,
   allMessages: T[],
+  thresholdTokens: number = IMMEDIATE_STUB_TOKEN_THRESHOLD,
+  stubKeepHeadChars = 0,
 ): T {
+  // Retain profile passes Infinity: the display array seeds the next turn's
+  // API view, so stubbing here would clip content out of the model's sight
+  // cross-turn. RSS is bounded by pruneToolResultsByBytes instead.
+  if (!Number.isFinite(thresholdTokens)) return message
   const inner = getInner(message)
   const role = inner.role ?? (message as AnyMessage).role
   if (role !== 'user') return message
@@ -299,8 +306,8 @@ export function stubToolResultForDisplay<T extends AnyMessage>(
     const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
     const existing = (block as { content?: unknown }).content
 
-    // Already stubbed
-    if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return block
+    // Already stubbed (pure or head-preserving form)
+    if (typeof existing === 'string' && isClipStubContent(existing)) return block
 
     // Skip non-string content
     if (typeof existing !== 'string') return block
@@ -310,14 +317,20 @@ export function stubToolResultForDisplay<T extends AnyMessage>(
 
     // Estimate tokens and check threshold
     const tokens = roughTokenCountEstimation(existing)
-    if (tokens < IMMEDIATE_STUB_TOKEN_THRESHOLD) return block
+    if (tokens < thresholdTokens) return block
 
     // Look up the tool name from the preceding assistant message's tool_use block
     const toolName = findToolNameById(allMessages, toolUseId)
     anyStubbed = true
+    // Same head-preserving rule as stubOneBlock: the display array seeds the
+    // next turn's API view, so keeping the head here is what lets the model
+    // keep referencing large outputs cross-turn without a re-read.
+    const stubbedContent = headStubApplies(existing, stubKeepHeadChars)
+      ? buildClipStubWithHead(toolName, tokens, existing.slice(0, stubKeepHeadChars))
+      : buildClipStub(toolName, tokens)
     return {
       ...block,
-      content: buildClipStub(toolName, tokens),
+      content: stubbedContent,
     } as AnyContentBlock
   })
 
@@ -359,10 +372,76 @@ function findToolNameById<T extends AnyMessage>(
 // drift to a smaller number and break byte-stability).
 const CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens from .+\]$/
 
+// Head-preserving variant (openclaude's mid-tier idea, single-mutation form):
+// the first N chars of the original output survive above a marker line. Same
+// byte-stability contract as the pure stub — built once, never recomputed.
+const CLIP_STUB_HEAD_PATTERN = /\n\[clipped: ~\d+ tokens from .+ — head preserved\]$/
+
+// Head-stubbing is only worth the mutation when it actually truncates a
+// meaningful amount; below this margin the pure stub is used instead.
+const HEAD_STUB_MIN_SAVINGS_CHARS = 500
+
+// Upper bound on a plausible head-stub's total size. The head is at most a
+// few thousand chars (profile stubKeepHeadChars), so any content far larger
+// that merely ENDS with a marker line (e.g. the model cat-ing a transcript or
+// test fixture from this repo) must NOT be classified as an already-final
+// stub — that would exempt a huge result from every pruning path forever.
+const HEAD_STUB_MAX_PLAUSIBLE_CHARS = 32_000
+
+/** A tool_result content string that is already in one of the two stable
+ * stub forms (pure or head-preserving). Such bytes are final: every rewriter
+ * in this module returns them unchanged forever. */
+function isClipStubContent(content: string): boolean {
+  return (
+    CLIP_STUB_PATTERN.test(content) ||
+    (content.length <= HEAD_STUB_MAX_PLAUSIBLE_CHARS &&
+      CLIP_STUB_HEAD_PATTERN.test(content))
+  )
+}
+
+/** Whether `content` takes the head-preserving stub form for the given
+ * headChars. Single source of truth — stubOneBlock, the display stub and
+ * the byte-guard's savings accounting must agree byte-for-byte, or the
+ * same content could render different stub forms across paths (a wire
+ * byte flip that breaks the prompt-cache prefix). */
+function headStubApplies(content: unknown, headChars: number): content is string {
+  return (
+    headChars > 0 &&
+    typeof content === 'string' &&
+    content.length > headChars + HEAD_STUB_MIN_SAVINGS_CHARS
+  )
+}
+
+/** Deterministic head-preserving stub: first `headChars` of the original
+ * content + a marker line. CRITICAL: byte-stable for the same inputs — no
+ * timestamps, no recomputation (guarded by CLIP_STUB_HEAD_PATTERN). */
+export function buildClipStubWithHead(
+  toolName: string,
+  originalTokens: number,
+  head: string,
+): string {
+  return `${head}\n[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName} — head preserved]`
+}
+
 function arrayContainsImage(content: unknown): boolean {
   if (!Array.isArray(content)) return false
   for (const item of content as Array<{ type?: string }>) {
     if (item && typeof item === 'object' && item.type === 'image') return true
+  }
+  return false
+}
+
+// Mirrors stripExcessMediaItems' isMedia: it strips image AND document
+// blocks, nested in tool_results or top-level in user messages — the
+// frontier's media-churn rule must cover the same set.
+function isMediaBlockType(type: string | undefined): boolean {
+  return type === 'image' || type === 'document'
+}
+
+function arrayContainsMedia(content: unknown): boolean {
+  if (!Array.isArray(content)) return false
+  for (const item of content as Array<{ type?: string }>) {
+    if (item && typeof item === 'object' && isMediaBlockType(item.type)) return true
   }
   return false
 }
@@ -384,7 +463,7 @@ function shouldAgeStub(block: AnyContentBlock): boolean {
   if (tr.is_error) return false
   const existing = tr.content
   if (existing == null || existing === '') return true
-  if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return true
+  if (typeof existing === 'string' && isClipStubContent(existing)) return true
   return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
 }
 
@@ -397,17 +476,33 @@ function shouldAgeStub(block: AnyContentBlock): boolean {
 function stubOneBlock(
   block: AnyContentBlock,
   toolNames: Map<string, string>,
+  stubKeepHeadChars = 0,
 ): AnyContentBlock {
   if (block?.type !== 'tool_result') return block
   const existing = (block as ToolResultBlockParam).content
-  if (typeof existing === 'string' && CLIP_STUB_PATTERN.test(existing)) return block
+  if (typeof existing === 'string' && isClipStubContent(existing)) return block
   if (existing == null || existing === '') return block
   if (Array.isArray(existing) && existing.length === 0) return block
   if (arrayContainsImage(existing)) return block
   const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+  const toolName = toolNames.get(toolUseId) ?? 'tool'
+  const tokens = estimateToolResultTokens(existing)
+  // Head-preserving form: one mutation, same break cost as the pure stub,
+  // but the model keeps the useful head of the output (file headers, top
+  // grep hits) — fewer re-reads. Only when it meaningfully truncates.
+  if (headStubApplies(existing, stubKeepHeadChars)) {
+    return {
+      ...block,
+      content: buildClipStubWithHead(
+        toolName,
+        tokens,
+        existing.slice(0, stubKeepHeadChars),
+      ),
+    }
+  }
   return {
     ...block,
-    content: buildClipStub(toolNames.get(toolUseId) ?? 'tool', estimateToolResultTokens(existing)),
+    content: buildClipStub(toolName, tokens),
   }
 }
 
@@ -433,6 +528,12 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
 
   const toolNames = indexToolUses(messages)
   let anyTouched = false
+  // Same head-preserving form as the age prune / byte guard: the explicit
+  // clip path MUST produce identical bytes for a given content, or a block
+  // can render as a pure stub on the wire (this per-request path) and as a
+  // head-stub in engine state (prune) on the next request — a wire byte
+  // flip that breaks the prompt-cache prefix once per affected block.
+  const stubKeepHeadChars = getCacheProfile().stubKeepHeadChars
 
   const out = messages.map(msg => {
     const inner = getInner(msg)
@@ -448,7 +549,7 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
       ) {
         return block
       }
-      const stubbed = stubOneBlock(block, toolNames)
+      const stubbed = stubOneBlock(block, toolNames, stubKeepHeadChars)
       if (stubbed === block) return block
       touched = true
       return stubbed
@@ -471,6 +572,208 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
 }
 
 /**
+ * Clip-frontier feature flag (CLAUDIN_CLIP_FRONTIER, default ON).
+ *
+ * The Anthropic renderer caps the message-level cache_control marker at the
+ * clip frontier (see getClipFrontierIndex) instead of letting the defer-walk
+ * place it anywhere near the tail. Validated by the Phase 4 A/B benches
+ * (write −90%, cost −23..−51% vs the per-turn-break baseline; eviction
+ * behavior measured equal to Claude Code's). Set CLAUDIN_CLIP_FRONTIER=0
+ * to revert to the defer-only placement.
+ */
+function readClipFrontierEnabled(): boolean {
+  const raw = process.env.CLAUDIN_CLIP_FRONTIER?.trim().toLowerCase()
+  if (raw === undefined || raw === '') return true
+  return raw !== '0' && raw !== 'false' && raw !== 'off'
+}
+// Memoized at module load; tests that flip the env must call
+// _resetClipFrontierForTesting() (matches the defer-cache-marker pattern).
+let clipFrontierEnabled = readClipFrontierEnabled()
+export function isClipFrontierEnabled(): boolean {
+  return clipFrontierEnabled
+}
+export function _resetClipFrontierForTesting(): void {
+  clipFrontierEnabled = readClipFrontierEnabled()
+}
+
+/**
+ * Which cross-turn history rewriters are active, so the frontier can treat
+ * their not-yet-rewritten targets as mutable. Callers pass the corresponding
+ * config flags (thinkingHistoryRedactionEnabled / narrationHistoryRedactionEnabled).
+ */
+export type ClipFrontierMutability = {
+  /** stripOldThinkingBlocks is active: assistant messages still carrying a
+   * `thinking` block will be rewritten once they age out of its keep window. */
+  thinkingIsMutable?: boolean
+  /** stripOldNarrationBlocks is active: assistant turns mixing text with a
+   * tool_use (and no thinking) will lose their text blocks when they age out. */
+  narrationIsMutable?: boolean
+  /** Whether the age prune (pruneOldToolResults with finite keepTurns) is
+   * running. Under the 'retain' cache profile it is not — full tool_results
+   * are then byte-stable (only the rare RSS guard touches them, which is a
+   * deliberate break-once clip event) and may be frozen behind the marker.
+   * Default true (aggressive profile). */
+  agePruneActive?: boolean
+  /** The request exceeds the API media cap, so stripExcessMediaItems is
+   * dropping the OLDEST media items — which churns image-bearing
+   * tool_results deep in the prefix as new media arrives. When set, such
+   * blocks are mutable and the frontier must stop before the first one. */
+  imagesAreMutable?: boolean
+}
+
+/**
+ * Decide whether a tool_result block can still change bytes on a future turn.
+ *
+ * Mirrors the two rewriters that touch tool_results at the API boundary:
+ *   - pruneOldToolResults (age prune): stubs non-error, non-image results
+ *     at or above MIN_STUB_TOKENS once they cross the keepTurns cutoff.
+ *   - applyStableStubs (explicit clip): rewrites any id in clippedIds as soon
+ *     as content allows — including the deferred-image case where the stub is
+ *     delayed until the image content is replaced.
+ *
+ * Must stay in sync with shouldAgeStub/stubOneBlock above; the regression
+ * tests in stableStubState.test.ts pin the correspondence.
+ */
+function isToolResultBlockMutable(
+  block: AnyContentBlock,
+  clippedIds: ReadonlySet<string>,
+  agePruneActive: boolean,
+  imagesAreMutable: boolean,
+): boolean {
+  if (block?.type !== 'tool_result') return false
+  const existing = (block as unknown as ToolResultBlockParam).content
+  // Already a byte-stable stub (pure or head form) — final bytes forever.
+  if (typeof existing === 'string' && isClipStubContent(existing)) return false
+  // Empty content is never rewritten.
+  if (existing == null || existing === '') return false
+  if (Array.isArray(existing) && existing.length === 0) return false
+  // Pending explicit clip (checked before the image/error skips: clippedIds
+  // membership overrides both in applyStableStubs' stubOneBlock path).
+  const toolUseId = typeof block.tool_use_id === 'string' ? block.tool_use_id : ''
+  if (toolUseId && clippedIds.has(toolUseId)) return true
+  // Past the media cap, stripExcessMediaItems rewrites the oldest
+  // media-bearing blocks (image OR document) turn by turn — not stable then.
+  if (imagesAreMutable && arrayContainsMedia(existing)) return true
+  // Retain profile: no age prune → a full tool_result is byte-stable. The
+  // RSS guard may still stub it someday, but that's a deliberate
+  // break-once clip event, not a per-turn mutation to fence off.
+  if (!agePruneActive) return false
+  // The age prune skips image-bearing and error results entirely…
+  if (arrayContainsImage(existing)) return false
+  if ((block as unknown as ToolResultBlockParam).is_error) return false
+  // …and only stubs results at or above the floor.
+  return estimateToolResultTokens(existing) >= MIN_STUB_TOKENS
+}
+
+function isAssistantContentMutable(
+  content: AnyContentBlock[],
+  opts: ClipFrontierMutability,
+): boolean {
+  if (!opts.thinkingIsMutable && !opts.narrationIsMutable) return false
+  let hasText = false
+  let hasToolUse = false
+  let hasThinking = false
+  let hasRedactedThinking = false
+  for (const block of content) {
+    if (block?.type === 'text') hasText = true
+    else if (block?.type === 'tool_use') hasToolUse = true
+    else if (block?.type === 'thinking') hasThinking = true
+    else if (block?.type === 'redacted_thinking') hasRedactedThinking = true
+  }
+  if (opts.thinkingIsMutable && hasThinking) return true
+  // Narration selection mirrors stripOldNarrationBlocks: text + tool_use and
+  // no (redacted_)thinking — thinking-bearing turns are never text-stripped
+  // (doing so breaks the signed-thinking position chain).
+  if (
+    opts.narrationIsMutable &&
+    hasText &&
+    hasToolUse &&
+    !hasThinking &&
+    !hasRedactedThinking
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Clip frontier: the largest index F such that messages[0..F] are all
+ * byte-stable across future turns — no block in the prefix will ever be
+ * rewritten by the age prune, the explicit clip set, or the history
+ * redactions. Returns messages.length - 1 when nothing is mutable, and -1
+ * when the very first message already contains a mutable block.
+ *
+ * Placing the message-level cache_control marker at (or before) the frontier
+ * guarantees that clipping and prefix-freezing are the same atomic event:
+ * bytes only ever change in the uncached tail, so the recurring per-turn
+ * prefix invalidation (full→stub mutation behind the marker) cannot happen.
+ *
+ * Must be computed on the exact array handed to addCacheBreakpoints —
+ * post ensureToolResultPairing, post applyStableStubs, post history
+ * redactions — so the stability judgment matches the wire bytes.
+ */
+export function getClipFrontierIndex(
+  messages: readonly AnyMessage[],
+  opts: ClipFrontierMutability = {},
+): number {
+  const clippedIds = getClippedIds()
+  const agePruneActive = opts.agePruneActive ?? true
+  const imagesAreMutable = opts.imagesAreMutable ?? false
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!
+    const inner = getInner(msg)
+    const role = inner.role ?? msg.role
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+    if (role === 'assistant') {
+      if (isAssistantContentMutable(content as AnyContentBlock[], opts)) {
+        return i - 1
+      }
+      continue
+    }
+    if (role !== 'user') continue
+    for (const block of content as AnyContentBlock[]) {
+      // Top-level media blocks (pasted screenshots, PDF attachments) are
+      // also stripped by stripExcessMediaItems past the cap.
+      if (imagesAreMutable && isMediaBlockType(block?.type)) return i - 1
+      if (
+        isToolResultBlockMutable(
+          block,
+          clippedIds,
+          agePruneActive,
+          imagesAreMutable,
+        )
+      ) {
+        return i - 1
+      }
+    }
+  }
+  return messages.length - 1
+}
+
+/**
+ * Walk backwards to find the index of the (keepTurns)th-from-last user
+ * message. "Turn boundary" = role: 'user'. Returns -1 when fewer turns
+ * exist. Shared by the age prune, the byte guard and the display eviction
+ * so all three protect the same window.
+ */
+function findTurnCutoffIndex(
+  messages: readonly AnyMessage[],
+  keepTurns: number,
+): number {
+  let turnsFound = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role === 'user') {
+      turnsFound++
+      if (turnsFound >= keepTurns) return i
+    }
+  }
+  return -1
+}
+
+/**
  * Prune tool_result content that is older than `keepTurns` turns.
  *
  * Complements applyStableStubs: that mechanism only fires at ≥50% context
@@ -484,25 +787,14 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
 export function pruneOldToolResults<T extends AnyMessage>(
   messages: T[],
   keepTurns = 1,
+  stubKeepHeadChars = 0,
 ): T[] {
   if (messages.length === 0) return messages
+  // Retain profile passes Infinity (age clipping disabled): skip the
+  // guaranteed-no-op O(n) walk on the per-append hot path.
+  if (!Number.isFinite(keepTurns)) return messages
 
-  // Walk backwards to find the index of the (keepTurns)th-from-last user message.
-  // "turn boundary" = role: 'user'. -1 means not enough turns yet.
-  let cutoffIdx = -1
-  let turnsFound = 0
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role === 'user') {
-      turnsFound++
-      if (turnsFound >= keepTurns) {
-        cutoffIdx = i
-        break
-      }
-    }
-  }
-
+  const cutoffIdx = findTurnCutoffIndex(messages, keepTurns)
   if (cutoffIdx === -1) return messages  // fewer turns than keepTurns
   if (cutoffIdx === 0) return messages   // nothing before the cutoff to prune
 
@@ -519,7 +811,7 @@ export function pruneOldToolResults<T extends AnyMessage>(
     let touched = false
     const newContent = (content as AnyContentBlock[]).map(block => {
       if (!shouldAgeStub(block)) return block
-      const stubbed = stubOneBlock(block, toolNames)
+      const stubbed = stubOneBlock(block, toolNames, stubKeepHeadChars)
       if (stubbed === block) return block
       touched = true
       return stubbed
@@ -535,6 +827,109 @@ export function pruneOldToolResults<T extends AnyMessage>(
   })
 
   return anyTouched ? out : messages
+}
+
+/**
+ * RSS-pressure prune (cache-profile 'retain', design doc Phase 5).
+ *
+ * Under the retain profile the age prune is disabled — full tool_results
+ * stay in context so the provider cache serves them at the read multiplier
+ * instead of re-billing clipped content at full price. This guard is what
+ * bounds memory instead: when the estimated total tokens of full (stubable)
+ * tool_results exceed `highWaterTokens`, stub OLDEST-FIRST until the total
+ * drops to `lowWaterTokens`. The last `keepRecentTurns` user turns are never
+ * touched (same cutoff walk as pruneOldToolResults).
+ *
+ * Each firing is one deliberate clip event: bytes mutate inside the frozen
+ * prefix, the cache breaks ONCE, then the stable stubs hold (the original
+ * stable-stub contract). Identity-preserving when under the high water or
+ * when nothing before the cutoff is stubable.
+ */
+export function pruneToolResultsByBytes<T extends AnyMessage>(
+  messages: T[],
+  highWaterTokens: number,
+  lowWaterTokens: number,
+  keepRecentTurns = 2,
+  stubKeepHeadChars = 0,
+): T[] {
+  if (!Number.isFinite(highWaterTokens) || messages.length === 0) return messages
+
+  // Cutoff first: only CLEARABLE pressure (pre-cutoff candidates) counts
+  // toward the trigger. Tokens living inside the protected keepRecentTurns
+  // window cannot be reclaimed here, so counting them would let a couple of
+  // huge recent results trip the guard and mass-stub the ENTIRE older
+  // prefix without ever reaching the low-water target — wiping the retained
+  // context the guard exists to protect, for negligible relief.
+  const cutoffIdx = findTurnCutoffIndex(messages, keepRecentTurns)
+  if (cutoffIdx <= 0) return messages
+
+  // Pass 1: clearable pressure across pre-cutoff full stubable tool_results.
+  // `savings` is what stubbing actually frees: head-stubs retain
+  // ~stubKeepHeadChars worth of tokens, but only for string content long
+  // enough to take the head form — array content and shorter strings get
+  // the pure stub (full savings). Mirrors stubOneBlock's branch exactly.
+  type Candidate = { msgIdx: number; blockIdx: number; savings: number }
+  const headTokensEstimate =
+    stubKeepHeadChars > 0 ? Math.ceil(stubKeepHeadChars / 4) : 0
+  const candidates: Candidate[] = []
+  let clearableTokens = 0
+  for (let i = 0; i < cutoffIdx; i++) {
+    const inner = getInner(messages[i]!)
+    const role = inner.role ?? (messages[i] as AnyMessage).role
+    if (role !== 'user') continue
+    const content = inner.content
+    if (!Array.isArray(content)) continue
+    for (let j = 0; j < content.length; j++) {
+      const block = (content as AnyContentBlock[])[j]!
+      if (block?.type !== 'tool_result') continue
+      const existing = (block as unknown as ToolResultBlockParam).content
+      if (typeof existing === 'string' && isClipStubContent(existing)) continue
+      if (existing == null || existing === '') continue
+      if (Array.isArray(existing) && existing.length === 0) continue
+      if (arrayContainsImage(existing)) continue
+      if ((block as unknown as ToolResultBlockParam).is_error) continue
+      const tokens = estimateToolResultTokens(existing)
+      if (tokens < MIN_STUB_TOKENS) continue
+      const savings = headStubApplies(existing, stubKeepHeadChars)
+        ? Math.max(0, tokens - headTokensEstimate)
+        : tokens
+      clearableTokens += tokens
+      candidates.push({ msgIdx: i, blockIdx: j, savings })
+    }
+  }
+  if (clearableTokens <= highWaterTokens) return messages
+
+  // Pass 2: stub oldest-first (candidates are already in array order) until
+  // the remaining clearable total reaches the low water.
+  const toStub = new Map<number, Set<number>>()
+  let remaining = clearableTokens
+  for (const c of candidates) {
+    if (remaining <= lowWaterTokens) break
+    let set = toStub.get(c.msgIdx)
+    if (!set) {
+      set = new Set()
+      toStub.set(c.msgIdx, set)
+    }
+    set.add(c.blockIdx)
+    remaining -= c.savings
+  }
+  if (toStub.size === 0) return messages
+
+  const toolNames = indexToolUses(messages)
+  const out = messages.map((msg, idx) => {
+    const blockIdxs = toStub.get(idx)
+    if (!blockIdxs) return msg
+    const inner = getInner(msg)
+    const content = inner.content as AnyContentBlock[]
+    const newContent = content.map((block, j) =>
+      blockIdxs.has(j) ? stubOneBlock(block, toolNames, stubKeepHeadChars) : block,
+    )
+    if (msg.message) {
+      return { ...msg, message: { ...msg.message, content: newContent } } as T
+    }
+    return { ...msg, content: newContent } as T
+  })
+  return out
 }
 
 /**
@@ -638,7 +1033,13 @@ export function evictOldStubbedMessages<T extends AnyMessage>(
         allEvictable = false
         break
       }
-      // Check if the tool_result content is already a stub
+      // PURE stubs only, deliberately: head-preserving stubs carry content
+      // the model still uses (file headers, top grep hits), and this array
+      // seeds the next turn's API view in the REPL — evicting head-stub
+      // pairs would both destroy that retained context and REMOVE messages
+      // from the wire history (a prefix mutation the clip frontier cannot
+      // anticipate, breaking the cache every eviction). Display growth from
+      // retained head-stub pairs is bounded by evictToMaxSize.
       const existing = (block as { content?: unknown }).content
       if (typeof existing !== 'string' || !CLIP_STUB_PATTERN.test(existing)) {
         allEvictable = false

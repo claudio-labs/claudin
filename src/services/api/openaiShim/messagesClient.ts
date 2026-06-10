@@ -90,6 +90,19 @@ import {
 } from './providerModes.js'
 import { extractReasoningMessage } from './reasoningNormalizer.js'
 import { openaiStreamToAnthropic, OpenAIShimStream } from './streamParser.js'
+import { getSessionId } from '../../../bootstrap/state.js'
+
+// api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
+// prompt_cache_retention; everything else gets the params withheld.
+function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const host = new URL(baseUrl).host
+    return host === 'api.openai.com' || host.endsWith('.api.openai.com')
+  } catch {
+    return false
+  }
+}
 import { convertTools } from './toolConverter.js'
 import type { SecretValueSource } from './types.js'
 import { redactUrlForDiagnostics } from './urlRedaction.js'
@@ -319,6 +332,16 @@ class OpenAIShimMessages {
       messages: openaiMessages,
       stream: params.stream ?? false,
       store: false,
+      // Official OpenAI only: a session-stable prompt_cache_key improves
+      // cache routing (~8.5% hit-rate per OpenAI's own benchmarks) and 24h
+      // retention keeps the prefix warm across pauses — caching has no
+      // write surcharge and cached input is up to 90% off, so warmer is
+      // strictly cheaper. Third-party OpenAI-compatible backends (Azure,
+      // routers, local) may reject unknown params, so gate hard.
+      ...(isOfficialOpenAIUrl(request.baseUrl) && {
+        prompt_cache_key: getSessionId(),
+        prompt_cache_retention: '24h',
+      }),
     }
     // Convert max_tokens to max_completion_tokens for OpenAI API compatibility.
     // Azure OpenAI requires max_completion_tokens and does not accept max_tokens.
@@ -762,6 +785,11 @@ class OpenAIShimMessages {
             ),
             stream: params.stream ?? false,
             store: false,
+            // Same gating as the chat-completions body above.
+            ...(isOfficialOpenAIUrl(request.baseUrl) && {
+              prompt_cache_key: getSessionId(),
+              prompt_cache_retention: '24h',
+            }),
           }
 
           if (!Array.isArray(responsesBody.input) || responsesBody.input.length === 0) {

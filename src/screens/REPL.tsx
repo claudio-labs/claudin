@@ -183,7 +183,8 @@ import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
 import { resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs, pruneOldToolResults, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from '../services/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from '../services/compact/stableStubState.js';
+import { getCacheProfile } from '../services/cache/cacheProfile.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
@@ -2212,7 +2213,8 @@ export function REPL({
         // Immediately stub large tool_results for display to prevent
         // mid-turn memory spikes. Full content is preserved in
         // QueryEngine.mutableMessages (API-facing) and transcript.
-        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current as AnyMessage[])
+        const displayProfile = getCacheProfile()
+        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current as AnyMessage[], displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
         setMessages(oldMessages => [...oldMessages, displayMessage]);
       }
       // Block ticks on API errors to prevent tick → error → tick
@@ -2396,7 +2398,17 @@ export function REPL({
     // evictToMaxSize: caps total display messages to prevent unbounded growth.
     // Applied before onTurnComplete so callers receive the pruned array.
     const before = messagesRef.current as AnyMessage[]
-    const stubbed = applyStableStubs(pruneOldToolResults(before))
+    // Profile-aware: aggressive clips by age (keepTurns=1); retain keeps
+    // full results (the display array seeds the next turn's API view) and
+    // bounds RSS with the byte-guard instead.
+    const cacheProfile = getCacheProfile()
+    const stubbed = applyStableStubs(pruneToolResultsByBytes(
+      pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars),
+      cacheProfile.retainedHighWaterTokens,
+      cacheProfile.retainedLowWaterTokens,
+      undefined,
+      cacheProfile.stubKeepHeadChars,
+    ))
     const evicted = evictOldStubbedMessages(stubbed)
     const after = evictToMaxSize(evicted)
     if (after !== before) {

@@ -2411,9 +2411,48 @@ export function stripAdvisorBlocks(
 }
 
 /**
- * Strip `thinking` blocks from old assistant messages, keeping only the most
- * recent `keepRecentTurns` assistant messages that contain at least one
- * thinking block intact.
+ * Index of the last REAL user message — one carrying non-tool_result content
+ * (a typed prompt, queued command, attachment). Messages after it belong to
+ * the assistant turn currently in flight. tool_result-only user messages are
+ * loop plumbing, not turn boundaries.
+ */
+function lastRealUserMessageIndex(
+  messages: (UserMessage | AssistantMessage)[],
+): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m?.type !== 'user') continue
+    const c = m.message.content
+    if (typeof c === 'string') return i
+    // A message carrying ANY tool_result is loop plumbing even when text
+    // siblings ride along (deferred-tool "Tool loaded." notices, collapsed
+    // context summaries, system reminders) — treating those as boundaries
+    // would advance the boundary INTO the in-flight tool loop and re-expose
+    // the turn-initial signed thinking to stripping. Only a user message
+    // with zero tool_results is a real turn boundary.
+    if (
+      Array.isArray(c) &&
+      !(c as Array<{ type?: string }>).some(b => b?.type === 'tool_result')
+    ) {
+      return i
+    }
+  }
+  return -1
+}
+
+/**
+ * Strip `thinking` blocks from assistant messages outside the keep window:
+ * only the last `keepRecentTurns` ASSISTANT messages keep their thinking.
+ *
+ * The window is position-based over assistant messages, NOT count-based over
+ * thinking-bearing ones. Count-based had a pathology with sporadic thinking:
+ * when the model thinks on only a few early turns, exactly keepRecentTurns of
+ * them remain "the most recent thinking turns" forever, never strip, and sit
+ * as a pending byte-mutation near the head of the conversation — pinning the
+ * clip-frontier cache marker there for the rest of the session (see
+ * docs/tech/cache/clip-frontier-breakpoint.md). Position-based, old thinking
+ * ages out after keepRecentTurns assistant turns whether or not the model
+ * thought again since.
  *
  * `redacted_thinking` blocks are never stripped — the API requires them to be
  * echoed back verbatim and stripping them causes a 400.
@@ -2425,24 +2464,34 @@ export function stripOldThinkingBlocks(
   messages: (UserMessage | AssistantMessage)[],
   keepRecentTurns: number,
 ): (UserMessage | AssistantMessage)[] {
-  // Collect indices of assistant messages that contain at least one thinking block.
-  const thinkingTurnIndices: number[] = []
+  const assistantIndices: number[] = []
   for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]
-    if (msg === undefined || msg.type !== 'assistant') continue
-    const content = msg.message.content
+    if (messages[i]?.type === 'assistant') assistantIndices.push(i)
+  }
+  const keepSet = new Set(
+    keepRecentTurns > 0 ? assistantIndices.slice(-keepRecentTurns) : [],
+  )
+  // Never strip the assistant turn currently in flight: a tool loop appends
+  // thinking-less continuation messages that advance the positional window,
+  // and stripping the turn-initial signed thinking mid-loop risks the API's
+  // "thinking blocks cannot be modified" 400 (recovered only via the costly
+  // stripThinkingFromHistory retry) and drops reasoning_content continuity
+  // on shim providers. keepRecentTurns=0 (the retry path) bypasses this on
+  // purpose — it must strip everything.
+  const currentTurnStart =
+    keepRecentTurns > 0 ? lastRealUserMessageIndex(messages) : -1
+
+  const stripSet = new Set<number>()
+  for (const i of assistantIndices) {
+    if (keepSet.has(i)) continue
+    if (currentTurnStart !== -1 && i > currentTurnStart) continue
+    if (keepRecentTurns > 0 && currentTurnStart === -1) continue
+    const content = (messages[i] as AssistantMessage).message.content
     if (content.some((b: BetaContentBlock) => b.type === 'thinking')) {
-      thinkingTurnIndices.push(i)
+      stripSet.add(i)
     }
   }
-
-  // Nothing to strip if there are fewer turns than the keep threshold.
-  if (thinkingTurnIndices.length <= keepRecentTurns) return messages
-
-  // The oldest turns (everything except the last keepRecentTurns) get stripped.
-  const stripSet = new Set(
-    thinkingTurnIndices.slice(0, thinkingTurnIndices.length - keepRecentTurns),
-  )
+  if (stripSet.size === 0) return messages
 
   let changed = false
   const result = messages.map((msg, i) => {
@@ -2499,14 +2548,36 @@ export function stripOldNarrationBlocks(
   messages: (UserMessage | AssistantMessage)[],
   keepRecentTurns: number,
 ): (UserMessage | AssistantMessage)[] {
-  // Collect indices of assistant messages that mix a text block with a tool_use
-  // AND have no thinking blocks (stripping text from a thinking-bearing turn
-  // shifts block indices and invalidates the signed-thinking position chain).
-  const narrationTurnIndices: number[] = []
+  // Position-based keep window over ASSISTANT messages, mirroring
+  // stripOldThinkingBlocks: narration survives only in the last
+  // keepRecentTurns assistant turns. Count-based ("last N narration-bearing
+  // turns") had the same sporadic-narration pathology — old narration turns
+  // that never aged out kept a pending mutation alive near the head of the
+  // conversation and pinned the clip-frontier cache marker.
+  const assistantIndices: number[] = []
   for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]
-    if (msg === undefined || msg.type !== 'assistant') continue
-    const content = msg.message.content
+    if (messages[i]?.type === 'assistant') assistantIndices.push(i)
+  }
+  const keepSet = new Set(
+    keepRecentTurns > 0 ? assistantIndices.slice(-keepRecentTurns) : [],
+  )
+  // Never strip the in-flight turn (see stripOldThinkingBlocks): tool-only
+  // iterations advance the positional window, and stripping the model's own
+  // just-written plan text mid-task both loses working context and creates
+  // a per-iteration byte mutation near the tail (cache churn) under the
+  // default profile, where no clip frontier caps the marker.
+  const currentTurnStart =
+    keepRecentTurns > 0 ? lastRealUserMessageIndex(messages) : -1
+
+  // Narration = text mixed with tool_use AND no thinking blocks (stripping
+  // text from a thinking-bearing turn shifts block indices and invalidates
+  // the signed-thinking position chain).
+  const stripSet = new Set<number>()
+  for (const i of assistantIndices) {
+    if (keepSet.has(i)) continue
+    if (currentTurnStart !== -1 && i > currentTurnStart) continue
+    if (keepRecentTurns > 0 && currentTurnStart === -1) continue
+    const content = (messages[i] as AssistantMessage).message.content
     const hasText = content.some((b: BetaContentBlock) => b.type === 'text')
     const hasToolUse = content.some(
       (b: BetaContentBlock) => b.type === 'tool_use',
@@ -2516,20 +2587,10 @@ export function stripOldNarrationBlocks(
         b.type === 'thinking' || b.type === 'redacted_thinking',
     )
     if (hasText && hasToolUse && !hasThinking) {
-      narrationTurnIndices.push(i)
+      stripSet.add(i)
     }
   }
-
-  // Nothing to strip if there are fewer narration turns than the keep threshold.
-  if (narrationTurnIndices.length <= keepRecentTurns) return messages
-
-  // The oldest narration turns (all but the last keepRecentTurns) get stripped.
-  const stripSet = new Set(
-    narrationTurnIndices.slice(
-      0,
-      narrationTurnIndices.length - keepRecentTurns,
-    ),
-  )
+  if (stripSet.size === 0) return messages
 
   let changed = false
   const result = messages.map((msg, i) => {

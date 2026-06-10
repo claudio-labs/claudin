@@ -610,6 +610,12 @@ export async function runHeadless(
   }
 
   headlessProfilerCheckpoint('before_loadInitialMessages')
+  // NOTE deliberately NOT seeding appState.mainLoopModel here: the resolution
+  // chains in query.ts/advisor/spawnMultiAgent treat appState as the highest-
+  // priority source, and the headless set_model control handlers and CCRv2
+  // resume metadata only update the bootstrap override — a startup seed would
+  // permanently shadow those later switches. Instead, the consumers fall back
+  // to the LIVE override chain (getUserSpecifiedModelSetting/getMainLoopModel).
   const appState = getAppState()
   const {
     messages: initialMessages,
@@ -2071,6 +2077,68 @@ function runHeadlessStreaming(
           // const-capture: TS loses `while ((command = dequeue()))` narrowing
           // inside the closure.
           const cmd = command
+          // Usage refresh for assistant events (emit-now + re-emit-final):
+          // assistant SDK messages are normalized (inner message CLONED) at
+          // content_block_stop, BEFORE message_delta writes the request's
+          // final usage into the engine-side message — so the serialized
+          // event carries zero usage. We emit immediately (preserving the
+          // assistant-before-permission-request ordering and zero added
+          // latency), track the event, and once the engine-side copy in the
+          // shared mutableMessages carries final usage (stop_reason set or
+          // any token count nonzero), re-emit the SAME-id event with the
+          // refreshed usage. Same-id last-wins is the documented Claude Code
+          // stream contract; consumers dedupe by message id.
+          type RefreshableAssistant = {
+            type: 'assistant'
+            message: { id?: string; usage?: unknown; stop_reason?: unknown }
+          }
+          let pendingUsageRefresh: RefreshableAssistant | null = null
+          const maybeEmitUsageRefresh = (): void => {
+            if (!pendingUsageRefresh) return
+            const held = pendingUsageRefresh
+            const heldId = held.message?.id
+            if (!heldId) {
+              pendingUsageRefresh = null
+              return
+            }
+            const src = (
+              mutableMessages as unknown as RefreshableAssistant[]
+            ).findLast(m => m?.type === 'assistant' && m.message?.id === heldId)
+            if (!src) {
+              pendingUsageRefresh = null
+              return
+            }
+            const usage = src.message.usage as
+              | {
+                  input_tokens?: number
+                  output_tokens?: number
+                  cache_read_input_tokens?: number
+                  cache_creation_input_tokens?: number
+                }
+              | undefined
+            const usageLanded =
+              src.message.stop_reason != null ||
+              (usage &&
+                (usage.input_tokens ?? 0) +
+                  (usage.output_tokens ?? 0) +
+                  (usage.cache_read_input_tokens ?? 0) +
+                  (usage.cache_creation_input_tokens ?? 0) >
+                  0)
+            // Final usage not written yet (e.g. a stream_event arriving
+            // between content_block_stop and message_delta) → keep pending
+            // and try again on the next trigger.
+            if (!usageLanded) return
+            pendingUsageRefresh = null
+            output.enqueue({
+              ...held,
+              message: {
+                ...held.message,
+                usage: src.message.usage,
+                stop_reason: src.message.stop_reason ?? held.message.stop_reason,
+              },
+            })
+          }
+
           for await (const message of ask({
             commands: uniqBy(
               [...currentCommands, ...appState.mcp.commands],
@@ -2140,7 +2208,28 @@ function runHeadlessStreaming(
             // while blocked on permission requests.
             forwardMessagesToBridge()
 
+            // Assistant events are emitted IMMEDIATELY (ordering with
+            // permission control_requests preserved, nothing held across
+            // errors) and a same-id refresh event with final usage follows
+            // once message_delta lands — see maybeEmitUsageRefresh above.
+            if (message.type === 'assistant') {
+              // A newer assistant event supersedes any pending refresh for
+              // the PREVIOUS one — try to refresh it first (same-id events
+              // of one request: earlier blocks legitimately keep zeros, the
+              // final block gets the refresh once usage lands).
+              maybeEmitUsageRefresh()
+              output.enqueue(message)
+              pendingUsageRefresh = message as unknown as RefreshableAssistant
+              continue
+            }
+
             if (message.type === 'result') {
+              // Last chance before the turn's result: if usage still hasn't
+              // landed, DROP the pending refresh — emitting an assistant
+              // event after `result` would violate the per-turn protocol
+              // shape consumers rely on (many stop reading at result).
+              maybeEmitUsageRefresh()
+              pendingUsageRefresh = null
               // Flush pending SDK events so they appear before result on the stream.
               for (const event of drainSdkEvents()) {
                 output.enqueue(event)
@@ -2162,6 +2251,7 @@ function runHeadlessStreaming(
                 output.enqueue(message)
               }
             } else {
+              maybeEmitUsageRefresh()
               // Flush SDK events (task_started, task_progress) so background
               // agent progress is streamed in real-time, not batched until result.
               for (const event of drainSdkEvents()) {
@@ -2170,6 +2260,9 @@ function runHeadlessStreaming(
               output.enqueue(message)
             }
           }
+          // Post-loop: the final result already went out; drop rather than
+          // emit a post-result event.
+          pendingUsageRefresh = null
 
           for (const uuid of batchUuids) {
             notifyCommandLifecycle(uuid, 'completed')

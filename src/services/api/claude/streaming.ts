@@ -67,8 +67,13 @@ import {
   extractQuotaStatusFromError,
   extractQuotaStatusFromHeaders,
 } from "src/services/claudeAiLimits.js";
-import { getAPIContextManagement } from "src/services/compact/apiMicrocompact.js";
-import { applyStableStubs } from "src/services/compact/stableStubState.js";
+import { getAPIContextManagement } from "src/services/cache/anthropic/apiMicrocompact.js";
+import {
+  applyStableStubs,
+  getClipFrontierIndex,
+  isClipFrontierEnabled,
+} from "src/services/compact/stableStubState.js";
+import { getCacheProfile } from "src/services/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
@@ -537,18 +542,18 @@ export async function* queryModel(
     messagesForAPI = stripAdvisorBlocks(messagesForAPI);
   }
 
-  // Client-side thinking history redaction. Strips old thinking blocks
-  // to prevent inflated token estimation and premature auto-compact.
-  // 1P Anthropic also has server-side clear_thinking; this is additive.
-  if (getGlobalConfig().thinkingHistoryRedactionEnabled) {
+  // Client-side thinking/narration history redactions. Profile-gated: under
+  // the retain cache profile they are skipped entirely — their keep windows
+  // hold the last 2 assistant turns permanently mutable, pinning the clip
+  // frontier behind them and re-billing every big tool_result at 1.0× for 2
+  // turns before it can freeze, to save only ~50-200 tokens of text. Old
+  // thinking/narration is byte-stable when never stripped, so it freezes
+  // into the cached prefix and costs 0.1× thereafter.
+  const historyRedactionActive = getCacheProfile().historyRedactionEnabled;
+  if (historyRedactionActive && getGlobalConfig().thinkingHistoryRedactionEnabled) {
     messagesForAPI = stripOldThinkingBlocks(messagesForAPI, 2);
   }
-
-  // Client-side narration history redaction. Strips old inter-tool-call text
-  // (the model talking while it works) so it never enters the cached prefix.
-  // The text block is dropped only from assistant turns that also hold a
-  // tool_use; final-answer text (no tool_use in the turn) is kept.
-  if (getGlobalConfig().narrationHistoryRedactionEnabled) {
+  if (historyRedactionActive && getGlobalConfig().narrationHistoryRedactionEnabled) {
     messagesForAPI = stripOldNarrationBlocks(messagesForAPI, 2);
   }
 
@@ -556,10 +561,15 @@ export async function* queryModel(
   // The API rejects requests with >100 media items but returns a confusing error.
   // Rather than erroring (which is hard to recover from in Cowork/CCD), we
   // silently drop the oldest media items to stay within the limit.
+  const beforeMediaStrip = messagesForAPI;
   messagesForAPI = stripExcessMediaItems(
     messagesForAPI,
     API_MAX_MEDIA_PER_REQUEST,
   );
+  // Past the media cap, the strip rewrites the OLDEST media-bearing blocks
+  // turn by turn as new media arrives — image-bearing tool_results stop
+  // being byte-stable, and the clip frontier must treat them as mutable.
+  const mediaCapActive = messagesForAPI !== beforeMediaStrip;
 
   // Instrumentation: Track message count after normalization
   logEvent("tengu_api_after_normalize", {
@@ -931,6 +941,73 @@ export async function* queryModel(
 
     lastRequestBetas = betasParams;
 
+    // Clip-frontier breakpoint cap (CLAUDIN_CLIP_FRONTIER=1, experimental).
+    // Computed on the exact array handed to addCacheBreakpoints — including
+    // the retry-path re-strip below — so the stability judgment matches the
+    // wire bytes. The frontier marks where "everything behind is byte-stable
+    // across turns" ends; capping the marker there means the age prune /
+    // clip set / history redactions only ever rewrite the uncached tail,
+    // eliminating the per-turn prefix invalidation. See getClipFrontierIndex.
+    const messagesForRequest = retryContext.stripThinkingFromHistory
+      ? stripOldThinkingBlocks(messagesForAPI, 0)
+      : messagesForAPI;
+    let clipFrontierIndex: number | undefined;
+    if (isClipFrontierEnabled() && !options.skipCacheWrite) {
+      const cfg = getGlobalConfig();
+      const cacheProfile = getCacheProfile();
+      // When the profile disables the history redactions, thinking/narration
+      // blocks never mutate — they are stable and may be frozen.
+      const redactionsActive = cacheProfile.historyRedactionEnabled;
+      clipFrontierIndex = getClipFrontierIndex(messagesForRequest, {
+        thinkingIsMutable:
+          redactionsActive && cfg.thinkingHistoryRedactionEnabled,
+        narrationIsMutable:
+          redactionsActive && cfg.narrationHistoryRedactionEnabled,
+        // Retain profile disables the age prune → full tool_results are
+        // byte-stable and may be frozen behind the marker.
+        agePruneActive: Number.isFinite(cacheProfile.keepTurns),
+        imagesAreMutable: mediaCapActive,
+      });
+    }
+
+    // Single render shared by the wire request and the opt-in annotation
+    // dump below — rendering twice would double the O(n) walk and the
+    // tengu_api_cache_breakpoints event, and any drift between the two
+    // renders would make the diagnostic lie about the wire bytes.
+    const renderedMessages = addCacheBreakpoints(
+      messagesForRequest,
+      enablePromptCaching,
+      options.querySource,
+      options.skipCacheWrite,
+      clipFrontierIndex,
+    );
+
+    // Opt-in wire-annotation dump (CLAUDIN_DUMP_CACHE_ANNOTATIONS=1): logs
+    // where every cache_control landed and with which TTL. Diagnostic for
+    // mixed 5m/1h TTL chains (server-side resets at ~5min of session age).
+    if (process.env.CLAUDIN_DUMP_CACHE_ANNOTATIONS === '1') {
+      try {
+        type CCAnnotation = { ttl?: string; scope?: string };
+        const ann: string[] = [];
+        for (let si = 0; si < system.length; si++) {
+          const cc = (system[si] as { cache_control?: CCAnnotation }).cache_control;
+          if (cc) ann.push(`system[${si}]:ttl=${cc.ttl ?? '5m-default'}${cc.scope ? `,scope=${cc.scope}` : ''}`);
+        }
+        const toolsWithCC = (allTools as Array<{ cache_control?: CCAnnotation }>).filter(t => t.cache_control);
+        for (const t of toolsWithCC) {
+          ann.push(`tool:${(t as { name?: string }).name}:ttl=${t.cache_control?.ttl ?? '5m-default'}`);
+        }
+        renderedMessages.forEach((m, mi) => {
+          if (!Array.isArray(m.content)) return;
+          m.content.forEach((b, bi) => {
+            const cc = (b as { cache_control?: CCAnnotation }).cache_control;
+            if (cc) ann.push(`msg[${mi}].block[${bi}](${(b as { type?: string }).type}):ttl=${cc.ttl ?? '5m-default'}`);
+          });
+        });
+        process.stderr.write(`[CACHE-ANNOTATIONS] ${ann.join(' | ')}\n`);
+      } catch { /* diagnostic only */ }
+    }
+
     return {
       model: normalizeModelStringForAPI(options.model),
       // IMPORTANT: `system` must appear before `messages` in the object literal.
@@ -940,14 +1017,7 @@ export async function* queryModel(
       // history contains this literal string, the wrong occurrence is replaced,
       // producing a different system prompt on each request and breaking cache.
       system,
-      messages: addCacheBreakpoints(
-        retryContext.stripThinkingFromHistory
-          ? stripOldThinkingBlocks(messagesForAPI, 0)
-          : messagesForAPI,
-        enablePromptCaching,
-        options.querySource,
-        options.skipCacheWrite,
-      ),
+      messages: renderedMessages,
       tools: allTools,
       tool_choice: options.toolChoice,
       ...(useBetas && { betas: betasParams }),

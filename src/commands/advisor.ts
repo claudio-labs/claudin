@@ -8,6 +8,7 @@ import {
 import {
   getDefaultMainLoopModelSetting,
   normalizeModelStringForAPI,
+  getUserSpecifiedModelSetting,
   parseUserSpecifiedModel,
 } from '../utils/model/model.js'
 import { validateModel } from '../utils/model/validateModel.js'
@@ -15,8 +16,11 @@ import { updateSettingsForSource } from '../utils/settings/settings.js'
 
 const call: LocalCommandCall = async (args, context) => {
   const arg = args.trim().toLowerCase()
+  // Fall back to the LIVE override chain, not the static default: in
+  // headless mode nothing seeds appState.mainLoopModel, and the static
+  // default ignores --model/env/project/settings (Max users got Opus).
   const baseModel = parseUserSpecifiedModel(
-    context.getAppState().mainLoopModel ?? getDefaultMainLoopModelSetting(),
+    context.getAppState().mainLoopModel ?? getUserSpecifiedModelSetting() ?? getDefaultMainLoopModelSetting(),
   )
 
   if (!arg) {

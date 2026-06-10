@@ -18,7 +18,7 @@ import { getMainLoopModel } from '../../utils/model/model.js'
 import { logEvent } from '../analytics/index.js'
 import { notifyCacheDeletion } from '../api/promptCacheBreakDetection.js'
 import { roughTokenCountEstimation } from '../tokenEstimation.js'
-import { getEffectiveContextWindowSize } from './autoCompact.js'
+import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from './autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
@@ -29,6 +29,7 @@ import {
   getClippedIds,
   resetClippedIds,
 } from './stableStubState.js'
+import { getCacheProfile } from '../cache/cacheProfile.js'
 import {
   getTimeBasedMCConfig,
   type TimeBasedMCConfig,
@@ -182,10 +183,15 @@ function isMainThreadSource(querySource: QuerySource | undefined): boolean {
 const SIZE_BASED_KEEP_RECENT = 2
 
 // Fire the size-driven stable-stub trigger when estimated message tokens
-// exceed this fraction of the effective context window. autoCompact takes
-// over at 92%; staying well below that gives the stub clipping room to
-// stabilize before the hard compact lands.
-const SIZE_BASED_THRESHOLD = 0.5
+// exceed the profile's fraction of the effective context window
+// (cacheProfile.ts sizeStubThresholdFraction — aggressive 0.5, retain 0.75;
+// see the rationale there, including why retain's 0.85 was abandoned).
+// The trigger is additionally capped just below the autocompact threshold:
+// the fraction is relative while autocompact subtracts an ABSOLUTE 13k
+// buffer, so for effective windows ≤ ~52k (or CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+// < the fraction) the uncapped fraction would sit ABOVE autocompact and the
+// cheap stub-clip could never pre-empt the expensive wipe-plus-re-reads.
+const STUB_TRIGGER_PREEMPT_MARGIN_TOKENS = 5_000
 
 export async function microcompactMessages(
   messages: Message[],
@@ -209,11 +215,24 @@ export async function microcompactMessages(
   // clipped set. From that point on every turn rewrites those blocks to the
   // same deterministic stub bytes — prefix cache stays warm.
   const estimatedTokens = estimateMessageTokens(messages)
-  const effectiveWindow = getEffectiveContextWindowSize(getMainLoopModel())
-  if (
-    effectiveWindow > 0 &&
-    estimatedTokens > SIZE_BASED_THRESHOLD * effectiveWindow
-  ) {
+  const model = getMainLoopModel()
+  const effectiveWindow = getEffectiveContextWindowSize(model)
+  const fractionTrigger =
+    getCacheProfile().sizeStubThresholdFraction * effectiveWindow
+  // Cap only when meaningful: (a) with autocompact disabled there is
+  // nothing to pre-empt and capping would just clip earlier for no reason;
+  // (b) in degenerate tiny windows the autocompact threshold goes ≤ margin
+  // (or negative) and capping would disable the stub trigger entirely.
+  // Note the margin is heuristic: the trigger compares message-content
+  // estimates while autocompact anchors on real API usage that includes
+  // system+tools overhead, so the cap narrows but cannot fully close the
+  // race on small windows.
+  const preemptCap = isAutoCompactEnabled()
+    ? getAutoCompactThreshold(model) - STUB_TRIGGER_PREEMPT_MARGIN_TOKENS
+    : 0
+  const sizeTrigger =
+    preemptCap > 0 ? Math.min(fractionTrigger, preemptCap) : fractionTrigger
+  if (effectiveWindow > 0 && estimatedTokens > sizeTrigger) {
     const compactableIds = collectCompactableToolIds(messages)
     // Small-history dead zone fix: when threshold is breached but
     // compactableIds.length <= SIZE_BASED_KEEP_RECENT, we'd otherwise leave

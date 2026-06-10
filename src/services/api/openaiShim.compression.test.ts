@@ -173,7 +173,7 @@ test('clipped ids are rewritten to deterministic stub strings', async () => {
   expect(toolMessages.length).toBe(5)
   for (let i = 0; i <= 2; i++) {
     expect(toolMessages[i].content).toMatch(
-      /^\[clipped: ~\d+ tokens from Read\]$/,
+      /\[clipped: ~\d+ tokens from Read( — head preserved)?\]$/,
     )
   }
   for (let i = 3; i <= 4; i++) {

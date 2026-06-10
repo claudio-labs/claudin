@@ -44,11 +44,14 @@
 //   bun run scripts/profile/cache-ab-bench.ts --json
 
 import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { performance } from 'node:perf_hooks'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 
-// 30 files, mixed sizes (small <500B, medium 5-30KB, large 50KB+) to exercise
-// both small-pair walk-back and fat-tail short-circuit branches.
+// 50 files, mixed sizes (small <500B, medium 5-30KB, large 50KB+) to exercise
+// both small-pair walk-back and fat-tail short-circuit branches. NOTE: with
+// --revisits>0 the FULL list is used and --turns is ignored.
 const TWELVE_FILES = [
   // large (provider/runtime guts)
   'src/services/api/client.ts',
@@ -83,6 +86,43 @@ const TWELVE_FILES = [
   'src/utils/yaml.ts',
   'src/services/compact/snipCompact.ts',
   'src/utils/objectGroupBy.ts',
+  // 50-file extension (mixed sizes) for longer-session workloads
+  'src/services/api/openaiShim.ts',
+  'src/services/api/codexShim.ts',
+  'src/screens/REPL.tsx',
+  'src/services/api/claude/streaming.ts',
+  'src/services/api/claude/paramBuilders.ts',
+  'src/utils/messages/normalize.ts',
+  'src/services/compact/stableStubState.ts',
+  'src/services/compact/microCompact.ts',
+  'src/services/cache/cacheProfile.ts',
+  'src/cost-tracker.ts',
+  'src/utils/modelCost.ts',
+  'src/utils/model/modelAllowlist.ts',
+  'src/services/api/promptCacheBreakDetection.ts',
+  'src/services/compact/autoCompact.ts',
+  'src/utils/api.ts',
+  'src/utils/betas.ts',
+  'src/services/api/activeProvider.ts',
+  'src/utils/thinking.ts',
+  'src/utils/debug.ts',
+  'src/utils/json.ts',
+]
+
+// Revisit set for --revisits=N: files re-read a second time AFTER the full
+// 30-file pass. This is where context-clipping strategies pay a real price
+// (the earlier tool_result was stubbed, so the re-read re-bills the file)
+// while keep-everything strategies may still hold the bytes in context.
+// Spread across size classes: 2 large, 4 medium, 2 small.
+const REVISIT_FILES = [
+  'src/services/api/client.ts',      // large
+  'src/QueryEngine.ts',              // large
+  'src/utils/messages.ts',           // medium
+  'src/utils/config.ts',             // medium
+  'src/services/api/withRetry.ts',   // medium
+  'src/utils/model/model.ts',        // medium
+  'src/constants/keys.ts',           // small
+  'src/utils/array.ts',              // small
 ]
 
 const SENTINEL = 'BENCH_DONE'
@@ -99,6 +139,7 @@ type Args = {
   turns: number
   runs: number
   skipClaude: boolean
+  revisits: number
 }
 
 function parseArgs(argv: string[]): Args {
@@ -114,6 +155,7 @@ function parseArgs(argv: string[]): Args {
     turns: 8,
     runs: 1,
     skipClaude: false,
+    revisits: 0,
   }
   for (const x of argv) {
     if (x === '--help' || x === '-h') a.help = true
@@ -122,6 +164,7 @@ function parseArgs(argv: string[]): Args {
     else if (x === '--skip-claude') a.skipClaude = true
     else if (x.startsWith('--runs=')) a.runs = Math.max(1, Number(x.slice('--runs='.length)))
     else if (x.startsWith('--turns=')) a.turns = Number(x.slice('--turns='.length))
+    else if (x.startsWith('--revisits=')) a.revisits = Math.max(0, Math.min(REVISIT_FILES.length, Number(x.slice('--revisits='.length)) || 0))
     else if (x.startsWith('--model=')) a.model = x.slice('--model='.length)
     else if (x.startsWith('--a=')) a.a = x.slice('--a='.length)
     else if (x.startsWith('--b=')) a.b = x.slice('--b='.length)
@@ -134,14 +177,41 @@ function parseArgs(argv: string[]): Args {
 // Sequential mode forces ONE Read per turn over N files → both CLIs do ~N turns,
 // so per-turn cache_write is directly comparable (the original 3-round prompt let
 // claude batch to 5 turns and claudin to 13, which is apples-to-oranges).
-function buildSequentialPrompt(files: string[], turns: number): string {
-  const picked = files.slice(0, turns)
+//
+// With revisits > 0, the workload is the FULL 30-file list plus `revisits`
+// files repeated a second time at the end (REVISIT_FILES order). The repeats
+// are intentional: a clip-based context strategy already stubbed the first
+// read, so the second read re-bills the file; a keep-everything strategy may
+// still hold it in context — this is the fidelity case for real sessions
+// where files get revisited.
+function buildSequentialWorkload(files: string[], turns: number, revisits: number): string[] {
+  if (revisits > 0) return [...files, ...REVISIT_FILES.slice(0, revisits)]
+  return files.slice(0, turns)
+}
+
+function buildSequentialPrompt(workload: string[], revisits: number): string {
+  const firstSeen = new Set<string>()
+  const lines = workload.map((f, i) => {
+    const again = firstSeen.has(f)
+    firstSeen.add(f)
+    return `  ${i + 1}. ${f}${again ? '   (second read — Read it AGAIN in full)' : ''}`
+  })
   return [
-    `Read these ${picked.length} files using the Read tool, ONE FILE PER MESSAGE TURN.`,
-    `CRITICAL: issue exactly ONE Read tool call per turn — do NOT batch multiple Reads,`,
-    `do NOT read ahead. After each Read, print a one-line summary of that file, then`,
-    `read the next one on the next turn. Process them strictly in this order:`,
-    ...picked.map((f, i) => `  ${i + 1}. ${f}`),
+    `Read these ${workload.length} files using the Read tool, ONE FILE PER MESSAGE TURN.`,
+    `STRICT RULES — the benchmark is INVALID if you break any of them:`,
+    `- Exactly ONE Read tool call per assistant message. NEVER two or more.`,
+    `- NEVER use parallel/batched tool calls. Do not read ahead.`,
+    `- After each Read, print a one-line summary of that file, then Read the next`,
+    `  file in your NEXT message.`,
+    ...(revisits > 0
+      ? [
+          `- Some files appear TWICE in the list on purpose. When a file comes up a`,
+          `  second time you MUST call Read on it again — do NOT answer from memory`,
+          `  of the earlier read.`,
+        ]
+      : []),
+    `Process them strictly in this order:`,
+    ...lines,
     ``,
     `After the last file, end your final message with the exact token ${SENTINEL}.`,
   ].join('\n')
@@ -215,6 +285,71 @@ function extractTimeline(text: string): TimelineRow[] {
     .map(({ order: _o, ...r }) => r)
 }
 
+function extractSessionId(text: string): string | null {
+  for (const line of text.split('\n')) {
+    const s = line.trim()
+    if (!s.startsWith('{')) continue
+    let v: Record<string, unknown>
+    try { v = JSON.parse(s) as Record<string, unknown> } catch { continue }
+    if (v.type === 'system' && v.subtype === 'init' && typeof v.session_id === 'string') {
+      return v.session_id
+    }
+  }
+  return null
+}
+
+// Claudin's stream-json emits assistant events at content_block_stop, BEFORE
+// message_delta delivers the request's final usage — the final values are
+// written back into the in-memory message by mutation (streaming.ts), so the
+// already-serialized stdout line carries zeros. The session transcript is
+// flushed lazily AFTER that mutation and therefore has the real per-request
+// usage. When the stream timeline is all-zero, fall back to parsing the
+// transcript (same dedupe-by-message-id, last-wins rule).
+function transcriptTimeline(sessionId: string): TimelineRow[] {
+  const configDir = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
+  const projectsDir = join(configDir, 'projects')
+  if (!existsSync(projectsDir)) return []
+  let file: string | null = null
+  for (const dir of readdirSync(projectsDir)) {
+    const candidate = join(projectsDir, dir, `${sessionId}.jsonl`)
+    if (existsSync(candidate)) { file = candidate; break }
+  }
+  if (!file) return []
+  let text: string
+  try { text = readFileSync(file, 'utf8') } catch { return [] }
+  const lastUsageByMsgId = new Map<string, TimelineRow & { order: number }>()
+  let order = 0
+  for (const line of text.split('\n')) {
+    const s = line.trim()
+    if (!s.startsWith('{')) continue
+    let v: Record<string, unknown>
+    try { v = JSON.parse(s) as Record<string, unknown> } catch { continue }
+    if (v.type !== 'assistant') continue
+    const msg = (v.message ?? {}) as Record<string, unknown>
+    const u = msg.usage as Record<string, unknown> | undefined
+    if (!u) continue
+    const id = String(msg.id ?? `__anon_${order}`)
+    const row: TimelineRow & { order: number } = {
+      in: Number(u.input_tokens ?? 0),
+      out: Number(u.output_tokens ?? 0),
+      cR: Number(u.cache_read_input_tokens ?? 0),
+      cW: Number(u.cache_creation_input_tokens ?? 0),
+      role: 'assistant',
+      order: lastUsageByMsgId.get(id)?.order ?? order++,
+    }
+    // Last-wins: only the last yielded message object per request id gets the
+    // final usage mutated in; earlier same-id blocks keep zeros. Prefer a row
+    // with any nonzero counters over an all-zero one.
+    const prev = lastUsageByMsgId.get(id)
+    const rowHasData = row.in + row.out + row.cR + row.cW > 0
+    const prevHasData = prev ? prev.in + prev.out + prev.cR + prev.cW > 0 : false
+    if (!prev || rowHasData || !prevHasData) lastUsageByMsgId.set(id, row)
+  }
+  return [...lastUsageByMsgId.values()]
+    .sort((a, b) => a.order - b.order)
+    .map(({ order: _o, ...r }) => r)
+}
+
 // Totals: sum the deduped per-message timeline, then pull cost / num_turns from
 // the `result` event (those are emitted exactly once per run).
 function extractScalars(text: string): { costUsd: number | null; numTurns: number | null } {
@@ -268,7 +403,19 @@ function run(bin: string, model: string, prompt: string, timeoutMs: number): Usa
   const wallMs = performance.now() - t0
   const stdout = res.stdout ?? ''
   const stderrText = res.stderr ?? ''
-  const timeline = extractTimeline(stdout)
+  let timeline = extractTimeline(stdout)
+  // Stream usage all-zero (claudin emits assistant events before the final
+  // usage arrives) → recover the per-request rows from the session transcript.
+  const streamHasData = timeline.some(r => r.in + r.out + r.cR + r.cW > 0)
+  if (!streamHasData) {
+    const sid = extractSessionId(stdout)
+    if (sid) {
+      const fromTranscript = transcriptTimeline(sid)
+      if (fromTranscript.some(r => r.in + r.out + r.cR + r.cW > 0)) {
+        timeline = fromTranscript
+      }
+    }
+  }
   const sums = summarizeTimeline(timeline)
   const scalars = extractScalars(stdout)
   return {
@@ -357,10 +504,11 @@ async function main() {
     return
   }
 
+  const workload = buildSequentialWorkload(TWELVE_FILES, args.turns, args.revisits)
   const prompt = args.sequential
-    ? buildSequentialPrompt(TWELVE_FILES, args.turns)
+    ? buildSequentialPrompt(workload, args.revisits)
     : buildPrompt(TWELVE_FILES)
-  if (args.sequential) console.log(`(sequential mode: 1 Read/turn, targeting ~${args.turns} turns for a fair per-turn cache comparison)`)
+  if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
   const sides: Array<{ label: string; bin: string }> = []
   const wantA = !args.skipClaude && (args.only === null || args.only === 'a' || args.only === 'claude')
   const wantB = args.only === null || args.only === 'b' || args.only === 'claudin'

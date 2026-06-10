@@ -199,6 +199,32 @@ describe('stripOldThinkingBlocks', () => {
     expect(result[2]).toBe(user2)
   })
 
+  test('sporadic thinking: old thinking turns age out even when only N thinking turns exist', () => {
+    // Frontier-pinning regression (docs/tech/cache/clip-frontier-breakpoint.md):
+    // the model thought on early turns only, then went tool_use-only. With the
+    // old count-based window ("keep last 2 thinking-BEARING turns") the two
+    // early thinking turns survived forever. Position-based: they age out as
+    // soon as they're no longer among the last 2 ASSISTANT messages.
+    const msgs = [
+      userMsg(),
+      assistantWithThinking('early1'),
+      userMsg(),
+      assistantWithThinking('early2'),
+      userMsg(),
+      assistantTextOnly('later1'),
+      userMsg(),
+      assistantTextOnly('later2'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+    for (const i of [1, 3]) {
+      const msg = result[i] as ReturnType<typeof assistantWithThinking>
+      expect(msg.message.content.some((b: any) => b.type === 'thinking')).toBe(false)
+    }
+    // The last 2 assistant messages (text-only) are untouched references
+    expect(result[5]).toBe(msgs[5])
+    expect(result[7]).toBe(msgs[7])
+  })
+
   test('passthrough when fewer thinking turns than keepRecentTurns', () => {
     // Only 1 thinking turn, keepRecentTurns=2 → nothing stripped
     const msgs = [
@@ -469,5 +495,133 @@ describe('normalizeAttachmentForAPI — relevant_memories collapse', () => {
     const a = normalizeAttachmentForAPI({ type: 'relevant_memories', memories })
     const b = normalizeAttachmentForAPI({ type: 'relevant_memories', memories })
     expect(a[0]!.message.content).toBe(b[0]!.message.content)
+  })
+})
+
+describe('in-flight turn protection (review fix)', () => {
+  function assistantToolOnly(id: string) {
+    return createAssistantMessage({
+      content: [
+        { type: 'tool_use', id, name: 'Read', input: {} } as any,
+      ],
+    })
+  }
+  function userToolResult(id: string) {
+    return createUserMessage({
+      content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' } as any],
+    })
+  }
+
+  test('thinking of the in-flight tool loop is never stripped, even past the positional window', () => {
+    const turnInitial = createAssistantMessage({
+      content: [
+        { type: 'thinking', thinking: 'plan', signature: 'sig' } as any,
+        { type: 'tool_use', id: 't1', name: 'Read', input: {} } as any,
+      ],
+    })
+    const msgs = [
+      userMsg('do the task'),
+      turnInitial,
+      userToolResult('t1'),
+      assistantToolOnly('t2'),
+      userToolResult('t2'),
+      assistantToolOnly('t3'),
+      userToolResult('t3'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+    const first = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(first.message.content.some((b: any) => b.type === 'thinking')).toBe(true)
+  })
+
+  test('narration of the in-flight tool loop is never stripped', () => {
+    const planMsg = createAssistantMessage({
+      content: [
+        { type: 'text', text: 'my plan: read 3 files' } as any,
+        { type: 'tool_use', id: 'n1', name: 'Read', input: {} } as any,
+      ],
+    })
+    const msgs = [
+      userMsg('do the task'),
+      planMsg,
+      userToolResult('n1'),
+      assistantToolOnly('n2'),
+      userToolResult('n2'),
+      assistantToolOnly('n3'),
+      userToolResult('n3'),
+    ]
+    const result = stripOldNarrationBlocks(msgs, 2)
+    const first = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(first.message.content.some((b: any) => b.type === 'text')).toBe(true)
+  })
+
+  test('previous-turn thinking still ages out once a new real user message arrives', () => {
+    const oldThinking = createAssistantMessage({
+      content: [
+        { type: 'thinking', thinking: 'old', signature: 'sig' } as any,
+        { type: 'text', text: 'answer 1' } as any,
+      ],
+    })
+    const msgs = [
+      userMsg('first'),
+      oldThinking,
+      userMsg('second'),
+      assistantTextOnly('a2'),
+      userMsg('third'),
+      assistantTextOnly('a3'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+    const first = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(first.message.content.some((b: any) => b.type === 'thinking')).toBe(false)
+  })
+
+  test('keepRecentTurns=0 (retry path) still strips everything including the current turn', () => {
+    const turnInitial = createAssistantMessage({
+      content: [
+        { type: 'thinking', thinking: 'plan', signature: 'sig' } as any,
+        { type: 'text', text: 'working' } as any,
+      ],
+    })
+    const msgs = [userMsg('task'), turnInitial]
+    const result = stripOldThinkingBlocks(msgs, 0)
+    const first = result[1] as ReturnType<typeof createAssistantMessage>
+    expect(first.message.content.some((b: any) => b.type === 'thinking')).toBe(false)
+  })
+})
+
+describe('turn boundary robustness (second review)', () => {
+  test('tool_result message with plumbing text siblings is NOT a turn boundary', () => {
+    const turnInitial = createAssistantMessage({
+      content: [
+        { type: 'thinking', thinking: 'plan', signature: 'sig' } as any,
+        { type: 'tool_use', id: 'p1', name: 'Read', input: {} } as any,
+      ],
+    })
+    const plumbingResult = createUserMessage({
+      content: [
+        { type: 'tool_result', tool_use_id: 'p1', content: 'ok' } as any,
+        { type: 'text', text: '<system-reminder>Tool loaded.</system-reminder>' } as any,
+      ],
+    })
+    const toolOnly = (id: string) =>
+      createAssistantMessage({
+        content: [{ type: 'tool_use', id, name: 'Read', input: {} } as any],
+      })
+    const tr = (id: string) =>
+      createUserMessage({
+        content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' } as any],
+      })
+    const msgs = [
+      userMsg('task'),
+      turnInitial,
+      plumbingResult,
+      toolOnly('p2'),
+      tr('p2'),
+      toolOnly('p3'),
+      tr('p3'),
+    ]
+    const result = stripOldThinkingBlocks(msgs, 2)
+    const first = result[1] as ReturnType<typeof createAssistantMessage>
+    // The plumbing text sibling must not advance the boundary into the loop
+    expect(first.message.content.some((b: any) => b.type === 'thinking')).toBe(true)
   })
 })

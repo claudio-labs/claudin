@@ -23,7 +23,7 @@ import { getCwd } from '../../utils/cwd.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { errorMessage } from '../../utils/errors.js'
 import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
-import { parseUserSpecifiedModel } from '../../utils/model/model.js'
+import { parseUserSpecifiedModel , getUserSpecifiedModelSetting } from '../../utils/model/model.js'
 import type { PermissionMode } from '../../utils/permissions/PermissionMode.js'
 import { isTmuxAvailable } from '../../utils/swarm/backends/detection.js'
 import {
@@ -374,7 +374,7 @@ async function handleSpawnSplitPane(
   const { name, prompt, agent_type, cwd, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel)
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')
@@ -609,7 +609,7 @@ async function handleSpawnSeparateWindow(
   const { name, prompt, agent_type, cwd, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel)
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')
@@ -899,7 +899,7 @@ async function handleSpawnInProcess(
   const { name, prompt, agent_type, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel)
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')

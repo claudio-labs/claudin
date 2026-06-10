@@ -7,9 +7,11 @@ import {
   buildClipStub,
   evictOldStubbedMessages,
   evictToMaxSize,
+  getClipFrontierIndex,
   getClippedIds,
   pruneContentReplacementState,
   pruneOldToolResults,
+  pruneToolResultsByBytes,
   resetClippedIds,
   stubToolResultForDisplay,
 } from './stableStubState.js'
@@ -83,7 +85,9 @@ test('applyStableStubs is idempotent for clipped ids (byte-stable)', () => {
   const block1 = (once[1].content as Block[])[0] as { content: string }
   const block2 = (twice[1].content as Block[])[0] as { content: string }
   expect(block1.content).toBe(block2.content)
-  expect(block1.content).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
+  // Default profile emits the head-preserving form for long string content;
+  // both forms end with the deterministic marker line.
+  expect(block1.content).toMatch(/\[clipped: ~\d+ tokens from Read( — head preserved)?\]$/)
 })
 
 test('addClippedIds grows monotonically and dedupes', () => {
@@ -442,7 +446,7 @@ test('5.7 substitution: original block content is no longer reachable from the n
   // And the new content is the deterministic stub.
   for (const c of survivingContents) {
     expect(typeof c).toBe('string')
-    expect(c as string).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
+    expect(c as string).toMatch(/\[clipped: ~\d+ tokens from Read( — head preserved)?\]$/)
   }
 })
 
@@ -1339,5 +1343,621 @@ describe('pruneContentReplacementState', () => {
     expect(state.seenIds.has('c')).toBe(false)
     expect(state.replacements.has('a')).toBe(true)
     expect(state.replacements.has('b')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Clip frontier (design doc: Clip-Frontier Cache Breakpoint, Phase 1)
+// ---------------------------------------------------------------------------
+
+function bigText(tokens: number): string {
+  // roughTokenCountEstimation ≈ chars/4
+  return 'x'.repeat(tokens * 4)
+}
+
+function userText(text: string): Msg {
+  return { role: 'user', content: [{ type: 'text', text }] }
+}
+
+function assistantText(text: string): Msg {
+  return { role: 'assistant', content: [{ type: 'text', text }] }
+}
+
+describe('getClipFrontierIndex', () => {
+  test('text-only conversation → entire array is stable (length-1)', () => {
+    const msgs: Msg[] = [
+      userText('hello'),
+      assistantText('hi'),
+      userText('more'),
+      assistantText('done'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  test('empty array → -1 (no stable prefix to mark)', () => {
+    expect(getClipFrontierIndex([])).toBe(-1)
+  })
+
+  test('full tool_result ≥ MIN_STUB_TOKENS is mutable → frontier stops before it', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', bigText(500)), // age prune will stub this
+      assistantText('summary'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(1)
+  })
+
+  test('already-stubbed results are stable → frontier passes them', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', buildClipStub('Bash', 5000)),
+      assistantToolUse('b', 'Grep'),
+      userToolResult('b', bigText(500)), // newest full result — mutable
+      assistantText('working...'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(3)
+  })
+
+  test('small (< MIN_STUB_TOKENS) results are stable', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', 'short output'), // ~3 tokens, prune skips it
+      assistantText('ok'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  test('is_error results are stable (age prune skips them)', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', bigText(500), { is_error: true }),
+      assistantText('ok'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  test('image-bearing results outside clippedIds are stable', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(8000) } },
+      ]),
+      assistantText('ok'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  test('image-bearing result with id in clippedIds is mutable (deferred clip)', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(8000) } },
+      ]),
+      assistantText('ok'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(0)
+  })
+
+  test('id in clippedIds with non-stub text is mutable even when small or error', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', 'tiny', { is_error: true }),
+      assistantText('ok'),
+    ]
+    // applyStableStubs honors clippedIds regardless of size/is_error
+    expect(getClipFrontierIndex(msgs)).toBe(0)
+  })
+
+  test('empty content is stable (stubOneBlock leaves it unchanged)', () => {
+    addClippedIds(['a', 'b'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', ''),
+      assistantToolUse('b', 'Grep'),
+      userToolResult('b', []),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+  })
+
+  test('first message mutable → -1', () => {
+    const msgs: Msg[] = [userToolResult('a', bigText(500))]
+    expect(getClipFrontierIndex(msgs)).toBe(-1)
+  })
+
+  test('thinking blocks: mutable only when thinkingIsMutable is set', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'hmm', signature: 'sig' },
+          { type: 'text', text: 'answer' },
+        ],
+      },
+      userText('next'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+    expect(getClipFrontierIndex(msgs, { thinkingIsMutable: true })).toBe(0)
+  })
+
+  test('redacted_thinking is never mutable (API requires verbatim echo)', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'redacted_thinking', data: 'opaque' },
+          { type: 'text', text: 'answer' },
+        ],
+      },
+    ]
+    expect(getClipFrontierIndex(msgs, { thinkingIsMutable: true })).toBe(
+      msgs.length - 1,
+    )
+  })
+
+  test('narration (text + tool_use, no thinking): mutable only when narrationIsMutable', () => {
+    const narrationTurn: Msg = {
+      role: 'assistant',
+      content: [
+        { type: 'text', text: 'let me check that file' },
+        { type: 'tool_use', id: 'a', name: 'Read', input: {} },
+      ],
+    }
+    const msgs: Msg[] = [userText('prompt'), narrationTurn, userToolResult('a', 'ok')]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+    expect(getClipFrontierIndex(msgs, { narrationIsMutable: true })).toBe(0)
+  })
+
+  test('narration rule skips thinking-bearing turns (mirrors stripOldNarrationBlocks)', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'hmm', signature: 'sig' },
+          { type: 'text', text: 'narrating' },
+          { type: 'tool_use', id: 'a', name: 'Read', input: {} },
+        ],
+      },
+      userToolResult('a', 'ok'),
+    ]
+    // narration-only: the thinking-bearing turn is never text-stripped
+    expect(getClipFrontierIndex(msgs, { narrationIsMutable: true })).toBe(
+      msgs.length - 1,
+    )
+    // …but the thinking redaction itself still makes it mutable
+    expect(
+      getClipFrontierIndex(msgs, {
+        narrationIsMutable: true,
+        thinkingIsMutable: true,
+      }),
+    ).toBe(0)
+  })
+
+  test('already-stripped narration turn (tool_use only) is stable', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'), // post-strip shape: no text block
+      userToolResult('a', buildClipStub('Read', 3000)),
+    ]
+    expect(getClipFrontierIndex(msgs, { narrationIsMutable: true })).toBe(
+      msgs.length - 1,
+    )
+  })
+
+  test('works with .message-wrapped messages (UserMessage/AssistantMessage shape)', () => {
+    const msgs: Msg[] = [
+      { message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } },
+      {
+        message: {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'a', content: bigText(500) }],
+        },
+      },
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Prefix byte-stability invariant (design doc Phase 2)
+// ---------------------------------------------------------------------------
+
+describe('clip-frontier prefix invariant', () => {
+  test('pruneOldToolResults is idempotent (second pass returns same ref)', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', bigText(500)),
+      userText('next turn'),
+      assistantToolUse('b', 'Grep'),
+      userToolResult('b', bigText(400)),
+    ]
+    const once = pruneOldToolResults(msgs, 1)
+    expect(once).not.toBe(msgs)
+    const twice = pruneOldToolResults(once, 1)
+    expect(twice).toBe(once)
+  })
+
+  test('applyStableStubs after prune is identity when all clipped ids are already stubs', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', bigText(500)),
+      userText('next'),
+    ]
+    const stubbed = applyStableStubs(msgs)
+    expect(stubbed).not.toBe(msgs)
+    expect(applyStableStubs(stubbed)).toBe(stubbed)
+  })
+
+  test('multi-turn simulation: bytes behind the frontier never change', () => {
+    // Simulates the per-turn loop: each turn appends a tool_use/tool_result
+    // pair, the age prune runs (QueryEngine.ts pruneOldToolResults(…, 1)),
+    // and the renderer computes the frontier. The invariant: the serialized
+    // prefix [0..frontier] from turn N is a byte-prefix of turn N+1's array.
+    let msgs: Msg[] = [userText('initial prompt')]
+    let prevFrontier = -1
+    let prevPrefixBytes = ''
+
+    for (let turn = 0; turn < 8; turn++) {
+      const id = `toolu_${turn}`
+      msgs = [
+        ...msgs,
+        assistantToolUse(id, 'Bash'),
+        userToolResult(id, bigText(300 + turn)),
+      ]
+      msgs = pruneOldToolResults(msgs, 1)
+      msgs = applyStableStubs(msgs)
+
+      const frontier = getClipFrontierIndex(msgs)
+
+      // Frontier never regresses
+      expect(frontier).toBeGreaterThanOrEqual(prevFrontier)
+
+      // Previous frozen prefix is byte-identical in the current array
+      if (prevFrontier >= 0) {
+        const currentPrefix = JSON.stringify(msgs.slice(0, prevFrontier + 1))
+        expect(currentPrefix).toBe(prevPrefixBytes)
+      }
+
+      prevFrontier = frontier
+      prevPrefixBytes = JSON.stringify(msgs.slice(0, frontier + 1))
+    }
+  })
+
+  test('multi-turn simulation with explicit clips (clippedIds) keeps the invariant', () => {
+    let msgs: Msg[] = [userText('initial prompt')]
+    let prevFrontier = -1
+    let prevPrefixBytes = ''
+
+    for (let turn = 0; turn < 6; turn++) {
+      const id = `toolu_${turn}`
+      msgs = [
+        ...msgs,
+        assistantToolUse(id, 'Read'),
+        userToolResult(id, bigText(400)),
+      ]
+      // Every other turn, microcompact-style explicit clip of the previous id
+      if (turn > 0 && turn % 2 === 0) addClippedIds([`toolu_${turn - 1}`])
+
+      msgs = pruneOldToolResults(msgs, 1)
+      msgs = applyStableStubs(msgs)
+
+      const frontier = getClipFrontierIndex(msgs)
+      expect(frontier).toBeGreaterThanOrEqual(prevFrontier)
+      if (prevFrontier >= 0) {
+        expect(JSON.stringify(msgs.slice(0, prevFrontier + 1))).toBe(
+          prevPrefixBytes,
+        )
+      }
+      prevFrontier = frontier
+      prevPrefixBytes = JSON.stringify(msgs.slice(0, frontier + 1))
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// RSS byte-guard prune (cache-profile 'retain', design doc Phase 5)
+// ---------------------------------------------------------------------------
+
+describe('pruneToolResultsByBytes', () => {
+  function conversation(fileTokens: number[], tailTurns = 2): Msg[] {
+    // Builds: prompt, then per file: asst(tool_use) + user(tool_result full),
+    // then `tailTurns` extra small user turns so the cutoff walk has room.
+    const msgs: Msg[] = [userText('prompt')]
+    fileTokens.forEach((tok, i) => {
+      msgs.push(assistantToolUse(`t${i}`, 'Read'))
+      msgs.push(userToolResult(`t${i}`, bigText(tok)))
+    })
+    for (let i = 0; i < tailTurns; i++) msgs.push(userText(`tail ${i}`))
+    return msgs
+  }
+
+  test('identity under the high water', () => {
+    const msgs = conversation([500, 500, 500])
+    expect(pruneToolResultsByBytes(msgs, 10_000, 5_000)).toBe(msgs)
+  })
+
+  test('identity when guard disabled (Infinity)', () => {
+    const msgs = conversation([5_000, 5_000])
+    expect(pruneToolResultsByBytes(msgs, Infinity, Infinity)).toBe(msgs)
+  })
+
+  test('over the high water → stubs oldest-first down to the low water', () => {
+    // Each block estimates to ~1143 tok (4000 chars / 3.5), total ~4572.
+    const msgs = conversation([1_000, 1_000, 1_000, 1_000])
+    const out = pruneToolResultsByBytes(msgs, 3_000, 2_400)
+    expect(out).not.toBe(msgs)
+    // Oldest results stubbed until remaining ≤ 2000: stub t0, t1 (4k→2k)
+    const tr = (i: number) => ((out[2 + i * 2].content as Block[])[0] as { content: string }).content
+    expect(tr(0)).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
+    expect(tr(1)).toMatch(/^\[clipped: ~\d+ tokens from Read\]$/)
+    expect(tr(2)).not.toMatch(/^\[clipped:/)
+    expect(tr(3)).not.toMatch(/^\[clipped:/)
+  })
+
+  test('never touches the last keepRecentTurns user turns even under pressure', () => {
+    // Two huge results, no tail turns: the results themselves are the last
+    // user messages — both inside the keep window of 2 → identity.
+    const msgs = conversation([50_000, 50_000], 0)
+    expect(pruneToolResultsByBytes(msgs, 1_000, 500, 2)).toBe(msgs)
+  })
+
+  test('skips errors, images, small results and existing stubs in the pressure count', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('err', 'Bash'),
+      userToolResult('err', bigText(5_000), { is_error: true }),
+      assistantToolUse('img', 'Read'),
+      userToolResult('img', [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(9000) } },
+      ]),
+      assistantToolUse('small', 'Bash'),
+      userToolResult('small', 'tiny'),
+      assistantToolUse('stub', 'Grep'),
+      userToolResult('stub', buildClipStub('Grep', 9000)),
+      userText('tail 1'),
+      userText('tail 2'),
+    ]
+    // None of these count toward pressure → identity even with tiny high water
+    expect(pruneToolResultsByBytes(msgs, 100, 50)).toBe(msgs)
+  })
+
+  test('idempotent: second pass over the pruned output is identity', () => {
+    const msgs = conversation([2_000, 2_000, 2_000])
+    const once = pruneToolResultsByBytes(msgs, 3_000, 1_500)
+    expect(once).not.toBe(msgs)
+    expect(pruneToolResultsByBytes(once, 3_000, 1_500)).toBe(once)
+  })
+})
+
+describe('getClipFrontierIndex — agePruneActive (retain profile)', () => {
+  test('full tool_results are stable when the age prune is off', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', bigText(5_000)),
+      assistantToolUse('b', 'Read'),
+      userToolResult('b', bigText(5_000)),
+    ]
+    // Aggressive (default): first full result is mutable → frontier stops early
+    expect(getClipFrontierIndex(msgs)).toBe(1)
+    // Retain: nothing ages → whole array is byte-stable
+    expect(getClipFrontierIndex(msgs, { agePruneActive: false })).toBe(msgs.length - 1)
+  })
+
+  test('clippedIds-pending blocks stay mutable even with age prune off', () => {
+    addClippedIds(['a'])
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', bigText(5_000)),
+      assistantText('done'),
+    ]
+    expect(getClipFrontierIndex(msgs, { agePruneActive: false })).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Head-preserving stubs (openclaude mid-tier idea, single-mutation form)
+// ---------------------------------------------------------------------------
+
+describe('head-preserving stubs', () => {
+  const HEAD = 1000
+
+  test('age prune with stubKeepHeadChars keeps the head + marker, single mutation', () => {
+    const content = 'LINE1 header info\n' + 'x'.repeat(20_000)
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', content),
+      userText('next turn'),
+    ]
+    const once = pruneOldToolResults(msgs, 1, HEAD)
+    const block = (once[1].content as Block[])[0] as { content: string }
+    expect(block.content.startsWith('LINE1 header info\n')).toBe(true)
+    expect(block.content).toMatch(/\n\[clipped: ~\d+ tokens from Read — head preserved\]$/)
+    expect(block.content.length).toBeLessThan(HEAD + 100)
+    // Idempotent: second pass returns the same reference
+    expect(pruneOldToolResults(once, 1, HEAD)).toBe(once)
+  })
+
+  test('byte-stable: two independent stub passes produce identical bytes', () => {
+    const content = 'y'.repeat(30_000)
+    const build = () =>
+      pruneOldToolResults(
+        [
+          assistantToolUse('a', 'Bash'),
+          userToolResult('a', content),
+          userText('next'),
+        ] as Msg[],
+        1,
+        HEAD,
+      )
+    const b1 = ((build()[1].content as Block[])[0] as { content: string }).content
+    const b2 = ((build()[1].content as Block[])[0] as { content: string }).content
+    expect(b1).toBe(b2)
+  })
+
+  test('content barely above the floor gets the pure stub (no pointless head)', () => {
+    // > MIN_STUB_TOKENS (100 tok ≈ 400+ chars) but < headChars + 500 margin
+    const content = 'z'.repeat(1200)
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', content),
+      userText('next'),
+    ]
+    const out = pruneOldToolResults(msgs, 1, HEAD)
+    const block = (out[1].content as Block[])[0] as { content: string }
+    expect(block.content).toMatch(/^\[clipped: ~\d+ tokens from Bash\]$/)
+  })
+
+  test('head-stub is stable for the clip frontier', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', 'head text\n' + 'x'.repeat(9000)),
+      userText('next'),
+    ]
+    const stubbed = pruneOldToolResults(msgs, 1, HEAD)
+    expect(getClipFrontierIndex(stubbed)).toBe(stubbed.length - 1)
+  })
+
+  test('display stub keeps the head when stubKeepHeadChars is set', () => {
+    const big = 'HEADER\n' + 'q'.repeat(40_000)
+    const msgs: Msg[] = [assistantToolUse('a', 'Read')]
+    const message = userToolResult('a', big)
+    const out = stubToolResultForDisplay(message, msgs, 2000, HEAD)
+    const block = (out.content as Block[])[0] as { content: string }
+    expect(block.content.startsWith('HEADER\n')).toBe(true)
+    expect(block.content).toMatch(/head preserved\]$/)
+    // Re-applying is a no-op (already-stubbed detection covers the head form)
+    expect(stubToolResultForDisplay(out, msgs, 2000, HEAD)).toBe(out)
+  })
+
+  test('byte-guard applies heads and still drains below the low water', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', 'A'.repeat(40_000)),
+      assistantToolUse('b', 'Read'),
+      userToolResult('b', 'B'.repeat(40_000)),
+      userText('tail 1'),
+      userText('tail 2'),
+    ]
+    const out = pruneToolResultsByBytes(msgs, 5_000, 1_000, 2, HEAD)
+    expect(out).not.toBe(msgs)
+    const tr1 = (out[2].content as Block[])[0] as { content: string }
+    expect(tr1.content).toMatch(/head preserved\]$/)
+    expect(tr1.content.startsWith('AAAA')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Review fixes regression tests (code-review findings)
+// ---------------------------------------------------------------------------
+
+describe('review fixes', () => {
+  test('explicit clip and age prune produce IDENTICAL bytes for the same content (no wire flip)', () => {
+    const content = 'HEAD line\n' + 'x'.repeat(20_000)
+    // Path 1: explicit clip via clippedIds (applyStableStubs)
+    addClippedIds(['a'])
+    const viaClip = applyStableStubs([
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', content),
+    ] as Msg[])
+    const clipBytes = ((viaClip[1].content as Block[])[0] as { content: string }).content
+    resetClippedIds()
+    // Path 2: age prune with the SAME profile head setting
+    const { getCacheProfile } = require('../cache/cacheProfile.js')
+    const viaPrune = pruneOldToolResults(
+      [
+        assistantToolUse('a', 'Read'),
+        userToolResult('a', content),
+        userText('next'),
+      ] as Msg[],
+      1,
+      getCacheProfile().stubKeepHeadChars,
+    )
+    const pruneBytes = ((viaPrune[1].content as Block[])[0] as { content: string }).content
+    expect(clipBytes).toBe(pruneBytes)
+  })
+
+  test('huge content merely ENDING with a head-stub marker line is NOT treated as a stub', () => {
+    const fakeTail = 'y'.repeat(100_000) + '\n[clipped: ~123 tokens from Bash — head preserved]'
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Bash'),
+      userToolResult('a', fakeTail),
+      userText('next'),
+    ]
+    const out = pruneOldToolResults(msgs, 1, 0)
+    const block = (out[1].content as Block[])[0] as { content: string }
+    // It must have been re-stubbed (prunable), not exempted
+    expect(block.content.length).toBeLessThan(1000)
+  })
+
+  test('byte-guard trigger counts only CLEARABLE (pre-cutoff) tokens', () => {
+    // Huge results inside the protected window must NOT trip the guard
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('old', 'Read'),
+      userToolResult('old', bigText(1_000)), // small clearable
+      assistantToolUse('big1', 'Read'),
+      userToolResult('big1', bigText(100_000)), // protected (last 2 user turns)
+      assistantToolUse('big2', 'Read'),
+      userToolResult('big2', bigText(100_000)), // protected
+    ]
+    expect(pruneToolResultsByBytes(msgs, 50_000, 25_000, 2)).toBe(msgs)
+  })
+
+  test('pruneOldToolResults short-circuits on keepTurns=Infinity', () => {
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', bigText(5_000)),
+      userText('next'),
+    ]
+    expect(pruneOldToolResults(msgs, Infinity)).toBe(msgs)
+  })
+
+  test('frontier treats image results as mutable when imagesAreMutable (media cap active)', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x'.repeat(8000) } },
+      ]),
+      userText('next'),
+    ]
+    expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
+    expect(getClipFrontierIndex(msgs, { imagesAreMutable: true })).toBe(1)
+  })
+
+  test('evictOldStubbedMessages deliberately KEEPS pairs holding HEAD-form stubs', () => {
+    // Head-stubs carry content the model still uses, and eviction REMOVES
+    // messages from the array that seeds the next turn's API view — a
+    // prefix mutation the clip frontier cannot anticipate. Pure stubs only.
+    const headStub = 'some head\n[clipped: ~5000 tokens from Read — head preserved]'
+    const msgs: Msg[] = [
+      assistantToolUse('a', 'Read'),
+      userToolResult('a', headStub),
+      userText('turn 1'),
+      { role: 'assistant', content: [{ type: 'text', text: 'r1' }] },
+      userText('turn 2'),
+      { role: 'assistant', content: [{ type: 'text', text: 'r2' }] },
+    ]
+    expect(evictOldStubbedMessages(msgs, 2)).toBe(msgs)
+  })
+
+  test('CLAUDIN_STUB_HEAD_CHARS env override is clamped below the plausibility bound', () => {
+    const { getCacheProfile, _resetCacheProfileForTesting } = require('../cache/cacheProfile.js')
+    process.env.CLAUDIN_STUB_HEAD_CHARS = '40000'
+    _resetCacheProfileForTesting()
+    expect(getCacheProfile().stubKeepHeadChars).toBeLessThanOrEqual(24_000)
+    delete process.env.CLAUDIN_STUB_HEAD_CHARS
+    _resetCacheProfileForTesting()
   })
 })

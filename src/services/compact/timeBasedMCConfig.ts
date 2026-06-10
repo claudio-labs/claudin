@@ -1,4 +1,5 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
+import { getCacheProfile } from '../cache/cacheProfile.js'
 
 /**
  * GrowthBook config for time-based microcompact.
@@ -27,17 +28,22 @@ export type TimeBasedMCConfig = {
   keepRecent: number
 }
 
-const TIME_BASED_MC_CONFIG_DEFAULTS: TimeBasedMCConfig = {
-  enabled: false,
-  gapThresholdMinutes: 60,
-  keepRecent: 5,
-}
-
 export function getTimeBasedMCConfig(): TimeBasedMCConfig {
+  // Defaults come from the cache profile: under 'retain' the idle-gap clear
+  // is the cheap moment to clip (cache already expired); under 'aggressive'
+  // the age prune has already stubbed everything old, so it stays off.
+  // Claudin's GrowthBook is a no-telemetry stub that returns the fallback,
+  // so the profile values ARE the effective config.
+  const profile = getCacheProfile()
+  const defaults: TimeBasedMCConfig = {
+    enabled: profile.timeBasedClipEnabled,
+    gapThresholdMinutes: profile.timeBasedGapMinutes,
+    keepRecent: profile.timeBasedKeepRecent,
+  }
   // Hoist the GB read so exposure fires on every eval path, not just when
   // the caller's other conditions (querySource, messages.length) pass.
   return getFeatureValue_CACHED_MAY_BE_STALE<TimeBasedMCConfig>(
     'tengu_slate_heron',
-    TIME_BASED_MC_CONFIG_DEFAULTS,
+    defaults,
   )
 }

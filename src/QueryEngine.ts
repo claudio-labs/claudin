@@ -18,7 +18,9 @@ import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
 import {
   applyStableStubs,
   pruneOldToolResults,
+  pruneToolResultsByBytes,
 } from 'src/services/compact/stableStubState.js'
+import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 import type { NonNullableUsage } from 'src/services/api/logging.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import stripAnsi from 'strip-ansi'
@@ -823,7 +825,23 @@ export class QueryEngine {
           // memory-leak vector identified by the memory-leak-detector bench
           // (~100 MB / 100 turns residue vs. ~28 MB with prune).
           {
-            const pruned = pruneOldToolResults(this.mutableMessages, 1)
+            // keepTurns comes from the cache profile: 1 (aggressive, default)
+            // clips per tool iteration; Infinity (retain — Anthropic-style
+            // pricing) disables age clipping and lets the RSS byte-guard
+            // bound memory instead. See services/cache/cacheProfile.ts.
+            const profile = getCacheProfile()
+            let pruned = pruneOldToolResults(
+              this.mutableMessages,
+              profile.keepTurns,
+              profile.stubKeepHeadChars,
+            )
+            pruned = pruneToolResultsByBytes(
+              pruned,
+              profile.retainedHighWaterTokens,
+              profile.retainedLowWaterTokens,
+              undefined,
+              profile.stubKeepHeadChars,
+            )
             if (pruned !== this.mutableMessages) {
               this.mutableMessages = pruned
             }

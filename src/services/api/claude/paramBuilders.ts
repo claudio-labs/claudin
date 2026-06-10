@@ -321,6 +321,7 @@ export function addCacheBreakpoints(
   enablePromptCaching: boolean,
   querySource?: QuerySource,
   skipCacheWrite = false,
+  clipFrontierIndex?: number,
 ): MessageParam[] {
   logEvent("tengu_api_cache_breakpoints", {
     totalMessageCount: messages.length,
@@ -373,6 +374,28 @@ export function addCacheBreakpoints(
     // i >= 0 → threshold met; place marker at that index.
     // i < 0  → loop exhausted; pin to head (index 0) as documented above.
     markerIndex = Math.max(i, 0);
+  }
+  // Clip-frontier cap (CLAUDIN_CLIP_FRONTIER, experimental). The caller
+  // passes the largest index whose prefix is byte-stable across turns (see
+  // getClipFrontierIndex in stableStubState.ts). A marker placed past the
+  // frontier protects a block that a future turn rewrites — an aging
+  // tool_result the prune will stub, a pending clipped id, or thinking/
+  // narration text the history redaction will strip — and that mutation
+  // invalidates the whole cached prefix every turn. Capping at the frontier
+  // confines all byte churn to the uncached tail: the prefix behind the
+  // marker only ever grows, never changes.
+  //   - undefined → flag off / fork path: existing placement untouched.
+  //   - -1 (no stable prefix at all) → no cap; defer/head-pin behavior kept.
+  //   - frontier ≥ deferred index → defer wins (min): the marker keeps
+  //     lingering until enough trailing tokens accumulate to register a
+  //     usable entry server-side, just never past the frontier.
+  if (
+    clipFrontierIndex !== undefined &&
+    clipFrontierIndex >= 0 &&
+    !skipCacheWrite &&
+    clipFrontierIndex < markerIndex
+  ) {
+    markerIndex = clipFrontierIndex;
   }
   // Optional second marker pinned to messages[0]. If the deferred marker
   // happens to also walk back to index 0, the two coalesce silently — that's

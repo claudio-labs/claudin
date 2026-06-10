@@ -153,3 +153,112 @@ describe('addCacheBreakpoints — defer-cache-marker placement', () => {
     expect(markerIndices(out).length).toBe(1)
   })
 })
+
+describe('addCacheBreakpoints — clip-frontier cap (5th param)', () => {
+  test('cap below the deferred index moves the marker to the frontier', () => {
+    setThreshold('0') // baseline would put the marker at length-1
+    const msgs = [
+      makeUser('a'),
+      makeAssistant('b'),
+      makeUser('c'),
+      makeAssistant('d'),
+      makeUser('e'),
+    ]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      false,
+      2,
+    )
+    expect(markerIndices(out)).toEqual([2])
+  })
+
+  test('cap at or above the deferred index is a no-op (defer wins / min)', () => {
+    setThreshold('600')
+    const big = 'x'.repeat(1024)
+    const msgs = [
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+      makeAssistant(big),
+      makeUser(big),
+    ]
+    const without = markerIndices(
+      addCacheBreakpoints(
+        msgs as Parameters<typeof addCacheBreakpoints>[0],
+        true,
+      ),
+    )
+    const withCap = markerIndices(
+      addCacheBreakpoints(
+        msgs as Parameters<typeof addCacheBreakpoints>[0],
+        true,
+        undefined,
+        false,
+        msgs.length - 1, // frontier deeper than the deferred index
+      ),
+    )
+    expect(withCap).toEqual(without)
+  })
+
+  test('frontier -1 (no stable prefix) leaves placement untouched', () => {
+    setThreshold('0')
+    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      false,
+      -1,
+    )
+    expect(markerIndices(out)).toEqual([msgs.length - 1])
+  })
+
+  test('undefined frontier keeps existing behavior (flag-off path)', () => {
+    setThreshold('0')
+    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      false,
+      undefined,
+    )
+    expect(markerIndices(out)).toEqual([msgs.length - 1])
+  })
+
+  test('skipCacheWrite ignores the cap (fork marker stays at length-2)', () => {
+    setThreshold('0')
+    const msgs = [
+      makeUser('a'),
+      makeAssistant('b'),
+      makeUser('c'),
+      makeAssistant('d'),
+      makeUser('e'),
+    ]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      true,
+      1,
+    )
+    expect(markerIndices(out)).toEqual([msgs.length - 2])
+  })
+
+  test('cap composes with head-pin: min(0, frontier) stays at head', () => {
+    // Threshold never met → defer pins to index 0; a deeper frontier must not
+    // drag the marker forward past the registration heuristic.
+    setThreshold('1000000')
+    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+      undefined,
+      false,
+      2,
+    )
+    expect(markerIndices(out)).toEqual([0])
+  })
+})

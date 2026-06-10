@@ -84,6 +84,7 @@ import { notifyCommandLifecycle } from './utils/commandLifecycle.js'
 import { headlessProfilerCheckpoint } from './utils/headlessProfiler.js'
 import {
   getDefaultMainLoopModelSetting,
+  getUserSpecifiedModelSetting,
   getRuntimeMainLoopModel,
   parseUserSpecifiedModel,
   renderModelName,
@@ -614,9 +615,17 @@ async function* queryLoop(
 
     const appState = toolUseContext.getAppState()
     const permissionMode = appState.toolPermissionContext.mode
+    // Fallback order matters: in headless (-p) mode nothing seeds
+    // appState.mainLoopModel (the REPL's model selector does that in
+    // interactive sessions), so without the getUserSpecifiedModelSetting()
+    // leg this chain skipped straight to the subscription default —
+    // silently ignoring --model, ANTHROPIC_MODEL, the project model and
+    // settings.model (Max users got Opus[1m] billed while the init event
+    // reported the configured model).
     const appStateMainLoopModel = parseUserSpecifiedModel(
       appState.mainLoopModelForSession ??
         appState.mainLoopModel ??
+        getUserSpecifiedModelSetting() ??
         getDefaultMainLoopModelSetting(),
     )
     let currentModel = getRuntimeMainLoopModel({
