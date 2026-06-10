@@ -549,6 +549,12 @@ export const FileReadTool = buildTool({
   ) {
     const { readFileState, fileReadingLimits } = context
 
+    // offset is 1-indexed but the schema accepts 0 (nonnegative). Both read
+    // from the first line, so normalize early — otherwise startLine: 0 would
+    // make the line-number prefixes start at 0 (off by one vs the real file)
+    // and dedup would treat offset 0 and 1 as different ranges.
+    if (offset === 0) offset = 1
+
     const defaults = getDefaultFileReadingLimits()
     const maxSizeBytes =
       fileReadingLimits?.maxSizeBytes ?? defaults.maxSizeBytes
@@ -765,7 +771,9 @@ export const FileReadTool = buildTool({
       case 'text': {
         let content: string
 
-        if (data.file.content) {
+        // Branch on numLines, not content truthiness: a file containing only
+        // '\n' has one (empty) line — content is '' but it is NOT empty.
+        if (data.file.numLines > 0) {
           content =
             memoryFileFreshnessPrefix(data) +
             formatFileLines(data.file) +
@@ -778,7 +786,7 @@ export const FileReadTool = buildTool({
           content =
             data.file.totalLines === 0
               ? '<system-reminder>Warning: the file exists but the contents are empty.</system-reminder>'
-              : `<system-reminder>Warning: the file exists but is shorter than the provided offset (${data.file.startLine}). The file has ${data.file.totalLines} lines.</system-reminder>`
+              : `<system-reminder>Warning: the file exists but is shorter than the provided offset (${data.file.startLine}). The file has ${data.file.totalLines} ${data.file.totalLines === 1 ? 'line' : 'lines'}.</system-reminder>`
         }
 
         return {
@@ -796,7 +804,18 @@ function pickLineFormatInstruction(): string {
 }
 
 /** Format file content with line numbers. */
-function formatFileLines(file: { content: string; startLine: number }): string {
+function formatFileLines(file: {
+  content: string
+  startLine: number
+  numLines: number
+}): string {
+  if (file.content === '' && file.numLines > 0) {
+    // A single empty line (file containing only '\n'). addLineNumbers
+    // returns '' for empty content, so derive the bare prefix from it —
+    // format a one-space line and trim, which works for both the compact
+    // and the padded prefix format.
+    return addLineNumbers({ content: ' ', startLine: file.startLine }).trimEnd()
+  }
   return addLineNumbers(file)
 }
 
@@ -999,7 +1018,14 @@ async function scanFile(
   }
   const entries = scanSymbols(source, lang)
   if (entries.length === 0) return null
-  return { lines: source.split('\n'), source, entries, mtimeMs }
+  const lines = source.split('\n')
+  // Drop the phantom empty element a trailing newline produces, so outline
+  // totalLines matches the text-read line count (cat -n semantics). Symbol
+  // line ranges are unaffected — they only ever point at real lines.
+  if (lines.length > 1 && lines[lines.length - 1] === '') {
+    lines.pop()
+  }
+  return { lines, source, entries, mtimeMs }
 }
 
 /**
@@ -1369,7 +1395,8 @@ async function callInner(
   }
 
   // --- Text file (single async read via readFileInRange) ---
-  const lineOffset = offset === 0 ? 0 : offset - 1
+  // offset is normalized to >= 1 in call() before reaching here.
+  const lineOffset = offset - 1
   let readResult: ReadFileRangeResult
   try {
     readResult = await readFileInRange(

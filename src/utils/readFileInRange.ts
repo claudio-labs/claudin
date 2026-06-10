@@ -171,15 +171,19 @@ function readFileInRangeFast(
     startPos = newlinePos + 1
   }
 
-  // Final fragment (no trailing newline).
-  if (lineIndex >= offset && lineIndex < endLine && !truncatedByBytes) {
-    let line = text.slice(startPos)
-    if (line.endsWith('\r')) {
-      line = line.slice(0, -1)
+  // Final fragment (no trailing newline). Only counts when non-empty —
+  // cat -n semantics: a trailing '\n' does not open a phantom empty last
+  // line, and an empty file has 0 lines (not 1).
+  if (startPos < text.length) {
+    if (lineIndex >= offset && lineIndex < endLine && !truncatedByBytes) {
+      let line = text.slice(startPos)
+      if (line.endsWith('\r')) {
+        line = line.slice(0, -1)
+      }
+      tryPush(line)
     }
-    tryPush(line)
+    lineIndex++
   }
-  lineIndex++
 
   const content = selectedLines.join('\n')
   return {
@@ -211,6 +215,10 @@ type StreamState = {
   selectedLines: string[]
   partial: string
   isFirstChunk: boolean
+  /** Last character seen was '\n' — at end-of-stream this means the file
+   *  has no final unterminated line (mirrors the fast path's cat -n
+   *  semantics: no phantom empty line after a trailing newline). */
+  lastCharWasNewline: boolean
   resolveMtime: (ms: number) => void
   mtimeReady: Promise<number>
 }
@@ -227,6 +235,10 @@ function streamOnData(this: StreamState, chunk: string): void {
     if (chunk.charCodeAt(0) === 0xfeff) {
       chunk = chunk.slice(1)
     }
+  }
+
+  if (chunk.length > 0) {
+    this.lastCharWasNewline = chunk.endsWith('\n')
   }
 
   this.totalBytesRead += Buffer.byteLength(chunk)
@@ -304,27 +316,33 @@ function streamOnData(this: StreamState, chunk: string): void {
 }
 
 function streamOnEnd(this: StreamState): void {
-  let line = this.partial
-  if (line.endsWith('\r')) {
-    line = line.slice(0, -1)
-  }
-  if (
-    this.currentLineIndex >= this.offset &&
-    this.currentLineIndex < this.endLine
-  ) {
-    if (this.truncateOnByteLimit && this.maxBytes !== undefined) {
-      const sep = this.selectedLines.length > 0 ? 1 : 0
-      const nextBytes = this.selectedBytes + sep + Buffer.byteLength(line)
-      if (nextBytes > this.maxBytes) {
-        this.truncatedByBytes = true
+  // A final unterminated line only exists when the stream had content that
+  // didn't end in '\n' — mirrors the fast path (cat -n semantics): a
+  // trailing newline doesn't open a phantom empty last line, and an empty
+  // file has 0 lines.
+  if (this.totalBytesRead > 0 && !this.lastCharWasNewline) {
+    let line = this.partial
+    if (line.endsWith('\r')) {
+      line = line.slice(0, -1)
+    }
+    if (
+      this.currentLineIndex >= this.offset &&
+      this.currentLineIndex < this.endLine
+    ) {
+      if (this.truncateOnByteLimit && this.maxBytes !== undefined) {
+        const sep = this.selectedLines.length > 0 ? 1 : 0
+        const nextBytes = this.selectedBytes + sep + Buffer.byteLength(line)
+        if (nextBytes > this.maxBytes) {
+          this.truncatedByBytes = true
+        } else {
+          this.selectedLines.push(line)
+        }
       } else {
         this.selectedLines.push(line)
       }
-    } else {
-      this.selectedLines.push(line)
     }
+    this.currentLineIndex++
   }
-  this.currentLineIndex++
 
   const content = this.selectedLines.join('\n')
   const truncated = this.truncatedByBytes
@@ -368,6 +386,7 @@ function readFileInRangeStreaming(
       selectedLines: [],
       partial: '',
       isFirstChunk: true,
+      lastCharWasNewline: false,
       resolveMtime: () => {},
       mtimeReady: null as unknown as Promise<number>,
     }
