@@ -9,6 +9,7 @@ import {
 import { getModelStrings } from './modelStrings.js'
 import {
   COST_TIER_3_15,
+  COST_TIER_10_50,
   COST_HAIKU_35,
   COST_HAIKU_45,
   formatModelPricing,
@@ -157,6 +158,19 @@ function getOpus48Option(fastMode = false): ModelOption {
     label: 'Opus',
     description: `Opus 4.8 · Most capable for complex work${getOpus46PricingSuffix(fastMode)}`,
     descriptionForModel: 'Opus 4.8 - most capable for complex work',
+  }
+}
+
+// Claude Fable 5 — frontier tier above Opus. Pinned to the explicit model
+// string (no alias). 1M context is the default, so there is no [1m] variant.
+function getFable5Option(): ModelOption {
+  const is3P = getAPIProvider() !== 'firstParty'
+  return {
+    value: getModelStrings().fable5,
+    label: 'Fable 5',
+    description: `Fable 5 · Frontier reasoning, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+    descriptionForModel:
+      'Fable 5 - most capable frontier model for the hardest long-horizon work. 1M context by default. Higher cost than Opus.',
   }
 }
 
@@ -311,6 +325,12 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
       })
     }
   }
+  // Fable 5 is 1M by default — single entry, no [1m] pair.
+  opts.push({
+    value: ms.fable5,
+    label: 'Fable 5',
+    description: `Fable 5 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+  })
   addPair('Opus 4.8', ms.opus48, 'Opus 4.8 · Most capable for complex work', opus1m, opusPrice)
   addPair('Opus 4.7', ms.opus47, 'Opus 4.7 · Previous Opus', opus1m, opusPrice)
   addPair('Opus 4.6', ms.opus46, 'Opus 4.6 · Previous Opus', opus1m, opusPrice)
@@ -517,9 +537,10 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet) + Sonnet 1M + Opus 4.7 + Opus 1M + Opus 4.6 (legacy) + Haiku
+  // PAYG 1P API: Default (Sonnet) + Fable 5 + Sonnet 1M + Opus 4.7 + Opus 1M + Opus 4.6 (legacy) + Haiku
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
+    payg1POptions.push(getFable5Option())
     if (checkSonnet1mAccess()) {
       payg1POptions.push(getSonnet46_1MOption())
     }

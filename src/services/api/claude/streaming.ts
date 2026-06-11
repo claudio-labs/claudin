@@ -137,6 +137,7 @@ import { headlessProfilerCheckpoint } from "src/utils/headlessProfiler.js";
 import { calculateUSDCost } from "src/utils/modelCost.js";
 import { endQueryProfile, queryCheckpoint } from "src/utils/queryProfiler.js";
 import {
+  modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
   type ThinkingConfig,
@@ -864,8 +865,11 @@ export async function* queryModel(
     // setting that can greatly affect model quality and bashing.
     if (hasThinking && modelSupportsThinking(options.model)) {
       if (
-        isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING) &&
-        modelSupportsAdaptiveThinking(options.model)
+        // Fable-class models reject budget-mode thinking (400) — adaptive is
+        // the only accepted configuration, so it wins over the env opt-in.
+        modelRequiresAdaptiveThinking(options.model) ||
+        (isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING) &&
+          modelSupportsAdaptiveThinking(options.model))
       ) {
         // For models that support adaptive thinking, always use adaptive
         // thinking without a budget.
@@ -936,9 +940,12 @@ export async function* queryModel(
 
     // Only send temperature when thinking is disabled — the API requires
     // temperature: 1 when thinking is enabled, which is already the default.
-    const temperature = !hasThinking
-      ? (options.temperatureOverride ?? 1)
-      : undefined;
+    // Fable-class models reject the temperature param outright (400), even
+    // with thinking off — never send it there.
+    const temperature =
+      !hasThinking && !modelRequiresAdaptiveThinking(options.model)
+        ? (options.temperatureOverride ?? 1)
+        : undefined;
 
     lastRequestBetas = betasParams;
 

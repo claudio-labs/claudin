@@ -57,7 +57,7 @@ export function modelSupportsEffort(model: string): boolean {
     return true
   }
   // Supported by a subset of Claude 4 models
-  if (m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
+  if (m.includes('fable-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
     return true
   }
   // Exclude any other known legacy models (haiku, older opus/sonnet variants)
@@ -83,7 +83,7 @@ export function modelSupportsMaxEffort(model: string): boolean {
     return supported3P
   }
   const m = model.toLowerCase()
-  if (m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (m.includes('fable-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
   }
   return false
@@ -93,7 +93,7 @@ export function modelSupportsMaxEffort(model: string): boolean {
 // Per API docs, 'xhigh' is available on Opus 4.7 and Opus 4.8 only.
 export function modelSupportsXhighEffort(model: string): boolean {
   const m = model.toLowerCase()
-  return m.includes('opus-4-8') || m.includes('opus-4-7')
+  return m.includes('fable-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {

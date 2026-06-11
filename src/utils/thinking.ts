@@ -120,6 +120,7 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
   const canonical = getCanonicalName(model)
   // Supported by a subset of Claude 4 models
   if (
+    canonical.includes('fable-5') ||
     canonical.includes('opus-4-8') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-6') ||
@@ -150,6 +151,19 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
   return provider === 'firstParty' || provider === 'foundry'
 }
 
+// @[MODEL LAUNCH]: Add the new model here if budget-mode thinking is rejected
+// by the API (thinking: {type: 'enabled', budget_tokens} → 400).
+/**
+ * Models where thinking is always on server-side and adaptive is the ONLY
+ * accepted thinking configuration. Sending budget_tokens — claudin's default
+ * thinking mode — or an explicit {type: 'disabled'} returns a 400 on these
+ * models, so streaming.ts must force adaptive regardless of the
+ * CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING opt-in.
+ */
+export function modelRequiresAdaptiveThinking(model: string): boolean {
+  return getCanonicalName(model).includes('fable-5')
+}
+
 /**
  * Whether this model *would* use adaptive thinking (`thinking: { type:
  * 'adaptive' }`) when thinking is on. Mirrors the model/env side of the gate in
@@ -162,6 +176,8 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
  */
 export function modelWouldUseAdaptiveThinking(model: string): boolean {
   if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING)) return false
+  // Fable-class models only accept adaptive — forced on regardless of the env opt-in.
+  if (modelRequiresAdaptiveThinking(model)) return true
   if (!isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)) return false
   return modelSupportsThinking(model) && modelSupportsAdaptiveThinking(model)
 }

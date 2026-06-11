@@ -398,6 +398,9 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   name = name.toLowerCase()
   // Special cases for Claude 4+ models to differentiate versions
   // Order matters: check more specific versions first (4-8 before 4-7 before 4-6 before 4)
+  if (name.includes('claude-fable-5')) {
+    return 'claude-fable-5'
+  }
   if (name.includes('claude-opus-4-8')) {
     return 'claude-opus-4-8'
   }
@@ -560,6 +563,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'GPT-5.4'
     case 'gpt-5.3-codex-spark':
       return 'GPT-5.3 Codex Spark'
+    case getModelStrings().fable5:
+      // 1M context is the default on Fable 5 — no [1m] variant needed.
+      return 'Fable 5'
     case getModelStrings().opus48:
       return 'Opus 4.8'
     case getModelStrings().opus48 + '[1m]':
@@ -694,6 +700,12 @@ export function parseUserSpecifiedModel(
     return 'gpt-5.3-codex-spark'
   }
 
+  // 'fable' shortcut — resolves to Claude Fable 5. Not a family alias in
+  // MODEL_ALIASES (single-version tier, no [1m] variant: 1M is the default).
+  if (modelString === 'fable' || modelString === 'fable5') {
+    return getModelStrings().fable5
+  }
+
   // Opus 4/4.1 are no longer available on the first-party API (same as
   // Claude.ai) — silently remap to the current Opus default. The 'opus'
   // alias already resolves to 4.6, so the only users on these explicit
@@ -784,6 +796,12 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   const has1m = modelId.toLowerCase().includes('[1m]')
   const canonical = getCanonicalName(modelId)
 
+  if (canonical.includes('claude-fable-5')) {
+    return 'Fable 5'
+  }
+  if (canonical.includes('claude-opus-4-8')) {
+    return has1m ? 'Opus 4.8 (with 1M context)' : 'Opus 4.8'
+  }
   if (canonical.includes('claude-opus-4-7')) {
     return has1m ? 'Opus 4.7 (with 1M context)' : 'Opus 4.7'
   }
@@ -834,5 +852,9 @@ export function normalizeModelStringForAPI(model: string): string {
 // keep their existing temperature behavior.
 export function modelRejectsSamplingParams(model: string): boolean {
   const canonical = getCanonicalName(model)
-  return canonical.includes('opus-4-7') || canonical.includes('opus-4-8')
+  return (
+    canonical.includes('opus-4-7') ||
+    canonical.includes('opus-4-8') ||
+    canonical.includes('fable-5')
+  )
 }

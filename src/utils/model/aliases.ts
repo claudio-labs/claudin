@@ -2,6 +2,7 @@ export const MODEL_ALIASES = [
   'sonnet',
   'opus',
   'haiku',
+  'fable',
   'best',
   'sonnet[1m]',
   'opus[1m]',

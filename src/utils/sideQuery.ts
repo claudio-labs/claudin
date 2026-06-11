@@ -21,6 +21,7 @@ import {
   modelRejectsSamplingParams,
   normalizeModelStringForAPI,
 } from './model/model.js'
+import { modelRequiresAdaptiveThinking } from './thinking.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam
@@ -172,12 +173,20 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
 
   let thinkingConfig: BetaThinkingConfigParam | undefined
   if (thinking === false) {
-    thinkingConfig = { type: 'disabled' }
-  } else if (thinking !== undefined) {
-    thinkingConfig = {
-      type: 'enabled',
-      budget_tokens: Math.min(thinking, max_tokens - 1),
+    // Fable-class models reject an explicit {type: 'disabled'} with a 400 —
+    // omit the param entirely there (thinking is always on server-side).
+    if (!modelRequiresAdaptiveThinking(model)) {
+      thinkingConfig = { type: 'disabled' }
     }
+  } else if (thinking !== undefined) {
+    // Budget-mode thinking also 400s on Fable-class models — adaptive is the
+    // only accepted configuration.
+    thinkingConfig = modelRequiresAdaptiveThinking(model)
+      ? { type: 'adaptive' }
+      : {
+          type: 'enabled',
+          budget_tokens: Math.min(thinking, max_tokens - 1),
+        }
   }
 
   const normalizedModel = normalizeModelStringForAPI(model)
