@@ -287,6 +287,17 @@ describe('S1 regression: REPL wiring', () => {
     // Intentional evictions are announced to the cache-break detector.
     expect(replSource).toContain('notifyCacheDeletion')
     // Idle-gap sweep before seeding the request.
-    expect(replSource).toContain('evaluateTimeBasedTrigger(messagesForSubmit')
+    expect(replSource).toContain('evaluateTimeBasedTrigger(sweepSnapshot')
+    // The sweep must not fire while a query is in flight (queued-submit
+    // path): the in-flight turn keeps using its unswept array, so sweeping
+    // here would diverge display from request bytes and make the next
+    // turn's break full instead of free.
+    expect(replSource).toMatch(
+      /!queryGuard\.isActive &&\s*\n\s*evaluateTimeBasedTrigger\(sweepSnapshot/,
+    )
+    // Same-tick races: concurrent appends after the snapshot survive.
+    expect(replSource).toContain(
+      '[...swept, ...prev.slice(sweepSnapshot.length)]',
+    )
   })
 })

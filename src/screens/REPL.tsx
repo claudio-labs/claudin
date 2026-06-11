@@ -3113,16 +3113,33 @@ export function REPL({
     // now, before this submission seeds the request. The swept array is
     // passed straight to handlePromptSubmit (messagesRef updates via
     // setMessages are not synchronous).
-    let messagesForSubmit = messagesRef.current;
-    if (evaluateTimeBasedTrigger(messagesForSubmit, getQuerySourceForREPL())) {
+    //
+    // Guarded on no query in flight: on the queued-submit path (isLoading,
+    // e.g. a turn parked ≥60min at a permission prompt) the in-flight turn
+    // keeps using its own unswept array — sweeping the display here would
+    // diverge it from the request bytes and turn the next turn's "free"
+    // break into a full one. Queued submits skip the sweep; the next
+    // non-queued submit picks it up if the gap still qualifies.
+    const sweepSnapshot = messagesRef.current;
+    let messagesForSubmit = sweepSnapshot;
+    if (
+      !queryGuard.isActive &&
+      evaluateTimeBasedTrigger(sweepSnapshot, getQuerySourceForREPL())
+    ) {
       const swept = evictToMaxSize(
-        evictOldStubbedMessages(messagesForSubmit as AnyMessage[], 2, 1),
+        evictOldStubbedMessages(sweepSnapshot as AnyMessage[], 2, 1),
         MAX_DISPLAY_MESSAGES,
         MAX_DISPLAY_MESSAGES,
       ) as MessageType[];
-      if (swept !== messagesForSubmit) {
+      if (swept !== sweepSnapshot) {
         messagesForSubmit = swept;
-        setMessages(() => swept);
+        // Preserve anything appended after the snapshot (same-tick races):
+        // appends are strictly additive, so re-attach the tail.
+        setMessages(prev =>
+          prev === sweepSnapshot
+            ? swept
+            : [...swept, ...prev.slice(sweepSnapshot.length)],
+        );
       }
     }
     await handlePromptSubmit({
