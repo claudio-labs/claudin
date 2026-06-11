@@ -20,8 +20,11 @@ test('bare /loop returns dynamic maintenance instructions', async () => {
   expect(text).toContain('# /loop — dynamic rescheduling')
   expect(text).toContain('If .claudin/loop.md exists, read it and use it.')
   expect(text).toContain('continue any unfinished work from the conversation')
-  expect(text).toContain('Set the scheduled prompt to this exact text so the next iteration stays in dynamic mode:')
-  expect(text).toContain('/loop')
+  expect(text).toContain('call ScheduleWakeup exactly once')
+  // Maintenance loops reschedule via the dynamic sentinel, not an inlined
+  // prompt — the runtime expands it at delivery time (cache-friendly).
+  expect(text).toContain('<<autonomous-loop-dynamic>>')
+  expect(text).toContain('a sentinel the runtime expands at delivery time')
 })
 
 test('prompt-only /loop returns dynamic rescheduling instructions', async () => {
@@ -33,8 +36,17 @@ test('prompt-only /loop returns dynamic rescheduling instructions', async () => 
 
   expect(text).toContain('# /loop — dynamic rescheduling')
   expect(text).toContain('check the deploy')
-  expect(text).toContain('choose the next delay dynamically between 1 minute and 1 hour')
+  expect(text).toContain('call ScheduleWakeup exactly once')
+  expect(text).toContain('The runtime clamps to [60, 3600] seconds.')
+  // The reschedule prompt repeats the original /loop invocation verbatim.
   expect(text).toContain('/loop check the deploy')
+  // Dynamic mode no longer emulates wakeups via one-shot crons.
+  expect(text).toContain('Do not use CronCreate in this mode.')
+  // Monitor-as-primary-wake-signal stretch (MonitorTool ships enabled).
+  expect(text).toContain('Monitor')
+  expect(text).toContain('fallback heartbeat')
+  // Ending the loop = not calling ScheduleWakeup again.
+  expect(text).toContain('do not call ScheduleWakeup')
 })
 
 test('interval /loop returns fixed recurring instructions', async () => {
@@ -62,6 +74,9 @@ test('interval-only /loop becomes fixed maintenance mode', async () => {
   expect(text).toContain('# /loop — fixed recurring interval')
   expect(text).toContain('15m')
   expect(text).toContain('This is a maintenance loop with no explicit prompt.')
+  // The recurring scheduled body is the sentinel (expanded at delivery
+  // time); the full maintenance prompt is still inlined for the immediate run.
+  expect(text).toContain('<<autonomous-loop>>')
   expect(text).toContain('Scheduled maintenance loop iteration.')
 })
 

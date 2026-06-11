@@ -5,6 +5,7 @@
 import { feature } from 'bun:bundle'
 import { randomUUID, type UUID } from 'crypto'
 import {
+  clearPendingSessionWakeup,
   getLastMainRequestId,
   getOriginalCwd,
   getSessionId,
@@ -30,6 +31,7 @@ import {
   getSessionEndHookTimeoutMs,
 } from '../../utils/hooks.js'
 import { logError } from '../../utils/log.js'
+import { resetLoopSentinelState } from '../../utils/loopSentinels.js'
 import { clearAllPlanSlugs } from '../../utils/plans.js'
 import { setCwd } from '../../utils/Shell.js'
 import { processSessionStartHooks } from '../../utils/sessionStart.js'
@@ -198,6 +200,22 @@ export async function clearConversation({
   // Clear cached session metadata (title, tag, agent name/color)
   // so the new session doesn't inherit the previous session's identity
   clearSessionMetadata()
+
+  // A pending /loop wakeup and the sentinel first-fire memory are
+  // conversation-scoped: the wakeup's prompt continues "this conversation's"
+  // loop and the sentinel reminder points at instructions earlier in the
+  // transcript. After /clear both would fire into a context that no longer
+  // exists, so drop them. Session crons are intentionally left alone —
+  // they are schedule-scoped, not conversation-scoped (and their sentinel
+  // prompts will re-deliver the full instructions thanks to the reset).
+  //
+  // Both are ALSO cleared by the sessionSwitched funnel that
+  // regenerateSessionId() emits below (bootstrap/state.ts
+  // emitSessionSwitched + loopSentinels' onSessionSwitch listener), which is
+  // what covers /resume. The explicit calls here are kept as documentation
+  // of the conversation-scoped semantics; the double-clear is harmless.
+  clearPendingSessionWakeup()
+  resetLoopSentinelState()
 
   // Generate new session ID to provide fresh state
   // Set the old session as parent for analytics lineage tracking.

@@ -8,6 +8,8 @@
 
 import type { FSWatcher } from 'chokidar'
 import {
+  clearPendingSessionWakeup,
+  getPendingSessionWakeup,
   getScheduledTasksEnabled,
   getSessionCronTasks,
   removeSessionCronTasks,
@@ -36,6 +38,7 @@ import {
   tryAcquireSchedulerLock,
 } from './cronTasksLock.js'
 import { logForDebugging } from './debug.js'
+import { expandLoopSentinelPrompt } from './loopSentinels.js'
 
 const CHECK_INTERVAL_MS = 1000
 const FILE_STABILITY_MS = 300
@@ -57,6 +60,25 @@ export function isRecurringTaskAged(
 ): boolean {
   if (maxAgeMs === 0) return false
   return Boolean(t.recurring && !t.permanent && nowMs - t.createdAt >= maxAgeMs)
+}
+
+/**
+ * Claim the session's pending ScheduleWakeup (/loop dynamic mode) if it is
+ * due. Returns the expanded prompt to enqueue (plus the model-stated reason,
+ * for transcript markers), or null when nothing is due. The slot is cleared
+ * before returning so a wakeup fires exactly once. Extracted for
+ * testability — same rationale as {@link isRecurringTaskAged}.
+ */
+export function takeDueSessionWakeup(
+  nowMs: number,
+): { prompt: string; reason: string } | null {
+  const wakeup = getPendingSessionWakeup()
+  if (!wakeup || nowMs < wakeup.fireAtMs) return null
+  clearPendingSessionWakeup()
+  return {
+    prompt: expandLoopSentinelPrompt(wakeup.prompt),
+    reason: wakeup.reason,
+  }
 }
 
 type CronSchedulerOptions = {
@@ -85,6 +107,12 @@ type CronSchedulerOptions = {
    * how to surface them.
    */
   onMissed?: (tasks: CronTask[]) => void
+  /**
+   * When provided, receives ScheduleWakeup fires (and onFire is NOT called
+   * for that fire). Lets the REPL add a visible transcript marker carrying
+   * the model-stated reason before enqueuing the prompt.
+   */
+  onWakeupFire?: (prompt: string, reason: string) => void
   /**
    * Directory containing .claudin/scheduled_tasks.json. When provided, the
    * scheduler never touches bootstrap state: getProjectRoot/getSessionId are
@@ -148,6 +176,7 @@ export function createCronScheduler(
     assistantMode = false,
     onFireTask,
     onMissed,
+    onWakeupFire,
     dir,
     lockIdentity,
     getJitterConfig,
@@ -290,10 +319,26 @@ export function createCronScheduler(
         taskId:
           t.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       })
+      // Sentinel-only /loop prompts are expanded at delivery time so the
+      // long instruction text stays in the cached prefix: full instructions
+      // on the first fire of the session (and whenever loop.md changed),
+      // a one-line reminder afterwards. Non-sentinel prompts pass through.
+      // First-fire tracking is scoped by agentId so teammate-routed crons
+      // don't downgrade each other's (or the lead's) first fire.
+      //
+      // Daemon schedulers (dir set) must never touch bootstrap state (see
+      // CronSchedulerOptions.dir) and expansion does — defaultLoopMdPaths
+      // reads getProjectRoot() — so on the daemon path sentinel bodies pass
+      // through raw. Same dir === undefined gate as the session-only block
+      // below and getNextFireTime().
+      const firePrompt =
+        dir === undefined
+          ? expandLoopSentinelPrompt(t.prompt, undefined, t.agentId)
+          : t.prompt
       if (onFireTask) {
-        onFireTask(t)
+        onFireTask(firePrompt === t.prompt ? t : { ...t, prompt: firePrompt })
       } else {
-        onFire(t.prompt)
+        onFire(firePrompt)
       }
 
       // Aged-out recurring tasks fall through to the one-shot delete paths
@@ -375,6 +420,22 @@ export function createCronScheduler(
     // touches bootstrap state.
     if (dir === undefined) {
       for (const t of getSessionCronTasks()) process(t, true)
+      // ScheduleWakeup (/loop dynamic mode): at most one pending wakeup per
+      // session, process-private and non-durable like session crons. It
+      // shares this delivery path (onFire → command queue) and the
+      // isLoading/isKilled gates at the top of check(). takeDueSessionWakeup
+      // clears the slot before returning, so the wakeup fires exactly once;
+      // the model re-arms it each iteration (or doesn't, ending the loop).
+      const wakeup = takeDueSessionWakeup(now)
+      if (wakeup !== null) {
+        logForDebugging('[ScheduledTasks] firing pending ScheduleWakeup')
+        logEvent('tengu_schedule_wakeup_fire', {})
+        if (onWakeupFire) {
+          onWakeupFire(wakeup.prompt, wakeup.reason)
+        } else {
+          onFire(wakeup.prompt)
+        }
+      }
     }
 
     if (seen.size === 0) {
@@ -524,6 +585,12 @@ export function createCronScheduler(
       let min = Infinity
       for (const t of nextFireAt.values()) {
         if (t < min) min = t
+      }
+      // Pending ScheduleWakeup counts toward "soonest fire" on session-backed
+      // schedulers (dir undefined). Daemon callers have no session wakeups.
+      if (dir === undefined) {
+        const wakeup = getPendingSessionWakeup()
+        if (wakeup && wakeup.fireAtMs < min) min = wakeup.fireAtMs
       }
       return min === Infinity ? null : min
     },

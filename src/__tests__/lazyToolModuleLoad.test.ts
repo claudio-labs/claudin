@@ -121,6 +121,7 @@ const CURRENT_BASELINE = [
   'REPLTool',
   'ReadMcpResourceTool',
   'ScheduleCronTool',
+  'ScheduleWakeupTool',
   'SendMessageTool',
   'SkillTool',
   'SleepTool',

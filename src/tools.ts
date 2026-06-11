@@ -39,6 +39,11 @@ const getCronTools = () => [
   require('./tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
   require('./tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
   require('./tools/ScheduleCronTool/CronListTool.js').CronListTool,
+  // One-shot in-session wakeup for /loop dynamic mode. Rides the session
+  // cron delivery machinery, so it ships and gates alongside the cron tools
+  // (isEnabled → isKairosCronEnabled).
+  require('./tools/ScheduleWakeupTool/ScheduleWakeupTool.js')
+    .ScheduleWakeupTool,
 ]
 const RemoteTriggerTool = feature('AGENT_TRIGGERS_REMOTE')
   ? require('./tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool

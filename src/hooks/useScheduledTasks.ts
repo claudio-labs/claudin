@@ -107,6 +107,16 @@ export function useScheduledTasks({
         setMessages(prev => [...prev, msg])
         enqueueForLead(task.prompt)
       },
+      // ScheduleWakeup fires get a visible marker carrying the model's
+      // stated reason — otherwise the model appears to start working
+      // spontaneously (the enqueued prompt itself is isMeta/hidden).
+      onWakeupFire: (prompt, reason) => {
+        const msg = createScheduledTaskFireMessage(
+          `Resuming loop (${formatCronFireTime(new Date())})${reason ? ` — ${reason}` : ''}`,
+        )
+        setMessages(prev => [...prev, msg])
+        enqueueForLead(prompt)
+      },
       isLoading: () => isLoadingRef.current,
       assistantMode,
       getJitterConfig: getCronJitterConfig,

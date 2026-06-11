@@ -165,6 +165,11 @@ type State = {
   // SessionCronTask below (not importing from cronTasks.ts keeps
   // bootstrap a leaf of the import DAG).
   sessionCronTasks: SessionCronTask[]
+  // Session-only pending /loop wakeup created via ScheduleWakeup. At most
+  // one alive at a time — scheduling again replaces it. Never written to
+  // disk; dies with the process. Typed via SessionWakeup below (same
+  // leaf-of-the-import-DAG rationale as SessionCronTask).
+  pendingSessionWakeup: SessionWakeup | null
   // Teams created this session via TeamCreate. cleanupSessionTeams()
   // removes these on gracefulShutdown so subagent-created teams don't
   // persist on disk forever (gh-32730). TeamDelete removes entries to
@@ -377,6 +382,7 @@ function getInitialState(): State {
     // Scheduled tasks disabled until flag or dialog enables them
     scheduledTasksEnabled: false,
     sessionCronTasks: [],
+    pendingSessionWakeup: null,
     sessionCreatedTeams: new Set(),
     // Session-only trust flag (not persisted to disk)
     sessionTrustAccepted: false,
@@ -460,7 +466,7 @@ export function regenerateSessionId(
   // Emit on the same signal switchSession uses — listeners (concurrentSessions
   // PID file, stableStubState per-session map) treat both transitions
   // uniformly. Without this, /clear and /resume drift apart.
-  sessionSwitched.emit(STATE.sessionId)
+  emitSessionSwitched(STATE.sessionId)
   return STATE.sessionId
 }
 
@@ -490,10 +496,29 @@ export function switchSession(
   STATE.planSlugCache.delete(STATE.sessionId)
   STATE.sessionId = sessionId
   STATE.sessionProjectDir = projectDir
-  sessionSwitched.emit(sessionId)
+  emitSessionSwitched(sessionId)
 }
 
 const sessionSwitched = createSignal<[id: SessionId]>()
+
+/**
+ * Single funnel for the sessionSwitched signal — every conversation-
+ * replacement path (/clear via regenerateSessionId; /resume, /branch,
+ * --resume hydration, etc. via switchSession) goes through here.
+ *
+ * Conversation-scoped state owned by this module is dropped at the funnel,
+ * not at the call sites, so the paths cannot drift apart: a pending /loop
+ * wakeup's prompt continues "this conversation's" loop, and after the
+ * switch that conversation no longer exists — letting it fire would inject
+ * an autonomous-loop prompt into a transcript that never armed one.
+ * Conversation-scoped state owned by other modules (loopSentinels'
+ * first-fire memory, stableStubState's clipped-id map) subscribes via
+ * onSessionSwitch for the same reason.
+ */
+function emitSessionSwitched(id: SessionId): void {
+  STATE.pendingSessionWakeup = null
+  sessionSwitched.emit(id)
+}
 
 /**
  * Register a callback that fires when switchSession changes the active
@@ -1321,6 +1346,39 @@ export function removeSessionCronTasks(ids: readonly string[]): number {
   if (removed === 0) return 0
   STATE.sessionCronTasks = remaining
   return removed
+}
+
+/**
+ * Session-only one-shot wakeup scheduled by the ScheduleWakeup tool
+ * (/loop dynamic mode). Unlike SessionCronTask there is no cron string —
+ * just an absolute fire time with second granularity — and at most one
+ * can be pending per session.
+ */
+export type SessionWakeup = {
+  /** Epoch ms when the wakeup fires. */
+  fireAtMs: number
+  /** Prompt enqueued into the session when the wakeup fires. */
+  prompt: string
+  /** One short sentence shown to the user explaining the chosen delay. */
+  reason: string
+}
+
+export function getPendingSessionWakeup(): SessionWakeup | null {
+  return STATE.pendingSessionWakeup
+}
+
+/**
+ * Set the session's single pending wakeup, replacing any existing one.
+ * Returns true when a previously pending wakeup was replaced.
+ */
+export function setPendingSessionWakeup(wakeup: SessionWakeup): boolean {
+  const replaced = STATE.pendingSessionWakeup !== null
+  STATE.pendingSessionWakeup = wakeup
+  return replaced
+}
+
+export function clearPendingSessionWakeup(): void {
+  STATE.pendingSessionWakeup = null
 }
 
 export function setSessionTrustAccepted(accepted: boolean): void {
