@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
-import { parseCodeReviewArgs, registerCodeReviewSkill } from './code-review.js'
+import {
+  buildCodeReviewPrompt,
+  parseCodeReviewArgs,
+  registerCodeReviewSkill,
+  resolveReviewLevel,
+} from './code-review.js'
 
 afterEach(() => {
   clearBundledSkills()
@@ -13,98 +18,174 @@ describe('code-review skill registration', () => {
 
     const skill = getBundledSkills().find(c => c.name === 'code-review')
     expect(skill).toBeDefined()
-    expect(skill?.type).toBe('prompt')
+    if (skill?.type !== 'prompt') throw new Error('expected a prompt skill')
 
-    const blocks = await skill!.getPromptForCommand('', {} as never)
+    const blocks = await skill.getPromptForCommand('', {} as never)
     expect(blocks.length).toBeGreaterThan(0)
     expect(blocks[0]).toMatchObject({ type: 'text' })
     const text = (blocks[0] as { text: string }).text
-    expect(text).toContain('Code Review')
-    expect(text).toContain('correctness bugs')
+    expect(text).toContain('Gather the diff')
+    expect(text).toContain('finder angles')
+  })
+
+  test('advertises all five effort levels plus the flags', () => {
+    registerCodeReviewSkill()
+    const skill = getBundledSkills().find(c => c.name === 'code-review')
+    expect(skill?.argumentHint).toBe(
+      '[low|medium|high|xhigh|max] [--fix] [--comment] [<target>]',
+    )
+    expect(skill?.description).toContain('--fix')
+    expect(skill?.description).toContain('reuse/simplification/efficiency')
   })
 })
 
 describe('parseCodeReviewArgs', () => {
-  test('defaults to high effort with no comment flag', () => {
+  test('empty args: no explicit level, no flags, no target', () => {
     const parsed = parseCodeReviewArgs('')
-    expect(parsed.effort).toBe('high')
+    expect(parsed.explicit).toBeUndefined()
     expect(parsed.comment).toBe(false)
-    expect(parsed.invalidEffort).toBeUndefined()
-    expect(parsed.focus).toBe('')
+    expect(parsed.fix).toBe(false)
+    expect(parsed.target).toBe('')
+    expect(parsed.unrecognizedLevel).toBeUndefined()
+    expect(parsed.ultraFallback).toBe(false)
   })
 
-  test.each(['low', 'medium', 'high'] as const)(
-    'parses %s as the effort level',
+  test.each(['low', 'medium', 'high', 'xhigh', 'max'] as const)(
+    'parses %s as the explicit level',
     level => {
       const parsed = parseCodeReviewArgs(level)
-      expect(parsed.effort).toBe(level)
-      expect(parsed.invalidEffort).toBeUndefined()
+      expect(parsed.explicit).toBe(level)
+      expect(parsed.unrecognizedLevel).toBeUndefined()
     },
   )
 
-  test('is case-insensitive for effort levels', () => {
-    expect(parseCodeReviewArgs('HIGH').effort).toBe('high')
-    expect(parseCodeReviewArgs('Medium').effort).toBe('medium')
+  test('is case-insensitive and supports the med alias', () => {
+    expect(parseCodeReviewArgs('HIGH').explicit).toBe('high')
+    expect(parseCodeReviewArgs('Medium').explicit).toBe('medium')
+    expect(parseCodeReviewArgs('med').explicit).toBe('medium')
   })
 
-  test('falls back to high on an invalid single-token effort', () => {
-    const parsed = parseCodeReviewArgs('foo')
-    expect(parsed.effort).toBe('high')
-    expect(parsed.invalidEffort).toBe('foo')
-    expect(parsed.focus).toBe('')
-  })
-
-  test('parses --comment alone with default high effort', () => {
-    const parsed = parseCodeReviewArgs('--comment')
-    expect(parsed.effort).toBe('high')
+  test('flags parse anywhere and combine with level and target', () => {
+    const parsed = parseCodeReviewArgs('--comment high --fix src/foo.ts')
+    expect(parsed.explicit).toBe('high')
     expect(parsed.comment).toBe(true)
+    expect(parsed.fix).toBe(true)
+    expect(parsed.target).toBe('src/foo.ts')
   })
 
-  test('parses effort and --comment regardless of order', () => {
-    const a = parseCodeReviewArgs('high --comment')
-    expect(a.effort).toBe('high')
-    expect(a.comment).toBe(true)
-
-    const b = parseCodeReviewArgs('--comment low')
-    expect(b.effort).toBe('low')
-    expect(b.comment).toBe(true)
+  test('a level-looking typo is recorded as unrecognizedLevel', () => {
+    const parsed = parseCodeReviewArgs('highest')
+    expect(parsed.explicit).toBeUndefined()
+    expect(parsed.unrecognizedLevel).toBe('highest')
+    expect(parsed.target).toBe('highest')
   })
 
-  test('treats extra text beyond effort and flag as focus', () => {
-    const parsed = parseCodeReviewArgs('medium --comment check the auth flow')
-    expect(parsed.effort).toBe('medium')
-    expect(parsed.comment).toBe(true)
-    expect(parsed.focus).toBe('check the auth flow')
+  test('non-level text becomes the review target', () => {
+    const parsed = parseCodeReviewArgs('check the auth flow')
+    expect(parsed.explicit).toBeUndefined()
+    expect(parsed.unrecognizedLevel).toBeUndefined()
+    expect(parsed.target).toBe('check the auth flow')
   })
 
-  test('treats multiple non-flag tokens as focus, not an invalid effort', () => {
-    const parsed = parseCodeReviewArgs('review the parser')
-    expect(parsed.effort).toBe('high')
-    expect(parsed.invalidEffort).toBeUndefined()
-    expect(parsed.focus).toBe('review the parser')
+  test('ultra as the first token sets ultraFallback and keeps the target', () => {
+    const parsed = parseCodeReviewArgs('ultra src/foo.ts --fix')
+    expect(parsed.ultraFallback).toBe(true)
+    expect(parsed.explicit).toBeUndefined()
+    expect(parsed.fix).toBe(true)
+    expect(parsed.target).toBe('src/foo.ts')
   })
 })
 
-describe('code-review prompt content by effort', () => {
-  async function promptFor(args: string): Promise<string> {
-    clearBundledSkills()
-    registerCodeReviewSkill()
-    const skill = getBundledSkills().find(c => c.name === 'code-review')
-    const blocks = await skill!.getPromptForCommand(args, {} as never)
-    return (blocks[0] as { text: string }).text
+describe('resolveReviewLevel', () => {
+  test('explicit level wins; no context defaults to medium', () => {
+    expect(resolveReviewLevel({ explicit: 'low', ultraFallback: false })).toBe(
+      'low',
+    )
+    expect(
+      resolveReviewLevel({ explicit: undefined, ultraFallback: false }),
+    ).toBe('medium')
+  })
+
+  test('ultra falls back to max', () => {
+    expect(
+      resolveReviewLevel({ explicit: undefined, ultraFallback: true }),
+    ).toBe('max')
+  })
+})
+
+describe('code-review prompt content by level', () => {
+  function promptFor(args: string): string {
+    return buildCodeReviewPrompt(parseCodeReviewArgs(args))
   }
 
-  test('high effort embeds the ultrathink keyword', async () => {
-    expect(await promptFor('high')).toContain('ultrathink')
+  test('low is a single inline pass with no subagents', () => {
+    const text = promptFor('low')
+    expect(text).toContain('low effort → 1 diff pass')
+    expect(text).toContain('No subagents')
+    expect(text).not.toContain('finder angles')
   })
 
-  test('low effort does not embed the ultrathink keyword', async () => {
-    expect(await promptFor('low')).not.toContain('ultrathink')
+  test('medium runs 7 angles for precision with ≤8 findings', () => {
+    const text = promptFor('medium')
+    expect(text).toContain('**precision** at medium effort')
+    expect(text).toContain('**7 independent finder angles**')
+    expect(text).toContain('at most 8 objects')
+    expect(text).not.toContain('Angle D')
   })
 
-  test('comment mode references posting to the pull request', async () => {
-    const text = await promptFor('--comment')
-    expect(text).toContain('gh pr view')
-    expect(text).toContain('gh pr diff')
+  test('high runs 7 angles for recall with ≤10 findings', () => {
+    const text = promptFor('high')
+    expect(text).toContain('**recall** at high effort')
+    expect(text).toContain('**7 independent finder angles**')
+    expect(text).toContain('recall-biased')
+    expect(text).toContain('at most 10 objects')
+  })
+
+  test('xhigh and max run 9 angles with a sweep and ≤15 findings', () => {
+    for (const level of ['xhigh', 'max'] as const) {
+      const text = promptFor(level)
+      expect(text).toContain('**9 independent finder angles**')
+      expect(text).toContain('Angle E')
+      expect(text).toContain('Sweep for gaps')
+      expect(text).toContain('at most 15 objects')
+    }
+  })
+
+  test('every multi-agent level includes the cleanup angles', () => {
+    for (const level of ['medium', 'high', 'xhigh', 'max'] as const) {
+      const text = promptFor(level)
+      expect(text).toContain('### Reuse')
+      expect(text).toContain('### Simplification')
+      expect(text).toContain('### Efficiency')
+      expect(text).toContain('### Altitude')
+    }
+  })
+
+  test('--comment appends the GitHub posting addendum', () => {
+    const text = promptFor('high --comment')
+    expect(text).toContain('Posting to GitHub (--comment)')
+    expect(text).toContain('gh api')
+  })
+
+  test('--fix appends the apply-fixes addendum', () => {
+    const text = promptFor('high --fix')
+    expect(text).toContain('Applying fixes (--fix)')
+    expect(text).toContain('apply the')
+  })
+
+  test('a free-text target is surfaced as a review-target line', () => {
+    const text = promptFor('high src/services/api')
+    expect(text).toContain('Review target: `src/services/api`')
+  })
+
+  test('ultra prefixes the local-fallback note and uses the max prompt', () => {
+    const text = promptFor('ultra')
+    expect(text).toContain("ultra (cloud review) isn't available in Claudin")
+    expect(text).toContain('max effort → 5+4 angles')
+  })
+
+  test('an unrecognized level-like token prefixes a warning note', () => {
+    const text = promptFor('maximum')
+    expect(text).toContain('Ignoring unrecognized effort "maximum"')
   })
 })
