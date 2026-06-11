@@ -180,6 +180,27 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
     latch([{ type: 'user' }, assistantAt(10), { type: 'user' }])
     expect(isDeferredToolsDeltaActive()).toBe(false)
   })
+
+  // The format-aware check is only sound if the marker survives /resume:
+  // session persistence must NOT filter deferred_tools_delta attachments
+  // out of the transcript (isLoggableMessage drops generic attachments for
+  // external users). If this regresses, resumed histories are marker-free
+  // and every warm resume of a delta session latches legacy → prepend onto
+  // a prepend-less warm cache → the exact break A2 fixes.
+  test('persistence premise: deferred_tools_delta attachments are loggable for external users', async () => {
+    const { isLoggableMessage } = await import('./sessionStorage.js')
+    expect(
+      isLoggableMessage({
+        type: 'attachment',
+        attachment: {
+          type: 'deferred_tools_delta',
+          addedNames: ['mcp__foo__bar'],
+          addedLines: ['- mcp__foo__bar'],
+          removedNames: [],
+        },
+      } as Parameters<typeof isLoggableMessage>[0]),
+    ).toBe(true)
+  })
 })
 
 // ── Pipeline ordering: the attachment injector settles the latch ────────

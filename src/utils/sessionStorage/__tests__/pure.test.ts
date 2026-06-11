@@ -544,6 +544,25 @@ test('isLoggableMessage: external user drops generic attachments', () => {
   ).toBe(false)
 })
 
+test('isLoggableMessage: deferred_tools_delta attachments persist for external users', () => {
+  // Resume-visible marker for the legacy-announcement latch AND the bytes
+  // a warm-resumed prefix must reproduce — see historyHasDeferredToolsDelta
+  // in src/utils/toolSearch.ts. Dropping these re-breaks every warm resume
+  // of a delta-format session.
+  expect(
+    isLoggableMessage({
+      type: 'attachment',
+      attachment: {
+        type: 'deferred_tools_delta',
+        addedNames: ['mcp__foo__bar'],
+        addedLines: ['- mcp__foo__bar'],
+        removedNames: [],
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any),
+  ).toBe(true)
+})
+
 test('removeExtraFields: strips isSidechain and parentUuid', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = [mkAssistantText(det(1), det(0), 'hi')] as any

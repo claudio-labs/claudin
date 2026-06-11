@@ -50,6 +50,15 @@ export function isLoggableMessage(m: Message): boolean {
     ) {
       return true
     }
+    // deferred_tools_delta must persist (contains only tool names/lines,
+    // already public in adjacent tool_use blocks): it is the resume-visible
+    // marker maybeLatchLegacyDeferredAnnouncement uses to recognize a
+    // delta-format history, the bytes a warm-resumed prefix must reproduce
+    // to hit the server-side cache, and the announced-set source that stops
+    // getDeferredToolsDelta from re-announcing the full pool after /resume.
+    if (m.attachment.type === 'deferred_tools_delta') {
+      return true
+    }
     return false
   }
   return true
