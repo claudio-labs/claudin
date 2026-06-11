@@ -35,12 +35,6 @@ import {
   type TimeBasedMCConfig,
 } from './timeBasedMCConfig.js'
 
-// Inline from utils/toolResultStorage.ts — importing that file pulls in
-// sessionStorage → utils/messages → services/api/errors, completing a
-// circular-deps loop back through this file via promptCacheBreakDetection.
-// Drift is caught by a test asserting equality with the source-of-truth.
-export const TIME_BASED_MC_CLEARED_MESSAGE = '[Old tool result content cleared]'
-
 // Per-provider image sizing lives in utils/imageTokenEstimator.ts. Document
 // (PDF) blocks still fall back to this conservative cap since page-accurate
 // sizing is out of scope.
@@ -203,9 +197,13 @@ export async function microcompactMessages(
 
   // Time-based trigger: if the gap since the last assistant message exceeds
   // the threshold, the server cache has expired and the full prefix will be
-  // rewritten regardless — so content-clear old tool results now, before the
-  // request, to shrink what gets rewritten.
-  const timeBasedResult = maybeTimeBasedMicrocompact(messages, querySource)
+  // rewritten regardless — so clip old tool results into the stable-stub
+  // set now, before the request, to shrink what gets rewritten.
+  const timeBasedResult = maybeTimeBasedMicrocompact(
+    messages,
+    toolUseContext,
+    querySource,
+  )
   if (timeBasedResult) {
     return timeBasedResult
   }
@@ -356,6 +354,7 @@ export function evaluateTimeBasedTrigger(
 
 function maybeTimeBasedMicrocompact(
   messages: Message[],
+  toolUseContext: ToolUseContext | undefined,
   querySource: QuerySource | undefined,
 ): MicrocompactResult | null {
   const trigger = evaluateTimeBasedTrigger(messages, querySource)
@@ -377,50 +376,70 @@ function maybeTimeBasedMicrocompact(
     return null
   }
 
-  let tokensSaved = 0
-  const result: Message[] = messages.map(message => {
-    if (message.type !== 'user' || !Array.isArray(message.message.content)) {
-      return message
-    }
-    let touched = false
-    const newContent = message.message.content.map(block => {
-      if (
-        block.type === 'tool_result' &&
-        clearSet.has(block.tool_use_id) &&
-        block.content !== TIME_BASED_MC_CLEARED_MESSAGE
-      ) {
-        tokensSaved += calculateToolResultTokens(block)
-        touched = true
-        return { ...block, content: TIME_BASED_MC_CLEARED_MESSAGE }
-      }
-      return block
-    })
-    if (!touched) return message
-    return {
-      ...message,
-      message: { ...message.message, content: newContent },
-    }
-  })
+  // Persist the clear through the stable-stub mechanism instead of
+  // rewriting the per-request view: ids added to the clipped set are
+  // stubbed by applyStableStubs at the wire boundary with deterministic
+  // bytes — on this turn AND every following turn — so the post-idle
+  // "cleaned" prefix keeps getting cache hits afterwards. The previous
+  // view-only rewrite flipped back to the original bytes on the next turn,
+  // paying a second full prefix write for the same idle gap.
+  const clipped = getClippedIds()
+  const newOnes = [...clearSet].filter(id => !clipped.has(id))
+  if (newOnes.length === 0) {
+    return null
+  }
 
+  // Measure what the clear saves on the content as it stands in this view.
+  // Zero means every candidate is already empty/cleared — nothing to do.
+  const newSet = new Set(newOnes)
+  let tokensSaved = 0
+  for (const message of messages) {
+    if (message.type !== 'user' || !Array.isArray(message.message.content)) {
+      continue
+    }
+    for (const block of message.message.content) {
+      if (block.type === 'tool_result' && newSet.has(block.tool_use_id)) {
+        tokensSaved += calculateToolResultTokens(block)
+      }
+    }
+  }
   if (tokensSaved === 0) {
     return null
+  }
+
+  addClippedIds(newOnes)
+  // Release preview strings from ContentReplacementState.replacements for
+  // IDs that are now clipped, mirroring the size-based path: the stable
+  // stub supersedes the preview, and keeping seenIds intact prevents
+  // re-processing in enforceToolResultBudget.
+  const crs = toolUseContext?.contentReplacementState
+  if (crs) {
+    for (const id of newOnes) {
+      crs.replacements.delete(id)
+    }
   }
 
   logEvent('tengu_time_based_microcompact', {
     gapMinutes: Math.round(gapMinutes),
     gapThresholdMinutes: config.gapThresholdMinutes,
-    toolsCleared: clearSet.size,
+    toolsCleared: newOnes.length,
     toolsKept: keepSet.size,
     keepRecent: config.keepRecent,
     tokensSaved,
   })
 
   logForDebugging(
-    `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, cleared ${clearSet.size} tool results (~${tokensSaved} tokens), kept last ${keepSet.size}`,
+    `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${newOnes.length} tool results (~${tokensSaved} tokens), kept last ${keepSet.size}`,
   )
 
   suppressCompactWarning()
-  resetMicrocompactState()
+  // Deliberately NOT resetMicrocompactState() here: the idle gap does not
+  // wipe any history (unlike /clear, swarm cleanup, postCompactCleanup —
+  // see the resetMicrocompactState docstring). Resetting would drop ids
+  // already frozen behind the cache marker by the size-based trigger,
+  // reverting those blocks to full bytes on the next turn — a second,
+  // independent prefix break for the same idle gap.
+  //
   // We just changed the prompt content — the next response's cache read will
   // be low, but that's us, not a break. Tell the detector to expect a drop.
   // notifyCacheDeletion (not notifyCompaction) because it's already imported
@@ -432,5 +451,9 @@ function maybeTimeBasedMicrocompact(
     notifyCacheDeletion(querySource)
   }
 
-  return { messages: result }
+  // The view is returned unchanged — applyStableStubs at the request
+  // boundary rewrites the clipped blocks. Returning here (instead of
+  // falling through) keeps the old contract: the size-based path does not
+  // also run on a time-trigger turn.
+  return { messages }
 }
