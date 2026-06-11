@@ -27,8 +27,17 @@ describe('getModelFamily', () => {
     { provider: 'firstParty', model: 'claude-opus-4-8', baseUrl: undefined, expected: 'anthropic' },
     { provider: 'bedrock', model: 'claude-sonnet-4-6', baseUrl: undefined, expected: 'anthropic' },
     { provider: 'vertex', model: 'claude-haiku-4-5', baseUrl: undefined, expected: 'anthropic' },
+    // Bedrock-namespaced ids must still resolve to anthropic
+    { provider: 'bedrock', model: 'anthropic.claude-opus-4-8-v1:0', baseUrl: undefined, expected: 'anthropic' },
+    { provider: 'bedrock', model: 'us.anthropic.claude-sonnet-4-6-v1:0', baseUrl: undefined, expected: 'anthropic' },
+    { provider: 'bedrock', model: 'arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-opus-4-8-v1:0', baseUrl: undefined, expected: 'anthropic' },
+    // Vertex date-suffixed ids
+    { provider: 'vertex', model: 'claude-opus-4-5@20251101', baseUrl: undefined, expected: 'anthropic' },
     // Bedrock/Vertex with a non-claude model → no addendum
     { provider: 'bedrock', model: 'llama-3', baseUrl: undefined, expected: 'default' },
+    { provider: 'bedrock', model: 'amazon.titan-text-express-v1', baseUrl: undefined, expected: 'default' },
+    // False-positive guard: 'claude' mid-name without the namespace dot
+    { provider: 'firstParty', model: 'myclaude-finetune', baseUrl: undefined, expected: 'default' },
 
     // OpenAI reasoning models
     { provider: 'openai', model: 'gpt-5', baseUrl: 'https://api.openai.com/v1', expected: 'openai-reasoning' },

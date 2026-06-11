@@ -49,7 +49,12 @@ export function getModelFamily(
     case 'firstParty':
     case 'bedrock':
     case 'vertex':
-      return m.startsWith('claude-') ? 'anthropic' : 'default'
+      // Bedrock namespaces the id ('anthropic.claude-opus-4-8-v1:0',
+      // 'us.anthropic.claude-...', inference-profile ARNs); Vertex and 1P
+      // ids start with 'claude-' directly. Anchor at start-of-string or
+      // after a '.' so a custom id merely containing 'claude' elsewhere
+      // does NOT match.
+      return /(?:^|\.)claude-/.test(m) ? 'anthropic' : 'default'
     case 'codex':
       return 'codex'
     case 'gemini':
