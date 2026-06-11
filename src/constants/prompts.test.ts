@@ -80,9 +80,9 @@ describe('ANTHROPIC_ANTI_NARRATION_ADDENDUM', () => {
     )).toBe(true)
   })
 
-  test('carves out plan-mode from the ≤5-bullet cap', () => {
+  test('carves out plan-mode from the checkpoint summary rules', () => {
     expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain('Plan-mode output')
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain('does not apply there')
+    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain('do not apply there')
   })
 
   test('numbers four checkpoints explicitly', () => {
@@ -100,8 +100,19 @@ describe('ANTI_NARRATION_HARNESS_BULLETS', () => {
     expect(ANTI_NARRATION_HARNESS_BULLETS).toMatchSnapshot()
   })
 
-  test('has three bullets', () => {
-    expect(ANTI_NARRATION_HARNESS_BULLETS).toHaveLength(3)
+  test('has four bullets', () => {
+    expect(ANTI_NARRATION_HARNESS_BULLETS).toHaveLength(4)
+  })
+
+  test('fourth bullet carries the summary-readability contract', () => {
+    // The cap in the Anthropic addendum is a selection rule, not a length
+    // squeeze — this bullet is what keeps "short" from degrading into
+    // fragments and arrow chains. Universal on purpose: every model
+    // family writes final summaries, so it lives in the harness, not in
+    // a per-family addendum.
+    expect(ANTI_NARRATION_HARNESS_BULLETS[3]).toContain(
+      "a teammate who didn't watch the process",
+    )
   })
 
   test('first bullet carries the transcript-shape invariant', () => {

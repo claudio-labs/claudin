@@ -15,6 +15,7 @@ import {
   getCanonicalName,
   getMarketingNameForModel,
 } from '../utils/model/model.js'
+import { getAPIProvider } from '../utils/model/providers.js'
 import { getSkillToolCommands } from 'src/commands.js'
 import { SKILL_TOOL_NAME } from '../tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from './outputStyles.js'
@@ -101,11 +102,9 @@ export const CLAUDE_CODE_DOCS_MAP_URL =
 export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =
   '__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__'
 
-// @[MODEL LAUNCH]: Update the latest frontier model.
-const FRONTIER_MODEL_NAME = 'Claude Opus 4.8'
-
 // @[MODEL LAUNCH]: Update the model family IDs below to the latest in each tier.
 const CLAUDE_LATEST_MODEL_IDS = {
+  fable: 'claude-fable-5',
   opus: 'claude-opus-4-8',
   sonnet: 'claude-sonnet-4-6',
   haiku: 'claude-haiku-4-5-20251001',
@@ -120,9 +119,10 @@ function resolveFamilyAddendum(model: string): string | null {
   return addendum
 }
 
+// Compaction messaging lives in getContextManagementSection (shared with
+// the standard path) — this section only explains <system-reminder> tags.
 function getSystemRemindersSection(): string {
-  return `- Tool results and user messages may include <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are automatically added by the system, and bear no direct relation to the specific tool results or user messages in which they appear.
-- The conversation has unlimited context through automatic summarization.`
+  return `- Tool results and user messages may include <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are automatically added by the system, and bear no direct relation to the specific tool results or user messages in which they appear.`
 }
 
 function getLanguageSection(
@@ -176,6 +176,7 @@ export const ANTI_NARRATION_HARNESS_BULLETS: readonly string[] = [
   `Between the user's turn and your final summary, the transcript should contain tool calls and nothing else — no opening sentence stating the goal, no pre-call narration ("Let me read X", "Now I'll check Y"), no mid-task plans/TODO blocks/section headings used as commentary, no single-word reactions ("Done.", "Got it."). Chain tool calls silently until a real stopping point. Plan-mode plans written via EnterPlanMode/ExitPlanMode are the deliverable, not narration — these rules don't restrict them.`,
   `Lead with the answer or result when you do speak. Skip preamble, recaps of steps taken, and trailing meta ("Let me know if you'd like…"). Failures and unexpected results are reported immediately and succinctly; everything else waits for the summary.`,
   `On tool errors, retry silently with a corrected call — no apologies, no "let me try again".`,
+  `Write the final summary for a teammate who didn't watch the process: complete sentences with technical terms spelled out — no fragments, abbreviations, or arrow chains like \`A → B → fails\`, and no shorthand or codenames invented mid-task. Keep it short by selecting what changes what the reader does next, not by compressing the writing.`,
 ]
 
 // Exported for snapshot testing — see prompts.test.ts.
@@ -222,6 +223,32 @@ function getCodingStyleLine(): string {
 
 function getActionsSection(): string {
   return `For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target — if what you find contradicts how it was described, or you didn't create it, surface that instead of proceeding. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.`
+}
+
+// Anti-stall + state-change caution. Ported wording; provider-neutral on
+// purpose — headless (-p), gRPC, /goal and /loop runs all depend on the
+// model not ending a turn on a promise, regardless of which model family
+// is active. Static: lives before the cache boundary, so keep it free of
+// runtime conditionals.
+function getTurnDisciplineSection(): string {
+  return `Before ending your turn, check your last paragraph. If it is a plan, an analysis, a question, a list of next steps, or a promise about work you have not done ("I'll…"), do that work now with tool calls. That includes retrying after errors and gathering missing information yourself. End your turn only when the task is complete or you are blocked on input only the user can provide. Exception: when the user is describing a problem, asking a question, or thinking out loud rather than requesting a change, the deliverable is your assessment — report your findings and stop; don't apply a fix until they ask for one.
+
+Before running a command that changes system state — restarts, deletes, config edits — check that the evidence actually supports that specific action. A signal that pattern-matches to a known failure may have a different cause.`
+}
+
+// The proactive/KAIROS path has carried an equivalent line for a while
+// (getSystemRemindersSection), but those flags are off in the open build —
+// the standard path never told the model compaction exists, so it would
+// rush to wrap up or hand off when the session grew long. Provider-neutral:
+// compaction is harness-side summarization, independent of model family.
+// "may be summarized", not "is": auto-compact is user-disableable
+// (autoCompactEnabled), and with it off a long session ends in a hard
+// "Prompt is too long" stop — same no-promise phrasing trick as the
+// token_budget section, so the text stays true in both configs without
+// fragmenting the static cache prefix on a runtime setting.
+function getContextManagementSection(): string {
+  return `# Context management
+When the conversation grows long, earlier context may be summarized; the summary, along with any remaining unsummarized context, carries into the next context window so work can continue. Don't wrap up early or hand off mid-task just because the session is long.`
 }
 
 function getAgentToolSection(): string {
@@ -336,6 +363,7 @@ export async function getSystemPrompt(
 
 ${CYBER_RISK_INSTRUCTION}`,
       getSystemRemindersSection(),
+      getContextManagementSection(),
       await loadMemoryPrompt(),
       envInfo,
       getLanguageSection(settings.language),
@@ -355,8 +383,13 @@ ${CYBER_RISK_INSTRUCTION}`,
       getSessionSpecificGuidanceSection(enabledTools, skillToolCommands),
     ),
     systemPromptSection('memory', () => loadMemoryPrompt()),
-    systemPromptSection(`env_info_simple:${model}`, () =>
-      computeSimpleEnvInfo(model, additionalWorkingDirectories),
+    systemPromptSection(
+      // Key includes the provider: the Claude-family lines inside vary by
+      // provider (via getFamilyForLogging), and a memoized section keyed
+      // only by model would serve stale content when /provider switches
+      // mid-session without a model change.
+      `env_info_simple:${model}:${getAPIProvider()}`,
+      () => computeSimpleEnvInfo(model, additionalWorkingDirectories),
     ),
     systemPromptSection('language', () =>
       getLanguageSection(settings.language),
@@ -413,6 +446,8 @@ ${CYBER_RISK_INSTRUCTION}`,
       ? getCodingStyleLine()
       : null,
     getActionsSection(),
+    getTurnDisciplineSection(),
+    getContextManagementSection(),
     feature('FAMILY_PROMPT_ADDENDUMS') ? resolveFamilyAddendum(model) : null,
     // === BOUNDARY MARKER - DO NOT MOVE OR REMOVE ===
     ...(shouldUseGlobalCacheScope() ? [SYSTEM_PROMPT_DYNAMIC_BOUNDARY] : []),
@@ -498,6 +533,7 @@ export async function computeSimpleEnvInfo(
 
   const cwd = getCwd()
   const isWorktree = getCurrentWorktreeSession() !== null
+  const isAnthropicFamily = getFamilyForLogging(modelId) === 'anthropic'
 
   const envItems = [
     `Primary working directory: ${cwd}`,
@@ -516,9 +552,22 @@ export async function computeSimpleEnvInfo(
     `OS Version: ${unameSR}`,
     modelDescription,
     knowledgeCutoffMessage,
-    `The most recent Claude model family is Claude 4.6/4.8. Model IDs — Opus 4.8: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 4.6: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`,
+    // Claude-specific guidance only when a Claude model is active: on a
+    // multi-provider install, telling a gpt/gemini session to "default to
+    // the most capable Claude models" invites hallucinated cross-model
+    // references. Family resolution depends on provider — hence the
+    // provider-qualified section cache key at the call site.
+    isAnthropicFamily
+      ? `The most recent Claude models are Fable 5 and the Claude 4.x family. Model IDs — Fable 5: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 4.8: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 4.6: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
+      : null,
     `Claudin is available as a CLI in the terminal and can be used across local development environments and IDE workflows.`,
-    `Fast mode for Claudin uses the same ${FRONTIER_MODEL_NAME} model with faster output. It does NOT switch to a different model. It can be toggled with /fast.`,
+    // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
+    // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/utils/fastMode.ts).
+    // firstParty-only: fast mode is rejected on every other provider
+    // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty').
+    isAnthropicFamily && getAPIProvider() === 'firstParty'
+      ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 4.7/4.6.`
+      : null,
   ].filter(item => item !== null)
 
   return [

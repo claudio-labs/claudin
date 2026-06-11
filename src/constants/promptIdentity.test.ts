@@ -67,6 +67,22 @@ test('system prompt model identity updates when model changes mid-session', asyn
   expect(secondText).not.toContain('You are powered by the model old-test-model.')
 })
 
+test('Claude model recommendations only ship for the anthropic family', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  clearSystemPromptSections()
+
+  // Test env has no provider profile → getAPIProvider() falls back to
+  // 'firstParty', so family is decided by the model id alone here.
+  const claudeText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
+  clearSystemPromptSections()
+  const otherText = (await getSystemPrompt([], 'gpt-4o')).join('\n')
+
+  expect(claudeText).toContain('most capable Claude models')
+  expect(claudeText).toContain('Fast mode for Claudin')
+  expect(otherText).not.toContain('most capable Claude models')
+  expect(otherText).not.toContain('Fast mode for Claudin')
+})
+
 test('Anthropic-family system prompt does not include any non-Anthropic family addendum', async () => {
   delete process.env.CLAUDE_CODE_SIMPLE
   clearSystemPromptSections()
