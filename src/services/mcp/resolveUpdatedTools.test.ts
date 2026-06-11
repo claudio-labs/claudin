@@ -11,6 +11,8 @@
  * keep-on-failed.
  */
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Tool } from '../../Tool.js'
 import { resolveUpdatedTools } from './useManageMCPConnections.js'
 
@@ -130,5 +132,19 @@ describe('resolveUpdatedTools — failure handling', () => {
   test("'connected' with undefined payload preserves the pool untouched", () => {
     const pool = poolFixture()
     expect(resolveUpdatedTools(pool, 'connected', PREFIX, undefined)).toBe(pool)
+  })
+})
+
+// ── Wiring guard ─────────────────────────────────────────────────────────
+// resolveUpdatedTools being correct is worthless if the connection hook
+// regresses to the old `reject(prefix) + append` rebuild — pin the call
+// site so reverting the wiring fails this suite, not just code review.
+describe('useManageMCPConnections wiring (source guard)', () => {
+  test('the client-update path builds the pool via resolveUpdatedTools', () => {
+    const hookSource = readFileSync(
+      join(import.meta.dir, 'useManageMCPConnections.ts'),
+      'utf8',
+    )
+    expect(hookSource).toContain('const updatedTools = resolveUpdatedTools(')
   })
 })

@@ -284,8 +284,12 @@ describe('S1 regression: REPL wiring', () => {
     expect(replSource).toContain(
       'evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)',
     )
-    // Intentional evictions are announced to the cache-break detector.
-    expect(replSource).toContain('notifyCacheDeletion')
+    // Intentional evictions are announced to the cache-break detector —
+    // call-shaped and line-anchored so neither the import line nor a
+    // commented-out call can satisfy the guard.
+    expect(replSource).toMatch(
+      /^\s*notifyCacheDeletion\(getQuerySourceForREPL\(\)\)/m,
+    )
     // Idle-gap sweep before seeding the request.
     expect(replSource).toContain('evaluateTimeBasedTrigger(sweepSnapshot')
     // The sweep must not fire while a query is in flight (queued-submit
