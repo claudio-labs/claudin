@@ -48,6 +48,17 @@ const MAX_TRACKED_KEYS = 16
 
 const perKeyClippedIds = new Map<string, Set<string>>()
 
+// First-write-wins registry of the exact stub bytes emitted per tool_use_id.
+// The stub text embeds measures of the content present at stub time (token
+// count; head bytes when stubKeepHeadChars > 0), and different views of the
+// same conversation can hold different content for the same id (budget
+// preview in the per-request view vs full original in a persistent array).
+// Recording the first emission makes every later rewriter reproduce the
+// same bytes, so the prompt-cache prefix stays stable across views.
+// Lifecycle mirrors perKeyClippedIds: same key scheme, same cap, pruned and
+// reset together.
+const perKeyStubText = new Map<string, Map<string, string>>()
+
 // Composite key isolates sub-agents (same sessionId, different agentId) from
 // the parent. Standalone sessions key on sessionId alone.
 function currentKey(): string {
@@ -86,8 +97,33 @@ export function addClippedIds(ids: Iterable<string>): void {
   }
 }
 
+// Read-only lookup — never allocates a map for the key.
+function getStubTextForId(toolUseId: string): string | undefined {
+  return perKeyStubText.get(currentKey())?.get(toolUseId)
+}
+
+function recordStubText(toolUseId: string, stub: string): void {
+  const key = currentKey()
+  let map = perKeyStubText.get(key)
+  if (!map) {
+    map = new Map()
+    // Same defensive LRU-ish bound as getOrCreateForCurrent.
+    if (perKeyStubText.size >= MAX_TRACKED_KEYS) {
+      const oldest = perKeyStubText.keys().next().value
+      if (oldest !== undefined) perKeyStubText.delete(oldest)
+    }
+    perKeyStubText.set(key, map)
+  }
+  // First-write-wins: never overwrite bytes that may already be cached
+  // server-side from an earlier request.
+  if (!map.has(toolUseId)) {
+    map.set(toolUseId, stub)
+  }
+}
+
 export function resetClippedIds(): void {
   perKeyClippedIds.delete(currentKey())
+  perKeyStubText.delete(currentKey())
 }
 
 /**
@@ -102,6 +138,9 @@ export function pruneStaleClippedIds(): void {
   for (const k of perKeyClippedIds.keys()) {
     if (k !== key) perKeyClippedIds.delete(k)
   }
+  for (const k of perKeyStubText.keys()) {
+    if (k !== key) perKeyStubText.delete(k)
+  }
 }
 
 /**
@@ -112,7 +151,10 @@ export function pruneStaleClippedIds(): void {
  */
 export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   const ids = perKeyClippedIds.get(currentKey())
-  if (!ids || ids.size === 0) return
+  // The stub-text registry can hold ids the clipped set doesn't (age-prune
+  // and byte-guard stubs record bytes too), so prune it independently.
+  const stubText = perKeyStubText.get(currentKey())
+  if ((!ids || ids.size === 0) && (!stubText || stubText.size === 0)) return
 
   const liveIds = new Set<string>()
   for (const msg of messages) {
@@ -137,8 +179,15 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
     }
   }
 
-  for (const id of ids) {
-    if (!liveIds.has(id)) ids.delete(id)
+  if (ids) {
+    for (const id of ids) {
+      if (!liveIds.has(id)) ids.delete(id)
+    }
+  }
+  if (stubText) {
+    for (const id of stubText.keys()) {
+      if (!liveIds.has(id)) stubText.delete(id)
+    }
   }
 }
 
@@ -146,6 +195,7 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
 // getSessionId across a single test run.
 export function _resetAllClippedIdsForTesting(): void {
   perKeyClippedIds.clear()
+  perKeyStubText.clear()
   // Sync lastSeenSessionId with the current session so that the first
   // switchSession() call in a test correctly identifies which key to evict.
   // Without this, tests that run after a mock of bootstrap/state.js has
@@ -180,6 +230,11 @@ onSessionSwitch(newId => {
   for (const k of perKeyClippedIds.keys()) {
     if (k === old || k.startsWith(`${old}:`)) {
       perKeyClippedIds.delete(k)
+    }
+  }
+  for (const k of perKeyStubText.keys()) {
+    if (k === old || k.startsWith(`${old}:`)) {
+      perKeyStubText.delete(k)
     }
   }
 })
@@ -488,24 +543,35 @@ function stubOneBlock(
   if (Array.isArray(existing) && existing.length === 0) return block
   if (arrayContainsImage(existing)) return block
   const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
+  // First-write-wins replay: if this id was already stubbed in this session
+  // (by any rewriter, over any content view), reproduce those exact bytes.
+  // Different views can hold different content for the same id (budget
+  // preview vs full original) — recomputing would embed a different token
+  // count / head and flip the wire bytes, breaking the cached prefix.
+  if (toolUseId) {
+    const recorded = getStubTextForId(toolUseId)
+    if (recorded !== undefined) {
+      return { ...block, content: recorded }
+    }
+  }
   const toolName = toolNames.get(toolUseId) ?? 'tool'
   const tokens = estimateToolResultTokens(existing)
   // Head-preserving form: one mutation, same break cost as the pure stub,
   // but the model keeps the useful head of the output (file headers, top
   // grep hits) — fewer re-reads. Only when it meaningfully truncates.
-  if (headStubApplies(existing, stubKeepHeadChars)) {
-    return {
-      ...block,
-      content: buildClipStubWithHead(
+  const stub = headStubApplies(existing, stubKeepHeadChars)
+    ? buildClipStubWithHead(
         toolName,
         tokens,
         existing.slice(0, stubKeepHeadChars),
-      ),
-    }
+      )
+    : buildClipStub(toolName, tokens)
+  if (toolUseId) {
+    recordStubText(toolUseId, stub)
   }
   return {
     ...block,
-    content: buildClipStub(toolName, tokens),
+    content: stub,
   }
 }
 
