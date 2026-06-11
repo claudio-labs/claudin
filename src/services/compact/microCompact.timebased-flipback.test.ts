@@ -19,8 +19,22 @@
  */
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 
+// Pin GrowthBook to default-returning FIRST, before anything that reads
+// flags loads: getTimeBasedMCConfig's 'tengu_slate_heron' read must fall
+// through to the cache-profile defaults regardless of what earlier test
+// files left in the module registry.
+const realGrowthbook = {
+  ...(await import('../analytics/growthbook.js')),
+}
+mock.module('../analytics/growthbook.js', () => ({
+  ...realGrowthbook,
+  getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
+}))
+
 import type { Message } from '../../types/message.js'
-import { createAssistantMessage, createUserMessage } from '../../utils/messages.js'
+const { createAssistantMessage, createUserMessage } = await import(
+  '../../utils/messages.js'
+)
 
 // Force the 'retain' cache profile BEFORE anything reads it: it is the
 // profile with timeBasedClipEnabled=true, gap=60min, keepRecent=5
@@ -117,6 +131,11 @@ const STUB_FORM = /^\[clipped: ~\d+ tokens from Read\]$/
 describe('S2 regression: time-based microcompact persists via stable stubs', () => {
   beforeEach(() => {
     _resetAllClippedIdsForTesting()
+    // Re-pin the profile per test: other files in a full-suite run reset
+    // the memoized profile / env in their own cleanup, which would silently
+    // flip these tests to a profile with the time-based trigger disabled.
+    process.env.CLAUDIN_CACHE_PROFILE = 'retain'
+    _resetCacheProfileForTesting()
   })
 
   test('precondition: retain profile enables the time-based trigger (gap 60min, keepRecent 5)', () => {
@@ -228,4 +247,5 @@ afterAll(() => {
   _resetCacheProfileForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('../../utils/model/model.js', () => realModel)
+  mock.module('../analytics/growthbook.js', () => realGrowthbook)
 })

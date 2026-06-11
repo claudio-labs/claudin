@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
 
+// Capture the genuine module BEFORE any mock so afterEach can restore the
+// full export surface. Restoring `{}` (the previous behavior) left the
+// module registry poisoned for every later test file in a full-suite run —
+// any transitive named import from growthbook.js then failed with
+// "Export named ... not found".
+const realGrowthbook = {
+  ...(await import('../services/analytics/growthbook.js')),
+}
+
 async function importFileModuleWithKillswitchEnabled(
   killswitchEnabled: boolean,
 ) {
   mock.module('../services/analytics/growthbook.js', () => ({
+    ...realGrowthbook,
     getFeatureValue_CACHED_MAY_BE_STALE: () => killswitchEnabled,
   }))
 
@@ -11,7 +21,7 @@ async function importFileModuleWithKillswitchEnabled(
 }
 
 afterEach(() => {
-  mock.module('../services/analytics/growthbook.js', () => ({}))
+  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
 })
 
 describe('addLineNumbers', () => {
