@@ -82,6 +82,24 @@ if (
   }
 }
 
+// If the heap-bump re-exec below injected jemalloc into LD_PRELOAD, restore
+// the original value now that we're the re-exec'd child. LD_PRELOAD already
+// took effect for this process at exec time; mutating process.env here only
+// changes what OUR children inherit. Without this, every spawned process
+// (browsers via openBrowser, user commands via the Bash tool, MCP servers)
+// runs under jemalloc — Chromium-based browsers segfault under it (crash in
+// libjemalloc via glib's g_slice free path), which silently broke OAuth
+// browser opening on Linux.
+if (process.env[HEAP_BUMP_SENTINEL] && '_CLAUDIN_LD_PRELOAD_ORIG' in process.env) {
+  const orig = process.env._CLAUDIN_LD_PRELOAD_ORIG
+  if (orig) {
+    process.env.LD_PRELOAD = orig
+  } else {
+    delete process.env.LD_PRELOAD
+  }
+  delete process.env._CLAUDIN_LD_PRELOAD_ORIG
+}
+
 if (
   !process.env[HEAP_BUMP_SENTINEL] &&
   process.env.CLAUDIN_NO_HEAP_BUMP !== '1' &&
@@ -103,6 +121,7 @@ if (
   const mallocEnv = {}
   const mallocStrategy = process.env.CLAUDIN_MALLOC || 'auto'
   let ldPreload = process.env.LD_PRELOAD || ''
+  let injectedJemalloc = false
 
   if (mallocStrategy !== 'default') {
     // Candidate jemalloc paths (common distro locations)
@@ -118,6 +137,7 @@ if (
 
     if (jemallocPath) {
       // jemalloc found — prepend to LD_PRELOAD
+      injectedJemalloc = true
       ldPreload = ldPreload ? `${jemallocPath}:${ldPreload}` : jemallocPath
     } else if (mallocStrategy === 'jemalloc') {
       // User explicitly requested jemalloc but it's not installed
@@ -150,6 +170,12 @@ if (
         // Respects pre-existing UV_THREADPOOL_SIZE if user set their own.
         UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '10',
         ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
+        // Remember the pre-injection value so the re-exec'd child can restore
+        // it for ITS children (see the restore block above). Only set when we
+        // actually prepended jemalloc.
+        ...(injectedJemalloc
+          ? { _CLAUDIN_LD_PRELOAD_ORIG: process.env.LD_PRELOAD || '' }
+          : {}),
         ...mallocEnv,
       },
     },
