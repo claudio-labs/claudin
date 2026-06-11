@@ -32,6 +32,7 @@ import { getMainLoopModel } from '../model/model.js'
 import { getAutoModeConfig } from '../settings/settings.js'
 import { sideQuery } from '../sideQuery.js'
 import { jsonStringify } from '../slowOperations.js'
+import { modelRequiresAdaptiveThinking } from '../thinking.js'
 import { tokenCountWithEstimation } from '../tokens.js'
 import {
   getBashPromptAllowDescriptions,
@@ -825,8 +826,14 @@ function replaceOutputFormatWithXml(systemPrompt: string): string {
  * property-name strings don't survive minification into external builds.
  */
 function getClassifierThinkingConfig(
-  _model: string,
+  model: string,
 ): [false | undefined, number] {
+  if (modelRequiresAdaptiveThinking(model)) {
+    // `thinking: false` is omitted by sideQuery for these models (an explicit
+    // `disabled` 400s), so adaptive thinking stays on server-side — pad
+    // max_tokens so the visible <block> verdict still fits after thinking.
+    return [false, 2048]
+  }
   return [false, 0]
 }
 
@@ -1257,8 +1264,12 @@ export async function classifyYoloAction(
 
   const model = getClassifierModel()
 
-  // Dispatch to 2-stage XML classifier if enabled via GrowthBook
-  if (isTwoStageClassifierEnabled()) {
+  // Dispatch to 2-stage XML classifier if enabled via GrowthBook. Models with
+  // always-on thinking (Fable-class) are forced onto the XML path: the
+  // tool_use classifier's forced tool_choice is rejected with a deterministic
+  // 400 ("tool_choice forces tool use is not compatible with this model"),
+  // which would degrade every auto-mode decision to a manual prompt.
+  if (isTwoStageClassifierEnabled() || modelRequiresAdaptiveThinking(model)) {
     return classifyYoloActionXml(
       prefixMessages,
       systemPrompt,
