@@ -37,11 +37,37 @@ Two invariants drive everything:
    spread) keeps tool_results full and lets the cheap cached reads pay;
    `aggressive` (low-spread providers) clips per turn.
 
+Three byte-stability rules back them (added by the 2026-06 cache-break
+audit; integrated regression:
+`services/compact/requestDeterminism.invariant.test.ts`):
+
+- **Stub bytes are first-write-wins** (`perKeyStubText` in
+  `stableStubState.ts`): the first stub emitted for a tool_use_id records
+  its exact bytes and every later rewriter replays them, so views holding
+  different content for the same id (budget preview vs full original)
+  cannot flip the wire bytes.
+- **History deletions are amortized and announced**: the REPL's display
+  array seeds the next request, so `evictOldStubbedMessages` /
+  `evictToMaxSize` fire in batches (`EVICT_MIN_BATCH` = 24 evictable
+  messages; `EVICT_TRIGGER_AT` = 300 → cut back to 200), call
+  `notifyCacheDeletion`, and a free full sweep runs pre-query when the
+  idle gap says the server cache already expired.
+- **The tool pool never churns bytes gratuitously**: MCP updates replace
+  in place and keep schemas across transient failures
+  (`resolveUpdatedTools`), LSP `defer_loading` latches per session, and
+  deferred tools are announced via persisted delta attachments
+  (`tengu_glacier_2xr` on in the open build) instead of an ephemeral
+  `messages[0]` prepend — with a legacy-format latch for sessions resumed
+  on a warm pre-flip cache (`maybeLatchLegacyDeferredAnnouncement`).
+
 ## Pointers to the mechanisms
 
 - `services/compact/stableStubState.ts` — stable stubs (`clippedIds`),
-  age prune (`pruneOldToolResults`), RSS byte-guard
-  (`pruneToolResultsByBytes`), display stub, **`getClipFrontierIndex`**.
+  first-write-wins stub byte registry (`perKeyStubText`), age prune
+  (`pruneOldToolResults`), RSS byte-guard (`pruneToolResultsByBytes`),
+  amortized display eviction (`evictOldStubbedMessages` /
+  `evictToMaxSize` + `EVICT_MIN_BATCH` / `EVICT_TRIGGER_AT`), display
+  stub, **`getClipFrontierIndex`**.
 - `services/api/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048
   walk + frontier cap (`min(defer, frontier)`), head-pin fallback,
   skipCacheWrite fork handling.
@@ -51,8 +77,18 @@ Two invariants drive everything:
   frontier → addCacheBreakpoints`; also sends `context_management` when the
   beta header is on.
 - `services/compact/microCompact.ts` — explicit clip set; size trigger is
-  profile-gated (0.5 aggressive / 0.85 retain), time-based trigger clips
-  when the server cache already expired (mutation is free then).
+  profile-gated (0.5 aggressive / 0.85 retain); the time-based trigger
+  fires when the server cache already expired and PERSISTS through the
+  same clipped set (`addClippedIds`) — the post-idle "cleaned" prefix
+  keeps its hits on later turns, and pre-existing size-trigger ids
+  survive (no `resetClippedIds` on the time path).
+- `services/mcp/useManageMCPConnections.ts` — `resolveUpdatedTools`:
+  positional tool-pool replacement; schemas survive `failed` transitions
+  ('disabled' still removes).
+- `utils/toolSearch.ts` — `isDeferredToolsDeltaActive` +
+  `maybeLatchLegacyDeferredAnnouncement`: deferred-tools announcement
+  format (delta attachments vs legacy prepend), settled per session
+  before tool schemas are built.
 - `utils/messages/normalize.ts` — `stripOldThinkingBlocks` /
   `stripOldNarrationBlocks`: position-based keep windows (count-based
   windows pinned the frontier with sporadic thinking).
@@ -68,7 +104,8 @@ Two invariants drive everything:
 
 ## Bench
 
-`scripts/profile/cache-ab-bench.ts` — A/B against Claude Code
-(`--sequential --revisits=8` is the fidelity workload; usage parsed from the
-session transcript because claudin's stream-json emits assistant events
-before final usage lands).
+`scripts/profile/cache-lockstep-bench.ts` — one user turn per file via
+`--input-format stream-json` (identical pacing by construction); the
+reliable harness for main-vs-branch comparisons. `cache-ab-bench.ts`
+remains for exploratory runs only — its extractTimeline rows are
+cumulative and run-to-run variance is high, so don't cite its numbers.
