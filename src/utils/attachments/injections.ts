@@ -39,7 +39,7 @@ import {
 } from '../thinking.js'
 import {
   getDeferredToolsDelta,
-  isDeferredToolsDeltaEnabled,
+  isDeferredToolsDeltaActive,
   isToolSearchEnabledOptimistic,
   isToolSearchToolAvailable,
   modelSupportsToolReference,
@@ -133,7 +133,10 @@ export function getDeferredToolsDeltaAttachment(
   messages: Message[] | undefined,
   scanContext?: DeferredToolsDeltaScanContext,
 ): Attachment[] {
-  if (!isDeferredToolsDeltaEnabled()) return []
+  // "Active", not just "enabled": sessions latched to the legacy prepend
+  // format (resumed with a warm pre-flip cache) must not also receive
+  // delta attachments — the two announcement mechanisms are exclusive.
+  if (!isDeferredToolsDeltaActive()) return []
   // These three checks mirror the sync parts of isToolSearchEnabled —
   // the attachment text says "available via ToolSearch", so ToolSearch
   // has to actually be in the request. The async auto-threshold check

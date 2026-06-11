@@ -1,5 +1,8 @@
 import { feature } from 'bun:bundle'
-import { isReplBridgeActive } from '../../bootstrap/state.js'
+import {
+  getDeferredDeltaLegacySession,
+  isReplBridgeActive,
+} from '../../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import type { Tool } from '../../Tool.js'
 import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
@@ -28,16 +31,20 @@ const PROMPT_HEAD = `Fetches full schema definitions for deferred tools so they 
 
 `
 
-// Matches isDeferredToolsDeltaEnabled in toolSearch.ts (not imported —
-// toolSearch.ts imports from this file). When enabled: tools announced
-// via system-reminder attachments. When disabled: prepended
-// <available-deferred-tools> block (pre-gate behavior).
+// Matches isDeferredToolsDeltaActive in toolSearch.ts (not imported —
+// toolSearch.ts imports from this file; the legacy-session latch is read
+// from bootstrap/state directly). When active: tools announced via
+// system-reminder attachments. Otherwise: prepended
+// <available-deferred-tools> block (pre-gate behavior, also kept for
+// sessions latched to the legacy format by
+// maybeLatchLegacyDeferredAnnouncement — the hint and the announcement
+// mechanism MUST flip together or the tools array bytes diverge from the
+// resumed session's warm cache).
 function getToolLocationHint(): string {
-  const deltaEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_glacier_2xr',
-    false,
-  )
-  return deltaEnabled
+  const deltaActive =
+    getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false) &&
+    !getDeferredDeltaLegacySession()
+  return deltaActive
     ? 'Deferred tools appear by name in <system-reminder> messages.'
     : 'Deferred tools appear by name in <available-deferred-tools> messages.'
 }

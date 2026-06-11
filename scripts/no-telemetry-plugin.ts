@@ -54,6 +54,7 @@ const _openBuildDefaults = {
   'tengu_passport_quail': true, // EXTRACT_MEMORIES — enable memory extraction (upstream: false)
   'tengu_coral_fern': true,     // EXTRACT_MEMORIES — enable memory search in past context (upstream: false)
   'tengu_bramble_lintel': 15,   // EXTRACT_MEMORIES throttle — fire every 15 eligible turns (upstream: null → 1). Real per-fire cost is ~2-4k effective tokens (mostly cache_read at 10%) so amortized to ~130-270 tokens/turn. Inline-write architecture rejected: 3-5x overstated savings, agent follow-through not validated, this throttle bump captures ~99% of the win at zero code risk.
+  'tengu_glacier_2xr': true,    // Deferred-tools delta announcements (upstream: false). Off, claude/streaming.ts prepends an ephemeral <available-deferred-tools> block at messages[0] every request — any deferred-pool change (MCP connect, discovery) rewrites messages[0] and invalidates the entire cached prefix. On, pool changes become persisted deferred_tools_delta attachments (appended, cache-safe). Sessions resumed with a warm cache from a pre-flip binary keep the legacy prepend for the whole session (toolSearch.ts maybeLatchLegacyDeferredAnnouncement) so the flip itself never breaks a cache.
 };
 
 /* ── Known runtime feature keys (reference only) ───────────────────────
@@ -162,7 +163,7 @@ const _openBuildDefaults = {
  *   tengu_harbor_permissions       = false      MCP channel permissions enforcement
  *   tengu_copper_bridge            = false      Chrome MCP bridge
  *   tengu_chrome_auto_enable       = false      Auto-enable Chrome MCP on startup
- *   tengu_glacier_2xr              = false      Enhanced tool search / ToolSearchTool
+ *   tengu_glacier_2xr              = false      Deferred-tools delta announcements (open build: true via _openBuildDefaults)
  *   tengu_malort_pedway            = {}         Computer-use (Chicago) config (dynamic)
  *
  * ── VSCode / IDE ──────────────────────────────────────────────────────

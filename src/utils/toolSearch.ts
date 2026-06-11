@@ -7,6 +7,10 @@
  */
 
 import memoize from 'lodash-es/memoize.js'
+import {
+  getDeferredDeltaLegacySession,
+  setDeferredDeltaLegacySession,
+} from '../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
 import { tryGetActiveProvider } from '../services/api/activeProvider.js'
 import {
@@ -646,6 +650,63 @@ export type DeferredToolsDeltaScanContext = {
  */
 export function isDeferredToolsDeltaEnabled(): boolean {
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false)
+}
+
+// Timestamps older than this belong to a previous process (resume /
+// continue) — the reference point for the warm-cache compatibility check.
+const PROCESS_START_MS = Date.now() - process.uptime() * 1000
+
+// Upper bound of the server-side prompt-cache TTL (extended TTL is 1h;
+// default is 5min). A session resumed within this window of its previous
+// process's last assistant turn may still have a warm cache entry written
+// under the legacy announcement format.
+const LEGACY_ANNOUNCEMENT_WARM_TTL_MS = 60 * 60_000
+
+/**
+ * Compatibility latch: if this session was resumed while the server-side
+ * cache written by a PREVIOUS binary (legacy <available-deferred-tools>
+ * prepend) may still be warm, lock the session to the legacy format so the
+ * delta-flag flip itself never breaks a cache. Sticky for the session;
+ * released by clearBetaHeaderLatches() on /clear and /compact (cache-cold
+ * moments). Fresh sessions never latch — their cache is cold by definition.
+ *
+ * Called once per request from queryModel BEFORE tool schemas are built, so
+ * the ToolSearchTool location hint and the announcement mechanism always
+ * agree within a request. O(1) after the latch settles or when the history
+ * has no pre-process assistant near the tail.
+ */
+export function maybeLatchLegacyDeferredAnnouncement(
+  messages: readonly Message[],
+  processStartMs = PROCESS_START_MS,
+): void {
+  if (getDeferredDeltaLegacySession()) return
+  if (!isDeferredToolsDeltaEnabled()) return
+  // Newest assistant message produced BEFORE this process started — the
+  // resume point. Anything this process produced sits after it.
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m?.type !== 'assistant') continue
+    const ts = new Date(
+      (m as { timestamp?: string }).timestamp ?? '',
+    ).getTime()
+    if (!Number.isFinite(ts) || ts >= processStartMs) continue
+    if (processStartMs - ts < LEGACY_ANNOUNCEMENT_WARM_TTL_MS) {
+      setDeferredDeltaLegacySession(true)
+    }
+    return
+  }
+}
+
+/**
+ * The effective per-request gate: delta announcements are active when the
+ * flag is on AND the session is not latched to the legacy format. Every
+ * consumer (prepend in claude/streaming.ts, ToolSearchTool location hint,
+ * delta attachment injection) MUST use this — splitting them would emit
+ * the prepend and the attachment formats inconsistently and reintroduce
+ * the break the latch exists to avoid.
+ */
+export function isDeferredToolsDeltaActive(): boolean {
+  return isDeferredToolsDeltaEnabled() && !getDeferredDeltaLegacySession()
 }
 
 /**

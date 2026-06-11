@@ -273,6 +273,14 @@ type State = {
   // tools array mid-session and bust the prompt cache. Deferred tools stay
   // reachable via ToolSearch. Null = no tool latched yet.
   lspDeferLatchedTools: Set<string> | null
+  // Sticky compatibility latch for the deferred-tools announcement format.
+  // True = this session was resumed with a potentially-warm server cache
+  // written by a binary that used the legacy <available-deferred-tools>
+  // prepend, so we keep emitting the legacy format (prepend + old
+  // ToolSearchTool hint) for the rest of the session instead of switching
+  // to delta attachments mid-cache. See toolSearch.ts
+  // maybeLatchLegacyDeferredAnnouncement.
+  deferredDeltaLegacySession: boolean
   // Current prompt ID (UUID) correlating a user prompt with subsequent OTel events
   promptId: string | null
   // Last API requestId for the main conversation chain (not subagents).
@@ -440,6 +448,7 @@ function getInitialState(): State {
     fastModeHeaderLatched: null,
     thinkingClearLatched: null,
     lspDeferLatchedTools: null,
+    deferredDeltaLegacySession: false,
     // Current prompt ID
     promptId: null,
     lastMainRequestId: undefined,
@@ -1774,6 +1783,15 @@ export function latchLspDefer(toolName: string): void {
   STATE.lspDeferLatchedTools.add(toolName)
 }
 
+/** True when this session is latched to the legacy deferred-tools prepend. */
+export function getDeferredDeltaLegacySession(): boolean {
+  return STATE.deferredDeltaLegacySession
+}
+
+export function setDeferredDeltaLegacySession(v: boolean): void {
+  STATE.deferredDeltaLegacySession = v
+}
+
 /**
  * Reset beta header latches to null. Called on /clear and /compact so a
  * fresh conversation gets fresh header evaluation.
@@ -1783,6 +1801,9 @@ export function clearBetaHeaderLatches(): void {
   STATE.fastModeHeaderLatched = null
   STATE.thinkingClearLatched = null
   STATE.lspDeferLatchedTools = null
+  // /clear empties the history and /compact rewrites it (cache cold either
+  // way) — switching a legacy-latched session to delta here is free.
+  STATE.deferredDeltaLegacySession = false
 }
 
 export function getPromptId(): string | null {

@@ -146,8 +146,9 @@ import {
 } from "src/utils/thinking.js";
 import {
   extractDiscoveredToolNames,
-  isDeferredToolsDeltaEnabled,
+  isDeferredToolsDeltaActive,
   isToolSearchEnabled,
+  maybeLatchLegacyDeferredAnnouncement,
 } from "src/utils/toolSearch.js";
 import { API_MAX_MEDIA_PER_REQUEST } from "src/constants/apiLimits.js";
 import { ADVISOR_BETA_HEADER } from "src/constants/betas.js";
@@ -385,6 +386,13 @@ export async function* queryModel(
     }
   }
 
+  // Settle the deferred-tools announcement format BEFORE tool schemas are
+  // built: the ToolSearchTool location hint (rendered during schema build)
+  // and the announcement mechanism (prepend vs delta attachment, further
+  // down) must agree within the request. Latches sessions resumed with a
+  // potentially-warm legacy-format cache to the legacy prepend.
+  maybeLatchLegacyDeferredAnnouncement(messages);
+
   // Check if tool search is enabled (checks mode, model support, and threshold for auto mode)
   // This is async because it may need to calculate MCP tool description sizes for TstAuto mode
   let useToolSearch = await isToolSearchEnabled(
@@ -601,10 +609,12 @@ export async function* queryModel(
   // so the fingerprint reflects the actual user input.
   const fingerprint = computeFingerprintFromMessages(messagesForAPI);
 
-  // When the delta attachment is enabled, deferred tools are announced
+  // When the delta attachment is active, deferred tools are announced
   // via persisted deferred_tools_delta attachments instead of this
   // ephemeral prepend (which busts cache whenever the pool changes).
-  if (useToolSearch && !isDeferredToolsDeltaEnabled()) {
+  // "Active" = flag on AND not latched to the legacy format by
+  // maybeLatchLegacyDeferredAnnouncement above.
+  if (useToolSearch && !isDeferredToolsDeltaActive()) {
     const deferredToolList = tools
       .filter((t) => deferredToolNames.has(t.name))
       .map(formatDeferredToolLine)
