@@ -670,10 +670,19 @@ const LEGACY_ANNOUNCEMENT_WARM_TTL_MS = 60 * 60_000
  * released by clearBetaHeaderLatches() on /clear and /compact (cache-cold
  * moments). Fresh sessions never latch — their cache is cold by definition.
  *
- * Called once per request from queryModel BEFORE tool schemas are built, so
- * the ToolSearchTool location hint and the announcement mechanism always
- * agree within a request. O(1) after the latch settles or when the history
- * has no pre-process assistant near the tail.
+ * Format-aware: a resumed history that already carries persisted
+ * deferred_tools_delta attachments was written by a DELTA-format binary —
+ * its warm cache has no legacy prepend, so latching would itself add the
+ * prepend at messages[0] and break the very cache the latch protects.
+ * Those sessions stay on delta. Only histories with a recent pre-process
+ * assistant AND no delta attachments (i.e. genuinely written pre-flip)
+ * latch legacy.
+ *
+ * Called per request from getDeferredToolsDeltaAttachment (attachments
+ * pipeline — the first consumer in request order) and from queryModel
+ * BEFORE tool schemas are built, so the ToolSearchTool location hint and
+ * the announcement mechanism always agree within a request. Idempotent;
+ * O(1) after the latch settles, one history scan per request otherwise.
  */
 export function maybeLatchLegacyDeferredAnnouncement(
   messages: readonly Message[],
@@ -690,11 +699,29 @@ export function maybeLatchLegacyDeferredAnnouncement(
       (m as { timestamp?: string }).timestamp ?? '',
     ).getTime()
     if (!Number.isFinite(ts) || ts >= processStartMs) continue
-    if (processStartMs - ts < LEGACY_ANNOUNCEMENT_WARM_TTL_MS) {
+    if (
+      processStartMs - ts < LEGACY_ANNOUNCEMENT_WARM_TTL_MS &&
+      !historyHasDeferredToolsDelta(messages)
+    ) {
       setDeferredDeltaLegacySession(true)
     }
     return
   }
+}
+
+/**
+ * True when the history already contains a persisted deferred_tools_delta
+ * attachment — proof the previous process announced via the delta format.
+ * (Any delta-format session with a non-empty deferred pool emits one on
+ * its first request, so absence reliably means pre-flip/legacy.)
+ */
+function historyHasDeferredToolsDelta(messages: readonly Message[]): boolean {
+  return messages.some(
+    m =>
+      m.type === 'attachment' &&
+      (m as { attachment: { type: string } }).attachment.type ===
+        'deferred_tools_delta',
+  )
 }
 
 /**

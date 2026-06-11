@@ -40,6 +40,7 @@ import {
 import {
   getDeferredToolsDelta,
   isDeferredToolsDeltaActive,
+  maybeLatchLegacyDeferredAnnouncement,
   isToolSearchEnabledOptimistic,
   isToolSearchToolAvailable,
   modelSupportsToolReference,
@@ -133,6 +134,11 @@ export function getDeferredToolsDeltaAttachment(
   messages: Message[] | undefined,
   scanContext?: DeferredToolsDeltaScanContext,
 ): Attachment[] {
+  // The attachments pipeline runs BEFORE queryModel's latch call — settle
+  // the legacy-session latch here first, or the first request of a
+  // legacy-resumed session would inject the full deferred pool as a
+  // persisted delta attachment AND emit the legacy prepend post-latch.
+  maybeLatchLegacyDeferredAnnouncement(messages ?? [])
   // "Active", not just "enabled": sessions latched to the legacy prepend
   // format (resumed with a warm pre-flip cache) must not also receive
   // delta attachments — the two announcement mechanisms are exclusive.

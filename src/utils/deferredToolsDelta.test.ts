@@ -60,7 +60,22 @@ const {
 } = await import('./toolSearch.js')
 const { clearBetaHeaderLatches } = await import('../bootstrap/state.js')
 
-type LooseMessage = { type: string; timestamp?: string }
+type LooseMessage = {
+  type: string
+  timestamp?: string
+  attachment?: { type: string; addedNames?: string[]; removedNames?: string[] }
+}
+
+function deltaAttachment(): LooseMessage {
+  return {
+    type: 'attachment',
+    attachment: {
+      type: 'deferred_tools_delta',
+      addedNames: ['mcp__foo__bar'],
+      removedNames: [],
+    },
+  }
+}
 
 const PROCESS_START = Date.parse('2026-06-11T12:00:00Z')
 
@@ -137,6 +152,67 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
   test('unparseable timestamps are skipped, not treated as warm', () => {
     latch([{ type: 'assistant', timestamp: 'not-a-date' }])
     expect(isDeferredToolsDeltaActive()).toBe(true)
+  })
+
+  // Format-aware: the latch protects warm caches written in the LEGACY
+  // (prepend) format. A history that already carries persisted
+  // deferred_tools_delta attachments was written by a delta-format binary —
+  // latching there would itself add the prepend at messages[0] and break
+  // the warm prepend-less cache on every warm resume of a delta session.
+  test('warm resume of a DELTA-format history (has delta attachments) does NOT latch', () => {
+    latch([
+      { type: 'user' },
+      deltaAttachment(),
+      assistantAt(10),
+      { type: 'user' },
+    ])
+    expect(isDeferredToolsDeltaActive()).toBe(true)
+  })
+
+  test('warm resume with a delta attachment ANYWHERE in history stays delta', () => {
+    // Attachment after the resume-point assistant (e.g. pool changed on the
+    // previous process's last turn).
+    latch([assistantAt(30), deltaAttachment(), assistantAt(10)])
+    expect(isDeferredToolsDeltaActive()).toBe(true)
+  })
+
+  test('warm resume WITHOUT delta attachments still latches legacy', () => {
+    latch([{ type: 'user' }, assistantAt(10), { type: 'user' }])
+    expect(isDeferredToolsDeltaActive()).toBe(false)
+  })
+})
+
+// ── Pipeline ordering: the attachment injector settles the latch ────────
+// The attachments pipeline runs BEFORE queryModel's latch call. If the
+// injector consulted isDeferredToolsDeltaActive() without settling the
+// latch first, the first request of a legacy-resumed session would persist
+// a full-pool delta attachment AND emit the legacy prepend post-latch —
+// both announcement formats in one request.
+describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
+  test('legacy-resume history: injector returns no attachment and leaves the session latched', async () => {
+    const { getDeferredToolsDeltaAttachment } = await import(
+      './attachments/injections.js'
+    )
+    // Real PROCESS_START_MS (no override path through the injector) — build
+    // a resume point 10min before the actual process start.
+    const realStart = Date.now() - process.uptime() * 1000
+    const history = [
+      { type: 'user' },
+      {
+        type: 'assistant',
+        timestamp: new Date(realStart - 10 * 60_000).toISOString(),
+      },
+      { type: 'user' },
+    ]
+    expect(isDeferredToolsDeltaActive()).toBe(true)
+    const attachments = getDeferredToolsDeltaAttachment(
+      [] as Parameters<typeof getDeferredToolsDeltaAttachment>[0],
+      'claude-sonnet-4-6',
+      history as Parameters<typeof getDeferredToolsDeltaAttachment>[2],
+    )
+    expect(attachments).toEqual([])
+    // The latch settled INSIDE the injector call, before its active check.
+    expect(isDeferredToolsDeltaActive()).toBe(false)
   })
 })
 
