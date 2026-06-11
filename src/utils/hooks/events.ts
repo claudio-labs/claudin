@@ -18,6 +18,7 @@ import { getHooksConfigFromSnapshot } from './hooksConfigSnapshot.js'
 import { shouldAllowManagedHooksOnly } from './hooksConfigSnapshot.js'
 import { logForDebugging } from '../debug.js'
 import { extractTextContent } from '../messages.js'
+import { resetGoalStateForSessionEnd } from '../goal/goal.js'
 import { clearSessionHooks } from './sessionHooks.js'
 import type {
   ConfigChangeHookInput,
@@ -303,6 +304,11 @@ export async function executeSessionEndHooks(
   if (setAppState) {
     const sessionId = getSessionId()
     clearSessionHooks(setAppState, sessionId)
+    // The /goal judge hook was just deleted along with the rest of the
+    // session hooks — clear the goal app state too, so /clear and in-process
+    // /resume (both end the outgoing session here) don't orphan activeGoal
+    // with no judge left to ever satisfy or clear it.
+    resetGoalStateForSessionEnd(setAppState)
   }
 }
 

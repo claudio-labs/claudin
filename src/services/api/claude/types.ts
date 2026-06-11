@@ -2,6 +2,7 @@ import type { ClientOptions } from '@anthropic-ai/sdk'
 import type {
   BetaJSONOutputFormat,
   BetaToolChoiceAuto,
+  BetaToolChoiceNone,
   BetaToolChoiceTool,
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
@@ -30,7 +31,11 @@ export type TaskBudgetParam = {
 export type Options = {
   getToolPermissionContext: () => Promise<ToolPermissionContext>
   model: string
-  toolChoice?: BetaToolChoiceTool | BetaToolChoiceAuto | undefined
+  toolChoice?:
+    | BetaToolChoiceTool
+    | BetaToolChoiceAuto
+    | BetaToolChoiceNone
+    | undefined
   isNonInteractiveSession: boolean
   extraToolSchemas?: BetaToolUnion[]
   maxOutputTokensOverride?: number

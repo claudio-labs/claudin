@@ -87,6 +87,35 @@ export type FooterItem =
   | 'bridge'
   | 'companion'
 
+/**
+ * Session-scoped /goal state. Set when the user registers a stopping
+ * condition via /goal; a prompt-type Stop session hook (the "judge") blocks
+ * the assistant from ending its turn until the condition is satisfied.
+ */
+export type ActiveGoalState = {
+  condition: string
+  /** Number of times the judge blocked a stop attempt. */
+  iterations: number
+  /** Date.now() when the goal was set. */
+  setAt: number
+  /** Session token count when the goal was set (see getSessionTokenCount). */
+  tokensAtStart: number
+  /** Reason from the judge's most recent ok:false verdict. */
+  lastCheckReason?: string
+}
+
+/**
+ * Outcome of the most recently cleared goal. Written when the judge returns
+ * ok:true (achieved) or impossible:true; consumed by the stop pipeline to
+ * emit the one-time "Goal achieved" notice.
+ */
+export type GoalResultState = {
+  condition: string
+  reason?: string
+  impossible: boolean
+  at: number
+}
+
 export type AppState = DeepImmutable<{
   settings: SettingsJson
   verbose: boolean
@@ -243,6 +272,10 @@ export type AppState = DeepImmutable<{
   thinkingEnabled: boolean | undefined
   promptSuggestionEnabled: boolean
   sessionHooks: SessionHooksState
+  // Active /goal stopping condition (session-scoped Stop-hook judge).
+  activeGoal?: ActiveGoalState
+  // Outcome of the most recently cleared goal (drives the one-time notice).
+  lastGoalResult?: GoalResultState
   tungstenActiveSession?: {
     sessionName: string
     socketName: string

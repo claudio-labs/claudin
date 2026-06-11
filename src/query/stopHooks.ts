@@ -49,6 +49,11 @@ const jobClassifierModule = feature('TEMPLATES')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 import type { QuerySource } from '../constants/querySource.js'
+import { getSessionId } from '../bootstrap/state.js'
+import {
+  handleGoalBlockingError,
+  shouldWarnGoalCheckIncomplete,
+} from '../utils/goal/goal.js'
 import { executeAutoDream } from '../services/autoDream/autoDream.js'
 import { executePromptSuggestion } from '../services/PromptSuggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from '../utils/envUtils.js'
@@ -177,6 +182,10 @@ export async function* handleStopHooks(
     const appState = toolUseContext.getAppState()
     const permissionMode = appState.toolPermissionContext.mode
 
+    // /goal lifecycle: the goal judge is a main-thread Stop session hook, so
+    // only track it when this is not a subagent stop.
+    const goalBefore = !toolUseContext.agentId ? appState.activeGoal : undefined
+
     const generator = executeStopHooks(
       permissionMode,
       toolUseContext.abortController.signal,
@@ -196,6 +205,9 @@ export async function* handleStopHooks(
     let hasOutput = false
     const hookErrors: string[] = []
     const hookInfos: StopHookInfo[] = []
+    // /goal: whether the judge produced a verdict this turn (blocked or
+    // cap-cleared) — used to detect a silently failed judge run (M3).
+    let goalJudgeBlocked = false
 
     for await (const result of generator) {
       if (result.message) {
@@ -255,15 +267,55 @@ export async function* handleStopHooks(
         }
       }
       if (result.blockingError) {
-        const userMessage = createUserMessage({
-          content: getStopHookMessage(result.blockingError),
-          isMeta: true, // Hide from UI (shown in summary message instead)
-        })
-        blockingErrors.push(userMessage)
-        yield userMessage
-        hasOutput = true
-        // Add to hookErrors so it appears in the summary
-        hookErrors.push(result.blockingError.blockingError)
+        // /goal: a blocked stop from the goal judge counts an iteration and
+        // records the judge's reason as the goal's last check. Judge blocks
+        // are identified by hook identity (the marker set by buildGoalHook),
+        // never by event or error text.
+        const isGoalJudgeBlock = result.fromStopConditionJudge === true
+        let suppressBlockForGoalCap = false
+        if (goalBefore && isGoalJudgeBlock) {
+          const goalOutcome = handleGoalBlockingError(
+            toolUseContext.setAppState,
+            getSessionId(),
+            goalBefore.condition,
+            result.blockingError,
+            toolUseContext.options.isNonInteractiveSession,
+          )
+          if (goalOutcome.kind !== 'not-goal') {
+            goalJudgeBlocked = true
+          }
+          if (goalOutcome.kind === 'cap-reached') {
+            // M2: never loop forever on a never-satisfiable goal. The goal
+            // was cleared by the handler; swallow the blocking error so the
+            // stop is allowed, and tell the user why.
+            suppressBlockForGoalCap = true
+            yield createSystemMessage(
+              `Goal hit the iteration cap (${goalOutcome.cap}) without being met — cleared. Last check: ${goalOutcome.reason}`,
+              'warning',
+            )
+            toolUseContext.addNotification?.({
+              key: 'goal-cap-reached',
+              text: 'Goal iteration cap reached — cleared',
+              priority: 'immediate',
+            })
+          }
+        }
+        if (!suppressBlockForGoalCap) {
+          const userMessage = createUserMessage({
+            content: getStopHookMessage(result.blockingError),
+            isMeta: true, // Hide from UI (shown in summary message instead)
+          })
+          blockingErrors.push(userMessage)
+          yield userMessage
+          hasOutput = true
+          // Add to hookErrors so it appears in the summary — except goal
+          // judge blocks: those are the expected "keep working" signal, not
+          // hook failures, and must not trigger the "Stop hook error
+          // occurred" notification (the footer indicator conveys state).
+          if (!isGoalJudgeBlock) {
+            hookErrors.push(result.blockingError.blockingError)
+          }
+        }
       }
       // Check if hook wants to prevent continuation
       if (result.preventContinuation) {
@@ -291,6 +343,61 @@ export async function* handleStopHooks(
           toolUse: false,
         })
         return { blockingErrors: [], preventContinuation: true }
+      }
+    }
+
+    // /goal: the judge's onHookSuccess callback clears activeGoal when the
+    // condition is met (or judged impossible). Detect the transition here to
+    // emit the one-time notice.
+    if (goalBefore) {
+      const stateAfterHooks = toolUseContext.getAppState()
+      const goalAfter = stateAfterHooks.activeGoal
+      const lastGoalResult = stateAfterHooks.lastGoalResult
+      if (
+        (!goalAfter || goalAfter.condition !== goalBefore.condition) &&
+        lastGoalResult &&
+        lastGoalResult.condition === goalBefore.condition
+      ) {
+        if (lastGoalResult.impossible) {
+          yield createSystemMessage(
+            `Goal judged impossible and cleared: ${lastGoalResult.reason ?? 'no reason given'}`,
+            'warning',
+          )
+          toolUseContext.addNotification?.({
+            key: 'goal-impossible',
+            text: 'Goal judged impossible — cleared',
+            priority: 'immediate',
+          })
+        } else {
+          yield createSystemMessage(
+            `Goal achieved: ${goalBefore.condition}${lastGoalResult.reason ? ` — ${lastGoalResult.reason}` : ''}`,
+            'info',
+          )
+          toolUseContext.addNotification?.({
+            key: 'goal-achieved',
+            text: 'Goal achieved · /goal <condition> to set another',
+            priority: 'immediate',
+          })
+        }
+      } else if (
+        shouldWarnGoalCheckIncomplete({
+          goalBefore,
+          goalAfter,
+          goalJudgeBlocked,
+          // ESC during the judge run cancels it (the judge yields nothing)
+          // — a deliberate interrupt, not a silently failed check.
+          aborted: toolUseContext.abortController.signal.aborted,
+        })
+      ) {
+        // M3: the goal is still active but the judge produced neither a
+        // blocking verdict nor a goal transition this turn — it was
+        // cancelled (e.g. timed out) or errored. Don't clear the goal;
+        // surface that the check silently failed so "Goal active" in the
+        // footer isn't mistaken for a passing check.
+        yield createSystemMessage(
+          `Goal check did not complete this turn (judge timed out or errored) — the goal is still active: ${goalBefore.condition}`,
+          'warning',
+        )
       }
     }
 

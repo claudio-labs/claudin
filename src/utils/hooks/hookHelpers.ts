@@ -20,6 +20,12 @@ export const hookResponseSchema = lazySchema(() =>
       .string()
       .describe('Reason, if the condition was not met')
       .optional(),
+    impossible: z
+      .boolean()
+      .describe(
+        'Stop hooks only: the condition can never be satisfied in this session',
+      )
+      .optional(),
   }),
 )
 

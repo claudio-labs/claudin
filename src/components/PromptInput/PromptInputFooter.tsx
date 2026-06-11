@@ -17,6 +17,7 @@ import type { PromptInputMode, VimMode } from '../../types/textInputTypes.js';
 import type { AutoUpdaterResult } from '../../utils/autoUpdater.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { CoordinatorTaskPanel, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
+import { GoalStatusIndicator } from '../GoalStatusIndicator.js';
 import { BackgroundTaskGroupTree } from '../tasks/BackgroundTaskGroupTree.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from '../StatusLine.js';
 import { Notifications } from './Notifications.js';
@@ -154,6 +155,7 @@ function PromptInputFooter({
           {effortStatusText ? <Text dimColor>{effortStatusText}</Text> : null}
         </Box>
       </Box>
+      <GoalStatusIndicator />
       <CoordinatorTaskPanel />
       <Box paddingX={2} flexDirection="column">
         <BackgroundTaskGroupTree />

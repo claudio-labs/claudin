@@ -121,9 +121,11 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     process.exit(1);
   }
 
-  // Headless mode supports all prompt commands and some local commands
+  // Headless mode supports all prompt commands and some local/local-jsx
+  // commands that opt in via supportsNonInteractive (local-jsx ones must
+  // resolve via onDone without rendering JSX — e.g. /goal).
   // If disableSlashCommands is true, return empty array
-  const commandsHeadless = ctx.disableSlashCommands ? [] : commands.filter(command => command.type === 'prompt' && !command.disableNonInteractive || command.type === 'local' && command.supportsNonInteractive);
+  const commandsHeadless = ctx.disableSlashCommands ? [] : commands.filter(command => command.type === 'prompt' && !command.disableNonInteractive || (command.type === 'local' || command.type === 'local-jsx') && command.supportsNonInteractive);
   const defaultState = getDefaultAppState();
   const headlessInitialState: AppState = {
     ...defaultState,

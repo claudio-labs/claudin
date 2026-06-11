@@ -23,6 +23,12 @@ export interface HookResult {
   outcome: 'success' | 'blocking' | 'non_blocking_error' | 'cancelled'
   preventContinuation?: boolean
   stopReason?: string
+  /**
+   * /goal stop-condition judge verdict: the condition can never be satisfied
+   * in this session. Surfaced as outcome 'success' (the stop is allowed)
+   * with this flag set so callers can distinguish it from "met".
+   */
+  impossible?: boolean
   permissionBehavior?: 'ask' | 'deny' | 'allow' | 'passthrough'
   hookPermissionDecisionReason?: string
   additionalContext?: string
@@ -40,8 +46,17 @@ export interface HookResult {
 export type AggregatedHookResult = {
   message?: HookResultMessage
   blockingError?: HookBlockingError
+  /**
+   * The blocking error came from the /goal stop-condition judge (hook branded
+   * by markStopConditionJudge — see stopConditionJudge.ts). Lets the stop
+   * pipeline count goal iterations and keep judge blocks out of "Stop hook
+   * error" surfacing without pattern-matching on the error text.
+   */
+  fromStopConditionJudge?: boolean
   preventContinuation?: boolean
   stopReason?: string
+  /** See HookResult.impossible — stop-condition judged unachievable. */
+  impossible?: boolean
   hookPermissionDecisionReason?: string
   hookSource?: string
   permissionBehavior?: PermissionResult['behavior']

@@ -73,6 +73,7 @@ import {
 } from './parsing.js'
 import { getMatchingHooks } from './matching.js'
 import { execCommandHook } from './runners.js'
+import { isStopConditionJudge } from './stopConditionJudge.js'
 import {
   getHookDefinitionsForTelemetry,
   getPluginHookCounts,
@@ -895,6 +896,11 @@ export async function* executeHooks({
     if (result.blockingError) {
       yield {
         blockingError: result.blockingError,
+        // Identify /goal judge blocks by hook identity so the stop pipeline
+        // can count iterations / skip "Stop hook error" surfacing for them.
+        ...(isStopConditionJudge(result.hook) && {
+          fromStopConditionJudge: true,
+        }),
       }
     }
 

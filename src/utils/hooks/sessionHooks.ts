@@ -5,6 +5,7 @@ import { logForDebugging } from '../debug.js'
 import type { AggregatedHookResult } from './types.js'
 import type { HookCommand } from '../settings/types.js'
 import { isHookEqual } from './hooksSettings.js'
+import { isStopConditionJudge } from './stopConditionJudge.js'
 
 type OnHookSuccess = (
   hook: HookCommand | FunctionHook,
@@ -265,6 +266,62 @@ export function removeSessionHook(
   logForDebugging(
     `Removed session hook for event ${event} in session ${sessionId}`,
   )
+}
+
+/**
+ * Remove every /goal judge Stop hook (prompt hooks branded by
+ * markStopConditionJudge — see stopConditionJudge.ts) from the session. Used
+ * by /goal so only one goal judge is registered at a time — setting a new
+ * goal replaces the previous one. All other hooks are preserved, including
+ * user/frontmatter/skill prompt Stop hooks that happen to share a matcher.
+ *
+ * @returns The number of judge hooks removed.
+ */
+export function removeGoalStopHooks(
+  setAppState: (updater: (prev: AppState) => AppState) => void,
+  sessionId: string,
+): number {
+  let removed = 0
+  setAppState(prev => {
+    const store = prev.sessionHooks.get(sessionId)
+    if (!store) {
+      return prev
+    }
+
+    const eventMatchers: SessionHookMatcher[] = store.hooks['Stop'] || []
+    const updatedMatchers = eventMatchers
+      .map((matcher: SessionHookMatcher) => {
+        const keptHooks = matcher.hooks.filter(h => {
+          if (isStopConditionJudge(h.hook)) {
+            removed++
+            return false
+          }
+          return true
+        })
+        if (keptHooks.length === matcher.hooks.length) {
+          return matcher
+        }
+        return keptHooks.length > 0 ? { ...matcher, hooks: keptHooks } : null
+      })
+      .filter((m): m is SessionHookMatcher => m !== null)
+
+    const newHooks = { ...store.hooks }
+    if (updatedMatchers.length > 0) {
+      newHooks['Stop'] = updatedMatchers
+    } else {
+      delete newHooks['Stop']
+    }
+
+    prev.sessionHooks.set(sessionId, { ...store, hooks: newHooks })
+    return prev
+  })
+
+  if (removed > 0) {
+    logForDebugging(
+      `Removed ${removed} goal judge Stop hook(s) in session ${sessionId}`,
+    )
+  }
+  return removed
 }
 
 // Extended hook matcher that includes optional skillRoot for skill-scoped hooks
