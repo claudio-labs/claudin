@@ -181,9 +181,10 @@ import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from '..
 import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile, removeTranscriptMessage, restoreSessionMetadata, getCurrentSessionTitle, isEphemeralToolProgress, isLoggableMessage, saveWorktreeState, getAgentTranscript } from '../utils/sessionStorage.js';
 import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
-import { resetMicrocompactState } from '../services/compact/microCompact.js';
+import { evaluateTimeBasedTrigger, resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from '../services/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, EVICT_MIN_BATCH, EVICT_TRIGGER_AT, MAX_DISPLAY_MESSAGES, type AnyMessage } from '../services/compact/stableStubState.js';
+import { notifyCacheDeletion } from '../services/api/promptCacheBreakDetection.js';
 import { getCacheProfile } from '../services/cache/cacheProfile.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
@@ -2394,9 +2395,17 @@ export function REPL({
     // pruneOldToolResults: stubs results outside the rolling window (every turn).
     // applyStableStubs: stubs microcompact-marked blocks (fires at ≥50% context)
     //   while preserving prompt-cache prefix stability.
-    // evictOldStubbedMessages: removes fully-stubbed message pairs (display-only).
+    // evictOldStubbedMessages: removes fully-stubbed message pairs.
     // evictToMaxSize: caps total display messages to prevent unbounded growth.
     // Applied before onTurnComplete so callers receive the pruned array.
+    //
+    // The two eviction passes REMOVE messages from the array that seeds the
+    // next turn's API view — a prefix mutation behind the cache marker that
+    // invalidates the cached prefix. Both are therefore amortized
+    // (EVICT_MIN_BATCH batch floor / EVICT_TRIGGER_AT hysteresis band) so
+    // the break is paid once per accumulated batch, not once per turn, and
+    // the cache-break detector is notified when it happens. The idle-gap
+    // sweep in onSubmit handles the free case (cache already expired).
     const before = messagesRef.current as AnyMessage[]
     // Profile-aware: aggressive clips by age (keepTurns=1); retain keeps
     // full results (the display array seeds the next turn's API view) and
@@ -2409,10 +2418,16 @@ export function REPL({
       undefined,
       cacheProfile.stubKeepHeadChars,
     ))
-    const evicted = evictOldStubbedMessages(stubbed)
-    const after = evictToMaxSize(evicted)
+    const evicted = evictOldStubbedMessages(stubbed, 2, EVICT_MIN_BATCH)
+    const after = evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)
     if (after !== before) {
       setMessages(() => after as MessageType[])
+      if (after !== stubbed && feature('PROMPT_CACHE_BREAK_DETECTION')) {
+        // Eviction removed messages from the next request's prefix — an
+        // intentional, amortized break. Tell the detector to expect the
+        // cache-read drop so it isn't reported as a regression.
+        notifyCacheDeletion(getQuerySourceForREPL())
+      }
     }
     // Prune orphaned contentReplacementState entries for IDs no longer
     // in the display array. Run unconditionally — orphans can accumulate
@@ -3090,6 +3105,26 @@ export function REPL({
 
     // Ensure SessionStart hook context is available before the first API call.
     await awaitPendingHooks();
+    // Idle-gap opportunistic sweep: when the gap since the last assistant
+    // message exceeds the time-based microcompact threshold, the server-side
+    // cache has expired anyway — so the amortization gates above (post-turn
+    // EVICT_MIN_BATCH / EVICT_TRIGGER_AT) would be hoarding evictable
+    // messages for a break that is already free. Evict everything evictable
+    // now, before this submission seeds the request. The swept array is
+    // passed straight to handlePromptSubmit (messagesRef updates via
+    // setMessages are not synchronous).
+    let messagesForSubmit = messagesRef.current;
+    if (evaluateTimeBasedTrigger(messagesForSubmit, getQuerySourceForREPL())) {
+      const swept = evictToMaxSize(
+        evictOldStubbedMessages(messagesForSubmit as AnyMessage[], 2, 1),
+        MAX_DISPLAY_MESSAGES,
+        MAX_DISPLAY_MESSAGES,
+      ) as MessageType[];
+      if (swept !== messagesForSubmit) {
+        messagesForSubmit = swept;
+        setMessages(() => swept);
+      }
+    }
     await handlePromptSubmit({
       input,
       helpers,
@@ -3101,7 +3136,7 @@ export function REPL({
       setPastedContents,
       setToolJSX,
       getToolUseContext,
-      messages: messagesRef.current,
+      messages: messagesForSubmit,
       mainLoopModel,
       pastedContents,
       ideSelection,

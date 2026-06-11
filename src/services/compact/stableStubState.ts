@@ -1011,16 +1011,26 @@ export function pruneToolResultsByBytes<T extends AnyMessage>(
  * ONLY tool_use blocks (no text, no thinking). This frees the wrapper
  * objects and any remaining string allocation overhead.
  *
- * Safe for display-only arrays (React state). Does NOT affect
- * QueryEngine.mutableMessages (API-facing array).
+ * NOT free for the prompt cache: in the REPL the display array seeds the
+ * next turn's API view (messagesRef.current → handlePromptSubmit), so every
+ * eviction removes messages from behind the cache marker — a prefix
+ * mutation that invalidates the cached prefix from the first removed pair.
+ * The REPL therefore amortizes the cost: it passes minEvictable
+ * (EVICT_MIN_BATCH) so eviction fires once per accumulated batch instead
+ * of once per turn, and notifies the cache-break detector when it does.
+ * The idle-gap sweep passes minEvictable=1 — destruction is free when the
+ * server-side cache has already expired.
  *
  * @param messages Display messages array
  * @param keepTurns Number of recent turns to preserve untouched (default 2)
+ * @param minEvictable Minimum number of evictable messages required before
+ *   anything is removed (default 1 = evict whenever possible)
  * @returns The same array reference if nothing was evicted, or a new shorter array
  */
 export function evictOldStubbedMessages<T extends AnyMessage>(
   messages: T[],
   keepTurns = 2,
+  minEvictable = 1,
 ): T[] {
   if (messages.length === 0) return messages
 
@@ -1150,12 +1160,36 @@ export function evictOldStubbedMessages<T extends AnyMessage>(
   const evictSet = new Set([...evictableUserMsgIndices, ...evictableAssistantIndices])
   if (evictSet.size === 0) return messages
 
+  // Amortization gate: each eviction event costs one prompt-cache prefix
+  // invalidation (see docstring), so don't pay it for a handful of pairs —
+  // wait until a batch has accumulated and remove them all in one break.
+  if (evictSet.size < minEvictable) return messages
+
   const out = messages.filter((_, idx) => !evictSet.has(idx))
   return out.length === messages.length ? messages : out
 }
 
 /** Maximum number of messages to keep in the display array. */
-const MAX_DISPLAY_MESSAGES = 200
+export const MAX_DISPLAY_MESSAGES = 200
+
+/**
+ * Hysteresis trigger for evictToMaxSize in the REPL: don't cut until the
+ * array exceeds this, then cut back to MAX_DISPLAY_MESSAGES. Each cut is a
+ * deliberate prompt-cache prefix invalidation (the display array seeds the
+ * next request), so the band amortizes it to roughly one break per
+ * (EVICT_TRIGGER_AT - MAX_DISPLAY_MESSAGES) messages instead of one per
+ * turn once the session crosses the cap. The wider steady-state display
+ * (up to 300 messages of mostly-stubbed content) is an accepted trade.
+ */
+export const EVICT_TRIGGER_AT = 300
+
+/**
+ * Batch floor for evictOldStubbedMessages in the REPL: accumulate at least
+ * this many evictable messages (12 stub-only pairs) before paying the
+ * eviction's cache break. Pure-stub pairs are ~100 bytes each, so holding
+ * a partial batch costs almost nothing.
+ */
+export const EVICT_MIN_BATCH = 24
 
 /**
  * Evict messages from the start of the display array when it exceeds
@@ -1170,15 +1204,24 @@ const MAX_DISPLAY_MESSAGES = 200
  *
  * The transcript on disk retains the full (cleaned) conversation for /resume.
  *
+ * Like evictOldStubbedMessages, this is NOT free for the prompt cache in
+ * the REPL (the display array seeds the next request) — cutting from the
+ * front invalidates the whole cached prefix. Callers amortize via the
+ * triggerAt hysteresis band: nothing happens until length > triggerAt,
+ * then the array is cut back to maxMessages in one break.
+ *
  * @param messages Display messages array
  * @param maxMessages Maximum messages to keep (default MAX_DISPLAY_MESSAGES)
+ * @param triggerAt Length above which the cut fires (default maxMessages —
+ *   i.e. no hysteresis; the REPL passes EVICT_TRIGGER_AT)
  * @returns The same array reference if under limit, or a truncated array
  */
 export function evictToMaxSize<T extends AnyMessage>(
   messages: T[],
   maxMessages = MAX_DISPLAY_MESSAGES,
+  triggerAt = maxMessages,
 ): T[] {
-  if (messages.length <= maxMessages) return messages
+  if (messages.length <= Math.max(triggerAt, maxMessages)) return messages
 
   // Find the compact boundary — we must keep it and everything after it
   let boundaryIdx = -1
