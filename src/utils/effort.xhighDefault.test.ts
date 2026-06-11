@@ -21,6 +21,7 @@ async function importFreshEffortModule(options: {
   isTeam?: boolean
   greyStep2Enabled?: boolean
   ultrathink?: boolean
+  provider?: string
 }) {
   mock.module('./settings/settings.js', () => ({
     getInitialSettings: () => ({
@@ -41,7 +42,7 @@ async function importFreshEffortModule(options: {
     }),
   }))
   mock.module('./model/providers.js', () => ({
-    getAPIProvider: () => 'anthropic',
+    getAPIProvider: () => options.provider ?? 'firstParty',
     isFirstPartyAnthropicBaseUrl: () => true,
   }))
 
@@ -73,17 +74,45 @@ test('Opus 4.8 with setting on overrides the ultrathink medium default', async (
   expect(getDefaultEffortForModel('claude-opus-4-8')).toBe('xhigh')
 })
 
-test('Opus 4.8 with setting off keeps current behavior (medium for Pro)', async () => {
+test('Opus 4.8 with setting off defaults to high on Anthropic, overriding the Pro medium', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     codingLoopXhighDefault: false,
     isPro: true,
   })
+  expect(getDefaultEffortForModel('claude-opus-4-8')).toBe('high')
+})
+
+test('Opus 4.8 with setting absent defaults to high on Anthropic for non-subscriber', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({})
+  expect(getDefaultEffortForModel('claude-opus-4-8')).toBe('high')
+})
+
+test('Opus 4.8 off the Anthropic provider keeps the upstream medium for Pro', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    isPro: true,
+    provider: 'bedrock',
+  })
   expect(getDefaultEffortForModel('claude-opus-4-8')).toBe('medium')
 })
 
-test('Opus 4.8 with setting absent keeps current behavior (undefined for non-subscriber)', async () => {
+test('Fable 5 defaults to high on Anthropic', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({})
-  expect(getDefaultEffortForModel('claude-opus-4-8')).toBeUndefined()
+  expect(getDefaultEffortForModel('claude-fable-5')).toBe('high')
+})
+
+test('Fable 5 high default overrides the ultrathink medium fallback', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    ultrathink: true,
+  })
+  expect(getDefaultEffortForModel('claude-fable-5')).toBe('high')
+})
+
+test('Fable 5 off the Anthropic provider keeps the ultrathink medium fallback', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    ultrathink: true,
+    provider: 'bedrock',
+  })
+  expect(getDefaultEffortForModel('claude-fable-5')).toBe('medium')
 })
 
 test('Opus 4.7 with setting on is unchanged (never xhigh)', async () => {

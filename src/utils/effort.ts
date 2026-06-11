@@ -432,6 +432,17 @@ export function getDefaultEffortForModel(
     return 'xhigh'
   }
 
+  // Claudin default: Opus 4.8 and Fable 5 on the first-party Anthropic
+  // provider default to high effort, overriding the upstream Pro/Max/Team
+  // medium defaults and the ultrathink medium fallback below. The xhigh
+  // opt-in above still wins for Opus 4.8.
+  if (
+    (lowerModel.includes('opus-4-8') || lowerModel.includes('fable-5')) &&
+    getAPIProvider() === 'firstParty'
+  ) {
+    return 'high'
+  }
+
   if (lowerModel.includes('opus-4-8') || lowerModel.includes('opus-4-7') || lowerModel.includes('opus-4-6')) {
     if (isProSubscriber()) {
       return 'medium'
