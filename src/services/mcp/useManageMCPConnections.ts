@@ -132,6 +132,66 @@ function addErrorsToAppState(
 }
 
 /**
+ * Resolve the new mcp.tools array for one server update, keeping the pool
+ * byte-stable for the prompt cache wherever possible. The tools array is
+ * serialized into every request's cached prefix, so gratuitous churn here
+ * is a full cache invalidation:
+ *
+ * - POSITIONAL replacement: tools the server already had in the pool keep
+ *   their original indices (the VALUE is the fresh tool object, so calls
+ *   route to the reconnected client); only genuinely new tools are
+ *   appended; tools the server no longer announces are dropped. A
+ *   reconnect with an identical tool set therefore serializes to
+ *   byte-identical schemas in identical order — zero cache impact.
+ *   (The old `reject(prefix) + append` moved the server's block to the
+ *   END of the pool on every update — a reorder break even when nothing
+ *   actually changed.)
+ *
+ * - KEEP schemas on 'failed': a crash/network drop is transitory; removing
+ *   the tools (and re-adding them on reconnect) paid two full breaks per
+ *   blip. The stale entries stay in the pool — a call against the dead
+ *   client fails per-call and surfaces to the model as an is_error
+ *   tool_result. 'disabled' is an explicit user action, so removal there
+ *   is intentional and keeps its break.
+ */
+export function resolveUpdatedTools(
+  current: Tool[],
+  clientType: MCPServerConnection['type'],
+  prefix: string,
+  rawTools: Tool[] | undefined,
+): Tool[] {
+  // Explicit disable clears; transitory failure preserves; otherwise an
+  // undefined payload means "no tool information in this update".
+  const tools =
+    clientType === 'disabled' ? (rawTools ?? []) : rawTools
+  if (tools === undefined) return current
+
+  const nextByName = new Map<string, Tool>()
+  for (const t of tools) {
+    if (t.name !== undefined) nextByName.set(t.name, t)
+  }
+
+  const out: Tool[] = []
+  const consumed = new Set<string>()
+  for (const t of current) {
+    if (!t.name?.startsWith(prefix)) {
+      out.push(t)
+      continue
+    }
+    const replacement = nextByName.get(t.name)
+    if (replacement) {
+      out.push(replacement)
+      consumed.add(t.name)
+    }
+    // else: the server no longer announces this tool — drop it.
+  }
+  for (const t of tools) {
+    if (t.name === undefined || !consumed.has(t.name)) out.push(t)
+  }
+  return out
+}
+
+/**
  * Hook to manage MCP (Model Context Protocol) server connections and updates
  *
  * This hook:
@@ -229,10 +289,6 @@ export function useManageMCPConnections(
           resources: rawRes,
           ...client
         } = update
-        const tools =
-          client.type === 'disabled' || client.type === 'failed'
-            ? (rawTools ?? [])
-            : rawTools
         const commands =
           client.type === 'disabled' || client.type === 'failed'
             ? (rawCmds ?? [])
@@ -252,10 +308,14 @@ export function useManageMCPConnections(
             ? [...mcp.clients, client]
             : mcp.clients.map(c => (c.name === client.name ? client : c))
 
-        const updatedTools =
-          tools === undefined
-            ? mcp.tools
-            : [...reject(mcp.tools, t => t.name?.startsWith(prefix)), ...tools]
+        // Positional, failure-tolerant tool-pool update — see
+        // resolveUpdatedTools for the prompt-cache rationale.
+        const updatedTools = resolveUpdatedTools(
+          mcp.tools,
+          client.type,
+          prefix,
+          rawTools,
+        )
 
         const updatedCommands =
           commands === undefined
@@ -292,7 +352,9 @@ export function useManageMCPConnections(
 
   // Update server state, tools, commands, and resources.
   // When tools, commands, or resources are undefined, the existing values are preserved.
-  // When type is 'disabled' or 'failed', tools/commands/resources are automatically cleared.
+  // When type is 'disabled', tools/commands/resources are automatically cleared;
+  // 'failed' clears commands/resources but KEEPS tools (prompt-cache stability —
+  // see resolveUpdatedTools).
   // Updates are batched via setTimeout to coalesce updates arriving within MCP_BATCH_FLUSH_MS.
   const updateServer = useCallback(
     (update: PendingUpdate) => {
