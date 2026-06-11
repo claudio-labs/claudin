@@ -9,6 +9,7 @@
 import memoize from 'lodash-es/memoize.js'
 import {
   getDeferredDeltaLegacySession,
+  getSessionEpochMs,
   setDeferredDeltaLegacySession,
 } from '../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
@@ -641,6 +642,12 @@ export type DeferredToolsDeltaScanContext = {
     | 'compact_partial'
     | 'reactive_compact'
   querySource?: string
+  /**
+   * The scanned history belongs to a subagent (callers that know it from
+   * context.agentId rather than callSite — the compact_* sites). Never
+   * settles the legacy latch; see LegacyLatchScanOptions.subagent.
+   */
+  subagent?: boolean
 }
 
 /**
@@ -652,29 +659,47 @@ export function isDeferredToolsDeltaEnabled(): boolean {
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false)
 }
 
-// Timestamps older than this belong to a previous process (resume /
-// continue) — the reference point for the warm-cache compatibility check.
-const PROCESS_START_MS = Date.now() - process.uptime() * 1000
-
 // Upper bound of the server-side prompt-cache TTL (extended TTL is 1h;
 // default is 5min). A session resumed within this window of its previous
 // process's last assistant turn may still have a warm cache entry written
 // under the legacy announcement format.
 const LEGACY_ANNOUNCEMENT_WARM_TTL_MS = 60 * 60_000
 
+/** Options for {@link maybeLatchLegacyDeferredAnnouncement}. */
+export type LegacyLatchScanOptions = {
+  /**
+   * True when the scanned history belongs to a subagent/sidechain. The
+   * latch is process-wide but its meaning is "the MAIN conversation was
+   * resumed onto a warm legacy cache" — a subagent's history (forked,
+   * summarized, or restored, possibly without delta attachments) must
+   * never settle it, or it would flip the parent's announcement format
+   * mid-session and break the parent's warm delta cache.
+   */
+  subagent?: boolean
+  /**
+   * Resume-point anchor for the warm-cache scan. Defaults to the session
+   * epoch (process start, advanced at every session switch) — NOT process
+   * start, so an in-REPL /resume of a session written while this process
+   * was already running still latches correctly. Injectable for tests.
+   */
+  epochMs?: number
+}
+
 /**
  * Compatibility latch: if this session was resumed while the server-side
  * cache written by a PREVIOUS binary (legacy <available-deferred-tools>
  * prepend) may still be warm, lock the session to the legacy format so the
- * delta-flag flip itself never breaks a cache. Sticky for the session;
+ * delta-flag flip itself never breaks a cache. Sticky for the conversation;
  * released by clearBetaHeaderLatches() on /clear and /compact (cache-cold
- * moments). Fresh sessions never latch — their cache is cold by definition.
+ * moments) and at the sessionSwitched funnel (/resume, /branch — the
+ * incoming conversation re-evaluates from its own history). Fresh sessions
+ * never latch — their cache is cold by definition.
  *
  * Format-aware: a resumed history that already carries persisted
  * deferred_tools_delta attachments was written by a DELTA-format binary —
  * its warm cache has no legacy prepend, so latching would itself add the
  * prepend at messages[0] and break the very cache the latch protects.
- * Those sessions stay on delta. Only histories with a recent pre-process
+ * Those sessions stay on delta. Only histories with a recent pre-epoch
  * assistant AND no delta attachments (i.e. genuinely written pre-flip)
  * latch legacy.
  *
@@ -686,21 +711,23 @@ const LEGACY_ANNOUNCEMENT_WARM_TTL_MS = 60 * 60_000
  */
 export function maybeLatchLegacyDeferredAnnouncement(
   messages: readonly Message[],
-  processStartMs = PROCESS_START_MS,
+  opts: LegacyLatchScanOptions = {},
 ): void {
+  if (opts.subagent) return
   if (getDeferredDeltaLegacySession()) return
   if (!isDeferredToolsDeltaEnabled()) return
-  // Newest assistant message produced BEFORE this process started — the
-  // resume point. Anything this process produced sits after it.
+  const epochMs = opts.epochMs ?? getSessionEpochMs()
+  // Newest assistant message produced BEFORE the session epoch — the
+  // resume point. Anything this conversation produced live sits after it.
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]
     if (m?.type !== 'assistant') continue
     const ts = new Date(
       (m as { timestamp?: string }).timestamp ?? '',
     ).getTime()
-    if (!Number.isFinite(ts) || ts >= processStartMs) continue
+    if (!Number.isFinite(ts) || ts >= epochMs) continue
     if (
-      processStartMs - ts < LEGACY_ANNOUNCEMENT_WARM_TTL_MS &&
+      epochMs - ts < LEGACY_ANNOUNCEMENT_WARM_TTL_MS &&
       !historyHasDeferredToolsDelta(messages)
     ) {
       setDeferredDeltaLegacySession(true)

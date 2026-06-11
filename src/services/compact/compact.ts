@@ -583,7 +583,7 @@ export async function compactConversation(
       context.options.tools,
       context.options.mainLoopModel,
       [],
-      { callSite: 'compact_full' },
+      { callSite: 'compact_full', subagent: Boolean(context.agentId) },
     )) {
       postCompactFileAttachments.push(createAttachmentMessage(att))
     }
@@ -973,7 +973,7 @@ export async function partialCompactConversation(
       context.options.tools,
       context.options.mainLoopModel,
       messagesToKeep,
-      { callSite: 'compact_partial' },
+      { callSite: 'compact_partial', subagent: Boolean(context.agentId) },
     )) {
       postCompactFileAttachments.push(createAttachmentMessage(att))
     }

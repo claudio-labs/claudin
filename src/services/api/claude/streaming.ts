@@ -390,8 +390,14 @@ export async function* queryModel(
   // built: the ToolSearchTool location hint (rendered during schema build)
   // and the announcement mechanism (prepend vs delta attachment, further
   // down) must agree within the request. Latches sessions resumed with a
-  // potentially-warm legacy-format cache to the legacy prepend.
-  maybeLatchLegacyDeferredAnnouncement(messages);
+  // potentially-warm legacy-format cache to the legacy prepend. Sidechain
+  // queries (agent:* / hook_agent) scan THEIR history, which must never
+  // settle the process-wide latch — see LegacyLatchScanOptions.
+  maybeLatchLegacyDeferredAnnouncement(messages, {
+    subagent:
+      options.querySource.startsWith("agent:") ||
+      options.querySource === "hook_agent",
+  });
 
   // Check if tool search is enabled (checks mode, model support, and threshold for auto mode)
   // This is async because it may need to calculate MCP tool description sizes for TstAuto mode

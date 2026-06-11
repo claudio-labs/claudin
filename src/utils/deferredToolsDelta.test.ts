@@ -88,10 +88,13 @@ function assistantAt(minutesBeforeStart: number): LooseMessage {
   }
 }
 
-function latch(messages: LooseMessage[]): void {
+function latch(
+  messages: LooseMessage[],
+  opts: { subagent?: boolean } = {},
+): void {
   maybeLatchLegacyDeferredAnnouncement(
     messages as Parameters<typeof maybeLatchLegacyDeferredAnnouncement>[0],
-    PROCESS_START,
+    { epochMs: PROCESS_START, ...opts },
   )
 }
 
@@ -181,6 +184,24 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
     expect(isDeferredToolsDeltaActive()).toBe(false)
   })
 
+  // The latch is process-wide but its meaning is "the MAIN conversation
+  // resumed onto a warm legacy cache". A subagent's history (forked,
+  // summarized, or restored — possibly delta-attachment-free) must never
+  // settle it: that would flip the parent to the legacy prepend mid-session
+  // and break the parent's warm delta cache.
+  test('a subagent history never settles the process-wide latch', () => {
+    const warmLegacyHistory = [
+      { type: 'user' },
+      assistantAt(10),
+      { type: 'user' },
+    ]
+    latch(warmLegacyHistory, { subagent: true })
+    expect(isDeferredToolsDeltaActive()).toBe(true)
+    // Control: the identical history scanned as the main conversation latches.
+    latch(warmLegacyHistory)
+    expect(isDeferredToolsDeltaActive()).toBe(false)
+  })
+
   // The format-aware check is only sound if the marker survives /resume:
   // session persistence must NOT filter deferred_tools_delta attachments
   // out of the transcript (isLoggableMessage drops generic attachments for
@@ -203,6 +224,93 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
   })
 })
 
+// ── Conversation scoping: session switches reset and re-anchor the latch ─
+// The latch is stored process-wide but its meaning is per-conversation.
+// Both directions broke across an in-REPL /resume (switchSession):
+// a carried-over latch injected the legacy prepend into a delta-format
+// history, and the process-start anchor never latched sessions written
+// after this process launched (real under the claudin/claudindev
+// dual-binary setup). The sessionSwitched funnel fixes both: it clears
+// the latch and advances the session epoch.
+describe('session switch (in-REPL /resume, /branch)', () => {
+  test('releases a carried-over latch — the incoming conversation re-evaluates', async () => {
+    const { getSessionId, switchSession } = await import(
+      '../bootstrap/state.js'
+    )
+    const { randomUUID } = await import('node:crypto')
+    const originalSession = getSessionId()
+    latch([assistantAt(10)])
+    expect(isDeferredToolsDeltaActive()).toBe(false)
+    try {
+      switchSession(randomUUID() as ReturnType<typeof getSessionId>)
+      expect(isDeferredToolsDeltaActive()).toBe(true)
+    } finally {
+      switchSession(originalSession)
+    }
+  })
+
+  test('advances the epoch: a history written AFTER process start still latches on in-process resume', async () => {
+    const { getSessionEpochMs, getSessionId, switchSession } = await import(
+      '../bootstrap/state.js'
+    )
+    const { randomUUID } = await import('node:crypto')
+    const originalSession = getSessionId()
+    // Assistant turn written while this process was already running — the
+    // old PROCESS_START_MS anchor classified it as "this process's own
+    // output" and skipped it, so the resumed session flipped to delta and
+    // busted its warm legacy cache.
+    const postStartTs = new Date().toISOString()
+    await new Promise(resolve => setTimeout(resolve, 5))
+    try {
+      switchSession(randomUUID() as ReturnType<typeof getSessionId>)
+      expect(getSessionEpochMs()).toBeGreaterThan(Date.parse(postStartTs))
+      // Default-epoch path (no epochMs injection) — exercises the real
+      // getSessionEpochMs() wiring.
+      maybeLatchLegacyDeferredAnnouncement([
+        { type: 'user' },
+        { type: 'assistant', timestamp: postStartTs },
+        { type: 'user' },
+      ] as Parameters<typeof maybeLatchLegacyDeferredAnnouncement>[0])
+      expect(isDeferredToolsDeltaActive()).toBe(false)
+    } finally {
+      switchSession(originalSession)
+    }
+  })
+})
+
+// ── Call-site wiring (source guards) ─────────────────────────────────────
+// The subagent gate only works if every production scan passes the flag.
+// Call-shaped greps so deleting a gate (not just renaming it) fails here.
+describe('latch call sites pass the subagent scan context', () => {
+  const sourceAt = (relPath: string): string =>
+    readFileSync(join(import.meta.dir, relPath), 'utf-8')
+
+  test('attachments injector derives subagent from the pipeline callSite', () => {
+    const src = sourceAt('./attachments/injections.ts')
+    expect(src).toContain(
+      'maybeLatchLegacyDeferredAnnouncement(messages ?? [], {',
+    )
+    expect(src).toContain("scanContext?.callSite === 'attachments_subagent'")
+  })
+
+  test('queryModel marks sidechain query sources as subagent', () => {
+    const src = sourceAt('../services/api/claude/streaming.ts')
+    expect(src).toContain('maybeLatchLegacyDeferredAnnouncement(messages, {')
+    expect(src).toContain('options.querySource.startsWith("agent:")')
+    expect(src).toContain('options.querySource === "hook_agent"')
+  })
+
+  test('compact re-announce sites mark subagent compactions', () => {
+    const src = sourceAt('../services/compact/compact.ts')
+    expect(src).toContain(
+      "{ callSite: 'compact_full', subagent: Boolean(context.agentId) }",
+    )
+    expect(src).toContain(
+      "{ callSite: 'compact_partial', subagent: Boolean(context.agentId) }",
+    )
+  })
+})
+
 // ── Pipeline ordering: the attachment injector settles the latch ────────
 // The attachments pipeline runs BEFORE queryModel's latch call. If the
 // injector consulted isDeferredToolsDeltaActive() without settling the
@@ -214,8 +322,9 @@ describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
     const { getDeferredToolsDeltaAttachment } = await import(
       './attachments/injections.js'
     )
-    // Real PROCESS_START_MS (no override path through the injector) — build
-    // a resume point 10min before the actual process start.
+    // Real session epoch (no override path through the injector) — build a
+    // resume point 10min before process start: earlier than any epoch this
+    // test process can hold, yet still inside the warm TTL.
     const realStart = Date.now() - process.uptime() * 1000
     const history = [
       { type: 'user' },

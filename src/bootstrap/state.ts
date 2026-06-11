@@ -281,6 +281,13 @@ type State = {
   // to delta attachments mid-cache. See toolSearch.ts
   // maybeLatchLegacyDeferredAnnouncement.
   deferredDeltaLegacySession: boolean
+  // Reference point for "written by a previous process/conversation"
+  // checks (legacy-latch warm-cache scan). Starts at process start and
+  // advances to Date.now() on every session switch, so in-process /resume
+  // gets the same "everything before this moment is the resume point"
+  // semantics as a fresh launch. See toolSearch.ts
+  // maybeLatchLegacyDeferredAnnouncement.
+  sessionEpochMs: number
   // Current prompt ID (UUID) correlating a user prompt with subsequent OTel events
   promptId: string | null
   // Last API requestId for the main conversation chain (not subagents).
@@ -449,6 +456,9 @@ function getInitialState(): State {
     thinkingClearLatched: null,
     lspDeferLatchedTools: null,
     deferredDeltaLegacySession: false,
+    // Session epoch anchors at process start (uptime-derived so a lazy
+    // STATE creation doesn't skew it); advanced on every session switch.
+    sessionEpochMs: Date.now() - process.uptime() * 1000,
     // Current prompt ID
     promptId: null,
     lastMainRequestId: undefined,
@@ -534,6 +544,17 @@ const sessionSwitched = createSignal<[id: SessionId]>()
  */
 function emitSessionSwitched(id: SessionId): void {
   STATE.pendingSessionWakeup = null
+  // Beta-header latches are conversation-scoped: carrying e.g. the
+  // deferred-delta legacy latch from one session into a /resume'd
+  // delta-format session would inject the legacy prepend at messages[0]
+  // of a history whose warm cache never contained it. The new
+  // conversation's cache prefix is distinct anyway, so re-evaluation is
+  // free. (/clear also clears these directly; double-clear is idempotent.)
+  clearBetaHeaderLatches()
+  // Advance the epoch: everything in the incoming session's history was
+  // written before this moment — the in-process equivalent of "before
+  // process start" for the legacy-latch warm-cache scan.
+  STATE.sessionEpochMs = Date.now()
   sessionSwitched.emit(id)
 }
 
@@ -1804,6 +1825,17 @@ export function clearBetaHeaderLatches(): void {
   // /clear empties the history and /compact rewrites it (cache cold either
   // way) — switching a legacy-latched session to delta here is free.
   STATE.deferredDeltaLegacySession = false
+}
+
+/**
+ * Reference point separating "this conversation's live turns" from
+ * "history written by a previous process or conversation". Process start
+ * until the first session switch; bumped to Date.now() at every switch
+ * (the sessionSwitched funnel). Consumed by the deferred-delta legacy
+ * latch (toolSearch.ts) as the resume-point anchor of its warm-cache scan.
+ */
+export function getSessionEpochMs(): number {
+  return STATE.sessionEpochMs
 }
 
 export function getPromptId(): string | null {
