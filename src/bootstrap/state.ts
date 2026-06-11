@@ -266,6 +266,13 @@ type State = {
   // benefit to keeping thinking). Once latched, stays on so the newly-warmed
   // thinking-cleared cache isn't busted by flipping back to keep:'all'.
   thinkingClearLatched: boolean | null
+  // Sticky defer latch for LSP tools. A tool first sent with
+  // defer_loading: true (LSP init still pending) keeps being sent deferred
+  // for the rest of the session, even after the LSP becomes ready —
+  // flipping defer_loading false would add the schema to the effective
+  // tools array mid-session and bust the prompt cache. Deferred tools stay
+  // reachable via ToolSearch. Null = no tool latched yet.
+  lspDeferLatchedTools: Set<string> | null
   // Current prompt ID (UUID) correlating a user prompt with subsequent OTel events
   promptId: string | null
   // Last API requestId for the main conversation chain (not subagents).
@@ -432,6 +439,7 @@ function getInitialState(): State {
     afkModeHeaderLatched: null,
     fastModeHeaderLatched: null,
     thinkingClearLatched: null,
+    lspDeferLatchedTools: null,
     // Current prompt ID
     promptId: null,
     lastMainRequestId: undefined,
@@ -1753,6 +1761,19 @@ export function setThinkingClearLatched(v: boolean): void {
   STATE.thinkingClearLatched = v
 }
 
+/** True when the named LSP tool was already sent deferred this session. */
+export function isLspDeferLatched(toolName: string): boolean {
+  return STATE.lspDeferLatchedTools?.has(toolName) ?? false
+}
+
+/** Record that the named LSP tool was sent with defer_loading: true. */
+export function latchLspDefer(toolName: string): void {
+  if (!STATE.lspDeferLatchedTools) {
+    STATE.lspDeferLatchedTools = new Set()
+  }
+  STATE.lspDeferLatchedTools.add(toolName)
+}
+
 /**
  * Reset beta header latches to null. Called on /clear and /compact so a
  * fresh conversation gets fresh header evaluation.
@@ -1761,6 +1782,7 @@ export function clearBetaHeaderLatches(): void {
   STATE.afkModeHeaderLatched = null
   STATE.fastModeHeaderLatched = null
   STATE.thinkingClearLatched = null
+  STATE.lspDeferLatchedTools = null
 }
 
 export function getPromptId(): string | null {

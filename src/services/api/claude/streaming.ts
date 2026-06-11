@@ -92,6 +92,8 @@ import {
   getFastModeHeaderLatched,
   getLastApiCompletionTimestamp,
   getThinkingClearLatched,
+  isLspDeferLatched,
+  latchLspDefer,
   setAfkModeHeaderLatched,
   setFastModeHeaderLatched,
   setLastMainRequestId,
@@ -257,14 +259,30 @@ export async function* queryModelWithStreaming({
 /**
  * Determines if an LSP tool should be deferred (tool appears with defer_loading: true)
  * because LSP initialization is not yet complete.
+ *
+ * Sticky per session (same pattern as the beta-header latches below): once a
+ * tool has been SENT deferred, it keeps being sent deferred even after the
+ * LSP becomes ready — flipping defer_loading true→false mid-session adds the
+ * schema to the effective tools array (the API strips deferred schemas from
+ * the prompt) and busts the entire cached prefix. The tool stays reachable
+ * via ToolSearch. The latch clears with clearBetaHeaderLatches() on /clear
+ * and /compact (cache-cold moments); an LSP that initializes before the
+ * first request never latches.
  */
 function shouldDeferLspTool(tool: Tool): boolean {
   if (!("isLsp" in tool) || !tool.isLsp) {
     return false;
   }
+  if (isLspDeferLatched(tool.name)) {
+    return true;
+  }
   const status = getInitializationStatus();
   // Defer when pending or not started
-  return status.status === "pending" || status.status === "not-started";
+  const defer = status.status === "pending" || status.status === "not-started";
+  if (defer) {
+    latchLspDefer(tool.name);
+  }
+  return defer;
 }
 
 export async function* queryModel(
