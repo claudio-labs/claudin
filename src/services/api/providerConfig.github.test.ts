@@ -21,6 +21,7 @@ afterAll(() => {
 
 const {
   DEFAULT_GITHUB_MODELS_API_MODEL,
+  getGithubEndpointType,
   normalizeGithubModelsApiModel,
   resolveProviderRequest,
 } = await import('./providerConfig.js')
@@ -76,4 +77,19 @@ test('resolveProviderRequest leaves model unchanged without GitHub flag', () => 
   resolvedOverride = null
   const r = resolveProviderRequest({ model: 'github:gpt-4o' })
   expect(r.resolvedModel).toBe('github:gpt-4o')
+})
+
+test.each([
+  ['https://api.githubcopilot.com', 'copilot'],
+  // Plan-scoped endpoints from the token exchange's endpoints.api
+  ['https://api.individual.githubcopilot.com', 'copilot'],
+  ['https://api.business.githubcopilot.com', 'copilot'],
+  ['https://api.enterprise.githubcopilot.com', 'copilot'],
+  // GitHub Enterprise Server / data-residency deployments
+  ['https://copilot-api.github.acme.com', 'copilot'],
+  ['https://copilot-api.octo.ghe.com', 'copilot'],
+  ['https://models.github.ai/inference', 'models'],
+  ['https://example.com/v1', 'custom'],
+] as const)('getGithubEndpointType(%s) -> %s', (baseUrl, expected) => {
+  expect(getGithubEndpointType(baseUrl)).toBe(expected)
 })

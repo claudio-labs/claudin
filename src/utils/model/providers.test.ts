@@ -28,10 +28,15 @@ afterAll(() => {
 })
 
 import { invalidateActiveProviderCache } from '../../services/api/activeProvider.js'
+import {
+  _setCopilotCatalogForTesting,
+  type CopilotCatalogEntry,
+} from './copilotModelCatalog.js'
 
 afterEach(() => {
   mockProviderProfile = null
   invalidateActiveProviderCache()
+  _setCopilotCatalogForTesting(null)
 })
 
 async function importFreshProvidersModule() {
@@ -156,6 +161,71 @@ test('isGithubNativeAnthropicMode: true for github:copilot:claude- compound form
   })
   const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(true)
+})
+
+function catalogEntry(
+  id: string,
+  supportedEndpoints: string[] | null,
+): CopilotCatalogEntry {
+  return {
+    model: {
+      id,
+      name: id,
+      family: id,
+      attachment: false,
+      reasoning: false,
+      tool_call: true,
+      temperature: true,
+      knowledge: '',
+      release_date: '',
+      last_updated: '',
+      modalities: { input: ['text'], output: ['text'] },
+      open_weights: false,
+      cost: { input: 0, output: 0 },
+      limit: { context: 128000, output: 16384 },
+    },
+    supportedEndpoints,
+    pickerEnabled: true,
+  }
+}
+
+test('isGithubNativeAnthropicMode: catalog vetoes a claude model served only via /chat/completions', async () => {
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'claude-sonnet-4.6',
+  })
+  _setCopilotCatalogForTesting([
+    catalogEntry('claude-sonnet-4.6', ['/chat/completions']),
+  ])
+  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  expect(isGithubNativeAnthropicMode()).toBe(false)
+})
+
+test('isGithubNativeAnthropicMode: catalog confirming /v1/messages keeps the native route', async () => {
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'claude-sonnet-4.6',
+  })
+  _setCopilotCatalogForTesting([
+    catalogEntry('claude-sonnet-4.6', ['/chat/completions', '/v1/messages']),
+  ])
+  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  expect(isGithubNativeAnthropicMode()).toBe(true)
+})
+
+test('isGithubNativeAnthropicMode: false for non-claude model even if catalog lists /v1/messages', async () => {
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'gpt-6-preview',
+  })
+  _setCopilotCatalogForTesting([
+    catalogEntry('gpt-6-preview', ['/v1/messages']),
+  ])
+  const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
+  expect(isGithubNativeAnthropicMode()).toBe(false)
 })
 
 test('isGithubNativeAnthropicMode: true when resolvedModel is a claude- model', async () => {

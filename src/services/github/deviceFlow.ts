@@ -12,6 +12,39 @@ export const GITHUB_DEVICE_ACCESS_TOKEN_URL =
   'https://github.com/login/oauth/access_token'
 export const COPILOT_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token'
 
+/**
+ * Normalize a GitHub Enterprise domain as typed by the user:
+ * "https://github.acme.com/" → "github.acme.com". Returns undefined for
+ * empty input or plain github.com (treated as the default deployment).
+ */
+export function normalizeGithubEnterpriseDomain(
+  domain: string | undefined,
+): string | undefined {
+  if (!domain) return undefined
+  const trimmed = domain
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
+  if (!trimmed || trimmed.toLowerCase() === 'github.com') return undefined
+  return trimmed
+}
+
+function deviceCodeUrlFor(domain: string | undefined): string {
+  return domain ? `https://${domain}/login/device/code` : GITHUB_DEVICE_CODE_URL
+}
+
+function accessTokenUrlFor(domain: string | undefined): string {
+  return domain
+    ? `https://${domain}/login/oauth/access_token`
+    : GITHUB_DEVICE_ACCESS_TOKEN_URL
+}
+
+function copilotTokenUrlFor(domain: string | undefined): string {
+  return domain
+    ? `https://api.${domain}/copilot_internal/v2/token`
+    : COPILOT_TOKEN_URL
+}
+
 /** Only read:user scope — required for Copilot OAuth */
 export const DEFAULT_GITHUB_DEVICE_SCOPE = 'read:user'
 
@@ -62,6 +95,8 @@ function sleep(ms: number): Promise<void> {
 export async function requestDeviceCode(options?: {
   clientId?: string
   scope?: string
+  /** GitHub Enterprise domain (e.g. "github.acme.com"); github.com when unset. */
+  domain?: string
   fetchImpl?: FetchLike
 }): Promise<DeviceCodeResult> {
   const clientId = options?.clientId ?? getGithubDeviceFlowClientId()
@@ -79,9 +114,12 @@ export async function requestDeviceCode(options?: {
       : [requestedScope, DEFAULT_GITHUB_DEVICE_SCOPE]
 
   let lastError = 'Device code request failed.'
+  const deviceCodeUrl = deviceCodeUrlFor(
+    normalizeGithubEnterpriseDomain(options?.domain),
+  )
 
   for (const scope of scopesToTry) {
-    const res = await fetchFn(GITHUB_DEVICE_CODE_URL, {
+    const res = await fetchFn(deviceCodeUrl, {
       method: 'POST',
       headers: { Accept: 'application/json' },
       body: new URLSearchParams({
@@ -132,6 +170,8 @@ export type PollOptions = {
   clientId?: string
   initialInterval?: number
   timeoutSeconds?: number
+  /** GitHub Enterprise domain (e.g. "github.acme.com"); github.com when unset. */
+  domain?: string
   fetchImpl?: FetchLike
 }
 
@@ -146,10 +186,13 @@ export async function pollAccessToken(
   let interval = Math.max(1, options?.initialInterval ?? 5)
   const timeoutSeconds = options?.timeoutSeconds ?? 900
   const fetchFn = options?.fetchImpl ?? fetch
+  const accessTokenUrl = accessTokenUrlFor(
+    normalizeGithubEnterpriseDomain(options?.domain),
+  )
   const start = Date.now()
 
   while ((Date.now() - start) / 1000 < timeoutSeconds) {
-    const res = await fetchFn(GITHUB_DEVICE_ACCESS_TOKEN_URL, {
+    const res = await fetchFn(accessTokenUrl, {
       method: 'POST',
       headers: { Accept: 'application/json' },
       body: new URLSearchParams({
@@ -208,13 +251,27 @@ export async function openVerificationUri(uri: string): Promise<void> {
 /**
  * Exchange an OAuth access token for a Copilot API token.
  * The OAuth token alone cannot be used with the Copilot API endpoint.
+ *
+ * The response's `endpoints.api` is the Copilot inference base URL for the
+ * account — on GitHub Enterprise deployments it differs from
+ * api.githubcopilot.com, so callers should persist it as the profile baseUrl.
+ *
+ * Second argument accepts either a bare fetch (legacy call sites/tests) or
+ * an options object with the GHE `domain`.
  */
 export async function exchangeForCopilotToken(
   oauthToken: string,
-  fetchImpl?: FetchLike,
+  fetchImplOrOptions?: FetchLike | { domain?: string; fetchImpl?: FetchLike },
 ): Promise<CopilotTokenResponse> {
-  const fetchFn = fetchImpl ?? fetch
-  const res = await fetchFn(COPILOT_TOKEN_URL, {
+  const options =
+    typeof fetchImplOrOptions === 'function'
+      ? { fetchImpl: fetchImplOrOptions }
+      : (fetchImplOrOptions ?? {})
+  const fetchFn = options.fetchImpl ?? fetch
+  const tokenUrl = copilotTokenUrlFor(
+    normalizeGithubEnterpriseDomain(options.domain),
+  )
+  const res = await fetchFn(tokenUrl, {
     method: 'GET',
     headers: {
       Accept: 'application/json',

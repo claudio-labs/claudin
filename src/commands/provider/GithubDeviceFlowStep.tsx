@@ -2,9 +2,11 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Select } from '../../components/CustomSelect/select.js'
 import { Spinner } from '../../components/Spinner.js'
+import TextInput from '../../components/TextInput.js'
 import { Box, Text } from '../../ink.js'
 import {
   exchangeForCopilotToken,
+  normalizeGithubEnterpriseDomain,
   openVerificationUri,
   pollAccessToken,
   requestDeviceCode,
@@ -14,6 +16,7 @@ import {
   readGithubModelsToken,
   saveGithubModelsToken,
 } from '../../utils/githubModelsCredentials.js'
+import { prefetchCopilotModelCatalog } from '../../utils/model/copilotModelCatalog.js'
 import {
   addProviderProfile,
   getProviderProfiles,
@@ -31,6 +34,7 @@ const GITHUB_DEFAULT_BASE_URL = 'https://api.githubcopilot.com'
 export function persistCopilotProfile(
   token: string,
   model: string = GITHUB_DEFAULT_MODEL,
+  baseUrl?: string,
 ): { mode: 'updated' | 'created' } {
   const existing = getProviderProfiles().find(
     profile =>
@@ -41,7 +45,9 @@ export function persistCopilotProfile(
     updateProviderProfile(existing.id, {
       provider: 'openai',
       name: existing.name,
-      baseUrl: existing.baseUrl,
+      // A fresh sign-in's endpoint wins: switching github.com ↔ enterprise
+      // must repoint the profile, not keep the stale endpoint.
+      baseUrl: baseUrl || existing.baseUrl,
       model: existing.model || model,
       apiKey: token,
       extras: {
@@ -56,7 +62,7 @@ export function persistCopilotProfile(
     {
       provider: 'openai',
       name: 'GitHub Copilot',
-      baseUrl: GITHUB_DEFAULT_BASE_URL,
+      baseUrl: baseUrl || GITHUB_DEFAULT_BASE_URL,
       model,
       apiKey: token,
       extras: {
@@ -68,7 +74,12 @@ export function persistCopilotProfile(
   return { mode: 'created' }
 }
 
-type Step = 'menu' | 'already-authed' | 'device-busy' | 'error'
+type Step =
+  | 'menu'
+  | 'already-authed'
+  | 'enterprise-domain'
+  | 'device-busy'
+  | 'error'
 
 type Props = {
   onDone: LocalJSXCommandOnDone
@@ -84,6 +95,8 @@ export function GithubDeviceFlowStep({
   const initialStep: Step = readGithubModelsToken()?.trim() ? 'already-authed' : 'menu'
   const [step, setStep] = useState<Step>(initialStep)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [enterpriseDomainInput, setEnterpriseDomainInput] = useState('')
+  const [enterpriseCursor, setEnterpriseCursor] = useState(0)
   const [deviceHint, setDeviceHint] = useState<{
     user_code: string
     verification_uri: string
@@ -94,14 +107,21 @@ export function GithubDeviceFlowStep({
       token: string,
       model: string = GITHUB_DEFAULT_MODEL,
       oauthToken?: string,
+      options?: { baseUrl?: string; enterpriseDomain?: string },
     ) => {
-      const saved = saveGithubModelsToken(token, oauthToken)
+      const saved = saveGithubModelsToken(
+        token,
+        oauthToken,
+        options?.enterpriseDomain,
+      )
       if (!saved.success) {
         setErrorMsg(saved.warning ?? 'Could not save token to secure storage.')
         setStep('error')
         return
       }
-      persistCopilotProfile(token, model)
+      persistCopilotProfile(token, model, options?.baseUrl)
+      // Warm the live model catalog now that the Copilot profile is active.
+      prefetchCopilotModelCatalog()
       onChangeAPIKey?.()
       onDone(
         'GitHub Copilot onboard complete. Copilot token stored in secure storage and as the active /provider profile.',
@@ -111,34 +131,49 @@ export function GithubDeviceFlowStep({
     [onChangeAPIKey, onDone],
   )
 
-  const runDeviceFlow = useCallback(async () => {
-    setStep('device-busy')
-    setErrorMsg(null)
-    setDeviceHint(null)
-    try {
-      const device = await requestDeviceCode()
-      setDeviceHint({
-        user_code: device.user_code,
-        verification_uri: device.verification_uri,
-      })
-      await openVerificationUri(device.verification_uri)
-      const oauthToken = await pollAccessToken(device.device_code, {
-        initialInterval: device.interval,
-        timeoutSeconds: device.expires_in,
-      })
-      const copilotToken = await exchangeForCopilotToken(oauthToken)
-      await finalize(copilotToken.token, GITHUB_DEFAULT_MODEL, oauthToken)
-    } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e))
-      setStep('error')
-    }
-  }, [finalize])
+  const runDeviceFlow = useCallback(
+    async (enterpriseDomain?: string) => {
+      setStep('device-busy')
+      setErrorMsg(null)
+      setDeviceHint(null)
+      try {
+        const device = await requestDeviceCode({ domain: enterpriseDomain })
+        setDeviceHint({
+          user_code: device.user_code,
+          verification_uri: device.verification_uri,
+        })
+        await openVerificationUri(device.verification_uri)
+        const oauthToken = await pollAccessToken(device.device_code, {
+          initialInterval: device.interval,
+          timeoutSeconds: device.expires_in,
+          domain: enterpriseDomain,
+        })
+        const copilotToken = await exchangeForCopilotToken(oauthToken, {
+          domain: enterpriseDomain,
+        })
+        await finalize(copilotToken.token, GITHUB_DEFAULT_MODEL, oauthToken, {
+          // The exchange reports the account's Copilot inference endpoint —
+          // on GHE deployments it differs from api.githubcopilot.com.
+          baseUrl: copilotToken.endpoints.api?.replace(/\/+$/, '') || undefined,
+          enterpriseDomain,
+        })
+      } catch (e) {
+        setErrorMsg(e instanceof Error ? e.message : String(e))
+        setStep('error')
+      }
+    },
+    [finalize],
+  )
 
   if (step === 'already-authed') {
     const options = [
       {
         label: 'Sign in again',
         value: 'sign-in-again' as const,
+      },
+      {
+        label: 'Sign in with GitHub Enterprise',
+        value: 'enterprise' as const,
       },
       {
         label: onBack ? 'Back to /provider menu' : 'Cancel',
@@ -160,6 +195,10 @@ export function GithubDeviceFlowStep({
               void runDeviceFlow()
               return
             }
+            if (v === 'enterprise') {
+              setStep('enterprise-domain')
+              return
+            }
             if (onBack) {
               onBack()
               return
@@ -167,6 +206,43 @@ export function GithubDeviceFlowStep({
             onDone('GitHub onboard cancelled', { display: 'system' })
           }}
         />
+      </Box>
+    )
+  }
+
+  if (step === 'enterprise-domain') {
+    const submitDomain = (): void => {
+      const normalized = normalizeGithubEnterpriseDomain(enterpriseDomainInput)
+      if (!normalized) {
+        // Empty or github.com → plain GitHub.com sign-in.
+        void runDeviceFlow()
+        return
+      }
+      void runDeviceFlow(normalized)
+    }
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold>GitHub Enterprise sign-in</Text>
+        <Text dimColor>
+          Enter your GitHub Enterprise domain (e.g. github.acme.com). Leave
+          empty for github.com.
+        </Text>
+        <Box flexDirection="row" gap={1}>
+          <Text>&gt;</Text>
+          <TextInput
+            value={enterpriseDomainInput}
+            onChange={setEnterpriseDomainInput}
+            onSubmit={submitDomain}
+            onExit={() => setStep(initialStep)}
+            focus
+            showCursor
+            placeholder="github.acme.com"
+            columns={80}
+            cursorOffset={enterpriseCursor}
+            onChangeCursorOffset={setEnterpriseCursor}
+          />
+        </Box>
+        <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>
       </Box>
     )
   }
@@ -232,6 +308,10 @@ export function GithubDeviceFlowStep({
       value: 'device' as const,
     },
     {
+      label: 'Sign in with GitHub Enterprise',
+      value: 'enterprise' as const,
+    },
+    {
       label: onBack ? 'Back to /provider menu' : 'Cancel',
       value: 'cancel' as const,
     },
@@ -254,6 +334,10 @@ export function GithubDeviceFlowStep({
               return
             }
             onDone('GitHub onboard cancelled', { display: 'system' })
+            return
+          }
+          if (v === 'enterprise') {
+            setStep('enterprise-domain')
             return
           }
           void runDeviceFlow()

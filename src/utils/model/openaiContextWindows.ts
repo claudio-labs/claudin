@@ -477,7 +477,16 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   // which imports openaiContextWindows).
   try {
     const { getDiscoveredContextWindow } = require('./openaiModelDiscovery.js') as typeof import('./openaiModelDiscovery.js')
-    return getDiscoveredContextWindow(model)
+    const discovered = getDiscoveredContextWindow(model)
+    if (discovered !== undefined) return discovered
+  } catch {
+    // fall through to the Copilot catalog
+  }
+  // Copilot models missing from the hardcoded table (new releases) resolve
+  // from the live account catalog. Lazy for the same cycle reason as above.
+  try {
+    const { getCatalogCopilotContextWindow } = require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+    return getCatalogCopilotContextWindow(model)
   } catch {
     return undefined
   }
@@ -488,5 +497,12 @@ export function getOpenAIContextWindow(model: string): number | undefined {
  * Returns undefined if the model is not in the table.
  */
 export function getOpenAIMaxOutputTokens(model: string): number | undefined {
-  return lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
+  const known = lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
+  if (known !== undefined) return known
+  try {
+    const { getCatalogCopilotMaxOutputTokens } = require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+    return getCatalogCopilotMaxOutputTokens(model)
+  } catch {
+    return undefined
+  }
 }

@@ -163,19 +163,32 @@ export async function getAnthropicClient({
 
   // GitHub provider in native Anthropic API mode: send requests in Anthropic
   // format so cache_control blocks are honoured and prompt caching works.
-  // Requires the GitHub endpoint to support Anthropic's messages API — set
-  // CLAUDE_CODE_GITHUB_ANTHROPIC_API=1 to opt in.
+  // Requires the GitHub endpoint to support Anthropic's messages API for the
+  // model (Claude models on api.githubcopilot.com do).
   if (isGithubNativeAnthropicMode(model)) {
     const githubBaseUrl =
       activeProvider?.baseUrl?.replace(/\/$/, '') ??
       'https://api.githubcopilot.com'
     const githubToken = activeProvider?.extras?.githubToken ?? activeProvider?.apiKey ?? ''
+    const [{ COPILOT_HEADERS }, { wrapFetchWithCopilotHeaders }] =
+      await Promise.all([
+        import('./openaiShim/constants.js'),
+        import('./copilotHeaders.js'),
+      ])
     const nativeArgs: ConstructorParameters<typeof Anthropic>[0] = {
       ...ARGS,
       baseURL: githubBaseUrl,
       authToken: githubToken,
       // No apiKey — we authenticate via Bearer token (authToken)
       apiKey: null,
+      defaultHeaders: {
+        ...defaultHeaders,
+        ...COPILOT_HEADERS,
+      },
+      // x-initiator / Copilot-Vision-Request depend on the outbound message
+      // list, which the SDK only exposes at the fetch layer.
+      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
+      fetch: wrapFetchWithCopilotHeaders(resolvedFetch ?? globalThis.fetch),
     }
     return new Anthropic(nativeArgs)
   }

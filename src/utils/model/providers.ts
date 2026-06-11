@@ -67,7 +67,22 @@ export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
   const profile = tryGetActiveProvider()
   if (profile?.transport !== 'github_copilot') return false
   const model = resolvedModel?.trim() || profile.model?.trim() || ''
-  return model.toLowerCase().includes('claude-')
+  // Claude models only: downstream consumers of the native mode (image token
+  // estimation, cache profile) assume Anthropic semantics, so a non-Claude
+  // model advertising /v1/messages must still take the OpenAI shim.
+  if (!model.toLowerCase().includes('claude-')) return false
+  // The live account catalog can veto: a Claude model the account serves only
+  // via /chat/completions must not take the native route. Lazy require to
+  // keep this module leaf-light.
+  try {
+    const { copilotModelSupportsAnthropicMessages } =
+      require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+    const supported = copilotModelSupportsAnthropicMessages(model)
+    if (supported !== null) return supported
+  } catch {
+    // catalog unavailable — keep the name heuristic's answer
+  }
+  return true
 }
 
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {

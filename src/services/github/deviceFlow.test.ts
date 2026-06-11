@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test'
 import {
   DEFAULT_GITHUB_DEVICE_SCOPE,
   GitHubDeviceFlowError,
+  normalizeGithubEnterpriseDomain,
   pollAccessToken,
   requestDeviceCode,
 } from './deviceFlow.js'
@@ -220,5 +221,122 @@ describe('exchangeForCopilotToken', () => {
     await expect(
       exchangeForCopilotToken('oauth-token', fetchImpl),
     ).rejects.toThrow(/Malformed/)
+  })
+})
+
+describe('normalizeGithubEnterpriseDomain', () => {
+  test.each([
+    ['github.acme.com', 'github.acme.com'],
+    ['https://github.acme.com/', 'github.acme.com'],
+    ['http://octo.ghe.com', 'octo.ghe.com'],
+    ['  github.acme.com  ', 'github.acme.com'],
+    ['github.com', undefined],
+    ['https://github.com', undefined],
+    ['', undefined],
+    [undefined, undefined],
+  ] as const)('%p -> %p', (input, expected) => {
+    expect(normalizeGithubEnterpriseDomain(input)).toBe(expected as never)
+  })
+})
+
+describe('GitHub Enterprise domain routing', () => {
+  test('requestDeviceCode targets the enterprise host', async () => {
+    let requestedUrl = ''
+    const fetchImpl = mock((url: RequestInfo | URL) => {
+      requestedUrl = String(url)
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            device_code: 'abc',
+            user_code: 'ABCD-1234',
+            verification_uri: 'https://github.acme.com/login/device',
+          }),
+          { status: 200 },
+        ),
+      )
+    })
+
+    await requestDeviceCode({
+      clientId: 'test-client',
+      domain: 'https://github.acme.com/',
+      fetchImpl,
+    })
+    expect(requestedUrl).toBe('https://github.acme.com/login/device/code')
+  })
+
+  test('pollAccessToken targets the enterprise host', async () => {
+    let requestedUrl = ''
+    const fetchImpl = mock((url: RequestInfo | URL) => {
+      requestedUrl = String(url)
+      return Promise.resolve(
+        new Response(JSON.stringify({ access_token: 'tok-ghe' }), {
+          status: 200,
+        }),
+      )
+    })
+
+    const token = await pollAccessToken('dev-code', {
+      clientId: 'cid',
+      domain: 'github.acme.com',
+      fetchImpl,
+    })
+    expect(token).toBe('tok-ghe')
+    expect(requestedUrl).toBe('https://github.acme.com/login/oauth/access_token')
+  })
+
+  test('exchangeForCopilotToken targets api.<domain> and returns endpoints', async () => {
+    const { exchangeForCopilotToken } = await importFreshModule()
+
+    let requestedUrl = ''
+    const fetchImpl = mock((url: RequestInfo | URL) => {
+      requestedUrl = String(url)
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            token: 'copilot-ghe-token',
+            expires_at: 1700000000,
+            refresh_in: 3600,
+            endpoints: {
+              api: 'https://copilot-api.github.acme.com',
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+    })
+
+    const result = await exchangeForCopilotToken('oauth-token', {
+      domain: 'github.acme.com',
+      fetchImpl,
+    })
+    expect(requestedUrl).toBe(
+      'https://api.github.acme.com/copilot_internal/v2/token',
+    )
+    expect(result.endpoints.api).toBe('https://copilot-api.github.acme.com')
+  })
+
+  test('exchangeForCopilotToken without domain keeps the github.com endpoint', async () => {
+    const { exchangeForCopilotToken } = await importFreshModule()
+
+    let requestedUrl = ''
+    const fetchImpl = mock((url: RequestInfo | URL) => {
+      requestedUrl = String(url)
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            token: 't',
+            expires_at: 1,
+            refresh_in: 1,
+            endpoints: { api: 'https://api.githubcopilot.com' },
+          }),
+          { status: 200 },
+        ),
+      )
+    })
+
+    await exchangeForCopilotToken('oauth-token', { fetchImpl })
+    expect(requestedUrl).toBe(
+      'https://api.github.com/copilot_internal/v2/token',
+    )
   })
 })

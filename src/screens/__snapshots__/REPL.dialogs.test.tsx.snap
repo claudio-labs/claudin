@@ -32,3 +32,16 @@ exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path re
                                                                                ~/projects/claudin 
   ? for shortcuts                                                               ◐ medium · /effort"
 `;
+
+exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 2`] = `
+"       
+▐▛███▜▌   Claudin v0.0.0-test
+▐█████▌   Not configured · claude-sonnet-4-6
+ ▘▘ ▝▝    ~/projects/claudin
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+                                                                               ~/projects/claudin 
+  ? for shortcuts                                                                 ● high · /effort"
+`;

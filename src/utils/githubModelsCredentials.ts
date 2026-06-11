@@ -19,6 +19,8 @@ let inFlightGithubRefresh: Promise<boolean> | null = null
 export type GithubModelsCredentialBlob = {
   accessToken: string
   oauthAccessToken?: string
+  /** GitHub Enterprise domain the OAuth token belongs to; unset = github.com. */
+  enterpriseDomain?: string
 }
 
 type GithubTokenStatus = 'valid' | 'expired' | 'invalid_format'
@@ -135,8 +137,11 @@ export async function refreshGithubModelsTokenIfNeeded(): Promise<boolean> {
         return false
       }
 
-      const refreshed = await exchangeForCopilotToken(oauthToken)
-      const saved = saveGithubModelsToken(refreshed.token, oauthToken)
+      const enterpriseDomain = blob?.enterpriseDomain?.trim() || undefined
+      const refreshed = await exchangeForCopilotToken(oauthToken, {
+        domain: enterpriseDomain,
+      })
+      const saved = saveGithubModelsToken(refreshed.token, oauthToken, enterpriseDomain)
       if (!saved.success) {
         return false
       }
@@ -171,6 +176,7 @@ export async function refreshGithubModelsTokenIfNeeded(): Promise<boolean> {
 export function saveGithubModelsToken(
   token: string,
   oauthToken?: string,
+  enterpriseDomain?: string,
 ): {
   success: boolean
   warning?: string
@@ -193,8 +199,21 @@ export function saveGithubModelsToken(
   }
   if (oauthTrimmed) {
     mergedBlob.oauthAccessToken = oauthTrimmed
-  } else if (prevGithubModels?.oauthAccessToken?.trim()) {
-    mergedBlob.oauthAccessToken = prevGithubModels.oauthAccessToken.trim()
+    // The domain travels with the OAuth token it belongs to: set it when a
+    // fresh OAuth token is provided (undefined = github.com), preserve it
+    // when only the Copilot token is being rotated.
+    if (enterpriseDomain?.trim()) {
+      mergedBlob.enterpriseDomain = enterpriseDomain.trim()
+    }
+  } else {
+    if (prevGithubModels?.oauthAccessToken?.trim()) {
+      mergedBlob.oauthAccessToken = prevGithubModels.oauthAccessToken.trim()
+    }
+    const preservedDomain =
+      enterpriseDomain?.trim() || prevGithubModels?.enterpriseDomain?.trim()
+    if (preservedDomain) {
+      mergedBlob.enterpriseDomain = preservedDomain
+    }
   }
   const merged = {
     ...(prev as Record<string, unknown>),

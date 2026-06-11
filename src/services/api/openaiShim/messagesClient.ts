@@ -70,6 +70,7 @@ import {
 import { stripThinkTags } from '../thinkTagSanitizer.js'
 import { normalizeToolArguments } from '../toolArgumentNormalization.js'
 import { getClaudinUserAgent } from '../../../utils/userAgent.js'
+import { buildCopilotDynamicHeaders } from '../copilotHeaders.js'
 import {
   COPILOT_HEADERS,
   GITHUB_429_BASE_DELAY_SEC,
@@ -247,6 +248,7 @@ class OpenAIShimMessages {
           ...this.defaultHeaders,
           ...filterAnthropicHeaders(options?.headers),
           ...COPILOT_HEADERS,
+          ...buildCopilotDynamicHeaders(params.messages),
         },
         signal: options?.signal,
       })
@@ -524,7 +526,11 @@ class OpenAIShimMessages {
     }
 
     if (isGithubCopilot) {
-      Object.assign(headers, COPILOT_HEADERS)
+      Object.assign(
+        headers,
+        COPILOT_HEADERS,
+        buildCopilotDynamicHeaders(params.messages),
+      )
     } else if (isGithubModels) {
       headers['Accept'] = 'application/vnd.github+json'
       headers['X-GitHub-Api-Version'] = '2022-11-28'

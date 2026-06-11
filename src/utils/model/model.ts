@@ -545,6 +545,12 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
     if (COPILOT_DISPLAY_NAMES[model]) {
       return COPILOT_DISPLAY_NAMES[model]
     }
+    if (getAPIProvider() === 'github') {
+      // Live catalog covers models the hardcoded registry doesn't know yet.
+      const { getCopilotDisplayName } =
+        require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+      return getCopilotDisplayName(model) ?? null
+    }
     return null
   }
   switch (model) {

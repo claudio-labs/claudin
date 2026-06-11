@@ -49,6 +49,7 @@ import { isInBundledMode } from '../../utils/bundledMode.js';
 import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from '../lifecycle.js';
 import { createUserMessage } from '../../utils/messages.js';
 import { processSessionStartHooks } from '../../utils/sessionStart.js';
+import { prefetchCopilotModelCatalog } from '../../utils/model/copilotModelCatalog.js';
 import { prefetchOllamaModels } from '../../utils/model/ollamaModels.js';
 import { prefetchOpenAICompatibleModels } from '../../utils/model/openaiModelDiscovery.js';
 import { getInitialSettings, getSettingsWithErrors } from '../../utils/settings/settings.js';
@@ -137,6 +138,8 @@ export async function runPostHeadlessGuards(
   prefetchOllamaModels();
   // Prefetch models for remote OpenAI-compat providers (OpenRouter, Groq, NovitaAI, etc.)
   void prefetchOpenAICompatibleModels();
+  // Prefetch the live Copilot model catalog (no-op unless github_copilot is active)
+  prefetchCopilotModelCatalog();
 
   if (!skipStartupPrefetches) {
     const lastPrefetchedInfo = lastPrefetched > 0 ? ` last ran ${Math.round((Date.now() - lastPrefetched) / 1000)}s ago` : '';
