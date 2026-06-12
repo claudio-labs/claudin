@@ -4,6 +4,7 @@ import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
+  type ProjectConfig,
   type ProviderProfile,
 } from './config.js'
 import type { ModelOption } from './model/modelOptions.js'
@@ -869,6 +870,66 @@ function arraysShallowEqual<T>(a: readonly T[], b: readonly T[]): boolean {
   return true
 }
 
+export type StrippedProjectPointer = {
+  path: string
+  activeProviderProfileId: string
+  activeModelForProject?: string
+}
+
+/**
+ * Removes `activeProviderProfileId` AND its paired `activeModelForProject`
+ * from every project whose override id matches `shouldStrip`. Stripping both
+ * is load-bearing (M4): a surviving per-project model would silently
+ * resurface the next time the user sets ANY override in that project.
+ *
+ * Returns the same `projects` reference when nothing matched, so callers can
+ * use reference equality to skip the write. `stripped` reports what was
+ * removed so callers can disclose it (the only remaining record of the
+ * user's per-project model choice).
+ */
+export function stripProjectProviderPointers(
+  projects: Record<string, ProjectConfig> | undefined,
+  shouldStrip: (overrideId: string) => boolean,
+): {
+  projects: Record<string, ProjectConfig> | undefined
+  stripped: StrippedProjectPointer[]
+} {
+  if (!projects) return { projects, stripped: [] }
+
+  // Skip the rebuild entirely when no project matches — the common case for
+  // users who only set overrides in one or two projects. Avoids touching the
+  // projects map and its downstream listener cost.
+  const matchedId = (pc: ProjectConfig | undefined): string | undefined => {
+    const id = pc?.activeProviderProfileId
+    return id != null && shouldStrip(id) ? id : undefined
+  }
+  if (!Object.values(projects).some(pc => matchedId(pc) !== undefined)) {
+    return { projects, stripped: [] }
+  }
+
+  const stripped: StrippedProjectPointer[] = []
+  const nextProjects = Object.fromEntries(
+    Object.entries(projects).map(([path, projectConfig]) => {
+      const droppedId = matchedId(projectConfig)
+      if (droppedId !== undefined) {
+        const {
+          activeProviderProfileId: _droppedId,
+          activeModelForProject: droppedModel,
+          ...rest
+        } = projectConfig
+        stripped.push({
+          path,
+          activeProviderProfileId: droppedId,
+          activeModelForProject: droppedModel ?? undefined,
+        })
+        return [path, rest]
+      }
+      return [path, projectConfig]
+    }),
+  )
+  return { projects: nextProjects, stripped }
+}
+
 export function deleteProviderProfile(profileId: string): {
   removed: boolean
   activeProfileId?: string
@@ -911,31 +972,10 @@ export function deleteProviderProfile(profileId: string): {
     // global default while still showing as "override set" in /provider, or
     // they preserve activeModelForProject that would resurface the next time
     // an override is set in that project (see M4).
-    // Skip the rebuild entirely when no project pointed at the deleted
-    // profile — the common case for users who only set overrides in one or
-    // two projects. Avoids touching the projects map and its downstream
-    // listener cost.
-    const projectsTouched = current.projects
-      ? Object.values(current.projects).some(
-          pc => pc?.activeProviderProfileId === profileId,
-        )
-      : false
-    const nextProjects =
-      projectsTouched && current.projects
-        ? Object.fromEntries(
-            Object.entries(current.projects).map(([key, projectConfig]) => {
-              if (projectConfig?.activeProviderProfileId === profileId) {
-                const {
-                  activeProviderProfileId: _droppedId,
-                  activeModelForProject: _droppedModel,
-                  ...rest
-                } = projectConfig
-                return [key, rest]
-              }
-              return [key, projectConfig]
-            }),
-          )
-        : current.projects
+    const { projects: nextProjects } = stripProjectProviderPointers(
+      current.projects,
+      overrideId => overrideId === profileId,
+    )
 
     return {
       ...current,

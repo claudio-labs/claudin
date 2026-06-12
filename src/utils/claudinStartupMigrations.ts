@@ -23,8 +23,15 @@ import {
 import {
   addProviderProfile,
   getActiveProviderProfile,
+  getProviderProfiles,
+  stripProjectProviderPointers,
   type ProviderProfileInput,
 } from './providerProfiles.js'
+import {
+  getGlobalConfig,
+  saveGlobalConfig,
+  type ProviderProfile as StoredProviderProfile,
+} from './config.js'
 
 const GITHUB_COPILOT_DEFAULT_BASE_URL = 'https://models.github.ai/inference'
 const GITHUB_COPILOT_DEFAULT_MODEL = 'github:copilot'
@@ -228,6 +235,141 @@ function profileFromProviderEnvs(
   return null
 }
 
+/**
+ * Ids present in the RAW stored profile list (no sanitize pass). The heals
+ * below decide "dangling" against this, not `getProviderProfiles()`: a
+ * profile that exists on disk but fails this build's `sanitizeProfile` (e.g.
+ * created by a newer/branch build whose shape this build rejects) is
+ * invisible, not deleted. Destroying its pointers would not survive a
+ * round-trip back to the build that accepts it; runtime resolution already
+ * falls back safely in the meantime.
+ */
+function rawProfileIds(
+  profiles: StoredProviderProfile[] | undefined,
+): Set<string> {
+  const ids = new Set<string>()
+  for (const profile of profiles ?? []) {
+    const id = profile?.id?.trim()
+    if (id) ids.add(id)
+  }
+  return ids
+}
+
+/**
+ * Strips project-level provider overrides that point at profiles which no
+ * longer exist. `deleteProviderProfile` performs this cleanup at delete time,
+ * but dangling ids still occur in the wild: configs written by builds where
+ * the cleanup didn't persist (the pre-fix `saveGlobalConfig` discarded
+ * updater edits to `projects`), or a concurrent session re-writing a project
+ * entry from a stale snapshot.
+ *
+ * A dangling override silently disables per-project model pinning:
+ * `getUserSpecifiedModelSetting` only honors `activeModelForProject` when the
+ * override profile exists, so `/model` choices stop sticking for that project
+ * while `/provider` still shows an override as set. Drop both the id and its
+ * paired per-project model via the same helper `deleteProviderProfile` uses.
+ */
+function healDanglingProjectProviderOverrides(): string[] {
+  const config = getGlobalConfig()
+  if (!config.projects) return []
+
+  const isDanglingAgainst =
+    (knownIds: Set<string>) =>
+    (overrideId: string): boolean => {
+      const id = overrideId.trim()
+      return id ? !knownIds.has(id) : false
+    }
+
+  // Cheap pre-scan on the cached config: skip the lock + re-read entirely in
+  // the common no-dangle case (this runs on every startup).
+  const probe = stripProjectProviderPointers(
+    config.projects,
+    isDanglingAgainst(rawProfileIds(config.providerProfiles)),
+  )
+  if (probe.stripped.length === 0) return []
+
+  let notices: string[] = []
+  saveGlobalConfig(current => {
+    // Reset per invocation: saveGlobalConfig may run the updater again on its
+    // fallback path, and only the last invocation's outcome is real. Notices
+    // are derived from what THIS updater actually strips (re-checked against
+    // the freshest config under the lock), never from the pre-scan snapshot.
+    notices = []
+    const { projects: nextProjects, stripped } = stripProjectProviderPointers(
+      current.projects,
+      isDanglingAgainst(rawProfileIds(current.providerProfiles)),
+    )
+    if (stripped.length === 0 || nextProjects === current.projects) {
+      return current
+    }
+    // Name the dropped id and pinned model — this notice is the only
+    // remaining record of the user's per-project choice.
+    notices = stripped.map(
+      ({ path, activeProviderProfileId, activeModelForProject }) =>
+        `cleared stale project provider override for ${path} (profile ${activeProviderProfileId} no longer exists${
+          activeModelForProject ? `; pinned model was ${activeModelForProject}` : ''
+        }) — re-pin via /provider`,
+    )
+    return { ...current, projects: nextProjects }
+  })
+
+  return notices
+}
+
+/**
+ * Heals a global `activeProviderProfileId` that points at a profile which no
+ * longer exists (same out-of-band origins as the project-level case above).
+ * Runtime resolution already falls back to the first sanitized profile
+ * (`getActiveProviderProfile`), so persist that same election — mirroring
+ * `deleteProviderProfile`'s re-election, including its model-options-cache
+ * swap. When no profiles remain at all, clear the field. When profiles exist
+ * on disk but none survive this build's sanitize pass, leave the config
+ * untouched (see `rawProfileIds`).
+ */
+function healDanglingGlobalProviderDefault(): string | undefined {
+  const config = getGlobalConfig()
+  const globalActiveId = config.activeProviderProfileId?.trim()
+  if (!globalActiveId) return undefined
+  if (rawProfileIds(config.providerProfiles).has(globalActiveId)) {
+    return undefined
+  }
+
+  let notice: string | undefined
+  saveGlobalConfig(current => {
+    // Reset per invocation — see the project heal for why.
+    notice = undefined
+    const currentActive = current.activeProviderProfileId?.trim()
+    if (!currentActive) return current
+    const rawIds = rawProfileIds(current.providerProfiles)
+    if (rawIds.has(currentActive)) return current
+
+    const nextActive = getProviderProfiles(current)[0]
+    if (!nextActive && rawIds.size > 0) {
+      // Profiles exist on disk but none survive this build's sanitize pass —
+      // electing nothing here would destroy state another build still uses.
+      return current
+    }
+
+    const cacheByProfile = {
+      ...(current.openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    }
+    delete cacheByProfile[currentActive]
+    notice = nextActive
+      ? `global provider default pointed at deleted profile ${currentActive} — now using "${nextActive.name}"`
+      : `cleared global provider default (profile ${currentActive} no longer exists) — pick one via /provider`
+    return {
+      ...current,
+      activeProviderProfileId: nextActive?.id,
+      openaiAdditionalModelOptionsCacheByProfile: cacheByProfile,
+      openaiAdditionalModelOptionsCache: nextActive
+        ? (cacheByProfile[nextActive.id] ?? [])
+        : [],
+    }
+  })
+
+  return notice
+}
+
 export function runClaudinStartupMigrations(options?: {
   processEnv?: NodeJS.ProcessEnv
   homeDir?: string
@@ -285,6 +427,19 @@ export function runClaudinStartupMigrations(options?: {
       result.notices.push(notice)
       log(notice)
     }
+  }
+
+  // Heal dangling provider pointers (see function docs). Runs after the
+  // profile migrations above so freshly-adopted profiles are part of the
+  // known-id set.
+  for (const notice of healDanglingProjectProviderOverrides()) {
+    result.notices.push(notice)
+    log(notice)
+  }
+  const globalHealNotice = healDanglingGlobalProviderDefault()
+  if (globalHealNotice) {
+    result.notices.push(globalHealNotice)
+    log(globalHealNotice)
   }
 
   return result

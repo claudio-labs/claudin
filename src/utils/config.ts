@@ -1015,6 +1015,20 @@ function notifyGlobalConfigListeners(): void {
   }
 }
 
+/**
+ * Assembles the config that saveGlobalConfig persists from an updater result.
+ * MUST derive `projects` from the updater result itself: building it from the
+ * pre-updater snapshot silently discards any project edits the updater made
+ * (this clobber is why deleteProviderProfile's project-override cleanup never
+ * persisted in production). Exported for tests via _buildWrittenGlobalConfig.
+ */
+function buildWrittenGlobalConfig(config: GlobalConfig): GlobalConfig {
+  return {
+    ...config,
+    projects: removeProjectHistory(config.projects),
+  }
+}
+
 export function saveGlobalConfig(
   updater: (currentConfig: GlobalConfig) => GlobalConfig,
 ): void {
@@ -1040,10 +1054,7 @@ export function saveGlobalConfig(
         if (config === current) {
           return current
         }
-        written = {
-          ...config,
-          projects: removeProjectHistory(current.projects),
-        }
+        written = buildWrittenGlobalConfig(config)
         return written
       },
     )
@@ -1087,10 +1098,7 @@ export function saveGlobalConfig(
     if (config === currentConfig) {
       return
     }
-    written = {
-      ...config,
-      projects: removeProjectHistory(currentConfig.projects),
-    }
+    written = buildWrittenGlobalConfig(config)
     saveConfig(getGlobalClaudeFile(), written, DEFAULT_GLOBAL_CONFIG)
     writeThroughGlobalConfigCache(written)
     notifyGlobalConfigListeners()
@@ -2096,6 +2104,7 @@ export function getUserClaudeRulesDir(): string {
 // Exported for testing only
 export const _getConfigForTesting = getConfig
 export const _wouldLoseAuthStateForTesting = wouldLoseAuthState
+export const _buildWrittenGlobalConfig = buildWrittenGlobalConfig
 export function _setGlobalConfigCacheForTesting(
   config: GlobalConfig | null,
 ): void {

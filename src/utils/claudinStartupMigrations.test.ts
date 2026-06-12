@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { getGlobalConfig } from './config.js'
 import type { ProfileFile } from './providerProfile.js'
 import type { ProviderProfile } from './config.js'
 import type { ProviderProfileInput } from './providerProfiles.js'
@@ -24,6 +23,39 @@ const { mkdtempSync, rmSync } = realFs
 // activeProvider.test.ts.
 const realProviderProfile = await import('./providerProfile.js')
 const realProviderProfiles = await import('./providerProfiles.js')
+const realConfig = await import('./config.js')
+
+// In-memory config singleton backing './config.js' for this file. Several
+// other test files mock './config.js' too, and bun's process-wide module
+// cache means whichever factory ran LAST is the one already-imported code
+// reads — so the heal under test and these assertions could otherwise end up
+// on different singletons depending on file order. Mocking config.js here
+// (and importing the module under test with a cache-busting nonce below)
+// pins both sides to this state object.
+type TestProjectConfig = {
+  activeProviderProfileId?: string | null
+  activeModelForProject?: string | null
+  hasTrustDialogAccepted?: boolean
+}
+type MockGlobalConfigState = {
+  projects?: Record<string, TestProjectConfig>
+  activeProviderProfileId?: string
+  providerProfiles?: Array<{ id: string; name: string }>
+  openaiAdditionalModelOptionsCacheByProfile?: Record<string, string[]>
+  openaiAdditionalModelOptionsCache?: string[]
+  [key: string]: unknown
+}
+let mockConfigState: MockGlobalConfigState = {}
+
+mock.module('./config.js', () => ({
+  ...realConfig,
+  getGlobalConfig: () => mockConfigState,
+  saveGlobalConfig: (
+    updater: (current: MockGlobalConfigState) => MockGlobalConfigState,
+  ) => {
+    mockConfigState = updater(mockConfigState)
+  },
+}))
 
 const exdevTrigger: { legacy: string | null; dst: string | null } = {
   legacy: null,
@@ -77,7 +109,12 @@ function createProfile(
 
 mock.module('./providerProfiles.js', () => ({
   getActiveProviderProfile: () => store.active,
-  getProviderProfiles: () => store.profiles,
+  // The heal path calls this both bare and with an explicit config snapshot;
+  // the in-memory store is the single source of truth in both cases.
+  getProviderProfiles: (_config?: unknown) => store.profiles,
+  // Pure function — pass the real implementation through so the heal tests
+  // exercise the same strip logic production uses.
+  stripProjectProviderPointers: realProviderProfiles.stripProjectProviderPointers,
   addProviderProfile: (
     input: ProviderProfileInput,
     options?: { makeActive?: boolean },
@@ -123,14 +160,19 @@ mock.module('./providerProfile.js', () => ({
 afterAll(() => {
   mock.module('./providerProfile.js', () => realProviderProfile)
   mock.module('./providerProfiles.js', () => realProviderProfiles)
+  mock.module('./config.js', () => realConfig)
   const restore = () => ({ ...realFs, default: realFs })
   mock.module('node:fs', restore)
   mock.module('fs', restore)
 })
 
-const { runClaudinStartupMigrations } = await import(
-  './claudinStartupMigrations.js'
-)
+// Cache-busting nonce import: if some earlier test file already imported
+// claudinStartupMigrations.js, that cached instance is bound to whatever
+// './config.js' looked like at THAT moment. The nonce forces a fresh
+// instance bound to the mocks installed above.
+const { runClaudinStartupMigrations } = (await import(
+  `./claudinStartupMigrations.js?ts=${Date.now()}-${Math.random()}`
+)) as typeof import('./claudinStartupMigrations.js')
 
 function legacy(profile: ProfileFile['profile'], env: ProfileFile['env']): ProfileFile {
   return {
@@ -154,11 +196,6 @@ function presetActive(profile: ProviderProfile): void {
 // into runClaudinStartupMigrations via the homeDir option.
 let tmpHome = ''
 
-function clearMigrationFlags(): void {
-  const cfg = getGlobalConfig() as unknown as Record<string, unknown>
-  delete cfg.claudeToClaudinMigratedAt
-}
-
 beforeEach(() => {
   store.profiles = []
   store.active = undefined
@@ -166,14 +203,14 @@ beforeEach(() => {
   legacyFileState.deleted = false
   legacyFileState.malformed = false
   tmpHome = mkdtempSync(join(tmpdir(), 'claudin-startupmig-'))
-  clearMigrationFlags()
+  mockConfigState = {}
 })
 
 afterEach(() => {
   store.profiles = []
   store.active = undefined
   rmSync(tmpHome, { recursive: true, force: true })
-  clearMigrationFlags()
+  mockConfigState = {}
 })
 
 function callRun(
@@ -592,5 +629,206 @@ describe('runClaudinStartupMigrations — full-run idempotency', () => {
     expect(store.profiles).toHaveLength(1)
     expect(store.profiles[0].name).toBe('OpenAI (legacy)')
     expect(legacyFileState.deleted).toBe(true)
+  })
+})
+
+describe('runClaudinStartupMigrations — dangling provider pointer heal', () => {
+  // The heal reads/writes through the './config.js' mock installed at the
+  // top of this file, i.e. `mockConfigState` (reset in the global
+  // beforeEach/afterEach). Dangling-ness is decided against the RAW
+  // `providerProfiles` field; the mocked getProviderProfiles
+  // (store.profiles) stands in for the sanitized view used for re-election.
+  const cfg = () => mockConfigState
+
+  // A profile that is both on disk (raw) and visible to this build
+  // (sanitized view = mocked store.profiles).
+  function presetValidProfile(id: string, name: string): void {
+    presetActive({
+      id,
+      name,
+      provider: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+    })
+    cfg().providerProfiles = [
+      ...(cfg().providerProfiles ?? []),
+      { id, name },
+    ]
+  }
+
+  test('strips dangling override + paired model, preserves valid ones and sibling keys', () => {
+    presetValidProfile('existing_profile', 'Existing')
+    cfg().projects = {
+      '/proj/dangling': {
+        activeProviderProfileId: 'provider_deleted_long_ago',
+        activeModelForProject: 'stale-pinned-model',
+        hasTrustDialogAccepted: true,
+      },
+      '/proj/valid': {
+        activeProviderProfileId: 'existing_profile',
+        activeModelForProject: 'kept-model',
+      },
+    }
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    const projects = cfg().projects ?? {}
+    expect(projects['/proj/dangling']?.activeProviderProfileId).toBeUndefined()
+    expect(projects['/proj/dangling']?.activeModelForProject).toBeUndefined()
+    // Sibling project keys survive the strip
+    expect(projects['/proj/dangling']?.hasTrustDialogAccepted).toBe(true)
+    // Valid override untouched
+    expect(projects['/proj/valid']?.activeProviderProfileId).toBe(
+      'existing_profile',
+    )
+    expect(projects['/proj/valid']?.activeModelForProject).toBe('kept-model')
+    // Notice names the path, the dropped id, and the pinned model — the only
+    // remaining record of the user's choice.
+    expect(
+      result.notices.some(
+        n =>
+          n.includes('/proj/dangling') &&
+          n.includes('provider_deleted_long_ago') &&
+          n.includes('stale-pinned-model'),
+      ),
+    ).toBe(true)
+    expect(result.notices.some(n => n.includes('/proj/valid'))).toBe(false)
+  })
+
+  test('raw-but-sanitize-invisible profile is NOT treated as dangling', () => {
+    // Profile exists on disk but this build's sanitize rejects it (raw entry
+    // present, absent from the mocked sanitized view) — e.g. created by a
+    // newer/branch build. Its pointers must survive untouched.
+    cfg().providerProfiles = [{ id: 'branch_build_profile', name: 'Future' }]
+    cfg().projects = {
+      '/proj/future': {
+        activeProviderProfileId: 'branch_build_profile',
+        activeModelForProject: 'future-model',
+      },
+    }
+    cfg().activeProviderProfileId = 'branch_build_profile'
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().projects?.['/proj/future']?.activeProviderProfileId).toBe(
+      'branch_build_profile',
+    )
+    expect(cfg().projects?.['/proj/future']?.activeModelForProject).toBe(
+      'future-model',
+    )
+    expect(cfg().activeProviderProfileId).toBe('branch_build_profile')
+    expect(
+      result.notices.some(
+        n => n.includes('stale project provider override') || n.includes('global provider default'),
+      ),
+    ).toBe(false)
+  })
+
+  test('null or unset override ids are not treated as dangling', () => {
+    cfg().projects = {
+      '/proj/null-id': {
+        activeProviderProfileId: null,
+        activeModelForProject: null,
+      },
+      '/proj/no-id': {
+        activeModelForProject: 'orphan-model',
+      },
+    }
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    const projects = cfg().projects ?? {}
+    expect(projects['/proj/null-id']?.activeProviderProfileId).toBeNull()
+    expect(projects['/proj/no-id']?.activeModelForProject).toBe('orphan-model')
+    expect(
+      result.notices.some(n => n.includes('stale project provider override')),
+    ).toBe(false)
+  })
+
+  test('second run is a no-op after healing', () => {
+    cfg().projects = {
+      '/proj/dangling': {
+        activeProviderProfileId: 'provider_deleted_long_ago',
+        activeModelForProject: 'stale-pinned-model',
+      },
+    }
+
+    const first = callRun({ processEnv: {}, log: silentLog })
+    expect(
+      first.notices.some(n => n.includes('stale project provider override')),
+    ).toBe(true)
+
+    const second = callRun({ processEnv: {}, log: silentLog })
+    expect(
+      second.notices.some(n => n.includes('stale project provider override')),
+    ).toBe(false)
+  })
+
+  test('dangling global default is re-pointed to the first sanitized profile, with cache swap', () => {
+    presetValidProfile('surviving_profile', 'Surviving')
+    cfg().activeProviderProfileId = 'provider_deleted_long_ago'
+    cfg().openaiAdditionalModelOptionsCacheByProfile = {
+      provider_deleted_long_ago: ['dead-model-1', 'dead-model-2'],
+      surviving_profile: ['live-model'],
+    }
+    cfg().openaiAdditionalModelOptionsCache = ['dead-model-1', 'dead-model-2']
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().activeProviderProfileId).toBe('surviving_profile')
+    // Mirrors deleteProviderProfile: dangling id's cache pruned, flat cache
+    // swapped to the new active profile's entries.
+    expect(
+      cfg().openaiAdditionalModelOptionsCacheByProfile?.provider_deleted_long_ago,
+    ).toBeUndefined()
+    expect(cfg().openaiAdditionalModelOptionsCache).toEqual(['live-model'])
+    expect(
+      result.notices.some(
+        n =>
+          n.includes('global provider default') &&
+          n.includes('provider_deleted_long_ago') &&
+          n.includes('Surviving'),
+      ),
+    ).toBe(true)
+  })
+
+  test('dangling global default is cleared when no profiles remain at all', () => {
+    cfg().activeProviderProfileId = 'provider_deleted_long_ago'
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().activeProviderProfileId).toBeUndefined()
+    expect(
+      result.notices.some(n =>
+        n.includes('cleared global provider default'),
+      ),
+    ).toBe(true)
+  })
+
+  test('dangling global default is left alone when only sanitize-invisible profiles exist', () => {
+    // Raw profiles exist but none survive this build's sanitize pass
+    // (store.profiles empty): electing nothing would destroy state another
+    // build still uses.
+    cfg().providerProfiles = [{ id: 'invisible_profile', name: 'Future' }]
+    cfg().activeProviderProfileId = 'provider_deleted_long_ago'
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().activeProviderProfileId).toBe('provider_deleted_long_ago')
+    expect(
+      result.notices.some(n => n.includes('global provider default')),
+    ).toBe(false)
+  })
+
+  test('valid global default is left untouched', () => {
+    presetValidProfile('existing_profile', 'Existing')
+    cfg().activeProviderProfileId = 'existing_profile'
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().activeProviderProfileId).toBe('existing_profile')
+    expect(
+      result.notices.some(n => n.includes('global provider default')),
+    ).toBe(false)
   })
 })
