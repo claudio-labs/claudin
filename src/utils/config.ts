@@ -27,7 +27,10 @@ import * as lockfile from './lockfile.js'
 import { logError } from './log.js'
 import type { MemoryType } from './memory/types.js'
 import { normalizePathForConfigKey } from './path.js'
-import { getEssentialTrafficOnlyReason } from './privacyLevel.js'
+import {
+  getEssentialTrafficOnlyReason,
+  getExplicitEssentialTrafficOnlyReason,
+} from './privacyLevel.js'
 import { getManagedFilePath } from './settings/managedPath.js'
 import type { ThemeSetting } from './theme.js'
 import { PRIMARY_PROJECT_INSTRUCTION_FILE } from './projectInstructions.js'
@@ -2002,14 +2005,28 @@ export function formatAutoUpdaterDisabledReason(
   }
 }
 
-export function getAutoUpdaterDisabledReason(): AutoUpdaterDisabledReason | null {
+export function getAutoUpdaterDisabledReason(options?: {
+  /**
+   * Treat the Claudin-default essential-traffic privacy level as NOT
+   * disabling. Explicitly-set *_DISABLE_NONESSENTIAL_TRAFFIC env vars still
+   * disable. Used by the startup version notice, which never installs
+   * anything: the default privacy level exists to suppress Anthropic-backend
+   * startup probes, and gating the throttled npm version check on it made
+   * the "new version available" banner dead code for every default-config
+   * user. Note this also un-shadows the `autoUpdates: false` config check
+   * below, which the default reason used to short-circuit past.
+   */
+  ignoreClaudinDefaultPrivacy?: boolean
+}): AutoUpdaterDisabledReason | null {
   if (process.env.NODE_ENV === 'development') {
     return { type: 'development' }
   }
   if (isEnvTruthy(process.env.DISABLE_AUTOUPDATER)) {
     return { type: 'env', envVar: 'DISABLE_AUTOUPDATER' }
   }
-  const essentialTrafficEnvVar = getEssentialTrafficOnlyReason()
+  const essentialTrafficEnvVar = options?.ignoreClaudinDefaultPrivacy
+    ? getExplicitEssentialTrafficOnlyReason()
+    : getEssentialTrafficOnlyReason()
   if (essentialTrafficEnvVar) {
     return { type: 'env', envVar: essentialTrafficEnvVar }
   }

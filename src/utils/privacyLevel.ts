@@ -27,6 +27,14 @@
 
 type PrivacyLevel = 'default' | 'no-telemetry' | 'essential-traffic'
 
+/**
+ * Sentinel returned by getEssentialTrafficOnlyReason() when the restriction
+ * comes from the Claudin default rather than an explicitly-set env var.
+ * Consumers that only want to honor *explicit* opt-outs (e.g. the startup
+ * version notice) compare against this to exempt the default.
+ */
+export const ESSENTIAL_TRAFFIC_DEFAULT_REASON = 'claudin-default'
+
 function isFalsy(value: string | undefined): boolean {
   if (value === undefined) return false
   const v = value.trim().toLowerCase()
@@ -83,5 +91,19 @@ export function getEssentialTrafficOnlyReason(): string | null {
     return 'ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC'
   }
   // Claudin default (no env var set).
-  return 'claudin-default'
+  return ESSENTIAL_TRAFFIC_DEFAULT_REASON
+}
+
+/**
+ * Like getEssentialTrafficOnlyReason(), but treats the Claudin-default
+ * essential-traffic level as unrestricted — only an explicitly-set
+ * *_DISABLE_NONESSENTIAL_TRAFFIC env var counts. Used by consumers that
+ * must keep working under the default privacy level (e.g. the startup
+ * version notice, a throttled npm registry lookup that never installs
+ * anything): gating those on the default made them dead code for every
+ * default-config user.
+ */
+export function getExplicitEssentialTrafficOnlyReason(): string | null {
+  const reason = getEssentialTrafficOnlyReason()
+  return reason === ESSENTIAL_TRAFFIC_DEFAULT_REASON ? null : reason
 }

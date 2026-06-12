@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+  ESSENTIAL_TRAFFIC_DEFAULT_REASON,
   getEssentialTrafficOnlyReason,
+  getExplicitEssentialTrafficOnlyReason,
   getPrivacyLevel,
   isEssentialTrafficOnly,
   isTelemetryDisabled,
@@ -82,5 +84,37 @@ describe('privacyLevel', () => {
     expect(getEssentialTrafficOnlyReason()).toBe(
       'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
     )
+  })
+
+  // Regression coverage for the dead-update-notice bug: when the privacy
+  // default flipped to essential-traffic (b2be87b5), the claudin-default
+  // reason started disabling the startup npm version check for every
+  // default-config user, freezing ~/.claudin/latest-version.json. The
+  // explicit variant exists so user-serving network calls only honor
+  // *explicit* opt-outs.
+  describe('getExplicitEssentialTrafficOnlyReason', () => {
+    test('returns null under the Claudin default (no env vars set)', () => {
+      expect(getEssentialTrafficOnlyReason()).toBe(
+        ESSENTIAL_TRAFFIC_DEFAULT_REASON,
+      )
+      expect(getExplicitEssentialTrafficOnlyReason()).toBeNull()
+    })
+
+    test('still reports an explicitly-set env var', () => {
+      process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+      expect(getExplicitEssentialTrafficOnlyReason()).toBe(
+        'ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC',
+      )
+      delete process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
+      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+      expect(getExplicitEssentialTrafficOnlyReason()).toBe(
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      )
+    })
+
+    test('returns null on explicit opt-in to nonessential traffic', () => {
+      process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC = '0'
+      expect(getExplicitEssentialTrafficOnlyReason()).toBeNull()
+    })
   })
 })

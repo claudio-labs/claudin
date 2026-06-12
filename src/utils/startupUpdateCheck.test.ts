@@ -175,6 +175,7 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
   let writeCalls: number
   let getLatestCalls: number
   let isAutoUpdaterDisabledReturn: boolean
+  let disabledReasonOptsSeen: unknown[]
   let installTypeReturn: string
   let tmpDir: string
   let consoleErrorMessages: string[]
@@ -194,6 +195,7 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
     writeCalls = 0
     getLatestCalls = 0
     isAutoUpdaterDisabledReturn = false
+    disabledReasonOptsSeen = []
     installTypeReturn = 'native'
     consoleErrorMessages = []
     console.error = (msg: string) => {
@@ -209,7 +211,10 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
       DISPLAY_VERSION: '0.0.1',
     }
     mock.module('src/utils/config.js', () => ({
-      isAutoUpdaterDisabled: () => isAutoUpdaterDisabledReturn,
+      getAutoUpdaterDisabledReason: (opts?: unknown) => {
+        disabledReasonOptsSeen.push(opts)
+        return isAutoUpdaterDisabledReturn ? { type: 'config' } : null
+      },
     }))
     mock.module('src/utils/doctorDiagnostic.js', () => ({
       getCurrentInstallationType: () => Promise.resolve(installTypeReturn),
@@ -244,7 +249,7 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
     if (tmpDir) await rm(tmpDir, { recursive: true, force: true })
   })
 
-  test('force-flag bypasses isAutoUpdaterDisabled() and dev install gate', async () => {
+  test('force-flag bypasses getAutoUpdaterDisabledReason() and dev install gate', async () => {
     process.env.CLAUDIN_FORCE_UPDATE_CHECK = '1'
     isAutoUpdaterDisabledReturn = true
     installTypeReturn = 'development'
@@ -283,6 +288,23 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
     installTypeReturn = 'native'
     await runStartupUpdateCheck([])
     expect(writeCalls).toBe(0)
+  })
+
+  test('opt-out gate exempts the Claudin-default privacy level (regression: dead update notice)', async () => {
+    // The startup version check must ask getAutoUpdaterDisabledReason to
+    // ignore the *default* essential-traffic privacy level — otherwise the
+    // "new version available" notice is dead code for every default-config
+    // user (the gate that froze latest-version.json at the version current
+    // when the privacy default flipped). Explicit opt-outs still apply; the
+    // exemption logic itself is covered in
+    // config.autoUpdaterDisabledReason.test.ts.
+    isAutoUpdaterDisabledReturn = false
+    installTypeReturn = 'native'
+    await runStartupUpdateCheck([])
+    expect(disabledReasonOptsSeen).toEqual([
+      { ignoreClaudinDefaultPrivacy: true },
+    ])
+    expect(writeCalls).toBe(1)
   })
 
   test('without the flag, dev install alone short-circuits before write', async () => {

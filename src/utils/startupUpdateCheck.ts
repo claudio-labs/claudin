@@ -79,7 +79,7 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     // test for getEarlySkipReason doesn't need to resolve the full module
     // graph). All names below are runtime-imported.
     const [
-      { isAutoUpdaterDisabled },
+      { getAutoUpdaterDisabledReason },
       { getCurrentInstallationType },
       { getLatestVersion },
       { logForDebugging },
@@ -120,9 +120,21 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       )
     }
 
-    // Respect the user's opt-out — same flag the legacy auto-updater honored.
-    // Disabling the auto-updater means "no npm network calls on startup".
-    if (!forceCheck && isAutoUpdaterDisabled()) return
+    // Respect *explicit* opt-outs — DISABLE_AUTOUPDATER, an explicitly-set
+    // *_DISABLE_NONESSENTIAL_TRAFFIC env var, or `autoUpdates: false` in
+    // config — same gates the legacy auto-updater honored. The Claudin
+    // *default* essential-traffic privacy level is exempt: it exists to
+    // suppress Anthropic-backend startup probes, while this is a throttled,
+    // provider-agnostic npm registry lookup that never installs anything
+    // (see header comment). Gating on the default made the version notice
+    // dead code for every default-config user.
+    if (
+      !forceCheck &&
+      getAutoUpdaterDisabledReason({ ignoreClaudinDefaultPrivacy: true }) !==
+        null
+    ) {
+      return
+    }
 
     // Skip in development (claudindev / source-tree runs). For every other
     // install type we still surface the notice; the message is generic
