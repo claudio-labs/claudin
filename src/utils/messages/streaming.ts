@@ -162,13 +162,20 @@ export function handleMessageFromStream(
             if (!element) {
               return _
             }
-            return [
-              ..._.filter(_ => _ !== element),
-              {
-                ...element,
-                unparsedToolInput: element.unparsedToolInput + delta,
-              },
-            ]
+            // Update in place — moving the updated element to the end would
+            // reorder contentBlocks, defeating Messages' memo comparator
+            // (which bails per-delta only when contentBlocks match
+            // positionally). With 2+ parallel streaming tool uses that
+            // reordering re-ran the full O(n) message-transform pipeline on
+            // every coalesced frame.
+            return _.map(el =>
+              el === element
+                ? {
+                    ...el,
+                    unparsedToolInput: el.unparsedToolInput + delta,
+                  }
+                : el,
+            )
           })
           return
         }

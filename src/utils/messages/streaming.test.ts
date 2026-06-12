@@ -148,6 +148,56 @@ describe('handleMessageFromStream', () => {
     expect(r.lengthDeltas).toEqual(['{"cmd":"ls"}'])
   })
 
+  test('input_json_delta preserves element order and contentBlock identity', () => {
+    // Messages' memo comparator bails per-delta only when contentBlocks
+    // match positionally — reordering (the old move-to-end update) re-ran
+    // the full message-transform pipeline on every frame with 2+ parallel
+    // streaming tool uses.
+    let toolUses: any[] = []
+    const onStreamingToolUses = (f: (s: any[]) => any[]) => {
+      toolUses = f(toolUses)
+    }
+    const noop = () => {}
+    for (const [index, id] of [
+      [0, 'toolu_a'],
+      [1, 'toolu_b'],
+    ] as const) {
+      handleMessageFromStream(
+        streamEvent({
+          type: 'content_block_start',
+          index,
+          content_block: { type: 'tool_use', id, name: 'Bash', input: {} },
+        }) as any,
+        noop,
+        noop,
+        noop,
+        onStreamingToolUses,
+      )
+    }
+    const blocksBefore = toolUses.map(t => t.contentBlock)
+    handleMessageFromStream(
+      streamEvent({
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'input_json_delta', partial_json: '{"cmd":' },
+      }) as any,
+      noop,
+      noop,
+      noop,
+      onStreamingToolUses,
+    )
+    // First element updated in place — still first, same contentBlock refs.
+    expect(toolUses.map(t => t.contentBlock.id)).toEqual([
+      'toolu_a',
+      'toolu_b',
+    ])
+    expect(toolUses[0].unparsedToolInput).toBe('{"cmd":')
+    expect(toolUses[1].unparsedToolInput).toBe('')
+    expect(toolUses.map(t => t.contentBlock)).toEqual(blocksBefore)
+    expect(toolUses[0].contentBlock).toBe(blocksBefore[0])
+    expect(toolUses[1].contentBlock).toBe(blocksBefore[1])
+  })
+
   test('thinking_delta accumulates length without modifying streaming text', () => {
     const r = makeRecorder()
     handleMessageFromStream(

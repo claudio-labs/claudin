@@ -11,8 +11,11 @@ const tokenCache = new Map<string, Token[]>()
 
 // Characters that indicate markdown syntax. If none are present, skip the
 // ~3ms marked.lexer call entirely — render as a single paragraph. Single
-// regex: matches any MD marker or ordered-list start (N. at line start).
-const MD_SYNTAX_RE = /[#*`|[>\-_~]|\n\n|^\d+\. |\n\d+\. /
+// regex: matches any MD marker, ordered-list start (N. at line start), or a
+// paragraph break. \r is included because marked normalizes \r\n and lone \r
+// to \n before tokenizing — "p1\r\n\r\np2" has no literal "\n\n", but IS a
+// paragraph break, and the fast path would collapse it onto one line.
+const MD_SYNTAX_RE = /[#*`|[>\-_~\r]|\n\n|^\d+\. |\n\d+\. /
 
 function hasMarkdownSyntax(s: string): boolean {
   // Sample first 500 chars — if markdown exists it's usually early (headers,
@@ -20,7 +23,7 @@ function hasMarkdownSyntax(s: string): boolean {
   return MD_SYNTAX_RE.test(s.length > 500 ? s.slice(0, 500) : s)
 }
 
-export function cachedLexer(content: string): Token[] {
+export function cachedLexer(content: string, transient = false): Token[] {
   // Fast path: plain text with no markdown syntax → single paragraph token.
   // Skips marked.lexer's full GFM parse (~3ms on long content). Not cached —
   // reconstruction is a single object allocation, and caching would retain
@@ -51,6 +54,13 @@ export function cachedLexer(content: string): Token[] {
     return hit
   }
   const tokens = marked.lexer(content)
+  // Transient content (streaming suffix/segments) is a unique string on
+  // every frame or block boundary — inserting it would flush genuinely
+  // reusable history entries out of the LRU during a long stream, forcing
+  // re-parses when the user scrolls back. Lex without caching.
+  if (transient) {
+    return tokens
+  }
   if (tokenCache.size >= TOKEN_CACHE_MAX) {
     // LRU-ish: drop oldest. Map preserves insertion order.
     const first = tokenCache.keys().next().value

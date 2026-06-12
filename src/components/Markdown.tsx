@@ -8,10 +8,19 @@ import { configureMarked, formatToken } from '../utils/markdown.js';
 import { stripPromptXMLTags } from '../utils/messages.js';
 import { cachedLexer } from './markdownTokenCache.js';
 import { MarkdownTable } from './MarkdownTable.js';
+
+// marked.lexer normalizes \r\n → \n BEFORE tokenizing, so token raw lengths
+// sum over the normalized string. StreamingMarkdown's boundary arithmetic
+// indexes into its own copy of the source — normalize first or the boundary
+// desyncs on CRLF content (segment cut mid-word, never self-heals).
+const CRLF_RE = /\r\n/g;
 type Props = {
   children: string;
   /** When true, render all text content as dim */
   dimColor?: boolean;
+  /** Streaming-path content: unique string per frame/segment — lex without
+   *  inserting into the markdown token cache (see markdownTokenCache.ts). */
+  transient?: boolean;
 };
 
 /**
@@ -65,17 +74,18 @@ function MarkdownWithHighlight(props) {
   return t1;
 }
 function MarkdownBody(t0) {
-  const $ = _c(7);
+  const $ = _c(8);
   const {
     children,
     dimColor,
-    highlight
+    highlight,
+    transient
   } = t0;
   const [theme] = useTheme();
   configureMarked();
   let elements;
-  if ($[0] !== children || $[1] !== dimColor || $[2] !== highlight || $[3] !== theme) {
-    const tokens = cachedLexer(stripPromptXMLTags(children));
+  if ($[0] !== children || $[1] !== dimColor || $[2] !== highlight || $[3] !== theme || $[4] !== transient) {
+    const tokens = cachedLexer(stripPromptXMLTags(children), transient);
     elements = [];
     let nonTableContent = "";
     const flushNonTableContent = function flushNonTableContent() {
@@ -98,18 +108,19 @@ function MarkdownBody(t0) {
     $[1] = dimColor;
     $[2] = highlight;
     $[3] = theme;
-    $[4] = elements;
+    $[4] = transient;
+    $[5] = elements;
   } else {
-    elements = $[4];
+    elements = $[5];
   }
   const elements_0 = elements;
   let t1;
-  if ($[5] !== elements_0) {
+  if ($[6] !== elements_0) {
     t1 = <Box flexDirection="column" gap={1}>{elements_0}</Box>;
-    $[5] = elements_0;
-    $[6] = t1;
+    $[6] = elements_0;
+    $[7] = t1;
   } else {
-    t1 = $[6];
+    t1 = $[7];
   }
   return t1;
 }
@@ -117,15 +128,42 @@ type StreamingProps = {
   children: string;
 };
 
+// Segment props are immutable ({children: string, transient: true}), so a
+// shallow-equal memo lets per-frame StreamingMarkdown re-renders bail for
+// every completed segment instead of re-running each one's compiled memo
+// chain (Markdown → Suspense → MarkdownWithHighlight → MarkdownBody).
+const MemoizedMarkdown = React.memo(Markdown);
+
 /**
  * Renders markdown during streaming by splitting at the last top-level block
  * boundary: everything before is stable (memoized, never re-parsed), only the
  * final block is re-parsed per delta. marked.lexer() correctly handles
  * unclosed code fences as a single token, so block boundaries are always safe.
  *
+ * Completed blocks are chunked into immutable segments, each rendered as its
+ * own <Markdown> with a stable key. A boundary advance therefore lexes and
+ * formats only the NEW segment — rendering the whole prefix through a single
+ * growing <Markdown> would re-lex + re-format every prior block on each
+ * paragraph boundary (~quadratic over a long reply).
+ *
+ * Segments only close at "safe" cut points — a [paragraph|code] token
+ * followed by a single [space] token — because sibling <Markdown>s join with
+ * Box gap={1} (exactly one blank line), which matches formatToken's in-Ansi
+ * spacing only for those tails (paragraph/code emit one trailing EOL + one
+ * for the space). Headings emit two trailing EOLs, lists/blockquotes vary,
+ * and "p\n## H" has no space token at all — those blocks ride along in the
+ * growing region until the next safe boundary, so their exact intra-segment
+ * spacing is preserved. Worst case (no paragraphs at all): no segmentation,
+ * same cost profile as the pre-segmentation code.
+ *
+ * Known (transient-only) limitation: segments lex independently, so a
+ * reference-style link definition ([ref]: url) frozen in an earlier segment
+ * won't resolve in later ones mid-stream; the post-stream render of the
+ * full message is unaffected.
+ *
  * The stable boundary only advances (monotonic), so ref mutation during render
  * is idempotent and safe under StrictMode double-rendering. Component unmounts
- * between turns (streamingText → null), resetting the ref.
+ * between turns (streamingText → null), resetting the refs.
  */
 export function StreamingMarkdown({
   children
@@ -142,13 +180,18 @@ export function StreamingMarkdown({
   // Strip before boundary tracking so it matches <Markdown>'s stripping
   // (line 29). When a closing tag arrives, stripped(N+1) is not a prefix
   // of stripped(N), but the startsWith reset below handles that with a
-  // one-time re-lex on the smaller stripped string.
-  const stripped = stripPromptXMLTags(children);
+  // one-time re-lex on the smaller stripped string. CRLF is normalized so
+  // advance sums (token raw lengths, post-marked-normalization) index
+  // correctly into this string; rendering is unaffected (marked normalizes
+  // internally either way).
+  const stripped = stripPromptXMLTags(children).replace(CRLF_RE, '\n');
   const stablePrefixRef = useRef('');
+  const stableSegmentsRef = useRef<string[]>([]);
 
   // Reset if text was replaced (defensive; normally unmount handles this)
   if (!stripped.startsWith(stablePrefixRef.current)) {
     stablePrefixRef.current = '';
+    stableSegmentsRef.current = [];
   }
 
   // Lex only from current boundary — O(unstable length), not O(full text)
@@ -160,20 +203,45 @@ export function StreamingMarkdown({
   while (lastContentIdx >= 0 && tokens[lastContentIdx]!.type === 'space') {
     lastContentIdx--;
   }
-  let advance = 0;
-  for (let i = 0; i < lastContentIdx; i++) {
-    advance += tokens[i]!.raw.length;
+
+  // Last safe cut point before the growing block (see doc comment above).
+  let cutIdx = -1;
+  for (let i = 1; i < lastContentIdx; i++) {
+    const prevType = tokens[i - 1]!.type;
+    // html/def tokens render as '' but their surrounding space tokens still
+    // emit EOLs inside one Ansi; a segment can't START with one (the Ansi
+    // leading trim would eat that spacing, dropping a blank line vs the
+    // final render) — so they ride inside the next segment instead.
+    const nextType = tokens[i + 1]!.type;
+    if (
+      tokens[i]!.type === 'space' &&
+      (prevType === 'paragraph' || prevType === 'code') &&
+      nextType !== 'html' &&
+      nextType !== 'def'
+    ) {
+      cutIdx = i;
+    }
   }
-  if (advance > 0) {
+  if (cutIdx >= 0) {
+    let advance = 0;
+    for (let i_1 = 0; i_1 <= cutIdx; i_1++) {
+      advance += tokens[i_1]!.raw.length;
+    }
+    const segment = stripped.substring(boundary, boundary + advance);
+    // Defensive — a safe cut always contains at least one paragraph/code
+    // block, but an empty segment would render as a stray gap row.
+    if (segment.trim()) {
+      stableSegmentsRef.current.push(segment);
+    }
     stablePrefixRef.current = stripped.substring(0, boundary + advance);
   }
-  const stablePrefix = stablePrefixRef.current;
-  const unstableSuffix = stripped.substring(stablePrefix.length);
+  const unstableSuffix = stripped.substring(stablePrefixRef.current.length);
 
-  // stablePrefix is memoized inside <Markdown> via useMemo([children, ...])
-  // so it never re-parses as the unstable suffix grows
+  // Each segment is memoized inside <Markdown> via useMemo([children, ...])
+  // so it never re-parses as the unstable suffix grows. transient: streaming
+  // strings are unique per frame/segment — keep them out of the token cache.
   return <Box flexDirection="column" gap={1}>
-      {stablePrefix && <Markdown>{stablePrefix}</Markdown>}
-      {unstableSuffix && <Markdown>{unstableSuffix}</Markdown>}
+      {stableSegmentsRef.current.map((segment_0, i_0) => <MemoizedMarkdown key={i_0} transient>{segment_0}</MemoizedMarkdown>)}
+      {unstableSuffix && <Markdown transient>{unstableSuffix}</Markdown>}
     </Box>;
 }
