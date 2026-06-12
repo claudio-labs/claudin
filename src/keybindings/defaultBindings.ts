@@ -70,6 +70,9 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'meta+p': 'chat:modelPicker',
       'meta+o': 'chat:fastMode',
       'meta+t': 'chat:thinkingToggle',
+      // Cycle session effort up/down without opening the /effort picker.
+      'shift+right': 'chat:increaseEffort',
+      'shift+left': 'chat:decreaseEffort',
       enter: 'chat:submit',
       up: 'history:previous',
       down: 'history:next',

@@ -127,6 +127,10 @@ export function PromptInputHelpMenu(props) {
     t19 = $[19];
   }
   const imagePasteShortcut = t19;
+  // Effort cycle hint (shift+right / shift+left). Always shown — the help menu
+  // doesn't know the active model. Un-memoized is fine: the _c cache is a
+  // runtime no-op in this build (see scripts/build.ts react-compiler-shim).
+  const effortShortcut = formatShortcut(useShortcutDisplay("chat:increaseEffort", "Chat", "shift+right"));
   let t20;
   if ($[20] !== dimColor || $[21] !== terminalShortcut) {
     t20 = feature("TERMINAL_PANEL") ? getFeatureValue_CACHED_MAY_BE_STALE("tengu_terminal_panel", false) ? <Box><Text dimColor={dimColor}>{terminalShortcut} for terminal</Text></Box> : null : null;
@@ -328,7 +332,7 @@ export function PromptInputHelpMenu(props) {
   }
   let t44;
   if ($[84] !== t36 || $[85] !== t37 || $[86] !== t38 || $[87] !== t39 || $[88] !== t40 || $[89] !== t41 || $[90] !== t42 || $[91] !== t43) {
-    t44 = <Box flexDirection="column">{t36}{t37}{t38}{t39}{t40}{t41}{t42}{t43}</Box>;
+    t44 = <Box flexDirection="column">{t36}{t37}{t38}{t39}<Box><Text dimColor={dimColor}>{effortShortcut} to change effort</Text></Box>{t40}{t41}{t42}{t43}</Box>;
     $[84] = t36;
     $[85] = t37;
     $[86] = t38;

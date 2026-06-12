@@ -61,6 +61,7 @@ import { getGlobalConfig, type HistoryEntry, type PastedContent, saveGlobalConfi
 import { logForDebugging } from '../../utils/debug.js';
 import { parseDirectMemberMessage, sendDirectMemberMessage } from '../../utils/directMemberMessage.js';
 import type { EffortLevel } from '../../utils/effort.js';
+import { cycleEffortForModel, effortEnvOverrideConflictsWith, toPersistableEffort } from '../../utils/effort.js';
 import { env } from '../../utils/env.js';
 import { errorMessage } from '../../utils/errors.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
@@ -80,7 +81,7 @@ import { transitionPermissionMode } from '../../utils/permissions/permissionSetu
 import { getPlatform } from '../../utils/platform.js';
 import type { ProcessUserInputContext } from '../../utils/processUserInput/processUserInput.js';
 import { editPromptInEditor } from '../../utils/promptEditor.js';
-import { hasAutoModeOptIn } from '../../utils/settings/settings.js';
+import { hasAutoModeOptIn, updateSettingsForSource } from '../../utils/settings/settings.js';
 import { findBtwTriggerPositions } from '../../utils/sideQuestion.js';
 import { findSlashCommandPositions } from '../../utils/suggestions/commandSuggestions.js';
 import { findSlackChannelPositions, getKnownChannelsVersion, hasSlackMcpServer, subscribeKnownChannels } from '../../utils/suggestions/slackChannelSuggestions.js';
@@ -1465,6 +1466,45 @@ function PromptInput({
     }
   }, [helpOpen]);
 
+  // Handler for chat:increaseEffort / chat:decreaseEffort - step session effort
+  // up/down without opening the /effort picker. Persists like the /effort command.
+  const handleCycleEffort = useCallback((direction: 'left' | 'right') => {
+    const next = cycleEffortForModel(effortValue, mainLoopModel, direction);
+    if (next === undefined) {
+      // Model has no effort levels (e.g. Haiku / unsupported 3P) — silent no-op.
+      return;
+    }
+    setAppState(prev => ({
+      ...prev,
+      effortValue: next
+    }));
+    const persistResult = updateSettingsForSource('userSettings', {
+      effortLevel: toPersistableEffort(next)
+    });
+    if (persistResult.error) {
+      addNotification({
+        key: 'effort-persist-failed',
+        jsx: <Text color="error">Failed to save effort: {persistResult.error.message}</Text>,
+        priority: 'immediate',
+        timeoutMs: 3000
+      });
+    }
+    logEvent('tengu_effort_command', {
+      effort: next as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+    });
+    // CLAUDE_CODE_EFFORT_LEVEL wins at resolve time, so the footer indicator
+    // won't move — warn once (only when env resolves to a different level) so
+    // the key doesn't look dead.
+    if (effortEnvOverrideConflictsWith(next)) {
+      addNotification({
+        key: 'effort-env-override',
+        jsx: <Text dimColor>CLAUDE_CODE_EFFORT_LEVEL={process.env.CLAUDE_CODE_EFFORT_LEVEL} overrides effort this session</Text>,
+        priority: 'immediate',
+        timeoutMs: 3000
+      });
+    }
+  }, [effortValue, mainLoopModel, setAppState, addNotification]);
+
   // Handler for chat:cycleMode - cycle through permission modes
   const handleCycleMode = useCallback(() => {
     // When viewing a teammate, cycle their mode instead of the leader's
@@ -1724,8 +1764,10 @@ function PromptInput({
     'chat:modelPicker': handleModelPicker,
     'chat:thinkingToggle': handleThinkingToggle,
     'chat:cycleMode': handleCycleMode,
+    'chat:increaseEffort': () => handleCycleEffort('right'),
+    'chat:decreaseEffort': () => handleCycleEffort('left'),
     'chat:imagePaste': handleImagePaste
-  }), [handleUndo, handleNewline, handleExternalEditor, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleImagePaste]);
+  }), [handleUndo, handleNewline, handleExternalEditor, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleCycleEffort, handleImagePaste]);
   useKeybindings(chatHandlers, {
     context: 'Chat',
     isActive: !isModalOverlayActive

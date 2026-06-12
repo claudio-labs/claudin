@@ -123,19 +123,41 @@ test('Opus 4.7 with setting on is unchanged (never xhigh)', async () => {
   expect(getDefaultEffortForModel('claude-opus-4-7')).toBe('medium')
 })
 
-test('Opus 4.7 with setting on and no subscription stays undefined', async () => {
+test('Opus 4.7 with no subscription defaults to medium on Anthropic', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     codingLoopXhighDefault: true,
   })
-  expect(getDefaultEffortForModel('claude-opus-4-7')).toBeUndefined()
+  expect(getDefaultEffortForModel('claude-opus-4-7')).toBe('medium')
 })
 
-test('non-Opus model with setting on is unaffected', async () => {
+test('Sonnet 4.6 defaults to medium on Anthropic regardless of subscription', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     codingLoopXhighDefault: true,
     isPro: true,
   })
+  expect(getDefaultEffortForModel('claude-sonnet-4-6')).toBe('medium')
+})
+
+test('Opus 4.7 off the Anthropic provider keeps the upstream undefined for non-subscribers', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    provider: 'bedrock',
+  })
+  expect(getDefaultEffortForModel('claude-opus-4-7')).toBeUndefined()
+})
+
+test('Sonnet 4.6 off the Anthropic provider stays undefined without ultrathink', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    provider: 'bedrock',
+  })
   expect(getDefaultEffortForModel('claude-sonnet-4-6')).toBeUndefined()
+})
+
+test('unknown/future first-party model keeps undefined (→high), not medium', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({})
+  // modelSupportsEffort is true for unknown 1P strings; the medium branch must
+  // match by explicit name so a future flagship is not silently lowered to
+  // medium (DRI-protected default).
+  expect(getDefaultEffortForModel('claude-future-9')).toBeUndefined()
 })
 
 test('resolveAppliedEffort keeps xhigh for Opus 4.8 (no clamp to high)', async () => {

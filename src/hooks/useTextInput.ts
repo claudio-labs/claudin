@@ -458,9 +458,14 @@ export function useTextInput({
         return upOrHistoryUp
       case key.downArrow && !key.shift:
         return downOrHistoryDown
-      case key.leftArrow:
+      // !key.shift mirrors the up/down arrows above: Shift+←/→ is owned by the
+      // Chat keybinding layer (chat:decreaseEffort / chat:increaseEffort) and
+      // must NOT also move the cursor. BaseTextInput's useInput registers first
+      // (child effects fire before parent), so without this guard the caret
+      // would move on the same keypress that cycles effort.
+      case key.leftArrow && !key.shift:
         return () => cursor.left()
-      case key.rightArrow:
+      case key.rightArrow && !key.shift:
         return () => cursor.right()
       default: {
         return function (input: string) {

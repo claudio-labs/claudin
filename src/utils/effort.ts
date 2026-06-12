@@ -126,6 +126,63 @@ export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIE
   return levels
 }
 
+/**
+ * Step the effort one notch up ('right') or down ('left') within the levels
+ * available for `model`, wrapping at the ends. Backs the Shift+←/→ prompt
+ * hotkey. Returns the next level, or `undefined` when the model has no effort
+ * levels (caller should no-op). An undefined / adaptive / out-of-range
+ * `current` starts from the model's default level (so the first press leaves
+ * adaptive for a concrete level).
+ */
+export function cycleEffortForModel(
+  current: EffortValue | undefined,
+  model: string,
+  direction: 'left' | 'right',
+): EffortLevel | OpenAIEffortLevel | undefined {
+  const levels = getAvailableEffortLevels(model)
+  if (levels.length === 0) {
+    return undefined
+  }
+  // Bucket a numeric session effort (e.g. CLAUDE_CODE_EFFORT_LEVEL=30, CLI,
+  // remote config) into its named level so cycling steps from where the user
+  // actually is, not the model default. Strings ('adaptive', out-of-range
+  // levels) fall through to the default start so adaptive leaves for a concrete
+  // level on the first press.
+  const currentLevel =
+    typeof current === 'number' ? convertEffortValueToLevel(current) : current
+  const startLevel =
+    typeof currentLevel === 'string' && (levels as string[]).includes(currentLevel)
+      ? currentLevel
+      : defaultStartLevel(model, levels)
+  let idx = (levels as string[]).indexOf(startLevel)
+  if (idx === -1) {
+    idx = 0
+  }
+  const step = direction === 'right' ? 1 : -1
+  const nextIdx = (idx + step + levels.length) % levels.length
+  return levels[nextIdx]
+}
+
+function defaultStartLevel(
+  model: string,
+  levels: EffortLevel[] | OpenAIEffortLevel[],
+): string {
+  const level = getModelDefaultEffortLevel(model)
+  return (levels as string[]).includes(level) ? level : levels[0]!
+}
+
+/**
+ * The model's default effort as a concrete level — model-only, ignoring the
+ * session value and env override — with the same 'high' fallback the API uses
+ * when no effort param is sent. Canonical resolver for "what level does this
+ * model default to" (distinct from getDisplayedEffortLevel, which folds in the
+ * session value and CLAUDE_CODE_EFFORT_LEVEL).
+ */
+export function getModelDefaultEffortLevel(model: string): EffortLevel {
+  const def = getDefaultEffortForModel(model)
+  return def !== undefined ? convertEffortValueToLevel(def) : 'high'
+}
+
 export function getEffortLevelLabel(level: EffortLevel | OpenAIEffortLevel): string {
   // Anthropic ("xhigh") and Codex ("xhigh") share the same wire value; label by provider.
   // On firstParty/Bedrock/Vertex/Foundry we render "Extra" (matches claude.ai UI for Opus 4.7/4.8).
@@ -226,6 +283,27 @@ export function getEffortEnvOverride(): EffortValue | null | undefined {
     envOverride?.toLowerCase() === 'auto'
     ? null
     : parseEffortValue(envOverride)
+}
+
+/**
+ * True when CLAUDE_CODE_EFFORT_LEVEL will keep overriding `next` this session.
+ * Backs the "won't apply" warning on the prompt effort hotkey / /effort.
+ *   - unset (undefined): no conflict.
+ *   - 'auto'/'unset' (null): forces adaptive at resolve time, overriding any
+ *     concrete `next` → conflict.
+ *   - pinned value: conflict only when it resolves to a different level bucket,
+ *     so a numeric override (e.g. =30) landing in the same bucket as `next`
+ *     isn't flagged (the footer would show the same level either way).
+ */
+export function effortEnvOverrideConflictsWith(next: EffortValue): boolean {
+  const envOverride = getEffortEnvOverride()
+  if (envOverride === undefined) {
+    return false
+  }
+  if (envOverride === null) {
+    return true
+  }
+  return convertEffortValueToLevel(envOverride) !== convertEffortValueToLevel(next)
 }
 
 /**
@@ -441,6 +519,24 @@ export function getDefaultEffortForModel(
     getAPIProvider() === 'firstParty'
   ) {
     return 'high'
+  }
+
+  // @[MODEL LAUNCH]: add a new non-flagship 1P effort model here to give it the
+  // medium default (flagships get 'high' in the branch above instead).
+  // Claudin default: on the first-party Anthropic provider, the named
+  // non-flagship effort models (Opus 4.6/4.7, Sonnet 4.6) default to medium,
+  // regardless of subscription tier. Opus 4.8 and Fable 5 keep high above.
+  // Match by explicit name (not modelSupportsEffort, which is true for unknown
+  // 1P strings) so a future/unrecognized first-party model keeps the upstream
+  // undefined→high default instead of silently regressing to medium — see the
+  // DRI warning at the top of this function.
+  if (
+    getAPIProvider() === 'firstParty' &&
+    (lowerModel.includes('opus-4-7') ||
+      lowerModel.includes('opus-4-6') ||
+      lowerModel.includes('sonnet-4-6'))
+  ) {
+    return 'medium'
   }
 
   if (lowerModel.includes('opus-4-8') || lowerModel.includes('opus-4-7') || lowerModel.includes('opus-4-6')) {

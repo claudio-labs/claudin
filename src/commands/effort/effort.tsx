@@ -4,7 +4,7 @@ import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { type EffortValue, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
+import { type EffortValue, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
 import { EffortPicker } from '../../components/EffortPicker.js';
 import { updateSettingsForSource } from '../../utils/settings/settings.js';
 const COMMON_HELP_ARGS = ['help', '-h', '--help'];
@@ -31,10 +31,10 @@ function setEffortValue(effortValue: EffortValue): EffortCommandResult {
   });
 
   // Env var wins at resolveAppliedEffort time. Only flag it when it actually
-  // conflicts — if env matches what the user just asked for, the outcome is
-  // the same, so "Set effort to X" is true and the note is noise.
-  const envOverride = getEffortEnvOverride();
-  if (envOverride !== undefined && envOverride !== effortValue) {
+  // conflicts — compared by level bucket (shared with the Shift+arrow hotkey)
+  // so a numeric override landing on the same level as the user's pick is not
+  // flagged as noise.
+  if (effortEnvOverrideConflictsWith(effortValue)) {
     const envRaw = process.env.CLAUDE_CODE_EFFORT_LEVEL;
     if (persistable === undefined) {
       return {
