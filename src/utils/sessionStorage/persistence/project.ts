@@ -531,6 +531,24 @@ export class Project {
   }
 
   async flush(): Promise<void> {
+    await this.drainQueuedWrites()
+
+    // Wait for non-queue tracked operations (e.g. removeMessageByUuid)
+    if (this.pendingWriteCount === 0) {
+      return
+    }
+    return new Promise<void>(resolve => {
+      this.flushResolvers.push(resolve)
+    })
+  }
+
+  /**
+   * Drain everything currently in the write queues to disk, bypassing the
+   * flush timer. Unlike flush(), this does NOT wait for non-queue tracked
+   * operations — which makes it safe to call from inside trackWrite
+   * (flush() there would deadlock on its own pendingWriteCount).
+   */
+  private async drainQueuedWrites(): Promise<void> {
     // Cancel pending timer
     if (this.flushTimer) {
       clearTimeout(this.flushTimer)
@@ -542,14 +560,6 @@ export class Project {
     }
     // Drain anything remaining in the queues
     await this.drainWriteQueue()
-
-    // Wait for non-queue tracked operations (e.g. removeMessageByUuid)
-    if (this.pendingWriteCount === 0) {
-      return
-    }
-    return new Promise<void>(resolve => {
-      this.flushResolvers.push(resolve)
-    })
   }
 
   /**
@@ -562,7 +572,21 @@ export class Project {
    */
   async removeMessageByUuid(targetUuid: UUID): Promise<void> {
     return this.trackWrite(async () => {
-      if (this.sessionFile === null) return
+      if (this.sessionFile === null) {
+        // Not materialized yet — if the target was recorded at all it is
+        // sitting in pendingEntries; drop it there so materializeSessionFile
+        // doesn't resurrect it.
+        this.pendingEntries = this.pendingEntries.filter(
+          e => !('uuid' in e && e.uuid === targetUuid),
+        )
+        return
+      }
+      // Inserts ride the 100ms flush timer (enqueueWrite), so a freshly
+      // recorded message may still be queued in memory. Flush it to disk
+      // first — otherwise the truncate below no-ops (target not on disk yet)
+      // and the pending insert lands afterwards, resurrecting the message we
+      // were asked to remove.
+      await this.drainQueuedWrites()
       try {
         let fileSize = 0
         const fh = await fsOpen(this.sessionFile, 'r+')

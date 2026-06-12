@@ -68,6 +68,31 @@ export class StreamingToolExecutor {
    */
   discard(): void {
     this.discarded = true
+    // Abort in-flight side effects, not just future results. The discarded
+    // flag alone only takes effect at the tool's next generator yield — a
+    // Bash subprocess started by the failed attempt would run to completion
+    // (its output dropped, its side effects kept), and the retried stream
+    // can re-issue the same tool_use, executing it a second time. Per-tool
+    // controllers are children of siblingAbortController, so this kills
+    // running subprocesses immediately. `discarded` is set first so the
+    // bubble-up listener in executeTool sees it and does NOT propagate this
+    // abort to the query controller (which would end the turn).
+    this.siblingAbortController.abort('streaming_fallback')
+    // Hand the shared UI state back. The discarded results are never yielded
+    // (getCompletedResults/getRemainingResults return early), so the
+    // markToolUseAsComplete that normally removes these ids never runs —
+    // without this, the failed attempt's spinner rows leak for the rest of
+    // the turn. updateInterruptibleState is also guarded on `discarded` so
+    // this executor's dying tools can't clobber what the retry's fresh
+    // executor sets afterwards.
+    this.toolUseContext.setInProgressToolUseIDs(prev => {
+      const next = new Set(prev)
+      for (const tool of this.tools) {
+        next.delete(tool.id)
+      }
+      return next
+    })
+    this.toolUseContext.setHasInterruptibleToolInProgress?.(false)
   }
 
   /**
@@ -138,6 +163,12 @@ export class StreamingToolExecutor {
    * Process the queue, starting tools when concurrency conditions allow
    */
   private async processQueue(): Promise<void> {
+    // Nothing consumes a discarded executor's results — starting queued
+    // tools would only re-add their ids to inProgressToolUseIDs (which
+    // discard() just released) and burn work the retry will redo.
+    if (this.discarded) {
+      return
+    }
     for (const tool of this.tools) {
       if (tool.status !== 'queued') continue
 
@@ -252,6 +283,13 @@ export class StreamingToolExecutor {
   }
 
   private updateInterruptibleState(): void {
+    // A discarded executor no longer owns this shared flag — its tools
+    // finish asynchronously (synthetic errors at their next yield) AFTER
+    // query.ts has created the retry's fresh executor, and writing here
+    // would clobber that executor's state. discard() already reset it.
+    if (this.discarded) {
+      return
+    }
     const executing = this.tools.filter(t => t.status === 'executing')
     this.toolUseContext.setHasInterruptibleToolInProgress?.(
       executing.length > 0 &&

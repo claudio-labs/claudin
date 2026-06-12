@@ -1830,6 +1830,54 @@ export async function* queryModel(
         throw streamingError;
       }
 
+      // One streaming re-request before escalating to the non-streaming
+      // fallback. Mid-stream failures are usually transient (dropped
+      // connection, idle-watchdog abort, gateway reset); retrying in
+      // streaming mode preserves progressive output and avoids the
+      // non-streaming hazards on long generations (gateway/request
+      // timeouts, providers that reject large max_tokens without stream).
+      // Duplicate-yield semantics are identical to the non-streaming
+      // fallback: partial blocks already yielded from the failed stream are
+      // re-produced by the retry (see the inc-4258 note above — users who
+      // need to avoid that entirely should disable the fallback flag, which
+      // also skips this path). Bounded to one attempt via midStreamRetryCount;
+      // opt out with CLAUDIN_STREAMING_RETRY=0.
+      const midStreamRetryCount = options.midStreamRetryCount ?? 0;
+      if (
+        midStreamRetryCount < 1 &&
+        !signal.aborted &&
+        !isEnvDefinedFalsy(process.env.CLAUDIN_STREAMING_RETRY)
+      ) {
+        logForDebugging(
+          `Error streaming, retrying once in streaming mode: ${errorMessage(streamingError)}`,
+          { level: "error" },
+        );
+        logForDiagnosticsNoPII("info", "cli_streaming_midstream_retry_started");
+        logEvent("tengu_streaming_midstream_retry_started", {
+          model:
+            options.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+          error:
+            streamingError instanceof Error
+              ? (streamingError.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
+              : (String(
+                  streamingError,
+                ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS),
+          request_id: (streamRequestId ??
+            "unknown") as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+          retry_cause: (streamIdleAborted
+            ? "watchdog"
+            : "other") as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        });
+        if (options.onStreamingFallback) {
+          options.onStreamingFallback();
+        }
+        yield* queryModel(messages, systemPrompt, thinkingConfig, tools, signal, {
+          ...options,
+          midStreamRetryCount: midStreamRetryCount + 1,
+        });
+        return;
+      }
+
       logForDebugging(
         `Error streaming, falling back to non-streaming mode: ${errorMessage(streamingError)}`,
         { level: "error" },

@@ -21,6 +21,69 @@ import { logForDebugging } from '../../../utils/debug.js'
 import { isGeminiMode } from './providerModes.js'
 import type { OpenAIMessage } from './types.js'
 
+/**
+ * Identity caches for the two heavyweight per-block conversions.
+ *
+ * Why block-level and not message-level: the upstream render pipeline
+ * (normalizeMessagesForAPI rebuilds every assistant message; addCacheBreakpoints
+ * rebuilds every top-level {role, content} wrapper — see
+ * src/services/api/claude/messageConverters.ts:54-103) hands this module FRESH
+ * message objects on every request, so a WeakMap keyed on message identity
+ * would never hit. Deep content-block objects DO survive by reference across
+ * turns for unchanged history (the wrappers spread/copy arrays but keep block
+ * refs), so we memoize where the bytes are:
+ *  - tool_result content conversion (large tool outputs, copied per turn by
+ *    the `Error:` prefix / multipart join paths)
+ *  - tool_use `arguments` JSON.stringify (large Write/Edit inputs; the
+ *    tool_use BLOCK is rebuilt per turn by normalizeMessagesForAPI, but its
+ *    `input` object ref survives normalizeToolInputForAPI for all tools that
+ *    don't strip legacy fields)
+ *
+ * Staleness safety: blocks are immutable by convention — every rewriter
+ * (applyStableStubs, pruneOldToolResults, stripOldThinkingBlocks, ...)
+ * replaces a changed block with a NEW object (`{ ...block, content: stub }`),
+ * so identity keying self-invalidates. Cached values are never mutated
+ * downstream: tool messages are excluded from the coalescing merge, and
+ * callers only JSON.stringify the result.
+ */
+const toolResultContentCache = new WeakMap<
+  object,
+  ReturnType<typeof convertToolResultContent>
+>()
+const toolUseArgumentsCache = new WeakMap<object, string>()
+
+/** Compute counters so tests can prove cache hits without poking internals. */
+export const _conversionCacheStatsForTesting = {
+  toolResultComputes: 0,
+  toolUseArgumentsComputes: 0,
+}
+
+function convertToolResultBlockCached(block: {
+  content?: unknown
+  is_error?: boolean
+}): ReturnType<typeof convertToolResultContent> {
+  const cached = toolResultContentCache.get(block)
+  if (cached !== undefined) return cached
+  _conversionCacheStatsForTesting.toolResultComputes++
+  const result = convertToolResultContent(block.content, block.is_error)
+  toolResultContentCache.set(block, result)
+  return result
+}
+
+function stringifyToolUseArguments(input: unknown): string {
+  // Mirror the pre-cache expression exactly:
+  //   typeof input === 'string' ? input : JSON.stringify(input ?? {})
+  if (typeof input === 'string') return input
+  if (input === null || input === undefined) return '{}'
+  if (typeof input !== 'object') return JSON.stringify(input)
+  const cached = toolUseArgumentsCache.get(input)
+  if (cached !== undefined) return cached
+  _conversionCacheStatsForTesting.toolUseArgumentsComputes++
+  const result = JSON.stringify(input)
+  toolUseArgumentsCache.set(input, result)
+  return result
+}
+
 export function convertSystemPrompt(
   system: unknown,
 ): string {
@@ -227,7 +290,7 @@ export function convertMessages(
             result.push({
               role: 'tool',
               tool_call_id: id,
-              content: convertToolResultContent(tr.content, tr.is_error),
+              content: convertToolResultBlockCached(tr),
             })
           } else {
             logForDebugging(
@@ -320,10 +383,7 @@ export function convertMessages(
                   type: 'function' as const,
                   function: {
                     name: tu.name ?? 'unknown',
-                    arguments:
-                      typeof tu.input === 'string'
-                        ? tu.input
-                        : JSON.stringify(tu.input ?? {}),
+                    arguments: stringifyToolUseArguments(tu.input),
                   },
                 }
 

@@ -100,8 +100,19 @@ if (process.env[HEAP_BUMP_SENTINEL] && '_CLAUDIN_LD_PRELOAD_ORIG' in process.env
   delete process.env._CLAUDIN_LD_PRELOAD_ORIG
 }
 
+// Fast-path flags exit within milliseconds (cli.tsx short-circuits them
+// before loading the bundle proper) — the heap bump / allocator re-exec
+// would double their latency for zero benefit. Skip it. Worst case for a
+// false positive (a literal '--version' passed as a value to another flag)
+// is a session on the default 4 GB heap, never breakage.
+const FAST_PATH_FLAGS = ['--version', '-v', '--help', '-h']
+const isFastPathInvocation = process.argv
+  .slice(2)
+  .some(a => FAST_PATH_FLAGS.includes(a))
+
 if (
   !process.env[HEAP_BUMP_SENTINEL] &&
+  !isFastPathInvocation &&
   process.env.CLAUDIN_NO_HEAP_BUMP !== '1' &&
   !(process.env.NODE_OPTIONS || '').includes('max-old-space-size') &&
   !process.execArgv.some(a => a.startsWith('--max-old-space-size'))
@@ -154,32 +165,53 @@ if (
     mallocEnv.MALLOC_MMAP_MAX_ = process.env.MALLOC_MMAP_MAX_ || '0'
   }
 
-  const result = spawnSync(
-    process.execPath,
-    [`--max-old-space-size=${heapMB}`, '--expose-gc', ...process.execArgv, fileURLToPath(import.meta.url), ...process.argv.slice(2)],
-    {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        [HEAP_BUMP_SENTINEL]: '1',
-        // libuv thread pool default is 4 — every fs/dns/crypto/zlib op shares
-        // it. With concurrent Read/Glob/Grep/WebFetch under one turn the pool
-        // queues. Bumping to 10 gives the agent enough parallelism for
-        // typical multi-tool dispatches without the overhead of unbounded
-        // pools. Costs ~6 idle threads at ~100 KB native each (~600 KB).
-        // Respects pre-existing UV_THREADPOOL_SIZE if user set their own.
-        UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '10',
-        ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
-        // Remember the pre-injection value so the re-exec'd child can restore
-        // it for ITS children (see the restore block above). Only set when we
-        // actually prepended jemalloc.
-        ...(injectedJemalloc
-          ? { _CLAUDIN_LD_PRELOAD_ORIG: process.env.LD_PRELOAD || '' }
-          : {}),
-        ...mallocEnv,
-      },
-    },
-  )
+  const childArgs = [
+    `--max-old-space-size=${heapMB}`,
+    '--expose-gc',
+    ...process.execArgv,
+    fileURLToPath(import.meta.url),
+    ...process.argv.slice(2),
+  ]
+  const childEnv = {
+    ...process.env,
+    [HEAP_BUMP_SENTINEL]: '1',
+    // libuv thread pool default is 4 — every fs/dns/crypto/zlib op shares
+    // it. With concurrent Read/Glob/Grep/WebFetch under one turn the pool
+    // queues. Bumping to 10 gives the agent enough parallelism for
+    // typical multi-tool dispatches without the overhead of unbounded
+    // pools. Costs ~6 idle threads at ~100 KB native each (~600 KB).
+    // Respects pre-existing UV_THREADPOOL_SIZE if user set their own.
+    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '10',
+    ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
+    // Remember the pre-injection value so the re-exec'd child can restore
+    // it for ITS children (see the restore block above). Only set when we
+    // actually prepended jemalloc.
+    ...(injectedJemalloc
+      ? { _CLAUDIN_LD_PRELOAD_ORIG: process.env.LD_PRELOAD || '' }
+      : {}),
+    ...mallocEnv,
+  }
+
+  // Prefer a true exec over spawnSync: process.execve (Node ≥23.11,
+  // POSIX-only) replaces this process image in place, so the launcher
+  // doesn't sit resident for the whole session (one Node RSS instead of
+  // two, ~40-80 MB saved) and signals/TTY/exit codes flow natively with
+  // no forwarding parent. Boot cost is unchanged (the exec'd image still
+  // re-initializes V8). Falls back to the blocking spawnSync parent on
+  // older Node, Windows, or any execve failure.
+  if (typeof process.execve === 'function' && process.platform !== 'win32') {
+    try {
+      // argv[0] is the program name by execve convention.
+      process.execve(process.execPath, [process.execPath, ...childArgs], childEnv)
+    } catch {
+      // Fall through to the spawnSync path below.
+    }
+  }
+
+  const result = spawnSync(process.execPath, childArgs, {
+    stdio: 'inherit',
+    env: childEnv,
+  })
   process.exit(result.status ?? 1)
 }
 

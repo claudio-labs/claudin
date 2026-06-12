@@ -28,6 +28,7 @@ import { processSessionStartHooks } from '../../utils/sessionStart.js';
 import { profileCheckpoint } from '../../utils/startupProfiler.js';
 import type { ThinkingConfig } from '../../utils/thinking.js';
 import { startDeferredPrefetches } from '../deferredPrefetches.js';
+import { getMcpStartupTimeoutMs, raceConnectTimeout } from './mcpStartupWait.js';
 import { logSessionTelemetry } from '../lifecycle.js';
 import type { BootContext } from '../bootContext.js';
 
@@ -231,8 +232,19 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // (processBatched with Promise.all). claude.ai is awaited too — its
   // fetch was kicked off early (line ~2558) so only residual time blocks
   // here. --bare skips claude.ai entirely for perf-sensitive scripts.
+  // Bounded wait — same race mechanism as the claude.ai cap below, but
+  // with a generous default: slow-but-working stdio servers (e.g. npx
+  // installs on first run) are a real use case. Override via
+  // CLAUDIN_MCP_STARTUP_TIMEOUT_MS. If the cap fires, the connect keeps
+  // running and updates headlessStore in the background — stragglers'
+  // tools are absent for turn 1 but visible turn 2+.
   profileCheckpoint('before_connectMcp');
-  await connectMcpBatch(regularMcpConfigs, 'regular');
+  const regularMcpTimeoutMs = getMcpStartupTimeoutMs();
+  const regularTimedOut = await raceConnectTimeout(connectMcpBatch(regularMcpConfigs, 'regular'), regularMcpTimeoutMs);
+  if (regularTimedOut) {
+    const stillConnecting = headlessStore.getState().mcp.clients.filter(c => c.type === 'pending').map(c => c.name);
+    logForDebugging(`[MCP] MCP server(s) not ready after ${regularMcpTimeoutMs}ms — proceeding without: ${stillConnecting.join(', ') || '(unknown)'}; background connection continues (CLAUDIN_MCP_STARTUP_TIMEOUT_MS overrides the cap)`);
+  }
   profileCheckpoint('after_connectMcp');
   // Dedup: suppress plugin MCP servers that duplicate a claude.ai
   // connector (connector wins), then connect claude.ai servers.
@@ -304,11 +316,7 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     } = dedupClaudeAiMcpServers(claudeaiConfigs, nonPluginConfigs);
     return connectMcpBatch(dedupedClaudeAi, 'claudeai');
   });
-  let claudeaiTimer: ReturnType<typeof setTimeout> | undefined;
-  const claudeaiTimedOut = await Promise.race([claudeaiConnect.then(() => false), new Promise<boolean>(resolve => {
-    claudeaiTimer = setTimeout(r => r(true), CLAUDE_AI_MCP_TIMEOUT_MS, resolve);
-  })]);
-  if (claudeaiTimer) clearTimeout(claudeaiTimer);
+  const claudeaiTimedOut = await raceConnectTimeout(claudeaiConnect, CLAUDE_AI_MCP_TIMEOUT_MS);
   if (claudeaiTimedOut) {
     logForDebugging(`[MCP] claude.ai connectors not ready after ${CLAUDE_AI_MCP_TIMEOUT_MS}ms — proceeding; background connection continues`);
   }

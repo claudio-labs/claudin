@@ -81,6 +81,7 @@ import { setCwd } from './utils/Shell.js'
 import {
   flushSessionStorage,
   recordTranscript,
+  removeTranscriptMessage,
 } from './utils/sessionStorage.js'
 import { asSystemPrompt } from './utils/systemPromptType.js'
 import { resolveThemeSetting } from './utils/systemTheme.js'
@@ -133,6 +134,25 @@ const snipProjection = feature('HISTORY_SNIP')
   ? (require('./services/compact/snipProjection.js') as typeof import('./services/compact/snipProjection.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+/**
+ * Remove the message matching `uuid` from an in-memory history, in place.
+ * Used by the tombstone case in submitMessage: query.ts emits tombstones when
+ * a streaming fallback / mid-stream retry orphans a partial message, and the
+ * partial must not re-enter API history. Matches by uuid, NOT by reference —
+ * query.ts may have yielded a backfilled clone while tombstoning the
+ * original, so the array entry can be a different object. findLastIndex:
+ * the partial is virtually always the most recent occurrence.
+ * Exported for tests.
+ */
+export function spliceMessageByUuid(messages: Message[], uuid: string): boolean {
+  const idx = messages.findLastIndex(m => m.uuid === uuid)
+  if (idx === -1) {
+    return false
+  }
+  messages.splice(idx, 1)
+  return true
+}
 
 export type QueryEngineConfig = {
   cwd: string
@@ -789,9 +809,26 @@ export class QueryEngine {
       }
 
       switch (message.type) {
-        case 'tombstone':
-          // Tombstone messages are control signals for removing messages, skip them
+        case 'tombstone': {
+          // query.ts emits tombstones when a streaming fallback / mid-stream
+          // retry orphans a partial message. The interactive path removes the
+          // target from UI state and the transcript (REPL.tsx onQueryEvent);
+          // mirror that here, or the partial survives in mutableMessages and
+          // re-enters API history on the next ask() — partial thinking blocks
+          // carry signatures the API rejects ("thinking blocks cannot be
+          // modified").
+          const tombstonedUuid = message.message.uuid
+          spliceMessageByUuid(this.mutableMessages, tombstonedUuid)
+          spliceMessageByUuid(messages, tombstonedUuid)
+          if (persistSession) {
+            // Fire-and-forget like the REPL path. Safe against the insert
+            // that recorded the partial still sitting on the 100ms flush
+            // timer: removeMessageByUuid drains the pending write queue to
+            // disk before truncating, so the remove always observes it.
+            void removeTranscriptMessage(tombstonedUuid)
+          }
           break
+        }
         case 'assistant':
           // Capture stop_reason if already set (synthetic messages). For
           // streamed responses, this is null at content_block_stop time;

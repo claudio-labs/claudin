@@ -65,6 +65,8 @@ import type { PromptRequest, PromptResponse } from '../types/hooks.js';
 import PromptInput from '../components/PromptInput/PromptInput.js';
 import { PromptInputQueuedCommands } from '../components/PromptInput/PromptInputQueuedCommands.js';
 import { useRemoteSession } from '../hooks/useRemoteSession.js';
+import { streamingTextStore, useStreamingTextPresence } from '../hooks/useStreamingTextStore.js';
+import { createCoalescedUpdater } from '../utils/coalescedUpdater.js';
 import { useDirectConnect } from '../hooks/useDirectConnect.js';
 import type { DirectConnectConfig } from '../server/directConnectManager.js';
 import { useSSHSession } from '../hooks/useSSHSession.js';
@@ -657,6 +659,13 @@ export function REPL({
   const streamModeRef = useRef(streamMode);
   streamModeRef.current = streamMode;
   const [streamingToolUses, setStreamingToolUses] = useState<StreamingToolUse[]>([]);
+  // Coalesces per-chunk input_json_delta updates from the local stream path
+  // (onQueryEvent) to one commit per frame interval — tool-input streaming
+  // (large Edit/Write inputs) is otherwise the chattiest setState in the
+  // tree. Direct setters below bypass it (cancel first); the remote-session
+  // path keeps the raw setter. useState setters are identity-stable, so the
+  // updater can be created once.
+  const coalescedStreamingToolUses = useMemo(() => createCoalescedUpdater<StreamingToolUse[]>(setStreamingToolUses), []);
   const [streamingThinking, setStreamingThinking] = useState<StreamingThinking | null>(null);
 
   // Auto-hide streaming thinking after 30 seconds of being completed
@@ -1250,22 +1259,32 @@ export function REPL({
     }
   }, []);
 
-  // Streaming text display: set state directly per delta (Ink's 16ms render
-  // throttle batches rapid updates). Cleared on message arrival (messages.ts)
-  // so displayedMessages switches from deferredMessages to messages atomically.
-  const [streamingText, setStreamingText] = useState<string | null>(null);
+  // Streaming text display: routed through streamingTextStore instead of REPL
+  // state. Appends are applied synchronously to the store value but listener
+  // notification is coalesced to the frame interval, and the text itself is
+  // only consumed by the StreamingTextRow leaf inside Messages — so per-delta
+  // reconciliation shrinks from the whole REPL tree to one row. REPL
+  // subscribes to presence only (null ↔ non-null, notified synchronously).
+  // Cleared on message arrival (messages/streaming.ts) just before
+  // onMessage's setMessages. Both updates land in the SAME task, so React
+  // auto-batches them into one commit (Ink passes the LegacyRoot tag, but
+  // react-reconciler 0.33 / React 19 compiled legacy mode out — the root
+  // runs in ConcurrentMode and flushes async, after the task) — the
+  // streaming-text → final-message switch is atomic. See
+  // useStreamingTextStore.ts for the full invariant.
   const reducedMotion = useAppState(s => s.settings.prefersReducedMotion) ?? false;
   const showStreamingText = !reducedMotion && !hasCursorUpViewportYankBug();
   const onStreamingText = useCallback((f: (current: string | null) => string | null) => {
     if (!showStreamingText) return;
-    setStreamingText(f);
+    streamingTextStore.update(f);
   }, [showStreamingText]);
+  const hasStreamingText = useStreamingTextPresence();
 
-  // Show streaming text as-is; Ink's 16ms render throttle and the deferred-
-  // highlight system handle partial lines safely. The old "clip to last \n"
-  // heuristic caused 2-3 s visual freezes whenever the model streamed a long
-  // paragraph with no newline (substring(0,0) → '' → null → nothing shown).
-  const visibleStreamingText = streamingText && showStreamingText ? streamingText : null;
+  // Show streaming text as-is; the store's frame-interval coalescing and the
+  // deferred-highlight system handle partial lines safely. The old "clip to
+  // last \n" heuristic caused 2-3 s visual freezes whenever the model streamed
+  // a long paragraph with no newline (substring(0,0) → '' → null → nothing shown).
+  const hasVisibleStreamingText = hasStreamingText && showStreamingText;
   const [lastQueryCompletionTime, setLastQueryCompletionTime] = useState(0);
   const [spinnerMessage, setSpinnerMessage] = useState<string | null>(null);
   const [spinnerColor, setSpinnerColor] = useState<keyof Theme | null>(null);
@@ -1368,7 +1387,8 @@ export function REPL({
     setUserInputOnProcessing(undefined);
     responseLengthRef.current = 0;
     apiMetricsRef.current = [];
-    setStreamingText(null);
+    streamingTextStore.clear();
+    coalescedStreamingToolUses.cancel();
     setStreamingToolUses([]);
     setSpinnerMessage(null);
     setSpinnerColor(null);
@@ -1477,7 +1497,7 @@ export function REPL({
     !pendingWorkerRequest && !onlySleepToolActive && (
       // Hide spinner when streaming text is visible (the text IS the feedback),
       // but keep it when isBriefOnly suppresses the streaming text display
-      !visibleStreamingText || isBriefOnly);
+      !hasVisibleStreamingText || isBriefOnly);
 
   // Check if any permission or ask question prompt is currently visible
   // This is used to prevent the survey from opening while prompts are active
@@ -1714,11 +1734,14 @@ export function REPL({
 
     // Preserve partially-streamed text so the user can read what was
     // generated before pressing Esc. Pushed before resetLoadingState clears
-    // streamingText, and before query.ts yields the async interrupt marker,
+    // the store, and before query.ts yields the async interrupt marker,
     // giving final order [user, partial-assistant, [Request interrupted by user]].
-    if (streamingText?.trim()) {
+    // store.read() is synchronous, so this captures every delta received up
+    // to the keypress (the old state read lagged by up to one render frame).
+    const partialStreamingText = streamingTextStore.read();
+    if (partialStreamingText?.trim()) {
       setMessages(prev => [...prev, createAssistantMessage({
-        content: streamingText
+        content: partialStreamingText
       })]);
     }
     resetLoadingState();
@@ -2168,6 +2191,14 @@ export function REPL({
   });
   const onQueryEvent = useCallback((event: Parameters<typeof handleMessageFromStream>[0]) => {
     handleMessageFromStream(event, newMessage => {
+      // Apply any frame-coalesced streamingToolUses updates queued before this
+      // message (including the message_stop `() => []` reset) in the same task
+      // as the setMessages below, so React auto-batches both into one commit
+      // (the LegacyRoot tag is vestigial — react-reconciler 0.33 runs every
+      // root in ConcurrentMode) and the streaming-preview → final-message
+      // switch never paints an intermediate frame. Ink's throttled stdout
+      // paint is a second, independent net.
+      coalescedStreamingToolUses.flush();
       if (isCompactBoundaryMessage(newMessage)) {
         // Fullscreen: keep pre-compact messages for scrollback. query.ts
         // slices at the boundary for API calls, Messages.tsx skips the
@@ -2233,8 +2264,11 @@ export function REPL({
       // spinner animation) and apiMetricsRef (endResponseLength/lastTokenTime
       // for OTPS). No separate metrics update needed here.
       setResponseLength(length => length + newContent.length);
-    }, setStreamMode, setStreamingToolUses, tombstonedMessage => {
-      setMessages(oldMessages => oldMessages.filter(m => m !== tombstonedMessage));
+    }, setStreamMode, coalescedStreamingToolUses.enqueue, tombstonedMessage => {
+      // Filter by uuid, not reference: query.ts yields a backfilled clone of
+      // each assistant message (tool_use input backfill), so the array entry
+      // can be a different object than the tombstoned original.
+      setMessages(oldMessages => oldMessages.filter(m => m.uuid !== tombstonedMessage.uuid));
       void removeTranscriptMessage(tombstonedMessage.uuid);
     }, setStreamingThinking, metrics => {
       const now = Date.now();
@@ -2247,7 +2281,7 @@ export function REPL({
         endResponseLength: baseline
       });
     }, onStreamingText);
-  }, [setMessages, setResponseLength, setStreamMode, setStreamingToolUses, setStreamingThinking, onStreamingText]);
+  }, [setMessages, setResponseLength, setStreamMode, coalescedStreamingToolUses, setStreamingThinking, onStreamingText]);
   const onQueryImpl = useCallback(async (messagesIncludingNewMessages: MessageType[], newMessages: MessageType[], abortController: AbortController, shouldQuery: boolean, additionalAllowedTools: string[], mainLoopModelParam: string, effort?: EffortValue) => {
     // Prepare IDE integration for new prompt. Read mcpClients fresh from
     // store — useManageMCPConnections may have populated it since the
@@ -2504,8 +2538,9 @@ export function REPL({
         snapshotOutputTokensForTurn(parsedBudget ?? getCurrentTurnTokenBudget());
       }
       apiMetricsRef.current = [];
+      coalescedStreamingToolUses.cancel();
       setStreamingToolUses([]);
-      setStreamingText(null);
+      streamingTextStore.clear();
 
       // messagesRef is updated synchronously by the setMessages wrapper
       // above, so it already includes newMessages from the append at the
@@ -4108,7 +4143,7 @@ export function REPL({
                   Ink mounts caused fullReset to wipe it on the first keystroke. */}
         <StartupBanner />
         <TeammateViewHeader />
-        <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} streamingText={isLoading && !viewedAgentTask ? visibleStreamingText : null} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
+        <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} hasStreamingText={isLoading && !viewedAgentTask && hasVisibleStreamingText} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
         <AwsAuthStatusBox />
         {/* Hide the processing placeholder while a modal is showing —
                   it would sit at the last visible transcript row right above

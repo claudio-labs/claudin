@@ -218,10 +218,22 @@ async function main(): Promise<void> {
     await runStartupUpdateCheck(args)
   })()
 
+  // Resolve the active provider once — it gates the GitHub Copilot token
+  // refresh below, the Grove prefetch, and the clear-on-start logic further
+  // down. enableConfigs() already ran above, so profile reads are safe here.
+  const { tryGetActiveProvider } = await import(
+    '../services/api/activeProvider.js'
+  )
+  const activeProvider = tryGetActiveProvider()
+
   // GitHub token hydration is sequential (refresh writes before hydrate reads).
   // validateProviderEnvForStartupOrExit must follow hydration in case the
   // active provider is github_copilot (validation reads the hydrated token).
-  {
+  // Gated on the active transport: refreshGithubModelsTokenIfNeeded would
+  // early-return for other providers anyway, but the gate keeps the
+  // credentials/secure-storage chunk (and its awaits) entirely off the serial
+  // cold path for the non-Copilot majority.
+  if (activeProvider?.transport === 'github_copilot') {
     const {
       hydrateGithubModelsTokenFromSecureStorage,
       refreshGithubModelsTokenIfNeeded,
@@ -240,10 +252,6 @@ async function main(): Promise<void> {
   // CLAUDIN_CLEAR_ON_START=1. Scrollback is preserved either way (no \x1b[3J).
   // The banner is rendered by Ink (<StartupBanner /> in REPL.tsx) so it scrolls
   // naturally into scrollback as content grows.
-  const { tryGetActiveProvider } = await import(
-    '../services/api/activeProvider.js'
-  )
-  const activeProvider = tryGetActiveProvider()
   // Wave 7 prefetch (earlier kick) — only meaningful for Anthropic OAuth
   // consumer subscribers, the audience the GroveDialog targets. Fired here
   // (instead of inside trustAndOnboarding) so the two HTTP GETs overlap

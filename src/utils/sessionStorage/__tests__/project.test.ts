@@ -310,6 +310,34 @@ test('removeTranscriptMessage: physically removes target line from JSONL (no tom
   expect(entries.find(e => e.uuid === dUuid(40))).toBeDefined()
 })
 
+test('removeTranscriptMessage: wins over a pending queued insert (no resurrection)', async () => {
+  // Regression guard for the tombstone/write-queue race: inserts ride a
+  // 100ms flush timer (enqueueWrite) while removeMessageByUuid truncates the
+  // file directly. Both the REPL and QueryEngine tombstone paths fire-and-
+  // forget recordTranscript and then call removeTranscriptMessage ~immediately
+  // (mid-stream retry). Without the drain-before-truncate, the remove no-ops
+  // (target not on disk yet) and the pending insert lands afterwards,
+  // resurrecting the partial — which re-enters API history on --resume.
+  const u1 = mkUser(dUuid(45), null, 'q')
+  await recordTranscript([u1])
+  await flushSessionStorage()
+
+  // Fire-and-forget like the tombstone paths: the partial's insert is left
+  // sitting in the write queue (its promise resolves only on flush).
+  const partial = mkAssistant(dUuid(46), dUuid(45), 'partial r')
+  const pendingInsert = recordTranscript([u1, partial])
+  // Let the insert reach the queue (well under the 100ms flush timer).
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  await removeTranscriptMessage(dUuid(46) as UUID)
+  await pendingInsert
+  await flushSessionStorage()
+
+  const entries = await readJsonl()
+  expect(entries.find(e => e.uuid === dUuid(46))).toBeUndefined()
+  expect(entries.find(e => e.uuid === dUuid(45))).toBeDefined()
+})
+
 // --- Block #5 — loadTranscriptFile + buildConversationChain round-trip ---
 
 test('loadTranscriptFile + buildConversationChain: round-trips a linear conversation', async () => {

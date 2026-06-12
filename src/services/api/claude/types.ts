@@ -63,6 +63,11 @@ export type Options = {
   // so the model can pace itself. `remaining` is computed by the caller
   // (query.ts decrements across the agentic loop).
   taskBudget?: { total: number; remaining?: number }
+  // Internal recursion guard for the mid-stream streaming retry in
+  // queryModel: a request that fails after response headers gets one
+  // streaming re-request before escalating to the non-streaming fallback.
+  // Never set by callers — queryModel increments it on self-recursion.
+  midStreamRetryCount?: number
 }
 
 export type HaikuOptions = Omit<Options, 'model' | 'getToolPermissionContext'>

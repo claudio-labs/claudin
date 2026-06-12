@@ -76,10 +76,35 @@ function normalizeSchemaForOpenAI(
   return record
 }
 
+/**
+ * Per-tool conversion cache keyed on `input_schema` object identity.
+ *
+ * The tool wrapper objects ({ name, description, input_schema }) handed to
+ * convertTools are rebuilt per request, but the `input_schema` object comes
+ * from toolToAPISchema's session-stable schema cache (which itself sits on
+ * zodToJsonSchema's identity cache — src/utils/zodToJsonSchema.ts), so it is
+ * the same reference on every request of a session. Strict mode and the
+ * name/description can in principle differ for the same schema object, so the
+ * entry stores them and is only reused on an exact match — a mismatch simply
+ * recomputes (no staleness possible). Cached OpenAITool results are never
+ * mutated downstream (callers JSON.stringify them into the request body).
+ */
+interface ToolConversionEntry {
+  name: string
+  description: string
+  strict: boolean
+  result: OpenAITool
+}
+const toolConversionCache = new WeakMap<Record<string, unknown>, ToolConversionEntry>()
+
+/** Compute counter so tests can prove cache hits without poking internals. */
+export const _toolConversionCacheStatsForTesting = { computes: 0 }
+
 export function convertTools(
   tools: Array<{ name: string; description?: string; input_schema?: Record<string, unknown>; type?: string }>,
 ): OpenAITool[] {
   const isGemini = isGeminiMode()
+  const strict = !isGemini && !isEnvTruthy(process.env.CLAUDIN_DISABLE_STRICT_TOOLS)
 
   return tools
     .filter(t => t.name !== 'ToolSearchTool') // Not relevant for OpenAI
@@ -87,6 +112,20 @@ export function convertTools(
     // input_schema — OpenAI-compatible providers don't support them and return 400 if sent.
     .filter(t => !t.type || t.type === 'function')
     .map(t => {
+      const description = t.description ?? ''
+      if (t.input_schema) {
+        const cached = toolConversionCache.get(t.input_schema)
+        if (
+          cached &&
+          cached.name === t.name &&
+          cached.description === description &&
+          cached.strict === strict
+        ) {
+          return cached.result
+        }
+      }
+      _toolConversionCacheStatsForTesting.computes++
+
       const schema = { ...(t.input_schema ?? { type: 'object', properties: {} }) } as Record<string, unknown>
 
       // For Codex/OpenAI: promote known Agent sub-fields into required[] only if
@@ -100,16 +139,22 @@ export function convertTools(
         }
       }
 
-      return {
+      const result: OpenAITool = {
         type: 'function' as const,
         function: {
           name: t.name,
-          description: t.description ?? '',
-          parameters: normalizeSchemaForOpenAI(
-            schema,
-            !isGemini && !isEnvTruthy(process.env.CLAUDIN_DISABLE_STRICT_TOOLS),
-          ),
+          description,
+          parameters: normalizeSchemaForOpenAI(schema, strict),
         },
       }
+      if (t.input_schema) {
+        toolConversionCache.set(t.input_schema, {
+          name: t.name,
+          description,
+          strict,
+          result,
+        })
+      }
+      return result
     })
 }

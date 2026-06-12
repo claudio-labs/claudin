@@ -820,6 +820,17 @@ async function* queryLoop(
                   toolUseContext,
                 )
               }
+
+              // Re-arm: cleanup must run once per fallback signal, not once
+              // per subsequent message. The non-streaming fallback yields a
+              // single final message so this was unobservable, but the
+              // mid-stream streaming retry (streaming.ts) yields a full
+              // stream after signalling — without the reset, every later
+              // message would tombstone the retry's own accumulated output
+              // and churn a fresh StreamingToolExecutor per event. A second
+              // signal (retry failed → non-streaming fallback) flips it back
+              // on and cleans up the retry's partials the same way.
+              streamingFallbackOccured = false
             }
             // Backfill tool_use inputs on a cloned message before yield so
             // SDK stream output and transcript serialization see legacy/derived
