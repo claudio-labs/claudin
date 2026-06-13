@@ -22,7 +22,7 @@ import type { Task } from '../utils/tasks.js';
 import { useAppState } from '../state/AppState.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
-import { getDefaultCharacters, type SpinnerMode } from './Spinner/index.js';
+import { getDefaultCharacters, isBoldSpinnerFrame, type SpinnerMode } from './Spinner/index.js';
 import { SpinnerAnimationRow } from './Spinner/SpinnerAnimationRow.js';
 import { useSettings } from '../hooks/useSettings.js';
 import { isInProcessTeammateTask } from '../tasks/InProcessTeammateTask/types.js';
@@ -40,7 +40,8 @@ import { useAnimationFrame } from '../ink.js';
 import { getGlobalConfig } from '../utils/config.js';
 export type { SpinnerMode } from './Spinner/index.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
-const SPINNER_FRAMES = [...DEFAULT_CHARACTERS, ...[...DEFAULT_CHARACTERS].reverse()];
+// No mirroring: the arc→C frames are a directional rotation (see getDefaultCharacters).
+const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
 const BRIEF_MINI_FRAMES = ['·', '✢', '✦'];
 type Props = {
   mode: SpinnerMode;
@@ -510,7 +511,7 @@ function _temp7(s) {
   return s.remoteConnectionStatus;
 }
 export function Spinner() {
-  const $ = _c(8);
+  const $ = _c(9);
   const settings = useSettings();
   const reducedMotion = settings.prefersReducedMotion ?? false;
   const [ref, time] = useAnimationFrame(reducedMotion ? null : 120);
@@ -534,22 +535,25 @@ export function Spinner() {
   }
   const frame = Math.floor(time / 120) % SPINNER_FRAMES.length;
   const t0 = SPINNER_FRAMES[frame];
+  // Brand C weight: bold during the first ~3s of the resolved C, normal after.
+  const bold = isBoldSpinnerFrame(frame);
   let t1;
-  if ($[3] !== t0) {
-    t1 = <Text color="text">{t0}</Text>;
+  if ($[3] !== t0 || $[4] !== bold) {
+    t1 = <Text bold={bold} color="text">{t0}</Text>;
     $[3] = t0;
-    $[4] = t1;
+    $[4] = bold;
+    $[5] = t1;
   } else {
-    t1 = $[4];
+    t1 = $[5];
   }
   let t2;
-  if ($[5] !== ref || $[6] !== t1) {
+  if ($[6] !== ref || $[7] !== t1) {
     t2 = <Box ref={ref} flexWrap="wrap" height={1} width={2}>{t1}</Box>;
-    $[5] = ref;
-    $[6] = t1;
-    $[7] = t2;
+    $[6] = ref;
+    $[7] = t1;
+    $[8] = t2;
   } else {
-    t2 = $[7];
+    t2 = $[8];
   }
   return t2;
 }

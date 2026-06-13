@@ -2,9 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text, useTheme } from '../../ink.js';
 import { getTheme, type Theme } from '../../utils/theme.js';
-import { getDefaultCharacters, interpolateColor, parseRGB, toRGBColor } from './utils.js';
+import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, toRGBColor } from './utils.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
-const SPINNER_FRAMES = [...DEFAULT_CHARACTERS, ...[...DEFAULT_CHARACTERS].reverse()];
+// No mirroring: the arc→C frames are a directional rotation (see getDefaultCharacters).
+const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
 const REDUCED_MOTION_DOT = '●';
 const REDUCED_MOTION_CYCLE_MS = 2000; // 2-second cycle: 1s visible, 1s dim
 const ERROR_RED = {
@@ -18,15 +19,22 @@ type Props = {
   stalledIntensity?: number;
   reducedMotion?: boolean;
   time?: number;
+  /** Verb shimmer position (message coordinates). When provided along with
+   * shimmerColor, the sweep continues across the glyph while the brand C
+   * is showing. */
+  glimmerIndex?: number;
+  shimmerColor?: keyof Theme;
 };
 export function SpinnerGlyph(t0) {
-  const $ = _c(9);
+  const $ = _c(11);
   const {
     frame,
     messageColor,
     stalledIntensity: t1,
     reducedMotion: t2,
-    time: t3
+    time: t3,
+    glimmerIndex,
+    shimmerColor
   } = t0;
   const stalledIntensity = t1 === undefined ? 0 : t1;
   const reducedMotion = t2 === undefined ? false : t2;
@@ -47,33 +55,40 @@ export function SpinnerGlyph(t0) {
     return t4;
   }
   const spinnerChar = SPINNER_FRAMES[frame % SPINNER_FRAMES.length];
+  // Brand C weight: bold during the first ~3s of the resolved C, normal after.
+  const bold = isBoldSpinnerFrame(frame);
+  // Let the verb's shimmer sweep continue across the glyph cell while the
+  // brand C is showing (the glyph sits at message-coordinate -2).
+  const glyphColor = shimmerColor !== undefined && glimmerIndex !== undefined && isBrandCFrame(frame) && isGlyphShimmerHit(glimmerIndex) ? shimmerColor : messageColor;
   if (stalledIntensity > 0) {
     const baseColorStr = theme[messageColor];
     const baseRGB = baseColorStr ? parseRGB(baseColorStr) : null;
     if (baseRGB) {
       const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
-      return <Box flexWrap="wrap" height={1} width={2}><Text color={toRGBColor(interpolated)}>{spinnerChar}</Text></Box>;
+      return <Box flexWrap="wrap" height={1} width={2}><Text bold={bold} color={toRGBColor(interpolated)}>{spinnerChar}</Text></Box>;
     }
     const color = stalledIntensity > 0.5 ? "error" : messageColor;
     let t4;
-    if ($[3] !== color || $[4] !== spinnerChar) {
-      t4 = <Box flexWrap="wrap" height={1} width={2}><Text color={color}>{spinnerChar}</Text></Box>;
+    if ($[3] !== color || $[4] !== spinnerChar || $[5] !== bold) {
+      t4 = <Box flexWrap="wrap" height={1} width={2}><Text bold={bold} color={color}>{spinnerChar}</Text></Box>;
       $[3] = color;
       $[4] = spinnerChar;
-      $[5] = t4;
+      $[5] = bold;
+      $[6] = t4;
     } else {
-      t4 = $[5];
+      t4 = $[6];
     }
     return t4;
   }
   let t4;
-  if ($[6] !== messageColor || $[7] !== spinnerChar) {
-    t4 = <Box flexWrap="wrap" height={1} width={2}><Text color={messageColor}>{spinnerChar}</Text></Box>;
-    $[6] = messageColor;
-    $[7] = spinnerChar;
-    $[8] = t4;
+  if ($[7] !== glyphColor || $[8] !== spinnerChar || $[9] !== bold) {
+    t4 = <Box flexWrap="wrap" height={1} width={2}><Text bold={bold} color={glyphColor}>{spinnerChar}</Text></Box>;
+    $[7] = glyphColor;
+    $[8] = spinnerChar;
+    $[9] = bold;
+    $[10] = t4;
   } else {
-    t4 = $[8];
+    t4 = $[10];
   }
   return t4;
 }

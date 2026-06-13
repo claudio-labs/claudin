@@ -2,19 +2,48 @@ import type { RGBColor as RGBColorString } from '../../ink/styles.js'
 import type { RGBColor as RGBColorType } from './types.js'
 
 export function getDefaultCharacters(): string[] {
-  if (process.env.TERM === 'xterm-ghostty') {
-    // Ghostty: avoid glyphs that Ink measures as width=1 but the terminal
-    // paints as width=2. When the spinner ticks to such a glyph, the cursor
-    // ends up one cell ahead of where Ink thinks it is, and the next character
-    // written (e.g. the first letter of the verb on the same line) lands on top
-    // of the spinner cell — producing "tthinking", "Bbeaming", etc.
-    // Empirically ✳ U+2733 (and ✽ U+273D) trip this; replace both with widths
-    // that paint consistently as a single cell.
-    return ['·', '✢', '+', '✶', '✻', '*']
-  }
-  return process.platform === 'darwin'
-    ? ['·', '✢', '✳', '✶', '✻', '✽']
-    : ['·', '✢', '*', '✶', '✻', '✽']
+  // Claudin brand "braille orbit → C": the classic 10-frame braille dots
+  // spinner orbits three full turns (~3.6s at the 120ms tick), then resolves
+  // on the brand C — bold for ~3s, normal weight for ~2s (see
+  // isBoldSpinnerFrame). Braille glyphs (U+2800 block) are true narrow width
+  // everywhere, unlike the ◜◝◞◟ arcs.
+  // NOTE: rotation is directional, so consumers must NOT mirror these frames
+  // (forward + reverse would make the orbit ping-pong instead of spin).
+  return [
+    ...ORBIT,
+    ...ORBIT,
+    ...ORBIT,
+    ...Array(BOLD_C_FRAMES + NORMAL_C_FRAMES).fill('C'),
+  ]
+}
+
+const ORBIT = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+const ORBIT_FRAMES = ORBIT.length * 3
+const BOLD_C_FRAMES = 25 // ~3s at the 120ms tick
+const NORMAL_C_FRAMES = 17 // ~2s
+const TOTAL_FRAMES = ORBIT_FRAMES + BOLD_C_FRAMES + NORMAL_C_FRAMES
+
+// Whether this frame index falls in the bold window of the resolved C
+// (first ~3s after the orbit; the trailing ~2s render at normal weight).
+// Accepts either a raw monotonically-increasing frame counter or an index
+// already reduced modulo the frame count.
+export function isBoldSpinnerFrame(frame: number): boolean {
+  const i = frame % TOTAL_FRAMES
+  return i >= ORBIT_FRAMES && i < ORBIT_FRAMES + BOLD_C_FRAMES
+}
+
+// Whether this frame index falls anywhere in the resolved-C window (bold or
+// normal weight). Used to let the verb's shimmer sweep continue across the
+// glyph cell while the brand C is showing.
+export function isBrandCFrame(frame: number): boolean {
+  return frame % TOTAL_FRAMES >= ORBIT_FRAMES
+}
+
+// The glyph cell sits two columns left of the message's first character
+// (Box width={2}: glyph + gap), i.e. at message-coordinate -2. Mirror
+// ShimmerChar's highlight rule (exact hit ± 1 neighbor) around it.
+export function isGlyphShimmerHit(glimmerIndex: number): boolean {
+  return glimmerIndex >= -3 && glimmerIndex <= -1
 }
 
 // Interpolate between two RGB colors

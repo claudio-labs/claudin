@@ -26,18 +26,25 @@ const SHOW_TOKENS_AFTER_MS = 3_000;
 // Thinking shimmer constants. Previously lived in a separate ThinkingShimmerText
 // component with its own useAnimationFrame(50) — inlined here to reuse our
 // existing 50ms clock and eliminate the redundant subscriber.
+// Wider pulse range than upstream (153↔185): dip darker and peak brighter so
+// the thinking glow is clearly visible.
 const THINKING_INACTIVE = {
-  r: 153,
-  g: 153,
-  b: 153
+  r: 110,
+  g: 110,
+  b: 110
 };
 const THINKING_INACTIVE_SHIMMER = {
-  r: 185,
-  g: 185,
-  b: 185
+  r: 220,
+  g: 220,
+  b: 220
 };
 const THINKING_DELAY_MS = 3000;
 const THINKING_GLOW_PERIOD_S = 2;
+
+// Animated trailing dots: the verb's static '…' becomes . / .. / ... cycling.
+// Space-padded so the message width (and everything gated on it) stays stable.
+const DOT_FRAMES = ['.  ', '.. ', '...'];
+const DOT_INTERVAL_MS = 500;
 export type SpinnerAnimationRowProps = {
   // Animation inputs
   mode: SpinnerMode;
@@ -144,9 +151,15 @@ export function SpinnerAnimationRow({
   } = useStalledAnimation(time, currentResponseLength, hasActiveTools || leaderIsIdle, reducedMotion);
   const frame = reducedMotion ? 0 : Math.floor(time / 120);
   const glimmerSpeed = mode === 'requesting' ? 50 : 200;
+  // Animate the trailing ellipsis (… → . / .. / ...); keep it static under
+  // reduced motion. Width is space-padded constant, so layout gating below
+  // doesn't jitter.
+  const animatedMessage = !reducedMotion && message.endsWith('…') ? message.slice(0, -1) + DOT_FRAMES[Math.floor(time / DOT_INTERVAL_MS) % DOT_FRAMES.length] : message;
   // message is stable within a turn; stringWidth is expensive enough (Bun native
-  // call per code point) to memoize explicitly across the 50ms loop.
-  const glimmerMessageWidth = useMemo(() => stringWidth(message), [message]);
+  // call per code point) to memoize explicitly across the 50ms loop. The dot
+  // suffix only changes every 500ms and is width-stable, so keying on
+  // animatedMessage keeps the memo effective.
+  const glimmerMessageWidth = useMemo(() => stringWidth(animatedMessage), [animatedMessage]);
   const cycleLength = glimmerMessageWidth + 20;
   const cyclePosition = Math.floor(time / glimmerSpeed);
   const glimmerIndex = reducedMotion ? -100 : isStalled ? -100 : mode === 'requesting' ? cyclePosition % cycleLength - 10 : glimmerMessageWidth + 10 - cyclePosition % cycleLength;
@@ -240,8 +253,8 @@ export function SpinnerAnimationRow({
         </> : null;
   return <FullWidthRow>
       <Box ref={viewportRef} flexDirection="row" flexWrap="wrap" marginTop={1}>
-        <SpinnerGlyph frame={frame} messageColor={messageColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} reducedMotion={reducedMotion} time={time} />
-        <GlimmerMessage message={message} mode={mode} messageColor={messageColor} glimmerIndex={glimmerIndex} flashOpacity={flashOpacity} shimmerColor={shimmerColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} />
+        <SpinnerGlyph frame={frame} messageColor={messageColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} reducedMotion={reducedMotion} time={time} glimmerIndex={glimmerIndex} shimmerColor={shimmerColor} />
+        <GlimmerMessage message={animatedMessage} mode={mode} messageColor={messageColor} glimmerIndex={glimmerIndex} flashOpacity={flashOpacity} shimmerColor={shimmerColor} stalledIntensity={overrideColor ? 0 : stalledIntensity} />
         {status}
       </Box>
     </FullWidthRow>;
