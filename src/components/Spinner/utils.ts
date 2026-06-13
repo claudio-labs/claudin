@@ -3,22 +3,27 @@ import type { RGBColor as RGBColorType } from './types.js'
 
 export function getDefaultCharacters(): string[] {
   // Claudin brand "braille orbit → C": the classic 10-frame braille dots
-  // spinner orbits three full turns (~3.6s at the 120ms tick), then resolves
-  // on the brand C — bold for ~3s, normal weight for ~2s (see
-  // isBoldSpinnerFrame). Braille glyphs (U+2800 block) are true narrow width
-  // everywhere, unlike the ◜◝◞◟ arcs.
+  // spinner orbits three full turns, then resolves on the brand C — bold for
+  // ~3s, normal weight for ~2s (see isBoldSpinnerFrame). Each braille frame is
+  // held BRAILLE_HOLD ticks so the orbit spins slower (~7.2s for three turns at
+  // the 120ms tick with BRAILLE_HOLD=2). Braille glyphs (U+2800 block) are true
+  // narrow width everywhere, unlike the ◜◝◞◟ arcs.
   // NOTE: rotation is directional, so consumers must NOT mirror these frames
   // (forward + reverse would make the orbit ping-pong instead of spin).
   return [
-    ...ORBIT,
-    ...ORBIT,
-    ...ORBIT,
+    ...SLOW_ORBIT,
+    ...SLOW_ORBIT,
+    ...SLOW_ORBIT,
     ...Array(BOLD_C_FRAMES + NORMAL_C_FRAMES).fill('C'),
   ]
 }
 
 const ORBIT = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-const ORBIT_FRAMES = ORBIT.length * 3
+// Hold each braille frame for this many animation ticks; higher = slower spin
+// (1 = original speed, 2 ≈ half speed at the 120ms tick).
+const BRAILLE_HOLD = 2
+const SLOW_ORBIT = ORBIT.flatMap((c) => Array(BRAILLE_HOLD).fill(c) as string[])
+const ORBIT_FRAMES = SLOW_ORBIT.length * 3
 const BOLD_C_FRAMES = 25 // ~3s at the 120ms tick
 const NORMAL_C_FRAMES = 17 // ~2s
 const TOTAL_FRAMES = ORBIT_FRAMES + BOLD_C_FRAMES + NORMAL_C_FRAMES
