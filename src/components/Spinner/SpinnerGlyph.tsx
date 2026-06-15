@@ -2,17 +2,12 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text, useTheme } from '../../ink.js';
 import { getTheme, type Theme } from '../../utils/theme.js';
-import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, toRGBColor } from './utils.js';
+import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, resolveStallColor, toRGBColor } from './utils.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 // No mirroring: the arc→C frames are a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
 const REDUCED_MOTION_DOT = '●';
 const REDUCED_MOTION_CYCLE_MS = 2000; // 2-second cycle: 1s visible, 1s dim
-const ERROR_RED = {
-  r: 171,
-  g: 43,
-  b: 63
-};
 type Props = {
   frame: number;
   messageColor: keyof Theme;
@@ -63,11 +58,12 @@ export function SpinnerGlyph(t0) {
   if (stalledIntensity > 0) {
     const baseColorStr = theme[messageColor];
     const baseRGB = baseColorStr ? parseRGB(baseColorStr) : null;
+    const stallRGB = resolveStallColor(theme);
     if (baseRGB) {
-      const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
+      const interpolated = interpolateColor(baseRGB, stallRGB, stalledIntensity);
       return <Box flexWrap="wrap" height={1} width={2}><Text bold={bold} color={toRGBColor(interpolated)}>{spinnerChar}</Text></Box>;
     }
-    const color = stalledIntensity > 0.5 ? "error" : messageColor;
+    const color = stalledIntensity > 0.5 ? "spinnerStalled" : messageColor;
     let t4;
     if ($[3] !== color || $[4] !== spinnerChar || $[5] !== bold) {
       t4 = <Box flexWrap="wrap" height={1} width={2}><Text bold={bold} color={color}>{spinnerChar}</Text></Box>;

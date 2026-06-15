@@ -5,7 +5,7 @@ import { Text, useTheme } from '../../ink.js';
 import { getGraphemeSegmenter } from '../../utils/intl.js';
 import { getTheme, type Theme } from '../../utils/theme.js';
 import type { SpinnerMode } from './types.js';
-import { interpolateColor, parseRGB, toRGBColor } from './utils.js';
+import { interpolateColor, parseRGB, resolveStallColor, toRGBColor } from './utils.js';
 type Props = {
   message: string;
   mode: SpinnerMode;
@@ -14,11 +14,6 @@ type Props = {
   flashOpacity: number;
   shimmerColor: keyof Theme;
   stalledIntensity?: number;
-};
-const ERROR_RED = {
-  r: 171,
-  g: 43,
-  b: 63
 };
 export function GlimmerMessage(t0) {
   const $ = _c(75);
@@ -87,8 +82,9 @@ export function GlimmerMessage(t0) {
       if (stalledIntensity > 0) {
         const baseColorStr = theme[messageColor];
         const baseRGB = baseColorStr ? parseRGB(baseColorStr) : null;
+        const stallRGB = resolveStallColor(theme);
         if (baseRGB) {
-          const interpolated = interpolateColor(baseRGB, ERROR_RED, stalledIntensity);
+          const interpolated = interpolateColor(baseRGB, stallRGB, stalledIntensity);
           const color = toRGBColor(interpolated);
           let t5;
           if ($[17] !== color) {
@@ -101,7 +97,7 @@ export function GlimmerMessage(t0) {
           t2 = <><Text color={color}>{message}</Text>{t5}</>;
           break bb0;
         }
-        const color_0 = stalledIntensity > 0.5 ? "error" : messageColor;
+        const color_0 = stalledIntensity > 0.5 ? "spinnerStalled" : messageColor;
         let t5;
         if ($[19] !== color_0 || $[20] !== message) {
           t5 = <Text color={color_0}>{message}</Text>;

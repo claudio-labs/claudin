@@ -136,7 +136,7 @@ function ansiIdx(index: number): Color {
 const DEFAULT_BG: Color = { r: 0, g: 0, b: 0, a: 1 }
 
 function detectColorMode(theme: string): ColorMode {
-  if (theme.includes('ansi')) return 'ansi'
+  if (isAnsiThemeName(theme)) return 'ansi'
   const ct = process.env.COLORTERM ?? ''
   return ct === 'truecolor' || ct === '24bit' ? 'truecolor' : 'color256'
 }
@@ -222,9 +222,35 @@ type Theme = {
   scopes: Record<string, Color>
 }
 
+// Dark theme names whose name doesn't literally contain "dark" (the diff/syntax
+// classification below keys off the name, not the palette). Keep in sync with
+// the dark entries in THEME_NAMES (src/utils/theme.ts).
+const DARK_THEME_NAMES = new Set([
+  'dracula',
+  'catppuccin-mocha',
+  'tokyo-night',
+  'nord',
+])
+
+function isDarkThemeName(themeName: string): boolean {
+  return themeName.includes('dark') || DARK_THEME_NAMES.has(themeName)
+}
+
+// The 'terminal' (inherit) theme uses the same terminal-default-bg + 16-color
+// ANSI rendering as the explicit ansi themes, so route it through that branch.
+function isAnsiThemeName(themeName: string): boolean {
+  return themeName.includes('ansi') || themeName === 'terminal'
+}
+
 function defaultSyntaxThemeName(themeName: string): string {
-  if (themeName.includes('ansi')) return 'ansi'
-  if (themeName.includes('dark')) return 'Monokai Extended'
+  if (isAnsiThemeName(themeName)) return 'ansi'
+  if (themeName === 'dracula') return 'Dracula'
+  if (themeName === 'catppuccin-mocha') return 'Catppuccin Mocha'
+  if (themeName === 'catppuccin-latte') return 'Catppuccin Latte'
+  if (themeName === 'tokyo-night') return 'Tokyo Night'
+  if (themeName === 'nord') return 'Nord'
+  if (themeName === 'gruvbox-dark') return 'Gruvbox Dark'
+  if (isDarkThemeName(themeName)) return 'Monokai Extended'
   return 'GitHub'
 }
 
@@ -285,6 +311,259 @@ const GITHUB_SCOPES: Record<string, Color> = {
   subst: rgb(51, 51, 51),
 }
 
+// highlight.js scope → Dracula spec foreground (https://spec.draculatheme.com)
+const DRACULA_SCOPES: Record<string, Color> = {
+  keyword: rgb(255, 121, 198), // Pink
+  _storage: rgb(255, 121, 198), // Pink
+  built_in: rgb(139, 233, 253), // Cyan
+  type: rgb(139, 233, 253), // Cyan
+  literal: rgb(189, 147, 249), // Purple
+  number: rgb(189, 147, 249), // Purple
+  string: rgb(241, 250, 140), // Yellow
+  title: rgb(80, 250, 123), // Green
+  'title.function': rgb(80, 250, 123), // Green
+  'title.class': rgb(139, 233, 253), // Cyan
+  'title.class.inherited': rgb(139, 233, 253), // Cyan
+  params: rgb(255, 184, 108), // Orange
+  comment: rgb(98, 114, 164), // Comment blue
+  meta: rgb(98, 114, 164), // Comment blue
+  attr: rgb(80, 250, 123), // Green
+  attribute: rgb(80, 250, 123), // Green
+  variable: rgb(248, 248, 242), // Foreground
+  'variable.language': rgb(189, 147, 249), // Purple (this/self)
+  property: rgb(248, 248, 242), // Foreground
+  operator: rgb(255, 121, 198), // Pink
+  punctuation: rgb(248, 248, 242), // Foreground
+  symbol: rgb(189, 147, 249), // Purple
+  regexp: rgb(241, 250, 140), // Yellow
+  subst: rgb(248, 248, 242), // Foreground
+}
+
+// highlight.js scope → Catppuccin Mocha foreground (https://catppuccin.com)
+const CATPPUCCIN_MOCHA_SCOPES: Record<string, Color> = {
+  keyword: rgb(203, 166, 247), // Mauve
+  _storage: rgb(203, 166, 247), // Mauve
+  built_in: rgb(249, 226, 175), // Yellow
+  type: rgb(249, 226, 175), // Yellow
+  literal: rgb(250, 179, 135), // Peach
+  number: rgb(250, 179, 135), // Peach
+  string: rgb(166, 227, 161), // Green
+  title: rgb(137, 180, 250), // Blue
+  'title.function': rgb(137, 180, 250), // Blue
+  'title.class': rgb(249, 226, 175), // Yellow
+  'title.class.inherited': rgb(249, 226, 175), // Yellow
+  params: rgb(235, 160, 172), // Maroon
+  comment: rgb(147, 153, 178), // Overlay2
+  meta: rgb(147, 153, 178), // Overlay2
+  attr: rgb(249, 226, 175), // Yellow
+  attribute: rgb(249, 226, 175), // Yellow
+  variable: rgb(205, 214, 244), // Text
+  'variable.language': rgb(243, 139, 168), // Red (this/self)
+  property: rgb(205, 214, 244), // Text
+  operator: rgb(137, 220, 235), // Sky
+  punctuation: rgb(147, 153, 178), // Overlay2
+  symbol: rgb(250, 179, 135), // Peach
+  regexp: rgb(245, 194, 231), // Pink
+  subst: rgb(205, 214, 244), // Text
+}
+
+// highlight.js scope → Catppuccin Latte foreground (https://catppuccin.com)
+const CATPPUCCIN_LATTE_SCOPES: Record<string, Color> = {
+  keyword: rgb(136, 57, 239), // Mauve
+  _storage: rgb(136, 57, 239), // Mauve
+  built_in: rgb(223, 142, 29), // Yellow
+  type: rgb(223, 142, 29), // Yellow
+  literal: rgb(254, 100, 11), // Peach
+  number: rgb(254, 100, 11), // Peach
+  string: rgb(64, 160, 43), // Green
+  title: rgb(30, 102, 245), // Blue
+  'title.function': rgb(30, 102, 245), // Blue
+  'title.class': rgb(223, 142, 29), // Yellow
+  'title.class.inherited': rgb(223, 142, 29), // Yellow
+  params: rgb(230, 69, 83), // Maroon
+  comment: rgb(124, 127, 147), // Overlay2
+  meta: rgb(124, 127, 147), // Overlay2
+  attr: rgb(223, 142, 29), // Yellow
+  attribute: rgb(223, 142, 29), // Yellow
+  variable: rgb(76, 79, 105), // Text
+  'variable.language': rgb(210, 15, 57), // Red (this/self)
+  property: rgb(76, 79, 105), // Text
+  operator: rgb(4, 165, 229), // Sky
+  punctuation: rgb(124, 127, 147), // Overlay2
+  symbol: rgb(254, 100, 11), // Peach
+  regexp: rgb(234, 118, 203), // Pink
+  subst: rgb(76, 79, 105), // Text
+}
+
+// Fully-resolved diff + syntax palettes for themes whose colors are
+// theme-specific (not the generic Monokai/GitHub fallbacks). Background stays
+// terminal-default; non-truecolor terminals quantize the rgb() values via
+// colorToEscape → ansi256FromRgb, so no mode branching is needed here.
+const DRACULA_THEME: Theme = {
+  addLine: rgb(35, 70, 50),
+  addWord: rgb(45, 95, 65),
+  addDecoration: rgb(80, 250, 123), // Green
+  deleteLine: rgb(75, 40, 50),
+  deleteWord: rgb(100, 45, 60),
+  deleteDecoration: rgb(255, 85, 85), // Red
+  foreground: rgb(248, 248, 242),
+  background: DEFAULT_BG,
+  scopes: DRACULA_SCOPES,
+}
+
+const CATPPUCCIN_MOCHA_THEME: Theme = {
+  addLine: rgb(40, 62, 48),
+  addWord: rgb(52, 82, 60),
+  addDecoration: rgb(166, 227, 161), // Green
+  deleteLine: rgb(70, 42, 52),
+  deleteWord: rgb(92, 50, 62),
+  deleteDecoration: rgb(243, 139, 168), // Red
+  foreground: rgb(205, 214, 244),
+  background: DEFAULT_BG,
+  scopes: CATPPUCCIN_MOCHA_SCOPES,
+}
+
+const CATPPUCCIN_LATTE_THEME: Theme = {
+  addLine: rgb(190, 228, 180),
+  addWord: rgb(166, 214, 150),
+  addDecoration: rgb(64, 160, 43), // Green
+  deleteLine: rgb(248, 200, 205),
+  deleteWord: rgb(245, 180, 188),
+  deleteDecoration: rgb(210, 15, 57), // Red
+  foreground: rgb(76, 79, 105),
+  background: DEFAULT_BG,
+  scopes: CATPPUCCIN_LATTE_SCOPES,
+}
+
+// highlight.js scope → Tokyo Night foreground (folke/tokyonight, "night")
+const TOKYO_NIGHT_SCOPES: Record<string, Color> = {
+  keyword: rgb(187, 154, 247), // Magenta
+  _storage: rgb(187, 154, 247), // Magenta
+  built_in: rgb(42, 195, 222), // Cyan-blue
+  type: rgb(42, 195, 222), // Cyan-blue
+  literal: rgb(255, 158, 100), // Orange
+  number: rgb(255, 158, 100), // Orange
+  string: rgb(158, 206, 106), // Green
+  title: rgb(122, 162, 247), // Blue
+  'title.function': rgb(122, 162, 247), // Blue
+  'title.class': rgb(42, 195, 222), // Cyan-blue
+  'title.class.inherited': rgb(42, 195, 222), // Cyan-blue
+  params: rgb(224, 175, 104), // Yellow
+  comment: rgb(86, 95, 137), // Comment
+  meta: rgb(86, 95, 137), // Comment
+  attr: rgb(115, 218, 202), // Teal
+  attribute: rgb(115, 218, 202), // Teal
+  variable: rgb(192, 202, 245), // Foreground
+  'variable.language': rgb(247, 118, 142), // Red (this/self)
+  property: rgb(115, 218, 202), // Teal
+  operator: rgb(137, 221, 255), // Light cyan
+  punctuation: rgb(192, 202, 245), // Foreground
+  symbol: rgb(255, 158, 100), // Orange
+  regexp: rgb(180, 249, 248), // Light teal
+  subst: rgb(192, 202, 245), // Foreground
+}
+
+// highlight.js scope → Nord foreground (https://www.nordtheme.com)
+const NORD_SCOPES: Record<string, Color> = {
+  keyword: rgb(129, 161, 193), // Frost blue (nord9)
+  _storage: rgb(129, 161, 193), // Frost blue (nord9)
+  built_in: rgb(143, 188, 187), // Frost teal (nord7)
+  type: rgb(143, 188, 187), // Frost teal (nord7)
+  literal: rgb(180, 142, 173), // Purple (nord15)
+  number: rgb(180, 142, 173), // Purple (nord15)
+  string: rgb(163, 190, 140), // Green (nord14)
+  title: rgb(136, 192, 208), // Frost cyan (nord8)
+  'title.function': rgb(136, 192, 208), // Frost cyan (nord8)
+  'title.class': rgb(143, 188, 187), // Frost teal (nord7)
+  'title.class.inherited': rgb(143, 188, 187), // Frost teal (nord7)
+  params: rgb(216, 222, 233), // Foreground (nord4)
+  comment: rgb(76, 86, 106), // nord3
+  meta: rgb(76, 86, 106), // nord3
+  attr: rgb(143, 188, 187), // Frost teal (nord7)
+  attribute: rgb(143, 188, 187), // Frost teal (nord7)
+  variable: rgb(216, 222, 233), // Foreground (nord4)
+  'variable.language': rgb(129, 161, 193), // Frost blue (this/self)
+  property: rgb(216, 222, 233), // Foreground (nord4)
+  operator: rgb(129, 161, 193), // Frost blue (nord9)
+  punctuation: rgb(236, 239, 244), // nord6
+  symbol: rgb(180, 142, 173), // Purple (nord15)
+  regexp: rgb(235, 203, 139), // Yellow (nord13)
+  subst: rgb(216, 222, 233), // Foreground (nord4)
+}
+
+// highlight.js scope → Gruvbox Dark foreground (https://github.com/morhetz/gruvbox)
+const GRUVBOX_DARK_SCOPES: Record<string, Color> = {
+  keyword: rgb(251, 73, 52), // Bright red
+  _storage: rgb(251, 73, 52), // Bright red
+  built_in: rgb(250, 189, 47), // Bright yellow
+  type: rgb(250, 189, 47), // Bright yellow
+  literal: rgb(211, 134, 155), // Bright purple
+  number: rgb(211, 134, 155), // Bright purple
+  string: rgb(184, 187, 38), // Bright green
+  title: rgb(184, 187, 38), // Bright green
+  'title.function': rgb(184, 187, 38), // Bright green
+  'title.class': rgb(250, 189, 47), // Bright yellow
+  'title.class.inherited': rgb(250, 189, 47), // Bright yellow
+  params: rgb(131, 165, 152), // Bright blue
+  comment: rgb(146, 131, 116), // Gray
+  meta: rgb(146, 131, 116), // Gray
+  attr: rgb(142, 192, 124), // Bright aqua
+  attribute: rgb(142, 192, 124), // Bright aqua
+  variable: rgb(235, 219, 178), // Foreground
+  'variable.language': rgb(254, 128, 25), // Bright orange (this/self)
+  property: rgb(235, 219, 178), // Foreground
+  operator: rgb(142, 192, 124), // Bright aqua
+  punctuation: rgb(235, 219, 178), // Foreground
+  symbol: rgb(211, 134, 155), // Bright purple
+  regexp: rgb(142, 192, 124), // Bright aqua
+  subst: rgb(235, 219, 178), // Foreground
+}
+
+const TOKYO_NIGHT_THEME: Theme = {
+  addLine: rgb(32, 60, 46),
+  addWord: rgb(40, 82, 58),
+  addDecoration: rgb(158, 206, 106), // Green
+  deleteLine: rgb(68, 40, 52),
+  deleteWord: rgb(92, 48, 62),
+  deleteDecoration: rgb(247, 118, 142), // Red
+  foreground: rgb(192, 202, 245),
+  background: DEFAULT_BG,
+  scopes: TOKYO_NIGHT_SCOPES,
+}
+
+const NORD_THEME: Theme = {
+  addLine: rgb(45, 60, 48),
+  addWord: rgb(56, 76, 58),
+  addDecoration: rgb(163, 190, 140), // Green
+  deleteLine: rgb(68, 44, 48),
+  deleteWord: rgb(90, 52, 56),
+  deleteDecoration: rgb(191, 97, 106), // Red
+  foreground: rgb(216, 222, 233),
+  background: DEFAULT_BG,
+  scopes: NORD_SCOPES,
+}
+
+const GRUVBOX_DARK_THEME: Theme = {
+  addLine: rgb(50, 58, 30),
+  addWord: rgb(66, 76, 34),
+  addDecoration: rgb(184, 187, 38), // Green
+  deleteLine: rgb(80, 45, 40),
+  deleteWord: rgb(102, 50, 42),
+  deleteDecoration: rgb(251, 73, 52), // Red
+  foreground: rgb(235, 219, 178),
+  background: DEFAULT_BG,
+  scopes: GRUVBOX_DARK_SCOPES,
+}
+
+const NAMED_THEME_PALETTES: Record<string, Theme> = {
+  dracula: DRACULA_THEME,
+  'catppuccin-mocha': CATPPUCCIN_MOCHA_THEME,
+  'catppuccin-latte': CATPPUCCIN_LATTE_THEME,
+  'tokyo-night': TOKYO_NIGHT_THEME,
+  nord: NORD_THEME,
+  'gruvbox-dark': GRUVBOX_DARK_THEME,
+}
+
 // Keywords that syntect scopes as storage.type rather than keyword.control.
 // highlight.js lumps these under "keyword"; we re-split so const/function/etc.
 // get the cyan storage color instead of pink.
@@ -323,10 +602,13 @@ const ANSI_SCOPES: Record<string, Color> = {
 }
 
 function buildTheme(themeName: string, mode: ColorMode): Theme {
-  const isDark = themeName.includes('dark')
-  const isAnsi = themeName.includes('ansi')
+  const isDark = isDarkThemeName(themeName)
+  const isAnsi = isAnsiThemeName(themeName)
   const isDaltonized = themeName.includes('daltonized')
   const tc = mode === 'truecolor'
+
+  const named = NAMED_THEME_PALETTES[themeName]
+  if (named) return named
 
   if (isAnsi) {
     return {

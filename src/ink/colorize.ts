@@ -75,6 +75,13 @@ export const colorize = (
     return str
   }
 
+  // 'terminal' sentinel: emit no color escape so the terminal's own default
+  // foreground/background shows through. Used by the "Terminal default
+  // (inherit colors)" theme for text/inverseText.
+  if (color === 'terminal') {
+    return str
+  }
+
   if (color.startsWith('ansi:')) {
     const value = color.substring('ansi:'.length)
     switch (value) {

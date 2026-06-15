@@ -1,4 +1,5 @@
 import type { RGBColor as RGBColorString } from '../../ink/styles.js'
+import type { Theme } from '../../utils/theme.js'
 import type { RGBColor as RGBColorType } from './types.js'
 
 export function getDefaultCharacters(): string[] {
@@ -122,4 +123,16 @@ export function parseRGB(colorStr: string): RGBColorType | null {
     : null
   RGB_CACHE.set(colorStr, result)
   return result
+}
+
+// Defensive fallback for the stalled-spinner color when a theme's
+// spinnerStalled isn't an rgb() value (e.g. ANSI themes, whose RGB
+// interpolation path is never taken). Mirrors DEFAULT_STALL_RED in theme.ts.
+const STALL_RED: RGBColorType = { r: 171, g: 43, b: 63 }
+
+// Resolve the RGB color the spinner shifts toward when stalled. Themes set
+// spinnerStalled as an rgb() string; parse it, falling back to STALL_RED for
+// any non-rgb value.
+export function resolveStallColor(theme: Theme): RGBColorType {
+  return parseRGB(theme.spinnerStalled) ?? STALL_RED
 }

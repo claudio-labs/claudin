@@ -133,7 +133,28 @@ export function ThemePicker({
         value: "dark-ansi" as const 
       }, {
         label: "Light mode (ANSI colors only)",
-        value: "light-ansi" as const 
+        value: "light-ansi" as const
+      }, {
+        label: "Terminal default (inherit colors)",
+        value: "terminal" as const
+      }, {
+        label: "Dracula",
+        value: "dracula" as const
+      }, {
+        label: "Catppuccin Mocha (dark)",
+        value: "catppuccin-mocha" as const
+      }, {
+        label: "Catppuccin Latte (light)",
+        value: "catppuccin-latte" as const
+      }, {
+        label: "Tokyo Night",
+        value: "tokyo-night" as const
+      }, {
+        label: "Nord",
+        value: "nord" as const
+      }, {
+        label: "Gruvbox Dark",
+        value: "gruvbox-dark" as const
       },],
     [],
   )

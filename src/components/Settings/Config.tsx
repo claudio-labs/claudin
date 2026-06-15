@@ -1882,7 +1882,14 @@ const THEME_LABELS: Record<string, string> = {
   'dark-daltonized': 'Dark mode (colorblind-friendly)',
   'light-daltonized': 'Light mode (colorblind-friendly)',
   'dark-ansi': 'Dark mode (ANSI colors only)',
-  'light-ansi': 'Light mode (ANSI colors only)'
+  'light-ansi': 'Light mode (ANSI colors only)',
+  terminal: 'Terminal default (inherit colors)',
+  dracula: 'Dracula',
+  'catppuccin-mocha': 'Catppuccin Mocha (dark)',
+  'catppuccin-latte': 'Catppuccin Latte (light)',
+  'tokyo-night': 'Tokyo Night',
+  nord: 'Nord',
+  'gruvbox-dark': 'Gruvbox Dark'
 };
 function NotifChannelLabel(t0) {
   const $ = _c(4);
