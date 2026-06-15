@@ -1,5 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
-import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
+import type { ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
 import { Suspense, use, useState } from 'react';
@@ -9,7 +9,8 @@ import { extractTag } from 'src/utils/messages.js';
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js';
 import { FileEditToolUpdatedMessage } from '../../components/FileEditToolUpdatedMessage.js';
 import { FilePathLink } from '../../components/FilePathLink.js';
-import { Text } from '../../ink.js';
+import { Box, Text } from '../../ink.js';
+import { ToolUseLoader } from '../../components/ToolUseLoader.js';
 import type { Tools } from '../../Tool.js';
 import type { Message, ProgressMessage } from '../../types/message.js';
 import { adjustHunkLineNumbers, CONTEXT_LINES } from '../../utils/diff.js';
@@ -19,8 +20,9 @@ import { getPlansDirectory } from '../../utils/plans.js';
 import { readEditContext } from '../../utils/readEditContext.js';
 import { firstLineOf } from '../../utils/stringUtils.js';
 import type { ThemeName } from '../../utils/theme.js';
-import type { FileEditOutput } from './types.js';
-import { findActualString, getPatchForEdit, preserveQuoteStyle } from './utils.js';
+import { inputSchema } from './types.js';
+import type { FileEditInput, FileEditOutput } from './types.js';
+import { findActualString, getPatchForEdit, groupEditsByFile, preserveQuoteStyle } from './utils.js';
 export function userFacingName(input: Partial<{
   file_path: string;
   old_string: string;
@@ -285,4 +287,131 @@ async function loadRejectionDiff(filePath: string, oldString: string, newString:
       fileContent: undefined
     };
   }
+}
+
+// One edit resolved into the data the grouped renderer needs.
+type GroupedEditItem = {
+  filePath: string;
+  param: ToolUseBlockParam;
+  input: FileEditInput | undefined;
+  output: FileEditOutput | undefined;
+  isError: boolean;
+  isInProgress: boolean;
+  errorContent: ToolResultBlockParam['content'] | undefined;
+};
+
+// Renders the diff body for a single edit: the diff when resolved, a short
+// error line when it failed, or nothing while it's still in progress (the
+// header spinner already signals the pending state).
+function renderGroupedEditBody(item: GroupedEditItem, isPlan: boolean, tools: Tools): React.ReactNode {
+  if (item.isError) {
+    return renderToolUseErrorMessage(item.errorContent, {
+      progressMessagesForMessage: [],
+      tools,
+      verbose: false
+    });
+  }
+  if (!item.output) {
+    return null;
+  }
+  return <FileEditToolUpdatedMessage filePath={item.output.filePath} structuredPatch={item.output.structuredPatch} firstLine={item.output.originalFile.split('\n')[0] ?? null} fileContent={item.output.originalFile} verbose={false} previewHint={isPlan ? '/plan to preview' : undefined} />;
+}
+
+// Renders the bold "Update" / "Updated plan" header followed by "(path)",
+// matching the single-block header in AssistantToolUseMessage.
+function GroupedEditHeader({
+  input,
+  filePath,
+  isPlan,
+  isUnresolved,
+  isError,
+  shouldAnimate
+}: {
+  input: FileEditInput | undefined;
+  filePath: string;
+  isPlan: boolean;
+  isUnresolved: boolean;
+  isError: boolean;
+  shouldAnimate: boolean;
+}): React.ReactNode {
+  return <Box flexDirection="row">
+      <ToolUseLoader shouldAnimate={shouldAnimate && isUnresolved} isUnresolved={isUnresolved} isError={isError} />
+      <Box flexShrink={0}><Text bold>{userFacingName(input)}</Text></Box>
+      {filePath !== '' && !isPlan && <Box flexWrap="nowrap"><Text>(<FilePathLink filePath={filePath}>{getDisplayPath(filePath)}</FilePathLink>)</Text></Box>}
+    </Box>;
+}
+
+/**
+ * Collapses several parallel Edit tool uses (same API response) so the same
+ * file shows a single "Update(path)" header with its diffs stacked underneath,
+ * instead of one header per edit. Sub-groups by file path (one header per
+ * file); a file with a single edit renders as one header + one body, visually
+ * identical to the per-block path, while 2+ edits to a file collapse under a
+ * shared header. Plan files keep today's per-edit rendering.
+ *
+ * Always renders (never returns null): applyGrouping only routes here for 2+
+ * Edit blocks from one response and has already removed the individual
+ * messages, so a null return would hide them (Message.tsx draws a null
+ * grouped_tool_use as nothing). Skipped entirely in verbose mode, where
+ * applyGrouping does not group. Display-only: does not affect the
+ * tool_use/tool_result sent to the model.
+ */
+export function renderGroupedFileEditToolUse(toolUses: Array<{
+  param: ToolUseBlockParam;
+  isResolved: boolean;
+  isError: boolean;
+  isInProgress: boolean;
+  progressMessages: ProgressMessage[];
+  result?: {
+    param: ToolResultBlockParam;
+    output: unknown;
+  };
+}>, options: {
+  shouldAnimate: boolean;
+  tools: Tools;
+}): React.ReactNode | null {
+  const {
+    shouldAnimate,
+    tools
+  } = options;
+  const items: GroupedEditItem[] = toolUses.map(tu => {
+    const parsed = inputSchema().safeParse(tu.param.input);
+    const input = parsed.success ? parsed.data : undefined;
+    const output = tu.result?.output as FileEditOutput | undefined;
+    return {
+      filePath: input?.file_path ?? output?.filePath ?? '',
+      param: tu.param,
+      input,
+      output,
+      isError: tu.isError,
+      isInProgress: tu.isInProgress,
+      errorContent: tu.result?.param.content
+    };
+  });
+  const groups = groupEditsByFile(items);
+
+  // Always render every edit here: applyGrouping has already removed the
+  // individual tool_use/tool_result messages, so returning null would hide
+  // them (Message.tsx renders a null grouped_tool_use as nothing). A file with
+  // a single edit renders as one header + one body, visually identical to the
+  // per-block path; only a file with 2+ edits collapses under a shared header.
+  return <Box flexDirection="column">
+      {groups.map((group, groupIndex) => {
+        const isPlan = group.filePath.startsWith(getPlansDirectory());
+        // Plan files keep today's behavior: each edit renders as its own
+        // header + body (not collapsed under a shared header).
+        if (isPlan) {
+          return group.items.map(item => <Box key={item.param.id} flexDirection="column" marginTop={1}>
+                <GroupedEditHeader input={item.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={item.isInProgress} isError={item.isError} shouldAnimate={shouldAnimate} />
+                {renderGroupedEditBody(item, isPlan, tools)}
+              </Box>);
+        }
+        const anyInProgress = group.items.some(i => i.isInProgress);
+        const anyError = group.items.some(i => i.isError);
+        return <Box key={group.filePath || groupIndex} flexDirection="column" marginTop={1}>
+            <GroupedEditHeader input={group.items[0]?.input} filePath={group.filePath} isPlan={isPlan} isUnresolved={anyInProgress} isError={anyError} shouldAnimate={shouldAnimate} />
+            {group.items.map(item => <React.Fragment key={item.param.id}>{renderGroupedEditBody(item, isPlan, tools)}</React.Fragment>)}
+          </Box>;
+      })}
+    </Box>;
 }

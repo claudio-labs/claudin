@@ -15,6 +15,28 @@ import {
 } from '../../utils/file.js'
 import type { EditInput, FileEdit } from './types.js'
 
+/**
+ * Groups items that carry a `filePath` by that path, preserving the order in
+ * which each distinct path first appears. Used by the grouped-edit renderer to
+ * collapse several parallel edits to the same file under a single header.
+ */
+export function groupEditsByFile<T extends { filePath: string }>(
+  items: T[],
+): Array<{ filePath: string; items: T[] }> {
+  const order: string[] = []
+  const byPath = new Map<string, T[]>()
+  for (const item of items) {
+    let bucket = byPath.get(item.filePath)
+    if (!bucket) {
+      bucket = []
+      byPath.set(item.filePath, bucket)
+      order.push(item.filePath)
+    }
+    bucket.push(item)
+  }
+  return order.map(filePath => ({ filePath, items: byPath.get(filePath)! }))
+}
+
 // Claude can't output curly quotes, so we define them as constants here for Claude to use
 // in the code. We do this because we normalize curly quotes to straight quotes
 // when applying edits.

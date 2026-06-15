@@ -67,6 +67,7 @@ import {
 } from './types.js'
 import {
   getToolUseSummary,
+  renderGroupedFileEditToolUse,
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
@@ -138,6 +139,7 @@ export const FileEditTool = buildTool({
   renderToolResultMessage,
   renderToolUseRejectedMessage,
   renderToolUseErrorMessage,
+  renderGroupedToolUse: renderGroupedFileEditToolUse,
   async validateInput(input: FileEditInput, toolUseContext: ToolUseContext) {
     const { file_path, old_string, new_string, replace_all = false } = input
     // Use expandPath for consistent path normalization (especially on Windows
