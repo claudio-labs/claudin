@@ -3,7 +3,9 @@ import { memo, type ReactNode } from 'react'
 import { useTerminalSize } from '../../hooks/useTerminalSize.js'
 import { stringWidth } from '../../ink/stringWidth.js'
 import { Box, Text } from '../../ink.js'
+import { getFileTypeIcon } from '../../utils/fileIcons.js'
 import { truncatePathMiddle, truncateToWidth } from '../../utils/format.js'
+import { hasNerdFontGlyphs } from '../../utils/terminalFont.js'
 import type { Theme } from '../../utils/theme.js'
 
 export type SuggestionItem = {
@@ -25,14 +27,23 @@ export type SuggestionType =
   | 'slack-channel'
   | 'none'
 
-export const OVERLAY_MAX_ITEMS = 10
+// Visible-row window for the suggestion menu: at least MIN, at most MAX,
+// otherwise tracks the terminal height (leaving 2 rows for the prompt).
+export const MIN_VISIBLE_ITEMS = 8
+export const MAX_VISIBLE_ITEMS = 15
 
 const SELECTED_PREFIX = `${figures.pointer} `
 const UNSELECTED_PREFIX = '  '
 const PREFIX_WIDTH = stringWidth(SELECTED_PREFIX)
 
-function getIcon(itemId: string): string {
-  if (itemId.startsWith('file-')) return '+'
+// Env-derived terminal capability can't change mid-session, so resolve the
+// Nerd Font gate once at module load — the row re-renders on every keystroke.
+const NERD = hasNerdFontGlyphs()
+
+export function getIcon(itemId: string, displayText: string, nerd: boolean): string {
+  if (itemId.startsWith('file-')) {
+    return nerd ? getFileTypeIcon(displayText) : '+'
+  }
   if (itemId.startsWith('mcp-resource-')) return '◇'
   if (itemId.startsWith('agent-')) return '*'
   return '+'
@@ -44,6 +55,15 @@ function isUnifiedSuggestion(itemId: string): boolean {
     itemId.startsWith('mcp-resource-') ||
     itemId.startsWith('agent-')
   )
+}
+
+// Path/directory completions (e.g. `@../`, `@~/`, `/add-dir`) come from
+// directoryCompletion.ts with a plain path id (no `file-` prefix), so they
+// render through the non-unified branch below. They carry `metadata.type`,
+// which lets us give them the same file/folder glyph as the unified rows.
+export function isPathCompletionItem(item: SuggestionItem): boolean {
+  const type = (item.metadata as { type?: unknown } | undefined)?.type
+  return type === 'directory' || type === 'file'
 }
 
 const SuggestionItemRow = memo(function SuggestionItemRow({
@@ -63,7 +83,7 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
   const textColor: keyof Theme | undefined = isSelected ? 'inverseText' : undefined
 
   if (isUnifiedSuggestion(item.id)) {
-    const icon = getIcon(item.id)
+    const icon = getIcon(item.id, item.displayText, NERD)
     const dimColor = !isSelected
     const isFile = item.id.startsWith('file-')
     const isMcpResource = item.id.startsWith('mcp-resource-')
@@ -129,8 +149,12 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
     displayText = truncateToWidth(displayText, displayTextWidth - 2)
   }
 
+  const pathIcon = isPathCompletionItem(item)
+    ? `${NERD ? getFileTypeIcon(item.displayText) : '+'} `
+    : ''
   const paddedDisplayText =
     selectionPrefix +
+    pathIcon +
     displayText +
     ' '.repeat(Math.max(0, displayTextWidth - stringWidth(displayText)))
   const tagText = item.tag ? `[${item.tag}] ` : ''
@@ -172,7 +196,14 @@ export function PromptInputFooterSuggestions({
   overlay,
 }: Props): ReactNode {
   const { rows } = useTerminalSize()
-  const maxVisibleItems = overlay ? OVERLAY_MAX_ITEMS : Math.min(14, Math.max(1, rows - 2))
+  // Prefer MIN..MAX rows when the terminal can fit MIN, but on short
+  // terminals/split panes fall back to whatever fits (floor 1) so the menu
+  // never overflows and pushes the prompt off-screen.
+  const available = rows - 2
+  const maxVisibleItems =
+    available >= MIN_VISIBLE_ITEMS
+      ? Math.min(MAX_VISIBLE_ITEMS, available)
+      : Math.max(1, available)
 
   if (suggestions.length === 0) {
     return null

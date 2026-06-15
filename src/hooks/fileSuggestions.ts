@@ -614,7 +614,11 @@ function createFileSuggestionItem(
 /**
  * Find matching files and folders for a given query using the TS file index
  */
-const MAX_SUGGESTIONS = 15
+// Upper bound on how many file/dir entries enter the suggestion list. The menu
+// only renders a sliding window of ~15 rows at a time (see MAX_VISIBLE_ITEMS in
+// PromptInputFooterSuggestions), so this larger cap is what the user actually
+// scrolls through — keep it above the visible window so up/down reveal more.
+const MAX_SUGGESTIONS = 100
 function findMatchingFiles(
   fileIndex: FileIndex,
   partialPath: string,
@@ -695,6 +699,19 @@ async function getTopLevelPaths(): Promise<string[]> {
 
   try {
     const entries = await fs.readdir(cwd)
+    // Order like `ls -la` / eza grouping: directories before files, and within
+    // each group hidden (dot) entries before the rest, then by name
+    // case-insensitively. The hidden tier is explicit because locale-aware
+    // compare can drop a leading '.' and interleave dotfiles with normal ones.
+    entries.sort((a, b) => {
+      const aDir = a.isDirectory()
+      const bDir = b.isDirectory()
+      if (aDir !== bDir) return aDir ? -1 : 1
+      const aHidden = a.name.startsWith('.')
+      const bHidden = b.name.startsWith('.')
+      if (aHidden !== bHidden) return aHidden ? -1 : 1
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    })
     return entries.map(entry => {
       const fullPath = path.join(cwd, entry.name)
       const relativePath = path.relative(cwd, fullPath)
