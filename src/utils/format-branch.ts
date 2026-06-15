@@ -4,13 +4,10 @@ import type { Theme } from './theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE0A0' // Powerline branch glyph
-const SEP_LEFT = ''    // Powerline left-arrow filled — opens pill from default bg
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
-const CAP_LEFT_ROUND = '\uE0B6'  // Powerline rounded left cap
-const CAP_RIGHT_ROUND = '\uE0B4' // Powerline rounded right cap
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 
-function resolveBranchBg(theme: Theme): string {
+export function resolveBranchBg(theme: Theme): string {
   const raw = theme.messageActionsBackground
   // In light-ansi, messageActionsBackground = 'ansi:white' which equals the
   // terminal default — the segment bg + cap arrows would be invisible.
@@ -109,7 +106,7 @@ export function buildBranchBorderSegment(
  * of `buildBranchBorderSegment`; caps on both sides so it can sit anywhere on
  * a border (start, end, or adjacent to other pills).
  */
-export function buildCwdPill(displayCwd: string, theme: Theme): string {
+export function buildCwdPill(displayCwd: string, theme: Theme, nextBg?: string): string {
   if (!hasNerdFontGlyphs()) {
     const fg = applyColor(chalk, theme.suggestion, 'fg').bold
     return `[ ${fg(displayCwd)} ]`
@@ -117,15 +114,46 @@ export function buildCwdPill(displayCwd: string, theme: Theme): string {
   const cwdBg = theme.suggestion
   const cwdFg = theme.inverseText
   const cwdChalk = applyColor(applyColor(chalk, cwdBg, 'bg'), cwdFg, 'fg').bold
-  const capChalk = applyColor(chalk, cwdBg, 'fg')
-  return capChalk(SEP_LEFT) + cwdChalk(` ${displayCwd} `) + capChalk(SEP)
+  // Trailing arrow: when another pill follows, paint it over the next pill's
+  // background so the two segments join seamlessly (no terminal-bg gap);
+  // otherwise render the arrow over the default terminal bg.
+  const capChalk = nextBg
+    ? applyColor(applyColor(chalk, nextBg, 'bg'), cwdBg, 'fg')
+    : applyColor(chalk, cwdBg, 'fg')
+  // Square (flat) left edge — start the colored block directly; pointed
+  // (arrow) right edge.
+  return cwdChalk(` ${displayCwd} `) + capChalk(SEP)
 }
 
 /**
- * Provider pill — branch-style palette (azul cinza / muted) so it pairs
- * visually with the branch pill on the opposite side of the row.
+ * Provider pill — vibrant palette (suggestion blue bg, dark bold text) so it
+ * stands out as the leading segment of the row.
  */
-export function buildProviderPill(label: string, theme: Theme): string {
+export function buildProviderPill(label: string, theme: Theme, nextBg?: string): string {
+  if (!label) return ''
+  if (!hasNerdFontGlyphs()) {
+    const fg = applyColor(chalk, theme.suggestion, 'fg').bold
+    return `[ ${fg(label.trim())} ]`
+  }
+  const bg = theme.suggestion
+  const fg = theme.inverseText
+  const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg').bold
+  // Trailing arrow: when another pill follows, paint it over the next pill's
+  // background so the two segments join seamlessly (no terminal-bg gap);
+  // otherwise render the arrow over the default terminal bg.
+  const cap = nextBg
+    ? applyColor(applyColor(chalk, nextBg, 'bg'), bg, 'fg')
+    : applyColor(chalk, bg, 'fg')
+  // Square (flat) left edge — start the colored block directly with a padding
+  // space instead of the rounded left cap; pointed (arrow) right edge.
+  return text(` ${label}`) + cap(SEP)
+}
+
+/**
+ * Model pill — muted branch-style palette (azul cinza) so it reads as the
+ * secondary segment next to the vibrant provider pill.
+ */
+export function buildModelPill(label: string, theme: Theme): string {
   if (!label) return ''
   if (!hasNerdFontGlyphs()) {
     const fg = applyColor(chalk, theme.suggestion, 'fg')
@@ -135,24 +163,8 @@ export function buildProviderPill(label: string, theme: Theme): string {
   const fg = theme.suggestion
   const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg')
   const cap = applyColor(chalk, bg, 'fg')
-  return cap(CAP_LEFT_ROUND) + text(`${label}`) + cap(CAP_RIGHT_ROUND)
-}
-
-/**
- * Model pill — cwd-style palette (vibrant blue) so it mirrors the cwd pill
- * on the opposite side of the row. Rounded Powerline caps.
- */
-export function buildModelPill(label: string, theme: Theme): string {
-  if (!label) return ''
-  if (!hasNerdFontGlyphs()) {
-    const fg = applyColor(chalk, theme.suggestion, 'fg').bold
-    return `[ ${fg(label.trim())} ]`
-  }
-  const bg = theme.suggestion
-  const fg = theme.inverseText
-  const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg').bold
-  const cap = applyColor(chalk, bg, 'fg')
-  return cap(CAP_LEFT_ROUND) + text(`${label}`) + cap(CAP_RIGHT_ROUND)
+  // Square (flat) left edge + pointed (arrow) right edge, matching the provider pill.
+  return text(` ${label}`) + cap(SEP)
 }
 
 /**
@@ -165,6 +177,7 @@ export function buildBranchPill(
   ahead: number,
   behind: number,
   theme: Theme,
+  nextBg?: string,
 ): string {
   if (!branch) return ''
   if (!hasNerdFontGlyphs()) {
@@ -182,10 +195,16 @@ export function buildBranchPill(
   const branchBg = resolveBranchBg(theme)
   const branchFg = theme.suggestion
   const branchChalk = applyColor(applyColor(chalk, branchBg, 'bg'), branchFg, 'fg')
-  const capChalk = applyColor(chalk, branchBg, 'fg')
+  // Trailing arrow: when another pill follows, paint it over the next pill's
+  // background so the two segments join seamlessly (no terminal-bg gap);
+  // otherwise render the arrow over the default terminal bg.
+  const capChalk = nextBg
+    ? applyColor(applyColor(chalk, nextBg, 'bg'), branchBg, 'fg')
+    : applyColor(chalk, branchBg, 'fg')
 
-  let seg = capChalk(SEP_LEFT)
-  seg += branchChalk(` ${BRANCH_ICON} ${branch}`)
+  // Square (flat) left edge — start the colored block directly; pointed
+  // (arrow) right edge.
+  let seg = branchChalk(` ${BRANCH_ICON} ${branch}`)
   if (ahead > 0 || behind > 0) {
     seg += branchChalk(' (')
     if (ahead > 0)
@@ -245,8 +264,9 @@ export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme):
   const numChalk = applyColor(applyColor(chalk, branchBg, 'bg'), numberFg, 'fg')
   const capChalk = applyColor(chalk, branchBg, 'fg')
 
+  // Square (flat) left edge — start the colored block directly; pointed
+  // (arrow) right edge.
   return (
-    capChalk(SEP_LEFT) +
     labelChalk(` ${PR_ICON} `) +
     numChalk(`#${prNumber}`) +
     labelChalk(' ') +

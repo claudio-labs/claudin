@@ -7,6 +7,7 @@ import {
   buildBranchPill,
   buildCwdPill,
   buildPrPill,
+  resolveBranchBg,
 } from '../utils/format-branch.js'
 import { type PrReviewState } from '../utils/ghPrStatus.js'
 import { getAheadBehind, getBranch } from '../utils/git.js'
@@ -115,12 +116,21 @@ export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): CwdB
     cwd === home ? '~' : home && cwd.startsWith(home + '/') ? '~' + cwd.slice(home.length) : cwd
   const theme = getTheme(themeName)
 
-  const cwdPill = buildCwdPill(displayCwd, theme)
-  const branchPill = buildBranchPill(branch, aheadBehind.ahead, aheadBehind.behind, theme)
   const prPill =
     withPr && branch && pr.number !== null && pr.url !== null
       ? buildPrPill(pr.number, pr.reviewState, theme)
       : ''
+  // When a branch pill follows, join the cwd's trailing arrow into the branch
+  // pill's background (resolveBranchBg) so the two pills connect seamlessly;
+  // likewise join the branch's trailing arrow into the PR pill when present.
+  const branchPill = buildBranchPill(
+    branch,
+    aheadBehind.ahead,
+    aheadBehind.behind,
+    theme,
+    prPill ? resolveBranchBg(theme) : undefined,
+  )
+  const cwdPill = buildCwdPill(displayCwd, theme, branchPill ? resolveBranchBg(theme) : undefined)
 
   let combined = buildBranchBorderSegment(
     displayCwd,

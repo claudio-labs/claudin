@@ -6,7 +6,7 @@ import { onGlobalConfigChange } from '../utils/config.js';
 import type { ProviderProfile } from '../utils/config.js';
 import { getActiveProviderProfile } from '../utils/providerProfiles.js';
 import { getMainLoopModel, renderModelName } from '../utils/model/model.js';
-import { buildModelPill, buildProviderPill } from '../utils/format-branch.js';
+import { buildModelPill, buildProviderPill, resolveBranchBg } from '../utils/format-branch.js';
 import { getTheme } from '../utils/theme.js';
 import { logError } from '../utils/log.js';
 import { toError } from '../utils/errors.js';
@@ -71,8 +71,10 @@ export function ProviderModelIndicator(): React.ReactNode {
   if (!snapshot) return null;
 
   const theme = getTheme(themeName);
-  const providerPill = buildProviderPill(snapshot.provider, theme);
   const modelPill = snapshot.model ? buildModelPill(snapshot.model, theme) : '';
+  // When a model pill follows, join the provider's trailing arrow into the
+  // model's background (resolveBranchBg) so the two pills connect seamlessly.
+  const providerPill = buildProviderPill(snapshot.provider, theme, modelPill ? resolveBranchBg(theme) : undefined);
   const combined = modelPill ? `${providerPill}${modelPill}` : providerPill;
 
   return (
