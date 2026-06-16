@@ -60,7 +60,6 @@ type Props = {
   setHistoryQuery: (query: string) => void;
   historyFailedMatch: boolean;
   onOpenTasksDialog?: (taskId?: string) => void;
-  effortStatusText?: string;
 };
 function PromptInputFooter({
   apiKeyStatus,
@@ -94,8 +93,7 @@ function PromptInputFooter({
   historyQuery,
   setHistoryQuery,
   historyFailedMatch,
-  onOpenTasksDialog,
-  effortStatusText
+  onOpenTasksDialog
 }: Props): ReactNode {
   const settings = useSettings();
   const {
@@ -152,7 +150,6 @@ function PromptInputFooter({
         <Box flexShrink={1} gap={1}>
           {isFullscreen ? null : <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} isNarrow={isNarrow} />}
           <BridgeStatusIndicator bridgeSelected={bridgeSelected} />
-          {effortStatusText ? <Text dimColor>{effortStatusText}</Text> : null}
         </Box>
       </Box>
       <GoalStatusIndicator />

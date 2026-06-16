@@ -4,6 +4,7 @@ import {
   EFFORT_LOW,
   EFFORT_MAX,
   EFFORT_MEDIUM,
+  EFFORT_XHIGH,
 } from '../constants/figures.js'
 import {
   type AdaptiveEffort,
@@ -13,9 +14,11 @@ import {
   isAdaptiveEffort,
   modelSupportsEffort,
 } from '../utils/effort.js'
+import { buildEffortPill } from '../utils/format-branch.js'
+import type { Theme } from '../utils/theme.js'
 
 /**
- * Build the text for the effort-changed notification, e.g. "◐ medium · /effort".
+ * Build the text for the effort-changed notification, e.g. "◐ medium".
  * Returns undefined if the model doesn't support effort.
  */
 export function getEffortNotificationText(
@@ -24,7 +27,49 @@ export function getEffortNotificationText(
 ): string | undefined {
   if (!modelSupportsEffort(model)) return undefined
   const level = getDisplayedEffortLabel(model, effortValue)
-  return `${effortLevelToSymbol(level)} ${level} · /effort`
+  return `${effortLevelToSymbol(level)} ${level}`
+}
+
+/**
+ * Resolve the traffic-light pill background for an effort level so higher
+ * thinking levels read hotter (gray → amber → red), adaptive in blue.
+ */
+function effortLevelToBg(level: EffortLevel | AdaptiveEffort, theme: Theme): string {
+  if (isAdaptiveEffort(level)) {
+    return theme.suggestion
+  }
+  switch (level) {
+    case 'low':
+      return theme.inactive
+    case 'medium':
+      return theme.warning
+    case 'high':
+      return theme.claude
+    case 'xhigh':
+      return theme.error
+    case 'max':
+      return theme.merged
+    default:
+      // Defensive: unknown remote value renders as the high (red) bg.
+      return theme.error
+  }
+}
+
+/**
+ * Build the Powerline effort pill (e.g. `● high`) with a per-level traffic-light
+ * background. Returns the rendered `pill` string plus its `bg` color (so a
+ * preceding pill can join its trailing arrow into it seamlessly), or undefined
+ * if the model doesn't support effort.
+ */
+export function getEffortPill(
+  effortValue: EffortValue | undefined,
+  model: string,
+  theme: Theme,
+): { pill: string; bg: string } | undefined {
+  if (!modelSupportsEffort(model)) return undefined
+  const level = getDisplayedEffortLabel(model, effortValue)
+  const bg = effortLevelToBg(level, theme)
+  return { pill: buildEffortPill(`${effortLevelToSymbol(level)} ${level}`, bg, theme), bg }
 }
 
 export function effortLevelToSymbol(level: EffortLevel | AdaptiveEffort): string {
@@ -38,6 +83,8 @@ export function effortLevelToSymbol(level: EffortLevel | AdaptiveEffort): string
       return EFFORT_MEDIUM
     case 'high':
       return EFFORT_HIGH
+    case 'xhigh':
+      return EFFORT_XHIGH
     case 'max':
       return EFFORT_MAX
     default:

@@ -153,7 +153,7 @@ export function buildProviderPill(label: string, theme: Theme, nextBg?: string):
  * Model pill — muted branch-style palette (azul cinza) so it reads as the
  * secondary segment next to the vibrant provider pill.
  */
-export function buildModelPill(label: string, theme: Theme): string {
+export function buildModelPill(label: string, theme: Theme, nextBg?: string): string {
   if (!label) return ''
   if (!hasNerdFontGlyphs()) {
     const fg = applyColor(chalk, theme.suggestion, 'fg')
@@ -162,9 +162,31 @@ export function buildModelPill(label: string, theme: Theme): string {
   const bg = resolveBranchBg(theme)
   const fg = theme.suggestion
   const text = applyColor(applyColor(chalk, bg, 'bg'), fg, 'fg')
-  const cap = applyColor(chalk, bg, 'fg')
+  // Trailing arrow: when another pill follows, paint it over the next pill's
+  // background so the two segments join seamlessly (no terminal-bg gap);
+  // otherwise render the arrow over the default terminal bg.
+  const cap = nextBg
+    ? applyColor(applyColor(chalk, nextBg, 'bg'), bg, 'fg')
+    : applyColor(chalk, bg, 'fg')
   // Square (flat) left edge + pointed (arrow) right edge, matching the provider pill.
   return text(` ${label}`) + cap(SEP)
+}
+
+/**
+ * Effort pill — standalone Powerline segment for the model-thinking indicator
+ * (e.g. `● high`). The `bg` is a resolved theme color string chosen per effort
+ * level by the caller (traffic-light: gray/amber/red/blue), so the level pops at
+ * a glance. Bold inverseText for legibility on the colored block.
+ */
+export function buildEffortPill(label: string, bg: string, theme: Theme): string {
+  if (!label) return ''
+  if (!hasNerdFontGlyphs()) {
+    return `[ ${label} ]`
+  }
+  const text = applyColor(applyColor(chalk, bg, 'bg'), theme.inverseText, 'fg').bold
+  const cap = applyColor(chalk, bg, 'fg')
+  // Square (flat) left edge + pointed (arrow) right edge, matching the other pills.
+  return text(` ${label} `) + cap(SEP)
 }
 
 /**

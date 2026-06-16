@@ -49,7 +49,7 @@ function snapshotEqual(a: Snapshot | null, b: Snapshot | null): boolean {
  * indicator. Updates in realtime via `onGlobalConfigChange` (covers `/provider`)
  * plus a light poll (covers `/model`, which only mutates in-memory state).
  */
-export function ProviderModelIndicator(): React.ReactNode {
+export function ProviderModelIndicator({ nextBg }: { nextBg?: string } = {}): React.ReactNode {
   const [themeName] = useTheme();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(() => readSnapshot());
 
@@ -71,10 +71,14 @@ export function ProviderModelIndicator(): React.ReactNode {
   if (!snapshot) return null;
 
   const theme = getTheme(themeName);
-  const modelPill = snapshot.model ? buildModelPill(snapshot.model, theme) : '';
+  // `nextBg` is the background of whatever pill follows this one (e.g. the effort
+  // pill). The last segment's trailing arrow is painted over it so they connect
+  // seamlessly; when undefined the arrow falls back to the terminal bg.
+  const modelPill = snapshot.model ? buildModelPill(snapshot.model, theme, nextBg) : '';
   // When a model pill follows, join the provider's trailing arrow into the
-  // model's background (resolveBranchBg) so the two pills connect seamlessly.
-  const providerPill = buildProviderPill(snapshot.provider, theme, modelPill ? resolveBranchBg(theme) : undefined);
+  // model's background (resolveBranchBg); otherwise the provider is the last
+  // segment, so its arrow joins into `nextBg`.
+  const providerPill = buildProviderPill(snapshot.provider, theme, modelPill ? resolveBranchBg(theme) : nextBg);
   const combined = modelPill ? `${providerPill}${modelPill}` : providerPill;
 
   return (

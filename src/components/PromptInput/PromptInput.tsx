@@ -92,7 +92,7 @@ import { getTeammateColor } from '../../utils/teammate.js';
 import { isInProcessTeammate } from '../../utils/teammateContext.js';
 import { writeToMailbox } from '../../utils/teammateMailbox.js';
 import type { TextHighlight } from '../../utils/textHighlighting.js';
-import type { Theme } from '../../utils/theme.js';
+import { getTheme, type Theme } from '../../utils/theme.js';
 import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from '../../utils/thinking.js';
 import { findTokenBudgetPositions } from '../../utils/tokenBudget.js';
 import { findUltraplanTriggerPositions, findUltrareviewTriggerPositions } from '../../utils/ultraplan/keyword.js';
@@ -103,7 +103,8 @@ import { useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
 import { footerTreeBaseIndex, getVisibleAgentTasks } from '../tasks/footerTaskGeometry.js';
 import { resolveFooterTreeRow } from '../tasks/footerSelection.js';
 import { killBackgroundTask } from '../tasks/taskActions.js';
-import { getEffortNotificationText } from '../EffortIndicator.js';
+import { getEffortPill } from '../EffortIndicator.js';
+import { useTheme } from '../design-system/ThemeProvider.js';
 import { getFastIconString } from '../FastIcon.js';
 import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
 import { ProviderModelIndicator } from '../ProviderModelIndicator.js';
@@ -2111,7 +2112,8 @@ function PromptInput({
   // status row), so users track the effort the model uses in real time.
   // Suppressed in brief/assistant mode — the value reflects the local
   // client's effort, not the connected agent's.
-  const effortStatusText = briefOwnsGap ? undefined : getEffortNotificationText(effortValue, mainLoopModel);
+  const [effortThemeName] = useTheme();
+  const effort = briefOwnsGap ? undefined : getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
   useBuddyNotification();
   const companionSpeaking = isBuddyEnabled() ?
   useAppState(s => s.companionReaction !== undefined) : false;
@@ -2440,7 +2442,10 @@ function PromptInput({
             const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
             return <Box width="100%" flexDirection="row" justifyContent="space-between">
                 <Box gap={2}>
-                  <ProviderModelIndicator />
+                  <Box>
+                    <ProviderModelIndicator nextBg={effort?.bg} />
+                    {effort ? <Text>{effort.pill}</Text> : null}
+                  </Box>
                   <SessionTokensIndicator messages={messages} />
                 </Box>
                 <Box flexDirection="column" alignItems="flex-end">
@@ -2449,7 +2454,7 @@ function PromptInput({
               </Box>;
           })()}
         </>}
-      <PromptInputFooter apiKeyStatus={apiKeyStatus} debug={debug} exitMessage={exitMessage} vimMode={isVimModeEnabled() ? vimMode : undefined} mode={mode} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} suggestions={suggestions} selectedSuggestion={selectedSuggestion} maxColumnWidth={maxColumnWidth} toolPermissionContext={effectiveToolPermissionContext} helpOpen={helpOpen} suppressHint={input.length > 0} isLoading={isLoading} tasksSelected={tasksSelected} teamsSelected={teamsSelected} bridgeSelected={bridgeSelected} tmuxSelected={tmuxSelected} teammateFooterIndex={teammateFooterIndex} ideSelection={ideSelection} mcpClients={mcpClients} isPasting={isPasting} isInputWrapped={isInputWrapped} messages={messages} isSearching={isSearchingHistory} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={isFullscreenEnvEnabled() ? handleOpenTasksDialog : undefined} effortStatusText={effortStatusText} />
+      <PromptInputFooter apiKeyStatus={apiKeyStatus} debug={debug} exitMessage={exitMessage} vimMode={isVimModeEnabled() ? vimMode : undefined} mode={mode} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} suggestions={suggestions} selectedSuggestion={selectedSuggestion} maxColumnWidth={maxColumnWidth} toolPermissionContext={effectiveToolPermissionContext} helpOpen={helpOpen} suppressHint={input.length > 0} isLoading={isLoading} tasksSelected={tasksSelected} teamsSelected={teamsSelected} bridgeSelected={bridgeSelected} tmuxSelected={tmuxSelected} teammateFooterIndex={teammateFooterIndex} ideSelection={ideSelection} mcpClients={mcpClients} isPasting={isPasting} isInputWrapped={isInputWrapped} messages={messages} isSearching={isSearchingHistory} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={isFullscreenEnvEnabled() ? handleOpenTasksDialog : undefined} />
       {isFullscreenEnvEnabled() ? null : autoModeOptInDialog}
       {isFullscreenEnvEnabled() ?
     // position=absolute takes zero layout height so the spinner
