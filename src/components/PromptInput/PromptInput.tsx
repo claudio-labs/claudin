@@ -106,7 +106,6 @@ import { killBackgroundTask } from '../tasks/taskActions.js';
 import { getEffortPill } from '../EffortIndicator.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { getFastIconString } from '../FastIcon.js';
-import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
 import { ProviderModelIndicator } from '../ProviderModelIndicator.js';
 import { GlobalSearchDialog } from '../GlobalSearchDialog.js';
 import { HistorySearchDialog } from '../HistorySearchDialog.js';
@@ -2441,12 +2440,9 @@ function PromptInput({
               : '';
             const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
             return <Box width="100%" flexDirection="row" justifyContent="space-between">
-                <Box gap={2}>
-                  <Box>
-                    <ProviderModelIndicator nextBg={effort?.bg} />
-                    {effort ? <Text>{effort.pill}</Text> : null}
-                  </Box>
-                  <SessionTokensIndicator messages={messages} />
+                <Box>
+                  <ProviderModelIndicator nextBg={effort?.bg} />
+                  {effort ? <Text>{effort.pill}</Text> : null}
                 </Box>
                 <Box flexDirection="column" alignItems="flex-end">
                   {bottomRight ? <Text>{bottomRight}</Text> : null}

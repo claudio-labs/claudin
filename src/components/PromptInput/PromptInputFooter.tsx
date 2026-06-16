@@ -20,6 +20,7 @@ import { CoordinatorTaskPanel, useCoordinatorTaskCount } from '../CoordinatorAge
 import { GoalStatusIndicator } from '../GoalStatusIndicator.js';
 import { BackgroundTaskGroupTree } from '../tasks/BackgroundTaskGroupTree.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from '../StatusLine.js';
+import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
 import { Notifications } from './Notifications.js';
 import { PromptInputFooterLeftSide } from './PromptInputFooterLeftSide.js';
 import { PromptInputFooterSuggestions, type SuggestionItem } from './PromptInputFooterSuggestions.js';
@@ -150,6 +151,7 @@ function PromptInputFooter({
         <Box flexShrink={1} gap={1}>
           {isFullscreen ? null : <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} isNarrow={isNarrow} />}
           <BridgeStatusIndicator bridgeSelected={bridgeSelected} />
+          <SessionTokensIndicator messages={messages} />
         </Box>
       </Box>
       <GoalStatusIndicator />

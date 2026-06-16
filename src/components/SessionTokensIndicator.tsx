@@ -12,6 +12,7 @@ import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
 import { getSessionCacheMetrics } from '../services/api/cacheStatsTracker.js';
 import { formatTokens } from '../utils/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
+import { hasNerdFontGlyphs } from '../utils/terminalFont.js';
 import { getTheme } from '../utils/theme.js';
 import { getCurrentUsage } from '../utils/tokens.js';
 import type { Message } from '../types/message.js';
@@ -29,6 +30,8 @@ const POLL_INTERVAL_MS = 2000;
 const ICON_CREATED = '\u{F0193}'; // nf-md-content_save — cache write
 const ICON_CACHED = '\u{F1C0}';   // nf-fa-database — cache read
 const ICON_TOTAL = '\u{F0AA8}';   // nf-md-sigma — sum
+const SEP_NF = '\uE0B1';          // nf powerline right chevron — used for every divider (Nerd Font)
+const SEP_FALLBACK = '·';         // dot fallback when Nerd Font glyphs are unavailable
 
 /**
  * Whether the active provider is one we expect to report cache fields. Drives
@@ -167,12 +170,14 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
 
   const costValue = displaySnapshot.cost > 0 ? formatCost(displaySnapshot.cost) : null;
   const theme = getTheme();
+  // Same divider for every group boundary and before the cost; dot as the fallback.
+  const sep = hasNerdFontGlyphs() ? ` ${SEP_NF} ` : ` ${SEP_FALLBACK} `;
 
   return (
     <Box>
       <Text dimColor wrap="truncate">
-        {parts.join(' · ')}
-        {costValue ? ' │ ' : ''}
+        {parts.join(sep)}
+        {costValue ? sep : ''}
       </Text>
       {costValue ? <Text color={theme.claude}>{costValue}</Text> : null}
     </Box>
