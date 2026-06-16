@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { getLastInteractionTime } from '../bootstrap/state.js'
-import { fetchPrStatus, type PrReviewState } from '../utils/ghPrStatus.js'
+import { fetchPrStatus, type PrLabel, type PrReviewState } from '../utils/ghPrStatus.js'
 
-const POLL_INTERVAL_MS = 60_000
+const POLL_INTERVAL_MS = 2_000
 const SLOW_GH_THRESHOLD_MS = 4_000
 const IDLE_STOP_MS = 60 * 60_000 // stop polling after 60 min idle
 
@@ -10,6 +10,7 @@ export type PrStatusState = {
   number: number | null
   url: string | null
   reviewState: PrReviewState | null
+  label: PrLabel | null
   lastUpdated: number
 }
 
@@ -17,11 +18,13 @@ const INITIAL_STATE: PrStatusState = {
   number: null,
   url: null,
   reviewState: null,
+  label: null,
   lastUpdated: 0,
 }
 
 /**
- * Polls PR review status every 60s while the session is active.
+ * Polls PR review status every 2s while the session is active (matches the
+ * branch/ahead-behind segment cadence in useCwdBranchSegment).
  * When no interaction is detected for 60 minutes, the loop stops — no
  * timers remain. React re-runs the effect when isLoading changes
  * (turn starts/ends), restarting the loop. Effect setup schedules
@@ -65,13 +68,19 @@ export function usePrStatus(isLoading: boolean, enabled = true): PrStatusState {
       setPrStatus(prev => {
         const newNumber = result?.number ?? null
         const newReviewState = result?.reviewState ?? null
-        if (prev.number === newNumber && prev.reviewState === newReviewState) {
+        const newLabel = result?.label ?? null
+        if (
+          prev.number === newNumber &&
+          prev.reviewState === newReviewState &&
+          prev.label === newLabel
+        ) {
           return prev
         }
         return {
           number: newNumber,
           url: result?.url ?? null,
           reviewState: newReviewState,
+          label: newLabel,
           lastUpdated: Date.now(),
         }
       })

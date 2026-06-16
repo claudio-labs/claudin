@@ -915,7 +915,7 @@ export function Config({
     }
   }, {
     id: 'prStatusFooterEnabled',
-    label: 'Show PR status footer',
+    label: 'Show PR/MR status footer',
     value: globalConfig.prStatusFooterEnabled ?? true,
     type: 'boolean' as const,
     onChange(enabled_4: boolean) {

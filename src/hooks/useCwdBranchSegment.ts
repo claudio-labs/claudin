@@ -8,6 +8,7 @@ import {
   buildCwdPill,
   buildPrPill,
   resolveBranchBg,
+  resolvePrBg,
 } from '../utils/format-branch.js'
 import { type PrReviewState } from '../utils/ghPrStatus.js'
 import { getAheadBehind, getBranch } from '../utils/git.js'
@@ -118,17 +119,18 @@ export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): CwdB
 
   const prPill =
     withPr && branch && pr.number !== null && pr.url !== null
-      ? buildPrPill(pr.number, pr.reviewState, theme)
+      ? buildPrPill(pr.number, pr.reviewState, theme, pr.label ?? 'PR', pr.url)
       : ''
   // When a branch pill follows, join the cwd's trailing arrow into the branch
   // pill's background (resolveBranchBg) so the two pills connect seamlessly;
-  // likewise join the branch's trailing arrow into the PR pill when present.
+  // likewise join the branch's trailing arrow into the PR pill's gray bg
+  // (resolvePrBg) when present.
   const branchPill = buildBranchPill(
     branch,
     aheadBehind.ahead,
     aheadBehind.behind,
     theme,
-    prPill ? resolveBranchBg(theme) : undefined,
+    prPill ? resolvePrBg(theme) : undefined,
   )
   const cwdPill = buildCwdPill(displayCwd, theme, branchPill ? resolveBranchBg(theme) : undefined)
 
@@ -141,7 +143,7 @@ export function useCwdBranchSegment(opts: UseCwdBranchSegmentOptions = {}): CwdB
   )
   if (withPr && pr.number !== null && pr.url !== null) {
     const colorize = colorizePrNumber(pr.reviewState)
-    combined += '  ' + chalk.dim('PR') + ' ' + colorize('#' + pr.number)
+    combined += '  ' + chalk.dim(pr.label ?? 'PR') + ' ' + colorize('#' + pr.number)
   }
 
   return { cwd: cwdPill, branch: branchPill, pr: prPill, combined }

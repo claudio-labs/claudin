@@ -1,9 +1,11 @@
 import chalk, { type ChalkInstance } from 'chalk'
+import { supportsHyperlinks } from '../ink/supports-hyperlinks.js'
+import { OSC8_START, OSC8_END } from './hyperlink.js'
 import { hasNerdFontGlyphs } from './terminalFont.js'
 import type { Theme } from './theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
-const BRANCH_ICON = '\uE0A0' // Powerline branch glyph
+const BRANCH_ICON = '\uE725' // Nerd Font devicon git-branch (pairs with PR_ICON)
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 
@@ -12,6 +14,16 @@ export function resolveBranchBg(theme: Theme): string {
   // In light-ansi, messageActionsBackground = 'ansi:white' which equals the
   // terminal default — the segment bg + cap arrows would be invisible.
   // Fall back to theme.inactive (a contrasting gray) for that case.
+  return raw === 'ansi:white' || raw === 'ansi:whiteBright' ? theme.inactive : raw
+}
+
+/**
+ * Background for the PR/MR pill: the theme's neutral-gray panel color, so the
+ * pill reads as gray and stands apart from the (slightly blue) branch pill.
+ * Same ansi:white guard as resolveBranchBg.
+ */
+export function resolvePrBg(theme: Theme): string {
+  const raw = theme.userMessageBackground
   return raw === 'ansi:white' || raw === 'ansi:whiteBright' ? theme.inactive : raw
 }
 
@@ -252,10 +264,28 @@ export type PrPillState =
   | undefined
 
 /**
- * Standalone PR Powerline pill: `[◄ PR #n ►]`. Shares the branch pill's
- * background for visual cohesion; the `#n` is coloured by review state.
+ * Wrap already-styled text in an OSC 8 hyperlink so clicking it opens `url`,
+ * when the terminal supports it. Done manually (not via createHyperlink) to
+ * keep the caller's existing color instead of forcing blue.
  */
-export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme): string {
+function linkify(text: string, url: string | undefined): string {
+  if (!url || !supportsHyperlinks()) return text
+  return `${OSC8_START}${url}${OSC8_END}${text}${OSC8_START}${OSC8_END}`
+}
+
+/**
+ * Standalone PR/MR Powerline pill: `[◄ PR #n ►]`. Shares the branch pill's
+ * background for visual cohesion; the `#n` is coloured by review state. The
+ * `labelText` varies by host ("PR" for GitHub/Gitea, "MR" for GitLab). When a
+ * `url` is given, the `#n` becomes a clickable OSC 8 hyperlink.
+ */
+export function buildPrPill(
+  prNumber: number,
+  state: PrPillState,
+  theme: Theme,
+  labelText: 'PR' | 'MR' = 'PR',
+  url?: string,
+): string {
   if (!hasNerdFontGlyphs()) {
     const numberFg =
       state === 'approved'
@@ -267,11 +297,11 @@ export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme):
             : state === 'merged'
               ? theme.merged
               : theme.inactive
-    const num = applyColor(chalk, numberFg, 'fg')(`#${prNumber}`)
-    const label = applyColor(chalk, theme.inactive, 'fg')('PR')
+    const num = linkify(applyColor(chalk, numberFg, 'fg')(`#${prNumber}`), url)
+    const label = applyColor(chalk, theme.inactive, 'fg')(labelText)
     return `[ ${label} ${num} ]`
   }
-  const branchBg = resolveBranchBg(theme)
+  const prBg = resolvePrBg(theme)
   const numberFg =
     state === 'approved'
       ? theme.success
@@ -282,15 +312,15 @@ export function buildPrPill(prNumber: number, state: PrPillState, theme: Theme):
           : state === 'merged'
             ? theme.merged
             : theme.inactive
-  const labelChalk = applyColor(applyColor(chalk, branchBg, 'bg'), theme.inactive, 'fg')
-  const numChalk = applyColor(applyColor(chalk, branchBg, 'bg'), numberFg, 'fg')
-  const capChalk = applyColor(chalk, branchBg, 'fg')
+  const labelChalk = applyColor(applyColor(chalk, prBg, 'bg'), theme.inactive, 'fg')
+  const numChalk = applyColor(applyColor(chalk, prBg, 'bg'), numberFg, 'fg')
+  const capChalk = applyColor(chalk, prBg, 'fg')
 
   // Square (flat) left edge — start the colored block directly; pointed
   // (arrow) right edge.
   return (
     labelChalk(` ${PR_ICON} `) +
-    numChalk(`#${prNumber}`) +
+    linkify(numChalk(`#${prNumber}`), url) +
     labelChalk(' ') +
     capChalk(SEP)
   )

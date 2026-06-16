@@ -600,6 +600,11 @@ export type GlobalConfig = {
 
   // PR status footer configuration (feature-flagged via GrowthBook)
   prStatusFooterEnabled?: boolean // Show PR review status in footer (default: true)
+  // Maps a git remote host to the platform whose CLI resolves its PR/MR status.
+  // Overrides the built-in auto-detection (gitlab.com→gitlab, codeberg.org→gitea,
+  // everything else→github). Use 'none' to silence the pill for a host.
+  // Example: { "git.corp.com": "gitlab", "code.corp.com": "gitea" }
+  prStatusHosts?: Record<string, 'github' | 'gitlab' | 'gitea' | 'none'>
 
   // Tmux live panel visibility (internal-only, toggled via Enter on tmux pill)
   tungstenPanelVisible?: boolean
@@ -802,6 +807,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'flickerFreeMode',
   'permissionExplainerEnabled',
   'prStatusFooterEnabled',
+  'prStatusHosts',
   'remoteControlAtStartup',
   'remoteDialogSeen',
   'knowledgeGraphEnabled',
