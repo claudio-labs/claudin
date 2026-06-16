@@ -2439,12 +2439,13 @@ function PromptInput({
                 : ` ${getFastIconString(true, fastModeCooldown)} `
               : '';
             const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
-            return <Box width="100%" flexDirection="row" justifyContent="space-between">
-                <Box>
+            return <Box width="100%" flexDirection="row">
+                <Box flexShrink={0}>
                   <ProviderModelIndicator nextBg={effort?.bg} />
                   {effort ? <Text>{effort.pill}</Text> : null}
                 </Box>
-                <Box flexDirection="column" alignItems="flex-end">
+                <Box flexGrow={1} flexShrink={1} borderStyle="single" borderBottom borderTop={false} borderLeft={false} borderRight={false} borderDimColor />
+                <Box flexShrink={0}>
                   {bottomRight ? <Text>{bottomRight}</Text> : null}
                 </Box>
               </Box>;
