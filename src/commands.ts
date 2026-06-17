@@ -34,7 +34,6 @@ import breakCache from './commands/break-cache/index.js'
 import cacheProbe from './commands/cache-probe/index.js'
 import cacheStats from './commands/cacheStats/index.js'
 import mcp from './commands/mcp/index.js'
-import mobile from './commands/mobile/index.js'
 import onboarding from './commands/onboarding/index.js'
 import releaseNotes from './commands/release-notes/index.js'
 import rename from './commands/rename/index.js'
@@ -286,7 +285,6 @@ const COMMANDS = memoize((): Command[] => [
   installSlackApp,
   mcp,
   memory,
-  mobile,
   model,
   outputStyle,
   remoteEnv,
@@ -627,7 +625,6 @@ export const REMOTE_SAFE_COMMANDS: Set<Command> = new Set([
   plan, // Plan mode toggle
   keybindings, // Keybinding management
   stickers, // Stickers
-  mobile, // Mobile QR code
 ])
 
 /**
