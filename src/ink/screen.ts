@@ -427,6 +427,21 @@ export function isEmptyCellAt(screen: Screen, x: number, y: number): boolean {
 }
 
 /**
+ * True if every cell from column `x` to the end of row `y` is empty.
+ * Lets the renderer clear a vacated row tail with a single end-of-line erase
+ * (drift-safe) instead of per-cell spaces at model columns. Returns false for
+ * out-of-bounds rows so callers fall back to their normal clear path.
+ */
+export function isRowEmptyFrom(screen: Screen, x: number, y: number): boolean {
+  if (y < 0 || y >= screen.height) return false
+  const base = y * screen.width
+  for (let cx = Math.max(0, x); cx < screen.width; cx++) {
+    if (!isEmptyCellByIndex(screen, base + cx)) return false
+  }
+  return true
+}
+
+/**
  * Check if a Cell (view object) represents an empty cell.
  */
 export function isCellEmpty(screen: Screen, cell: Cell): boolean {

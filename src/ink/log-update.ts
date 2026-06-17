@@ -14,6 +14,7 @@ import {
   diffEach,
   type Hyperlink,
   isEmptyCellAt,
+  isRowEmptyFrom,
   type Screen,
   type StylePool,
   shiftRows,
@@ -23,6 +24,7 @@ import {
   CURSOR_HOME,
   scrollDown as csiScrollDown,
   scrollUp as csiScrollUp,
+  eraseToEndOfLine,
   RESET_SCROLL_REGION,
   setScrollRegion,
 } from './termio/csi.js'
@@ -313,6 +315,9 @@ export class LogUpdate {
     // First pass: render changes to existing rows (rows < prev.screen.height)
     let needsFullReset = false
     let resetTriggerY = -1
+    // Row whose vacated tail we already wiped with an end-of-line erase this
+    // pass — skip its remaining vacated cells.
+    let erasedToEolRow = -1
     diffEach(prev.screen, next.screen, (x, y, removed, added) => {
       // Skip new rows - we'll render them directly after
       if (growing && y >= prev.screen.height) {
@@ -354,6 +359,35 @@ export class LogUpdate {
         needsFullReset = true
         resetTriggerY = y
         return true // early exit
+      }
+
+      // Width-drift-robust tail clear. When prev had a glyph here but next is
+      // empty from x to end-of-row, the per-cell space writes below land at the
+      // MODEL's columns. On terminals that render ambiguous-width glyphs
+      // (←/→/☒/☐) wider than our width model, the physical content drifted
+      // further right and those cells survive as orphans ("S …→" above the
+      // AskUserQuestion nav bar when it shifts rows). One end-of-line erase
+      // wipes the row tail at the terminal's real columns regardless of drift.
+      if (removed && added && isEmptyCellAt(next.screen, x, y)) {
+        if (erasedToEolRow === y) {
+          return // tail already erased this pass
+        }
+        if (isRowEmptyFrom(next.screen, x, y)) {
+          moveCursorTo(screen, x, y)
+          // Reset styles/hyperlinks so the erase clears with the default
+          // background (mirrors the per-cell removed-clear path below).
+          const styleIdToReset = currentStyleId
+          const hyperlinkToReset = currentHyperlink
+          currentStyleId = stylePool.none
+          currentHyperlink = undefined
+          transitionStyle(screen.diff, stylePool, styleIdToReset, stylePool.none)
+          transitionHyperlink(screen.diff, hyperlinkToReset, undefined)
+          // CSI K erases to end-of-line without moving the cursor; the virtual
+          // cursor stays at (x, y) for the next row's relative move.
+          screen.diff.push({ type: 'stdout', content: eraseToEndOfLine() })
+          erasedToEolRow = y
+          return
+        }
       }
 
       moveCursorTo(screen, x, y)
