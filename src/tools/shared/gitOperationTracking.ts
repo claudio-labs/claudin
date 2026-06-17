@@ -26,6 +26,17 @@ function gitCmdRe(subcmd: string, suffix = ''): RegExp {
   )
 }
 
+/**
+ * Strips the bash-output-filter wrapper tags (`<bash-output-filtered …>`,
+ * `</bash-output-filtered>`, and the `bash-output-rewritten` variants) from
+ * command output. The filter wraps stdout, so a `git push` ref line that ends
+ * the body abuts the closing tag (`… -> main</bash-output-filtered>`); without
+ * stripping, `parseGitPushBranch`'s `\S+` capture swallows the tag into the
+ * branch name. Attr values are XML-escaped (no raw `>`), so `[^>]*` is safe.
+ */
+const OUTPUT_MARKER_TAG_RE =
+  /<\/?bash-output-(?:filtered|rewritten)(?:\s[^>]*)?>/g
+
 const GIT_COMMIT_RE = gitCmdRe('commit')
 const GIT_PUSH_RE = gitCmdRe('push')
 const GIT_CHERRY_PICK_RE = gitCmdRe('cherry-pick')
@@ -142,6 +153,9 @@ export function detectGitOperation(
   pr?: { number: number; url?: string; action: PrAction }
 } {
   const result: ReturnType<typeof detectGitOperation> = {}
+  // The bash-output filter may wrap stdout in marker tags; strip them so a
+  // closing tag abutting a parsed token (e.g. branch name) isn't captured.
+  output = output.replace(OUTPUT_MARKER_TAG_RE, '')
   // commit and cherry-pick both produce "[branch sha] msg" output
   const isCherryPick = GIT_CHERRY_PICK_RE.test(command)
   if (GIT_COMMIT_RE.test(command) || isCherryPick) {
