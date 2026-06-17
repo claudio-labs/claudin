@@ -1,3 +1,5 @@
+import { feature } from 'bun:bundle'
+import { isLeanToolPromptFamily } from '../../constants/toolPromptTier.js'
 import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
 
 export const FILE_WRITE_TOOL_NAME = 'Write'
@@ -8,11 +10,24 @@ function getPreReadInstruction(): string {
 }
 
 export function getWriteToolDescription(): string {
+  const lean = feature('LEAN_TOOL_PROMPTS') ? isLeanToolPromptFamily() : false
+  return buildWriteToolDescription(lean)
+}
+
+// Pure builder so tests can render both shapes directly (the lean decision
+// reads global state via getWriteToolDescription). Mirrors buildHarnessItems.
+// The verbose (lean=false) output is byte-identical to the historical prompt.
+export function buildWriteToolDescription(lean: boolean): string {
+  // GATED: gold-plating guardrails redundant for capable families (covered by
+  // the system prompt's altitude principle), kept for weak/unknown families.
+  const guardrails = lean
+    ? ''
+    : `
+- NEVER create documentation files (*.md) or README files unless explicitly requested by the User.
+- Only use emojis if the user explicitly requests it. Avoid writing emojis to files unless asked.`
   return `Writes a file to the local filesystem.
 
 Usage:
 - This tool will overwrite the existing file if there is one at the provided path.${getPreReadInstruction()}
-- Prefer the Edit tool for modifying existing files \u2014 it only sends the diff. Only use this tool to create new files or for complete rewrites.
-- NEVER create documentation files (*.md) or README files unless explicitly requested by the User.
-- Only use emojis if the user explicitly requests it. Avoid writing emojis to files unless asked.`
+- Prefer the Edit tool for modifying existing files — it only sends the diff. Only use this tool to create new files or for complete rewrites.${guardrails}`
 }

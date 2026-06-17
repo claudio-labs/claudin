@@ -69,6 +69,7 @@ const featureFlags: Record<string, boolean> = {
   FAMILY_PROMPT_ADDENDUMS: true,      // Append a small per-family system-prompt block (openai-reasoning/gemini/kimi/glm/codex) — anthropic stays untouched. Gate kept so we can flip OFF for A/B benches.
   ANTI_NARRATION: true,               // Append anti-narration bullets to the universal harness + fill the anthropic family addendum with a transcript-shape contract. Kill switch for narration-cost A/B benches.
   TOOL_BATCHING_NUDGE: true,          // Append a tool-batching directive to the universal harness: map-first, batch independent reads/searches in one turn, serialize only on true data dependency. Targets the 1-file-per-turn round-trip waste seen on Opus 4.7/4.8. Kill switch for round-trip A/B benches.
+  LEAN_TOOL_PROMPTS: true,            // Drop per-tool gold-plating guardrails (NEVER *.md, NEVER new files, emoji rules) from FileEdit/FileWrite for capable families (anthropic/openai-reasoning/gemini/codex); glm/kimi/default keep the verbose form. Gate kept so we can flip OFF for A/B benches.
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────

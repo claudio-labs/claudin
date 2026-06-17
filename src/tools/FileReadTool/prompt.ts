@@ -55,6 +55,7 @@ ${lineFormat}
 - This tool can only read files, not directories. To read a directory, use an ls command via the ${BASH_TOOL_NAME} tool.
 - You will regularly be asked to read screenshots. If the user provides a path to a screenshot, ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths.
 - If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.
+- Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you.
 
 Multi-file investigations. When the task spans more than ~2 files (tracing a feature, mapping a subsystem, finding call sites), prefer one of these over a serial chain of single Reads:
 - Dispatch the Explore agent (via the Agent tool with subagent_type='Explore') with the question — it returns excerpts in one turn and keeps your context clean.

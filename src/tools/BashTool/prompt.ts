@@ -1,5 +1,6 @@
 import { feature } from 'bun:bundle'
 import { prependBullets } from '../../constants/prompts.js'
+import { isLeanToolPromptFamily } from '../../constants/toolPromptTier.js'
 import { getAttributionTexts } from '../../utils/attribution.js'
 import { hasEmbeddedSearchTools } from '../../utils/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from '../../utils/envUtils.js'
@@ -232,7 +233,18 @@ function getSimpleSandboxSection(): string {
   ].join('\n')
 }
 
-export function getSimplePrompt(): string {
+// `leanOverride` is a test seam: getSimplePrompt reads many globals (sandbox,
+// embedded, MONITOR_TOOL, timeouts), so a fully pure builder would be invasive.
+// Production callers pass nothing → the family tier is resolved live.
+export function getSimplePrompt(leanOverride?: boolean): string {
+  // Capable families follow the system prompt's altitude principle on their
+  // own, so per-tool hand-holding (ls-first, quote-paths, sleep coaching) and
+  // the parallelism block (already covered by TOOL_BATCHING_NUDGE) are dropped
+  // for them; glm/kimi/default keep the verbose form.
+  const lean =
+    leanOverride ??
+    (feature('LEAN_TOOL_PROMPTS') ? isLeanToolPromptFamily() : false)
+
   // Ant-native builds alias find/grep to embedded bfs/ugrep in Claude's shell,
   // so we don't steer away from them (and Glob/Grep tools are removed).
   const embedded = hasEmbeddedSearchTools()
@@ -255,7 +267,15 @@ export function getSimplePrompt(): string {
     : '`find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk`, or `echo`'
 
   const multipleCommandsSubitems = [
-    `If the commands are independent and can run in parallel, make multiple ${BASH_TOOL_NAME} tool calls in a single message. Example: if you need to run "git status" and "git diff", send a single message with two ${BASH_TOOL_NAME} tool calls in parallel.`,
+    // GATED: parallel tool-call batching is covered by TOOL_BATCHING_NUDGE for
+    // capable families. The &&/;/newline composition rules below are NOT covered
+    // anywhere else and stay CORE — the BashTool permission/sandbox splitter
+    // (splitCommandWithOperators) is sensitive to how commands are separated.
+    ...(lean
+      ? []
+      : [
+          `If the commands are independent and can run in parallel, make multiple ${BASH_TOOL_NAME} tool calls in a single message. Example: if you need to run "git status" and "git diff", send a single message with two ${BASH_TOOL_NAME} tool calls in parallel.`,
+        ]),
     `If the commands depend on each other and must run sequentially, use a single ${BASH_TOOL_NAME} call with '&&' to chain them together.`,
     "Use ';' only when you need to run commands sequentially but don't care if earlier commands fail.",
     'DO NOT use newlines to separate commands (newlines are ok in quoted strings).',
@@ -284,20 +304,30 @@ export function getSimplePrompt(): string {
   const backgroundNote = getBackgroundUsageNote()
 
   const instructionItems: Array<string | string[]> = [
-    'If your command will create new directories or files, first use this tool to run `ls` to verify the parent directory exists and is the correct location.',
-    'Always quote file paths that contain spaces with double quotes in your command (e.g., cd "path with spaces/file.txt")',
+    // GATED: per-tool hand-holding redundant for capable families.
+    ...(lean
+      ? []
+      : [
+          'If your command will create new directories or files, first use this tool to run `ls` to verify the parent directory exists and is the correct location.',
+          'Always quote file paths that contain spaces with double quotes in your command (e.g., cd "path with spaces/file.txt")',
+        ]),
     'Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of `cd`. You may use `cd` if the User explicitly requests it.',
     `You may specify an optional timeout in milliseconds (up to ${getMaxTimeoutMs()}ms / ${getMaxTimeoutMs() / 60000} minutes). By default, your command will timeout after ${getDefaultTimeoutMs()}ms (${getDefaultTimeoutMs() / 60000} minutes).`,
     ...(backgroundNote !== null ? [backgroundNote] : []),
-    'When issuing multiple commands:',
-    multipleCommandsSubitems,
     // git-specific safety rules are delivered via the bash_git_instructions
     // attachment (production default; emitted once per agentKey, see
     // attachments.ts:3033). When the attachment is gated off the same body
     // is embedded inline via getCommitAndPRInstructions(). Either way, the
     // short bullet list that used to live here was a strict duplicate.
-    'Avoid unnecessary `sleep` commands:',
-    sleepSubitems,
+    'When issuing multiple commands:',
+    multipleCommandsSubitems,
+    // GATED: sleep coaching is weak-model hand-holding.
+    ...(lean
+      ? []
+      : [
+          'Avoid unnecessary `sleep` commands:',
+          sleepSubitems,
+        ]),
     ...(embedded
       ? [
           // bfs (which backs `find`) uses Oniguruma for -regex, which picks the
