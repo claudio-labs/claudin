@@ -188,8 +188,6 @@ type State = {
   needsPlanModeExitAttachment: boolean
   // Track if we need to show the auto mode exit attachment (one-time notification)
   needsAutoModeExitAttachment: boolean
-  // Track if LSP plugin recommendation has been shown this session (only show once)
-  lspRecommendationShownThisSession: boolean
   // SDK init event state - jsonSchema for structured output
   initJsonSchema: Record<string, unknown> | null
   // Registered hooks - SDK callbacks and plugin native hooks
@@ -416,8 +414,6 @@ function getInitialState(): State {
     needsPlanModeExitAttachment: false,
     // Track if we need to show the auto mode exit attachment
     needsAutoModeExitAttachment: false,
-    // Track if LSP plugin recommendation has been shown this session
-    lspRecommendationShownThisSession: false,
     // SDK init event state
     initJsonSchema: null,
     registeredHooks: null,
@@ -1501,15 +1497,6 @@ export function handleAutoModeTransition(
   if (fromIsAuto && !toIsAuto) {
     STATE.needsAutoModeExitAttachment = true
   }
-}
-
-// LSP plugin recommendation session tracking
-export function hasShownLspRecommendationThisSession(): boolean {
-  return STATE.lspRecommendationShownThisSession
-}
-
-export function setLspRecommendationShownThisSession(value: boolean): void {
-  STATE.lspRecommendationShownThisSession = value
 }
 
 // SDK init event state

@@ -227,15 +227,6 @@ export function setupReplMocks(): void {
     () => ({ useLspInitializationNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/useLspPluginRecommendation.js',
-    () => ({
-      useLspPluginRecommendation: () => ({
-        recommendation: null,
-        clearRecommendation: noop,
-      }),
-    }),
-  )
-  mock.module(
     'src/hooks/useClaudeCodeHintRecommendation.js',
     () => ({
       useClaudeCodeHintRecommendation: () => ({

@@ -31,7 +31,6 @@ const realUserSettingsDiag = { ...(await import('./userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsDiag,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
-  getUserLspSettings: () => ({}),
 }))
 
 const mockGetServerForFile = mock((_path: string) => undefined as unknown)

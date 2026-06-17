@@ -255,8 +255,6 @@ import { useMcpConnectivityStatus } from 'src/hooks/notifs/useMcpConnectivitySta
 import { useAutoModeUnavailableNotification } from 'src/hooks/notifs/useAutoModeUnavailableNotification.js';
 import { AUTO_MODE_DESCRIPTION } from 'src/components/AutoModeOptInDialog.js';
 import { useLspInitializationNotification } from 'src/hooks/notifs/useLspInitializationNotification.js';
-import { useLspPluginRecommendation } from 'src/hooks/useLspPluginRecommendation.js';
-import { LspRecommendationMenu } from 'src/components/LspRecommendation/LspRecommendationMenu.js';
 import { useClaudeCodeHintRecommendation } from 'src/hooks/useClaudeCodeHintRecommendation.js';
 import { PluginHintMenu } from 'src/components/ClaudeCodeHint/PluginHintMenu.js';
 import { DesktopUpsellStartup, shouldShowDesktopUpsellStartup } from 'src/components/DesktopUpsell/DesktopUpsellStartup.js';
@@ -578,10 +576,6 @@ export function REPL({
   useOfficialMarketplaceNotification();
   useLspInitializationNotification();
   useTeammateLifecycleNotification();
-  const {
-    recommendation: lspRecommendation,
-    handleResponse: handleLspResponse
-  } = useLspPluginRecommendation();
   const {
     recommendation: hintRecommendation,
     handleResponse: handleHintResponse
@@ -1658,7 +1652,6 @@ export function REPL({
     showIdeOnboarding,
     showEffortCallout,
     showRemoteCallout,
-    lspRecommendation,
     hintRecommendation,
     showDesktopUpsellStartup,
     startupChecksStarted: startupChecksStartedRef.current,
@@ -4217,8 +4210,6 @@ export function REPL({
             exitFlow,
             hintRecommendation,
             handleHintResponse,
-            lspRecommendation,
-            handleLspResponse,
             setShowDesktopUpsellStartup,
             ultraplanPendingChoice,
             ultraplanLaunchPending,
@@ -4240,7 +4231,6 @@ export function REPL({
             EffortCallout,
             RemoteCallout,
             PluginHintMenu,
-            LspRecommendationMenu,
             DesktopUpsellStartup,
             // ULTRAPLAN feature is disabled in the open build; both dialogs
             // are referenced symbolically (never imported) inside the

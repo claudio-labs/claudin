@@ -482,21 +482,12 @@ export const SettingsSchema = lazySchema(() =>
                 'to publish diagnostics so they can be attached to the same turn.',
             ),
         })
-        .catchall(
-          z.object({
-            disabled: z.boolean().optional(),
-            command: z.array(z.string()).min(1).optional(),
-            extensions: z.array(z.string()).optional(),
-          }),
-        )
         .optional()
         .describe(
-          'LSP server configuration. ' +
+          'LSP subsystem configuration. ' +
             'Set enabled:false to disable the entire LSP subsystem (default: true). ' +
             'Set diagnosticsTimeoutMs to tune per-edit diagnostic injection (default 1500). ' +
-            'Other keys = server names. ' +
-            'Set disabled:true to disable a built-in server. ' +
-            'Set command to override or add a server.',
+            'LSP servers themselves are provided exclusively by enabled plugins (.lsp.json).',
         ),
       // Whether to disable all hooks and statusLine
       disableAllHooks: z

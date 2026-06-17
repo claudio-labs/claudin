@@ -1,10 +1,10 @@
 /**
  * Verifies the per-edit LSP diagnostic injection wiring inside FileEditTool.
  *
- * NOTE: We do NOT exercise FileEditTool.call directly here. Other LSP tests in
- * the same shard (e.g. builtinServers.test.ts) globally mock `fs` and
- * `fs/promises`, which leaks across files and breaks any real-fs work in tools
- * tests. Those leaks are pre-existing and out of scope.
+ * NOTE: We do NOT exercise FileEditTool.call directly here. Other tests in the
+ * same shard globally mock `fs` and `fs/promises`, which leaks across files and
+ * breaks any real-fs work in tools tests. Those leaks are pre-existing and out
+ * of scope.
  *
  * Instead, this test covers the integration contract by:
  *   1. Mocking buildPostEditDiagnosticsMessages and ensuring the production

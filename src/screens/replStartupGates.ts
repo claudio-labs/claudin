@@ -5,10 +5,10 @@
  * focus before the user has interacted with the prompt.
  *
  * This addresses the root cause of issue #363: on mount, performStartupChecks
- * triggers plugin loading, which populates trackedFiles, which triggers
- * useLspPluginRecommendation to surface an LSP recommendation dialog. Since
- * promptTypingSuppressionActive is false before the user has typed anything,
- * getFocusedInputDialog() returns the dialog, unmounting PromptInput entirely.
+ * triggers plugin loading, which can surface a recommendation dialog (e.g. the
+ * plugin-hint dialog). Since promptTypingSuppressionActive is false before the
+ * user has typed anything, getFocusedInputDialog() returns the dialog,
+ * unmounting PromptInput entirely.
  *
  * The fix gates startup checks on actual prompt interaction. A pure timeout
  * or grace period is insufficient because pausing before typing would still

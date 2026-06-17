@@ -27,7 +27,6 @@ function baseDeps(): FocusedInputDialogDeps {
     showIdeOnboarding: false,
     showEffortCallout: false,
     showRemoteCallout: false,
-    lspRecommendation: null,
     hintRecommendation: null,
     showDesktopUpsellStartup: false,
     startupChecksStarted: false,
@@ -135,7 +134,6 @@ describe('getFocusedInputDialog', () => {
     d.showIdeOnboarding = true
     d.showEffortCallout = true
     d.showRemoteCallout = true
-    d.lspRecommendation = {}
     d.hintRecommendation = {}
     d.showDesktopUpsellStartup = true
     // startup gate off — low-priority dialogs suppressed
@@ -152,9 +150,6 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBeUndefined()
 
     d.startupChecksStarted = true
-    expect(getFocusedInputDialog(d)).toBe('lsp-recommendation')
-
-    d.lspRecommendation = null
     expect(getFocusedInputDialog(d)).toBe('plugin-hint')
 
     d.hintRecommendation = null

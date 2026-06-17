@@ -4,8 +4,6 @@ import { errorMessage, toError } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
 import { getPluginLspServers } from '../../utils/plugins/lspPluginIntegration.js'
 import { loadAllPluginsCacheOnly } from '../../utils/plugins/pluginLoader.js'
-import { getBuiltinLspServers } from './builtinServers.js'
-import { getUserLspSettings } from './userSettings.js'
 import type { ScopedLspServerConfig } from './types.js'
 
 /**
@@ -48,8 +46,9 @@ async function loadPluginLspServers(): Promise<Record<string, ScopedLspServerCon
 }
 
 /**
- * Get all configured LSP servers from all sources, merged by precedence:
- *   builtin (lowest) < plugin < user (highest)
+ * Get all configured LSP servers. Servers are sourced exclusively from
+ * enabled plugins (matching the openclaude model — no built-in default
+ * server registry and no user/project-settings server definitions).
  *
  * @returns Object containing servers configuration keyed by scoped server name
  */
@@ -59,50 +58,7 @@ export async function getAllLspServers(): Promise<{
   const allServers: Record<string, ScopedLspServerConfig> = {}
 
   try {
-    // 1. Built-ins (lowest precedence)
-    let builtins: Record<string, ScopedLspServerConfig> = {}
-    try {
-      builtins = await getBuiltinLspServers()
-      logForDebugging(`Loaded ${Object.keys(builtins).length} built-in LSP server(s)`)
-    } catch (error) {
-      logError(toError(error))
-      logForDebugging(`Error loading built-in LSP servers: ${errorMessage(error)}`)
-    }
-
-    // 2. Plugin servers (override built-ins of the same name)
-    let pluginServers: Record<string, ScopedLspServerConfig> = {}
-    try {
-      pluginServers = await loadPluginLspServers()
-    } catch (error) {
-      logError(toError(error))
-      logForDebugging(`Error loading plugin LSP servers: ${errorMessage(error)}`)
-    }
-
-    // Merge: plugin wins over builtin on key collision
-    Object.assign(allServers, builtins, pluginServers)
-
-    // 3. User settings (highest precedence — can disable or add servers)
-    const userSettings = getUserLspSettings()
-    for (const [key, cfg] of Object.entries(userSettings)) {
-      if (cfg.disabled) {
-        delete allServers[key]
-        continue
-      }
-      if (cfg.command && cfg.command.length > 0) {
-        const [command, ...args] = cfg.command
-        // Register under the bare key so user commands replace (not coexist with) a same-name builtin/plugin
-        allServers[key] = {
-          command: command as string,
-          args,
-          extensionToLanguage: Object.fromEntries(
-            (cfg.extensions ?? []).map(e => [e, e.startsWith('.') ? e.slice(1) : e]),
-          ),
-          scope: 'dynamic',
-          source: 'user',
-        }
-      }
-    }
-
+    Object.assign(allServers, await loadPluginLspServers())
     logForDebugging(`Total LSP servers loaded: ${Object.keys(allServers).length}`)
   } catch (error) {
     logError(toError(error))

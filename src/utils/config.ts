@@ -572,11 +572,6 @@ export type GlobalConfig = {
   officialMarketplaceAutoInstallLastAttemptTime?: number // Timestamp of last attempt
   officialMarketplaceAutoInstallNextRetryTime?: number // Earliest time to retry again
 
-  // LSP plugin recommendation preferences
-  lspRecommendationDisabled?: boolean // Disable all LSP plugin recommendations
-  lspRecommendationNeverPlugins?: string[] // Plugin IDs to never suggest
-  lspRecommendationIgnoredCount?: number // Track ignored recommendations (stops after 5)
-
   // Claude Code hint protocol state (<claude-code-hint /> tags from CLIs/SDKs).
   // Nested by hint type so future types (docs, mcp, ...) slot in without new
   // top-level keys.
@@ -796,12 +791,6 @@ export const GLOBAL_CONFIG_KEYS = [
   'inputNeededNotifEnabled',
   'agentPushNotifEnabled',
   'respectGitignore',
-  'lspRecommendationDisabled',
-  'lspRecommendationNeverPlugins',
-  'lspRecommendationIgnoredCount',
-  'lspWorkspaceEditConfirmThreshold',
-  'lspWorkspaceEditMaxFiles',
-  'lspWorkspaceEditMaxBytes',
   'copyFullResponse',
   'copyOnSelect',
   'flickerFreeMode',

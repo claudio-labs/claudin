@@ -28,7 +28,6 @@ export type FocusedInputDialog =
   | 'model-switch'
   | 'effort-callout'
   | 'remote-callout'
-  | 'lsp-recommendation'
   | 'plugin-hint'
   | 'desktop-upsell'
   | 'ultraplan-choice'
@@ -65,7 +64,6 @@ export type FocusedInputDialogDeps = {
   showIdeOnboarding: boolean
   showEffortCallout: boolean
   showRemoteCallout: boolean
-  lspRecommendation: unknown
   hintRecommendation: unknown
   showDesktopUpsellStartup: boolean
   // Startup gate for the low-priority suggestion dialogs (issue #363).
@@ -106,11 +104,8 @@ export function getFocusedInputDialog(
   // Remote callout (shown once before first bridge enable).
   if (allowDialogsWithAnimation && d.showRemoteCallout) return 'remote-callout'
 
-  // LSP plugin recommendation (lowest priority - non-blocking suggestion).
+  // Plugin hint from CLI/SDK stderr.
   // Suppress during startup window to prevent stealing focus from the prompt (issue #363).
-  if (allowDialogsWithAnimation && d.lspRecommendation && d.startupChecksStarted) return 'lsp-recommendation'
-
-  // Plugin hint from CLI/SDK stderr (same priority band as LSP rec).
   if (allowDialogsWithAnimation && d.hintRecommendation && d.startupChecksStarted) return 'plugin-hint'
 
   // Desktop app upsell (max 3 launches, lowest priority).

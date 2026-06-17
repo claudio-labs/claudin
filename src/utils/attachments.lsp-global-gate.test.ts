@@ -22,7 +22,6 @@ const realUserSettingsAttachGate = { ...(await import('../services/lsp/userSetti
 mock.module('../services/lsp/userSettings.js', () => ({
   ...realUserSettingsAttachGate,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
-  getUserLspSettings: mock(() => ({})),
 }))
 
 function makeContext(toolNames: string[]): ToolUseContext {
