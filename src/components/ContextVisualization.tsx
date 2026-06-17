@@ -176,7 +176,7 @@ export function ContextVisualization(t0) {
     }
     let t12;
     if ($[24] !== t11) {
-      t12 = <Box flexDirection="column" flexShrink={0}>{t11}</Box>;
+      t12 = <Box flexDirection="column" flexShrink={0} marginLeft={-1}>{t11}</Box>;
       $[24] = t11;
       $[25] = t12;
     } else {
@@ -476,7 +476,7 @@ function _temp6(c_1) {
   return c_1.name === "Free space";
 }
 function _temp5(row, rowIndex) {
-  return <Box key={rowIndex} flexDirection="row" marginLeft={-1}>{row.map(_temp4)}</Box>;
+  return <Box key={rowIndex} flexDirection="row">{row.map(_temp4)}</Box>;
 }
 function _temp4(square, colIndex) {
   if (square.categoryName === "Free space") {
