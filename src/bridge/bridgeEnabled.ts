@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle'
 import {
-  checkGate_CACHED_OR_BLOCKING,
   getDynamicConfig_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from '../services/analytics/growthbook.js'
@@ -14,72 +13,55 @@ import { isEnvTruthy } from '../utils/envUtils.js'
 import { lt } from '../utils/semver.js'
 
 /**
- * Runtime check for bridge mode entitlement.
+ * Whether this build has a usable bridge credential.
  *
- * Remote Control requires a claude.ai subscription (the bridge auths to CCR
- * with the claude.ai OAuth token). isClaudeAISubscriber() excludes
- * Bedrock/Vertex/Foundry, apiKeyHelper/gateway deployments, env-var API keys,
- * and Console API logins — none of which have the OAuth token CCR needs.
- * See github.com/deshaw/anthropic-issues/issues/24.
+ * On the EXPERIMENT branch (`BRIDGE_MODE: true`) the bridge is gated purely on
+ * having a token CCR will accept — no extra env opt-in. That is either a
+ * claude.ai web-login OAuth token (`claudeAiOauth`) with the `user:profile`
+ * scope, or the internal-only `CLAUDE_BRIDGE_OAUTH_TOKEN` dev override. These
+ * are exactly the two sources `getBridgeAccessToken()` (bridgeConfig.ts) sends
+ * to CCR, so the gate stays consistent with what the bridge authenticates with.
  *
- * The `feature('BRIDGE_MODE')` guard ensures the GrowthBook string literal
- * is only referenced when bridge mode is enabled at build time.
+ * We deliberately do NOT use upstream's `isClaudeAISubscriber()`: it also
+ * requires the *inference* provider to be claude.ai-auth and returns false when
+ * an env `ANTHROPIC_API_KEY` (or other external key) is present. The bridge
+ * token is independent of which provider runs inference, so this decouples them.
+ *
+ * Safety: `BRIDGE_MODE` is false in the release build, so every caller below is
+ * tree-shaken there — this path is only ever live on the experiment branch.
+ */
+function hasBridgeCredential(): boolean {
+  return hasProfileScope() || !!process.env.CLAUDE_BRIDGE_OAUTH_TOKEN
+}
+
+/**
+ * Runtime check for bridge mode entitlement: BRIDGE_MODE built in AND a usable
+ * bridge credential present (see hasBridgeCredential).
  */
 export function isBridgeEnabled(): boolean {
-  // Positive ternary pattern — see docs/feature-gating.md.
-  // Negative pattern (if (!feature(...)) return) does not eliminate
-  // inline string literals from external builds.
-  return feature('BRIDGE_MODE')
-    ? isClaudeAISubscriber() &&
-        getFeatureValue_CACHED_MAY_BE_STALE('tengu_ccr_bridge', false)
-    : false
+  // Positive ternary pattern (not `if (!feature(...)) return`) so the bridge
+  // entitlement path is only referenced when BRIDGE_MODE is built in.
+  return feature('BRIDGE_MODE') ? hasBridgeCredential() : false
 }
 
 /**
- * Blocking entitlement check for Remote Control.
- *
- * Returns cached `true` immediately (fast path). If the disk cache says
- * `false` or is missing, awaits GrowthBook init and fetches the fresh
- * server value (slow path, max ~5s), then writes it to disk.
- *
- * Use at entitlement gates where a stale `false` would unfairly block access.
- * For user-facing error paths, prefer `getBridgeDisabledReason()` which gives
- * a specific diagnostic. For render-body UI visibility checks, use
- * `isBridgeEnabled()` instead.
+ * Async-shaped alias of isBridgeEnabled() for the call sites that await an
+ * entitlement check. Upstream awaited a GrowthBook server round-trip; the
+ * claudin gate is purely local, so there is nothing to await.
  */
 export async function isBridgeEnabledBlocking(): Promise<boolean> {
-  return feature('BRIDGE_MODE')
-    ? isClaudeAISubscriber() &&
-        (await checkGate_CACHED_OR_BLOCKING('tengu_ccr_bridge'))
-    : false
+  return isBridgeEnabled()
 }
 
 /**
- * Diagnostic message for why Remote Control is unavailable, or null if
- * it's enabled. Call this instead of a bare `isBridgeEnabledBlocking()`
- * check when you need to show the user an actionable error.
- *
- * The GrowthBook gate targets on organizationUUID, which comes from
- * config.oauthAccount — populated by /api/oauth/profile during login.
- * That endpoint requires the user:profile scope. Tokens without it
- * (setup-token, CLAUDE_CODE_OAUTH_TOKEN env var, or pre-scope-expansion
- * logins) leave oauthAccount unpopulated, so the gate falls back to
- * false and users see a dead-end "not enabled" message with no hint
- * that re-login would fix it. See CC-1165 / gh-33105.
+ * Diagnostic message for why Remote Control is unavailable, or null if it's
+ * enabled. Call this (instead of a bare `isBridgeEnabled()`) when you need to
+ * show the user an actionable error.
  */
 export async function getBridgeDisabledReason(): Promise<string | null> {
   if (feature('BRIDGE_MODE')) {
-    if (!isClaudeAISubscriber()) {
-      return 'Remote Control requires a claude.ai subscription. Run `claude auth login` to sign in with your claude.ai account.'
-    }
-    if (!hasProfileScope()) {
-      return 'Remote Control requires a full-scope login token. Long-lived tokens (from `claude setup-token` or CLAUDE_CODE_OAUTH_TOKEN) are limited to inference-only for security reasons. Run `claude auth login` to use Remote Control.'
-    }
-    if (!getOauthAccountInfo()?.organizationUuid) {
-      return 'Unable to determine your organization for Remote Control eligibility. Run `claude auth login` to refresh your account information.'
-    }
-    if (!(await checkGate_CACHED_OR_BLOCKING('tengu_ccr_bridge'))) {
-      return 'Remote Control is not yet enabled for your account.'
+    if (!hasBridgeCredential()) {
+      return 'Remote Control needs an Anthropic web login (a claude.ai OAuth token with the user:profile scope). Run `/provider` and sign in with your claude.ai account. Note: an inference API key alone is not enough — the bridge token is separate.'
     }
     return null
   }
@@ -87,31 +69,14 @@ export async function getBridgeDisabledReason(): Promise<string | null> {
 }
 
 // try/catch: main.tsx:5698 calls isBridgeEnabled() while defining the Commander
-// program, before enableConfigs() runs. isClaudeAISubscriber() → getGlobalConfig()
-// throws "Config accessed before allowed" there. Pre-config, no OAuth token can
-// exist anyway — false is correct. Same swallow getFeatureValue_CACHED_MAY_BE_STALE
-// already does at growthbook.ts:775-780.
-function isClaudeAISubscriber(): boolean {
-  try {
-    return authModule.isClaudeAISubscriber()
-  } catch {
-    return false
-  }
-}
+// program, before enableConfigs() runs. hasProfileScope() → getClaudeAIOAuthTokens()
+// → getGlobalConfig() can throw "Config accessed before allowed" there. Pre-config,
+// no OAuth token can exist anyway — false is correct.
 function hasProfileScope(): boolean {
   try {
     return authModule.hasProfileScope()
   } catch {
     return false
-  }
-}
-function getOauthAccountInfo(): ReturnType<
-  typeof authModule.getOauthAccountInfo
-> {
-  try {
-    return authModule.getOauthAccountInfo()
-  } catch {
-    return undefined
   }
 }
 
