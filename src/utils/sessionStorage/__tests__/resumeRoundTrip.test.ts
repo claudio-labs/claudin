@@ -87,6 +87,13 @@ afterAll(() => {
     delete process.env.TEST_ENABLE_SESSION_PERSISTENCE
   else process.env.TEST_ENABLE_SESSION_PERSISTENCE = ORIGINAL_TEST_PERSIST
   process.chdir(ORIGINAL_CWD)
+  // beforeEach pinned the project anchor to a now-deleted tmpDir via
+  // setOriginalCwd(); restore it and clear the project/session singletons so
+  // later files (e.g. cost-tracker.projectTotals) don't derive totals from a
+  // stale session left in this worker.
+  setOriginalCwd(ORIGINAL_CWD)
+  resetStateForTests()
+  resetProjectForTesting()
   resetGlobalConfigForTests()
 })
 

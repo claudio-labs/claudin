@@ -30,6 +30,36 @@ import type { LogOption } from '../../../types/logs.js'
 
 const calls: string[] = []
 
+// Capture real modules BEFORE mocking so afterAll can restore them. mock.restore()
+// only resets mock()/spyOn spies — it does NOT revert mock.module(), so without
+// these the stubs (notably bootstrap/state.js with getOriginalCwd → '/tmp/test'
+// and a no-op switchSession, plus sessionStorage.js) leaked into later files in
+// the same worker and corrupted their transcript-path / project-totals logic.
+const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all(
+  [
+    '../../../utils/conversationRecovery.js',
+    '../../../utils/sessionStart.js',
+    '../../../utils/hooks.js',
+    '../../../utils/plans.js',
+    '../../../utils/sessionRestore.js',
+    '../../../utils/concurrentSessions.js',
+    '../../../utils/fileHistory.js',
+    '../../../utils/sessionStorage.js',
+    '../../../tasks/RemoteAgentTask/RemoteAgentTask.js',
+    '../../../utils/worktree.js',
+    '../../../bootstrap/state.js',
+    '../../../cost-tracker.js',
+    '../../../utils/asciicast.js',
+    '../../../utils/toolResultStorage.js',
+    '../../../services/analytics/index.js',
+    '../../../utils/messages.js',
+    '../../../types/ids.js',
+  ].map(
+    async spec =>
+      [spec, { ...(await import(spec)) }] as [string, Record<string, unknown>],
+  ),
+)
+
 mock.module('../../../utils/conversationRecovery.js', () => ({
   deserializeMessages: mock((m: unknown[]) => {
     calls.push('deserializeMessages')
@@ -243,6 +273,10 @@ beforeAll(() => {
 
 afterAll(() => {
   mock.restore()
+  // mock.restore() does not revert mock.module(); re-install the real modules.
+  for (const [spec, real] of REAL_MODULES) {
+    mock.module(spec, () => real)
+  }
 })
 
 describe('resumeSession', () => {

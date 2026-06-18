@@ -3,25 +3,25 @@
 exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
 "       
 ▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudio
+▐█████▌   Not configured · claude-sonnet-4-6
+ ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
-                                                                               ~/projects/claudio 
-  ? for shortcuts                                                               ◐ medium · /effort"
+ ◐ medium ──────────────────────────────────────────────────────────────────── ~/projects/claudin 
+? for shortcuts"
 `;
 
 exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent context) 1`] = `
 "       
 ▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudio
+▐█████▌   Not configured · claude-sonnet-4-6
+ ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
-                                                                               ~/projects/claudio 
-  ? for shortcuts                                                               ◐ medium · /effort"
+ ◐ medium ──────────────────────────────────────────────────────────────────── ~/projects/claudin 
+? for shortcuts"
 `;

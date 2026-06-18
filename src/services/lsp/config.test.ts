@@ -29,11 +29,15 @@ mock.module('../../utils/plugins/pluginLoader.js', () => ({
   loadAllPluginsCacheOnly: mockLoadPlugins,
 }))
 
-const realLogConfig = await import('../../utils/log.js')
+// Snapshot real modules with a plain-object copy BEFORE mocking. `await import`
+// returns a live namespace that mock.module() rewrites in place, so restoring to
+// the namespace would re-apply the stub (e.g. a stripped errors.js missing
+// isENOENT, which broke GlobTool/FileReadTool in later files).
+const realLogConfig = { ...(await import('../../utils/log.js')) }
 mock.module('../../utils/log.js', () => ({ ...realLogConfig, logError: mock(() => {}) }))
-const realDebugConfigTest = await import('../../utils/debug.js')
+const realDebugConfigTest = { ...(await import('../../utils/debug.js')) }
 mock.module('../../utils/debug.js', () => ({ ...realDebugConfigTest, logForDebugging: mock(() => {}), logAntError: mock(() => {}) }))
-const realErrorsConfigTest = await import('../../utils/errors.js')
+const realErrorsConfigTest = { ...(await import('../../utils/errors.js')) }
 class _ClaudeError extends Error {}
 class _MalformedCommandError extends Error {}
 class _AbortError extends Error {}
@@ -124,6 +128,9 @@ describe('getAllLspServers — plugin-only', () => {
 // ---------------------------------------------------------------------------
 afterAll(() => {
   mock.module('../../utils/debug.js', () => realDebugConfigTest)
+  mock.module('src/utils/debug.js', () => realDebugConfigTest)
   mock.module('../../utils/errors.js', () => realErrorsConfigTest)
-  mock.module('../../utils/log.js', () => ({ ...realLogConfig, logError: () => {} }))
+  mock.module('src/utils/errors.js', () => realErrorsConfigTest)
+  mock.module('../../utils/log.js', () => realLogConfig)
+  mock.module('src/utils/log.js', () => realLogConfig)
 })

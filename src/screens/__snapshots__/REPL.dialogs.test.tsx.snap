@@ -3,45 +3,45 @@
 exports[`<REPL> dialogs baseline disabled prop (suppresses prompt, dialog container still mounts) 1`] = `
 "       
 ▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-opus-4-8[1m]
+▐█████▌   Not configured · claude-sonnet-4-6
  ▘▘ ▝▝    ~/projects/claudin"
 `;
 
 exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1`] = `
 "       
 ▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudin
-
-────────────────────────────────────────────────────────────────────────────────────────────────────
-❯
-
-                                                                               ~/projects/claudin 
-  ? for shortcuts                                                               ◐ medium · /effort"
-`;
-
-exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path reachable) 1`] = `
-"       
-▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-opus-4-8[1m]
- ▘▘ ▝▝    ~/projects/claudin
-
-────────────────────────────────────────────────────────────────────────────────────────────────────
-❯
-
-                                                                               ~/projects/claudin 
-  ? for shortcuts                                                               ◐ medium · /effort"
-`;
-
-exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 2`] = `
-"       
-▐▛███▜▌   Claudin v0.0.0-test
 ▐█████▌   Not configured · claude-sonnet-4-6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
 
-                                                                               ~/projects/claudin 
-  ? for shortcuts                                                                 ● high · /effort"
+ ◐ medium ──────────────────────────────────────────────────────────────────── ~/projects/claudin 
+? for shortcuts"
+`;
+
+exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path reachable) 1`] = `
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-sonnet-4-6
+ ▘▘ ▝▝    ~/projects/claudin
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+ ◐ medium ──────────────────────────────────────────────────────────────────── ~/projects/claudin 
+? for shortcuts"
+`;
+
+exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 2`] = `
+"       
+▐▛███▜▌   Claudin vtest-version
+▐█████▌   Not configured · claude-sonnet-4-6
+ ▘▘ ▝▝    ~/projects/claudin
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+
+ ◐ medium ──────────────────────────────────────────────────────────────────── ~/projects/claudin 
+? for shortcuts"
 `;

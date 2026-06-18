@@ -21,22 +21,39 @@ type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> 
 
 let resolvedOverride: ResolvedProvider = null
 
+// Anthropic-transport effort is driven by the /effort slider setting
+// (getInitialEffortSetting), not provider.extras — see #61. Override it here
+// so the "effort token" test can exercise a non-default level deterministically.
+const realEffort = { ...(await import('../utils/effort.js')) }
+const realEffortSnapshot = { ...realEffort }
+let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
+
 mock.module('../services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
 
+mock.module('../utils/effort.js', () => ({
+  ...realEffortSnapshot,
+  getInitialEffortSetting: () =>
+    effortOverride ?? realEffortSnapshot.getInitialEffortSetting(),
+}))
+
 afterAll(() => {
   mock.module('../services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('../utils/effort.js', () => realEffortSnapshot)
+  mock.module('src/utils/effort.js', () => realEffortSnapshot)
 })
 
 describe('buildStartupBannerLines', () => {
   beforeEach(() => {
     resolvedOverride = null
+    effortOverride = undefined
   })
 
   afterEach(() => {
     resolvedOverride = null
+    effortOverride = undefined
   })
 
   it('renders a "Not configured" banner when no provider profile exists', async () => {
@@ -84,6 +101,8 @@ describe('buildStartupBannerLines', () => {
       apiKey: 'test',
       extras: { reasoningEffort: 'high' },
     }
+    // Anthropic effort is sourced from the /effort slider, not provider.extras.
+    effortOverride = 'high'
 
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
     const lines = buildStartupBannerLines()
@@ -168,10 +187,12 @@ describe('buildStartupBannerLines', () => {
 describe('<StartupBanner />', () => {
   beforeEach(() => {
     resolvedOverride = null
+    effortOverride = undefined
   })
 
   afterEach(() => {
     resolvedOverride = null
+    effortOverride = undefined
   })
 
   it('renders the banner content when mounted in the Ink tree', async () => {

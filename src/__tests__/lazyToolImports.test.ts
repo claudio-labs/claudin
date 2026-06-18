@@ -46,66 +46,66 @@ type Candidate = {
 const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/TaskCreateTool/TaskCreateTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   {
     modulePath: 'src/tools/TaskGetTool/TaskGetTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   {
     modulePath: 'src/tools/TaskUpdateTool/TaskUpdateTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   {
     modulePath: 'src/tools/TaskListTool/TaskListTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   {
     modulePath: 'src/tools/EnterWorktreeTool/EnterWorktreeTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   {
     modulePath: 'src/tools/ExitWorktreeTool/ExitWorktreeTool',
-    current: ['src/tools.ts'],
-    goal: ['src/tools.ts'],
+    current: [],
+    goal: [],
   },
   // One extra value importer (ToolSelector). Easy refactor — name-constant swap.
   {
     modulePath: 'src/tools/TaskOutputTool/TaskOutputTool',
-    current: ['src/components/agents/ToolSelector.tsx', 'src/tools.ts'],
+    current: ['src/components/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/TaskStopTool/TaskStopTool',
-    current: ['src/components/agents/ToolSelector.tsx', 'src/tools.ts'],
+    current: ['src/components/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/WebSearchTool/WebSearchTool',
-    current: ['src/components/agents/ToolSelector.tsx', 'src/tools.ts'],
+    current: ['src/components/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   // ToolSearch is pulled by compact.ts as a value import — needs audit.
   {
     modulePath: 'src/tools/ToolSearchTool/ToolSearchTool',
-    current: ['src/services/compact/compact.ts', 'src/tools.ts'],
+    current: ['src/services/compact/compact.ts'],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/BriefTool/BriefTool',
-    current: ['src/commands/brief.ts', 'src/tools.ts'],
+    current: ['src/commands/brief.ts'],
     goal: ['src/tools.ts'],
   },
   // AgentTool: only one cross-importer beyond tools.ts — REPLTool's
   // primitiveTools (REPL VM exposes Agent for inline calls).
   {
     modulePath: 'src/tools/AgentTool/AgentTool',
-    current: ['src/tools.ts', 'src/tools/REPLTool/primitiveTools.ts'],
+    current: ['src/tools/REPLTool/primitiveTools.ts'],
     goal: ['src/tools.ts'],
   },
   // Permission-request candidates: PermissionRequest.tsx uses identity-
@@ -119,9 +119,7 @@ const CANDIDATES: Candidate[] = [
       'src/components/agents/ToolSelector.tsx',
       'src/components/permissions/PermissionRequest.tsx',
       'src/components/permissions/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
-      'src/components/permissions/rules/PermissionRuleInput.tsx',
-      'src/tools.ts',
-    ],
+      'src/components/permissions/rules/PermissionRuleInput.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
@@ -129,9 +127,7 @@ const CANDIDATES: Candidate[] = [
     current: [
       'src/components/agents/ToolSelector.tsx',
       'src/components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/tools.ts',
-      'src/tools/REPLTool/primitiveTools.ts',
+      'src/components/permissions/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
     ],
     goal: ['src/tools.ts'],
   },
@@ -139,23 +135,19 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/SkillTool/SkillTool',
     current: [
       'src/components/permissions/PermissionRequest.tsx',
-      'src/components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx',
-      'src/tools.ts',
-    ],
+      'src/components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/AskUserQuestionTool/AskUserQuestionTool',
     current: [
       'src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/tools.ts',
-    ],
+      'src/components/permissions/PermissionRequest.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/EnterPlanModeTool/EnterPlanModeTool',
-    current: ['src/components/permissions/PermissionRequest.tsx', 'src/tools.ts'],
+    current: ['src/components/permissions/PermissionRequest.tsx'],
     goal: ['src/tools.ts'],
   },
   // ExitPlanModeV2Tool — `ToolSelector.tsx` and `messages/*.ts` use
@@ -164,9 +156,7 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/tools.ts',
-      'src/utils/messages/attachments.ts',
+      'src/components/permissions/PermissionRequest.tsx',      'src/utils/messages/attachments.ts',
       'src/utils/messages/planMode.ts',
     ],
     goal: ['src/tools.ts'],
@@ -176,18 +166,14 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',
-      'src/tools.ts',
-    ],
+      'src/services/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',
-      'src/tools.ts',
-    ],
+      'src/services/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },
 ]

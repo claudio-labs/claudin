@@ -48,6 +48,10 @@ describe('prefetchOfficialMcpUrls', () => {
     delete process.env.CLAUDE_CODE_USE_OPENAI
     delete process.env.CLAUDE_CODE_USE_GEMINI
     delete process.env.CLAUDE_CODE_USE_GITHUB
+    // The registry prefetch is nonessential startup traffic, suppressed under
+    // Claudin's default essential-traffic privacy level. Opt back in so this
+    // test can exercise the actual fetch path.
+    process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC = '0'
 
     mock.module('../../utils/model/providers.js', () => ({
       getAPIProvider: () => 'firstParty',

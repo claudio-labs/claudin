@@ -59,3 +59,15 @@
 4207    run_before_parse                        default Commander parse
 4209    run_after_parse                         default Commander parse
 4212    main_after_run                          return path B (direct-connect)
+
+# --- 11g split: trust + onboarding extracted to src/main/action/ ---
+# Line numbers track the post-split locations; only name presence is asserted.
+505     action_after_agent_setup                src/main.tsx
+539     action_after_trust_onboarding           src/main.tsx
+73      trust_onboarding_start                  src/main/action/trustAndOnboarding.ts
+81      trust_render_ctx_ready                  src/main/action/trustAndOnboarding.ts
+83      trust_ink_imported                      src/main/action/trustAndOnboarding.ts
+85      trust_ink_root_created                  src/main/action/trustAndOnboarding.ts
+102     trust_setup_screens_done                src/main/action/trustAndOnboarding.ts
+204     trust_before_org_validation             src/main/action/trustAndOnboarding.ts
+206     trust_after_org_validation              src/main/action/trustAndOnboarding.ts

@@ -1,4 +1,18 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  test,
+} from 'bun:test'
+
+// Capture real modules before mocking so afterAll can restore them — otherwise
+// the partial fsOperations mock (only `stat`, and reset to return undefined by
+// afterEach) leaks into every later test file that calls getFsImplementation().
+const realPdf = { ...(await import('./pdf.js')) }
+const realFsOperations = { ...(await import('./fsOperations.js')) }
 
 const pdfPageCountFake = mock(async (_: string) => null as number | null)
 const fsStatFake = mock(async (_: string) =>
@@ -93,4 +107,11 @@ describe('tryGetPDFReference', () => {
     const out = await tryGetPDFReference('/tmp/REPORT.PDF')
     expect(out?.type).toBe('pdf_reference')
   })
+})
+
+afterAll(() => {
+  mock.module('./pdf.js', () => realPdf)
+  mock.module('src/utils/pdf.js', () => realPdf)
+  mock.module('./fsOperations.js', () => realFsOperations)
+  mock.module('src/utils/fsOperations.js', () => realFsOperations)
 })

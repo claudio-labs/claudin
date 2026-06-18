@@ -13,6 +13,12 @@ import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from './ProviderManager.js'
 import { AppStateProvider } from '../state/AppState.js'
 
+// Snapshot the real providerDiscovery module so the per-test mock can keep its
+// pure helpers (rankOllamaModels / recommendOllamaModel — used by the Ollama
+// model-selection flow) while overriding only the network probe. Without them
+// the partial mock left those exports undefined and the flow threw mid-render.
+const realProviderDiscovery = { ...(await import('../utils/providerDiscovery.js')) }
+
 const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
 
@@ -119,6 +125,7 @@ const PRESET_ORDER = [
   'AWS Bedrock',
   'Bankr',
   'Codex OAuth',
+  'xAI / Grok (OAuth)',
   'GitHub Copilot',
   'DeepSeek',
   'Google Gemini',
@@ -288,6 +295,7 @@ function mockProviderManagerDependencies(
   })
 
   mock.module('../utils/providerDiscovery.js', () => ({
+    ...realProviderDiscovery,
     probeOllamaGenerationReadiness:
       options?.probeOllamaGenerationReadiness ??
       (async () => ({

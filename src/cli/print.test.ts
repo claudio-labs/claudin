@@ -11,6 +11,8 @@
  */
 import { afterAll, describe, expect, mock, test } from 'bun:test'
 
+import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
+
 // Mocks must register before the SUT is imported. Imports are inside
 // describe blocks so each group can stage its own boundary mocks.
 
@@ -509,4 +511,7 @@ afterAll(() => {
   // leak into other test files sharing this `bun test` process.
   mock.module('src/services/mcp/client.js', () => realMcpClient)
   mock.module('src/services/mcp/config.js', () => realMcpConfig)
+  // The headless print flow leaves entries in the shared command queue; drain
+  // it so a later <REPL> mount doesn't process an orphaned queued input.
+  resetCommandQueue()
 })

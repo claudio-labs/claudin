@@ -29,21 +29,50 @@ function returnEmptyObject(): Record<string, never> {
   return {}
 }
 
+// The footer effort indicator resolves from CLAUDE_CODE_EFFORT_LEVEL →
+// appState → settings.json. Left unpinned, snapshots capture the developer's
+// personal `effortLevel` (e.g. "high") in isolation but the clean default
+// ("medium") under the full suite, making them non-deterministic. Pin the env
+// override so the rendered tree is stable regardless of ambient settings.
+const REPL_SNAPSHOT_EFFORT = 'medium'
+const REPL_SNAPSHOT_MODEL = 'claude-sonnet-4-6'
+let savedEffortEnv: string | undefined
+let effortEnvWasSet = false
+
+// Snapshot the real hook module so teardown can restore it (mock.restore()
+// does not revert mock.module()), preventing the pinned model from leaking.
+const realUseMainLoopModel = { ...(await import('../../hooks/useMainLoopModel.js')) }
+
 export function setupReplMocks(): void {
+  savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
+  effortEnvWasSet = true
+  process.env.CLAUDE_CODE_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
+
   // MACRO.* is a build-time replacement; in unit tests there's no bundler,
-  // so REPL reads from globalThis.MACRO at runtime. Mirror what
-  // StartupBanner.test.tsx does.
+  // so REPL reads from globalThis.MACRO at runtime. Pin it UNCONDITIONALLY so
+  // the banner version is deterministic — an earlier test in the same worker
+  // may have already installed a different MACRO (e.g. DISPLAY_VERSION
+  // '0.0.0-test'), which the prior `typeof VERSION === 'string'` guard would
+  // have let leak through into these snapshots.
   const macro = (globalThis as Record<string, unknown>).MACRO as
     | Record<string, unknown>
     | undefined
-  if (!macro || typeof macro.VERSION !== 'string') {
-    ;(globalThis as Record<string, unknown>).MACRO = {
-      VERSION: 'test-version',
-      DISPLAY_VERSION: 'test-version',
-      BUILD_TIME: 'test-build-time',
-      ...(macro ?? {}),
-    }
+  ;(globalThis as Record<string, unknown>).MACRO = {
+    ...(macro ?? {}),
+    VERSION: 'test-version',
+    DISPLAY_VERSION: 'test-version',
+    BUILD_TIME: 'test-build-time',
   }
+
+  // The banner model comes from useMainLoopModel() → active profile / config,
+  // which resolves to the developer's personal model in isolation but the
+  // clean default under the full suite. Pin it so snapshots are stable.
+  mock.module('src/hooks/useMainLoopModel.js', () => ({
+    useMainLoopModel: () => REPL_SNAPSHOT_MODEL,
+  }))
+  mock.module('../../hooks/useMainLoopModel.js', () => ({
+    useMainLoopModel: () => REPL_SNAPSHOT_MODEL,
+  }))
 
   // Side-effecting service: starts an interval that keeps the OS awake.
   mock.module('src/services/preventSleep.js', () => ({
@@ -173,13 +202,13 @@ export function setupReplMocks(): void {
     startBackgroundHousekeeping: () => () => undefined,
   }))
 
-  // Notifier — sends OS notifications.
-  mock.module('src/services/notifier.js', () => ({
-    sendNotification: noop,
-  }))
-  mock.module('../services/notifier.js', () => ({
-    sendNotification: noop,
-  }))
+  // Notifier — intentionally NOT module-mocked. Every hook that actually
+  // *calls* sendNotification (useAwaySummary, useInstallMessages, the
+  // notifs/* bundle, etc.) is already stubbed to a no-op above, so the real
+  // notifier is never invoked during a snapshot mount. Mocking the whole
+  // notifier.js module here used to leak: mock.module() persists across files
+  // (teardown's mock.restore() does not undo it), and the stub then poisoned
+  // notifier.platform.test.ts, which imports the real ./notifier.js as its SUT.
 
   // Session start hooks — runs user-defined commands.
   mock.module('src/utils/sessionStart.js', () => ({
@@ -310,6 +339,17 @@ export function setupReplMocks(): void {
 
 export function teardownReplMocks(): void {
   mock.restore()
+  // mock.restore() does not revert mock.module(); restore the pinned hook.
+  mock.module('src/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
+  mock.module('../../hooks/useMainLoopModel.js', () => realUseMainLoopModel)
+  if (effortEnvWasSet) {
+    if (savedEffortEnv === undefined) {
+      delete process.env.CLAUDE_CODE_EFFORT_LEVEL
+    } else {
+      process.env.CLAUDE_CODE_EFFORT_LEVEL = savedEffortEnv
+    }
+    effortEnvWasSet = false
+  }
 }
 
 // --- prop factory --------------------------------------------------------

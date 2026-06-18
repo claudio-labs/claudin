@@ -1,6 +1,21 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  test,
+} from 'bun:test'
 import * as configMod from './config.js'
 import * as terminalMod from '../ink/terminal.js'
+
+// Snapshot the real exports BEFORE mock.module() runs. `import * as` namespaces
+// are live: Bun rewrites configMod.getGlobalConfig to the stub once the mock is
+// registered, so restoring to `configMod` itself would just re-apply the stub.
+// A plain-object copy taken here preserves the genuine functions for teardown.
+const realConfig = { ...configMod }
+const realTerminal = { ...terminalMod }
 
 // Mock at boundaries: config source and the terminal-identity probe.
 // Spread the real modules so other consumers' exports stay intact (the rest
@@ -39,6 +54,17 @@ afterEach(() => {
     else process.env[k] = saved[k]
   }
   _resetTmuxControlModeProbeForTesting()
+})
+
+// Restore the real modules so the partial config.js mock (getGlobalConfig
+// returning a bare { flickerFreeMode } object) does not leak into later test
+// files in the same run — otherwise getGlobalConfig() loses every other flag
+// (e.g. toolResultSummarizerEnabled) for the rest of the process.
+afterAll(() => {
+  mock.module('./config.js', () => realConfig)
+  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('../ink/terminal.js', () => realTerminal)
+  mock.module('src/ink/terminal.js', () => realTerminal)
 })
 
 describe('isFullscreenEnvEnabled — precedence order', () => {

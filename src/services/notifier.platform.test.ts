@@ -10,6 +10,17 @@ import {
 import type { TerminalNotification } from '../ink/useTerminalNotification.js'
 import { resetGlobalConfigForTests, saveGlobalConfig } from '../utils/config.js'
 
+// Capture the real modules before mocking so afterAll can restore them.
+// Otherwise the partial hooks.js / execFileNoThrow.js / which.js / env.js /
+// log.js stubs leak into later test files in the same Bun worker (e.g. the
+// hooks public-surface characterization test sees the stripped hooks surface).
+const realExecFileNoThrow = { ...(await import('../utils/execFileNoThrow.js')) }
+const realWhich = { ...(await import('../utils/which.js')) }
+const realEnv = { ...(await import('../utils/env.js')) }
+const realHooks = { ...(await import('../utils/hooks.js')) }
+const realAnalyticsIndex = { ...(await import('./analytics/index.js')) }
+const realLog = { ...(await import('../utils/log.js')) }
+
 // -- Top-level mocks (must run before importing the SUT) --------------------
 
 type ExecCall = { cmd: string; args: string[] }
@@ -142,6 +153,18 @@ afterEach(() => {
 
 afterAll(() => {
   resetGlobalConfigForTests()
+  mock.module('../utils/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('../utils/which.js', () => realWhich)
+  mock.module('src/utils/which.js', () => realWhich)
+  mock.module('../utils/env.js', () => realEnv)
+  mock.module('src/utils/env.js', () => realEnv)
+  mock.module('../utils/hooks.js', () => realHooks)
+  mock.module('src/utils/hooks.js', () => realHooks)
+  mock.module('./analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('../utils/log.js', () => realLog)
+  mock.module('src/utils/log.js', () => realLog)
 })
 
 

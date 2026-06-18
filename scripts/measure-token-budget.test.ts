@@ -47,13 +47,15 @@ describe('measureTokenBudget', () => {
     const claude = result.perModel.find(m => m.model === 'claude-sonnet-4-5')!
     const gpt = result.perModel.find(m => m.model === 'gpt-4o-2024-08-06')!
 
-    // Byte payloads diverge slightly because env_info embeds the model
-    // marketing name / id; the tool bundle and shared sections are identical
-    // so the difference is small (well under 1%). What matters is the token
-    // delta: Claude (3.5) packs more tokens per same bytes than GPT-4 (4.0),
-    // so claude.totalTokens > gpt.totalTokens despite near-equal byte counts.
+    // Byte payloads diverge slightly because the system prompt + env_info embed
+    // model-family-specific lines (powered-by name, knowledge cutoff, the
+    // "most recent Claude models" block, /fast availability) that GPT models do
+    // not receive — added by the #78 env_info enrichment. The tool bundle and
+    // shared sections are identical, so the difference stays small (~1.3%).
+    // What matters is the token delta: Claude (3.5) packs more tokens per same
+    // bytes than GPT-4 (4.0), so claude.totalTokens > gpt.totalTokens.
     const bytesDelta = Math.abs(claude.totalBytes - gpt.totalBytes)
-    expect(bytesDelta / claude.totalBytes).toBeLessThan(0.01)
+    expect(bytesDelta / claude.totalBytes).toBeLessThan(0.02)
     expect(claude.totalTokens).toBeGreaterThan(gpt.totalTokens)
     expect(claude.bytesPerToken).toBe(3.5)
     expect(gpt.bytesPerToken).toBe(4)
