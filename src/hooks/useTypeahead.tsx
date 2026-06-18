@@ -40,6 +40,14 @@ const TOKEN_WITH_AT_RE = /(@[\p{L}\p{N}\p{M}_\-./\\()[\]~:]*|[\p{L}\p{N}\p{M}_\-
 const TOKEN_WITHOUT_AT_RE = /[\p{L}\p{N}\p{M}_\-./\\()[\]~:]+$/u;
 const HAS_AT_SYMBOL_RE = /(^|\s)@([\p{L}\p{N}\p{M}_\-./\\()[\]~:]*|"[^"]*"?)$/u;
 const HASH_CHANNEL_RE = /(^|\s)#([a-z0-9][a-z0-9_-]*)$/;
+// A token containing a path separator means the user has descended into a
+// directory (e.g. "src/"), so we list that directory instead of fuzzy-searching.
+const TOKEN_PATH_SEPARATOR_RE = /[/\\]/;
+// A suggestion whose text ends with a separator is a directory.
+const TOKEN_TRAILING_SEPARATOR_RE = /[/\\]$/;
+// Directory listings can be long; allow the full menu (scrollable) rather than
+// truncating to a handful of entries.
+const MAX_PATH_COMPLETIONS = 100;
 
 // Type guard for path completion metadata
 function isPathMetadata(metadata: unknown): metadata is {
@@ -856,12 +864,15 @@ export function useTypeahead({
       if (completionToken && completionToken.token.startsWith('@')) {
         const searchToken = extractSearchToken(completionToken);
 
-        // If the token after @ is path-like, use path completion instead of fuzzy search
-        // This handles cases like @~/path, @./path, @/path for directory traversal
-        if (isPathLikeToken(searchToken)) {
+        // If the token after @ is path-like OR contains a path separator, use
+        // directory listing (path completion) instead of fuzzy search. The
+        // path-like case handles @~/path, @./path, @/path; the separator case
+        // covers drilling into a subdirectory (e.g. @src/) so the dropdown shows
+        // that directory's full contents rather than staying in fuzzy search mode.
+        if (isPathLikeToken(searchToken) || TOKEN_PATH_SEPARATOR_RE.test(searchToken)) {
           latestPathTokenRef.current = searchToken;
           const pathSuggestions = await getPathCompletions(searchToken, {
-            maxResults: 10
+            maxResults: MAX_PATH_COMPLETIONS
           });
           // Discard stale results if a newer query was initiated while waiting
           if (latestPathTokenRef.current !== searchToken) {
@@ -1122,16 +1133,28 @@ export function useTypeahead({
           const suggestion = suggestions[index];
           if (suggestion) {
             const needsQuotes = suggestion.displayText.includes(' ');
+            // Directories list with a trailing separator; completing one drills
+            // into it (re-fetch its contents) instead of closing the dropdown.
+            const isDir = TOKEN_TRAILING_SEPARATOR_RE.test(suggestion.displayText);
             const replacementValue = formatReplacementValue({
               displayText: suggestion.displayText,
               mode,
               hasAtPrefix,
               needsQuotes,
               isQuoted: completionToken.isQuoted,
-              isComplete: true // complete suggestion
+              isComplete: !isDir // directories stay open for drill-in
             });
             applyFileSuggestion(replacementValue, input, completionToken.token, completionToken.startPos, onInputChange, setCursorOffset);
-            clearSuggestions();
+            if (isDir) {
+              const newInput = input.substring(0, completionToken.startPos) + replacementValue + input.substring(completionToken.startPos + completionToken.token.length);
+              setSuggestionsState(prev => ({
+                ...prev,
+                commandArgumentHint: undefined
+              }));
+              void updateSuggestions(newInput, completionToken.startPos + replacementValue.length);
+            } else {
+              clearSuggestions();
+            }
           }
         }
       }
@@ -1230,17 +1253,30 @@ export function useTypeahead({
         if (suggestion) {
           const hasAtPrefix = completionInfo.token.startsWith('@');
           const needsQuotes = suggestion.displayText.includes(' ');
+          // Directories list with a trailing separator (e.g. "src/"). Enter on a
+          // directory navigates into it rather than confirming the path, so omit
+          // the trailing space and re-fetch the directory's contents.
+          const isDir = TOKEN_TRAILING_SEPARATOR_RE.test(suggestion.displayText);
           const replacementValue = formatReplacementValue({
             displayText: suggestion.displayText,
             mode,
             hasAtPrefix,
             needsQuotes,
             isQuoted: completionInfo.isQuoted,
-            isComplete: true // complete suggestion
+            isComplete: !isDir // directories stay open for drill-in
           });
           applyFileSuggestion(replacementValue, input, completionInfo.token, completionInfo.startPos, onInputChange, setCursorOffset);
           debouncedFetchFileSuggestions.cancel();
-          clearSuggestions();
+          if (isDir) {
+            const newInput = input.substring(0, completionInfo.startPos) + replacementValue + input.substring(completionInfo.startPos + completionInfo.token.length);
+            setSuggestionsState(prev => ({
+              ...prev,
+              commandArgumentHint: undefined
+            }));
+            void updateSuggestions(newInput, completionInfo.startPos + replacementValue.length);
+          } else {
+            clearSuggestions();
+          }
         }
       }
     } else if (suggestionType === 'directory' && selectedSuggestion < suggestions.length) {
@@ -1262,6 +1298,17 @@ export function useTypeahead({
           const result = applyDirectorySuggestion(input, suggestion.id, completionToken.startPos, completionToken.token.length, isDir);
           onInputChange(result.newInput);
           setCursorOffset(result.cursorPos);
+          if (isDir) {
+            // Enter on a directory navigates into it: re-fetch suggestions for
+            // the updated path instead of confirming and closing the dropdown.
+            debouncedFetchFileSuggestions.cancel();
+            setSuggestionsState(prev => ({
+              ...prev,
+              commandArgumentHint: undefined
+            }));
+            void updateSuggestions(result.newInput, result.cursorPos);
+            return;
+          }
         }
         // If no completion token found (e.g., cursor after space), don't modify input
         // to avoid data loss - just clear suggestions
@@ -1270,7 +1317,7 @@ export function useTypeahead({
         clearSuggestions();
       }
     }
-  }, [suggestions, selectedSuggestion, suggestionType, commands, input, cursorOffset, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels]);
+  }, [suggestions, selectedSuggestion, suggestionType, commands, input, cursorOffset, mode, onInputChange, setCursorOffset, onSubmit, clearSuggestions, debouncedFetchFileSuggestions, debouncedFetchSlackChannels, setSuggestionsState, updateSuggestions]);
 
   // Handler for autocomplete:accept - accepts current suggestion via Tab or Right Arrow
   const handleAutocompleteAccept = useCallback(() => {
