@@ -100,6 +100,7 @@ function createCommandHarness() {
     setAppState: (updater: (prev: AppState) => AppState) => {
       state = updater(state)
     },
+    messages: [],
   } as unknown as ToolUseContext & LocalJSXCommandContext
   return {
     context,

@@ -15,14 +15,10 @@
  * pipeline (src/query/stopHooks.ts) drives iteration counting and the
  * one-time achievement notice.
  */
-import {
-  getTotalCacheCreationInputTokens,
-  getTotalCacheReadInputTokens,
-  getTotalInputTokens,
-  getTotalOutputTokens,
-} from '../../cost-tracker.js'
 import type { ActiveGoalState, AppState } from '../../state/AppStateStore.js'
+import type { Message } from '../../types/message.js'
 import { logForDebugging } from '../debug.js'
+import { getCurrentUsage } from '../tokens.js'
 import type { HookBlockingError, AggregatedHookResult } from '../hooks/types.js'
 import { addSessionHook, removeGoalStopHooks } from '../hooks/sessionHooks.js'
 import { markStopConditionJudge } from '../hooks/stopConditionJudge.js'
@@ -56,15 +52,24 @@ export function getGoalIterationCap(isNonInteractiveSession: boolean): number {
 type SetAppState = (updater: (prev: AppState) => AppState) => void
 
 /**
- * Total tokens accounted to this session so far (input + output + cache).
- * Used to report "tokens used since the goal was set".
+ * Token figure shown next to an active goal: the sum of the latest API
+ * response's usage (input + output + cache read + cache creation). This is the
+ * same accounting the footer `ctx` pill and the Agents panel use, so the goal
+ * line matches them. We deliberately do *not* report the cumulative session
+ * sum here — that balloons into the millions because cache reads re-accrue on
+ * every turn, which looks alarming and disagrees with every other token
+ * surface in the UI.
  */
-export function getSessionTokenCount(): number {
+export function getGoalTokenCount(messages: Message[]): number {
+  const usage = getCurrentUsage(messages)
+  if (!usage) {
+    return 0
+  }
   return (
-    getTotalInputTokens() +
-    getTotalOutputTokens() +
-    getTotalCacheReadInputTokens() +
-    getTotalCacheCreationInputTokens()
+    usage.input_tokens +
+    usage.output_tokens +
+    usage.cache_creation_input_tokens +
+    usage.cache_read_input_tokens
   )
 }
 
@@ -122,7 +127,6 @@ export function setActiveGoal(
       condition,
       iterations: 0,
       setAt: Date.now(),
-      tokensAtStart: getSessionTokenCount(),
     },
     lastGoalResult: undefined,
   }))

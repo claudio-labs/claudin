@@ -154,7 +154,7 @@ function PromptInputFooter({
           <SessionTokensIndicator messages={messages} />
         </Box>
       </Box>
-      <GoalStatusIndicator />
+      <GoalStatusIndicator messages={messages} />
       <CoordinatorTaskPanel />
       <Box paddingX={2} flexDirection="column">
         <BackgroundTaskGroupTree />

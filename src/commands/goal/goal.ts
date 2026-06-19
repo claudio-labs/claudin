@@ -13,7 +13,7 @@ import {
   buildGoalDirective,
   clearActiveGoal,
   GOAL_MAX_CONDITION_LENGTH,
-  getSessionTokenCount,
+  getGoalTokenCount,
   setActiveGoal,
 } from '../../utils/goal/goal.js'
 import {
@@ -70,13 +70,10 @@ export async function call(
         return null
       }
       const elapsed = formatDuration(Date.now() - goal.setAt)
-      const tokensUsed = Math.max(
-        0,
-        getSessionTokenCount() - goal.tokensAtStart,
-      )
+      const tokensUsed = getGoalTokenCount(context.messages)
       const lines = [
         `Goal active: ${goal.condition}`,
-        `Iterations: ${goal.iterations} · Elapsed: ${elapsed} · Tokens since set: ${tokensUsed.toLocaleString()}`,
+        `Iterations: ${goal.iterations} · Elapsed: ${elapsed} · Tokens: ${tokensUsed.toLocaleString()}`,
         ...(goal.lastCheckReason ? [`Last check: ${goal.lastCheckReason}`] : []),
         '/goal clear to stop early',
       ]

@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { getSessionId } from '../../bootstrap/state.js'
 import type { AppState } from '../../state/AppStateStore.js'
+import type { Message } from '../../types/message.js'
 import { executeSessionEndHooks } from '../hooks/events.js'
+import { createAssistantMessage } from '../messages/factories.js'
 import {
   addFunctionHook,
   addSessionHook,
@@ -20,6 +22,7 @@ import {
   GOAL_JUDGE_TIMEOUT_SECONDS,
   GOAL_MAX_CONDITION_LENGTH,
   getGoalIterationCap,
+  getGoalTokenCount,
   handleGoalBlockingError,
   resetGoalStateForSessionEnd,
   setActiveGoal,
@@ -79,6 +82,57 @@ function goalBlockingError(condition: string, reason: string) {
   }
 }
 
+describe('getGoalTokenCount', () => {
+  // createAssistantMessage pins model to SYNTHETIC_MODEL, which getTokenUsage
+  // skips. Give it a real model + usage so getCurrentUsage counts it.
+  function messageWithUsage(usage: {
+    input_tokens: number
+    output_tokens: number
+    cache_creation_input_tokens: number
+    cache_read_input_tokens: number
+  }): Message {
+    const base = createAssistantMessage({ content: 'done' })
+    return {
+      ...base,
+      message: {
+        ...base.message,
+        model: 'claude-opus-4-8',
+        usage: { ...base.message.usage, ...usage },
+      },
+    }
+  }
+
+  test('sums the latest API response usage (matches the ctx pill)', () => {
+    const msg = messageWithUsage({
+      input_tokens: 100,
+      output_tokens: 20,
+      cache_creation_input_tokens: 5,
+      cache_read_input_tokens: 1000,
+    })
+    expect(getGoalTokenCount([msg])).toBe(1125)
+  })
+
+  test('reads the most recent usage-bearing message, not the cumulative sum', () => {
+    const older = messageWithUsage({
+      input_tokens: 10,
+      output_tokens: 10,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+    })
+    const newer = messageWithUsage({
+      input_tokens: 200,
+      output_tokens: 30,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 500,
+    })
+    expect(getGoalTokenCount([older, newer])).toBe(730)
+  })
+
+  test('returns 0 when no message carries usage', () => {
+    expect(getGoalTokenCount([])).toBe(0)
+  })
+})
+
 describe('setActiveGoal', () => {
   test('registers a marked judge Stop session hook and activeGoal state', () => {
     const harness = createHarness()
@@ -98,7 +152,6 @@ describe('setActiveGoal', () => {
     expect(goal!.condition).toBe('tests pass')
     expect(goal!.iterations).toBe(0)
     expect(goal!.setAt).toBeGreaterThan(0)
-    expect(goal!.tokensAtStart).toBeGreaterThanOrEqual(0)
   })
 
   test('replacing a goal removes the previous judge hook (only one judge)', () => {

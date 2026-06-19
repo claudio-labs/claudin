@@ -98,8 +98,6 @@ export type ActiveGoalState = {
   iterations: number
   /** Date.now() when the goal was set. */
   setAt: number
-  /** Session token count when the goal was set (see getSessionTokenCount). */
-  tokensAtStart: number
   /** Reason from the judge's most recent ok:false verdict. */
   lastCheckReason?: string
 }
