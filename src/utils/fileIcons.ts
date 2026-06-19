@@ -5,7 +5,8 @@ import path from 'node:path'
 // `hasNerdFontGlyphs()` (src/utils/terminalFont.ts) so non-Nerd terminals fall
 // back to ASCII and never render tofu.
 
-export const FOLDER_ICON = '\uf07b' // nf-fa-folder
+export const FOLDER_ICON = '\uf07b' // nf-fa-folder (closed)
+export const FOLDER_OPEN_ICON = '\uf07c' // nf-fa-folder_open
 export const GENERIC_FILE_ICON = '\uf15b' // nf-fa-file
 export const CONFIG_ICON = '\ue615' // nf-seti-config — used for .env* dotfiles
 

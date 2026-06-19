@@ -1,0 +1,158 @@
+import type { StructuredPatchHunk } from 'diff'
+import { basename } from 'path'
+import type { DiffFile } from '../../hooks/useDiffData.js'
+import { plural } from '../../utils/stringUtils.js'
+import type { RepoGroup } from './types.js'
+
+/**
+ * A flattened, render-ready row of the file tree. `dir`/`group` rows are
+ * structural (folders + per-repo headers); `file` rows are selectable and
+ * carry everything the dialog needs to show the diff (the hunks + repo root).
+ * The dialog owns selection over this row list and toggles `collapsed`.
+ */
+export type TreeRow =
+  | {
+      kind: 'group'
+      /** Collapse key (the repo root; never collides with dir keys, which embed a NUL). */
+      key: string
+      name: string
+      /** Change count, e.g. "4 files changed" (branch is rendered separately). */
+      meta: string
+      /** This group's branch, shown with a branch glyph; '' when unknown. */
+      branch: string
+      /** Position among header'd groups — drives the per-repo swatch color. */
+      repoIndex: number
+      /** Collapsed groups emit the header row but skip their whole subtree. */
+      collapsed: boolean
+      depth: number
+    }
+  | { kind: 'dir'; key: string; label: string; depth: number; collapsed: boolean }
+  | {
+      kind: 'file'
+      file: DiffFile
+      root: string
+      hunks: StructuredPatchHunk[]
+      depth: number
+    }
+
+type DirNode = {
+  name: string
+  dirs: Map<string, DirNode>
+  files: DiffFile[]
+}
+
+function newDir(name: string): DirNode {
+  return { name, dirs: new Map(), files: [] }
+}
+
+/** Build a nested folder tree from a group's flat file list. */
+function buildDirTree(files: DiffFile[]): DirNode {
+  const root = newDir('')
+  for (const file of files) {
+    const parts = file.path.split('/')
+    parts.pop() // drop the filename
+    let node = root
+    for (const part of parts) {
+      let child = node.dirs.get(part)
+      if (!child) {
+        child = newDir(part)
+        node.dirs.set(part, child)
+      }
+      node = child
+    }
+    node.files.push(file)
+  }
+  return root
+}
+
+/**
+ * Depth-first flatten of a folder node into TreeRows: folders first (sorted),
+ * then files (sorted by basename). Single-child directory chains are compacted
+ * into one row (`components/diff`) like VS Code's compact folders, so deep
+ * trees don't waste rows/indentation. Collapsed directories emit their own row
+ * but skip their descendants.
+ */
+function flattenDir(
+  node: DirNode,
+  prefixPath: string,
+  depth: number,
+  collapsed: Set<string>,
+  root: string,
+  hunksOf: (path: string) => StructuredPatchHunk[],
+  out: TreeRow[],
+): void {
+  const dirs = [...node.dirs.values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )
+  for (let dir of dirs) {
+    let label = dir.name
+    let path = prefixPath ? `${prefixPath}/${dir.name}` : dir.name
+    // Compact a/b/c chains while each level has exactly one sub-dir and no files.
+    while (dir.files.length === 0 && dir.dirs.size === 1) {
+      const only = dir.dirs.values().next().value as DirNode
+      label = `${label}/${only.name}`
+      path = `${path}/${only.name}`
+      dir = only
+    }
+    const key = `${root}\u0000${path}`
+    const isCollapsed = collapsed.has(key)
+    out.push({ kind: 'dir', key, label, depth, collapsed: isCollapsed })
+    if (!isCollapsed) {
+      flattenDir(dir, path, depth + 1, collapsed, root, hunksOf, out)
+    }
+  }
+  const files = [...node.files].sort((a, b) =>
+    basename(a.path).localeCompare(basename(b.path)),
+  )
+  for (const file of files) {
+    out.push({ kind: 'file', file, root, hunks: hunksOf(file.path), depth })
+  }
+}
+
+/**
+ * Build the full visible row list for the Local Changes file pane: a folder
+ * tree per repo group, honouring the collapsed-directory set.
+ */
+export function buildTreeRows(
+  groups: RepoGroup[],
+  collapsed: Set<string>,
+): TreeRow[] {
+  const out: TreeRow[] = []
+  const showHeaders = groups.length > 1
+  let repoIndex = 0
+  for (const group of groups) {
+    // Indent a subproject's tree one level under its header so child file/dir
+    // rows line up beneath the header's name (the header's caret + swatch make
+    // depth-0 children look 2 columns too far left). Single-repo view (no
+    // header) stays flush at depth 0.
+    const baseDepth = showHeaders ? 1 : 0
+    if (showHeaders) {
+      // The repo root keys the group's collapse state (no NUL → no dir clash).
+      const groupCollapsed = collapsed.has(group.root)
+      out.push({
+        kind: 'group',
+        key: group.root,
+        name: group.name,
+        meta: `${group.files.length} ${plural(
+          group.files.length,
+          'file',
+        )} changed`,
+        branch: group.branch,
+        repoIndex: repoIndex++,
+        collapsed: groupCollapsed,
+        depth: 0,
+      })
+      if (groupCollapsed) continue // hide this repo's entire file tree
+    }
+    flattenDir(
+      buildDirTree(group.files),
+      '',
+      baseDepth,
+      collapsed,
+      group.root,
+      p => group.hunks.get(p) ?? [],
+      out,
+    )
+  }
+  return out
+}

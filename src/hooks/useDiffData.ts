@@ -18,6 +18,8 @@ export type DiffFile = {
   isTruncated: boolean
   isNewFile?: boolean
   isUntracked?: boolean
+  /** Original path when git detected a rename. */
+  renamedFrom?: string
 }
 
 export type DiffData = {
@@ -28,10 +30,53 @@ export type DiffData = {
 }
 
 /**
- * Hook to fetch current git diff data on demand.
- * Fetches both stats and hunks when component mounts.
+ * Convert a raw GitDiffResult + on-demand hunks into the display file list.
+ * Pure — shared by useDiffData (single repo) and useWorkspaceDiff (per root).
  */
-export function useDiffData(): DiffData {
+export function gitDiffResultToFiles(
+  diffResult: GitDiffResult,
+  hunks: Map<string, StructuredPatchHunk[]>,
+): DiffFile[] {
+  const { perFileStats } = diffResult
+  const files: DiffFile[] = []
+
+  for (const [path, fileStats] of perFileStats) {
+    const fileHunks = hunks.get(path)
+    const isUntracked = fileStats.isUntracked ?? false
+
+    // Detect large file (in perFileStats but not in hunks, and not
+    // binary/untracked). A pure rename also has a numstat entry with no hunks
+    // (git emits no `@@` when the content is identical), so exclude renames —
+    // they render as a rename badge, not a "Large file" placeholder.
+    const isLargeFile =
+      !fileStats.isBinary && !isUntracked && !fileHunks && !fileStats.renamedFrom
+
+    // Detect truncated file (total > limit means we truncated)
+    const totalLines = fileStats.added + fileStats.removed
+    const isTruncated =
+      !isLargeFile && !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE
+
+    files.push({
+      path,
+      linesAdded: fileStats.added,
+      linesRemoved: fileStats.removed,
+      isBinary: fileStats.isBinary,
+      isLargeFile,
+      isTruncated,
+      isUntracked,
+      ...(fileStats.renamedFrom ? { renamedFrom: fileStats.renamedFrom } : {}),
+    })
+  }
+
+  files.sort((a, b) => a.path.localeCompare(b.path))
+  return files
+}
+
+/**
+ * Hook to fetch git diff data on demand. Fetches both stats and hunks when the
+ * component mounts. Pass `cwd` to diff a specific repo root (default: ambient).
+ */
+export function useDiffData(cwd?: string): DiffData {
   const [diffResult, setDiffResult] = useState<GitDiffResult | null>(null)
   const [hunks, setHunks] = useState<Map<string, StructuredPatchHunk[]>>(
     new Map(),
@@ -46,8 +91,8 @@ export function useDiffData(): DiffData {
       try {
         // Fetch both stats and hunks
         const [statsResult, hunksResult] = await Promise.all([
-          fetchGitDiff(),
-          fetchGitDiffHunks(),
+          fetchGitDiff(cwd),
+          fetchGitDiffHunks(cwd),
         ])
 
         if (!cancelled) {
@@ -69,42 +114,18 @@ export function useDiffData(): DiffData {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [cwd])
 
   return useMemo(() => {
     if (!diffResult) {
       return { stats: null, files: [], hunks: new Map(), loading }
     }
 
-    const { stats, perFileStats } = diffResult
-    const files: DiffFile[] = []
-
-    // Iterate over perFileStats to get all files including large/skipped ones
-    for (const [path, fileStats] of perFileStats) {
-      const fileHunks = hunks.get(path)
-      const isUntracked = fileStats.isUntracked ?? false
-
-      // Detect large file (in perFileStats but not in hunks, and not binary/untracked)
-      const isLargeFile = !fileStats.isBinary && !isUntracked && !fileHunks
-
-      // Detect truncated file (total > limit means we truncated)
-      const totalLines = fileStats.added + fileStats.removed
-      const isTruncated =
-        !isLargeFile && !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE
-
-      files.push({
-        path,
-        linesAdded: fileStats.added,
-        linesRemoved: fileStats.removed,
-        isBinary: fileStats.isBinary,
-        isLargeFile,
-        isTruncated,
-        isUntracked,
-      })
+    return {
+      stats: diffResult.stats,
+      files: gitDiffResultToFiles(diffResult, hunks),
+      hunks,
+      loading: false,
     }
-
-    files.sort((a, b) => a.path.localeCompare(b.path))
-
-    return { stats, files, hunks, loading: false }
   }, [diffResult, hunks, loading])
 }

@@ -308,12 +308,18 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
     context: 'DiffDialog',
     bindings: {
       escape: 'diff:dismiss',
-      left: 'diff:previousSource',
-      right: 'diff:nextSource',
+      // ←/→ move focus between the list (Files/Log) and the diff/content pane;
+      // [ / ] cycle the Local Changes source (working tree / turns / stashes).
+      left: 'diff:focusList',
+      right: 'diff:focusContent',
+      '[': 'diff:previousSource',
+      ']': 'diff:nextSource',
       up: 'diff:previousFile',
       down: 'diff:nextFile',
       enter: 'diff:viewDetails',
-      // Note: diff:back is handled by left arrow in detail mode
+      tab: 'diff:nextTab',
+      r: 'diff:refresh',
+      a: 'diff:expandAll',
     },
   },
   // Model picker effort cycling (internal-only)

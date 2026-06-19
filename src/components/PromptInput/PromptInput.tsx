@@ -877,6 +877,11 @@ function PromptInput({
     submitCount,
     viewingAgentName
   });
+  // vim-style `gg` opens the /diff reviewer. Routed through a ref because the
+  // local onSubmit is declared further down; lastGAtRef gates the chord so a
+  // single `g` followed by anything else types normally.
+  const onSubmitRef = useRef<((input: string) => void) | null>(null);
+  const lastGAtRef = useRef(0);
   const onChange = useCallback((value: string) => {
     if (value === '?') {
       logEvent('tengu_help_toggled', {});
@@ -891,6 +896,19 @@ function PromptInput({
     // Cancel any pending prompt suggestion and speculation when user types
     abortPromptSuggestion();
     abortSpeculation(setAppState);
+
+    // `gg` on an empty prompt → open the diff reviewer (only on a quick
+    // double-tap so it never fires mid-typing).
+    if (input === 'g' && value === 'gg' && Date.now() - lastGAtRef.current < 500) {
+      lastGAtRef.current = 0;
+      trackAndSetInput('');
+      setCursorOffset(0);
+      void onSubmitRef.current?.('/diff');
+      return;
+    }
+    if (input === '' && value === 'g') {
+      lastGAtRef.current = Date.now();
+    }
 
     // Check if this is a single character insertion at the start
     const isSingleCharInsertion = value.length === input.length + 1;
@@ -1750,6 +1768,13 @@ function PromptInput({
       }
     });
   }, [keybindingContext, isModalOverlayActive, onSubmit, input]);
+
+  // Keep the `gg` chord's submit ref pointed at the current onSubmit.
+  useEffect(() => {
+    onSubmitRef.current = (value: string) => {
+      void onSubmit(value);
+    };
+  });
 
   // Chat context keybindings for editing shortcuts
   // Note: history:previous/history:next are NOT handled here. They are passed as

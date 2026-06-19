@@ -1,382 +1,863 @@
-import { c as _c } from "react-compiler-runtime";
-import type { StructuredPatchHunk } from 'diff';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { CommandResultDisplay } from '../../commands.js';
-import { useRegisterOverlay } from '../../context/overlayContext.js';
-import { type DiffData, useDiffData } from '../../hooks/useDiffData.js';
-import { type TurnDiff, useTurnDiffs } from '../../hooks/useTurnDiffs.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import { useShortcutDisplay } from '../../keybindings/useShortcutDisplay.js';
-import type { Message } from '../../types/message.js';
-import { plural } from '../../utils/stringUtils.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { DiffDetailView } from './DiffDetailView.js';
-import { DiffFileList } from './DiffFileList.js';
+import chalk from 'chalk'
+import type { StructuredPatchHunk } from 'diff'
+import { resolve } from 'path'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { CommandResultDisplay } from '../../commands.js'
+import { useRegisterOverlay } from '../../context/overlayContext.js'
+import { useCommitFiles } from '../../hooks/useCommitFiles.js'
+import type { DiffFile } from '../../hooks/useDiffData.js'
+import { useGitLog } from '../../hooks/useGitLog.js'
+import { useGitStashes } from '../../hooks/useGitStashes.js'
+import { useTerminalSize } from '../../hooks/useTerminalSize.js'
+import { type TurnDiff, useTurnDiffs } from '../../hooks/useTurnDiffs.js'
+import { useWorkspaceDiff } from '../../hooks/useWorkspaceDiff.js'
+import { Box, Text, useInput, useTheme } from '../../ink.js'
+import { useKeybindings } from '../../keybindings/useKeybinding.js'
+import { useAppState } from '../../state/AppState.js'
+import type { ToolPermissionContext } from '../../types/permissions.js'
+import {
+  getAheadBehind,
+  getBranch,
+  getFileStatus,
+  resolveWorkspaceRoots,
+} from '../../utils/git.js'
+import { getCwd } from '../../utils/cwd.js'
+import { readFileSafe } from '../../utils/file.js'
+import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js'
+import { buildAddedFileHunks } from '../../utils/gitDiff.js'
+import { Dialog } from '../design-system/Dialog.js'
+import { buildDiffRenderModel } from './collapse.js'
+import { CommitFileList } from './CommitFileList.js'
+import { CommitGraph } from './CommitGraph.js'
+import { DiffDetailView } from './DiffDetailView.js'
+import {
+  buildTreeRows,
+  DiffFileList,
+  flattenGroupFiles,
+  type TreeRow,
+} from './DiffFileList.js'
+import { DiffPane, renderDiffRows } from './DiffPane.js'
+import type { DiffSegment, DiffSource, RepoGroup } from './types.js'
+
 type Props = {
-  messages: Message[];
-  onDone: (result?: string, options?: {
-    display?: CommandResultDisplay;
-  }) => void;
-};
-type ViewMode = 'list' | 'detail';
-type DiffSource = {
-  type: 'current';
-} | {
-  type: 'turn';
-  turn: TurnDiff;
-};
-function turnDiffToDiffData(turn: TurnDiff): DiffData {
-  const files = Array.from(turn.files.values()).map(f => ({
-    path: f.filePath,
-    linesAdded: f.linesAdded,
-    linesRemoved: f.linesRemoved,
-    isBinary: false,
-    isLargeFile: false,
-    isTruncated: false,
-    isNewFile: f.isNewFile
-  })).sort((a, b) => a.path.localeCompare(b.path));
-  const hunks = new Map<string, StructuredPatchHunk[]>();
-  for (const f of turn.files.values()) {
-    hunks.set(f.filePath, f.hunks);
-  }
-  return {
-    stats: {
-      filesCount: turn.stats.filesChanged,
-      linesAdded: turn.stats.linesAdded,
-      linesRemoved: turn.stats.linesRemoved
-    },
-    files,
-    hunks,
-    loading: false
-  };
+  messages: Parameters<typeof useTurnDiffs>[0]
+  onDone: (
+    result?: string,
+    options?: { display?: CommandResultDisplay },
+  ) => void
 }
-export function DiffDialog(t0) {
-  const $ = _c(73);
-  const {
-    messages,
-    onDone
-  } = t0;
-  const gitDiffData = useDiffData();
-  const turnDiffs = useTurnDiffs(messages);
-  const [viewMode, setViewMode] = useState("list");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [sourceIndex, setSourceIndex] = useState(0);
-  let t1;
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = {
-      type: "current"
-    };
-    $[0] = t1;
-  } else {
-    t1 = $[0];
+
+type Tab = 'local' | 'log'
+type Focus = 'list' | 'content'
+
+/** Wrap a plain label as a top-aligned border title. */
+function paneTitle(text: string): {
+  content: string
+  position: 'top'
+  align: 'start'
+} {
+  return { content: ` ${text} `, position: 'top', align: 'start' }
+}
+
+type Selected = { file: DiffFile; hunks: StructuredPatchHunk[]; root: string }
+
+function turnToGroup(turn: TurnDiff): RepoGroup {
+  const files: DiffFile[] = [...turn.files.values()]
+    .map(f => ({
+      path: f.filePath,
+      linesAdded: f.linesAdded,
+      linesRemoved: f.linesRemoved,
+      isBinary: false,
+      isLargeFile: false,
+      isTruncated: false,
+      isNewFile: f.isNewFile,
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path))
+  const hunks = new Map<string, StructuredPatchHunk[]>()
+  for (const f of turn.files.values()) hunks.set(f.filePath, f.hunks)
+  return { root: getCwd(), name: '', branch: '', files, hunks }
+}
+
+/**
+ * Right-aligned border-title item showing the selected file's add/remove
+ * counts (or binary/large), pre-rendered with ANSI so it can sit on the diff
+ * pane's top border. Returns null when there's nothing to show.
+ */
+function statsBorderText(
+  file: DiffFile,
+): { content: string; position: 'top'; align: 'end' } | null {
+  let body: string
+  if (file.isBinary) body = chalk.italic('binary')
+  else if (file.isLargeFile) body = chalk.italic('large')
+  else {
+    const parts: string[] = []
+    if (file.linesAdded > 0) parts.push(chalk.green(`+${file.linesAdded}`))
+    if (file.linesRemoved > 0) parts.push(chalk.red(`-${file.linesRemoved}`))
+    if (parts.length === 0) return null
+    body = parts.join(' ')
   }
-  let t2;
-  if ($[1] !== turnDiffs) {
-    t2 = [t1, ...turnDiffs.map(_temp)];
-    $[1] = turnDiffs;
-    $[2] = t2;
-  } else {
-    t2 = $[2];
+  return { content: ` ${body} `, position: 'top', align: 'end' }
+}
+
+function adjacentCommitRow(
+  rows: { isCommit: boolean }[],
+  from: number,
+  dir: 1 | -1,
+): number {
+  let i = from + dir
+  while (i >= 0 && i < rows.length) {
+    if (rows[i]!.isCommit) return i
+    i += dir
   }
-  const sources = t2;
-  const currentSource = sources[sourceIndex];
-  const currentTurn = currentSource?.type === "turn" ? currentSource.turn : null;
-  let t3;
-  if ($[3] !== currentTurn || $[4] !== gitDiffData) {
-    t3 = currentTurn ? turnDiffToDiffData(currentTurn) : gitDiffData;
-    $[3] = currentTurn;
-    $[4] = gitDiffData;
-    $[5] = t3;
-  } else {
-    t3 = $[5];
+  return from
+}
+
+export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
+  const { columns, rows } = useTerminalSize()
+  useRegisterOverlay('diff-dialog', true)
+
+  // ── scope ───────────────────────────────────────────────────────────────
+  // Resolve the repos in scope from app state (cwd repo + /add-dir roots).
+  const additionalWorkingDirectories = useAppState(
+    (s: { toolPermissionContext: ToolPermissionContext }) =>
+      s.toolPermissionContext.additionalWorkingDirectories,
+  )
+  const roots = useMemo(
+    () =>
+      resolveWorkspaceRoots(getCwd(), [
+        ...additionalWorkingDirectories.keys(),
+      ]),
+    [additionalWorkingDirectories],
+  )
+  // Raw directories to scan for nested child repos (monorepo): the cwd plus any
+  // /add-dir roots, even when they are not git repos themselves.
+  const scanBases = useMemo(
+    () => [getCwd(), ...additionalWorkingDirectories.keys()],
+    [additionalWorkingDirectories],
+  )
+
+  // ── data ────────────────────────────────────────────────────────────────
+  const workspace = useWorkspaceDiff(roots, scanBases)
+  // Prefer an explicit repo root for the Log/stash tabs; fall back to the first
+  // discovered nested repo when the cwd itself is a bare monorepo container.
+  const cwdRoot = roots[0] ?? workspace.roots[0]
+  const turnDiffs = useTurnDiffs(messages)
+
+  // Log tab can target any repo in scope (monorepo project selector). The list
+  // mirrors the Local-tab grouping; index 0 is the cwd repo / first discovered.
+  const [logRepoIndex, setLogRepoIndex] = useState(0)
+  const logRepos = useMemo(
+    () => workspace.groups.map(g => ({ root: g.root, name: g.name })),
+    [workspace.groups],
+  )
+  const logRepo = logRepos.length
+    ? logRepos[Math.min(logRepoIndex, logRepos.length - 1)]!
+    : undefined
+  const logRoot = logRepo?.root ?? cwdRoot
+
+  const gitLog = useGitLog(logRoot)
+  const stashes = useGitStashes(cwdRoot)
+
+  // ── state ───────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<Tab>('local')
+  const [focus, setFocus] = useState<Focus>('list')
+  const [sourceIndex, setSourceIndex] = useState(0)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  // Keys (root\0relPath) of collapsed folders in the Local Changes tree.
+  const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set())
+  const [logSelectedRow, setLogSelectedRow] = useState(0)
+  const [revealed, setRevealed] = useState<Map<string, number>>(new Map())
+  const [expandAll, setExpandAll] = useState(false)
+  const [diffScroll, setDiffScroll] = useState(0)
+  const [stashDetail, setStashDetail] = useState<{
+    ref: string
+    group: RepoGroup
+  } | null>(null)
+  const [status, setStatus] = useState<{
+    branch: string
+    ahead: number
+    behind: number
+    dirty: number
+  } | null>(null)
+  const [statusNonce, setStatusNonce] = useState(0)
+  const [theme] = useTheme()
+
+  // ── layout ──────────────────────────────────────────────────────────────
+  const split = isFullscreenEnvEnabled() && columns >= 100
+  const leftWidth = Math.max(30, Math.min(50, Math.round(columns * 0.3)))
+  // Dialog chrome costs 10 rows on the Local tab: Pane paddingTop+divider (2),
+  // and the Dialog content column lays out [title, sourceLine, body, footer]
+  // with gap={1} BETWEEN each (title + 3 gaps + sourceLine + footer = 6) plus
+  // the pane border (2). Leave a 2-row bottom margin so the footer stays on
+  // screen — without it a full-height overlay pushes its own top (and footer)
+  // off-screen in inline / main-screen mode.
+  const contentHeight = Math.max(6, rows - 12)
+  // Both panes are pinned to this height so the dialog frame is CONSTANT
+  // regardless of the selected file's diff length (a short diff must not
+  // shrink the frame, a long one must not grow it).
+  const paneHeight = contentHeight + 2
+  const diffWidth = Math.max(20, columns - leftWidth - 10)
+  // Reserve 2 rows for the file list's ↑/↓ "more" indicators so the list never
+  // overflows its (contentHeight-tall) inner area.
+  const listMaxVisible = split ? Math.max(3, contentHeight - 2) : 15
+
+  // ── sources ─────────────────────────────────────────────────────────────
+  const sources = useMemo<DiffSource[]>(
+    () => [
+      { type: 'working' },
+      ...turnDiffs.map(turn => ({ type: 'turn' as const, turn })),
+      ...stashes.entries.map(e => ({
+        type: 'stash' as const,
+        ref: e.ref,
+        subject: e.subject,
+      })),
+    ],
+    [turnDiffs, stashes.entries],
+  )
+  const currentSource = sources[Math.min(sourceIndex, sources.length - 1)] ?? {
+    type: 'working',
   }
-  const diffData = t3;
-  const selectedFile = diffData.files[selectedIndex];
-  let t4;
-  if ($[6] !== diffData.hunks || $[7] !== selectedFile) {
-    t4 = selectedFile ? diffData.hunks.get(selectedFile.path) || [] : [];
-    $[6] = diffData.hunks;
-    $[7] = selectedFile;
-    $[8] = t4;
-  } else {
-    t4 = $[8];
-  }
-  const selectedHunks = t4;
-  let t5;
-  let t6;
-  if ($[9] !== sourceIndex || $[10] !== sources.length) {
-    t5 = () => {
-      if (sourceIndex >= sources.length) {
-        setSourceIndex(Math.max(0, sources.length - 1));
+
+  // Load a stash's files + diff when it becomes the active source.
+  useEffect(() => {
+    if (currentSource.type !== 'stash') return
+    if (stashDetail?.ref === currentSource.ref) return
+    let cancelled = false
+    void stashes.loadStash(currentSource.ref).then(detail => {
+      if (cancelled) return
+      const files: DiffFile[] = detail.files
+        .map(f => ({
+          path: f.path,
+          linesAdded: f.added,
+          linesRemoved: f.removed,
+          isBinary: f.isBinary,
+          isLargeFile: false,
+          isTruncated: false,
+        }))
+        .sort((a, b) => a.path.localeCompare(b.path))
+      setStashDetail({
+        ref: currentSource.ref,
+        group: {
+          root: getCwd(),
+          name: '',
+          branch: '',
+          files,
+          hunks: detail.hunks,
+        },
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentSource, stashes, stashDetail])
+
+  const currentGroups = useMemo<RepoGroup[]>(() => {
+    if (currentSource.type === 'working') return workspace.groups
+    if (currentSource.type === 'turn') return [turnToGroup(currentSource.turn)]
+    return stashDetail?.ref === currentSource.ref ? [stashDetail.group] : []
+  }, [currentSource, workspace.groups, stashDetail])
+
+  const allFiles = useMemo(
+    () => flattenGroupFiles(currentGroups),
+    [currentGroups],
+  )
+  // The collapse-aware visible row list (folders + files). Selection indexes
+  // this list; `selected` is non-null only when the highlighted row is a file.
+  const treeRows = useMemo<TreeRow[]>(
+    () => buildTreeRows(currentGroups, collapsedDirs),
+    [currentGroups, collapsedDirs],
+  )
+  const selectedRow = treeRows[selectedIndex] ?? null
+  // Dir and group rows share the same collapse machinery (toggle by `key`).
+  const collapsibleRow =
+    selectedRow &&
+    (selectedRow.kind === 'dir' || selectedRow.kind === 'group')
+      ? selectedRow
+      : null
+  const selected = useMemo<Selected | null>(
+    () =>
+      selectedRow?.kind === 'file'
+        ? {
+            file: selectedRow.file,
+            hunks: selectedRow.hunks,
+            root: selectedRow.root,
+          }
+        : null,
+    [selectedRow],
+  )
+
+  const toggleDir = (key: string): void =>
+    setCollapsedDirs(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  // Working-tree file text powers the collapse/expand context (and, for
+  // untracked files, the synthetic all-green hunk below); unavailable — and
+  // thus fail-open — for turns/stashes and binary/large files.
+  const fileContent = useMemo(() => {
+    if (!selected || currentSource.type !== 'working') return undefined
+    const f = selected.file
+    if (f.isBinary || f.isLargeFile) return undefined
+    return readFileSafe(resolve(selected.root || getCwd(), f.path)) ?? undefined
+  }, [selected, currentSource])
+  const firstLine = fileContent?.split('\n')[0] ?? null
+
+  // `git diff HEAD` omits untracked files, so they have no real hunks. Render
+  // their full content as an all-added (green) diff instead — unless the
+  // content looks binary (a NUL byte; fetchUntrackedFiles can't detect binary),
+  // in which case we leave the hunks empty and fall back to a message.
+  const isUntrackedFile = !!selected?.file.isUntracked
+  const effectiveHunks = useMemo<StructuredPatchHunk[]>(() => {
+    if (isUntrackedFile && fileContent != null) {
+      if (fileContent.slice(0, 8000).includes('\u0000')) return []
+      return buildAddedFileHunks(fileContent)
+    }
+    return selected?.hunks ?? []
+  }, [isUntrackedFile, fileContent, selected])
+
+  const segments = useMemo<DiffSegment[]>(
+    () =>
+      buildDiffRenderModel(
+        effectiveHunks,
+        // An all-added file has no unchanged context to collapse; passing
+        // undefined renders the hunk verbatim (the file content still drives
+        // syntax highlighting via renderDiffRows below).
+        isUntrackedFile ? undefined : fileContent,
+        revealed,
+        expandAll,
+      ),
+    [effectiveHunks, isUntrackedFile, fileContent, revealed, expandAll],
+  )
+
+  // Pre-render the diff to final wrapped rows so the body can be windowed to a
+  // fixed height (see DiffPane). Owning the row count here lets us clamp the
+  // scroll offset and show a scroll position in the pane title.
+  const diffRows = useMemo(
+    () =>
+      renderDiffRows(segments, {
+        filePath: selected?.file.path ?? '',
+        firstLine,
+        fileContent,
+        width: diffWidth,
+        theme,
+      }),
+    [segments, selected, firstLine, fileContent, diffWidth, theme],
+  )
+  const maxDiffScroll = Math.max(0, diffRows.length - contentHeight)
+  const diffScrollClamped = Math.min(diffScroll, maxDiffScroll)
+
+  // ── selection housekeeping ────────────────────────────────────────────────
+  // Land on the first file row when a source's files first arrive and again
+  // whenever the source changes. Keyed on the resolved sourceIndex (not on
+  // `rows`/`currentGroups` identity) so a background workspace re-poll never
+  // snaps the selection back while the user is navigating.
+  const initRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (allFiles.length === 0) return
+    if (initRef.current === sourceIndex) return
+    initRef.current = sourceIndex
+    setCollapsedDirs(new Set())
+    const fresh = buildTreeRows(currentGroups, new Set())
+    const firstFile = fresh.findIndex(r => r.kind === 'file')
+    setSelectedIndex(firstFile >= 0 ? firstFile : 0)
+  }, [sourceIndex, allFiles, currentGroups])
+
+  // Clamp the selection into range when the row list shrinks (e.g. after a
+  // refresh or a folder collapse). Deliberately does NOT re-map by path — that
+  // fought normal up/down navigation (the index would snap back every move).
+  useEffect(() => {
+    if (treeRows.length > 0 && selectedIndex >= treeRows.length) {
+      setSelectedIndex(treeRows.length - 1)
+    }
+  }, [treeRows, selectedIndex])
+
+  // Reset reveal + scroll to top when the selected file changes.
+  const selectedKey = `${sourceIndex}:${selected?.file.path ?? ''}`
+  useEffect(() => {
+    setRevealed(new Map())
+    setExpandAll(false)
+    setDiffScroll(0)
+  }, [selectedKey])
+
+  // Initialize / keep the log selection on a commit row.
+  useEffect(() => {
+    if (gitLog.rows.length === 0) return
+    const cur = gitLog.rows[logSelectedRow]
+    if (!cur || !cur.isCommit) {
+      const first = gitLog.rows.findIndex(r => r.isCommit)
+      if (first >= 0) setLogSelectedRow(first)
+    }
+  }, [gitLog.rows, logSelectedRow])
+
+  // Selected commit + its changed files (debounced). The files drive both the
+  // right-pane list and the commit-wide +/- totals shown on the pane border.
+  const selectedHash =
+    gitLog.rows[logSelectedRow]?.isCommit
+      ? gitLog.rows[logSelectedRow]!.hash
+      : null
+  const commitFiles = useCommitFiles(selectedHash, logRoot)
+  const commitStats = useMemo(() => {
+    if (!commitFiles || commitFiles.length === 0) return null
+    let added = 0
+    let removed = 0
+    for (const f of commitFiles) {
+      added += f.added
+      removed += f.removed
+    }
+    return { added, removed }
+  }, [commitFiles])
+
+  // Footer status follows the repo currently in view: the selected Log project
+  // on the Log tab, otherwise the cwd repo. Falls back to the ambient repo when
+  // no explicit root is resolved.
+  const statusRoot = activeTab === 'log' ? logRoot : cwdRoot
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const [branch, ab, fs] = await Promise.all([
+        getBranch(statusRoot),
+        getAheadBehind(statusRoot),
+        getFileStatus(statusRoot),
+      ])
+      if (!cancelled) {
+        setStatus({
+          branch,
+          ahead: ab.ahead,
+          behind: ab.behind,
+          dirty: fs.tracked.length + fs.untracked.length,
+        })
       }
-    };
-    t6 = [sources.length, sourceIndex];
-    $[9] = sourceIndex;
-    $[10] = sources.length;
-    $[11] = t5;
-    $[12] = t6;
-  } else {
-    t5 = $[11];
-    t6 = $[12];
-  }
-  useEffect(t5, t6);
-  const prevSourceIndex = useRef(sourceIndex);
-  let t7;
-  let t8;
-  if ($[13] !== sourceIndex) {
-    t7 = () => {
-      if (prevSourceIndex.current !== sourceIndex) {
-        setSelectedIndex(0);
-        prevSourceIndex.current = sourceIndex;
+    })().catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [statusNonce, statusRoot])
+
+  // ── keybindings ───────────────────────────────────────────────────────────
+  const expandNextGap = (): void => {
+    const baseGaps = buildDiffRenderModel(
+      selected?.hunks ?? [],
+      fileContent,
+    ).filter((s): s is Extract<DiffSegment, { kind: 'gap' }> => s.kind === 'gap')
+    for (const gap of baseGaps) {
+      const cur = revealed.get(gap.id) ?? 0
+      if (cur < gap.lineCount) {
+        setRevealed(prev => {
+          const next = new Map(prev)
+          next.set(gap.id, Math.min(gap.lineCount, cur + 10))
+          return next
+        })
+        return
       }
-    };
-    t8 = [sourceIndex];
-    $[13] = sourceIndex;
-    $[14] = t7;
-    $[15] = t8;
-  } else {
-    t7 = $[14];
-    t8 = $[15];
+    }
   }
-  useEffect(t7, t8);
-  useRegisterOverlay("diff-dialog");
-  let t10;
-  let t9;
-  if ($[16] !== sources.length || $[17] !== viewMode) {
-    t9 = () => {
-      if (viewMode === "detail") {
-        setViewMode("list");
-      } else {
-        if (viewMode === "list" && sources.length > 1) {
-          setSourceIndex(_temp2);
+
+  const refresh = (): void => {
+    workspace.refresh()
+    if (activeTab === 'log') gitLog.refresh()
+    // Re-fetch stashes too (only if they were ever loaded), and drop the cached
+    // active-stash detail so its files/hunks reload from disk.
+    if (stashes.loaded) {
+      stashes.refresh()
+      if (currentSource.type === 'stash') setStashDetail(null)
+    }
+    setStatusNonce(n => n + 1)
+    setRevealed(new Map())
+    setExpandAll(false)
+    setDiffScroll(0)
+  }
+
+  const handleCancel = (): void => {
+    if (focus === 'content') setFocus('list')
+    else onDone('Diff dialog dismissed', { display: 'system' })
+  }
+
+  useKeybindings(
+    {
+      'diff:nextTab': () => {
+        const next = activeTab === 'local' ? 'log' : 'local'
+        if (next === 'log') gitLog.ensureLoaded()
+        setActiveTab(next)
+        setFocus('list')
+      },
+      // ← : Diff/content pane → file list; on an expanded folder/group, collapse it.
+      'diff:focusList': () => {
+        if (focus === 'content') {
+          setFocus('list')
+          return
         }
-      }
-    };
-    t10 = () => {
-      if (viewMode === "list" && sources.length > 1) {
-        setSourceIndex(prev_0 => Math.min(sources.length - 1, prev_0 + 1));
-      }
-    };
-    $[16] = sources.length;
-    $[17] = viewMode;
-    $[18] = t10;
-    $[19] = t9;
-  } else {
-    t10 = $[18];
-    t9 = $[19];
-  }
-  let t11;
-  if ($[20] !== viewMode) {
-    t11 = () => {
-      if (viewMode === "detail") {
-        setViewMode("list");
-      }
-    };
-    $[20] = viewMode;
-    $[21] = t11;
-  } else {
-    t11 = $[21];
-  }
-  let t12;
-  if ($[22] !== selectedFile || $[23] !== viewMode) {
-    t12 = () => {
-      if (viewMode === "list" && selectedFile) {
-        setViewMode("detail");
-      }
-    };
-    $[22] = selectedFile;
-    $[23] = viewMode;
-    $[24] = t12;
-  } else {
-    t12 = $[24];
-  }
-  let t13;
-  if ($[25] !== viewMode) {
-    t13 = () => {
-      if (viewMode === "list") {
-        setSelectedIndex(_temp3);
-      }
-    };
-    $[25] = viewMode;
-    $[26] = t13;
-  } else {
-    t13 = $[26];
-  }
-  let t14;
-  if ($[27] !== diffData.files.length || $[28] !== viewMode) {
-    t14 = () => {
-      if (viewMode === "list") {
-        setSelectedIndex(prev_2 => Math.min(diffData.files.length - 1, prev_2 + 1));
-      }
-    };
-    $[27] = diffData.files.length;
-    $[28] = viewMode;
-    $[29] = t14;
-  } else {
-    t14 = $[29];
-  }
-  let t15;
-  if ($[30] !== t10 || $[31] !== t11 || $[32] !== t12 || $[33] !== t13 || $[34] !== t14 || $[35] !== t9) {
-    t15 = {
-      "diff:previousSource": t9,
-      "diff:nextSource": t10,
-      "diff:back": t11,
-      "diff:viewDetails": t12,
-      "diff:previousFile": t13,
-      "diff:nextFile": t14
-    };
-    $[30] = t10;
-    $[31] = t11;
-    $[32] = t12;
-    $[33] = t13;
-    $[34] = t14;
-    $[35] = t9;
-    $[36] = t15;
-  } else {
-    t15 = $[36];
-  }
-  let t16;
-  if ($[37] === Symbol.for("react.memo_cache_sentinel")) {
-    t16 = {
-      context: "DiffDialog"
-    };
-    $[37] = t16;
-  } else {
-    t16 = $[37];
-  }
-  useKeybindings(t15, t16);
-  let t17;
-  if ($[38] !== diffData.stats) {
-    t17 = diffData.stats ? <Text dimColor={true}>{diffData.stats.filesCount} {plural(diffData.stats.filesCount, "file")}{" "}changed{diffData.stats.linesAdded > 0 && <Text color="diffAddedWord"> +{diffData.stats.linesAdded}</Text>}{diffData.stats.linesRemoved > 0 && <Text color="diffRemovedWord"> -{diffData.stats.linesRemoved}</Text>}</Text> : null;
-    $[38] = diffData.stats;
-    $[39] = t17;
-  } else {
-    t17 = $[39];
-  }
-  const subtitle = t17;
-  const headerTitle = currentTurn ? `Turn ${currentTurn.turnIndex}` : "Uncommitted changes";
-  const headerSubtitle = currentTurn ? currentTurn.userPromptPreview ? `"${currentTurn.userPromptPreview}"` : "" : "(git diff HEAD)";
-  let t18;
-  if ($[40] !== sourceIndex || $[41] !== sources) {
-    t18 = sources.length > 1 ? <Box>{sourceIndex > 0 && <Text dimColor={true}>◀ </Text>}{sources.map((source, i) => {
-        const isSelected = i === sourceIndex;
-        const label = source.type === "current" ? "Current" : `T${source.turn.turnIndex}`;
-        return <Text key={i} dimColor={!isSelected} bold={isSelected}>{i > 0 ? " \xB7 " : ""}{label}</Text>;
-      })}{sourceIndex < sources.length - 1 && <Text dimColor={true}> ▶</Text>}</Box> : null;
-    $[40] = sourceIndex;
-    $[41] = sources;
-    $[42] = t18;
-  } else {
-    t18 = $[42];
-  }
-  const sourceSelector = t18;
-  const dismissShortcut = useShortcutDisplay("diff:dismiss", "DiffDialog", "esc");
-  let t19;
-  bb0: {
-    if (diffData.loading) {
-      t19 = "Loading diff\u2026";
-      break bb0;
+        if (activeTab === 'local' && collapsibleRow && !collapsibleRow.collapsed) {
+          toggleDir(collapsibleRow.key)
+          return
+        }
+        return false
+      },
+      // → : file list → Diff/content pane; on a collapsed folder/group, expand it.
+      'diff:focusContent': () => {
+        if (focus !== 'list') return false
+        if (activeTab === 'local' && collapsibleRow) {
+          if (collapsibleRow.collapsed) toggleDir(collapsibleRow.key)
+          return
+        }
+        setFocus('content')
+      },
+      // [ : previous source (Local: working tree/turns/stashes) or, on the Log
+      //     tab, the previous project in a monorepo.
+      'diff:previousSource': () => {
+        if (focus !== 'list') return false
+        if (activeTab === 'log') {
+          if (logRepos.length <= 1) return false
+          setLogRepoIndex(i => Math.max(0, i - 1))
+          setLogSelectedRow(0)
+          return
+        }
+        stashes.ensureLoaded()
+        setSourceIndex(i => Math.max(0, i - 1))
+      },
+      // ] : next source / next Log project.
+      'diff:nextSource': () => {
+        if (focus !== 'list') return false
+        if (activeTab === 'log') {
+          if (logRepos.length <= 1) return false
+          setLogRepoIndex(i => Math.min(logRepos.length - 1, i + 1))
+          setLogSelectedRow(0)
+          return
+        }
+        stashes.ensureLoaded()
+        setSourceIndex(i => Math.min(sources.length - 1, i + 1))
+      },
+      'diff:previousFile': () => {
+        if (focus === 'content') {
+          // Diff focused: ↑ scrolls the diff body (local split only).
+          if (split && activeTab === 'local') {
+            setDiffScroll(s => Math.max(0, s - 1))
+            return
+          }
+          return false
+        }
+        if (activeTab === 'local') setSelectedIndex(i => Math.max(0, i - 1))
+        else setLogSelectedRow(r => adjacentCommitRow(gitLog.rows, r, -1))
+      },
+      'diff:nextFile': () => {
+        if (focus === 'content') {
+          if (split && activeTab === 'local') {
+            setDiffScroll(s => Math.min(maxDiffScroll, s + 1))
+            return
+          }
+          return false
+        }
+        if (activeTab === 'local') {
+          setSelectedIndex(i => Math.min(treeRows.length - 1, i + 1))
+        } else {
+          const next = adjacentCommitRow(gitLog.rows, logSelectedRow, 1)
+          if (next === logSelectedRow && gitLog.hasMore) gitLog.loadMore()
+          setLogSelectedRow(next)
+        }
+      },
+      // Enter: toggle a folder / open a file → content (list); grow the next
+      // collapsed gap (content).
+      'diff:viewDetails': () => {
+        if (focus === 'list') {
+          if (activeTab === 'local' && collapsibleRow) {
+            toggleDir(collapsibleRow.key)
+            return
+          }
+          setFocus('content')
+          return
+        }
+        if (activeTab === 'local' && split) {
+          expandNextGap()
+          return
+        }
+        return false
+      },
+      'diff:expandAll': () => {
+        if (activeTab === 'local') setExpandAll(x => !x)
+        else return false
+      },
+      'diff:refresh': refresh,
+    },
+    { context: 'DiffDialog' },
+  )
+
+  // Right-pane paging while the diff has focus in the split layout. Line-by-
+  // line ↑/↓ is handled by the diff:previousFile/nextFile keybindings above;
+  // these keys aren't bound there, so the keybinding resolver leaves them for
+  // this handler.
+  const scrollActive = split && activeTab === 'local' && focus === 'content'
+  useInput(
+    (input, key) => {
+      if (key.pageUp) setDiffScroll(s => Math.max(0, s - contentHeight))
+      else if (key.pageDown)
+        setDiffScroll(s => Math.min(maxDiffScroll, s + contentHeight))
+      else if (input === 'g') setDiffScroll(0)
+      else if (input === 'G') setDiffScroll(maxDiffScroll)
+    },
+    { isActive: scrollActive },
+  )
+
+  // ── render helpers ────────────────────────────────────────────────────────
+  // No repo at all only once the scan has settled with zero groups — a nested
+  // monorepo has no explicit root but still discovers child repos.
+  const noRepo = !workspace.loading && workspace.groups.length === 0
+  const tabBar = (
+    <>
+      <Text inverse={activeTab === 'local'} bold={activeTab === 'local'}>
+        {' '}
+        Local Changes{' '}
+      </Text>
+      {'  '}
+      <Text inverse={activeTab === 'log'} bold={activeTab === 'log'}>
+        {' '}
+        Log{' '}
+      </Text>
+    </>
+  )
+
+  const sourceLabel =
+    currentSource.type === 'working'
+      ? 'working tree'
+      : currentSource.type === 'turn'
+        ? `T${currentSource.turn.turnIndex}`
+        : currentSource.ref
+  const sourceLine = activeTab === 'local' && (
+    <Text dimColor>
+      {`source: ${sourceLabel} ▾`}
+      {sources.length > 1 ? '   [ ] source' : ''}
+    </Text>
+  )
+  // Log tab: project picker, shown only when more than one repo is in scope.
+  const projectLine = activeTab === 'log' && logRepos.length > 1 && (
+    <Text dimColor>
+      {`project: ${logRepo?.name ?? ''} ▾   [ ] project`}
+    </Text>
+  )
+
+  const statusText = status
+    ? `${status.branch}${status.ahead ? ` ↑${status.ahead}` : ''}${
+        status.behind ? ` ↓${status.behind}` : ''
+      } · ${status.dirty} changed`
+    : ''
+  const hints =
+    activeTab === 'log'
+      ? `Tab tabs · ↑/↓ commits · → files · ← back${
+          logRepos.length > 1 ? ' · [ ] project' : ''
+        } · r refresh · Esc close`
+      : focus === 'content'
+        ? 'Tab tabs · ↑/↓ scroll · PgUp/PgDn page · Enter expand gap · a expand all · ← files · Esc close'
+        : 'Tab tabs · ↑/↓ move · ←/→ folder · Enter open · [ ] source · a expand · r refresh · Esc close'
+  const footer = (
+    <Box flexDirection="row">
+      <Text dimColor>{statusText}</Text>
+      <Box flexGrow={1} />
+      <Text dimColor>{hints}</Text>
+    </Box>
+  )
+
+  const localEmptyMessage = workspace.loading
+    ? 'Loading diff…'
+    : currentSource.type === 'stash' && currentGroups.length === 0
+      ? 'Loading stash…'
+      : currentSource.type === 'turn'
+        ? 'No file changes in this turn'
+        : 'Working tree is clean'
+
+  // Diff content for the right pane / stacked detail.
+  const renderDiffBody = (height: number): React.ReactNode => {
+    if (!selected) {
+      const hint =
+        allFiles.length === 0
+          ? localEmptyMessage
+          : selectedRow?.kind === 'dir'
+            ? 'Folder — Enter or ←/→ to collapse/expand'
+            : 'Select a file to view its diff'
+      return <Text dimColor>{hint}</Text>
     }
-    if (currentTurn) {
-      t19 = "No file changes in this turn";
-      break bb0;
+    const f = selected.file
+    if (!split) {
+      return (
+        <DiffDetailView
+          filePath={f.path}
+          hunks={effectiveHunks}
+          isBinary={f.isBinary}
+          isLargeFile={f.isLargeFile}
+          isTruncated={f.isTruncated}
+          isUntracked={f.isUntracked}
+          renamedFrom={f.renamedFrom}
+          root={selected.root}
+        />
+      )
     }
-    if (diffData.stats && diffData.stats.filesCount > 0 && diffData.files.length === 0) {
-      t19 = "Too many files to display details";
-      break bb0;
-    }
-    t19 = "Working tree is clean";
+    if (f.isBinary)
+      return <Text dimColor italic>Binary file - cannot display diff</Text>
+    if (f.isLargeFile)
+      return <Text dimColor italic>Large file - diff exceeds 1 MB limit</Text>
+    if (f.isUntracked && effectiveHunks.length === 0)
+      return <Text dimColor italic>New file not yet staged.</Text>
+    if (f.renamedFrom && effectiveHunks.length === 0)
+      return <Text dimColor italic>{`renamed from ${f.renamedFrom}`}</Text>
+    return (
+      <DiffPane
+        rows={diffRows}
+        scrollOffset={diffScrollClamped}
+        height={height}
+        width={diffWidth}
+      />
+    )
   }
-  const emptyMessage = t19;
-  let t20;
-  if ($[43] !== headerSubtitle) {
-    t20 = headerSubtitle && <Text dimColor={true}> {headerSubtitle}</Text>;
-    $[43] = headerSubtitle;
-    $[44] = t20;
+
+  // ── body ────────────────────────────────────────────────────────────────
+  let body: React.ReactNode
+  if (noRepo) {
+    body = (
+      <Box marginTop={1}>
+        <Text dimColor>Not a git repository</Text>
+      </Box>
+    )
+  } else if (activeTab === 'local') {
+    const listEl =
+      allFiles.length === 0 ? (
+        <Text dimColor>{localEmptyMessage}</Text>
+      ) : (
+        <DiffFileList
+          rows={treeRows}
+          selectedIndex={selectedIndex}
+          maxVisible={listMaxVisible}
+          width={split ? leftWidth - 2 : columns - 4}
+        />
+      )
+    body = split ? (
+      <Box flexDirection="row" gap={1}>
+        <Box
+          width={leftWidth}
+          flexShrink={0}
+          height={paneHeight}
+          overflow="hidden"
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={focus === 'list' ? 'permission' : 'subtle'}
+          borderText={paneTitle('Files')}
+        >
+          {listEl}
+        </Box>
+        <Box
+          flexGrow={1}
+          height={paneHeight}
+          overflow="hidden"
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={focus === 'content' ? 'permission' : 'subtle'}
+          borderText={(() => {
+            const title = paneTitle(
+              selected
+                ? `Diff: ${selected.file.path}${
+                    maxDiffScroll > 0
+                      ? `  ${diffScrollClamped + 1}-${Math.min(
+                          diffRows.length,
+                          diffScrollClamped + contentHeight,
+                        )}/${diffRows.length}`
+                      : ''
+                  }`
+                : 'Diff',
+            )
+            // Untracked files carry no git line counts; show the synthesized
+            // all-added count so the new-file diff still reports +N.
+            const statsFile =
+              selected && isUntrackedFile && effectiveHunks.length > 0
+                ? {
+                    ...selected.file,
+                    linesAdded: effectiveHunks[0]!.newLines,
+                    linesRemoved: 0,
+                  }
+                : selected?.file
+            const stats = statsFile ? statsBorderText(statsFile) : null
+            return stats ? [title, stats] : title
+          })()}
+        >
+          {renderDiffBody(contentHeight)}
+        </Box>
+      </Box>
+    ) : (
+      <Box flexDirection="column" marginTop={1}>
+        {focus === 'list' ? listEl : renderDiffBody(contentHeight)}
+      </Box>
+    )
   } else {
-    t20 = $[44];
+    // Log tab
+    const graphEl = (
+      <CommitGraph
+        rows={gitLog.rows}
+        selectedRow={logSelectedRow}
+        maxVisible={listMaxVisible}
+        loading={gitLog.loading}
+        hasMore={gitLog.hasMore}
+      />
+    )
+    const filesEl = <CommitFileList files={commitFiles} />
+    body = split ? (
+      <Box flexDirection="row" gap={1}>
+        <Box
+          width={leftWidth}
+          flexShrink={0}
+          height={paneHeight}
+          overflow="hidden"
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={focus === 'list' ? 'permission' : 'subtle'}
+          borderText={paneTitle('Log')}
+        >
+          {graphEl}
+        </Box>
+        <Box
+          flexGrow={1}
+          height={paneHeight}
+          overflow="hidden"
+          flexDirection="column"
+          borderColor={focus === 'content' ? 'permission' : 'subtle'}
+          borderStyle="round"
+          borderText={(() => {
+            const title = paneTitle(
+              selectedHash ? `Files in ${selectedHash.slice(0, 7)}` : 'Files',
+            )
+            // Commit-wide add/remove totals, right-aligned like the Local diff
+            // pane. Reuses statsBorderText via a synthetic stats-only file.
+            const stats = commitStats
+              ? statsBorderText({
+                  path: '',
+                  linesAdded: commitStats.added,
+                  linesRemoved: commitStats.removed,
+                  isBinary: false,
+                  isLargeFile: false,
+                  isTruncated: false,
+                })
+              : null
+            return stats ? [title, stats] : title
+          })()}
+        >
+          {filesEl}
+        </Box>
+      </Box>
+    ) : (
+      <Box flexDirection="column" marginTop={1}>
+        {focus === 'list' ? graphEl : filesEl}
+      </Box>
+    )
   }
-  let t21;
-  if ($[45] !== headerTitle || $[46] !== t20) {
-    t21 = <Text>{headerTitle}{t20}</Text>;
-    $[45] = headerTitle;
-    $[46] = t20;
-    $[47] = t21;
-  } else {
-    t21 = $[47];
-  }
-  const title = t21;
-  let t22;
-  if ($[48] !== onDone || $[49] !== viewMode) {
-    t22 = function handleCancel() {
-      if (viewMode === "detail") {
-        setViewMode("list");
-      } else {
-        onDone("Diff dialog dismissed", {
-          display: "system"
-        });
-      }
-    };
-    $[48] = onDone;
-    $[49] = viewMode;
-    $[50] = t22;
-  } else {
-    t22 = $[50];
-  }
-  const handleCancel = t22;
-  let t23;
-  if ($[51] !== dismissShortcut || $[52] !== sources.length || $[53] !== viewMode) {
-    t23 = exitState => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : viewMode === "list" ? <Byline>{sources.length > 1 && <Text>←/→ source</Text>}<Text>↑/↓ select</Text><Text>Enter view</Text><Text>{dismissShortcut} close</Text></Byline> : <Byline><Text>← back</Text><Text>{dismissShortcut} close</Text></Byline>;
-    $[51] = dismissShortcut;
-    $[52] = sources.length;
-    $[53] = viewMode;
-    $[54] = t23;
-  } else {
-    t23 = $[54];
-  }
-  let t24;
-  if ($[55] !== diffData.files || $[56] !== emptyMessage || $[57] !== selectedFile?.isBinary || $[58] !== selectedFile?.isLargeFile || $[59] !== selectedFile?.isTruncated || $[60] !== selectedFile?.isUntracked || $[61] !== selectedFile?.path || $[62] !== selectedHunks || $[63] !== selectedIndex || $[64] !== viewMode) {
-    t24 = diffData.files.length === 0 ? <Box marginTop={1}><Text dimColor={true}>{emptyMessage}</Text></Box> : viewMode === "list" ? <Box flexDirection="column" marginTop={1}><DiffFileList files={diffData.files} selectedIndex={selectedIndex} /></Box> : <Box flexDirection="column" marginTop={1}><DiffDetailView filePath={selectedFile?.path || ""} hunks={selectedHunks} isLargeFile={selectedFile?.isLargeFile} isBinary={selectedFile?.isBinary} isTruncated={selectedFile?.isTruncated} isUntracked={selectedFile?.isUntracked} /></Box>;
-    $[55] = diffData.files;
-    $[56] = emptyMessage;
-    $[57] = selectedFile?.isBinary;
-    $[58] = selectedFile?.isLargeFile;
-    $[59] = selectedFile?.isTruncated;
-    $[60] = selectedFile?.isUntracked;
-    $[61] = selectedFile?.path;
-    $[62] = selectedHunks;
-    $[63] = selectedIndex;
-    $[64] = viewMode;
-    $[65] = t24;
-  } else {
-    t24 = $[65];
-  }
-  let t25;
-  if ($[66] !== handleCancel || $[67] !== sourceSelector || $[68] !== subtitle || $[69] !== t23 || $[70] !== t24 || $[71] !== title) {
-    t25 = <Dialog title={title} onCancel={handleCancel} color="background" inputGuide={t23}>{sourceSelector}{subtitle}{t24}</Dialog>;
-    $[66] = handleCancel;
-    $[67] = sourceSelector;
-    $[68] = subtitle;
-    $[69] = t23;
-    $[70] = t24;
-    $[71] = title;
-    $[72] = t25;
-  } else {
-    t25 = $[72];
-  }
-  return t25;
-}
-function _temp3(prev_1) {
-  return Math.max(0, prev_1 - 1);
-}
-function _temp2(prev) {
-  return Math.max(0, prev - 1);
-}
-function _temp(turn) {
-  return {
-    type: "turn",
-    turn
-  };
+
+  return (
+    <Dialog
+      title={tabBar}
+      onCancel={handleCancel}
+      color="background"
+      hideInputGuide
+    >
+      {sourceLine}
+      {projectLine}
+      {body}
+      {footer}
+    </Dialog>
+  )
 }

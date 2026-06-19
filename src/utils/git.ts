@@ -1,13 +1,13 @@
 import { createHash } from 'crypto'
 import { readFileSync, realpathSync, statSync } from 'fs'
-import { open, readFile, realpath, stat } from 'fs/promises'
+import { open, readdir, readFile, realpath, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, join, resolve, sep } from 'path'
 import { hasBinaryExtension, isBinaryContent } from '../constants/files.js'
 import { getCwd } from './cwd.js'
 import { logForDebugging } from './debug.js'
 import { logForDiagnosticsNoPII } from './diagLogs.js'
-import { execFileNoThrow } from './execFileNoThrow.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { getFsImplementation } from './fsOperations.js'
 import {
   getCachedBranch,
@@ -209,6 +209,117 @@ function createFindCanonicalGitRoot(): {
   return wrapper
 }
 
+/**
+ * Dedupe a list of (possibly null) git roots, dropping nulls and keeping the
+ * first occurrence of each canonical path. Pure — unit-tested.
+ */
+export function dedupeCanonicalRoots(roots: Array<string | null>): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const root of roots) {
+    if (!root || seen.has(root)) continue
+    seen.add(root)
+    out.push(root)
+  }
+  return out
+}
+
+/**
+ * Resolve the set of git repo roots in scope for the diff reviewer: the cwd's
+ * canonical root first, then each additional working directory ("/add-dir"),
+ * deduped by canonical path. Nested child repos (monorepos) are discovered
+ * separately by `findNestedGitRoots` so the scan can stay async.
+ */
+export function resolveWorkspaceRoots(
+  cwd: string,
+  additionalDirs: string[],
+): string[] {
+  return dedupeCanonicalRoots([
+    findCanonicalGitRoot(cwd),
+    ...additionalDirs.map(dir => findCanonicalGitRoot(dir)),
+  ])
+}
+
+// Directories we never descend into while hunting for nested repos: VCS noise
+// and heavy build/dependency trees that can't usefully contain a sibling repo.
+const NESTED_SCAN_SKIP = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  'target',
+  'vendor',
+  'coverage',
+  '.next',
+  '.turbo',
+  '.cache',
+  '.venv',
+  'venv',
+  '__pycache__',
+])
+
+/**
+ * Discover git repositories nested under `baseDir` — the monorepo case where
+ * child folders (e.g. `business/`, `aargau-app/`) each carry their own `.git`,
+ * so the parent's `git status` never reports their changes. Returns each child
+ * directory that has its OWN `.git` (directory or file), canonicalized through
+ * worktree resolution.
+ *
+ * Bounded and fail-open: descends at most `maxDepth` levels and inspects at
+ * most `maxDirs` directories, never descending into a repo once found nor into
+ * dot-dirs / known noise dirs (`node_modules`, `target`, …). `baseDir` itself
+ * is not included — callers add it via the explicit-root path. Returns [] on
+ * any error.
+ */
+export async function findNestedGitRoots(
+  baseDir: string,
+  opts?: { maxDepth?: number; maxDirs?: number },
+): Promise<string[]> {
+  const maxDepth = opts?.maxDepth ?? 3
+  const maxDirs = opts?.maxDirs ?? 1500
+  const found: string[] = []
+  let scanned = 0
+
+  const hasGit = async (dir: string): Promise<boolean> => {
+    try {
+      await stat(join(dir, '.git'))
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const walk = async (dir: string, depth: number): Promise<void> => {
+    if (depth > maxDepth || scanned >= maxDirs) return
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (scanned >= maxDirs) return
+      // Resolve symlinked dirs lazily; isDirectory() is false for symlinks, so
+      // we skip them — avoids cycles and surprise out-of-tree repos.
+      if (!entry.isDirectory()) continue
+      if (entry.name.startsWith('.') || NESTED_SCAN_SKIP.has(entry.name)) {
+        continue
+      }
+      const child = join(dir, entry.name)
+      scanned++
+      if (await hasGit(child)) {
+        found.push(resolveCanonicalRoot(child.normalize('NFC')))
+        continue // a repo's own subtree is not a source of sibling repos
+      }
+      await walk(child, depth + 1)
+    }
+  }
+
+  await walk(baseDir, 1)
+  return found
+}
+
 export const gitExe = memoize((): string => {
   // Every time we spawn a process, we have to lookup the path.
   // Let's instead avoid that lookup so we only do it once.
@@ -258,7 +369,17 @@ export const getHead = async (): Promise<string> => {
   return getCachedHead()
 }
 
-export const getBranch = async (): Promise<string> => {
+export const getBranch = async (cwd?: string): Promise<string> => {
+  // For the ambient repo use the cached read; an explicit repo root (used by
+  // the multi-repo diff reviewer for per-project headers) bypasses the cache.
+  if (cwd) {
+    const { stdout, code } = await execFileNoThrowWithCwd(
+      gitExe(),
+      ['--no-optional-locks', 'rev-parse', '--abbrev-ref', 'HEAD'],
+      { cwd, timeout: 5000, preserveOutputOnError: false },
+    )
+    return code === 0 ? stdout.trim() : ''
+  }
   return getCachedBranch()
 }
 
@@ -360,15 +481,29 @@ export const hasUnpushedCommits = async (): Promise<boolean> => {
  * upstream, isn't a git repo, or git fails — callers can treat null-ish
  * upstream the same as "in sync" without needing a separate check.
  */
-export const getAheadBehind = async (): Promise<{
+export const getAheadBehind = async (
+  cwd?: string,
+): Promise<{
   ahead: number
   behind: number
 }> => {
-  const { stdout, code } = await execFileNoThrow(
-    gitExe(),
-    ['--no-optional-locks', 'rev-list', '--left-right', '--count', '@{u}...HEAD'],
-    { preserveOutputOnError: false, useCwd: true },
-  )
+  const args = [
+    '--no-optional-locks',
+    'rev-list',
+    '--left-right',
+    '--count',
+    '@{u}...HEAD',
+  ]
+  const { stdout, code } = cwd
+    ? await execFileNoThrowWithCwd(gitExe(), args, {
+        cwd,
+        timeout: 5000,
+        preserveOutputOnError: false,
+      })
+    : await execFileNoThrow(gitExe(), args, {
+        preserveOutputOnError: false,
+        useCwd: true,
+      })
   if (code !== 0) return { ahead: 0, behind: 0 }
   // Output format: "<behind>\t<ahead>" — left side is upstream, right is HEAD
   const parts = stdout.trim().split(/\s+/)
@@ -414,14 +549,17 @@ export type GitFileStatus = {
   untracked: string[]
 }
 
-export const getFileStatus = async (): Promise<GitFileStatus> => {
-  const { stdout } = await execFileNoThrow(
-    gitExe(),
-    ['--no-optional-locks', 'status', '--porcelain'],
-    {
-      preserveOutputOnError: false,
-    },
-  )
+export const getFileStatus = async (cwd?: string): Promise<GitFileStatus> => {
+  const args = ['--no-optional-locks', 'status', '--porcelain']
+  const { stdout } = cwd
+    ? await execFileNoThrowWithCwd(gitExe(), args, {
+        cwd,
+        timeout: 5000,
+        preserveOutputOnError: false,
+      })
+    : await execFileNoThrow(gitExe(), args, {
+        preserveOutputOnError: false,
+      })
 
   const tracked: string[] = []
   const untracked: string[] = []

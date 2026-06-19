@@ -21,7 +21,7 @@ import {
 } from '../../utils/effort.js'
 import { env } from '../../utils/env.js'
 import { cacheKeys } from '../../utils/fileStateCache.js'
-import { getWorktreeCount } from '../../utils/git.js'
+import { getIsGit, getWorktreeCount } from '../../utils/git.js'
 import {
   detectRunningIDEsCached,
   getSortedIdeLockfiles,
@@ -149,6 +149,19 @@ const externalTips: Tip[] = [
         const config = getGlobalConfig()
         const worktreeCount = await getWorktreeCount()
         return worktreeCount <= 1 && config.numStartups > 50
+      } catch (_) {
+        return false
+      }
+    },
+  },
+  {
+    id: 'diff-reviewer',
+    content: async () =>
+      'Review local changes, stashes and the git log side by side — run /diff, or press gg on an empty prompt.',
+    cooldownSessions: 10,
+    isRelevant: async () => {
+      try {
+        return await getIsGit()
       } catch (_) {
         return false
       }

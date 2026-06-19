@@ -24,6 +24,8 @@ export type PerFileStats = {
   removed: number
   isBinary: boolean
   isUntracked?: boolean
+  /** Original path when git detected a rename (numstat `old => new`). */
+  renamedFrom?: string
 }
 
 export type GitDiffResult = {
@@ -38,6 +40,46 @@ const MAX_DIFF_SIZE_BYTES = 1_000_000 // 1 MB - skip files larger than this
 const MAX_LINES_PER_FILE = 400 // GitHub's auto-load limit
 const MAX_FILES_FOR_DETAILS = 500 // Skip per-file details if more files than this
 
+const RENAME_BRACE_RE = /\{(.*?) => (.*?)\}/
+const RENAME_ARROW = ' => '
+
+/**
+ * Run a git command against an explicit repo root when `cwd` is provided
+ * (multi-repo workspace diffing), or the ambient cwd otherwise. Always
+ * resolves; callers fail-open on a non-zero `code`.
+ */
+function runGit(
+  args: string[],
+  cwd?: string,
+  timeout: number = GIT_TIMEOUT_MS,
+): Promise<{ stdout: string; code: number }> {
+  const opts = { timeout, preserveOutputOnError: false }
+  return cwd
+    ? execFileNoThrowWithCwd(gitExe(), args, { ...opts, cwd })
+    : execFileNoThrow(gitExe(), args, opts)
+}
+
+/**
+ * Resolve a numstat path that may encode a rename. Git emits two forms:
+ *   "old/path => new/path"            (no common prefix/suffix)
+ *   "src/{old => new}/file.ts"        (brace form with common segments)
+ * Returns the new path plus the original (renamedFrom) when a rename is
+ * detected, else just the path unchanged.
+ */
+function parseRenamePath(raw: string): { path: string; renamedFrom?: string } {
+  if (!raw.includes(RENAME_ARROW)) return { path: raw }
+  const brace = raw.match(RENAME_BRACE_RE)
+  if (brace) {
+    const oldPart = brace[1] ?? ''
+    const newPart = brace[2] ?? ''
+    const collapse = (part: string) =>
+      raw.replace(RENAME_BRACE_RE, part).replace(/\/\//g, '/')
+    return { path: collapse(newPart), renamedFrom: collapse(oldPart) }
+  }
+  const [oldPath, newPath] = raw.split(RENAME_ARROW)
+  return { path: (newPath ?? raw).trim(), renamedFrom: (oldPath ?? '').trim() }
+}
+
 /**
  * Fetch git diff stats and hunks comparing working tree to HEAD.
  * Returns null if not in a git repo or if git commands fail.
@@ -46,23 +88,26 @@ const MAX_FILES_FOR_DETAILS = 500 // Skip per-file details if more files than th
  * working tree contains incoming changes that weren't intentionally
  * made by the user.
  */
-export async function fetchGitDiff(): Promise<GitDiffResult | null> {
-  const isGit = await getIsGit()
-  if (!isGit) return null
+export async function fetchGitDiff(
+  cwd?: string,
+): Promise<GitDiffResult | null> {
+  // For the ambient repo, gate on the memoized getIsGit. When an explicit
+  // repo root is passed (workspace diffing), trust the caller's resolved
+  // root and let the git command fail-open instead.
+  if (!cwd && !(await getIsGit())) return null
 
   // Skip diff calculation during transient git states since the
   // working tree contains incoming changes, not user-intentional edits
-  if (await isInTransientGitState()) {
+  if (await isInTransientGitState(cwd)) {
     return null
   }
 
   // Quick probe: use --shortstat to get totals without loading all content.
   // This is O(1) memory and lets us detect massive diffs (e.g., jj workspaces)
   // before committing to expensive operations.
-  const { stdout: shortstatOut, code: shortstatCode } = await execFileNoThrow(
-    gitExe(),
+  const { stdout: shortstatOut, code: shortstatCode } = await runGit(
     ['--no-optional-locks', 'diff', 'HEAD', '--shortstat'],
-    { timeout: GIT_TIMEOUT_MS, preserveOutputOnError: false },
+    cwd,
   )
 
   if (shortstatCode === 0) {
@@ -79,10 +124,9 @@ export async function fetchGitDiff(): Promise<GitDiffResult | null> {
   }
 
   // Get stats via --numstat (all uncommitted changes vs HEAD)
-  const { stdout: numstatOut, code: numstatCode } = await execFileNoThrow(
-    gitExe(),
+  const { stdout: numstatOut, code: numstatCode } = await runGit(
     ['--no-optional-locks', 'diff', 'HEAD', '--numstat'],
-    { timeout: GIT_TIMEOUT_MS, preserveOutputOnError: false },
+    cwd,
   )
 
   if (numstatCode !== 0) return null
@@ -93,7 +137,7 @@ export async function fetchGitDiff(): Promise<GitDiffResult | null> {
   // Just filenames - no content reading for performance
   const remainingSlots = MAX_FILES - perFileStats.size
   if (remainingSlots > 0) {
-    const untrackedStats = await fetchUntrackedFiles(remainingSlots)
+    const untrackedStats = await fetchUntrackedFiles(remainingSlots, cwd)
     if (untrackedStats) {
       stats.filesCount += untrackedStats.size
       for (const [path, fileStats] of untrackedStats) {
@@ -111,20 +155,20 @@ export async function fetchGitDiff(): Promise<GitDiffResult | null> {
  * Fetch git diff hunks on-demand (for DiffDialog).
  * Separated from fetchGitDiff() to avoid expensive calls during polling.
  */
-export async function fetchGitDiffHunks(): Promise<
-  Map<string, StructuredPatchHunk[]>
-> {
-  const isGit = await getIsGit()
-  if (!isGit) return new Map()
+export async function fetchGitDiffHunks(
+  cwd?: string,
+): Promise<Map<string, StructuredPatchHunk[]>> {
+  if (!cwd && !(await getIsGit())) return new Map()
 
-  if (await isInTransientGitState()) {
+  if (await isInTransientGitState(cwd)) {
     return new Map()
   }
 
-  const { stdout: diffOut, code: diffCode } = await execFileNoThrow(
-    gitExe(),
-    ['--no-optional-locks', 'diff', 'HEAD'],
-    { timeout: GIT_TIMEOUT_MS, preserveOutputOnError: false },
+  // Force standard a/ b/ prefixes so parseGitDiff matches regardless of the
+  // user's diff.mnemonicPrefix / diff.noprefix git config.
+  const { stdout: diffOut, code: diffCode } = await runGit(
+    ['--no-optional-locks', 'diff', 'HEAD', '--src-prefix=a/', '--dst-prefix=b/'],
+    cwd,
   )
 
   if (diffCode !== 0) {
@@ -160,7 +204,10 @@ export function parseGitNumstat(stdout: string): NumstatResult {
     validFileCount++
     const addStr = parts[0]
     const remStr = parts[1]
-    const filePath = parts.slice(2).join('\t') // filename may contain tabs
+    const rawPath = parts.slice(2).join('\t') // filename may contain tabs
+    // Resolve rename forms ("old => new", "src/{old => new}/f") to the new
+    // path so this key matches parseGitDiff's hunk key (which uses b/<new>).
+    const { path: filePath, renamedFrom } = parseRenamePath(rawPath)
     const isBinary = addStr === '-' || remStr === '-'
     const fileAdded = isBinary ? 0 : parseInt(addStr ?? '0', 10) || 0
     const fileRemoved = isBinary ? 0 : parseInt(remStr ?? '0', 10) || 0
@@ -174,6 +221,7 @@ export function parseGitNumstat(stdout: string): NumstatResult {
         added: fileAdded,
         removed: fileRemoved,
         isBinary,
+        ...(renamedFrom ? { renamedFrom } : {}),
       })
     }
   }
@@ -217,8 +265,10 @@ export function parseGitDiff(
 
     const lines = fileDiff.split('\n')
 
-    // Extract filename from first line: "a/path/to/file b/path/to/file"
-    const headerMatch = lines[0]?.match(/^a\/(.+?) b\/(.+)$/)
+    // Extract filename from first line: "a/path/to/file b/path/to/file".
+    // The single-char prefix is matched loosely (`.`) so mnemonic prefixes
+    // (c/w, i/w, o/w) still parse if a caller didn't force a/ b/.
+    const headerMatch = lines[0]?.match(/^.\/(.+?) .\/(.+)$/)
     if (!headerMatch) continue
     const filePath = headerMatch[2] ?? headerMatch[1] ?? ''
 
@@ -298,14 +348,34 @@ export function parseGitDiff(
 }
 
 /**
+ * Build a single all-added hunk from a new/untracked file's full content, so
+ * the reviewer can show it as an all-green diff. `git diff HEAD` omits
+ * untracked files, so they otherwise have no hunks at all. Mirrors
+ * parseGitDiff's hunk shape: lines are '+'-prefixed and flat-copied (`'' + l`)
+ * to break V8 sliced-string references, and capped at MAX_LINES_PER_FILE.
+ */
+export function buildAddedFileHunks(content: string): StructuredPatchHunk[] {
+  if (!content) return []
+  const lines = content.split('\n')
+  // Drop the trailing empty element from a final newline so we don't render a
+  // phantom blank added line at EOF.
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+  const added = lines.slice(0, MAX_LINES_PER_FILE).map(l => '+' + l)
+  if (added.length === 0) return []
+  return [
+    { oldStart: 0, oldLines: 0, newStart: 1, newLines: added.length, lines: added },
+  ]
+}
+
+/**
  * Check if we're in a transient git state (merge, rebase, cherry-pick, or revert).
  * During these operations, we skip diff calculation since the working
  * tree contains incoming changes that weren't intentionally made.
  *
  * Uses fs.access to check for transient ref files, avoiding process spawns.
  */
-async function isInTransientGitState(): Promise<boolean> {
-  const gitDir = await getGitDir(getCwd())
+async function isInTransientGitState(cwd?: string): Promise<boolean> {
+  const gitDir = await getGitDir(cwd ?? getCwd())
   if (!gitDir) return false
 
   const transientFiles = [
@@ -333,12 +403,12 @@ async function isInTransientGitState(): Promise<boolean> {
  */
 async function fetchUntrackedFiles(
   maxFiles: number,
+  cwd?: string,
 ): Promise<Map<string, PerFileStats> | null> {
   // Get list of untracked files (excludes gitignored)
-  const { stdout, code } = await execFileNoThrow(
-    gitExe(),
+  const { stdout, code } = await runGit(
     ['--no-optional-locks', 'ls-files', '--others', '--exclude-standard'],
-    { timeout: GIT_TIMEOUT_MS, preserveOutputOnError: false },
+    cwd,
   )
 
   if (code !== 0 || !stdout.trim()) return null
