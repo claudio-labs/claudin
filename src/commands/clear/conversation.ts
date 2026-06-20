@@ -24,6 +24,10 @@ import {
 import { isLocalShellTask } from '../../tasks/LocalShellTask/guards.js'
 import { asAgentId } from '../../types/ids.js'
 import type { Message } from '../../types/message.js'
+import {
+  resetCostState,
+  saveCurrentSessionCosts,
+} from '../../cost-tracker.js'
 import { createEmptyAttributionState } from '../../utils/commitAttribution.js'
 import type { FileStateCache } from '../../utils/fileStateCache.js'
 import {
@@ -216,6 +220,15 @@ export async function clearConversation({
   // of the conversation-scoped semantics; the double-clear is harmless.
   clearPendingSessionWakeup()
   resetLoopSentinelState()
+
+  // Reset the session token/cost counters so the footer pill (ctx/wrt/rd/$)
+  // starts the new conversation at zero. Persist the old session's costs to
+  // the project rollup first (same good-citizen order as /resume) so the
+  // accumulated spend isn't silently dropped from /cost project totals, then
+  // zero the in-memory counters. resetCostState also clears the cache-stats
+  // tracker (wrt/rd) via its wrapper.
+  saveCurrentSessionCosts()
+  resetCostState()
 
   // Generate new session ID to provide fresh state
   // Set the old session as parent for analytics lineage tracking.

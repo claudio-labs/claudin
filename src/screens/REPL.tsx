@@ -2815,7 +2815,7 @@ export function REPL({
       // 1. Command has `immediate: true`, OR
       // 2. Command was triggered via keybinding (fromKeybinding option)
       const matchingCommand = commands.find(cmd => isCommandEnabled(cmd) && (cmd.name === commandName || cmd.aliases?.includes(commandName) || getCommandName(cmd) === commandName));
-      if (matchingCommand?.name === 'clear' && idleHintShownRef.current) {
+      if (matchingCommand?.name === 'new' && idleHintShownRef.current) {
         logEvent('tengu_idle_return_action', {
           action: 'hint_converted' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
           variant: idleHintShownRef.current as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
