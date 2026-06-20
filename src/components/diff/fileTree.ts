@@ -26,14 +26,46 @@ export type TreeRow =
       collapsed: boolean
       depth: number
     }
-  | { kind: 'dir'; key: string; label: string; depth: number; collapsed: boolean }
+  | {
+      kind: 'dir'
+      key: string
+      label: string
+      depth: number
+      collapsed: boolean
+      /** Pre-rendered indent-guide prefix (one segment per level). */
+      guides: string
+    }
   | {
       kind: 'file'
       file: DiffFile
       root: string
       hunks: StructuredPatchHunk[]
       depth: number
+      /** Pre-rendered indent-guide prefix (one segment per level). */
+      guides: string
     }
+
+// Tree indent-guide segments, each two columns wide so they line up exactly
+// with the old two-space indent. Box-drawing chars are safe on any monospace
+// terminal (the ▾/▸ carets already assume Unicode).
+const GUIDE_VERTICAL = '│ ' // a level that still has rows below this one
+const GUIDE_LAST = '└ ' // the last child of its folder (elbow connector)
+const GUIDE_BLANK = '  ' // an ancestor whose subtree already ended
+
+/**
+ * Build a row's indent-guide string: one ancestor column per `ancestorCols`
+ * entry (a continuing `│` or a blank), then the row's own connector — an elbow
+ * `└` when it's the last child, otherwise a straight `│`. Depth-0 rows (a
+ * single-repo's top level) get no guides, matching the flush look there.
+ */
+function makeGuides(
+  depth: number,
+  ancestorCols: string[],
+  isLast: boolean,
+): string {
+  if (depth === 0) return ''
+  return ancestorCols.join('') + (isLast ? GUIDE_LAST : GUIDE_VERTICAL)
+}
 
 type DirNode = {
   name: string
@@ -80,11 +112,18 @@ function flattenDir(
   root: string,
   hunksOf: (path: string) => StructuredPatchHunk[],
   out: TreeRow[],
+  // Resolved guide columns for every ancestor of this node's children.
+  ancestorCols: string[],
 ): void {
   const dirs = [...node.dirs.values()].sort((a, b) =>
     a.name.localeCompare(b.name),
   )
-  for (let dir of dirs) {
+  const files = [...node.files].sort((a, b) =>
+    basename(a.path).localeCompare(basename(b.path)),
+  )
+  const hasFiles = files.length > 0
+  for (let i = 0; i < dirs.length; i++) {
+    let dir = dirs[i]!
     let label = dir.name
     let path = prefixPath ? `${prefixPath}/${dir.name}` : dir.name
     // Compact a/b/c chains while each level has exactly one sub-dir and no files.
@@ -94,18 +133,41 @@ function flattenDir(
       path = `${path}/${only.name}`
       dir = only
     }
+    // Folders precede files, so a folder is the very last child only when it's
+    // the last folder AND this node has no files.
+    const isLast = i === dirs.length - 1 && !hasFiles
     const key = `${root}\u0000${path}`
     const isCollapsed = collapsed.has(key)
-    out.push({ kind: 'dir', key, label, depth, collapsed: isCollapsed })
+    out.push({
+      kind: 'dir',
+      key,
+      label,
+      depth,
+      collapsed: isCollapsed,
+      guides: makeGuides(depth, ancestorCols, isLast),
+    })
     if (!isCollapsed) {
-      flattenDir(dir, path, depth + 1, collapsed, root, hunksOf, out)
+      // This folder contributes a guide column to its descendants only once it
+      // has a guide of its own (depth ≥ 1): a continuing `│` unless it was the
+      // last child, in which case the column goes blank below it.
+      const childCols =
+        depth >= 1
+          ? [...ancestorCols, isLast ? GUIDE_BLANK : GUIDE_VERTICAL]
+          : ancestorCols
+      flattenDir(dir, path, depth + 1, collapsed, root, hunksOf, out, childCols)
     }
   }
-  const files = [...node.files].sort((a, b) =>
-    basename(a.path).localeCompare(basename(b.path)),
-  )
-  for (const file of files) {
-    out.push({ kind: 'file', file, root, hunks: hunksOf(file.path), depth })
+  for (let j = 0; j < files.length; j++) {
+    const file = files[j]!
+    const isLast = j === files.length - 1
+    out.push({
+      kind: 'file',
+      file,
+      root,
+      hunks: hunksOf(file.path),
+      depth,
+      guides: makeGuides(depth, ancestorCols, isLast),
+    })
   }
 }
 
@@ -152,6 +214,7 @@ export function buildTreeRows(
       group.root,
       p => group.hunks.get(p) ?? [],
       out,
+      [],
     )
   }
   return out

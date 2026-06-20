@@ -116,7 +116,10 @@ function TreeRowItem({
   }
 
   const lead = isSelected ? `${glyphs.pointer} ` : '  '
-  const indent = '  '.repeat(row.depth)
+  // Pre-rendered tree guides (│ continuing, └ last child, blank ended). Kept
+  // dim so the labels stay the focus; the inverse selection highlight overrides
+  // the dim on the active row.
+  const guides = row.guides
   // Columns consumed before the label: lead (2) + per-level indent (2 each).
   const indentWidth = 2 + row.depth * 2
 
@@ -132,7 +135,9 @@ function TreeRowItem({
       <Box width={width} flexDirection="row">
         <Box flexShrink={1} overflow="hidden">
           <Text wrap="truncate" bold={isSelected} inverse={isSelected}>
-            {`${lead}${indent}${caret} ${iconPrefix}${label}`}
+            {lead}
+            <Text dimColor={!isSelected}>{guides}</Text>
+            {`${caret} ${iconPrefix}${label}`}
           </Text>
         </Box>
         <Box flexGrow={1} />
@@ -157,7 +162,9 @@ function TreeRowItem({
     <Box width={width} flexDirection="row">
       <Box flexShrink={1} overflow="hidden">
         <Text wrap="truncate" bold={isSelected} inverse={isSelected}>
-          {`${lead}${indent}${iconPrefix}${name}`}
+          {lead}
+          <Text dimColor={!isSelected}>{guides}</Text>
+          {`${iconPrefix}${name}`}
         </Text>
       </Box>
       <Box flexGrow={1} />

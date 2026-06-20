@@ -118,6 +118,50 @@ describe('buildTreeRows', () => {
     expect(r2).toMatchObject({ collapsed: false })
   })
 
+  it('draws an elbow on the last child and a straight bar on the rest', () => {
+    const g = group('/r', [
+      'src/components/diff/x.tsx',
+      'src/components/diff/y.tsx',
+      'src/a.ts',
+    ])
+    const rows = buildTreeRows([g], new Set())
+    const guidesOf = (text: string) => {
+      const row = rows.find(r =>
+        r.kind === 'dir'
+          ? r.label === text
+          : r.kind === 'file' && r.file.path.endsWith(text),
+      )
+      if (!row || row.kind === 'group') throw new Error(`no row for ${text}`)
+      return row.guides
+    }
+    // Top level is flush (depth 0, no guides).
+    expect(guidesOf('src')).toBe('')
+    // components/diff is not the last child of src (a.ts follows) → straight bar.
+    expect(guidesOf('components/diff')).toBe('│ ')
+    // x.tsx is not the last file in its folder → straight bar under a continuing
+    // src column.
+    expect(guidesOf('x.tsx')).toBe('│ │ ')
+    // y.tsx is the last file in components/diff → elbow, src still continues.
+    expect(guidesOf('y.tsx')).toBe('│ └ ')
+    // a.ts is the last child of src → elbow at the top level.
+    expect(guidesOf('a.ts')).toBe('└ ')
+  })
+
+  it('blanks an ancestor column once its subtree has ended', () => {
+    // top → { first/, second/ }. `second` is the last child, so its column must
+    // go blank beneath it: second's own file gets a blank ancestor column, not a
+    // stray │ under the elbow. `first` still continues with a │.
+    const g = group('/r', ['top/first/a.ts', 'top/second/b.ts'])
+    const rows = buildTreeRows([g], new Set())
+    const fileGuides = (name: string) => {
+      const row = rows.find(r => r.kind === 'file' && r.file.path.endsWith(name))
+      if (!row || row.kind !== 'file') throw new Error(`no file row for ${name}`)
+      return row.guides
+    }
+    expect(fileGuides('a.ts')).toBe('│ └ ') // first continues (│), file is last (└)
+    expect(fileGuides('b.ts')).toBe('  └ ') // second ended (blank), file is last (└)
+  })
+
   it('attaches each file row to its group root and hunks', () => {
     const g = group('/repo', ['src/x.ts'])
     g.hunks.set('src/x.ts', [{ oldStart: 1 } as never])
