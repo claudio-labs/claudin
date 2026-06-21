@@ -286,6 +286,36 @@ describe('getProviderPresetDefaults', () => {
     expect(defaults.model).toBe('glm-5.2')
     expect(defaults.requiresApiKey).toBe(true)
   })
+
+  test('cloudflare-workers-ai preset defaults to Workers AI endpoint', async () => {
+    const { getProviderPresetDefaults } = await importFreshProviderProfileModules()
+    delete process.env.OPENAI_MODEL
+
+    const defaults = getProviderPresetDefaults('cloudflare-workers-ai')
+
+    expect(defaults.provider).toBe('openai')
+    expect(defaults.name).toBe('Cloudflare Workers AI')
+    expect(defaults.baseUrl).toBe(
+      'https://api.cloudflare.com/client/v4/accounts/YOUR-ACCOUNT-ID/ai/v1',
+    )
+    expect(defaults.model).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast')
+    expect(defaults.requiresApiKey).toBe(true)
+  })
+
+  test('cloudflare-ai-gateway preset defaults to AI Gateway compat endpoint', async () => {
+    const { getProviderPresetDefaults } = await importFreshProviderProfileModules()
+    delete process.env.OPENAI_MODEL
+
+    const defaults = getProviderPresetDefaults('cloudflare-ai-gateway')
+
+    expect(defaults.provider).toBe('openai')
+    expect(defaults.name).toBe('Cloudflare AI Gateway')
+    expect(defaults.baseUrl).toBe(
+      'https://gateway.ai.cloudflare.com/v1/YOUR-ACCOUNT-ID/default/compat',
+    )
+    expect(defaults.model).toBe('workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast')
+    expect(defaults.requiresApiKey).toBe(true)
+  })
 })
 
 

@@ -37,6 +37,8 @@ export type ProviderPreset =
   | 'opencode-zen'
   | 'opencode-go'
   | 'zai'
+  | 'cloudflare-workers-ai'
+  | 'cloudflare-ai-gateway'
 
 export type ProviderProfileInput = {
   provider?: ProviderProfile['provider']
@@ -438,6 +440,24 @@ export function getProviderPresetDefaults(
         name: 'Z.AI (GLM Coding Plan)',
         baseUrl: 'https://api.z.ai/api/coding/paas/v4',
         model: 'glm-5.2',
+        apiKey: '',
+        requiresApiKey: true,
+      }
+    case 'cloudflare-workers-ai':
+      return {
+        provider: 'openai',
+        name: 'Cloudflare Workers AI',
+        baseUrl: 'https://api.cloudflare.com/client/v4/accounts/YOUR-ACCOUNT-ID/ai/v1',
+        model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+        apiKey: '',
+        requiresApiKey: true,
+      }
+    case 'cloudflare-ai-gateway':
+      return {
+        provider: 'openai',
+        name: 'Cloudflare AI Gateway',
+        baseUrl: 'https://gateway.ai.cloudflare.com/v1/YOUR-ACCOUNT-ID/default/compat',
+        model: 'workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast',
         apiKey: '',
         requiresApiKey: true,
       }

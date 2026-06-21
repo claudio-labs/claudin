@@ -123,6 +123,8 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       else if (/deepseek/i.test(resolvedBaseUrl)) name = 'DeepSeek'
       else if (/mistral/i.test(resolvedBaseUrl)) name = 'Mistral'
       else if (/z\.ai|zhipu/i.test(resolvedBaseUrl)) name = 'Z.AI'
+      else if (/gateway\.ai\.cloudflare/i.test(resolvedBaseUrl)) name = 'Cloudflare AI Gateway'
+      else if (/cloudflare/i.test(resolvedBaseUrl)) name = 'Cloudflare Workers AI'
       // rawModel fallback — fires only when base URL is generic/custom.
       else if (/nvidia/i.test(rawModel)) name = 'NVIDIA NIM'
       else if (/minimax/i.test(rawModel)) name = 'MiniMax'

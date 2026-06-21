@@ -1592,6 +1592,18 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         label: 'Bankr',
         description: 'Bankr LLM Gateway (OpenAI-compatible)',
       },
+      {
+        value: 'cloudflare-workers-ai',
+        label: 'Cloudflare Workers AI',
+        description:
+          'Cloudflare Workers AI (OpenAI-compatible); set your account ID in the base URL',
+      },
+      {
+        value: 'cloudflare-ai-gateway',
+        label: 'Cloudflare AI Gateway',
+        description:
+          'Cloudflare AI Gateway unified endpoint; set your account ID in the base URL',
+      },
       ...(canUseCodexOAuth
         ? [
             {
