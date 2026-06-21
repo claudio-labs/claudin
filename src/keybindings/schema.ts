@@ -90,6 +90,8 @@ export const KEYBINDING_ACTIONS = [
   'chat:newline',
   'chat:undo',
   'chat:externalEditor',
+  'chat:openDiff',
+  'chat:openExplorer',
   'chat:stash',
   'chat:imagePaste',
   'chat:messageActions',

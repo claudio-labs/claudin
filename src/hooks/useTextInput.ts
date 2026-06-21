@@ -303,7 +303,8 @@ export function useTextInput({
     ['b', () => getLiveCursor().left()],
     ['c', handleCtrlC],
     ['d', handleCtrlD],
-    ['e', () => getLiveCursor().endOfLine()],
+    // ctrl+e intentionally omitted: it's bound to chat:openExplorer in the
+    // Chat keybinding layer. Use the End key to jump to end of line.
     ['f', () => getLiveCursor().right()],
     ['h', () => {
       const cursor = getLiveCursor()

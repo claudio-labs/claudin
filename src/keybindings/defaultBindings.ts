@@ -84,7 +84,12 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+shift+-': 'chat:undo',
       // ctrl+x ctrl+e is the readline-native edit-and-execute-command binding.
       'ctrl+x ctrl+e': 'chat:externalEditor',
-      'ctrl+g': 'chat:externalEditor',
+      // ctrl+g / ctrl+e open the /diff reviewer and the /explorer file tree
+      // (replacing the old typed gg/ee chords). These override readline's
+      // end-of-line (ctrl+e — use the End key instead) and the single-key
+      // external-editor shortcut — $EDITOR stays reachable on ctrl+x ctrl+e.
+      'ctrl+g': 'chat:openDiff',
+      'ctrl+e': 'chat:openExplorer',
       'ctrl+s': 'chat:stash',
       // Image paste shortcut (platform-specific key defined above)
       [IMAGE_PASTE_KEY]: 'chat:imagePaste',

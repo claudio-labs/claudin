@@ -877,12 +877,6 @@ function PromptInput({
     submitCount,
     viewingAgentName
   });
-  // vim-style `gg` opens the /diff reviewer. Routed through a ref because the
-  // local onSubmit is declared further down; lastGAtRef gates the chord so a
-  // single `g` followed by anything else types normally.
-  const onSubmitRef = useRef<((input: string) => void) | null>(null);
-  const lastGAtRef = useRef(0);
-  const lastEAtRef = useRef(0);
   const onChange = useCallback((value: string) => {
     if (value === '?') {
       logEvent('tengu_help_toggled', {});
@@ -897,33 +891,6 @@ function PromptInput({
     // Cancel any pending prompt suggestion and speculation when user types
     abortPromptSuggestion();
     abortSpeculation(setAppState);
-
-    // `gg` on an empty prompt → open the diff reviewer (only on a quick
-    // double-tap so it never fires mid-typing).
-    if (input === 'g' && value === 'gg' && Date.now() - lastGAtRef.current < 500) {
-      lastGAtRef.current = 0;
-      trackAndSetInput('');
-      setCursorOffset(0);
-      void onSubmitRef.current?.('/diff');
-      return;
-    }
-    if (input === '' && value === 'g') {
-      lastGAtRef.current = Date.now();
-    }
-
-    // `ee` on an empty prompt → open the file explorer / editor. Mirrors the
-    // `gg` chord above: a quick double-tap so it never fires mid-typing (a
-    // single `e` followed by anything else types normally).
-    if (input === 'e' && value === 'ee' && Date.now() - lastEAtRef.current < 500) {
-      lastEAtRef.current = 0;
-      trackAndSetInput('');
-      setCursorOffset(0);
-      void onSubmitRef.current?.('/explorer');
-      return;
-    }
-    if (input === '' && value === 'e') {
-      lastEAtRef.current = Date.now();
-    }
 
     // Check if this is a single character insertion at the start
     const isSingleCharInsertion = value.length === input.length + 1;
@@ -1784,12 +1751,19 @@ function PromptInput({
     });
   }, [keybindingContext, isModalOverlayActive, onSubmit, input]);
 
-  // Keep the `gg` chord's submit ref pointed at the current onSubmit.
-  useEffect(() => {
-    onSubmitRef.current = (value: string) => {
-      void onSubmit(value);
-    };
-  });
+  // ctrl+g / ctrl+e open the /diff reviewer and the /explorer file tree
+  // (replacing the old typed gg/ee chords). Clear the input first so a
+  // quick-launch never carries stray text into the command.
+  const handleOpenDiff = useCallback(() => {
+    trackAndSetInput('');
+    setCursorOffset(0);
+    void onSubmit('/diff');
+  }, [trackAndSetInput, setCursorOffset, onSubmit]);
+  const handleOpenExplorer = useCallback(() => {
+    trackAndSetInput('');
+    setCursorOffset(0);
+    void onSubmit('/explorer');
+  }, [trackAndSetInput, setCursorOffset, onSubmit]);
 
   // Chat context keybindings for editing shortcuts
   // Note: history:previous/history:next are NOT handled here. They are passed as
@@ -1800,6 +1774,8 @@ function PromptInput({
     'chat:undo': handleUndo,
     'chat:newline': handleNewline,
     'chat:externalEditor': handleExternalEditor,
+    'chat:openDiff': handleOpenDiff,
+    'chat:openExplorer': handleOpenExplorer,
     'chat:stash': handleStash,
     'chat:modelPicker': handleModelPicker,
     'chat:thinkingToggle': handleThinkingToggle,
@@ -1807,7 +1783,7 @@ function PromptInput({
     'chat:increaseEffort': () => handleCycleEffort('right'),
     'chat:decreaseEffort': () => handleCycleEffort('left'),
     'chat:imagePaste': handleImagePaste
-  }), [handleUndo, handleNewline, handleExternalEditor, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleCycleEffort, handleImagePaste]);
+  }), [handleUndo, handleNewline, handleExternalEditor, handleOpenDiff, handleOpenExplorer, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleCycleEffort, handleImagePaste]);
   useKeybindings(chatHandlers, {
     context: 'Chat',
     isActive: !isModalOverlayActive

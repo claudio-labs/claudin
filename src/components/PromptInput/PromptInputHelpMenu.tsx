@@ -131,6 +131,10 @@ export function PromptInputHelpMenu(props) {
   // doesn't know the active model. Un-memoized is fine: the _c cache is a
   // runtime no-op in this build (see scripts/build.ts react-compiler-shim).
   const effortShortcut = formatShortcut(useShortcutDisplay("chat:increaseEffort", "Chat", "shift+right"));
+  // /diff and /explorer quick-launch keys (ctrl+g / ctrl+e). Un-memoized for
+  // the same reason as effortShortcut above — the _c cache is a runtime no-op.
+  const openDiffShortcut = formatShortcut(useShortcutDisplay("chat:openDiff", "Chat", "ctrl+g"));
+  const openExplorerShortcut = formatShortcut(useShortcutDisplay("chat:openExplorer", "Chat", "ctrl+e"));
   let t20;
   if ($[20] !== dimColor || $[21] !== terminalShortcut) {
     t20 = feature("TERMINAL_PANEL") ? getFeatureValue_CACHED_MAY_BE_STALE("tengu_terminal_panel", false) ? <Box><Text dimColor={dimColor}>{terminalShortcut} for terminal</Text></Box> : null : null;
@@ -141,7 +145,7 @@ export function PromptInputHelpMenu(props) {
     t20 = $[22];
   }
   const terminalShortcutElement = t20;
-  const t21 = fixedWidth ? 24 : undefined;
+  const t21 = fixedWidth ? 28 : undefined;
   let t22;
   if ($[23] !== dimColor) {
     t22 = <Box><Text dimColor={dimColor}>! for bash mode</Text></Box>;
@@ -184,7 +188,7 @@ export function PromptInputHelpMenu(props) {
   }
   let t27;
   if ($[33] !== t21 || $[34] !== t22 || $[35] !== t23 || $[36] !== t24 || $[37] !== t25 || $[38] !== t26) {
-    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}<Box><Text dimColor={dimColor}>ee for file explorer</Text></Box><Box><Text dimColor={dimColor}>gg for diff reviewer</Text></Box></Box>;
+    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}<Box><Text dimColor={dimColor}>{openExplorerShortcut} for file explorer</Text></Box><Box><Text dimColor={dimColor}>{openDiffShortcut} for diff reviewer</Text></Box></Box>;
     $[33] = t21;
     $[34] = t22;
     $[35] = t23;
