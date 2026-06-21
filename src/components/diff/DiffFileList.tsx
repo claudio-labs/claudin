@@ -19,6 +19,17 @@ type Props = {
   maxVisible: number
   /** Left-pane content width. */
   width: number
+  /**
+   * Optional per-path git status (relative path → color). When set, matching
+   * file rows are tinted (used by /explorer; /diff leaves it undefined).
+   */
+  statusByPath?: Map<string, string>
+  /**
+   * Indent file rows by the folder caret width so file names line up under
+   * sibling folder names (a real file tree). /explorer sets this; /diff (where
+   * files nest under folders at deeper depths) leaves it off.
+   */
+  alignFiles?: boolean
 }
 
 /** Center a fixed-size window of `maxVisible` rows on the selected row. */
@@ -52,6 +63,8 @@ export function DiffFileList({
   selectedIndex,
   maxVisible,
   width,
+  statusByPath,
+  alignFiles,
 }: Props): React.ReactNode {
   const glyphs = useMemo(getDiffGlyphs, [])
   const total = rows.length
@@ -70,6 +83,10 @@ export function DiffFileList({
         isSelected={idx === selectedIndex}
         width={width}
         glyphs={glyphs}
+        alignFiles={alignFiles}
+        statusColor={
+          row.kind === 'file' ? statusByPath?.get(row.file.path) : undefined
+        }
       />,
     )
   }
@@ -88,11 +105,15 @@ function TreeRowItem({
   isSelected,
   width,
   glyphs,
+  statusColor,
+  alignFiles,
 }: {
   row: TreeRow
   isSelected: boolean
   width: number
   glyphs: ReturnType<typeof getDiffGlyphs>
+  statusColor?: string
+  alignFiles?: boolean
 }): React.ReactNode {
   if (row.kind === 'group') {
     const lead = isSelected ? `${glyphs.pointer} ` : '  '
@@ -148,12 +169,15 @@ function TreeRowItem({
   // file row
   const icon = glyphs.fileIcon(row.file.path)
   const iconPrefix = icon ? `${icon} ` : ''
+  // Pad files by the folder caret width so their names line up under sibling
+  // folder names (a real file tree). Off by default — /diff keeps files flush.
+  const caretPad = alignFiles ? '  ' : ''
   // Reserve room on the right for the rare status badge (binary/large/renamed).
   const rightReserve =
     row.file.isBinary || row.file.isLargeFile || row.file.renamedFrom ? 9 : 0
   const budget = Math.max(
     4,
-    width - indentWidth - (iconPrefix ? 2 : 0) - rightReserve - 1,
+    width - indentWidth - caretPad.length - (iconPrefix ? 2 : 0) - rightReserve - 1,
   )
   // Folder rows carry the path; files show only their basename, end-truncated
   // ("asdasdsadsd…") so the start of the name stays visible when it overflows.
@@ -164,7 +188,13 @@ function TreeRowItem({
         <Text wrap="truncate" bold={isSelected} inverse={isSelected}>
           {lead}
           <Text dimColor={!isSelected}>{guides}</Text>
-          {`${iconPrefix}${name}`}
+          {caretPad}
+          {iconPrefix}
+          {statusColor && !isSelected ? (
+            <Text color={statusColor}>{name}</Text>
+          ) : (
+            name
+          )}
         </Text>
       </Box>
       <Box flexGrow={1} />

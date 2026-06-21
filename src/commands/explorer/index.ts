@@ -1,0 +1,9 @@
+import type { Command } from '../../commands.js'
+
+export default {
+  type: 'local-jsx',
+  name: 'explorer',
+  aliases: ['editor'],
+  description: 'Browse the project tree and edit files (nvim-lite, split-pane)',
+  load: () => import('./explorer.js'),
+} satisfies Command

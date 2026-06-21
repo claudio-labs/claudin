@@ -1292,6 +1292,121 @@ export class ColorFile {
   }
 }
 
+// Display width of a tab in the editor pane. The byte saved stays a literal
+// tab — this is purely how many columns it occupies on screen.
+const EDITOR_TAB_WIDTH = 4
+
+type DisplayCol =
+  | { ch: string; style: Style }
+  // Right half of a wide (CJK/emoji) grapheme — nothing rendered here unless
+  // the window cut the grapheme's left half off, in which case it becomes a space.
+  | { cont: true }
+
+/**
+ * Per-file syntax highlighter for an editable, NO-WRAP pane (the /explorer
+ * editor). Unlike ColorFile (which wraps and bakes in line numbers), this
+ * highlights ONE source line at a time and serializes a horizontal window of
+ * it to an ANSI string, so the caller can scroll long lines sideways and draw
+ * its own gutter. Theme + language are resolved once per file.
+ */
+export class EditorHighlighter {
+  private mode: ColorMode
+  private theme: Theme
+  private lang: string | null
+
+  constructor(filePath: string, firstLine: string | null, themeName: string) {
+    this.mode = detectColorMode(themeName)
+    this.theme = buildTheme(themeName, this.mode)
+    this.lang = detectLanguage(filePath, firstLine)
+  }
+
+  /** Expand a highlighted line into one entry per terminal column. */
+  private toColumns(line: string): DisplayCol[] {
+    const blocks = highlightLine({ lang: this.lang, stack: null }, line, this.theme)
+    const cols: DisplayCol[] = []
+    let absCol = 0
+    for (const [style, rawText] of blocks) {
+      // highlightLine feeds a trailing \n to terminate comments — strip it.
+      const text = rawText.replace(/\n/g, '')
+      for (const ch of text) {
+        if (ch === '\t') {
+          const n = EDITOR_TAB_WIDTH - (absCol % EDITOR_TAB_WIDTH)
+          for (let i = 0; i < n; i++) {
+            cols.push({ ch: ' ', style })
+            absCol++
+          }
+          continue
+        }
+        const w = Math.max(1, stringWidth(ch))
+        cols.push({ ch, style })
+        absCol++
+        for (let i = 1; i < w; i++) {
+          cols.push({ cont: true })
+          absCol++
+        }
+      }
+    }
+    return cols
+  }
+
+  /**
+   * Render `line` clipped to the horizontal window [fromCol, fromCol+width) as
+   * an ANSI string. When `cursorCol` lands in-window, that cell is inverted
+   * (block cursor — used in NORMAL mode). Columns past end-of-line render blank.
+   */
+  renderLineWindow(
+    line: string,
+    fromCol: number,
+    width: number,
+    cursorCol?: number,
+  ): string {
+    const cols = this.toColumns(line)
+    const def = defaultStyle(this.theme)
+    const blocks: Block[] = []
+    const end = fromCol + width
+    for (let c = fromCol; c < end; c++) {
+      const col = cols[c]
+      let ch: string
+      let style: Style
+      if (!col) {
+        ch = ' '
+        style = def
+      } else if ('cont' in col) {
+        // A wide grapheme whose left half is in-window already drew it; only
+        // emit a space when the window starts on the cut-off right half.
+        ch = c === fromCol ? ' ' : ''
+        style = def
+      } else {
+        ch = col.ch
+        style = col.style
+      }
+      if (cursorCol !== undefined && c === cursorCol) {
+        style = { foreground: style.background, background: style.foreground }
+        if (ch === '') ch = ' '
+      }
+      if (ch === '') continue
+      blocks.push([style, ch])
+    }
+    return asTerminalEscaped(blocks, this.mode, false, false)
+  }
+
+  /**
+   * Map a logical (UTF-16) column on `line` to its display column, expanding
+   * tabs and wide graphemes. Used to place the block cursor / horizontal scroll
+   * from the editor's string-index cursor.
+   */
+  displayColOf(line: string, logicalCol: number): number {
+    let col = 0
+    const end = Math.min(logicalCol, line.length)
+    for (let i = 0; i < end; i++) {
+      const ch = line[i]!
+      if (ch === '\t') col += EDITOR_TAB_WIDTH - (col % EDITOR_TAB_WIDTH)
+      else col += Math.max(1, stringWidth(ch))
+    }
+    return col
+  }
+}
+
 export function getSyntaxTheme(themeName: string): SyntaxTheme {
   // highlight.js has no bat theme set, so env vars can't select alternate
   // syntect themes. We still report the env var if set, for diagnostics.

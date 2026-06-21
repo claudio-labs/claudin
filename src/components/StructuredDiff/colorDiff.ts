@@ -1,6 +1,7 @@
 import {
   ColorDiff,
   ColorFile,
+  EditorHighlighter,
   getSyntaxTheme as nativeGetSyntaxTheme,
   type SyntaxTheme,
 } from '../../native-ts/color-diff/index.js'
@@ -28,6 +29,10 @@ export function expectColorDiff(): typeof ColorDiff | null {
 
 export function expectColorFile(): typeof ColorFile | null {
   return getColorModuleUnavailableReason() === null ? ColorFile : null
+}
+
+export function expectEditorHighlighter(): typeof EditorHighlighter | null {
+  return getColorModuleUnavailableReason() === null ? EditorHighlighter : null
 }
 
 export function getSyntaxTheme(themeName: string): SyntaxTheme | null {

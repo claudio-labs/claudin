@@ -882,6 +882,7 @@ function PromptInput({
   // single `g` followed by anything else types normally.
   const onSubmitRef = useRef<((input: string) => void) | null>(null);
   const lastGAtRef = useRef(0);
+  const lastEAtRef = useRef(0);
   const onChange = useCallback((value: string) => {
     if (value === '?') {
       logEvent('tengu_help_toggled', {});
@@ -908,6 +909,20 @@ function PromptInput({
     }
     if (input === '' && value === 'g') {
       lastGAtRef.current = Date.now();
+    }
+
+    // `ee` on an empty prompt → open the file explorer / editor. Mirrors the
+    // `gg` chord above: a quick double-tap so it never fires mid-typing (a
+    // single `e` followed by anything else types normally).
+    if (input === 'e' && value === 'ee' && Date.now() - lastEAtRef.current < 500) {
+      lastEAtRef.current = 0;
+      trackAndSetInput('');
+      setCursorOffset(0);
+      void onSubmitRef.current?.('/explorer');
+      return;
+    }
+    if (input === '' && value === 'e') {
+      lastEAtRef.current = Date.now();
     }
 
     // Check if this is a single character insertion at the start

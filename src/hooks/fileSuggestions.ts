@@ -477,6 +477,17 @@ async function getProjectFiles(
   logForDebugging(
     `[FileIndex] git ls-files returned null, falling back to ripgrep`,
   )
+  return listFilesWithRipgrep(abortSignal, respectGitignore)
+}
+
+/**
+ * List every non-ignored file via `rg --files`. Unlike git ls-files this
+ * includes UNTRACKED (uncommitted) files, which is what a file explorer wants.
+ */
+async function listFilesWithRipgrep(
+  abortSignal: AbortSignal,
+  respectGitignore: boolean,
+): Promise<string[]> {
   const startTime = Date.now()
   const rgArgs = [
     '--files',
@@ -516,9 +527,29 @@ async function getProjectFiles(
 }
 
 /**
- * Gets both files and their directory paths for providing path suggestions
- * Uses git ls-files for git repos (fast) or ripgrep as fallback
- * Returns a FileIndex populated for fast fuzzy search
+ * Flat list of project file paths (relative to cwd), gitignore-aware, for the
+ * /explorer file tree. Uses `rg --files` directly (NOT git ls-files) so the
+ * tree shows UNTRACKED files too — an explorer should surface work-in-progress
+ * files. Returns [] on failure (fail-open).
+ */
+export async function getProjectFilePaths(): Promise<string[]> {
+  const signal = AbortSignal.timeout(10_000)
+  const projectSettings = getInitialSettings()
+  const globalConfig = getGlobalConfig()
+  const respectGitignore =
+    projectSettings.respectGitignore ?? globalConfig.respectGitignore ?? true
+  try {
+    return await listFilesWithRipgrep(signal, respectGitignore)
+  } catch (error) {
+    logError(error)
+    return []
+  }
+}
+
+/**
+ * Gets both files and their directory paths for providing path suggestions.
+ * Uses git ls-files for git repos (fast) or ripgrep as fallback.
+ * Returns a FileIndex populated for fast fuzzy search.
  */
 export async function getPathsForSuggestions(): Promise<FileIndex> {
   const signal = AbortSignal.timeout(10_000)

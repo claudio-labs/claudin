@@ -184,7 +184,7 @@ export function PromptInputHelpMenu(props) {
   }
   let t27;
   if ($[33] !== t21 || $[34] !== t22 || $[35] !== t23 || $[36] !== t24 || $[37] !== t25 || $[38] !== t26) {
-    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}</Box>;
+    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}<Box><Text dimColor={dimColor}>ee for file explorer</Text></Box><Box><Text dimColor={dimColor}>gg for diff reviewer</Text></Box></Box>;
     $[33] = t21;
     $[34] = t22;
     $[35] = t23;
