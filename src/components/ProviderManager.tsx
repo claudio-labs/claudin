@@ -1694,6 +1694,11 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         description: 'Together chat/completions endpoint',
       },
       {
+        value: 'zai',
+        label: 'Z.AI (GLM Coding Plan)',
+        description: 'Z.AI GLM Coding Plan (OpenAI-compatible)',
+      },
+      {
         value: 'custom',
         label: 'Custom',
         description: 'Any OpenAI-compatible provider',

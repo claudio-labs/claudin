@@ -36,6 +36,7 @@ export type ProviderPreset =
   | 'foundry'
   | 'opencode-zen'
   | 'opencode-go'
+  | 'zai'
 
 export type ProviderProfileInput = {
   provider?: ProviderProfile['provider']
@@ -428,6 +429,15 @@ export function getProviderPresetDefaults(
         name: 'OpenCode GO',
         baseUrl: 'https://opencode.ai/zen/go/v1',
         model: 'glm-5.1',
+        apiKey: '',
+        requiresApiKey: true,
+      }
+    case 'zai':
+      return {
+        provider: 'openai',
+        name: 'Z.AI (GLM Coding Plan)',
+        baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+        model: 'glm-5.2',
         apiKey: '',
         requiresApiKey: true,
       }

@@ -122,6 +122,7 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       else if (/moonshot/i.test(resolvedBaseUrl)) name = 'Moonshot AI - API'
       else if (/deepseek/i.test(resolvedBaseUrl)) name = 'DeepSeek'
       else if (/mistral/i.test(resolvedBaseUrl)) name = 'Mistral'
+      else if (/z\.ai|zhipu/i.test(resolvedBaseUrl)) name = 'Z.AI'
       // rawModel fallback — fires only when base URL is generic/custom.
       else if (/nvidia/i.test(rawModel)) name = 'NVIDIA NIM'
       else if (/minimax/i.test(rawModel)) name = 'MiniMax'
