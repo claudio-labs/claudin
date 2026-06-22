@@ -43,6 +43,7 @@ export function getPlanModeInstructions(attachment: {
 export const PLAN_PHASE4_CONTROL = `### Phase 4: Final Plan
 Goal: Write your final plan to the plan file (the only file you can edit).
 - Begin with a **Context** section: explain why this change is being made — the problem or need it addresses, what prompted it, and the intended outcome
+- Include a **Tasks** section that breaks the work into discrete, ordered steps (a checklist), each small enough to verify on its own
 - Include only your recommended approach, not all alternatives
 - Ensure that the plan file is concise enough to scan quickly, but detailed enough to execute effectively
 - Include the paths of critical files to be modified
@@ -261,6 +262,7 @@ Surface these as concrete ${ASK_USER_QUESTION_TOOL_NAME} options with your recom
 ### Plan File Structure
 Your plan file should be divided into clear sections using markdown headers, based on the request. Fill out these sections as you go.
 - Begin with a **Context** section: explain why this change is being made — the problem or need it addresses, what prompted it, and the intended outcome
+- Include a **Tasks** section that breaks the work into discrete, ordered steps (a checklist), each small enough to verify on its own
 - Include only your recommended approach, not all alternatives
 - Ensure that the plan file is concise enough to scan quickly, but detailed enough to execute effectively
 - Include the paths of critical files to be modified
