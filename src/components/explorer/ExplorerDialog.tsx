@@ -1,8 +1,11 @@
-import { statSync } from 'fs'
-import { basename, resolve } from 'path'
+import { existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'fs'
+import { basename, dirname, resolve } from 'path'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRegisterOverlay } from '../../context/overlayContext.js'
-import { getProjectFilePaths } from '../../hooks/fileSuggestions.js'
+import {
+  clearFileSuggestionCaches,
+  getProjectFilePaths,
+} from '../../hooks/fileSuggestions.js'
 import type { DiffFile } from '../../hooks/useDiffData.js'
 import { useTerminalSize } from '../../hooks/useTerminalSize.js'
 import { useWorkspaceDiff } from '../../hooks/useWorkspaceDiff.js'
@@ -13,7 +16,7 @@ import type {
 } from '../../types/command.js'
 import type { TreeRow } from '../diff/fileTree.js'
 import { getCwd } from '../../utils/cwd.js'
-import { writeTextContent } from '../../utils/file.js'
+import { writeFileSyncAndFlush, writeTextContent } from '../../utils/file.js'
 import { readFileSyncWithMetadata } from '../../utils/fileRead.js'
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js'
 import { logError } from '../../utils/log.js'
@@ -52,6 +55,7 @@ import {
   wordForward,
   yankLine,
 } from './editorState.js'
+import { createPrefill, resolveNewFilePath } from './explorerActions.js'
 import { FilePane } from './FilePane.js'
 import { buildFileIndex, FuzzyOverlay } from './fuzzyFinder.js'
 import { buildExplorerGroup, buildExplorerRows, initialCollapsed } from './tree.js'
@@ -129,6 +133,18 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
   const [fuzzy, setFuzzy] = useState<{ query: string; selected: number } | null>(
     null,
   )
+  // `a` create / `r` rename path-entry overlay (null when closed). One union so
+  // both reuse the same typing handler and right-pane input line.
+  const [prompt, setPrompt] = useState<
+    | { kind: 'create'; value: string }
+    | { kind: 'rename'; from: string; root: string; value: string }
+    | null
+  >(null)
+  // Pending `d` delete confirmation for a file (null when not confirming).
+  const [confirmDelete, setConfirmDelete] = useState<{
+    relPath: string
+    root: string
+  } | null>(null)
   // Pending first key of a two-stroke chord (g for gg, d for dd, y for yy).
   const pendingOpRef = useRef<string | null>(null)
 
@@ -227,6 +243,14 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       else next.add(key)
       return next
     })
+  }
+
+  /** Re-list project files after a create/delete/rename so the tree reflects disk. */
+  function refreshFiles(): void {
+    clearFileSuggestionCaches()
+    getProjectFilePaths()
+      .then(setPaths)
+      .catch(logError)
   }
 
   function openFileAt(relPath: string, fileRoot: string): void {
@@ -368,6 +392,110 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       setFuzzy({ query: '', selected: 0 })
     } else if (input === '@') {
       if (row?.kind === 'file') mentionFile(row.file.path)
+    } else if (input === 'a') {
+      setPrompt({ kind: 'create', value: createPrefill(row, root) })
+    } else if (input === 'd') {
+      if (row?.kind === 'file')
+        setConfirmDelete({ relPath: row.file.path, root: row.root })
+      else setTreeMessage('Select a file to delete')
+    } else if (input === 'r') {
+      if (row?.kind === 'file')
+        setPrompt({
+          kind: 'rename',
+          from: row.file.path,
+          root: row.root,
+          value: row.file.path,
+        })
+      else setTreeMessage('Select a file to rename')
+    }
+  }
+
+  /** Typing handler for the `a` create / `r` rename path overlay. */
+  function handlePromptKey(input: string, key: KeyState): void {
+    if (!prompt) return
+    if (key.escape) {
+      setPrompt(null)
+      return
+    }
+    if (key.return) {
+      const res = resolveNewFilePath(root, prompt.value)
+      if (!res.ok) {
+        setTreeMessage(res.message)
+        setPrompt(null)
+        return
+      }
+      if (prompt.kind === 'create') {
+        const exists = existsSync(res.fullPath)
+        setPrompt(null)
+        if (!exists) {
+          try {
+            mkdirSync(dirname(res.fullPath), { recursive: true })
+            writeFileSyncAndFlush(res.fullPath, '', { encoding: 'utf8' })
+            refreshFiles()
+          } catch (e) {
+            logError(e)
+            setTreeMessage(`Cannot create ${res.relPath}`)
+            return
+          }
+        }
+        openFileAt(res.relPath, root)
+        // A brand-new empty file opens ready to type; an existing one stays in
+        // normal mode like any other open.
+        if (!exists) setEditor(e => (e ? enterInsert(e, 'i') : e))
+        return
+      }
+      // rename
+      const oldFull = resolve(prompt.root, prompt.from)
+      if (res.fullPath !== oldFull && existsSync(res.fullPath)) {
+        setTreeMessage(`Target exists: ${res.relPath}`)
+        setPrompt(null)
+        return
+      }
+      const wasOpen = open?.fullPath === oldFull
+      setPrompt(null)
+      try {
+        mkdirSync(dirname(res.fullPath), { recursive: true })
+        renameSync(oldFull, res.fullPath)
+        context.readFileState?.delete(oldFull)
+        refreshFiles()
+        setTreeMessage(`Renamed → ${res.relPath}`)
+      } catch (e) {
+        logError(e)
+        setTreeMessage(`Cannot rename ${prompt.from}`)
+        return
+      }
+      // Reopen under the new path so the editor's view stays coherent.
+      if (wasOpen) openFileAt(res.relPath, root)
+      return
+    }
+    if (key.backspace || key.delete) {
+      setPrompt(p => (p ? { ...p, value: p.value.slice(0, -1) } : p))
+      return
+    }
+    if (input && !key.ctrl && !key.meta) {
+      setPrompt(p => (p ? { ...p, value: p.value + input } : p))
+    }
+  }
+
+  /** Confirm (`y`/`Y`) or cancel (any other key) a pending file delete. */
+  function handleConfirmDeleteKey(input: string): void {
+    if (!confirmDelete) return
+    if (input !== 'y' && input !== 'Y') {
+      setConfirmDelete(null)
+      return
+    }
+    const { relPath, root: fileRoot } = confirmDelete
+    const fullPath = resolve(fileRoot, relPath)
+    setConfirmDelete(null)
+    try {
+      unlinkSync(fullPath)
+      context.readFileState?.delete(fullPath)
+      refreshFiles()
+      setTreeMessage(`Deleted ${relPath}`)
+      if (open?.fullPath === fullPath) backToTree()
+    } catch (e) {
+      logError(e)
+      setTreeMessage(`Cannot delete ${relPath}`)
     }
   }
 
@@ -571,7 +699,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
 
   useInput((input, key) => {
     const k = key as KeyState
-    if (fuzzy) handleFuzzyKey(input, k)
+    if (prompt) handlePromptKey(input, k)
+    else if (confirmDelete) handleConfirmDeleteKey(input)
+    else if (fuzzy) handleFuzzyKey(input, k)
     else if (focus === 'tree') handleTreeKey(input, k)
     else handleEditorKey(input, k)
   })
@@ -613,6 +743,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     )
 
   const modeLine = (() => {
+    if (confirmDelete) return `Delete "${confirmDelete.relPath}"? (y/n)`
+    if (prompt?.kind === 'create') return 'type name · enter create · esc cancel'
+    if (prompt?.kind === 'rename') return 'new name · enter rename · esc cancel'
     if (fuzzy) return 'type to find · ↑/↓ select · enter open · esc cancel'
     if (editor?.mode === 'command') return `:${editor.command}`
     if (editor?.mode === 'insert') return '-- INSERT --'
@@ -620,14 +753,26 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     if (treeMessage) return treeMessage
     if (focus === 'editor')
       return 'NORMAL · i insert · / find · @ chat · :w save · :q quit · esc tree'
-    return 'j/k move · l/enter open · h collapse · / find · @ chat · q close'
+    return 'j/k move · l/enter open · a new · d del · r ren · / find · @ chat · q close'
   })()
 
   const editorTitle = open
     ? `${open.relPath}${editor?.dirty ? ' [+]' : ''}  ${(editor?.cursor.row ?? 0) + 1}:${(editor?.cursor.col ?? 0) + 1}`
     : 'Editor'
 
-  const rightContent = fuzzy ? (
+  const promptOverlay = prompt ? (
+    <Box flexDirection="column">
+      <Text>
+        <Text dimColor>{`${prompt.kind === 'create' ? 'new' : 'rename'} ❯ `}</Text>
+        {prompt.value}
+        <Text dimColor>▏</Text>
+      </Text>
+    </Box>
+  ) : null
+
+  const rightContent = promptOverlay ? (
+    promptOverlay
+  ) : fuzzy ? (
     <FuzzyOverlay
       query={fuzzy.query}
       results={fuzzyResults}
@@ -638,7 +783,13 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
   ) : (
     editorPane
   )
-  const rightTitle = fuzzy ? 'Find file' : editorTitle
+  const rightTitle = prompt
+    ? prompt.kind === 'create'
+      ? 'New file'
+      : 'Rename'
+    : fuzzy
+      ? 'Find file'
+      : editorTitle
 
   // Indent the "Files" header to line up with the entry name column
   // (lead 2 + caret 2 + icon 2 when Nerd glyphs render).
@@ -668,7 +819,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         overflow="hidden"
         flexDirection="column"
         borderStyle="round"
-        borderColor={fuzzy || focus === 'editor' ? 'permission' : 'subtle'}
+        borderColor={
+          prompt || fuzzy || focus === 'editor' ? 'permission' : 'subtle'
+        }
         borderText={paneTitle(rightTitle)}
       >
         {rightContent}
@@ -676,7 +829,11 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     </Box>
   ) : (
     <Box flexDirection="column" marginTop={1}>
-      {fuzzy ? rightContent : focus === 'tree' ? treePane : editorPane}
+      {prompt || fuzzy
+        ? rightContent
+        : focus === 'tree'
+          ? treePane
+          : editorPane}
     </Box>
   )
 

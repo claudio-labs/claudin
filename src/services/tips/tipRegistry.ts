@@ -195,6 +195,13 @@ const externalTips: Tip[] = [
     isRelevant: async () => true,
   },
   {
+    id: 'explorer-create-delete',
+    content: async () =>
+      'Inside /explorer, press a to create, r to rename, or d to delete the selected file.',
+    cooldownSessions: 15,
+    isRelevant: async () => true,
+  },
+  {
     id: 'bash-output-filter-token-saving',
     content: async () =>
       'Bash output filter is active — redundant command output is trimmed before reaching the model, reducing token usage. Disable in /config.',
