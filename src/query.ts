@@ -44,6 +44,11 @@ import {
 } from './services/api/errors.js'
 import { logAntError, logForDebugging } from './utils/debug.js'
 import { claimsAgentLaunch } from './utils/phantomLaunchGuard.js'
+import {
+  isStructurallyIncomplete,
+  signalsCompletion,
+  signalsContinuation,
+} from './utils/continuationNudge.js'
 import { AGENT_TOOL_NAME } from './tools/AgentTool/constants.js'
 import {
   createUserMessage,
@@ -1424,8 +1429,9 @@ async function* queryLoop(
       }
 
       // Continuation nudge: detect when the model signals intent to continue
-      // (e.g., "so now I have to do it", "let me now...", "I'll need to...")
-      // but returned no tool calls. This prevents premature task completion.
+      // (EN/PT-BR/ES, e.g. "so now I have to...", "agora vou...", "ahora voy
+      // a...") or is structurally truncated (unclosed ``` fence) but returned
+      // no tool calls. This prevents premature task completion.
       //
       // Guard: capped at MAX_CONTINUATION_NUDGES to prevent infinite loops
       // when the model keeps matching signals without ever calling tools.
@@ -1440,36 +1446,22 @@ async function* queryLoop(
             .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
             .map(b => b.text)
             .join(' ')
-            .toLowerCase()
 
-          // Tightened patterns: require explicit action verbs and exclude
-          // common explanatory phrasing to reduce false positives.
-          const continuationSignals = [
-            // Only match "so now I/let me/we" followed by an action verb
-            /\bso now (i|let me|we) (need to|have to|should|must|will) (do|create|write|edit|update|fix|implement|add|run|check|make|build|set up)\b/,
-            // "now I'll" + action (not "now I'll explain" etc.)
-            /\bnow i('ll| will) (do|create|write|edit|update|fix|implement|add|run|check|make|build|set up|go|proceed)\b/,
-            // "let me" + action (not "let me think/explain/show")
-            /\blet me (go ahead and |now )?(do|create|write|edit|update|fix|implement|add|run|check|make|build|set up|proceed)\b/,
-            // "I'll/I need to/I have to" + action, only if message is short (<80 chars)
-            ...(lastText.length < 80
-              ? [/\b(i('ll| will| need to| have to| must) (now )?(do|create|write|edit|update|fix|implement|add|run|check|make|build|set up))\b/]
-              : []),
-            // "time to" + action
-            /\btime to (do|create|write|edit|update|fix|implement|add|run|check|make|build|get started|begin)\b/,
-            // "next, I'll/let me" + action, only if message is short
-            ...(lastText.length < 80
-              ? [/\bnext,?\s+(i('ll| will)|let me|i need to) (do|create|write|edit|update|fix|implement|add|run|check|make|build)\b/]
-              : []),
-          ]
-
-          // Don't nudge if the text contains completion markers
-          const completionMarkers = /\b(done|finished|completed|complete|summary|that's all|that is all|all set|hope this helps|let me know if)\b/
-          if (completionMarkers.test(lastText)) {
-            // Model signaled completion — don't nudge
-          } else if (continuationSignals.some(re => re.test(lastText))) {
+          // Nudge when the model signals continuation intent (EN/PT-BR/ES)
+          // without a completion marker, OR when the message is structurally
+          // truncated (unclosed ``` fence, language-independent). Detection
+          // lives in src/utils/continuationNudge.ts.
+          const incomplete = isStructurallyIncomplete(lastText)
+          const phrase =
+            signalsContinuation(lastText) && !signalsCompletion(lastText)
+          if (incomplete || phrase) {
+            const trigger = incomplete
+              ? phrase
+                ? 'phrase+structural'
+                : 'structural'
+              : 'phrase'
             logForDebugging(
-              `Continuation nudge triggered (${state.continuationNudgeCount + 1}/${MAX_CONTINUATION_NUDGES}): model said "${lastText.slice(-120)}" without tool calls`,
+              `Continuation nudge triggered (${state.continuationNudgeCount + 1}/${MAX_CONTINUATION_NUDGES}, ${trigger}): model said "${lastText.slice(-120)}" without tool calls`,
             )
             const nudge = createUserMessage({
               content: 'Continue with the task. Use the appropriate tools to proceed.',

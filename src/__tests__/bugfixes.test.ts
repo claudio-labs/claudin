@@ -97,20 +97,22 @@ describe('Session timeout fix', () => {
 // Fix 3: Agent loop continuation nudge
 // ---------------------------------------------------------------------------
 describe('Agent loop continuation nudge', () => {
-  test('query.ts has continuation signal detection', async () => {
+  test('query.ts wires the continuation-nudge detector', async () => {
     const content = await file('query.ts').text()
 
-    expect(content).toContain('continuationSignals')
+    // Detection lives in src/utils/continuationNudge.ts (behavioral coverage in
+    // continuationNudge.test.ts); query.ts only wires it into the loop.
+    expect(content).toContain('continuationNudge.js')
+    expect(content).toContain('signalsContinuation')
+    expect(content).toContain('signalsCompletion')
+    expect(content).toContain('isStructurallyIncomplete')
     expect(content).toContain('Continuation nudge triggered')
     expect(content).toContain('continuation_nudge')
   })
 
-  test('continuation signals include tightened patterns', async () => {
+  test('nudge counter guard exists', async () => {
     const content = await file('query.ts').text()
 
-    // Should detect tightened patterns requiring explicit action verbs
-    expect(content).toMatch(/so now \(i\|let me\|we\)/)
-    expect(content).toContain('completionMarkers')
     expect(content).toContain('MAX_CONTINUATION_NUDGES')
     // Verify the nudge counter guard exists
     expect(content).toMatch(/continuationNudgeCount\s*<\s*MAX_CONTINUATION_NUDGES/)
