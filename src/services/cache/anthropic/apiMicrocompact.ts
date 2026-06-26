@@ -1,3 +1,4 @@
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -29,6 +30,7 @@ const TOOLS_CLEARABLE_RESULTS = [
 const TOOLS_CLEARABLE_USES = [
   FILE_EDIT_TOOL_NAME,
   FILE_WRITE_TOOL_NAME,
+  APPLY_PATCH_TOOL_NAME,
   NOTEBOOK_EDIT_TOOL_NAME,
 ]
 

@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, writeFileSync, utimesSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
+import {
+  applyPatchCacheInvalidationPaths,
+  resolveApplyPatchPaths,
+} from '../../tools/ApplyPatchTool/applyPatch.js'
 import {
   CACHE_WHITELIST,
   __resetForTests,
@@ -128,6 +132,26 @@ describe('invalidation', () => {
     expect(invalidateAll()).toBeGreaterThanOrEqual(2)
     expect(getCached('Glob', { pattern: 'x' })).toBeUndefined()
     expect(getCached('Grep', { pattern: 'y' })).toBeUndefined()
+  })
+
+  test('apply_patch paths invalidate both relative- and absolute-keyed searches', () => {
+    // Mirrors invalidateCacheForWrite's apply_patch branch: feeding every path
+    // from applyPatchCacheInvalidationPaths through invalidateForPath must drop
+    // a search cached on the relative dir the model used AND one cached on the
+    // absolute resolved dir (Grep/Glob skip the Read mtime re-check).
+    const patchText = '*** Begin Patch\n*** Update File: rel/foo.ts\n@@\n-a\n+b\n*** End Patch'
+    const absFile = resolveApplyPatchPaths({ patchText })[0]
+    const absDir = dirname(absFile)
+
+    setCached('Grep', { pattern: 'x', path: 'rel' }, { n: 1 })
+    setCached('Grep', { pattern: 'y', path: absDir }, { n: 2 })
+
+    for (const p of applyPatchCacheInvalidationPaths({ patchText })) {
+      invalidateForPath(p)
+    }
+
+    expect(getCached('Grep', { pattern: 'x', path: 'rel' })).toBeUndefined()
+    expect(getCached('Grep', { pattern: 'y', path: absDir })).toBeUndefined()
   })
 })
 

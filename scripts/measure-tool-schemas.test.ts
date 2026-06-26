@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { getAllBaseTools } from '../src/tools.ts'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 
 describe('measureToolSchemas', () => {
@@ -85,6 +86,44 @@ describe('measureToolSchemas', () => {
       expect(onBash, `expected Bash row for engine ${engine} (git on)`).toBeDefined()
       expect(offBash, `expected Bash row for engine ${engine} (git off)`).toBeDefined()
       expect(offBash!.schemaBytes).toBe(onBash!.schemaBytes)
+    }
+  })
+
+  test('apply_patch is registered unconditionally, right after Write', () => {
+    // The tool list is part of the cross-user system-prompt cache prefix, so
+    // apply_patch must always be present and in a fixed position. Inserting it
+    // immediately after Write keeps the order deterministic.
+    const names = getAllBaseTools().map(t => t.name)
+    expect(names).toContain('apply_patch')
+    const writeIdx = names.indexOf('Write')
+    expect(writeIdx).toBeGreaterThanOrEqual(0)
+    expect(names[writeIdx + 1]).toBe('apply_patch')
+  })
+
+  test('apply_patch tool schema bytes are stable across renders (cache-safe)', async () => {
+    // The tools block is the head of the cached request prefix and carries no
+    // cache_control of its own — any byte drift in apply_patch's schema busts
+    // the whole downstream cache. Its description is a static constant and its
+    // input schema is identity-cached via lazySchema(), so two independent
+    // measurements must be byte-identical for every engine.
+    const first = await measureToolSchemas({
+      engines: ['anthropic', 'openai', 'codex'],
+    })
+    const second = await measureToolSchemas({
+      engines: ['anthropic', 'openai', 'codex'],
+    })
+
+    for (const engine of ['anthropic', 'openai', 'codex'] as const) {
+      const a = first.rows.find(
+        r => r.name === 'apply_patch' && r.engine === engine,
+      )
+      const b = second.rows.find(
+        r => r.name === 'apply_patch' && r.engine === engine,
+      )
+      expect(a, `expected apply_patch row for engine ${engine}`).toBeDefined()
+      expect(a!.schemaBytes).toBeGreaterThan(0)
+      expect(b!.schemaBytes).toBe(a!.schemaBytes)
+      expect(b!.descriptionBytes).toBe(a!.descriptionBytes)
     }
   })
 

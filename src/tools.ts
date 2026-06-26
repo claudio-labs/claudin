@@ -18,6 +18,8 @@ const getFileReadTool = () =>
   require('./tools/FileReadTool/FileReadTool.js').FileReadTool as typeof import('./tools/FileReadTool/FileReadTool.js').FileReadTool
 const getFileWriteTool = () =>
   require('./tools/FileWriteTool/FileWriteTool.js').FileWriteTool as typeof import('./tools/FileWriteTool/FileWriteTool.js').FileWriteTool
+const getApplyPatchTool = () =>
+  require('./tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool as typeof import('./tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool
 const getGlobTool = () =>
   require('./tools/GlobTool/GlobTool.js').GlobTool as typeof import('./tools/GlobTool/GlobTool.js').GlobTool
 const getNotebookEditTool = () =>
@@ -241,6 +243,7 @@ export function getAllBaseTools(): Tools {
     getFileReadTool(),
     getFileEditTool(),
     getFileWriteTool(),
+    getApplyPatchTool(),
     getNotebookEditTool(),
     getWebFetchTool(),
     getTodoWriteTool(),

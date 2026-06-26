@@ -5,6 +5,7 @@ import { logForDebugging } from 'src/utils/debug.js';
 import { Box, Text } from '../ink.js';
 import { execFileNoThrow } from '../utils/execFileNoThrow.js';
 import { getPlansDirectory } from '../utils/plans.js';
+import { invalidateAll as invalidateToolResultCache } from '../services/tools/toolResultCache.js';
 import { setCwd } from '../utils/Shell.js';
 import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from '../utils/worktree.js';
 import { Select } from './CustomSelect/select.js';
@@ -19,6 +20,12 @@ function recordWorktreeExit(): void {
   ;
   (require('../utils/sessionStorage.js') as typeof import('../utils/sessionStorage.js')).saveWorktreeState(null);
   /* eslint-enable @typescript-eslint/no-require-imports */
+  // Every dialog exit path has already process.chdir()'d back to originalCwd by
+  // the time this runs, so relative-path read-cache keys (Read/Glob/Grep/LSP)
+  // now point at the wrong dir. The ExitWorktreeTool path clears via
+  // invalidateCacheForWrite; this interactive path has no tool dispatch, so
+  // clear here too.
+  invalidateToolResultCache();
 }
 type Props = {
   onDone: (result?: string, options?: {
@@ -59,7 +66,6 @@ export function WorktreeExitDialog({
           void cleanupWorktree().then(() => {
             process.chdir(worktreeSession.originalCwd);
             setCwd(worktreeSession.originalCwd);
-            recordWorktreeExit();
             getPlansDirectory.cache.clear?.();
             setResultMessage('Worktree removed (no changes)');
           }).catch(error => {
@@ -67,6 +73,11 @@ export function WorktreeExitDialog({
               level: 'error'
             });
             setResultMessage('Worktree cleanup failed, exiting anyway');
+          }).finally(() => {
+            // cleanupWorktree chdir's back internally before any step that can
+            // throw, so the cwd has moved even on the failure path — always
+            // invalidate (see recordWorktreeExit).
+            recordWorktreeExit();
           }).then(() => {
             setStatus('done');
           });
@@ -104,9 +115,14 @@ export function WorktreeExitDialog({
         changed_files: changes.length
       });
       await keepWorktree();
-      process.chdir(worktreeSession.originalCwd);
-      setCwd(worktreeSession.originalCwd);
-      recordWorktreeExit();
+      try {
+        process.chdir(worktreeSession.originalCwd);
+        setCwd(worktreeSession.originalCwd);
+      } finally {
+        // keepWorktree chdir's back internally first, so the cwd has moved
+        // even if the chdir above throws — always invalidate.
+        recordWorktreeExit();
+      }
       getPlansDirectory.cache.clear?.();
       if (hasTmux) {
         setResultMessage(`Worktree kept. Your work is saved at ${worktreeSession.worktreePath} on branch ${worktreeSession.worktreeBranch}. Reattach to tmux session with: tmux attach -t ${worktreeSession.tmuxSessionName}`);
@@ -124,9 +140,12 @@ export function WorktreeExitDialog({
         await killTmuxSession(worktreeSession.tmuxSessionName);
       }
       await keepWorktree();
-      process.chdir(worktreeSession.originalCwd);
-      setCwd(worktreeSession.originalCwd);
-      recordWorktreeExit();
+      try {
+        process.chdir(worktreeSession.originalCwd);
+        setCwd(worktreeSession.originalCwd);
+      } finally {
+        recordWorktreeExit();
+      }
       getPlansDirectory.cache.clear?.();
       setResultMessage(`Worktree kept at ${worktreeSession.worktreePath} on branch ${worktreeSession.worktreeBranch}. Tmux session terminated.`);
       setStatus('done');
@@ -143,7 +162,6 @@ export function WorktreeExitDialog({
         await cleanupWorktree();
         process.chdir(worktreeSession.originalCwd);
         setCwd(worktreeSession.originalCwd);
-        recordWorktreeExit();
         getPlansDirectory.cache.clear?.();
       } catch (error) {
         logForDebugging(`Failed to clean up worktree: ${error}`, {
@@ -152,6 +170,10 @@ export function WorktreeExitDialog({
         setResultMessage('Worktree cleanup failed, exiting anyway');
         setStatus('done');
         return;
+      } finally {
+        // cleanupWorktree chdir's back internally before any step that can
+        // throw, so invalidate on the catch path too.
+        recordWorktreeExit();
       }
       const tmuxNote = hasTmux ? ' Tmux session terminated.' : '';
       if (commitCount > 0 && changes.length > 0) {

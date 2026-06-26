@@ -1,0 +1,651 @@
+// Pure port of opencode's Codex `apply_patch` envelope parser + applier
+// (packages/opencode/src/patch/index.ts), de-Effected for Claudin's Node
+// runtime. Differences from the source, on purpose:
+//   - BOM-free: callers read/write through Claudin's encoding+lineEnding utils
+//     (src/utils/fileRead.ts / writeTextContent), so this module operates on
+//     plain LF-normalized text and never touches a BOM.
+//   - No `generateUnifiedDiff` (opencode's is a naive placeholder and unused
+//     for display) — the tool computes diffs via src/utils/diff.ts.
+//   - No `maybeParseApplyPatch` (Bash-invocation detection) — out of scope.
+// The parse + fuzzy-match behavior is otherwise identical to the source.
+
+export type Hunk =
+  | { type: 'add'; path: string; contents: string }
+  | { type: 'delete'; path: string }
+  | {
+      type: 'update'
+      path: string
+      movePath?: string
+      chunks: UpdateFileChunk[]
+    }
+
+export type ChunkLineKind = 'context' | 'add' | 'remove'
+
+export interface ChunkOp {
+  kind: ChunkLineKind
+  text: string
+}
+
+export interface UpdateFileChunk {
+  oldLines: string[]
+  newLines: string[]
+  /**
+   * Line-level operations in patch order. Lets the applier preserve the
+   * ORIGINAL file bytes for unchanged context lines that a fuzzy pass located
+   * despite whitespace/punctuation drift, instead of clobbering them with the
+   * patch's (normalized) text — which silently corrupts indentation in
+   * whitespace-sensitive files (Python/YAML/Make). Optional: chunks built
+   * directly (e.g. in tests) omit it and fall back to carrying newLines.
+   */
+  ops?: ChunkOp[]
+  changeContext?: string
+  isEndOfFile?: boolean
+}
+
+const ADD_HEADER = '*** Add File:'
+const DELETE_HEADER = '*** Delete File:'
+const UPDATE_HEADER = '*** Update File:'
+const MOVE_HEADER = '*** Move to:'
+const BEGIN_MARKER = '*** Begin Patch'
+const END_MARKER = '*** End Patch'
+const END_OF_FILE_MARKER = '*** End of File'
+
+// A `***`-prefixed line inside an Add/Update body is only a legitimate body
+// terminator when it opens the next section (another file header or the End
+// Patch marker). Any other `***` line is a malformed body line — most often a
+// context/content line that lost its leading space/`+` (a markdown `*** rule`,
+// an ASCII banner, or a separator the model dropped between hunks).
+//
+// `*** Move to:` is intentionally absent: a Move directive is only valid
+// immediately after the `*** Update File:` header, where parsePatchHeader
+// consumes it — it is never a mid-body boundary. Listing it here made parsePatch
+// silently skip a mid-body Move and drop every following chunk while still
+// reporting success; excluding it routes that case to the loud throw instead.
+// `*** End of File` is likewise absent: the Update body handles it before this
+// guard, and it never appears in an Add body.
+function isSectionBoundary(line: string): boolean {
+  return (
+    line.startsWith(ADD_HEADER) ||
+    line.startsWith(DELETE_HEADER) ||
+    line.startsWith(UPDATE_HEADER) ||
+    line.trim() === END_MARKER
+  )
+}
+
+// Matches a `cat <<'EOF' ... EOF` / `<<EOF ... EOF` heredoc wrapper, in case a
+// model wraps the envelope in one. Module-level per repo regex rule.
+const HEREDOC_RE = /^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/
+
+function stripHeredoc(input: string): string {
+  const match = input.match(HEREDOC_RE)
+  return match ? match[2] : input
+}
+
+function parsePatchHeader(
+  lines: string[],
+  startIdx: number,
+): { filePath: string; movePath?: string; nextIdx: number } | null {
+  const line = lines[startIdx]
+
+  // A recognized header with an empty path used to return null, which the
+  // parsePatch loop swallowed via `i++; continue` — the whole section (and its
+  // body) vanished while the apply still reported success. Throw loudly so a
+  // truncated/path-less header can never masquerade as a no-op edit.
+  if (line.startsWith(ADD_HEADER)) {
+    const filePath = line.slice(ADD_HEADER.length).trim()
+    if (!filePath) {
+      throw new Error(`Add File header has an empty path: ${JSON.stringify(line)}`)
+    }
+    return { filePath, nextIdx: startIdx + 1 }
+  }
+
+  if (line.startsWith(DELETE_HEADER)) {
+    const filePath = line.slice(DELETE_HEADER.length).trim()
+    if (!filePath) {
+      throw new Error(
+        `Delete File header has an empty path: ${JSON.stringify(line)}`,
+      )
+    }
+    return { filePath, nextIdx: startIdx + 1 }
+  }
+
+  if (line.startsWith(UPDATE_HEADER)) {
+    const filePath = line.slice(UPDATE_HEADER.length).trim()
+    if (!filePath) {
+      throw new Error(
+        `Update File header has an empty path: ${JSON.stringify(line)}`,
+      )
+    }
+
+    let movePath: string | undefined
+    let nextIdx = startIdx + 1
+
+    if (nextIdx < lines.length && lines[nextIdx].startsWith(MOVE_HEADER)) {
+      movePath = lines[nextIdx].slice(MOVE_HEADER.length).trim()
+      if (!movePath) {
+        throw new Error(
+          `Move to directive has an empty path: ${JSON.stringify(lines[nextIdx])}`,
+        )
+      }
+      nextIdx++
+    }
+
+    return { filePath, movePath, nextIdx }
+  }
+
+  return null
+}
+
+function parseUpdateFileChunks(
+  lines: string[],
+  startIdx: number,
+  filePath: string,
+): { chunks: UpdateFileChunk[]; nextIdx: number } {
+  const chunks: UpdateFileChunk[] = []
+  let i = startIdx
+
+  while (i < lines.length && !lines[i].startsWith('***')) {
+    if (lines[i].startsWith('@@')) {
+      const changeContext = lines[i].substring(2).trim()
+      i++
+
+      const oldLines: string[] = []
+      const newLines: string[] = []
+      const ops: ChunkOp[] = []
+      let isEndOfFile = false
+
+      while (i < lines.length && !lines[i].startsWith('@@')) {
+        const changeLine = lines[i]
+
+        // `*** End of File` ends the chunk and flags the EOF anchor. It must be
+        // checked before the generic `***` section-terminator guard below,
+        // since the marker itself starts with `***` (in opencode this check was
+        // unreachable, leaving the EOF anchor dead — fixed here).
+        if (changeLine === END_OF_FILE_MARKER) {
+          isEndOfFile = true
+          i++
+          break
+        }
+
+        if (changeLine.startsWith('***')) {
+          // A `***` line that opens the next section legitimately ends this
+          // chunk; hand control back to parsePatch. Any other `***` line is a
+          // malformed body line (a context line missing its leading space — a
+          // markdown rule, a banner, a between-hunk separator, or a stray
+          // `*** Move to:` that only belongs right after the Update header) that
+          // used to silently terminate the section and drop every following
+          // chunk while reporting success. Fail loudly, mirroring the
+          // unprefixed-line guard below.
+          if (isSectionBoundary(changeLine)) {
+            break
+          }
+          throw new Error(
+            `Update File '${filePath}' has a body line starting with '***' that is not a section marker (a context line must begin with a space): ${JSON.stringify(
+              changeLine,
+            )}`,
+          )
+        }
+
+        if (changeLine.startsWith(' ')) {
+          // Context line — present in both old and new.
+          const content = changeLine.substring(1)
+          oldLines.push(content)
+          newLines.push(content)
+          ops.push({ kind: 'context', text: content })
+        } else if (changeLine.startsWith('-')) {
+          const content = changeLine.substring(1)
+          oldLines.push(content)
+          ops.push({ kind: 'remove', text: content })
+        } else if (changeLine.startsWith('+')) {
+          const content = changeLine.substring(1)
+          newLines.push(content)
+          ops.push({ kind: 'add', text: content })
+        } else if (changeLine === '') {
+          // A blank context line whose single leading space was stripped (a
+          // common whitespace artifact in model-emitted patches). Treat it as
+          // context on both sides rather than dropping it.
+          oldLines.push('')
+          newLines.push('')
+          ops.push({ kind: 'context', text: '' })
+        } else {
+          // Any other unprefixed body line is malformed. opencode (and our
+          // original port) silently dropped it — which can quietly degrade a
+          // replacement into a pure insertion that lands at EOF while still
+          // reporting success. Fail loudly instead, mirroring the empty-@@-chunk
+          // guard in parsePatch.
+          throw new Error(
+            `Update File '${filePath}' has a hunk line without a ' '/'+'/'-' prefix: ${JSON.stringify(
+              changeLine,
+            )}`,
+          )
+        }
+
+        i++
+      }
+
+      chunks.push({
+        oldLines,
+        newLines,
+        ops,
+        changeContext: changeContext || undefined,
+        isEndOfFile: isEndOfFile || undefined,
+      })
+    } else if (lines[i].trim() === '') {
+      // A blank line outside any chunk (incidental formatting after the header
+      // or after an `*** End of File` marker). Harmless — skip it.
+      i++
+    } else {
+      // A non-blank line that is not part of any `@@` chunk — almost always
+      // prose the model emitted between the `*** Update File:` header and the
+      // first `@@` (e.g. "Here is my change:"). opencode (and our original port)
+      // silently skipped these via `i++` while reporting a successful apply, so
+      // the text never reached the file. Fail loudly, mirroring the
+      // unprefixed-body-line guard above.
+      throw new Error(
+        `Update File '${filePath}' has a line that is not part of any @@ chunk (text before the first '@@'?): ${JSON.stringify(
+          lines[i],
+        )}`,
+      )
+    }
+  }
+
+  return { chunks, nextIdx: i }
+}
+
+function parseAddFileContent(
+  lines: string[],
+  startIdx: number,
+  filePath: string,
+): { content: string; nextIdx: number } {
+  let content = ''
+  let i = startIdx
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (line.startsWith('***')) {
+      // A `***` line that opens the next section ends this Add body. Any other
+      // `***` line is malformed (a content line that lost its leading `+`, an
+      // ASCII banner, a markdown rule). opencode (and our original port) stopped
+      // the collector on the *first* `***` of any kind, silently truncating the
+      // new file at that point while reporting success. Fail loudly instead,
+      // mirroring the Update body guard.
+      if (isSectionBoundary(line)) break
+      throw new Error(
+        `Add File '${filePath}' has a body line starting with '***' that is not a section marker (content lines must begin with '+'): ${JSON.stringify(
+          line,
+        )}`,
+      )
+    }
+
+    if (line.startsWith('+')) {
+      content += line.substring(1) + '\n'
+    } else if (line === '') {
+      // A blank content line whose single leading `+` was stripped (a common
+      // whitespace artifact). Preserve it as an empty line rather than dropping
+      // it, matching the Update body's handling of a stripped blank context line.
+      content += '\n'
+    } else {
+      // Any other unprefixed body line is malformed. opencode silently dropped
+      // it, truncating the created file while still reporting success. Fail
+      // loudly, mirroring the Update body's unprefixed-line guard.
+      throw new Error(
+        `Add File '${filePath}' has a content line without a '+' prefix: ${JSON.stringify(
+          line,
+        )}`,
+      )
+    }
+
+    i++
+  }
+
+  if (content.endsWith('\n')) {
+    content = content.slice(0, -1)
+  }
+
+  return { content, nextIdx: i }
+}
+
+export function parsePatch(patchText: string): { hunks: Hunk[] } {
+  const cleaned = stripHeredoc(patchText.trim())
+  const lines = cleaned.split('\n')
+  const hunks: Hunk[] = []
+
+  const beginIdx = lines.findIndex(line => line.trim() === BEGIN_MARKER)
+  const endIdx = lines.findIndex(line => line.trim() === END_MARKER)
+
+  if (beginIdx === -1 || endIdx === -1 || beginIdx >= endIdx) {
+    throw new Error('Invalid patch format: missing Begin/End markers')
+  }
+
+  let i = beginIdx + 1
+  while (i < endIdx) {
+    const header = parsePatchHeader(lines, i)
+    if (!header) {
+      if (lines[i].trim() === '') {
+        // A blank line between sections (or right after the Begin marker) is
+        // incidental formatting — skip it.
+        i++
+        continue
+      }
+      // A non-blank line where a section header was expected. The usual cause is
+      // a header that lost its `*** ` prefix (e.g. `Update File: x`): opencode
+      // (and our original port) silently skipped it via `i++; continue` — and
+      // then skipped every following body line for the same reason — so the
+      // entire edit vanished while the apply reported success. Fail loudly.
+      throw new Error(
+        `Invalid patch: expected a section header (\`*** Add File:\`, \`*** Update File:\`, or \`*** Delete File:\`) but found: ${JSON.stringify(
+          lines[i],
+        )}`,
+      )
+    }
+
+    if (lines[i].startsWith(ADD_HEADER)) {
+      const { content, nextIdx } = parseAddFileContent(
+        lines,
+        header.nextIdx,
+        header.filePath,
+      )
+      hunks.push({ type: 'add', path: header.filePath, contents: content })
+      i = nextIdx
+    } else if (lines[i].startsWith(DELETE_HEADER)) {
+      hunks.push({ type: 'delete', path: header.filePath })
+      i = header.nextIdx
+    } else if (lines[i].startsWith(UPDATE_HEADER)) {
+      const { chunks, nextIdx } = parseUpdateFileChunks(
+        lines,
+        header.nextIdx,
+        header.filePath,
+      )
+      // opencode silently produces an empty update (a no-op write) when an
+      // Update section has no `@@` chunks; we fail loudly instead so a
+      // malformed hunk never masquerades as a successful edit.
+      if (chunks.length === 0) {
+        throw new Error(
+          `Update File '${header.filePath}' has no @@ chunks (expected a "@@" context line before the changes)`,
+        )
+      }
+      hunks.push({
+        type: 'update',
+        path: header.filePath,
+        movePath: header.movePath,
+        chunks,
+      })
+      i = nextIdx
+    } else {
+      // Unreachable: parsePatchHeader only returns a header for Add/Delete/Update
+      // lines, all handled above. Throw rather than silently skip so the
+      // invariant can never regress into a dropped section.
+      throw new Error(
+        `Invalid patch: unhandled section header: ${JSON.stringify(lines[i])}`,
+      )
+    }
+  }
+
+  return { hunks }
+}
+
+// Normalize Unicode punctuation to ASCII equivalents (matches the Rust/opencode
+// normalize_unicode used in the fuzzy pass). Module-level per repo regex rule.
+const SINGLE_QUOTE_RE = /[\u2018\u2019\u201A\u201B]/g
+const DOUBLE_QUOTE_RE = /[\u201C\u201D\u201E\u201F]/g
+const DASH_RE = /[\u2010\u2011\u2012\u2013\u2014\u2015]/g
+const ELLIPSIS_RE = /\u2026/g
+const NBSP_RE = /\u00A0/g
+
+function normalizeUnicode(str: string): string {
+  return str
+    .replace(SINGLE_QUOTE_RE, "'")
+    .replace(DOUBLE_QUOTE_RE, '"')
+    .replace(DASH_RE, '-')
+    .replace(ELLIPSIS_RE, '...')
+    .replace(NBSP_RE, ' ')
+}
+
+type Comparator = (a: string, b: string) => boolean
+
+function matchesAt(
+  lines: string[],
+  pattern: string[],
+  at: number,
+  compare: Comparator,
+): boolean {
+  for (let j = 0; j < pattern.length; j++) {
+    if (!compare(lines[at + j], pattern[j])) return false
+  }
+  return true
+}
+
+function tryMatch(
+  lines: string[],
+  pattern: string[],
+  startIndex: number,
+  compare: Comparator,
+): number {
+  for (let i = startIndex; i <= lines.length - pattern.length; i++) {
+    if (matchesAt(lines, pattern, i, compare)) return i
+  }
+  return -1
+}
+
+// Comparators in order of decreasing strictness: exact, ignore trailing
+// whitespace, ignore leading+trailing whitespace, normalize Unicode punctuation.
+const SEEK_PASSES: Comparator[] = [
+  (a, b) => a === b,
+  (a, b) => a.trimEnd() === b.trimEnd(),
+  (a, b) => a.trim() === b.trim(),
+  (a, b) => normalizeUnicode(a.trim()) === normalizeUnicode(b.trim()),
+]
+
+function seekSequence(
+  lines: string[],
+  pattern: string[],
+  startIndex: number,
+  eof = false,
+): number {
+  if (pattern.length === 0) return -1
+
+  // EOF anchor: the pattern is pinned to the tail of the file. Probe the tail
+  // position with EVERY fuzzy pass before any forward scan, so a trailing line
+  // that only matches after whitespace/Unicode normalization still wins the
+  // anchor over an earlier line that happens to match exactly. (Previously each
+  // pass ran its own tail-check-then-scan in sequence, so Pass 1's exact forward
+  // match stole the anchor from a fuzzy tail and the EOF marker was silently
+  // ignored whenever the last line carried trailing whitespace.)
+  if (eof) {
+    const fromEnd = lines.length - pattern.length
+    if (fromEnd >= startIndex) {
+      for (const compare of SEEK_PASSES) {
+        if (matchesAt(lines, pattern, fromEnd, compare)) return fromEnd
+      }
+    }
+  }
+
+  // Forward scan, passes in order of decreasing strictness.
+  for (const compare of SEEK_PASSES) {
+    const idx = tryMatch(lines, pattern, startIndex, compare)
+    if (idx !== -1) return idx
+  }
+
+  return -1
+}
+
+/**
+ * Builds the replacement segment for a matched region using the chunk's
+ * line-level ops. Context lines emit the ORIGINAL file bytes
+ * (`originalLines[found + oldPtr]`) rather than the patch's text, so a fuzzy
+ * match (trim/Unicode pass) that located a line despite whitespace drift does
+ * not rewrite that unchanged line's indentation. Added lines emit the patch
+ * text; removed lines consume an original line and emit nothing.
+ *
+ * `oldLen` is the matched region length (after any trailing-blank trim). A
+ * trailing context/remove op beyond `oldLen` is the trimmed blank line and is
+ * skipped, mirroring the pattern/newSlice trim in `computeReplacements`.
+ */
+function rebuildSegment(
+  ops: ChunkOp[],
+  originalLines: string[],
+  found: number,
+  oldLen: number,
+): string[] {
+  const segment: string[] = []
+  let oldPtr = 0
+  for (const op of ops) {
+    if (op.kind === 'add') {
+      segment.push(op.text)
+    } else if (op.kind === 'remove') {
+      if (oldPtr < oldLen) oldPtr++
+    } else {
+      // context: preserve the original file's bytes for the matched line.
+      if (oldPtr < oldLen) {
+        segment.push(originalLines[found + oldPtr])
+        oldPtr++
+      }
+    }
+  }
+  return segment
+}
+
+function computeReplacements(
+  originalLines: string[],
+  filePath: string,
+  chunks: UpdateFileChunk[],
+): Array<[number, number, string[]]> {
+  const replacements: Array<[number, number, string[]]> = []
+  let lineIndex = 0
+
+  for (const chunk of chunks) {
+    if (chunk.changeContext) {
+      const contextIdx = seekSequence(
+        originalLines,
+        [chunk.changeContext],
+        lineIndex,
+      )
+      if (contextIdx === -1) {
+        throw new Error(
+          `Failed to find context '${chunk.changeContext}' in ${filePath}`,
+        )
+      }
+      lineIndex = contextIdx + 1
+    }
+
+    // Pure insertion (no removed lines). With an explicit `@@` anchor, insert
+    // right after the anchored line (lineIndex now points just past it).
+    // Without an anchor, append at EOF (before any trailing blank line).
+    // Previously the anchor was ignored and every pure insertion landed at EOF.
+    if (chunk.oldLines.length === 0) {
+      const insertionIdx = chunk.changeContext
+        ? lineIndex
+        : originalLines.length > 0 &&
+            originalLines[originalLines.length - 1] === ''
+          ? originalLines.length - 1
+          : originalLines.length
+      replacements.push([insertionIdx, 0, chunk.newLines])
+      continue
+    }
+
+    let pattern = chunk.oldLines
+    let newSlice = chunk.newLines
+    let found = seekSequence(
+      originalLines,
+      pattern,
+      lineIndex,
+      chunk.isEndOfFile,
+    )
+
+    // Retry without a trailing empty line if the first match failed.
+    if (found === -1 && pattern.length > 0 && pattern[pattern.length - 1] === '') {
+      pattern = pattern.slice(0, -1)
+      if (newSlice.length > 0 && newSlice[newSlice.length - 1] === '') {
+        newSlice = newSlice.slice(0, -1)
+      }
+      found = seekSequence(originalLines, pattern, lineIndex, chunk.isEndOfFile)
+    }
+
+    if (found !== -1) {
+      const segment = chunk.ops
+        ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
+        : newSlice
+      replacements.push([found, pattern.length, segment])
+      lineIndex = found + pattern.length
+    } else {
+      throw new Error(
+        `Failed to find expected lines in ${filePath}:\n${chunk.oldLines.join('\n')}`,
+      )
+    }
+  }
+
+  replacements.sort((a, b) => a[0] - b[0])
+
+  // Adjacent replacements must not overlap. Sequential chunks normally can't —
+  // each searches past the previous match — but a pure insertion's index is
+  // computed independently (EOF / @@ anchor) without advancing the search
+  // cursor, so it can land inside a later chunk's removal span. applyReplacements
+  // splices each range independently in reverse, so an overlap would let the
+  // wider removal silently swallow the inserted lines while reporting success.
+  // Treat conflicting hunks as a hard error instead.
+  for (let k = 1; k < replacements.length; k++) {
+    const [prevStart, prevLen] = replacements[k - 1]
+    const [currStart] = replacements[k]
+    if (currStart < prevStart + prevLen) {
+      throw new Error(
+        `Overlapping edits in ${filePath}: a chunk at line ${currStart + 1} ` +
+          `falls inside an earlier chunk's span (lines ${prevStart + 1}-${
+            prevStart + prevLen
+          }). The patch's hunks conflict — often a pure insertion colliding ` +
+          `with a nearby removal.`,
+      )
+    }
+  }
+
+  return replacements
+}
+
+function applyReplacements(
+  lines: string[],
+  replacements: Array<[number, number, string[]]>,
+): string[] {
+  const result = [...lines]
+
+  // Apply in reverse so earlier indices stay valid as we splice.
+  for (let i = replacements.length - 1; i >= 0; i--) {
+    const [startIdx, oldLen, newSegment] = replacements[i]
+    result.splice(startIdx, oldLen)
+    for (let j = 0; j < newSegment.length; j++) {
+      result.splice(startIdx + j, 0, newSegment[j])
+    }
+  }
+
+  return result
+}
+
+/**
+ * Applies an Update hunk's chunks to the original file text (LF-normalized,
+ * no BOM) and returns the new content with a trailing newline. Throws if any
+ * chunk's context/old lines can't be located (after the 4-pass fuzzy match).
+ */
+export function deriveNewContentsFromChunks(
+  filePath: string,
+  chunks: UpdateFileChunk[],
+  originalText: string,
+): string {
+  const originalLines = originalText.split('\n')
+
+  // Drop a trailing empty element so line counting matches the source.
+  if (
+    originalLines.length > 0 &&
+    originalLines[originalLines.length - 1] === ''
+  ) {
+    originalLines.pop()
+  }
+
+  const replacements = computeReplacements(originalLines, filePath, chunks)
+  const newLines = applyReplacements(originalLines, replacements)
+
+  // Ensure a trailing newline (last element becomes '').
+  if (newLines.length === 0 || newLines[newLines.length - 1] !== '') {
+    newLines.push('')
+  }
+
+  return newLines.join('\n')
+}

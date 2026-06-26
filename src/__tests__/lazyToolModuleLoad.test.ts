@@ -101,6 +101,7 @@ const HOT_PATH_FLOOR = [
  */
 const CURRENT_BASELINE = [
   'AgentTool',
+  'ApplyPatchTool',
   'AskUserQuestionTool',
   'BashTool',
   'BriefTool',
@@ -117,6 +118,7 @@ const CURRENT_BASELINE = [
   'ListMcpResourcesTool',
   'MCPTool',
   'McpAuthTool',
+  'MonitorTool',
   'NotebookEditTool',
   'PowerShellTool',
   'REPLTool',

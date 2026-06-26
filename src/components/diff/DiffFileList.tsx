@@ -1,3 +1,4 @@
+import figures from 'figures'
 import { basename } from 'path'
 import React, { useMemo } from 'react'
 import type { DiffFile } from '../../hooks/useDiffData.js'
@@ -117,7 +118,7 @@ function TreeRowItem({
 }): React.ReactNode {
   if (row.kind === 'group') {
     const lead = isSelected ? `${glyphs.pointer} ` : '  '
-    const caret = row.collapsed ? '▸' : '▾'
+    const caret = row.collapsed ? figures.triangleRight : figures.triangleDown
     return (
       <Text dimColor={!isSelected} bold={isSelected}>
         {`${lead}${caret} `}
@@ -145,7 +146,7 @@ function TreeRowItem({
   const indentWidth = 2 + row.depth * 2
 
   if (row.kind === 'dir') {
-    const caret = row.collapsed ? '▸' : '▾'
+    const caret = row.collapsed ? figures.triangleRight : figures.triangleDown
     const icon = glyphs.folderIcon(!row.collapsed)
     const iconPrefix = icon ? `${icon} ` : ''
     // caret + space (2) + optional icon + space (2). Keep the deepest folder

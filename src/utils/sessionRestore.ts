@@ -43,6 +43,7 @@ import { fileHistoryRestoreStateFromLog } from './fileHistory.js'
 import { createSystemMessage } from './messages.js'
 import { parseUserSpecifiedModel } from './model/model.js'
 import { getPlansDirectory } from './plans.js'
+import { invalidateAll as invalidateToolResultCache } from '../services/tools/toolResultCache.js'
 import { setCwd } from './Shell.js'
 import {
   adoptResumedSessionFile,
@@ -359,10 +360,13 @@ export function restoreWorktreeForResume(
   restoreWorktreeSession(worktreeSession)
   // The /resume slash command calls this mid-session after caches have been
   // populated against the old cwd. Cheap no-ops for the CLI-flag path
-  // (caches aren't populated yet there).
+  // (caches aren't populated yet there). The read-only tool-result cache
+  // (Read/Glob/Grep/LSP) keys relative paths with no cwd component, so the
+  // chdir above silently repoints them at the wrong dir — clear it too.
   clearMemoryFileCaches()
   clearSystemPromptSections()
   getPlansDirectory.cache.clear?.()
+  invalidateToolResultCache()
 }
 
 /**
@@ -383,10 +387,12 @@ export function exitRestoredWorktree(): void {
 
   restoreWorktreeSession(null)
   // Worktree state changed, so cached prompt sections that reference it are
-  // stale whether or not chdir succeeds below.
+  // stale whether or not chdir succeeds below. The tool-result cache keys
+  // relative paths with no cwd component, so the chdir below repoints them.
   clearMemoryFileCaches()
   clearSystemPromptSections()
   getPlansDirectory.cache.clear?.()
+  invalidateToolResultCache()
 
   try {
     process.chdir(current.originalCwd)
