@@ -771,6 +771,22 @@ describe("phase 6.1.2 — cargoBuild", () => {
     expect(body).not.toMatch(/^✓ cargo build/);
   });
 
+  test("safety: warnings on a Finished build preserve body, no sentinel", () => {
+    // Non-`unused` warning on an exit-0 (Finished) build: the old guard only
+    // treated `warning: unused` as a problem, so this would collapse to the
+    // sentinel and drop the warning text.
+    const raw = [
+      "   Compiling foo v0.1.0 (/work/foo)",
+      "warning: associated function `new` is never used",
+      "  --> src/core/stream.rs:95:12",
+      'warning: `foo` (bin "foo") generated 1 warning',
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.20s",
+    ].join("\n");
+    const body = runFilterBody("cargo-build", "cargo build", raw);
+    expect(body).toContain("is never used");
+    expect(body).not.toMatch(/^✓ cargo build/);
+  });
+
   test("match: cargo build ✓; cargo clippy ✗", () => {
     expect(findFilterForCommand("cargo build")?.name).toBe("cargo-build");
     expect(findFilterForCommand("cargo clippy")?.name).not.toBe("cargo-build");
@@ -780,6 +796,19 @@ describe("phase 6.1.2 — cargoBuild", () => {
 describe("phase 6.1.2 — cargoCheck", () => {
   test("ROI: cargo-check sample reduces ≥ 59%", () => {
     assertReduction("cargo-check", "cargo check", "cargo-check", 59);
+  });
+
+  test("safety: warnings on a Finished check preserve body, no sentinel", () => {
+    const raw = [
+      "    Checking foo v0.1.0 (/work/foo)",
+      "warning: function `helper` is never used",
+      "  --> src/main.rs:10:4",
+      "warning: `foo` (lib) generated 1 warning",
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.30s",
+    ].join("\n");
+    const body = runFilterBody("cargo-check", "cargo check", raw);
+    expect(body).toContain("is never used");
+    expect(body).not.toMatch(/^✓ cargo check/);
   });
 
   test("match: cargo check ✓", () => {

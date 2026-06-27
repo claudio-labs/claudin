@@ -53,6 +53,9 @@ describe('regex-redos-scan', () => {
     String.raw`^(?:npx\s+)?prisma\s+generate\b`,
     String.raw`^(?:npx\s+)?prisma\s+migrate\b`,
     String.raw`^(?:\s+)?(?:Downloading|Using cached)\s+\S+\.whl`,
+    // Phase 13 — same verified-safe `(?:X\s+)?` optional-prefix shape as the
+    // eslint/prettier matchers above: the optional group matches at most once.
+    String.raw`^(?:pnpm\s+)?nx\b`,
   ])
 
   const assertSafe = (source: string, label: string) => {

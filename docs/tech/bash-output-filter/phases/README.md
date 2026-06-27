@@ -19,8 +19,13 @@
 | 7 | Default-on flip + post-flip verification | ~3 | ⏸ Not started | [`phase-7-default-on.md`](phase-7-default-on.md) |
 | 8 | Tier-1 follow-ups: JS/TS toolchain + tsc + git diff/show (Windows deferred) | ~330 | ✅ Done — Linux side | [`phase-8-tier1-followups.md`](phase-8-tier1-followups.md) |
 | 9 | **System utilities: ping, rsync, tree, ssh, df, du, dmesg, stat, jq + curl-plain** | ~140 | ✅ Done (2026-05-13) | [`phase-9-system-utils.md`](phase-9-system-utils.md) |
+| 10–12 | wget/find, Java build (gradle/mvn), IaC (terraform), + rtk gap-fill (JS pkg, linters, git/VCS, Go, Rust, Python) | — | ✅ Done | see `filters/index.ts` blocks |
+| 13 | **Language toolchains (rtk gap-fill): gcc/make/pio, dotnet, composer, rake, mix, swift/xcodebuild, next/biome/oxlint/turbo/nx, uv/poetry/basedpyright/ty, spring-boot** | ~620 | ✅ Done (2026-06-26) | colocated `filters/<family>.ts` + `phase13Report.test.ts` |
 
 **Status legend:** ⏸ Not started | 🔄 In progress | ✅ Done | ⛔ Blocked | ⭐ Priority
+
+**Deferred command families** (cloud / sysadmin / IaC / task-runners / niche) are tracked
+in [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Priority queue
 

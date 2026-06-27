@@ -34,8 +34,13 @@ const CARGO_STRIP_BASE = [
 // Matching on just the prefix + tail avoids the nested-optional heuristic
 // (REDOS_PATTERNS #5). `Finished ...\s+in [\d.]+s` is unambiguous in cargo output.
 const CARGO_FINISHED = /^\s*Finished\s.*\s+in\s+[\d.]+s\s*$/m
-// `error[E0308]: ...`, `error: ...`, or the summary `error: could not compile`
-const CARGO_HAS_ERROR = /^(?:error(?:\[E\d+\])?:|warning:\s+unused)/m
+// `error[E0308]: ...`, `error: could not compile`, or ANY `warning:` line.
+// A successful (Finished) build that still emits warnings must NOT be collapsed
+// to the sentinel, or the warning text is lost — same warning-omission class as
+// the next/uv/poetry/composer/gradle/mvn guards. A clean build emits no
+// `warning:`/`error:` line (only stripped `Compiling` + `Finished`), so widening
+// from `warning: unused` to any `warning:` introduces no false positive.
+const CARGO_HAS_PROBLEM = /^(?:error(?:\[E\d+\])?:|warning:)/m
 
 // --- cargo build ---------------------------------------------------------
 
@@ -51,7 +56,7 @@ export const cargoBuild: FilterSpec = {
   matchOutput: [
     {
       pattern: CARGO_FINISHED,
-      unless: CARGO_HAS_ERROR,
+      unless: CARGO_HAS_PROBLEM,
       message: '✓ cargo build: ok',
     },
   ],
@@ -71,7 +76,7 @@ export const cargoCheck: FilterSpec = {
   matchOutput: [
     {
       pattern: CARGO_FINISHED,
-      unless: CARGO_HAS_ERROR,
+      unless: CARGO_HAS_PROBLEM,
       message: '✓ cargo check: ok',
     },
   ],

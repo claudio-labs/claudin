@@ -519,17 +519,25 @@ export function collapseIdenticalRuns(lines: string[]): string[] {
   const out: string[] = []
   let runLine = lines[0] ?? ''
   let runCount = 1
+  // Annotate a collapsed run with ` (×N)` — EXCEPT a run of blank/whitespace-only
+  // lines, which collapses to a single blank line with no marker. A ` (×N)` count
+  // on a blank run is never useful and is actively harmful to downstream
+  // line-oriented filters: the resulting ` (×N)` line is non-blank, so it both
+  // survives a `/^\s*$/` strip rule and prevents `onEmpty` from firing (the Bash
+  // output-filter pipeline runs collapseRuns before stripLinesMatching/onEmpty).
+  const emit = (line: string, count: number) =>
+    out.push(count > 1 && line.trim() !== '' ? `${line} (×${count})` : line)
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i] ?? ''
     if (line === runLine) {
       runCount++
       continue
     }
-    out.push(runCount > 1 ? `${runLine} (×${runCount})` : runLine)
+    emit(runLine, runCount)
     runLine = line
     runCount = 1
   }
-  out.push(runCount > 1 ? `${runLine} (×${runCount})` : runLine)
+  emit(runLine, runCount)
   return out
 }
 

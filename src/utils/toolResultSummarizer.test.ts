@@ -1275,6 +1275,16 @@ test('bash-output: collapseIdenticalRuns is importable and works', () => {
   expect(collapseIdenticalRuns([])).toEqual([])
 })
 
+test('bash-output: a run of blank/whitespace lines collapses to a single blank, never ` (×N)`', () => {
+  // A ` (×N)` marker on a blank run is non-blank, so it would survive a
+  // `/^\s*$/` strip rule and defeat onEmpty in the Bash output-filter pipeline.
+  expect(collapseIdenticalRuns(['a', '', '', 'b'])).toEqual(['a', '', 'b'])
+  expect(collapseIdenticalRuns(['', '', ''])).toEqual([''])
+  expect(collapseIdenticalRuns(['  ', '  '])).toEqual(['  '])
+  // Non-blank runs are still annotated.
+  expect(collapseIdenticalRuns(['x', '', '', 'x', 'x'])).toEqual(['x', '', 'x (×2)'])
+})
+
 test('bash-output: collapseDigitTemplates is importable and works', () => {
   const lines = Array.from({ length: 5 }, (_, i) => `line ${i + 1}`)
   expect(collapseDigitTemplates(lines)).toEqual(['line 1 (5 updates)'])

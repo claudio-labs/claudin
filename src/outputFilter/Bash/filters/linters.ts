@@ -211,3 +211,108 @@ export const ruffFormat: FilterSpec = {
   stripAnsi: true,
   collapseRuns: true,
 }
+
+// ===========================================================================
+// Phase 13 — Python extras (rtk gap-fill): uv, poetry, basedpyright, ty.
+// ===========================================================================
+
+// --- uv sync / uv pip install ----------------------------------------------
+const UV_MATCH = /^uv\s+(?:sync|pip\s+install)\b/
+const UV_BLANK = /^\s*$/
+const UV_DOWNLOADING = /^\s+Downloading\s/
+const UV_USING_CACHED = /^\s+Using cached\s/
+const UV_PREPARING = /^\s+Preparing\b/
+// `Audited N packages` → nothing changed.
+const UV_AUDITED = /Audited \d+ packages?/
+// Errors AND warnings (yanked/deprecated package, etc.) both suppress the
+// "up to date" sentinel — collapsing them would hide signal on an exit-0 sync.
+const UV_HAS_PROBLEM = /\berror\b|\bwarning\b|could not|failed/i
+
+export const uv: FilterSpec = {
+  name: 'uv',
+  matchCommand: UV_MATCH,
+  stripAnsi: true,
+  matchOutput: [
+    {
+      pattern: UV_AUDITED,
+      unless: UV_HAS_PROBLEM,
+      message: '✓ uv: up to date',
+    },
+  ],
+  stripLinesMatching: [UV_BLANK, UV_DOWNLOADING, UV_USING_CACHED, UV_PREPARING],
+  maxLines: 20,
+}
+
+// --- poetry install / lock / update ----------------------------------------
+const POETRY_MATCH = /^poetry\s+(?:install|lock|update)\b/
+const POETRY_BLANK = /^\s*$/
+const POETRY_DOWNLOADING = /^\s+[-•]\s+Downloading\s/
+const POETRY_INSTALLING = /^\s+[-•]\s+Installing\s.*\(/
+const POETRY_CREATING_VENV = /^Creating virtualenv/
+const POETRY_USING_VENV = /^Using virtualenv/
+const POETRY_NOCHANGE = /No dependencies to install or update|No changes\./
+// Errors AND warnings both suppress the sentinel — a successful (exit-0) run
+// can still print a warning we must not collapse away.
+const POETRY_HAS_PROBLEM = /could not be resolved|\bSolverProblemError\b|\berror\b|\bwarning\b/i
+
+export const poetry: FilterSpec = {
+  name: 'poetry',
+  matchCommand: POETRY_MATCH,
+  stripAnsi: true,
+  matchOutput: [
+    {
+      pattern: POETRY_NOCHANGE,
+      unless: POETRY_HAS_PROBLEM,
+      message: '✓ poetry: up to date',
+    },
+  ],
+  stripLinesMatching: [
+    POETRY_BLANK,
+    POETRY_DOWNLOADING,
+    POETRY_INSTALLING,
+    POETRY_CREATING_VENV,
+    POETRY_USING_VENV,
+  ],
+  maxLines: 30,
+}
+
+// --- basedpyright ----------------------------------------------------------
+const BASEDPYRIGHT_MATCH = /^basedpyright\b/
+const BASEDPYRIGHT_REJECT = /(?:^|\s)--outputjson\b/
+const BASEDPYRIGHT_BLANK = /^\s*$/
+const BASEDPYRIGHT_SEARCHING = /^Searching for source files/
+const BASEDPYRIGHT_FOUND = /^Found \d+ source file/
+const BASEDPYRIGHT_VERSION = /^(?:Pyright|basedpyright) \d+\.\d+/
+
+export const basedpyright: FilterSpec = {
+  name: 'basedpyright',
+  matchCommand: BASEDPYRIGHT_MATCH,
+  matchCommandReject: BASEDPYRIGHT_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [
+    BASEDPYRIGHT_BLANK,
+    BASEDPYRIGHT_SEARCHING,
+    BASEDPYRIGHT_FOUND,
+    BASEDPYRIGHT_VERSION,
+  ],
+  collapseRuns: true,
+  maxLines: 50,
+  onEmpty: 'basedpyright: ok',
+}
+
+// --- ty (Astral type checker) ----------------------------------------------
+const TY_MATCH = /^ty\b/
+const TY_REJECT = /(?:^|\s)--output-format(?:=|\s+)(?:json|github)\b/
+const TY_CHECKING = /^Checking \d+ file/
+const TY_VERSION = /^ty \d+\.\d+/
+
+export const ty: FilterSpec = {
+  name: 'ty',
+  matchCommand: TY_MATCH,
+  matchCommandReject: TY_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [TY_CHECKING, TY_VERSION],
+  collapseRuns: true,
+  maxLines: 50,
+  onEmpty: 'ty: ok',
+}

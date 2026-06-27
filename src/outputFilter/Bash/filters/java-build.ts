@@ -36,14 +36,22 @@ const GRADLE_SKIPPED = /^> Task \S+\s+SKIPPED\s*$/
 const GRADLE_BLANK = /^\s*$/
 
 const GRADLE_OK = /^BUILD SUCCESSFUL in /m
-// FAILED can appear on a task line OR on the BUILD FAILED summary.
-const GRADLE_HAS_PROBLEM = /\bFAILED\b|tests? completed.*\bfailed\b/i
+// FAILED can appear on a task line OR on the BUILD FAILED summary. Warnings and
+// deprecation notices also suppress the sentinel: a BUILD SUCCESSFUL (exit 0)
+// can still carry `warning:` / "Deprecated Gradle features were used" lines that
+// collapsing to the one-line sentinel would silently drop. `deprecat` is anchored
+// to its real inflections so an unrelated identifier (e.g. a `:deprecator:` module
+// path on a clean build) can't spuriously suppress the collapse.
+const GRADLE_HAS_PROBLEM =
+  /\bFAILED\b|tests? completed.*\bfailed\b|\bwarning\b|deprecat(?:e|ed|es|ion|ing)/i
 
 const GRADLE_MATCH = /^(gradle|gradlew|\.\/gradlew?)(?:\b|\.bat)/
 // Pass through when the user explicitly requested verbose output, a build
 // scan URL (--scan generates a URL we want the model to see), or continuous
 // watch mode (output changes over time — filtering would be confusing).
-const GRADLE_REJECT = /(?:^|\s)(?:-q\b|--quiet|--info|--debug|--stacktrace|--scan|--continuous|-t\b)\b/
+// `bootRun` is claimed by the spring-boot spec (Phase 13) — reject it here so
+// the two filters never both match `gradle …bootRun`.
+const GRADLE_REJECT = /(?:^|\s)(?:-q\b|--quiet|--info|--debug|--stacktrace|--scan|--continuous|-t\b)\b|\bbootRun\b/
 
 export const gradle: FilterSpec = {
   name: 'gradle',
@@ -104,18 +112,21 @@ const MVN_STRIP_NO_SOURCES = /^\[INFO\]\s+No sources to compile/
 const MVN_STRIP_BLANK = /^\s*$/
 
 const MVN_OK = /^\[INFO\]\s+BUILD SUCCESS/m
-// [ERROR] lines or BUILD FAILURE summary indicate a bad build — suppress the
-// sentinel so the model sees raw output.  We intentionally do NOT match
-// "Failures:" here because Surefire also emits "Failures: 0" on successful
-// runs (e.g. `Tests run: 100, Failures: 0`), which would prevent the sentinel
-// from firing.  All actual test-failure lines already carry the [ERROR] prefix.
-const MVN_HAS_PROBLEM = /\[ERROR\]|\bBUILD FAILURE\b/
+// [ERROR]/[WARNING] lines or a BUILD FAILURE summary suppress the sentinel so
+// the model sees raw output.  The sentinel REPLACES the whole body, so without
+// the [WARNING] guard a successful build would silently drop the very [WARNING]
+// lines this filter otherwise keeps (see header comment).  We intentionally do
+// NOT match "Failures:" here because Surefire also emits "Failures: 0" on
+// successful runs (e.g. `Tests run: 100, Failures: 0`), which would prevent the
+// sentinel from firing.  All actual test-failure lines already carry [ERROR].
+const MVN_HAS_PROBLEM = /\[ERROR\]|\[WARNING\]|\bBUILD FAILURE\b/
 
 const MVN_MATCH = /^(mvn|mvnw|\.\/mvnw?)(?:\b|\.cmd)/
 // -q = quiet (user wants minimal output — don't filter on top of that)
 // -X = debug (full verbose output)
 // -e = show stack trace on errors (user is debugging)
-const MVN_REJECT = /(?:^|\s)(?:-q|--quiet|-X\b|-e\b)\b/
+// `spring-boot:run` is claimed by the spring-boot spec (Phase 13).
+const MVN_REJECT = /(?:^|\s)(?:-q|--quiet|-X\b|-e\b)\b|\bspring-boot:run\b/
 
 export const mvn: FilterSpec = {
   name: 'mvn',
@@ -148,4 +159,49 @@ export const mvn: FilterSpec = {
   ],
   maxLines: 60,
   truncateLineAt: 500,
+}
+
+// ==========================================================================
+// Phase 13 — Spring Boot (mvn spring-boot:run / gradle bootRun).
+// ==========================================================================
+//
+// Startup logs are mostly boot ceremony (banner + per-bean INFO). We keep only
+// the lines that matter: the "Started <app> in Ns" / "Tomcat started" summary,
+// and any WARN/ERROR/Exception/BUILD/test line. `java -jar *.jar` is
+// intentionally NOT matched (it would claim any jar run); only the build-tool
+// run goals are. The `java -jar` form from rtk is dropped on purpose.
+//
+// keepLinesMatching is a whitelist — every kept regex below is a "signal" row.
+
+const SPRING_BOOT_MATCH = /^(?:mvn\s+spring-boot:run\b|(?:\.\/)?gradlew?\s.*\bbootRun\b)/
+const SPRING_KEEP_STARTED = /Started\s.*\sin\s/
+const SPRING_KEEP_TOMCAT = /Tomcat started on port/
+const SPRING_KEEP_LISTENING = /listening on port/
+const SPRING_KEEP_ERROR = /\bERROR\b/
+const SPRING_KEEP_WARN = /\bWARN\b/
+const SPRING_KEEP_EXCEPTION = /Exception/
+const SPRING_KEEP_CAUSED_BY = /Caused by:/
+const SPRING_KEEP_RUN_FAILED = /Application run failed/
+const SPRING_KEEP_BUILD = /\bBUILD\b/
+const SPRING_KEEP_TESTS = /Tests run:/
+const SPRING_KEEP_FAILURE = /FAILURE/
+
+export const springBoot: FilterSpec = {
+  name: 'spring-boot',
+  matchCommand: SPRING_BOOT_MATCH,
+  stripAnsi: true,
+  keepLinesMatching: [
+    SPRING_KEEP_STARTED,
+    SPRING_KEEP_TOMCAT,
+    SPRING_KEEP_LISTENING,
+    SPRING_KEEP_ERROR,
+    SPRING_KEEP_WARN,
+    SPRING_KEEP_EXCEPTION,
+    SPRING_KEEP_CAUSED_BY,
+    SPRING_KEEP_RUN_FAILED,
+    SPRING_KEEP_BUILD,
+    SPRING_KEEP_TESTS,
+    SPRING_KEEP_FAILURE,
+  ],
+  maxLines: 30,
 }

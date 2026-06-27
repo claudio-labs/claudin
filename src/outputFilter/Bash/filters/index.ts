@@ -43,6 +43,11 @@ import {
   mypy,
   pipInstall,
   ruffFormat,
+  // Phase 13 — Python extras
+  uv,
+  poetry,
+  basedpyright,
+  ty,
 } from './linters.js'
 import { lsLa } from './ls.js'
 import { grepRg } from './grep-rg.js'
@@ -64,6 +69,10 @@ import {
 import { glabList, gt, jj } from './vcs.js'
 import { ghPrList, ghIssueList, ghRunList } from './gh.js'
 import { gradle, mvn } from './java-build.js'
+// Phase 13 — Java extras (spring-boot). The gradle/mvn specs above now reject
+// bootRun/spring-boot:run, so spring-boot claims those without an order
+// dependency; it is registered in the T9 block below.
+import { springBoot } from './java-build.js'
 import { terraform } from './iac.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy, cargoRun, cargoFmt } from './cargo.js'
 import { goBuild, goVet, golangciLint } from './go.js'
@@ -79,7 +88,20 @@ import {
   prettier,
   prismaGenerate,
   prismaMigrate,
+  // Phase 13 — JS/TS extras
+  nextBuild,
+  biome,
+  oxlint,
+  turbo,
+  nx,
 } from './js-pkg.js'
+// Phase 13 — language toolchains (rtk gap-fill).
+import { gccCompile, make, pioRun } from './cc.js'
+import { dotnetBuild, dotnetTest, dotnetFormat } from './dotnet.js'
+import { composer } from './php.js'
+import { rake } from './ruby.js'
+import { mixCompile, mixFormat } from './elixir.js'
+import { swiftBuild, xcodebuild } from './swift.js'
 
 export const builtInFilters: FilterSpec[] = [
   // Package managers
@@ -197,4 +219,43 @@ export const builtInFilters: FilterSpec[] = [
   mypy,
   pipInstall,
   ruffFormat,
+  // ======================================================================
+  // Phase 13 — language toolchains (rtk gap-fill). Grouped by family; all
+  // matchCommand regex are disjoint from each other and from Phase ≤12, so
+  // registration order is not load-bearing — EXCEPT spring-boot, which must
+  // precede gradle/mvn (it claims `gradle …bootRun` / `mvn spring-boot:run`,
+  // and those specs now reject the overlap). See java-build.ts.
+  // ======================================================================
+  // T1 — C/C++/native: gcc, make, pio
+  gccCompile,
+  make,
+  pioRun,
+  // T2 — .NET: dotnet build / test / format
+  dotnetBuild,
+  dotnetTest,
+  dotnetFormat,
+  // T3 — PHP: composer
+  composer,
+  // T4 — Ruby: rake
+  rake,
+  // T5 — Elixir: mix compile / format
+  mixCompile,
+  mixFormat,
+  // T6 — Swift/Apple: swift build / xcodebuild
+  swiftBuild,
+  xcodebuild,
+  // T7 — JS/TS extras: next, biome, oxlint, turbo, nx
+  nextBuild,
+  biome,
+  oxlint,
+  turbo,
+  nx,
+  // T8 — Python extras: uv, poetry, basedpyright, ty
+  uv,
+  poetry,
+  basedpyright,
+  ty,
+  // T9 — Java extras: spring-boot (overlap with gradle/mvn resolved via their
+  // matchCommandReject of bootRun/spring-boot:run).
+  springBoot,
 ]

@@ -201,3 +201,139 @@ export const prismaMigrate: FilterSpec = {
   ],
   collapseRuns: true,
 }
+
+// ===========================================================================
+// Phase 13 — JS/TS extras (rtk gap-fill): next, biome, oxlint, turbo, nx.
+// ===========================================================================
+
+// --- next build / next lint -------------------------------------------------
+// Scoped to `build`/`lint` only — `next dev`/`next start` are long-running
+// servers whose streaming output must never be buffered/short-circuited. A
+// clean build collapses to a sentinel; a type-check or webpack failure (which
+// carries "Failed to compile.") passes through after the banner strip.
+// `npx next …` is canonicalized to `next …` before matching (registry strips
+// runner prefixes), so no `(?:npx\s+)?` is needed here.
+const NEXT_MATCH = /^next\s+(?:build|lint)\b/
+const NEXT_BANNER = /^\s*▲\s+Next\.js/
+const NEXT_CREATING = /^\s*Creating an optimized production build/
+const NEXT_OK = /Compiled successfully/
+// Any compile/type/module failure OR a warning suppresses the sentinel: a
+// `next build` can compile successfully (exit 0) yet print ESLint/Next warnings
+// that the model needs to see — collapsing to the sentinel would hide them.
+const NEXT_HAS_PROBLEM = /Failed to compile|Type error:|Build failed|Build error|Module not found|SyntaxError|\bwarning\b/i
+
+export const nextBuild: FilterSpec = {
+  name: 'next-build',
+  matchCommand: NEXT_MATCH,
+  stripAnsi: true,
+  matchOutput: [
+    {
+      pattern: NEXT_OK,
+      unless: NEXT_HAS_PROBLEM,
+      message: '✓ next build: compiled successfully',
+    },
+  ],
+  stripLinesMatching: [NEXT_BANNER, NEXT_CREATING],
+  collapseRuns: true,
+  maxLines: 50,
+}
+
+// --- biome ------------------------------------------------------------------
+// Diagnostics are the signal; the `Checked N files` / `Fixed N files` tallies
+// and the "run it with --write" hint are ceremony. A fully clean run strips to
+// nothing → `biome: ok`.
+const BIOME_MATCH = /^biome\b/
+const BIOME_REJECT = /(?:^|\s)--reporter(?:=|\s+)(?:json|github|junit|gitlab|summary)\b/
+const BIOME_CHECKED = /^Checked \d+ files?\b/
+const BIOME_FIXED = /^Fixed \d+ files?\b/
+const BIOME_CMD_HINT = /^The following command/
+const BIOME_RUN_IT = /^Run it with/
+
+export const biome: FilterSpec = {
+  name: 'biome',
+  matchCommand: BIOME_MATCH,
+  matchCommandReject: BIOME_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [BIOME_CHECKED, BIOME_FIXED, BIOME_CMD_HINT, BIOME_RUN_IT],
+  collapseRuns: true,
+  maxLines: 50,
+  onEmpty: 'biome: ok',
+}
+
+// --- oxlint -----------------------------------------------------------------
+const OXLINT_MATCH = /^oxlint\b/
+const OXLINT_REJECT = /(?:^|\s)(?:-f|--format)(?:=|\s+)(?:json|github|checkstyle|unix)\b/
+const OXLINT_FINISHED = /^Finished in \d+/
+const OXLINT_FOUND = /^Found \d+ warning/
+
+export const oxlint: FilterSpec = {
+  name: 'oxlint',
+  matchCommand: OXLINT_MATCH,
+  matchCommandReject: OXLINT_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [OXLINT_FINISHED, OXLINT_FOUND],
+  collapseRuns: true,
+  maxLines: 50,
+  onEmpty: 'oxlint: ok',
+}
+
+// --- turbo (Turborepo) ------------------------------------------------------
+// The task output (`> pkg:task` + the tool's own lines) is signal; the cache
+// status, scope, Tasks: and Duration: summary are noise. An all-cached run
+// strips to nothing → `turbo: ok` (the decision's "collapse on all-cached").
+const TURBO_MATCH = /^turbo\b/
+const TURBO_REJECT = /(?:^|\s)(?:--dry-run|--dry|--graph)\b/
+// Blank-line strip rather than collapseRuns: collapseRuns runs before
+// stripLinesMatching and would turn a run of blanks into a `(×N)` marker.
+const TURBO_BLANK = /^\s*$/
+const TURBO_CACHE = /^\s*cache (?:hit|miss|bypass)\b/
+const TURBO_PACKAGES = /^\s*\d+ packages in scope\b/
+const TURBO_TASKS = /^\s*Tasks:\s+\d+/
+const TURBO_DURATION = /^\s*Duration:\s+/
+const TURBO_REMOTE = /^\s*Remote caching (?:enabled|disabled)\b/
+
+export const turbo: FilterSpec = {
+  name: 'turbo',
+  matchCommand: TURBO_MATCH,
+  matchCommandReject: TURBO_REJECT,
+  stripAnsi: true,
+  stripLinesMatching: [
+    TURBO_BLANK,
+    TURBO_CACHE,
+    TURBO_PACKAGES,
+    TURBO_TASKS,
+    TURBO_DURATION,
+    TURBO_REMOTE,
+  ],
+  truncateLineAt: 150,
+  maxLines: 50,
+  onEmpty: 'turbo: ok',
+}
+
+// --- nx (Nx monorepo) -------------------------------------------------------
+const NX_MATCH = /^(?:pnpm\s+)?nx\b/
+// Blank-line strip (see turbo note) rather than collapseRuns.
+const NX_BLANK = /^\s*$/
+const NX_RUNNING = /^\s*>\s*NX\s+Running target/
+const NX_READ_OUTPUT = /^\s*>\s*NX\s+Nx read the output/
+const NX_VIEW_LOGS = /^\s*>\s*NX\s+View logs/
+// `———…` em-dash separator bars.
+const NX_SEPARATOR = /^\u2014{3,}/
+const NX_POWERED = /^\s+Nx \(powered by/
+
+export const nx: FilterSpec = {
+  name: 'nx',
+  matchCommand: NX_MATCH,
+  stripAnsi: true,
+  stripLinesMatching: [
+    NX_BLANK,
+    NX_RUNNING,
+    NX_READ_OUTPUT,
+    NX_VIEW_LOGS,
+    NX_SEPARATOR,
+    NX_POWERED,
+  ],
+  truncateLineAt: 150,
+  maxLines: 60,
+  onEmpty: 'nx: ok',
+}
