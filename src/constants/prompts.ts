@@ -40,7 +40,7 @@ import {
   isScratchpadEnabled,
   getScratchpadDir,
 } from '../utils/permissions/filesystem.js'
-import { isEnvTruthy } from '../utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from '../utils/envUtils.js'
 import { feature } from 'bun:bundle'
 import { shouldUseGlobalCacheScope } from '../utils/betas.js'
 import { isForkSubagentEnabled } from '../tools/AgentTool/forkSubagent.js'
@@ -432,6 +432,9 @@ ${CYBER_RISK_INSTRUCTION}`,
     ...(feature('KAIROS') || feature('KAIROS_BRIEF')
       ? [systemPromptSection('brief', () => getBriefSection())]
       : []),
+    ...(feature('VERBOSITY_STEERING')
+      ? [systemPromptSection('verbosity', () => getVerbositySection())]
+      : []),
   ]
 
   const resolvedDynamicSections =
@@ -693,6 +696,35 @@ The scratchpad directory is session-specific, isolated from the user's project, 
 }
 
 const SUMMARIZE_TOOL_RESULTS_SECTION = `When working with tool results, write down any important information you might need later in your response, as the original tool result may be cleared later.`
+
+// Roadmap #4 (token-efficiency): a length-ceiling nudge on final prose answers,
+// aimed at the most expensive token class (output). Deliberately targets answer
+// LENGTH — the axis ANTI_NARRATION_HARNESS_BULLETS does NOT cover (those kill
+// preamble/narration, not paragraph count) — so it adds signal instead of
+// restating "skip preamble". Exported so prompts.test.ts can snapshot the
+// wording (the test preload stubs feature() to false, so the integrated path
+// can't be exercised there).
+export const VERBOSITY_STEERING_SECTION = `Default to the shortest response that fully answers the question. Prefer a few sentences over multiple paragraphs, and a short list over a long one, unless the user asks for depth or the task genuinely needs it. Don't pad answers with restated context, caveats, or summaries of what the user can already see.`
+
+// Default-ON at runtime, opt-out via CLAUDIN_VERBOSITY_STEERING=0 (also
+// false/no/off) — mirrors the TOOL_RESULT_JSON_COMPRESSION precedent. The
+// VERBOSITY_STEERING build flag compiles the section path in; this env check
+// gates it at runtime (and lets the same binary be A/B'd per-side, e.g.
+// scripts/profile/cache-ab-bench.ts --workload=prose). Pure env read, no
+// feature() gate, so it stays testable under the feature()-stubbed preload.
+export function isVerbositySteeringEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_VERBOSITY_STEERING)
+}
+
+// Lives in the dynamic section registry → lands AFTER
+// SYSTEM_PROMPT_DYNAMIC_BOUNDARY (cacheScope:null), so it never fragments the
+// cached prefix. Same null-when-off shape as getBriefSection below (a null
+// factory result is filtered by getSystemPrompt and resolveSystemPromptSections).
+function getVerbositySection(): string | null {
+  if (!feature('VERBOSITY_STEERING')) return null
+  if (!isVerbositySteeringEnabled()) return null
+  return VERBOSITY_STEERING_SECTION
+}
 
 function getBriefSection(): string | null {
   if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return null

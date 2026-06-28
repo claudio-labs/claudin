@@ -71,6 +71,7 @@ const featureFlags: Record<string, boolean> = {
   TOOL_BATCHING_NUDGE: true,          // Append a tool-batching directive to the universal harness: map-first, batch independent reads/searches in one turn, serialize only on true data dependency. Targets the 1-file-per-turn round-trip waste seen on Opus 4.7/4.8. Kill switch for round-trip A/B benches.
   LEAN_TOOL_PROMPTS: true,            // Drop per-tool gold-plating guardrails (NEVER *.md, NEVER new files, emoji rules) from FileEdit/FileWrite for capable families (anthropic/openai-reasoning/gemini/codex); glm/kimi/default keep the verbose form. Gate kept so we can flip OFF for A/B benches.
   TOOL_RESULT_JSON_COMPRESSION: true, // Structurally compress homogeneous JSON arrays in tool results (schema-factor + row window) and persist the full original so omitted rows stay retrievable via Read/Grep on a quiet source= path. On by default (benched: cW -36%, cost -13% on a 30-turn Sonnet run, no per-turn cW spike); opt out at runtime with CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0.
+  VERBOSITY_STEERING: true,           // Length-ceiling steering block in the dynamic system prompt (post-boundary). Default-ON at runtime; opt out with CLAUDIN_VERBOSITY_STEERING=0. Kept as a build flag so it can be folded out, and so the A/B can flip it per-side via env (scripts/profile/cache-ab-bench.ts --workload=prose). A/B (runs=1, prose): B ~26% fewer prose chars, all 7 answers + verifiable cores intact — no quality regression observed.
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────

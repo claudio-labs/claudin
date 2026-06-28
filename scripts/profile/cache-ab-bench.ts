@@ -44,7 +44,7 @@
 //   bun run scripts/profile/cache-ab-bench.ts --json
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { performance } from 'node:perf_hooks'
 import { join, resolve } from 'node:path'
@@ -145,8 +145,10 @@ type Args = {
   aEnv: Record<string, string>
   bEnv: Record<string, string>
   // 'files' = the file-reading workload; 'json' = run the big-json fixture each
-  // turn (exercises TOOL_RESULT_JSON_COMPRESSION) with a few source Read-backs.
-  workload: 'files' | 'json'
+  // turn (exercises TOOL_RESULT_JSON_COMPRESSION) with a few source Read-backs;
+  // 'prose' = repo-grounded explanation questions that elicit paragraphs
+  // (exercises VERBOSITY_STEERING — the lever is OUTPUT tokens, not cache).
+  workload: 'files' | 'json' | 'prose'
 }
 
 function parseKeyVal(s: string): Record<string, string> {
@@ -186,7 +188,10 @@ function parseArgs(argv: string[]): Args {
     else if (x.startsWith('--b-env=')) Object.assign(a.bEnv, parseKeyVal(x.slice('--b-env='.length)))
     else if (x.startsWith('--a=')) a.a = x.slice('--a='.length)
     else if (x.startsWith('--b=')) a.b = x.slice('--b='.length)
-    else if (x.startsWith('--workload=')) a.workload = x.slice('--workload='.length) === 'json' ? 'json' : 'files'
+    else if (x.startsWith('--workload=')) {
+      const w = x.slice('--workload='.length)
+      a.workload = w === 'json' ? 'json' : w === 'prose' ? 'prose' : 'files'
+    }
     else if (x.startsWith('--timeout=')) a.timeoutMs = Number(x.slice('--timeout='.length))
     else if (x.startsWith('--only=')) a.only = x.slice('--only='.length) as Args['only']
   }
@@ -225,6 +230,44 @@ function buildJsonWorkloadPrompt(turns: number): string {
     ...steps,
     ``,
     `After step ${turns}, end your final message with the exact token ${SENTINEL}.`,
+  ].join('\n')
+}
+
+// Prose workload: repo-grounded explanation questions. Each elicits real
+// paragraphs (so VERBOSITY_STEERING has something to cut) AND has a verifiable
+// core — a named file/function/flag the concise arm MUST still surface, so a
+// quality regression (dropped answer) is detectable by reading the dumps.
+// The prompt itself says nothing about length: the ONLY difference between the
+// A and B arms is the CLAUDIN_VERBOSITY_STEERING env, so the output-token delta
+// is attributable to the steering block alone.
+const PROSE_QUESTIONS: readonly string[] = [
+  'Explain what `getSystemPrompt()` in src/constants/prompts.ts does, and name the boundary marker it inserts between the cacheable and dynamic sections.',
+  'Describe how the Bash output filter decides what to strip from a command\u2019s output. Which file implements the filter pipeline?',
+  'Walk me through how the active model provider is resolved at runtime. What is the central resolver function and which file is it in?',
+  'Explain the tool-result JSON compression: how are omitted rows still retrievable afterward, and what is the build flag that gates it?',
+  'How are feature() flags processed at build time? What does a `feature(\u2019X\u2019)` call get replaced with, and in which script?',
+  'Describe the agent loop at a high level: which file drives the model and tool dispatch?',
+  'Explain what the prompt-cache clip-frontier strategy is for and where the cache_control marker is placed relative to message growth.',
+]
+
+// Free-paced on purpose: `-p` is single-shot (no real user turns), so a
+// "one question per turn" instruction can't create turns — it only makes the
+// model emit fragmented interleaved text across tool-call rounds, which is
+// noisy to measure and harder to capture. Asking for one comprehensive answer
+// yields a single clean final assistant message per arm (verified: stdout text
+// == transcript text), so the A/B output-token delta is a like-for-like
+// comparison of the SAME answer set with steering off vs on.
+function buildProseWorkloadPrompt(turns: number): string {
+  const qs = PROSE_QUESTIONS.slice(0, Math.max(1, Math.min(PROSE_QUESTIONS.length, turns)))
+  const steps = qs.map((q, i) => `  ${i + 1}. ${q}`)
+  return [
+    `Answer these ${qs.length} questions about THIS repository. Use Read / Grep / Glob to ground each`,
+    `answer in the actual code, then explain it in your own words and name the specific file(s) you cite.`,
+    `Pace yourself however you like \u2014 there is no required number of turns.`,
+    `Questions:`,
+    ...steps,
+    ``,
+    `When you have answered all ${qs.length}, end your final message with the exact token ${SENTINEL}.`,
   ].join('\n')
 }
 
@@ -298,6 +341,10 @@ type Usage = {
   rawLen: number
   stderr: string
   timeline: TimelineRow[]
+  // Concatenated assistant prose for this run (text content blocks only, in
+  // order, deduped by message id). Used by the prose workload to dump each
+  // arm's answers for manual quality review.
+  finalText: string
 }
 
 // Stream-json shape (verified against both binaries on 2026-06-08):
@@ -421,6 +468,45 @@ function extractScalars(text: string): { costUsd: number | null; numTurns: numbe
   return { costUsd, numTurns }
 }
 
+// Concatenate the assistant's text content blocks from the stream-json output.
+// Same dedupe-by-message-id, last-wins rule as extractTimeline: content
+// accumulates across streamed events sharing one message id, so the longest
+// (final) text for each id is the real answer. Tool_use / thinking blocks are
+// ignored — we only want prose, which is what VERBOSITY_STEERING moves.
+function extractAssistantText(text: string): string {
+  const lastByMsgId = new Map<string, { order: number; text: string }>()
+  let order = 0
+  for (const line of text.split('\n')) {
+    const s = line.trim()
+    if (!s.startsWith('{')) continue
+    let v: Record<string, unknown>
+    try { v = JSON.parse(s) as Record<string, unknown> } catch { continue }
+    if (v.type !== 'assistant') continue
+    const msg = (v.message ?? {}) as Record<string, unknown>
+    const content = msg.content
+    if (!Array.isArray(content)) continue
+    const txt = content
+      .filter(
+        (b): b is { type: string; text: string } =>
+          !!b &&
+          typeof b === 'object' &&
+          (b as { type?: string }).type === 'text' &&
+          typeof (b as { text?: unknown }).text === 'string',
+      )
+      .map(b => b.text)
+      .join('')
+    const id = String(msg.id ?? `__anon_${order}`)
+    const prev = lastByMsgId.get(id)
+    if (!prev) lastByMsgId.set(id, { order: order++, text: txt })
+    else if (txt.length >= prev.text.length) lastByMsgId.set(id, { order: prev.order, text: txt })
+  }
+  return [...lastByMsgId.values()]
+    .sort((a, b) => a.order - b.order)
+    .map(r => r.text)
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 function summarizeTimeline(timeline: TimelineRow[]) {
   let input = 0, output = 0, cacheRead = 0, cacheCreation = 0
   for (const r of timeline) {
@@ -487,6 +573,7 @@ function run(
     rawLen: stdout.length + stderrText.length,
     stderr: stderrText,
     timeline,
+    finalText: extractAssistantText(stdout),
   }
 }
 
@@ -562,22 +649,29 @@ async function main() {
     console.log('cache-ab-bench: claudin vs claude, same prompt/files/model, main-loop cache reuse.')
     console.log('  --model=<id> (default claude-sonnet-4-6)  --only=claude|claudin  --a=<bin> --b=<bin>  --json')
     console.log('  --runs=N (default 1; recommend 3 — reports median+min+max)  --skip-claude')
-    console.log('  --workload=files|json (json runs the big-json fixture each turn — exercises TOOL_RESULT_JSON_COMPRESSION)')
+    console.log('  --workload=files|json|prose (json: big-json fixture each turn — TOOL_RESULT_JSON_COMPRESSION;')
+    console.log('                               prose: repo-grounded explanation Qs — VERBOSITY_STEERING, measures OUTPUT tokens + dumps answers)')
     console.log('  --a-env=KEY=VAL --b-env=KEY=VAL (per-side env so the SAME binary can be A/B\'d with a flag toggled)')
     console.log('  e.g. --a=claudindev --b=claudindev --workload=json --turns=20 --runs=3 \\')
     console.log('         --a-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0 --b-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1')
+    console.log('  e.g. --a=claudindev --b=claudindev --workload=prose --runs=3 \\')
+    console.log('         --a-env=CLAUDIN_VERBOSITY_STEERING=0 --b-env=CLAUDIN_VERBOSITY_STEERING=1')
     return
   }
 
   const isJson = args.workload === 'json'
+  const isProse = args.workload === 'prose'
   const workload = buildSequentialWorkload(TWELVE_FILES, args.turns, args.revisits)
-  const prompt = isJson
-    ? buildJsonWorkloadPrompt(args.turns)
-    : args.sequential
-      ? buildSequentialPrompt(workload, args.revisits)
-      : buildPrompt(TWELVE_FILES)
-  const allowedTools = isJson ? 'Read,Bash' : 'Read'
-  if (isJson) console.log(`(json workload: ${args.turns} turns running the big-json fixture + source= Read-backs)`)
+  const prompt = isProse
+    ? buildProseWorkloadPrompt(args.turns)
+    : isJson
+      ? buildJsonWorkloadPrompt(args.turns)
+      : args.sequential
+        ? buildSequentialPrompt(workload, args.revisits)
+        : buildPrompt(TWELVE_FILES)
+  const allowedTools = isProse ? 'Read,Grep,Glob' : isJson ? 'Read,Bash' : 'Read'
+  if (isProse) console.log(`(prose workload: ${Math.min(PROSE_QUESTIONS.length, args.turns)} repo-grounded explanation questions \u2014 measuring OUTPUT tokens; dumps written for quality review)`)
+  else if (isJson) console.log(`(json workload: ${args.turns} turns running the big-json fixture + source= Read-backs)`)
   else if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
   const sides: Array<{ label: string; bin: string; env: Record<string, string> }> = []
   const wantA = !args.skipClaude && (args.only === null || args.only === 'a' || args.only === 'claude')
@@ -610,7 +704,8 @@ async function main() {
 
   console.log('\n' + '─'.repeat(96))
   console.log(`TOTALS (median of ${args.runs} run${args.runs === 1 ? '' : 's'}, min/max in brackets)`)
-  console.log(`  ${'side'.padEnd(22)} ${'cR(med)'.padStart(12)} ${'cW(med)'.padStart(12)} ${'r:w(med)'.padStart(14)} ${'$(med)'.padStart(10)} ${'turns'.padStart(6)}  ok/total`)
+  console.log(`  ${'side'.padEnd(22)} ${'cR(med)'.padStart(12)} ${'cW(med)'.padStart(12)} ${'r:w(med)'.padStart(14)} ${'out(med)'.padStart(10)} ${'$(med)'.padStart(10)} ${'turns'.padStart(6)}  ok/total`)
+  const outMeds: Array<{ label: string; out: number; proseChars: number }> = []
   for (const { label, runs } of results) {
     const ok = runs.filter(r => r.exitCode === 0)
     const allFailed = ok.length === 0
@@ -620,18 +715,39 @@ async function main() {
     const costs = pool.map(r => r.costUsd ?? 0)
     const turns = pool.map(r => r.numTurns ?? 0)
     const cRmed = median(cRs), cWmed = median(cWs), costMed = median(costs), turnsMed = median(turns)
+    const outMed = median(pool.map(r => r.output))
+    const proseMed = median(pool.map(r => r.finalText.length))
     const cRmin = Math.min(...cRs), cRmax = Math.max(...cRs)
     const cWmin = Math.min(...cWs), cWmax = Math.max(...cWs)
     const costMin = Math.min(...costs), costMax = Math.max(...costs)
     const rw = ratioOf(cRmed, cWmed)
     const okN = ok.length
-    console.log(`  ${label.padEnd(22)} ${fmt(cRmed).padStart(12)} ${fmt(cWmed).padStart(12)} ${rw.padStart(14)} ${('$' + costMed.toFixed(4)).padStart(10)} ${String(turnsMed).padStart(6)}  ${okN}/${runs.length}`)
+    outMeds.push({ label, out: outMed, proseChars: proseMed })
+    console.log(`  ${label.padEnd(22)} ${fmt(cRmed).padStart(12)} ${fmt(cWmed).padStart(12)} ${rw.padStart(14)} ${fmt(outMed).padStart(10)} ${('$' + costMed.toFixed(4)).padStart(10)} ${String(turnsMed).padStart(6)}  ${okN}/${runs.length}`)
     if (runs.length > 1) {
-      console.log(`  ${' '.repeat(22)} ${(`[${fmt(cRmin)}..${fmt(cRmax)}]`).padStart(12)} ${(`[${fmt(cWmin)}..${fmt(cWmax)}]`).padStart(12)} ${''.padStart(14)} ${(`[$${costMin.toFixed(2)}..$${costMax.toFixed(2)}]`).padStart(10)}`)
+      console.log(`  ${' '.repeat(22)} ${(`[${fmt(cRmin)}..${fmt(cRmax)}]`).padStart(12)} ${(`[${fmt(cWmin)}..${fmt(cWmax)}]`).padStart(12)} ${''.padStart(14)} ${''.padStart(10)} ${(`[$${costMin.toFixed(2)}..$${costMax.toFixed(2)}]`).padStart(10)}`)
     }
   }
   console.log('─'.repeat(96))
   console.log('  read:write — higher is better. >5:1 = healthy reuse; ~1:1 = prefix rewritten each turn.')
+  // Output deltas — the lever verbosity steering moves. A is the baseline
+  // (steering off); positive % means B (steering on) was lower.
+  //  - "out tokens" is TOTAL output incl. tool_use JSON, so it's diluted by
+  //    tool-exploration variance (turn count differs run-to-run).
+  //  - "final prose chars" is the steering-specific signal: the length of the
+  //    final assistant answer text only. Trust this one for the verbosity verdict.
+  if (outMeds.length === 2 && outMeds[0].out > 0) {
+    const [a, b] = outMeds
+    const outPct = ((a.out - b.out) / a.out) * 100
+    const prosePct = a.proseChars > 0 ? ((a.proseChars - b.proseChars) / a.proseChars) * 100 : 0
+    const dir = (p: number) => (p >= 0 ? 'lower' : 'higher')
+    console.log(
+      `  out tokens (incl. tool_use) — A=${fmt(a.out)} \u2192 B=${fmt(b.out)}: B ${Math.abs(outPct).toFixed(1)}% ${dir(outPct)} (diluted by tool-call variance).`,
+    )
+    console.log(
+      `  final prose chars (steering signal) — A=${fmt(a.proseChars)} \u2192 B=${fmt(b.proseChars)}: B ${Math.abs(prosePct).toFixed(1)}% ${dir(prosePct)}.`,
+    )
+  }
 
   for (const { label, runs } of results) {
     const ok = runs.filter(r => r.exitCode === 0)
@@ -650,6 +766,22 @@ async function main() {
       const lines = (failed[0].stderr || '(no stderr)').split('\n').slice(0, 10)
       for (const l of lines) console.log(`      | ${l}`)
     }
+  }
+
+  // Prose workload: dump each arm's median-run answers so the quality side of
+  // the A/B (did the concise arm drop any answer?) can be reviewed by eye.
+  if (isProse) {
+    console.log('\n  prose dumps (median run per side, for manual quality review):')
+    results.forEach((side, i) => {
+      const ok = side.runs.filter(r => r.exitCode === 0)
+      const pool = ok.length ? ok : side.runs
+      const med = pickMedianRun(pool)
+      const tag = i === 0 ? 'A' : 'B'
+      const file = resolve(import.meta.dir, `verbosity-ab-${tag}.txt`)
+      const body = med.finalText || '(no assistant text captured)'
+      writeFileSync(file, `# ${side.label} (median run)\n# output tokens: ${med.output}\n\n${body}\n`)
+      console.log(`    ${tag}: ${body.length} chars, ${med.output} output tokens \u2192 scripts/profile/verbosity-ab-${tag}.txt`)
+    })
   }
   console.log()
 }

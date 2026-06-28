@@ -1,9 +1,11 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import {
   ANTI_NARRATION_HARNESS_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
+  VERBOSITY_STEERING_SECTION,
   buildHarnessItems,
   getHarnessSection,
+  isVerbositySteeringEnabled,
   prependBullets,
 } from './prompts.js'
 import { ANTHROPIC_ANTI_NARRATION_ADDENDUM } from './familyAddendums/anthropic.js'
@@ -128,5 +130,51 @@ describe('ANTI_NARRATION_HARNESS_BULLETS', () => {
     expect(ANTI_NARRATION_HARNESS_BULLETS[1]).toContain(
       'Failures and unexpected results are reported immediately',
     )
+  })
+})
+
+describe('verbosity steering (roadmap #4)', () => {
+  // Production wording is snapshot-locked here: feature() is stubbed to false
+  // under the test preload, so the integrated getSystemPrompt path can't be
+  // exercised — we lock the const + the env gate directly (same approach as
+  // ANTI_NARRATION_HARNESS_BULLETS above).
+  test('section wording matches snapshot', () => {
+    expect(VERBOSITY_STEERING_SECTION).toMatchSnapshot()
+  })
+
+  test('targets answer LENGTH, not narration (non-redundant with ANTI_NARRATION)', () => {
+    // The whole point of #4 is a length ceiling — the axis the harness bullets
+    // do not cover. If someone rewrites this into another "skip preamble" line
+    // it stops adding signal; guard the length framing explicitly.
+    expect(VERBOSITY_STEERING_SECTION).toContain('shortest response that fully answers')
+    expect(VERBOSITY_STEERING_SECTION).toContain('few sentences over multiple paragraphs')
+  })
+
+  describe('isVerbositySteeringEnabled — default-ON, opt-out via env', () => {
+    const ENV = 'CLAUDIN_VERBOSITY_STEERING'
+    const original = process.env[ENV]
+    afterEach(() => {
+      if (original === undefined) delete process.env[ENV]
+      else process.env[ENV] = original
+    })
+
+    test('is ON when the env var is unset (default-on)', () => {
+      delete process.env[ENV]
+      expect(isVerbositySteeringEnabled()).toBe(true)
+    })
+
+    test('stays ON for explicit truthy values (1 / true)', () => {
+      process.env[ENV] = '1'
+      expect(isVerbositySteeringEnabled()).toBe(true)
+      process.env[ENV] = 'true'
+      expect(isVerbositySteeringEnabled()).toBe(true)
+    })
+
+    test('opts OUT for a defined falsy value (0 / false)', () => {
+      process.env[ENV] = '0'
+      expect(isVerbositySteeringEnabled()).toBe(false)
+      process.env[ENV] = 'false'
+      expect(isVerbositySteeringEnabled()).toBe(false)
+    })
   })
 })

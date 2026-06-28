@@ -49,3 +49,5 @@ exports[`ANTI_NARRATION_HARNESS_BULLETS matches snapshot 1`] = `
   "Write the final summary for a teammate who didn't watch the process: complete sentences with technical terms spelled out — no fragments, abbreviations, or arrow chains like \`A → B → fails\`, and no shorthand or codenames invented mid-task. Keep it short by selecting what changes what the reader does next, not by compressing the writing.",
 ]
 `;
+
+exports[`verbosity steering (roadmap #4) section wording matches snapshot 1`] = `"Default to the shortest response that fully answers the question. Prefer a few sentences over multiple paragraphs, and a short list over a long one, unless the user asks for depth or the task genuinely needs it. Don't pad answers with restated context, caveats, or summaries of what the user can already see."`;
