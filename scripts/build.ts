@@ -70,7 +70,7 @@ const featureFlags: Record<string, boolean> = {
   ANTI_NARRATION: true,               // Append anti-narration bullets to the universal harness + fill the anthropic family addendum with a transcript-shape contract. Kill switch for narration-cost A/B benches.
   TOOL_BATCHING_NUDGE: true,          // Append a tool-batching directive to the universal harness: map-first, batch independent reads/searches in one turn, serialize only on true data dependency. Targets the 1-file-per-turn round-trip waste seen on Opus 4.7/4.8. Kill switch for round-trip A/B benches.
   LEAN_TOOL_PROMPTS: true,            // Drop per-tool gold-plating guardrails (NEVER *.md, NEVER new files, emoji rules) from FileEdit/FileWrite for capable families (anthropic/openai-reasoning/gemini/codex); glm/kimi/default keep the verbose form. Gate kept so we can flip OFF for A/B benches.
-  TOOL_RESULT_JSON_COMPRESSION: false, // Structurally compress homogeneous JSON arrays in tool results (schema-factor + row window) and persist the full original so omitted rows stay retrievable via Read/Grep on a quiet source= path. Default off until benched; runtime override CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1.
+  TOOL_RESULT_JSON_COMPRESSION: true, // Structurally compress homogeneous JSON arrays in tool results (schema-factor + row window) and persist the full original so omitted rows stay retrievable via Read/Grep on a quiet source= path. On by default (benched: cW -36%, cost -13% on a 30-turn Sonnet run, no per-turn cW spike); opt out at runtime with CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0.
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────
