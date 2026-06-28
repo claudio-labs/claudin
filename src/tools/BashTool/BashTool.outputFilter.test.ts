@@ -25,6 +25,7 @@ import {
   planBashFilterForExecution,
   shouldFilterOutput,
 } from './BashTool.js'
+import { getBytesSaved, resetBytesSaved } from '../../utils/tokensSaved.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -108,6 +109,25 @@ describe('bash output filter — config guard', () => {
   })
 
   // Kill switch tested via shouldFilterOutput (pure function) in Suite 3.
+
+  test('net reduction is recorded in the tokens-saved counter', () => {
+    // git-log filter caps at maxLines: 50, so a 1000-line log nets a real
+    // reduction past the marker overhead. Guards the recordBytesSaved wire in
+    // applyBashOutputFilter — remove it and this fails.
+    enableFilter()
+    resetBytesSaved()
+
+    const bigLog =
+      Array.from(
+        { length: 1000 },
+        (_, i) => `commit ${i} some message line here padding padding`,
+      ).join('\n') + '\n'
+    const result = makeResult({ stdout: bigLog })
+    applyBashOutputFilter(result, 'git log')
+
+    expect(result.stdout).toContain('<bash-output-filtered')
+    expect(getBytesSaved()).toBeGreaterThan(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

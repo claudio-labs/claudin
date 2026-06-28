@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
 import { renderToString } from '../../utils/staticRender.js'
+import { recordBytesSaved, resetBytesSaved } from '../../utils/tokensSaved.js'
 
 type ModelUsageRecord = {
   inputTokens: number
@@ -59,6 +60,7 @@ function resetState() {
   totalLinesRemoved = 0
   modelUsage = {}
   unknownCost = false
+  resetBytesSaved()
   projectTotals = {
     totalCost: 0,
     totalAPIDuration: 0,
@@ -187,6 +189,53 @@ describe('<SessionCostStats />', () => {
     expect(output).toContain('cache write')
     expect(output).toContain('web search')
     expect(output).toContain('$0.10')
+  })
+
+  it('session view shows the Context tokens saved line when bytes were saved', async () => {
+    totalCost = 0.01
+    modelUsage = {
+      'claude-opus-4-7-20251101': makeUsage({ inputTokens: 100, outputTokens: 50, costUSD: 0.01 }),
+    }
+    recordBytesSaved(4_000_000, 0) // 4 MB → ~1m tokens
+
+    const { Usage } = await import('./Usage.js')
+    const output = stripAnsi(await renderToString(<Usage view="session" />, 140))
+
+    expect(output).toContain('Current session')
+    expect(output).toContain('Context tokens saved:')
+    expect(output).toContain('tokens')
+  })
+
+  it('session view hides the line when nothing was saved', async () => {
+    totalCost = 0.01
+    modelUsage = {
+      'claude-opus-4-7-20251101': makeUsage({ inputTokens: 100, outputTokens: 50, costUSD: 0.01 }),
+    }
+    // no recordBytesSaved → 0
+
+    const { Usage } = await import('./Usage.js')
+    const output = stripAnsi(await renderToString(<Usage view="session" />, 140))
+
+    expect(output).toContain('Current session')
+    expect(output).not.toContain('Context tokens saved')
+  })
+
+  it('global/project view never shows the line even when bytes were saved', async () => {
+    projectTotals = {
+      totalCost: 1.0,
+      totalAPIDuration: 6000,
+      totalDuration: 156000,
+      totalLinesAdded: 1,
+      totalLinesRemoved: 0,
+      modelUsage: { 'claude-opus-4-7-20251101': { inputTokens: 100, outputTokens: 50, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: 0, costUSD: 1.0 } },
+    }
+    recordBytesSaved(4_000_000, 0)
+
+    const { SessionCostStats } = await import('./Usage.js')
+    const output = stripAnsi(await renderToString(<SessionCostStats view="global" />, 140))
+
+    expect(output).toContain('Project total (all sessions)')
+    expect(output).not.toContain('Context tokens saved')
   })
 
   it('appends the unknown-cost warning when hasUnknownModelCost is true', async () => {

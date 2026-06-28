@@ -47,6 +47,7 @@ import {
   type PreExecPlan,
 } from 'src/outputFilter/Bash/index.js';
 import { getGlobalConfig } from '../../utils/config.js';
+import { recordBytesSaved } from '../../utils/tokensSaved.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from './bashPermissions.js';
 import { interpretCommandResult } from './commandSemantics.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from './prompt.js';
@@ -952,7 +953,9 @@ export function applyBashOutputFilter(
     // No plan → the caller did not execute a rewritten command; re-plan with
     // rewrites off so the markers never claim a rewrite that didn't happen.
     const filterPlan = plan ?? planBashFilter(command, { allowRewrite: false })
+    const rawBytes = (result.stdout ?? '').length
     result.stdout = applyBashFilterToStdout(result.stdout, isError ?? result.code !== 0, filterPlan)
+    recordBytesSaved(rawBytes, (result.stdout ?? '').length)
   } catch (e) {
     // Fail-open: extra defensive layer — planBashFilter and applyBashFilterToStdout
     // both wrap internally with safeApply, so this catch is currently unreachable.

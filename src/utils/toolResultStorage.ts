@@ -29,6 +29,7 @@ import {
   maybeSummarizeToolResult,
 } from './toolResultSummarizer.js'
 import { compressJsonArray } from './jsonArrayCompress.js'
+import { recordBytesSaved } from './tokensSaved.js'
 
 // Subdirectory name for tool results within a session
 export const TOOL_RESULTS_SUBDIR = 'tool-results'
@@ -443,6 +444,8 @@ async function maybePersistLargeToolResult(
   }
 
   const message = buildLargeToolResultMessage(result)
+
+  recordBytesSaved(result.originalSize, message.length)
 
   // Log analytics
   logEvent('tengu_tool_result_persisted', {

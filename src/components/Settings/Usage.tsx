@@ -4,7 +4,9 @@ import { useEffect, useReducer, useState } from 'react';
 import { extraUsage as extraUsageCommand } from 'src/commands/extra-usage/index.js';
 import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalLinesAdded, getTotalLinesRemoved, hasUnknownModelCost } from 'src/cost-tracker.js';
 import { getCanonicalName } from 'src/utils/model/model.js';
-import { formatDuration, formatNumber } from 'src/utils/format.js';
+import { formatDuration, formatNumber, formatTokens } from 'src/utils/format.js';
+import { getBytesSaved } from 'src/utils/tokensSaved.js';
+import { BYTES_PER_TOKEN } from 'src/constants/toolLimits.js';
 import { getSubscriptionType } from 'src/utils/auth.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text } from '../../ink.js';
@@ -300,8 +302,9 @@ function CostStatsBlock(props: {
   linesRemoved: number;
   modelUsage: Record<string, ModelUsageLite>;
   unknownCost?: boolean;
+  bytesSaved?: number;
 }): React.ReactNode {
-  const { title, totalCost, apiDuration, wallDuration, linesAdded, linesRemoved, modelUsage, unknownCost } = props;
+  const { title, totalCost, apiDuration, wallDuration, linesAdded, linesRemoved, modelUsage, unknownCost, bytesSaved } = props;
   const modelEntries = Object.entries(modelUsage);
   if (totalCost === 0 && modelEntries.length === 0 && linesAdded === 0 && linesRemoved === 0) {
     return null;
@@ -344,6 +347,9 @@ function CostStatsBlock(props: {
       <Text>
         Total code changes:    {linesAdded} {linesAdded === 1 ? 'line' : 'lines'} added, {linesRemoved} {linesRemoved === 1 ? 'line' : 'lines'} removed
       </Text>
+      {bytesSaved !== undefined && bytesSaved > 0 && (
+        <Text>Context tokens saved:  ~{formatTokens(bytesSaved / BYTES_PER_TOKEN)} tokens</Text>
+      )}
       {aggregated.length > 0 && <Text>Usage by model:</Text>}
       {aggregated.map(([shortName, usage]) => {
         let line = `${formatNumber(usage.inputTokens)} input, ${formatNumber(usage.outputTokens)} output`;
@@ -388,6 +394,7 @@ export function SessionCostStats(props: { view?: CostView } = {}): React.ReactNo
       linesRemoved={sessionLinesRemoved}
       modelUsage={sessionModelUsage}
       unknownCost={unknownCost}
+      bytesSaved={getBytesSaved()}
     />;
   }
 

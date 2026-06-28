@@ -53,6 +53,7 @@ import {
 } from './utils/context.js'
 import { isFastModeEnabled } from './utils/fastMode.js'
 import { formatDuration, formatNumber } from './utils/format.js'
+import { resetBytesSaved } from './utils/tokensSaved.js'
 import type { FpsMetrics } from './utils/fpsTracker.js'
 import { getCanonicalName } from './utils/model/model.js'
 import { calculateUSDCost } from './utils/modelCost.js'
@@ -86,6 +87,7 @@ export {
 export function resetCostState(): void {
   baseResetCostState()
   resetSessionCacheStats()
+  resetBytesSaved()
 }
 
 type StoredCostState = {

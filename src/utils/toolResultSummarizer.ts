@@ -12,6 +12,7 @@ import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { BYTES_PER_TOKEN } from '../constants/toolLimits.js'
 import { compressJsonArray } from './jsonArrayCompress.js'
+import { recordBytesSaved } from './tokensSaved.js'
 import { logEvent } from '../services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from '../services/analytics/metadata.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
@@ -181,6 +182,7 @@ export function maybeSummarizeToolResult(
     if (wrapped.length >= originalSizeBytes) return block
 
     const summarizedSizeBytes = wrapped.length
+    recordBytesSaved(originalSizeBytes, summarizedSizeBytes)
 
     logEvent('claudin_tool_result_summarized', {
       toolName: sanitizeToolNameForAnalytics(toolName),
@@ -339,6 +341,8 @@ function maybeSummarizeArrayContent(
   )
 
   if (wrapped.length >= originalSizeBytes) return block
+
+  recordBytesSaved(originalSizeBytes, wrapped.length)
 
   logEvent('claudin_tool_result_summarized', {
     toolName: sanitizeToolNameForAnalytics(toolName),
