@@ -57,9 +57,12 @@ import {
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
 import { logEvent } from '../analytics/index.js'
 import { sanitizeToolNameForAnalytics } from '../analytics/metadata.js'
+import { isEnvDefinedFalsy } from '../../utils/envUtils.js'
+import { detectRepeatedErrorLoop } from './loopDetector.js'
 import {
   buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
+  buildLoopHint,
 } from './prompts.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -78,6 +81,17 @@ const teamMemPaths = feature('TEAMMEM')
  */
 function isModelVisibleMessage(message: Message): boolean {
   return message.type === 'user' || message.type === 'assistant'
+}
+
+/**
+ * Repeated-error loop trigger: default-ON via the build flag, opt-out with
+ * CLAUDIN_LOOP_MEMORY_TRIGGER=0 (mirrors the JSON-compression env pattern).
+ */
+function isLoopTriggerEnabled(): boolean {
+  return (
+    feature('LOOP_ERROR_MEMORY_TRIGGER') &&
+    !isEnvDefinedFalsy(process.env.CLAUDIN_LOOP_MEMORY_TRIGGER)
+  )
 }
 
 function countModelVisibleMessagesSince(
@@ -313,6 +327,12 @@ export function initExtractMemories(): void {
   /** Counts eligible turns since the last extraction run. Resets to 0 after each run. */
   let turnsSinceLastExtraction = 0
 
+  /** loopKey we last fired a repeated-error extraction for, and the human turn
+   *  it was in — together they form the "per loop-key + new human turn" cooldown
+   *  so a still-stuck agent doesn't fork an extraction every single turn. */
+  let lastFiredLoopKey: string | undefined
+  let lastLoopTurnUuid: string | undefined
+
   /** When a call arrives during an in-progress run, we stash the context here
    *  and run one trailing extraction after the current one finishes. */
   let pendingContext:
@@ -357,6 +377,34 @@ export function initExtractMemories(): void {
       return
     }
 
+    // Repeated-error loop trigger: when the agent is stuck repeating the same
+    // failing action, fire an extraction NOW (bypassing the turn throttle) so
+    // the lesson is captured as a `feedback` memory while it's fresh. The
+    // per-loopKey + per-human-turn cooldown stops it firing every stuck turn.
+    // Best-effort: skipped on trailing/coalesced runs (a loop that overlaps an
+    // in-flight extraction is simply caught by the next routine extraction).
+    const loop =
+      !isTrailingRun && isLoopTriggerEnabled()
+        ? detectRepeatedErrorLoop(messages)
+        : null
+    const loopFires =
+      loop !== null &&
+      (loop.loopKey !== lastFiredLoopKey ||
+        loop.userTurnUuid !== lastLoopTurnUuid)
+    const loopHint = loopFires
+      ? buildLoopHint(loop!.toolName, loop!.repeatCount)
+      : undefined
+    if (loopFires) {
+      lastFiredLoopKey = loop!.loopKey
+      lastLoopTurnUuid = loop!.userTurnUuid
+      logForDebugging(
+        `[extractMemories] repeated-error loop on ${loop!.toolName} (${loop!.repeatCount}×) — forcing extraction`,
+      )
+      logEvent('tengu_extract_memories_loop_trigger', {
+        tool_name: sanitizeToolNameForAnalytics(loop!.toolName),
+      })
+    }
+
     const teamMemoryEnabled = feature('TEAMMEM')
       ? teamMemPaths!.isTeamMemoryEnabled()
       : false
@@ -371,8 +419,10 @@ export function initExtractMemories(): void {
 
     // Only run extraction every N eligible turns (tengu_bramble_lintel, default 1).
     // Trailing extractions (from stashed contexts) skip this check since they
-    // process already-committed work that should not be throttled.
-    if (!isTrailingRun) {
+    // process already-committed work that should not be throttled. A loop-fire
+    // also bypasses the throttle (we want the lesson promptly) but still resets
+    // the counter below, so it doubles as the routine extraction for cadence.
+    if (!isTrailingRun && loopHint === undefined) {
       turnsSinceLastExtraction++
       if (
         turnsSinceLastExtraction <
@@ -403,11 +453,13 @@ export function initExtractMemories(): void {
               newMessageCount,
               existingMemories,
               skipIndex,
+              loopHint,
             )
           : buildExtractAutoOnlyPrompt(
               newMessageCount,
               existingMemories,
               skipIndex,
+              loopHint,
             )
 
       const result = await runForkedAgent({

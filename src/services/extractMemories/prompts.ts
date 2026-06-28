@@ -25,12 +25,20 @@ import { GREP_TOOL_NAME } from '../../tools/GrepTool/prompt.js'
 
 /**
  * Shared opener for both extract-prompt variants.
+ *
+ * `extraHint` (optional) is appended last — used by the repeated-error loop
+ * trigger to steer the extractor toward a `feedback` memory.
  */
-function opener(newMessageCount: number, existingMemories: string): string {
+function opener(
+  newMessageCount: number,
+  existingMemories: string,
+  extraHint?: string,
+): string {
   const manifest =
     existingMemories.length > 0
       ? `\n\n## Existing memory files\n\n${existingMemories}\n\nCheck this list before writing — update an existing file rather than creating a duplicate.`
       : ''
+  const hint = extraHint ? `\n\n${extraHint}` : ''
   return [
     `You are now acting as the memory extraction subagent. Analyze the most recent ~${newMessageCount} messages above and use them to update your persistent memory systems.`,
     '',
@@ -41,8 +49,19 @@ function opener(newMessageCount: number, existingMemories: string): string {
     `You MUST only use content from the last ~${newMessageCount} messages to update your persistent memories. Do not waste any turns attempting to investigate or verify that content further — no grepping source files, no reading code to confirm a pattern exists, no git commands.`,
     '',
     'If those messages contain nothing that meets the save criteria below, it is correct to finish your turn without writing anything. Do not lower the bar to produce a memory — extracting routine work creates noise that costs tokens in every future session.' +
-      manifest,
+      manifest +
+      hint,
   ].join('\n')
+}
+
+/**
+ * Hint injected into the extraction prompt when the repeated-error loop trigger
+ * fires. Frames the lesson as durable `feedback` (rule + Why + How to apply),
+ * explicitly NOT a one-off fix recipe — overriding the WHAT_NOT_TO_SAVE
+ * "Debugging solutions or fix recipes" exclusion for this specific case.
+ */
+export function buildLoopHint(toolName: string, repeatCount: number): string {
+  return `NOTE: In the messages above, the agent repeated the same failing action (\`${toolName}\`) ${repeatCount}× without success. If there is a durable, non-obvious lesson about HOW TO APPROACH this kind of work (a rule worth following next time), save it as a \`feedback\` memory with the rule + **Why:** + **How to apply:**. If it was just a one-off fix already reflected in the code, save nothing — do not log the incident as a fix recipe.`
 }
 
 /**
@@ -53,6 +72,7 @@ export function buildExtractAutoOnlyPrompt(
   newMessageCount: number,
   existingMemories: string,
   skipIndex = false,
+  extraHint?: string,
 ): string {
   const howToSave = skipIndex
     ? [
@@ -84,7 +104,7 @@ export function buildExtractAutoOnlyPrompt(
       ]
 
   return [
-    opener(newMessageCount, existingMemories),
+    opener(newMessageCount, existingMemories, extraHint),
     '',
     'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
     '',
@@ -104,12 +124,14 @@ export function buildExtractCombinedPrompt(
   newMessageCount: number,
   existingMemories: string,
   skipIndex = false,
+  extraHint?: string,
 ): string {
   if (!feature('TEAMMEM')) {
     return buildExtractAutoOnlyPrompt(
       newMessageCount,
       existingMemories,
       skipIndex,
+      extraHint,
     )
   }
 
@@ -143,7 +165,7 @@ export function buildExtractCombinedPrompt(
       ]
 
   return [
-    opener(newMessageCount, existingMemories),
+    opener(newMessageCount, existingMemories, extraHint),
     '',
     'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
     '',
