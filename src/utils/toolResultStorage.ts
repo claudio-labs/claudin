@@ -24,8 +24,11 @@ import { getProjectDir } from './sessionStorage.js'
 import { jsonStringify } from './slowOperations.js'
 import {
   TOOL_RESULT_SUMMARY_TAG,
+  isSummarizedContent,
+  isToolResultJsonCompressionEnabled,
   maybeSummarizeToolResult,
 } from './toolResultSummarizer.js'
+import { compressJsonArray } from './jsonArrayCompress.js'
 
 // Subdirectory name for tool results within a session
 export const TOOL_RESULTS_SUBDIR = 'tool-results'
@@ -253,8 +256,9 @@ export async function processToolResultBlock<T>(
     toolUseID,
   )
   const summarized = maybeSummarizeToolResult(toolResultBlock, tool.name)
+  const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
   return maybePersistLargeToolResult(
-    summarized,
+    reversible,
     tool.name,
     getPersistenceThreshold(tool.name, tool.maxResultSizeChars),
   )
@@ -270,11 +274,95 @@ export async function processPreMappedToolResultBlock(
   maxResultSizeChars: number,
 ): Promise<ToolResultBlockParam> {
   const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)
+  const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
   return maybePersistLargeToolResult(
-    summarized,
+    reversible,
     toolName,
     getPersistenceThreshold(toolName, maxResultSizeChars),
   )
+}
+
+// --- Reversibility for summarizer elisions (TOOL_RESULT_JSON_COMPRESSION) ---
+//
+// When the summarizer drops bytes, persist the full original to disk and add a
+// quiet `source="<path>"` attribute to the marker so the model can Read/Grep it
+// for omitted data — reusing the same persistence mechanism as the >50KB path,
+// no new tool. The attribute is deliberately NOT prose: prose elision
+// affordances triggered a re-read thrashing loop (see toolResultSummarizer.ts
+// design notes + AUTO_OUTLINE_ON_ELISION).
+
+// "Something was dropped" signal. Text strategies are always lossy; the
+// json-structural strategy is lossy only when it windowed rows or truncated a
+// cell, so a fully-shown schema-factor (lossless) skips the disk write.
+const ELISION_DROP_RE = /<omitted|…\[\d+b\]/
+
+async function makeReversibleIfElided(
+  originalBlock: ToolResultBlockParam,
+  summarized: ToolResultBlockParam,
+): Promise<ToolResultBlockParam> {
+  if (!isToolResultJsonCompressionEnabled()) return summarized
+  if (summarized === originalBlock) return summarized // no elision happened
+  const content = summarized.content
+  if (typeof content !== 'string' || !isSummarizedContent(content)) {
+    return summarized
+  }
+  if (!wasLossy(content)) return summarized
+  const originalStr = toOriginalString(originalBlock.content)
+  if (originalStr === null) return summarized
+
+  // For JSON, persist the JSON-lines canonical form (one element per line,
+  // aligned to the marker's #N) so Read offset/limit and Grep address elements.
+  const jc = compressJsonArray(originalStr)
+  const body = jc ? jc.jsonl : originalStr
+
+  const result = await persistToolResult(body, summarized.tool_use_id)
+  if (isPersistError(result)) return summarized
+
+  return {
+    ...summarized,
+    content: injectEnvelopeAttr(content, 'source', result.filepath),
+  }
+}
+
+function wasLossy(content: string): boolean {
+  if (content.includes('strategy="json-structural"')) {
+    return ELISION_DROP_RE.test(content)
+  }
+  return true
+}
+
+function toOriginalString(
+  content: ToolResultBlockParam['content'],
+): string | null {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return null
+  return content
+    .filter(
+      (b): b is { type: 'text'; text: string } =>
+        typeof b === 'object' &&
+        b !== null &&
+        'type' in b &&
+        b.type === 'text' &&
+        'text' in b &&
+        typeof (b as { text?: unknown }).text === 'string',
+    )
+    .map(b => b.text)
+    .join('\n')
+}
+
+/** Splice ` key="value"` into the marker's opening tag, before the first `>`. */
+export function injectEnvelopeAttr(
+  marker: string,
+  key: string,
+  value: string,
+): string {
+  const gt = marker.indexOf('>')
+  if (gt === -1) return marker
+  const escaped = value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+  return `${marker.slice(0, gt)} ${key}="${escaped}"${marker.slice(gt)}`
 }
 
 /**

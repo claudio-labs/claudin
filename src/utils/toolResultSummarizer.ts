@@ -8,8 +8,10 @@
  * counts for Grep, head+tail for WebFetch). On ANY unexpected error the
  * original block is returned — this module must never break a turn.
  */
+import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { BYTES_PER_TOKEN } from '../constants/toolLimits.js'
+import { compressJsonArray } from './jsonArrayCompress.js'
 import { logEvent } from '../services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from '../services/analytics/metadata.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
@@ -27,6 +29,15 @@ import { formatFileSize } from './format.js'
 export const TOOL_RESULT_SUMMARY_TAG = '<tool-result-summary'
 export const TOOL_RESULT_SUMMARY_CLOSING_TAG = '</tool-result-summary>'
 
+// json-structural only earns a strategy slot when it meaningfully shrinks the
+// payload. Without this floor a wrapper-dominated object (a giant non-array
+// field beside a small array) renders ~as large as the input and would ship as
+// a near-zero "compression"; the original passes through instead.
+const JSON_MIN_SAVINGS = 0.15
+function jsonSavesEnough(render: string, original: string): boolean {
+  return render.length <= original.length * (1 - JSON_MIN_SAVINGS)
+}
+
 // Per-tool thresholds (chars). Kept local to avoid importing toolLimits cycles.
 const BASH_SUMMARIZE_THRESHOLD = 8_000
 const GREP_SUMMARIZE_THRESHOLD = 6_000
@@ -34,6 +45,20 @@ const WEBFETCH_SUMMARIZE_THRESHOLD = 12_000
 const GLOB_SUMMARIZE_THRESHOLD = 3_000
 const AGENT_SUMMARIZE_THRESHOLD = 8_000
 const MCP_SUMMARIZE_THRESHOLD = 8_000
+
+/**
+ * Gate for the JSON/array structural-compression strategy (roadmap #1/#2).
+ * Mirrors `autoOutlineOnElisionEnabled` (FileReadTool.ts): the env override is
+ * mandatory because the test-preload (src/stubs/test-preload.ts) stubs every
+ * `feature()` call to false, so tests reach the ON path only via the env var.
+ * Production folds `feature('TOOL_RESULT_JSON_COMPRESSION')` at build time.
+ */
+export function isToolResultJsonCompressionEnabled(): boolean {
+  if (process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION === '1') return true
+  if (process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION === '0') return false
+  if (feature('TOOL_RESULT_JSON_COMPRESSION')) return true
+  return false
+}
 
 // Strategy enum numeric IDs (analytics payloads only accept boolean|number).
 // id 5 ('read-head-tail') was retired; do not reuse — analytics continuity.
@@ -45,6 +70,7 @@ const STRATEGY_ID: Record<StrategyName, number> = {
   'glob-top-n': 6,
   'agent-head-tail': 7,
   'mcp-head-tail': 8,
+  'json-structural': 9,
 }
 
 type StrategyName =
@@ -55,6 +81,7 @@ type StrategyName =
   | 'glob-top-n'
   | 'agent-head-tail'
   | 'mcp-head-tail'
+  | 'json-structural'
 
 type StrategyResult = {
   body: string
@@ -186,6 +213,14 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
   switch (toolName) {
     case BASH_TOOL_NAME:
       if (text.length < BASH_SUMMARIZE_THRESHOLD) return null
+      // Structural JSON compression runs before the line-based bash summarizer,
+      // which deliberately passes JSON through untouched.
+      if (isToolResultJsonCompressionEnabled()) {
+        const jc = compressJsonArray(text)
+        if (jc && jsonSavesEnough(jc.render, text)) {
+          return { body: jc.render, strategy: 'json-structural' }
+        }
+      }
       return summarizeBashOutput(text)
     case GREP_TOOL_NAME:
       if (text.length < GREP_SUMMARIZE_THRESHOLD) return null
@@ -323,14 +358,35 @@ function dispatchArray(
   blocks: Array<{ type: string; text?: string }>,
 ): StrategyResult | null {
   if (toolName === AGENT_TOOL_NAME || toolName === LEGACY_AGENT_TOOL_NAME) {
+    const jc = maybeJsonStructural(blocks, AGENT_SUMMARIZE_THRESHOLD)
+    if (jc) return jc
     return summarizeAgentOutput(blocks)
   }
   if (toolName.startsWith('mcp__')) {
     const hasNonTextBlocks = blocks.some(b => b.type !== 'text')
     if (hasNonTextBlocks) return null  // preserve images
+    const jc = maybeJsonStructural(blocks, MCP_SUMMARIZE_THRESHOLD)
+    if (jc) return jc
     return summarizeMcpOutput(blocks)
   }
   return null
+}
+
+/**
+ * Try structural JSON compression on the joined text blocks of an array-content
+ * result (Agent/MCP). Gated + above-threshold + actually compressible, else null
+ * so the caller falls through to its existing head/tail strategy.
+ */
+function maybeJsonStructural(
+  blocks: Array<{ type: string; text?: string }>,
+  threshold: number,
+): StrategyResult | null {
+  if (!isToolResultJsonCompressionEnabled()) return null
+  const text = joinTextBlocks(blocks)
+  if (text.length < threshold) return null
+  const jc = compressJsonArray(text)
+  if (!jc || !jsonSavesEnough(jc.render, text)) return null
+  return { body: jc.render, strategy: 'json-structural' }
 }
 
 const AGENT_HEAD_LINES = 50

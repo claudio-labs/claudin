@@ -653,6 +653,63 @@ test('glob: preserves (Results are truncated...) notice', () => {
   expect(body).toContain('Results are truncated')
 })
 
+// ============================================================
+// JSON structural strategy (TOOL_RESULT_JSON_COMPRESSION)
+// ============================================================
+
+function bigJsonArray(rows = 200): string {
+  const arr = Array.from({ length: rows }, (_, i) => ({
+    number: i + 1,
+    title: `Pull request number ${i + 1} with a reasonably long descriptive title`,
+    state: i % 2 === 0 ? 'OPEN' : 'MERGED',
+    author: 'viudes',
+  }))
+  return JSON.stringify(arr)
+}
+
+afterEach(() => {
+  delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+})
+
+test('json: gate off → bash JSON passes through untouched', () => {
+  delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+  const content = bigJsonArray()
+  expect(content.length).toBeGreaterThan(8_000)
+  const block = makeBlock(content)
+  const out = maybeSummarizeToolResult(block, 'Bash')
+  expect(out).toBe(block) // unchanged: bash arm passes JSON through when gate off
+})
+
+test('json: gate on → bash JSON compressed with strategyId=9 + source-less marker', () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const out = maybeSummarizeToolResult(makeBlock(bigJsonArray()), 'Bash')
+  const body = asString(out)
+  expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  expect(body).toContain('strategy="json-structural"')
+  expect(body).toContain('keys=[number,title,state,author]')
+  expect(body).toContain('<omitted rows=')
+  expect(body.length).toBeLessThan(bigJsonArray().length)
+  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  expect(evt?.metadata.strategyId).toBe(9)
+})
+
+test('json: gate on → MCP array-text JSON compressed', () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const block = makeArrayBlock([{ type: 'text', text: bigJsonArray() }])
+  const out = maybeSummarizeToolResult(block, 'mcp__server__list')
+  const body = asString(out)
+  expect(body).toContain('strategy="json-structural"')
+})
+
+test('json: gate on but non-JSON bash output → falls back to bash summarizer', () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const content = Array.from({ length: 400 }, (_, i) => `log line ${i} doing work`).join('\n')
+  expect(content.length).toBeGreaterThan(8_000)
+  const out = maybeSummarizeToolResult(makeBlock(content), 'Bash')
+  const body = asString(out)
+  expect(body).toContain('strategy="head-tail-errors"')
+})
+
 test('glob: no omission when total ≤ 50 paths (even if above threshold)', () => {
   // 40 paths. The summarizer processes them all (omitted=0) and emits no omission marker.
   // If the no-win guard fires (wrapped ≥ original), the block passes through unchanged —

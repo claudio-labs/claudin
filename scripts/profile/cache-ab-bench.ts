@@ -140,6 +140,19 @@ type Args = {
   runs: number
   skipClaude: boolean
   revisits: number
+  // Per-side extra env (e.g. CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1) so the
+  // SAME binary can be A/B'd with a feature flag toggled. KEY=VAL form.
+  aEnv: Record<string, string>
+  bEnv: Record<string, string>
+  // 'files' = the file-reading workload; 'json' = run the big-json fixture each
+  // turn (exercises TOOL_RESULT_JSON_COMPRESSION) with a few source Read-backs.
+  workload: 'files' | 'json'
+}
+
+function parseKeyVal(s: string): Record<string, string> {
+  const eq = s.indexOf('=')
+  if (eq === -1) return {}
+  return { [s.slice(0, eq)]: s.slice(eq + 1) }
 }
 
 function parseArgs(argv: string[]): Args {
@@ -156,6 +169,9 @@ function parseArgs(argv: string[]): Args {
     runs: 1,
     skipClaude: false,
     revisits: 0,
+    aEnv: {},
+    bEnv: {},
+    workload: 'files',
   }
   for (const x of argv) {
     if (x === '--help' || x === '-h') a.help = true
@@ -166,12 +182,50 @@ function parseArgs(argv: string[]): Args {
     else if (x.startsWith('--turns=')) a.turns = Number(x.slice('--turns='.length))
     else if (x.startsWith('--revisits=')) a.revisits = Math.max(0, Math.min(REVISIT_FILES.length, Number(x.slice('--revisits='.length)) || 0))
     else if (x.startsWith('--model=')) a.model = x.slice('--model='.length)
+    else if (x.startsWith('--a-env=')) Object.assign(a.aEnv, parseKeyVal(x.slice('--a-env='.length)))
+    else if (x.startsWith('--b-env=')) Object.assign(a.bEnv, parseKeyVal(x.slice('--b-env='.length)))
     else if (x.startsWith('--a=')) a.a = x.slice('--a='.length)
     else if (x.startsWith('--b=')) a.b = x.slice('--b='.length)
+    else if (x.startsWith('--workload=')) a.workload = x.slice('--workload='.length) === 'json' ? 'json' : 'files'
     else if (x.startsWith('--timeout=')) a.timeoutMs = Number(x.slice('--timeout='.length))
     else if (x.startsWith('--only=')) a.only = x.slice('--only='.length) as Args['only']
   }
   return a
+}
+
+// JSON workload: a numbered list of `turns` identical fixture runs, one per
+// turn. The enumerated list (not a prose "do N turns") is what reliably forces
+// the model to take exactly N turns — same shape as buildSequentialPrompt,
+// whose compliance is proven. Same fixture every turn → the cached prefix
+// should be READ, not rewritten; a per-turn cW spike means the feature broke
+// the cache. On a few turns the model also Reads back the omitted rows from the
+// cited source= path (when present) so the measurement captures the NET cost
+// (compression minus retrieval), not just best-case.
+function buildJsonWorkloadPrompt(turns: number): string {
+  const fixture = 'scripts/profile/fixtures/big-json.sh'
+  const readbackTurns = new Set(
+    [Math.floor(turns / 3), Math.floor((2 * turns) / 3), turns].filter(n => n > 1),
+  )
+  const steps = Array.from({ length: turns }, (_, i) => {
+    const n = i + 1
+    if (readbackTurns.has(n)) {
+      return `  ${n}. Run \`bash ${fixture}\`. If the result envelope shows a source="…" ` +
+        `path, Read that file with offset=200 limit=5 and print row 200's "number"; ` +
+        `otherwise print how many rows the result reported.`
+    }
+    return `  ${n}. Run \`bash ${fixture}\` and print ONE line: how many rows it reported.`
+  })
+  return [
+    `Run a fixed ${turns}-step benchmark, ONE Bash (or Read) tool call PER MESSAGE TURN.`,
+    `STRICT RULES — the benchmark is INVALID if you break any of them:`,
+    `- Exactly ONE tool call per assistant message. NEVER batch/parallelize/read-ahead.`,
+    `- Do the steps strictly in order, one per turn. Do NOT stop early.`,
+    `- Do NOT print the end token until AFTER step ${turns}.`,
+    `Steps:`,
+    ...steps,
+    ``,
+    `After step ${turns}, end your final message with the exact token ${SENTINEL}.`,
+  ].join('\n')
 }
 
 // Sequential mode forces ONE Read per turn over N files → both CLIs do ~N turns,
@@ -378,7 +432,14 @@ function summarizeTimeline(timeline: TimelineRow[]) {
   return { input, output, cacheRead, cacheCreation }
 }
 
-function run(bin: string, model: string, prompt: string, timeoutMs: number): Usage {
+function run(
+  bin: string,
+  model: string,
+  prompt: string,
+  timeoutMs: number,
+  allowedTools: string,
+  extraEnv: Record<string, string>,
+): Usage {
   const args = [
     '-p', prompt,
     '--model', model,
@@ -387,7 +448,7 @@ function run(bin: string, model: string, prompt: string, timeoutMs: number): Usa
     // Comma-separated form works for both `claude` and `claudin` (claude also
     // accepts space-separated via variadic, but with `-p` everything after a
     // bare `--allowedTools Read` may grab the next positional ambiguously).
-    '--allowedTools', 'Read',
+    '--allowedTools', allowedTools,
   ]
   const t0 = performance.now()
   const res = spawnSync(bin, args, {
@@ -395,7 +456,7 @@ function run(bin: string, model: string, prompt: string, timeoutMs: number): Usa
     timeout: timeoutMs,
     maxBuffer: 64 * 1024 * 1024,
     cwd: resolve(import.meta.dir, '../..'),
-    env: { ...process.env, ANTHROPIC_MODEL: model },
+    env: { ...process.env, ANTHROPIC_MODEL: model, ...extraEnv },
     // Explicitly close stdin. Without this, both `claude` and `claudin -p`
     // wait ~3s for stdin data on the open pipe before proceeding.
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -501,19 +562,30 @@ async function main() {
     console.log('cache-ab-bench: claudin vs claude, same prompt/files/model, main-loop cache reuse.')
     console.log('  --model=<id> (default claude-sonnet-4-6)  --only=claude|claudin  --a=<bin> --b=<bin>  --json')
     console.log('  --runs=N (default 1; recommend 3 — reports median+min+max)  --skip-claude')
+    console.log('  --workload=files|json (json runs the big-json fixture each turn — exercises TOOL_RESULT_JSON_COMPRESSION)')
+    console.log('  --a-env=KEY=VAL --b-env=KEY=VAL (per-side env so the SAME binary can be A/B\'d with a flag toggled)')
+    console.log('  e.g. --a=claudindev --b=claudindev --workload=json --turns=20 --runs=3 \\')
+    console.log('         --a-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0 --b-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1')
     return
   }
 
+  const isJson = args.workload === 'json'
   const workload = buildSequentialWorkload(TWELVE_FILES, args.turns, args.revisits)
-  const prompt = args.sequential
-    ? buildSequentialPrompt(workload, args.revisits)
-    : buildPrompt(TWELVE_FILES)
-  if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
-  const sides: Array<{ label: string; bin: string }> = []
+  const prompt = isJson
+    ? buildJsonWorkloadPrompt(args.turns)
+    : args.sequential
+      ? buildSequentialPrompt(workload, args.revisits)
+      : buildPrompt(TWELVE_FILES)
+  const allowedTools = isJson ? 'Read,Bash' : 'Read'
+  if (isJson) console.log(`(json workload: ${args.turns} turns running the big-json fixture + source= Read-backs)`)
+  else if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
+  const sides: Array<{ label: string; bin: string; env: Record<string, string> }> = []
   const wantA = !args.skipClaude && (args.only === null || args.only === 'a' || args.only === 'claude')
   const wantB = args.only === null || args.only === 'b' || args.only === 'claudin'
-  if (wantA) sides.push({ label: `claude (${args.a})`, bin: resolveBin(args.a) })
-  if (wantB) sides.push({ label: `claudin (${args.b})`, bin: resolveBin(args.b) })
+  const envLabel = (e: Record<string, string>) =>
+    Object.keys(e).length ? ` {${Object.entries(e).map(([k, v]) => `${k}=${v}`).join(',')}}` : ''
+  if (wantA) sides.push({ label: `A (${args.a})${envLabel(args.aEnv)}`, bin: resolveBin(args.a), env: args.aEnv })
+  if (wantB) sides.push({ label: `B (${args.b})${envLabel(args.bEnv)}`, bin: resolveBin(args.b), env: args.bEnv })
 
   console.log(`\nCache A/B bench — model=${args.model}, ${TWELVE_FILES.length} files, main-loop only, runs=${args.runs}`)
   console.log(`(auth: active profiles; model pinned via --model + ANTHROPIC_MODEL)\n`)
@@ -524,7 +596,7 @@ async function main() {
     const sideRuns: Usage[] = []
     for (let i = 0; i < args.runs; i++) {
       process.stdout.write(`▶ running ${s.label} [${i + 1}/${args.runs}] ... `)
-      const u = run(s.bin, args.model, prompt, args.timeoutMs)
+      const u = run(s.bin, args.model, prompt, args.timeoutMs, allowedTools, s.env)
       console.log(`done (exit ${u.exitCode}, ${(u.wallMs / 1000).toFixed(1)}s, cR=${fmt(u.cacheRead)} cW=${fmt(u.cacheCreation)})`)
       sideRuns.push(u)
     }

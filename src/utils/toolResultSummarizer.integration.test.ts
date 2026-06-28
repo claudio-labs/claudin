@@ -26,7 +26,7 @@ import {
   test,
 } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -61,6 +61,7 @@ const summarizer = await import('./toolResultSummarizer.js')
 const { setOriginalCwd, getOriginalCwd, getSessionId } = await import('../bootstrap/state.js')
 const { getProjectDir } = await import('./sessionStorage.js')
 const { saveGlobalConfig, resetGlobalConfigForTests } = await import('./config.js')
+const { compressJsonArray } = await import('./jsonArrayCompress.js')
 
 let tempRoot = ''
 const createdProjectDirs = new Set<string>()
@@ -386,4 +387,162 @@ test('integration: env-var kill switch → AgentTool array passes through unchan
   // Content must still be an array (not summarized to string)
   expect(Array.isArray(out.content)).toBe(true)
   expect(await persistedFileCount()).toBe(0)
+})
+
+// --- JSON structural compression + reversibility (TOOL_RESULT_JSON_COMPRESSION) ---
+
+async function readOnlyPersistedFile(): Promise<string> {
+  const dir = join(getProjectDir(tempRoot), getSessionId(), 'tool-results')
+  const entries = await readdir(dir)
+  expect(entries).toHaveLength(1)
+  return readFile(join(dir, entries[0]!), 'utf-8')
+}
+
+function bigJsonArray(rows = 300): string {
+  return JSON.stringify(
+    Array.from({ length: rows }, (_, i) => ({
+      number: i + 1,
+      title: `Pull request ${i + 1} with a fairly long descriptive title here`,
+      state: i % 2 === 0 ? 'OPEN' : 'MERGED',
+      author: 'viudes',
+    })),
+  )
+}
+
+afterEach(() => {
+  delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+})
+
+test('integration: flag ON → JSON compressed, original persisted, source= injected', async () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const content = bigJsonArray()
+  const out = await processToolResultBlock(bashTool, content, 'toolu_json_on')
+  const body = out.content as string
+
+  expect(body.startsWith(summarizer.TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  expect(body).toContain('strategy="json-structural"')
+  expect(body).toContain('<omitted rows=')
+  // quiet attribute, not a prose affordance
+  expect(body).toMatch(/source="[^"]+\/tool-results\/toolu_json_on\.txt"/)
+  expect(body).not.toContain('Read offset')
+
+  // backing file holds the JSON-lines canonical: one element per row, aligned to #N
+  const persisted = await readOnlyPersistedFile()
+  expect(persisted.split('\n')).toHaveLength(300)
+  expect(JSON.parse(persisted.split('\n')[0]!).number).toBe(1)
+})
+
+test('integration: flag OFF → JSON bash output byte-identical to today, no persist', async () => {
+  delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+  const content = bigJsonArray()
+  const out = await processToolResultBlock(bashTool, content, 'toolu_json_off')
+  expect(out.content).toBe(content) // unchanged — JSON passes through the bash arm
+  expect(await persistedFileCount()).toBe(0)
+})
+
+// ≥ the Bash summarize threshold (so it compresses) but ≤ the 60-row window, so
+// EVERY row is shown — a lossless schema-factor. Many long keys + short values
+// keep it well above the ≥15% savings floor.
+function losslessJsonArray(): string {
+  const keys = [
+    'identifierNumber', 'statusLabelText', 'authorLoginHandle',
+    'createdAtTimestamp', 'priorityLevelName', 'categoryGroupName',
+    'assigneeLoginName', 'milestoneTitleText', 'reviewDecisionState',
+    'mergeableFlagState',
+  ]
+  return JSON.stringify(
+    Array.from({ length: 55 }, (_, i) => {
+      const o: Record<string, string> = {}
+      for (const k of keys) o[k] = `${k.slice(0, 4)}-${i}`
+      return o
+    }),
+  )
+}
+
+test('integration: flag ON → lossless schema-factor compresses but does NOT persist', async () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const content = losslessJsonArray()
+  expect(content.length).toBeGreaterThan(8_000)
+  const out = await processToolResultBlock(
+    bashTool,
+    content,
+    'toolu_json_lossless',
+  )
+  const body = out.content as string
+
+  // It WAS compressed (json-structural) ...
+  expect(body).toContain('strategy="json-structural"')
+  // ... but every row is shown — no elision, so no disk write and no source=.
+  expect(body).not.toContain('<omitted rows=')
+  expect(body).not.toContain('source=')
+  expect(await persistedFileCount()).toBe(0)
+})
+
+test('integration: flag ON → wrapper-dominated JSON declines compression (savings floor)', async () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  // A giant non-array field dwarfs the small array → schema-factoring saves
+  // ~nothing; json-structural must decline rather than ship a near-zero
+  // "compression" that burns a strategy slot.
+  const content = JSON.stringify({
+    giant: 'z'.repeat(20_000),
+    items: Array.from({ length: 6 }, (_, i) => ({ id: i, name: `n${i}` })),
+  })
+  const out = await processToolResultBlock(bashTool, content, 'toolu_json_bloat')
+  const body = out.content as string
+  expect(body).not.toContain('strategy="json-structural"')
+  expect(await persistedFileCount()).toBe(0)
+})
+
+// Lands compression in the DECISIVE band of the savings floor: a render that is
+// below the input (so the wrapped marker is smaller than the original → the
+// generic no-win guard `wrapped >= original` would NOT reject) yet still >85% of
+// it (so ONLY jsonSavesEnough can reject). Two short keys (little to factor out)
+// + a long value per row that survives verbatim; ≤60 rows so no window.
+function bandJsonArray(): string {
+  return JSON.stringify(
+    Array.from({ length: 58 }, (_, i) => ({
+      id: i,
+      payload: `row-${i}-${'x'.repeat(150)}`,
+    })),
+  )
+}
+
+// Asserts the fixture really sits in the band — if it drifts out, the test stops
+// pinning the floor, so fail loudly rather than pass for the wrong reason.
+function assertInSavingsBand(content: string): void {
+  expect(content.length).toBeGreaterThan(8_000)
+  const jc = compressJsonArray(content)
+  expect(jc).not.toBeNull()
+  const ratio = jc!.render.length / content.length
+  expect(ratio).toBeGreaterThan(0.85) // jsonSavesEnough MUST reject
+  expect(ratio).toBeLessThan(0.97) // render still meaningfully below input
+  // render + ~130b marker overhead stays well under the original, so the
+  // generic `wrapped >= original` guard provably is NOT the rejector here.
+  expect(jc!.render.length).toBeLessThan(content.length - 400)
+}
+
+test('integration: flag ON → Bash arm, 85-100% band declined by the floor (not the generic guard)', async () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const content = bandJsonArray()
+  assertInSavingsBand(content)
+  const out = await processToolResultBlock(bashTool, content, 'toolu_json_band')
+  // Floor rejects → falls through to the bash summarizer, which passes
+  // single-line JSON through untouched. If jsonSavesEnough were neutered this
+  // would instead ship as json-structural (the generic guard does not catch it).
+  expect(out.content).toBe(content)
+})
+
+test('integration: flag ON → Agent (array) arm, 85-100% band declined by the floor', async () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  const content = bandJsonArray()
+  assertInSavingsBand(content)
+  const out = await processToolResultBlock(
+    agentTool,
+    [{ type: 'text', text: content }],
+    'toolu_json_band_array',
+  )
+  // Declined → array content passes through unchanged (not summarized to a
+  // json-structural string). Pins the array-arm jsonSavesEnough guard.
+  expect(Array.isArray(out.content)).toBe(true)
+  expect(JSON.stringify(out.content)).not.toContain('json-structural')
 })
