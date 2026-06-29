@@ -129,3 +129,101 @@ describe('compressJsonArray', () => {
     expect(compressJsonArray(JSON.stringify('a string'))).toBeNull()
   })
 })
+
+describe('compressJsonArray — constant-field hoisting', () => {
+  test('a field identical on all rows is hoisted to const= and dropped from the grid', () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      number: i + 1,
+      title: `item ${i + 1}`,
+      author: 'viudes',
+    }))
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).toContain('const={"author":"viudes"}')
+    // dropped from the keys header AND each row (it lives only on the const= line)
+    expect(out.render).toContain('rows=6 keys=[number,title]')
+    const line1 = out.render.split('\n').find(l => l.startsWith('#1\t'))!
+    expect(line1).toBe('#1\t1\titem 1')
+    // lossless: the backing jsonl still carries author on every line
+    const jl = out.jsonl.split('\n')
+    expect(jl).toHaveLength(6)
+    expect(jl.every(l => l.includes('"author":"viudes"'))).toBe(true)
+  })
+
+  test('a varying field is NOT hoisted (no const= line)', () => {
+    const out = compressJsonArray(JSON.stringify(mkRows(6)))!
+    expect(out.render).not.toContain('const=')
+    expect(out.render).toContain('keys=[number,title,state]')
+  })
+
+  test('an absent-in-some column is never hoisted even with equal present values', () => {
+    // 5/6 share {id,name,tag} (≥80% → schema-factor); #3 omits tag.
+    const rows = Array.from({ length: 6 }, (_, i) =>
+      i === 2
+        ? { id: i, name: `n${i}` }
+        : { id: i, name: `n${i}`, tag: 'same' },
+    )
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).not.toContain('const=')
+    expect(out.render).toContain('keys=[id,name,tag]')
+    expect(out.render).toContain('(∅=absent)')
+  })
+
+  test('an array-valued constant is hoisted', () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      labels: ['area/cache', 'type/perf'],
+    }))
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).toContain('const={"labels":["area/cache","type/perf"]}')
+    expect(out.render).toContain('keys=[id]')
+  })
+
+  test('wrapper meta= and hoisted const= are distinct lines', () => {
+    const payload = {
+      total_count: 6,
+      items: Array.from({ length: 6 }, (_, i) => ({
+        number: i + 1,
+        author: 'viudes',
+      })),
+    }
+    const out = compressJsonArray(JSON.stringify(payload))!
+    expect(out.render).toContain('meta={"total_count":6}')
+    expect(out.render).toContain('const={"author":"viudes"}')
+    expect(out.render).toContain('keys=[number]')
+  })
+
+  test('all-constant rows → const= + rows=N (all identical), no #N lines, full jsonl', () => {
+    const rows = Array.from({ length: 70 }, () => ({
+      kind: 'pod',
+      status: 'Running',
+    }))
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).toContain('const={"kind":"pod","status":"Running"}')
+    expect(out.render).toContain('rows=70 (all identical)')
+    expect(out.render).not.toContain('#1')
+    expect(out.render).not.toContain('<omitted')
+    // backing keeps every element
+    expect(out.jsonl.split('\n')).toHaveLength(70)
+  })
+
+  test('a stray scalar element disables hoisting entirely', () => {
+    const rows: unknown[] = Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      author: 'viudes',
+    }))
+    rows[2] = 5 // 5/6 objects ≥ 80% → still schema-factor, but no hoist
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).not.toContain('const=')
+    expect(out.render).toContain('keys=[id,author]')
+  })
+
+  test('a long constant value is truncated like a grid cell (full value in jsonl)', () => {
+    const big = 'x'.repeat(600)
+    const rows = Array.from({ length: 6 }, (_, i) => ({ id: i, note: big }))
+    const out = compressJsonArray(JSON.stringify(rows))!
+    expect(out.render).toContain('keys=[id]')
+    expect(out.render).toMatch(/const=\{"note":".+…\[\d+b\]\}/)
+    // full value survives in the backing
+    expect(out.jsonl.split('\n')[0]).toContain(big)
+  })
+})

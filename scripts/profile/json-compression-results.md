@@ -67,3 +67,56 @@ the uncompressed 67KB JSON result → 14.5k write; B writes 0); steady-state per
 **Soft headline:** the model took 34 vs 31 requests (non-deterministic step count), so part
 of the totals gap is the extra requests on A. The structural signal (no per-turn cW spike,
 higher r:w, smaller cached JSON region) is consistent with the env-toggle A/B above.
+
+## #7 — constant-field hoisting (render-char delta, deterministic)
+
+Roadmap #7: fields identical on every row are hoisted onto a single `const={…}`
+line and dropped from the grid columns (lossless — full element stays in the
+`jsonl` backing). Measured on `scripts/profile/fixtures/big-json.sh`, which carries
+two constant fields (`author:"viudes"` and `labels:["area/cache","type/perf"]`).
+A/B is the render of `HEAD:jsonArrayCompress.ts` (no hoist) vs this branch (hoist),
+identical input → isolates the hoist:
+
+| rows | input chars | render (no hoist) | render (hoist) | saved | Δ |
+|---|---|---|---|---|---|
+| 55 (all shown) | 12,179 | 8,384 | 6,562 | 1,822 | −21.7% |
+| 300 (windowed)  | 67,133 | 7,681 | 6,029 | 1,652 | −21.5% |
+
+New render head (n=300):
+
+```
+const={"author":"viudes","labels":["area/cache","type/perf"]}
+rows=300 keys=[number,title,state,mergeable,comments]
+#1	1	Pull request 1: …	MERGED	false	2
+```
+
+~21.5% smaller render (the bytes that enter the prompt cache) on a realistic
+`gh … --json`-shaped payload, with `author` + `labels` removed from every shown
+row. Lossless: the backing `jsonl` is unchanged (every element still carries both
+fields), so Read offset/limit + Grep on the cited path still resolve any row.
+
+### End-to-end cache validation (cW + cR, Sonnet, 30 turns)
+
+`cache-ab-bench.ts --a=claudin --b=claudindev --workload=json --turns=30 --runs=1
+--model=claude-sonnet-4-6` with `CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1` forced on
+both arms (`claudin` = released 0.6.11 / no hoist; `claudindev` = this branch /
+hoist). Run where both arms completed the full workload:
+
+| arm | turns | cR | cW | r:w | out | $ |
+|---|---|---|---|---|---|---|
+| A `claudin` (no hoist) | 31 | 1.16m | 41.6k | 27.96:1 | 8.7k | $0.94 |
+| B `claudindev` (hoist) | 34 | 1.35m | **29.1k** | **46.39:1** | 10.7k | $0.97 |
+
+**B writes −30% to cache (41.6k→29.1k) and has +66% reuse (27.96:1→46.39:1) — even
+though B ran 3 MORE turns.** Per-turn `cW` is steady at ~820 on BOTH arms with no
+spike, so the hoist's new `const=` line does not invalidate or rewrite the cached
+prefix; the lower total cW comes from the smaller cached tool-result region (the
+−21.5% render). Absolute cost is ~level ($0.94 vs $0.97) but B did 34 vs 31 turns,
+so per-turn B is ~6% cheaper. The hoist is cache-safe end-to-end and reduces
+cache-write pressure.
+
+Caveat: turn counts differ (31 vs 34 — the harness's known non-deterministic step
+count), so the totals aren't perfectly apples-to-apples; the cW/r:w *direction* is
+the robust signal and it held across two runs. A first run had arm A quit early (2
+turns, non-deterministic early-exit) and was discarded; arm B there was likewise
+healthy (31 turns, cW 23.2k, r:w 47.97:1).

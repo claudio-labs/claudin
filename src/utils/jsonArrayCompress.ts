@@ -7,6 +7,10 @@
  * marker). Targets a top-level array OR the dominant array-of-objects field of
  * a top-level object (the `gh api` / REST `{ "data": [...] }` shape).
  *
+ * Fields whose value is identical on every row are hoisted out of the grid into
+ * a single `const={...}` line (the column is then dropped) — lossless, since the
+ * full element still lives in the `jsonl` backing.
+ *
  * Returns BOTH the compact `render` (goes in the tool-result marker) and a
  * `jsonl` canonical form — one array element per line, aligned 1:1 with the
  * `#N` row index — which the storage layer persists so omitted rows stay
@@ -117,10 +121,24 @@ function renderSchemaFactored(
   preamble: string | null,
   showAbsentLegend: boolean,
 ): string {
+  const { constants, varyingKeys } = constantFields(array, keys)
+  const hasConstants = Object.keys(constants).length > 0
+
   const lines: string[] = []
   if (preamble) lines.push(`meta=${preamble}`)
+  if (hasConstants) lines.push(`const=${renderConstObject(constants)}`)
+
+  // All-constant: every key is identical across all rows, so the `const=` line
+  // fully describes every element — drop the per-row grid (the backing jsonl
+  // still holds each element). Guarded on hasConstants so an array of empty
+  // objects keeps its normal (empty-keys) grid.
+  if (varyingKeys.length === 0 && hasConstants) {
+    lines.push(`rows=${array.length} (all identical)`)
+    return lines.join('\n')
+  }
+
   lines.push(
-    `rows=${array.length} keys=[${keys.join(',')}]` +
+    `rows=${array.length} keys=[${varyingKeys.join(',')}]` +
       (showAbsentLegend ? ` (${ABSENT}=absent)` : ''),
   )
 
@@ -128,9 +146,10 @@ function renderSchemaFactored(
     onRow: i => {
       const el = array[i]
       if (isPlainObject(el)) {
-        lines.push(`#${i + 1}\t` + keys.map(k => cell(el[k])).join('\t'))
+        lines.push(`#${i + 1}\t` + varyingKeys.map(k => cell(el[k])).join('\t'))
       } else {
         // Rare non-object element inside a mostly-object array: span one cell.
+        // (Its presence disables hoisting, so varyingKeys === keys here.)
         lines.push(`#${i + 1}\t${cell(el)}`)
       }
     },
@@ -138,6 +157,19 @@ function renderSchemaFactored(
   })
 
   return lines.join('\n')
+}
+
+/**
+ * Compact JSON object for the hoisted-constants line. Each value is truncated
+ * to CELL_MAX_WIDTH like a grid cell (the full value stays in the jsonl); no
+ * escapeCell — safeStringify already emits JSON, which never carries a raw
+ * tab/newline.
+ */
+function renderConstObject(constants: Record<string, unknown>): string {
+  const parts = Object.entries(constants).map(
+    ([k, v]) => `${JSON.stringify(k)}:${truncateCell(safeStringify(v))}`,
+  )
+  return `{${parts.join(',')}}`
 }
 
 function renderJsonLines(array: unknown[], preamble: string | null): string {
@@ -205,6 +237,45 @@ function unionKeys(array: unknown[]): string[] {
     }
   }
   return out
+}
+
+/**
+ * Split `keys` into fields that are identical across every element (hoistable)
+ * and the rest. A field is constant iff it is an own-property of EVERY element
+ * with an equal `safeStringify` value. A single non-object element disables
+ * hoisting entirely — a `const={...}` line would not apply to a scalar row.
+ * Absent-in-some (∅) columns are never constant, so the present/absent
+ * distinction is preserved.
+ */
+function constantFields(
+  array: unknown[],
+  keys: string[],
+): { constants: Record<string, unknown>; varyingKeys: string[] } {
+  for (const el of array) {
+    if (!isPlainObject(el)) return { constants: {}, varyingKeys: keys }
+  }
+  const objects = array as Record<string, unknown>[]
+  const constants: Record<string, unknown> = {}
+  const varyingKeys: string[] = []
+  for (const k of keys) {
+    let serialized: string | null = null
+    let constant = true
+    for (const el of objects) {
+      if (!Object.prototype.hasOwnProperty.call(el, k)) {
+        constant = false
+        break
+      }
+      const s = safeStringify(el[k])
+      if (serialized === null) serialized = s
+      else if (s !== serialized) {
+        constant = false
+        break
+      }
+    }
+    if (constant) constants[k] = objects[0]![k]
+    else varyingKeys.push(k)
+  }
+  return { constants, varyingKeys }
 }
 
 /** Fraction of elements sharing the single most common exact key signature. */

@@ -21,6 +21,7 @@ first.
 | 3 | "Context tokens saved" line in `/usage` | `src/utils/tokensSaved.ts` accumulator → `/usage` Session tab | Shows real per-session savings |
 | 4 | Verbosity steering (answer-length ceiling) | `getVerbositySection()` in `prompts.ts`, dynamic section after the cache boundary; default-on, opt-out `CLAUDIN_VERBOSITY_STEERING=0` | −26% prose chars with no loss of answer cores (runs=1; runs=3 median pending) |
 | 5 | Repeated-error loop → memory-extraction trigger | `src/services/extractMemories/loopDetector.ts`, wired into `extractMemories.ts`; flag `LOOP_ERROR_MEMORY_TRIGGER`, opt-out `CLAUDIN_LOOP_MEMORY_TRIGGER=0` | Fires a `feedback` memory on a ≥3× same-tool error loop; runtime-verified, zero false memories |
+| 7 | Constant-field hoisting (SmartCrusher batch) | `constantFields()` + `const=` line in `src/utils/jsonArrayCompress.ts`; rides the `TOOL_RESULT_JSON_COMPRESSION` flag | Lossless: fields identical on every row hoisted out of the grid. −21.5% render chars on the `big-json.sh` fixture (`author` + `labels`); backing `jsonl` unchanged |
 
 ---
 
@@ -75,16 +76,17 @@ matter, then fills the rest with head/tail up to a budget.
   "salient-row-in-the-middle" case to prove the correctness gain empirically —
   the real-world hit-rate is currently unmeasured.
 
-### 7. Constant-field hoisting — effort S (lossless quick win)
+### 7. Constant-field hoisting — ✅ SHIPPED (see Shipped table above)
 
-Fields with a single value across all rows are repeated in every `#N` row today.
-Hoist them into the existing `meta=` / preamble slot (`renderSchemaFactored`,
-`jsonArrayCompress.ts:114`) and drop the column. Common in shell JSON
-(`"kind":"pod"`, region, `"object":"…"` identical on every row). Lossless, no
-query, no risk, and it compounds with #6.
+Done as its own `const={…}` line (kept distinct from the wrapper `meta=`), not
+merged into the preamble. `constantFields()` in `jsonArrayCompress.ts` splits the
+union keys into constants (own-prop present + equal on every element) and varying
+keys; a stray non-object element disables hoisting. All-constant arrays collapse
+to `const=… / rows=N (all identical)` with the per-row grid dropped.
 
-Both #6 and #7 sit behind the existing tool-result marker, which is already
-placed behind the prompt-cache clip frontier — so neither risks cache reuse.
+#6 still sits behind the existing tool-result marker, which is already placed
+behind the prompt-cache clip frontier — so it does not risk cache reuse (#7 the
+same).
 
 ---
 

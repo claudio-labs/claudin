@@ -88,10 +88,11 @@ function isModelVisibleMessage(message: Message): boolean {
  * CLAUDIN_LOOP_MEMORY_TRIGGER=0 (mirrors the JSON-compression env pattern).
  */
 function isLoopTriggerEnabled(): boolean {
-  return (
-    feature('LOOP_ERROR_MEMORY_TRIGGER') &&
-    !isEnvDefinedFalsy(process.env.CLAUDIN_LOOP_MEMORY_TRIGGER)
-  )
+  // `feature()` (bun:bundle macro) must be used directly in an if/ternary — a
+  // `&&` form throws when these modules are imported under `bun test`. The build
+  // preprocessor folds it to a boolean literal either way.
+  if (!feature('LOOP_ERROR_MEMORY_TRIGGER')) return false
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_LOOP_MEMORY_TRIGGER)
 }
 
 function countModelVisibleMessagesSince(

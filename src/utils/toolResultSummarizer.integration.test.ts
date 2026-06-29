@@ -426,10 +426,17 @@ test('integration: flag ON → JSON compressed, original persisted, source= inje
   expect(body).toMatch(/source="[^"]+\/tool-results\/toolu_json_on\.txt"/)
   expect(body).not.toContain('Read offset')
 
+  // #7 constant-field hoisting: author is identical on every row → hoisted onto a
+  // single const= line and dropped from the grid columns (gone from keys=).
+  expect(body).toContain('const={"author":"viudes"}')
+  expect(body).toContain('keys=[number,title,state]')
+
   // backing file holds the JSON-lines canonical: one element per row, aligned to #N
   const persisted = await readOnlyPersistedFile()
   expect(persisted.split('\n')).toHaveLength(300)
   expect(JSON.parse(persisted.split('\n')[0]!).number).toBe(1)
+  // lossless: the hoisted field still lives in every backing row
+  expect(JSON.parse(persisted.split('\n')[0]!).author).toBe('viudes')
 })
 
 test('integration: flag OFF → JSON bash output byte-identical to today, no persist', async () => {
