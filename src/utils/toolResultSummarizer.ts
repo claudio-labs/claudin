@@ -89,6 +89,12 @@ type StrategyResult = {
   strategy: StrategyName
   errorWindowPreserved?: boolean
   /**
+   * json-structural only: count of salient (error-keyword / rare-status) rows
+   * pinned out of the dropped middle. Surfaced in analytics so the real-world
+   * hit-rate of salient-row preservation can be measured (ROADMAP #6).
+   */
+  salientPinned?: number
+  /**
    * Optional envelope-level metadata describing the elision. Placed as
    * attributes on the opening `<tool-result-summary>` tag so the model sees
    * structured key/value pairs rather than narratable prose.
@@ -194,6 +200,7 @@ export function maybeSummarizeToolResult(
       ),
       strategyId: STRATEGY_ID[strategyResult.strategy],
       errorWindowPreserved: strategyResult.errorWindowPreserved,
+      salientPinned: strategyResult.salientPinned,
       reductionPct: Math.floor(
         100 * (1 - summarizedSizeBytes / originalSizeBytes),
       ),
@@ -220,7 +227,11 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
       if (isToolResultJsonCompressionEnabled()) {
         const jc = compressJsonArray(text)
         if (jc && jsonSavesEnough(jc.render, text)) {
-          return { body: jc.render, strategy: 'json-structural' }
+          return {
+            body: jc.render,
+            strategy: 'json-structural',
+            salientPinned: jc.salientPinned,
+          }
         }
       }
       return summarizeBashOutput(text)
@@ -351,6 +362,7 @@ function maybeSummarizeArrayContent(
     estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),
     estimatedSummarizedTokens: Math.ceil(wrapped.length / BYTES_PER_TOKEN),
     strategyId: STRATEGY_ID[strategyResult.strategy],
+    salientPinned: strategyResult.salientPinned,
     reductionPct: Math.floor(100 * (1 - wrapped.length / originalSizeBytes)),
   })
 
@@ -390,7 +402,11 @@ function maybeJsonStructural(
   if (text.length < threshold) return null
   const jc = compressJsonArray(text)
   if (!jc || !jsonSavesEnough(jc.render, text)) return null
-  return { body: jc.render, strategy: 'json-structural' }
+  return {
+    body: jc.render,
+    strategy: 'json-structural',
+    salientPinned: jc.salientPinned,
+  }
 }
 
 const AGENT_HEAD_LINES = 50

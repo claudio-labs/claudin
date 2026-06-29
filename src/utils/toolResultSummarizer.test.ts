@@ -686,11 +686,30 @@ test('json: gate on → bash JSON compressed with strategyId=9 + source-less mar
   const body = asString(out)
   expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
   expect(body).toContain('strategy="json-structural"')
-  expect(body).toContain('keys=[number,title,state,author]')
+  // author is constant across all rows → hoisted to const= and dropped from the grid (#7)
+  expect(body).toContain('const={"author":"viudes"}')
+  expect(body).toContain('keys=[number,title,state]')
   expect(body).toContain('<omitted rows=')
   expect(body.length).toBeLessThan(bigJsonArray().length)
   const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
   expect(evt?.metadata.strategyId).toBe(9)
+  expect(evt?.metadata.salientPinned).toBe(0) // benign fixture → nothing pinned
+})
+
+test('json: a rare value buried in the dropped middle → salientPinned flows into analytics', () => {
+  process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION = '1'
+  // benign 200-row PR list with a single rare DRAFT state at #101 (the dropped middle)
+  const arr = Array.from({ length: 200 }, (_, i) => ({
+    number: i + 1,
+    title: `Pull request number ${i + 1} with a reasonably long descriptive title`,
+    state: i === 100 ? 'DRAFT' : i % 2 === 0 ? 'OPEN' : 'MERGED',
+    author: 'viudes',
+  }))
+  const out = maybeSummarizeToolResult(makeBlock(JSON.stringify(arr)), 'Bash')
+  const body = asString(out)
+  expect(body).toContain('#101\t') // the rare row is pinned back into the grid
+  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  expect(evt?.metadata.salientPinned).toBe(1)
 })
 
 test('json: gate on → MCP array-text JSON compressed', () => {
