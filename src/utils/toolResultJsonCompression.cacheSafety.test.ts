@@ -47,9 +47,11 @@ afterAll(() => {
 
 beforeEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+  delete process.env.CLAUDIN_CODE_OUTLINE
 })
 afterEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
+  delete process.env.CLAUDIN_CODE_OUTLINE
 })
 
 function bigJsonArray(rows = 200): string {
@@ -96,5 +98,33 @@ test('marker with a spliced source= attribute still starts with the summary tag'
   // Same predicate isContentAlreadyCompacted (toolResultStorage) keys off.
   expect(isSummarizedContent(withSource)).toBe(true)
   // The attribute lands inside the opening tag (before the first '>').
+  expect(withSource).toContain('source="/tmp/tool-results/toolu_x.txt"')
+})
+
+// --- Same invariants for the code-outline strategy ---
+
+function bigTsSource(n = 200): string {
+  const parts = [`import { foo } from './foo'`, `export const VERSION = 1`]
+  for (let i = 0; i < n; i++) {
+    parts.push(`export function fn${i}(x: number): number {`, `  return x + ${i}`, `}`)
+  }
+  return parts.join('\n')
+}
+
+test('code-outline flag ON → identical input yields a byte-identical marker', () => {
+  process.env.CLAUDIN_CODE_OUTLINE = '1'
+  const content = bigTsSource()
+  const a = maybeSummarizeToolResult(block(content), 'Bash').content as string
+  const b = maybeSummarizeToolResult(block(content), 'Bash').content as string
+  expect(a).toBe(b)
+  expect(a).toContain('strategy="code-outline"')
+})
+
+test('code-outline marker with a spliced source= still starts with the summary tag', () => {
+  process.env.CLAUDIN_CODE_OUTLINE = '1'
+  const marker = maybeSummarizeToolResult(block(bigTsSource()), 'Bash').content as string
+  const withSource = injectEnvelopeAttr(marker, 'source', '/tmp/tool-results/toolu_x.txt')
+  expect(withSource.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  expect(isSummarizedContent(withSource)).toBe(true)
   expect(withSource).toContain('source="/tmp/tool-results/toolu_x.txt"')
 })

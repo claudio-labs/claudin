@@ -64,6 +64,25 @@ function renderBody(entries: SymbolEntry[]): {
 }
 
 /**
+ * Renders just the symbol-table body (no file header) for callers that supply
+ * their own envelope — e.g. the tool-result summarizer's `code-outline`
+ * strategy, where there is no source file path to drill into (retrieval is via
+ * the marker's `source=` backing, not `Read(file_path, symbol=)`). Shares the
+ * `OUTLINE_MAX_TOKENS` cap and range-column alignment with {@link renderOutline}.
+ *
+ * @param entries  Symbol table from {@link scanSymbols} (must be non-empty).
+ */
+export function renderOutlineBody(entries: SymbolEntry[]): string {
+  const { body, shown } = renderBody(entries)
+  const dropped = entries.length - shown
+  const trailer =
+    dropped > 0
+      ? `\n  … (+${dropped} more symbols — use offset/limit to read specific ranges)`
+      : ''
+  return `${body}${trailer}`
+}
+
+/**
  * Renders a symbol table as the outline view shown to the model.
  *
  * @param entries     Symbol table from {@link scanSymbols} (must be non-empty).

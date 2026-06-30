@@ -25,6 +25,7 @@ import { jsonStringify } from './slowOperations.js'
 import {
   TOOL_RESULT_SUMMARY_TAG,
   isSummarizedContent,
+  isToolResultCodeOutlineEnabled,
   isToolResultJsonCompressionEnabled,
   maybeSummarizeToolResult,
 } from './toolResultSummarizer.js'
@@ -301,20 +302,40 @@ async function makeReversibleIfElided(
   originalBlock: ToolResultBlockParam,
   summarized: ToolResultBlockParam,
 ): Promise<ToolResultBlockParam> {
-  if (!isToolResultJsonCompressionEnabled()) return summarized
+  if (!isToolResultJsonCompressionEnabled() && !isToolResultCodeOutlineEnabled())
+    return summarized
   if (summarized === originalBlock) return summarized // no elision happened
   const content = summarized.content
   if (typeof content !== 'string' || !isSummarizedContent(content)) {
     return summarized
   }
   if (!wasLossy(content)) return summarized
+
+  const jsonEnabled = isToolResultJsonCompressionEnabled()
+  const isCodeOutline = content.includes('strategy="code-outline"')
+  // Scope guard. The JSON-compression flag is the master switch for summarizer
+  // reversibility: when on, it backs every lossy strategy (incl. blind bash/
+  // grep/glob/webfetch/agent/mcp head-tail). The code-outline flag, on its own,
+  // must back ONLY the code-outline strategy — enabling it must not silently
+  // start persisting raw backing for unrelated head/tail strategies that were
+  // never reversible before.
+  if (!jsonEnabled && !isCodeOutline) return summarized
+
   const originalStr = toOriginalString(originalBlock.content)
   if (originalStr === null) return summarized
 
-  // For JSON, persist the JSON-lines canonical form (one element per line,
-  // aligned to the marker's #N) so Read offset/limit and Grep address elements.
-  const jc = compressJsonArray(originalStr)
-  const body = jc ? jc.jsonl : originalStr
+  // Code-outline persists the raw source verbatim: the outline's line ranges
+  // equal the original line numbers, so Read offset/limit + Grep on the source=
+  // path recover any dropped body. For JSON, persist the JSON-lines canonical
+  // form (one element per line, aligned to the marker's #N) so Read offset/limit
+  // and Grep address elements. Any other lossy text strategy keeps the raw form.
+  let body: string
+  if (isCodeOutline) {
+    body = originalStr
+  } else {
+    const jc = compressJsonArray(originalStr)
+    body = jc ? jc.jsonl : originalStr
+  }
 
   const result = await persistToolResult(body, summarized.tool_use_id)
   if (isPersistError(result)) return summarized

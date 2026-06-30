@@ -12,6 +12,9 @@ import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { BYTES_PER_TOKEN } from '../constants/toolLimits.js'
 import { compressJsonArray } from './jsonArrayCompress.js'
+import { detectCodeLang, stripLineNumberPrefix } from './detectCodeLang.js'
+import { scanSymbols } from '../tools/shared/codeOutline/scanSymbols.js'
+import { renderOutlineBody } from '../tools/shared/codeOutline/renderOutline.js'
 import { recordBytesSaved } from './tokensSaved.js'
 import { logEvent } from '../services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from '../services/analytics/metadata.js'
@@ -39,6 +42,18 @@ function jsonSavesEnough(render: string, original: string): boolean {
   return render.length <= original.length * (1 - JSON_MIN_SAVINGS)
 }
 
+// Same floor for the code-outline strategy: an outline that barely shrinks the
+// source (a file of one-liners) ships as a near-zero "compression", so it falls
+// through to head/tail instead.
+const CODE_MIN_SAVINGS = 0.15
+function codeSavesEnough(render: string, original: string): boolean {
+  return render.length <= original.length * (1 - CODE_MIN_SAVINGS)
+}
+
+// A blob needs at least this many symbols to be worth outlining; below it the
+// outline saves nothing and head/tail is just as good.
+const CODE_OUTLINE_MIN_SYMBOLS = 3
+
 // Per-tool thresholds (chars). Kept local to avoid importing toolLimits cycles.
 const BASH_SUMMARIZE_THRESHOLD = 8_000
 const GREP_SUMMARIZE_THRESHOLD = 6_000
@@ -61,6 +76,19 @@ export function isToolResultJsonCompressionEnabled(): boolean {
   return false
 }
 
+/**
+ * Gate for the code-outline strategy (roadmap side-bet). Same shape as the JSON
+ * gate above: the env override is mandatory because the test-preload stubs every
+ * `feature()` to false, so tests reach the ON path only via the env var.
+ * Production folds `feature('TOOL_RESULT_CODE_OUTLINE')` at build time.
+ */
+export function isToolResultCodeOutlineEnabled(): boolean {
+  if (process.env.CLAUDIN_CODE_OUTLINE === '1') return true
+  if (process.env.CLAUDIN_CODE_OUTLINE === '0') return false
+  if (feature('TOOL_RESULT_CODE_OUTLINE')) return true
+  return false
+}
+
 // Strategy enum numeric IDs (analytics payloads only accept boolean|number).
 // id 5 ('read-head-tail') was retired; do not reuse — analytics continuity.
 const STRATEGY_ID: Record<StrategyName, number> = {
@@ -72,6 +100,7 @@ const STRATEGY_ID: Record<StrategyName, number> = {
   'agent-head-tail': 7,
   'mcp-head-tail': 8,
   'json-structural': 9,
+  'code-outline': 10,
 }
 
 type StrategyName =
@@ -83,6 +112,7 @@ type StrategyName =
   | 'agent-head-tail'
   | 'mcp-head-tail'
   | 'json-structural'
+  | 'code-outline'
 
 type StrategyResult = {
   body: string
@@ -234,13 +264,16 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
           }
         }
       }
-      return summarizeBashOutput(text)
+      // Code-outline runs after JSON (JSON isn't code) and before the blind
+      // head/tail, which thrashes on source files (see Read note below).
+      return maybeCodeOutline(text, BASH_SUMMARIZE_THRESHOLD) ?? summarizeBashOutput(text)
     case GREP_TOOL_NAME:
       if (text.length < GREP_SUMMARIZE_THRESHOLD) return null
       return summarizeGrepOutput(text)
     case WEB_FETCH_TOOL_NAME:
       if (text.length < WEBFETCH_SUMMARIZE_THRESHOLD) return null
-      return summarizeWebFetchOutput(text)
+      // Catches raw-source fetches (e.g. raw.githubusercontent.com/.../foo.ts).
+      return maybeCodeOutline(text, WEBFETCH_SUMMARIZE_THRESHOLD) ?? summarizeWebFetchOutput(text)
     // Read has no summarization arm: head/tail elision of large file reads
     // induced a thrashing loop on dense codebases (subagent re-Reads the same
     // file in 50-line slices following the elision hint). FileReadTool pivots
@@ -252,7 +285,12 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
     default:
       if (toolName.startsWith('mcp__')) {
         if (text.length < MCP_SUMMARIZE_THRESHOLD) return null
-        return { body: applyHeadTail(text, MCP_HEAD_LINES, MCP_TAIL_LINES), strategy: 'mcp-head-tail' }
+        return (
+          maybeCodeOutline(text, MCP_SUMMARIZE_THRESHOLD) ?? {
+            body: applyHeadTail(text, MCP_HEAD_LINES, MCP_TAIL_LINES),
+            strategy: 'mcp-head-tail',
+          }
+        )
       }
       return null
   }
@@ -374,8 +412,13 @@ function dispatchArray(
   blocks: Array<{ type: string; text?: string }>,
 ): StrategyResult | null {
   if (toolName === AGENT_TOOL_NAME || toolName === LEGACY_AGENT_TOOL_NAME) {
+    const { mainBlocks, trailerText } = splitAgentTrailer(blocks)
     const jc = maybeJsonStructural(blocks, AGENT_SUMMARIZE_THRESHOLD)
     if (jc) return jc
+    // Code-outline scans the main blocks only; re-append the agent trailer
+    // (agentId:/<usage>) so it survives, mirroring summarizeAgentOutput.
+    const code = maybeCodeOutline(joinTextBlocks(mainBlocks), AGENT_SUMMARIZE_THRESHOLD)
+    if (code) return { ...code, body: code.body + trailerText }
     return summarizeAgentOutput(blocks)
   }
   if (toolName.startsWith('mcp__')) {
@@ -383,6 +426,8 @@ function dispatchArray(
     if (hasNonTextBlocks) return null  // preserve images
     const jc = maybeJsonStructural(blocks, MCP_SUMMARIZE_THRESHOLD)
     if (jc) return jc
+    const code = maybeCodeOutline(joinTextBlocks(blocks), MCP_SUMMARIZE_THRESHOLD)
+    if (code) return code
     return summarizeMcpOutput(blocks)
   }
   return null
@@ -407,6 +452,55 @@ function maybeJsonStructural(
     strategy: 'json-structural',
     salientPinned: jc.salientPinned,
   }
+}
+
+/**
+ * Code-outline strategy: when the whole result is recognizably one source file,
+ * replace its body with the scanSymbols structural outline (signatures + line
+ * ranges) instead of blind head/tail. The full source is persisted verbatim by
+ * `makeReversibleIfElided`, so the dropped bodies stay retrievable via Read
+ * offset/limit + Grep on the marker's `source=` path (outline ranges == raw
+ * line numbers). Returns null on any miss so the caller falls through to its
+ * existing head/tail strategy.
+ */
+function summarizeCodeOutline(text: string): StrategyResult | null {
+  try {
+    if (!isToolResultCodeOutlineEnabled()) return null
+    const lines = text.split('\n')
+    // Strip a uniform `cat -n`/`grep -n` numeric prefix for scanning only; this
+    // never changes line count/positions, so ranges still match the raw source.
+    const stripped = stripLineNumberPrefix(lines).join('\n')
+    const lang = detectCodeLang(stripped)
+    if (lang === null) return null
+    const entries = scanSymbols(stripped, lang)
+    if (entries.length < CODE_OUTLINE_MIN_SYMBOLS) return null
+    const body = renderOutlineBody(entries)
+    if (!codeSavesEnough(body, text)) return null
+    return {
+      body,
+      strategy: 'code-outline',
+      envelopeAttrs: {
+        symbols: String(entries.length),
+        lines: String(lines.length),
+      },
+    }
+  } catch (error) {
+    logForDebugging(
+      `summarizeCodeOutline: ${(error as Error)?.message ?? String(error)}`,
+      { level: 'warn' },
+    )
+    return null
+  }
+}
+
+/**
+ * Try code-outline on a text blob (string or joined array content). Gated +
+ * above-threshold, else null so the caller falls through to head/tail.
+ */
+function maybeCodeOutline(text: string, threshold: number): StrategyResult | null {
+  if (!isToolResultCodeOutlineEnabled()) return null
+  if (text.length < threshold) return null
+  return summarizeCodeOutline(text)
 }
 
 const AGENT_HEAD_LINES = 50
@@ -443,17 +537,28 @@ function applyHeadTail(text: string, headLines: number, tailLines: number): stri
   ].join('\n')
 }
 
-function summarizeAgentOutput(
-  blocks: Array<{ type: string; text?: string }>,
-): StrategyResult | null {
+// AgentTool appends a trailer text block (`agentId: …` and/or `<usage>…`) after
+// the agent's actual output. Every summarizer arm must preserve it verbatim, so
+// split it off here and re-append it to whichever strategy's body wins.
+function splitAgentTrailer(blocks: Array<{ type: string; text?: string }>): {
+  mainBlocks: Array<{ type: string; text?: string }>
+  trailerText: string
+} {
   const lastBlock = blocks[blocks.length - 1]
   const isTrailerBlock =
     lastBlock?.type === 'text' &&
     typeof lastBlock.text === 'string' &&
     (lastBlock.text.includes('<usage>') || lastBlock.text.startsWith('agentId:'))
+  return {
+    mainBlocks: isTrailerBlock ? blocks.slice(0, -1) : blocks,
+    trailerText: isTrailerBlock ? '\n' + lastBlock!.text! : '',
+  }
+}
 
-  const mainBlocks = isTrailerBlock ? blocks.slice(0, -1) : blocks
-  const trailerText = isTrailerBlock ? '\n' + lastBlock.text! : ''
+function summarizeAgentOutput(
+  blocks: Array<{ type: string; text?: string }>,
+): StrategyResult | null {
+  const { mainBlocks, trailerText } = splitAgentTrailer(blocks)
 
   const joinedText = joinTextBlocks(mainBlocks)
   if (joinedText.length < AGENT_SUMMARIZE_THRESHOLD) return null
