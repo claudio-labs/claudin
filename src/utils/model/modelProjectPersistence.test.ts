@@ -5,10 +5,15 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 // silently reloads as a 200k window. Drives the real load path
 // (getUserSpecifiedModelSetting → project branch) and the window resolution.
 
-const realState = await import('../../bootstrap/state.js')
-const realProfiles = await import('../providerProfiles.js')
-const realConfig = await import('../config.js')
-const realAllowlist = await import('./modelAllowlist.js')
+// Spread into plain objects: mock.restore() does NOT revert mock.module(), and a
+// bare `await import(...)` binding is the live ESM namespace that mock.module
+// mutates in place — so without a snapshot + explicit re-install these mocks leak
+// (getCurrentProjectConfig / providerProfiles / state) into every later test file
+// (e.g. modelOptions.dualcontext). See CLAUDE.md mock.module rules.
+const realState = { ...(await import('../../bootstrap/state.js')) }
+const realProfiles = { ...(await import('../providerProfiles.js')) }
+const realConfig = { ...(await import('../config.js')) }
+const realAllowlist = { ...(await import('./modelAllowlist.js')) }
 
 const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
 
@@ -41,6 +46,12 @@ beforeEach(() => {
 
 afterEach(() => {
   mock.restore()
+  // Re-install the real modules — mock.restore() leaves mock.module() overrides
+  // in place, which would otherwise leak into later test files.
+  mock.module('../../bootstrap/state.js', () => realState)
+  mock.module('../providerProfiles.js', () => realProfiles)
+  mock.module('../config.js', () => realConfig)
+  mock.module('./modelAllowlist.js', () => realAllowlist)
   process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m
 })
 

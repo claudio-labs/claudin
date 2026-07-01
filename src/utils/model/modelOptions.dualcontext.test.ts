@@ -7,11 +7,19 @@ const realAuth = await import('../auth.js')
 const realAccess = await import('./check1mAccess.js')
 const realModel = await import('./model.js')
 
-const BASES = [
-  'claude-opus-4-8',
+// Only the newest Opus generation is paired (200k + 1M) in the first-party
+// picker; Sonnet 5 is a single 1M-native entry (asserted separately below).
+const BASES = ['claude-opus-4-8']
+
+// Legacy generations were removed from the first-party picker (still resolvable
+// by explicit string, just not listed).
+const REMOVED_LEGACY = [
   'claude-opus-4-7',
+  'claude-opus-4-7[1m]',
   'claude-opus-4-6',
+  'claude-opus-4-6[1m]',
   'claude-sonnet-4-6',
+  'claude-sonnet-4-6[1m]',
 ]
 
 // Simulate a first-party Max subscriber and load a fresh copy of the picker.
@@ -65,6 +73,31 @@ test('Max picker lists 200k + 1M for every model when access checks pass', async
     expect(values).toContain(base) // 200k flavor
     expect(values).toContain(`${base}[1m]`) // 1M flavor
   }
+  // Legacy generations are no longer listed.
+  for (const legacy of REMOVED_LEGACY) {
+    expect(values).not.toContain(legacy)
+  }
+})
+
+// Sonnet 5 is the new default and is 1M-native: it must appear as a SINGLE
+// picker entry with no separate [1m] variant, and the legacy Sonnet 4.6 pair is
+// no longer listed.
+test('Sonnet 5 is a single 1M-native entry (no [1m] pair, no legacy Sonnet)', async () => {
+  const { getModelOptions } = await importMaxPicker({
+    mergeEnabled: true,
+    opusAccess: true,
+    sonnetAccess: true,
+  })
+  const values = getModelOptions().map((o: { value: string | null }) => o.value)
+  expect(values).toContain('claude-sonnet-5')
+  expect(values).not.toContain('claude-sonnet-5[1m]')
+  // Exactly one Sonnet 5 entry.
+  expect(values.filter((v: string | null) => v === 'claude-sonnet-5')).toHaveLength(1)
+  // The legacy Sonnet 4.6 pair is gone; only the newest Opus generation remains.
+  expect(values).not.toContain('claude-sonnet-4-6')
+  expect(values).not.toContain('claude-sonnet-4-6[1m]')
+  expect(values).not.toContain('claude-opus-4-7')
+  expect(values).not.toContain('claude-opus-4-6')
 })
 
 // Regression for the empty-picker screenshot: checkOpus1mAccess/checkSonnet1mAccess

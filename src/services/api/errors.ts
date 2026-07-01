@@ -1069,6 +1069,10 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (m.includes('opus-4-6') || m.includes('opus_4_6')) {
     return getModelStrings().opus41
   }
+  // If the failing model looks like a Sonnet 5 variant, fall back to Sonnet 4.6
+  if (m.includes('sonnet-5') || m.includes('sonnet_5')) {
+    return getModelStrings().sonnet46
+  }
   // If the failing model looks like a Sonnet 4.6 variant, suggest Sonnet 4.5
   if (m.includes('sonnet-4-6') || m.includes('sonnet_4_6')) {
     return getModelStrings().sonnet45

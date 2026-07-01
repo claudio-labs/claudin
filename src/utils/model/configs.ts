@@ -215,6 +215,26 @@ export const CLAUDE_SONNET_4_6_CONFIG = {
   minimax: 'MiniMax-M2.5',
 } as const satisfies ModelConfig
 
+// Claude Sonnet 5 — new default Sonnet tier. 1M context is the default AND the
+// maximum (no 200k variant, no opt-in header), new tokenizer (~30% more tokens
+// than Sonnet 4.6). Adaptive thinking always on; budget-mode thinking and
+// non-default sampling params (temperature/top_p/top_k) both 400. Dateless ID is
+// itself the pinned snapshot. Bedrock uses the Messages-API endpoint id (no
+// legacy `us.…-v1:0` ARN).
+export const CLAUDE_SONNET_5_CONFIG = {
+  firstParty: 'claude-sonnet-5',
+  bedrock: 'anthropic.claude-sonnet-5',
+  vertex: 'claude-sonnet-5',
+  foundry: 'claude-sonnet-5',
+  openai: 'gpt-4o',
+  gemini: 'gemini-2.0-flash',
+  github: 'github:copilot',
+  codex: 'gpt-5.5',
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'mistral-medium-latest',
+} as const satisfies ModelConfig
+
 // @[MODEL LAUNCH]: Register the new config here.
 export const ALL_MODEL_CONFIGS = {
   haiku35: CLAUDE_3_5_HAIKU_CONFIG,
@@ -224,6 +244,7 @@ export const ALL_MODEL_CONFIGS = {
   sonnet40: CLAUDE_SONNET_4_CONFIG,
   sonnet45: CLAUDE_SONNET_4_5_CONFIG,
   sonnet46: CLAUDE_SONNET_4_6_CONFIG,
+  sonnet5: CLAUDE_SONNET_5_CONFIG,
   opus40: CLAUDE_OPUS_4_CONFIG,
   opus41: CLAUDE_OPUS_4_1_CONFIG,
   opus45: CLAUDE_OPUS_4_5_CONFIG,

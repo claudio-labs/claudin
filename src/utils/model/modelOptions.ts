@@ -111,14 +111,30 @@ function getCustomSonnetOption(): ModelOption | undefined {
 
 // @[MODEL LAUNCH]: Update or add model option functions (getSonnetXXOption, getOpusXXOption, etc.)
 // with the new model's label and description. These appear in the /model picker.
+// Sonnet 5 — 1M context by default (single entry, no [1m] pair, like Fable 5).
+// On 1P the 'sonnet' alias resolves to Sonnet 5, so pin to the alias; on 3P the
+// alias still resolves to Sonnet 4.5, so pin the explicit model string.
+function getSonnet5Option(): ModelOption {
+  const is3P = getAPIProvider() !== 'firstParty'
+  return {
+    value: is3P ? getModelStrings().sonnet5 : 'sonnet',
+    label: 'Sonnet 5',
+    description: `Sonnet 5 · Best for everyday tasks, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
+    descriptionForModel:
+      'Sonnet 5 - best for everyday tasks. 1M context by default. Generally recommended for most coding tasks',
+  }
+}
+
+// Sonnet 4.6 — legacy / opt-in entry. Pinned to the explicit model string on both
+// providers since the 'sonnet' alias on 1P now resolves to Sonnet 5.
 function getSonnet46Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: is3P ? getModelStrings().sonnet46 : 'sonnet',
-    label: 'Sonnet',
-    description: `Sonnet 4.6 · Best for everyday tasks${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
+    value: getModelStrings().sonnet46,
+    label: 'Sonnet 4.6',
+    description: `Sonnet 4.6 · Previous Sonnet${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
     descriptionForModel:
-      'Sonnet 4.6 - best for everyday tasks. Generally recommended for most coding tasks',
+      'Sonnet 4.6 - previous Sonnet version',
   }
 }
 
@@ -196,11 +212,13 @@ function getOpus46Option(fastMode = false): ModelOption {
   }
 }
 
+// Sonnet 4.6 1M — legacy / opt-in entry. Pinned to the explicit model string on
+// both providers since the 'sonnet[1m]' alias on 1P now resolves to Sonnet 5.
 export function getSonnet46_1MOption(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: is3P ? getModelStrings().sonnet46 + '[1m]' : 'sonnet[1m]',
-    label: 'Sonnet (1M context)',
+    value: getModelStrings().sonnet46 + '[1m]',
+    label: 'Sonnet 4.6 (1M context)',
     description: `Sonnet 4.6 for long sessions${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
     descriptionForModel:
       'Sonnet 4.6 with 1M context window - for long sessions with large codebases',
@@ -209,12 +227,14 @@ export function getSonnet46_1MOption(): ModelOption {
 
 export function getOpus47_1MOption(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
+  // On 1P the 'opus[1m]' alias resolves to Opus 4.8 with 1M; on 3P it pins the
+  // explicit Opus 4.7 1M string (4.8 may not be on Bedrock/Vertex/Foundry yet).
+  const ver = is3P ? '4.7' : '4.8'
   return {
     value: is3P ? getModelStrings().opus47 + '[1m]' : 'opus[1m]',
     label: 'Opus (1M context)',
-    description: `Opus 4.7 for long sessions${getOpus46PricingSuffix(fastMode)}`,
-    descriptionForModel:
-      'Opus 4.7 with 1M context window - for long sessions with large codebases',
+    description: `Opus ${ver} for long sessions${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel: `Opus ${ver} with 1M context window - for long sessions with large codebases`,
   }
 }
 
@@ -307,7 +327,6 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
   const opusPrice = getOpus46PricingSuffix(fastMode)
   const merge1m = isOpus1mMergeEnabled()
   const opus1m = merge1m || checkOpus1mAccess()
-  const sonnet1m = merge1m || checkSonnet1mAccess()
   const opts: ModelOption[] = []
   const addPair = (
     label: string,
@@ -325,16 +344,21 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
       })
     }
   }
+  // Sonnet 5 is 1M by default — single entry, no [1m] pair (like Fable 5).
+  opts.push({
+    value: ms.sonnet5,
+    label: 'Sonnet 5',
+    description: `Sonnet 5 · Best for everyday tasks · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
+  })
   // Fable 5 is 1M by default — single entry, no [1m] pair.
   opts.push({
     value: ms.fable5,
     label: 'Fable 5',
     description: `Fable 5 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
   })
+  // Only the newest of each family is offered. Legacy generations (Opus 4.6/4.7,
+  // Sonnet 4.5/4.6) stay resolvable by explicit string but are not listed.
   addPair('Opus 4.8', ms.opus48, 'Opus 4.8 · Most capable for complex work', opus1m, opusPrice)
-  addPair('Opus 4.7', ms.opus47, 'Opus 4.7 · Previous Opus', opus1m, opusPrice)
-  addPair('Opus 4.6', ms.opus46, 'Opus 4.6 · Previous Opus', opus1m, opusPrice)
-  addPair('Sonnet 4.6', ms.sonnet46, 'Sonnet 4.6 · Best for everyday tasks', sonnet1m, '')
   return opts
 }
 
@@ -348,7 +372,7 @@ function getOpusPlanOption(): ModelOption {
   return {
     value: 'opusplan',
     label: 'Opus Plan Mode',
-    description: 'Use Opus 4.8 in plan mode, Sonnet 4.6 otherwise',
+    description: 'Use Opus 4.8 in plan mode, Sonnet 5 otherwise',
   }
 }
 
@@ -537,13 +561,13 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet) + Fable 5 + Sonnet 1M + Opus 4.7 + Opus 1M + Opus 4.6 (legacy) + Haiku
+  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5 + Opus 4.8 (+1M) + Haiku.
+  // Only the newest of each family is listed; legacy generations (Opus 4.6/4.7,
+  // Sonnet 4.5/4.6) remain resolvable by explicit string but are hidden here.
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
+    payg1POptions.push(getSonnet5Option())
     payg1POptions.push(getFable5Option())
-    if (checkSonnet1mAccess()) {
-      payg1POptions.push(getSonnet46_1MOption())
-    }
     if (isOpus1mMergeEnabled()) {
       payg1POptions.push(getMergedOpus1MOption(fastMode))
     } else {
@@ -552,9 +576,6 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
         payg1POptions.push(getOpus47_1MOption(fastMode))
       }
     }
-    // Previous Opus generations (4.7, 4.6) as legacy / opt-in entries
-    payg1POptions.push(getOpus47Option(fastMode))
-    payg1POptions.push(getOpus46Option(fastMode))
     payg1POptions.push(getHaiku45Option())
     payg1POptions.push(...profileModelOptions)
     return payg1POptions
@@ -574,7 +595,9 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (customSonnet !== undefined) {
     payg3pOptions.push(customSonnet)
   } else {
-    // Add Sonnet 4.6 since Sonnet 4.5 is the default
+    // Add Sonnet 5 (new) + Sonnet 4.6 (200k + 1M) since Sonnet 4.5 is the default.
+    // Sonnet 5 may not be available on all 3P providers yet — added as opt-in.
+    payg3pOptions.push(getSonnet5Option())
     payg3pOptions.push(getSonnet46Option())
     if (checkSonnet1mAccess()) {
       payg3pOptions.push(getSonnet46_1MOption())
@@ -619,6 +642,7 @@ function getModelFamilyInfo(
 
   // Sonnet family
   if (
+    canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4-6') ||
     canonical.includes('claude-sonnet-4-5') ||
     canonical.includes('claude-sonnet-4-') ||

@@ -33,6 +33,8 @@ const CASES: Array<[string, string]> = [
   ['claude-opus-4-7[1m]', 'Opus 4.7 (1M context)'],
   ['claude-opus-4-6', 'Opus 4.6'],
   ['claude-opus-4-6[1m]', 'Opus 4.6 (1M context)'],
+  // Sonnet 5 is 1M-native — single label, no "(1M context)" variant (like Fable 5).
+  ['claude-sonnet-5', 'Sonnet 5'],
   ['claude-sonnet-4-6', 'Sonnet 4.6'],
   ['claude-sonnet-4-6[1m]', 'Sonnet 4.6 (1M context)'],
 ]

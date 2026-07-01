@@ -253,11 +253,11 @@ export function getDefaultSonnetModel(): ModelName {
   if (getAPIProvider() === 'minimax') {
     return profileModel || 'MiniMax-M2.5'
   }
-  // Default to Sonnet 4.5 for 3P since they may not have 4.6 yet
+  // Default to Sonnet 4.5 for 3P since they may not have Sonnet 5 yet
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().sonnet45
   }
-  return getModelStrings().sonnet46
+  return getModelStrings().sonnet5
 }
 
 // @[MODEL LAUNCH]: Update the default Haiku model (3P providers may lag so keep defaults unchanged).
@@ -333,7 +333,7 @@ export function getRuntimeMainLoopModel(params: {
  *
  * This handles the built-in default:
  * - Opus for Max and Team Premium users
- * - Sonnet 4.6 for all other users (including Team Standard, Pro, Enterprise)
+ * - Sonnet 5 for all other users (including Team Standard, Pro, Enterprise)
  *
  * @returns The default model setting to use
  */
@@ -419,6 +419,9 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   if (name.includes('claude-opus-4')) {
     return 'claude-opus-4'
   }
+  if (name.includes('claude-sonnet-5')) {
+    return 'claude-sonnet-5'
+  }
   if (name.includes('claude-sonnet-4-6')) {
     return 'claude-sonnet-4-6'
   }
@@ -481,14 +484,14 @@ export function getClaudeAiUserDefaultModelDescription(
     }
     return `Opus 4.8 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
   }
-  return 'Sonnet 4.6 · Best for everyday tasks'
+  return 'Sonnet 5 · Best for everyday tasks'
 }
 
 export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
   if (setting === 'opusplan') {
-    return 'Opus 4.8 in plan mode, else Sonnet 4.6'
+    return 'Opus 4.8 in plan mode, else Sonnet 5'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
@@ -588,6 +591,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'Opus 4.1'
     case getModelStrings().opus40:
       return 'Opus 4'
+    case getModelStrings().sonnet5:
+      // 1M context is the default on Sonnet 5 — no [1m] variant needed.
+      return 'Sonnet 5'
     case getModelStrings().sonnet46 + '[1m]':
       return 'Sonnet 4.6 (1M context)'
     case getModelStrings().sonnet46:
@@ -817,6 +823,9 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   if (canonical.includes('claude-opus-4')) {
     return 'Opus 4'
   }
+  if (canonical.includes('claude-sonnet-5')) {
+    return 'Sonnet 5'
+  }
   if (canonical.includes('claude-sonnet-4-6')) {
     return has1m ? 'Sonnet 4.6 (with 1M context)' : 'Sonnet 4.6'
   }
@@ -855,6 +864,7 @@ export function modelRejectsSamplingParams(model: string): boolean {
   return (
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-8') ||
-    canonical.includes('fable-5')
+    canonical.includes('fable-5') ||
+    canonical.includes('sonnet-5')
   )
 }

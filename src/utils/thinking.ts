@@ -107,8 +107,17 @@ export function modelSupportsThinking(model: string): boolean {
   ) {
     return true
   }
-  // 3P (Bedrock/Vertex): only Opus 4+ and Sonnet 4+
-  return canonical.includes('sonnet-4') || canonical.includes('opus-4')
+  // 3P (Bedrock/Vertex): only Opus 4+ and Sonnet 4+/5. Sonnet 5 must be listed
+  // here too — it's offered on 3P and is added to the 3P interleaved-thinking /
+  // context-management gates in betas.ts, so omitting it would push those betas
+  // while sending no thinking block. modelRequiresAdaptiveThinking forces
+  // {type:'adaptive'} (never budget_tokens), which Bedrock/Vertex accept, so
+  // enabling it here does not 400.
+  return (
+    canonical.includes('sonnet-4') ||
+    canonical.includes('sonnet-5') ||
+    canonical.includes('opus-4')
+  )
 }
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports adaptive thinking.
@@ -121,6 +130,7 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
   // Supported by a subset of Claude 4 models
   if (
     canonical.includes('fable-5') ||
+    canonical.includes('sonnet-5') ||
     canonical.includes('opus-4-8') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-6') ||
@@ -155,13 +165,20 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
 // by the API (thinking: {type: 'enabled', budget_tokens} → 400).
 /**
  * Models where thinking is always on server-side and adaptive is the ONLY
- * accepted thinking configuration. Sending budget_tokens — claudin's default
- * thinking mode — or an explicit {type: 'disabled'} returns a 400 on these
- * models, so streaming.ts must force adaptive regardless of the
- * CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING opt-in.
+ * accepted thinking-ON configuration. Sending budget_tokens — claudin's default
+ * thinking mode — returns a 400 on these models, so streaming.ts must force
+ * adaptive regardless of the CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING opt-in. It also
+ * suppresses the temperature param (rejected as a non-default sampling param).
+ *
+ * - Fable 5: also rejects an explicit {type: 'disabled'} (400).
+ * - Sonnet 5: budget_tokens 400s (so it belongs here), but {type: 'disabled'} is
+ *   actually accepted. The streaming path omits the thinking param entirely when
+ *   thinking is off (it never sends {type: 'disabled'}), so treating Sonnet 5 the
+ *   same as Fable here loses no functionality.
  */
 export function modelRequiresAdaptiveThinking(model: string): boolean {
-  return getCanonicalName(model).includes('fable-5')
+  const canonical = getCanonicalName(model)
+  return canonical.includes('fable-5') || canonical.includes('sonnet-5')
 }
 
 /**

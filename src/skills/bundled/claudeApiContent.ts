@@ -36,12 +36,12 @@ import typescriptClaudeApiToolUse from './claude-api/typescript/claude-api/tool-
 export const SKILL_MODEL_VARS = {
   OPUS_ID: 'claude-opus-4-8',
   OPUS_NAME: 'Claude Opus 4.8',
-  SONNET_ID: 'claude-sonnet-4-6',
-  SONNET_NAME: 'Claude Sonnet 4.6',
+  SONNET_ID: 'claude-sonnet-5',
+  SONNET_NAME: 'Claude Sonnet 5',
   HAIKU_ID: 'claude-haiku-4-5',
   HAIKU_NAME: 'Claude Haiku 4.5',
   // Previous Sonnet ID — used in "do not append date suffixes" example in SKILL.md.
-  PREV_SONNET_ID: 'claude-sonnet-4-5',
+  PREV_SONNET_ID: 'claude-sonnet-4-6',
 } satisfies Record<string, string>
 
 export const SKILL_PROMPT: string = skillPrompt

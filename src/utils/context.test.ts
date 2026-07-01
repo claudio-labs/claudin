@@ -6,7 +6,12 @@ import type { ProviderProfile } from './config.js'
 // mocks `providerProfiles.js`. (Bun's `mock.module` is process-global, so
 // spreading captured real exports across files is the standard mitigation —
 // see CLAUDE.md.)
-const realProviderProfiles = await import('./providerProfiles.js')
+// Spread into a plain object: `mock.module` mutates the live ESM namespace in
+// place, so a bare `await import(...)` binding would already hold the mocked
+// getActiveProviderProfile by the time afterAll restores it — leaking the
+// OpenAI provider into every later test file (cacheProfile, contextManagement,
+// modelProjectPersistence). The snapshot preserves the original bindings.
+const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
 
 let mockProviderProfile: ProviderProfile | null = {
   id: 'test-openai',
@@ -65,6 +70,23 @@ afterEach(() => {
     delete process.env.OPENAI_MODEL
   } else {
     process.env.OPENAI_MODEL = originalEnv.OPENAI_MODEL
+  }
+})
+
+test('Sonnet 5 resolves to native 1M on first party (no [1m] suffix, no beta header)', () => {
+  // Regression: Sonnet 5 is native-1M like Fable 5. Without the native branch in
+  // getContextWindowForModel it falls through to the 200k default while the
+  // picker advertises 1M (auto-compact would fire at 200k). Force first party by
+  // clearing the active profile + OpenAI env so isOpenAIShimTransport() is false.
+  const prevProfile = mockProviderProfile
+  mockProviderProfile = null
+  delete process.env.CLAUDE_CODE_USE_OPENAI
+  invalidateActiveProviderCache()
+  try {
+    expect(getContextWindowForModel('claude-sonnet-5')).toBe(1_000_000)
+  } finally {
+    mockProviderProfile = prevProfile
+    invalidateActiveProviderCache()
   }
 })
 
