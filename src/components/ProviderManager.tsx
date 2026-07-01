@@ -34,6 +34,8 @@ import {
 } from '../utils/providerProfiles.js'
 import { clearGithubModelsToken } from '../utils/githubModelsCredentials.js'
 import {
+  buildDiscoveredModelOptions,
+  listOpenAICompatibleModels,
   probeAtomicChatReadiness,
   probeOllamaGenerationReadiness,
   type AtomicChatReadiness,
@@ -82,6 +84,7 @@ type Screen =
   | 'select-preset'
   | 'select-ollama-model'
   | 'select-atomic-chat-model'
+  | 'select-openai-model'
   | 'codex-oauth'
   | 'xai-oauth'
   | 'github-onboard'
@@ -127,6 +130,16 @@ type AtomicChatSelectionState =
     }
   | { state: 'unavailable'; message: string }
 
+type OpenAiModelSelectionState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | {
+      state: 'ready'
+      options: OptionWithDescription<string>[]
+      defaultValue?: string
+    }
+  | { state: 'unavailable'; message: string }
+
 const FORM_STEPS: Array<{
   key: DraftField
   label: string
@@ -147,19 +160,36 @@ const FORM_STEPS: Array<{
     helpText: 'API base URL used for this provider profile.',
   },
   {
-    key: 'model',
-    label: 'Default model',
-    placeholder: 'e.g. llama3.1:8b or glm-4.7; glm-4.7-flash',
-    helpText: 'Model name(s) to use. Separate multiple with ";" or ","; first is default.',
-  },
-  {
     key: 'apiKey',
     label: 'API key',
     placeholder: 'Leave empty if your provider does not require one',
     helpText: 'Optional. Press Enter with empty value to skip.',
     optional: true,
   },
+  {
+    key: 'model',
+    label: 'Default model',
+    placeholder: 'e.g. llama3.1:8b or glm-4.7; glm-4.7-flash',
+    helpText: 'Model name(s) to use. Separate multiple with ";" or ","; first is default.',
+  },
 ]
+
+// Sentinel row appended to the discovered-model list so the user can always
+// fall back to typing an id the provider's /models endpoint didn't return.
+// The NUL prefix guarantees it can't collide with a real model id.
+const MANUAL_MODEL_OPTION_VALUE = '\u0000__manual__'
+
+// Providers whose model step must NOT auto-discover from a `/models` endpoint:
+// `anthropic` is the native API, and `bedrock`/`vertex`/`foundry` run Claude via
+// cloud SDKs (no OpenAI-style model list). Everything else that reaches the
+// manual form (openai, mistral, gemini, and the many presets collapsed to
+// `openai`) is OpenAI-compatible over HTTP and supports discovery.
+const MODEL_DISCOVERY_EXCLUDED_PROVIDERS = new Set<ProviderProfile['provider']>([
+  'anthropic',
+  'bedrock',
+  'vertex',
+  'foundry',
+])
 
 const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
 const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
@@ -570,6 +600,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   })
   const [atomicChatSelection, setAtomicChatSelection] =
     React.useState<AtomicChatSelectionState>({ state: 'idle' })
+  const [openAiModelSelection, setOpenAiModelSelection] =
+    React.useState<OpenAiModelSelectionState>({ state: 'idle' })
   // Deferred initialization: useState initializers run synchronously during
   // render, so getProviderProfiles() and getActiveProviderProfile() would block
   // the UI (sync file I/O). Defer to queueMicrotask after first render.
@@ -819,6 +851,46 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       cancelled = true
     }
   }, [draft.baseUrl, screen])
+
+  React.useEffect(() => {
+    if (screen !== 'select-openai-model') {
+      return
+    }
+
+    let cancelled = false
+    setOpenAiModelSelection({ state: 'loading' })
+
+    void (async () => {
+      const ids = await listOpenAICompatibleModels({
+        baseUrl: draft.baseUrl,
+        apiKey: draft.apiKey || undefined,
+      })
+      if (cancelled) {
+        return
+      }
+      if (!ids || ids.length === 0) {
+        setOpenAiModelSelection({
+          state: 'unavailable',
+          message:
+            "Couldn't list models from this provider. Enter the model id manually, or go back to check the base URL and API key.",
+        })
+        return
+      }
+
+      const { options, defaultValue } = buildDiscoveredModelOptions(
+        ids,
+        draft.model,
+      )
+      setOpenAiModelSelection({ state: 'ready', options, defaultValue })
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // draft.model is read for the initial focus only and never changes while
+    // this screen is mounted, so it is intentionally excluded from the deps to
+    // avoid a spurious re-fetch.
+  }, [draft.baseUrl, draft.apiKey, screen])
 
   function refreshProfiles(): void {
     // Defer sync I/O to next microtask to prevent UI freeze.
@@ -1448,6 +1520,118 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     )
   }
 
+  function goToFormStep(key: DraftField): void {
+    const index = FORM_STEPS.findIndex(step => step.key === key)
+    setFormStepIndex(index < 0 ? 0 : index)
+    setCursorOffset(draft[key].length)
+    setErrorMessage(undefined)
+    setScreen('form')
+  }
+
+  function renderOpenAiModelSelection(): React.ReactNode {
+    if (
+      openAiModelSelection.state === 'loading' ||
+      openAiModelSelection.state === 'idle'
+    ) {
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text color="remember" bold>
+            Fetching models
+          </Text>
+          <Text dimColor>
+            Looking for models on your OpenAI-compatible provider…
+          </Text>
+          <Text dimColor>Press Esc to enter the model manually.</Text>
+        </Box>
+      )
+    }
+
+    if (openAiModelSelection.state === 'unavailable') {
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text color="remember" bold>
+            Choose a model
+          </Text>
+          <Text dimColor>{openAiModelSelection.message}</Text>
+          <Select
+            options={[
+              {
+                value: 'manual',
+                label: 'Enter manually',
+                description: 'Type the model id yourself',
+              },
+              {
+                value: 'back',
+                label: 'Back',
+                description: 'Return to the API key step',
+              },
+            ]}
+            onChange={(value: string) => {
+              if (value === 'manual') {
+                goToFormStep('model')
+                return
+              }
+              goToFormStep('apiKey')
+            }}
+            onCancel={() => goToFormStep('apiKey')}
+            visibleOptionCount={2}
+          />
+        </Box>
+      )
+    }
+
+    const options: OptionWithDescription<string>[] = [
+      ...openAiModelSelection.options,
+      {
+        value: MANUAL_MODEL_OPTION_VALUE,
+        label: 'Enter a model id manually',
+        description: 'Type an id the provider did not list',
+      },
+    ]
+    const focusValue =
+      openAiModelSelection.defaultValue ?? MANUAL_MODEL_OPTION_VALUE
+
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="remember" bold>
+          Choose a model
+        </Text>
+        <Text dimColor>Models from your OpenAI-compatible provider.</Text>
+        <Select
+          options={options}
+          defaultValue={focusValue}
+          defaultFocusValue={focusValue}
+          inlineDescriptions
+          visibleOptionCount={Math.min(8, options.length)}
+          onChange={(value: string) => {
+            if (value === MANUAL_MODEL_OPTION_VALUE) {
+              goToFormStep('model')
+              return
+            }
+            const nextDraft = { ...draft, model: value }
+            setDraft(nextDraft)
+            finishAfterModelStep(nextDraft)
+          }}
+          onCancel={() => goToFormStep('apiKey')}
+        />
+        <Text dimColor>Enter to select · Esc to go back</Text>
+      </Box>
+    )
+  }
+
+  function finishAfterModelStep(nextDraft: ProviderDraft): void {
+    if (pendingPreset === 'anthropic' || pendingPreset === 'custom') {
+      // Offer the optional custom-headers screen before save for presets where
+      // extra HTTP headers are commonly needed (Anthropic gateways, third-party
+      // OpenAI-compatible deployments).
+      setDraft(nextDraft)
+      setScreen('custom-headers')
+      return
+    }
+
+    persistDraft(nextDraft)
+  }
+
   function handleFormSubmit(value: string): void {
     const trimmed = value.trim()
 
@@ -1467,24 +1651,23 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     if (formStepIndex < FORM_STEPS.length - 1) {
       const nextIndex = formStepIndex + 1
       const nextKey = FORM_STEPS[nextIndex]?.key ?? 'name'
+      // For OpenAI-compatible providers, skip the free-text model step and let
+      // the user pick from the provider's /models list instead. Needs a base URL
+      // to query; a blank one falls through to the plain text step.
+      if (
+        nextKey === 'model' &&
+        !MODEL_DISCOVERY_EXCLUDED_PROVIDERS.has(draftProvider) &&
+        nextDraft.baseUrl.trim().length > 0
+      ) {
+        setScreen('select-openai-model')
+        return
+      }
       setFormStepIndex(nextIndex)
       setCursorOffset(nextDraft[nextKey].length)
       return
     }
 
-    if (
-      (pendingPreset === 'anthropic' || pendingPreset === 'custom') &&
-      screen === 'form'
-    ) {
-      // Last step done — offer the optional custom-headers screen before save
-      // for presets where extra HTTP headers are commonly needed (Anthropic
-      // gateways, third-party OpenAI-compatible deployments).
-      setDraft(nextDraft)
-      setScreen('custom-headers')
-      return
-    }
-
-    persistDraft(nextDraft)
+    finishAfterModelStep(nextDraft)
   }
 
   function handleBackFromForm(): void {
@@ -1509,6 +1692,18 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   useKeybinding('confirm:no', handleBackFromForm, {
     context: 'Settings',
     isActive: screen === 'form',
+  })
+
+  // While the model list is still loading there is no Select to catch Esc, so
+  // handle it here: an impatient user jumps straight to typing the model id
+  // instead of waiting out the discovery timeout. Once loaded, the Select's own
+  // onCancel handles Esc (back to the API key step).
+  useKeybinding('confirm:no', () => goToFormStep('model'), {
+    context: 'Settings',
+    isActive:
+      screen === 'select-openai-model' &&
+      (openAiModelSelection.state === 'loading' ||
+        openAiModelSelection.state === 'idle'),
   })
 
   function handleBackFromCloudExtras(): void {
@@ -2224,6 +2419,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       break
     case 'select-ollama-model':
       content = renderOllamaSelection()
+      break
+    case 'select-openai-model':
+      content = renderOpenAiModelSelection()
       break
     case 'select-atomic-chat-model':
       content = renderAtomicChatSelection()

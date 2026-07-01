@@ -250,6 +250,10 @@ function mockProviderManagerDependencies(
     clearCodexCredentials?: () => { success: boolean; warning?: string }
     getActiveProviderProfile?: () => unknown
     getProviderProfiles?: () => unknown[]
+    listOpenAICompatibleModels?: (options?: {
+      baseUrl?: string
+      apiKey?: string
+    }) => Promise<string[] | null>
     probeOllamaGenerationReadiness?: () => Promise<{
       state: 'ready' | 'unreachable' | 'no_models' | 'generation_failed'
       models: Array<
@@ -302,6 +306,11 @@ function mockProviderManagerDependencies(
         state: 'unreachable' as const,
         models: [],
       })),
+    // Keep the OpenAI-compatible model-discovery screen off the network by
+    // default: `null` renders the "unavailable" state instantly. Tests that
+    // exercise the discovered-model list can override this.
+    listOpenAICompatibleModels:
+      options?.listOpenAICompatibleModels ?? (async () => null),
   }))
 
   mock.module('../utils/githubModelsCredentials.js', () => ({
@@ -777,13 +786,25 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
   mounted.stdin.write('\r')
   await waitForFrameOutput(
     mounted.getOutput,
-    frame => frame.includes('Step 3 of 4'),
+    // Step 3 is now the API key (the form asks for it before the model).
+    frame => frame.includes('Step 3 of 4') && frame.includes('API key'),
   )
 
+  // Submitting the API key routes OpenAI-compatible providers to the model
+  // discovery screen. With discovery mocked to return null, it lands on the
+  // "unavailable" state with "Enter manually" focused.
   mounted.stdin.write('\r')
   await waitForFrameOutput(
     mounted.getOutput,
-    frame => frame.includes('Step 4 of 4'),
+    frame => frame.includes('Choose a model') && frame.includes('Enter manually'),
+  )
+
+  // "Enter manually" drops back to the model text step with the current
+  // multi-model value preserved.
+  mounted.stdin.write('\r')
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 4 of 4') && frame.includes('Default model'),
   )
 
   mounted.stdin.write('\r')
@@ -815,6 +836,97 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
       ({ newState }) => newState.mainLoopModel === 'gpt-5.4; gpt-5.4-mini',
     ),
   ).toBe(false)
+
+  await mounted.dispose()
+})
+
+test('ProviderManager discovers OpenAI-compatible models and saves the picked one', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const profile = {
+    id: 'provider_openai_discovery',
+    provider: 'openai',
+    name: 'Discovery Provider',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-5.4',
+    apiKey: 'sk-test',
+  }
+
+  const updateProviderProfile = mock(() => profile)
+
+  mockProviderManagerDependencies({
+    getActiveProviderProfile: () => profile,
+    getProviderProfiles: () => [profile],
+    updateProviderProfile,
+    // Return the list out of order to also prove alphabetical sorting; the
+    // current model (gpt-5.4) is an exact match so it starts focused.
+    listOpenAICompatibleModels: async () => ['gpt-5.4-mini', 'gpt-5.4'],
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Edit provider'),
+  )
+
+  // Menu: Add(0), Set active Global(1), Set active Project(2), Edit(3), ...
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider') && frame.includes('Discovery Provider'),
+  )
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider profile') && frame.includes('Step 1 of 4'),
+  )
+
+  mounted.stdin.write('\r') // name
+  await waitForFrameOutput(mounted.getOutput, frame => frame.includes('Step 2 of 4'))
+  mounted.stdin.write('\r') // baseUrl
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 3 of 4') && frame.includes('API key'),
+  )
+
+  // Submitting the API key opens the discovery screen. The list is sorted, so
+  // the current model (gpt-5.4) is at index 0 and starts focused; gpt-5.4-mini
+  // sorts right after it.
+  mounted.stdin.write('\r')
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose a model') && frame.includes('gpt-5.4-mini'),
+  )
+
+  // Move focus down one row and pick a DIFFERENT model than the current one.
+  // Landing on gpt-5.4-mini after a single step proves the list actually
+  // rendered, that it is ordered (gpt-5.4 before gpt-5.4-mini), and that the
+  // current model was the initial focus — none of which a "just accept the
+  // pre-focused value" test would catch.
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+  await waitForCondition(() => updateProviderProfile.mock.calls.length > 0)
+
+  expect(updateProviderProfile).toHaveBeenCalledWith(
+    'provider_openai_discovery',
+    expect.objectContaining({ model: 'gpt-5.4-mini' }),
+  )
 
   await mounted.dispose()
 })

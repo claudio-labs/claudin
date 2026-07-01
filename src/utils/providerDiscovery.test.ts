@@ -60,6 +60,47 @@ test('returns null when a local openai-compatible /models request fails', async 
   ).resolves.toBeNull()
 })
 
+test('buildDiscoveredModelOptions dedupes and sorts case-insensitively', async () => {
+  const { buildDiscoveredModelOptions } = await loadProviderDiscoveryModule()
+
+  const { options } = buildDiscoveredModelOptions([
+    'Zephyr',
+    'alpha',
+    'Zephyr',
+    'beta',
+  ])
+
+  expect(options.map((o: { value: string }) => o.value)).toEqual([
+    'alpha',
+    'beta',
+    'Zephyr',
+  ])
+  expect(
+    options.every((o: { value: string; label: string }) => o.label === o.value),
+  ).toBe(true)
+})
+
+test('buildDiscoveredModelOptions sets defaultValue only on an exact match', async () => {
+  const { buildDiscoveredModelOptions } = await loadProviderDiscoveryModule()
+
+  expect(buildDiscoveredModelOptions(['a', 'b'], 'b').defaultValue).toBe('b')
+  // off-list id → no default so the caller focuses the manual-entry row
+  expect(buildDiscoveredModelOptions(['a', 'b'], 'c').defaultValue).toBeUndefined()
+  // multi-model (";"/",") value never matches a single id → no default
+  expect(
+    buildDiscoveredModelOptions(['a', 'b'], 'a;b').defaultValue,
+  ).toBeUndefined()
+})
+
+test('buildDiscoveredModelOptions handles empty input', async () => {
+  const { buildDiscoveredModelOptions } = await loadProviderDiscoveryModule()
+
+  expect(buildDiscoveredModelOptions([])).toEqual({
+    options: [],
+    defaultValue: undefined,
+  })
+})
+
 test('detects LM Studio from the default localhost port', async () => {
   const { getLocalOpenAICompatibleProviderLabel } =
     await loadProviderDiscoveryModule()

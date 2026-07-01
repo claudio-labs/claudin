@@ -275,6 +275,37 @@ export async function listOpenAICompatibleModels(options?: {
   }
 }
 
+export type DiscoveredModelOptions = {
+  options: Array<{ value: string; label: string }>
+  defaultValue?: string
+}
+
+/**
+ * Turn a raw list of discovered model ids into `Select`-ready options: deduped,
+ * sorted alphabetically (case-insensitive), mapped to `{ value, label }`.
+ *
+ * `defaultValue` is set only when `currentModel` exactly matches one discovered
+ * id. For an off-list id or a multi-model (";"/",") value it stays `undefined`,
+ * so the caller can focus the manual-entry row and avoid overwriting the saved
+ * value. Returns a plain `{ value, label }` shape (assignable to the
+ * `OptionWithDescription` used by the picker) so this stays free of ink imports
+ * and unit-testable.
+ */
+export function buildDiscoveredModelOptions(
+  ids: string[],
+  currentModel?: string,
+): DiscoveredModelOptions {
+  const options = Array.from(new Set(ids))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    .map(id => ({ value: id, label: id }))
+  const trimmed = currentModel?.trim()
+  const defaultValue =
+    trimmed && options.some(option => option.value === trimmed)
+      ? trimmed
+      : undefined
+  return { options, defaultValue }
+}
+
 export async function hasLocalAtomicChat(baseUrl?: string): Promise<boolean> {
   const { signal, clear } = withTimeoutSignal(1200)
   try {
