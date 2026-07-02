@@ -10,7 +10,12 @@ import {
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
 } from '../thinking.js'
-import { modelSupportsEffort } from '../effort.js'
+import {
+  getAvailableEffortLevels,
+  modelSupportsEffort,
+  modelSupportsMaxEffort,
+  modelSupportsXhighEffort,
+} from '../effort.js'
 import { COST_TIER_3_15, MODEL_COSTS } from '../modelCost.js'
 import { CLAUDE_SONNET_5_CONFIG } from './configs.js'
 
@@ -50,6 +55,19 @@ test('requires adaptive thinking (budget_tokens 400s)', () => {
 
 test('supports the effort parameter', () => {
   expect(modelSupportsEffort('claude-sonnet-5')).toBe(true)
+})
+
+test('supports the xhigh and max effort tiers (like Opus 4.8 / Fable 5)', () => {
+  expect(modelSupportsXhighEffort('claude-sonnet-5')).toBe(true)
+  expect(modelSupportsMaxEffort('claude-sonnet-5')).toBe(true)
+  // The /effort picker should surface the full ladder, not stop at 'high'.
+  expect(getAvailableEffortLevels('claude-sonnet-5')).toEqual([
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+  ])
 })
 
 test('uses the standard $3/$15 Sonnet pricing tier', () => {

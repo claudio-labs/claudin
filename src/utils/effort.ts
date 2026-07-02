@@ -76,24 +76,25 @@ export function modelSupportsEffort(model: string): boolean {
 }
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'max' effort.
-// Per API docs, 'max' is Opus 4.6/4.7 only for public models — other models return an error.
+// Per API docs, 'max' is available on Opus 4.6/4.7/4.8, Fable 5, and Sonnet 5 for
+// public models — other models return an error.
 export function modelSupportsMaxEffort(model: string): boolean {
   const supported3P = get3PModelCapabilityOverride(model, 'max_effort')
   if (supported3P !== undefined) {
     return supported3P
   }
   const m = model.toLowerCase()
-  if (m.includes('fable-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
   }
   return false
 }
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'xhigh' effort.
-// Per API docs, 'xhigh' is available on Opus 4.7 and Opus 4.8 only.
+// Per API docs, 'xhigh' is available on Opus 4.7/4.8, Fable 5, and Sonnet 5 only.
 export function modelSupportsXhighEffort(model: string): boolean {
   const m = model.toLowerCase()
-  return m.includes('fable-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
+  return m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {
@@ -442,9 +443,9 @@ export function getEffortLevelDescription(level: EffortLevel | OpenAIEffortLevel
     case 'high':
       return 'Comprehensive implementation with extensive testing and documentation'
     case 'max':
-      return 'Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8 only)'
+      return 'Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8, Fable 5, Sonnet 5)'
     case 'xhigh':
-      return 'Extended capability for long-horizon work (Opus 4.7/4.8, OpenAI/Codex)'
+      return 'Extended capability for long-horizon work (Opus 4.7/4.8, Fable 5, Sonnet 5, OpenAI/Codex)'
   }
 }
 
