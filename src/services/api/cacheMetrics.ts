@@ -319,6 +319,27 @@ export function extractCacheReadFromRawUsage(usage: RawUsage): number {
 }
 
 /**
+ * Read the cache-write (creation) token count from a RAW provider usage
+ * object. Providers with Anthropic models behind an OpenAI-compatible
+ * surface (LiteLLM, one-api/new-api relays, windsurf-openai) ship the
+ * Anthropic extension field verbatim; some emit only the ephemeral TTL
+ * split. Dropping this bucket makes `ctx`/auto-compact/cost undercount by
+ * the entire written prefix on every cache-write turn.
+ */
+export function extractCacheCreationFromRawUsage(usage: RawUsage): number {
+  if (!usage || typeof usage !== 'object') return 0
+  const u = usage as Record<string, unknown>
+  // 1. Anthropic extension — summed field.
+  const anthropicCreation = asNumber(u.cache_creation_input_tokens)
+  if (anthropicCreation > 0) return anthropicCreation
+  // 2. TTL split without the summed field (Anthropic `cache_creation`).
+  return (
+    asNumber(pickPath(usage, ['cache_creation', 'ephemeral_5m_input_tokens'])) +
+    asNumber(pickPath(usage, ['cache_creation', 'ephemeral_1h_input_tokens']))
+  )
+}
+
+/**
  * Shape produced by the shim layer — matches the Anthropic BetaUsage
  * fields that every downstream caller (cost-tracker, REPL, /cache-stats)
  * consumes. Keeping it in this module lets the shim and the integration
@@ -400,7 +421,10 @@ export function buildAnthropicUsageFromRawUsage(
   return {
     input_tokens: fresh,
     output_tokens: output,
-    cache_creation_input_tokens: 0,
+    // Cache-write is disjoint from prompt_tokens (OpenAI semantics) and
+    // from Anthropic's fresh input_tokens, so no subtraction is needed —
+    // pass it through so ctx/auto-compact/cost see the full context.
+    cache_creation_input_tokens: extractCacheCreationFromRawUsage(raw),
     cache_read_input_tokens: cacheRead,
   }
 }

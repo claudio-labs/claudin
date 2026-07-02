@@ -38,6 +38,7 @@ type Scenario = {
   expectedTotal: number
   expectedHitRate: number
   expectedFreshInput: number
+  expectedCreated?: number
 }
 
 // End-to-end scenarios for every provider shape the Claudin shim layer
@@ -56,10 +57,12 @@ const scenarios: Scenario[] = [
     // Anthropic native doesn't go through the shim in production, but
     // buildAnthropicUsageFromRawUsage handles it correctly as passthrough:
     // prompt_tokens fallback is 0, so fresh comes from input_tokens (200),
-    // cache_read is picked up from cache_read_input_tokens (800).
-    expectedTotal: 1_000, // 200 fresh + 800 read (created is not tracked at this layer)
-    expectedHitRate: 800 / 1_000,
+    // cache_read is picked up from cache_read_input_tokens (800) and
+    // cache_creation passes through (100).
+    expectedTotal: 1_100, // 200 fresh + 800 read + 100 created
+    expectedHitRate: 800 / 1_100,
     expectedFreshInput: 200,
+    expectedCreated: 100,
   },
   {
     name: 'OpenAI Chat Completions via openaiShim',
@@ -127,6 +130,32 @@ const scenarios: Scenario[] = [
     expectedHitRate: 0.8,
     expectedFreshInput: 800,
   },
+  {
+    // Anthropic models behind an OpenAI-compatible relay (LiteLLM,
+    // one-api/new-api, windsurf-openai): prompt_tokens = fresh + cacheRead
+    // per OpenAI semantics, cache-write ships on the Anthropic extension
+    // field. Regression for the footer `ctx` undercount — the builder used
+    // to zero cache_creation, hiding the entire written prefix on every
+    // cache-write turn.
+    name: 'Anthropic-backed OpenAI relay — cache_creation extension passthrough',
+    provider: 'openai',
+    rawUsage: {
+      prompt_tokens: 6_038,
+      completion_tokens: 500,
+      prompt_tokens_details: { cached_tokens: 6_000 },
+      cache_creation_input_tokens: 18_000,
+      cache_read_input_tokens: 6_000,
+      cache_creation: {
+        ephemeral_5m_input_tokens: 18_000,
+        ephemeral_1h_input_tokens: 0,
+      },
+    },
+    expectedRead: 6_000,
+    expectedTotal: 24_038, // 38 fresh + 6000 read + 18000 created
+    expectedHitRate: 6_000 / 24_038,
+    expectedFreshInput: 38,
+    expectedCreated: 18_000,
+  },
 ]
 
 describe('raw usage → shim → extractCacheMetrics pipeline', () => {
@@ -137,6 +166,7 @@ describe('raw usage → shim → extractCacheMetrics pipeline', () => {
       const shimmed = buildAnthropicUsageFromRawUsage(s.rawUsage)
       expect(shimmed.cache_read_input_tokens).toBe(s.expectedRead)
       expect(shimmed.input_tokens).toBe(s.expectedFreshInput)
+      expect(shimmed.cache_creation_input_tokens).toBe(s.expectedCreated ?? 0)
 
       const metrics = extractCacheMetrics(
         shimmed as unknown as Record<string, unknown>,
