@@ -19,6 +19,7 @@ import {
   countMessagesTokensWithAPI,
   countTokensViaHaikuFallback,
   roughTokenCountEstimation,
+  roughTokenCountEstimationForCountRequest,
 } from '../services/tokenEstimation.js'
 import { estimateSkillFrontmatterTokens } from '../skills/loadSkillsDir.js'
 import {
@@ -77,7 +78,7 @@ export const TOOL_TOKEN_COUNT_OVERHEAD = 500
 async function countTokensWithFallback(
   messages: Anthropic.Beta.Messages.BetaMessageParam[],
   tools: Anthropic.Beta.Messages.BetaToolUnion[],
-): Promise<number | null> {
+): Promise<number> {
   try {
     const result = await countMessagesTokensWithAPI(messages, tools)
     if (result !== null) {
@@ -93,19 +94,26 @@ async function countTokensWithFallback(
 
   try {
     const fallbackResult = await countTokensViaHaikuFallback(messages, tools)
-    if (fallbackResult === null) {
-      logForDebugging(
-        `countTokensWithFallback: haiku fallback also returned null (${tools.length} tools)`,
-      )
+    if (fallbackResult !== null) {
+      return fallbackResult
     }
-    return fallbackResult
+    logForDebugging(
+      `countTokensWithFallback: haiku fallback also returned null (${tools.length} tools)`,
+    )
   } catch (err) {
     logForDebugging(
       `countTokensWithFallback: haiku fallback failed: ${errorMessage(err)}`,
     )
     logError(err)
-    return null
   }
+
+  // Local estimation — providers served through the OpenAI shim have no
+  // countTokens endpoint, so both API paths above return null; without this
+  // every API-counted /context category displayed 0 and was hidden. Tool
+  // requests add the same ~500-token request overhead the real API includes,
+  // keeping the downstream TOOL_TOKEN_COUNT_OVERHEAD subtraction valid.
+  const estimate = roughTokenCountEstimationForCountRequest(messages, tools)
+  return tools.length > 0 ? estimate + TOOL_TOKEN_COUNT_OVERHEAD : estimate
 }
 
 interface ContextCategory {
@@ -248,13 +256,13 @@ export async function countToolDefinitionTokens(
     ),
   )
   const result = await countTokensWithFallback([], toolSchemas)
-  if (result === null || result === 0) {
+  if (result === 0) {
     const toolNames = tools.map(t => t.name).join(', ')
     logForDebugging(
       `countToolDefinitionTokens returned ${result} for ${tools.length} tools: ${toolNames.slice(0, 100)}${toolNames.length > 100 ? '...' : ''}`,
     )
   }
-  return result ?? 0
+  return result
 }
 
 /** Extract a human-readable name from a system prompt section's content */
@@ -891,7 +899,7 @@ async function approximateMessageTokens(
     [],
   )
 
-  breakdown.totalTokens = approximateMessageTokens ?? 0
+  breakdown.totalTokens = approximateMessageTokens
   return breakdown
 }
 

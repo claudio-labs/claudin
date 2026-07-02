@@ -6,8 +6,10 @@ import {
   getActiveModelBytesPerToken,
   getTokenizerConfig,
   roughTokenCountEstimation,
+  roughTokenCountEstimationForCountRequest,
   roughTokenCountEstimationForFileType,
 } from './tokenEstimation.js'
+import { invalidateClientCache } from './api/clientCache.js'
 
 const realModel = { ...(await import('../utils/model/model.js')) }
 const realClient = { ...(await import('./api/client.js')) }
@@ -178,6 +180,7 @@ describe('getTokenizerConfig — word boundary matching', () => {
 
 describe('countTokensViaHaikuFallback — uses free countTokens, not paid messages.create', () => {
   it('calls beta.messages.countTokens (free) and never beta.messages.create (paid)', async () => {
+    invalidateClientCache()
     const countTokensSpy = mock(async () => ({ input_tokens: 42 }))
     const createSpy = mock(async () => {
       throw new Error('messages.create must NOT be called for token counting')
@@ -209,3 +212,67 @@ describe('countTokensViaHaikuFallback — uses free countTokens, not paid messag
   })
 })
 
+describe('countTokensViaHaikuFallback — client without a counting endpoint', () => {
+  it('returns null instead of throwing when the client lacks countTokens (OpenAI shim)', async () => {
+    invalidateClientCache()
+    const createSpy = mock(async () => {
+      throw new Error('messages.create must NOT be called for token counting')
+    })
+    // Shim-shaped client: beta.messages exists but has no countTokens method.
+    mock.module('./api/client.js', () => ({
+      getAnthropicClient: async () => ({
+        beta: {
+          messages: {
+            create: createSpy,
+          },
+        },
+      }),
+    }))
+    mock.module('./api/activeProvider.js', () => ({
+      ...realActiveProvider,
+      tryGetActiveProvider: () => ({ transport: 'openai_compat' }),
+      getAPIProvider: () => 'openai',
+    }))
+
+    const result = await countTokensViaHaikuFallback(
+      [{ role: 'user', content: 'hello' }],
+      [],
+    )
+
+    expect(result).toBeNull()
+    expect(createSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('roughTokenCountEstimationForCountRequest — local counting fallback', () => {
+  it('estimates string message content with the active model ratio', () => {
+    setActiveModel('claude-opus-4-8-high') // claude family → 3.5 bytes/token
+    expect(
+      roughTokenCountEstimationForCountRequest(
+        [{ role: 'user', content: 'a'.repeat(35) }],
+        [],
+      ),
+    ).toBe(10)
+  })
+
+  it('sums block content across messages plus serialized tool schemas', () => {
+    setActiveModel('claude-sonnet-4-5') // 3.5 bytes/token
+    const tools = [
+      { name: 'MyTool', description: 'does things', input_schema: { type: 'object' } },
+    ]
+    const expectedToolTokens = Math.round(JSON.stringify(tools).length / 3.5)
+    const result = roughTokenCountEstimationForCountRequest(
+      [
+        { role: 'user', content: [{ type: 'text', text: 'a'.repeat(35) }] },
+        { role: 'assistant', content: 'b'.repeat(70) },
+      ],
+      tools,
+    )
+    expect(result).toBe(10 + 20 + expectedToolTokens)
+  })
+
+  it('returns 0 for an empty request and skips the tools term when none given', () => {
+    setActiveModel('claude-sonnet-4-5')
+    expect(roughTokenCountEstimationForCountRequest([], [])).toBe(0)
+  })
+})

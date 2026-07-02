@@ -166,6 +166,14 @@ export async function countMessagesTokensWithAPI(
         source: 'count_tokens',
       })
 
+      // Clients served through the OpenAI shim expose no counting endpoint
+      // (beta.messages only has create/stream). Return null instead of
+      // throwing so callers fall back to local estimation without an
+      // error-log entry per call.
+      if (typeof anthropic.beta?.messages?.countTokens !== 'function') {
+        return null
+      }
+
       const filteredBetas =
         getAPIProvider() === 'vertex'
           ? betas.filter(b => VERTEX_COUNT_TOKENS_ALLOWED_BETAS.has(b))
@@ -403,6 +411,12 @@ export async function countTokensViaHaikuFallback(
     source: 'count_tokens',
   })
 
+  // Same capability guard as countMessagesTokensWithAPI — the OpenAI shim
+  // client has no countTokens, so the "haiku fallback" can't help either.
+  if (typeof anthropic.beta?.messages?.countTokens !== 'function') {
+    return null
+  }
+
   // Strip tool search-specific fields (caller, tool_reference) before sending
   // These fields are only valid with the tool search beta header
   const normalizedMessages = stripToolSearchFieldsFromMessages(messages)
@@ -507,6 +521,29 @@ export function roughTokenCountEstimationForContent(
     totalTokens += roughTokenCountEstimationForBlock(block)
   }
   return totalTokens
+}
+
+/**
+ * Local estimate for a countTokens-style request: message content plus the
+ * serialized tool definitions. Used as the last-resort fallback when no
+ * counting endpoint exists — any provider served through the OpenAI shim
+ * (openai_compat, gemini, mistral, github_copilot, codex_responses) lacks
+ * `beta.messages.countTokens`, and Bedrock's counting can fail too.
+ */
+export function roughTokenCountEstimationForCountRequest(
+  messages: readonly MessageParam[],
+  tools: readonly unknown[],
+): number {
+  let total = 0
+  for (const message of messages) {
+    total += roughTokenCountEstimationForContent(
+      message.content as string | Array<Anthropic.ContentBlockParam>,
+    )
+  }
+  if (tools.length > 0) {
+    total += roughTokenCountEstimation(jsonStringify(tools))
+  }
+  return total
 }
 
 function roughTokenCountEstimationForBlock(
