@@ -212,6 +212,8 @@ For each suggested skill, provide: name, one-line purpose, and why it fits this 
 
 If \`.claudin/skills/\` already exists with skills, review them first. Do not overwrite existing skills — only propose new ones that complement what is already there.
 
+When authoring each SKILL.md, invoke the bundled \`create\` skill (Skill tool, \`skill: "create"\`) for the full Claudin frontmatter contract (\`when_to_use\`, \`allowed-tools\`, \`context: fork\`, conditional \`paths\`, etc.) instead of relying on the minimal template below.
+
 Create each skill at \`.claudin/skills/<skill-name>/SKILL.md\`:
 
 \`\`\`yaml
@@ -305,9 +307,9 @@ Re-open the AGENTS.md you wrote in Phase 4 and add/update these sections **idemp
 - \`## Guardrails\` — one bullet per guardrail category accepted in Phase 7, e.g. \`- Commits require confirmation (\`permissions.ask\` on \`Bash(git commit:*)\`).\`, \`- Force-push and hard reset are blocked.\`. Skip if no guardrails were configured.
 - If a real git pre-commit hook was created in Phase 7, add a single line under your existing workflow/testing section (or create \`## Workflow\` if absent) like: \`Pre-commit hook at \`.git/hooks/pre-commit\` runs <commands>.\`
 
-Finish the file with a one-line pointer: \`To refine: \`/agents\` (subagents), \`/skills\` (skills), \`/permissions\` (viewer for permission rules — edit \`settings.json\` directly to change them).\`
+Finish the file with a one-line pointer: \`To refine: \`/create\` (skills, rules, agents), \`/agents\` (subagents), \`/skills\` (skills), \`/permissions\` (viewer for permission rules — edit \`settings.json\` directly to change them).\`
 
-**Important — interaction with Phase 6**: Phase 6 (skill-creator) may have already written sections into AGENTS.md. Always read AGENTS.md before editing in this pass; never overwrite an existing section, only update its contents.
+**Important — interaction with Phase 6**: Phase 6 (skill creation) may have already written sections into AGENTS.md. Always read AGENTS.md before editing in this pass; never overwrite an existing section, only update its contents.
 
 ### 8b: Update .gitignore
 
@@ -327,7 +329,7 @@ When building the list, work through these checks and include only what applies:
 - If frontend code was detected (React, Vue, Svelte, etc.): \`/plugin install frontend-design@claude-plugins-official\` gives Claude design principles and component patterns so it produces polished UI; \`/plugin install playwright@claude-plugins-official\` lets Claude launch a real browser, screenshot what it built, and fix visual bugs itself.
 - If you found gaps in the Phase 7 optimizations menu (missing GitHub CLI, missing linting, etc.) and the user said no: list them here with a one-line reason why each helps. (This is separate from the guardrails sub-section of Phase 7.)
 - If tests are missing or sparse: suggest setting up a test framework so Claude can verify its own changes.
-- To help you create skills and optimize existing skills using evals, Claude Code has an official skill-creator plugin you can install. Install it with \`/plugin install skill-creator@claude-plugins-official\`, then run \`/skill-creator <skill-name>\` to create new skills or refine any existing skill. (Always include this one.)
+- To create or refine skills, rules, and custom agents later, Claudin ships the \`/create\` skill — no install needed; it knows the \`.claudin/\` project and \`~/.claudin/\` global structure. For eval-driven skill optimization there is also the official skill-creator plugin: \`/plugin install skill-creator@claude-plugins-official\`. (Always include this one.)
 - Browse official plugins with \`/plugin\` — these bundle skills, agents, hooks, and MCP servers that you may find helpful. You can also create your own custom plugins to share them with others. (Always include this one.)`
 
 const command = {

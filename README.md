@@ -76,6 +76,7 @@ Run `/provider doctor` to check your active profile, or `/provider migrate` to i
 | `/commit` | Commit changes |
 | `/mcp` | Manage MCP servers |
 | `/skills` | List and run user-invocable skills |
+| `/create` | Create or refine skills, rules, and custom agents |
 | `/memory` | View and manage project memory |
 | `/hooks` | Configure event hooks |
 | `/usage` / `/cost` | Token and cost tracking |

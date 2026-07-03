@@ -89,7 +89,7 @@ Single entrypoint, single-file bundle. The CLI is bundled to `dist/cli.mjs` and 
 - `src/components/` + `src/screens/` + `src/ink/` — Ink-based React TUI. `src/main.tsx` mounts the app; `src/screens/REPL.tsx` is the main loop. `src/native-ts/yoga-layout` is a TS port to avoid a native-addon dep.
 - `src/grpc/server.ts` + `src/proto/claudin.proto` — headless gRPC service. Bidirectional streaming: text chunks, tool calls, `action_required` permission prompts.
 - `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: scoped per-project under `~/.claudin/projects/<dir>/memory/`, written as `.md` files indexed by `MEMORY.md`.
-- `src/skills/` — user-invocable skills (`/<skill-name>`).
+- `src/skills/` — user-invocable skills (`/<skill-name>`). Bundled skills live in `src/skills/bundled/`; `/create` (create.ts) teaches the model to author skills/rules/agents in the `.claudin/` (project) and `~/.claudin/` (global) structure.
 - `src/utils/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` and `~/.openclaude/` configs into `~/.claudin/`. Triggered automatically and rerunnable via `/provider migrate`. Override the config dir with `CLAUDIN_CONFIG_DIR`.
 
 ## Configuration & Credentials
