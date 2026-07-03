@@ -585,6 +585,10 @@ ${exports}
     '@opentelemetry/semantic-conventions',
     // Native image processing
     'sharp',
+    // Prebuilt ripgrep binary — resolved from node_modules at runtime
+    // (src/utils/ripgrep.ts). Externalised so Bun never inlines the package
+    // and its internal per-platform binary path resolution stays intact.
+    '@vscode/ripgrep',
     // Cloud provider SDKs
     '@aws-sdk/client-bedrock',
     '@aws-sdk/client-bedrock-runtime',

@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test'
+import { existsSync } from 'fs'
 import path from 'path'
 
-import { resolveRipgrepConfig, wrapRipgrepUnavailableError } from './ripgrep.js'
+import {
+  resolveRipgrepConfig,
+  ripgrepCommand,
+  wrapRipgrepUnavailableError,
+} from './ripgrep.js'
 
 const MOCK_BUILTIN_PATH = path.normalize(
   process.platform === 'win32'
@@ -41,6 +46,21 @@ test('ripgrepCommand keeps builtin mode when bundled binary exists', () => {
     command: MOCK_BUILTIN_PATH,
     args: [],
   })
+})
+
+test('getRipgrepConfig prefers the packaged @vscode/ripgrep binary when present', () => {
+  // @vscode/ripgrep is a real dependency, so its per-platform prebuilt rg is in
+  // node_modules during tests. getRipgrepConfig should resolve to it (builtin
+  // mode, no argv0) rather than the legacy vendored path or a system rg.
+  const { rgPath, argv0 } = ripgrepCommand()
+
+  expect(argv0).toBeUndefined()
+  // Assert the resolved binary is specifically the packaged one — a
+  // node_modules/@vscode/ripgrep* path — not the in-tree vendored copy or a
+  // system `rg` (either of which would satisfy a looser "contains ripgrep").
+  expect(rgPath).toContain('node_modules')
+  expect(rgPath).toContain(`@vscode${path.sep}ripgrep`)
+  expect(existsSync(rgPath)).toBe(true)
 })
 
 test('wrapRipgrepUnavailableError explains missing packaged fallback', () => {

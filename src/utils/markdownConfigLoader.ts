@@ -17,7 +17,7 @@ import type { FrontmatterData } from './frontmatterParser.js'
 import { parseFrontmatter } from './frontmatterParser.js'
 import { findCanonicalGitRoot, findGitRoot } from './git.js'
 import { parseToolListFromCLI } from './permissions/permissionSetup.js'
-import { ripGrep } from './ripgrep.js'
+import { ripGrep, RipgrepUnavailableError } from './ripgrep.js'
 import {
   isSettingSourceEnabled,
   type SettingSource,
@@ -543,6 +543,13 @@ async function findMarkdownFilesNative(
  * @param dir Directory (eg. "~/.claudin/commands")
  * @returns Array of parsed markdown files with metadata
  */
+// Once ripgrep is found to be missing (e.g. Windows without `rg` on PATH), skip
+// trying it for the rest of the process and go straight to the native walk. This
+// avoids one failed spawn per config dir and, more importantly, prevents config
+// discovery (agents/commands/skills/output-styles/workflows) from silently
+// finding nothing when no ripgrep binary is available.
+let ripgrepUnavailableForMarkdown = false
+
 async function loadMarkdownFiles(dir: string): Promise<
   {
     filePath: string
@@ -552,10 +559,13 @@ async function loadMarkdownFiles(dir: string): Promise<
 > {
   // File search strategy:
   // - Default: ripgrep (faster, battle-tested)
-  // - Fallback: native Node.js (when CLAUDE_CODE_USE_NATIVE_FILE_SEARCH is set)
+  // - Fallback: native Node.js (when CLAUDE_CODE_USE_NATIVE_FILE_SEARCH is set,
+  //   or automatically when the ripgrep binary is unavailable)
   //
   // Why both? Ripgrep has poor startup performance in native builds.
-  const useNative = isEnvTruthy(process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH)
+  const useNative =
+    ripgrepUnavailableForMarkdown ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH)
   const signal = AbortSignal.timeout(3000)
   let files: string[]
   try {
@@ -567,11 +577,31 @@ async function loadMarkdownFiles(dir: string): Promise<
           signal,
         )
   } catch (e: unknown) {
-    // Handle missing/inaccessible dir directly instead of pre-checking
-    // existence (TOCTOU). findMarkdownFilesNative already catches internally;
-    // ripGrep rejects on inaccessible target paths.
-    if (isFsInaccessible(e)) return []
-    throw e
+    // ripgrep binary missing/unstartable (distinct from an inaccessible target
+    // dir — see wrapRipgrepUnavailableError). Fall back to the native Node walk
+    // instead of returning [], so custom agents/commands/skills still load on
+    // machines without `rg` on PATH. Remember it to skip ripgrep on later dirs.
+    if (e instanceof RipgrepUnavailableError) {
+      if (!ripgrepUnavailableForMarkdown) {
+        ripgrepUnavailableForMarkdown = true
+        logForDebugging(
+          `ripgrep unavailable for markdown config search; falling back to native file search (${e.message})`,
+        )
+      }
+      try {
+        files = await findMarkdownFilesNative(dir, AbortSignal.timeout(3000))
+      } catch (nativeErr: unknown) {
+        if (isFsInaccessible(nativeErr)) return []
+        throw nativeErr
+      }
+    } else if (isFsInaccessible(e)) {
+      // Handle missing/inaccessible dir directly instead of pre-checking
+      // existence (TOCTOU). findMarkdownFilesNative already catches internally;
+      // ripGrep rejects on inaccessible target paths.
+      return []
+    } else {
+      throw e
+    }
   }
 
   const results = await Promise.all(

@@ -33,7 +33,11 @@ import {
   getPackageManager,
 } from './nativeInstaller/packageManagers.js'
 import { getPlatform } from './platform.js'
-import { getRipgrepStatus } from './ripgrep.js'
+import {
+  ensureRipgrepTested,
+  getRipgrepInstallHint,
+  getRipgrepStatus,
+} from './ripgrep.js'
 import { SandboxManager } from './sandbox/sandbox-adapter.js'
 import { getManagedFilePath } from './settings/managedPath.js'
 import { CUSTOMIZATION_SURFACES } from './settings/types.js'
@@ -628,7 +632,10 @@ export async function getDoctorDiagnostic(): Promise<DiagnosticInfo> {
     }
   }
 
-  // Get ripgrep status and configuration
+  // Get ripgrep status and configuration. Actively probe so `working` reflects
+  // reality here (the doctor is where a user checks health) instead of the
+  // untested `null` that the fire-and-forget probe leaves before any search.
+  await ensureRipgrepTested()
   const ripgrepStatusRaw = getRipgrepStatus()
 
   // Provide simple ripgrep status info
@@ -637,6 +644,17 @@ export async function getDoctorDiagnostic(): Promise<DiagnosticInfo> {
     mode: ripgrepStatusRaw.mode,
     systemPath:
       ripgrepStatusRaw.mode === 'system' ? ripgrepStatusRaw.path : null,
+  }
+
+  // Surface a broken file-search backend as an actionable warning — with no
+  // working `rg`, Grep/Glob fail and config discovery falls back to a slower
+  // markdown-only native walk.
+  if (ripgrepStatus.working === false) {
+    warnings.push({
+      issue:
+        'File search (ripgrep) is not working — Grep/Glob and config discovery are degraded',
+      fix: getRipgrepInstallHint(),
+    })
   }
 
   // Get package manager info if running from package manager

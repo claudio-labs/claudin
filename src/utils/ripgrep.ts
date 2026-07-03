@@ -2,6 +2,7 @@ import type { ChildProcess, ExecFileException } from 'child_process'
 import { execFile, spawn } from 'child_process'
 import { existsSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
+import { createRequire } from 'module'
 import { homedir } from 'os'
 import * as path from 'path'
 import { logEvent } from 'src/services/analytics/index.js'
@@ -77,17 +78,50 @@ export function resolveRipgrepConfig({
   return { mode: 'builtin', command: builtinCommand, args: [] }
 }
 
+/**
+ * Resolve the ripgrep binary shipped by the `@vscode/ripgrep` dependency
+ * (Microsoft-maintained, per-platform prebuilt `rg`). Resolved at runtime from
+ * node_modules — the package is kept `external` in scripts/build.ts so it is
+ * never bundled and its own path resolution stays intact. Returns null if the
+ * package (or its platform binary) is absent, so we fall back to the legacy
+ * vendored path and finally the system `rg`.
+ */
+function resolvePackagedRipgrepPath(): string | null {
+  try {
+    const require = createRequire(import.meta.url)
+    const { rgPath } = require('@vscode/ripgrep') as { rgPath?: string }
+    if (rgPath && existsSync(rgPath)) {
+      return rgPath
+    }
+  } catch (e: unknown) {
+    // Expected when the optional dependency isn't installed (e.g. offline
+    // install that skipped it). Not an error — fall back to other backends.
+    logForDebugging(
+      `@vscode/ripgrep not resolvable, falling back to vendored/system rg: ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    )
+  }
+  return null
+}
+
 const getRipgrepConfig = memoize((): RipgrepConfig => {
   const userWantsSystemRipgrep = isEnvDefinedFalsy(
     process.env.USE_BUILTIN_RIPGREP,
   )
   const bundledMode = isInBundledMode()
+
+  // Prefer the packaged @vscode/ripgrep binary so search works with no system
+  // `rg` on PATH. Fall back to the legacy in-tree vendored path if present.
+  const packagedCommand = resolvePackagedRipgrepPath()
   const rgRoot = path.resolve(__dirname, 'vendor', 'ripgrep')
-  const builtinCommand =
+  const vendoredCommand =
     process.platform === 'win32'
       ? path.resolve(rgRoot, `${process.arch}-win32`, 'rg.exe')
       : path.resolve(rgRoot, `${process.arch}-${process.platform}`, 'rg')
-  const builtinExists = existsSync(builtinCommand)
+
+  const builtinCommand = packagedCommand ?? vendoredCommand
+  const builtinExists = packagedCommand !== null || existsSync(vendoredCommand)
   const { cmd: systemExecutablePath } = findExecutable('rg', [])
 
   return resolveRipgrepConfig({
@@ -154,7 +188,7 @@ export class RipgrepUnavailableError extends Error {
   }
 }
 
-function getRipgrepInstallHint(platform = process.platform): string {
+export function getRipgrepInstallHint(platform = process.platform): string {
   switch (platform) {
     case 'win32':
       return 'Install ripgrep and confirm `rg --version` works in the same terminal. Windows: `winget install BurntSushi.ripgrep.MSVC` or `choco install ripgrep`.'
@@ -708,6 +742,16 @@ const testRipgrepOnFirstUse = memoize(async (): Promise<void> => {
     logError(error)
   }
 })
+
+/**
+ * Force the one-time ripgrep availability probe to run and complete. Unlike the
+ * fire-and-forget call inside `ripGrep()`, this awaits the result so callers
+ * (e.g. `/provider doctor`) can read an accurate `getRipgrepStatus().working`
+ * instead of the untested `null`.
+ */
+export async function ensureRipgrepTested(): Promise<void> {
+  await testRipgrepOnFirstUse()
+}
 
 let alreadyDoneSignCheck = false
 async function codesignRipgrepIfNecessary() {
