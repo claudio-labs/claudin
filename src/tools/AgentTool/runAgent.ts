@@ -775,6 +775,11 @@ export async function* runAgent({
     criticalSystemReminder_EXPERIMENTAL:
       agentDefinition.criticalSystemReminder_EXPERIMENTAL,
     contentReplacementState,
+    // Mirror the userContext/systemContext omissions into the attachment
+    // pipeline — claude_md_delta / nested_memory / git_status_delta read
+    // global state and would re-inject the stripped content otherwise.
+    omitClaudeMdAttachments: shouldOmitClaudeMd,
+    omitGitStatusAttachments: agentDefinition.omitGitStatus,
   })
 
   // Preserve tool use results for subagents with viewable transcripts (in-process teammates)

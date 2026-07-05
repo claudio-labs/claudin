@@ -297,6 +297,12 @@ export type SubagentContextOverrides = {
   /** When true, canUseTool must always be called even when hooks auto-approve.
    *  Used by speculation for overlay file path rewriting. */
   requireCanUseTool?: boolean
+  /** Honor AgentDefinition.omitClaudeMd in the attachment pipeline
+   * (suppresses claude_md_delta / memory_delta / nested_memory). */
+  omitClaudeMdAttachments?: boolean
+  /** Honor AgentDefinition.omitGitStatus in the attachment pipeline
+   * (suppresses git_status_delta). */
+  omitGitStatusAttachments?: boolean
   /** Override replacement state — used by resumeAgentBackground to thread
    * state reconstructed from the resumed sidechain so the same results
    * are re-replaced (prompt cache stability). */
@@ -458,6 +464,16 @@ export function createSubagentContext(
     criticalSystemReminder_EXPERIMENTAL:
       overrides?.criticalSystemReminder_EXPERIMENTAL,
     requireCanUseTool: overrides?.requireCanUseTool,
+    // Inherit from parent when not overridden — forks continue the parent's
+    // transcript, so its attachment omissions must carry over (a summary fork
+    // of an Explore agent must not start receiving the CLAUDE.md its
+    // transcript never had).
+    omitClaudeMdAttachments:
+      overrides?.omitClaudeMdAttachments ??
+      parentContext.omitClaudeMdAttachments,
+    omitGitStatusAttachments:
+      overrides?.omitGitStatusAttachments ??
+      parentContext.omitGitStatusAttachments,
   }
 }
 

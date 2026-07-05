@@ -128,6 +128,14 @@ export async function getAttachments(
 
   const isMainThread = !toolUseContext.agentId
 
+  // Subagents whose definition sets omitClaudeMd/omitGitStatus (Explore,
+  // Plan, WebResearcher…) get those flags mirrored onto their context by
+  // runAgent. The delta producers below read GLOBAL context state, so
+  // without these gates they re-inject CLAUDE.md/rules/memory/gitStatus
+  // that runAgent deliberately stripped from the subagent's userContext.
+  const omitClaudeMd = toolUseContext.omitClaudeMdAttachments === true
+  const omitGitStatus = toolUseContext.omitGitStatusAttachments === true
+
   // Attachments which are added in response to on user input
   const userInputAttachments = input
     ? [
@@ -225,11 +233,23 @@ export async function getAttachments(
     // path that previously re-shipped CLAUDE.md / gitStatus / memory
     // every turn via prependUserContext / appendSystemContext. The
     // swap-in wiring lives in api.ts.
-    maybe('claude_md_delta', () => getClaudeMdDeltaAttachment(messages)),
-    maybe('git_status_delta', () => getGitStatusDeltaAttachment(messages)),
-    maybe('memory_delta', () =>
-      Promise.resolve(getMemoryDeltaAttachment(messages)),
-    ),
+    ...(omitClaudeMd
+      ? []
+      : [maybe('claude_md_delta', () => getClaudeMdDeltaAttachment(messages))]),
+    ...(omitGitStatus
+      ? []
+      : [
+          maybe('git_status_delta', () =>
+            getGitStatusDeltaAttachment(messages),
+          ),
+        ]),
+    ...(omitClaudeMd
+      ? []
+      : [
+          maybe('memory_delta', () =>
+            Promise.resolve(getMemoryDeltaAttachment(messages)),
+          ),
+        ]),
     ...(isBuddyEnabled()
       ? [
           maybe('companion_intro', () =>
@@ -238,7 +258,11 @@ export async function getAttachments(
         ]
       : []),
     maybe('changed_files', () => getChangedFiles(context)),
-    maybe('nested_memory', () => getNestedMemoryAttachments(context)),
+    // nested_memory carries per-directory CLAUDE.md + .claudin/rules content
+    // — same class of material as claudeMd, so the same omission applies.
+    ...(omitClaudeMd
+      ? []
+      : [maybe('nested_memory', () => getNestedMemoryAttachments(context))]),
     // relevant_memories moved to async prefetch (startRelevantMemoryPrefetch)
     maybe('dynamic_skill', () => getDynamicSkillAttachments(context)),
     maybe('skill_listing', () => getSkillListingAttachments(context)),

@@ -258,6 +258,14 @@ export type ToolUseContext = {
   setConversationId?: (id: UUID) => void
   agentId?: AgentId // Only set for subagents; use getSessionId() for session ID. Hooks use this to distinguish subagent calls.
   agentType?: string // Subagent type name. For the main thread's --agent type, hooks fall back to getMainThreadAgentType().
+  /** Subagent-only: honor AgentDefinition.omitClaudeMd in the attachment
+   * pipeline. runAgent strips claudeMd from the subagent's userContext, but
+   * claude_md_delta / memory_delta / nested_memory read global state and
+   * would re-inject it every turn without this flag. */
+  omitClaudeMdAttachments?: boolean
+  /** Subagent-only: honor AgentDefinition.omitGitStatus in the attachment
+   * pipeline — suppresses git_status_delta for the same reason. */
+  omitGitStatusAttachments?: boolean
   /** When true, canUseTool must always be called even when hooks auto-approve.
    *  Used by speculation for overlay file path rewriting. */
   requireCanUseTool?: boolean

@@ -75,6 +75,54 @@ describe('getAttachments — disabled-attachments early-exit', () => {
   })
 })
 
+describe('getAttachments — subagent context-omission gates', () => {
+  // runAgent mirrors AgentDefinition.omitClaudeMd/omitGitStatus onto the
+  // subagent's ToolUseContext; the pipeline must honor them so the global
+  // CLAUDE.md/rules/memory/gitStatus content isn't re-injected into agents
+  // that deliberately stripped it (Explore, Plan, WebResearcher).
+  function makeSubagentContext(
+    omitClaudeMd: boolean,
+    omitGitStatus: boolean = omitClaudeMd,
+  ): ToolUseContext {
+    return {
+      ...makeContext(),
+      agentId: 'agent-omit-test',
+      agentType: 'Explore',
+      omitClaudeMdAttachments: omitClaudeMd,
+      omitGitStatusAttachments: omitGitStatus,
+    } as unknown as ToolUseContext
+  }
+
+  test('omit flags suppress claude_md_delta / memory_delta / nested_memory / git_status_delta', async () => {
+    const out = await getAttachments(null, makeSubagentContext(true), null, [])
+    const types = out.map(a => a.type)
+    expect(types).not.toContain('claude_md_delta')
+    expect(types).not.toContain('memory_delta')
+    expect(types).not.toContain('nested_memory')
+    expect(types).not.toContain('git_status_delta')
+  })
+
+  test('control: without omit flags the subagent still gets claude_md_delta', async () => {
+    // This repo has a CLAUDE.md, so the initial delta must fire — proving
+    // the gate (not the environment) is what removed it above.
+    const out = await getAttachments(null, makeSubagentContext(false), null, [])
+    expect(out.map(a => a.type)).toContain('claude_md_delta')
+  })
+
+  test('flags are independent: omitGitStatus alone must not suppress claude_md_delta', async () => {
+    // Catches a transposition of the two flag reads in pipeline.ts — agents
+    // like WebResearcherManager could set one flag without the other, and the
+    // paired tests above cannot distinguish claudeMd↔gitStatus swaps.
+    const out = await getAttachments(
+      null,
+      makeSubagentContext(false, true),
+      null,
+      [],
+    )
+    expect(out.map(a => a.type)).toContain('claude_md_delta')
+  })
+})
+
 describe('getQueuedCommandAttachments — direct producer', () => {
   test('returns [] for empty queue', async () => {
     expect(await getQueuedCommandAttachments([])).toEqual([])
