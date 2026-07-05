@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
+import { setIsInteractive } from '../../bootstrap/state.js'
 import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
 import {
   buildCodeReviewPrompt,
@@ -129,7 +130,8 @@ describe('code-review prompt content by level', () => {
     const text = promptFor('medium')
     expect(text).toContain('**precision** at medium effort')
     expect(text).toContain('**7 independent finder angles**')
-    expect(text).toContain('at most 8 objects')
+    expect(text).toContain('single ReportFindings tool call')
+    expect(text).toContain('keep the 8 most severe')
     expect(text).not.toContain('Angle D')
   })
 
@@ -138,7 +140,8 @@ describe('code-review prompt content by level', () => {
     expect(text).toContain('**recall** at high effort')
     expect(text).toContain('**7 independent finder angles**')
     expect(text).toContain('recall-biased')
-    expect(text).toContain('at most 10 objects')
+    expect(text).toContain('single ReportFindings tool call')
+    expect(text).toContain('keep the 10 most severe')
   })
 
   test('xhigh and max run 9 angles with a sweep and ≤15 findings', () => {
@@ -147,7 +150,8 @@ describe('code-review prompt content by level', () => {
       expect(text).toContain('**9 independent finder angles**')
       expect(text).toContain('Angle E')
       expect(text).toContain('Sweep for gaps')
-      expect(text).toContain('at most 15 objects')
+      expect(text).toContain('single ReportFindings tool call')
+      expect(text).toContain('keep the 15 most severe')
     }
   })
 
@@ -187,5 +191,30 @@ describe('code-review prompt content by level', () => {
   test('an unrecognized level-like token prefixes a warning note', () => {
     const text = promptFor('maximum')
     expect(text).toContain('Ignoring unrecognized effort "maximum"')
+  })
+})
+
+describe('code-review headless output fallback', () => {
+  // Restore the process default (non-interactive) so state doesn't leak to
+  // other test files under the serial coverage run.
+  afterEach(() => setIsInteractive(false))
+
+  test('non-interactive medium+ also prints the JSON fallback for stdout', () => {
+    setIsInteractive(false)
+    const text = buildCodeReviewPrompt(parseCodeReviewArgs('high'))
+    expect(text).toContain('Headless output (non-interactive session)')
+    expect(text).toContain('failure_scenario')
+  })
+
+  test('interactive review omits the JSON fallback (tool render is shown)', () => {
+    setIsInteractive(true)
+    const text = buildCodeReviewPrompt(parseCodeReviewArgs('high'))
+    expect(text).not.toContain('Headless output (non-interactive session)')
+  })
+
+  test('low never gets the headless fallback (already prints text)', () => {
+    setIsInteractive(false)
+    const text = buildCodeReviewPrompt(parseCodeReviewArgs('low'))
+    expect(text).not.toContain('Headless output (non-interactive session)')
   })
 })

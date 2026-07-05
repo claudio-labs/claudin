@@ -90,6 +90,8 @@ const getSendMessageTool = () =>
     .SendMessageTool as typeof import('./tools/SendMessageTool/SendMessageTool.js').SendMessageTool
 const getAskUserQuestionTool = () =>
   require('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
+const getReportFindingsTool = () =>
+  require('./tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool as typeof import('./tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool
 const getToolSearchTool = () =>
   require('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool as typeof import('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool
 const getEnterPlanModeTool = () =>
@@ -250,6 +252,7 @@ export function getAllBaseTools(): Tools {
     getWebSearchTool(),
     getTaskStopTool(),
     getAskUserQuestionTool(),
+    getReportFindingsTool(),
     getSkillTool(),
     getLSPTool(),
     getEnterPlanModeTool(),

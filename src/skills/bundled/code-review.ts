@@ -1,5 +1,8 @@
 import type { ToolUseContext } from '../../Tool.js'
+import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
 import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
+import { REPORT_FINDINGS_TOOL_NAME } from '../../tools/ReportFindingsTool/constants.js'
+import { TOOL_SEARCH_TOOL_NAME } from '../../tools/ToolSearchTool/constants.js'
 import {
   EFFORT_LEVELS,
   type EffortLevel,
@@ -289,21 +292,21 @@ the list. If nothing new, return an empty sweep — do not pad.
 
 const outputSection = (maxFindings: number): string => `## Output
 
-Return findings as a JSON array of at most ${maxFindings} objects:
+Report the findings with a **single ${REPORT_FINDINGS_TOOL_NAME} tool call** — do not
+also print them as text. ${REPORT_FINDINGS_TOOL_NAME} is a deferred tool: if it is
+not already in your tool list, load it first with ${TOOL_SEARCH_TOOL_NAME}
+(\`select:${REPORT_FINDINGS_TOOL_NAME}\`). Each finding is one object:
 
-\`\`\`json
-[
-  {
-    "file": "path/to/file.ext",
-    "line": 123,
-    "summary": "one-sentence statement of the bug",
-    "failure_scenario": "concrete inputs/state → wrong output/crash"
-  }
-]
-\`\`\`
+- \`file\` (required) — repo-relative path.
+- \`line\` — 1-indexed line the finding anchors to.
+- \`summary\` (required) — one-sentence statement of the bug.
+- \`failure_scenario\` (required) — concrete inputs/state → wrong output/crash.
+- \`verdict\` — \`CONFIRMED\` or \`PLAUSIBLE\` from the verify pass.
+- \`category\` — kebab-case slug (\`correctness\`, \`simplification\`, \`efficiency\`, …).
 
-Ranked most-severe first. If more than ${maxFindings} survive, keep the ${maxFindings} most
-severe. If nothing survives verification, return \`[]\`.
+Pass \`findings\` ranked most-severe first, and set \`level\` to the review effort.
+If more than ${maxFindings} survive, keep the ${maxFindings} most severe. If nothing
+survives verification, call ${REPORT_FINDINGS_TOOL_NAME} with an empty \`findings\` array.
 `
 
 const LOW_PROMPT = `\`low effort → 1 diff pass → no verify → ≤4 findings\`
@@ -426,26 +429,57 @@ const COMMENT_ADDENDUM = `
 
 ## Posting to GitHub (--comment)
 
-The \`--comment\` flag was passed. After producing the findings list, if the
-review target is a GitHub PR, post each finding as an inline PR comment via
-\`gh api\` (repos/{owner}/{repo}/pulls/{pr}/comments; one call per finding;
-include a suggestion block only when it fully fixes the issue). If \`gh\` is
-not available in this session, print the findings instead. If the target is
-not a PR, print the findings to the terminal and note that \`--comment\` was
-ignored.
+The \`--comment\` flag was passed. In addition to producing the findings report
+(the ${REPORT_FINDINGS_TOOL_NAME} call at medium+ effort, or the text list at
+low effort), if the review target is a GitHub PR, post each finding as an inline
+PR comment via \`gh api\` (repos/{owner}/{repo}/pulls/{pr}/comments; one call per
+finding; include a suggestion block only when it fully fixes the issue). If
+\`gh\` is not available in this session, or the target is not a PR, just produce
+the findings report and note that \`--comment\` was ignored.
 `
 
 const FIX_ADDENDUM = `
 
 ## Applying fixes (--fix)
 
-The \`--fix\` flag was passed. After producing the findings list, apply the
+The \`--fix\` flag was passed. After producing the findings report, apply the
 findings to the working tree instead of stopping at the report: fix each one
 directly — correctness bugs and reuse/simplification/efficiency cleanups alike.
 Skip any finding whose fix would change intended behavior, require changes well
 outside the reviewed diff, or that you judge to be a false positive — note the
-skip rather than arguing with it. Finish with a brief summary of what was fixed
-and what was skipped.
+skip rather than arguing with it. Then report each finding's outcome
+(\`fixed\` / \`skipped\` / \`no_change_needed\`): at medium+ effort, re-call
+${REPORT_FINDINGS_TOOL_NAME} with the \`outcome\` field set on each finding; at
+low effort, note it inline. Finish with a brief summary of what was fixed and
+what was skipped.
+`
+
+// Non-interactive (`-p`) sessions render no TUI, so the ${REPORT_FINDINGS_TOOL_NAME}
+// call is invisible to a text-mode stdout consumer (CI, pipes). Restore the old
+// printed-JSON contract in that case ONLY — in the interactive TUI the tool
+// render is shown, so we do not ask for a duplicate text dump there. Not needed
+// at low effort, whose output is already a printed text list.
+const HEADLESS_ADDENDUM = `
+
+## Headless output (non-interactive session)
+
+You are running non-interactively (\`-p\`), where the ${REPORT_FINDINGS_TOOL_NAME}
+render is not shown. In addition to the ${REPORT_FINDINGS_TOOL_NAME} call, also
+print the findings as a JSON array to stdout so text-mode consumers still
+receive them:
+
+\`\`\`json
+[
+  {
+    "file": "path/to/file.ext",
+    "line": 123,
+    "summary": "one-sentence statement of the bug",
+    "failure_scenario": "concrete inputs/state → wrong output/crash"
+  }
+]
+\`\`\`
+
+Ranked most-severe first; \`[]\` if nothing survived.
 `
 
 export function buildCodeReviewPrompt(
@@ -465,7 +499,11 @@ export function buildCodeReviewPrompt(
     ? `Review target: \`${parsed.target}\`\n`
     : ''
 
-  return `${note}${targetLine}${LEVEL_PROMPTS[level]}${parsed.comment ? COMMENT_ADDENDUM : ''}${parsed.fix ? FIX_ADDENDUM : ''}`
+  // Low effort already prints a text list, so it needs no headless fallback.
+  const headless =
+    level !== 'low' && getIsNonInteractiveSession() ? HEADLESS_ADDENDUM : ''
+
+  return `${note}${targetLine}${LEVEL_PROMPTS[level]}${parsed.comment ? COMMENT_ADDENDUM : ''}${parsed.fix ? FIX_ADDENDUM : ''}${headless}`
 }
 
 export function registerCodeReviewSkill(): void {
@@ -480,6 +518,9 @@ export function registerCodeReviewSkill(): void {
     disableModelInvocation: false,
     allowedTools: [
       AGENT_TOOL_NAME,
+      // ReportFindings is deferred; ToolSearch loads it on demand.
+      TOOL_SEARCH_TOOL_NAME,
+      REPORT_FINDINGS_TOOL_NAME,
       'Read',
       'Grep',
       'Glob',
