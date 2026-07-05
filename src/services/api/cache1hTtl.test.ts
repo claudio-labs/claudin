@@ -108,6 +108,81 @@ describe('getCacheControl — 1h TTL gating', () => {
     expect(claude.getCacheControl()).toEqual({ type: 'ephemeral' })
   })
 
+  test('firstParty + subagent querySource (agent:builtin:Explore) → no ttl (5m tier)', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    expect(
+      claude.getCacheControl({ querySource: 'agent:builtin:Explore' }),
+    ).toEqual({ type: 'ephemeral' })
+  })
+
+  test('firstParty + agent:custom → no ttl (5m tier)', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    expect(claude.getCacheControl({ querySource: 'agent:custom' })).toEqual({
+      type: 'ephemeral',
+    })
+  })
+
+  test('firstParty + fork child (agent:builtin:fork) keeps ttl=1h (shares parent prefix)', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    expect(
+      claude.getCacheControl({ querySource: 'agent:builtin:fork' }),
+    ).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('fork exemption stays derived from the real fork agentType', async () => {
+    // cacheControl.ts hardcodes FORK_QUERY_SOURCE; if the fork agentType is
+    // ever renamed, the composed querySource would silently fall through to
+    // the agent:* 5m branch and re-cache the main thread's 1h line at 5m.
+    // Composing from the source constant here turns that drift into a
+    // test failure.
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    const { FORK_SUBAGENT_TYPE } = await import(
+      '../../tools/AgentTool/forkSubagent.js'
+    )
+    expect(
+      claude.getCacheControl({
+        querySource: `agent:builtin:${FORK_SUBAGENT_TYPE}`,
+      }),
+    ).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('firstParty + repl_main_thread keeps ttl=1h', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    expect(
+      claude.getCacheControl({ querySource: 'repl_main_thread' }),
+    ).toEqual({ type: 'ephemeral', ttl: '1h' })
+  })
+
+  test('firstParty + short-lived utility sources (auto_mode, agent_summary, web_search_tool) → no ttl', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    for (const querySource of [
+      'auto_mode',
+      'agent_summary',
+      'web_search_tool',
+    ]) {
+      expect(claude.getCacheControl({ querySource })).toEqual({
+        type: 'ephemeral',
+      })
+    }
+  })
+
+  test('firstParty + parent-prefix forks (compact, session_memory, speculation) keep ttl=1h', async () => {
+    setProvider('firstParty')
+    const { claude } = await importFresh()
+    for (const querySource of ['compact', 'session_memory', 'speculation']) {
+      expect(claude.getCacheControl({ querySource })).toEqual({
+        type: 'ephemeral',
+        ttl: '1h',
+      })
+    }
+  })
+
   test('global scope is preserved alongside ttl', async () => {
     setProvider('firstParty')
     const { claude, state } = await importFresh()

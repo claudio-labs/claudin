@@ -21,7 +21,37 @@ export function getCacheControl({
   };
 }
 
-export function should1hCacheTTL(_querySource?: QuerySource): boolean {
+// Fork children share the PARENT's prefix — their markers must keep the
+// parent's 1h TTL, or a fork request would re-cache the main thread's
+// line at the 5m tier and expire it under the parent.
+const FORK_QUERY_SOURCE = "agent:builtin:fork";
+const SUBAGENT_QUERY_SOURCE_PREFIX = "agent:";
+
+// One-shot / short-lived utility queries that build a FRESH prefix of their
+// own (own system prompt, own line — never re-caching the main thread's).
+// Their cache dies with the call, so the 5m tier is strictly cheaper.
+// Deliberately NOT here (they fork the main thread's prefix and must keep
+// its 1h TTL): compact, session_memory, extract_memories, speculation,
+// prompt_suggestion, side_question, magic_docs, auto_dream.
+const SHORT_LIVED_QUERY_SOURCES: ReadonlySet<string> = new Set([
+  "auto_mode", // yoloClassifier — own few-KB prompt, fires per tool call
+  "tool_use_summary_generation",
+  "web_search_tool",
+  "agent_creation",
+  "skill_improvement_apply",
+  "hook_prompt",
+  "hook_agent",
+  "bash_extract_prefix",
+  // agent_summary forks the SUBAGENT's prefix (not the main thread's) —
+  // subagents are 5m now, so its markers must match at 5m, not re-cache
+  // the subagent's line at the 2x 1h write price.
+  "agent_summary",
+  // away_summary re-sends parent messages but with empty system + no tools,
+  // so its prefix diverges at byte 0 — own line, short-lived.
+  "away_summary",
+]);
+
+export function should1hCacheTTL(querySource?: QuerySource): boolean {
   const provider = getAPIProvider();
 
   if (
@@ -32,6 +62,24 @@ export function should1hCacheTTL(_querySource?: QuerySource): boolean {
   }
 
   if (provider !== "firstParty" && provider !== "vertex") return false;
+
+  // Subagents (agent:builtin:Explore, agent:custom, …) are short-lived and
+  // their cache dies with them: reads refresh the 5m TTL for free within a
+  // run, so the 5m tier (1.25x write) beats 1h (2x write) unless the agent
+  // idles >5min mid-run — rare for read-only search/research agents. The
+  // fork child is the one exception (shares the parent's prefix, see above).
+  if (
+    querySource?.startsWith(SUBAGENT_QUERY_SOURCE_PREFIX) &&
+    querySource !== FORK_QUERY_SOURCE
+  ) {
+    return false;
+  }
+
+  // Same economics for the one-shot utility queries with fresh prefixes.
+  if (querySource && SHORT_LIVED_QUERY_SOURCES.has(querySource)) {
+    return false;
+  }
+
   // Always use 1h on first-party/vertex (matches Claude Code). The previous
   // >8k *system-prompt* gate measured the wrong thing: claudin's system prompt
   // is ~3.4k so it never qualified, leaving 1h effectively dead and the cached
