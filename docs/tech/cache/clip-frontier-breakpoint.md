@@ -367,6 +367,37 @@ Takeaways:
   17.0, yet claudin's bill is lower — "don't chase the ratio" holds.
 - Wall-clock: claudin ran ~2× faster per turn (smaller prompts).
 
+### Sonnet 5 lockstep + trailing-marker experiment (2026-07-05)
+
+Same lockstep harness, 30 turns (22 files + 8 revisits), `claude-sonnet-5`,
+1 run per side. Third row is the `CLAUDIN_TRAIL_CACHE_MARKER=1` experiment:
+a second breakpoint on the last message, converting the defer/frontier tail
+window (~1–2k tokens re-sent as 1× input every turn) into cache write+read.
+
+| side | api reqs | in | out | cR | cW | r:w | resets | cost |
+|---|---|---|---|---|---|---|---|---|
+| claude (Claude Code) | 61 | 122 | 992 | 13.09m | 305.6k | 42.8:1 | 0 | $5.87 |
+| **claudin (frontier+retain)** | 63 | 72.7k | 7.0k | 5.34m | 195.3k | 27.3:1 | 0 | **$3.10** |
+| claudin + trail marker | 69 | 138 | 7.7k | 7.30m | 291.3k | 25.1:1 | 1 | $4.06 |
+
+Takeaways:
+
+- **Claudin 47% cheaper than Claude Code on Sonnet 5** (was 24% on the
+  06-10 sonnet-4-6 run) — the structural saving grows with context: 5.34m
+  vs 13.09m cache reads, 0 resets on both sides.
+- **Trailing marker: mechanism worked, economics didn't.** Uncached input
+  fell 72.7k → 138 exactly as designed, but total cost rose $3.10 → $4.06.
+  Root cause: on 1h-TTL providers (`should1hCacheTTL`) cache writes bill at
+  **2× base**, not the 5m-TTL 1.25× — so rewriting the mutating tail every
+  turn (2×) loses to re-sending it as 1× input. Break-even needs the tail
+  byte-stable for ~2+ turns; the defer window rarely is. Cost decomposition
+  reconciles to the cent with $6/M cW: baseline $0.22 in + $1.17 cW vs
+  trail $0.00 in + $1.75 cW (+6 requests / 1 reset of run variance in cR).
+- **Corollary: the 72.7k "ugly" uncached input is the optimum**, not waste —
+  1× re-send is the cheapest treatment for bytes that mutate next turn under
+  Anthropic-style pricing. Flag stays off by default; may be worth re-testing
+  on 5m-TTL (1.25× write) providers where the premium is 5× smaller.
+
 ### Provider cache research → retain coverage extended (2026-06-10)
 
 Web research on the other transports' caching:
