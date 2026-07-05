@@ -4,7 +4,7 @@ import { buildTool, type ToolDef, toolMatchesName } from 'src/Tool.js';
 import type { Message as MessageType, NormalizedUserMessage } from 'src/types/message.js';
 import { getQuerySourceForAgent } from 'src/utils/promptCategory.js';
 import { getAgentPlanSlug } from '../../services/planDossier.js';
-import { getPlan, getPlanSlug } from '../../utils/plans.js';
+import { getPlan, getPlanSlug, getPlansDirectory } from '../../utils/plans.js';
 import { z } from 'zod/v4';
 import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled, getIsNonInteractiveSession } from '../../bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from '../../constants/prompts.js';
@@ -680,6 +680,11 @@ export const AgentTool = buildTool({
         const changed = await hasWorktreeChanges(worktreePath, headCommit);
         if (!changed) {
           await removeAgentWorktree(worktreePath, worktreeBranch, gitRoot);
+          // Drop any getPlansDirectory() cache entry keyed on this worktree's
+          // path — it's now deleted, so a later subagent run that reuses the
+          // same deterministic worktree path (same slug) must not be served
+          // a stale plans-dir path for a directory that no longer exists.
+          getPlansDirectory.cache.clear?.();
           // Clear worktreePath from metadata so resume doesn't try to use
           // a deleted directory. Fire-and-forget to match runAgent's
           // writeAgentMetadata handling.

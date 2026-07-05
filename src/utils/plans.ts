@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto'
+import { chmodSync } from 'fs'
 import { copyFile, writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
-import { join, resolve, sep } from 'path'
+import { join, relative, resolve, sep } from 'path'
 import type { AgentId, SessionId } from 'src/types/ids.js'
 import type { LogOption } from 'src/types/logs.js'
 import type {
@@ -18,6 +19,7 @@ import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'
 import { getEnvironmentKind } from './filePersistence/outputsScanner.js'
 import { getFsImplementation } from './fsOperations.js'
+import { addFileGlobRuleToGitignore } from './git/gitignore.js'
 import { logError } from './log.js'
 import { getInitialSettings } from './settings/settings.js'
 import { generateWordSlug } from './words.js'
@@ -73,17 +75,20 @@ export function clearAllPlanSlugs(): void {
 }
 
 // Memoized: called from render bodies (FileReadTool/FileEditTool/FileWriteTool UI.tsx)
-// and permission checks. Inputs (initial settings + cwd) are fixed at startup, so the
-// mkdirSync result is stable for the session. Without memoization, each rendered tool
-// message triggers a mkdirSync syscall (regressed in #20005).
+// and permission checks. Without memoization, each rendered tool message triggers a
+// mkdirSync syscall (regressed in #20005). Keyed on getCwd() (not argument-less)
+// because the default path is now project-local: a bare memoize() would freeze the
+// first-resolved path for the rest of the process, which is wrong once cwd can change
+// mid-session (worktree enter/exit) or differ per async context (subagent cwd overrides
+// via runWithCwdOverride, including worktree-isolated subagents in AgentTool.tsx).
 export const getPlansDirectory = memoize(function getPlansDirectory(): string {
   const settings = getInitialSettings()
   const settingsDir = settings.plansDirectory
+  const cwd = getCwd()
   let plansPath: string
 
   if (settingsDir) {
     // Settings.json (relative to project root)
-    const cwd = getCwd()
     const resolved = resolve(cwd, settingsDir)
 
     // Validate path stays within project root to prevent path traversal
@@ -91,24 +96,80 @@ export const getPlansDirectory = memoize(function getPlansDirectory(): string {
       logError(
         new Error(`plansDirectory must be within project root: ${settingsDir}`),
       )
-      plansPath = join(getClaudinConfigHomeDir(), 'plans')
+      plansPath = join(cwd, '.claudin', 'plans')
     } else {
       plansPath = resolved
     }
   } else {
-    // Default
-    plansPath = join(getClaudinConfigHomeDir(), 'plans')
+    // Default: project-local .claudin/plans/, alongside the project's other
+    // .claudin/ artifacts (skills, rules, agents)
+    plansPath = join(getCwd(), '.claudin', 'plans')
   }
 
   // Ensure directory exists (mkdirSync with recursive: true is a no-op if it exists)
   try {
-    getFsImplementation().mkdirSync(plansPath)
+    getFsImplementation().mkdirSync(plansPath, { mode: 0o700 })
   } catch (error) {
     logError(error)
   }
 
+  // SECURITY: the plans directory now lives inside the project tree, whose
+  // contents an attacker controls if the user opens/clones a hostile repo.
+  // mkdirSync above follows existing symlink components lexically, and
+  // isSessionPlanFile() (permissions/filesystem.ts) auto-approves reads/writes
+  // under this path with no prompt — so a `.claudin` (or custom
+  // plansDirectory) symlink planted in the repo could otherwise turn plan
+  // mode into an unprompted read/write primitive against an arbitrary
+  // location. Verify the real path is still contained in the real project
+  // root; fall back to the (non-project-controlled) global config dir if the
+  // check fails OR can't be completed (e.g. the symlink target doesn't exist
+  // yet and realpathSync throws) — an unverifiable path must be treated as
+  // unsafe, not used as-is, since this value gets memoized for the process.
+  let containmentVerified = false
+  try {
+    const realCwd = getFsImplementation().realpathSync(cwd)
+    const realPlansPath = getFsImplementation().realpathSync(plansPath)
+    containmentVerified =
+      realPlansPath === realCwd || realPlansPath.startsWith(realCwd + sep)
+    if (!containmentVerified) {
+      logError(
+        new Error(
+          `Plans directory escapes project root via symlink: ${plansPath} -> ${realPlansPath}`,
+        ),
+      )
+    }
+  } catch (error) {
+    logError(error)
+  }
+  if (!containmentVerified) {
+    plansPath = join(getClaudinConfigHomeDir(), 'plans')
+    try {
+      getFsImplementation().mkdirSync(plansPath, { mode: 0o700 })
+    } catch (error) {
+      logError(error)
+    }
+  }
+
+  // Belt-and-suspenders: force restrictive permissions even if the directory
+  // already existed (e.g. created before this check existed, or by a mkdirSync
+  // call above that didn't apply mode because the dir was already present).
+  // Project directories are far more commonly shared/cloned/backed-up than
+  // $HOME, and plan content may include secrets discussed during planning.
+  try {
+    chmodSync(plansPath, 0o700)
+  } catch {
+    // best-effort; not all platforms/filesystems honor unix permission bits
+  }
+
+  // Best-effort: keep plan files out of the project's git history by default
+  // without touching the tracked .gitignore (adds to the user's global
+  // gitignore instead, so it doesn't require a commit or affect teammates).
+  if (plansPath.startsWith(cwd + sep)) {
+    void addFileGlobRuleToGitignore(`${relative(cwd, plansPath)}/`, cwd)
+  }
+
   return plansPath
-})
+}, getCwd)
 
 /**
  * Get the file path for a session's plan

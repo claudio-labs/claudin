@@ -11,6 +11,7 @@ import * as lockfile from './lockfile.js'
 import { logError } from './log.js'
 import { cleanupOldVersions } from './nativeInstaller/index.js'
 import { cleanupOldPastes } from './pasteStore.js'
+import { getPlansDirectory } from './plans.js'
 import { getProjectsDir } from './sessionStorage.js'
 import { getSettingsWithAllErrors } from './settings/allErrors.js'
 import {
@@ -297,9 +298,20 @@ async function cleanupSingleDirectory(
   return result
 }
 
-export function cleanupOldPlanFiles(): Promise<CleanupResult> {
-  const plansDir = join(getClaudinConfigHomeDir(), 'plans')
-  return cleanupSingleDirectory(plansDir, '.md')
+export async function cleanupOldPlanFiles(): Promise<CleanupResult> {
+  const plansDir = getPlansDirectory()
+  const result = await cleanupSingleDirectory(plansDir, '.md')
+
+  // The plans directory used to default to ~/.claudin/plans/ (project-local
+  // .claudin/plans/ is the default now); sweep the legacy location too so
+  // orphaned plan files from before this change still age out.
+  const legacyPlansDir = join(getClaudinConfigHomeDir(), 'plans')
+  if (legacyPlansDir !== plansDir) {
+    const legacyResult = await cleanupSingleDirectory(legacyPlansDir, '.md')
+    return addCleanupResults(result, legacyResult)
+  }
+
+  return result
 }
 
 export async function cleanupOldFileHistoryBackups(): Promise<CleanupResult> {
