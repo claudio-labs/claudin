@@ -158,24 +158,27 @@ describe('getCacheControl — 1h TTL gating', () => {
     ).toEqual({ type: 'ephemeral', ttl: '1h' })
   })
 
-  test('firstParty + short-lived utility sources (auto_mode, agent_summary, web_search_tool) → no ttl', async () => {
+  test('firstParty + short-lived utility sources (agent_summary, web_search_tool) → no ttl', async () => {
     setProvider('firstParty')
     const { claude } = await importFresh()
-    for (const querySource of [
-      'auto_mode',
-      'agent_summary',
-      'web_search_tool',
-    ]) {
+    for (const querySource of ['agent_summary', 'web_search_tool']) {
       expect(claude.getCacheControl({ querySource })).toEqual({
         type: 'ephemeral',
       })
     }
   })
 
-  test('firstParty + parent-prefix forks (compact, session_memory, speculation) keep ttl=1h', async () => {
+  test('firstParty + parent-prefix forks and session-long sources keep ttl=1h', async () => {
+    // auto_mode is deliberately 1h: the classifier caches a transcript-sized
+    // prefix that grows for the whole session and must survive >5min pauses.
     setProvider('firstParty')
     const { claude } = await importFresh()
-    for (const querySource of ['compact', 'session_memory', 'speculation']) {
+    for (const querySource of [
+      'compact',
+      'session_memory',
+      'speculation',
+      'auto_mode',
+    ]) {
       expect(claude.getCacheControl({ querySource })).toEqual({
         type: 'ephemeral',
         ttl: '1h',

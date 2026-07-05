@@ -33,8 +33,12 @@ const SUBAGENT_QUERY_SOURCE_PREFIX = "agent:";
 // Deliberately NOT here (they fork the main thread's prefix and must keep
 // its 1h TTL): compact, session_memory, extract_memories, speculation,
 // prompt_suggestion, side_question, magic_docs, auto_dream.
+// Also NOT here: auto_mode — the yoloClassifier caches system + a serialized
+// transcript that GROWS with the session and fires on every tool call
+// (yoloClassifier.ts ~1250). It behaves like a mini main thread: under 5m,
+// every >5min user pause expires the transcript-sized prefix and forces a
+// full 1.25x rewrite; under 1h only the small per-call tail writes at 2x.
 const SHORT_LIVED_QUERY_SOURCES: ReadonlySet<string> = new Set([
-  "auto_mode", // yoloClassifier — own few-KB prompt, fires per tool call
   "tool_use_summary_generation",
   "web_search_tool",
   "agent_creation",
