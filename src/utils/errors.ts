@@ -1,4 +1,11 @@
-import { APIUserAbortError } from '@anthropic-ai/sdk'
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+  AuthenticationError,
+  NotFoundError,
+} from '@anthropic-ai/sdk'
 
 export class ClaudeError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -17,17 +24,84 @@ export class AbortError extends Error {
 }
 
 /**
+ * Cross-copy guards for the @anthropic-ai/sdk error classes.
+ *
+ * The core @anthropic-ai/sdk is inlined into the bundle, but the
+ * bedrock/vertex/foundry SDKs are externalized (see `external` in
+ * scripts/build.ts) and load their own copy of @anthropic-ai/sdk from
+ * node_modules at runtime. Errors thrown by those providers are instances
+ * of a *different* class object, so a plain `instanceof APIError` never
+ * matches them and they fall through error classification as "unknown".
+ *
+ * These guards keep the fast instanceof path (covers the bundled copy,
+ * whose class names may be minified) and fall back to walking the
+ * prototype chain by constructor name — intact on the node_modules copies,
+ * which ship unminified. The SDK never sets `this.name`, so `e.name`
+ * cannot be used instead.
+ */
+function hasConstructorNamed(e: unknown, className: string): boolean {
+  if (!(e instanceof Error)) return false
+  for (
+    let proto = Object.getPrototypeOf(e);
+    proto !== null;
+    proto = Object.getPrototypeOf(proto)
+  ) {
+    if (proto.constructor?.name === className) return true
+  }
+  return false
+}
+
+export function isSdkApiError(e: unknown): e is APIError {
+  return e instanceof APIError || hasConstructorNamed(e, 'APIError')
+}
+
+export function isSdkApiConnectionError(e: unknown): e is APIConnectionError {
+  return (
+    e instanceof APIConnectionError ||
+    hasConstructorNamed(e, 'APIConnectionError')
+  )
+}
+
+export function isSdkApiConnectionTimeoutError(
+  e: unknown,
+): e is APIConnectionTimeoutError {
+  return (
+    e instanceof APIConnectionTimeoutError ||
+    hasConstructorNamed(e, 'APIConnectionTimeoutError')
+  )
+}
+
+export function isSdkApiUserAbortError(e: unknown): e is APIUserAbortError {
+  return (
+    e instanceof APIUserAbortError ||
+    hasConstructorNamed(e, 'APIUserAbortError')
+  )
+}
+
+export function isSdkAuthenticationError(
+  e: unknown,
+): e is AuthenticationError {
+  return (
+    e instanceof AuthenticationError ||
+    hasConstructorNamed(e, 'AuthenticationError')
+  )
+}
+
+export function isSdkNotFoundError(e: unknown): e is NotFoundError {
+  return e instanceof NotFoundError || hasConstructorNamed(e, 'NotFoundError')
+}
+
+/**
  * True iff `e` is any of the abort-shaped errors the codebase encounters:
  * our AbortError class, a DOMException from AbortController.abort()
- * (.name === 'AbortError'), or the SDK's APIUserAbortError. The SDK class
- * is checked via instanceof because minified builds mangle class names —
- * constructor.name becomes something like 'nJT' and the SDK never sets
- * this.name, so string matching silently fails in production.
+ * (.name === 'AbortError'), or the SDK's APIUserAbortError (from the
+ * bundled copy or an externalized provider SDK's copy — see the guard
+ * comment above).
  */
 export function isAbortError(e: unknown): boolean {
   return (
     e instanceof AbortError ||
-    e instanceof APIUserAbortError ||
+    isSdkApiUserAbortError(e) ||
     (e instanceof Error && e.name === 'AbortError')
   )
 }

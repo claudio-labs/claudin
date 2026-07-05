@@ -1,10 +1,6 @@
 import { feature } from 'bun:bundle'
 import type Anthropic from '@anthropic-ai/sdk'
-import {
-  APIConnectionError,
-  APIError,
-  APIUserAbortError,
-} from '@anthropic-ai/sdk'
+import { type APIError, APIUserAbortError } from '@anthropic-ai/sdk'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/types/message.js'
 import { isAwsCredentialsProviderError } from 'src/utils/aws.js'
@@ -28,7 +24,11 @@ import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCreden
 import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
 import { refreshXaiAccessTokenIfNeeded } from '../../utils/xaiCredentials.js'
 import { isXaiOAuthBaseUrl } from './providerConfig.js'
-import { errorMessage } from '../../utils/errors.js'
+import {
+  errorMessage,
+  isSdkApiConnectionError,
+  isSdkApiError,
+} from '../../utils/errors.js'
 import {
   type CooldownReason,
   handleFastModeOverageRejection,
@@ -124,12 +124,12 @@ function isQuotaExhausted(error: any): boolean {
 
 function isTransientCapacityError(error: unknown): boolean {
   return (
-    is529Error(error) || (error instanceof APIError && error.status === 429)
+    is529Error(error) || (isSdkApiError(error) && error.status === 429)
   )
 }
 
 function isStaleConnectionError(error: unknown): boolean {
-  if (!(error instanceof APIConnectionError)) {
+  if (!isSdkApiConnectionError(error)) {
     return false
   }
   const details = extractConnectionErrorDetails(error)
@@ -152,7 +152,7 @@ export interface RetryContext {
 }
 
 export function isThinkingBlockMismatchError(error: unknown): boolean {
-  if (!(error instanceof APIError) || error.status !== 400 || !error.message) {
+  if (!isSdkApiError(error) || error.status !== 400 || !error.message) {
     return false
   }
   return (
@@ -260,7 +260,7 @@ export async function* withRetry<T>(
 
       if (
         client === null ||
-        (lastError instanceof APIError && lastError.status === 401) ||
+        (isSdkApiError(lastError) && lastError.status === 401) ||
         isOAuthTokenRevokedError(lastError) ||
         isBedrockAuthError(lastError, transport) ||
         isVertexAuthError(lastError, transport) ||
@@ -268,7 +268,7 @@ export async function* withRetry<T>(
       ) {
         // On 401 "token expired" or 403 "token revoked", force a token refresh
         if (
-          (lastError instanceof APIError && lastError.status === 401) ||
+          (isSdkApiError(lastError) && lastError.status === 401) ||
           isOAuthTokenRevokedError(lastError)
         ) {
           const failedAccessToken = getClaudeAIOAuthTokens()?.accessToken
@@ -314,7 +314,7 @@ export async function* withRetry<T>(
     } catch (error) {
       lastError = error
       logForDebugging(
-        `API error (attempt ${attempt}/${maxRetries + 1}): ${error instanceof APIError ? `${error.status} ${error.message}` : errorMessage(error)}`,
+        `API error (attempt ${attempt}/${maxRetries + 1}): ${isSdkApiError(error) ? `${error.status} ${error.message}` : errorMessage(error)}`,
         { level: 'error' },
       )
         if (isQuotaExhausted(error)) {
@@ -337,7 +337,7 @@ export async function* withRetry<T>(
       if (
         wasFastModeActive &&
         !isPersistentRetryEnabled() &&
-        error instanceof APIError &&
+        isSdkApiError(error) &&
         (error.status === 429 || is529Error(error))
       ) {
         // If the 429 is specifically because extra usage (overage) is not
@@ -442,7 +442,7 @@ export async function* withRetry<T>(
         handleAwsCredentialError(error) || handleGcpCredentialError(error)
       if (
         !handledCloudAuthError &&
-        (!(error instanceof APIError) || !shouldRetry(error, attempt))
+        (!isSdkApiError(error) || !shouldRetry(error, attempt))
       ) {
         throw new CannotRetryError(error, retryContext)
       }
@@ -464,7 +464,7 @@ export async function* withRetry<T>(
       // NOTE: With extended-context-window beta, this 400 error should not occur.
       // The API now returns 'model_context_window_exceeded' stop_reason instead.
       // Keeping for backward compatibility.
-      if (error instanceof APIError) {
+      if (isSdkApiError(error)) {
         const overflowData = parseMaxTokensContextOverflowError(error)
         if (overflowData) {
           const { inputTokens, contextLimit } = overflowData
@@ -509,7 +509,7 @@ export async function* withRetry<T>(
       // Get retry-after hint (ms) if available
       const retryAfterMs = getRetryAfterMs(error)
       let delayMs: number
-      if (persistent && error instanceof APIError && error.status === 429) {
+      if (persistent && isSdkApiError(error) && error.status === 429) {
         persistentAttempt++
         // Window-based limits (e.g. 5hr Max/Pro) include a reset timestamp.
         // Wait until reset rather than polling every 5 min uselessly.
@@ -568,7 +568,7 @@ export async function* withRetry<T>(
         let remaining = delayMs
         while (remaining > 0) {
           if (options.signal?.aborted) throw new APIUserAbortError()
-          if (error instanceof APIError) {
+          if (isSdkApiError(error)) {
             yield createSystemAPIErrorMessage(
               error,
               remaining,
@@ -584,7 +584,7 @@ export async function* withRetry<T>(
         // persistentAttempt counter which keeps growing to the 5-min cap.
         if (attempt >= maxRetries) attempt = maxRetries
       } else {
-        if (error instanceof APIError) {
+        if (isSdkApiError(error)) {
           yield createSystemAPIErrorMessage(error, delayMs, attempt, maxRetries)
         }
         await sleep(delayMs, options.signal, { abortError })
@@ -740,7 +740,7 @@ export function parseMaxTokensContextOverflowError(error: APIError):
 // header for fast-mode rejection (e.g., x-fast-mode-rejected). String-matching
 // the error message is fragile and will break if the API wording changes.
 function isFastModeNotEnabledError(error: unknown): boolean {
-  if (!(error instanceof APIError)) {
+  if (!isSdkApiError(error)) {
     return false
   }
   return (
@@ -750,7 +750,7 @@ function isFastModeNotEnabledError(error: unknown): boolean {
 }
 
 export function is529Error(error: unknown): boolean {
-  if (!(error instanceof APIError)) {
+  if (!isSdkApiError(error)) {
     return false
   }
 
@@ -764,7 +764,7 @@ export function is529Error(error: unknown): boolean {
 
 function isOAuthTokenRevokedError(error: unknown): boolean {
   return (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 403 &&
     (error.message?.includes('OAuth token has been revoked') ?? false)
   )
@@ -777,7 +777,7 @@ function isBedrockAuthError(error: unknown, transport?: string): boolean {
     // "The security token included in the request is invalid"
     if (
       isAwsCredentialsProviderError(error) ||
-      (error instanceof APIError && error.status === 403)
+      (isSdkApiError(error) && error.status === 403)
     ) {
       return true
     }
@@ -816,7 +816,7 @@ function isVertexAuthError(error: unknown, transport?: string): boolean {
       return true
     }
     // Server-side: Vertex returns 401 for expired/invalid tokens
-    if (error instanceof APIError && error.status === 401) {
+    if (isSdkApiError(error) && error.status === 401) {
       return true
     }
   }
@@ -892,7 +892,7 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
     return false
   }
 
-  if (error instanceof APIConnectionError) {
+  if (isSdkApiConnectionError(error)) {
     return true
   }
 

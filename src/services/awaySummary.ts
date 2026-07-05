@@ -1,7 +1,7 @@
-import { APIUserAbortError } from '@anthropic-ai/sdk'
 import { getEmptyToolPermissionContext } from '../Tool.js'
 import type { Message } from '../types/message.js'
 import { logForDebugging } from '../utils/debug.js'
+import { isSdkApiUserAbortError } from '../utils/errors.js'
 import {
   createUserMessage,
   getAssistantMessageText,
@@ -65,7 +65,7 @@ export async function generateAwaySummary(
     }
     return getAssistantMessageText(response)
   } catch (err) {
-    if (err instanceof APIUserAbortError || signal.aborted) {
+    if (isSdkApiUserAbortError(err) || signal.aborted) {
       return null
     }
     logForDebugging(`[awaySummary] generation failed: ${err}`)

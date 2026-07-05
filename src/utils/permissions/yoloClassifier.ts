@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle'
 import type Anthropic from '@anthropic-ai/sdk'
-import { APIError } from '@anthropic-ai/sdk'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
@@ -25,7 +24,7 @@ import type {
 } from '../../types/permissions.js'
 import { isDebugMode, logForDebugging } from '../debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from '../envUtils.js'
-import { errorMessage } from '../errors.js'
+import { errorMessage, isSdkApiError } from '../errors.js'
 import { lazySchema } from '../lazySchema.js'
 import { extractTextContent } from '../messages.js'
 import { getMainLoopModel } from '../model/model.js'
@@ -1631,7 +1630,7 @@ const TRANSIENT_4XX_STATUSES = new Set([408, 409, 429])
  * OpenAI-compatible providers, since the shim surfaces errors via APIError.generate.
  */
 function detectDeterministicApiError(error: unknown): boolean {
-  if (!(error instanceof APIError)) return false
+  if (!isSdkApiError(error)) return false
   const status = error.status
   return (
     typeof status === 'number' &&

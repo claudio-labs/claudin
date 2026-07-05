@@ -4,11 +4,11 @@ import { isModelAllowed } from './modelAllowlist.js'
 import { getAPIProvider } from './providers.js'
 import { sideQuery } from '../sideQuery.js'
 import {
-  NotFoundError,
-  APIError,
-  APIConnectionError,
-  AuthenticationError,
-} from '@anthropic-ai/sdk'
+  isSdkApiConnectionError,
+  isSdkApiError,
+  isSdkAuthenticationError,
+  isSdkNotFoundError,
+} from '../errors.js'
 import { getModelStrings } from './modelStrings.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'
@@ -142,7 +142,7 @@ function handleValidationError(
   modelName: string,
 ): { valid: boolean; error: string } {
   // NotFoundError (404) means the model doesn't exist
-  if (error instanceof NotFoundError) {
+  if (isSdkNotFoundError(error)) {
     const fallback = get3PFallbackSuggestion(modelName)
     const suggestion = fallback ? `. Try '${fallback}' instead` : ''
     return {
@@ -152,15 +152,15 @@ function handleValidationError(
   }
 
   // For other API errors, provide context-specific messages
-  if (error instanceof APIError) {
-    if (error instanceof AuthenticationError) {
+  if (isSdkApiError(error)) {
+    if (isSdkAuthenticationError(error)) {
       return {
         valid: false,
         error: 'Authentication failed. Please check your API credentials.',
       }
     }
 
-    if (error instanceof APIConnectionError) {
+    if (isSdkApiConnectionError(error)) {
       return {
         valid: false,
         error: 'Network error. Please check your internet connection.',

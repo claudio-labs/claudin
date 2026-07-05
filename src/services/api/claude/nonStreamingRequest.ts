@@ -2,11 +2,11 @@ import type {
   BetaMessage,
   BetaMessageStreamParams,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { APIUserAbortError } from '@anthropic-ai/sdk/error'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/types/message.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isSdkApiUserAbortError } from 'src/utils/errors.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
 import type { ThinkingConfig } from 'src/utils/thinking.js'
@@ -103,7 +103,7 @@ export async function* executeNonStreamingRequest(
         )
       } catch (err) {
         // User aborts are not errors — re-throw immediately without logging
-        if (err instanceof APIUserAbortError) throw err
+        if (isSdkApiUserAbortError(err)) throw err
 
         // Instrumentation: record when the non-streaming request errors (including
         // timeouts). Lets us distinguish "fallback hung past container kill"

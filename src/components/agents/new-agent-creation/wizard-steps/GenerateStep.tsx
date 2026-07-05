@@ -1,9 +1,9 @@
-import { APIUserAbortError } from '@anthropic-ai/sdk';
 import React, { type ReactNode, useCallback, useRef, useState } from 'react';
 import { useMainLoopModel } from '../../../../hooks/useMainLoopModel.js';
 import { Box, Text } from '../../../../ink.js';
 import { useKeybinding } from '../../../../keybindings/useKeybinding.js';
 import { createAbortController } from '../../../../utils/abortController.js';
+import { isSdkApiUserAbortError } from '../../../../utils/errors.js';
 import { editPromptInEditor } from '../../../../utils/promptEditor.js';
 import { ConfigurableShortcutHint } from '../../../ConfigurableShortcutHint.js';
 import { Byline } from '../../../design-system/Byline.js';
@@ -105,7 +105,7 @@ export function GenerateStep(): ReactNode {
       goToStep(6);
     } catch (err) {
       // Don't show error if it was cancelled (already set in escape handler)
-      if (err instanceof APIUserAbortError) {
+      if (isSdkApiUserAbortError(err)) {
         // User cancelled - no error to show
       } else if (err instanceof Error && !err.message.includes('No assistant message found')) {
         setError(err.message || 'Failed to generate agent');

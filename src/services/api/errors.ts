@@ -1,8 +1,4 @@
-import {
-  APIConnectionError,
-  APIConnectionTimeoutError,
-  APIError,
-} from '@anthropic-ai/sdk'
+import type { APIError } from '@anthropic-ai/sdk'
 import type {
   BetaMessage,
   BetaRefusalStopDetails,
@@ -24,6 +20,11 @@ import {
   createAssistantAPIErrorMessage,
   NO_RESPONSE_REQUESTED,
 } from 'src/utils/messages.js'
+import {
+  isSdkApiConnectionError,
+  isSdkApiConnectionTimeoutError,
+  isSdkApiError,
+} from 'src/utils/errors.js'
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
@@ -537,8 +538,8 @@ export function getAssistantMessageFromError(
 ): AssistantMessage {
   // Check for SDK timeout errors
   if (
-    error instanceof APIConnectionTimeoutError ||
-    (error instanceof APIConnectionError &&
+    isSdkApiConnectionTimeoutError(error) ||
+    (isSdkApiConnectionError(error) &&
       error.message.toLowerCase().includes('timeout'))
   ) {
     return createAssistantAPIErrorMessage({
@@ -558,7 +559,7 @@ export function getAssistantMessageFromError(
 
   // OpenAI-compatible transport and HTTP failures include structured category
   // markers from openaiShim.ts for actionable end-user remediation.
-  if (error instanceof APIError) {
+  if (isSdkApiError(error)) {
     const openaiCategory = extractOpenAICategoryMarker(error.message)
     if (openaiCategory) {
       return mapOpenAICompatibilityFailureToAssistantMessage({
@@ -581,7 +582,7 @@ export function getAssistantMessageFromError(
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 429 &&
     shouldProcessRateLimits(isClaudeAISubscriber())
   ) {
@@ -733,7 +734,7 @@ export function getAssistantMessageFromError(
 
   // Check for image size errors (e.g., "image exceeds 5 MB maximum: 5316852 bytes > 5242880 bytes")
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('image exceeds') &&
     error.message.includes('maximum')
@@ -746,7 +747,7 @@ export function getAssistantMessageFromError(
 
   // Check for many-image dimension errors (API enforces stricter 2000px limit for many-image requests)
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('image dimensions exceed') &&
     error.message.includes('many-image')
@@ -765,7 +766,7 @@ export function getAssistantMessageFromError(
   // so the truthy guard keeps this inert there.
   if (
     AFK_MODE_BETA_HEADER &&
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes(AFK_MODE_BETA_HEADER) &&
     error.message.includes('anthropic-beta')
@@ -778,7 +779,7 @@ export function getAssistantMessageFromError(
 
   // Check for request too large errors (413 status)
   // This typically happens when a large PDF + conversation context exceeds the 32MB API limit
-  if (error instanceof APIError && error.status === 413) {
+  if (isSdkApiError(error) && error.status === 413) {
     return createAssistantAPIErrorMessage({
       content: getRequestTooLargeErrorMessage(),
       error: 'invalid_request',
@@ -787,7 +788,7 @@ export function getAssistantMessageFromError(
 
   // Check for tool_use/tool_result concurrency error
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes(
       '`tool_use` ids were found without `tool_result` blocks immediately after',
@@ -817,7 +818,7 @@ export function getAssistantMessageFromError(
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('unexpected `tool_use_id` found in `tool_result`')
   ) {
@@ -828,7 +829,7 @@ export function getAssistantMessageFromError(
   // before send, so hitting this means a new corruption path slipped through.
   // Log for root-causing, and give users a recovery path instead of deadlock.
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('`tool_use` ids must be unique')
   ) {
@@ -846,7 +847,7 @@ export function getAssistantMessageFromError(
   // Check for invalid model name error for subscription users trying to use Opus
   if (
     isClaudeAISubscriber() &&
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.toLowerCase().includes('invalid model name') &&
     (isNonCustomOpusModel(model) || model === 'opus')
@@ -872,7 +873,7 @@ export function getAssistantMessageFromError(
   // the explicit-key case; apiKeyHelper and /login-managed keys mean the
   // active auth's org is genuinely disabled with no dormant fallback.
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.toLowerCase().includes('organization has been disabled')
   ) {
@@ -927,7 +928,7 @@ export function getAssistantMessageFromError(
 
   // Check for OAuth token revocation error
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 403 &&
     error.message.includes('OAuth token has been revoked')
   ) {
@@ -939,7 +940,7 @@ export function getAssistantMessageFromError(
 
   // Check for OAuth organization not allowed error
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     (error.status === 401 || error.status === 403) &&
     error.message.includes(
       'OAuth authentication is currently not allowed for this organization',
@@ -953,7 +954,7 @@ export function getAssistantMessageFromError(
 
   // Generic handler for other 401/403 authentication errors
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     (error.status === 401 || error.status === 403)
   ) {
     // In CCR mode, auth is via JWTs - this is likely a transient network issue
@@ -992,7 +993,7 @@ export function getAssistantMessageFromError(
   // 404 Not Found — usually means the selected model doesn't exist or isn't
   // available. Guide the user to /model so they can pick a valid one.
   // For 3P users, suggest a specific fallback model they can try.
-  if (error instanceof APIError && error.status === 404) {
+  if (isSdkApiError(error) && error.status === 404) {
     const switchCmd = getIsNonInteractiveSession() ? '--model' : '/model'
     const fallbackSuggestion = get3PModelFallbackSuggestion(model)
     return createAssistantAPIErrorMessage({
@@ -1008,7 +1009,8 @@ export function getAssistantMessageFromError(
   // This happens when auto-compact fails or the token estimation undercounts.
   // Detect by checking for context-related keywords in 500 responses.
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
+    error.status !== undefined &&
     error.status >= 500 &&
     (error.message.toLowerCase().includes('too many tokens') ||
       error.message.toLowerCase().includes('request too large') ||
@@ -1028,7 +1030,7 @@ export function getAssistantMessageFromError(
   }
 
   // Connection errors (non-timeout) — use formatAPIError for detailed messages
-  if (error instanceof APIConnectionError) {
+  if (isSdkApiConnectionError(error)) {
     return createAssistantAPIErrorMessage({
       content: `${API_ERROR_MESSAGE_PREFIX}: ${formatAPIError(error)}`,
       error: 'unknown',
@@ -1096,8 +1098,8 @@ export function classifyAPIError(error: unknown): string {
 
   // Timeout errors
   if (
-    error instanceof APIConnectionTimeoutError ||
-    (error instanceof APIConnectionError &&
+    isSdkApiConnectionTimeoutError(error) ||
+    (isSdkApiConnectionError(error) &&
       error.message.toLowerCase().includes('timeout'))
   ) {
     return 'api_timeout'
@@ -1120,13 +1122,13 @@ export function classifyAPIError(error: unknown): string {
   }
 
   // Rate limiting
-  if (error instanceof APIError && error.status === 429) {
+  if (isSdkApiError(error) && error.status === 429) {
     return 'rate_limit'
   }
 
   // Server overload (529)
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     (error.status === 529 ||
       error.message?.includes('"type":"overloaded_error"'))
   ) {
@@ -1160,7 +1162,7 @@ export function classifyAPIError(error: unknown): string {
 
   // Image size errors
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('image exceeds') &&
     error.message.includes('maximum')
@@ -1170,7 +1172,7 @@ export function classifyAPIError(error: unknown): string {
 
   // Many-image dimension errors
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('image dimensions exceed') &&
     error.message.includes('many-image')
@@ -1180,7 +1182,7 @@ export function classifyAPIError(error: unknown): string {
 
   // Tool use errors (400)
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes(
       '`tool_use` ids were found without `tool_result` blocks immediately after',
@@ -1190,7 +1192,7 @@ export function classifyAPIError(error: unknown): string {
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('unexpected `tool_use_id` found in `tool_result`')
   ) {
@@ -1198,7 +1200,7 @@ export function classifyAPIError(error: unknown): string {
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.includes('`tool_use` ids must be unique')
   ) {
@@ -1207,7 +1209,7 @@ export function classifyAPIError(error: unknown): string {
 
   // Invalid model errors (400)
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 400 &&
     error.message.toLowerCase().includes('invalid model name')
   ) {
@@ -1233,7 +1235,7 @@ export function classifyAPIError(error: unknown): string {
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     error.status === 403 &&
     error.message.includes('OAuth token has been revoked')
   ) {
@@ -1241,7 +1243,7 @@ export function classifyAPIError(error: unknown): string {
   }
 
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     (error.status === 401 || error.status === 403) &&
     error.message.includes(
       'OAuth authentication is currently not allowed for this organization',
@@ -1252,7 +1254,7 @@ export function classifyAPIError(error: unknown): string {
 
   // Generic auth errors
   if (
-    error instanceof APIError &&
+    isSdkApiError(error) &&
     (error.status === 401 || error.status === 403)
   ) {
     return 'auth_error'
@@ -1268,14 +1270,14 @@ export function classifyAPIError(error: unknown): string {
   }
 
   // Status code based fallbacks
-  if (error instanceof APIError) {
+  if (isSdkApiError(error)) {
     const status = error.status
-    if (status >= 500) return 'server_error'
-    if (status >= 400) return 'client_error'
+    if (status !== undefined && status >= 500) return 'server_error'
+    if (status !== undefined && status >= 400) return 'client_error'
   }
 
   // Connection errors - check for SSL/TLS issues first
-  if (error instanceof APIConnectionError) {
+  if (isSdkApiConnectionError(error)) {
     const connectionDetails = extractConnectionErrorDetails(error)
     if (connectionDetails?.isSSLError) {
       return 'ssl_cert_error'

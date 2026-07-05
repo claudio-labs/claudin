@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { APIError } from '@anthropic-ai/sdk'
+import { isSdkApiError } from '../../utils/errors.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import type {
   BetaStopReason,
@@ -47,7 +47,7 @@ export { EMPTY_USAGE }
 export type GlobalCacheStrategy = 'tool_based' | 'system_prompt' | 'none'
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof APIError) {
+  if (isSdkApiError(error)) {
     const body = error.error as { error?: { message?: string } } | undefined
     if (body?.error?.message) return body.error.message
   }
@@ -275,12 +275,12 @@ export function logAPIError({
 }): void {
   const gateway = detectGateway({
     headers:
-      error instanceof APIError && error.headers ? error.headers : headers,
+      isSdkApiError(error) && error.headers ? error.headers : headers,
     baseUrl: tryGetActiveProvider()?.transport === 'anthropic' ? tryGetActiveProvider()?.baseUrl : undefined,
   })
 
   const errStr = getErrorMessage(error)
-  const status = error instanceof APIError ? String(error.status) : undefined
+  const status = isSdkApiError(error) ? String(error.status) : undefined
   const errorType = classifyAPIError(error)
 
   // Log detailed connection error info to debug logs (visible via --debug)

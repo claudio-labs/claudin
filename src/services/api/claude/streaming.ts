@@ -41,7 +41,11 @@ import { getGlobalConfig } from "src/utils/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/utils/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/utils/envUtils.js";
-import { errorMessage } from "src/utils/errors.js";
+import {
+  errorMessage,
+  isSdkApiError,
+  isSdkApiUserAbortError,
+} from "src/utils/errors.js";
 import { computeFingerprintFromMessages } from "src/utils/fingerprint.js";
 import { captureAPIRequest } from "src/utils/log.js";
 import {
@@ -84,8 +88,7 @@ const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
 import { feature } from "bun:bundle";
 import {
   APIConnectionTimeoutError,
-  APIError,
-  APIUserAbortError,
+  type APIError,
 } from "@anthropic-ai/sdk/error";
 import {
   getAfkModeHeaderLatched,
@@ -1760,7 +1763,7 @@ export async function* queryModel(
         });
       }
 
-      if (streamingError instanceof APIUserAbortError) {
+      if (isSdkApiUserAbortError(streamingError)) {
         // Check if the abort signal was triggered by the user (ESC key)
         // If the signal is aborted, it's a user-initiated abort
         // If not, it's likely a timeout from the SDK
@@ -1986,7 +1989,7 @@ export async function* queryModel(
     // endpoint — non-streaming would fail the same way.
     const originalError404 =
       errorFromRetry instanceof CannotRetryError &&
-      errorFromRetry.originalError instanceof APIError &&
+      isSdkApiError(errorFromRetry.originalError) &&
       errorFromRetry.originalError.status === 404
         ? (errorFromRetry.originalError as APIError)
         : null;
@@ -2084,14 +2087,14 @@ export async function* queryModel(
           errorModel = fallbackError.retryContext.model;
         }
 
-        if (error instanceof APIError) {
+        if (isSdkApiError(error)) {
           extractQuotaStatusFromError(error);
         }
 
         const requestId =
           streamRequestId ||
-          (error instanceof APIError ? error.requestID : undefined) ||
-          (error instanceof APIError
+          (isSdkApiError(error) ? error.requestID : undefined) ||
+          (isSdkApiError(error)
             ? (error.error as { request_id?: string })?.request_id
             : undefined);
 
@@ -2113,7 +2116,7 @@ export async function* queryModel(
           previousRequestId,
         });
 
-        if (error instanceof APIUserAbortError) {
+        if (isSdkApiUserAbortError(error)) {
           releaseStreamResources();
           return;
         }
@@ -2139,15 +2142,15 @@ export async function* queryModel(
       }
 
       // Extract quota status from error headers if it's a rate limit error
-      if (error instanceof APIError) {
+      if (isSdkApiError(error)) {
         extractQuotaStatusFromError(error);
       }
 
       // Extract requestId from stream, error header, or error body
       const requestId =
         streamRequestId ||
-        (error instanceof APIError ? error.requestID : undefined) ||
-        (error instanceof APIError
+        (isSdkApiError(error) ? error.requestID : undefined) ||
+        (isSdkApiError(error)
           ? (error.error as { request_id?: string })?.request_id
           : undefined);
 
@@ -2171,7 +2174,7 @@ export async function* queryModel(
 
       // Don't yield an assistant error message for user aborts
       // The interruption message is handled in query.ts
-      if (error instanceof APIUserAbortError) {
+      if (isSdkApiUserAbortError(error)) {
         releaseStreamResources();
         return;
       }
