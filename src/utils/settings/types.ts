@@ -979,6 +979,12 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .claude/settings.json) for security. When unset, defaults to ~/.claude/projects/<sanitized-cwd>/memory/.',
         ),
+      autoMemoryProjectLocal: z
+        .boolean()
+        .optional()
+        .describe(
+          'When true (the default), auto-memory for a git project defaults to <project>/.claudin/memory/ instead of the global ~/.claudin/projects/<sanitized-cwd>/memory/. Set to false to force the legacy global-only location. Ignored if set in projectSettings for security, same as autoMemoryDirectory.',
+        ),
       autoDreamEnabled: z
         .boolean()
         .optional()

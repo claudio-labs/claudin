@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -16,6 +16,10 @@ Claudin is an open-source coding-agent CLI forked from the Claude Code codebase,
 
 The project is **not affiliated with Anthropic**. Telemetry/phone-home paths from upstream are replaced with no-op stubs at build time (see `scripts/no-telemetry-plugin.ts`) and `bun run verify:privacy` enforces this on the bundle.
 
+## Repo Etiquette
+
+Use Issues for confirmed bugs and actionable feature work; use Discussions for setup help and ideas. Open an issue first for larger changes before implementing. See `CONTRIBUTING.md` for the full contribution guidelines (PR content expectations, code style, security reports via `SECURITY.md`).
+
 ## Common Commands
 
 Build, run, test:
@@ -32,13 +36,6 @@ bun run test:provider       # provider integration tests (api/* + utils/context)
 bun run test:coverage       # lcov + heatmap at coverage/index.html
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 bun run build:verified      # build + verify:privacy
-```
-
-gRPC headless mode:
-
-```bash
-bun run dev:grpc            # start gRPC server on localhost:50051 (proto: src/proto/claudin.proto)
-bun run dev:grpc:cli        # streaming CLI client over gRPC
 ```
 
 After install (npm) or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist; otherwise it prints a "build first" hint. There is no separate dev runner that bypasses the bundle.
@@ -87,10 +84,11 @@ Single entrypoint, single-file bundle. The CLI is bundled to `dist/cli.mjs` and 
 - `src/services/mcp/` — MCP client + server connection management. `src/services/mcpServerApproval.tsx` is the trust dialog.
 - `src/coordinator/` — multi-agent coordinator (`coordinatorMode.ts`, `workerAgent.ts`); active when `COORDINATOR_MODE` is on.
 - `src/components/` + `src/screens/` + `src/ink/` — Ink-based React TUI. `src/main.tsx` mounts the app; `src/screens/REPL.tsx` is the main loop. `src/native-ts/yoga-layout` is a TS port to avoid a native-addon dep.
-- `src/grpc/server.ts` + `src/proto/claudin.proto` — headless gRPC service. Bidirectional streaming: text chunks, tool calls, `action_required` permission prompts.
-- `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: scoped per-project under `~/.claudin/projects/<dir>/memory/`, written as `.md` files indexed by `MEMORY.md`.
+- `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: for git projects, defaults to project-local `<repo>/.claudin/memory/` (set `autoMemoryProjectLocal: false` to force the legacy global `~/.claudin/projects/<dir>/memory/`), written as `.md` files indexed by `MEMORY.md`. The `memory/team/` subfolder is meant to be git-tracked (carve it out of `.gitignore`, which otherwise blanket-ignores `.claudin/`) so it reaches teammates via push/pull; private `memory/*.md` stays git-ignored.
 - `src/skills/` — user-invocable skills (`/<skill-name>`). Bundled skills live in `src/skills/bundled/`; `/create` (create.ts) teaches the model to author skills/rules/agents in the `.claudin/` (project) and `~/.claudin/` (global) structure.
 - `src/utils/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` and `~/.openclaude/` configs into `~/.claudin/`. Triggered automatically and rerunnable via `/provider migrate`. Override the config dir with `CLAUDIN_CONFIG_DIR`.
+
+Note: an earlier headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, `dev:grpc`/`dev:grpc:cli` scripts) was removed (`chore: remove gRPC server and its dependencies`, #22) — it no longer exists in this repo despite lingering mentions in older docs.
 
 ## Configuration & Credentials
 

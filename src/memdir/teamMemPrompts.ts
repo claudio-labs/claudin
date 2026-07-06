@@ -1,3 +1,6 @@
+import { sep } from 'path'
+import { getProjectRoot } from '../bootstrap/state.js'
+import { findCanonicalGitRoot } from '../utils/git.js'
 import {
   buildSearchingPastContextSection,
   DIRS_EXIST_GUIDANCE,
@@ -6,7 +9,33 @@ import {
 } from './memdir.js'
 import { MEMORY_FRONTMATTER_EXAMPLE } from './memoryTypes.js'
 import { getAutoMemPath } from './paths.js'
-import { getTeamMemPath } from './teamMemPaths.js'
+import { getTeamMemPath, isTeamMemLikelyGitIgnored } from './teamMemPaths.js'
+
+/**
+ * When team memory is project-local and the project's root .gitignore would
+ * blanket-swallow it, returns a guidance paragraph asking the model to
+ * propose the minimal .gitignore fix to the user — never applied silently.
+ * Returns an empty array when the check doesn't apply or can't be verified.
+ */
+function buildGitIgnoreGuidance(teamDir: string): string[] {
+  const gitRoot = findCanonicalGitRoot(getProjectRoot())
+  if (!gitRoot || !teamDir.startsWith(gitRoot + sep)) {
+    return []
+  }
+  if (!isTeamMemLikelyGitIgnored(gitRoot)) {
+    return []
+  }
+  return [
+    '',
+    `Heads up: this project's \`.gitignore\` currently excludes \`.claudin/\` entirely, which means \`${teamDir}\` won't reach teammates via git even though it lives in the project now. Show the user this diff and, only if they approve, apply it with the edit tool (never edit \`.gitignore\` without asking first):`,
+    '```',
+    '/.claudin/*',
+    '!/.claudin/memory/',
+    '/.claudin/memory/*',
+    '!/.claudin/memory/team/',
+    '```',
+  ]
+}
 
 /**
  * Build the combined prompt when both auto memory and team memory are enabled.
@@ -52,6 +81,7 @@ export function buildCombinedMemoryPrompt(
     "Memory is for future conversations. For the current conversation's approach use a Plan, and to track discrete steps use tasks — don't put either in memory.",
     '',
     ...(extraGuidelines ?? []),
+    ...buildGitIgnoreGuidance(teamDir),
     '',
     ...buildSearchingPastContextSection(autoDir),
   ]

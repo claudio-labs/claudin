@@ -1,4 +1,6 @@
+import { readFileSync } from 'fs'
 import { lstat, realpath } from 'fs/promises'
+import memoize from 'lodash-es/memoize.js'
 import { dirname, join, resolve, sep } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
 import { getErrnoCode } from '../utils/errors.js'
@@ -78,20 +80,56 @@ export function isTeamMemoryEnabled(): boolean {
 }
 
 /**
- * Returns the team memory path: <memoryBase>/projects/<sanitized-project-root>/memory/team/
+ * Returns the team memory path: <autoMemPath>/team/
  * Lives as a subdirectory of the auto-memory directory, scoped per-project.
+ * autoMemPath itself may be project-local (<gitRoot>/.claudin/memory/) or
+ * the legacy global path — see getAutoMemPath() in paths.ts.
  */
 export function getTeamMemPath(): string {
   return (join(getAutoMemPath(), 'team') + sep).normalize('NFC')
 }
 
 /**
- * Returns the team memory entrypoint: <memoryBase>/projects/<sanitized-project-root>/memory/team/MEMORY.md
+ * Returns the team memory entrypoint: <autoMemPath>/team/MEMORY.md
  * Lives as a subdirectory of the auto-memory directory, scoped per-project.
  */
 export function getTeamMemEntrypoint(): string {
   return join(getAutoMemPath(), 'team', 'MEMORY.md')
 }
+
+const BLANKET_CLAUDIN_IGNORE_RE = /^\/?\.claudin\/?$/
+const TEAM_MEM_NEGATION_RE = /^!\/?\.claudin\/memory\/team\/?/
+
+/**
+ * Best-effort check for the common case where a project's root .gitignore
+ * blanket-excludes .claudin/ (e.g. `/.claudin`), which would silently
+ * swallow the team memory dir even after it becomes project-local. Patterns
+ * are evaluated in file order, last match wins, matching git's own
+ * last-pattern-wins semantics for this narrow pair of pattern shapes.
+ *
+ * Only recognizes this one common pattern shape; anything more elaborate
+ * (nested .gitignore, globs, non-root patterns) fails open (returns false)
+ * rather than risk a false-positive nag — consistent with the fallback
+ * pattern for tools that wrap ambiguous external state.
+ */
+export const isTeamMemLikelyGitIgnored = memoize((gitRoot: string): boolean => {
+  try {
+    const content = readFileSync(join(gitRoot, '.gitignore'), 'utf-8')
+    let ignored = false
+    for (const rawLine of content.split('\n')) {
+      const line = rawLine.trim()
+      if (!line || line.startsWith('#')) continue
+      if (BLANKET_CLAUDIN_IGNORE_RE.test(line)) {
+        ignored = true
+      } else if (TEAM_MEM_NEGATION_RE.test(line)) {
+        ignored = false
+      }
+    }
+    return ignored
+  } catch {
+    return false
+  }
+})
 
 /**
  * Resolve symlinks for the deepest existing ancestor of a path.

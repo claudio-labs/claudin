@@ -1,3 +1,4 @@
+import { chmodSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
 import { isAbsolute, join, normalize, sep } from 'path'
@@ -12,11 +13,14 @@ import {
   isEnvTruthy,
 } from '../utils/envUtils.js'
 import { findCanonicalGitRoot } from '../utils/git.js'
+import { logError } from '../utils/log.js'
 import { sanitizePath } from '../utils/path.js'
 import {
   getInitialSettings,
   getSettingsForSource,
 } from '../utils/settings/settings.js'
+import { getFsImplementation } from '../utils/fsOperations.js'
+import { migrateGlobalMemoryIfNeeded } from './memoryMigration.js'
 
 /**
  * Whether auto-memory features are enabled (memdir, agent memory, past session search).
@@ -196,6 +200,26 @@ export function hasAutoMemPathOverride(): boolean {
 }
 
 /**
+ * Whether the project-local auto-memory default (<gitRoot>/.claudin/memory/)
+ * is enabled. Defaults to true; set autoMemoryProjectLocal: false to force
+ * the legacy global-only location without a rebuild.
+ *
+ * SECURITY: projectSettings is intentionally excluded, same rationale as
+ * getAutoMemPathSetting() above — this setting only changes *where* memory
+ * that's already trusted-local gets stored, not an arbitrary path, so the
+ * blast radius of a malicious repo forcing it is low, but excluding
+ * projectSettings keeps the trust model consistent with the sibling setting.
+ */
+function isAutoMemProjectLocalEnabled(): boolean {
+  const val =
+    getSettingsForSource('policySettings')?.autoMemoryProjectLocal ??
+    getSettingsForSource('flagSettings')?.autoMemoryProjectLocal ??
+    getSettingsForSource('localSettings')?.autoMemoryProjectLocal ??
+    getSettingsForSource('userSettings')?.autoMemoryProjectLocal
+  return val !== false
+}
+
+/**
  * Returns the canonical git repo root if available, otherwise falls back to
  * the stable project root. Uses findCanonicalGitRoot so all worktrees of the
  * same repo share one auto-memory directory (anthropics/claude-code#24382).
@@ -210,8 +234,11 @@ function getAutoMemBase(): string {
  * Resolution order:
  *   1. CLAUDE_COWORK_MEMORY_PATH_OVERRIDE env var (full-path override, used by Cowork)
  *   2. autoMemoryDirectory in settings.json (trusted sources only: policy/local/user)
- *   3. <memoryBase>/projects/<sanitized-git-root>/memory/
- *      where memoryBase is resolved by getMemoryBaseDir()
+ *   3. <gitRoot>/.claudin/memory/ when the project is a git repo and
+ *      autoMemoryProjectLocal isn't false (see getProjectLocalMemPath below)
+ *   4. <memoryBase>/projects/<sanitized-git-root>/memory/
+ *      where memoryBase is resolved by getMemoryBaseDir() — used for non-git
+ *      projects, and as the fallback whenever step 3 can't be verified safe
  *
  * Memoized: render-path callers (collapseReadSearchGroups → isAutoManagedMemoryFile)
  * fire per tool-use message per Messages re-render; each miss costs
@@ -227,9 +254,73 @@ export const getAutoMemPath = memoize(
       return override
     }
     const projectsDir = join(getMemoryBaseDir(), 'projects')
-    return (
+    const legacyPath = (
       join(projectsDir, sanitizePath(getAutoMemBase()), AUTO_MEM_DIRNAME) + sep
     ).normalize('NFC')
+
+    if (!isAutoMemProjectLocalEnabled()) {
+      return legacyPath
+    }
+    const gitRoot = findCanonicalGitRoot(getProjectRoot())
+    if (!gitRoot) {
+      return legacyPath
+    }
+
+    const projectLocalPath = (
+      join(gitRoot, '.claudin', AUTO_MEM_DIRNAME) + sep
+    ).normalize('NFC')
+
+    try {
+      getFsImplementation().mkdirSync(projectLocalPath, { mode: 0o700 })
+    } catch (error) {
+      logError(error)
+      return legacyPath
+    }
+
+    // SECURITY: the memory directory now lives inside the project tree,
+    // whose contents an attacker controls if the user opens/clones a hostile
+    // repo. mkdirSync above follows existing symlink components lexically,
+    // and isAutoMemPath() (below) auto-approves reads/writes under this path
+    // with no prompt — so a `.claudin` symlink planted in the repo could
+    // otherwise turn auto-memory into an unprompted read/write primitive
+    // against an arbitrary location. Verify the real path is still contained
+    // in the real git root; fall back to the legacy global dir if the check
+    // fails OR can't be completed — an unverifiable path must be treated as
+    // unsafe, not used as-is, since this value gets memoized for the process.
+    // Mirrors getPlansDirectory() in src/utils/plans.ts.
+    let containmentVerified = false
+    try {
+      const realRoot = getFsImplementation().realpathSync(gitRoot)
+      const realProjectLocalPath =
+        getFsImplementation().realpathSync(projectLocalPath)
+      containmentVerified =
+        realProjectLocalPath === realRoot ||
+        realProjectLocalPath.startsWith(realRoot + sep)
+      if (!containmentVerified) {
+        logError(
+          new Error(
+            `Auto-memory directory escapes project root via symlink: ${projectLocalPath} -> ${realProjectLocalPath}`,
+          ),
+        )
+      }
+    } catch (error) {
+      logError(error)
+    }
+    if (!containmentVerified) {
+      return legacyPath
+    }
+
+    // Belt-and-suspenders: force restrictive permissions even if the
+    // directory already existed without this mode set.
+    try {
+      chmodSync(projectLocalPath, 0o700)
+    } catch {
+      // best-effort; not all platforms/filesystems honor unix permission bits
+    }
+
+    migrateGlobalMemoryIfNeeded(legacyPath, projectLocalPath)
+
+    return projectLocalPath
   },
   () => getProjectRoot(),
 )
