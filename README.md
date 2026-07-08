@@ -4,7 +4,7 @@ A coding-agent CLI that works across many model providers — Anthropic, OpenAI,
 
 Claudin is an open fork of the Claude Code agent loop (tools, MCP, sub-agents, slash commands, streaming), retargeted so the model and credentials are chosen entirely from inside the REPL with `/provider`. Telemetry and phone-home paths from upstream are stubbed out at build time and enforced by `bun run verify:privacy`.
 
-[![License](https://img.shields.io/badge/license-source--available-2563eb)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
 
 ---
 
@@ -123,4 +123,4 @@ Claudin is an independent project and is not affiliated with, endorsed by, or sp
 
 ## License
 
-See [LICENSE](LICENSE). Free for personal and internal development use — redistribution and sale are not permitted.
+Released under the [MIT License](LICENSE).

@@ -1,207 +1,30 @@
-CLAUDIN SOURCE-AVAILABLE LICENSE
-Version 1.1 — 16 May 2026
+NOTICE
 
-Copyright (c) 2026 Claudinlabs ("Licensor"). All rights reserved.
+The original Claude Code source is proprietary software: Copyright (c)
+Anthropic PBC. All rights reserved. Subject to Anthropic's Commercial Terms of
+Service. Modifications and additions by Claudin contributors are offered under
+the MIT License below, where legally permissible.
 
-This license governs use of the accompanying software, including its
-source code, object code, documentation, configuration, and assets (the
-"Software"). By installing, copying, or otherwise using the Software,
-You accept this license. If You do not accept it, do not use the
-Software.
+--------------------------------------------------------------------------------
 
-0. DEFINITIONS
+MIT License
 
-  "You" (or "Your") means the individual or single legal entity
-  exercising rights under this license. For an entity, "You" includes
-  any affiliate controlling, controlled by, or under common control
-  with that entity, provided such affiliate is bound by this license.
+Copyright (c) 2026 Claudin
 
-  "Organization" means the single legal entity in which You operate,
-  together with its employees, contractors, and agents acting within
-  the scope of their engagement with that entity.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-  "Local Use" means installing and executing the Software on hardware
-  owned or controlled by You or Your Organization, where the Software
-  is operated interactively or programmatically by a natural person
-  who is part of Your Organization. Local Use does not include making
-  the Software available to anyone outside Your Organization, whether
-  over a network, as a service, or by providing a copy.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-  "Upstream Project" means Claude Code, originally published by
-  Anthropic, PBC, from which portions of the Software are derived.
-
-1. GRANT OF RIGHTS
-
-Subject to Your continued compliance with the terms of this license,
-the Licensor grants You a worldwide, non-exclusive, non-transferable,
-royalty-free, irrevocable (subject to Section 7) license to:
-
-  (a) install, run, and execute the Software for Local Use;
-
-  (b) modify the Software, and create works based on it, solely for
-      Local Use, provided that any such modifications and derived
-      works remain internal to You or Your Organization and are not
-      distributed, published, or otherwise made available outside it;
-
-  (c) make the copies necessary to exercise the rights in (a) and (b),
-      including backups and copies on developer workstations belonging
-      to Your Organization;
-
-  (d) for clarity: use the Software during the course of providing
-      professional services (such as consulting, contracting, or
-      agency work) to a client, provided that the Software itself
-      (whether in source, binary, or modified form) is operated only
-      on hardware controlled by You and is not delivered, deployed,
-      hosted, sublicensed, or otherwise made available to the client
-      or to any other third party. Code, files, or other output
-      produced by Your use of the Software are not themselves subject
-      to this license and may be delivered to the client.
-
-2. PATENT GRANT
-
-Subject to the terms of this license, the Licensor grants You a
-worldwide, non-exclusive, royalty-free, irrevocable (subject to
-Section 7 and the following sentence) patent license under the
-Licensor's essential patent claims to make, have made, use, and run
-the Software for Local Use. If You initiate or participate in patent
-litigation (including a cross-claim or counterclaim) alleging that the
-Software, or a contribution incorporated within it, directly or
-indirectly infringes any patent, then any patent licenses granted to
-You under this license terminate as of the date such litigation is
-filed.
-
-3. RESTRICTIONS
-
-You may not:
-
-  (a) distribute, publish, sublicense, sell, rent, lease, loan,
-      transmit, mirror, or otherwise make available the Software, or
-      any work derived from it, to any third party, in source or
-      binary form, in whole or in part;
-
-  (b) provide the Software, or any work derived from it, to third
-      parties as a hosted, managed, multi-tenant, time-shared, or
-      "as-a-service" offering (including SaaS, PaaS, IaaS, API
-      gateway, or equivalent arrangements), or otherwise expose its
-      functionality over a network to anyone outside Your
-      Organization;
-
-  (c) remove, alter, or obscure any copyright, trademark, attribution,
-      or other proprietary notices contained in the Software, the
-      Upstream Project notices, or this license file;
-
-  (d) use the names, trademarks, service marks, or logos of the
-      Licensor (including "Claudin" and "Claudinlabs") or of the
-      Upstream Project (including "Claude Code" and "Anthropic") in
-      a manner that
-      suggests endorsement, sponsorship, or affiliation, except as
-      strictly required to identify the origin of the Software;
-
-  (e) use the Software in violation of applicable law, export
-      controls, sanctions regimes, or the rights of any third party;
-
-  (f) attempt to circumvent any technical limitation, license check,
-      telemetry-removal stub, or privacy-enforcement mechanism present
-      in the Software.
-
-4. UPSTREAM AND THIRD-PARTY MATERIALS
-
-The Software is a modified fork that incorporates substantial portions
-of the Upstream Project, together with components authored by other
-third parties (including open-source dependencies and model-provider
-SDKs). All such materials remain the property of their respective
-owners and are subject to their own terms, including but not limited
-to the Anthropic Commercial Terms of Service and the licenses of each
-third-party dependency. Nothing in this license overrides, replaces,
-or expands the rights granted by those third parties. You are solely
-responsible for determining and complying with any obligations arising
-from Your use of such materials. The Licensor makes no representation
-or warranty regarding the rights granted, or not granted, by any
-third party, and disclaims any obligation to defend, indemnify, or
-hold You harmless against third-party claims.
-
-The Software is not affiliated with, endorsed by, or sponsored by
-Anthropic, PBC.
-
-5. CONTRIBUTIONS (INLINE CONTRIBUTOR AGREEMENT)
-
-If You intentionally submit any contribution (including code,
-documentation, configuration, or other materials) for inclusion in the
-Software, by submitting that contribution You agree that:
-
-  (a) You grant the Licensor a perpetual, worldwide, non-exclusive,
-      royalty-free, irrevocable license to use, reproduce, modify,
-      prepare derivative works of, publicly display, publicly perform,
-      sublicense, and distribute Your contribution and such derivative
-      works, under this license and under any other license the
-      Licensor may choose for the Software in the future;
-
-  (b) You grant the Licensor and every recipient of the Software a
-      perpetual, worldwide, non-exclusive, royalty-free, irrevocable
-      patent license under Your essential patent claims to make, have
-      made, use, run, and otherwise exploit Your contribution and the
-      Software incorporating it;
-
-  (c) the contribution is Your original work, or You have sufficient
-      rights to submit it under this Section 5, and the contribution
-      does not knowingly infringe any third-party rights or include
-      third-party material that conflicts with this license;
-
-  (d) the contribution is submitted without any expectation of payment
-      and without any additional terms or conditions; the Licensor is
-      under no obligation to accept, retain, or attribute it.
-
-If You contribute on behalf of an Organization, You represent that You
-are authorized to bind that Organization to this Section 5.
-
-6. DISCLAIMER OF WARRANTY
-
-THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY
-OF ANY KIND, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WITHOUT
-LIMITATION ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE, TITLE, ACCURACY, OR NON-INFRINGEMENT. YOU ASSUME
-ALL RISK ASSOCIATED WITH USE OF THE SOFTWARE, INCLUDING ANY RISK
-ARISING FROM ITS INTERACTION WITH THIRD-PARTY MODEL PROVIDERS,
-NETWORK SERVICES, OR LOCAL TOOLING.
-
-7. LIMITATION OF LIABILITY
-
-TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL
-THE LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS,
-LOST DATA, OR BUSINESS INTERRUPTION, ARISING OUT OF OR RELATING TO
-THIS LICENSE OR THE SOFTWARE, WHETHER IN CONTRACT, TORT, OR ANY OTHER
-LEGAL THEORY, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
-
-8. TERMINATION
-
-This license terminates automatically and without notice if You
-materially breach any of its terms and fail to cure the breach within
-thirty (30) days after the Licensor provides written notice (which may
-be delivered electronically). For breaches of Section 3(a), 3(b), or
-the patent-litigation clause in Section 2, termination is immediate
-and no cure period applies. Upon termination, You must immediately
-cease all use of the Software and destroy all copies in Your
-possession or control. Sections 4, 5, 6, 7, 8, 9, and 10 survive
-termination.
-
-9. RESERVED RIGHTS
-
-All rights not expressly granted to You under this license are
-reserved by the Licensor. No rights are granted by implication,
-estoppel, or otherwise. "Claudin" and any associated logos are
-trademarks of the Licensor; no trademark license is granted by this
-license except the limited attribution use permitted in Section 3(d).
-
-10. SEVERABILITY AND ENTIRE AGREEMENT
-
-If any provision of this license is held to be unenforceable, the
-remaining provisions shall continue in full force and effect, and the
-unenforceable provision shall be modified to the minimum extent
-necessary to make it enforceable while preserving its intent. This
-license constitutes the entire agreement between You and the Licensor
-regarding the Software and supersedes any prior or contemporaneous
-understanding regarding its subject matter, except for separate
-written agreements expressly signed by the Licensor.
-
-— end of license —
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
