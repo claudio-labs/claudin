@@ -1,4 +1,4 @@
-import { describe, expect, test, mock } from 'bun:test'
+import { afterAll, describe, expect, test, mock } from 'bun:test'
 
 // buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
 // (./paths.js, ./teamMemPaths.js), the project's git root (../utils/git.js,
@@ -13,6 +13,19 @@ const realState = { ...(await import('../bootstrap/state.js')) }
 const realGit = { ...(await import('../utils/git.js')) }
 const realPaths = { ...(await import('./paths.js')) }
 const realTeamMemPaths = { ...(await import('./teamMemPaths.js')) }
+
+// Bun's mock.module() is process-global and is NOT reverted by mock.restore().
+// importFreshTeamMemPrompts() leaves ./paths.js, ./teamMemPaths.js,
+// ../utils/git.js and ../bootstrap/state.js stubbed (findCanonicalGitRoot,
+// getProjectRoot, getAutoMemPath, isTeamMemLikelyGitIgnored → fakes), which
+// otherwise bleed into sibling files (paths.test.ts, teamMemPaths.test.ts).
+// Re-install the real modules once the file finishes.
+afterAll(() => {
+  mock.module('../bootstrap/state.js', () => realState)
+  mock.module('../utils/git.js', () => realGit)
+  mock.module('./paths.js', () => realPaths)
+  mock.module('./teamMemPaths.js', () => realTeamMemPaths)
+})
 
 async function importFreshTeamMemPrompts(options: {
   autoDir: string

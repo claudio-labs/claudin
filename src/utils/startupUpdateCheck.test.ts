@@ -10,6 +10,21 @@ import {
   THROTTLE_MS,
 } from 'src/utils/startupUpdateCheck.js'
 
+// Snapshot the real modules this suite mock.module()s so afterEach can put them
+// back. mock.restore() does NOT revert mock.module(), so without this the
+// partial stubs below (which drop every un-listed export) bleed into sibling
+// test files sharing the Bun process — e.g. leaving latestVersionCache with
+// only writeLatestVersion, or config.js with only getAutoUpdaterDisabledReason.
+const realConfigModule = { ...(await import('src/utils/config.js')) }
+const realDoctorDiagnosticModule = {
+  ...(await import('src/utils/doctorDiagnostic.js')),
+}
+const realAutoUpdaterModule = { ...(await import('src/utils/autoUpdater.js')) }
+const realLatestVersionCacheModule = {
+  ...(await import('src/utils/latestVersionCache.js')),
+}
+const realSettingsModule = { ...(await import('src/utils/settings/settings.js')) }
+
 describe('getEarlySkipReason', () => {
   const originalEnv = { ...process.env }
   const originalIsTTY = process.stdout.isTTY
@@ -245,7 +260,14 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
     console.error = originalConsoleError
     // Restore module mocks so they don't bleed into sibling test files
     // sharing the same Bun process (Bun's mock.module is process-scoped).
+    // mock.restore() only reverts spies/mock() — it does NOT undo
+    // mock.module(), so re-install the real modules explicitly.
     mock.restore()
+    mock.module('src/utils/config.js', () => realConfigModule)
+    mock.module('src/utils/doctorDiagnostic.js', () => realDoctorDiagnosticModule)
+    mock.module('src/utils/autoUpdater.js', () => realAutoUpdaterModule)
+    mock.module('src/utils/latestVersionCache.js', () => realLatestVersionCacheModule)
+    mock.module('src/utils/settings/settings.js', () => realSettingsModule)
     if (tmpDir) await rm(tmpDir, { recursive: true, force: true })
   })
 
