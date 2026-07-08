@@ -124,6 +124,8 @@ const PRESET_ORDER = [
   'Azure AI Foundry',
   'AWS Bedrock',
   'Bankr',
+  'Cloudflare Workers AI',
+  'Cloudflare AI Gateway',
   'Codex OAuth',
   'xAI / Grok (OAuth)',
   'GitHub Copilot',
@@ -143,6 +145,7 @@ const PRESET_ORDER = [
   'OpenAI',
   'OpenRouter',
   'Together AI',
+  'Z.AI (GLM Coding Plan)',
   'Custom',
 ] as const
 

@@ -18,29 +18,17 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-env:
-  GITEA_BASE_URL: http://git.house.server:3000
-  GITEA_REPO_URL: http://git.house.server:3000/${{ github.repository }}
-  GITEA_API_BASE: http://git.house.server:3000/api/v1/repos/${{ github.repository }}
-
 jobs:
   release:
-    name: Bump, tag, and create Gitea release
+    name: Bump, tag, and create GitHub release
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          cd "$GITHUB_WORKSPACE"
-          rm -rf .git
-          git init -q
-          git remote add origin "http://oauth2:${GITEA_TOKEN}@${GITEA_BASE_URL#http://}/${{ github.repository }}"
-          git fetch -q --tags origin
-          git checkout -q "${{ github.sha }}"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configure git identity
         run: |
@@ -51,18 +39,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
 
       - name: Set up Bun
-        run: |
-          curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
-          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
-
-      - name: Install jq
-        run: |
-          if ! command -v jq >/dev/null 2>&1; then
-            apt-get update -qq && apt-get install -y -qq jq
-          fi
-          jq --version
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -123,45 +105,10 @@ jobs:
             git push origin "refs/tags/${TAG}"
           fi
 
-      - name: Create or fetch Gitea release (idempotent)
-        id: create_release
+      - name: Create or update GitHub release (idempotent)
         env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BODY: ${{ steps.changelog.outputs.body }}
-          TAG: ${{ steps.bump.outputs.tag }}
-        run: |
-          PAYLOAD=$(jq -n \
-            --arg tag "$TAG" \
-            --arg name "$TAG" \
-            --arg body "$BODY" \
-            '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}')
-          RESPONSE=$(curl -sS -X POST "$GITEA_API_BASE/releases" \
-            -H "Authorization: token $GITEA_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
-          if [ -z "$RELEASE_ID" ]; then
-            # Probably already exists — fetch it by tag.
-            EXISTING=$(curl -sS \
-              "$GITEA_API_BASE/releases/tags/$TAG" \
-              -H "Authorization: token $GITEA_TOKEN")
-            RELEASE_ID=$(echo "$EXISTING" | jq -r '.id // empty')
-            if [ -z "$RELEASE_ID" ]; then
-              echo "Failed to create or fetch release:"
-              echo "$RESPONSE"
-              echo "$EXISTING"
-              exit 1
-            fi
-            echo "Reusing existing Gitea release id=$RELEASE_ID for $TAG"
-          else
-            echo "Created Gitea release id=$RELEASE_ID"
-          fi
-          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Attach bundle as release asset
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
           TAG: ${{ steps.bump.outputs.tag }}
         run: |
           # With code-splitting, dist/cli.mjs is a 10 KB facade that imports
@@ -169,13 +116,18 @@ jobs:
           # a broken binary, so we tar the whole dist/ (excluding sourcemaps).
           TARBALL="dist-${TAG}.tar.gz"
           tar --exclude='*.map' -czf "$TARBALL" -C dist .
-          curl -sS -X POST \
-            "$GITEA_API_BASE/releases/$RELEASE_ID/assets?name=${TARBALL}" \
-            -H "Authorization: token $GITEA_TOKEN" \
-            -F "attachment=@${TARBALL}" \
-            | jq -r '.browser_download_url // .message // .'
+          printf '%s' "$BODY" > /tmp/release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, updating notes + asset"
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md
+            gh release upload "$TAG" "$TARBALL" --clobber
+          else
+            gh release create "$TAG" "$TARBALL" \
+              --title "$TAG" \
+              --notes-file /tmp/release-notes.md
+          fi
 
-      - name: Append changelog to claudin-labs/claudin
+      - name: Append changelog to claudio-labs/claudio
         env:
           GH_TOKEN: ${{ secrets.GH_CHANGELOG_TOKEN }}
           BODY: ${{ steps.changelog.outputs.body }}
@@ -213,12 +165,6 @@ jobs:
           git commit -m "chore(changelog): ${TAG}"
           git push origin HEAD:main
 
-      - name: Set up Node for npm publish
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -240,7 +186,7 @@ jobs:
             echo
             echo "- Tag: ${{ steps.bump.outputs.tag }}"
             echo "- Version: ${{ steps.bump.outputs.version }}"
-            echo "- Release page: ${GITEA_REPO_URL}/releases/tag/${{ steps.bump.outputs.tag }}"
+            echo "- Release page: https://github.com/${{ github.repository }}/releases/tag/${{ steps.bump.outputs.tag }}"
             echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudin"
             echo "- install: \`npm install -g @claudiolabs/claudin@${{ steps.bump.outputs.version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

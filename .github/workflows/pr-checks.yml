@@ -1,0 +1,40 @@
+name: PR Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-and-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Install dependencies
+        run: |
+          echo "bun path: $(which bun)"
+          echo "bun version: $(bun --version)"
+          bun install --frozen-lockfile
+
+      - name: Smoke check
+        run: bun run smoke
+
+      - name: Run tests
+        run: bun test

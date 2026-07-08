@@ -1,7 +1,7 @@
 name: Publish to npm
 
 # Manual-only. Run after release.yml has tagged a version + created the
-# Gitea release. This workflow trusts that release.yml validated the code
+# GitHub release. This workflow trusts that release.yml validated the code
 # (tests, smoke, privacy) and only does the bare minimum to ship: install
 # deps, build the bundle, npm publish.
 on:
@@ -16,26 +16,15 @@ concurrency:
   group: publish-npm-${{ inputs.tag }}
   cancel-in-progress: false
 
-env:
-  GITEA_REPO_URL: http://git.house.server:3000/${{ github.repository }}
-
 jobs:
   publish:
     name: Publish ${{ inputs.tag }} to npm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release tag
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          cd "$GITHUB_WORKSPACE"
-          rm -rf .git
-          git init -q
-          git remote add origin "$GITEA_REPO_URL"
-          git -c http.extraheader="AUTHORIZATION: bearer $GITEA_TOKEN" fetch -q --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG"
-          git checkout -q "$TAG"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -44,9 +33,9 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Set up Bun
-        run: |
-          curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11"
-          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
