@@ -56,6 +56,7 @@ let effortEnvWasSet = false
 const REPL_SNAPSHOT_CWD = join(homedir(), 'projects', 'claudin')
 let savedOriginalCwd: string | undefined
 let savedCwdState: string | undefined
+let savedProcessCwd: (() => string) | undefined
 
 // Snapshot the real hook module so teardown can restore it (mock.restore()
 // does not revert mock.module()), preventing the pinned model from leaking.
@@ -72,6 +73,12 @@ export function setupReplMocks(): void {
   savedCwdState = getCwdState()
   setOriginalCwd(REPL_SNAPSHOT_CWD)
   setCwdState(REPL_SNAPSHOT_CWD)
+  // The startup logo (StartupScreen.ts) reads process.cwd() directly rather
+  // than the STATE cwd, so pinning STATE alone leaves the banner path
+  // machine-dependent. Override process.cwd() too so every cwd source renders
+  // the same home-relative path.
+  savedProcessCwd = process.cwd
+  process.cwd = () => REPL_SNAPSHOT_CWD
 
   // MACRO.* is a build-time replacement; in unit tests there's no bundler,
   // so REPL reads from globalThis.MACRO at runtime. Pin it UNCONDITIONALLY so
@@ -382,6 +389,10 @@ export function teardownReplMocks(): void {
   if (savedCwdState !== undefined) {
     setCwdState(savedCwdState)
     savedCwdState = undefined
+  }
+  if (savedProcessCwd !== undefined) {
+    process.cwd = savedProcessCwd
+    savedProcessCwd = undefined
   }
 }
 
