@@ -7,6 +7,11 @@ const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
 const realEnvUtils = { ...(await import('./envUtils.js')) }
 const realExecFileNoThrowInstall = { ...(await import('./execFileNoThrow.js')) }
+// Plain snapshot of the real fs/promises taken BEFORE any mock.module runs.
+// `fsPromises` above is a live namespace view — once the rm stub is installed
+// it reflects the mock (fsPromises.rm === the no-op), so restoring with the
+// live view would re-install the stub. Copy the real exports out now.
+const realFsPromises = { ...fsPromises }
 
 afterEach(() => {
   process.env = { ...originalEnv }
@@ -97,6 +102,6 @@ afterAll(() => {
   // rm() into a no-op for every sibling file, e.g. unlinkSessionSpillDir's
   // cleanup silently stops removing spill dirs. Re-install the real module
   // under both specifiers (Bun keys the two builtins separately).
-  mock.module('fs/promises', () => fsPromises)
-  mock.module('node:fs/promises', () => fsPromises)
+  mock.module('fs/promises', () => realFsPromises)
+  mock.module('node:fs/promises', () => realFsPromises)
 })
