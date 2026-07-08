@@ -92,4 +92,11 @@ afterAll(() => {
   mock.module('src/utils/envUtils.js', () => realEnvUtils)
   mock.module('./execFileNoThrow.js', () => realExecFileNoThrowInstall)
   mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  // The `rm` stub above (records paths instead of deleting) is process-global
+  // and mock.restore() does not revert mock.module(); left installed it turns
+  // rm() into a no-op for every sibling file, e.g. unlinkSessionSpillDir's
+  // cleanup silently stops removing spill dirs. Re-install the real module
+  // under both specifiers (Bun keys the two builtins separately).
+  mock.module('fs/promises', () => fsPromises)
+  mock.module('node:fs/promises', () => fsPromises)
 })
