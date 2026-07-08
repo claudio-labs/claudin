@@ -47,6 +47,16 @@ const REPL_SNAPSHOT_MODEL = 'claude-sonnet-4-6'
 let savedEffortEnv: string | undefined
 let effortEnvWasSet = false
 
+// The footer status line renders seamless Powerline segments when
+// hasNerdFontGlyphs() is true and a bracketed ASCII fallback (`[ ◐ medium ]…`)
+// otherwise. That heuristic keys off TERM/TERM_PROGRAM, so the style flips
+// between machines (a dev terminal like kitty/ghostty gets the glyph form the
+// snapshots were recorded with, while a CI runner with a plain TERM gets the
+// bracketed fallback). Force the glyph form so the status line matches the
+// recorded snapshots regardless of the ambient terminal.
+let savedNerdFontEnv: string | undefined
+let nerdFontEnvWasSet = false
+
 // The footer/banner render the working directory, home-relativized to `~/…`.
 // Left unpinned this bakes the developer's real checkout path into the
 // snapshots (`~/projects/claudin`), which then mismatches any other checkout
@@ -66,6 +76,10 @@ export function setupReplMocks(): void {
   savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
   effortEnvWasSet = true
   process.env.CLAUDE_CODE_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
+
+  savedNerdFontEnv = process.env.CLAUDIN_NERD_FONT
+  nerdFontEnvWasSet = true
+  process.env.CLAUDIN_NERD_FONT = '1'
 
   // Pin the working directory so the footer/banner render a machine-independent
   // `~/projects/claudin` (see REPL_SNAPSHOT_CWD above).
@@ -381,6 +395,14 @@ export function teardownReplMocks(): void {
       process.env.CLAUDE_CODE_EFFORT_LEVEL = savedEffortEnv
     }
     effortEnvWasSet = false
+  }
+  if (nerdFontEnvWasSet) {
+    if (savedNerdFontEnv === undefined) {
+      delete process.env.CLAUDIN_NERD_FONT
+    } else {
+      process.env.CLAUDIN_NERD_FONT = savedNerdFontEnv
+    }
+    nerdFontEnvWasSet = false
   }
   if (savedOriginalCwd !== undefined) {
     setOriginalCwd(savedOriginalCwd)
