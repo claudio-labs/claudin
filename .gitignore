@@ -11,6 +11,17 @@ package-lock.json
 /.claude
 /.claudin
 /.openclaude
+
+# Agent workflows: definitions (.claudin/workflows/*.md) are shareable project
+# config and should be committable; run state (.runs/) stays ignored. The
+# nested re-include below only un-ignores workflow .md files — every other
+# .claudin/* child (e.g. settings.json with plaintext keys) stays ignored.
+!/.claudin/
+/.claudin/*
+!/.claudin/workflows/
+/.claudin/workflows/*
+!/.claudin/workflows/*.md
+/.claudin/workflows/.runs/
 coverage/
 agent.log
 dist-baseline/

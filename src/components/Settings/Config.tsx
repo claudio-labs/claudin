@@ -392,6 +392,21 @@ export function Config({
       });
     }
   }, {
+    id: 'workflowsDefaultBackground',
+    label: 'Workflows run in background',
+    value: globalConfig.workflowsDefaultBackground === true,
+    type: 'boolean' as const,
+    onChange(workflowsDefaultBackground: boolean) {
+      saveGlobalConfig(current_wf => ({
+        ...current_wf,
+        workflowsDefaultBackground
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        workflowsDefaultBackground
+      });
+    }
+  }, {
     id: 'inlineImagesMode',
     label: 'Inline terminal images',
     value: globalConfig.inlineImagesMode ?? 'auto',
@@ -1268,6 +1283,9 @@ export function Config({
     }
     if (globalConfig.autoBackgroundAgentsEnabled !== initialConfig.current.autoBackgroundAgentsEnabled) {
       formattedChanges.push(`${globalConfig.autoBackgroundAgentsEnabled !== false ? 'Enabled' : 'Disabled'} auto-background agents`);
+    }
+    if (globalConfig.workflowsDefaultBackground !== initialConfig.current.workflowsDefaultBackground) {
+      formattedChanges.push(`${globalConfig.workflowsDefaultBackground === true ? 'Enabled' : 'Disabled'} workflows run in background`);
     }
     if (globalConfig.bashOutputFilterEnabled !== initialConfig.current.bashOutputFilterEnabled) {
       formattedChanges.push(`${globalConfig.bashOutputFilterEnabled !== false ? 'Enabled' : 'Disabled'} bash output filter`);

@@ -13,3 +13,14 @@ export function parseYaml(input: string): unknown {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (require('yaml') as typeof import('yaml')).parse(input)
 }
+
+/**
+ * YAML serialization. Always uses the `yaml` npm package (not Bun.YAML, whose
+ * stringify availability/formatting varies by Bun version) so output is
+ * deterministic across runtimes — this is a cold path (config/frontmatter
+ * writes), so the lazy require cost doesn't matter.
+ */
+export function stringifyYaml(value: unknown): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('yaml') as typeof import('yaml')).stringify(value)
+}

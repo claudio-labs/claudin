@@ -143,6 +143,11 @@ const WorkflowTool = feature('WORKFLOW_SCRIPTS')
       return require('./tools/WorkflowTool/WorkflowTool.js').WorkflowTool
     })()
   : null
+const agentWorkflowTools = feature('AGENT_WORKFLOWS')
+  ? (
+      require('./tools/AgentWorkflow/tools.js') as typeof import('./tools/AgentWorkflow/tools.js')
+    ).getAgentWorkflowTools()
+  : null
 const getPowerShellTool = () => {
   if (!isPowerShellToolEnabled()) return null
   return (
@@ -273,6 +278,7 @@ export function getAllBaseTools(): Tools {
     ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
     ...(REPLTool ? [REPLTool] : []),
     ...(WorkflowTool ? [WorkflowTool] : []),
+    ...(agentWorkflowTools ?? []),
     ...(SleepTool ? [SleepTool] : []),
     ...getCronTools(),
     ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),

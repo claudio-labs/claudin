@@ -101,6 +101,7 @@ const HOT_PATH_FLOOR = [
  */
 const CURRENT_BASELINE = [
   'AgentTool',
+  'AgentWorkflow',
   'ApplyPatchTool',
   'AskUserQuestionTool',
   'BashTool',

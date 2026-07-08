@@ -880,6 +880,31 @@ export default class Ink {
   }
 
   /**
+   * Reset frame state so the NEXT render writes every cell from scratch,
+   * using the mode-appropriate reset (the same one handleResize uses).
+   *
+   * Call BEFORE a state change whose in-place row rewrite would otherwise be
+   * emitted as positioned partial-row diffs (which drift around
+   * ambiguous-width glyphs and interleave old/new cells). Unlike
+   * forceRedraw() this does not render immediately — the reset applies to
+   * the upcoming frame, so the new layout itself is the full repaint.
+   *
+   * The mode branch matters: calling repaint() while in alt-screen leaves
+   * 0×0 frames, and log-update's 'growing' renderFrameSlice path then
+   * scrolls the alt screen with its trailing CR+LF — stacking stale frames
+   * on every keypress instead of overwriting them.
+   */
+  prepareFullRepaint(): void {
+    if (this.altScreenActive) {
+      this.resetFramesForAltScreen();
+      this.needsEraseBeforePaint = true;
+    } else {
+      this.repaint();
+      this.prevFrameContaminated = true;
+    }
+  }
+
+  /**
    * Called by the <AlternateScreen> component on mount/unmount.
    * Controls cursor.y clamping in the renderer and gates alt-screen-aware
    * behavior in SIGCONT/resize/unmount handlers. Repaints on change so

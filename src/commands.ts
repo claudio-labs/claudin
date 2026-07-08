@@ -86,6 +86,15 @@ const workflowsCmd = feature('WORKFLOW_SCRIPTS')
       require('./commands/workflows/index.js') as typeof import('./commands/workflows/index.js')
     ).default
   : null
+// NOTE: shares the ./commands/workflows/index.js module (and the 'workflows'
+// name) with the WORKFLOW_SCRIPTS `workflowsCmd` above. Only one of the two
+// flags is ever enabled (WORKFLOW_SCRIPTS is off in the open build), so at most
+// one 'workflows' command registers. If both are ever enabled, dedupe here.
+const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
+  ? (
+      require('./commands/workflows/index.js') as typeof import('./commands/workflows/index.js')
+    ).default
+  : null
 const webCmd = feature('CCR_REMOTE_SETUP')
   ? (
       require('./commands/remote-setup/index.js') as typeof import('./commands/remote-setup/index.js')
@@ -337,6 +346,7 @@ const COMMANDS = memoize((): Command[] => [
   ...(peersCmd ? [peersCmd] : []),
   tasks,
   ...(workflowsCmd ? [workflowsCmd] : []),
+  ...(agentWorkflowsCmd ? [agentWorkflowsCmd] : []),
   ...(torch ? [torch] : []),
 ])
 

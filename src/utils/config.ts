@@ -688,6 +688,13 @@ export type GlobalConfig = {
   // undefined → off (opt-in). Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
   autoBackgroundAgentsEnabled?: boolean
 
+  // Workflows run in background — when on, a Workflow tool call the model leaves
+  // unspecified defaults to background (returns a runId immediately + notifies on
+  // completion) instead of blocking the turn, and the /workflows dialog runs its
+  // run detached. undefined/false → off (opt-in). Never backgrounds in headless -p
+  // (getIsNonInteractiveSession gate) to avoid orphaned runs.
+  workflowsDefaultBackground?: boolean
+
   // Preferred browser binary used by OAuth flows (Anthropic sign-in, Codex,
   // GitHub Copilot, MCP). Overrides Linux auto-detection but is overridden by
   // $BROWSER. Path or bare binary name (e.g. "brave-browser"). undefined → use
@@ -753,6 +760,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     knowledgeGraphEnabled: true,
     inlineImagesMode: 'auto',
     autoBackgroundAgentsEnabled: false,
+    workflowsDefaultBackground: false,
   }
   return config
 }
@@ -804,6 +812,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
   'autoBackgroundAgentsEnabled',
+  'workflowsDefaultBackground',
   'oauthBrowser',
   'inlineImagesMode',
 ] as const

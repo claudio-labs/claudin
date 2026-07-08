@@ -19,6 +19,7 @@ import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { CoordinatorTaskPanel, useCoordinatorTaskCount } from '../CoordinatorAgentStatus.js';
 import { GoalStatusIndicator } from '../GoalStatusIndicator.js';
 import { BackgroundTaskGroupTree } from '../tasks/BackgroundTaskGroupTree.js';
+import { WorkflowRunStatusLine } from '../workflows/WorkflowRunStatusLine.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from '../StatusLine.js';
 import { SessionTokensIndicator } from '../SessionTokensIndicator.js';
 import { Notifications } from './Notifications.js';
@@ -61,6 +62,7 @@ type Props = {
   setHistoryQuery: (query: string) => void;
   historyFailedMatch: boolean;
   onOpenTasksDialog?: (taskId?: string) => void;
+  onOpenWorkflowsDialog?: (runId?: string) => void;
 };
 function PromptInputFooter({
   apiKeyStatus,
@@ -94,7 +96,8 @@ function PromptInputFooter({
   historyQuery,
   setHistoryQuery,
   historyFailedMatch,
-  onOpenTasksDialog
+  onOpenTasksDialog,
+  onOpenWorkflowsDialog
 }: Props): ReactNode {
   const settings = useSettings();
   const {
@@ -159,6 +162,9 @@ function PromptInputFooter({
       <Box paddingX={2} flexDirection="column">
         <BackgroundTaskGroupTree />
       </Box>
+      {feature('AGENT_WORKFLOWS') ? <Box paddingX={2} flexDirection="column">
+        <WorkflowRunStatusLine onOpen={onOpenWorkflowsDialog} />
+      </Box> : null}
     </>;
 }
 export default memo(PromptInputFooter);

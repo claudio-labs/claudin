@@ -114,6 +114,7 @@ import { QuickOpenDialog } from '../QuickOpenDialog.js';
 import TextInput from '../TextInput.js';
 import { ThinkingToggle } from '../ThinkingToggle.js';
 import { BackgroundTasksDialog } from '../tasks/BackgroundTasksDialog.js';
+import { WorkflowsMenuWithTabs } from '../workflows/WorkflowsMenuWithTabs.js';
 import { shouldHideTasksFooter } from '../tasks/taskStatusUtils.js';
 import { TeamsDialog } from '../teams/TeamsDialog.js';
 import VimTextInput from '../VimTextInput.js';
@@ -167,6 +168,8 @@ type Props = {
   setVimMode: (mode: VimMode) => void;
   showBashesDialog: string | boolean;
   setShowBashesDialog: (show: string | boolean) => void;
+  showWorkflowsDialog: string | boolean;
+  setShowWorkflowsDialog: (show: string | boolean) => void;
   onExit: () => void;
   getToolUseContext: (messages: Message[], newMessages: Message[], abortController: AbortController, mainLoopModel: string) => ProcessUserInputContext;
   onSubmit: (input: string, helpers: PromptInputHelpers, speculationAccept?: {
@@ -228,6 +231,8 @@ function PromptInput({
   setVimMode,
   showBashesDialog,
   setShowBashesDialog,
+  showWorkflowsDialog,
+  setShowWorkflowsDialog,
   onExit,
   getToolUseContext,
   onSubmit: onSubmitProp,
@@ -2159,6 +2164,7 @@ function PromptInput({
     setCursorOffset(offset);
   }, [input, textInputColumns, isSearchingHistory, cursorOffset, maxVisibleLines]);
   const handleOpenTasksDialog = useCallback((taskId?: string) => setShowBashesDialog(taskId ?? true), [setShowBashesDialog]);
+  const handleOpenWorkflowsDialog = useCallback((runId?: string) => setShowWorkflowsDialog(runId ?? true), [setShowWorkflowsDialog]);
   // Suggestion now renders exclusively through inlineGhostText (see
   // useTypeahead → promptSuggestionGhost). Keeping it here would double-paint
   // when input is empty.
@@ -2304,6 +2310,9 @@ function PromptInput({
   // even when the user opens a different dialog between Ctrl+R toggles.
   if (showBashesDialog) {
     return <>{historyPickerEl}<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} /></>;
+  }
+  if (feature('AGENT_WORKFLOWS') && showWorkflowsDialog) {
+    return <>{historyPickerEl}<WorkflowsMenuWithTabs context={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} onExit={() => setShowWorkflowsDialog(false)} initialTab="running" initialRunId={typeof showWorkflowsDialog === 'string' ? showWorkflowsDialog : undefined} /></>;
   }
   if (isAgentSwarmsEnabled() && showTeamsDialog) {
     return <>{historyPickerEl}<TeamsDialog initialTeams={cachedTeams} onDone={() => {
@@ -2467,7 +2476,7 @@ function PromptInput({
               </Box>;
           })()}
         </>}
-      <PromptInputFooter apiKeyStatus={apiKeyStatus} debug={debug} exitMessage={exitMessage} vimMode={isVimModeEnabled() ? vimMode : undefined} mode={mode} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} suggestions={suggestions} selectedSuggestion={selectedSuggestion} maxColumnWidth={maxColumnWidth} toolPermissionContext={effectiveToolPermissionContext} helpOpen={helpOpen} suppressHint={input.length > 0} isLoading={isLoading} tasksSelected={tasksSelected} teamsSelected={teamsSelected} bridgeSelected={bridgeSelected} tmuxSelected={tmuxSelected} teammateFooterIndex={teammateFooterIndex} ideSelection={ideSelection} mcpClients={mcpClients} isPasting={isPasting} isInputWrapped={isInputWrapped} messages={messages} isSearching={isSearchingHistory} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={isFullscreenEnvEnabled() ? handleOpenTasksDialog : undefined} />
+      <PromptInputFooter apiKeyStatus={apiKeyStatus} debug={debug} exitMessage={exitMessage} vimMode={isVimModeEnabled() ? vimMode : undefined} mode={mode} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} verbose={verbose} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} suggestions={suggestions} selectedSuggestion={selectedSuggestion} maxColumnWidth={maxColumnWidth} toolPermissionContext={effectiveToolPermissionContext} helpOpen={helpOpen} suppressHint={input.length > 0} isLoading={isLoading} tasksSelected={tasksSelected} teamsSelected={teamsSelected} bridgeSelected={bridgeSelected} tmuxSelected={tmuxSelected} teammateFooterIndex={teammateFooterIndex} ideSelection={ideSelection} mcpClients={mcpClients} isPasting={isPasting} isInputWrapped={isInputWrapped} messages={messages} isSearching={isSearchingHistory} historyQuery={historyQuery} setHistoryQuery={setHistoryQuery} historyFailedMatch={historyFailedMatch} onOpenTasksDialog={isFullscreenEnvEnabled() ? handleOpenTasksDialog : undefined} onOpenWorkflowsDialog={isFullscreenEnvEnabled() ? handleOpenWorkflowsDialog : undefined} />
       {isFullscreenEnvEnabled() ? null : autoModeOptInDialog}
       {isFullscreenEnvEnabled() ?
     // position=absolute takes zero layout height so the spinner
