@@ -5,8 +5,19 @@ describe('getInlineImageProtocol', () => {
   const origEnv = { ...process.env }
   const origIsTTY = process.stdout.isTTY
 
+  // When stdout is a pipe (CI), `isTTY` is a read-only property and a plain
+  // assignment throws "Attempted to assign to readonly property". Go through
+  // defineProperty so the override works regardless of the underlying stream.
+  const setIsTTY = (value: boolean | undefined): void => {
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value,
+      configurable: true,
+      writable: true,
+    })
+  }
+
   beforeEach(() => {
-    process.stdout.isTTY = true
+    setIsTTY(true)
     for (const key of [
       'TMUX',
       'TERM',
@@ -19,12 +30,12 @@ describe('getInlineImageProtocol', () => {
   })
 
   afterEach(() => {
-    process.stdout.isTTY = origIsTTY
+    setIsTTY(origIsTTY)
     process.env = { ...origEnv }
   })
 
   test('returns null when stdout is not a TTY', () => {
-    process.stdout.isTTY = false
+    setIsTTY(false)
     process.env.TERM = 'xterm-kitty'
     expect(getInlineImageProtocol()).toBeNull()
   })

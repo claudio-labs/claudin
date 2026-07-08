@@ -15,6 +15,14 @@
 // and document it inline so the next agent knows which surface it covered.
 
 import { mock } from 'bun:test'
+import { homedir } from 'os'
+import { join } from 'path'
+import {
+  getCwdState,
+  getOriginalCwd,
+  setCwdState,
+  setOriginalCwd,
+} from '../../bootstrap/state.js'
 import type { Tool } from '../../Tool.js'
 import type { Props as REPLProps } from '../REPL.js'
 import type { ThinkingConfig } from '../../utils/thinking.js'
@@ -39,6 +47,16 @@ const REPL_SNAPSHOT_MODEL = 'claude-sonnet-4-6'
 let savedEffortEnv: string | undefined
 let effortEnvWasSet = false
 
+// The footer/banner render the working directory, home-relativized to `~/…`.
+// Left unpinned this bakes the developer's real checkout path into the
+// snapshots (`~/projects/claudin`), which then mismatches any other checkout
+// location — e.g. CI runners at `~/work/claudin/claudin`. Pin it to a stable
+// home-relative path so the rendered `~/projects/claudin` is identical on
+// every machine regardless of where the repo actually lives.
+const REPL_SNAPSHOT_CWD = join(homedir(), 'projects', 'claudin')
+let savedOriginalCwd: string | undefined
+let savedCwdState: string | undefined
+
 // Snapshot the real hook module so teardown can restore it (mock.restore()
 // does not revert mock.module()), preventing the pinned model from leaking.
 const realUseMainLoopModel = { ...(await import('../../hooks/useMainLoopModel.js')) }
@@ -47,6 +65,13 @@ export function setupReplMocks(): void {
   savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
   effortEnvWasSet = true
   process.env.CLAUDE_CODE_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
+
+  // Pin the working directory so the footer/banner render a machine-independent
+  // `~/projects/claudin` (see REPL_SNAPSHOT_CWD above).
+  savedOriginalCwd = getOriginalCwd()
+  savedCwdState = getCwdState()
+  setOriginalCwd(REPL_SNAPSHOT_CWD)
+  setCwdState(REPL_SNAPSHOT_CWD)
 
   // MACRO.* is a build-time replacement; in unit tests there's no bundler,
   // so REPL reads from globalThis.MACRO at runtime. Pin it UNCONDITIONALLY so
@@ -349,6 +374,14 @@ export function teardownReplMocks(): void {
       process.env.CLAUDE_CODE_EFFORT_LEVEL = savedEffortEnv
     }
     effortEnvWasSet = false
+  }
+  if (savedOriginalCwd !== undefined) {
+    setOriginalCwd(savedOriginalCwd)
+    savedOriginalCwd = undefined
+  }
+  if (savedCwdState !== undefined) {
+    setCwdState(savedCwdState)
+    savedCwdState = undefined
   }
 }
 
