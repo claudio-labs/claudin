@@ -7,6 +7,7 @@ dist/
 .openclaude-profile.json
 reports/
 GEMINI.md
+AGENTS.md
 package-lock.json
 /.claude
 /.claudin
