@@ -71,6 +71,13 @@ let savedProcessCwd: (() => string) | undefined
 // Snapshot the real hook module so teardown can restore it (mock.restore()
 // does not revert mock.module()), preventing the pinned model from leaking.
 const realUseMainLoopModel = { ...(await import('../../hooks/useMainLoopModel.js')) }
+// Same for the API-key hook stubbed in setupReplMocks below — without a restore
+// its `status: 'valid'` stub leaks into useApiKeyVerification.test.tsx (which
+// cache-busts a fresh import of the real hook and waits for 'missing'), hanging
+// it until timeout. Plain snapshot so the live namespace can't re-mock it.
+const realUseApiKeyVerification = {
+  ...(await import('../../hooks/useApiKeyVerification.js')),
+}
 
 export function setupReplMocks(): void {
   savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
@@ -388,6 +395,8 @@ export function teardownReplMocks(): void {
   // mock.restore() does not revert mock.module(); restore the pinned hook.
   mock.module('src/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('../../hooks/useMainLoopModel.js', () => realUseMainLoopModel)
+  mock.module('src/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
+  mock.module('../hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   if (effortEnvWasSet) {
     if (savedEffortEnv === undefined) {
       delete process.env.CLAUDE_CODE_EFFORT_LEVEL
