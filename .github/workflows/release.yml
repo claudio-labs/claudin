@@ -128,11 +128,40 @@ jobs:
             echo CHANGELOG_EOF
           } >> "$GITHUB_OUTPUT"
 
-      - name: Commit (when bumped), tag, push
+      - name: Update CHANGELOG.md (this repo)
+        env:
+          BODY: ${{ steps.changelog.outputs.body }}
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          SECTION=$(mktemp)
+          {
+            echo "## ${TAG} — ${DATE}"
+            echo
+            # BODY already starts with a "## <tag>" heading; drop it so we don't
+            # duplicate the heading, then drop the leading blank line.
+            printf '%s\n' "$BODY" | sed '1{/^## /d;}' | sed '1{/^$/d;}'
+            echo
+          } > "$SECTION"
+          if [ -f CHANGELOG.md ] && head -1 CHANGELOG.md | grep -q '^# '; then
+            # Preserve the top-level "# Changelog" title: insert the new section
+            # right after it, keeping the newest release near the top.
+            { head -1 CHANGELOG.md; echo; cat "$SECTION"; tail -n +2 CHANGELOG.md; } > CHANGELOG.md.new
+          else
+            { cat "$SECTION"; [ -f CHANGELOG.md ] && cat CHANGELOG.md; } > CHANGELOG.md.new
+          fi
+          mv CHANGELOG.md.new CHANGELOG.md
+
+      - name: Commit (changelog + bump), tag, push
         run: |
           TAG="${{ steps.bump.outputs.tag }}"
+          git add CHANGELOG.md
           if [ "${{ inputs.bump }}" != "none" ]; then
             git add package.json
+          fi
+          if git diff --cached --quiet; then
+            echo "Nothing to commit (changelog + version unchanged)"
+          else
             git commit -m "chore(release): ${TAG}"
             git push origin HEAD:refs/heads/main
           fi
@@ -168,7 +197,7 @@ jobs:
               --notes-file /tmp/release-notes.md
           fi
 
-      - name: Append changelog to claudio-labs/claudio
+      - name: Append changelog to claudio-labs/claudin-site
         env:
           GH_TOKEN: ${{ secrets.GH_CHANGELOG_TOKEN }}
           BODY: ${{ steps.changelog.outputs.body }}
@@ -179,13 +208,17 @@ jobs:
             exit 0
           fi
           WORK=$(mktemp -d)
-          git clone --depth=1 --branch=main \
-            "https://oauth2:${GH_TOKEN}@github.com/claudio-labs/claudio.git" \
+          # Clone the default branch (don't hard-code main) so this keeps working
+          # regardless of what claudin-site's default branch is named.
+          git clone --depth=1 \
+            "https://oauth2:${GH_TOKEN}@github.com/claudio-labs/claudin-site.git" \
             "$WORK/repo"
           cd "$WORK/repo"
+          DEFAULT_BRANCH=$(git symbolic-ref --short HEAD)
           git config user.name "claudin-release-bot"
           git config user.email "release@claudin.local"
           DATE=$(date -u +%Y-%m-%d)
+          SECTION=$(mktemp)
           {
             echo "## ${TAG} — ${DATE}"
             echo
@@ -193,10 +226,13 @@ jobs:
             # strip it so we don't duplicate the heading.
             printf '%s\n' "$BODY" | sed '1{/^## /d;}' | sed '1{/^$/d;}'
             echo
-            if [ -f CHANGELOG.md ]; then
-              cat CHANGELOG.md
-            fi
-          } > CHANGELOG.md.new
+          } > "$SECTION"
+          if [ -f CHANGELOG.md ] && head -1 CHANGELOG.md | grep -q '^# '; then
+            # Preserve a top-level "# Changelog" title if the site already has one.
+            { head -1 CHANGELOG.md; echo; cat "$SECTION"; tail -n +2 CHANGELOG.md; } > CHANGELOG.md.new
+          else
+            { cat "$SECTION"; [ -f CHANGELOG.md ] && cat CHANGELOG.md; } > CHANGELOG.md.new
+          fi
           mv CHANGELOG.md.new CHANGELOG.md
           git add CHANGELOG.md
           if git diff --cached --quiet; then
@@ -204,7 +240,7 @@ jobs:
             exit 0
           fi
           git commit -m "chore(changelog): ${TAG}"
-          git push origin HEAD:main
+          git push origin "HEAD:${DEFAULT_BRANCH}"
 
       - name: Publish to npm
         run: |
