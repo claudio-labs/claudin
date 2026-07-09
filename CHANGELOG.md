@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.7.5 — 2026-07-09
+
+- ci(release): push bump/changelog to main via GH_CHANGELOG_TOKEN (7af417d)
+- ci(release): sync changelog to own CHANGELOG.md and claudio-labs/claudin-site (89d51db)
+- docs(readme): fix logo and version (d3b47a7)
+- chore(deps): drop 8 @opentelemetry devDependencies via local no-op shim (#4) (72ebd8e)
+- chore(deps): bump the production-dependencies group with 4 updates (#3) (2a1c18f)
+- chore(deps): bump the dev-dependencies group with 10 updates (#2) (75ec17c)
+- chore(ci): bump the github-actions group with 2 updates (#1) (1eb2f07)
+- ci(dependabot): enable weekly version updates for bun deps + GitHub Actions (1b9c63e)
+- docs(security): fix stale 'Open Claude' name -> Claudin (b54cfac)
+- docs: require Discussion + benchmarks for large/perf changes; welcome contributions (94af66d)
+- test(cost-tracker): freeze the clock to de-flake projectTotals duration (c7025ba)
+- ci(release): render Contributors with GitHub avatar + @handle (a40fe4e)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## Unreleased
 
 ### BREAKING
