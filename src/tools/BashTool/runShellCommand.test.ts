@@ -177,9 +177,14 @@ describe('bash output filter — pre-exec rewrite integration', () => {
           isMainThread: true,
         })
         const result = await consume(gen)
-        expect({ code: result.code, stderr: result.stderr }).toEqual({
+        expect({
+          code: result.code,
+          stderr: result.stderr,
+          stdout: result.stdout?.slice(0, 400),
+        }).toEqual({
           code: 0,
           stderr: result.stderr,
+          stdout: result.stdout?.slice(0, 400),
         })
         // Real proof the rewrite executed: oneline format has no Author: header.
         expect(result.stdout).not.toContain('Author:')
