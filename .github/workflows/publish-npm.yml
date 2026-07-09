@@ -36,7 +36,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 bundles npm >= 11.5.1 for trusted publishing (avoids the
+          # 'sigstore' MODULE_NOT_FOUND from self-upgrading npm in place).
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Set up Bun
@@ -53,10 +55,6 @@ jobs:
       # survive into the tarball alongside the release chunks (the dist/
       # chunks dir was kept across rebuilds for local-CLI safety). Trust
       # prepack to build — single source of truth for the published bundle.
-      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.x.
-      - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
-
       - name: Publish to npm
         run: npm publish --access public
 

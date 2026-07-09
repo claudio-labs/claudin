@@ -41,7 +41,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 bundles npm >= 11.5.1, which trusted publishing needs.
+          # Self-upgrading npm in place (npm i -g npm@latest) leaves the
+          # provenance path missing 'sigstore', so pick a Node that already
+          # ships a new enough npm instead.
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Set up Bun
@@ -167,10 +171,6 @@ jobs:
           fi
           git commit -m "chore(changelog): ${TAG}"
           git push origin HEAD:main
-
-      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.x.
-      - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
 
       - name: Publish to npm
         run: |
