@@ -1,13 +1,11 @@
-import type { AnyValueMap, Logger, logs } from '@opentelemetry/api-logs'
-import { resourceFromAttributes } from '@opentelemetry/resources'
-import {
-  BatchLogRecordProcessor,
-  LoggerProvider,
-} from '@opentelemetry/sdk-logs'
+import type { AnyValueMap, Logger, logs } from 'src/vendor/otel.js'
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
-} from '@opentelemetry/semantic-conventions'
+  BatchLogRecordProcessor,
+  LoggerProvider,
+  resourceFromAttributes,
+} from 'src/vendor/otel.js'
 import { randomUUID } from 'crypto'
 import { isEqual } from 'lodash-es'
 import { getOrCreateUserID } from '../../utils/config.js'
