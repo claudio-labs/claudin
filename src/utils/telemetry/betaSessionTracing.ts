@@ -25,7 +25,7 @@
  * - Detailed new_context attributes for LLM requests
  */
 
-import type { Span } from '@opentelemetry/api'
+import type { Span } from 'src/vendor/otel.js'
 import { createHash } from 'crypto'
 import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'

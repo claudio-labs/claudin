@@ -1,34 +1,28 @@
-import { DiagLogLevel, diag, trace } from '@opentelemetry/api'
-import { logs } from '@opentelemetry/api-logs'
 // OTLP/Prometheus exporters are dynamically imported inside the protocol
 // switch statements below. A process uses at most one protocol variant per
 // signal, but static imports would load all 6 (~1.2MB) on every startup.
 import {
-  envDetector,
-  hostDetector,
-  osDetector,
-  resourceFromAttributes,
-} from '@opentelemetry/resources'
-import {
-  BatchLogRecordProcessor,
-  ConsoleLogRecordExporter,
-  LoggerProvider,
-} from '@opentelemetry/sdk-logs'
-import {
-  ConsoleMetricExporter,
-  MeterProvider,
-  PeriodicExportingMetricReader,
-} from '@opentelemetry/sdk-metrics'
-import {
-  BasicTracerProvider,
-  BatchSpanProcessor,
-  ConsoleSpanExporter,
-} from '@opentelemetry/sdk-trace-base'
-import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
+  BasicTracerProvider,
+  BatchLogRecordProcessor,
+  BatchSpanProcessor,
+  ConsoleLogRecordExporter,
+  ConsoleMetricExporter,
+  ConsoleSpanExporter,
+  DiagLogLevel,
+  LoggerProvider,
+  MeterProvider,
+  PeriodicExportingMetricReader,
   SEMRESATTRS_HOST_ARCH,
-} from '@opentelemetry/semantic-conventions'
+  diag,
+  envDetector,
+  hostDetector,
+  logs,
+  osDetector,
+  resourceFromAttributes,
+  trace,
+} from 'src/vendor/otel.js'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   getLoggerProvider,

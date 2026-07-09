@@ -1,12 +1,14 @@
-import type { Attributes, HrTime } from '@opentelemetry/api'
-import { type ExportResult, ExportResultCode } from '@opentelemetry/core'
 import {
   AggregationTemporality,
-  type MetricData,
+  type Attributes,
   type DataPoint as OTelDataPoint,
+  type ExportResult,
+  ExportResultCode,
+  type HrTime,
+  type MetricData,
   type PushMetricExporter,
   type ResourceMetrics,
-} from '@opentelemetry/sdk-metrics'
+} from 'src/vendor/otel.js'
 import axios from 'axios'
 import { checkMetricsEnabled } from 'src/services/api/metricsOptOut.js'
 import { getIsNonInteractiveSession } from '../../bootstrap/state.js'

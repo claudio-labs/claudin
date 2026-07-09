@@ -1,9 +1,10 @@
-import type { HrTime } from '@opentelemetry/api'
-import { type ExportResult, ExportResultCode } from '@opentelemetry/core'
-import type {
-  LogRecordExporter,
-  ReadableLogRecord,
-} from '@opentelemetry/sdk-logs'
+import {
+  type ExportResult,
+  ExportResultCode,
+  type HrTime,
+  type LogRecordExporter,
+  type ReadableLogRecord,
+} from 'src/vendor/otel.js'
 import axios from 'axios'
 import { randomUUID } from 'crypto'
 import { appendFile, mkdir, readdir, unlink, writeFile } from 'fs/promises'
