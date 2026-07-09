@@ -91,8 +91,14 @@ jobs:
           else
             RANGE="${PREV_TAG}..HEAD"
           fi
+          # Insert a zero-width space after every '@' in commit subjects so that
+          # literal mentions like "@opentelemetry" don't trigger GitHub's own
+          # auto "Contributors" strip on the release page (which duplicates the
+          # curated "### Contributors" section built below). The ZWSP is
+          # invisible in rendered notes and in CHANGELOG.md.
+          ZWSP=$'\u200b'
           # shellcheck disable=SC2086
-          COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges)
+          COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges | sed "s/@/@${ZWSP}/g")
           # Credit contributors by their real GitHub identity (avatar + @handle),
           # resolved from the commit authors' logins via the API. Fall back to the
           # git author name for any commit whose email isn't linked to a GitHub
