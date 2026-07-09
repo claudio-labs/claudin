@@ -1,5 +1,7 @@
 # Contributor Covenant Code of Conduct
 
+Claudin is an open project, and **contributions are genuinely welcome** — every one is reviewed with care and dedication (see [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose changes, and when to open a Discussion, an Issue, or a PR). This Code of Conduct sets the baseline that keeps that collaboration respectful and productive for everyone.
+
 ## Our Pledge
 
 We as members, contributors, and maintainers pledge to make participation in
