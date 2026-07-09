@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Open Claude is currently maintained on the latest `main` branch and the latest
+Claudin is currently maintained on the latest `main` branch and the latest
 npm release only.
 
 | Version | Supported |
@@ -16,7 +16,7 @@ landed directly on `main` before a package release is published.
 
 ## Reporting a Vulnerability
 
-If you believe you have found a security vulnerability in Open Claude, please
+If you believe you have found a security vulnerability in Claudin, please
 report it privately.
 
 Preferred reporting channel:
