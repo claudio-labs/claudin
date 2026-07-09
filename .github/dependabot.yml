@@ -1,0 +1,36 @@
+# Dependabot configuration — https://docs.github.com/code-security/dependabot
+# Keeps dependencies and GitHub Actions patched automatically via PRs.
+version: 2
+updates:
+  # JavaScript/TypeScript deps (detected from bun.lock; Bun >= 1.1.39, text lockfile)
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Batch routine bumps into one PR to cut review noise.
+      dev-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions used by the CI/release workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
