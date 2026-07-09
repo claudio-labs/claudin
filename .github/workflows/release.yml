@@ -32,6 +32,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # Push the version-bump/changelog commit and tag with a PAT whose
+          # owner is in the `main` ruleset bypass list. The default GITHUB_TOKEN
+          # (github-actions bot) is NOT in that list, so its direct push to main
+          # is rejected by "Changes must be made through a pull request" (GH013).
+          token: ${{ secrets.GH_CHANGELOG_TOKEN }}
 
       - name: Configure git identity
         run: |
