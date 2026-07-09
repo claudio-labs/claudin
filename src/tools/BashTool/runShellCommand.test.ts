@@ -169,6 +169,20 @@ describe('bash output filter — pre-exec rewrite integration', () => {
         expect(plan.rewrite?.to).toBe('git log --oneline')
 
         const harness = makeStateHarness()
+        // The persistent shell is a shared singleton; an earlier test in the
+        // suite can leave its cwd outside the repo (observed on CI as
+        // `git log` → 128 "fatal: not a git repository"). Pin it to the repo
+        // root first so the rewrite runs inside a git repository regardless of
+        // file order.
+        await consume(
+          runShellCommand({
+            input: { command: `cd ${JSON.stringify(process.cwd())}` },
+            abortController: new AbortController(),
+            setAppState: harness.setAppState,
+            setToolJSX: () => {},
+            isMainThread: true,
+          }),
+        )
         const gen = runShellCommand({
           input: { ...input, command: plan.effectiveCommand },
           abortController: new AbortController(),
@@ -177,15 +191,7 @@ describe('bash output filter — pre-exec rewrite integration', () => {
           isMainThread: true,
         })
         const result = await consume(gen)
-        expect({
-          code: result.code,
-          stderr: result.stderr,
-          stdout: result.stdout?.slice(0, 400),
-        }).toEqual({
-          code: 0,
-          stderr: result.stderr,
-          stdout: result.stdout?.slice(0, 400),
-        })
+        expect(result.code).toBe(0)
         // Real proof the rewrite executed: oneline format has no Author: header.
         expect(result.stdout).not.toContain('Author:')
         expect(result.stdout).toMatch(/^[0-9a-f]{7,}\s/m)
