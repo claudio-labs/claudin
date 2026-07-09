@@ -78,10 +78,17 @@ jobs:
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty='- %s (%h)' --no-merges)
+            RANGE=""
           else
-            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty='- %s (%h)' --no-merges)
+            RANGE="${PREV_TAG}..HEAD"
           fi
+          # shellcheck disable=SC2086
+          COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges)
+          # Credit the human commit authors in the notes (skip the release bot).
+          # shellcheck disable=SC2086
+          CONTRIBUTORS=$(git log $RANGE --no-merges --pretty='%an' \
+            | grep -viE 'release-bot|github-actions' \
+            | sort -u | sed 's/^/- /')
           {
             echo 'body<<CHANGELOG_EOF'
             echo "## ${{ steps.bump.outputs.tag }}"
@@ -90,6 +97,12 @@ jobs:
               echo "_No user-facing commits since previous tag._"
             else
               echo "$COMMITS"
+            fi
+            if [ -n "$CONTRIBUTORS" ]; then
+              echo
+              echo "### Contributors"
+              echo
+              echo "$CONTRIBUTORS"
             fi
             echo CHANGELOG_EOF
           } >> "$GITHUB_OUTPUT"
