@@ -75,8 +75,12 @@ jobs:
 
       - name: Generate changelog
         id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          HEAD_SHA=$(git rev-parse HEAD)
           if [ -z "$PREV_TAG" ]; then
             RANGE=""
           else
@@ -84,11 +88,28 @@ jobs:
           fi
           # shellcheck disable=SC2086
           COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges)
-          # Credit the human commit authors in the notes (skip the release bot).
-          # shellcheck disable=SC2086
-          CONTRIBUTORS=$(git log $RANGE --no-merges --pretty='%an' \
-            | grep -viE 'release-bot|github-actions' \
-            | sort -u | sed 's/^/- /')
+          # Credit contributors by their real GitHub identity (avatar + @handle),
+          # resolved from the commit authors' logins via the API. Fall back to the
+          # git author name for any commit whose email isn't linked to a GitHub
+          # account. Release/CI bots are dropped.
+          if [ -n "$PREV_TAG" ]; then
+            LOGINS=$(gh api --paginate "repos/${REPO}/compare/${PREV_TAG}...${HEAD_SHA}" \
+              --jq '.commits[].author.login // empty' 2>/dev/null || true)
+          else
+            LOGINS=$(gh api --paginate "repos/${REPO}/commits?sha=${HEAD_SHA}" \
+              --jq '.[].author.login // empty' 2>/dev/null || true)
+          fi
+          LOGINS=$(printf '%s\n' "$LOGINS" | grep -viE '\[bot\]|-bot$|github-actions' | sed '/^$/d' | sort -u)
+          if [ -n "$LOGINS" ]; then
+            CONTRIBUTORS=$(printf '%s\n' "$LOGINS" | while IFS= read -r u; do
+              printf -- '- <a href="https://github.com/%s"><img src="https://github.com/%s.png?size=40" width="20" height="20" alt="@%s"></a> <a href="https://github.com/%s">@%s</a>\n' "$u" "$u" "$u" "$u" "$u"
+            done)
+          else
+            # shellcheck disable=SC2086
+            CONTRIBUTORS=$(git log $RANGE --no-merges --pretty='%an' \
+              | grep -viE 'release-bot|github-actions' \
+              | sort -u | sed 's/^/- /')
+          fi
           {
             echo 'body<<CHANGELOG_EOF'
             echo "## ${{ steps.bump.outputs.tag }}"
