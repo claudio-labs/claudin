@@ -1,11 +1,25 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from 'bun:test'
 import { getProjectTotals, resetCostState } from './cost-tracker.js'
 import { switchSession, getSessionId } from './bootstrap/state.js'
 import { asSessionId } from './types/ids.js'
 import { saveCurrentProjectConfig } from './utils/config.js'
 
 describe('getProjectTotals', () => {
+  let nowSpy: ReturnType<typeof spyOn>
+
   beforeEach(() => {
+    // Freeze the clock before resetCostState() captures STATE.startTime, so
+    // getTotalDuration() (Date.now() - startTime) is a deterministic 0.
+    // Otherwise the live wall-clock elapsed during the test (~1-2ms on CI)
+    // leaks into totalDuration and flakes the exact `toBe(26_000)` assertion.
+    nowSpy = spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
     resetCostState()
     saveCurrentProjectConfig(() => ({
       cumulativeCost: 0,
@@ -22,6 +36,10 @@ describe('getProjectTotals', () => {
       lastModelUsage: undefined,
       lastSessionId: undefined,
     }))
+  })
+
+  afterEach(() => {
+    nowSpy.mockRestore()
   })
 
   test('returns zeros when project config is empty and no in-memory state', () => {
