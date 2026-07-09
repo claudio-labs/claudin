@@ -1,6 +1,6 @@
 {
   "name": "@claudiolabs/claudin",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Claudin — Claude Code opened to any LLM (OpenAI, Gemini, DeepSeek, Ollama, and 200+ models)",
   "type": "module",
   "repository": {
