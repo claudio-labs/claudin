@@ -1,12 +1,13 @@
-# Claudin
 
-**One coding agent for every model.**
+# <img src="site/img/icon.png" alt="" width="38" valign="middle" /> Claudin
 
-Claudin is a terminal-native coding assistant that works with Anthropic, OpenAI, Gemini, Mistral, DeepSeek, xAI Grok, GitHub Copilot, ChatGPT, Z.AI, Kimi, Qwen, Ollama, Bedrock, Vertex, Azure, and 200+ OpenAI-compatible endpoints — pick your provider inside the app and keep one consistent workflow.
-
-Privacy-first by design: analytics and phone-home paths are stripped at build time and enforced by `bun run verify:privacy`.
-
+![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)
+![npm](https://img.shields.io/npm/v/@claudiolabs/claudin?style=flat-square&label=npm&color=CB3837)
 [![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
+
+**One coding agent CLI. Any LLM.**
+
+Claudin brings a terminal-first agentic workflow — bash, file tools, grep, glob, agents, MCP, slash commands, streaming — to any model provider. Switch between OpenAI, Gemini, DeepSeek, Ollama, Mistral, GitHub Copilot, Bedrock, Vertex, and 200+ OpenAI-compatible endpoints without changing your workflow.
 
 ---
 
