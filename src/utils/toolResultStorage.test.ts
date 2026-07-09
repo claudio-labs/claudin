@@ -3,12 +3,10 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { getOriginalCwd } from '../bootstrap/state.ts'
-import { getProjectDir } from './sessionStoragePortable.ts'
 import { createUserMessage } from './messages.ts'
 import {
   applyToolResultReplacementsToMessages,
-  TOOL_RESULTS_SUBDIR,
+  getSessionSpillDir,
   unlinkSessionSpillDir,
 } from './toolResultStorage.ts'
 
@@ -82,22 +80,28 @@ describe('unlinkSessionSpillDir', () => {
     mkdirSync(testConfigDir, { recursive: true })
   })
 
+  // Track every dir we create so afterAll can remove them even when a leaked
+  // getProjectDir stub redirects getSessionSpillDir away from testConfigDir.
+  const createdDirs: string[] = []
+
   afterAll(() => {
     if (prevConfigDir === undefined) {
       delete process.env.CLAUDIN_CONFIG_DIR
     } else {
       process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
     }
+    for (const dir of createdDirs) rmSync(dir, { recursive: true, force: true })
     rmSync(testConfigDir, { recursive: true, force: true })
   })
 
+  // Build the spill dir through the same getSessionSpillDir() the code under
+  // test uses, so this test always targets the exact directory
+  // unlinkSessionSpillDir will delete — never an independently-derived path
+  // that a sibling's leaked getProjectDir mock could send elsewhere.
   function makeSessionSpillDir(sessionId: string, fileCount: number): string {
-    const spillDir = join(
-      getProjectDir(getOriginalCwd()),
-      sessionId,
-      TOOL_RESULTS_SUBDIR,
-    )
+    const spillDir = getSessionSpillDir(sessionId)
     mkdirSync(spillDir, { recursive: true })
+    createdDirs.push(spillDir)
     for (let i = 0; i < fileCount; i++) {
       writeFileSync(join(spillDir, `tool_${i}.txt`), 'X'.repeat(1_000))
     }

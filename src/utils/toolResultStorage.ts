@@ -148,13 +148,20 @@ export async function ensureToolResultsDir(): Promise<void> {
  * Best-effort: missing directory is not an error (ENOENT), any other
  * failure is logged but swallowed so `/clear` always completes.
  */
+/**
+ * Absolute path of the tool-results spill directory for a session. Exported so
+ * callers (and tests) target the exact directory unlinkSessionSpillDir deletes
+ * instead of re-deriving it — re-deriving is fragile under Bun test mocks,
+ * where a leaked getProjectDir/getClaudinConfigHomeDir stub can make an
+ * independent computation resolve to a different config root.
+ */
+export function getSessionSpillDir(sessionId: string): string {
+  return join(getProjectDir(getOriginalCwd()), sessionId, TOOL_RESULTS_SUBDIR)
+}
+
 export async function unlinkSessionSpillDir(sessionId: string): Promise<void> {
   if (!sessionId) return
-  const dir = join(
-    getProjectDir(getOriginalCwd()),
-    sessionId,
-    TOOL_RESULTS_SUBDIR,
-  )
+  const dir = getSessionSpillDir(sessionId)
   try {
     await rm(dir, { recursive: true, force: true })
     logForDebugging(`Unlinked tool-results spill dir for session ${sessionId}`)
