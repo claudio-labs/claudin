@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # OIDC token for npm trusted publishing (no NPM_TOKEN needed). Must match
+      # the Trusted Publisher configured on npmjs.com for this repo + workflow.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -165,10 +168,17 @@ jobs:
           git commit -m "chore(changelog): ${TAG}"
           git push origin HEAD:main
 
+      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          # Trusted publishing (OIDC): the npm CLI auto-detects the GitHub
+          # id-token and authenticates without a stored NPM_TOKEN. Requires the
+          # id-token: write permission above, npm >= 11.5.1, and a Trusted
+          # Publisher on npmjs.com matching this repo + workflow (release.yml).
+          # Provenance attestations are generated automatically.
           # Idempotent: skip if this version is already published.
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")

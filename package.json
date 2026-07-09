@@ -3,6 +3,14 @@
   "version": "0.7.2",
   "description": "Claudin — Claude Code opened to any LLM (OpenAI, Gemini, DeepSeek, Ollama, and 200+ models)",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/claudio-labs/claudin.git"
+  },
+  "homepage": "https://github.com/claudio-labs/claudin#readme",
+  "bugs": {
+    "url": "https://github.com/claudio-labs/claudin/issues"
+  },
   "bin": {
     "claudin": "./bin/claudin"
   },

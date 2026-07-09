@@ -20,6 +20,13 @@ jobs:
   publish:
     name: Publish ${{ inputs.tag }} to npm
     runs-on: ubuntu-latest
+    # NOTE: trusted publishing matches ONE workflow filename per Trusted
+    # Publisher entry on npmjs.com. The configured entry is release.yml, so to
+    # use this manual workflow you must add a second Trusted Publisher for
+    # `publish-npm.yml` (otherwise npm rejects the OIDC token with a 404).
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
@@ -46,9 +53,11 @@ jobs:
       # survive into the tarball alongside the release chunks (the dist/
       # chunks dir was kept across rebuilds for local-CLI safety). Trust
       # prepack to build — single source of truth for the published bundle.
+      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
 
       - name: Publish summary
