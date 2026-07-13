@@ -170,8 +170,11 @@ export function shouldBypassProxy(
         return hostname === pattern.substring(1) || hostname.endsWith(suffix)
       }
 
-      // Check for exact hostname match or IP address
-      return hostname === pattern
+      // Bare domain matches the domain and its subdomains (e.g.
+      // NO_PROXY=example.com covers api.example.com), aligning with the
+      // undici/fetch path and curl/Node conventions. IP addresses have no
+      // subdomains, so the endsWith arm is a harmless no-op for them.
+      return hostname === pattern || hostname.endsWith('.' + pattern)
     })
   } catch {
     // If URL parsing fails, don't bypass proxy

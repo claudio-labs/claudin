@@ -40,8 +40,10 @@ export function formatDuration(
     if (ms === 0) {
       return '0s'
     }
-    // For durations < 1s, show 1 decimal place (e.g., 0.5s)
-    if (ms < 1) {
+    // For durations < 1s, show 1 decimal place (e.g., 0.5s). The guard must be
+    // `ms < 1000` (1 second), not `ms < 1` (1 millisecond) — otherwise 500ms
+    // falls through to Math.floor(500/1000) and renders as "0s".
+    if (ms < 1000) {
       const s = (ms / 1000).toFixed(1)
       return `${s}s`
     }

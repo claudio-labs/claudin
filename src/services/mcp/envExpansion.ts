@@ -14,8 +14,13 @@ export function expandEnvVarsInString(value: string): {
   const missingVars: string[] = []
 
   const expanded = value.replace(/\$\{([^}]+)\}/g, (match, varContent) => {
-    // Split on :- to support default values (limit to 2 parts to preserve :- in defaults)
-    const [varName, defaultValue] = varContent.split(':-', 2)
+    // Split on the FIRST `:-` only so `:-` inside the default is preserved.
+    // `split(':-', 2)` truncates and DROPS the remainder, so `${VAR:-a:-b}`
+    // would wrongly yield the default `a` instead of `a:-b`.
+    const sepIdx = varContent.indexOf(':-')
+    const varName = sepIdx === -1 ? varContent : varContent.slice(0, sepIdx)
+    const defaultValue =
+      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 2)
     const envValue = process.env[varName]
 
     if (envValue !== undefined) {

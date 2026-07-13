@@ -267,6 +267,12 @@ export function convertToLogOption(
   agentSetting?: string,
   contentReplacements?: ContentReplacementRecord[],
 ): LogOption {
+  // The JSON-array transcript path (unlike the JSONL path) has no upstream
+  // empty guard; an empty array would make the `!` assertions below lie and
+  // throw a cryptic TypeError. Fail with a clear, catchable error instead.
+  if (transcript.length === 0) {
+    throw new Error('Cannot build session metadata from an empty transcript')
+  }
   const lastMessage = transcript.at(-1)!
   const firstMessage = transcript[0]!
 

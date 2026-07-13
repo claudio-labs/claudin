@@ -753,7 +753,13 @@ function detectLanguage(
 
   // Filename-based lookup (handles Dockerfile, Makefile, CMakeLists.txt, etc.)
   const stem = base.split('.')[0] ?? ''
-  const byName = FILENAME_LANGS[base] ?? FILENAME_LANGS[stem]
+  // Object.hasOwn guards against inherited members: a file named e.g.
+  // `constructor.css` (stem "constructor") would otherwise return an
+  // Object.prototype function, and hljs().getLanguage(fn) throws on the
+  // non-string, crashing the whole diff render.
+  const byName =
+    (Object.hasOwn(FILENAME_LANGS, base) ? FILENAME_LANGS[base] : undefined) ??
+    (Object.hasOwn(FILENAME_LANGS, stem) ? FILENAME_LANGS[stem] : undefined)
   if (byName && hljs().getLanguage(byName)) return byName
   if (ext) {
     const lang = hljs().getLanguage(ext)

@@ -258,8 +258,10 @@ export function parseGitDiff(
     // Stop after MAX_FILES
     if (result.size >= MAX_FILES) break
 
-    // Skip files larger than 1MB
-    if (fileDiff.length > MAX_DIFF_SIZE_BYTES) {
+    // Skip files larger than 1MB. Measure actual UTF-8 bytes, not
+    // string.length (UTF-16 code units) — a multibyte (e.g. CJK) diff of
+    // several real MB has a much smaller .length and would slip past the cap.
+    if (Buffer.byteLength(fileDiff, 'utf8') > MAX_DIFF_SIZE_BYTES) {
       continue
     }
 

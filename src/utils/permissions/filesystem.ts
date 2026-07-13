@@ -1039,7 +1039,12 @@ export function checkReadPermissionForTool(
       message: `Claude requested permissions to use ${tool.name}, but you haven't granted it yet.`,
     }
   }
-  const path = tool.getPath(input)
+  // Resolve relative paths against the session cwd before matching permission
+  // rules. Without expandPath, a relative getPath() stays relative and later
+  // resolves against the process cwd (via realpath), so allow/deny rules are
+  // evaluated against a different absolute path than what is actually read —
+  // wrong in worktree/bridge/scoped sessions where the two cwds diverge.
+  const path = expandPath(tool.getPath(input))
 
   // Get paths to check (includes both original and resolved symlinks).
   // Computed once here and threaded through checkWritePermissionForTool →
