@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.7.6 — 2026-07-13
+
+- feat(agents): enable auto-background agents by default (5fe1570)
+- fix: batch of correctness/security/data-loss fixes from code audit (#8) (949854f)
+- feat(openai-shim): recover XML-embedded tool calls (GLM/Qwen/Hermes/HY3) (#7) (975e4dc)
+- chore(deps): bump tsx in the dev-dependencies group (#5) (b2a9984)
+- chore(deps): bump the production-dependencies group with 4 updates (#6) (b4c2f0e)
+- feat(thinking): default to adaptive thinking for supported Claude models (911dd36)
+- feat(attribution): drop baked-in default, opt-in only via settings (b583a1b)
+- ci(release): stop commit-subject @​mentions duplicating the Contributors strip (e5cffb0)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v0.7.5 — 2026-07-09
 
 - ci(release): push bump/changelog to main via GH_CHANGELOG_TOKEN (7af417d)
