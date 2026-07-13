@@ -759,7 +759,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     openaiAdditionalModelOptionsCacheByProfile: {},
     knowledgeGraphEnabled: true,
     inlineImagesMode: 'auto',
-    autoBackgroundAgentsEnabled: false,
+    autoBackgroundAgentsEnabled: true,
     workflowsDefaultBackground: false,
   }
   return config
