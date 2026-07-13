@@ -6,7 +6,7 @@ import { getCanonicalName } from './model/model.js'
 import { get3PModelCapabilityOverride } from './model/modelSupportOverrides.js'
 import { getAPIProvider } from './model/providers.js'
 import { getSettingsWithErrors } from './settings/settings.js'
-import { isEnvTruthy } from './envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'
 
 export type ThinkingConfig =
   | { type: 'adaptive' }
@@ -165,9 +165,10 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
 // by the API (thinking: {type: 'enabled', budget_tokens} → 400).
 /**
  * Models where thinking is always on server-side and adaptive is the ONLY
- * accepted thinking-ON configuration. Sending budget_tokens — claudin's default
- * thinking mode — returns a 400 on these models, so streaming.ts must force
- * adaptive regardless of the CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING opt-in. It also
+ * accepted thinking-ON configuration. Sending budget_tokens — claudin's
+ * /effort budget thinking mode — returns a 400 on these models, so streaming.ts
+ * must force adaptive regardless of the CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING
+ * opt-out. It also
  * suppresses the temperature param (rejected as a non-default sampling param).
  *
  * - Fable 5: also rejects an explicit {type: 'disabled'} (400).
@@ -193,10 +194,23 @@ export function modelRequiresAdaptiveThinking(model: string): boolean {
  */
 export function modelWouldUseAdaptiveThinking(model: string): boolean {
   if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING)) return false
-  // Fable-class models only accept adaptive — forced on regardless of the env opt-in.
+  // Fable-class models only accept adaptive — forced on regardless of the opt-out.
   if (modelRequiresAdaptiveThinking(model)) return true
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)) return false
+  if (!isAdaptiveThinkingEnabled()) return false
   return modelSupportsThinking(model) && modelSupportsAdaptiveThinking(model)
+}
+
+/**
+ * Adaptive thinking is claudin's default for models that support it: it lets
+ * the model scale thinking to task difficulty instead of burning a fixed
+ * /effort-derived budget on trivial turns (which otherwise delays the first
+ * visible answer token by ~2s). Opt out — falling back to budget mode — by
+ * setting CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING to a falsy value (0/false/no/off).
+ * Both the display helper here and the real request selection in
+ * src/services/api/claude/streaming.ts read this, so they stay in sync.
+ */
+export function isAdaptiveThinkingEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)
 }
 
 export function shouldEnableThinkingByDefault(): boolean {

@@ -142,6 +142,7 @@ import { headlessProfilerCheckpoint } from "src/utils/headlessProfiler.js";
 import { calculateUSDCost } from "src/utils/modelCost.js";
 import { endQueryProfile, queryCheckpoint } from "src/utils/queryProfiler.js";
 import {
+  isAdaptiveThinkingEnabled,
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
@@ -903,9 +904,11 @@ export async function* queryModel(
     if (hasThinking && modelSupportsThinking(options.model)) {
       if (
         // Fable-class models reject budget-mode thinking (400) — adaptive is
-        // the only accepted configuration, so it wins over the env opt-in.
+        // the only accepted configuration, so it wins over the opt-out too.
         modelRequiresAdaptiveThinking(options.model) ||
-        (isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING) &&
+        // Adaptive is the default for models that support it; opt out with
+        // CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING=0 to use /effort budget mode.
+        (isAdaptiveThinkingEnabled() &&
           modelSupportsAdaptiveThinking(options.model))
       ) {
         // For models that support adaptive thinking, always use adaptive
