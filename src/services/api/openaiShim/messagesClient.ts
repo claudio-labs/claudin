@@ -28,7 +28,7 @@ import {
 } from '../../../utils/xaiCredentials.js'
 import { getXaiUserAgent } from '../../../utils/xaiUserAgent.js'
 import { logForDebugging } from '../../../utils/debug.js'
-import { isBareMode } from '../../../utils/envUtils.js'
+import { isBareMode, isEnvTruthy } from '../../../utils/envUtils.js'
 import { resolveGeminiCredential } from '../../../utils/geminiAuth.js'
 import { hydrateGeminiAccessTokenFromSecureStorage } from '../../../utils/geminiCredentials.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from '../../../utils/githubModelsCredentials.js'
@@ -105,6 +105,7 @@ function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
   }
 }
 import { convertTools } from './toolConverter.js'
+import { isHy3Model, recoverXmlToolCallsFromText } from './xmlToolCallParser.js'
 import type { SecretValueSource } from './types.js'
 import { redactUrlForDiagnostics } from './urlRedaction.js'
 
@@ -129,6 +130,15 @@ class OpenAIShimMessages {
       const request = resolveProviderRequest({ model: params.model, reasoningEffortOverride: self.reasoningEffort })
       const response = await self._doRequest(request, params, options)
       httpResponse = response
+
+      // Names of tools advertised on this request. Used to recover XML-embedded
+      // tool calls (models that emit `<tool_call>…` as text) while rejecting
+      // unknown names as prose rather than phantom tool_use blocks.
+      const toolNames = new Set(
+        (params.tools ?? [])
+          .map(t => (t as { name?: unknown }).name)
+          .filter((n): n is string => typeof n === 'string'),
+      )
 
       if (params.stream) {
         const isResponsesStream = response.url?.includes('/responses')
@@ -156,7 +166,7 @@ class OpenAIShimMessages {
         return new OpenAIShimStream(
           (request.transport === 'codex_responses' || isResponsesStream)
             ? codexStreamToAnthropic(response, request.resolvedModel, options?.signal)
-            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens),
+            : openaiStreamToAnthropic(response, request.resolvedModel, options?.signal, estimatedInputTokens, toolNames),
         )
       }
 
@@ -183,14 +193,14 @@ class OpenAIShimMessages {
               request.resolvedModel,
             )
           }
-          return self._convertNonStreamingResponse(parsed, request.resolvedModel)
+          return self._convertNonStreamingResponse(parsed, request.resolvedModel, toolNames)
         }
       }
 
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('application/json')) {
         const data = await response.json()
-        return self._convertNonStreamingResponse(data, request.resolvedModel)
+        return self._convertNonStreamingResponse(data, request.resolvedModel, toolNames)
       }
 
       const textBody = await response.text().catch(() => '')
@@ -952,9 +962,13 @@ class OpenAIShimMessages {
       }
     },
     model: string,
+    toolNames?: Set<string>,
   ) {
     const choice = data.choices?.[0]
     const content: Array<Record<string, unknown>> = []
+    // Set when XML-embedded tool calls are recovered from the message text, so
+    // the stop reason is rewritten to tool_use below.
+    let recoveredXmlToolUse = false
 
     // Some reasoning models (e.g. GLM-5) put their chain-of-thought in a
     // reasoning field while content stays null. Different providers use
@@ -972,10 +986,38 @@ class OpenAIShimMessages {
         ? choice?.message?.content
         : null
     if (typeof rawContent === 'string' && rawContent) {
-      content.push({
-        type: 'text',
-        text: stripThinkTags(rawContent),
-      })
+      // Recover XML-embedded tool calls (GLM/Qwen/Hermes/HY3 emit `<tool_call>…`
+      // as text instead of structured tool_calls). Gated by the request tool set
+      // and the kill-switch; unknown names / no parse fall through to plain text.
+      const xmlEnabled =
+        !!toolNames &&
+        toolNames.size > 0 &&
+        !isEnvTruthy(process.env.CLAUDIN_DISABLE_XML_TOOL_CALLS)
+      const recovered = xmlEnabled
+        ? recoverXmlToolCallsFromText(rawContent, {
+          allowHy3: isHy3Model(model),
+          toolNames,
+        })
+        : null
+      if (recovered) {
+        if (recovered.visibleText) {
+          content.push({ type: 'text', text: recovered.visibleText })
+        }
+        for (const tc of recovered.calls) {
+          content.push({
+            type: 'tool_use',
+            id: tc.id,
+            name: tc.name,
+            input: normalizeToolArguments(tc.name, JSON.stringify(tc.arguments)),
+          })
+        }
+        recoveredXmlToolUse = true
+      } else {
+        content.push({
+          type: 'text',
+          text: stripThinkTags(rawContent),
+        })
+      }
     } else if (Array.isArray(rawContent) && rawContent.length > 0) {
       const parts: string[] = []
       for (const part of rawContent) {
@@ -1018,7 +1060,7 @@ class OpenAIShimMessages {
     }
 
     const stopReason =
-      choice?.finish_reason === 'tool_calls'
+      recoveredXmlToolUse || choice?.finish_reason === 'tool_calls'
         ? 'tool_use'
         : choice?.finish_reason === 'length'
           ? 'max_tokens'
