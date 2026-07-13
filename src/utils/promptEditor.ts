@@ -65,7 +65,12 @@ export function editFileInEditor(filePath: string): EditorResult {
 
   try {
     // Use override command if available, otherwise use the editor as-is
-    const editorCommand = EDITOR_OVERRIDES[editor] ?? editor
+    // Object.hasOwn guards against inherited members: $EDITOR="constructor"
+    // would otherwise resolve to an Object.prototype function and get
+    // stringified straight into the execSync command line.
+    const editorCommand = Object.hasOwn(EDITOR_OVERRIDES, editor)
+      ? EDITOR_OVERRIDES[editor]
+      : editor
     execSync_DEPRECATED(`${editorCommand} "${filePath}"`, {
       stdio: 'inherit',
     })

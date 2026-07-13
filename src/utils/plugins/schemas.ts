@@ -107,6 +107,36 @@ export function isBlockedOfficialName(name: string): boolean {
 export const OFFICIAL_GITHUB_ORG = 'anthropics'
 
 /**
+ * Verify a git URL genuinely points at the official org: exact host + the org
+ * as the first path segment. A substring check is spoofable — e.g.
+ * `https://evilgithub.com/anthropics/x` and `https://evil.com/github.com/anthropics/x`
+ * both contain the naive `github.com/anthropics/` marker.
+ */
+function isOfficialGitUrl(rawUrl: string): boolean {
+  const url = rawUrl.trim()
+  // SSH scp-like form (not a valid URL): git@github.com:anthropics/repo(.git)
+  const sshMatch = SSH_SCP_URL_RE.exec(url)
+  if (sshMatch) {
+    return (
+      sshMatch[1].toLowerCase() === 'github.com' &&
+      sshMatch[2].toLowerCase() === OFFICIAL_GITHUB_ORG
+    )
+  }
+  // HTTPS (or ssh://) URL form
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'ssh:') return false
+    if (parsed.hostname.toLowerCase() !== 'github.com') return false
+    const firstSegment = parsed.pathname.split('/').filter(Boolean)[0]
+    return firstSegment?.toLowerCase() === OFFICIAL_GITHUB_ORG
+  } catch {
+    return false
+  }
+}
+
+const SSH_SCP_URL_RE = /^git@([^:]+):([^/]+)\//i
+
+/**
  * Validate that a marketplace with a reserved name comes from the official source.
  *
  * Reserved names (in ALLOWED_OFFICIAL_MARKETPLACE_NAMES) can only be used by
@@ -139,13 +169,9 @@ export function validateOfficialNameSource(
 
   // Check for git URL source type
   if (source.source === 'git' && source.url) {
-    const url = source.url.toLowerCase()
-    // Check for HTTPS URL format: https://github.com/anthropics/...
-    // or SSH format: git@github.com:anthropics/...
-    const isHttpsAnthropics = url.includes('github.com/anthropics/')
-    const isSshAnthropics = url.includes('git@github.com:anthropics/')
-
-    if (isHttpsAnthropics || isSshAnthropics) {
+    // Parse the URL and require an exact host + org path segment — a substring
+    // match on 'github.com/anthropics/' is spoofable (see isOfficialGitUrl).
+    if (isOfficialGitUrl(source.url)) {
       return null // Valid: reserved name from official git URL
     }
 

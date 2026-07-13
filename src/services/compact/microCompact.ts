@@ -101,6 +101,13 @@ export function estimateMessageTokens(messages: Message[]): number {
       continue
     }
 
+    // String content (the common shape for a plain user turn) was previously
+    // skipped entirely, counting as 0 tokens and delaying micro-compaction.
+    if (typeof message.message.content === 'string') {
+      totalTokens += roughTokenCountEstimation(message.message.content)
+      continue
+    }
+
     if (!Array.isArray(message.message.content)) {
       continue
     }

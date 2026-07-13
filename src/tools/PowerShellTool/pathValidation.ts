@@ -121,7 +121,12 @@ type CmdletPathConfig = {
   optionalWrite?: boolean
 }
 
-const CMDLET_PATH_CONFIG: Record<string, CmdletPathConfig> = {
+const CMDLET_PATH_CONFIG: Record<string, CmdletPathConfig> = Object.assign(
+  // Null prototype so model-controlled cmdlet names like 'constructor' or
+  // '__proto__' resolve to undefined, not inherited Object.prototype members.
+  // Same defense as CMDLET_ALLOWLIST / COMMON_ALIASES.
+  Object.create(null) as Record<string, CmdletPathConfig>,
+  {
   // ─── Write/create operations ──────────────────────────────────────────────
   'set-content': {
     operationType: 'write',
@@ -762,7 +767,8 @@ const CMDLET_PATH_CONFIG: Record<string, CmdletPathConfig> = {
     ],
     knownValueParams: ['-name', '-description', '-scope', '-as'],
   },
-}
+  },
+)
 
 /**
  * Checks if a lowercase parameter name (with leading dash) matches any entry

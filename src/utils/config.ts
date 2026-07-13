@@ -1519,27 +1519,35 @@ function saveConfigWithLock<A extends object>(
         Number.isNaN(mostRecentTimestamp) ||
         Date.now() - mostRecentTimestamp >= MIN_BACKUP_INTERVAL_MS
 
-      if (shouldCreateBackup) {
+      // Never back up a corrupt current file (it would pollute the backup set),
+      // and never prune healthy backups when we didn't add a fresh one — a
+      // single bad write must not erode the good backup history.
+      const currentFileParses = configFileParses(file)
+      const didCreateBackup = shouldCreateBackup && currentFileParses
+
+      if (didCreateBackup) {
         const backupPath = join(backupDir, `${fileBase}.backup.${Date.now()}`)
         fs.copyFileSync(file, backupPath)
       }
 
-      // Clean up old backups, keeping only the 5 most recent
-      const MAX_BACKUPS = 5
-      // Re-read if we just created one; otherwise reuse the list
-      const backupsForCleanup = shouldCreateBackup
-        ? fs
-            .readdirStringSync(backupDir)
-            .filter(f => f.startsWith(`${fileBase}.backup.`))
-            .sort()
-            .reverse()
-        : existingBackups
+      if (currentFileParses) {
+        // Clean up old backups, keeping only the 5 most recent
+        const MAX_BACKUPS = 5
+        // Re-read if we just created one; otherwise reuse the list
+        const backupsForCleanup = didCreateBackup
+          ? fs
+              .readdirStringSync(backupDir)
+              .filter(f => f.startsWith(`${fileBase}.backup.`))
+              .sort()
+              .reverse()
+          : existingBackups
 
-      for (const oldBackup of backupsForCleanup.slice(MAX_BACKUPS)) {
-        try {
-          fs.unlinkSync(join(backupDir, oldBackup))
-        } catch {
-          // Ignore cleanup errors
+        for (const oldBackup of backupsForCleanup.slice(MAX_BACKUPS)) {
+          try {
+            fs.unlinkSync(join(backupDir, oldBackup))
+          } catch {
+            // Ignore cleanup errors
+          }
         }
       }
     } catch (e) {
@@ -1663,6 +1671,62 @@ function findMostRecentBackup(file: string): string | null {
     // Ignore errors reading directory
   }
 
+  return null
+}
+
+/**
+ * Returns true if the on-disk config file exists and parses as JSON. Used to
+ * avoid backing up (or pruning against) a corrupt config: a single bad write
+ * must not be copied into the backup set nor cause healthy backups to be pruned.
+ */
+function configFileParses(file: string): boolean {
+  const fs = getFsImplementation()
+  try {
+    jsonParse(stripBOM(fs.readFileSync(file, { encoding: 'utf-8' })))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Walk config backups (newest first: new backup dir, then the legacy location
+ * next to the config file) and return the first that parses cleanly, merged
+ * with defaults. Returns null if none parse. Lets getConfig auto-recover from a
+ * bad write instead of silently resetting the user to defaults.
+ */
+function recoverConfigFromBackup<A>(
+  file: string,
+  createDefault: () => A,
+): { config: A; backupPath: string } | null {
+  const fs = getFsImplementation()
+  const fileBase = basename(file)
+  const seen = new Set<string>()
+  for (const dir of [getConfigBackupDir(), dirname(file)]) {
+    let entries: string[]
+    try {
+      entries = fs
+        .readdirStringSync(dir)
+        .filter(f => f.startsWith(`${fileBase}.backup.`))
+        .sort()
+        .reverse() // newest first (timestamps sort lexicographically)
+    } catch {
+      continue // backup dir doesn't exist
+    }
+    for (const entry of entries) {
+      const backupPath = join(dir, entry)
+      if (seen.has(backupPath)) continue
+      seen.add(backupPath)
+      try {
+        const parsed = jsonParse(
+          stripBOM(fs.readFileSync(backupPath, { encoding: 'utf-8' })),
+        )
+        return { config: { ...createDefault(), ...parsed }, backupPath }
+      } catch {
+        // Corrupt/unreadable backup — try the next oldest
+      }
+    }
+  }
   return null
 }
 
@@ -1806,6 +1870,34 @@ function getConfig<A>(
         } catch {
           // Ignore backup errors
         }
+      }
+
+      // Auto-recover from the most recent parseable backup before falling back
+      // to defaults, so a single bad write doesn't silently wipe the user's
+      // settings. The corrupt file has already been preserved above.
+      const recovered = recoverConfigFromBackup(file, createDefault)
+      if (recovered) {
+        if (corruptedBackupPath) {
+          process.stderr.write(
+            `The corrupted file has been backed up to: ${corruptedBackupPath}\n`,
+          )
+        }
+        // Heal the on-disk file by restoring the good backup over it. Without
+        // this, every subsequent getConfig() re-parses the corrupt file and
+        // re-prints this message until the next successful save.
+        let healed = false
+        try {
+          fs.copyFileSync(recovered.backupPath, file)
+          healed = true
+        } catch {
+          // Best-effort: fall back to in-memory recovery only
+        }
+        process.stderr.write(
+          healed
+            ? `Recovered configuration from backup: ${recovered.backupPath}\n\n`
+            : `Recovered configuration from backup (in memory): ${recovered.backupPath}\n\n`,
+        )
+        return recovered.config
       }
 
       // Notify user about corrupted config and available backup

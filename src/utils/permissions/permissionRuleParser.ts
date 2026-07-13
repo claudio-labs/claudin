@@ -29,7 +29,12 @@ const LEGACY_TOOL_NAME_ALIASES: Record<string, string> = {
 }
 
 export function normalizeLegacyToolName(name: string): string {
-  return LEGACY_TOOL_NAME_ALIASES[name] ?? name
+  // Object.hasOwn guards against inherited members: a tool literally named
+  // "constructor"/"toString" would otherwise resolve to an Object.prototype
+  // function and break every downstream string comparison in permission matching.
+  return Object.hasOwn(LEGACY_TOOL_NAME_ALIASES, name)
+    ? LEGACY_TOOL_NAME_ALIASES[name]
+    : name
 }
 
 export function getLegacyToolNames(canonicalName: string): string[] {

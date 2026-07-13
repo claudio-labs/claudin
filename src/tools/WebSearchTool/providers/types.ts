@@ -90,9 +90,14 @@ export function safeHostname(url: string | undefined): string | undefined {
  *          hostMatchesDomain('badexample.com', 'example.com') → false
  */
 export function hostMatchesDomain(host: string, domain: string): boolean {
-  if (host === domain) return true
+  // Case-fold both sides: the host comes lowercased from URL.hostname, but the
+  // domain is raw user input, so blocked_domains: ['Reddit.com'] would silently
+  // match nothing.
+  const h = host.toLowerCase()
+  const d = domain.toLowerCase()
+  if (h === d) return true
   // Subdomain: must end with `.domain` (not just `domain`)
-  return host.endsWith('.' + domain)
+  return h.endsWith('.' + d)
 }
 
 export function applyDomainFilters(
