@@ -40,6 +40,8 @@
     "build:release": "bun run build:extension && CLAUDIN_RELEASE_BUILD=1 bun run build",
     "build:compile": "CLAUDIN_COMPILE=1 bun run scripts/build.ts",
     "build:compile:all": "bun run scripts/build-compile-all.ts",
+    "vendor:ripgrep": "bun run scripts/vendor-ripgrep.ts",
+    "build:packages": "bun run scripts/assemble-packages.ts",
     "test:provider": "bun test src/services/api/*.test.ts src/utils/context.test.ts",
     "profile": "bun run scripts/profile/run-all.ts",
     "profile:streaming": "bun run scripts/profile/streaming-bench.ts --compare",

@@ -17,6 +17,8 @@
 const { spawnSync } = require('child_process')
 const {
   copyFileSync,
+  cpSync,
+  existsSync,
   linkSync,
   unlinkSync,
   chmodSync,
@@ -166,6 +168,25 @@ function main() {
     )
     console.error('  Fallback: node ' + path.join(__dirname, 'cli-wrapper.cjs'))
     process.exitCode = 1
+    return
+  }
+
+  // The compiled binary finds its vendored ripgrep via
+  // dirname(process.execPath)/vendor/ripgrep/… (src/utils/ripgrep.ts). The
+  // hardlink above places the binary in bin/, away from the platform package's
+  // vendor/, so mirror vendor/ beside the binary. Non-fatal: search falls back
+  // to a system `rg` if this can't be copied.
+  try {
+    const srcVendor = path.join(path.dirname(src), 'vendor')
+    if (existsSync(srcVendor)) {
+      cpSync(srcVendor, path.join(__dirname, 'bin', 'vendor'), {
+        recursive: true,
+      })
+    }
+  } catch (err) {
+    console.error(
+      `[${WRAPPER_NAME} postinstall] Could not vendor ripgrep beside the binary: ${err.message}`,
+    )
   }
 }
 
