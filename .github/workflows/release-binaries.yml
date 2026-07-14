@@ -221,17 +221,29 @@ jobs:
           else
             (cd dist/packages/claudin && npm publish --access public)
           fi
-      - name: Attach binaries to the GitHub release
+      - name: Attach per-architecture binaries to the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
         run: |
+          set -e
+          root="$PWD"
+          mkdir -p release-assets
+          # One archive per platform: the native binary + its vendored rg. Windows
+          # gets a .zip (native to the OS); everything else a .tar.gz (preserves
+          # the executable bit). Version in the name mirrors the dist-vX.Y.Z asset.
           for dir in dist/bin/*/; do
             plat=$(basename "$dir")
-            bin="$dir/claudin"; [ -f "$dir/claudin.exe" ] && bin="$dir/claudin.exe"
-            tar -czf "claudin-${plat}.tar.gz" -C "$dir" .
-            gh release upload "$TAG" "claudin-${plat}.tar.gz" --clobber
+            if [[ "$plat" == win32-* ]]; then
+              (cd "$dir" && zip -qr "$root/release-assets/claudin-${TAG}-${plat}.zip" .)
+            else
+              tar -czf "release-assets/claudin-${TAG}-${plat}.tar.gz" -C "$dir" .
+            fi
           done
+          # Combined checksums for scripted verification (GitHub also shows a
+          # per-asset sha256 digest in the release UI).
+          (cd release-assets && sha256sum claudin-* > SHA256SUMS.txt)
+          gh release upload "$TAG" release-assets/* --clobber
       - name: Summary
         run: |
           {
