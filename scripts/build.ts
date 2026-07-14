@@ -185,6 +185,26 @@ const hostTarget = `bun-${
       ? 'windows'
       : 'linux'
 }-${process.arch === 'arm64' ? 'arm64' : 'x64'}`
+// The Bun --compile target: defaults to the host, but the release matrix sets
+// CLAUDIN_COMPILE_TARGET per platform (bun-darwin-arm64, bun-linux-x64-musl,
+// bun-windows-arm64, …). Native runners pass their own target; only win-arm64
+// may cross-compile.
+const compileTarget = process.env.CLAUDIN_COMPILE_TARGET || hostTarget
+// Platform key for the per-platform npm package + output dir. Strip "bun-" and
+// normalize "windows" → "win32" so it matches the process.platform-based
+// selection in install.cjs (darwin-arm64, linux-x64, linux-x64-musl, win32-x64…).
+const compilePlatform = compileTarget
+  .replace(/^bun-/, '')
+  .replace(/^windows-/, 'win32-')
+const isWindowsTarget = compilePlatform.startsWith('win32-')
+// Per-platform layout: dist/bin/<platform>/claudin[.exe]. The matrix uploads
+// each dir as that platform package's payload.
+const compileOutfile = join(
+  distDir,
+  'bin',
+  compilePlatform,
+  isWindowsTarget ? 'claudin.exe' : 'claudin',
+)
 
 preProcessFeatureFlags(join(import.meta.dir, '..', 'src'))
 const numModified = modifiedFiles.size
@@ -211,8 +231,8 @@ const result = await Bun.build({
   ...(isCompile
     ? {
         compile: {
-          target: hostTarget,
-          outfile: join(distDir, 'claudin'),
+          target: compileTarget,
+          outfile: compileOutfile,
           autoloadDotenv: false,
           autoloadBunfig: false,
         },
@@ -222,8 +242,11 @@ const result = await Bun.build({
     : {}),
   // Release builds (npm publish) drop sourcemaps entirely and minify, so the
   // tarball stays small and source isn't shipped. Local dev keeps external
-  // sourcemaps + unminified output for stack traces / debugging.
-  sourcemap: process.env.CLAUDIN_RELEASE_BUILD === '1' ? 'none' : 'external',
+  // sourcemaps + unminified output for stack traces / debugging. Compile builds
+  // embed bytecode into a single binary — an external .map beside it is useless
+  // dead weight (~40 MB), so always drop it.
+  sourcemap:
+    isCompile || process.env.CLAUDIN_RELEASE_BUILD === '1' ? 'none' : 'external',
   // Release builds minify everything (identifiers + whitespace + syntax) for
   // smallest tarball. Dev builds drop only whitespace/syntax — identifiers
   // stay readable for stack traces and source-mapped debugging. Measured:
@@ -619,20 +642,33 @@ ${exports}
     // (src/utils/ripgrep.ts). Externalised so Bun never inlines the package
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
-    // Cloud provider SDKs
+    // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and
+    // NOT installed (dynamically imported in src/utils/model/bedrock.ts for
+    // AWS-native Bedrock model discovery, wrapped in try/catch). They can't be
+    // bundled (not present), so they stay external for BOTH builds. Under the
+    // compiled binary the dynamic import fails gracefully, exactly as it would
+    // for a Node user who hasn't installed them. Core Bedrock inference goes
+    // through @anthropic-ai/bedrock-sdk (below), which IS bundled.
     '@aws-sdk/client-bedrock',
     '@aws-sdk/client-bedrock-runtime',
     '@aws-sdk/client-sts',
     '@aws-sdk/credential-providers',
     '@azure/identity',
-    'google-auth-library',
-    // Anthropic provider SDKs (loaded via dynamic import in client.ts;
-    // externalising prevents Bun from co-mingling all three into one shared
-    // chunk, so a session that only uses Anthropic native never parses
-    // bedrock/vertex/foundry code)
-    '@anthropic-ai/bedrock-sdk',
-    '@anthropic-ai/vertex-sdk',
-    '@anthropic-ai/foundry-sdk',
+    // Anthropic provider SDKs + google-auth-library — real installed deps. For
+    // the NODE bundle they stay external so Bun never co-mingles them into a
+    // shared chunk (a session that only uses Anthropic native never parses
+    // vertex/foundry, loaded via dynamic import in client.ts). For the COMPILE
+    // build they MUST bundle IN — a standalone binary has no node_modules beside
+    // it to resolve them from — so drop them from `external` when isCompile
+    // (pure JS → embed into the binary's virtual FS, giving full parity).
+    ...(isCompile
+      ? []
+      : [
+          'google-auth-library',
+          '@anthropic-ai/bedrock-sdk',
+          '@anthropic-ai/vertex-sdk',
+          '@anthropic-ai/foundry-sdk',
+        ]),
   ],
 })
 
@@ -643,10 +679,9 @@ if (!result.success) {
   }
   process.exitCode = 1
 } else if (isCompile) {
-  const binPath = join(distDir, 'claudin')
-  const sizeMB = (statSync(binPath).size / 1e6).toFixed(0)
+  const sizeMB = (statSync(compileOutfile).size / 1e6).toFixed(0)
   console.log(
-    `✓ Compiled claudin v${version} → ${binPath} (${sizeMB} MB, ${hostTarget}, bytecode)`,
+    `✓ Compiled claudin v${version} → ${compileOutfile} (${sizeMB} MB, ${compileTarget}, bytecode)`,
   )
 } else {
   // Emit dist/.npmignore so `npm pack` excludes sourcemaps from the published

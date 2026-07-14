@@ -22,8 +22,13 @@ import { sleep } from '../sleep.js'
 import { jsonStringify, writeFileSync_DEPRECATED } from '../slowOperations.js'
 import { getBinaryName, getPlatform } from './installer.js'
 
-const GCS_BUCKET_URL =
-  'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases'
+// Neutralized. Upstream this pointed at Anthropic's Claude Code distribution
+// bucket. Claudin ships per-platform binaries via npm (@claudiolabs/claudin-*)
+// and updates through `npm i -g` (see doctorDiagnostic.getCurrentInstallationType
+// → npm-global for the wrapper binary, and src/cli/update.ts). The native
+// GCS download path must therefore NEVER run — an empty URL makes downloadVersion
+// throw a clear error instead of ever fetching Anthropic's binaries.
+const GCS_BUCKET_URL = ''
 export const ARTIFACTORY_REGISTRY_URL =
   process.env.CLAUDE_CODE_INTERNAL_ARTIFACTORY_REGISTRY_URL ?? ''
 
@@ -505,7 +510,16 @@ export async function downloadVersion(
     return 'binary'
   }
 
-  // Use GCS for external users
+  // Native binary download is disabled in Claudin (GCS_BUCKET_URL neutralized —
+  // see the constant above). Claudin binaries are distributed and updated via
+  // npm, so this path is unreachable in normal operation; if it is ever reached
+  // (e.g. a stale `installMethod: native` config), fail loudly instead of
+  // fetching from an unconfigured/foreign bucket.
+  if (!GCS_BUCKET_URL) {
+    throw new Error(
+      'Native binary download is disabled in Claudin. Update via npm instead: npm i -g @claudiolabs/claudin',
+    )
+  }
   await downloadVersionFromBinaryRepo(version, stagingPath, GCS_BUCKET_URL)
   return 'binary'
 }
