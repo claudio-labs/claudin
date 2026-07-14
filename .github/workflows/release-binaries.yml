@@ -1,10 +1,10 @@
 name: Release (native binaries)
 
-# Builds per-platform native binaries (Bun --compile) on their own OS runners,
-# assembles the npm wrapper + per-platform packages, and publishes all of them.
-#
-# Additive to release.yml (the Node-bundle release) while the binary flow is
-# being proven in CI. Once validated this supersedes release.yml.
+# THE release workflow. Builds per-platform native binaries (Bun --compile) on
+# their own OS runners, assembles the npm wrapper + per-platform packages, and
+# publishes all of them. This is the sole path that publishes @claudiolabs/claudin
+# to npm — the old Node-bundle release.yml was removed so nothing can publish the
+# legacy Node package to the `latest` dist-tag behind this flow's back.
 #
 # Publish auth = npm trusted publishing (OIDC). Each of the 9 packages needs a
 # Trusted Publisher entry on npmjs.com pointing at this workflow. NOTE: the 8
@@ -65,22 +65,92 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          RANGE=""; [ -n "$PREV_TAG" ] && RANGE="${PREV_TAG}..HEAD"
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ -z "$PREV_TAG" ]; then
+            RANGE=""
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+          # Insert a zero-width space after every '@' in commit subjects so that
+          # literal mentions like "@opentelemetry" don't trigger GitHub's own
+          # auto "Contributors" strip on the release page (which duplicates the
+          # curated "### Contributors" section built below). The ZWSP is
+          # invisible in rendered notes and in CHANGELOG.md.
           ZWSP=$'\u200b'
           # shellcheck disable=SC2086
           COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges | sed "s/@/@${ZWSP}/g")
+          # Credit contributors by their real GitHub identity (avatar + @handle),
+          # resolved from the commit authors' logins via the API. Fall back to the
+          # git author name for any commit whose email isn't linked to a GitHub
+          # account. Release/CI bots are dropped.
+          if [ -n "$PREV_TAG" ]; then
+            LOGINS=$(gh api --paginate "repos/${REPO}/compare/${PREV_TAG}...${HEAD_SHA}" \
+              --jq '.commits[].author.login // empty' 2>/dev/null || true)
+          else
+            LOGINS=$(gh api --paginate "repos/${REPO}/commits?sha=${HEAD_SHA}" \
+              --jq '.[].author.login // empty' 2>/dev/null || true)
+          fi
+          LOGINS=$(printf '%s\n' "$LOGINS" | grep -viE '\[bot\]|-bot$|github-actions' | sed '/^$/d' | sort -u)
+          if [ -n "$LOGINS" ]; then
+            CONTRIBUTORS=$(printf '%s\n' "$LOGINS" | while IFS= read -r u; do
+              printf -- '- <a href="https://github.com/%s"><img src="https://github.com/%s.png?size=40" width="20" height="20" alt="@%s"></a> <a href="https://github.com/%s">@%s</a>\n' "$u" "$u" "$u" "$u" "$u"
+            done)
+          else
+            # shellcheck disable=SC2086
+            CONTRIBUTORS=$(git log $RANGE --no-merges --pretty='%an' \
+              | grep -viE 'release-bot|github-actions' \
+              | sort -u | sed 's/^/- /')
+          fi
           {
             echo 'body<<CHANGELOG_EOF'
             echo "## ${{ steps.bump.outputs.tag }}"
             echo
-            [ -z "$COMMITS" ] && echo "_No user-facing commits since previous tag._" || echo "$COMMITS"
+            if [ -z "$COMMITS" ]; then
+              echo "_No user-facing commits since previous tag._"
+            else
+              echo "$COMMITS"
+            fi
+            if [ -n "$CONTRIBUTORS" ]; then
+              echo
+              echo "### Contributors"
+              echo
+              echo "$CONTRIBUTORS"
+            fi
             echo CHANGELOG_EOF
           } >> "$GITHUB_OUTPUT"
-      - name: Commit bump + tag + push
+      - name: Update CHANGELOG.md (this repo)
+        env:
+          BODY: ${{ steps.changelog.outputs.body }}
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          SECTION=$(mktemp)
+          {
+            echo "## ${TAG} — ${DATE}"
+            echo
+            # BODY already starts with a "## <tag>" heading; drop it so we don't
+            # duplicate the heading, then drop the leading blank line.
+            printf '%s\n' "$BODY" | sed '1{/^## /d;}' | sed '1{/^$/d;}'
+            echo
+          } > "$SECTION"
+          if [ -f CHANGELOG.md ] && head -1 CHANGELOG.md | grep -q '^# '; then
+            # Preserve the top-level "# Changelog" title: insert the new section
+            # right after it, keeping the newest release near the top.
+            { head -1 CHANGELOG.md; echo; cat "$SECTION"; tail -n +2 CHANGELOG.md; } > CHANGELOG.md.new
+          else
+            { cat "$SECTION"; [ -f CHANGELOG.md ] && cat CHANGELOG.md; } > CHANGELOG.md.new
+          fi
+          mv CHANGELOG.md.new CHANGELOG.md
+      - name: Commit bump + changelog + tag + push
         run: |
           TAG="${{ steps.bump.outputs.tag }}"
+          git add CHANGELOG.md
           if [ "${{ inputs.bump }}" != "none" ]; then
             git add package.json
+          fi
+          if git diff --cached --quiet; then
+            echo "Nothing to commit (changelog + version unchanged)"
+          else
             git commit -m "chore(release): ${TAG}"
             git push origin HEAD:refs/heads/main
           fi
@@ -100,6 +170,50 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --notes-file /tmp/notes.md
           fi
+      - name: Append changelog to claudio-labs/claudin-site
+        env:
+          GH_TOKEN: ${{ secrets.GH_CHANGELOG_TOKEN }}
+          BODY: ${{ steps.changelog.outputs.body }}
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "GH_CHANGELOG_TOKEN not set, skipping external changelog push"
+            exit 0
+          fi
+          WORK=$(mktemp -d)
+          # Clone the default branch (don't hard-code main) so this keeps working
+          # regardless of what claudin-site's default branch is named.
+          git clone --depth=1 \
+            "https://oauth2:${GH_TOKEN}@github.com/claudio-labs/claudin-site.git" \
+            "$WORK/repo"
+          cd "$WORK/repo"
+          DEFAULT_BRANCH=$(git symbolic-ref --short HEAD)
+          git config user.name "claudin-release-bot"
+          git config user.email "release@claudin.local"
+          DATE=$(date -u +%Y-%m-%d)
+          SECTION=$(mktemp)
+          {
+            echo "## ${TAG} — ${DATE}"
+            echo
+            # BODY already contains "## <tag>" header from the changelog step;
+            # strip it so we don't duplicate the heading.
+            printf '%s\n' "$BODY" | sed '1{/^## /d;}' | sed '1{/^$/d;}'
+            echo
+          } > "$SECTION"
+          if [ -f CHANGELOG.md ] && head -1 CHANGELOG.md | grep -q '^# '; then
+            # Preserve a top-level "# Changelog" title if the site already has one.
+            { head -1 CHANGELOG.md; echo; cat "$SECTION"; tail -n +2 CHANGELOG.md; } > CHANGELOG.md.new
+          else
+            { cat "$SECTION"; [ -f CHANGELOG.md ] && cat CHANGELOG.md; } > CHANGELOG.md.new
+          fi
+          mv CHANGELOG.md.new CHANGELOG.md
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "No changelog changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(changelog): ${TAG}"
+          git push origin "HEAD:${DEFAULT_BRANCH}"
 
   # ── 2. Native build matrix — one binary per platform, smoke-tested ────────
   build:
