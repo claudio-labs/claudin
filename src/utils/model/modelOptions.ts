@@ -571,7 +571,6 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     if (isOpus1mMergeEnabled()) {
       payg1POptions.push(getMergedOpus1MOption(fastMode))
     } else {
-      payg1POptions.push(getOpus48Option(fastMode))
       if (checkOpus1mAccess()) {
         payg1POptions.push(getOpus47_1MOption(fastMode))
       }
