@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0 — 2026-07-14
+
+- feat(dist): native binary distribution via npm (Bun --compile) (#9) (8c9c915)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v0.7.6 — 2026-07-13
 
 - feat(agents): enable auto-background agents by default (5fe1570)
