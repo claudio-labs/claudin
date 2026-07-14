@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.4 — 2026-07-14
+
+- feat(model): make /model selection project-scoped, decoupled from provider override (#13) (0666a7b)
+- feat(models): drop standalone Opus 4.8 entry from first-party picker (a26e8a8)
+- fix(context): restore two-tier context warning, truthful compact %, and discovery-first window sizing (#12) (e6c416c)
+- fix(image): vendor sharp into the compiled binary + tolerant resize fallback (#11) (2a02ced)
+- fix(plan-mode): recognize plan file by directory, not exact slug (#10) (ea84889)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.3 — 2026-07-14
 
 - ci(release): cross-compile darwin-x64 on arm64, drop macos-13 Intel runner (1ffb786)
