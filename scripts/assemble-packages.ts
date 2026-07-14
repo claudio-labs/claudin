@@ -100,9 +100,32 @@ for (const platform of built) {
   const pkgName = `${PREFIX}-${platform}`
   optionalDependencies[pkgName] = version
 
+  // Every built platform must carry its vendored sharp (scripts/vendor-sharp.ts):
+  // the standalone binary loads image processing from vendor/sharp beside the
+  // executable, and the --version/--help smoke test never exercises it, so a
+  // missing/partial vendor would ship GREEN and silently break clipboard-image
+  // paste + resizing. Assert it here, like the missing-platform guard above — a
+  // build that skipped `vendor:sharp` must not publish.
+  const vendoredSharp = join(
+    binDir,
+    platform,
+    'vendor',
+    'sharp',
+    'node_modules',
+    'sharp',
+    'package.json',
+  )
+  if (!existsSync(vendoredSharp)) {
+    console.error(
+      `✗ ${platform}: vendored sharp missing (${vendoredSharp}).\n` +
+        '  Run `bun run vendor:sharp` (with CLAUDIN_COMPILE_TARGET set) after compiling this platform, before assembling.',
+    )
+    process.exit(1)
+  }
+
   const dst = join(outRoot, `claudin-${platform}`)
   mkdirSync(dst, { recursive: true })
-  // Copy the whole platform payload (binary + vendor/rg).
+  // Copy the whole platform payload (binary + vendor/{ripgrep,sharp}).
   cpSync(join(binDir, platform), dst, { recursive: true })
 
   const pkgJson: Record<string, unknown> = {
