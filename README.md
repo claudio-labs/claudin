@@ -17,7 +17,21 @@ Claudin brings a terminal-first agentic workflow — bash, file tools, grep, glo
 npm install -g @claudiolabs/claudin@latest
 ```
 
-Requires Node 22.12+. Runs on Linux, macOS, and Windows.
+Runs on Linux, macOS, and Windows (x64 + arm64). Claudin installs a native
+executable for your platform — `npm` downloads only the one matching package
+(~68 MB), and `claudin` launches directly with no Node process in front of it
+(~2× faster startup than the previous bundled build). On a platform without a
+prebuilt binary, it transparently falls back to the bundled Node build (Node
+22.12+ required for that path only).
+
+**First run on macOS / Windows (unsigned binary).** The binaries are not yet
+code-signed, so the OS may block the first launch:
+
+- **macOS** (Gatekeeper "cannot be opened"): run
+  `xattr -d com.apple.quarantine "$(which claudin)"` once, or approve it under
+  System Settings → Privacy & Security → "Open Anyway".
+- **Windows** (SmartScreen "unrecognized app"): click "More info" → "Run anyway"
+  on the first launch.
 
 ## Quick Start
 

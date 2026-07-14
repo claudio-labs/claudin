@@ -103,6 +103,54 @@ async function isInvokedFromSourceTree(invokedPath: string): Promise<boolean> {
   return isInvokedFromSourceTreeImpl(invokedPath, MACRO.PACKAGE_URL)
 }
 
+// True when the launcher path lives in a typical npm/bun global-install
+// location. Extracted so BOTH the bundled-binary branch and the plain-Node
+// branch of getCurrentInstallationType() can reuse it: a Claudin binary
+// installed via the npm wrapper is hardlinked into the npm global tree, so it
+// must be recognized as npm-global even though isInBundledMode() is true.
+async function isNpmGlobalInstallPath(invokedPath: string): Promise<boolean> {
+  const npmGlobalPaths = [
+    '/usr/local/lib/node_modules',
+    '/usr/lib/node_modules',
+    '/opt/homebrew/lib/node_modules',
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/.nvm/versions/node/', // nvm installations
+  ]
+
+  if (npmGlobalPaths.some(path => invokedPath.includes(path))) {
+    return true
+  }
+
+  // Also check for npm/nvm in the path even if not in standard locations
+  if (invokedPath.includes('/npm/') || invokedPath.includes('/nvm/')) {
+    return true
+  }
+
+  // Bun global installs live under <bun-install>/install/global/node_modules.
+  // The default is ~/.bun/install/global; respect BUN_INSTALL override.
+  if (invokedPath.includes('/.bun/install/global/')) {
+    return true
+  }
+  const bunInstall = process.env.BUN_INSTALL
+  if (bunInstall && invokedPath.startsWith(bunInstall)) {
+    return true
+  }
+
+  const npmConfigResult = await execa('npm config get prefix', {
+    shell: true,
+    reject: false,
+  })
+  const globalPrefix =
+    npmConfigResult.exitCode === 0 ? npmConfigResult.stdout.trim() : null
+
+  if (globalPrefix && invokedPath.startsWith(globalPrefix)) {
+    return true
+  }
+
+  return false
+}
+
 export async function getCurrentInstallationType(): Promise<InstallationType> {
   if (process.env.NODE_ENV === 'development') {
     return 'development'
@@ -131,6 +179,18 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
     ) {
       return 'package-manager'
     }
+    // NOTE: for the current Claudin compile this branch is dormant —
+    // isInBundledMode() is `Bun.embeddedFiles.length > 0`, and a plain
+    // `bun --compile` embeds nothing, so our npm-wrapper binary is classified by
+    // the npm-global fall-through below (line ~200), NOT here. This guard is
+    // defense for a future build that DOES embed files (flipping isInBundledMode
+    // true): a wrapper binary is hardlinked into the npm global tree, so it must
+    // classify as npm-global (→ `claudin update` re-runs `npm i -g`,
+    // re-hardlinking) rather than 'native' (which routes into the neutralized
+    // downloader). Keep in sync with the fall-through at the npm-global check.
+    if (await isNpmGlobalInstallPath(invokedPath)) {
+      return 'npm-global'
+    }
     return 'native'
   }
 
@@ -140,42 +200,7 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
   }
 
   // Check if we're in a typical npm global location
-  const npmGlobalPaths = [
-    '/usr/local/lib/node_modules',
-    '/usr/lib/node_modules',
-    '/opt/homebrew/lib/node_modules',
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    '/.nvm/versions/node/', // nvm installations
-  ]
-
-  if (npmGlobalPaths.some(path => invokedPath.includes(path))) {
-    return 'npm-global'
-  }
-
-  // Also check for npm/nvm in the path even if not in standard locations
-  if (invokedPath.includes('/npm/') || invokedPath.includes('/nvm/')) {
-    return 'npm-global'
-  }
-
-  // Bun global installs live under <bun-install>/install/global/node_modules.
-  // The default is ~/.bun/install/global; respect BUN_INSTALL override.
-  if (invokedPath.includes('/.bun/install/global/')) {
-    return 'npm-global'
-  }
-  const bunInstall = process.env.BUN_INSTALL
-  if (bunInstall && invokedPath.startsWith(bunInstall)) {
-    return 'npm-global'
-  }
-
-  const npmConfigResult = await execa('npm config get prefix', {
-    shell: true,
-    reject: false,
-  })
-  const globalPrefix =
-    npmConfigResult.exitCode === 0 ? npmConfigResult.stdout.trim() : null
-
-  if (globalPrefix && invokedPath.startsWith(globalPrefix)) {
+  if (await isNpmGlobalInstallPath(invokedPath)) {
     return 'npm-global'
   }
 

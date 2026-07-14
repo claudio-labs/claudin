@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+// Placeholder launcher for @claudiolabs/claudin.
+//
+// On a supported platform the postinstall (install.cjs) hardlinks the native
+// binary over this file, so this stub only runs when postinstall was skipped
+// (--ignore-scripts) or no native package exists for this platform. It
+// delegates to cli-wrapper.cjs, which execs the native binary if present or
+// falls back to the bundled Node build (dist/cli.mjs).
+//
+// Kept small (<4096 bytes) so install.cjs can snapshot + restore it on a failed
+// binary placement.
+require(require('path').join(__dirname, '..', 'cli-wrapper.cjs'))

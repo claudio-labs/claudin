@@ -1,6 +1,6 @@
 import type { ChildProcess, ExecFileException } from 'child_process'
 import { execFile, spawn } from 'child_process'
-import { existsSync } from 'fs'
+import { existsSync, realpathSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { createRequire } from 'module'
 import { homedir } from 'os'
@@ -105,6 +105,42 @@ function resolvePackagedRipgrepPath(): string | null {
   return null
 }
 
+/**
+ * Resolve the vendored ripgrep binary at <root>/vendor/ripgrep/<arch>-<platform>/rg.
+ *
+ * Probes two roots: `moduleDir` (the in-tree/dev layout) and the directory of
+ * the real executable. In a Bun-compiled standalone binary the bundled module's
+ * __dirname points into the in-binary VFS (not the real FS), so the release
+ * packages ship the platform rg beside the binary and `execPath` is the reliable
+ * anchor. `execPath` is realpath-resolved first because the npm global bin is a
+ * symlink into node_modules/.../bin — without this, dirname(execPath) would be
+ * the global bin dir (no vendor/ there) and search would silently fall back to
+ * system `rg`. Exported for testing (production passes process.execPath).
+ */
+export function resolveVendoredRipgrepPath(
+  moduleDir: string,
+  execPath: string,
+  plat: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+): { command: string; exists: boolean } {
+  const rgSubPath =
+    plat === 'win32'
+      ? path.join('vendor', 'ripgrep', `${arch}-win32`, 'rg.exe')
+      : path.join('vendor', 'ripgrep', `${arch}-${plat}`, 'rg')
+  let realExec = execPath
+  try {
+    realExec = realpathSync(execPath)
+  } catch {
+    // execPath not resolvable (unusual) — fall back to the raw path.
+  }
+  const candidates = [
+    path.resolve(moduleDir, rgSubPath),
+    path.resolve(path.dirname(realExec), rgSubPath),
+  ]
+  const found = candidates.find(p => existsSync(p))
+  return { command: found ?? candidates[0]!, exists: found !== undefined }
+}
+
 const getRipgrepConfig = memoize((): RipgrepConfig => {
   const userWantsSystemRipgrep = isEnvDefinedFalsy(
     process.env.USE_BUILTIN_RIPGREP,
@@ -114,14 +150,10 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
   // Prefer the packaged @vscode/ripgrep binary so search works with no system
   // `rg` on PATH. Fall back to the legacy in-tree vendored path if present.
   const packagedCommand = resolvePackagedRipgrepPath()
-  const rgRoot = path.resolve(__dirname, 'vendor', 'ripgrep')
-  const vendoredCommand =
-    process.platform === 'win32'
-      ? path.resolve(rgRoot, `${process.arch}-win32`, 'rg.exe')
-      : path.resolve(rgRoot, `${process.arch}-${process.platform}`, 'rg')
+  const vendored = resolveVendoredRipgrepPath(__dirname, process.execPath)
 
-  const builtinCommand = packagedCommand ?? vendoredCommand
-  const builtinExists = packagedCommand !== null || existsSync(vendoredCommand)
+  const builtinCommand = packagedCommand ?? vendored.command
+  const builtinExists = packagedCommand !== null || vendored.exists
   const { cmd: systemExecutablePath } = findExecutable('rg', [])
 
   return resolveRipgrepConfig({
