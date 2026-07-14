@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.1 — 2026-07-14
+
+- ci(release): unify on the native-binary release, remove the Node-bundle flow (67b13b1)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.0 — 2026-07-14
 
 - feat(dist): native binary distribution via npm (Bun --compile) (#9) (8c9c915)
