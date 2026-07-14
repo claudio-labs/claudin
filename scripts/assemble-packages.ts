@@ -148,8 +148,12 @@ if (!existsSync(join(root, 'dist', 'cli.mjs'))) {
 }
 for (const entry of readdirSync(join(root, 'dist'))) {
   if (entry === 'bin' || entry === 'packages' || entry.endsWith('.map')) continue
+  // Prune source maps recursively — the top-level skip above misses the ~1300
+  // dist/chunks/*.mjs.map. `npm pack` strips *.map anyway, but don't ship our
+  // source layout to the registry on npm's incidental behavior; exclude it here.
   cpSync(join(root, 'dist', entry), join(wrap, 'dist', entry), {
     recursive: true,
+    filter: src => !src.endsWith('.map'),
   })
 }
 
