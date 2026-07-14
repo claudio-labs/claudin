@@ -1,5 +1,5 @@
 import { constants as fsConstants } from 'fs'
-import { access, writeFile } from 'fs/promises'
+import { access, stat, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import {
@@ -46,6 +46,109 @@ async function isBunGlobalInstall(): Promise<boolean> {
   })
   if (result.code !== 0) return false
   return result.stdout.includes(MACRO.PACKAGE_URL as string)
+}
+
+// The wrapper package ships bin/claudin.exe as a ~600-byte Node stub that its
+// postinstall (install.cjs) hardlinks the native binary over. Anything under
+// this size is still the stub (the native binary is ~200MB), so the postinstall
+// has not run.
+const STUB_LAUNCHER_MAX_BYTES = 4096
+
+// spawn() surfaces a missing executable as an "spawn <cmd> ENOENT" error message.
+const SPAWN_ENOENT_RE = /ENOENT/i
+
+function getBunGlobalPackageDir(): string {
+  const root = process.env.BUN_INSTALL || join(homedir(), '.bun')
+  return join(
+    root,
+    'install',
+    'global',
+    'node_modules',
+    MACRO.PACKAGE_URL as string,
+  )
+}
+
+/**
+ * Run the wrapper package's postinstall (`install.cjs`) that Bun skipped.
+ *
+ * The script declares `node` as its runtime (`#!/usr/bin/env node`, and the
+ * package's own `postinstall` is `node install.cjs`), so prefer `node`. Fall
+ * back to `bun` only when node isn't on PATH — bun is guaranteed present on a
+ * Bun global install and runs the CJS script fine. Returns true on exit 0.
+ */
+async function runSkippedPostinstall(
+  installScript: string,
+  cwd: string,
+): Promise<boolean> {
+  const node = await execFileNoThrowWithCwd('node', [installScript], { cwd })
+  if (node.code === 0) return true
+
+  // A non-ENOENT failure means node ran but the postinstall itself failed —
+  // that's the authoritative result; don't paper over it by retrying with bun.
+  if (!SPAWN_ENOENT_RE.test(node.error ?? '')) {
+    logError(
+      new AutoUpdaterError(
+        `Skipped postinstall failed under node: ${node.stdout} ${node.stderr}`,
+      ),
+    )
+    return false
+  }
+
+  // node isn't installed — fall back to bun.
+  const bun = await execFileNoThrowWithCwd('bun', [installScript], { cwd })
+  if (bun.code === 0) return true
+  logError(
+    new AutoUpdaterError(
+      `Skipped postinstall failed under bun: ${bun.stdout} ${bun.stderr}`,
+    ),
+  )
+  return false
+}
+
+/**
+ * Repair a Bun global install whose postinstall was skipped.
+ *
+ * `bun install -g` does not run lifecycle scripts (postinstall) by default, so
+ * the wrapper package's `bin/claudin.exe` is left as the Node stub instead of
+ * the native binary that its postinstall (`install.cjs`) hardlinks into place.
+ * Running the stub then fails hard: Node's ESM loader rejects the `.exe`
+ * extension (ERR_UNKNOWN_FILE_EXTENSION). This runs the skipped postinstall to
+ * place the native binary. No-op when there is no Bun global install, the
+ * wrapper layout isn't present, or the binary is already in place.
+ *
+ * Returns true only when a repair was actually performed.
+ */
+export async function repairBunGlobalBinary(): Promise<boolean> {
+  const pkgDir = getBunGlobalPackageDir()
+  const installScript = join(pkgDir, 'install.cjs')
+  const launcher = join(pkgDir, 'bin', 'claudin.exe')
+
+  // The whole gate is this cheap fs check: only a Bun global install of the
+  // native-binary wrapper has install.cjs at this path. When it's absent (npm
+  // installs, no Bun global) we bail without spawning any subprocess.
+  try {
+    await access(installScript, fsConstants.F_OK)
+  } catch (e) {
+    if (!isENOENT(e)) logError(e as Error)
+    return false
+  }
+
+  // If the launcher is already the native binary (large), postinstall ran.
+  try {
+    const info = await stat(launcher)
+    if (info.size > STUB_LAUNCHER_MAX_BYTES) return false
+  } catch (e) {
+    // ENOENT: launcher missing entirely — let the postinstall recreate it.
+    if (!isENOENT(e)) {
+      logError(e as Error)
+      return false
+    }
+  }
+
+  // Bun skipped the postinstall; run it now.
+  if (!(await runSkippedPostinstall(installScript, pkgDir))) return false
+  logForDebugging('update: repaired Bun global launcher via install.cjs')
+  return true
 }
 
 export type InstallStatus =
@@ -487,6 +590,11 @@ To fix this issue:
         )
       }
     }
+
+    // Bun skips the postinstall on `bun install -g`, leaving the native launcher
+    // as a Node stub that fails to run. Run the skipped postinstall now (no-op
+    // for npm-only installs).
+    await repairBunGlobalBinary()
 
     // Set installMethod to 'global' to track npm global installations
     saveGlobalConfig(current => ({
