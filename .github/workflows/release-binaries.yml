@@ -269,6 +269,11 @@ jobs:
         env:
           CLAUDIN_COMPILE_TARGET: ${{ matrix.target }}
         run: bun run scripts/vendor-ripgrep.ts
+      - name: Vendor sharp beside the binary
+        shell: bash
+        env:
+          CLAUDIN_COMPILE_TARGET: ${{ matrix.target }}
+        run: bun run scripts/vendor-sharp.ts
       - name: Smoke test (native)
         if: ${{ !matrix.cross }}
         shell: bash
@@ -308,6 +313,7 @@ jobs:
               bun install --frozen-lockfile
               bun run scripts/build.ts
               bun run scripts/vendor-ripgrep.ts
+              bun run scripts/vendor-sharp.ts
               BIN=dist/bin/linux-arm64-musl/claudin
               "$BIN" --version
               "$BIN" --help >/dev/null

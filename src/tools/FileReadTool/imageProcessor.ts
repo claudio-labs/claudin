@@ -1,5 +1,9 @@
 import type { Buffer } from 'buffer'
+import { existsSync, readFileSync, realpathSync } from 'fs'
+import { createRequire } from 'module'
+import { dirname, join } from 'path'
 import { isInBundledMode } from '../../utils/bundledMode.js'
+import { logError } from '../../utils/log.js'
 
 export type SharpInstance = {
   metadata(): Promise<{ width: number; height: number; format: string }>
@@ -33,6 +37,57 @@ type SharpCreator = (options: SharpCreatorOptions) => SharpInstance
 
 let imageProcessorModule: { default: SharpFunction } | null = null
 let imageCreatorModule: { default: SharpCreator } | null = null
+
+// undefined = not yet probed, null = probed and absent.
+let vendoredSharp: SharpFunction | null | undefined
+
+/**
+ * Resolve the sharp runtime vendored beside a compiled standalone binary.
+ *
+ * The Bun-compiled binary keeps `sharp` external (scripts/build.ts) but has no
+ * node_modules next to it, so the bare `import('sharp')` fails. The release
+ * packages ship a self-contained sharp install at vendor/sharp/node_modules/
+ * (scripts/vendor-sharp.ts), mirrored beside the executable at install time
+ * (install.cjs). Probe it via dirname(process.execPath) — realpath-resolved
+ * first, because the npm global bin is a symlink into node_modules and its
+ * dirname has no vendor/ (same reasoning as src/utils/ripgrep.ts). Returns null
+ * in dev / the Node bundle, where this path doesn't exist and the normal import
+ * already succeeded.
+ */
+function resolveVendoredSharp(): SharpFunction | null {
+  if (vendoredSharp !== undefined) return vendoredSharp
+  try {
+    let execDir: string
+    try {
+      execDir = dirname(realpathSync(process.execPath))
+    } catch {
+      execDir = dirname(process.execPath)
+    }
+    const sharpDir = join(execDir, 'vendor', 'sharp', 'node_modules', 'sharp')
+    const sharpPkgJson = join(sharpDir, 'package.json')
+    if (!existsSync(sharpPkgJson)) {
+      vendoredSharp = null
+      return null
+    }
+    // Require sharp's main file by ABSOLUTE PATH: a Bun standalone binary's
+    // resolver ignores package.json `main` for external bare specifiers, so
+    // `require('sharp')` would fail — but an explicit file path loads, and
+    // sharp's own nested requires then resolve against the vendored tree
+    // (scripts/vendor-sharp.ts adds the index.js shims / native-addon redirect
+    // that Bun's resolver needs).
+    const main =
+      (JSON.parse(readFileSync(sharpPkgJson, 'utf8')) as { main?: string })
+        .main || 'index.js'
+    const req = createRequire(sharpPkgJson)
+    const imported = req(join(sharpDir, main)) as MaybeDefault<SharpFunction>
+    vendoredSharp = unwrapDefault(imported)
+    return vendoredSharp
+  } catch (e) {
+    logError(e as Error)
+    vendoredSharp = null
+    return null
+  }
+}
 
 /**
  * Error thrown when no image processor is available (e.g., in the open build
@@ -81,6 +136,14 @@ export async function getImageProcessor(): Promise<SharpFunction> {
     imageProcessorModule = { default: sharp }
     return sharp
   } catch (e) {
+    // The standalone compiled binary has no node_modules beside it, so the
+    // bare `import('sharp')` above fails (or resolves to the build stub). Fall
+    // back to the sharp runtime vendored next to the executable.
+    const vendored = resolveVendoredSharp()
+    if (vendored) {
+      imageProcessorModule = { default: vendored }
+      return vendored
+    }
     if (e instanceof ImageProcessorUnavailableError) throw e
     throw new ImageProcessorUnavailableError()
   }
@@ -96,12 +159,26 @@ export async function getImageCreator(): Promise<SharpCreator> {
     return imageCreatorModule.default
   }
 
-  const imported = (await import(
-    'sharp'
-  )) as unknown as MaybeDefault<SharpCreator>
-  const sharp = unwrapDefault(imported)
-  imageCreatorModule = { default: sharp }
-  return sharp
+  try {
+    const imported = (await import(
+      'sharp'
+    )) as unknown as MaybeDefault<SharpCreator> & { __stub?: boolean }
+    if (imported && (imported as { __stub?: boolean }).__stub) {
+      throw new ImageProcessorUnavailableError()
+    }
+    const sharp = unwrapDefault(imported)
+    imageCreatorModule = { default: sharp }
+    return sharp
+  } catch (e) {
+    // Vendored sharp (compiled binary) exposes the same create() surface.
+    const vendored = resolveVendoredSharp() as unknown as SharpCreator | null
+    if (vendored) {
+      imageCreatorModule = { default: vendored }
+      return vendored
+    }
+    if (e instanceof ImageProcessorUnavailableError) throw e
+    throw new ImageProcessorUnavailableError()
+  }
 }
 
 // Dynamic import shape varies by module interop mode — ESM yields { default: fn }, CJS yields fn directly.

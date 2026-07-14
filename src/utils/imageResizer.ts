@@ -11,6 +11,7 @@ import {
 import { logEvent } from '../services/analytics/index.js'
 import {
   getImageProcessor,
+  ImageProcessorUnavailableError,
   type SharpFunction,
   type SharpInstance,
 } from '../tools/FileReadTool/imageProcessor.js'
@@ -391,6 +392,14 @@ export async function maybeResizeAndDownsampleImageBuffer(
       error_message_hash: hashString(errorMsg),
     })
 
+    // No image processor at all (e.g. the compiled standalone binary, where
+    // sharp isn't resolvable). We can't read dimensions or resize — so the
+    // oversized-dimension guard below is moot (there's nothing we could do
+    // about it anyway), and first-party APIs downscale >1568px server-side
+    // without error. Pass the raw image through as long as it's under the
+    // hard 5MB base64 limit; only that limit truly rejects the request.
+    const processorUnavailable = error instanceof ImageProcessorUnavailableError
+
     // Detect actual format from magic bytes instead of trusting extension
     const detected = detectImageFormatFromBuffer(imageBuffer)
     const normalizedExt = detected.slice(6) // Remove 'image/' prefix
@@ -401,7 +410,10 @@ export async function maybeResizeAndDownsampleImageBuffer(
     // Size-under-5MB does not imply dimensions-under-cap. Don't return the
     // raw buffer if the PNG header says it's oversized — fall through to
     // ImageResizeError instead. PNG sig is 8 bytes, IHDR dims at 16-24.
+    // Skipped when no processor is available: we can't resize regardless, and
+    // blocking here would turn every oversized paste into a silent failure.
     const overDim =
+      !processorUnavailable &&
       imageBuffer.length >= 24 &&
       imageBuffer[0] === 0x89 &&
       imageBuffer[1] === 0x50 &&
@@ -422,12 +434,16 @@ export async function maybeResizeAndDownsampleImageBuffer(
 
     // Image is too large and we failed to compress it - fail with user-friendly error
     throw new ImageResizeError(
-      overDim
-        ? `Unable to resize image — dimensions exceed the ${IMAGE_MAX_WIDTH}x${IMAGE_MAX_HEIGHT}px limit and image processing failed. ` +
-            `Please resize the image to reduce its pixel dimensions.`
-        : `Unable to resize image (${formatFileSize(originalSize)} raw, ${formatFileSize(base64Size)} base64). ` +
-            `The image exceeds the 5MB API limit and compression failed. ` +
-            `Please resize the image manually or use a smaller image.`,
+      processorUnavailable
+        ? `Unable to process image (${formatFileSize(originalSize)} raw, ${formatFileSize(base64Size)} base64). ` +
+            `No image processor is available in this build to compress it, and it exceeds the 5MB API limit. ` +
+            `Please resize the image manually or use a smaller image.`
+        : overDim
+          ? `Unable to resize image — dimensions exceed the ${IMAGE_MAX_WIDTH}x${IMAGE_MAX_HEIGHT}px limit and image processing failed. ` +
+              `Please resize the image to reduce its pixel dimensions.`
+          : `Unable to resize image (${formatFileSize(originalSize)} raw, ${formatFileSize(base64Size)} base64). ` +
+              `The image exceeds the 5MB API limit and compression failed. ` +
+              `Please resize the image manually or use a smaller image.`,
     )
   }
 }

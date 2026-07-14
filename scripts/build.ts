@@ -636,7 +636,12 @@ ${exports}
     '@opentelemetry/sdk-logs',
     '@opentelemetry/sdk-metrics',
     '@opentelemetry/semantic-conventions',
-    // Native image processing
+    // Native image processing. Kept external for BOTH builds: it has a native
+    // addon + libvips, so Bun can't inline it. The Node bundle resolves it from
+    // node_modules; the compiled binary loads a self-contained copy vendored
+    // beside the executable at vendor/sharp/ (scripts/vendor-sharp.ts, probed
+    // by src/tools/FileReadTool/imageProcessor.ts). Without the vendored copy,
+    // image paste + resizing silently no-op in the standalone binary.
     'sharp',
     // Prebuilt ripgrep binary — resolved from node_modules at runtime
     // (src/utils/ripgrep.ts). Externalised so Bun never inlines the package
