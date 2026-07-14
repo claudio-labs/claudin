@@ -133,6 +133,19 @@ if (existsSync(join(root, 'README.md')))
   cpSync(join(root, 'README.md'), join(wrap, 'README.md'))
 
 // Node fallback bundle: dist/cli.mjs + chunks + help snapshots — NOT dist/bin/.
+// The compile build (CLAUDIN_COMPILE=1) DELETES dist/cli.mjs, so a pipeline that
+// assembles after compiling without rebuilding the Node bundle would ship a
+// wrapper whose cli-wrapper.cjs fallback has nothing to load — silently breaking
+// every unsupported-platform install. Hard-fail (like the missing-platform guard
+// above); this is mandatory even for a partial build, since the whole point of a
+// partial build is that off-matrix platforms fall back to the Node bundle.
+if (!existsSync(join(root, 'dist', 'cli.mjs'))) {
+  console.error(
+    '✗ dist/cli.mjs is missing — the wrapper Node fallback would be broken.\n' +
+      '  Run `bun run build` (Node bundle) before assembling; the compile build removes it.',
+  )
+  process.exit(1)
+}
 for (const entry of readdirSync(join(root, 'dist'))) {
   if (entry === 'bin' || entry === 'packages' || entry.endsWith('.map')) continue
   cpSync(join(root, 'dist', entry), join(wrap, 'dist', entry), {
