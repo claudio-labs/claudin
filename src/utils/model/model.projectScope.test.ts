@@ -9,12 +9,19 @@ const realActiveProvider = {
 }
 const realBootstrapState = { ...(await import('../../bootstrap/state.js')) }
 const realSettings = { ...(await import('../settings/settings.js')) }
+const realAllowlist = { ...(await import('./modelAllowlist.js')) }
 
-type MockProjectConfig = { activeModelForProject?: string }
+type MockProjectConfig = {
+  activeModelForProject?: string
+  activeModelForProjectProfileId?: string
+}
 
-let projectActiveProfileId: string | undefined
 let projectConfig: MockProjectConfig = {}
-let activeProviderModel: string | undefined
+let effectiveProfileId: string | undefined
+// The effective profile's pinned model — the inherited default a project
+// falls back to when it has no valid per-project pin.
+let profileModel: string | undefined
+let settingsModel: string | undefined
 
 function installMocks(): void {
   mock.module('../config.js', () => ({
@@ -23,12 +30,14 @@ function installMocks(): void {
   }))
   mock.module('../providerProfiles.js', () => ({
     ...realProviderProfiles,
-    getProjectActiveProviderProfileId: () => projectActiveProfileId,
+    // The leak guard reads only `.id` off the effective profile.
+    getActiveProviderProfile: () =>
+      effectiveProfileId ? { id: effectiveProfileId } : undefined,
   }))
   mock.module('../../services/api/activeProvider.js', () => ({
     ...realActiveProvider,
-    tryGetActiveProvider: () =>
-      activeProviderModel ? { model: activeProviderModel } : null,
+    // `getActiveProfileModel` (inherited default) reads `.model` off this.
+    tryGetActiveProvider: () => (profileModel ? { model: profileModel } : null),
   }))
   mock.module('../../bootstrap/state.js', () => ({
     ...realBootstrapState,
@@ -36,7 +45,11 @@ function installMocks(): void {
   }))
   mock.module('../settings/settings.js', () => ({
     ...realSettings,
-    getSettings_DEPRECATED: () => ({}),
+    getSettings_DEPRECATED: () => ({ model: settingsModel }),
+  }))
+  mock.module('./modelAllowlist.js', () => ({
+    ...realAllowlist,
+    isModelAllowed: () => true,
   }))
 }
 
@@ -46,9 +59,10 @@ async function importFreshModel() {
 }
 
 beforeEach(() => {
-  projectActiveProfileId = undefined
   projectConfig = {}
-  activeProviderModel = undefined
+  effectiveProfileId = undefined
+  profileModel = undefined
+  settingsModel = undefined
 })
 
 afterEach(() => {
@@ -57,31 +71,73 @@ afterEach(() => {
   mock.module('../../services/api/activeProvider.js', () => realActiveProvider)
   mock.module('../../bootstrap/state.js', () => realBootstrapState)
   mock.module('../settings/settings.js', () => realSettings)
+  mock.module('./modelAllowlist.js', () => realAllowlist)
 })
 
 afterAll(() => {
   realConfig.resetGlobalConfigForTests?.()
 })
 
-test('project override with "Default" choice does not resurface the profile model', async () => {
-  // Regression: a project with an active provider override but no explicit
-  // per-project model (user picked "Default (recommended)") must NOT fall back
-  // to the profile's pinned `model`. Returning undefined lets the
-  // subscription-aware default resolve instead of pinning the stale profile
-  // model (e.g. an Anthropic profile stuck on claude-opus-4-7).
-  projectActiveProfileId = 'provider_x'
-  projectConfig = { activeModelForProject: undefined }
-  activeProviderModel = 'claude-opus-4-7'
-
-  const mod = await importFreshModel()
-  expect(mod.getUserSpecifiedModelSetting()).toBeUndefined()
-})
-
-test('project override with an explicit per-project model is honored', async () => {
-  projectActiveProfileId = 'provider_x'
-  projectConfig = { activeModelForProject: 'opus' }
-  activeProviderModel = 'claude-opus-4-7'
+test('per-project model is honored WITHOUT any provider override, when its pinned profile matches', async () => {
+  // The core ask: /model in a project sticks regardless of whether the project
+  // has a per-project *provider* override.
+  effectiveProfileId = 'provider_x'
+  projectConfig = {
+    activeModelForProject: 'opus',
+    activeModelForProjectProfileId: 'provider_x',
+  }
 
   const mod = await importFreshModel()
   expect(mod.getUserSpecifiedModelSetting()).toBe('opus')
+})
+
+test('per-project model with an undefined pinned profile id is honored (no profiles in env)', async () => {
+  effectiveProfileId = undefined
+  profileModel = undefined
+  projectConfig = {
+    activeModelForProject: 'sonnet',
+    activeModelForProjectProfileId: undefined,
+  }
+
+  const mod = await importFreshModel()
+  expect(mod.getUserSpecifiedModelSetting()).toBe('sonnet')
+})
+
+test('per-project model is IGNORED when its pinned profile no longer matches the effective provider', async () => {
+  // Cross-provider-leak guard: gpt-4o was pinned for provider_openai; the
+  // project now resolves to provider_anthropic → fall back to the inherited
+  // default instead of serving the wrong-shape model.
+  effectiveProfileId = 'provider_anthropic'
+  profileModel = 'claude-sonnet-4-6'
+  projectConfig = {
+    activeModelForProject: 'gpt-4o',
+    activeModelForProjectProfileId: 'provider_openai',
+  }
+
+  const mod = await importFreshModel()
+  expect(mod.getUserSpecifiedModelSetting()).toBe('claude-sonnet-4-6')
+})
+
+test('no per-project pin ("Default") inherits the profile model', async () => {
+  effectiveProfileId = 'provider_x'
+  profileModel = 'claude-opus-4-8'
+  projectConfig = { activeModelForProject: undefined }
+
+  const mod = await importFreshModel()
+  expect(mod.getUserSpecifiedModelSetting()).toBe('claude-opus-4-8')
+})
+
+test('no per-project pin and no profile model inherits settings.model', async () => {
+  effectiveProfileId = undefined
+  profileModel = undefined
+  settingsModel = 'claude-opus-4-8'
+  projectConfig = {}
+
+  const mod = await importFreshModel()
+  expect(mod.getUserSpecifiedModelSetting()).toBe('claude-opus-4-8')
+})
+
+test('no pin, no profile model, no settings.model resolves undefined (subscription default downstream)', async () => {
+  const mod = await importFreshModel()
+  expect(mod.getUserSpecifiedModelSetting()).toBeUndefined()
 })

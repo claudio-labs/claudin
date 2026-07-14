@@ -94,6 +94,7 @@ afterAll(() => {
 type MockProjectConfigState = {
   activeProviderProfileId?: string
   activeModelForProject?: string
+  activeModelForProjectProfileId?: string
 }
 
 let mockProjectConfigState: MockProjectConfigState = {}
@@ -571,6 +572,7 @@ describe('project-scoped active provider override', () => {
 
     setActiveProviderProfileForProject('p_b')
     mockProjectConfigState.activeModelForProject = 'user-chosen-model'
+    mockProjectConfigState.activeModelForProjectProfileId = 'p_b'
 
     setActiveProviderProfileForProject('p_b')
 
@@ -578,6 +580,7 @@ describe('project-scoped active provider override', () => {
     expect(mockProjectConfigState.activeModelForProject).toBe(
       'user-chosen-model',
     )
+    expect(mockProjectConfigState.activeModelForProjectProfileId).toBe('p_b')
   })
 
   test('switching project profile id clears activeModelForProject', async () => {
@@ -595,11 +598,15 @@ describe('project-scoped active provider override', () => {
 
     setActiveProviderProfileForProject('p_a')
     mockProjectConfigState.activeModelForProject = 'stale-model-from-a'
+    mockProjectConfigState.activeModelForProjectProfileId = 'p_a'
 
     setActiveProviderProfileForProject('p_b')
 
     expect(mockProjectConfigState.activeProviderProfileId).toBe('p_b')
     expect(mockProjectConfigState.activeModelForProject).toBeUndefined()
+    expect(
+      mockProjectConfigState.activeModelForProjectProfileId,
+    ).toBeUndefined()
   })
 
   test('deleteProviderProfile strips activeModelForProject from affected projects', async () => {
@@ -628,22 +635,30 @@ describe('project-scoped active provider override', () => {
         '/some/project': {
           activeProviderProfileId: a!.id,
           activeModelForProject: 'project-chosen-model',
+          activeModelForProjectProfileId: a!.id,
         },
         '/other/project': {
           activeProviderProfileId: b!.id,
           activeModelForProject: 'unaffected',
+          activeModelForProjectProfileId: b!.id,
         },
       },
     }) as never)
 
     deleteProviderProfile(a!.id)
 
-    const projects = (mockConfigState as { projects?: Record<string, { activeProviderProfileId?: string; activeModelForProject?: string }> }).projects
+    const projects = (mockConfigState as { projects?: Record<string, { activeProviderProfileId?: string; activeModelForProject?: string; activeModelForProjectProfileId?: string }> }).projects
     expect(projects?.['/some/project']?.activeProviderProfileId).toBeUndefined()
     expect(projects?.['/some/project']?.activeModelForProject).toBeUndefined()
+    expect(
+      projects?.['/some/project']?.activeModelForProjectProfileId,
+    ).toBeUndefined()
     expect(projects?.['/other/project']?.activeProviderProfileId).toBe(b!.id)
     expect(projects?.['/other/project']?.activeModelForProject).toBe(
       'unaffected',
+    )
+    expect(projects?.['/other/project']?.activeModelForProjectProfileId).toBe(
+      b!.id,
     )
   })
 

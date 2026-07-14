@@ -2,7 +2,7 @@
 import { getMainLoopModelOverride } from '../../bootstrap/state.js'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
 import { getCurrentProjectConfig } from '../config.js'
-import { getProjectActiveProviderProfileId } from '../providerProfiles.js'
+import { getActiveProviderProfile } from '../providerProfiles.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
@@ -113,32 +113,30 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
     // leaks (e.g. an Anthropic model setting sent to the OpenAI API). When no
     // profile is active, fall back to the saved settings.model.
     const profileModel = getActiveProfileModel()
-    // Only treat the project override as live when it points to an EXISTING
-    // profile. A dangling override (stale id) must fall through to the global
-    // path; otherwise `activeModelForProject` (which may have survived legacy
-    // settings or manual edits) would be served against the global profile's
-    // transport — wrong shape, cross-provider leak.
-    if (getProjectActiveProviderProfileId() !== undefined) {
-      // When a project-level provider override is set, prefer the project-
-      // scoped model and skip the global `settings.model` fallback so `/model`
-      // choices in another project don't bleed in here.
-      //
-      // When `activeModelForProject` is empty (e.g. the user picked the
-      // "Default (recommended)" option, which persists nothing), DON'T fall
-      // back to the profile's pinned `model` field — that field can hold a
-      // stale value (e.g. an Anthropic profile pinned to `claude-opus-4-7`)
-      // that would resurface and override the subscription default the user
-      // actually expects from "Default". Leaving it undefined lets
-      // `getMainLoopModel` resolve via `getDefaultMainLoopModel`, which is
-      // already provider-aware (returns the profile model for 3P transports
-      // and the subscription default for first-party Anthropic), so the
-      // cross-provider-leak guard still holds.
-      const projectModel = normalizeModelSetting(
-        getCurrentProjectConfig().activeModelForProject,
-      )
-      specifiedModel = projectModel || undefined
+    // The global default that a project inherits when it has no pin of its own:
+    // the effective profile's model, else the saved `settings.model`. `undefined`
+    // lets `getMainLoopModel` resolve the subscription-aware default.
+    const inheritedDefault = profileModel || setting || undefined
+
+    // `/model` is always project-scoped now, independent of any per-project
+    // provider override. Prefer the per-project pin when set.
+    const projectConfig = getCurrentProjectConfig()
+    const projectModel = normalizeModelSetting(projectConfig.activeModelForProject)
+    if (projectModel) {
+      // Cross-provider-leak guard: a per-project model is only valid against the
+      // provider it was chosen for. Honor it only when the effective provider
+      // profile still matches the one recorded at pick time. On mismatch, ignore
+      // the stale pin and fall back to the inherited default (right shape).
+      const effectiveProfileId = getActiveProviderProfile()?.id
+      const savedProfileId = projectConfig.activeModelForProjectProfileId
+      specifiedModel =
+        savedProfileId === undefined || savedProfileId === effectiveProfileId
+          ? projectModel
+          : inheritedDefault
     } else {
-      specifiedModel = profileModel || setting || undefined
+      // No per-project pin (e.g. the user picked "Default (recommended)", which
+      // clears it) → inherit the global default.
+      specifiedModel = inheritedDefault
     }
   }
 

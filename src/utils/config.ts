@@ -161,11 +161,21 @@ export type ProjectConfig = {
   /** Override of the active provider profile for this project. Falls back to the global `activeProviderProfileId` when unset. */
   activeProviderProfileId?: string
   /**
-   * Last `mainLoopModel` chosen via `/model` while a project-level provider
-   * override was active. Scoped to this project so switching project doesn't
-   * leak the model into the global `settings.model` and bleed across projects.
+   * Last `mainLoopModel` chosen via `/model` for this project. Scoped to the
+   * project so `/model` in one project doesn't leak into the global
+   * `settings.model` and bleed across projects. Only honored when
+   * `activeModelForProjectProfileId` matches the project's effective provider
+   * profile (see `getUserSpecifiedModelSetting`).
    */
   activeModelForProject?: string
+  /**
+   * The provider profile id that was active when `activeModelForProject` was
+   * chosen. Guards against cross-provider leaks: a per-project model saved for
+   * one provider must not be served against a different-shape transport if the
+   * project's effective provider later changes. `undefined` matches an
+   * environment with no provider profiles.
+   */
+  activeModelForProjectProfileId?: string
 }
 
 const DEFAULT_PROJECT_CONFIG: ProjectConfig = {

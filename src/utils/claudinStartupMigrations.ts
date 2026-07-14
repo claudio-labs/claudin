@@ -263,11 +263,12 @@ function rawProfileIds(
  * updater edits to `projects`), or a concurrent session re-writing a project
  * entry from a stale snapshot.
  *
- * A dangling override silently disables per-project model pinning:
- * `getUserSpecifiedModelSetting` only honors `activeModelForProject` when the
- * override profile exists, so `/model` choices stop sticking for that project
- * while `/provider` still shows an override as set. Drop both the id and its
- * paired per-project model via the same helper `deleteProviderProfile` uses.
+ * A dangling override leaves `/provider` showing an override that resolves to
+ * nothing. Drop both the stale id and its paired per-project model (chosen
+ * against that now-missing provider, so no longer valid) via the same helper
+ * `deleteProviderProfile` uses. Per-project models on projects *without* a
+ * provider override are unaffected — they are keyed on the project, not the
+ * override.
  */
 function healDanglingProjectProviderOverrides(): string[] {
   const config = getGlobalConfig()
