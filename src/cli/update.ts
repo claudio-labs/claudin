@@ -4,6 +4,7 @@ import {
   getLatestVersion,
   type InstallStatus,
   installGlobalPackage,
+  repairBunGlobalBinary,
 } from 'src/utils/autoUpdater.js'
 import { regenerateCompletionCache } from 'src/utils/completionCache.js'
 import {
@@ -71,6 +72,25 @@ export async function update() {
 
       writeToStdout(chalk.bold(`Fix: ${warning.fix}\n`))
     }
+  }
+
+  // Self-heal a Bun global install whose postinstall Bun skipped: the native
+  // launcher (bin/claudin.exe) is left as a Node stub that crashes with
+  // ERR_UNKNOWN_FILE_EXTENSION. Detect it and run the skipped postinstall
+  // before the version check, so `claudin update` repairs it even when already
+  // on the latest version.
+  try {
+    const repaired = await repairBunGlobalBinary()
+    if (repaired) {
+      writeToStdout('\n')
+      writeToStdout(
+        chalk.green(
+          'Repaired the native launcher (Bun had skipped the postinstall step).',
+        ) + '\n',
+      )
+    }
+  } catch (error) {
+    logForDebugging(`update: Bun launcher repair check failed: ${String(error)}`)
   }
 
   // Update config if installMethod is not set (but skip for package managers)
