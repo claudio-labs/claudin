@@ -68,6 +68,21 @@ if (built.length === 0) {
   process.exit(1)
 }
 
+// Fail loudly if a platform is missing rather than shipping a wrapper whose
+// optionalDependencies silently omit it — users on that platform would get the
+// slow Node fallback with no signal. A failed matrix leg must block the release.
+// Set CLAUDIN_ALLOW_PARTIAL=1 for an intentional partial build.
+const missing = Object.keys(PLATFORMS).filter(p => !built.includes(p))
+if (missing.length > 0) {
+  const msg = `✗ missing platform binaries: ${missing.join(', ')} (found: ${built.join(', ')})`
+  if (process.env.CLAUDIN_ALLOW_PARTIAL === '1') {
+    console.warn(msg + '\n  CLAUDIN_ALLOW_PARTIAL=1 → assembling a partial release.')
+  } else {
+    console.error(msg + '\n  A failed build leg must not ship. Set CLAUDIN_ALLOW_PARTIAL=1 to override.')
+    process.exit(1)
+  }
+}
+
 const commonMeta = {
   version,
   description: rootPkg.description,

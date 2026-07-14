@@ -182,6 +182,11 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build Node fallback bundle
         run: CLAUDIN_RELEASE_BUILD=1 bun run scripts/build.ts
+      - name: Verify no phone-home (gates publish)
+        # Scans dist/cli.mjs. The compiled binaries and this bundle are built from
+        # the same src/ through the same noTelemetryPlugin, so a clean bundle is
+        # strong evidence for the binaries too. TODO: scan the binary directly.
+        run: bun run verify:privacy
       - name: Download all platform payloads
         uses: actions/download-artifact@v4
         with:

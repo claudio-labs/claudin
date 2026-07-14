@@ -179,12 +179,15 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
     ) {
       return 'package-manager'
     }
-    // A Claudin binary installed via the npm wrapper (@claudiolabs/claudin +
-    // per-platform optionalDependencies) is hardlinked into the npm global tree
-    // and exec'd directly, so isInBundledMode() is true even though the
-    // canonical install/update channel is npm. Classify it as npm-global so
-    // `claudin update` re-runs `npm i -g` (re-hardlinking the new binary)
-    // rather than routing into the native downloader (which is neutralized).
+    // NOTE: for the current Claudin compile this branch is dormant —
+    // isInBundledMode() is `Bun.embeddedFiles.length > 0`, and a plain
+    // `bun --compile` embeds nothing, so our npm-wrapper binary is classified by
+    // the npm-global fall-through below (line ~200), NOT here. This guard is
+    // defense for a future build that DOES embed files (flipping isInBundledMode
+    // true): a wrapper binary is hardlinked into the npm global tree, so it must
+    // classify as npm-global (→ `claudin update` re-runs `npm i -g`,
+    // re-hardlinking) rather than 'native' (which routes into the neutralized
+    // downloader). Keep in sync with the fall-through at the npm-global check.
     if (await isNpmGlobalInstallPath(invokedPath)) {
       return 'npm-global'
     }

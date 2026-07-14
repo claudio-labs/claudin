@@ -108,7 +108,22 @@ function placeBinary(src, dest) {
       }
     } else if (err.code === 'EXDEV' || err.code === 'EPERM') {
       // Cross-device or no-link-perms — copyFileSync overwrites existing dest.
-      copyFileSync(src, dest)
+      // dest still holds the stub here (linkSync never wrote); snapshot it so a
+      // partial/failed copy doesn't leave a corrupt binary with no launcher.
+      const stub =
+        existsSync(dest) && statSync(dest).size < 4096 ? readFileSync(dest) : null
+      try {
+        copyFileSync(src, dest)
+      } catch (copyErr) {
+        if (stub) {
+          try {
+            writeFileSync(dest, stub, { mode: 0o755 })
+          } catch {
+            // Do nothing
+          }
+        }
+        throw copyErr
+      }
     } else {
       throw err
     }
