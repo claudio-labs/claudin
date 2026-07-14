@@ -8,7 +8,7 @@
  * - src/ path aliases
  */
 
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { noTelemetryPlugin } from './no-telemetry-plugin'
 
@@ -172,6 +172,20 @@ for (const stale of staleArtifacts) {
 // prior build survive, but accumulation is bounded.
 const buildId = Date.now().toString(36)
 
+// CLAUDIN_COMPILE=1 → build a standalone native executable via Bun's
+// `--compile` (single-file, Bun/JSC runtime) instead of the Node ESM bundle.
+// This sidesteps Node's per-launch cost (CJS↔ESM interop across ~100 chunks,
+// JS parse, module resolution, the heap-bump re-exec). Dual-track: the default
+// path still emits dist/cli.mjs for dev/tests/smoke.
+const isCompile = process.env.CLAUDIN_COMPILE === '1'
+const hostTarget = `bun-${
+  process.platform === 'darwin'
+    ? 'darwin'
+    : process.platform === 'win32'
+      ? 'windows'
+      : 'linux'
+}-${process.arch === 'arm64' ? 'arm64' : 'x64'}`
+
 preProcessFeatureFlags(join(import.meta.dir, '..', 'src'))
 const numModified = modifiedFiles.size
 
@@ -188,9 +202,24 @@ try {
 const result = await Bun.build({
   entrypoints: ['./src/entrypoints/cli.tsx'],
   outdir: './dist',
-  target: 'node',
-  format: 'esm',
-  splitting: true,
+  target: isCompile ? 'bun' : 'node',
+  // Bun's bytecode compilation requires CommonJS output; the Node bundle
+  // stays ESM.
+  format: isCompile ? 'cjs' : 'esm',
+  // --compile is single-file: no code-splitting.
+  splitting: !isCompile,
+  ...(isCompile
+    ? {
+        compile: {
+          target: hostTarget,
+          outfile: join(distDir, 'claudin'),
+          autoloadDotenv: false,
+          autoloadBunfig: false,
+        },
+        // Embed JSC bytecode so startup skips the JS parse entirely.
+        bytecode: true,
+      }
+    : {}),
   // Release builds (npm publish) drop sourcemaps entirely and minify, so the
   // tarball stays small and source isn't shipped. Local dev keeps external
   // sourcemaps + unminified output for stack traces / debugging.
@@ -613,6 +642,12 @@ if (!result.success) {
     console.error(log)
   }
   process.exitCode = 1
+} else if (isCompile) {
+  const binPath = join(distDir, 'claudin')
+  const sizeMB = (statSync(binPath).size / 1e6).toFixed(0)
+  console.log(
+    `✓ Compiled claudin v${version} → ${binPath} (${sizeMB} MB, ${hostTarget}, bytecode)`,
+  )
 } else {
   // Emit dist/.npmignore so `npm pack` excludes sourcemaps from the published
   // tarball. A root-level .npmignore does NOT apply to directories listed in
