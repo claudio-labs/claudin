@@ -10,11 +10,16 @@ import {
 
 import type { AppState } from './AppStateStore.js'
 import { getEmptyToolPermissionContext } from '../Tool.js'
+import type { ProjectConfig } from '../utils/config.js'
 
-// These tests verify the `suppressNextMainLoopModelPersist` contract used by
-// ProviderManager flows (edit-active-profile-while-override-active,
-// delete-active-profile-while-override-active, clear-override). They exercise
-// `onChangeAppState` directly with mocked persistence boundaries.
+// These tests verify two contracts of the `mainLoopModel` diff handler:
+//  1. `/model` is ALWAYS project-scoped — a write persists to
+//     `activeModelForProject` (+ the effective provider profile id) and never
+//     touches global `settings.model` / the profile's global model, regardless
+//     of any per-project provider override.
+//  2. `suppressNextMainLoopModelPersist` skips the project-scoped persist for
+//     provider-switch consequence flows.
+// They exercise `onChangeAppState` directly with mocked persistence boundaries.
 
 const realConfig = { ...(await import('../utils/config.js')) }
 const realProviderProfiles = {
@@ -26,11 +31,11 @@ const realAuth = { ...(await import('../utils/auth.js')) }
 const realManagedEnv = { ...(await import('../utils/managedEnv.js')) }
 const realBootstrapState = { ...(await import('../bootstrap/state.js')) }
 
-let hasOverride = false
-let validatedOverrideId: string | undefined
-let saveCurrentProjectConfigCalls: number
+let activeProfileId: string | undefined
+let savedProjectConfigs: Partial<ProjectConfig>[]
+// A settings write from the model branch would be a regression (global leak);
+// keep a counter so we can assert it stays zero.
 let updateSettingsForSourceCalls: number
-let persistActiveProviderProfileModelCalls: number
 let setMainLoopModelOverrideCalls: Array<unknown>
 
 function installMocks(): void {
@@ -38,18 +43,16 @@ function installMocks(): void {
     ...realConfig,
     getGlobalConfig: () => ({}),
     saveGlobalConfig: () => {},
-    saveCurrentProjectConfig: () => {
-      saveCurrentProjectConfigCalls += 1
+    saveCurrentProjectConfig: (
+      updater: (current: ProjectConfig) => ProjectConfig,
+    ) => {
+      savedProjectConfigs.push(updater({} as ProjectConfig))
     },
   }))
   mock.module('../utils/providerProfiles.js', () => ({
     ...realProviderProfiles,
-    hasProjectProviderProfileOverride: () => hasOverride,
-    getProjectActiveProviderProfileId: () => validatedOverrideId,
-    persistActiveProviderProfileModel: () => {
-      persistActiveProviderProfileModelCalls += 1
-    },
-    clearActiveProviderProfileModel: () => {},
+    getActiveProviderProfile: () =>
+      activeProfileId ? { id: activeProfileId } : undefined,
   }))
   mock.module('../utils/settings/settings.js', () => ({
     ...realSettings,
@@ -102,17 +105,14 @@ function buildAppState(
 }
 
 beforeEach(() => {
-  hasOverride = false
-  validatedOverrideId = undefined
-  saveCurrentProjectConfigCalls = 0
+  activeProfileId = undefined
+  savedProjectConfigs = []
   updateSettingsForSourceCalls = 0
-  persistActiveProviderProfileModelCalls = 0
   setMainLoopModelOverrideCalls = []
 })
 
 afterEach(() => {
-  hasOverride = false
-  validatedOverrideId = undefined
+  activeProfileId = undefined
 })
 
 afterAll(() => {
@@ -125,27 +125,68 @@ afterAll(() => {
   mock.module('../bootstrap/state.js', () => realBootstrapState)
 })
 
-describe('suppressNextMainLoopModelPersist', () => {
-  test('skips project-scoped persist when override is active (edit-active flow)', async () => {
+describe('mainLoopModel persistence is always project-scoped', () => {
+  test('a /model pick persists to the project + pins the effective profile id', async () => {
     const mod = await importFreshModule()
-    hasOverride = true
-    validatedOverrideId = 'profile-x'
+    activeProfileId = 'profile-x'
 
-    mod.suppressNextMainLoopModelPersist()
     mod.onChangeAppState({
-      oldState: buildAppState({ mainLoopModel: 'kimi-k2.5' }),
+      oldState: buildAppState({ mainLoopModel: 'a' }),
       newState: buildAppState({ mainLoopModel: 'gpt-5.4' }),
     })
 
-    expect(saveCurrentProjectConfigCalls).toBe(0)
+    expect(savedProjectConfigs).toEqual([
+      {
+        activeModelForProject: 'gpt-5.4',
+        activeModelForProjectProfileId: 'profile-x',
+      },
+    ])
+    // Never leak to global settings / profile model.
     expect(updateSettingsForSourceCalls).toBe(0)
-    expect(persistActiveProviderProfileModelCalls).toBe(0)
     expect(setMainLoopModelOverrideCalls).toEqual(['gpt-5.4'])
   })
 
-  test('skips global persist when override is NOT active (delete-active flow)', async () => {
+  test('a /model pick with no provider profiles pins an undefined id (still project-scoped)', async () => {
     const mod = await importFreshModule()
-    hasOverride = false
+    activeProfileId = undefined
+
+    mod.onChangeAppState({
+      oldState: buildAppState({ mainLoopModel: 'a' }),
+      newState: buildAppState({ mainLoopModel: 'opus' }),
+    })
+
+    expect(savedProjectConfigs).toEqual([
+      {
+        activeModelForProject: 'opus',
+        activeModelForProjectProfileId: undefined,
+      },
+    ])
+    expect(updateSettingsForSourceCalls).toBe(0)
+  })
+
+  test('"default" (null) clears the project pin without touching global state', async () => {
+    const mod = await importFreshModule()
+
+    mod.onChangeAppState({
+      oldState: buildAppState({ mainLoopModel: 'opus' }),
+      newState: buildAppState({ mainLoopModel: null }),
+    })
+
+    expect(savedProjectConfigs).toEqual([
+      {
+        activeModelForProject: undefined,
+        activeModelForProjectProfileId: undefined,
+      },
+    ])
+    expect(updateSettingsForSourceCalls).toBe(0)
+    expect(setMainLoopModelOverrideCalls).toEqual([null])
+  })
+})
+
+describe('suppressNextMainLoopModelPersist', () => {
+  test('skips the project-scoped persist for a provider-switch consequence', async () => {
+    const mod = await importFreshModule()
+    activeProfileId = 'profile-x'
 
     mod.suppressNextMainLoopModelPersist()
     mod.onChangeAppState({
@@ -153,29 +194,27 @@ describe('suppressNextMainLoopModelPersist', () => {
       newState: buildAppState({ mainLoopModel: 'gpt-5.4' }),
     })
 
+    expect(savedProjectConfigs).toEqual([])
     expect(updateSettingsForSourceCalls).toBe(0)
-    expect(persistActiveProviderProfileModelCalls).toBe(0)
-    expect(saveCurrentProjectConfigCalls).toBe(0)
     expect(setMainLoopModelOverrideCalls).toEqual(['gpt-5.4'])
   })
 
   test('flag is one-shot — second setAppState persists normally', async () => {
     const mod = await importFreshModule()
-    hasOverride = true
-    validatedOverrideId = 'profile-x'
+    activeProfileId = 'profile-x'
 
     mod.suppressNextMainLoopModelPersist()
     mod.onChangeAppState({
       oldState: buildAppState({ mainLoopModel: 'a' }),
       newState: buildAppState({ mainLoopModel: 'b' }),
     })
-    expect(saveCurrentProjectConfigCalls).toBe(0)
+    expect(savedProjectConfigs).toHaveLength(0)
 
     mod.onChangeAppState({
       oldState: buildAppState({ mainLoopModel: 'b' }),
       newState: buildAppState({ mainLoopModel: 'c' }),
     })
-    expect(saveCurrentProjectConfigCalls).toBe(1)
+    expect(savedProjectConfigs).toHaveLength(1)
   })
 
   test('flag is consumed even when newState has no mainLoopModel diff', async () => {
@@ -183,8 +222,7 @@ describe('suppressNextMainLoopModelPersist', () => {
     // consumed exactly once per setAppState. Verified by arming it, firing a
     // no-op setAppState, then confirming the next legitimate change persists.
     const mod = await importFreshModule()
-    hasOverride = true
-    validatedOverrideId = 'profile-x'
+    activeProfileId = 'profile-x'
 
     mod.suppressNextMainLoopModelPersist()
     mod.onChangeAppState({
@@ -196,26 +234,6 @@ describe('suppressNextMainLoopModelPersist', () => {
       oldState: buildAppState({ mainLoopModel: 'a' }),
       newState: buildAppState({ mainLoopModel: 'b' }),
     })
-    expect(saveCurrentProjectConfigCalls).toBe(1)
-  })
-
-  test('dangling override (raw id set, profile missing) falls through to global persist', async () => {
-    // Regression guard for Pass 6 M-1: when the raw `activeProviderProfileId`
-    // points to a profile that no longer exists, the validated id is
-    // undefined. A user `/model` write in that state must NOT be persisted
-    // to `activeModelForProject` (which `getUserSpecifiedModelSetting`
-    // ignores for dangling overrides) — it must hit the global path.
-    const mod = await importFreshModule()
-    hasOverride = true
-    validatedOverrideId = undefined
-
-    mod.onChangeAppState({
-      oldState: buildAppState({ mainLoopModel: 'a' }),
-      newState: buildAppState({ mainLoopModel: 'b' }),
-    })
-
-    expect(saveCurrentProjectConfigCalls).toBe(0)
-    expect(updateSettingsForSourceCalls).toBe(1)
-    expect(persistActiveProviderProfileModelCalls).toBe(1)
+    expect(savedProjectConfigs).toHaveLength(1)
   })
 })

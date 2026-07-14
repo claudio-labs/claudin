@@ -17,8 +17,8 @@ const realAllowlist = { ...(await import('./modelAllowlist.js')) }
 
 const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
 
-// Load model.ts fresh with the project branch forced: an existing project
-// provider profile + the given activeModelForProject value.
+// Load model.ts fresh with the project branch forced: a per-project pin with no
+// pinned profile id (matches an env with no provider profiles → guard passes).
 async function importWithProjectModel(activeModelForProject: string | undefined) {
   mock.module('../../bootstrap/state.js', () => ({
     ...realState,
@@ -26,7 +26,7 @@ async function importWithProjectModel(activeModelForProject: string | undefined)
   }))
   mock.module('../providerProfiles.js', () => ({
     ...realProfiles,
-    getProjectActiveProviderProfileId: () => 'provider_test', // truthy → project-scoped branch
+    getActiveProviderProfile: () => undefined, // effective id undefined → matches undefined pin
   }))
   mock.module('../config.js', () => ({
     ...realConfig,
@@ -52,7 +52,8 @@ afterEach(() => {
   mock.module('../providerProfiles.js', () => realProfiles)
   mock.module('../config.js', () => realConfig)
   mock.module('./modelAllowlist.js', () => realAllowlist)
-  process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m
+  if (origDisable1m === undefined) delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+  else process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m
 })
 
 test('per-project [1m] selection round-trips with its suffix intact', async () => {

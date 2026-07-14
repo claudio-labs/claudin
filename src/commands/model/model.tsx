@@ -8,6 +8,7 @@ import { fetchBootstrapData } from '../../services/api/bootstrap.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandCall } from '../../types/command.js';
+import { getCurrentProjectConfig } from '../../utils/config.js';
 import type { EffortLevel } from '../../utils/effort.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
 import { clearFastModeCooldown, isFastModeAvailable, isFastModeEnabled, isFastModeSupportedByModel } from '../../utils/fastMode.js';
@@ -16,7 +17,7 @@ import { checkOpus1mAccess, checkSonnet1mAccess } from '../../utils/model/check1
 import type { ModelOption } from '../../utils/model/modelOptions.js';
 import { discoverOpenAICompatibleModelOptions } from '../../utils/model/openaiModelDiscovery.js';
 import { getAPIProvider } from '../../utils/model/providers.js';
-import { getActiveOpenAIModelOptionsCache, setActiveOpenAIModelOptionsCache } from '../../utils/providerProfiles.js';
+import { getActiveOpenAIModelOptionsCache, getActiveProviderProfile, setActiveOpenAIModelOptionsCache } from '../../utils/providerProfiles.js';
 import { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled, renderDefaultModelSetting } from '../../utils/model/model.js';
 import { isModelAllowed } from '../../utils/model/modelAllowlist.js';
 import { validateModel } from '../../utils/model/validateModel.js';
@@ -207,7 +208,10 @@ function SetModelAndClose({
         mainLoopModel: modelValue,
         mainLoopModelForSession: null
       }));
-      let message = `Set model to ${chalk.bold(renderModelLabel(modelValue))}`;
+      // `/model` is project-scoped: a concrete pick binds to this project only,
+      // while "default" (null) clears the pin and inherits the global default.
+      const scopeSuffix = modelValue ? chalk.dim(' · for this project') : '';
+      let message = `Set model to ${chalk.bold(renderModelLabel(modelValue))}${scopeSuffix}`;
       let wasFastModeToggledOn = undefined;
       if (isFastModeEnabled()) {
         clearFastModeCooldown();
@@ -262,10 +266,18 @@ function ShowModelAndClose(t0) {
   const effortValue = useAppState(_temp9);
   const displayModel = renderModelLabel(mainLoopModel);
   const effortInfo = effortValue !== undefined ? ` (effort: ${effortValue})` : "";
+  // Mark the base model as project-scoped only when a per-project pin is active
+  // AND actually honored — i.e. its pinned profile id still matches the
+  // effective provider (mirrors the guard in `getUserSpecifiedModelSetting`).
+  // A pin left over for a different-shape provider is ignored at resolution, so
+  // it must not be advertised as `(project)`.
+  const projectConfig = getCurrentProjectConfig();
+  const pinHonored = projectConfig.activeModelForProject ? projectConfig.activeModelForProjectProfileId === undefined || projectConfig.activeModelForProjectProfileId === getActiveProviderProfile()?.id : false;
+  const scopeSuffix = pinHonored ? chalk.dim(" (project)") : "";
   if (mainLoopModelForSession) {
-    onDone(`Current model: ${chalk.bold(renderModelLabel(mainLoopModelForSession))} (session override from plan mode)\nBase model: ${displayModel}${effortInfo}`);
+    onDone(`Current model: ${chalk.bold(renderModelLabel(mainLoopModelForSession))} (session override from plan mode)\nBase model: ${displayModel}${scopeSuffix}${effortInfo}`);
   } else {
-    onDone(`Current model: ${displayModel}${effortInfo}`);
+    onDone(`Current model: ${displayModel}${scopeSuffix}${effortInfo}`);
   }
   return null;
 }

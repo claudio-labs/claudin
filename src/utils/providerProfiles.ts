@@ -810,6 +810,7 @@ export function setActiveProviderProfileForProject(
       ...current,
       activeProviderProfileId: undefined,
       activeModelForProject: undefined,
+      activeModelForProjectProfileId: undefined,
     }))
     // Refresh the OpenAI model-options cache for the new effective profile
     // (now the global default, if any), so the model picker isn't stale.
@@ -851,6 +852,7 @@ export function setActiveProviderProfileForProject(
     }
     if (current.activeProviderProfileId !== profileId) {
       next.activeModelForProject = undefined
+      next.activeModelForProjectProfileId = undefined
     }
     return next
   })
@@ -945,6 +947,7 @@ export function stripProjectProviderPointers(
         const {
           activeProviderProfileId: _droppedId,
           activeModelForProject: droppedModel,
+          activeModelForProjectProfileId: _droppedModelProfileId,
           ...rest
         } = projectConfig
         stripped.push({

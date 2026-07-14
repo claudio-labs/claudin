@@ -12,11 +12,7 @@ import {
 import { toError } from '../utils/errors.js'
 import { logError } from '../utils/log.js'
 import { applyConfigEnvironmentVariables } from '../utils/managedEnv.js'
-import {
-  clearActiveProviderProfileModel,
-  getProjectActiveProviderProfileId,
-  persistActiveProviderProfileModel,
-} from '../utils/providerProfiles.js'
+import { getActiveProviderProfile } from '../utils/providerProfiles.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
@@ -26,18 +22,16 @@ import {
   notifySessionMetadataChanged,
   type SessionExternalMetadata,
 } from '../utils/sessionState.js'
-import { updateSettingsForSource } from '../utils/settings/settings.js'
 import type { AppState } from './AppStateStore.js'
 
 // One-shot flag: when set, the next `mainLoopModel` diff handled by
 // `onChangeAppState` updates the bootstrap override sentinel but skips the
-// persistence side-effects (`saveCurrentProjectConfig`,
-// `updateSettingsForSource`, `persistActiveProviderProfileModel`). Used by
-// flows that change `mainLoopModel` as a *consequence* of switching providers
-// — clearing a project override, activating a different global profile while
-// an override is active, or deleting the profile currently in use — where
-// reusing the /model persistence path would clobber the user's prior /model
-// choice or leak a model into the wrong-shape profile.
+// persistence side-effect (`saveCurrentProjectConfig`). Used by flows that
+// change `mainLoopModel` as a *consequence* of switching providers — clearing
+// a project override, activating a different global profile while an override
+// is active, or deleting the profile currently in use — where reusing the
+// /model persistence path would clobber the user's prior /model choice or leak
+// a model into the wrong-shape profile.
 let mainLoopModelPersistSuppressed = false
 
 export function suppressNextMainLoopModelPersist(): void {
@@ -135,24 +129,15 @@ export function onChangeAppState({
   ) {
     setMainLoopModelOverride(null)
     if (!skipPersist) {
-      // Gate on the *validated* project profile id (not the raw override) so
-      // a dangling `activeProviderProfileId` falls through to the global
-      // branch — matching `getUserSpecifiedModelSetting`, which only reads
-      // `activeModelForProject` when the override profile actually exists.
-      if (getProjectActiveProviderProfileId() !== undefined) {
-        // Scoped clear — leave the global settings/profile untouched so other
-        // projects don't lose their `/model` choice.
-        saveCurrentProjectConfig(current => ({
-          ...current,
-          activeModelForProject: undefined,
-        }))
-      } else {
-        // Remove from settings
-        updateSettingsForSource('userSettings', { model: undefined })
-        // Also clear the active provider profile model so the subscription-aware
-        // system default (e.g. Opus for Max users) is used on next startup.
-        clearActiveProviderProfileModel()
-      }
+      // "Default (recommended)": clear the per-project pin only. The global
+      // `settings.model` / profile model stay put as the inherited default that
+      // this (and every un-pinned) project falls back to. `/model` is always
+      // project-scoped, so we never touch global state here.
+      saveCurrentProjectConfig(current => ({
+        ...current,
+        activeModelForProject: undefined,
+        activeModelForProjectProfileId: undefined,
+      }))
     }
   }
 
@@ -163,23 +148,17 @@ export function onChangeAppState({
   ) {
     setMainLoopModelOverride(newState.mainLoopModel)
     if (!skipPersist) {
-      // See comment above: only the validated id qualifies for project-scoped
-      // persistence; dangling overrides fall through to the global path.
-      if (getProjectActiveProviderProfileId() !== undefined) {
-        // Project-scoped persistence: never touch global `settings.model` or
-        // the (possibly shared) profile's `model` field — both leak across
-        // projects when the same profile is used as an override elsewhere.
-        saveCurrentProjectConfig(current => ({
-          ...current,
-          activeModelForProject: newState.mainLoopModel ?? undefined,
-        }))
-      } else {
-        // Save to settings
-        updateSettingsForSource('userSettings', { model: newState.mainLoopModel })
-        // Keep active provider profiles in sync with /model choices so restarts
-        // keep using the last selected model instead of the profile's old default.
-        persistActiveProviderProfileModel(newState.mainLoopModel)
-      }
+      // Project-scoped persistence: never touch global `settings.model` or the
+      // (possibly shared) profile's `model` field — both leak across projects
+      // when the same profile is used elsewhere. Pin the effective provider
+      // profile id alongside the model so `getUserSpecifiedModelSetting` can
+      // reject the model if the project's provider later changes shape.
+      const effectiveProfileId = getActiveProviderProfile()?.id
+      saveCurrentProjectConfig(current => ({
+        ...current,
+        activeModelForProject: newState.mainLoopModel ?? undefined,
+        activeModelForProjectProfileId: effectiveProfileId,
+      }))
     }
   }
 
