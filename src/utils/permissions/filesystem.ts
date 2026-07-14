@@ -28,7 +28,7 @@ import {
   getDirectoryForPath,
   sanitizePath,
 } from '../path.js'
-import { getPlanSlug, getPlansDirectory } from '../plans.js'
+import { getPlansDirectory } from '../plans.js'
 import { getPlatform } from '../platform.js'
 import { getProjectDir } from '../sessionStorage.js'
 import { SETTING_SOURCES } from '../settings/constants.js'
@@ -242,17 +242,36 @@ function isClaudeConfigFilePath(filePath: string): boolean {
   )
 }
 
-// Check if file is the plan file for the current session
+// Check if file is a plan file for the current session.
+//
+// Plan files live DIRECTLY inside the session plans directory:
+//   Main plan file:  {plansDir}/{planSlug}.md
+//   Agent plan file: {plansDir}/{planSlug}-agent-{agentId}.md
+//
+// We match any *.md directly in that directory rather than requiring the path
+// to start with the exact current {planSlug}. The slug is regenerable and
+// cached per session (getPlanSlug()); if it drifts from the slug embedded in
+// the path the model was told (e.g. a slug-cache miss, resume without a slug
+// marker), an exact-slug match would silently fail — and because plan mode
+// forbids every other write, the model gets locked out of its own plan file
+// with a confusing "Only the plan file may be edited" denial. Matching the
+// whole directory removes that brittleness.
+//
+// SECURITY: the plans directory itself is symlink-escape validated and created
+// 0700 in getPlansDirectory(), so widening to the directory keeps the same
+// containment guarantee. Subdirectories and path-traversal are still rejected:
+// after the "{plansDir}/" prefix the remainder must be a single .md filename
+// with no further path separator.
 function isSessionPlanFile(absolutePath: string): boolean {
-  // Check if path is a plan file for this session (main or agent-specific)
-  // Main plan file: {plansDir}/{planSlug}.md
-  // Agent plan file: {plansDir}/{planSlug}-agent-{agentId}.md
-  const expectedPrefix = join(getPlansDirectory(), getPlanSlug())
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
+  // SECURITY: Normalize both sides to prevent traversal bypasses via .. segments
+  const plansDir = normalize(getPlansDirectory())
   const normalizedPath = normalize(absolutePath)
-  return (
-    normalizedPath.startsWith(expectedPrefix) && normalizedPath.endsWith('.md')
-  )
+  const prefix = plansDir + sep
+  if (!normalizedPath.startsWith(prefix) || !normalizedPath.endsWith('.md')) {
+    return false
+  }
+  const basename = normalizedPath.slice(prefix.length)
+  return basename.length > 0 && !basename.includes(sep)
 }
 
 /**
