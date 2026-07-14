@@ -114,11 +114,22 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
   // Prefer the packaged @vscode/ripgrep binary so search works with no system
   // `rg` on PATH. Fall back to the legacy in-tree vendored path if present.
   const packagedCommand = resolvePackagedRipgrepPath()
-  const rgRoot = path.resolve(__dirname, 'vendor', 'ripgrep')
-  const vendoredCommand =
+  // Vendored rg lives at <root>/vendor/ripgrep/<arch>-<platform>/rg. Probe two
+  // roots: __dirname (the in-tree/dev layout) AND the directory of the real
+  // executable. In a Bun-compiled standalone binary the bundled module's
+  // __dirname points into the in-binary VFS (not the real FS), so the release
+  // packages ship the platform rg beside the binary and process.execPath is the
+  // reliable anchor to find it.
+  const rgSubPath =
     process.platform === 'win32'
-      ? path.resolve(rgRoot, `${process.arch}-win32`, 'rg.exe')
-      : path.resolve(rgRoot, `${process.arch}-${process.platform}`, 'rg')
+      ? path.join('vendor', 'ripgrep', `${process.arch}-win32`, 'rg.exe')
+      : path.join('vendor', 'ripgrep', `${process.arch}-${process.platform}`, 'rg')
+  const vendoredCandidates = [
+    path.resolve(__dirname, rgSubPath),
+    path.resolve(path.dirname(process.execPath), rgSubPath),
+  ]
+  const vendoredCommand =
+    vendoredCandidates.find(p => existsSync(p)) ?? vendoredCandidates[0]!
 
   const builtinCommand = packagedCommand ?? vendoredCommand
   const builtinExists = packagedCommand !== null || existsSync(vendoredCommand)
