@@ -470,18 +470,21 @@ function lookupByKey<T>(table: Record<string, T>, model: string): T | undefined 
  * "gpt-4o-2024-11-20" resolve to the base "gpt-4o" entry.
  */
 export function getOpenAIContextWindow(model: string): number | undefined {
-  const known = lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
-  if (known !== undefined) return known
-  // Fall back to context windows discovered at runtime from the provider's /models API.
-  // Imported lazily to avoid a module-init cycle (openaiModelDiscovery imports modelOptions
-  // which imports openaiContextWindows).
+  // Prefer the window the provider reported for THIS deployment via its /models
+  // API — it's authoritative for routers that serve a truncated- or
+  // extended-context variant under a well-known model id (e.g. a 32k "gpt-4o").
+  // The hardcoded table below is only a fallback for models the provider didn't
+  // report. Imported lazily to avoid a module-init cycle (openaiModelDiscovery
+  // imports modelOptions which imports openaiContextWindows).
   try {
     const { getDiscoveredContextWindow } = require('./openaiModelDiscovery.js') as typeof import('./openaiModelDiscovery.js')
     const discovered = getDiscoveredContextWindow(model)
     if (discovered !== undefined) return discovered
   } catch {
-    // fall through to the Copilot catalog
+    // fall through to the hardcoded table
   }
+  const known = lookupByModel(OPENAI_CONTEXT_WINDOWS, OPENAI_EXTERNAL_CONTEXT_WINDOWS, model)
+  if (known !== undefined) return known
   // Copilot models missing from the hardcoded table (new releases) resolve
   // from the live account catalog. Lazy for the same cycle reason as above.
   try {

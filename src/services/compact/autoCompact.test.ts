@@ -2,7 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import {
   getEffectiveContextWindowSize,
   getAutoCompactThreshold,
+  calculateTokenWarningState,
+  isAutoCompactEnabled,
+  WARNING_THRESHOLD_BUFFER_TOKENS,
+  ERROR_THRESHOLD_BUFFER_TOKENS,
 } from './autoCompact.ts'
+import { getContextWindowForModel } from '../../utils/context.ts'
 
 describe('getEffectiveContextWindowSize', () => {
   test('returns positive value for known models with large context windows', () => {
@@ -51,5 +56,70 @@ describe('getAutoCompactThreshold', () => {
     } finally {
       delete process.env.CLAUDE_CODE_USE_OPENAI
     }
+  })
+})
+
+describe('calculateTokenWarningState — two-tier warning', () => {
+  const model = 'claude-sonnet-4'
+
+  // Mirror the internal threshold selection so the test points are derived,
+  // not hardcoded (the effective window depends on the max-output cap flag).
+  const baseThreshold = isAutoCompactEnabled()
+    ? getAutoCompactThreshold(model)
+    : getEffectiveContextWindowSize(model)
+  const warnAt = baseThreshold - WARNING_THRESHOLD_BUFFER_TOKENS
+  const errAt = baseThreshold - ERROR_THRESHOLD_BUFFER_TOKENS
+
+  test('error buffer is strictly tighter than warning, so the tiers are distinct', () => {
+    // Equal buffers (the old bug) collapse the two tiers: isAboveError would
+    // always equal isAboveWarning and the yellow "warning" color is unreachable.
+    expect(ERROR_THRESHOLD_BUFFER_TOKENS).toBeLessThan(
+      WARNING_THRESHOLD_BUFFER_TOKENS,
+    )
+    expect(errAt).toBeGreaterThan(warnAt)
+  })
+
+  test('warning fires before error with a gap of the buffer difference', () => {
+    const belowBoth = calculateTokenWarningState(warnAt - 1, model)
+    expect(belowBoth.isAboveWarningThreshold).toBe(false)
+    expect(belowBoth.isAboveErrorThreshold).toBe(false)
+
+    // In the warning band: yellow tier on, red tier still off.
+    const warnBand = calculateTokenWarningState(warnAt, model)
+    expect(warnBand.isAboveWarningThreshold).toBe(true)
+    expect(warnBand.isAboveErrorThreshold).toBe(false)
+
+    // In the error band: both on.
+    const errBand = calculateTokenWarningState(errAt, model)
+    expect(errBand.isAboveWarningThreshold).toBe(true)
+    expect(errBand.isAboveErrorThreshold).toBe(true)
+  })
+})
+
+describe('calculateTokenWarningState — percentUntilAutoCompact', () => {
+  const model = 'claude-sonnet-4'
+  const autoCompactThreshold = getAutoCompactThreshold(model)
+
+  test('is 100 at zero usage', () => {
+    expect(calculateTokenWarningState(0, model).percentUntilAutoCompact).toBe(100)
+  })
+
+  test('reaches 0 exactly at the auto-compact trigger, while percentLeft is still positive', () => {
+    // This is the whole point of the field: a "X% until auto-compact" label
+    // must hit 0 when auto-compact fires, unlike percentLeft (measured against
+    // the full raw window, which is still positive at the trigger).
+    const atTrigger = calculateTokenWarningState(autoCompactThreshold, model)
+    expect(atTrigger.percentUntilAutoCompact).toBe(0)
+
+    const rawWindow = getContextWindowForModel(model)
+    expect(autoCompactThreshold).toBeLessThan(rawWindow)
+    expect(atTrigger.percentLeft).toBeGreaterThan(0)
+  })
+
+  test('never goes negative past the trigger', () => {
+    expect(
+      calculateTokenWarningState(autoCompactThreshold + 50_000, model)
+        .percentUntilAutoCompact,
+    ).toBe(0)
   })
 })

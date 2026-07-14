@@ -67,8 +67,12 @@ export type AutoCompactTrackingState = {
 }
 
 export const AUTOCOMPACT_BUFFER_TOKENS = 13_000
+// Two-tier warning: the yellow "warning" band opens first (larger buffer =
+// earlier), then the red "error" band once we're within ERROR_THRESHOLD of the
+// limit. Keeping these equal collapses the tiers (the warning color becomes
+// unreachable), so ERROR must stay strictly below WARNING.
 export const WARNING_THRESHOLD_BUFFER_TOKENS = 20_000
-export const ERROR_THRESHOLD_BUFFER_TOKENS = 20_000
+export const ERROR_THRESHOLD_BUFFER_TOKENS = 10_000
 export const MANUAL_COMPACT_BUFFER_TOKENS = 3_000
 
 // Stop trying autocompact after this many consecutive failures.
@@ -132,6 +136,7 @@ export function calculateTokenWarningState(
   model: string,
 ): {
   percentLeft: number
+  percentUntilAutoCompact: number
   isAboveWarningThreshold: boolean
   isAboveErrorThreshold: boolean
   isAboveAutoCompactThreshold: boolean
@@ -151,6 +156,19 @@ export function calculateTokenWarningState(
     0,
     Math.round(((rawContextWindow - tokenUsage) / rawContextWindow) * 100),
   )
+
+  // Distance to the auto-compact trigger, as a fraction of the trigger point.
+  // Unlike percentLeft (measured against the full window), this reaches 0 exactly
+  // when auto-compact fires, so a "X% until auto-compact" label reads truthfully.
+  const percentUntilAutoCompact =
+    autoCompactThreshold > 0
+      ? Math.max(
+          0,
+          Math.round(
+            ((autoCompactThreshold - tokenUsage) / autoCompactThreshold) * 100,
+          ),
+        )
+      : 0
 
   const warningThreshold = threshold - WARNING_THRESHOLD_BUFFER_TOKENS
   const errorThreshold = threshold - ERROR_THRESHOLD_BUFFER_TOKENS
@@ -179,6 +197,7 @@ export function calculateTokenWarningState(
 
   return {
     percentLeft,
+    percentUntilAutoCompact,
     isAboveWarningThreshold,
     isAboveErrorThreshold,
     isAboveAutoCompactThreshold,

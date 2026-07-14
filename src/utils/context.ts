@@ -104,6 +104,11 @@ export function getContextWindowForModel(
     return OPENAI_FALLBACK_CONTEXT_WINDOW
   }
 
+  // Dormant in the external build: getModelCapability() is a stub that always
+  // returns undefined (the internal model-capabilities fetch/cache path isn't
+  // mirrored here — see modelCapabilities.ts), so this branch never fires. It's
+  // kept as the integration seam should that data source ever be wired in; the
+  // fable-5/sonnet-5 and beta-header fallbacks below carry the real behavior.
   const cap = getModelCapability(model)
   if (cap?.max_input_tokens && cap.max_input_tokens >= 100_000) {
     if (
