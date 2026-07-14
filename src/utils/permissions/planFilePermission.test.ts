@@ -3,7 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from '../cwd.js'
-import { getPlanFilePath, getPlansDirectory, setPlanSlug } from '../plans.js'
+import { getPlansDirectory, setPlanSlug } from '../plans.js'
 import { getSessionId } from '../../bootstrap/state.js'
 import { checkEditableInternalPath } from './filesystem.js'
 
@@ -13,18 +13,29 @@ import { checkEditableInternalPath } from './filesystem.js'
 // the model writes. Without this, FileWrite/FileEdit/apply_patch to the plan
 // file all get hard-denied by the plan-mode gate and the model is locked out
 // of its own plan file.
+//
+// NOTE: these tests deliberately build plan paths from getPlansDirectory()
+// directly rather than getPlanFilePath()/getPlanSlug(). Under the full suite,
+// planDossier.test.ts leaks a mock.module for the plans helpers (bun's
+// mock.module leaks across files and mock.restore() doesn't revert it), which
+// makes getPlanFilePath() return a foreign fixture path. Routing only through
+// getPlansDirectory() (unmocked here) keeps these hermetic.
 describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
   function inFreshProject<T>(fn: (root: string) => T): T {
     const root = mkdtempSync(join(tmpdir(), 'plan-perm-'))
     return runWithCwdOverride(root, () => fn(root))
   }
 
+  function planPath(filename: string): string {
+    return join(getPlansDirectory(), filename)
+  }
+
   test('allows a write to the current-slug plan file', () => {
     inFreshProject(() => {
       setPlanSlug(getSessionId(), 'unified-rolling-ritchie')
-      const planPath = getPlanFilePath()
-      const decision = checkEditableInternalPath(planPath, {
-        file_path: planPath,
+      const p = planPath('unified-rolling-ritchie.md')
+      const decision = checkEditableInternalPath(p, {
+        file_path: p,
         content: 'x',
       })
       expect(decision.behavior).toBe('allow')
@@ -36,10 +47,7 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
       // Runtime slug cache holds a freshly generated slug, but the model was
       // told / remembers a path with a different slug.
       setPlanSlug(getSessionId(), 'some-other-generated-slug')
-      const drifted = join(
-        getPlansDirectory(),
-        'unified-rolling-ritchie.md',
-      )
+      const drifted = planPath('unified-rolling-ritchie.md')
       const decision = checkEditableInternalPath(drifted, {
         file_path: drifted,
         content: 'x',
@@ -51,10 +59,7 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
   test('allows an agent-scoped plan file in the plans dir', () => {
     inFreshProject(() => {
       setPlanSlug(getSessionId(), 'unified-rolling-ritchie')
-      const agentPlan = join(
-        getPlansDirectory(),
-        'unified-rolling-ritchie-agent-abc123.md',
-      )
+      const agentPlan = planPath('unified-rolling-ritchie-agent-abc123.md')
       const decision = checkEditableInternalPath(agentPlan, {
         file_path: agentPlan,
         content: 'x',
@@ -65,7 +70,6 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
 
   test('does NOT allow a subdirectory file under the plans dir', () => {
     inFreshProject(() => {
-      setPlanSlug(getSessionId(), 'unified-rolling-ritchie')
       const nested = join(getPlansDirectory(), 'sub', 'evil.md')
       const decision = checkEditableInternalPath(nested, {
         file_path: nested,
@@ -77,7 +81,6 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
 
   test('does NOT allow a .md file outside the plans dir', () => {
     inFreshProject(root => {
-      setPlanSlug(getSessionId(), 'unified-rolling-ritchie')
       const outside = join(root, 'not-a-plan.md')
       const decision = checkEditableInternalPath(outside, {
         file_path: outside,
@@ -89,7 +92,6 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
 
   test('does NOT allow a traversal escape from the plans dir', () => {
     inFreshProject(() => {
-      setPlanSlug(getSessionId(), 'unified-rolling-ritchie')
       const escape = join(getPlansDirectory(), '..', '..', 'escape.md')
       const decision = checkEditableInternalPath(escape, {
         file_path: escape,
