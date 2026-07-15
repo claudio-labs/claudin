@@ -45,40 +45,47 @@ function hljs(): HLJSApi {
   const core: HLJSApi =
     'default' in coreMod && coreMod.default ? coreMod.default : coreMod
   /* eslint-disable @typescript-eslint/no-require-imports */
-  const langs: ReadonlyArray<readonly [string, string]> = [
-    ['typescript', 'typescript'],
-    ['javascript', 'javascript'],
-    ['python', 'python'],
-    ['go', 'go'],
-    ['rust', 'rust'],
-    ['java', 'java'],
-    ['c', 'c'],
-    ['cpp', 'cpp'],
-    ['csharp', 'csharp'],
-    ['ruby', 'ruby'],
-    ['php', 'php'],
-    ['swift', 'swift'],
-    ['kotlin', 'kotlin'],
-    ['bash', 'bash'],
-    ['shell', 'shell'],
-    ['json', 'json'],
-    ['yaml', 'yaml'],
-    ['xml', 'xml'],
-    ['css', 'css'],
-    ['scss', 'scss'],
-    ['sql', 'sql'],
-    ['markdown', 'markdown'],
-    ['dockerfile', 'dockerfile'],
-    ['diff', 'diff'],
-    ['plaintext', 'plaintext'],
-    ['ini', 'ini'],
-    ['lua', 'lua'],
-    ['perl', 'perl'],
-    ['elixir', 'elixir'],
+  // Static requires (not `require(`.../${mod}`)`) so Bun's --compile bundler
+  // can statically resolve each grammar and embed it in the binary's VFS.
+  // A template-literal require is opaque to the bundler → the compiled binary
+  // throws "Cannot find module 'highlight.js/lib/languages/typescript'".
+  const langs: ReadonlyArray<readonly [string, unknown]> = [
+    ['typescript', require('highlight.js/lib/languages/typescript')],
+    ['javascript', require('highlight.js/lib/languages/javascript')],
+    ['python', require('highlight.js/lib/languages/python')],
+    ['go', require('highlight.js/lib/languages/go')],
+    ['rust', require('highlight.js/lib/languages/rust')],
+    ['java', require('highlight.js/lib/languages/java')],
+    ['c', require('highlight.js/lib/languages/c')],
+    ['cpp', require('highlight.js/lib/languages/cpp')],
+    ['csharp', require('highlight.js/lib/languages/csharp')],
+    ['ruby', require('highlight.js/lib/languages/ruby')],
+    ['php', require('highlight.js/lib/languages/php')],
+    ['swift', require('highlight.js/lib/languages/swift')],
+    ['kotlin', require('highlight.js/lib/languages/kotlin')],
+    ['bash', require('highlight.js/lib/languages/bash')],
+    ['shell', require('highlight.js/lib/languages/shell')],
+    ['json', require('highlight.js/lib/languages/json')],
+    ['yaml', require('highlight.js/lib/languages/yaml')],
+    ['xml', require('highlight.js/lib/languages/xml')],
+    ['css', require('highlight.js/lib/languages/css')],
+    ['scss', require('highlight.js/lib/languages/scss')],
+    ['sql', require('highlight.js/lib/languages/sql')],
+    ['markdown', require('highlight.js/lib/languages/markdown')],
+    ['dockerfile', require('highlight.js/lib/languages/dockerfile')],
+    ['diff', require('highlight.js/lib/languages/diff')],
+    ['plaintext', require('highlight.js/lib/languages/plaintext')],
+    ['ini', require('highlight.js/lib/languages/ini')],
+    ['lua', require('highlight.js/lib/languages/lua')],
+    ['perl', require('highlight.js/lib/languages/perl')],
+    ['elixir', require('highlight.js/lib/languages/elixir')],
   ]
-  for (const [name, mod] of langs) {
-    const m = require(`highlight.js/lib/languages/${mod}`)
-    core.registerLanguage(name, 'default' in m && m.default ? m.default : m)
+  for (const [name, m] of langs) {
+    const lang =
+      m && typeof m === 'object' && 'default' in m
+        ? (m as { default: unknown }).default
+        : m
+    core.registerLanguage(name, lang as Parameters<typeof core.registerLanguage>[1])
   }
   /* eslint-enable @typescript-eslint/no-require-imports */
   cachedHljs = core
