@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.6 — 2026-07-15
+
+- fix(update): publish the npm wrapper as CommonJS so the .exe stub can launch (#15) (2db43c1)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.5 — 2026-07-15
 
 - fix(diff): embed highlight.js grammars in --compile binary via static requires (4f03d27)
