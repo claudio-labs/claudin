@@ -7,8 +7,9 @@ const realAuth = await import('../auth.js')
 const realAccess = await import('./check1mAccess.js')
 const realModel = await import('./model.js')
 
-// Only the newest Opus generation is paired (200k + 1M) in the first-party
-// picker; Sonnet 5 is a single 1M-native entry (asserted separately below).
+// Only the newest Opus generation is listed in the first-party picker, and only
+// its 1M flavor when the account has 1M (200k fallback when it doesn't); Sonnet 5
+// is a single 1M-native entry (asserted separately below).
 const BASES = ['claude-opus-4-8']
 
 // Legacy generations were removed from the first-party picker (still resolvable
@@ -62,16 +63,23 @@ afterEach(() => {
   resetModelStringsForTestingOnly()
 })
 
-test('Max picker lists 200k + 1M for every model when access checks pass', async () => {
+test('Max picker lists only the 1M Opus entry when access checks pass', async () => {
   const { getModelOptions } = await importMaxPicker({
     mergeEnabled: true,
     opusAccess: true,
     sonnetAccess: true,
   })
-  const values = getModelOptions().map((o: { value: string | null }) => o.value)
+  const options = getModelOptions()
+  const values = options.map((o: { value: string | null }) => o.value)
   for (const base of BASES) {
-    expect(values).toContain(base) // 200k flavor
-    expect(values).toContain(`${base}[1m]`) // 1M flavor
+    expect(values).not.toContain(base) // no 200k duplicate
+    expect(values).toContain(`${base}[1m]`) // only the 1M flavor
+    // The surviving entry is labelled as the 1M flavor, not the bare 200k one.
+    const opus = options.find(
+      (o: { value: string | null }) => o.value === `${base}[1m]`,
+    )
+    expect(opus?.label).toBe('Opus 4.8 (1M context)')
+    expect(opus?.description).toContain('1M context')
   }
   // Legacy generations are no longer listed.
   for (const legacy of REMOVED_LEGACY) {
@@ -103,7 +111,7 @@ test('Sonnet 5 is a single 1M-native entry (no [1m] pair, no legacy Sonnet)', as
 // Regression for the empty-picker screenshot: checkOpus1mAccess/checkSonnet1mAccess
 // return false when the extra-usage reason isn't cached, but the merge being on
 // means the Default already runs opus[1m], so 1M variants must still be listed.
-test('merge enabled surfaces 1M variants even when access checks are false', async () => {
+test('merge enabled surfaces the 1M variant even when access checks are false', async () => {
   const { getModelOptions } = await importMaxPicker({
     mergeEnabled: true,
     opusAccess: false,
@@ -111,7 +119,7 @@ test('merge enabled surfaces 1M variants even when access checks are false', asy
   })
   const values = getModelOptions().map((o: { value: string | null }) => o.value)
   for (const base of BASES) {
-    expect(values).toContain(base)
+    expect(values).not.toContain(base) // no 200k duplicate
     expect(values).toContain(`${base}[1m]`)
   }
 })
@@ -124,9 +132,16 @@ test('no merge and no access suppresses 1M variants', async () => {
     opusAccess: false,
     sonnetAccess: false,
   })
-  const values = getModelOptions().map((o: { value: string | null }) => o.value)
+  const options = getModelOptions()
+  const values = options.map((o: { value: string | null }) => o.value)
   for (const base of BASES) {
     expect(values).toContain(base) // 200k flavor still present
     expect(values).not.toContain(`${base}[1m]`) // 1M flavor hidden
+    // The fallback entry is the plain 200k Opus, without the 1M label/suffix.
+    const opus = options.find(
+      (o: { value: string | null }) => o.value === base,
+    )
+    expect(opus?.label).toBe('Opus 4.8')
+    expect(opus?.description).not.toContain('1M context')
   }
 })

@@ -328,22 +328,6 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
   const merge1m = isOpus1mMergeEnabled()
   const opus1m = merge1m || checkOpus1mAccess()
   const opts: ModelOption[] = []
-  const addPair = (
-    label: string,
-    base: string,
-    desc: string,
-    can1m: boolean,
-    priceSuffix: string,
-  ) => {
-    opts.push({ value: base, label, description: `${desc}${priceSuffix}` })
-    if (can1m) {
-      opts.push({
-        value: `${base}[1m]`,
-        label: `${label} (1M context)`,
-        description: `${desc} · 1M context${billing}${priceSuffix}`,
-      })
-    }
-  }
   // Sonnet 5 is 1M by default — single entry, no [1m] pair (like Fable 5).
   opts.push({
     value: ms.sonnet5,
@@ -356,9 +340,23 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
     label: 'Fable 5',
     description: `Fable 5 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
   })
-  // Only the newest of each family is offered. Legacy generations (Opus 4.6/4.7,
-  // Sonnet 4.5/4.6) stay resolvable by explicit string but are not listed.
-  addPair('Opus 4.8', ms.opus48, 'Opus 4.8 · Most capable for complex work', opus1m, opusPrice)
+  // Only the newest Opus generation is offered, and only its 1M-context flavor
+  // when the account can use 1M — no separate 200k duplicate. Falls back to the
+  // 200k entry when there's no 1M so Opus stays selectable. Legacy generations
+  // (Opus 4.6/4.7, Sonnet 4.5/4.6) stay resolvable by explicit string, unlisted.
+  if (opus1m) {
+    opts.push({
+      value: `${ms.opus48}[1m]`,
+      label: 'Opus 4.8 (1M context)',
+      description: `Opus 4.8 · Most capable for complex work · 1M context${billing}${opusPrice}`,
+    })
+  } else {
+    opts.push({
+      value: ms.opus48,
+      label: 'Opus 4.8',
+      description: `Opus 4.8 · Most capable for complex work${opusPrice}`,
+    })
+  }
   return opts
 }
 
