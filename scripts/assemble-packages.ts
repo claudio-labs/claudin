@@ -185,7 +185,15 @@ const wrapperPkg = {
   ...commonMeta,
   keywords: rootPkg.keywords,
   engines: rootPkg.engines,
-  type: rootPkg.type,
+  // MUST NOT be "module". The bin stub is bin/claudin.exe (a Node shebang
+  // script) and is only executed when postinstall didn't hardlink the native
+  // binary over it (e.g. `bun install -g`, which skips lifecycle scripts). Under
+  // `"type": "module"`, Node's ESM loader rejects the unknown `.exe` extension
+  // with ERR_UNKNOWN_FILE_EXTENSION *before the stub can run* — so `claudin`
+  // can't even launch to self-heal. As CommonJS the stub loads fine and
+  // delegates to cli-wrapper.cjs. The wrapper's own files use explicit
+  // extensions (.cjs, .mjs), so it never needed "module".
+  type: 'commonjs',
   bin: { claudin: './bin/claudin.exe' },
   // Postinstall hardlinks the matching native binary over the stub.
   scripts: { postinstall: 'node install.cjs' },

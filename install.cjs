@@ -138,8 +138,12 @@ function main() {
   const info = PLATFORMS[platformKey]
   // Always write to bin/claudin.exe — the package.json bin field points here.
   // The .exe extension + no-shebang-needed stub makes npm's cmd-shim emit a
-  // direct exec on Windows; Unix ignores the extension. Same pattern as Bun's
-  // and Claude Code's npm packages.
+  // direct exec on Windows; Unix ignores the extension for the *native* binary.
+  // NOTE: the wrapper package.json must be CommonJS (not "type":"module") — the
+  // Node-stub fallback at this path only loads as CJS; under "module" Node's ESM
+  // loader rejects the .exe extension (ERR_UNKNOWN_FILE_EXTENSION). See
+  // scripts/assemble-packages.ts. Same pattern as Bun's and Claude Code's npm
+  // packages.
   const dest = path.join(__dirname, 'bin', 'claudin.exe')
 
   const leaveStub = reason => {
