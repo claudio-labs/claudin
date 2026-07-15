@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.5 — 2026-07-15
+
+- fix(diff): embed highlight.js grammars in --compile binary via static requires (4f03d27)
+- fix(update): self-heal Bun global installs whose postinstall was skipped (#14) (b27ff1a)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.4 — 2026-07-14
 
 - feat(model): make /model selection project-scoped, decoupled from provider override (#13) (0666a7b)
