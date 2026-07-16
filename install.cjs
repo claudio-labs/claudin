@@ -198,9 +198,25 @@ function main() {
   try {
     const srcVendor = path.join(path.dirname(src), 'vendor')
     if (existsSync(srcVendor)) {
-      cpSync(srcVendor, path.join(__dirname, 'bin', 'vendor'), {
+      const destVendor = path.join(__dirname, 'bin', 'vendor')
+      cpSync(srcVendor, destVendor, {
         recursive: true,
       })
+      // npm publish strips the exec bit from non-`bin` files, so the vendored
+      // `rg` arrives (and copies) as 0644 and spawns with EACCES — silently
+      // breaking search/@-file-suggestions in the compiled binary. Restore it.
+      // Runtime probe layout: bin/vendor/ripgrep/<arch>-<platform>/rg.
+      if (process.platform !== 'win32') {
+        const rgBin = path.join(
+          destVendor,
+          'ripgrep',
+          `${arch()}-${process.platform}`,
+          'rg',
+        )
+        if (existsSync(rgBin)) {
+          chmodSync(rgBin, 0o755)
+        }
+      }
     }
   } catch (err) {
     console.error(

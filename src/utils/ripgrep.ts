@@ -1,6 +1,6 @@
 import type { ChildProcess, ExecFileException } from 'child_process'
 import { execFile, spawn } from 'child_process'
-import { existsSync, realpathSync } from 'fs'
+import { accessSync, chmodSync, constants, existsSync, realpathSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { createRequire } from 'module'
 import { homedir } from 'os'
@@ -141,6 +141,25 @@ export function resolveVendoredRipgrepPath(
   return { command: found ?? candidates[0]!, exists: found !== undefined }
 }
 
+function ensureVendoredRipgrepExecutable(binPath: string): void {
+  if (process.platform === 'win32') {
+    return
+  }
+  try {
+    accessSync(binPath, constants.X_OK)
+  } catch {
+    try {
+      chmodSync(binPath, 0o755)
+    } catch (e) {
+      logForDebugging(
+        `Could not restore exec bit on vendored ripgrep at ${binPath}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      )
+    }
+  }
+}
+
 const getRipgrepConfig = memoize((): RipgrepConfig => {
   const userWantsSystemRipgrep = isEnvDefinedFalsy(
     process.env.USE_BUILTIN_RIPGREP,
@@ -151,6 +170,15 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
   // `rg` on PATH. Fall back to the legacy in-tree vendored path if present.
   const packagedCommand = resolvePackagedRipgrepPath()
   const vendored = resolveVendoredRipgrepPath(__dirname, process.execPath)
+
+  // The vendored rg beside a compiled binary can lose its exec bit: npm strips
+  // the executable permission from non-`bin` files (vendor/ripgrep/<key>/rg) on
+  // publish, so the installed copy is 0644 and spawns with EACCES. Restore it so
+  // an already-broken install self-heals. No-op in dev/Node, where
+  // @vscode/ripgrep resolves and the vendored copy is never used.
+  if (packagedCommand === null && vendored.exists) {
+    ensureVendoredRipgrepExecutable(vendored.command)
+  }
 
   const builtinCommand = packagedCommand ?? vendored.command
   const builtinExists = packagedCommand !== null || vendored.exists
