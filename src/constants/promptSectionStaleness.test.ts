@@ -1,4 +1,4 @@
-import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 // MACRO is replaced at build time by Bun.define but not in test mode.
 // Define it globally so tests that import modules using MACRO don't crash.
@@ -41,6 +41,20 @@ const { getEmptyToolPermissionContext } = await import('../Tool.js')
 
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 delete process.env.CLAUDE_CODE_SIMPLE
+
+beforeEach(() => {
+  // Re-assert our provider mock so it wins over any OTHER test file's
+  // providerProfiles mock that loaded after this one (Bun mock.module is
+  // process-global; last install wins). Without this, a leaked mock returning
+  // a non-firstParty profile would make state.activeProfile inert and the
+  // firstParty assertions below fail on their first line.
+  state.activeProfile = undefined
+  mock.module('../utils/providerProfiles.js', () => ({
+    ...realProviderProfiles,
+    getActiveProviderProfile: () => state.activeProfile,
+  }))
+  invalidateActiveProviderCache()
+})
 
 afterEach(() => {
   state.activeProfile = undefined

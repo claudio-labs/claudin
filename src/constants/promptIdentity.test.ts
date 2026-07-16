@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 // MACRO is replaced at build time by Bun.define but not in test mode.
 // Define it globally so tests that import modules using MACRO don't crash.
@@ -23,11 +23,42 @@ import { GENERAL_PURPOSE_AGENT } from '../tools/AgentTool/built-in/generalPurpos
 import { EXPLORE_AGENT } from '../tools/AgentTool/built-in/exploreAgent.js'
 import { PLAN_AGENT } from '../tools/AgentTool/built-in/planAgent.js'
 
+// Provider isolation. The Claude-family recommendation + "Fast mode" env lines
+// are gated on getAPIProvider() === 'firstParty'. A cross-file mock.module leak
+// (or a stale activeProvider cache) that leaves a non-firstParty provider
+// active silently drops those lines and fails the assertions below. Pin
+// getActiveProviderProfile to undefined (→ firstParty) and drop the cache
+// before each test so this file is immune to whatever ran before it.
+const realProviderProfiles = { ...(await import('../utils/providerProfiles.js')) }
+mock.module('../utils/providerProfiles.js', () => ({
+  ...realProviderProfiles,
+  getActiveProviderProfile: () => undefined,
+}))
+const { invalidateActiveProviderCache } = await import(
+  '../services/api/activeProvider.js'
+)
+
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
+
+beforeEach(() => {
+  // Re-assert our mock so it wins over any later-loaded file's mock, and clear
+  // the cached provider so getAPIProvider() recomputes as firstParty.
+  mock.module('../utils/providerProfiles.js', () => ({
+    ...realProviderProfiles,
+    getActiveProviderProfile: () => undefined,
+  }))
+  invalidateActiveProviderCache()
+})
 
 afterEach(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
+  invalidateActiveProviderCache()
   clearSystemPromptSections()
+})
+
+afterAll(() => {
+  mock.module('../utils/providerProfiles.js', () => realProviderProfiles)
+  invalidateActiveProviderCache()
 })
 
 test('CLI identity prefixes describe Claudin instead of Claude Code', () => {
