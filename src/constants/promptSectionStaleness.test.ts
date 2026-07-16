@@ -13,24 +13,37 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 import type { ProviderProfile } from '../utils/config.js'
 
-// Capture the real module first so we can spread it and restore at teardown.
+// Capture the real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
-const realProviderProfiles = { ...(await import('../utils/providerProfiles.js')) }
+const realProviders = { ...(await import('../utils/model/providers.js')) }
 
 const state: { activeProfile: ProviderProfile | undefined } = {
   activeProfile: undefined,
 }
 
-// Override `getActiveProviderProfile` so the test controls what
-// getAPIProvider() resolves to. With activeProfile undefined the chain falls
-// back to 'firstParty' — the same state every other test file runs in.
-mock.module('../utils/providerProfiles.js', () => ({
-  ...realProviderProfiles,
-  getActiveProviderProfile: () => state.activeProfile,
-}))
+// This file drives getAPIProvider() through state.activeProfile (its tests
+// deliberately switch firstParty → bedrock mid-run), so it CANNOT hard-pin a
+// single provider. It also cannot rely on the real resolution chain, because
+// another test file may have leaked a getAPIProvider / tryGetActiveProvider
+// mock (Bun's mock.module is process-global). So mock getAPIProvider itself —
+// the single decision point — with a self-contained, state-driven impl:
+// no profile → 'firstParty', a bedrock profile → 'bedrock' (the only two the
+// tests exercise). Re-assert before each test to win the last-install-wins
+// race, independent of whatever ran before this file.
+const pinFromState = (): void => {
+  mock.module('../utils/model/providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () =>
+      state.activeProfile ? state.activeProfile.provider : 'firstParty',
+  }))
+}
+pinFromState()
 
 const { getSystemPrompt } = await import('./prompts.js')
 const { clearSystemPromptSections } = await import('./systemPromptSections.js')
+// getAPIProvider is mocked directly (above), so the activeProvider cache no
+// longer feeds provider resolution here; the in-test invalidateActiveProviderCache()
+// calls are kept as harmless no-ops and just need a live binding.
 const { invalidateActiveProviderCache } = await import(
   '../services/api/activeProvider.js'
 )
@@ -43,29 +56,18 @@ const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 delete process.env.CLAUDE_CODE_SIMPLE
 
 beforeEach(() => {
-  // Re-assert our provider mock so it wins over any OTHER test file's
-  // providerProfiles mock that loaded after this one (Bun mock.module is
-  // process-global; last install wins). Without this, a leaked mock returning
-  // a non-firstParty profile would make state.activeProfile inert and the
-  // firstParty assertions below fail on their first line.
   state.activeProfile = undefined
-  mock.module('../utils/providerProfiles.js', () => ({
-    ...realProviderProfiles,
-    getActiveProviderProfile: () => state.activeProfile,
-  }))
-  invalidateActiveProviderCache()
+  pinFromState()
 })
 
 afterEach(() => {
   state.activeProfile = undefined
-  invalidateActiveProviderCache()
   clearSystemPromptSections()
 })
 
 afterAll(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
-  mock.module('../utils/providerProfiles.js', () => realProviderProfiles)
-  invalidateActiveProviderCache()
+  mock.module('../utils/model/providers.js', () => realProviders)
   clearSystemPromptSections()
 })
 

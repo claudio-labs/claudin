@@ -1,37 +1,25 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 // Provider isolation. getAvailableEffortLevels() → modelUsesOpenAIEffort() →
-// getAPIProvider(): if a cross-file mock.module leak (or a stale
-// activeProvider cache) leaves a non-firstParty provider active, the effort
-// ladder collapses to the OpenAI tiers and the assertions below fail. Pin
-// getActiveProviderProfile to undefined (→ firstParty) and drop the cache
-// before each test so this file is immune to whatever ran before it.
-const realProviderProfiles = { ...(await import('../providerProfiles.js')) }
-mock.module('../providerProfiles.js', () => ({
-  ...realProviderProfiles,
-  getActiveProviderProfile: () => undefined,
-}))
-const { invalidateActiveProviderCache } = await import(
-  '../../services/api/activeProvider.js'
-)
-
-beforeEach(() => {
-  // Re-assert our mock so it wins over any later-loaded file's mock, and clear
-  // the cached provider so getAPIProvider() recomputes as firstParty.
-  mock.module('../providerProfiles.js', () => ({
-    ...realProviderProfiles,
-    getActiveProviderProfile: () => undefined,
+// getAPIProvider(): if a cross-file mock.module leak leaves a non-firstParty
+// provider active (many test files mock getAPIProvider / tryGetActiveProvider,
+// and Bun's mock.module is process-global), the effort ladder collapses to the
+// OpenAI tiers and the assertions below fail. Pin getAPIProvider itself — the
+// single decision point — to 'firstParty' and re-assert it before each test so
+// this file wins over whatever ran before it, regardless of which seam the
+// leaked mock targeted.
+const realProviders = { ...(await import('./providers.js')) }
+const pinFirstParty = () =>
+  mock.module('./providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => 'firstParty',
   }))
-  invalidateActiveProviderCache()
-})
+pinFirstParty()
 
-afterEach(() => {
-  invalidateActiveProviderCache()
-})
+beforeEach(pinFirstParty)
 
 afterAll(() => {
-  mock.module('../providerProfiles.js', () => realProviderProfiles)
-  invalidateActiveProviderCache()
+  mock.module('./providers.js', () => realProviders)
 })
 
 import {

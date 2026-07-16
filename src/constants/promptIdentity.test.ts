@@ -25,40 +25,32 @@ import { PLAN_AGENT } from '../tools/AgentTool/built-in/planAgent.js'
 
 // Provider isolation. The Claude-family recommendation + "Fast mode" env lines
 // are gated on getAPIProvider() === 'firstParty'. A cross-file mock.module leak
-// (or a stale activeProvider cache) that leaves a non-firstParty provider
-// active silently drops those lines and fails the assertions below. Pin
-// getActiveProviderProfile to undefined (→ firstParty) and drop the cache
-// before each test so this file is immune to whatever ran before it.
-const realProviderProfiles = { ...(await import('../utils/providerProfiles.js')) }
-mock.module('../utils/providerProfiles.js', () => ({
-  ...realProviderProfiles,
-  getActiveProviderProfile: () => undefined,
-}))
-const { invalidateActiveProviderCache } = await import(
-  '../services/api/activeProvider.js'
-)
+// that leaves a non-firstParty provider active silently drops those lines and
+// fails the assertions below (many test files mock getAPIProvider /
+// tryGetActiveProvider, and Bun's mock.module is process-global). This whole
+// file only ever exercises the firstParty environment, so pin getAPIProvider —
+// the single decision point — to 'firstParty' and re-assert it before each test
+// so this file wins over whatever ran before it, regardless of which seam the
+// leaked mock targeted.
+const realProviders = { ...(await import('../utils/model/providers.js')) }
+const pinFirstParty = () =>
+  mock.module('../utils/model/providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => 'firstParty',
+  }))
+pinFirstParty()
 
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 
-beforeEach(() => {
-  // Re-assert our mock so it wins over any later-loaded file's mock, and clear
-  // the cached provider so getAPIProvider() recomputes as firstParty.
-  mock.module('../utils/providerProfiles.js', () => ({
-    ...realProviderProfiles,
-    getActiveProviderProfile: () => undefined,
-  }))
-  invalidateActiveProviderCache()
-})
+beforeEach(pinFirstParty)
 
 afterEach(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
-  invalidateActiveProviderCache()
   clearSystemPromptSections()
 })
 
 afterAll(() => {
-  mock.module('../utils/providerProfiles.js', () => realProviderProfiles)
-  invalidateActiveProviderCache()
+  mock.module('../utils/model/providers.js', () => realProviders)
 })
 
 test('CLI identity prefixes describe Claudin instead of Claude Code', () => {
