@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.0.7 — 2026-07-16
+
+- test: pin getAPIProvider at the real leak seam, not getActiveProviderProfile (378ac55)
+- test: isolate provider state in prompt/effort tests to stop full-suite flakiness (17b3548)
+- chore(release): add per-platform npm package bootstrap script (8ea87cb)
+- feat(plan): reframe plan-mode as two-way co-design, not an interview (ee3c96e)
+- fix(explorer): list files from the session cwd, not process.cwd() (2f43f66)
+- fix(commands): register /commit so Skill(commit) resolves (38430ec)
+- fix(ui): rebrand user-facing "Claude Code" tips and notices to Claudin (058493e)
+- fix(model): show a single Opus 4.8 entry in the subscriber picker (70a8520)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.6 — 2026-07-15
 
 - fix(update): publish the npm wrapper as CommonJS so the .exe stub can launch (#15) (2db43c1)
