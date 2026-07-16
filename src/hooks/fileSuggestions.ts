@@ -510,8 +510,16 @@ async function listFilesWithRipgrep(
     rgArgs.push('--no-ignore-vcs')
   }
 
-  const files = await ripGrep(rgArgs, '.', abortSignal)
-  const relativePaths = files.map(f => path.relative(getCwd(), f))
+  // Target the session cwd explicitly (an absolute path), NOT '.'. ripGrepRaw
+  // spawns rg without a `cwd` option, so '.' resolves against process.cwd() —
+  // the launch dir — which diverges from getCwd() whenever the session dir was
+  // changed without a process.chdir() (ssh/direct-connect/`open` sessions,
+  // per-agent runWithCwdOverride). That mismatch made /explorer list the wrong
+  // directory (or nothing at all). Passing getCwd() makes rg emit absolute
+  // paths rooted at the session dir, which path.relative then strips cleanly.
+  const cwd = getCwd()
+  const files = await ripGrep(rgArgs, cwd, abortSignal)
+  const relativePaths = files.map(f => path.relative(cwd, f))
 
   const duration = Date.now() - startTime
   logForDebugging(
