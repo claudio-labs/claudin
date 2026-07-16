@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.8 — 2026-07-16
+
+- fix(ripgrep): restore exec bit on vendored rg in the compiled binary (f3b48f2)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.7 — 2026-07-16
 
 - test: pin getAPIProvider at the real leak seam, not getActiveProviderProfile (378ac55)
