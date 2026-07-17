@@ -43,7 +43,13 @@ export function getPlanModeInstructions(attachment: {
 export const PLAN_PHASE4_CONTROL = `### Phase 4: Final Plan
 Goal: Write your final plan to the plan file (the only file you can edit).
 - Begin with a **Context** section: explain why this change is being made — the problem or need it addresses, what prompted it, and the intended outcome
-- Include a **Tasks** section that breaks the work into discrete, ordered steps (a checklist), each small enough to verify on its own
+- Include a **Tasks** section that breaks the work into discrete, ordered steps, each small enough to verify on its own. On approval these steps are seeded into the live task list that tracks execution, so write each in this exact format — a top-level checklist item as the task's short imperative subject, with the files it touches as indented sub-bullets:
+  \`\`\`
+  ## Tasks
+  - [ ] <short imperative subject>
+    - files: path/one.ts, path/two.ts
+  - [ ] <next subject>
+  \`\`\`
 - Include only your recommended approach, not all alternatives
 - Ensure that the plan file is concise enough to scan quickly, but detailed enough to execute effectively
 - Include the paths of critical files to be modified
@@ -231,7 +237,7 @@ You are co-designing the plan WITH the user — a two-way discovery, not an inte
 Repeat this cycle until the plan is complete:
 
 1. **Explore** — Use ${getReadOnlyToolNames()} to read code. Look for existing functions, utilities, and patterns to reuse.${areExplorePlanAgentsEnabled() ? ` You can use the ${EXPLORE_AGENT.agentType} agent type to parallelize complex searches without filling your context, though for straightforward queries direct tools are simpler.` : ''}
-2. **Update the plan file** — After each discovery, immediately capture what you learned; don't wait until the end. Log settled choices under **Agreed Decisions** and anything unresolved (from EITHER side) under **Open Questions**. Keep the work continuously organized under **Tasks** — an ordered checklist where EACH task lists the files it will create / modify / delete. Re-organize it as understanding changes.
+2. **Update the plan file** — After each discovery, immediately capture what you learned; don't wait until the end. Log settled choices under **Agreed Decisions** and anything unresolved (from EITHER side) under **Open Questions**. Keep the work continuously organized under **Tasks** — an ordered checklist you co-build WITH the user: surface your proposed breakdown as you go, let the user split/merge/reorder steps, and re-organize it as understanding changes. On approval these items are seeded verbatim into the live task list that tracks execution, so make each step small and independently verifiable, and write them in the exact format below.
 3. **Surface the points you see** — As you go, BRING THINGS UP rather than quizzing the user. Narrate what you notice: relevant code, an alternative, a dependency or ordering constraint ("if we do it this way, we'd need to handle X first"), a gotcha — each with file:line. State them as observations a senior engineer would think out loud, not as a barrage of questions.
 4. **Voice your own uncertainty** — If YOU are unsure or are assuming something the user didn't state, add it to **Open Questions** and resolve it (read the code, or surface it). Your doubts count as much as the user's.
 5. **Ask ONLY for genuine decisions** — Reserve ${ASK_USER_QUESTION_TOOL_NAME} for choices only the user can make and that you can't settle from the code (see "Surfacing Decisions Proactively" below). Default to surfacing findings and implications as statements, not questions. Then go back to step 1.
@@ -268,7 +274,14 @@ Your plan file should be divided into clear sections using markdown headers, bas
 - Begin with a **Context** section: explain why this change is being made — the problem or need it addresses, what prompted it, and the intended outcome
 - **Agreed Decisions**: the choices both of you have settled, each a one-liner
 - **Open Questions**: unresolved items from either side — MUST be empty before you exit
-- Include a **Tasks** section: an ordered checklist, kept organized as you go; for EACH task, list the files it will create / modify / delete, and keep each step small enough to verify on its own
+- Include a **Tasks** section: an ordered checklist, kept organized as you go; keep each step small enough to verify on its own. On approval these items are seeded into the live task list that tracks execution, so write each one in this exact format — a top-level checklist item as the task's short imperative subject, with the files it touches (and any one-line note) as indented sub-bullets:
+  \`\`\`
+  ## Tasks
+  - [ ] <short imperative subject>
+    - files: path/one.ts, path/two.ts
+    - <optional one-line note>
+  - [ ] <next subject>
+  \`\`\`
 - Include only your recommended approach, not all alternatives
 - Ensure that the plan file is concise enough to scan quickly, but detailed enough to execute effectively
 - Reference existing functions and utilities you found that should be reused, with their file paths

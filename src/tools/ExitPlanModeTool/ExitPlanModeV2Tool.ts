@@ -35,6 +35,7 @@ import {
   getPlanSlug,
   persistFileSnapshotIfRemote,
 } from '../../utils/plans.js'
+import { seedTasksFromPlan } from '../../utils/planTasks.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import {
   getAgentName,
@@ -44,6 +45,7 @@ import {
 } from '../../utils/teammate.js'
 import { writeToMailbox } from '../../utils/teammateMailbox.js'
 import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
+import { TASK_UPDATE_TOOL_NAME } from '../TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from '../TeamCreateTool/constants.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from './constants.js'
 import { EXIT_PLAN_MODE_V2_TOOL_PROMPT } from './prompt.js'
@@ -149,6 +151,12 @@ export const outputSchema = lazySchema(() =>
       .string()
       .optional()
       .describe('Unique identifier for the plan approval request'),
+    tasksSeeded: z
+      .number()
+      .optional()
+      .describe(
+        "Number of TodoV2 tasks seeded from the plan's Tasks section on approval",
+      ),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -439,6 +447,23 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
       }
     }
 
+    // Seed the TodoV2 task list from the plan's `## Tasks` section so the
+    // approved plan carries into execution as a live checklist. Local user
+    // only: teammates return earlier, and we skip sub-agents (`isAgent`) so a
+    // forked/background agent doesn't write into the shared task list.
+    // Fail-soft inside.
+    const tasksSeeded = plan && !isAgent ? await seedTasksFromPlan(plan) : 0
+    if (tasksSeeded > 0) {
+      // Auto-expand the task view so the seeded checklist is visible, matching
+      // TaskCreateTool's behavior (seedTasksFromPlan writes tasks directly and
+      // so doesn't run that tool's expand hook).
+      context.setAppState(prev =>
+        prev.expandedView === 'tasks'
+          ? prev
+          : { ...prev, expandedView: 'tasks' as const },
+      )
+    }
+
     return {
       data: {
         plan,
@@ -446,6 +471,7 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
         filePath,
         hasTaskTool: hasTaskTool || undefined,
         planWasEdited: inputPlan !== undefined || undefined,
+        tasksSeeded: tasksSeeded || undefined,
       },
     }
   },
@@ -458,6 +484,7 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
       planWasEdited,
       awaitingLeaderApproval,
       requestId,
+      tasksSeeded,
     },
     toolUseID,
   ) {
@@ -511,9 +538,14 @@ Request ID: ${requestId}`,
       ? 'Approved Plan (edited by user)'
       : 'Approved Plan'
 
+    const todoHint =
+      tasksSeeded && tasksSeeded > 0
+        ? `The ${tasksSeeded} step(s) from your plan's Tasks section have been seeded into the task list. As you implement, use ${TASK_UPDATE_TOOL_NAME} to mark each task in_progress before starting it and completed when done.`
+        : 'Start with updating your todo list if applicable'
+
     return {
       type: 'tool_result',
-      content: `User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+      content: `User has approved your plan. You can now start coding. ${todoHint}
 
 Your plan has been saved to: ${filePath}
 You can refer back to it if needed during implementation.${teamHint}
