@@ -14,7 +14,6 @@ export type ProviderPreset =
   | 'anthropic'
   | 'ollama'
   | 'openai'
-  | 'kimi-code'
   | 'moonshotai'
   | 'deepseek'
   | 'gemini'
@@ -233,15 +232,6 @@ export function getProviderPresetDefaults(
         name: 'OpenAI',
         baseUrl: 'https://api.openai.com/v1',
         model: 'gpt-5.4',
-        apiKey: '',
-        requiresApiKey: true,
-      }
-    case 'kimi-code':
-      return {
-        provider: 'openai',
-        name: 'Moonshot AI - Kimi Code',
-        baseUrl: 'https://api.kimi.com/coding/v1',
-        model: 'kimi-for-coding',
         apiKey: '',
         requiresApiKey: true,
       }
@@ -696,9 +686,19 @@ export function persistActiveProviderProfileModel(
       model: nextModel,
     }
 
+    // The model list changed, so the derived model-options cache for this
+    // profile is stale — drop it (and the flat mirror, since this is the
+    // active profile) so /model re-derives. Mirrors updateProviderProfile.
+    const cacheByProfile = {
+      ...(current.openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    }
+    delete cacheByProfile[activeProfile.id]
+
     return {
       ...current,
       providerProfiles: nextProfiles,
+      openaiAdditionalModelOptionsCacheByProfile: cacheByProfile,
+      openaiAdditionalModelOptionsCache: [],
     }
   })
 
@@ -729,7 +729,20 @@ export function clearActiveProviderProfileModel(): void {
 
     const nextProfiles = [...currentProfiles]
     nextProfiles[profileIndex] = { ...currentProfile, model: '' }
-    return { ...current, providerProfiles: nextProfiles }
+
+    // Clearing the model field invalidates this profile's derived
+    // model-options cache (and the flat mirror for the active profile).
+    const cacheByProfile = {
+      ...(current.openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    }
+    delete cacheByProfile[activeProfile.id]
+
+    return {
+      ...current,
+      providerProfiles: nextProfiles,
+      openaiAdditionalModelOptionsCacheByProfile: cacheByProfile,
+      openaiAdditionalModelOptionsCache: [],
+    }
   })
 }
 

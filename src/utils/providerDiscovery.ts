@@ -200,7 +200,7 @@ export function getLocalOpenAICompatibleProviderLabel(baseUrl?: string): string 
     }
     // Kimi Code subscription API
     if (hostname === 'api.kimi.com' && path.includes('/coding')) {
-      return 'Moonshot AI - Kimi Code'
+      return 'Moonshot AI'
     }
     // Check for Bankr LLM gateway
     if (host.includes('bankr') || haystack.includes('bankr')) {

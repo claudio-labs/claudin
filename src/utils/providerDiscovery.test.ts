@@ -131,13 +131,13 @@ test('detects Moonshot AI - API from api.moonshot.ai hostname', async () => {
   ).toBe('Moonshot AI - API')
 })
 
-test('detects Moonshot AI - Kimi Code from api.kimi.com/coding hostname', async () => {
+test('detects Moonshot AI from api.kimi.com/coding hostname', async () => {
   const { getLocalOpenAICompatibleProviderLabel } =
     await loadProviderDiscoveryModule()
 
   expect(
     getLocalOpenAICompatibleProviderLabel('https://api.kimi.com/coding/v1'),
-  ).toBe('Moonshot AI - Kimi Code')
+  ).toBe('Moonshot AI')
 })
 
 test('falls back to a generic local openai-compatible label', async () => {

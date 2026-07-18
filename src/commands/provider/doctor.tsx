@@ -1,5 +1,6 @@
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
 import {
+  isKimiCodeBaseUrl,
   isXaiOAuthBaseUrl,
   resolveProviderRequest,
 } from '../../services/api/providerConfig.js'
@@ -8,6 +9,12 @@ import {
   refreshXaiAccessTokenIfNeeded,
 } from '../../utils/xaiCredentials.js'
 import { getXaiUserAgent } from '../../utils/xaiUserAgent.js'
+import {
+  readKimiCredentialsAsync,
+  refreshKimiAccessTokenIfNeeded,
+} from '../../utils/kimiCredentials.js'
+import { getKimiUserAgent } from '../../utils/kimiUserAgent.js'
+import { getKimiDeviceHeaders } from '../../utils/kimiDeviceHeaders.js'
 import { getCurrentProjectConfig } from '../../utils/config.js'
 import { parseModelList } from '../../utils/providerModels.js'
 import {
@@ -161,6 +168,77 @@ async function checkXaiOAuthProfile(baseUrl: string): Promise<CheckResult[]> {
   out.push(
     pass(
       'xAI /v1/models',
+      modelCount !== undefined
+        ? `OK (${modelCount} model${modelCount === 1 ? '' : 's'})`
+        : 'OK',
+    ),
+  )
+  return out
+}
+
+async function checkKimiOAuthProfile(baseUrl: string): Promise<CheckResult[]> {
+  const out: CheckResult[] = []
+  let accessToken: string | undefined
+  try {
+    const refresh = await refreshKimiAccessTokenIfNeeded()
+    accessToken = refresh.credentials?.accessToken
+  } catch (e) {
+    out.push(
+      fail(
+        'Kimi Code OAuth refresh',
+        `Refresh failed: ${e instanceof Error ? e.message : String(e)}`,
+      ),
+    )
+    const stored = await readKimiCredentialsAsync()
+    accessToken = stored?.accessToken
+  }
+  if (!accessToken) {
+    out.push(
+      fail(
+        'Kimi Code OAuth credentials',
+        'No access token stored. Re-run /provider and pick Moonshot AI (OAuth).',
+      ),
+    )
+    return out
+  }
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+    'User-Agent': getKimiUserAgent(),
+    ...(await getKimiDeviceHeaders()),
+  }
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  const probe = await probeReachability(`${trimmed}/models`, { headers })
+  if (!probe.ok) {
+    if (probe.status === 401 || probe.status === 403) {
+      out.push(
+        fail(
+          'Kimi Code /v1/models',
+          `Got ${probe.status} — token may be revoked. Re-run /provider.`,
+        ),
+      )
+    } else if (probe.status) {
+      out.push(fail('Kimi Code /v1/models', `Unexpected status ${probe.status}.`))
+    } else {
+      out.push(
+        fail('Kimi Code /v1/models', `Could not reach api.kimi.com: ${probe.error}`),
+      )
+    }
+    return out
+  }
+  let modelCount: number | undefined
+  try {
+    const response = await fetch(`${trimmed}/models`, { headers })
+    if (response.ok) {
+      const body = (await response.json()) as { data?: unknown }
+      if (Array.isArray(body.data)) modelCount = body.data.length
+    }
+  } catch {
+    // best-effort — main check already passed
+  }
+  out.push(
+    pass(
+      'Kimi Code /v1/models',
       modelCount !== undefined
         ? `OK (${modelCount} model${modelCount === 1 ? '' : 's'})`
         : 'OK',
@@ -333,6 +411,8 @@ export async function runProviderDoctor(): Promise<string> {
         results.push(...(await checkOllamaProfile(profile.baseUrl, profile.model)))
       } else if (isXaiOAuthBaseUrl(profile.baseUrl)) {
         results.push(...(await checkXaiOAuthProfile(profile.baseUrl)))
+      } else if (isKimiCodeBaseUrl(profile.baseUrl)) {
+        results.push(...(await checkKimiOAuthProfile(profile.baseUrl)))
       } else {
         results.push(...(await checkOpenAICompat(profile.baseUrl, profile.apiKey)))
       }

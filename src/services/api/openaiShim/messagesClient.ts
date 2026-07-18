@@ -22,17 +22,17 @@ import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
 } from '../../../utils/codexCredentials.js'
-import {
-  readXaiCredentialsAsync,
-  refreshXaiAccessTokenIfNeeded,
-} from '../../../utils/xaiCredentials.js'
-import { getXaiUserAgent } from '../../../utils/xaiUserAgent.js'
 import { logForDebugging } from '../../../utils/debug.js'
 import { isBareMode, isEnvTruthy } from '../../../utils/envUtils.js'
 import { resolveGeminiCredential } from '../../../utils/geminiAuth.js'
 import { hydrateGeminiAccessTokenFromSecureStorage } from '../../../utils/geminiCredentials.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from '../../../utils/githubModelsCredentials.js'
 import { getAPIProvider } from '../../../utils/model/providers.js'
+import {
+  modelUsesKimiEffort,
+  resolveAppliedEffort,
+  type EffortValue,
+} from '../../../utils/effort.js'
 import { redactSecretValueForDisplay } from '../../../utils/providerProfile.js'
 import { logApiCallEnd, logApiCallStart } from '../../../utils/requestLogging.js'
 import { stableStringify } from '../../../utils/stableStringify.js'
@@ -62,11 +62,12 @@ import {
   getGithubEndpointType,
   getLocalProviderRetryBaseUrls,
   isLocalProviderUrl,
-  isXaiOAuthBaseUrl,
   resolveProviderRequest,
   resolveRuntimeCodexCredentials,
   shouldAttemptLocalToollessRetry,
+  type ReasoningEffort,
 } from '../providerConfig.js'
+import { resolveOAuthProviderAuth } from './oauthProviderAuth.js'
 import { stripThinkTags } from '../thinkTagSanitizer.js'
 import { normalizeToolArguments } from '../toolArgumentNormalization.js'
 import { getClaudinUserAgent } from '../../../utils/userAgent.js'
@@ -127,7 +128,26 @@ class OpenAIShimMessages {
     let httpResponse: Response | undefined
 
     const promise = (async () => {
-      const request = resolveProviderRequest({ model: params.model, reasoningEffortOverride: self.reasoningEffort })
+      // Resolve the effort level that will actually be sent. This applies the
+      // same precedence chain used by the Anthropic path (env override →
+      // appState / /effort → model default) so OpenAI-compatible shims get a
+      // consistent effective effort.
+      const resolvedEffortValue = resolveAppliedEffort(
+        params.model,
+        params.effortValue as EffortValue | undefined,
+      )
+      const reasoningEffort: ReasoningEffort | undefined =
+        resolvedEffortValue === 'low' ||
+        resolvedEffortValue === 'medium' ||
+        resolvedEffortValue === 'high' ||
+        resolvedEffortValue === 'xhigh' ||
+        resolvedEffortValue === 'max'
+          ? resolvedEffortValue
+          : self.reasoningEffort
+      const request = resolveProviderRequest({
+        model: params.model,
+        reasoningEffortOverride: reasoningEffort,
+      })
       const response = await self._doRequest(request, params, options)
       httpResponse = response
 
@@ -427,6 +447,19 @@ class OpenAIShimMessages {
       }
     }
 
+    if (isMoonshot) {
+      // Kimi Code K3 uses OpenAI Chat Completions but its own thinking-effort
+      // field instead of reasoning_effort. Captured from the official CLI.
+      const effort = request.reasoning?.effort
+      if (effort && modelUsesKimiEffort(request.resolvedModel)) {
+        body.thinking = {
+          type: 'enabled',
+          effort,
+          keep: 'all',
+        }
+      }
+    }
+
     if (params.tools && params.tools.length > 0) {
       const converted = convertTools(
         params.tools as Array<{
@@ -470,31 +503,17 @@ class OpenAIShimMessages {
     // GITHUB_TOKEN env escapes are needed here.
     const profileForKey = tryGetActiveProvider()
 
-    // xAI / Grok OAuth: when the active profile points at api.x.ai and has
-    // no static apiKey, swap in the rotated OAuth access token from secure
-    // storage. Preflight refresh mirrors the Codex path above; a stale
-    // access token here would 401, force-refresh via withRetry, and retry.
-    let xaiOAuthAccessToken: string | undefined
-    if (isXaiOAuthBaseUrl(profileForKey?.baseUrl) && !profileForKey?.apiKey) {
-      const refreshResult = await refreshXaiAccessTokenIfNeeded().catch(
-        async error => {
-          logForDebugging(
-            `[xai] access token refresh failed before request: ${error instanceof Error ? error.message : String(error)}`,
-            { level: 'warn' },
-          )
-          return {
-            refreshed: false,
-            credentials: await readXaiCredentialsAsync(),
-          }
-        },
-      )
-      xaiOAuthAccessToken = refreshResult.credentials?.accessToken
-    }
+    // OAuth-web providers on the openai_compat transport (xAI / Grok, Kimi Code):
+    // swap in the rotated Bearer token from secure storage and collect any
+    // provider-specific UA / `X-Msh-*` device headers. All the per-provider
+    // branching lives in the helper; here we just apply what it returns. A stale
+    // access token would 401, force-refresh via withRetry, and retry.
+    const oauthAuth = await resolveOAuthProviderAuth(profileForKey)
 
     const apiKey =
       profileForKey?.apiKey ??
       profileForKey?.extras?.githubToken ??
-      xaiOAuthAccessToken ??
+      oauthAuth.accessToken ??
       ''
     // Detect Azure endpoints by hostname (not raw URL) to prevent bypass via
     // path segments like https://evil.com/cognitiveservices.azure.com/
@@ -520,10 +539,14 @@ class OpenAIShimMessages {
       } else {
         headers.Authorization = `Bearer ${apiKey}`
       }
-      // Send an honest Claudin/<version> UA to xAI so traffic isn't
-      // misattributed to whatever client_id the OAuth flow reused.
-      if (xaiOAuthAccessToken && apiKey === xaiOAuthAccessToken) {
-        headers['User-Agent'] = getXaiUserAgent()
+      // OAuth-web provider UA + device headers (xAI honest UA; Kimi Code's
+      // CLI UA + `X-Msh-*`, required on every coding request). The helper only
+      // populates these when the active provider warrants them.
+      if (oauthAuth.userAgent) {
+        headers['User-Agent'] = oauthAuth.userAgent
+      }
+      if (oauthAuth.deviceHeaders) {
+        Object.assign(headers, oauthAuth.deviceHeaders)
       }
     } else if (isGemini) {
       const geminiCredential = await resolveGeminiCredential(process.env)

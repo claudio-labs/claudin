@@ -1,5 +1,6 @@
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/index.js'
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import type { Transport } from '../../services/api/activeProvider.js'
 
 export type APIProvider =
   | 'firstParty'
@@ -81,6 +82,43 @@ export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
     if (supported !== null) return supported
   } catch {
     // catalog unavailable — keep the name heuristic's answer
+  }
+  return true
+}
+
+/**
+ * Transports whose requests are translated by the OpenAI-compatible shim
+ * (`openaiShim.ts`) rather than sent through the native Anthropic SDK. Kept in
+ * sync with the client factory in `client.ts`.
+ */
+const OPENAI_SHIM_TRANSPORTS: ReadonlySet<Transport> = new Set([
+  'openai_compat',
+  'gemini',
+  'mistral',
+  'github_copilot',
+  'codex_responses',
+])
+
+/**
+ * True when the active provider's request for `resolvedModel` flows through the
+ * OpenAI shim rather than the native Anthropic SDK. The native Anthropic-format
+ * transports (anthropic/bedrock/vertex/foundry) reject unknown request-body
+ * fields, so shim-only params (e.g. `effortValue`) must be gated on this to
+ * avoid a 400 "Extra inputs are not permitted".
+ *
+ * Mirrors the shim-vs-native decision in `client.ts` exactly, including the
+ * github_copilot + Claude-model carve-out: that combination is routed through
+ * the native Anthropic SDK (`isGithubNativeAnthropicMode`), so it is NOT a shim
+ * request even though the transport is in the shim set.
+ */
+export function activeTransportUsesOpenAiShim(resolvedModel?: string): boolean {
+  const transport = tryGetActiveProvider()?.transport ?? 'anthropic'
+  if (!OPENAI_SHIM_TRANSPORTS.has(transport)) return false
+  if (
+    transport === 'github_copilot' &&
+    isGithubNativeAnthropicMode(resolvedModel)
+  ) {
+    return false
   }
   return true
 }

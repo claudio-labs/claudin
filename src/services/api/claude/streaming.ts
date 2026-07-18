@@ -14,6 +14,7 @@ import type {
 import type { Stream } from "@anthropic-ai/sdk/streaming.mjs";
 import { randomUUID } from "crypto";
 import {
+  activeTransportUsesOpenAiShim,
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from "src/utils/model/providers.js";
@@ -734,6 +735,13 @@ export async function* queryModel(
 
   const effort = resolveAppliedEffort(options.model, options.effortValue);
 
+  // `effortValue` is a shim-only param consumed by openaiShim's messages client;
+  // the native Anthropic SDK (anthropic/bedrock/vertex/foundry, and
+  // github_copilot running a Claude model) forwards unknown body fields to the
+  // API, which 400s with "Extra inputs are not permitted". Only attach it when
+  // this request actually routes through the shim (model-aware for Copilot).
+  const includeShimEffortValue = activeTransportUsesOpenAiShim(options.model);
+
   if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
     // Exclude defer_loading tools from the hash -- the API strips them from the
     // prompt, so they never affect the actual cache key. Including them creates
@@ -1083,6 +1091,11 @@ export async function* queryModel(
         output_config: outputConfig,
       }),
       ...(speed !== undefined && { speed }),
+      // Pass through the user-selected effort level so OpenAI-compatible shims
+      // (OpenAI/Codex reasoning_effort, DeepSeek reasoning_effort, Kimi
+      // thinking.effort) can apply it per-request. Gated to shim transports —
+      // native Anthropic rejects it as an unknown body field.
+      ...(includeShimEffortValue && { effortValue: options.effortValue }),
     };
   };
 

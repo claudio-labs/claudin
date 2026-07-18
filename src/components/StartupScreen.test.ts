@@ -121,9 +121,9 @@ describe('detectProvider — direct vendor endpoints', () => {
     expect(detectProvider().name).toBe('DeepSeek')
   })
 
-  test('api.kimi.com labels as Moonshot AI - Kimi Code', () => {
+  test('api.kimi.com labels as Moonshot AI', () => {
     setupOpenAIMode('https://api.kimi.com/coding/v1', 'kimi-for-coding')
-    expect(detectProvider().name).toBe('Moonshot AI - Kimi Code')
+    expect(detectProvider().name).toBe('Moonshot AI')
   })
 
   test('api.moonshot.cn labels as Moonshot AI - API', () => {
@@ -153,9 +153,9 @@ describe('detectProvider — rawModel fallback when URL is generic', () => {
     expect(detectProvider().name).toBe('DeepSeek')
   })
 
-  test('custom proxy + kimi-for-coding falls back to Moonshot AI - Kimi Code', () => {
+  test('custom proxy + kimi-for-coding falls back to Moonshot AI', () => {
     setupOpenAIMode('https://my-proxy.example/v1', 'kimi-for-coding')
-    expect(detectProvider().name).toBe('Moonshot AI - Kimi Code')
+    expect(detectProvider().name).toBe('Moonshot AI')
   })
 
   test('custom proxy + kimi-k2 falls back to Moonshot AI - API', () => {

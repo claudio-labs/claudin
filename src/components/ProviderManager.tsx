@@ -55,10 +55,16 @@ import { MigrationBanner } from './MigrationBanner.js'
 import TextInput from './TextInput.js'
 import { useCodexOAuthFlow } from './useCodexOAuthFlow.js'
 import { useXaiOAuthFlow } from './useXaiOAuthFlow.js'
+import { useKimiOAuthFlow } from './useKimiOAuthFlow.js'
 import {
   clearXaiCredentials,
   readXaiCredentials,
 } from '../utils/xaiCredentials.js'
+import {
+  clearKimiCredentials,
+  readKimiCredentials,
+} from '../utils/kimiCredentials.js'
+import { KIMI_CODE_MODEL_LIST } from '../services/api/kimiOAuthShared.js'
 import {
   formatMigrationReport,
   legacyClaudeDirExists,
@@ -87,6 +93,8 @@ type Screen =
   | 'select-openai-model'
   | 'codex-oauth'
   | 'xai-oauth'
+  | 'kimi-oauth'
+  | 'kimi-auth-choice'
   | 'github-onboard'
   | 'anthropic-auth-choice'
   | 'anthropic-oauth'
@@ -198,6 +206,13 @@ const XAI_OAUTH_PROVIDER_NAME = 'xAI / Grok (OAuth)'
 // Default model after sign-in; user can swap via /model. grok-4 is the
 // current flagship — see plan ~/.claudin/plans/luminous-popping-clarke.md.
 const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
+
+// Kimi Code OAuth device-flow: openai_compat transport, tokens in secure
+// storage (see docs/tech/kimi-code/wire-format.md). Defaults mirror the
+// OAuth branch of the unified Moonshot AI preset.
+const KIMI_OAUTH_PROVIDER_NAME = 'Moonshot AI'
+const KIMI_OAUTH_PROVIDER_MODEL = KIMI_CODE_MODEL_LIST
+const KIMI_OAUTH_BASE_URL = 'https://api.kimi.com/coding/v1'
 
 function toDraft(profile: ProviderProfile): ProviderDraft {
   return {
@@ -376,6 +391,66 @@ function isCodexOAuthProfile(
   return Boolean(profile && profileId && profile.id === profileId)
 }
 
+/**
+ * Locate the existing Kimi Code OAuth profile so a re-login UPDATES it (refreshing
+ * the model list, etc.) instead of appending a duplicate. Prefers the profileId
+ * stored with the credentials; falls back to the OAuth-profile signature (coding
+ * host + no static key), mirroring the deletion heuristic below.
+ */
+function findKimiOAuthProfile(
+  profiles: ProviderProfile[],
+  profileId?: string,
+): ProviderProfile | undefined {
+  if (profileId) {
+    const byId = profiles.find(profile => profile.id === profileId)
+    if (byId) return byId
+  }
+  return profiles.find(
+    profile =>
+      profile.provider === 'openai' &&
+      profile.baseUrl === KIMI_OAUTH_BASE_URL &&
+      !profile.apiKey,
+  )
+}
+
+/**
+ * Locate the existing xAI / Grok OAuth profile so a re-login UPDATES it instead
+ * of appending a duplicate. Prefers the profileId stored with the credentials;
+ * falls back to the OAuth-profile signature (xAI base URL + no static key).
+ */
+function findXaiOAuthProfile(
+  profiles: ProviderProfile[],
+  profileId?: string,
+): ProviderProfile | undefined {
+  if (profileId) {
+    const byId = profiles.find(profile => profile.id === profileId)
+    if (byId) return byId
+  }
+  return profiles.find(
+    profile =>
+      profile.provider === 'openai' &&
+      profile.baseUrl === DEFAULT_XAI_BASE_URL &&
+      !profile.apiKey,
+  )
+}
+
+/**
+ * Locate the existing Anthropic OAuth profile so a re-login UPDATES it instead of
+ * appending a duplicate. Anthropic OAuth stores its tokens in the credentials file
+ * (no per-profile id), so match the keyless anthropic profile by signature.
+ */
+function findAnthropicOAuthProfile(
+  profiles: ProviderProfile[],
+  baseUrl: string,
+): ProviderProfile | undefined {
+  return profiles.find(
+    profile =>
+      profile.provider === 'anthropic' &&
+      profile.baseUrl === baseUrl &&
+      !profile.apiKey,
+  )
+}
+
 function CodexOAuthSetup({
   onBack,
   onConfigured,
@@ -527,6 +602,85 @@ function XaiOAuthSetup({
       </Text>
       {status.state === 'starting' ? (
         <Text dimColor>Requesting a device code from xAI...</Text>
+      ) : (
+        <>
+          <Text>
+            Open this URL on any device:{' '}
+            <Text bold>{status.verificationUri}</Text>
+          </Text>
+          <Text>
+            Enter code <Text bold>{status.userCode}</Text>
+          </Text>
+          {status.verificationUriComplete &&
+          status.verificationUriComplete !== status.verificationUri ? (
+            <Text dimColor>
+              Or open this prefilled URL: {status.verificationUriComplete}
+            </Text>
+          ) : null}
+          <Text dimColor>Waiting for you to authorize in the browser...</Text>
+        </>
+      )}
+      <Text dimColor>Press Esc to cancel and go back.</Text>
+    </Box>
+  )
+}
+
+function KimiOAuthSetup({
+  onBack,
+  onConfigured,
+}: {
+  onBack: () => void
+  onConfigured: (
+    tokens: { accessToken: string; refreshToken: string },
+    persistCredentials: (options?: { profileId?: string }) => void,
+  ) => void | Promise<void>
+}): React.ReactNode {
+  const handleAuthenticated = React.useCallback(
+    async (
+      tokens: { accessToken: string; refreshToken: string },
+      persistCredentials: (options?: { profileId?: string }) => void,
+    ) => {
+      await onConfigured(tokens, persistCredentials)
+    },
+    [onConfigured],
+  )
+  useKeybinding('confirm:no', onBack)
+
+  const status = useKimiOAuthFlow({
+    onAuthenticated: handleAuthenticated,
+  })
+
+  if (status.state === 'error') {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="error" bold>
+          Kimi Code OAuth failed
+        </Text>
+        <Text>{status.message}</Text>
+        <Text dimColor>Press Enter or Esc to go back.</Text>
+        <Select
+          options={[
+            {
+              value: 'back',
+              label: 'Back',
+              description: 'Return to Moonshot AI authentication choices',
+            },
+          ]}
+          onChange={onBack}
+          onCancel={onBack}
+          visibleOptionCount={1}
+        />
+      </Box>
+    )
+  }
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        Moonshot AI · Kimi Code
+      </Text>
+      {status.state === 'starting' ? (
+        <Text dimColor>Requesting a device code from Kimi...</Text>
       ) : (
         <>
           <Text>
@@ -1727,7 +1881,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   useKeybinding('confirm:no', () => setScreen('select-preset'), {
     context: 'Settings',
     isActive:
-      screen === 'anthropic-auth-choice' || screen === 'anthropic-oauth',
+      screen === 'anthropic-auth-choice' ||
+      screen === 'anthropic-oauth' ||
+      screen === 'kimi-auth-choice',
+  })
+
+  useKeybinding('confirm:no', () => setScreen('kimi-auth-choice'), {
+    context: 'Settings',
+    isActive: screen === 'kimi-oauth',
   })
 
   function renderPresetSelection(): React.ReactNode {
@@ -1857,13 +2018,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       },
       {
         value: 'moonshotai',
-        label: 'Moonshot AI - API',
-        description: 'Moonshot AI - API endpoint',
-      },
-      {
-        value: 'kimi-code',
-        label: 'Moonshot AI - Kimi Code',
-        description: 'Moonshot AI - Kimi Code Subscription endpoint',
+        label: 'Moonshot AI',
+        description: 'API key or Kimi Code OAuth sign-in',
       },
       {
         value: 'nvidia-nim',
@@ -1942,6 +2098,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
             if (value === 'xai-oauth') {
               setScreen('xai-oauth')
+              return
+            }
+            if (value === 'moonshotai') {
+              setScreen('kimi-auth-choice')
               return
             }
             if (value === 'github-onboard') {
@@ -2036,6 +2196,52 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     )
   }
 
+  function renderKimiAuthChoice(): React.ReactNode {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="remember" bold>
+          Moonshot AI — choose authentication
+        </Text>
+        <Text dimColor>
+          Sign in with your Kimi Code subscription in the browser, or paste a Moonshot AI API key.
+        </Text>
+        <Select
+          options={[
+            {
+              value: 'oauth',
+              label: 'Sign in with web (OAuth)',
+              description:
+                'Open a browser, sign in to Kimi Code, and store tokens in ~/.claudin/.credentials.json',
+            },
+            {
+              value: 'apiKey',
+              label: 'Use API key',
+              description: 'Paste a Moonshot AI API key (sk-…)',
+            },
+            {
+              value: 'back',
+              label: 'Back',
+              description: 'Choose a different provider',
+            },
+          ]}
+          onChange={(value: string) => {
+            if (value === 'oauth') {
+              setScreen('kimi-oauth')
+              return
+            }
+            if (value === 'apiKey') {
+              startCreateFromPreset('moonshotai')
+              return
+            }
+            setScreen('select-preset')
+          }}
+          onCancel={() => setScreen('select-preset')}
+          visibleOptionCount={3}
+        />
+      </Box>
+    )
+  }
+
   function renderAnthropicOAuth(): React.ReactNode {
     // Lazy require to avoid circular import: ConsoleOAuthFlow imports
     // ProviderManager for its `platform_setup` fallback. Resolving the module
@@ -2062,7 +2268,15 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               baseUrl: defaults.baseUrl,
               model: defaults.model,
             }
-            const saved = addProviderProfile(payload, { makeActive: true })
+            // Update the existing keyless Anthropic profile on re-login instead of
+            // appending a duplicate.
+            const existing = findAnthropicOAuthProfile(
+              getProviderProfiles(),
+              defaults.baseUrl,
+            )
+            const saved = existing
+              ? updateProviderProfile(existing.id, payload)
+              : addProviderProfile(payload, { makeActive: true })
             if (!saved) {
               setErrorMessage(
                 'OAuth completed, but the Anthropic profile could not be saved.',
@@ -2070,12 +2284,25 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               setScreen('select-preset')
               return
             }
-            const message = `Anthropic OAuth configured: ${saved.name}`
+            // updateProviderProfile keeps the current active pointer, so make the
+            // (re-)configured Anthropic profile active explicitly when it isn't.
+            const active =
+              existing && activeProfileId !== saved.id
+                ? setActiveProviderProfile(saved.id)
+                : saved
+            if (!active) {
+              setErrorMessage(
+                'OAuth completed, but the Anthropic profile could not be set as the startup provider.',
+              )
+              setScreen('select-preset')
+              return
+            }
+            const message = `Anthropic OAuth configured: ${active.name}`
             refreshProfiles()
             if (mode === 'first-run') {
               onDone({
                 action: 'saved',
-                activeProfileId: saved.id,
+                activeProfileId: active.id,
                 message,
               })
               return
@@ -2515,10 +2742,33 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               apiKey: '',
             }
 
-            const saved = addProviderProfile(payload, { makeActive: true })
+            // Update the existing xAI profile on re-login instead of appending a
+            // duplicate.
+            const existing = findXaiOAuthProfile(
+              getProviderProfiles(),
+              readXaiCredentials()?.profileId,
+            )
+            const saved = existing
+              ? updateProviderProfile(existing.id, payload)
+              : addProviderProfile(payload, { makeActive: true })
+
             if (!saved) {
               setErrorMessage(
                 'xAI OAuth login finished, but the provider profile could not be saved.',
+              )
+              returnToMenu()
+              return
+            }
+
+            // updateProviderProfile keeps the current active pointer, so make the
+            // (re-)configured xAI profile active explicitly when it isn't already.
+            const active =
+              existing && activeProfileId !== saved.id
+                ? setActiveProviderProfile(saved.id)
+                : saved
+            if (!active) {
+              setErrorMessage(
+                'xAI OAuth login finished, but the provider could not be set as the startup provider.',
               )
               returnToMenu()
               return
@@ -2542,7 +2792,84 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             if (mode === 'first-run') {
               onDone({
                 action: 'saved',
-                activeProfileId: saved.id,
+                activeProfileId: active.id,
+                message,
+              })
+              return
+            }
+
+            setStatusMessage(message)
+            setErrorMessage(undefined)
+            returnToMenu()
+          }}
+        />
+      )
+      break
+    case 'kimi-auth-choice':
+      content = renderKimiAuthChoice()
+      break
+    case 'kimi-oauth':
+      content = (
+        <KimiOAuthSetup
+          onBack={() => setScreen('kimi-auth-choice')}
+          onConfigured={async (_tokens, persistCredentials) => {
+            const payload: ProviderProfileInput = {
+              provider: 'openai',
+              name: KIMI_OAUTH_PROVIDER_NAME,
+              baseUrl: KIMI_OAUTH_BASE_URL,
+              model: KIMI_OAUTH_PROVIDER_MODEL,
+              apiKey: '',
+            }
+
+            // Update the existing Kimi profile on re-login (refreshes the model
+            // list) instead of appending a duplicate.
+            const existing = findKimiOAuthProfile(
+              getProviderProfiles(),
+              readKimiCredentials()?.profileId,
+            )
+            const saved = existing
+              ? updateProviderProfile(existing.id, payload)
+              : addProviderProfile(payload, { makeActive: true })
+
+            if (!saved) {
+              setErrorMessage(
+                'Kimi Code OAuth login finished, but the provider profile could not be saved.',
+              )
+              returnToMenu()
+              return
+            }
+
+            // updateProviderProfile keeps the current active pointer, so make the
+            // (re-)configured Kimi profile active explicitly when it isn't already.
+            const active =
+              existing && activeProfileId !== saved.id
+                ? setActiveProviderProfile(saved.id)
+                : saved
+            if (!active) {
+              setErrorMessage(
+                'Kimi Code OAuth login finished, but the provider could not be set as the startup provider.',
+              )
+              returnToMenu()
+              return
+            }
+
+            try {
+              persistCredentials({ profileId: saved.id })
+            } catch (error) {
+              setErrorMessage(
+                error instanceof Error ? error.message : String(error),
+              )
+              returnToMenu()
+              return
+            }
+
+            refreshProfiles()
+            const message = `Kimi Code configured. Claudin switched to it for this session.`
+
+            if (mode === 'first-run') {
+              onDone({
+                action: 'saved',
+                activeProfileId: active.id,
                 message,
               })
               return
@@ -2638,6 +2965,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             targetProfile.baseUrl === DEFAULT_XAI_BASE_URL &&
             !targetProfile.apiKey &&
             storedXaiOAuthProfileId === profileId
+          const storedKimiOAuthProfileId = readKimiCredentials()?.profileId
+          const deletedKimiOAuthProfile =
+            targetProfile?.provider === 'openai' &&
+            targetProfile.baseUrl === KIMI_OAUTH_BASE_URL &&
+            !targetProfile.apiKey &&
+            storedKimiOAuthProfileId === profileId
           // Snapshot whether the deletion will change the resolved active
           // profile for this session — used below to push a fresh
           // mainLoopModel so the next request doesn't go out with a
@@ -2675,6 +3008,14 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               if (!cleared.success) {
                 warnings.push(
                   cleared.warning ?? 'could not clear xAI OAuth credentials',
+                )
+              }
+            }
+            if (deletedKimiOAuthProfile) {
+              const cleared = clearKimiCredentials()
+              if (!cleared.success) {
+                warnings.push(
+                  cleared.warning ?? 'could not clear Kimi Code OAuth credentials',
                 )
               }
             }

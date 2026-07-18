@@ -118,7 +118,7 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       else if (/azure/i.test(resolvedBaseUrl)) name = 'Azure OpenAI'
       else if (/nvidia/i.test(resolvedBaseUrl)) name = 'NVIDIA NIM'
       else if (/minimax/i.test(resolvedBaseUrl)) name = 'MiniMax'
-      else if (/api\.kimi\.com/i.test(resolvedBaseUrl)) name = 'Moonshot AI - Kimi Code'
+      else if (/api\.kimi\.com/i.test(resolvedBaseUrl)) name = 'Moonshot AI'
       else if (/moonshot/i.test(resolvedBaseUrl)) name = 'Moonshot AI - API'
       else if (/deepseek/i.test(resolvedBaseUrl)) name = 'DeepSeek'
       else if (/mistral/i.test(resolvedBaseUrl)) name = 'Mistral'
@@ -129,7 +129,7 @@ export function detectProvider(modelOverride?: string): { name: string; model: s
       else if (/nvidia/i.test(rawModel)) name = 'NVIDIA NIM'
       else if (/minimax/i.test(rawModel)) name = 'MiniMax'
       else if (/\bkimi-for-coding\b/i.test(rawModel))
-        name = 'Moonshot AI - Kimi Code'
+        name = 'Moonshot AI'
       else if (/\bkimi-k/i.test(rawModel) || /moonshot/i.test(rawModel))
         name = 'Moonshot AI - API'
       else if (/deepseek/i.test(rawModel)) name = 'DeepSeek'

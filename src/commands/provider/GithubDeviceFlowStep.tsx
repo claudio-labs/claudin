@@ -35,14 +35,14 @@ export function persistCopilotProfile(
   token: string,
   model: string = GITHUB_DEFAULT_MODEL,
   baseUrl?: string,
-): { mode: 'updated' | 'created' } {
+): { mode: 'updated' | 'created' | 'failed' } {
   const existing = getProviderProfiles().find(
     profile =>
       profile.provider === 'openai' &&
       profile.extras?.githubToken !== undefined,
   )
   if (existing) {
-    updateProviderProfile(existing.id, {
+    const saved = updateProviderProfile(existing.id, {
       provider: 'openai',
       name: existing.name,
       // A fresh sign-in's endpoint wins: switching github.com ↔ enterprise
@@ -55,10 +55,13 @@ export function persistCopilotProfile(
         githubToken: token,
       },
     })
+    // A rejected save must not be reported as success — the caller shows an
+    // error and the profile stays as-is rather than silently half-configured.
+    if (!saved) return { mode: 'failed' }
     setActiveProviderProfile(existing.id)
     return { mode: 'updated' }
   }
-  addProviderProfile(
+  const saved = addProviderProfile(
     {
       provider: 'openai',
       name: 'GitHub Copilot',
@@ -71,6 +74,7 @@ export function persistCopilotProfile(
     },
     { makeActive: true },
   )
+  if (!saved) return { mode: 'failed' }
   return { mode: 'created' }
 }
 
@@ -119,7 +123,12 @@ export function GithubDeviceFlowStep({
         setStep('error')
         return
       }
-      persistCopilotProfile(token, model, options?.baseUrl)
+      const persisted = persistCopilotProfile(token, model, options?.baseUrl)
+      if (persisted.mode === 'failed') {
+        setErrorMsg('Could not save the GitHub Copilot provider profile.')
+        setStep('error')
+        return
+      }
       // Warm the live model catalog now that the Copilot profile is active.
       prefetchCopilotModelCatalog()
       onChangeAPIKey?.()

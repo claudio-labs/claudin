@@ -219,7 +219,9 @@ export const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   // Moonshot AI direct API (api.moonshot.ai/v1). Values from Moonshot's
   // published model card — all K2 tier share 256K context. Prefix matching
   // in lookupByKey catches variants like "kimi-k2.6-preview".
+  'k3':                     1_048_576,
   'kimi-for-coding':          262_144,
+  'kimi-for-coding-highspeed': 262_144,
   'kimi-k2.6':                262_144,
   'kimi-k2':                  131_072,
   'kimi-k2-instruct':         131_072,
@@ -392,7 +394,9 @@ export const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
   'glm-4.7':                   16_384,
 
   // Moonshot AI direct API
+  'k3':                        32_768,
   'kimi-for-coding':           32_768,
+  'kimi-for-coding-highspeed': 32_768,
   'kimi-k2.6':                 32_768,
   'kimi-k2':                   32_768,
   'kimi-k2-instruct':          32_768,

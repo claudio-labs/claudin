@@ -36,6 +36,26 @@ export function isXaiOAuthBaseUrl(baseUrl: string | undefined): boolean {
     return false
   }
 }
+
+/**
+ * Detects whether a profile baseUrl points at the Kimi Code coding endpoint.
+ *
+ * Transport stays `openai_compat` for Kimi Code; this helper lets the shim swap
+ * in the rotated OAuth access token (Bearer) and inject the required `X-Msh-*`
+ * device headers + `kimi-code-cli` User-Agent without a new `Transport` entry.
+ * Exact host + `/coding` path prefix, co-extensive with
+ * {@link isMoonshotCompatibleBaseUrl}: a bare `api.kimi.com` or a non-coding
+ * path must NOT trigger the OAuth token-swap / device-header injection.
+ */
+export function isKimiCodeBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const { hostname, pathname } = new URL(baseUrl)
+    return hostname === 'api.kimi.com' && pathname.startsWith('/coding')
+  } catch {
+    return false
+  }
+}
 /** Default GitHub Copilot API model when user selects copilot / github:copilot */
 export const DEFAULT_GITHUB_MODELS_API_MODEL = 'gpt-4o'
 const CODEX_ALIAS_MODELS: Record<
@@ -93,7 +113,7 @@ const CODEX_ALIAS_MODELS: Record<
 } as const
 
 type CodexAlias = keyof typeof CODEX_ALIAS_MODELS
-type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh'
+export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 const OPENAI_CODEX_SHORTCUT_ALIASES = new Set(['codexplan', 'codexspark'])
 
@@ -186,7 +206,7 @@ function readNestedString(
 function parseReasoningEffort(value: string | undefined): ReasoningEffort | undefined {
   if (!value) return undefined
   const normalized = value.trim().toLowerCase()
-  if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'xhigh') {
+  if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'xhigh' || normalized === 'max') {
     return normalized
   }
   return undefined

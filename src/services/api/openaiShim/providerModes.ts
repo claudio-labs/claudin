@@ -81,7 +81,7 @@ export function isDeepSeekBaseUrl(baseUrl: string | undefined): boolean {
 }
 
 export function normalizeDeepSeekReasoningEffort(
-  effort: 'low' | 'medium' | 'high' | 'xhigh',
+  effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
 ): 'high' | 'max' {
-  return effort === 'xhigh' ? 'max' : 'high'
+  return effort === 'xhigh' || effort === 'max' ? 'max' : 'high'
 }
