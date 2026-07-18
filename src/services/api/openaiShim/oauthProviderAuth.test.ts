@@ -1,7 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 import type { ResolvedProvider } from '../activeProvider.js'
 import {
@@ -16,18 +13,63 @@ import {
   resolveOAuthProviderAuth,
 } from './oauthProviderAuth.js'
 
-const originalConfigDir = process.env.CLAUDIN_CONFIG_DIR
+// This suite drives real credential round-trips (saveKimi/saveXai → resolve),
+// so it needs a working secure storage. Many sibling test files mock.module
+// secureStorage and Bun applies those overrides for the whole run, so relying
+// on the real fs-backed store makes us a non-deterministic victim. Instead we
+// own an in-memory store, re-applied in beforeEach so no earlier file's mock
+// can shadow it, and restored in afterAll so we don't leak it onward.
+const realSecureStorage = {
+  ...(await import('../../../utils/secureStorage/index.js')),
+}
+let storageState: Record<string, unknown> = {}
+
+function mockSecureStorage() {
+  const factory = () => ({
+    ...realSecureStorage,
+    getSecureStorage: () => ({
+      name: 'mock-secure-storage',
+      read: () => storageState,
+      readAsync: async () => storageState,
+      update: (next: Record<string, unknown>) => {
+        storageState = next
+        return { success: true }
+      },
+      delete: () => {
+        storageState = {}
+        return true
+      },
+    }),
+  })
+  mock.module('../../../utils/secureStorage/index.js', factory)
+  mock.module('src/utils/secureStorage/index.js', factory)
+}
+
+const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+const originalArgv = [...process.argv]
 
 beforeEach(() => {
-  process.env.CLAUDIN_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'oauth-auth-'))
-  // Module-level Kimi credential cache — reset so a throwaway dir isn't shadowed
-  // by a blob cached in a previous test (TTL is 30s).
+  // A sibling test may leak bare mode (CLAUDE_CODE_SIMPLE truthy or --bare in
+  // argv), which makes saveKimi/saveXaiCredentials short-circuit to {success:
+  // false} before touching storage — so clear it, else every save no-ops here.
+  delete process.env.CLAUDE_CODE_SIMPLE
+  process.argv = originalArgv.filter(arg => arg !== '--bare')
+  storageState = {}
+  mockSecureStorage()
+  // Module-level Kimi credential cache — reset so a stored blob isn't shadowed
+  // by one cached in a previous test (TTL is 30s).
   invalidateKimiCredentialCache()
 })
 
 afterEach(() => {
-  if (originalConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
-  else process.env.CLAUDIN_CONFIG_DIR = originalConfigDir
+  process.argv = originalArgv
+  if (originalSimple === undefined) delete process.env.CLAUDE_CODE_SIMPLE
+  else process.env.CLAUDE_CODE_SIMPLE = originalSimple
+})
+
+afterAll(() => {
+  mock.module('../../../utils/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/utils/secureStorage/index.js', () => realSecureStorage)
 })
 
 function profile(overrides: Partial<ResolvedProvider>): ResolvedProvider {
