@@ -4,6 +4,7 @@ import { removeSandboxViolationTags } from 'src/utils/sandbox/sandbox-ui-utils.j
 import FullWidthRow from '../../components/design-system/FullWidthRow.js';
 import { KeyboardShortcutHint } from '../../components/design-system/KeyboardShortcutHint.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
+import { stripOutputMarkers } from '../../outputFilter/Bash/markers.js';
 import { OutputLine } from '../../components/shell/OutputLine.js';
 import { ShellTimeDisplay } from '../../components/shell/ShellTimeDisplay.js';
 import { Box, Text } from '../../ink.js';
@@ -65,7 +66,7 @@ function extractCwdResetWarning(stderr: string): {
   };
 }
 export default function BashToolResultMessage(t0) {
-  const $ = _c(34);
+  const $ = _c(36);
   const {
     content: t1,
     verbose,
@@ -79,7 +80,20 @@ export default function BashToolResultMessage(t0) {
     noOutputExpected,
     backgroundTaskId
   } = t1;
-  const stdout = t2 === undefined ? "" : t2;
+  // Display-only: the UI stdout is the model-facing string, which the bash
+  // output filter wraps in <bash-output-filtered>/<bash-output-rewritten> tags.
+  // Show the bare output, not the raw XML wrapper (affects the model-initiated
+  // Bash tool and the user `!command` path alike — both render here). Memoized
+  // on the raw stdout so the regex runs only when the output changes, not on
+  // every re-render (spinner/progress ticks) of a large result row.
+  let stdout;
+  if ($[34] !== t2) {
+    stdout = stripOutputMarkers(t2 === undefined ? "" : t2);
+    $[34] = t2;
+    $[35] = stdout;
+  } else {
+    stdout = $[35];
+  }
   const stdErrWithViolations = t3 === undefined ? "" : t3;
   let T0;
   let cwdResetWarning;
