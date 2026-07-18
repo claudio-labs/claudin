@@ -204,6 +204,13 @@ when you edit `scripts/build.ts`). The two that bite while editing `src/`:
    compiled binary's VFS → `Cannot find module` at runtime in a dir without
    `node_modules`. The Node bundle (`dist/cli.mjs`) masks it via on-disk fallback;
    the standalone binary does not.
+5. **Never name a local `jsx`/`jsxs`/`Fragment` in a `.tsx`.** The minifier renames
+   locals to `$`-prefixed names, and a local `jsx` collides with the automatic
+   JSX-runtime factory (`$jsx`). The first JSX in that scope then calls the shadowed
+   local → `TypeError: $jsx is not a function` **at runtime only** — `bun run build`
+   AND `typecheck` both pass, so it ships silently and fires when the code path runs
+   (PR #18: a `jsx` local in `processBashCommand.tsx` crashed the entire `!command`
+   render — it flashed then vanished). Name it anything else (`backgroundJsx`).
 
 ## Anti-Patterns (Claudin-Specific)
 
@@ -217,3 +224,4 @@ when you edit `scripts/build.ts`). The two that bite while editing `src/`:
 | `console.log` in production | Pollutes TUI output | `logError()` / `logForDebugging()` |
 | Raw `new Error(msg)` | No typed catch | Subclass from `src/utils/errors.ts` |
 | `process.exit(0)` without cleanup | Skips graceful shutdown | Use abort signals |
+| local var named `jsx`/`jsxs` | minifier → `$jsx`, shadows JSX runtime factory → `$jsx is not a function` at runtime (build + typecheck pass) | rename (e.g. `backgroundJsx`) |

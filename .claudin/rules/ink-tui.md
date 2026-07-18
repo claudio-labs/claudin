@@ -4,6 +4,7 @@ paths:
   - "src/components/**"
   - "src/screens/**"
   - "src/native-ts/**"
+  - "src/hooks/useTextInput.ts"
 ---
 # Ink / TUI Renderer — Claudin Development Rules
 
@@ -107,4 +108,33 @@ the right one.
   add a field to an existing destructure, or change a string/expression inside an
   already-memoized branch. If a change genuinely needs new memoized state, edit
   the pre-compiler source if one exists, or rebuild — never hand-write new `_c`
-  slots.
+  slots. (If you must add one memoized value by hand, the safe pattern is: bump
+  `_c(N)` by the slot count you add, use the new trailing indices, and gate with
+  `if ($[k] !== dep) { v = compute(); $[k] = dep; $[k+1] = v } else { v = $[k+1] }`
+  — PR #18 added `stripOutputMarkers` memoization to `BashToolResultMessage.tsx`
+  this way, `_c(34)`→`_c(36)`.)
+
+## 7. `useTextInput`'s local mirror only re-syncs on a PROP change
+
+- `src/hooks/useTextInput.ts` keeps a **local text/cursor mirror**
+  (`renderState`/`liveValueRef`/`liveOffsetRef`) so consecutive keystrokes advance
+  immediately even before the controlled parent's `value` commits. It re-syncs FROM
+  the parent **only when the `value` or `externalOffset` prop actually changes** —
+  the `useLayoutEffect` gated by `lastSeenPropsRef` (~L125-138). `setValue` fires
+  `onChange` only when the text differs and `onOffsetChange` only when the offset
+  differs.
+- **Trap:** if the parent's `onChange` *discards* a keystroke (e.g.
+  `PromptInput.tsx` consuming the leading `!`/mode char as a mode toggle and
+  `return`ing WITHOUT `trackAndSetInput`), the `value` prop stays unchanged. If the
+  cursor op for that keystroke also doesn't move the offset, **neither prop changes,
+  the mirror never re-syncs, and the discarded char lingers** in the buffer. This is
+  exactly what the old mode-entry `cursor.insert('!').left()` did: `.left()` pinned
+  the offset at 0, so `onOffsetChange` never fired; the `!` stayed and every
+  following char inserted in front of it, pushing it to the tail
+  (`git status!` → `unknown option 'branch!'`). Removing `.left()` (PR #18) let the
+  offset advance 0→1, firing the re-sync that clears the consumed char.
+- **Rule:** when a keystroke is meant to be consumed/discarded at the parent, make
+  sure **some prop the mirror watches actually changes** (value or offset) so it
+  re-syncs — do not pin the offset. Verify a mode-char change end-to-end
+  (`setValue` → parent `onChange`/`onOffsetChange` → prop change → `useLayoutEffect`
+  re-sync), not just the local cursor math.
