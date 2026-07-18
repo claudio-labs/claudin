@@ -31,14 +31,14 @@ export function UserBashInputMessage(t0) {
   const t3 = addMargin ? 1 : 0;
   let t4;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = <Text color="bashBorder">! </Text>;
+    t4 = <Text bold={true} color="bashBorder">Bash</Text>;
     $[2] = t4;
   } else {
     t4 = $[2];
   }
   let t5;
   if ($[3] !== input) {
-    t5 = <Text color="text">{input}</Text>;
+    t5 = <Text color="text">({input})</Text>;
     $[3] = input;
     $[4] = t5;
   } else {
@@ -46,7 +46,7 @@ export function UserBashInputMessage(t0) {
   }
   let t6;
   if ($[5] !== t3 || $[6] !== t5) {
-    t6 = <Box flexDirection="row" marginTop={t3} backgroundColor="bashMessageBackgroundColor" paddingRight={1}>{t4}{t5}</Box>;
+    t6 = <Box flexDirection="row" marginTop={t3}>{t4}{t5}</Box>;
     $[5] = t3;
     $[6] = t5;
     $[7] = t6;

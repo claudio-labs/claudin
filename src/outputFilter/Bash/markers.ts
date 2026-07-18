@@ -9,6 +9,20 @@ const MAX_ATTR_LEN = 200;
 export const ALREADY_WRAPPED_RE =
   /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;
 
+/** Display-only inverse of {@link wrapStdoutWithMarkers}: strips the outer
+ * `<bash-output-filtered …>` / `<bash-output-rewritten …>` wrapper and returns
+ * just the body. The wrapped form is model-facing (it discloses the rewrite /
+ * filter to the model); the TUI must render the bare output, not the raw XML tag.
+ * Anchored to the whole string so body content that merely contains a tag-like
+ * substring is untouched. Idempotent — unwrapped input passes through. */
+const WRAPPED_OUTPUT_RE =
+  /^\s*<bash-output-(?:filtered|rewritten)(?:\s[^>]*)?>([\s\S]*)<\/bash-output-(?:filtered|rewritten)>\s*$/;
+
+export function stripOutputMarkers(stdout: string): string {
+  const match = WRAPPED_OUTPUT_RE.exec(stdout);
+  return match ? match[1]! : stdout;
+}
+
 function truncateAttr(value: string): string {
   // Truncate the raw value BEFORE escaping so the cut can never land inside
   // an escape entity (`&quo…`). The escaped result may slightly exceed

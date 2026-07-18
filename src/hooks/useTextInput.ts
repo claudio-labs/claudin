@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { isInputModeCharacter } from 'src/components/PromptInput/inputModes.js'
 import { useNotifications } from 'src/context/notifications.js'
 import stripAnsi from 'strip-ansi'
 import { markBackslashReturnUsed } from '../commands/terminalSetup/terminalSetup.js'
@@ -491,9 +490,17 @@ export function useTextInput({
                 // eslint-disable-next-line custom-rules/no-lookbehind-regex -- .replace(re, str) on 1-2 char keystrokes: no-match returns same string (Object.is), regex never runs
                 .replace(/(?<=[^\\\r\n])\r$/, '')
                 .replace(/\r/g, '\n')
-              if (cursor.isAtStart() && isInputModeCharacter(input)) {
-                return cursor.insert(text).left()
-              }
+              // Do NOT special-case a mode character (`!`) typed at the start
+              // with `.insert(text).left()`. The parent (PromptInput) consumes
+              // that keystroke as a mode toggle and discards it WITHOUT changing
+              // its `value` prop (still ''). This hook only re-syncs its local
+              // mirror from the parent when `value`/`offset` change; `.left()`
+              // pins the offset at 0, so `onOffsetChange` never fires, the mirror
+              // never re-syncs, and the discarded `!` lingers in the buffer with
+              // the caret in front of it — every following char lands before it,
+              // pushing `!` to the tail (`git status!` → "unknown option").
+              // Inserting normally advances the offset, which triggers the
+              // re-sync that clears the consumed `!`.
               return cursor.insert(text)
             }
           }

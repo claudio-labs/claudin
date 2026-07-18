@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { wrapStdoutWithMarkers } from "./markers.js";
+import { stripOutputMarkers, wrapStdoutWithMarkers } from "./markers.js";
 import type { PipelineResult, PreExecPlan } from "./types.js";
 
 const NO_FILTER_PLAN: PreExecPlan = {
@@ -122,5 +122,70 @@ describe("wrapStdoutWithMarkers", () => {
     const result = wrapStdoutWithMarkers("output", plan, null);
     // Attribute should be truncated to ~200 chars + ellipsis
     expect(result).toContain("…");
+  });
+});
+
+describe("stripOutputMarkers", () => {
+  const REWRITE_PLAN: PreExecPlan = {
+    effectiveCommand: "git status --porcelain --branch",
+    filter: null,
+    rewrite: { from: "git status", to: "git status --porcelain --branch" },
+  };
+  const FILTER_PLAN: PreExecPlan = {
+    effectiveCommand: "ls -la",
+    filter: { name: "ls", matchCommand: /^ls$/ },
+    rewrite: null,
+  };
+  const PIPELINE_RESULT: PipelineResult = {
+    body: "[d] .",
+    applied: ["ls"],
+    shortCircuited: false,
+    reductionPct: 73,
+    originalLines: 39,
+    bodyLines: 39,
+  };
+
+  test("unwraps a bash-output-rewritten wrapper to its body", () => {
+    const wrapped = wrapStdoutWithMarkers("## main...origin/main", REWRITE_PLAN, null);
+    expect(wrapped).toContain("<bash-output-rewritten");
+    expect(stripOutputMarkers(wrapped)).toBe("## main...origin/main");
+  });
+
+  test("unwraps a bash-output-filtered wrapper to its body", () => {
+    const wrapped = wrapStdoutWithMarkers("[d] .", FILTER_PLAN, PIPELINE_RESULT);
+    expect(wrapped).toContain("<bash-output-filtered");
+    expect(stripOutputMarkers(wrapped)).toBe("[d] .");
+  });
+
+  test("round-trips a rewrite wrapper: strip(wrap(body)) === body", () => {
+    // Rewrite-only wrapping preserves the raw stdout as the body (a filter
+    // pipeline would substitute pipelineResult.body instead — covered above).
+    const body = "line one\nline two\n";
+    const wrapped = wrapStdoutWithMarkers(body, REWRITE_PLAN, null);
+    expect(stripOutputMarkers(wrapped)).toBe(body);
+  });
+
+  test("passes through output that has no wrapper", () => {
+    expect(stripOutputMarkers("plain output")).toBe("plain output");
+    expect(stripOutputMarkers("")).toBe("");
+  });
+
+  test("is idempotent (already-unwrapped stays unwrapped)", () => {
+    const body = "## main...origin/main";
+    const wrapped = wrapStdoutWithMarkers(body, REWRITE_PLAN, null);
+    const once = stripOutputMarkers(wrapped);
+    expect(stripOutputMarkers(once)).toBe(once);
+  });
+
+  test("leaves a tag-like substring in the body untouched (anchored)", () => {
+    // Not a real wrapper — the tag is only in the middle of the body, so the
+    // whole-string anchor must not match and strip it.
+    const body = "before <bash-output-filtered original=''>x</bash-output-filtered> after";
+    expect(stripOutputMarkers(body)).toBe(body);
+  });
+
+  test("tolerates surrounding whitespace around the wrapper", () => {
+    const wrapped = `\n  ${wrapStdoutWithMarkers("body", REWRITE_PLAN, null)}  \n`;
+    expect(stripOutputMarkers(wrapped)).toBe("body");
   });
 });

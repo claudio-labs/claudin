@@ -34,8 +34,12 @@ export async function processBashCommand(inputString: string, precedingInputBloc
     })
   });
 
-  // ctrl+b to background indicator
-  let jsx: React.ReactNode;
+  // ctrl+b to background indicator. NB: do NOT name this local `jsx` — the
+  // bundler minifies it to `$jsx`, which collides with the auto-imported JSX
+  // runtime factory of the same name and shadows it inside this function,
+  // throwing "TypeError: $jsx is not a function" on the first setToolJSX call
+  // (the entire bash-mode `!command` path silently failed to render).
+  let backgroundJsx: React.ReactNode;
 
   // Just show initial UI
   setToolJSX({
@@ -47,7 +51,7 @@ export async function processBashCommand(inputString: string, precedingInputBloc
       ...context,
       // TODO: Clean up this hack
       setToolJSX: _ => {
-        jsx = _?.jsx;
+        backgroundJsx = _?.jsx;
       }
     };
 
@@ -58,7 +62,7 @@ export async function processBashCommand(inputString: string, precedingInputBloc
       setToolJSX({
         jsx: <>
             <BashModeProgress input={inputString!} progress={progress.data} verbose={context.options.verbose} />
-            {jsx}
+            {backgroundJsx}
           </>,
         shouldHidePromptInput: false,
         showSpinner: false
