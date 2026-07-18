@@ -21,6 +21,7 @@ import { registerServerCommand } from './commands/server.js';
 import { registerSetupTokenCommand } from './commands/setupToken.js';
 import { registerSshCommand } from './commands/ssh.js';
 import { registerUpdateCommand } from './commands/update.js';
+import { registerWorkflowCommand } from './commands/workflow.js';
 
 export interface RegisterSubcommandsDeps {
   pendingConnect: PendingConnect | undefined;
@@ -55,6 +56,7 @@ export function registerSubcommands(
   registerDoctorCommand(program);
   registerUpdateCommand(program);
   registerInstallCommand(program);
+  registerWorkflowCommand(program);
 
   return program;
 }
