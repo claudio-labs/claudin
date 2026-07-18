@@ -28,6 +28,14 @@ export const OPENAI_EFFORT_LEVELS = [
 
 export type OpenAIEffortLevel = typeof OPENAI_EFFORT_LEVELS[number]
 
+export const KIMI_EFFORT_LEVELS = [
+  'low',
+  'high',
+  'max',
+] as const
+
+export type KimiEffortLevel = typeof KIMI_EFFORT_LEVELS[number]
+
 /**
  * Sentinel effort value meaning "don't pin an effort level — let the server
  * scale per request". Resolves to no `effort` field on the API request
@@ -43,6 +51,22 @@ export function isAdaptiveEffort(value: unknown): value is AdaptiveEffort {
   return value === ADAPTIVE_EFFORT
 }
 
+/**
+ * Kimi Code "K3" supports three discrete thinking-effort levels on its
+ * OpenAI-compatible `/coding/v1/chat/completions` endpoint:
+ * `thinking: { type: 'enabled', effort: 'low' | 'high' | 'max', keep: 'all' }`.
+ * Other Kimi models (kimi-for-coding, etc.) expose thinking as on/off only.
+ */
+function isKimiEffortModel(model: string): boolean {
+  const m = model.toLowerCase()
+  // Provider-qualified aliases from /model discovery or manual input.
+  return m === 'k3' || m.endsWith('/k3')
+}
+
+export function modelUsesKimiEffort(model: string): boolean {
+  return isKimiEffortModel(model)
+}
+
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports the effort parameter.
 export function modelSupportsEffort(model: string): boolean {
   const m = model.toLowerCase()
@@ -52,6 +76,10 @@ export function modelSupportsEffort(model: string): boolean {
   const supported3P = get3PModelCapabilityOverride(model, 'effort')
   if (supported3P !== undefined) {
     return supported3P
+  }
+  // Kimi Code K3 has three native thinking-effort levels (Low/High/Max).
+  if (isKimiEffortModel(model)) {
+    return true
   }
   if (modelUsesOpenAIEffort(model) && supportsCodexReasoningEffort(model)) {
     return true
@@ -87,6 +115,10 @@ export function modelSupportsMaxEffort(model: string): boolean {
   if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
   }
+  // Kimi Code K3 exposes Low/High/Max thinking effort.
+  if (isKimiEffortModel(model)) {
+    return true
+  }
   return false
 }
 
@@ -110,9 +142,12 @@ export function modelUsesOpenAIEffort(model: string): boolean {
   return provider === 'openai' || provider === 'codex'
 }
 
-export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIEffortLevel[] {
+export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIEffortLevel[] | KimiEffortLevel[] {
   if (!modelSupportsEffort(model)) {
     return []
+  }
+  if (modelUsesKimiEffort(model)) {
+    return [...KIMI_EFFORT_LEVELS] as KimiEffortLevel[]
   }
   if (modelUsesOpenAIEffort(model)) {
     return [...OPENAI_EFFORT_LEVELS] as OpenAIEffortLevel[]
@@ -329,6 +364,16 @@ export function resolveAppliedEffort(
   if (isAdaptiveEffort(resolved)) {
     return undefined
   }
+  // Kimi Code K3 only accepts low/high/max thinking effort. Normalize before
+  // the generic xhigh/max downgrade rules so xhigh maps up to max, not down.
+  if (isKimiEffortModel(model) && typeof resolved === 'string') {
+    if (resolved === 'xhigh') {
+      return 'max'
+    }
+    if (resolved === 'medium') {
+      return 'low'
+    }
+  }
   // API rejects 'max' on non-Opus-4.6 models — downgrade to 'high'.
   if (resolved === 'max' && !modelSupportsMaxEffort(model)) {
     return 'high'
@@ -499,6 +544,11 @@ export function getDefaultEffortForModel(
   // Default effort on Opus 4.6/4.7 to medium for Pro.
   // Max/Team also get medium when the tengu_grey_step2 config is enabled.
   const lowerModel = model.toLowerCase()
+
+  // Kimi Code K3 defaults to Max thinking effort (matches the official CLI).
+  if (isKimiEffortModel(model)) {
+    return 'max'
+  }
 
   // Opt-in: coding/high-autonomy loops on Opus 4.8 default to xhigh. The 4.8
   // `high` was recalibrated to think less than 4.7's, so without this the agent

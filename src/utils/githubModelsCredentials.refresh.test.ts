@@ -11,6 +11,7 @@ let mockProviderProfile: ProviderProfile | null = null
 const realConfig = { ...(await import('./config.js')) }
 const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
 const realDeviceFlow = { ...(await import('../services/github/deviceFlow.js')) }
+const realSecureStorage = { ...(await import('./secureStorage/index.js')) }
 
 mock.module('./config.js', () => ({
   ...realConfig,
@@ -29,6 +30,12 @@ afterAll(() => {
   mock.module('./config.js', () => realConfig)
   mock.module('./providerProfiles.js', () => realProviderProfiles)
   mock.module('../services/github/deviceFlow.js', () => realDeviceFlow)
+  // beforeEach mocks ./secureStorage/index.js but nothing restored it, so the
+  // final in-memory stub leaked into every later file's real getSecureStorage()
+  // (credential save/read round-trips returned undefined). Restore both the
+  // relative form used here and the src/... alias other files import.
+  mock.module('./secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/utils/secureStorage/index.js', () => realSecureStorage)
 })
 
 import { invalidateActiveProviderCache } from '../services/api/activeProvider.js'

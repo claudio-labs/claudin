@@ -40,9 +40,9 @@ type TestProjectConfig = {
 type MockGlobalConfigState = {
   projects?: Record<string, TestProjectConfig>
   activeProviderProfileId?: string
-  providerProfiles?: Array<{ id: string; name: string }>
-  openaiAdditionalModelOptionsCacheByProfile?: Record<string, string[]>
-  openaiAdditionalModelOptionsCache?: string[]
+  providerProfiles?: Array<{ id: string; name: string; [key: string]: unknown }>
+  openaiAdditionalModelOptionsCacheByProfile?: Record<string, unknown[]>
+  openaiAdditionalModelOptionsCache?: unknown[]
   [key: string]: unknown
 }
 let mockConfigState: MockGlobalConfigState = {}
@@ -829,6 +829,188 @@ describe('runClaudinStartupMigrations — dangling provider pointer heal', () =>
     expect(cfg().activeProviderProfileId).toBe('existing_profile')
     expect(
       result.notices.some(n => n.includes('global provider default')),
+    ).toBe(false)
+  })
+})
+
+describe('runClaudinStartupMigrations — Kimi Code model list heal', () => {
+  const cfg = () => mockConfigState
+
+  function presetKimi(
+    model: string,
+    opts?: { apiKey?: string; baseUrl?: string },
+  ): void {
+    const profile = {
+      id: 'kimi_profile',
+      name: 'Moonshot AI',
+      provider: 'openai' as const,
+      baseUrl: opts?.baseUrl ?? 'https://api.kimi.com/coding/v1',
+      model,
+      ...(opts?.apiKey ? { apiKey: opts.apiKey } : {}),
+    }
+    // store.profiles = sanitized view (getProviderProfiles); cfg().providerProfiles
+    // = raw array the heal rewrites.
+    store.profiles = [profile]
+    store.active = profile
+    cfg().providerProfiles = [{ ...profile }]
+    cfg().activeProviderProfileId = 'kimi_profile'
+  }
+
+  test('upgrades a k3-only Kimi profile and refreshes the model-options cache', () => {
+    presetKimi('k3')
+    cfg().openaiAdditionalModelOptionsCache = ['k3'] // stale flat cache
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.[0].model).toBe(
+      'k3, kimi-for-coding, kimi-for-coding-highspeed',
+    )
+    // Per-profile cache is repopulated with every coding model (the picker reads
+    // this, not profile.model, for the active openai profile).
+    const perProfile = cfg().openaiAdditionalModelOptionsCacheByProfile
+      ?.kimi_profile as Array<{ value: string }> | undefined
+    expect(perProfile?.map(o => o.value)).toEqual([
+      'k3',
+      'kimi-for-coding',
+      'kimi-for-coding-highspeed',
+    ])
+    // Flat cache is refreshed too because the healed profile is the active one.
+    const flat = cfg().openaiAdditionalModelOptionsCache as Array<{
+      value: string
+    }>
+    expect(flat.map(o => o.value)).toEqual([
+      'k3',
+      'kimi-for-coding',
+      'kimi-for-coding-highspeed',
+    ])
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(true)
+  })
+
+  test('populates a missing cache even when profile.model is already canonical', () => {
+    // The real-world stale state: an earlier heal fixed profile.model to the full
+    // list but the derived model-options cache was never (re)built, so /model
+    // kept showing the old single model.
+    presetKimi('k3, kimi-for-coding, kimi-for-coding-highspeed')
+    // No openaiAdditionalModelOptionsCacheByProfile entry for the Kimi profile.
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    const perProfile = cfg().openaiAdditionalModelOptionsCacheByProfile
+      ?.kimi_profile as Array<{ value: string }> | undefined
+    expect(perProfile?.map(o => o.value)).toEqual([
+      'k3',
+      'kimi-for-coding',
+      'kimi-for-coding-highspeed',
+    ])
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(true)
+  })
+
+  test('is a no-op once model AND cache both match the canonical set', () => {
+    presetKimi('k3, kimi-for-coding, kimi-for-coding-highspeed')
+    cfg().openaiAdditionalModelOptionsCacheByProfile = {
+      kimi_profile: [
+        { value: 'k3' },
+        { value: 'kimi-for-coding' },
+        { value: 'kimi-for-coding-highspeed' },
+      ],
+    }
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.[0].model).toBe(
+      'k3, kimi-for-coding, kimi-for-coding-highspeed',
+    )
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(false)
+  })
+
+  test('leaves a static-key Kimi profile untouched', () => {
+    presetKimi('k3', { apiKey: 'sk-static' })
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.[0].model).toBe('k3')
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(false)
+  })
+
+  test('leaves a profile carrying a non-canonical model untouched', () => {
+    presetKimi('k3, my-custom-model')
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.[0].model).toBe('k3, my-custom-model')
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(false)
+  })
+
+  test('ignores a Kimi host on a non-coding path (bare /v1)', () => {
+    presetKimi('k3', { baseUrl: 'https://api.kimi.com/v1' })
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(cfg().providerProfiles?.[0].model).toBe('k3')
+    expect(
+      result.notices.some(n => n.includes('Kimi Code model list')),
+    ).toBe(false)
+  })
+})
+
+describe('runClaudinStartupMigrations — orphaned model-options cache GC', () => {
+  const cfg = () => mockConfigState
+
+  function presetOpenAIProfile(id: string): void {
+    const profile = {
+      id,
+      name: 'Live',
+      provider: 'openai' as const,
+      baseUrl: 'https://api.example.com/v1',
+      model: 'x',
+    }
+    store.profiles = [profile]
+    store.active = profile
+    cfg().providerProfiles = [{ ...profile }]
+    cfg().activeProviderProfileId = id
+  }
+
+  test('prunes cache entries whose profile no longer exists', () => {
+    presetOpenAIProfile('live')
+    cfg().openaiAdditionalModelOptionsCacheByProfile = {
+      live: [{ value: 'x' }],
+      ghost_deleted: [{ value: 'dead-1' }],
+      other_ghost: [{ value: 'dead-2' }],
+    }
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(
+      Object.keys(cfg().openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    ).toEqual(['live'])
+    expect(
+      result.notices.some(n => n.includes('orphaned model-options cache')),
+    ).toBe(true)
+  })
+
+  test('is a no-op when every cache entry maps to a live profile', () => {
+    presetOpenAIProfile('live')
+    cfg().openaiAdditionalModelOptionsCacheByProfile = {
+      live: [{ value: 'x' }],
+    }
+
+    const result = callRun({ processEnv: {}, log: silentLog })
+
+    expect(
+      Object.keys(cfg().openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    ).toEqual(['live'])
+    expect(
+      result.notices.some(n => n.includes('orphaned model-options cache')),
     ).toBe(false)
   })
 })

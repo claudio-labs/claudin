@@ -190,6 +190,72 @@ describe('persistActiveProviderProfileModel', () => {
     )
     expect(saved?.model).toBe('minimax-m2.5:cloud')
   })
+
+  test('invalidates the derived model-options cache when the model changes', async () => {
+    const { persistActiveProviderProfileModel } =
+      await importFreshProviderProfileModules()
+    const activeProfile = buildProfile({
+      id: 'saved_openai',
+      baseUrl: 'http://192.168.33.108:11434/v1',
+      model: 'kimi-k2.5:cloud',
+    })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [activeProfile],
+      activeProviderProfileId: activeProfile.id,
+      openaiAdditionalModelOptionsCache: [{ value: 'kimi-k2.5:cloud' }],
+      openaiAdditionalModelOptionsCacheByProfile: {
+        [activeProfile.id]: [{ value: 'kimi-k2.5:cloud' }],
+      },
+    }))
+
+    persistActiveProviderProfileModel('minimax-m2.5:cloud')
+
+    // Stale cache must be dropped so /model re-derives from the new model list.
+    expect(
+      mockConfigState.openaiAdditionalModelOptionsCacheByProfile[
+        activeProfile.id
+      ],
+    ).toBeUndefined()
+    expect(mockConfigState.openaiAdditionalModelOptionsCache).toEqual([])
+  })
+})
+
+describe('clearActiveProviderProfileModel', () => {
+  test('clears the model field and invalidates the derived cache', async () => {
+    const { getProviderProfiles, clearActiveProviderProfileModel } =
+      await importFreshProviderProfileModules()
+    const activeProfile = buildProfile({
+      id: 'saved_openai',
+      baseUrl: 'http://192.168.33.108:11434/v1',
+      model: 'kimi-k2.5:cloud',
+    })
+
+    saveMockGlobalConfig(current => ({
+      ...current,
+      providerProfiles: [activeProfile],
+      activeProviderProfileId: activeProfile.id,
+      openaiAdditionalModelOptionsCache: [{ value: 'kimi-k2.5:cloud' }],
+      openaiAdditionalModelOptionsCacheByProfile: {
+        [activeProfile.id]: [{ value: 'kimi-k2.5:cloud' }],
+      },
+    }))
+
+    clearActiveProviderProfileModel()
+
+    const saved = getProviderProfiles().find(
+      (profile: ProviderProfile) => profile.id === activeProfile.id,
+    )
+    // sanitize normalizes a blank model to undefined — the point is it's cleared.
+    expect(saved?.model).toBeFalsy()
+    expect(
+      mockConfigState.openaiAdditionalModelOptionsCacheByProfile[
+        activeProfile.id
+      ],
+    ).toBeUndefined()
+    expect(mockConfigState.openaiAdditionalModelOptionsCache).toEqual([])
+  })
 })
 
 describe('getProviderPresetDefaults', () => {
@@ -213,18 +279,6 @@ describe('getProviderPresetDefaults', () => {
     expect(defaults.name).toBe('Atomic Chat')
     expect(defaults.baseUrl).toBe('http://127.0.0.1:1337/v1')
     expect(defaults.requiresApiKey).toBe(false)
-  })
-
-  test('kimi-code preset defaults to the Kimi Code coding endpoint', async () => {
-    const { getProviderPresetDefaults } = await importFreshProviderProfileModules()
-
-    const defaults = getProviderPresetDefaults('kimi-code')
-
-    expect(defaults.provider).toBe('openai')
-    expect(defaults.name).toBe('Moonshot AI - Kimi Code')
-    expect(defaults.baseUrl).toBe('https://api.kimi.com/coding/v1')
-    expect(defaults.model).toBe('kimi-for-coding')
-    expect(defaults.requiresApiKey).toBe(true)
   })
 
   test('moonshotai preset keeps the direct API under the renamed display label', async () => {

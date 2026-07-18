@@ -191,8 +191,8 @@ function mockProviderProfilesForFinalize(options: {
   updateProviderProfile: ReturnType<typeof mock>
   setActiveProviderProfile: ReturnType<typeof mock>
 } {
-  const addProviderProfile = mock(() => null)
-  const updateProviderProfile = mock(() => null)
+  const addProviderProfile = mock(() => ({ id: 'profile_saved' }))
+  const updateProviderProfile = mock(() => ({ id: 'profile_saved' }))
   const setActiveProviderProfile = mock(() => null)
   mock.module('../../utils/providerProfiles.js', () => ({
     ...realProviderProfilesForFinalize,
@@ -304,4 +304,27 @@ test('persistCopilotProfile creates a new Copilot profile when none exists', asy
   expect(mocks.addProviderProfile.mock.calls[0]?.[1]).toEqual({
     makeActive: true,
   })
+})
+
+test('persistCopilotProfile reports failure when the profile cannot be saved', async () => {
+  const addProviderProfile = mock(() => null)
+  const updateProviderProfile = mock(() => null)
+  const setActiveProviderProfile = mock(() => null)
+  mock.module('../../utils/providerProfiles.js', () => ({
+    ...realProviderProfilesForFinalize,
+    getProviderProfiles: () => [],
+    addProviderProfile,
+    updateProviderProfile,
+    setActiveProviderProfile,
+  }))
+
+  const { persistCopilotProfile } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-failed'
+  )
+
+  const result = persistCopilotProfile('fresh-token')
+
+  expect(result).toEqual({ mode: 'failed' })
+  expect(setActiveProviderProfile).not.toHaveBeenCalled()
 })

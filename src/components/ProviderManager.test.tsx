@@ -136,8 +136,7 @@ const PRESET_ORDER = [
   'LM Studio',
   'MiniMax',
   'Mistral',
-  'Moonshot AI - API',
-  'Moonshot AI - Kimi Code',
+  'Moonshot AI',
   'NVIDIA NIM',
   'OpenCode GO',
   'OpenCode Zen',
@@ -1224,6 +1223,41 @@ test('ProviderManager Anthropic preset shows OAuth vs API-key choice', async () 
   const choiceFrame = await waitForFrameOutput(
     mounted.getOutput,
     frame => frame.includes('Anthropic') && frame.includes('Sign in with web'),
+  )
+
+  expect(choiceFrame).toContain('Sign in with web')
+  expect(choiceFrame).toContain('Use API key')
+
+  await mounted.dispose()
+})
+
+test('ProviderManager Moonshot AI preset shows OAuth vs API-key choice', async () => {
+  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const onDone = mock(() => {})
+  mockProviderManagerDependencies()
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {
+    mode: 'first-run',
+    onDone,
+  })
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Set up provider'),
+  )
+
+  await navigateToPreset(mounted.stdin, 'Moonshot AI')
+  mounted.stdin.write('\r')
+
+  const choiceFrame = await waitForFrameOutput(
+    mounted.getOutput,
+    frame =>
+      frame.includes('Moonshot AI') && frame.includes('Sign in with web'),
   )
 
   expect(choiceFrame).toContain('Sign in with web')

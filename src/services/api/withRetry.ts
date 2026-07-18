@@ -22,8 +22,7 @@ import { tryGetActiveProvider } from './activeProvider.js'
 import { invalidateClientCache } from './clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
 import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
-import { refreshXaiAccessTokenIfNeeded } from '../../utils/xaiCredentials.js'
-import { isXaiOAuthBaseUrl } from './providerConfig.js'
+import { forceRefreshOAuthWebTokenOn401 } from './openaiShim/oauthProviderAuth.js'
 import {
   errorMessage,
   isSdkApiConnectionError,
@@ -290,18 +289,12 @@ export async function* withRetry<T>(
               )
             })
           }
-          // xAI / Grok OAuth uses the openai_compat transport; key off the
-          // active profile's baseUrl instead of the transport enum.
-          if (
-            transport === 'openai_compat' &&
-            isXaiOAuthBaseUrl(tryGetActiveProvider()?.baseUrl)
-          ) {
-            await refreshXaiAccessTokenIfNeeded({ force: true }).catch(e => {
-              logForDebugging(
-                `[xai] force-refresh on 401 failed: ${e instanceof Error ? e.message : String(e)}`,
-                { level: 'warn' },
-              )
-            })
+          // xAI / Grok and Kimi Code OAuth both use the openai_compat transport;
+          // dispatch by the active profile's baseUrl via the OAuth-web registry.
+          if (transport === 'openai_compat') {
+            await forceRefreshOAuthWebTokenOn401(
+              tryGetActiveProvider()?.baseUrl,
+            )
           }
         }
         // Invalidate the client cache before getClient() so it creates a fresh

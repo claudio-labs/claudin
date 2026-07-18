@@ -3881,6 +3881,77 @@ test('DeepSeek forwards an explicit thinking disable toggle for V4 models', asyn
   expect(requestBody?.reasoning_effort).toBeUndefined()
 })
 
+test('Kimi Code K3 sends thinking.effort from per-request effortValue', async () => {
+  process.env.OPENAI_BASE_URL = 'https://api.kimi.com/coding/v1'
+  process.env.OPENAI_API_KEY = 'sk-kimi-test'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'k3',
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model: 'k3',
+    system: 'you are kimi code',
+    messages: [{ role: 'user', content: 'hi' }],
+    max_tokens: 256,
+    stream: false,
+    effortValue: 'max',
+  })
+
+  expect(requestBody?.thinking).toEqual({
+    type: 'enabled',
+    effort: 'max',
+    keep: 'all',
+  })
+  expect(requestBody?.reasoning_effort).toBeUndefined()
+})
+
+test('Kimi Code non-K3 models do not send thinking.effort', async () => {
+  process.env.OPENAI_BASE_URL = 'https://api.kimi.com/coding/v1'
+  process.env.OPENAI_API_KEY = 'sk-kimi-test'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'kimi-for-coding',
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model: 'kimi-for-coding',
+    system: 'you are kimi code',
+    messages: [{ role: 'user', content: 'hi' }],
+    max_tokens: 256,
+    stream: false,
+    effortValue: 'high',
+  })
+
+  expect(requestBody?.thinking).toBeUndefined()
+  expect(requestBody?.reasoning_effort).toBeUndefined()
+})
 
 test('collapses multiple text blocks in tool_result to string for DeepSeek compatibility (issue #774)', async () => {
   let requestBody: Record<string, unknown> | undefined

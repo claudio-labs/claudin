@@ -24,6 +24,21 @@ export interface SecureStorageData {
     lastRefreshAt?: number
     lastRefreshFailureAt?: number
   }
+  kimiCode?: {
+    accessToken: string
+    refreshToken?: string
+    profileId?: string
+    expiresAt?: number
+    lastRefreshAt?: number
+    lastRefreshFailureAt?: number
+  }
+  /**
+   * Stable per-install device identifier for Kimi Code's `X-Msh-Device-Id`
+   * header. Generated once (before first login) and reused across logins so the
+   * backend sees a consistent device. Not a secret, but stored here to survive
+   * logout and share the credential store's lifecycle.
+   */
+  kimiDeviceId?: string
   mcpOAuth?: Record<
     string,
     {

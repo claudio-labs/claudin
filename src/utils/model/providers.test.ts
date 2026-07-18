@@ -267,3 +267,76 @@ test('isGithubNativeAnthropicMode: false for github:copilot:gpt- model', async (
   const { isGithubNativeAnthropicMode } = await importFreshProvidersModule()
   expect(isGithubNativeAnthropicMode()).toBe(false)
 })
+
+test.each([
+  ['openai_compat', 'https://api.openai.com/v1', 'gpt-5.4'],
+  ['gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash-preview'],
+  ['mistral', 'https://api.mistral.ai/v1', 'devstral-latest'],
+  ['codex_responses', 'https://chatgpt.com/backend-api/codex', 'codexplan'],
+] as const)(
+  'activeTransportUsesOpenAiShim: %s routes through the shim',
+  async (transport, baseUrl, model) => {
+    setProfile({ transport, baseUrl, model })
+    const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+    expect(activeTransportUsesOpenAiShim(model)).toBe(true)
+  },
+)
+
+test.each([
+  ['anthropic', 'https://api.anthropic.com', 'claude-sonnet-4-6'],
+  ['bedrock', 'https://bedrock-runtime.us-east-1.amazonaws.com', 'claude-sonnet-4-6'],
+  ['vertex', 'https://us-central1-aiplatform.googleapis.com', 'claude-sonnet-4-6'],
+  ['foundry', 'https://example.services.ai.azure.com', 'claude-sonnet-4-6'],
+] as const)(
+  'activeTransportUsesOpenAiShim: native transport %s does NOT use the shim',
+  async (transport, baseUrl, model) => {
+    setProfile({ transport, baseUrl, model })
+    const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+    expect(activeTransportUsesOpenAiShim(model)).toBe(false)
+  },
+)
+
+test('activeTransportUsesOpenAiShim: no configured profile → false (native default)', async () => {
+  mockProviderProfile = null
+  invalidateActiveProviderCache()
+  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  expect(activeTransportUsesOpenAiShim()).toBe(false)
+})
+
+test('activeTransportUsesOpenAiShim: github_copilot + non-Claude model uses the shim', async () => {
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'gpt-4o',
+  })
+  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  expect(activeTransportUsesOpenAiShim('gpt-4o')).toBe(true)
+})
+
+test('activeTransportUsesOpenAiShim: github_copilot + Claude model is NATIVE (not shim)', async () => {
+  // Regression guard: client.ts routes github_copilot + a Claude model through
+  // the native Anthropic SDK (isGithubNativeAnthropicMode), which rejects
+  // shim-only body fields like effortValue. The gate must return false here.
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'claude-sonnet-4-5',
+  })
+  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  expect(activeTransportUsesOpenAiShim('claude-sonnet-4-5')).toBe(false)
+})
+
+test('activeTransportUsesOpenAiShim: github_copilot + catalog-vetoed Claude model uses the shim', async () => {
+  // A Claude model the account serves only via /chat/completions takes the shim
+  // route in client.ts, so shim-only fields ARE valid — the gate returns true.
+  setProfile({
+    transport: 'github_copilot',
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'claude-sonnet-4.6',
+  })
+  _setCopilotCatalogForTesting([
+    catalogEntry('claude-sonnet-4.6', ['/chat/completions']),
+  ])
+  const { activeTransportUsesOpenAiShim } = await importFreshProvidersModule()
+  expect(activeTransportUsesOpenAiShim('claude-sonnet-4.6')).toBe(true)
+})

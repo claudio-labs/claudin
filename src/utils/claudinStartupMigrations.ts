@@ -23,6 +23,7 @@ import {
 import {
   addProviderProfile,
   getActiveProviderProfile,
+  getProfileModelOptions,
   getProviderProfiles,
   stripProjectProviderPointers,
   type ProviderProfileInput,
@@ -32,6 +33,8 @@ import {
   saveGlobalConfig,
   type ProviderProfile as StoredProviderProfile,
 } from './config.js'
+import { parseModelList } from './providerModels.js'
+import { KIMI_CODE_MODEL_LIST } from '../services/api/kimiOAuthShared.js'
 
 const GITHUB_COPILOT_DEFAULT_BASE_URL = 'https://models.github.ai/inference'
 const GITHUB_COPILOT_DEFAULT_MODEL = 'github:copilot'
@@ -371,6 +374,175 @@ function healDanglingGlobalProviderDefault(): string | undefined {
   return notice
 }
 
+const KIMI_CODE_CANONICAL_MODELS = parseModelList(KIMI_CODE_MODEL_LIST)
+
+function isKimiCodeCodingBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const { hostname, pathname } = new URL(baseUrl)
+    return hostname === 'api.kimi.com' && pathname.startsWith('/coding')
+  } catch {
+    return false
+  }
+}
+
+function isKimiOAuthProfile(profile: StoredProviderProfile): boolean {
+  return (
+    profile.provider === 'openai' &&
+    !profile.apiKey &&
+    isKimiCodeCodingBaseUrl(profile.baseUrl)
+  )
+}
+
+/** The `.value`s of a stored model-options cache array, or undefined if absent. */
+function cachedOptionValues(cached: unknown): string[] | undefined {
+  if (!Array.isArray(cached)) return undefined
+  return cached
+    .map(option =>
+      option && typeof option === 'object'
+        ? (option as { value?: unknown }).value
+        : undefined,
+    )
+    .filter((value): value is string => typeof value === 'string')
+}
+
+function equalToCanonical(values: string[] | undefined): boolean {
+  return (
+    values !== undefined &&
+    values.length === KIMI_CODE_CANONICAL_MODELS.length &&
+    values.every((value, index) => value === KIMI_CODE_CANONICAL_MODELS[index])
+  )
+}
+
+/**
+ * A Kimi Code OAuth profile whose model list OR its derived model-options cache
+ * predates the current canonical set (early builds shipped only `k3`), so
+ * `/model` hides the other coding models. Only fires when every stored model is
+ * canonical (a profile carrying a custom/extra model is left untouched) and
+ * either a canonical model is missing from `profile.model` or the profile's
+ * cache doesn't already list exactly the canonical set.
+ */
+function kimiProfileNeedsHeal(
+  profile: StoredProviderProfile,
+  config: ReturnType<typeof getGlobalConfig>,
+): boolean {
+  if (!isKimiOAuthProfile(profile)) return false
+  const models = parseModelList(profile.model)
+  if (models.length === 0) return false
+  if (!models.every(model => KIMI_CODE_CANONICAL_MODELS.includes(model))) {
+    return false
+  }
+  const modelStale = KIMI_CODE_CANONICAL_MODELS.some(
+    model => !models.includes(model),
+  )
+  const cacheStale = !equalToCanonical(
+    cachedOptionValues(
+      config.openaiAdditionalModelOptionsCacheByProfile?.[profile.id],
+    ),
+  )
+  return modelStale || cacheStale
+}
+
+/**
+ * Refresh the model list on a Kimi Code OAuth profile stored by an earlier build
+ * that only shipped `k3`, so every Kimi coding model shows up in `/model` without
+ * a re-login. Idempotent: once the profile carries the full canonical list the
+ * trigger no longer fires.
+ */
+function healStaleKimiCodeModelList(): string | undefined {
+  const config = getGlobalConfig()
+  if (
+    !getProviderProfiles(config).some(profile =>
+      kimiProfileNeedsHeal(profile, config),
+    )
+  ) {
+    return undefined
+  }
+
+  let notice: string | undefined
+  saveGlobalConfig(current => {
+    notice = undefined
+    const rawProfiles = current.providerProfiles ?? []
+    const healed = getProviderProfiles(current).filter(profile =>
+      kimiProfileNeedsHeal(profile, current),
+    )
+    const healedIds = new Set(healed.map(profile => profile.id))
+    if (healedIds.size === 0) return current
+
+    const nextProfiles = rawProfiles.map(profile =>
+      healedIds.has(profile.id)
+        ? { ...profile, model: KIMI_CODE_MODEL_LIST }
+        : profile,
+    )
+
+    // Refresh the derived model-options cache from the new list. The /model
+    // picker reads this cache for the active openai profile and returns it
+    // WITHOUT re-parsing profile.model, so a stale entry (e.g. the old `[k3]`)
+    // would keep hiding the coding models even after the profile is fixed.
+    const cacheByProfile = {
+      ...(current.openaiAdditionalModelOptionsCacheByProfile ?? {}),
+    }
+    for (const profile of healed) {
+      cacheByProfile[profile.id] = getProfileModelOptions({
+        ...profile,
+        model: KIMI_CODE_MODEL_LIST,
+      })
+    }
+
+    const activeId = current.activeProviderProfileId?.trim()
+    const activeHealed = activeId !== undefined && healedIds.has(activeId)
+    notice = 'refreshed the Kimi Code model list (added the coding models)'
+    return {
+      ...current,
+      providerProfiles: nextProfiles,
+      openaiAdditionalModelOptionsCacheByProfile: cacheByProfile,
+      // The flat cache mirrors whichever openai profile is active; refresh it
+      // too when the active profile was the one healed.
+      openaiAdditionalModelOptionsCache: activeHealed
+        ? cacheByProfile[activeId]
+        : current.openaiAdditionalModelOptionsCache,
+    }
+  })
+
+  return notice
+}
+
+/**
+ * Garbage-collect `openaiAdditionalModelOptionsCacheByProfile` entries whose
+ * profile no longer exists. deleteProviderProfile prunes the deleted id, but
+ * profiles removed by other paths (sanitize rejection, manual config edits)
+ * can leave orphaned cache entries that grow unbounded. Idempotent.
+ */
+function pruneOrphanedModelOptionsCache(): string | undefined {
+  const config = getGlobalConfig()
+  const cache = config.openaiAdditionalModelOptionsCacheByProfile
+  if (!cache) return undefined
+  const validIds = new Set(getProviderProfiles(config).map(profile => profile.id))
+  const orphanCount = Object.keys(cache).filter(id => !validIds.has(id)).length
+  if (orphanCount === 0) return undefined
+
+  saveGlobalConfig(current => {
+    const currentCache = current.openaiAdditionalModelOptionsCacheByProfile
+    if (!currentCache) return current
+    const ids = new Set(getProviderProfiles(current).map(profile => profile.id))
+    const nextCache: typeof currentCache = {}
+    let removed = 0
+    for (const [id, options] of Object.entries(currentCache)) {
+      if (ids.has(id)) nextCache[id] = options
+      else removed++
+    }
+    if (removed === 0) return current
+    return {
+      ...current,
+      openaiAdditionalModelOptionsCacheByProfile: nextCache,
+    }
+  })
+
+  return `pruned ${orphanCount} orphaned model-options cache ${
+    orphanCount === 1 ? 'entry' : 'entries'
+  }`
+}
+
 export function runClaudinStartupMigrations(options?: {
   processEnv?: NodeJS.ProcessEnv
   homeDir?: string
@@ -441,6 +613,18 @@ export function runClaudinStartupMigrations(options?: {
   if (globalHealNotice) {
     result.notices.push(globalHealNotice)
     log(globalHealNotice)
+  }
+
+  const kimiModelHealNotice = healStaleKimiCodeModelList()
+  if (kimiModelHealNotice) {
+    result.notices.push(kimiModelHealNotice)
+    log(kimiModelHealNotice)
+  }
+
+  const cacheGcNotice = pruneOrphanedModelOptionsCache()
+  if (cacheGcNotice) {
+    result.notices.push(cacheGcNotice)
+    log(cacheGcNotice)
   }
 
   return result
