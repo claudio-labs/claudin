@@ -12,6 +12,7 @@ import { createRoot } from '../ink.js'
 import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from './ProviderManager.js'
 import { AppStateProvider } from '../state/AppState.js'
+import { getDefaultMainLoopModel } from '../utils/model/model.js'
 
 // Snapshot the real providerDiscovery module so the per-test mock can keep its
 // pure helpers (rankOllamaModels / recommendOllamaModel — used by the Ollama
@@ -707,6 +708,88 @@ test('ProviderManager activating a multi-model provider sets the session model t
     appStateChanges.some(
       ({ newState }) => newState.mainLoopModel === 'gpt-5.4; gpt-5.4-mini',
     ),
+  ).toBe(false)
+
+  await mounted.dispose()
+})
+
+test('ProviderManager activating a blank-model provider falls back to the provider default, not the stale model', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  // The Anthropic preset intentionally leaves `model` empty (it resolves the
+  // default dynamically). Activating it must NOT set mainLoopModel to '' — an
+  // empty value inherits the previous provider's stale model (the "Anthropic ·
+  // gpt-4o → model does not exist" bug). It must fall back to the provider
+  // default from getDefaultMainLoopModel().
+  const anthropicProfile = {
+    id: 'provider_anthropic_blank',
+    provider: 'anthropic',
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    model: '',
+    apiKey: 'sk-ant-test',
+  }
+
+  const setActiveProviderProfile = mock(() => anthropicProfile)
+  const appStateChanges: Array<{ newState: any; oldState: any }> = []
+
+  mockProviderManagerDependencies({
+    getProviderProfiles: () => [anthropicProfile],
+    setActiveProviderProfile,
+  })
+
+  const expectedDefault = getDefaultMainLoopModel()
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {
+    onChangeAppState: args => {
+      appStateChanges.push(args as { newState: any; oldState: any })
+    },
+  })
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame =>
+      frame.includes('Provider manager') &&
+      frame.includes('Set active provider'),
+  )
+
+  mounted.stdin.write('j')
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Set active provider') && frame.includes('Anthropic'),
+  )
+
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForCondition(() => setActiveProviderProfile.mock.calls.length > 0)
+  await waitForCondition(() =>
+    appStateChanges.some(
+      ({ newState }) => newState.mainLoopModelForSession === null,
+    ),
+  )
+
+  expect(setActiveProviderProfile).toHaveBeenCalledWith('provider_anthropic_blank')
+  // Sanity-check the fixture: the fallback source is a real, non-empty model.
+  expect(expectedDefault.length).toBeGreaterThan(0)
+  // The switch must have set mainLoopModel to that default, never '' (the bug).
+  expect(
+    appStateChanges.some(
+      ({ newState }) =>
+        newState.mainLoopModel === expectedDefault &&
+        newState.mainLoopModelForSession === null,
+    ),
+  ).toBe(true)
+  expect(
+    appStateChanges.some(({ newState }) => newState.mainLoopModel === ''),
   ).toBe(false)
 
   await mounted.dispose()

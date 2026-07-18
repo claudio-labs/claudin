@@ -71,6 +71,72 @@ async function importFreshWithRetryModule(
   return import(`./withRetry.js?ts=${Date.now()}-${Math.random()}`)
 }
 
+// Build a real APIError so isSdkApiError() (which checks the constructor, not a
+// `.name` prop) recognizes it. status defaults to 400 (the invalid_request case).
+function makeApiError(message: string, status = 400): APIError {
+  return new APIError(status, undefined, message, new Headers())
+}
+
+// --- isThinkingBlockMismatchError ---
+describe('isThinkingBlockMismatchError', () => {
+  test('matches the "cannot be modified" (config-change) variant', async () => {
+    const { isThinkingBlockMismatchError } = await importFreshWithRetryModule()
+    expect(
+      isThinkingBlockMismatchError(
+        makeApiError('messages.1: thinking blocks cannot be modified'),
+      ),
+    ).toBe(true)
+  })
+
+  test('matches the foreign-signature variant (cross-provider switch)', async () => {
+    const { isThinkingBlockMismatchError } = await importFreshWithRetryModule()
+    // Exact wording Anthropic returns when the history carries a thinking block
+    // signed by another provider (e.g. switching from Moonshot/Kimi to Anthropic).
+    expect(
+      isThinkingBlockMismatchError(
+        makeApiError('messages.1.content.0: Invalid `signature` in `thinking` block'),
+      ),
+    ).toBe(true)
+  })
+
+  test('does not match an unrelated 400', async () => {
+    const { isThinkingBlockMismatchError } = await importFreshWithRetryModule()
+    expect(
+      isThinkingBlockMismatchError(makeApiError('messages: invalid role "system"')),
+    ).toBe(false)
+  })
+
+  test('does not match a non-thinking signature error', async () => {
+    const { isThinkingBlockMismatchError } = await importFreshWithRetryModule()
+    expect(
+      isThinkingBlockMismatchError(makeApiError('Invalid `signature` in request')),
+    ).toBe(false)
+  })
+
+  test('only matches status 400', async () => {
+    const { isThinkingBlockMismatchError } = await importFreshWithRetryModule()
+    const err = makeApiError('Invalid `signature` in `thinking` block', 500)
+    expect(isThinkingBlockMismatchError(err)).toBe(false)
+  })
+})
+
+// --- shouldRetry: thinking-block mismatch is retryable ---
+describe('shouldRetry - thinking-block mismatch', () => {
+  test('a foreign-signature thinking 400 is retryable (so strip-and-retry runs)', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    expect(
+      shouldRetry(
+        makeApiError('messages.1.content.0: Invalid `signature` in `thinking` block'),
+      ),
+    ).toBe(true)
+  })
+
+  test('an unrelated 400 is not retryable', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule()
+    expect(shouldRetry(makeApiError('messages: invalid role "system"'))).toBe(false)
+  })
+})
+
 // --- parseOpenAIDuration ---
 describe('parseOpenAIDuration', () => {
   test('parses seconds: "1s" → 1000', async () => {

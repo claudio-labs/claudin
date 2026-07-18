@@ -174,24 +174,46 @@ test('null profile → empty auth', async () => {
   expect(await resolveOAuthProviderAuth(null)).toEqual({})
 })
 
-// forceRefreshOAuthWebTokenOn401 dispatches by base URL: it returns true when an
-// OAuth-web provider matches (xAI / Kimi coding host) and false otherwise. With
-// no stored credentials the underlying refresh is a no-op, so these assert the
-// registry's match wiring, not a live token exchange.
+// forceRefreshOAuthWebTokenOn401 dispatches by base URL: it returns 'refreshed'
+// when an OAuth-web provider matches (xAI / Kimi coding host) and the refresh
+// succeeds, and 'no-match' otherwise. With no stored credentials the underlying
+// refresh is a no-op (succeeds trivially), so these assert the registry's match
+// wiring, not a live token exchange.
 test.each([
   ['https://api.x.ai/v1'],
   ['https://api.kimi.com/coding/v1'],
 ])('forceRefreshOAuthWebTokenOn401: %s matches an OAuth-web provider', async baseUrl => {
-  expect(await forceRefreshOAuthWebTokenOn401(baseUrl)).toBe(true)
+  expect(await forceRefreshOAuthWebTokenOn401(baseUrl)).toBe('refreshed')
 })
 
 test.each([
   ['https://api.openai.com/v1'],
   ['https://api.deepseek.com/v1'],
 ])('forceRefreshOAuthWebTokenOn401: %s does not match', async baseUrl => {
-  expect(await forceRefreshOAuthWebTokenOn401(baseUrl)).toBe(false)
+  expect(await forceRefreshOAuthWebTokenOn401(baseUrl)).toBe('no-match')
 })
 
-test('forceRefreshOAuthWebTokenOn401: undefined base URL → false', async () => {
-  expect(await forceRefreshOAuthWebTokenOn401(undefined)).toBe(false)
+test('forceRefreshOAuthWebTokenOn401: undefined base URL → no-match', async () => {
+  expect(await forceRefreshOAuthWebTokenOn401(undefined)).toBe('no-match')
+})
+
+test('forceRefreshOAuthWebTokenOn401: refresh throws → failed', async () => {
+  // Guards the withRetry short-circuit: a dead refresh token must surface as
+  // 'failed', not swallow the error and report success.
+  saveKimiCredentials({
+    accessToken: 'kimi-stale',
+    refreshToken: 'ref',
+    expiresAt: Date.now() - 1_000,
+  })
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = (() => {
+    throw new Error('network down')
+  }) as unknown as typeof fetch
+  try {
+    expect(
+      await forceRefreshOAuthWebTokenOn401('https://api.kimi.com/coding/v1'),
+    ).toBe('failed')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })

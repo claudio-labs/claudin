@@ -154,9 +154,20 @@ export function isThinkingBlockMismatchError(error: unknown): boolean {
   if (!isSdkApiError(error) || error.status !== 400 || !error.message) {
     return false
   }
+  // Two shapes of the same recoverable problem — a prior assistant thinking
+  // block is incompatible with the current request:
+  //   1. "cannot be modified" — thinking config changed mid-session
+  //      (adaptive ↔ budget via /effort).
+  //   2. "Invalid `signature` in `thinking` block" — the history carries a
+  //      thinking block signed by a DIFFERENT provider (e.g. switching from
+  //      Moonshot/Kimi back to Anthropic); Anthropic can't validate a foreign
+  //      signature. Both recover by stripping thinking from history and retrying.
+  if (!error.message.includes('thinking')) {
+    return false
+  }
   return (
-    error.message.includes('thinking') &&
-    error.message.includes('cannot be modified')
+    error.message.includes('cannot be modified') ||
+    error.message.includes('signature')
   )
 }
 
@@ -200,6 +211,20 @@ export class FallbackTriggeredError extends Error {
   ) {
     super(`Model fallback triggered: ${originalModel} -> ${fallbackModel}`)
     this.name = 'FallbackTriggeredError'
+  }
+}
+
+// Thrown internally when a 401 force-refresh for an OAuth-web provider
+// (xAI / Kimi Code) comes back failed — the stored refresh token is dead, so
+// retrying would just resend the same invalid access token. Caught in the
+// loop's catch block below and converted straight to a CannotRetryError,
+// skipping shouldRetry()'s blanket "401 is always retryable" path.
+class OAuthWebSessionExpiredError extends Error {
+  constructor(public readonly providerBaseUrl: string | undefined) {
+    super(
+      'OAuth session expired and the automatic token refresh failed. Run /provider to reauthenticate.',
+    )
+    this.name = 'OAuthWebSessionExpiredError'
   }
 }
 
@@ -292,9 +317,12 @@ export async function* withRetry<T>(
           // xAI / Grok and Kimi Code OAuth both use the openai_compat transport;
           // dispatch by the active profile's baseUrl via the OAuth-web registry.
           if (transport === 'openai_compat') {
-            await forceRefreshOAuthWebTokenOn401(
-              tryGetActiveProvider()?.baseUrl,
-            )
+            const oauthWebBaseUrl = tryGetActiveProvider()?.baseUrl
+            const refreshResult =
+              await forceRefreshOAuthWebTokenOn401(oauthWebBaseUrl)
+            if (refreshResult === 'failed') {
+              throw new OAuthWebSessionExpiredError(oauthWebBaseUrl)
+            }
           }
         }
         // Invalidate the client cache before getClient() so it creates a fresh
@@ -310,6 +338,9 @@ export async function* withRetry<T>(
         `API error (attempt ${attempt}/${maxRetries + 1}): ${isSdkApiError(error) ? `${error.status} ${error.message}` : errorMessage(error)}`,
         { level: 'error' },
       )
+        if (error instanceof OAuthWebSessionExpiredError) {
+          throw new CannotRetryError(error, retryContext)
+        }
         if (isQuotaExhausted(error)) {
           throw new CannotRetryError(
             new Error(

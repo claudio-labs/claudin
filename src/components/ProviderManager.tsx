@@ -16,6 +16,7 @@ import {
 } from '../utils/codexCredentials.js'
 import { isBareMode } from '../utils/envUtils.js'
 import { getPrimaryModel, parseModelList } from '../utils/providerModels.js'
+import { getDefaultMainLoopModel } from '../utils/model/model.js'
 import { deleteProfileFile } from '../utils/providerProfile.js'
 import {
   addProviderProfile,
@@ -1157,7 +1158,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       const effectiveProfile = overrideActive
         ? (getActiveProviderProfile() ?? active)
         : active
-      const newModel = getPrimaryModel(effectiveProfile.model)
+      // A profile with a blank model (e.g. the Anthropic preset, whose model is
+      // resolved dynamically) must fall back to the provider's default model,
+      // not leave mainLoopModel empty — an empty value inherits the previous
+      // provider's stale model (e.g. keeping gpt-4o after switching to Anthropic).
+      const newModel =
+        getPrimaryModel(effectiveProfile.model) || getDefaultMainLoopModel()
       if (!overrideActive) {
         setAppState(prev => ({
           ...prev,
@@ -1226,7 +1232,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       refreshProfiles()
       const nowEffective = getActiveProviderProfile()
       if (nowEffective) {
-        const newModel = getPrimaryModel(nowEffective.model)
+        const newModel =
+          getPrimaryModel(nowEffective.model) || getDefaultMainLoopModel()
         // Suppress the /model persistence side-effect: clearing a project
         // override is NOT a /model choice. Without this, onChangeAppState
         // would clobber the user's prior global settings.model and overwrite
@@ -1301,7 +1308,8 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         return
       }
 
-      const newModel = getPrimaryModel(active.model)
+      const newModel =
+        getPrimaryModel(active.model) || getDefaultMainLoopModel()
       // Re-selecting the same project profile preserves `activeModelForProject`
       // inside setActiveProviderProfileForProject; suppress the persist side of
       // the upcoming setAppState so onChangeAppState's project-scoped branch

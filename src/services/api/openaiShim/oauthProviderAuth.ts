@@ -131,19 +131,30 @@ export async function resolveOAuthProviderAuth(
 
 /**
  * Force-refresh the OAuth token for the active openai_compat provider after a
- * 401 (server-side revocation won't match the JWT clock). Returns whether an
- * OAuth-web provider matched. Callers gate on `transport === 'openai_compat'`.
+ * 401 (server-side revocation won't match the JWT clock). Callers gate on
+ * `transport === 'openai_compat'`.
+ *
+ * - `'no-match'` — the base URL isn't an OAuth-web provider (static-key
+ *   openai_compat profile); the caller's generic 401 handling applies.
+ * - `'refreshed'` — the token was rotated; safe to retry with the new client.
+ * - `'failed'` — refresh was attempted and failed (e.g. the refresh token
+ *   itself is expired/revoked). Retrying would just resend the same dead
+ *   token, so the caller should stop and surface a reauth prompt instead.
  */
 export async function forceRefreshOAuthWebTokenOn401(
   baseUrl: string | undefined,
-): Promise<boolean> {
+): Promise<'no-match' | 'refreshed' | 'failed'> {
   const provider = findOAuthWebProvider(baseUrl)
-  if (!provider) return false
-  await provider.refresh({ force: true }).catch(error => {
-    logForDebugging(
-      `[${provider.id}] force-refresh on 401 failed: ${error instanceof Error ? error.message : String(error)}`,
-      { level: 'warn' },
-    )
-  })
-  return true
+  if (!provider) return 'no-match'
+  const refreshed = await provider.refresh({ force: true }).then(
+    () => true,
+    error => {
+      logForDebugging(
+        `[${provider.id}] force-refresh on 401 failed: ${error instanceof Error ? error.message : String(error)}`,
+        { level: 'warn' },
+      )
+      return false
+    },
+  )
+  return refreshed ? 'refreshed' : 'failed'
 }
