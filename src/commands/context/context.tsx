@@ -3,18 +3,32 @@ import * as React from 'react';
 import type { LocalJSXCommandContext } from '../../commands.js';
 import { Box, Text, useInput } from '../../ink.js';
 import { ContextVisualization } from '../../components/ContextVisualization.js';
+import { DOWN_ARROW, UP_ARROW } from '../../constants/figures.js';
+import { useModalOrTerminalSize } from '../../context/modalContext.js';
 import { useExitOnCtrlCDWithKeybindings } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useTerminalSize } from '../../hooks/useTerminalSize.js';
+import ScrollBox, { type ScrollBoxHandle } from '../../ink/components/ScrollBox.js';
 import { microcompactMessages } from '../../services/compact/microCompact.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 import type { Message } from '../../types/message.js';
 import { analyzeContextUsage, type ContextData } from '../../utils/analyzeContext.js';
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
 
+// Rows reserved for the panel's own footer + the REPL chrome below it, so the
+// scroll viewport never runs past the bottom of the terminal.
+const CHROME_ROWS = 4;
+const SCROLL_LINES = 3;
+
 /**
  * Wraps the context grid so the panel can dismiss itself. A bare
  * <ContextVisualization> mounted as command output has no way to call onDone,
  * so the REPL keeps the local-jsx slot open and the user can't return to the
  * prompt. Esc/Enter (and ctrl+c twice) close it.
+ *
+ * The grid is taller than the terminal for most sessions (MCP tools, agents,
+ * skills, and memory files all stack), so it's mounted in a height-capped
+ * ScrollBox — otherwise the top of the grid scrolls off-screen and the rest
+ * is clipped with no way to reach it. Up/down (and ctrl+p/ctrl+n) scroll.
  */
 function ContextPanel({
   data,
@@ -23,21 +37,38 @@ function ContextPanel({
   data: ContextData;
   onDone: LocalJSXCommandOnDone;
 }): React.ReactNode {
+  const scrollRef = React.useRef<ScrollBoxHandle>(null);
+  const { rows } = useModalOrTerminalSize(useTerminalSize());
   const close = React.useCallback(
     () => onDone('Context dialog dismissed', { display: 'system' }),
     [onDone],
   );
   const exitState = useExitOnCtrlCDWithKeybindings(close);
-  useInput((_input, key) => {
-    if (key.escape || key.return) close();
+  useInput((input, key) => {
+    if (key.escape || key.return) {
+      close();
+      return;
+    }
+    if (key.upArrow || (key.ctrl && input === 'p')) {
+      scrollRef.current?.scrollBy(-SCROLL_LINES);
+      return;
+    }
+    if (key.downArrow || (key.ctrl && input === 'n')) {
+      scrollRef.current?.scrollBy(SCROLL_LINES);
+    }
   });
+  const maxContentHeight = Math.max(5, rows - CHROME_ROWS);
   return (
     <Box flexDirection="column">
-      <ContextVisualization data={data} />
+      <Box maxHeight={maxContentHeight}>
+        <ScrollBox ref={scrollRef} flexDirection="column" flexGrow={1}>
+          <ContextVisualization data={data} />
+        </ScrollBox>
+      </Box>
       <Text dimColor>
         {exitState.pending
           ? `Press ${exitState.keyName} again to exit`
-          : 'Press esc or enter to close'}
+          : `${UP_ARROW}/${DOWN_ARROW} to scroll · esc or enter to close`}
       </Text>
     </Box>
   );
