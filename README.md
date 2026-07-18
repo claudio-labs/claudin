@@ -61,6 +61,7 @@ Configure everything from inside the app with `/provider`. Claudin fills in the 
 - **MCP, skills, hooks & plan mode** — connect external tool servers and extend the agent to your workflow.
 - **Auto-memory** — persistent per-project notes, with private and team-shared scopes.
 - **Headless & scriptable** — `claudin -p "prompt"` for pipes and CI, with text / JSON output.
+- **Self-hosted background agent** — `claudin workflow watch` polls GitHub for labeled issues and turns each into an isolated workflow run + PR, all on your own machine ([docs](docs/tech/background-agent/README.md)).
 
 Run `/help` inside the app for the full command list.
 

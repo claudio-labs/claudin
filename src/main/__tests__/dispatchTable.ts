@@ -61,4 +61,8 @@ export const DISPATCH_TABLE: readonly SubcommandSpec[] = [
   { name: 'doctor', source: 'src/main/commands/doctor.ts' },
   { name: 'update', aliases: ['upgrade'], source: 'src/main/commands/update.ts' },
   { name: 'install', source: 'src/main/commands/install.ts' },
+  { name: 'workflow', featureGate: 'AGENT_WORKFLOWS', source: 'src/main/commands/workflow.ts', children: [
+    { name: 'run', source: 'src/main/commands/workflow.ts' },
+    { name: 'watch', source: 'src/main/commands/workflow.ts' },
+  ] },
 ]
