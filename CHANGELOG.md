@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.9 — 2026-07-18
+
+- fix(bash-input): repair the user `!command` path end-to-end (#18) (0bcd73a)
+- fix(context): make /context panel scrollable so the grid isn't clipped (46bb4fc)
+- test(plan): update PLAN_PHASE4_CONTROL snapshot for Tasks-section format (84d6494)
+- feat(workflow): self-hosted background agent (claudin workflow run|watch) (#17) (295ba2f)
+- chore(claudin): reorganize agent memory into path-scoped rules + skills (#16) (e3243b9)
+- feat(plan): seed the TodoV2 tasklist from the plan on ExitPlanMode (f0a459c)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.8 — 2026-07-16
 
 - fix(ripgrep): restore exec bit on vendored rg in the compiled binary (f3b48f2)
