@@ -77,6 +77,7 @@ afterAll(() => {
 })
 
 const { createOpenAIShimClient } = await import('./openaiShim.js')
+const { getSessionId } = await import('../../bootstrap/state.js')
 
 type FetchType = typeof globalThis.fetch
 
@@ -4565,4 +4566,53 @@ test('fallback estimates input and output tokens when provider omits usage', asy
   expect(usageEvent?.usage?.input_tokens).toBeGreaterThan(0)
   // Fallback should estimate non-zero output tokens from streamed chars
   expect(usageEvent?.usage?.output_tokens).toBeGreaterThan(0)
+})
+
+test('sends prompt_cache_key + retention to api.openai.com only', async () => {
+  const capturedBodies: Array<Record<string, unknown>> = []
+
+  globalThis.fetch = (async (_input, init) => {
+    capturedBodies.push(JSON.parse(init?.body as string) as Record<string, unknown>)
+
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'gpt-4o',
+        choices: [
+          {
+            message: { role: 'assistant', content: 'ok' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 8, completion_tokens: 3, total_tokens: 11 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  // Official OpenAI URL → params present
+  process.env.OPENAI_BASE_URL = 'https://api.openai.com/v1'
+  const officialClient = createOpenAIShimClient({}) as OpenAIShimClient
+  await officialClient.beta.messages.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'hello' }],
+    max_tokens: 64,
+    stream: false,
+  })
+
+  expect(capturedBodies[0]?.prompt_cache_key).toBe(getSessionId())
+  expect(capturedBodies[0]?.prompt_cache_retention).toBe('24h')
+
+  // Non-official URL (beforeEach default http://example.test/v1) → withheld
+  process.env.OPENAI_BASE_URL = 'http://example.test/v1'
+  const otherClient = createOpenAIShimClient({}) as OpenAIShimClient
+  await otherClient.beta.messages.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'hello' }],
+    max_tokens: 64,
+    stream: false,
+  })
+
+  expect(capturedBodies[1]?.prompt_cache_key).toBeUndefined()
+  expect(capturedBodies[1]?.prompt_cache_retention).toBeUndefined()
 })

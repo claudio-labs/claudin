@@ -174,26 +174,33 @@ it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
 
 ## Known full-suite flakes & the typecheck baseline
 
-A clean tree gives **3 failures** under full `bun test` — none are regression
-signals. Re-run the file in isolation to confirm before blaming your change:
+Full `bun test` on a clean `main` fails — but the failure SET depends on the
+**directory**, not the commit (measured 2026-07-18, cross-checked main vs
+branch in both environments):
 
-1–2. `src/components/ProviderManager.test.tsx` — "Ollama preset auto-detects
-   installed models" and "Vertex preset collects gcpProject and gcpRegion" time out:
-   Ink TUI interaction tests need a TTY (raw mode) the headless sandbox lacks. Fail
-   in isolation too.
-3. `scripts/profile/memory-turn-by-turn-bench.test.ts > no late-session RSS
-   blow-up` — GC/RSS-pressure flake: under full-suite pressure the first-half slope
-   goes negative, making `first.slope * 5` a negative threshold nothing satisfies.
-   Passes 3/3 in isolation (`bun --expose-gc test <file>`).
+- **Real project checkout**: 2 fails — `src/components/ProviderModelIndicator.test.ts >
+  readSnapshot` ("renders the friendly model name…", "never leaks the [1m]
+  context suffix…"). That file `mock.module`s global config/model modules, so
+  under full-suite parallelism it races with other files' mocks; it passes in
+  isolation and in any pairwise combination.
+- **git worktree with symlinked `node_modules`** (e.g. `/tmp/...` review
+  worktrees): 9 fails — the effort-cycling batch ("Opus 4.8 steps xhigh →
+  max", "non-xhigh model… wraps", "numeric session effort…"),
+  `deserializeMessagesWithInterruptDetection strips thinking blocks…`, and the
+  `main.tsx — boot characterization (Fase 0)` --help snapshots.
 
-If the failing test NAMES differ from these three, it's a real regression.
+So before blaming your change: run the same full suite on **main in the same
+directory** and compare failure NAMES. Only a name not in main's set is a
+regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
+timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
+2026-07 main; keep it in mind if they resurface.)
 
-**Typecheck baseline:** `bun run typecheck` reports ~4320 pre-existing `error TS` on
-`main` (mostly `messagesClient.ts` "possibly undefined", `mcp/doctor.ts`,
-`doctorDiagnostic.ts` MACRO refs, `config.ts` implicit any). Compare the COUNT to
-main; don't chase absolute errors. `<new-diagnostics>` system-reminders can be STALE
-mid-edit snapshots — verify a cited diagnostic with `bun run typecheck 2>&1 | grep
-<file>` before acting on it.
+**Typecheck baseline:** `bun run typecheck` reports **4617** pre-existing
+`error TS` on `main` as of 2026-07-18 (was ~4320 — drifts upward over time;
+re-measure if in doubt: `bun run typecheck 2>&1 | grep -c "error TS"`).
+Compare the COUNT to main; don't chase absolute errors. `<new-diagnostics>`
+system-reminders can be STALE mid-edit snapshots — verify a cited diagnostic
+with `bun run typecheck 2>&1 | grep <file>` before acting on it.
 
 ## Pre-PR Checklist
 
