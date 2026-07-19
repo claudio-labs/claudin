@@ -49,10 +49,10 @@ More test targets (`test:provider`, `test:coverage`, invariant tests) are docume
 
 ### `claudin` vs `claudindev` (dev convention)
 
-To keep the published release usable while iterating on unreleased features, this environment uses two binaries on `$PATH`:
+To keep the published release usable while iterating on unreleased features, contributors should use two binaries on `$PATH`:
 
 - **`claudin`** → globally installed npm package (`@claudiolabs/claudin`) — stable release, only updated via `bun install -g @claudiolabs/claudin`.
-- **`claudindev`** → symlink to `/home/viudes/projects/claudin/bin/claudin` — always runs the latest local `bun run build` output (`dist/cli.mjs`) from this repo.
+- **`claudindev`** → symlink to `<repo>/bin/claudin`, created by `bun run link:dev` (into `~/.bun/bin` or `~/.local/bin`) — always runs the latest local `bun run build` output (`dist/cli.mjs`) from your checkout.
 
 Implication: if a user reports a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudindev` (after `bun run build`); `claudin` keeps the pinned release version regardless of repo state.
 

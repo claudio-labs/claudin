@@ -26,6 +26,7 @@
     "postinstall": "node scripts/postinstall-warmup.mjs",
     "setup": "bun install && bun run build && bun link",
     "link": "bun link",
+    "link:dev": "bun run scripts/link-dev.ts",
     "dev": "bun run build && node dist/cli.mjs",
     "start": "node dist/cli.mjs",
     "test": "bun test",

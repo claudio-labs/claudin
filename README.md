@@ -71,6 +71,20 @@ Run `/help` inside the app for the full command list.
 bun install && bun run build && node dist/cli.mjs
 ```
 
+### Dev binary (`claudindev`)
+
+Local checkouts only produce a dev binary — the stable release is never
+built locally, it comes from npm. To work with both:
+
+```bash
+npm install -g @claudiolabs/claudin@latest   # stable release → `claudin`
+bun run link:dev                              # local build    → `claudindev`
+```
+
+`link:dev` symlinks `<repo>/bin/claudin` as `claudindev` in `~/.bun/bin` or
+`~/.local/bin`, so `claudin` stays pinned to the published release while
+`claudindev` picks up every `bun run build` from your checkout.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the build system, feature flags, and pre-PR checks.
 
 ## License
