@@ -13,20 +13,20 @@ Cada entrada: comando + tamanho típico do output + razão.
 - **Recomendação:** passthrough sempre.
 
 ```
-9.0M	/home/viudes/projects/claudin/.git
-16K	/home/viudes/projects/claudin/.github
-4.0K	/home/viudes/projects/claudin/bin
-176K	/home/viudes/projects/claudin/docs
-72K	/home/viudes/projects/claudin/python
-680K	/home/viudes/projects/claudin/scripts
-25M	/home/viudes/projects/claudin/src
-448K	/home/viudes/projects/claudin/vscode-extension
-385M	/home/viudes/projects/claudin/node_modules
-8.0K	/home/viudes/projects/claudin/.claudin
-86M	/home/viudes/projects/claudin/.claude
-20K	/home/viudes/projects/claudin/.gitea
-62M	/home/viudes/projects/claudin/dist
-568M	/home/viudes/projects/claudin
+9.0M	/home/dev/projects/claudin/.git
+16K	/home/dev/projects/claudin/.github
+4.0K	/home/dev/projects/claudin/bin
+176K	/home/dev/projects/claudin/docs
+72K	/home/dev/projects/claudin/python
+680K	/home/dev/projects/claudin/scripts
+25M	/home/dev/projects/claudin/src
+448K	/home/dev/projects/claudin/vscode-extension
+385M	/home/dev/projects/claudin/node_modules
+8.0K	/home/dev/projects/claudin/.claudin
+86M	/home/dev/projects/claudin/.claude
+20K	/home/dev/projects/claudin/.gitea
+62M	/home/dev/projects/claudin/dist
+568M	/home/dev/projects/claudin
 ```
 
 ## `df -h`

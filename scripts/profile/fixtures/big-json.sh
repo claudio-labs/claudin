@@ -33,13 +33,13 @@ for ((i = 1; i <= n; i++)); do
   [ "$i" -gt 1 ] && printf ','
   if is_salient "$i"; then
     # Rare status value + error keyword — both #6 signals, same key signature.
-    printf '{"number":%d,"title":"Pull request %d: merge FAILED — conflicting changes block this branch","state":"CONFLICT","author":"viudes","mergeable":false,"comments":%d,"labels":["area/cache","type/perf"]}' \
+    printf '{"number":%d,"title":"Pull request %d: merge FAILED — conflicting changes block this branch","state":"CONFLICT","author":"dev","mergeable":false,"comments":%d,"labels":["area/cache","type/perf"]}' \
       "$i" "$i" "$((i * 2))"
     continue
   fi
   state=$([ $((i % 2)) -eq 0 ] && echo OPEN || echo MERGED)
   mergeable=$([ $((i % 3)) -eq 0 ] && echo true || echo false)
-  printf '{"number":%d,"title":"Pull request %d: a reasonably long descriptive title used to pad the row width for benchmarking","state":"%s","author":"viudes","mergeable":%s,"comments":%d,"labels":["area/cache","type/perf"]}' \
+  printf '{"number":%d,"title":"Pull request %d: a reasonably long descriptive title used to pad the row width for benchmarking","state":"%s","author":"dev","mergeable":%s,"comments":%d,"labels":["area/cache","type/perf"]}' \
     "$i" "$i" "$state" "$mergeable" "$((i * 2))"
 done
 printf ']\n'

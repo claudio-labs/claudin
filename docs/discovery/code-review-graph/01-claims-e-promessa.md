@@ -1,7 +1,7 @@
 ---
 title: code-review-graph — Claims e Promessa (análise do README e docs)
 date: 2026-05-27
-fonte: /home/viudes/projects/code-review-graph @ commit 0c9a5ff (v2.3.5)
+fonte: /home/dev/projects/code-review-graph @ commit 0c9a5ff (v2.3.5)
 ---
 
 # 1. Problema resolvido e tese central

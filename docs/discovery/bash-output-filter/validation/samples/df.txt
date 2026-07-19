@@ -7,6 +7,6 @@ tmpfs            24G  407M   24G   2% /dev/shm
 none            1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
 tmpfs            24G  124M   24G   1% /tmp
 none            1.0M     0  1.0M   0% /run/credentials/systemd-resolved.service
-/dev/sdb3       150G   74G   77G  50% /home/viudes/projects
+/dev/sdb3       150G   74G   77G  50% /home/devusr/projects
 /dev/sdb3       150G   74G   77G  50% /var/lib/docker
 tmpfs           4.7G  452K  4.7G   1% /run/user/1000

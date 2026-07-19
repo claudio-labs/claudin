@@ -3,7 +3,7 @@
 - Timestamp: 2026-05-29T19:21:39.987Z
 - Model: `claude-opus-4-8`
 - Baseline: `dist-baseline/cli.mjs`
-- Feature:  `/home/viudes/projects/claudio/dist/cli.mjs`
+- Feature:  `/home/dev/projects/claudio/dist/cli.mjs`
 - Runs por prompt: 3
 
 ## Tabela por invocacao

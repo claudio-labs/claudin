@@ -404,7 +404,7 @@ function bigJsonArray(rows = 300): string {
       number: i + 1,
       title: `Pull request ${i + 1} with a fairly long descriptive title here`,
       state: i % 2 === 0 ? 'OPEN' : 'MERGED',
-      author: 'viudes',
+      author: 'dev',
     })),
   )
 }
@@ -428,7 +428,7 @@ test('integration: flag ON → JSON compressed, original persisted, source= inje
 
   // #7 constant-field hoisting: author is identical on every row → hoisted onto a
   // single const= line and dropped from the grid columns (gone from keys=).
-  expect(body).toContain('const={"author":"viudes"}')
+  expect(body).toContain('const={"author":"dev"}')
   expect(body).toContain('keys=[number,title,state]')
 
   // backing file holds the JSON-lines canonical: one element per row, aligned to #N
@@ -436,7 +436,7 @@ test('integration: flag ON → JSON compressed, original persisted, source= inje
   expect(persisted.split('\n')).toHaveLength(300)
   expect(JSON.parse(persisted.split('\n')[0]!).number).toBe(1)
   // lossless: the hoisted field still lives in every backing row
-  expect(JSON.parse(persisted.split('\n')[0]!).author).toBe('viudes')
+  expect(JSON.parse(persisted.split('\n')[0]!).author).toBe('dev')
 })
 
 test('integration: flag OFF → JSON bash output byte-identical to today, no persist', async () => {

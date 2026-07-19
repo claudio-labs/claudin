@@ -88,7 +88,7 @@
 
 **package-scripts-end run#1** (atomic=1, compound=0):
 
-- [A] `wc -l /home/viudes/projects/claudio/package.json`
+- [A] `wc -l /home/dev/projects/claudio/package.json`
 
 **changelog-recent run#1** (atomic=0, compound=1):
 
@@ -108,11 +108,11 @@
 
 **package-scripts-end run#2** (atomic=1, compound=0):
 
-- [A] `wc -l /home/viudes/projects/claudio/package.json`
+- [A] `wc -l /home/dev/projects/claudio/package.json`
 
 **changelog-recent run#2** (atomic=0, compound=1):
 
-- [C] `ls /home/viudes/projects/claudio/*.md 2>/dev/null; echo "---"; ls /home/viudes/projects/claudio/docs/*.md 2>/dev/null | head`
+- [C] `ls /home/dev/projects/claudio/*.md 2>/dev/null; echo "---"; ls /home/dev/projects/claudio/docs/*.md 2>/dev/null | head`
 
 **git-log-last5 run#2** (atomic=1, compound=0):
 
@@ -130,11 +130,11 @@
 
 **package-scripts-end run#1** (atomic=1, compound=0):
 
-- [A] `wc -l /home/viudes/projects/claudio/package.json`
+- [A] `wc -l /home/dev/projects/claudio/package.json`
 
 **changelog-recent run#1** (atomic=0, compound=1):
 
-- [C] `ls -la /home/viudes/projects/claudio | grep -iE "change|history|news|releases"; echo "---"; ls /home/viudes/projects/claudio/*.md 2>/dev/null`
+- [C] `ls -la /home/dev/projects/claudio | grep -iE "change|history|news|releases"; echo "---"; ls /home/dev/projects/claudio/*.md 2>/dev/null`
 
 **git-log-last5 run#1** (atomic=1, compound=0):
 
@@ -150,7 +150,7 @@
 
 **package-scripts-end run#2** (atomic=1, compound=0):
 
-- [A] `wc -l /home/viudes/projects/claudio/package.json`
+- [A] `wc -l /home/dev/projects/claudio/package.json`
 
 **changelog-recent run#2** (atomic=0, compound=1):
 
@@ -564,7 +564,7 @@ Se quiser, me diga o módulo certo (ou posso listar os `*.test.ts` de `src/utils
 O arquivo `src/utils/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse filtro:
 
 ```
-The following filters did not match any test files in --cwd="/home/viudes/projects/claudio":
+The following filters did not match any test files in --cwd="/home/dev/projects/claudio":
  src/utils/log.test.ts
 10137 files were searched [82.00ms]
 ```

@@ -431,40 +431,40 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
 
 ### oh-my-pi
 
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:6` —
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:6` —
   prefixo `blob:sha256:`.
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:21–85` —
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:21–85` —
   classe `BlobStore`.
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:107–134` —
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:107–134` —
   externalize helpers.
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:141–168` —
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/blob-store.ts:141–168` —
   resolve helpers (fallback warn em miss).
-- `/home/viudes/projects/oh-my-pi/docs/blob-artifact-architecture.md:21–33` —
+- `/home/dev/projects/oh-my-pi/docs/blob-artifact-architecture.md:21–33` —
   boundary global e implicações.
-- `/home/viudes/projects/oh-my-pi/docs/blob-artifact-architecture.md:79–92` —
+- `/home/dev/projects/oh-my-pi/docs/blob-artifact-architecture.md:79–92` —
   dataflow de persistência (threshold de 1024 bytes).
-- `/home/viudes/projects/oh-my-pi/docs/blob-artifact-architecture.md:94–109` —
+- `/home/dev/projects/oh-my-pi/docs/blob-artifact-architecture.md:94–109` —
   rehydration on load.
 
 ### claudin
 
-- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:118` —
+- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:118` —
   layout atual de tool-results.
-- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:146` —
+- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:146` —
   `unlinkSessionSpillDir` (deletado no `/clear`).
-- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:171` —
+- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:171` —
   `persistToolResult`.
-- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:223` —
+- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:223` —
   formato `<persisted-output>` que o modelo vê.
-- `/home/viudes/projects/claudin/src/utils/toolResultStorage.ts:308–369` —
+- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:308–369` —
   trigger por threshold.
-- `/home/viudes/projects/claudin/src/constants/toolLimits.ts:13` —
+- `/home/dev/projects/claudin/src/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.
-- `/home/viudes/projects/claudin/src/utils/cleanup.ts:155` —
+- `/home/dev/projects/claudin/src/utils/cleanup.ts:155` —
   `cleanupOldSessionFiles` (time-based, 30d default).
-- `/home/viudes/projects/claudin/src/utils/cleanup.ts:196–203` —
+- `/home/dev/projects/claudin/src/utils/cleanup.ts:196–203` —
   varre tool-results dentro de session dirs.
-- `/home/viudes/projects/claudin/src/services/compact/postCompactCleanup.ts:42` —
+- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:42` —
   `runPostCompactCleanup` (não toca em tool-results).
-- `/home/viudes/projects/claudin/src/services/compact/postCompactCleanup.ts:159–165` —
+- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:159–165` —
   comentário explícito: arquivos persistidos sobrevivem ao compact.

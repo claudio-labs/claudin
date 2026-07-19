@@ -1626,15 +1626,15 @@ describe("phase 6.1.5 — journalctl", () => {
   });
 
   test("strips hostname from log lines", () => {
-    const raw = "May 05 12:18:04 viudes-arch systemd-logind[726]: Watching system buttons\nMay 05 12:22:44 viudes-arch systemd-logind[726]: System is rebooting.\n";
+    const raw = "May 05 12:18:04 dev-arch systemd-logind[726]: Watching system buttons\nMay 05 12:22:44 dev-arch systemd-logind[726]: System is rebooting.\n";
     const body = runFilterBody("journalctl", "journalctl -u systemd-logind", raw);
-    expect(body).not.toContain("viudes-arch");
+    expect(body).not.toContain("dev-arch");
     expect(body).toContain("May 05 12:18:04");
     expect(body).toContain("systemd-logind[726]: Watching");
   });
 
   test("strips boot markers", () => {
-    const raw = "May 05 12:22:49 viudes-arch systemd[1]: Stopped service.\n-- Boot ed3041156fb04270ae0d53e7892c949b --\nMay 05 12:23:37 viudes-arch systemd[1]: Starting service.\n";
+    const raw = "May 05 12:22:49 dev-arch systemd[1]: Stopped service.\n-- Boot ed3041156fb04270ae0d53e7892c949b --\nMay 05 12:23:37 dev-arch systemd[1]: Starting service.\n";
     const body = runFilterBody("journalctl", "journalctl -u systemd", raw);
     expect(body).not.toContain("-- Boot ed3041");
     expect(body).toContain("Stopped service.");
@@ -3613,7 +3613,7 @@ describe("phase 12.3 — git-worktree", () => {
       "utf8",
     );
     const body = runFilterBody("git-worktree", "git worktree list", raw);
-    expect(body).toContain("/home/viudes/projects/claudin");
+    expect(body).toContain("/home/devusr/projects/claudin");
   });
 
   test("match: git worktree list ✓; --porcelain rejects; add/remove not matched", () => {

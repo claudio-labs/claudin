@@ -135,10 +135,10 @@ describe('compressJsonArray — constant-field hoisting', () => {
     const rows = Array.from({ length: 6 }, (_, i) => ({
       number: i + 1,
       title: `item ${i + 1}`,
-      author: 'viudes',
+      author: 'dev',
     }))
     const out = compressJsonArray(JSON.stringify(rows))!
-    expect(out.render).toContain('const={"author":"viudes"}')
+    expect(out.render).toContain('const={"author":"dev"}')
     // dropped from the keys header AND each row (it lives only on the const= line)
     expect(out.render).toContain('rows=6 keys=[number,title]')
     const line1 = out.render.split('\n').find(l => l.startsWith('#1\t'))!
@@ -146,7 +146,7 @@ describe('compressJsonArray — constant-field hoisting', () => {
     // lossless: the backing jsonl still carries author on every line
     const jl = out.jsonl.split('\n')
     expect(jl).toHaveLength(6)
-    expect(jl.every(l => l.includes('"author":"viudes"'))).toBe(true)
+    expect(jl.every(l => l.includes('"author":"dev"'))).toBe(true)
   })
 
   test('a varying field is NOT hoisted (no const= line)', () => {
@@ -183,12 +183,12 @@ describe('compressJsonArray — constant-field hoisting', () => {
       total_count: 6,
       items: Array.from({ length: 6 }, (_, i) => ({
         number: i + 1,
-        author: 'viudes',
+        author: 'dev',
       })),
     }
     const out = compressJsonArray(JSON.stringify(payload))!
     expect(out.render).toContain('meta={"total_count":6}')
-    expect(out.render).toContain('const={"author":"viudes"}')
+    expect(out.render).toContain('const={"author":"dev"}')
     expect(out.render).toContain('keys=[number]')
   })
 
@@ -209,7 +209,7 @@ describe('compressJsonArray — constant-field hoisting', () => {
   test('a stray scalar element disables hoisting entirely', () => {
     const rows: unknown[] = Array.from({ length: 6 }, (_, i) => ({
       id: i,
-      author: 'viudes',
+      author: 'dev',
     }))
     rows[2] = 5 // 5/6 objects ≥ 80% → still schema-factor, but no hoist
     const out = compressJsonArray(JSON.stringify(rows))!

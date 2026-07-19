@@ -75,5 +75,5 @@
 [   30.345678] wlan0: associated
 [   60.456789] kernel: process foo (123) blocked for more than 120 seconds
 [  120.567890] systemd-resolved[456]: Server returned error NXDOMAIN
-[  180.678901] systemd-logind[789]: New session 1 of user viudes
+[  180.678901] systemd-logind[789]: New session 1 of user devusr
 [  240.789012] kernel: nf_conntrack: table full, dropping packet

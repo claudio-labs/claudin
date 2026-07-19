@@ -1,7 +1,7 @@
 # Discovery: code-review-graph — insights consolidados
 
 **Data:** 2026-05-27
-**Repo avaliado:** `/home/viudes/projects/code-review-graph` v2.3.5 (`0c9a5ff`, último commit hoje)
+**Repo avaliado:** `/home/dev/projects/code-review-graph` v2.3.5 (`0c9a5ff`, último commit hoje)
 **Claudin:** `main` em `c541013`
 **Documentos-fonte:**
 - `01-claims-e-promessa.md` — análise do README e docs
@@ -83,7 +83,7 @@
 
 1. **Receita doc-only** em `docs/recipes/code-review-graph-mcp.md` mostrando snippet de `settings.json` para plugar o CRG como MCP server externo, com disclaimer "ganhos variam por commit; rode o seu próprio benchmark".
 2. **Antes de qualquer integração mais profunda**, medir no Claudin:
-   - `code-review-graph build` em `/home/viudes/projects/claudin` → tempo, tamanho do DB, contagem de nodes/edges.
+   - `code-review-graph build` em `/home/dev/projects/claudin` → tempo, tamanho do DB, contagem de nodes/edges.
    - Pipeline de eval (`token_efficiency.py` + `impact_accuracy`) sobre 5 commits recentes do Claudin. Se `graph_tokens > naive_tokens` na maioria, a tese cai aqui também.
 3. **Reaproveitar a ideia do `detail_level="minimal"`** em tools nossas que serializam estruturas (revisitar `/review`, eventual blast-radius), independentemente do CRG.
 4. **Reaproveitar a ideia do response-com-`context_savings`** como padrão de UX em tools custosas — mesmo com estimativa simples (chars/4), o feedback per-call é útil.

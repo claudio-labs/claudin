@@ -14,13 +14,13 @@
 ### Amostra REAL — `grep -rn "isAbortError" src --include="*.ts"` (589 bytes, 7 matches)
 
 ```
-/home/viudes/projects/claudin/src/services/api/openaiShim.ts:1909:        const isAbortError =
-/home/viudes/projects/claudin/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
-/home/viudes/projects/claudin/src/services/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
-/home/viudes/projects/claudin/src/utils/errors.ts:27:export function isAbortError(e: unknown): boolean {
-/home/viudes/projects/claudin/src/utils/attachments.ts:122:import { isAbortError } from './errors.js'
-/home/viudes/projects/claudin/src/utils/attachments.ts:2627:    if (!isAbortError(e)) {
-/home/viudes/projects/claudin/src/utils/errors.ts:32:    return e instanceof TypeError && e.message.includes('aborted')
+/home/dev/projects/claudin/src/services/api/openaiShim.ts:1909:        const isAbortError =
+/home/dev/projects/claudin/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
+/home/dev/projects/claudin/src/services/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
+/home/dev/projects/claudin/src/utils/errors.ts:27:export function isAbortError(e: unknown): boolean {
+/home/dev/projects/claudin/src/utils/attachments.ts:122:import { isAbortError } from './errors.js'
+/home/dev/projects/claudin/src/utils/attachments.ts:2627:    if (!isAbortError(e)) {
+/home/dev/projects/claudin/src/utils/errors.ts:32:    return e instanceof TypeError && e.message.includes('aborted')
 ```
 
 ### Amostra REAL — `rg "isAbortError" src --type ts` (564 bytes)
@@ -48,7 +48,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 - Path:linha:conteúdo — coordenada + match. Quase 100% sinal.
 
 **Ruído potencial:**
-- **Path absoluto longo** quando user passou path absoluto (`/home/viudes/projects/claudin/src/...`) — pode virar relativo. ~30-50 chars/match.
+- **Path absoluto longo** quando user passou path absoluto (`/home/dev/projects/claudin/src/...`) — pode virar relativo. ~30-50 chars/match.
 - **Matches em arquivos noise** (`node_modules/`, `dist/`, `.git/`) se user esqueceu `--exclude-dir`
 - Linhas de erro `grep: ...: Permission denied` — dedup
 - Para `rg`: ANSI colors no terminal — `stripAnsi`
@@ -79,7 +79,7 @@ Pode dar 100KB+ em projeto grande. Cap necessário.
 }
 ```
 
-**Saída esperada:** path absoluto vira últimos 3 segmentos (ex: `/home/viudes/projects/claudin/src/utils/errors.ts:27:` → `claudin/src/utils/errors.ts:27:`).
+**Saída esperada:** path absoluto vira últimos 3 segmentos (ex: `/home/dev/projects/claudin/src/utils/errors.ts:27:` → `claudin/src/utils/errors.ts:27:`).
 
 ---
 

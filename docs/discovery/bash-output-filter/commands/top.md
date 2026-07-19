@@ -19,7 +19,7 @@ MiB Mem :  48102.1 total,  29781.7 free,  13213.0 used,   6280.4 buff/cache
 MiB Swap:      0.0 total,      0.0 free,      0.0 used.  34889.1 avail Mem 
 
     PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-  51369 viudes    20   0   70.9g 600116 114548 S  14.4   1.2   8:37.06 claude
+  51369 dev    20   0   70.9g 600116 114548 S  14.4   1.2   8:37.06 claude
       1 root      20   0   25820  14748  10296 S   0.0   0.0   0:01.21 systemd
       2 root      20   0       0      0      0 S   0.0   0.0   0:00.00 kthreadd
 ... (mais linhas com PID/USER/etc)

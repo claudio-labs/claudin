@@ -12,7 +12,7 @@
 
 ### Índice BM25
 
-Arquivo: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tool-discovery/tool-index.ts`.
+Arquivo: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tool-discovery/tool-index.ts`.
 
 - **Corpus por tool** (`buildSearchDocument`, linhas 143‑155): concatena com pesos
   - `name` ×6, `label` ×4, `mcpToolName` ×4, `serverName` ×2, `summary` ×2, `schemaKey` ×1 (constantes em `FIELD_WEIGHTS`, linhas 93‑100).
@@ -23,7 +23,7 @@ Arquivo: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tool-discover
 
 ### Quando o ranking roda
 
-**Nunca automaticamente.** É a LLM que decide chamar `search_tool_bm25` — é uma tool `loadMode: "essential"` (`/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/search-tool-bm25.ts:211`). O fluxo:
+**Nunca automaticamente.** É a LLM que decide chamar `search_tool_bm25` — é uma tool `loadMode: "essential"` (`/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/search-tool-bm25.ts:211`). O fluxo:
 
 1. Sessão começa com apenas tools `loadMode: "essential"` ativas. Greppadas em `src/`: **bash**, **read**, **edit**, **search_tool_bm25**. Todo o resto (`write`, `find`, `grep`-equivalente `search`, `debug`, `gh`, `browser`, `calculator`, `lsp`, `task`, hindsight*, `todo-write`, etc.) é `loadMode: "discoverable"` (28 ocorrências no grep — ver lista completa no codebase).
 2. LLM lê o prompt do `search_tool_bm25` (que inclui `summarizeDiscoverableTools` com contagens por servidor MCP) e emite `search_tool_bm25({ query: "regex grep ripgrep" })`.
@@ -48,12 +48,12 @@ omp **não tem mecânica de prompt-cache da Anthropic** no caminho de discovery 
 
 Claudin implementou um equivalente quase 1:1 da ideia — não é "BM25" mas é a mesma topologia "deferred tools + search tool":
 
-- **Categoria por tool** (`/home/viudes/projects/claudin/src/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
-- **Critério de deferir** (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/prompt.ts:63‑109`, `isDeferredTool`): MCP tools são sempre deferred, mais qualquer `shouldDefer: true`; tools com `alwaysLoad: true` ou `name === TOOL_SEARCH_TOOL_NAME` nunca são deferred. Várias hard-exceptions para Brief/SendUserFile/Agent.
-- **Ranking** (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:186‑302`, `searchToolsWithKeywords`): **NÃO é BM25** — é scoring linear ad-hoc com pesos manuais (10/12 para match exato em parte do nome, 5/6 para substring, 4 para searchHint, 2 para descrição, 3 para fallback full‑name) e suporte a `+term` required, `select:` direto e prefix MCP. Tokenização: lowercase + split por whitespace, sem normalização Unicode.
-- **Gating de ativação por threshold** (`/home/viudes/projects/claudin/src/utils/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
-- **Wire mechanism**: usa o content block `tool_reference` da Anthropic (`/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:444‑469`). É aqui que tudo emperra em provedores não‑Anthropic.
-- **Optimistic disable em terceiros** (`/home/viudes/projects/claudin/src/utils/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
+- **Categoria por tool** (`/home/dev/projects/claudin/src/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
+- **Critério de deferir** (`/home/dev/projects/claudin/src/tools/ToolSearchTool/prompt.ts:63‑109`, `isDeferredTool`): MCP tools são sempre deferred, mais qualquer `shouldDefer: true`; tools com `alwaysLoad: true` ou `name === TOOL_SEARCH_TOOL_NAME` nunca são deferred. Várias hard-exceptions para Brief/SendUserFile/Agent.
+- **Ranking** (`/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:186‑302`, `searchToolsWithKeywords`): **NÃO é BM25** — é scoring linear ad-hoc com pesos manuais (10/12 para match exato em parte do nome, 5/6 para substring, 4 para searchHint, 2 para descrição, 3 para fallback full‑name) e suporte a `+term` required, `select:` direto e prefix MCP. Tokenização: lowercase + split por whitespace, sem normalização Unicode.
+- **Gating de ativação por threshold** (`/home/dev/projects/claudin/src/utils/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
+- **Wire mechanism**: usa o content block `tool_reference` da Anthropic (`/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:444‑469`). É aqui que tudo emperra em provedores não‑Anthropic.
+- **Optimistic disable em terceiros** (`/home/dev/projects/claudin/src/utils/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
 
 ### Onde injetar a versão BM25 (provider-agnostic)
 
@@ -150,15 +150,15 @@ Sub‑configuração via `~/.claudin/settings.json`:
 ## Referências de arquivos
 
 ### omp
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tool-discovery/tool-index.ts:90-100` (constants), `:115-134` (tokenize), `:143-155` (corpus), `:246-297` (index + search).
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/search-tool-bm25.ts:208-297` (tool wrapper, ativação).
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:3048-3151` (discovery mode resolution, getDiscoverableTools, activateDiscoveredTools).
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tool-discovery/tool-index.ts:90-100` (constants), `:115-134` (tokenize), `:143-155` (corpus), `:246-297` (index + search).
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/search-tool-bm25.ts:208-297` (tool wrapper, ativação).
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:3048-3151` (discovery mode resolution, getDiscoverableTools, activateDiscoveredTools).
 - `loadMode` declarações: `:essential` em `tools/bash.ts:228`, `tools/read.ts:679`, `edit/index.ts:278`, `tools/search-tool-bm25.ts:211`. Resto é `discoverable`.
 
 ### claudin
-- `/home/viudes/projects/claudin/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
-- `/home/viudes/projects/claudin/src/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
-- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:132-302` (tokenizer + scoring linear atual), `:304-471` (tool wrapper, `tool_reference` output).
-- `/home/viudes/projects/claudin/src/tools/ToolSearchTool/prompt.ts:55-109` (`isDeferredTool`).
-- `/home/viudes/projects/claudin/src/utils/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
-- `/home/viudes/projects/claudin/scripts/measure-tool-schemas.ts` + `.test.ts` (baseline mensurável).
+- `/home/dev/projects/claudin/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
+- `/home/dev/projects/claudin/src/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
+- `/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:132-302` (tokenizer + scoring linear atual), `:304-471` (tool wrapper, `tool_reference` output).
+- `/home/dev/projects/claudin/src/tools/ToolSearchTool/prompt.ts:55-109` (`isDeferredTool`).
+- `/home/dev/projects/claudin/src/utils/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
+- `/home/dev/projects/claudin/scripts/measure-tool-schemas.ts` + `.test.ts` (baseline mensurável).

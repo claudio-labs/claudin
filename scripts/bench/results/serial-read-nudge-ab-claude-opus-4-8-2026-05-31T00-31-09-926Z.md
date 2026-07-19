@@ -2,8 +2,8 @@
 
 - Timestamp: 2026-05-31T00:31:09.926Z
 - Model: `claude-opus-4-8`
-- Baseline (A): `/home/viudes/projects/claudio/dist-bench-baseline/cli.mjs`
-- Feature  (B): `/home/viudes/projects/claudio/dist/cli.mjs`
+- Baseline (A): `/home/dev/projects/claudio/dist-bench-baseline/cli.mjs`
+- Feature  (B): `/home/dev/projects/claudio/dist/cli.mjs`
 - Runs por prompt: 3
 - KPIs: narrationChars, parallelReadFraction, exploreInvocations
 

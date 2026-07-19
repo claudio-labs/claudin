@@ -1,7 +1,7 @@
 # Fit-analysis: `code-review-graph` no Claudin
 
 **Data:** 2026-05-27
-**Repo avaliado:** `/home/viudes/projects/code-review-graph` (v2.3.5, commit `0c9a5ff`)
+**Repo avaliado:** `/home/dev/projects/code-review-graph` (v2.3.5, commit `0c9a5ff`)
 **Claudin:** `main` em `c541013`
 **Escopo:** decidir se vale trazer ideia ou integração; sem plano de implementação.
 
@@ -136,7 +136,7 @@ Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado
 
 ### B.7 Próximos passos (max 5, acionáveis, sem prometer implementação)
 
-1. **Medir custo de indexação no próprio Claudin.** Rodar `code-review-graph build` em `/home/viudes/projects/claudin` e anotar: tempo, tamanho do `.code-review-graph/graph.db`, contagem de nodes/edges. Sem isso, qualquer claim de "ajuda no Explore" é especulação.
+1. **Medir custo de indexação no próprio Claudin.** Rodar `code-review-graph build` em `/home/dev/projects/claudin` e anotar: tempo, tamanho do `.code-review-graph/graph.db`, contagem de nodes/edges. Sem isso, qualquer claim de "ajuda no Explore" é especulação.
 2. **Rodar a pipeline de eval do CRG sobre 5 commits reais do Claudin** (ex.: 5 últimos PRs mergeados que mudam >1 arquivo) usando os benchmarks `token_efficiency` + `impact_accuracy`. Se o `graph_tokens` for > `naive_tokens` na maioria — como aconteceu no auto-eval do próprio repo do CRG — a tese cai.
 3. **Adicionar uma receita doc-only** (`docs/recipes/code-review-graph-mcp.md`) com snippet de `settings.json` e disclaimer ("ganhos variam por commit; rode o seu próprio benchmark"). Caminho (a). Zero código.
 4. **Usar 3-4 sessões reais de dev** com o MCP server conectado e logar: quantos tool-calls foram pro CRG, quantos pro Grep nativo, qual prompt-shape o agente usou. Memória de team `discovery-workflow` pede ganhos medidos; aqui é a etapa "medida".

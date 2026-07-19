@@ -58,7 +58,7 @@ export const top: FilterSpec = {
 const JOURNALCTL_MATCH = /^(?:sudo )?journalctl\b/
 const JOURNALCTL_REJECT =
   /--output=json\b|--output=cat\b|-o\s+(json|cat|export)\b|-f\b|--follow\b|--machine\b/
-// "May 05 12:18:04 viudes-arch ..." → "May 05 12:18:04 ..."
+// "May 05 12:18:04 dev-arch ..." → "May 05 12:18:04 ..."
 const JOURNALCTL_HOST_REPLACE =
   /^(\w{3} \d{1,2} \d{2}:\d{2}:\d{2}) \S+ /gm
 

@@ -196,7 +196,7 @@ const CASES: TestCase[] = [
   // ============================================================
   {
     name: 'grep -rn (paths absolutos)',
-    command: 'grep -rn "isAbortError" /home/viudes/projects/claudio/src',
+    command: 'grep -rn "isAbortError" /home/dev/projects/claudin/src',
     sampleFile: 'grep.txt',
     predictedReductionPct: 20,
     filter: {
@@ -213,7 +213,7 @@ const CASES: TestCase[] = [
   },
   {
     name: 'rg (com path absoluto — finding inesperado)',
-    command: 'rg "isAbortError" /home/viudes/projects/claudio/src',
+    command: 'rg "isAbortError" /home/dev/projects/claudin/src',
     sampleFile: 'rg.txt',
     predictedReductionPct: 34,
     notes: 'Quando user passa path absoluto, rg também emite paths absolutos — filter strip funciona (~34%).',

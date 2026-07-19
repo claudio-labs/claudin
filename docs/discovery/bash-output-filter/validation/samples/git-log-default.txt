@@ -1,5 +1,5 @@
 commit a200d7d5b6fadf11043aa46455713b2b03428e0c
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Tue May 5 15:11:45 2026 -0300
 
     fix(providers): retry transient 404s from OpenAI-compat providers
@@ -16,7 +16,7 @@ Date:   Tue May 5 15:11:45 2026 -0300
     - Add 5 shouldRetry tests for 404 retry logic
 
 commit eed74e1f79bfba2fac06a25b9c27149644d6e163
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Tue May 5 14:52:32 2026 -0300
 
     fix(providers): use claudio branding in User-Agent for non-Anthropic providers
@@ -35,7 +35,7 @@ Date:   Tue May 5 02:28:59 2026 +0000
     chore(release): v0.1.10
 
 commit 3c1ce4270eb72b0930beaa0bc7078edebc5b0a43
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 22:34:59 2026 -0300
 
     fix(cache): skip model-options cache scope for non-local provider URLs
@@ -45,7 +45,7 @@ Date:   Mon May 4 22:34:59 2026 -0300
     cache keys.
 
 commit 41c5b06835d3d5b25095be329c991ed3bb42411f
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 22:28:17 2026 -0300
 
     fix(providers): accurate token metrics for OpenAI-compat providers (#13)
@@ -79,12 +79,12 @@ Date:   Mon May 4 22:28:17 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/13
-    Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
-    Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
+    Reviewed-on: http://git.example.com:3000/devusr/claudio/pulls/13
+    Co-authored-by: Viudes <dev@example.com>
+    Co-committed-by: Viudes <dev@example.com>
 
 commit 53b6c6d319cd1664a5b577e619d85307df08738d
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 21:11:03 2026 -0300
 
     fix(interrupt): propagate Ctrl+C to exit handler when nothing to cancel (#12)
@@ -124,12 +124,12 @@ Date:   Mon May 4 21:11:03 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/12
-    Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
-    Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
+    Reviewed-on: http://git.example.com:3000/devusr/claudio/pulls/12
+    Co-authored-by: Viudes <dev@example.com>
+    Co-committed-by: Viudes <dev@example.com>
 
 commit 78c72e7c8e1e69bfbe132d08c48b5723e6f75431
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 20:22:39 2026 -0300
 
     feat(providers): dynamic model discovery + fixes for OpenAI-compat providers
@@ -162,13 +162,13 @@ Date:   Mon May 4 20:22:39 2026 -0300
     Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 commit 7e583ad686dcbed3023a465fe74b0c03feedbc40
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 18:37:04 2026 -0300
 
     feat: fix cli
 
 commit a6ed4ba7c467b64f2aecb1e5785fab188e8a3182
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 18:36:05 2026 -0300
 
     test(cache): regression tests + bench for cc_workload prefix flip (#11)
@@ -195,12 +195,12 @@ Date:   Mon May 4 18:36:05 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/11
-    Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
-    Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
+    Reviewed-on: http://git.example.com:3000/devusr/claudio/pulls/11
+    Co-authored-by: Viudes <dev@example.com>
+    Co-committed-by: Viudes <dev@example.com>
 
 commit fc131f8060c6b017766eb07b954a97b9dc9fae6a
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 4 16:46:20 2026 -0300
 
     feat(benches): add 11 token-economy measurement scripts (#10)
@@ -227,6 +227,6 @@ Date:   Mon May 4 16:46:20 2026 -0300
     - screenshots attached (if UI changed):
     - follow-up work or known limitations:
     
-    Reviewed-on: http://git.house.server:3000/viudes/claudio/pulls/10
-    Co-authored-by: Viudes <andersonvieiraviudes@gmail.com>
-    Co-committed-by: Viudes <andersonvieiraviudes@gmail.com>
+    Reviewed-on: http://git.example.com:3000/devusr/claudio/pulls/10
+    Co-authored-by: Viudes <dev@example.com>
+    Co-committed-by: Viudes <dev@example.com>

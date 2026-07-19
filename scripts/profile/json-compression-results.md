@@ -73,7 +73,7 @@ higher r:w, smaller cached JSON region) is consistent with the env-toggle A/B ab
 Roadmap #7: fields identical on every row are hoisted onto a single `const={…}`
 line and dropped from the grid columns (lossless — full element stays in the
 `jsonl` backing). Measured on `scripts/profile/fixtures/big-json.sh`, which carries
-two constant fields (`author:"viudes"` and `labels:["area/cache","type/perf"]`).
+two constant fields (`author:"dev"` and `labels:["area/cache","type/perf"]`).
 A/B is the render of `HEAD:jsonArrayCompress.ts` (no hoist) vs this branch (hoist),
 identical input → isolates the hoist:
 
@@ -85,7 +85,7 @@ identical input → isolates the hoist:
 New render head (n=300):
 
 ```
-const={"author":"viudes","labels":["area/cache","type/perf"]}
+const={"author":"dev","labels":["area/cache","type/perf"]}
 rows=300 keys=[number,title,state,mergeable,comments]
 #1	1	Pull request 1: …	MERGED	false	2
 ```

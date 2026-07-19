@@ -14,30 +14,30 @@
 ### Amostra 1 — `journalctl --no-pager -n 20 -u systemd-logind` (REAL: **1.879 bytes / 21 linhas**)
 
 ```
-May 05 12:18:04 viudes-arch systemd-logind[726]: Watching system buttons on /dev/input/event1 (Power Button)
-May 05 12:18:04 viudes-arch systemd-logind[726]: Watching system buttons on /dev/input/event4 (Logitech USB Receiver Keyboard)
-May 05 12:22:44 viudes-arch systemd-logind[726]: The system will reboot now!
-May 05 12:22:44 viudes-arch systemd-logind[726]: System is rebooting.
-May 05 12:22:44 viudes-arch systemd-logind[726]: Session 5 logged out. Waiting for processes to exit.
-May 05 12:22:44 viudes-arch systemd-logind[726]: Removed session 5.
-May 05 12:22:44 viudes-arch systemd-logind[726]: Removed session 6.
-May 05 12:22:44 viudes-arch systemd-logind[726]: Removed session 1.
-May 05 12:22:49 viudes-arch systemd[1]: Stopping User Login Management...
-May 05 12:22:49 viudes-arch systemd[1]: systemd-logind.service: Deactivated successfully.
-May 05 12:22:49 viudes-arch systemd[1]: Stopped User Login Management.
+May 05 12:18:04 dev-arch systemd-logind[726]: Watching system buttons on /dev/input/event1 (Power Button)
+May 05 12:18:04 dev-arch systemd-logind[726]: Watching system buttons on /dev/input/event4 (Logitech USB Receiver Keyboard)
+May 05 12:22:44 dev-arch systemd-logind[726]: The system will reboot now!
+May 05 12:22:44 dev-arch systemd-logind[726]: System is rebooting.
+May 05 12:22:44 dev-arch systemd-logind[726]: Session 5 logged out. Waiting for processes to exit.
+May 05 12:22:44 dev-arch systemd-logind[726]: Removed session 5.
+May 05 12:22:44 dev-arch systemd-logind[726]: Removed session 6.
+May 05 12:22:44 dev-arch systemd-logind[726]: Removed session 1.
+May 05 12:22:49 dev-arch systemd[1]: Stopping User Login Management...
+May 05 12:22:49 dev-arch systemd[1]: systemd-logind.service: Deactivated successfully.
+May 05 12:22:49 dev-arch systemd[1]: Stopped User Login Management.
 -- Boot ed3041156fb04270ae0d53e7892c949b --
-May 05 12:23:37 viudes-arch systemd[1]: Starting User Login Management...
-May 05 12:23:37 viudes-arch systemd-logind[730]: New seat seat0.
-May 05 12:23:37 viudes-arch systemd-logind[730]: Watching system buttons on /dev/input/event2 (Power Button)
+May 05 12:23:37 dev-arch systemd[1]: Starting User Login Management...
+May 05 12:23:37 dev-arch systemd-logind[730]: New seat seat0.
+May 05 12:23:37 dev-arch systemd-logind[730]: Watching system buttons on /dev/input/event2 (Power Button)
 ... (mais linhas)
 ```
 
 ### Amostra 2 — sem `-u <service>` (toda jornada do sistema, GBs em sistemas long-running)
 
 ```
-May 05 14:30:00 viudes-arch kernel: ...
-May 05 14:30:00 viudes-arch sshd[1234]: Accepted publickey...
-May 05 14:30:01 viudes-arch systemd[1]: ...
+May 05 14:30:00 dev-arch kernel: ...
+May 05 14:30:00 dev-arch sshd[1234]: Accepted publickey...
+May 05 14:30:01 dev-arch systemd[1]: ...
 ... (milhares de linhas, dezenas de services)
 ```
 
@@ -51,7 +51,7 @@ May 05 14:30:01 viudes-arch systemd[1]: ...
 - Mensagem de log
 
 **Ruído quando user já filtrou com `-u <service>`:**
-- **`hostname` em todas as linhas** — `viudes-arch` repete identicamente em 100% das linhas. Strip total seguro.
+- **`hostname` em todas as linhas** — `dev-arch` repete identicamente em 100% das linhas. Strip total seguro.
 - **`service[pid]:` repetido** — quando filtrado por `-u systemd-logind`, esse prefixo aparece em quase toda linha. Strip parcial.
 - Boot markers `-- Boot xxxx --` — útil mas pode ser comprimido pra `[reboot]`
 

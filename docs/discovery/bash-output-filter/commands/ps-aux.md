@@ -20,7 +20,7 @@ root           2  0.0  0.0      0     0 ?        S    12:23   0:00 [kthreadd]
 root           3  0.0  0.0      0     0 ?        I<   12:23   0:00 [rcu_gp]
 root           4  0.0  0.0      0     0 ?        I<   12:23   0:00 [rcu_par_gp]
 ... (~440 mais)
-viudes  1234567  2.3  1.5  543210 234567 pts/3   Sl+  14:22   0:01 node /home/viudes/projects/claudin/dist/cli.mjs --some-very-long-arg=value-that-keeps-going /path/to/some/file.ts ...
+dev  1234567  2.3  1.5  543210 234567 pts/3   Sl+  14:22   0:01 node /home/dev/projects/claudin/dist/cli.mjs --some-very-long-arg=value-that-keeps-going /path/to/some/file.ts ...
 ```
 
 ### Amostra 2 — `ps -ef` (estimado, similar com colunas diferentes)
@@ -49,7 +49,7 @@ User já filtrou — output curto, passthrough.
 - **TIME** (CPU time) — relevante mas formato `0:00` é noise quando todos zero
 
 **Ambíguo:**
-- COMMAND com path absoluto — `/home/viudes/projects/claudin/dist/cli.mjs ...` (60+ chars), pode truncar?
+- COMMAND com path absoluto — `/home/dev/projects/claudin/dist/cli.mjs ...` (60+ chars), pode truncar?
 
 ---
 
@@ -85,9 +85,9 @@ Parser que reformata em estilo `top -bn1` mais compacto, ordenado por %CPU desc:
 
 ```
 PID    USER     %CPU  %MEM  COMMAND
-1234   viudes   23.4   8.5  node /path/to/cli.mjs
-567    viudes   12.1   3.2  bun run dev
-89     viudes    5.6   1.8  Code
+1234   dev   23.4   8.5  node /path/to/cli.mjs
+567    dev   12.1   3.2  bun run dev
+89     dev    5.6   1.8  Code
 ... (top 20 por %CPU + count "+422 idle")
 ```
 

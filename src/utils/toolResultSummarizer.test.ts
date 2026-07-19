@@ -662,7 +662,7 @@ function bigJsonArray(rows = 200): string {
     number: i + 1,
     title: `Pull request number ${i + 1} with a reasonably long descriptive title`,
     state: i % 2 === 0 ? 'OPEN' : 'MERGED',
-    author: 'viudes',
+    author: 'dev',
   }))
   return JSON.stringify(arr)
 }
@@ -687,7 +687,7 @@ test('json: gate on → bash JSON compressed with strategyId=9 + source-less mar
   expect(body.startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
   expect(body).toContain('strategy="json-structural"')
   // author is constant across all rows → hoisted to const= and dropped from the grid (#7)
-  expect(body).toContain('const={"author":"viudes"}')
+  expect(body).toContain('const={"author":"dev"}')
   expect(body).toContain('keys=[number,title,state]')
   expect(body).toContain('<omitted rows=')
   expect(body.length).toBeLessThan(bigJsonArray().length)
@@ -703,7 +703,7 @@ test('json: a rare value buried in the dropped middle → salientPinned flows in
     number: i + 1,
     title: `Pull request number ${i + 1} with a reasonably long descriptive title`,
     state: i === 100 ? 'DRAFT' : i % 2 === 0 ? 'OPEN' : 'MERGED',
-    author: 'viudes',
+    author: 'dev',
   }))
   const out = maybeSummarizeToolResult(makeBlock(JSON.stringify(arr)), 'Bash')
   const body = asString(out)

@@ -6,7 +6,7 @@ FICLONE, overlayfs) para isolar sub-agents.
 
 Referências: `docs/discovery/ohmypi/08-cow-filesystem-isolation.md`,
 `docs/discovery/ohmypi/deep/08-cow-filesystem-isolation.md`,
-`/home/viudes/projects/oh-my-pi/crates/pi-iso/`.
+`/home/dev/projects/oh-my-pi/crates/pi-iso/`.
 
 ---
 
@@ -88,7 +88,7 @@ só dispara quando o usuário pede explicitamente edição paralela.
 
 ## 3. Ganhos MEDIDOS
 
-Sistema: btrfs em `/home/viudes/projects`, ext4 em `/`, tmpfs em `/tmp`.
+Sistema: btrfs em `/home/dev/projects`, ext4 em `/`, tmpfs em `/tmp`.
 
 | Operação | Tempo (cache quente) | Tamanho destino |
 |---|---|---|
@@ -154,7 +154,7 @@ b) **FS sem suporte.** ext4 (sem reflink) é o default na maioria das
    Sem reflink, COW degrada para `cp -r` (deep copy) — explicitamente
    pior que `git worktree`. macOS APFS é universal (ganha), mas
    Windows depende de ReFS (NTFS não tem block clone). O sistema do
-   usuário tem `/` em ext4 e só `/home/viudes/projects` em btrfs — isso
+   usuário tem `/` em ext4 e só `/home/dev/projects` em btrfs — isso
    significa que qualquer worktree fora desse subvol cai no fallback.
 
 c) **Worktree de longa duração.** O ganho de spawn (1s) se dissipa em

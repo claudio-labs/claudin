@@ -4,7 +4,7 @@ description: Sibling repo opencode-windsurf-auth holds the reverse-engineered Wi
 type: reference
 ---
 
-`/home/viudes/projects/opencode-windsurf-auth/` is the upstream reference Claudin's `src/services/api/windsurf/` was ported from. When a Windsurf wire-format question comes up, check it before guessing.
+The sibling checkout `../opencode-windsurf-auth/` is the upstream reference Claudin's `src/services/api/windsurf/` was ported from. When a Windsurf wire-format question comes up, check it before guessing.
 
 Where to look inside that repo:
 - `src/cloud-direct/{chat.ts,wire.ts,auth.ts,metadata.ts,catalog.ts}` — Connect-RPC encoder, proto field tags, EOS-trailer handling, two-token auth.

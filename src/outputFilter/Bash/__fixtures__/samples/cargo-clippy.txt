@@ -1,4 +1,4 @@
-   Compiling rtk v0.38.0 (/home/viudes/projects/rtk)
+   Compiling rtk v0.38.0 (/home/devusr/projects/rtk)
 warning: unnecessary `>= y + 1` or `x - 1 >=`
    --> src/core/stream.rs:347:28
     |

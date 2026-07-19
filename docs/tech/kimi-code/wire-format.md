@@ -37,7 +37,7 @@ Authorization: Bearer <access_token>          (coding host only; auth host omits
 User-Agent: kimi-code-cli/0.27.0              (coding host)  |  auth host sent UA "node"
 X-Msh-Platform: kimi_code_cli                 ← accepted, returns 200 (research's "kimi_cli-only" claim was WRONG)
 X-Msh-Version: 0.27.0
-X-Msh-Device-Name: <hostname>                 e.g. viudes-arch
+X-Msh-Device-Name: <hostname>                 e.g. dev-arch
 X-Msh-Device-Model: <os> <arch>              e.g. "Linux 6.18.38-2-lts x64"
 X-Msh-Os-Version: <kernel/os version>
 X-Msh-Device-Id: <stable UUID, 36 chars>      generated once, persisted

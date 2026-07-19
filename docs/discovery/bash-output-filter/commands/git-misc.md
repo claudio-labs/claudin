@@ -41,8 +41,8 @@ v0.1.8
 ### `git remote -v` (131 bytes)
 
 ```
-origin	ssh://git@git.house.server:2222/viudes/claudin.git (fetch)
-origin	ssh://git@git.house.server:2222/viudes/claudin.git (push)
+origin	ssh://git@git.example.com:dev/claudin.git (fetch)
+origin	ssh://git@git.example.com:dev/claudin.git (push)
 ```
 
 2 linhas por remote. Mínimo.
@@ -76,8 +76,8 @@ Formato `hash HEAD@{N}: action: message` — já compacto. Cada linha é coorden
 ### `git worktree list` (197 bytes)
 
 ```
-/home/viudes/projects/claudin                                  a200d7d [fix/user-agent-openai-shim]
-/home/viudes/projects/claudin/.claude/worktrees/agent-ab5c48be aad73b1 [worktree-agent-ab5c48be]
+/home/dev/projects/claudin                                  a200d7d [fix/user-agent-openai-shim]
+/home/dev/projects/claudin/.claude/worktrees/agent-ab5c48be aad73b1 [worktree-agent-ab5c48be]
 ```
 
 1 worktree por linha. Compacto.

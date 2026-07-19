@@ -102,7 +102,7 @@ banlist enquanto não houver push remoto.
 real é o campo `report` (free-text 500ch) vazar:
 
 1. **Paths absolutos** do user — modelo facilmente cita
-   `/home/viudes/...` ao descrever "tool X retornou erro lendo arquivo".
+   `/home/dev/...` ao descrever "tool X retornou erro lendo arquivo".
    Sanitização: regex que substitui paths absolutos por placeholders
    antes do write. Já existe utilitário relacionado em
    `src/utils/path.ts` (`sanitizePath`) mas é para sanitizar nome de
@@ -130,7 +130,7 @@ chamadas de `logForDebugging` esparsas (vide
 não como agregado.
 
 Inverso disso: **`MEMORY.md` do projeto não tem uma única entrada de
-tool-issue** (lido em `/home/viudes/.claudin/projects/-home-viudes-projects-claudin/memory/MEMORY.md`).
+tool-issue** (lido em `/home/dev/.claudin/projects/-home-dev-projects-claudin/memory/MEMORY.md`).
 Categorias atuais: indentação, review-agent, git identity, idioma,
 versionamento, "plan elegance". Tudo direção human→agent. Confirma o
 gap descrito em `04-report-tool-issue.md:12`.

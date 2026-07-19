@@ -1,7 +1,6 @@
 // Barrel for src/utils/sessionStorage.
 //
-// Originally a 5,361-line monolith; split in 11c (waves 1–5, see
-// /home/viudes/.claudin/plans/imperative-nibbling-lamport.md) into five
+// Originally a 5,361-line monolith; split in 11c (waves 1–5) into five
 // concerns under src/utils/sessionStorage/:
 //
 //   pure/          — type guards, paths, first-prompt extraction, JSONL byte

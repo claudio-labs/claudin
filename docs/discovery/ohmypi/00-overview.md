@@ -1,6 +1,6 @@
 # Visão geral — omp vs Claudin
 
-Snapshot: 2026-05-25. Repo omp em `/home/viudes/projects/oh-my-pi`.
+Snapshot: 2026-05-25. Repo omp em `/home/dev/projects/oh-my-pi`.
 
 ## 1. Tools
 

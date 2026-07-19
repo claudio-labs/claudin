@@ -231,11 +231,11 @@ so users can see whether the cache is actually helping their workflow.
 
 ## Referências
 
-- omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/github-cache.ts`
-- omp call sites: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/gh.ts:2520, :2547, :2841`
-- Claudin WebFetch cache: `/home/viudes/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
-- Claudin WebSearch (no cache): `/home/viudes/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
-- Claudin model cache: `/home/viudes/projects/claudin/src/utils/model/modelCache.ts`
-- Claudin latest-version cache: `/home/viudes/projects/claudin/src/utils/latestVersionCache.ts`
-- Claudin provider metadata: `/home/viudes/projects/claudin/src/services/api/providerConfig.ts:592`
-- Config-dir helper: `/home/viudes/projects/claudin/src/utils/envUtils.ts` (`getClaudinConfigHomeDir`)
+- omp: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/github-cache.ts`
+- omp call sites: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/gh.ts:2520, :2547, :2841`
+- Claudin WebFetch cache: `/home/dev/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
+- Claudin WebSearch (no cache): `/home/dev/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
+- Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
+- Claudin latest-version cache: `/home/dev/projects/claudin/src/utils/latestVersionCache.ts`
+- Claudin provider metadata: `/home/dev/projects/claudin/src/services/api/providerConfig.ts:592`
+- Config-dir helper: `/home/dev/projects/claudin/src/utils/envUtils.ts` (`getClaudinConfigHomeDir`)

@@ -15,11 +15,11 @@
 
 ### Crates relevantes
 
-- `/home/viudes/projects/oh-my-pi/crates/pi-ast/` — lógica pura (sem napi). Wrappers de `ast-grep-core` + 55 grammars tree-sitter.
+- `/home/dev/projects/oh-my-pi/crates/pi-ast/` — lógica pura (sem napi). Wrappers de `ast-grep-core` + 55 grammars tree-sitter.
   - `src/language/parsers.rs:1-172` — uma `pub fn language_*() -> TSLanguage` por linguagem (astro, bash, c, clojure, cmake, cpp, c_sharp, dart, css, diff, dockerfile, elixir, erlang, go, graphql, haskell, hcl, html, ini, java, javascript, json, just, julia, kotlin, lua, make, md, nix, objc, ocaml, odin, perl, php, powershell, proto, python, r, regex, ruby, rust, scala, solidity, sql, starlark, svelte, swift, toml-ng, tlaplus, typescript, verilog, vue, xml, yaml, zig).
   - `src/language/mod.rs:1-789` — `SupportLang` enum, dispatch por extensão/alias, expando-char e `pre_process_pattern` para grammars que não aceitam `$` em identificador.
   - `src/ops.rs:127-212` — `compile_rewrite_rules`, `rewrite_source`, `apply_edits` (sort + reverse + reject overlaps). É aqui que `AstEdit` realmente roda.
-- `/home/viudes/projects/oh-my-pi/crates/pi-natives/src/ast.rs:1-1006` — camada NAPI. Define `AstFindOptions`, `AstReplaceOptions`, `AstReplaceResult`, e expõe duas funções `#[napi]`:
+- `/home/dev/projects/oh-my-pi/crates/pi-natives/src/ast.rs:1-1006` — camada NAPI. Define `AstFindOptions`, `AstReplaceOptions`, `AstReplaceResult`, e expõe duas funções `#[napi]`:
   - `ast_grep(options) -> Promise<AstFindResult>` (linhas 530-684)
   - `ast_edit(options) -> Promise<AstReplaceResult>` (linhas 686+)
 - Bindings TS↔Rust: `napi-derive` gera `packages/natives/native/index.d.ts` (~45 KB) com `declare function astEdit(options)` etc. Consumido em TS como `import { astEdit } from "@oh-my-pi/pi-natives"`.
@@ -158,16 +158,16 @@ Cache por linguagem em `Map<string, Language>` no escopo do módulo. Não há TT
 
 ## Referências de arquivos
 
-- omp: `/home/viudes/projects/oh-my-pi/crates/pi-ast/src/language/parsers.rs`
-- omp: `/home/viudes/projects/oh-my-pi/crates/pi-ast/src/ops.rs:127-212`
-- omp: `/home/viudes/projects/oh-my-pi/crates/pi-natives/src/ast.rs:686-`
-- omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/ast-edit.ts`
-- omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/ast-edit.md`
-- omp: `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/replace.md`
-- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/FileEditTool.ts:87-610`
-- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/utils.ts` (`findActualString`, `normalizeQuotes`)
-- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/types.ts`
-- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/prompt.ts`
-- claudin: `/home/viudes/projects/claudin/src/tools/FileEditTool/FileEditTool.diagnostics.test.ts` (única coverage local)
-- claudin: `/home/viudes/projects/claudin/src/utils/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
-- spec original: `/home/viudes/projects/claudin/docs/discovery/ohmypi/07-tree-sitter-ast-edits.md`
+- omp: `/home/dev/projects/oh-my-pi/crates/pi-ast/src/language/parsers.rs`
+- omp: `/home/dev/projects/oh-my-pi/crates/pi-ast/src/ops.rs:127-212`
+- omp: `/home/dev/projects/oh-my-pi/crates/pi-natives/src/ast.rs:686-`
+- omp: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/ast-edit.ts`
+- omp: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/ast-edit.md`
+- omp: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/prompts/tools/replace.md`
+- claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/FileEditTool.ts:87-610`
+- claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/utils.ts` (`findActualString`, `normalizeQuotes`)
+- claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/types.ts`
+- claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/prompt.ts`
+- claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/FileEditTool.diagnostics.test.ts` (única coverage local)
+- claudin: `/home/dev/projects/claudin/src/utils/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
+- spec original: `/home/dev/projects/claudin/docs/discovery/ohmypi/07-tree-sitter-ast-edits.md`

@@ -315,18 +315,18 @@ fazer igual.
 ## Arquivos relevantes (refs)
 
 omp:
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/report-tool-issue.ts`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/tools/index.ts:513-528`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:3266-3272`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/prompts/system/system-prompt.md:194-198`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/config/settings-schema.ts:2716-2759`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/test/tools/report-tool-issue-consent.test.ts`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/report-tool-issue.ts`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/index.ts:513-528`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:3266-3272`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/prompts/system/system-prompt.md:194-198`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/config/settings-schema.ts:2716-2759`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/test/tools/report-tool-issue-consent.test.ts`
 
 Claudin (onde encaixar):
-- `/home/viudes/projects/claudin/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
-- `/home/viudes/projects/claudin/src/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
-- `/home/viudes/projects/claudin/src/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
-- `/home/viudes/projects/claudin/src/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
-- `/home/viudes/projects/claudin/scripts/build.ts` — featureFlags (adicionar `REPORT_TOOL_ISSUE`)
-- `/home/viudes/projects/claudin/scripts/verify-no-phone-home.ts:6-18` — banlist (nada a adicionar enquanto for local-only)
-- `/home/viudes/projects/claudin/src/tools/BashTool/` — exemplo canônico de estrutura de tool
+- `/home/dev/projects/claudin/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
+- `/home/dev/projects/claudin/src/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
+- `/home/dev/projects/claudin/src/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
+- `/home/dev/projects/claudin/src/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
+- `/home/dev/projects/claudin/scripts/build.ts` — featureFlags (adicionar `REPORT_TOOL_ISSUE`)
+- `/home/dev/projects/claudin/scripts/verify-no-phone-home.ts:6-18` — banlist (nada a adicionar enquanto for local-only)
+- `/home/dev/projects/claudin/src/tools/BashTool/` — exemplo canônico de estrutura de tool

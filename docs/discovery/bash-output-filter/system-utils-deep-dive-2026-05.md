@@ -740,7 +740,7 @@ env | grep AWS_
 
 ```
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:...
-HOME=/home/viudes
+HOME=/home/dev
 SHELL=/bin/bash
 LANG=en_US.UTF-8
 ... (50-200 entries)

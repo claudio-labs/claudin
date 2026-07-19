@@ -2,8 +2,8 @@
 
 - Timestamp: 2026-05-28T20:06:36.759Z
 - Model: `claude-sonnet-4-6`
-- Baseline: `/home/viudes/projects/claudio/dist/baseline/cli.mjs`
-- Feature:  `/home/viudes/projects/claudio/dist/cli.mjs`
+- Baseline: `/home/dev/projects/claudio/dist/baseline/cli.mjs`
+- Feature:  `/home/dev/projects/claudio/dist/cli.mjs`
 - Runs por prompt: 3
 
 ## Tabela por invocacao

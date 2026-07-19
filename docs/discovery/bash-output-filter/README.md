@@ -99,7 +99,7 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 
 ## Referências
 
-- Projeto rtk: `/home/viudes/projects/rtk/` (clone local)
+- Projeto rtk: `/home/dev/projects/rtk/` (clone local)
 - rtk pipeline declarativo: `src/core/toml_filter.rs`
 - rtk trust system: `src/hooks/trust.rs`
 - claudin summarizer: `src/utils/toolResultSummarizer.ts`

@@ -1,6 +1,6 @@
-/home/viudes/projects/claudin/src/utils/attachments.ts:import { isAbortError } from './errors.js'
-/home/viudes/projects/claudin/src/utils/attachments.ts:    if (!isAbortError(e)) {
-/home/viudes/projects/claudin/src/services/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
-/home/viudes/projects/claudin/src/services/api/openaiShim.ts:        const isAbortError =
-/home/viudes/projects/claudin/src/services/api/openaiShim.ts:        if (isAbortError) {
-/home/viudes/projects/claudin/src/utils/errors.ts:export function isAbortError(e: unknown): boolean {
+/home/devusr/projects/claudin/src/utils/attachments.ts:import { isAbortError } from './errors.js'
+/home/devusr/projects/claudin/src/utils/attachments.ts:    if (!isAbortError(e)) {
+/home/devusr/projects/claudin/src/services/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
+/home/devusr/projects/claudin/src/services/api/openaiShim.ts:        const isAbortError =
+/home/devusr/projects/claudin/src/services/api/openaiShim.ts:        if (isAbortError) {
+/home/devusr/projects/claudin/src/utils/errors.ts:export function isAbortError(e: unknown): boolean {

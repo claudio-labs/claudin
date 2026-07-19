@@ -29,7 +29,7 @@ Trecho típico:
    Compiling stable_deref_trait v1.2.1
    Compiling writeable v0.6.2
    ...                                   ← 116 linhas iguais
-   Compiling rtk v0.28.2 (/home/viudes/projects/rtk)
+   Compiling rtk v0.28.2 (/home/dev/projects/rtk)
 
 warning: direct cast of function item into an integer
     --> src/main.rs:2231:64
@@ -163,7 +163,7 @@ Adiciona contagens no topo, mostra só warnings/errors no body. Ganho extra mín
     "^\\s*Compiling\\s\\S+\\sv\\d+\\.\\d+\\.\\d+\\s*$"   ← cobre só "X v1.2.3" sem path
   ]
   ```
-  Linhas tipo `Compiling rtk v0.28.2 (/home/viudes/projects/rtk)` (com path entre parênteses) NÃO seriam strippadas.
+  Linhas tipo `Compiling rtk v0.28.2 (/home/dev/projects/rtk)` (com path entre parênteses) NÃO seriam strippadas.
 
 ---
 

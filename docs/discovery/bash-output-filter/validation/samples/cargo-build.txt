@@ -112,7 +112,7 @@
    Compiling hashlink v0.9.1
    Compiling rusqlite v0.31.0
    Compiling toml v0.8.23
-   Compiling rtk v0.38.0 (/home/viudes/projects/rtk)
+   Compiling rtk v0.38.0 (/home/devusr/projects/rtk)
    Compiling ureq v2.12.1
 warning: associated function `new` is never used
   --> src/core/stream.rs:95:12

@@ -12,7 +12,7 @@ Premissa importante: o Claudin já consome LSP via a tool `LSP` (operations
 é redundante; o que interessa é o delta.
 
 Tudo abaixo está mapeado direto ao código em
-`/home/viudes/projects/code-review-graph/`. Os arquivos centrais são:
+`/home/dev/projects/code-review-graph/`. Os arquivos centrais são:
 
 - `code_review_graph/main.py` — 1079 linhas, registra 28 tools MCP +
   5 prompts. Cada tool é um wrapper fino que delega para `tools/*.py` ou

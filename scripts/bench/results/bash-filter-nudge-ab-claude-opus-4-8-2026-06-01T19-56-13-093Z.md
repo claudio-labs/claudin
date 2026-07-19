@@ -385,34 +385,34 @@ Sim. O projeto usa **zod**, versão **4.4.3**.
 **Variant A run#1:**
 
 ```
-**user.email:** `andersonvieiraviudes@gmail.com`
+**user.email:** `dev@example.com`
 
-**origin:** `ssh://git@git.house.server:2222/viudes/claudio.git` (fetch e push) — servidor Gitea self-hosted, não GitHub.
+**origin:** `ssh://git@git.example.com:dev/claudio.git` (fetch e push) — servidor Gitea self-hosted, não GitHub.
 ```
 
 **Variant A run#2:**
 
 ```
-**user.email:** `andersonvieiraviudes@gmail.com`
+**user.email:** `dev@example.com`
 
-**origin:** `ssh://git@git.house.server:2222/viudes/claudio.git` (mesma URL para fetch e push) — servidor Git self-hosted via SSH na porta 2222.
+**origin:** `ssh://git@git.example.com:dev/claudio.git` (mesma URL para fetch e push) — servidor Git self-hosted via SSH na porta 2222.
 ```
 
 **Variant B run#1:**
 
 ```
-**user.email:** `andersonvieiraviudes@gmail.com`
+**user.email:** `dev@example.com`
 
-**origin:** aponta para `ssh://git@git.house.server:2222/viudes/claudio.git` (servidor Gitea self-hosted, fetch e push iguais).
+**origin:** aponta para `ssh://git@git.example.com:dev/claudio.git` (servidor Gitea self-hosted, fetch e push iguais).
 ```
 
 **Variant B run#2:**
 
 ```
-**user.email:** `andersonvieiraviudes@gmail.com`
+**user.email:** `dev@example.com`
 
-**origin:** `ssh://git@git.house.server:2222/viudes/claudio.git` (fetch e push) — servidor Gitea próprio.
+**origin:** `ssh://git@git.example.com:dev/claudio.git` (fetch e push) — servidor Gitea próprio.
 
-Ambos batem com a config esperada (commit como viudes + remote Gitea).
+Ambos batem com a config esperada (commit como dev + remote Gitea).
 ```
 

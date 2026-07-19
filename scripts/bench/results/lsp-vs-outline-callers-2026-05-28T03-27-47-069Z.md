@@ -2,7 +2,7 @@
 
 - Timestamp: 2026-05-28T03:27:47.069Z
 - Model: `claude-sonnet-4-6`
-- Target cwd: `/home/viudes/projects/openclaude`
+- Target cwd: `/home/dev/projects/openclaude`
 - Funcao vitima: `getSmallFastModel` (12 callers cross-file no openclaude)
 - Runs por prompt: 2
 

@@ -145,7 +145,7 @@
    Compiling clap_derive v4.5.55
    Compiling automod v1.0.16
    Compiling toml v0.8.23
-   Compiling rtk v0.38.0 (/home/viudes/projects/rtk)
+   Compiling rtk v0.38.0 (/home/devusr/projects/rtk)
     Checking zerofrom v0.1.6
     Checking yoke v0.8.1
     Checking zerovec v0.11.5

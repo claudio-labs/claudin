@@ -1,7 +1,7 @@
 # CRG mining — ideias acionáveis por eixo do roadmap "LSP-first agent"
 
 **Data:** 2026-05-27
-**Repo minerado:** `/home/viudes/projects/code-review-graph` v2.3.5
+**Repo minerado:** `/home/dev/projects/code-review-graph` v2.3.5
 **Continua de:** `00-insights.md`, `02-arquitetura-e-mecanismo.md`, `06-onde-ganho-real.md`
 **Propósito:** para cada um dos 5 eixos do roadmap, listar 3-6 extrações concretas com `file:line` do CRG, classificadas como **steal / adapt / avoid**.
 

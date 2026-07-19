@@ -21,7 +21,7 @@ Header de commit + diff inteiro. Equivalente a `git log -1 -p`.
 
 ```
 commit a200d7d5b6fadf11043aa46455713b2b03428e0c
-Author: Viudes <andersonvieiraviudes@gmail.com>
+Author: Viudes <dev@example.com>
 Date:   Tue May 5 15:11:45 2026 -0300
 
     fix(providers): retry transient 404s from OpenAI-compat providers

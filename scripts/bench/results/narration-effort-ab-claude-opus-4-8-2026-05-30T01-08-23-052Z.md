@@ -2,7 +2,7 @@
 
 - Timestamp: 2026-05-30T01:08:23.052Z
 - Model: `claude-opus-4-8`
-- Bundle (A e B): `/home/viudes/projects/claudio/dist/cli.mjs`
+- Bundle (A e B): `/home/dev/projects/claudio/dist/cli.mjs`
 - Variante A: effort=`adaptive`
 - Variante B: effort=`xhigh`
 - Runs por prompt: 1

@@ -16,7 +16,7 @@ const LS_LA_PASSTHROUGH = /--(?:color=always|classify|indicator-style)\b/
 
 // Long-format row. Group 1 captures the entry type letter (d, -, l, b, c, p, s);
 // group 2 captures the filename, possibly with " -> target" for symlinks.
-//   drwxr-xr-x 1 viudes viudes    680 May  5 14:20 name
+//   drwxr-xr-x 1 dev dev    680 May  5 14:20 name
 //   ^type      ^nlink  ^user    ^grp  ^size ^month ^day ^time ^name
 // `gm` flags required: `g` so every line is replaced (not just the first),
 // and `m` so `^`/`$` anchor per line inside a multi-line input.

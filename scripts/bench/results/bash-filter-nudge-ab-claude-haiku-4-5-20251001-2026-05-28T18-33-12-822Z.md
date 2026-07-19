@@ -2,8 +2,8 @@
 
 - Timestamp: 2026-05-28T18:33:12.822Z
 - Model: `claude-haiku-4-5-20251001`
-- Baseline: `/home/viudes/projects/claudio/dist/baseline/cli.mjs`
-- Feature:  `/home/viudes/projects/claudio/dist/cli.mjs`
+- Baseline: `/home/dev/projects/claudio/dist/baseline/cli.mjs`
+- Feature:  `/home/dev/projects/claudio/dist/cli.mjs`
 - Runs por prompt: 5
 
 ## Tabela por invocacao

@@ -1,6 +1,6 @@
 # code-review-graph — arquitetura interna e mecanismo de economia de tokens
 
-Investigação do repositório em `/home/viudes/projects/code-review-graph` (v2.3.5, `pyproject.toml:7`). Foco: como funciona internamente e por que (ou se) economiza tokens. Todas as referências usam `arquivo:linha`.
+Investigação do repositório em `/home/dev/projects/code-review-graph` (v2.3.5, `pyproject.toml:7`). Foco: como funciona internamente e por que (ou se) economiza tokens. Todas as referências usam `arquivo:linha`.
 
 ---
 

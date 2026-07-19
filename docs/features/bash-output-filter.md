@@ -290,12 +290,12 @@ Replaces each long-format row with `[type] name`. Preserves the `total N` header
 **Before**
 ```
 total 48
-drwxr-xr-x 1 viudes viudes  680 May  5 14:20 .
-drwxr-xr-x 1 viudes viudes  460 May  4 09:11 ..
--rw-r--r-- 1 viudes viudes 1024 May  5 13:55 .env
-drwxr-xr-x 1 viudes viudes  200 May  5 14:20 src
--rw-r--r-- 1 viudes viudes 2048 May  3 10:00 package.json
-lrwxrwxrwx 1 viudes viudes   12 May  1 08:00 dist -> build/dist
+drwxr-xr-x 1 dev dev  680 May  5 14:20 .
+drwxr-xr-x 1 dev dev  460 May  4 09:11 ..
+-rw-r--r-- 1 dev dev 1024 May  5 13:55 .env
+drwxr-xr-x 1 dev dev  200 May  5 14:20 src
+-rw-r--r-- 1 dev dev 2048 May  3 10:00 package.json
+lrwxrwxrwx 1 dev dev   12 May  1 08:00 dist -> build/dist
 ```
 
 **After**
@@ -324,13 +324,13 @@ Strips `Compiling <dep> v1.2.3` (transitive deps, no path), `Checking <dep> v1.2
     Checking tokio v1.38.0
     Checking serde v1.0.203
     Checking serde_json v1.0.120
-    Checking my-project v0.1.0 (/home/viudes/my-project)
+    Checking my-project v0.1.0 (/home/dev/my-project)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.32s
 ```
 
 **After**
 ```
-    Checking my-project v0.1.0 (/home/viudes/my-project)
+    Checking my-project v0.1.0 (/home/dev/my-project)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.32s
 ```
 
@@ -383,16 +383,16 @@ root         1  0.0  0.0 167364 11504 ?        Ss   May04   0:03 /sbin/init
 root         2  0.0  0.0      0     0 ?        S    May04   0:00 [kthreadd]
 root         3  0.0  0.0      0     0 ?        I<   May04   0:00 [rcu_gp]
 root         4  0.0  0.0      0     0 ?        I<   May04   0:00 [rcu_par_gp]
-viudes    1234  0.1  0.5 812344 42100 pts/0    Sl+  14:20   0:01 node dist/cli.mjs
-viudes    5678  0.0  0.1  12345  8900 pts/1    Ss   14:22   0:00 bash
+dev    1234  0.1  0.5 812344 42100 pts/0    Sl+  14:20   0:01 node dist/cli.mjs
+dev    5678  0.0  0.1  12345  8900 pts/1    Ss   14:22   0:00 bash
 ```
 
 **After**
 ```
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 root         1  0.0  0.0 167364 11504 ?        Ss   May04   0:03 /sbin/init
-viudes    1234  0.1  0.5 812344 42100 pts/0    Sl+  14:20   0:01 node dist/cli.mjs
-viudes    5678  0.0  0.1  12345  8900 pts/1    Ss   14:22   0:00 bash
+dev    1234  0.1  0.5 812344 42100 pts/0    Sl+  14:20   0:01 node dist/cli.mjs
+dev    5678  0.0  0.1  12345  8900 pts/1    Ss   14:22   0:00 bash
 ```
 
 ---
@@ -404,13 +404,13 @@ viudes    5678  0.0  0.1  12345  8900 pts/1    Ss   14:22   0:00 bash
 **Before** (`git log`)
 ```
 commit a1b2c3d4e5f6789012345678901234567890abcd
-Author: Viudes <viudes@example.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 5 14:20:00 2025 +0000
 
     fix(auth): handle token expiry on refresh
 
 commit b2c3d4e5f6789012345678901234567890abcde
-Author: Viudes <viudes@example.com>
+Author: Viudes <dev@example.com>
 Date:   Sun May 4 10:00:00 2025 +0000
 
     feat(api): add rate limit headers
@@ -494,7 +494,7 @@ Same diff-body cleanup as `git diff`, plus collapses `Author: Name <email>\nDate
 **Before**
 ```
 commit a1b2c3d4e5f6789012345678901234567890abcd
-Author: Viudes <viudes@example.com>
+Author: Viudes <dev@example.com>
 Date:   Mon May 5 14:20:00 2025 +0000
 
     fix(auth): handle token expiry on refresh
@@ -896,7 +896,7 @@ Strips the build prologue (`Compiling <dep>`, `Finished … in Xs`, ``Running `t
    Compiling libc v0.2.155
    Compiling proc-macro2 v1.0.86
    ... (many compile lines) ...
-   Compiling my-app v0.1.0 (/home/viudes/my-app)
+   Compiling my-app v0.1.0 (/home/dev/my-app)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.32s
      Running `target/debug/my-app`
 Hello, world!

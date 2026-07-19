@@ -78,7 +78,7 @@ Recurring touch-set (rename `<vendor>` per provider):
   discovery lives in `src/utils/providerDiscovery.ts`.
 
 Backlog of OAuth providers opencode ships that Claudin lacks (re-verify against the
-sibling repo `/home/viudes/projects/opencode/packages/opencode/src/plugin/` — this
+sibling repo `../opencode/packages/opencode/src/plugin/` — this
 list decays): **GitLab Duo** (npm `opencode-gitlab-auth`, enterprise), **DigitalOcean**
 (`plugin/digitalocean.ts`, small), **Azure OAuth** (`plugin/azure.ts`, upgrades the
 current API-key Azure preset), **Poe** (npm `opencode-poe-auth`, aggregator, lower

@@ -1,4 +1,4 @@
-   Compiling rtk v0.28.2 (/home/viudes/projects/rtk)
+   Compiling rtk v0.28.2 (/home/devusr/projects/rtk)
 warning: direct cast of function item into an integer
     --> src/main.rs:2231:62
      |

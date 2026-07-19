@@ -12,5 +12,5 @@ squashfs         70M   70M     0 100% /snap/core20
 overlay         100G  10G   90G   10% /var/lib/docker/overlay2/abc
 fuse.gvfsd      1.0G   0   1.0G   0% /run/user/1000/gvfs
 /dev/sdb3       150G   74G   77G  49% /var/lib/docker
-/dev/sdb3       150G   74G   77G  49% /home/viudes/projects
+/dev/sdb3       150G   74G   77G  49% /home/devusr/projects
 tmpfs           4.7G  360K  4.7G   1% /run/user/1000

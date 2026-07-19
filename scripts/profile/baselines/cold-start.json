@@ -1,5 +1,5 @@
 {
-  "cliPath": "/home/viudes/projects/claudin/dist/cli.mjs",
+  "cliPath": "dist/cli.mjs",
   "results": [
     {
       "invocation": "--version (direct)",

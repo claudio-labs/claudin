@@ -39,7 +39,7 @@ Date:   Tue May 5 02:28:59 2026 +0000                   ← timestamp absoluto
 
     chore(release): v0.1.10                              ← subject indentado
 
-    Reviewed-on: http://git.house.server:3000/...        ← trailers verbose
+    Reviewed-on: http://git.example.com:3000/...        ← trailers verbose
     Co-authored-by: Viudes <...>
     Co-committed-by: Viudes <...>
 

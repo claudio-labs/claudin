@@ -1,2 +1,2 @@
-origin	ssh://git@git.house.server:2222/viudes/claudin.git (fetch)
-origin	ssh://git@git.house.server:2222/viudes/claudin.git (push)
+origin	ssh://git@git.example.com:2222/devusr/claudin.git (fetch)
+origin	ssh://git@git.example.com:2222/devusr/claudin.git (push)

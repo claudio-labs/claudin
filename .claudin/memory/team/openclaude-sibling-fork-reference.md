@@ -4,7 +4,7 @@ description: openclaude (sibling Claude Code fork) lives at ../openclaude; featu
 type: reference
 ---
 
-`@gitlawb/openclaude` is a sibling fork of Claude Code (same multi-provider retarget as claudin), checked out at `/home/viudes/projects/openclaude`. Useful to mine for features/fixes when extending claudin — same architecture (openaiShim, providerConfig, withRetry, Ink TUI, slash commands, MCP).
+`@gitlawb/openclaude` is a sibling fork of Claude Code (same multi-provider retarget as claudin), checked out as a sibling directory at `../openclaude`. Useful to mine for features/fixes when extending claudin — same architecture (openaiShim, providerConfig, withRetry, Ink TUI, slash commands, MCP).
 
 **Why:** Both forks evolve the same upstream independently; openclaude moves fast on providers + context-mgmt and often lands features claudin lacks.
 

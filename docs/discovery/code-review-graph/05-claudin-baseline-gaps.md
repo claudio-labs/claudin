@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-27
 **Repo Claudin:** `main @ c541013`
-**Escopo:** mapear o que o Claudin já oferece para navegação/review e cruzar com cada capacidade do CRG (`/home/viudes/projects/code-review-graph` v2.3.5) para isolar gaps reais.
+**Escopo:** mapear o que o Claudin já oferece para navegação/review e cruzar com cada capacidade do CRG (`/home/dev/projects/code-review-graph` v2.3.5) para isolar gaps reais.
 
 ---
 

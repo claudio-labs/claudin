@@ -2,7 +2,7 @@
 
 - Timestamp: 2026-05-31T15:51:53.615Z
 - Model: `claude-opus-4-8`
-- Entry: `/home/viudes/projects/claudio/dist/cli.mjs`
+- Entry: `/home/dev/projects/claudio/dist/cli.mjs`
 - Runs por prompt: 4
 - A = baseline; B = DISABLE_EXPERIMENTAL_BETAS=false + JSON_TOOL_USE=1
 

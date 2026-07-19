@@ -1,6 +1,5 @@
 // Status/spinner row rendered in the scrollable area of the main REPL layout
-// (extracted in Etapa 5 of ROADMAP 11e — see plan in
-// `/home/viudes/.claudin/plans/starry-discovering-shannon.md`).
+// (extracted in Etapa 5 of ROADMAP 11e — see the ROADMAP 11e plan).
 //
 // Mirrors the original inline JSX from `REPL.tsx`:
 //

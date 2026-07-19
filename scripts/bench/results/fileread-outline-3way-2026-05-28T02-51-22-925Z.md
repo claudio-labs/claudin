@@ -2,11 +2,11 @@
 
 - Timestamp: 2026-05-28T02:51:22.925Z
 - Model: `claude-sonnet-4-6`
-- Target cwd: `/home/viudes/projects/openclaude`
+- Target cwd: `/home/dev/projects/openclaude`
 - Runs por prompt: 1
-- Variant A (baseline): `/home/viudes/projects/claudio/dist/baseline-a/cli.mjs`
-- Variant B (description-only): `/home/viudes/projects/claudio/dist/feature-b/cli.mjs`
-- Variant C (auto-outline): `/home/viudes/projects/claudio/dist/feature-c/cli.mjs`
+- Variant A (baseline): `/home/dev/projects/claudio/dist/baseline-a/cli.mjs`
+- Variant B (description-only): `/home/dev/projects/claudio/dist/feature-b/cli.mjs`
+- Variant C (auto-outline): `/home/dev/projects/claudio/dist/feature-c/cli.mjs`
 
 ## Tabela por invocacao
 

@@ -1,6 +1,6 @@
 # oh-my-pi (omp) — análise comparativa
 
-Discovery comparando `oh-my-pi` (repo em `/home/viudes/projects/oh-my-pi`) com Claudin. Objetivo: extrair padrões/ideias que valem investigação aprofundada, não paridade de features.
+Discovery comparando `oh-my-pi` (repo em `/home/dev/projects/oh-my-pi`) com Claudin. Objetivo: extrair padrões/ideias que valem investigação aprofundada, não paridade de features.
 
 Snapshot de exploração: 2026-05-25.
 

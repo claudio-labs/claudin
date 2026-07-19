@@ -13,9 +13,9 @@
 ## Padrão omp (refs file:line)
 
 Manifesto:
-- `/home/viudes/projects/oh-my-pi/AGENTS.md:31` — "never build prompts in code (no inline strings, template literals, or concatenation). Prompts live in static `.md` files; use Handlebars for dynamic content. Import them via `import content from "./prompt.md" with { type: "text" }` — not `readFile`."
-- `/home/viudes/projects/oh-my-pi/docs/porting-from-pi-mono.md:103` — mesma regra documentada como invariante de port.
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/DEVELOPMENT.md:886` — "Built-ins are embedded with `import ... with { type: \"text\" }` and parsed by `parseAgent(...)`."
+- `/home/dev/projects/oh-my-pi/AGENTS.md:31` — "never build prompts in code (no inline strings, template literals, or concatenation). Prompts live in static `.md` files; use Handlebars for dynamic content. Import them via `import content from "./prompt.md" with { type: "text" }` — not `readFile`."
+- `/home/dev/projects/oh-my-pi/docs/porting-from-pi-mono.md:103` — mesma regra documentada como invariante de port.
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/DEVELOPMENT.md:886` — "Built-ins are embedded with `import ... with { type: \"text\" }` and parsed by `parseAgent(...)`."
 
 Convenção de diretórios em `packages/coding-agent/src/prompts/`:
 
@@ -34,10 +34,10 @@ prompts/
 ```
 
 Pontos de entrada bem visíveis:
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/task/agents.ts:9-18` — agents builtin (8 imports `.md`).
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/task/commands.ts:11-12` — slash-command bodies.
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:155-164` — system prompts dinâmicos da sessão.
-- `/home/viudes/projects/oh-my-pi/packages/agent/src/compaction/compaction.ts:30-35` — compactação (6 templates `.md`).
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/task/agents.ts:9-18` — agents builtin (8 imports `.md`).
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/task/commands.ts:11-12` — slash-command bodies.
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/session/agent-session.ts:155-164` — system prompts dinâmicos da sessão.
+- `/home/dev/projects/oh-my-pi/packages/agent/src/compaction/compaction.ts:30-35` — compactação (6 templates `.md`).
 
 Dynamic content é injetado via `prompt.render(template, vars)` (Handlebars) — ver `task/agents.ts:38-42`.
 

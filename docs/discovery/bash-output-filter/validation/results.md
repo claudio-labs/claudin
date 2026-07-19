@@ -213,7 +213,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 
 ### grep -rn (paths absolutos)
 
-- **Command:** `grep -rn "isAbortError" /home/viudes/projects/claudin/src`
+- **Command:** `grep -rn "isAbortError" /home/dev/projects/claudin/src`
 - **Sample:** `grep.txt` (589 bytes)
 - **Filter:** `grep-rg`
 - **Match command:** ✓
@@ -225,7 +225,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 
 ### rg (com path absoluto — finding inesperado)
 
-- **Command:** `rg "isAbortError" /home/viudes/projects/claudin/src`
+- **Command:** `rg "isAbortError" /home/dev/projects/claudin/src`
 - **Sample:** `rg.txt` (564 bytes)
 - **Filter:** `grep-rg`
 - **Match command:** ✓

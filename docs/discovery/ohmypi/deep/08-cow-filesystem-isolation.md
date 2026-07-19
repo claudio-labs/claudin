@@ -23,7 +23,7 @@ git/PR workflow não importa.
 
 ## omp: como `pi-iso` funciona
 
-Crate Rust `crates/pi-iso/` (`/home/viudes/projects/oh-my-pi/crates/pi-iso/`):
+Crate Rust `crates/pi-iso/` (`/home/dev/projects/oh-my-pi/crates/pi-iso/`):
 
 - `Cargo.toml:13-25` — só depende de `async-trait`, `similar`, `tokio`, `libc`
   (unix), `windows-sys` (windows). Sem chamadas externas.
@@ -301,14 +301,14 @@ Critério de "vale a pena enviar":
 
 ## Referências de arquivo
 
-- `/home/viudes/projects/oh-my-pi/crates/pi-iso/src/lib.rs:47-373`
-- `/home/viudes/projects/oh-my-pi/crates/pi-iso/src/apfs.rs:77-113`
-- `/home/viudes/projects/oh-my-pi/crates/pi-iso/src/linux_reflink.rs:1-9,41-64`
-- `/home/viudes/projects/oh-my-pi/crates/pi-natives/src/iso.rs:25-180`
-- `/home/viudes/projects/oh-my-pi/packages/coding-agent/src/task/worktree.ts:238-350`
-- `/home/viudes/projects/claudin/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127`
-- `/home/viudes/projects/claudin/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts:1-50,281-329`
-- `/home/viudes/projects/claudin/src/utils/worktree.ts:744-820,1052,1172`
-- `/home/viudes/projects/claudin/src/utils/hooks/events.ts:578-631`
-- `/home/viudes/projects/claudin/src/utils/hooks/executors.ts:244-378`
+- `/home/dev/projects/oh-my-pi/crates/pi-iso/src/lib.rs:47-373`
+- `/home/dev/projects/oh-my-pi/crates/pi-iso/src/apfs.rs:77-113`
+- `/home/dev/projects/oh-my-pi/crates/pi-iso/src/linux_reflink.rs:1-9,41-64`
+- `/home/dev/projects/oh-my-pi/crates/pi-natives/src/iso.rs:25-180`
+- `/home/dev/projects/oh-my-pi/packages/coding-agent/src/task/worktree.ts:238-350`
+- `/home/dev/projects/claudin/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127`
+- `/home/dev/projects/claudin/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts:1-50,281-329`
+- `/home/dev/projects/claudin/src/utils/worktree.ts:744-820,1052,1172`
+- `/home/dev/projects/claudin/src/utils/hooks/events.ts:578-631`
+- `/home/dev/projects/claudin/src/utils/hooks/executors.ts:244-378`
 - `clonefile(2)` (man), `ioctl_ficlone(2)` (man), `cp(1)` `--reflink`.

@@ -81,4 +81,4 @@ woeusb-ng                                 0.2.12
 wxPython                                  4.2.5
 yt-dlp                                    2026.3.17
 yt-dlp-ejs                                0.8.0
-zcu                                       0.5.3        /home/viudes/projects/router/zte-config-utility
+zcu                                       0.5.3        /home/devusr/projects/router/zte-config-utility

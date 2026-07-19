@@ -1,6 +1,5 @@
 // Modal-dialog cluster rendered inside the main REPL bottom-pane column,
-// extracted from `src/screens/REPL.tsx` in Etapa 5 of ROADMAP 11e. See:
-//   /home/viudes/.claudin/plans/starry-discovering-shannon.md
+// extracted from `src/screens/REPL.tsx` in Etapa 5 of ROADMAP 11e.
 //
 // SHAPE: this module exports a *render function*, not a React component.
 // The plan calls out (risk table) that the dialog block is the most

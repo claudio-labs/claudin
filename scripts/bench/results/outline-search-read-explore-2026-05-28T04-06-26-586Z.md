@@ -2,7 +2,7 @@
 
 - Timestamp: 2026-05-28T04:06:26.586Z
 - Model: `claude-sonnet-4-6`
-- Target cwd: `/home/viudes/projects/openclaude`
+- Target cwd: `/home/dev/projects/openclaude`
 - Variant A: baseline (main, ja com T6.6 playbook em FileReadTool)
 - Variant B: A + nudges em `GrepTool/prompt.ts`, `GlobTool/prompt.ts`, e `AgentTool/built-in/exploreAgent.ts`
 - Hipotese: B aumenta proporcao outline/symbol/range, reduz tokens sem regredir wall.

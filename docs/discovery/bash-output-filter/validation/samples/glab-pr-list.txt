@@ -1,6 +1,6 @@
 # synthetic — source: https://glab.readthedocs.io/en/latest/mr/list.html
 # glab mr list (default plain output) — adapted from official examples.
-Showing 5 open merge requests on viudes/claudio (Page 1 of 1)
+Showing 5 open merge requests on devusr/claudio (Page 1 of 1)
 
 !142  feat(filters): JS package managers (Phase 12.1)         (feat/bash-filters-expansion) about 2 hours ago
 !141  fix(api): retry GET 5xx with jitter                      (fix/api-retry-jitter)        2 days ago

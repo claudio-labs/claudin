@@ -3,7 +3,7 @@ import { logError } from '../../utils/log.js'
 
 // Two-tier TTL cache with in-flight coalescing, observability counters,
 // and stale-while-revalidate. Extracted from WebFetchTool to be shared
-// with WebSearchTool. See /home/viudes/.claudin/plans/immutable-giggling-oasis.md
+// with WebSearchTool. See the T5.10 design plan.
 //
 // Semantics:
 //   - fresh (age < soft): served from cache as hit

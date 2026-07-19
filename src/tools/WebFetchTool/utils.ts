@@ -49,7 +49,7 @@ class EgressBlockedError extends Error {
 // Cache for storing fetched URL content. The two-tier semantics, in-flight
 // coalescing, and stats live in src/tools/shared/twoTierCache.ts — this
 // module just wires the WebFetch-specific knobs and value type. See
-// /home/viudes/.claudin/plans/immutable-giggling-oasis.md for T5.10 design.
+// the T5.10 design plan.
 type CacheEntry = {
   bytes: number
   code: number
