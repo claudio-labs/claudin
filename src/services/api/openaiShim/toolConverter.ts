@@ -110,7 +110,9 @@ export function convertTools(
     .filter(t => t.name !== 'ToolSearchTool') // Not relevant for OpenAI
     // Anthropic server-side tools (e.g. web_search_20250305) have a non-function type and no
     // input_schema — OpenAI-compatible providers don't support them and return 400 if sent.
-    .filter(t => !t.type || t.type === 'function')
+    // `type: 'custom'` is a regular user-defined tool (it carries an input_schema, e.g. the
+    // auto-mode classifier's forced-tool-choice schema) — keep it, only server tools are dropped.
+    .filter(t => !t.type || t.type === 'function' || t.type === 'custom')
     .map(t => {
       const description = t.description ?? ''
       if (t.input_schema) {

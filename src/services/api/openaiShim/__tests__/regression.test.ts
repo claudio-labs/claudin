@@ -406,6 +406,31 @@ describe('convertTools', () => {
     expect(out[0].function.name).toBe('MyTool')
   })
 
+  test("keeps type:'custom' user tools (e.g. the auto-mode classifier schema)", () => {
+    // Regression: type:'custom' is a regular user tool with an input_schema, not
+    // a server tool. Dropping it starved the auto-mode classifier's forced
+    // tool_choice on every openai_compat provider (the tool never reached the
+    // model), so non-Claude auto mode could never pass its capability probe.
+    const out = convertTools([
+      {
+        name: 'classify_result',
+        type: 'custom',
+        description: 'Report the security classification result',
+        input_schema: {
+          type: 'object',
+          properties: {
+            thinking: { type: 'string' },
+            shouldBlock: { type: 'boolean' },
+            reason: { type: 'string' },
+          },
+          required: ['thinking', 'shouldBlock', 'reason'],
+        },
+      },
+    ])
+    expect(out).toHaveLength(1)
+    expect(out[0].function.name).toBe('classify_result')
+  })
+
   test('strict mode keeps only originally-required keys and adds additionalProperties:false', () => {
     const out = convertTools([
       {
