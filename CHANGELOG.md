@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.10 — 2026-07-19
+
+- feat(usage): active-only wall duration + 'what's driving your usage' scroll pane (e79aca7)
+- feat(provider): send OpenAI prompt-cache params on Codex OAuth transport (#21) (773e5ef)
+- feat(permissions): auto mode for non-Claude providers via classifier capability probe (#20) (564fef0)
+- fix(provider): robust model + error handling across provider switches (c75f1c5)
+- feat(provider): add Kimi Code OAuth (device-flow) provider (#19) (eaabb20)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.9 — 2026-07-18
 
 - fix(bash-input): repair the user `!command` path end-to-end (#18) (0bcd73a)
