@@ -49,7 +49,9 @@ const {
   convertAnthropicMessagesToResponsesInput,
   convertCodexResponseToAnthropicMessage,
   convertToolsToResponsesTools,
+  performCodexRequest,
 } = await import('./codexShim.js')
+const { getSessionId } = await import('../../bootstrap/state.js')
 const { __test: webSearchToolTest } = await import('../../tools/WebSearchTool/WebSearchTool.js')
 
 const tempDirs: string[] = []
@@ -923,5 +925,58 @@ describe('Codex request translation', () => {
     expect(textDeltas.join('')).toBe(
       'I should note that the user role requires a briefly concise friendly response format.',
     )
+  })
+})
+
+describe('performCodexRequest prompt-cache params', () => {
+  const realFetch = globalThis.fetch
+  let capturedBody: Record<string, unknown> | undefined
+
+  beforeEach(() => {
+    capturedBody = undefined
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async (
+      _input: unknown,
+      init?: RequestInit,
+    ) => {
+      capturedBody = JSON.parse(init?.body as string) as Record<string, unknown>
+      return new Response('', { status: 200 })
+    }) as typeof fetch
+  })
+
+  afterEach(() => {
+    ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+  })
+
+  async function runRequest(baseUrl: string): Promise<void> {
+    await performCodexRequest({
+      request: {
+        transport: 'codex_responses',
+        requestedModel: 'gpt-5.4',
+        resolvedModel: 'gpt-5.4',
+        baseUrl,
+      },
+      credentials: { apiKey: 'test-key', source: 'env' },
+      params: {
+        model: 'gpt-5.4',
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 1024,
+      },
+      defaultHeaders: {},
+    })
+  }
+
+  test('sends prompt_cache_key + retention against the Codex backend', async () => {
+    await runRequest('https://chatgpt.com/backend-api/codex')
+
+    expect(capturedBody?.prompt_cache_key).toBe(getSessionId())
+    expect(capturedBody?.prompt_cache_retention).toBe('24h')
+  })
+
+  test('withholds the params against a custom baseUrl', async () => {
+    await runRequest('http://localhost:8000/v1')
+
+    expect(capturedBody).toBeDefined()
+    expect(capturedBody?.prompt_cache_key).toBeUndefined()
+    expect(capturedBody?.prompt_cache_retention).toBeUndefined()
   })
 })
