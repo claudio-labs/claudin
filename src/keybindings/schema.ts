@@ -175,6 +175,9 @@ export const KEYBINDING_ACTIONS = [
   'settings:search',
   'settings:retry',
   'settings:close',
+  // Usage tab: switch the "what's driving your usage" window
+  'settings:usageDay',
+  'settings:usageWeek',
   // Voice actions
   'voice:pushToTalk',
 ] as const

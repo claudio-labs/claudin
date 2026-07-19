@@ -133,6 +133,9 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       '/': 'settings:search',
       // Retry loading usage data (only active on error)
       r: 'settings:retry',
+      // Usage tab: switch the token-usage contribution window
+      d: 'settings:usageDay',
+      w: 'settings:usageWeek',
     },
   },
   {

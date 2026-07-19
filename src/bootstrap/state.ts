@@ -89,6 +89,12 @@ type State = {
   turnHookCount: number
   turnClassifierCount: number
   startTime: number
+  /** Accumulated ACTIVE (turn) wall-clock ms — excludes idle time. Wall
+   * duration is the sum of completed turns, not `now - startTime`. */
+  activeDurationMs: number
+  /** Timestamp (ms) of the currently-running turn, or null when idle. Lets
+   * `getTotalDuration()` live-tick during a turn and freeze between turns. */
+  turnActiveSince: number | null
   lastInteractionTime: number
   totalLinesAdded: number
   totalLinesRemoved: number
@@ -338,6 +344,8 @@ function getInitialState(): State {
     turnHookCount: 0,
     turnClassifierCount: 0,
     startTime: Date.now(),
+    activeDurationMs: 0,
+    turnActiveSince: null,
     lastInteractionTime: Date.now(),
     totalLinesAdded: 0,
     totalLinesRemoved: 0,
@@ -649,8 +657,40 @@ export function getTotalAPIDuration(): number {
   return STATE.totalAPIDuration
 }
 
+/**
+ * Marks the start of an active turn. Idempotent: a second call while a turn is
+ * already in progress is a no-op (keeps the earliest start), so a superseded
+ * onQuery generation can't reset the clock.
+ */
+export function markTurnStart(): void {
+  if (STATE.turnActiveSince == null) {
+    STATE.turnActiveSince = Date.now()
+  }
+}
+
+/**
+ * Marks the end of an active turn, folding the elapsed active time into the
+ * accumulator. Idempotent no-op when no turn is in progress, so the normal-end
+ * and cancel-end call sites can both fire without double-counting.
+ */
+export function markTurnEnd(): void {
+  if (STATE.turnActiveSince != null) {
+    STATE.activeDurationMs += Date.now() - STATE.turnActiveSince
+    STATE.turnActiveSince = null
+  }
+}
+
+/**
+ * Wall-clock duration of the session's ACTIVE work — the sum of completed
+ * turns plus the in-progress turn. Frozen while idle (does not count time the
+ * user spends reading, thinking, or staring at the stats screen), unlike a
+ * `now - startTime` measurement which would keep climbing.
+ */
 export function getTotalDuration(): number {
-  return Date.now() - STATE.startTime
+  return (
+    STATE.activeDurationMs +
+    (STATE.turnActiveSince != null ? Date.now() - STATE.turnActiveSince : 0)
+  )
 }
 
 export function getTotalAPIDurationWithoutRetries(): number {
@@ -945,6 +985,8 @@ export function resetCostState(): void {
   STATE.totalAPIDurationWithoutRetries = 0
   STATE.totalToolDuration = 0
   STATE.startTime = Date.now()
+  STATE.activeDurationMs = 0
+  STATE.turnActiveSince = null
   STATE.totalLinesAdded = 0
   STATE.totalLinesRemoved = 0
   STATE.hasUnknownModelCost = false
@@ -987,10 +1029,10 @@ export function setCostStateForRestore({
     STATE.modelUsage = modelUsage
   }
 
-  // Adjust startTime to make wall duration accumulate
-  if (lastDuration) {
-    STATE.startTime = Date.now() - lastDuration
-  }
+  // Restore accumulated ACTIVE wall time so it carries across resume; a fresh
+  // turn will resume live-ticking on top of it via markTurnStart/End.
+  STATE.activeDurationMs = lastDuration ?? 0
+  STATE.turnActiveSince = null
 }
 
 // Only used in tests

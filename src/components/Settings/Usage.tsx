@@ -8,8 +8,11 @@ import { formatDuration, formatNumber, formatTokens } from 'src/utils/format.js'
 import { getBytesSaved } from 'src/utils/tokensSaved.js';
 import { BYTES_PER_TOKEN } from 'src/constants/toolLimits.js';
 import { getSubscriptionType } from 'src/utils/auth.js';
+import chalk from 'chalk';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { Box, Text } from '../../ink.js';
+import { Box, RawAnsi, Text, useTheme } from '../../ink.js';
+import { colorize } from '../../ink/colorize.js';
+import { useModalOrTerminalSize } from '../../context/modalContext.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
 import { type ExtraUsage, fetchUtilization, type RateLimit, type Utilization } from '../../services/api/usage.js';
 import { formatResetText } from '../../utils/format.js';
@@ -23,6 +26,7 @@ import { isEligibleForOverageCreditGrant, OverageCreditUpsell } from '../LogoV2/
 import { CodexUsage } from './CodexUsage.js';
 import { MiniMaxUsage } from './MiniMaxUsage.js';
 import { UnsupportedUsage } from './UnsupportedUsage.js';
+import { computeUsageContribution, type ContributionResult, type UsageWindow } from '../../services/usageContribution/usageContribution.js';
 type LimitBarProps = {
   title: string;
   limit: RateLimit;
@@ -423,12 +427,21 @@ export function Usage(props: { view?: CostView } = {}): React.ReactNode {
       </Box>;
   }
   const provider = getAPIProvider();
+  // Anthropic (firstParty) is the common, tall case (project totals + limit
+  // bars + contribution) — render it in a scroll pane so it never overflows
+  // the Settings viewport in inline mode. Other providers keep the simple
+  // non-scroll layout (their usage panels are short).
+  if (provider === 'firstParty') {
+    return <UsageGlobalScroll />;
+  }
   let providerView: React.ReactNode;
   if (provider === 'codex') {
     providerView = <CodexUsage />;
   } else if (provider === 'minimax') {
     providerView = <MiniMaxUsage />;
-  } else if (provider !== 'firstParty') {
+  } else {
+    // firstParty already returned above (scroll pane); everything else here is
+    // an unsupported-usage provider.
     const providerLabel = {
       openai: 'this OpenAI-compatible provider',
       gemini: 'Google Gemini',
@@ -440,13 +453,107 @@ export function Usage(props: { view?: CostView } = {}): React.ReactNode {
       foundry: 'Microsoft Foundry'
     }[provider] ?? 'this provider';
     providerView = <UnsupportedUsage providerLabel={providerLabel} />;
-  } else {
-    providerView = <AnthropicUsage />;
   }
   return <Box flexDirection="column" gap={1} width="100%">
       <SessionCostStats view="global" />
       {providerView}
+      <UsageContribution />
     </Box>;
+}
+
+const CONTRIBUTION_ADVICE =
+  'Each subagent runs its own requests. Be deliberate about spawning them — and consider a cheaper model for simpler subagents.';
+
+/**
+ * "What's driving your token usage?" — provider-agnostic, local-only analysis
+ * of which sessions/subagents drove recent token usage. Data comes from
+ * computeUsageContribution() (scans local transcripts); nothing is sent out.
+ */
+function UsageContribution(): React.ReactNode {
+  const [activeWindow, setActiveWindow] = useState<UsageWindow>('day');
+  const [result, setResult] = useState<ContributionResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const load = React.useCallback(async (w: UsageWindow) => {
+    setIsLoading(true);
+    try {
+      setResult(await computeUsageContribution(w));
+    } catch (err) {
+      logError(err as Error);
+      setResult(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(activeWindow);
+  }, [load, activeWindow]);
+
+  useKeybinding('settings:usageDay', () => setActiveWindow('day'), {
+    context: 'Settings',
+    isActive: true,
+  });
+  useKeybinding('settings:usageWeek', () => setActiveWindow('week'), {
+    context: 'Settings',
+    isActive: true,
+  });
+
+  const windowLabel = activeWindow === 'day' ? 'last 24h' : 'last week';
+  const topAgent = result?.agentBreakdown[0];
+
+  return (
+    <Box flexDirection="column" width="100%">
+      <Text bold>What's driving your token usage?</Text>
+      <Text dimColor>
+        Approximate, based on local sessions on this machine — does not include
+        other devices.
+      </Text>
+      <Text dimColor>
+        {`${windowLabel[0]!.toUpperCase()}${windowLabel.slice(1)} · a characteristic of your usage, not a full breakdown`}
+      </Text>
+
+      {isLoading && !result ? (
+        <Text dimColor>Analyzing local sessions…</Text>
+      ) : !result || result.totalTokens === 0 ? (
+        <Text dimColor>{`No local session activity in the ${windowLabel}.`}</Text>
+      ) : (
+        <Box flexDirection="column" marginTop={1}>
+          {result.subagentHeavyPct >= 5 && (
+            <Box flexDirection="column">
+              <Text>
+                {`${Math.round(result.subagentHeavyPct)}% of your token usage came from subagent-heavy sessions.`}
+              </Text>
+              <Text dimColor>{CONTRIBUTION_ADVICE}</Text>
+            </Box>
+          )}
+          {topAgent && (
+            <Box flexDirection="column" marginTop={result.subagentHeavyPct >= 5 ? 1 : 0}>
+              <Text>
+                {`${Math.round(topAgent.pct)}% of your token usage came from subagents under '${topAgent.agentType}'.`}
+              </Text>
+            </Box>
+          )}
+          {result.agentBreakdown.length > 0 && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text>
+                <Text>{'Subagents'.padEnd(24)}</Text>
+                <Text>% of usage</Text>
+              </Text>
+              {result.agentBreakdown.map(a => (
+                <Text key={a.agentType}>
+                  <Text>{a.agentType.padEnd(24)}</Text>
+                  <Text>{`${Math.round(a.pct)}%`}</Text>
+                </Text>
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      <Text dimColor>d to day · w to week</Text>
+    </Box>
+  );
 }
 type ExtraUsageSectionProps = {
   extraUsage: ExtraUsage;
@@ -558,4 +665,227 @@ function ExtraUsageSection(t0) {
     t10 = $[19];
   }
   return t10;
+}
+
+/**
+ * Scrollable global Usage view (Anthropic/firstParty). The Settings tab
+ * clips content with a fixed-height Box, but in inline render mode that
+ * height does not truly clip (see ink-tui.md #4), so a tall Usage tab spills
+ * past the viewport. This renders the whole view as a flat string[] and
+ * windows it with RawAnsi + a scroll offset (↑/↓/PgUp/PgDn), which works in
+ * every render mode. Async data (rate limits, contribution) resolves in this
+ * real fiber, then feeds the string builder.
+ */
+function UsageGlobalScroll(): React.ReactNode {
+  const theme = useTheme();
+  const term = useTerminalSize();
+  const { columns } = term;
+  const { rows } = useModalOrTerminalSize(term);
+  const width = Math.min(Math.max(20, columns - 2), 80);
+  const barWidth = Math.min(50, Math.max(20, width - 14));
+  const cap = Math.max(15, Math.min(Math.floor(rows * 0.8), 30));
+  const bodyRows = Math.max(5, cap - 3);
+
+  const [util, setUtil] = useState<Utilization | null>(null);
+  const [utilError, setUtilError] = useState<string | null>(null);
+  const [utilLoading, setUtilLoading] = useState(true);
+  const [contribWindow, setContribWindow] = useState<UsageWindow>('day');
+  const [contrib, setContrib] = useState<ContributionResult | null>(null);
+  const [contribLoading, setContribLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [, tick] = useReducer((x: number) => x + 1, 0);
+
+  const loadUtil = React.useCallback(async () => {
+    setUtilLoading(true);
+    setUtilError(null);
+    try {
+      setUtil(await fetchUtilization());
+    } catch (err) {
+      logError(err as Error);
+      setUtilError((err as Error)?.message || 'Failed to load usage data');
+    } finally {
+      setUtilLoading(false);
+    }
+  }, []);
+  const loadContrib = React.useCallback(async (w: UsageWindow) => {
+    setContribLoading(true);
+    try {
+      setContrib(await computeUsageContribution(w));
+    } catch (err) {
+      logError(err as Error);
+      setContrib(null);
+    } finally {
+      setContribLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void loadUtil();
+  }, [loadUtil]);
+  useEffect(() => {
+    void loadContrib(contribWindow);
+  }, [loadContrib, contribWindow]);
+  useEffect(() => {
+    const id = setInterval(() => tick(), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const scrollUp = () => setOffset(o => Math.max(0, o - 1));
+  const scrollDown = () => setOffset(o => o + 1);
+  const pageUp = () => setOffset(o => Math.max(0, o - bodyRows));
+  const pageDown = () => setOffset(o => o + bodyRows);
+  const kb = { context: 'Settings' as const, isActive: true };
+  useKeybinding('select:previous', scrollUp, kb);
+  useKeybinding('select:next', scrollDown, kb);
+  useKeybinding('scroll:lineUp', scrollUp, kb);
+  useKeybinding('scroll:lineDown', scrollDown, kb);
+  useKeybinding('scroll:pageUp', pageUp, kb);
+  useKeybinding('scroll:pageDown', pageDown, kb);
+  useKeybinding('settings:usageDay', () => setContribWindow('day'), kb);
+  useKeybinding('settings:usageWeek', () => setContribWindow('week'), kb);
+  useKeybinding('settings:retry', () => {
+    void loadUtil();
+    void loadContrib(contribWindow);
+  }, { context: 'Settings', isActive: !!utilError && !utilLoading });
+
+  const bold = (s: string) => chalk.bold(s);
+  const dim = (s: string) => chalk.dim(s);
+  const makeBar = (ratio: number): string => {
+    const r = Math.min(1, Math.max(0, ratio));
+    const whole = Math.floor(r * barWidth);
+    const filled = '█'.repeat(whole);
+    const empty = ' '.repeat(Math.max(0, barWidth - whole));
+    return (
+      colorize(filled, theme.rate_limit_fill, 'foreground') +
+      colorize(empty, theme.rate_limit_empty, 'background')
+    );
+  };
+
+  const lines: string[] = [];
+
+  // ── Project totals (mirrors SessionCostStats/CostStatsBlock) ──
+  const totals = getProjectTotals();
+  lines.push(bold('Project total (all sessions)'));
+  lines.push(
+    'Total cost:            ' +
+      formatCost(totals.totalCost) +
+      (hasUnknownModelCost() ? dim(' (costs may be inaccurate)') : ''),
+  );
+  lines.push('Total duration (API):  ' + formatDuration(totals.totalAPIDuration));
+  lines.push('Total duration (wall): ' + formatDuration(totals.totalDuration));
+  lines.push(
+    `Total code changes:    ${totals.totalLinesAdded} ${totals.totalLinesAdded === 1 ? 'line' : 'lines'} added, ${totals.totalLinesRemoved} ${totals.totalLinesRemoved === 1 ? 'line' : 'lines'} removed`,
+  );
+  const usageByShortName: Record<string, ModelUsageLite> = {};
+  for (const [model, usage] of Object.entries(totals.modelUsage)) {
+    const shortName = getCanonicalName(model);
+    const acc = (usageByShortName[shortName] ??= {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0,
+      webSearchRequests: 0,
+      costUSD: 0,
+    });
+    acc.inputTokens += usage.inputTokens;
+    acc.outputTokens += usage.outputTokens;
+    acc.cacheReadInputTokens += usage.cacheReadInputTokens;
+    acc.cacheCreationInputTokens += usage.cacheCreationInputTokens;
+    acc.webSearchRequests += usage.webSearchRequests;
+    acc.costUSD += usage.costUSD;
+  }
+  const aggregated = Object.entries(usageByShortName);
+  if (aggregated.length > 0) lines.push('Usage by model:');
+  for (const [shortName, usage] of aggregated) {
+    let line = `${formatNumber(usage.inputTokens)} input, ${formatNumber(usage.outputTokens)} output`;
+    if (usage.cacheReadInputTokens > 0) line += `, ${formatNumber(usage.cacheReadInputTokens)} cache read`;
+    if (usage.cacheCreationInputTokens > 0) line += `, ${formatNumber(usage.cacheCreationInputTokens)} cache write`;
+    if (usage.webSearchRequests > 0) line += `, ${formatNumber(usage.webSearchRequests)} web search`;
+    line += ` (${formatCost(usage.costUSD)})`;
+    lines.push(`${`${shortName}:`.padStart(21)} ${line}`);
+  }
+  lines.push(dim('Aggregated across all sessions in this project — includes the current session live.'));
+
+  // ── Rate-limit bars ──
+  lines.push('');
+  if (utilLoading && !util) {
+    lines.push(dim('Loading usage data…'));
+  } else if (utilError) {
+    lines.push(colorize(`Could not load rate-limit data: ${utilError}`, theme.error, 'foreground'));
+    lines.push(dim('(cost/usage totals above are unaffected) · r to retry'));
+  } else if (util) {
+    const subscriptionType = getSubscriptionType();
+    const showSonnet = subscriptionType === 'max' || subscriptionType === 'team' || subscriptionType === null;
+    const bars: Array<[string, RateLimit | null | undefined]> = [
+      ['Current session', util.five_hour],
+      ['Current week (all models)', util.seven_day],
+      ...(showSonnet ? [['Current week (Sonnet only)', util.seven_day_sonnet] as [string, RateLimit | null | undefined]] : []),
+    ];
+    if (!bars.some(([, l]) => l)) {
+      lines.push(dim('/usage is only available for subscription plans.'));
+    }
+    let firstBar = true;
+    for (const [title, limit] of bars) {
+      if (!limit || limit.utilization === null) continue;
+      if (!firstBar) lines.push('');
+      firstBar = false;
+      lines.push(bold(title));
+      lines.push(`${makeBar(limit.utilization / 100)} ${Math.floor(limit.utilization)}% used`);
+      if (limit.resets_at) lines.push(dim(`Resets ${formatResetText(limit.resets_at, true, true)}`));
+    }
+    const eu = util.extra_usage;
+    if (eu?.is_enabled && typeof eu.used_credits === 'number' && typeof eu.utilization === 'number' && eu.monthly_limit != null) {
+      lines.push('');
+      lines.push(bold('Extra usage'));
+      lines.push(`${makeBar(eu.utilization / 100)} ${Math.floor(eu.utilization)}% used`);
+      lines.push(dim(`${formatCost(eu.used_credits / 100, 2)} / ${formatCost(eu.monthly_limit / 100, 2)} spent`));
+    }
+  }
+
+  // ── "What's driving your token usage?" ──
+  lines.push('');
+  const windowLabel = contribWindow === 'day' ? 'last 24h' : 'last week';
+  lines.push(bold("What's driving your token usage?"));
+  lines.push(dim('Approximate, based on local sessions on this machine — does not include other devices.'));
+  lines.push(dim(`${windowLabel[0]!.toUpperCase()}${windowLabel.slice(1)} · a characteristic of your usage, not a full breakdown`));
+  if (contribLoading && !contrib) {
+    lines.push(dim('Analyzing local sessions…'));
+  } else if (!contrib || contrib.totalTokens === 0) {
+    lines.push(dim(`No local session activity in the ${windowLabel}.`));
+  } else {
+    if (contrib.subagentHeavyPct >= 5) {
+      lines.push('');
+      lines.push(`${Math.round(contrib.subagentHeavyPct)}% of your token usage came from subagent-heavy sessions.`);
+      lines.push(dim(CONTRIBUTION_ADVICE));
+    }
+    const topAgent = contrib.agentBreakdown[0];
+    if (topAgent) {
+      lines.push('');
+      lines.push(`${Math.round(topAgent.pct)}% of your token usage came from subagents under '${topAgent.agentType}'.`);
+    }
+    if (contrib.agentBreakdown.length > 0) {
+      lines.push('');
+      lines.push('Subagents'.padEnd(24) + '% of usage');
+      for (const a of contrib.agentBreakdown) {
+        lines.push(a.agentType.padEnd(24) + `${Math.round(a.pct)}%`);
+      }
+    }
+  }
+
+  const maxOffset = Math.max(0, lines.length - bodyRows);
+  // Adjust-state-during-render (React-blessed pattern): clamp a runaway offset
+  // from repeated ↓ so it doesn't grow unbounded. Guarded, so it bails fast.
+  if (offset > maxOffset) setOffset(maxOffset);
+  const clampedOffset = Math.min(offset, maxOffset);
+  const visible = lines.slice(clampedOffset, clampedOffset + bodyRows);
+  const above = clampedOffset;
+  const below = lines.length - (clampedOffset + visible.length);
+
+  return (
+    <Box flexDirection="column" width="100%">
+      <Text dimColor>{above > 0 ? `↑ ${above} more above` : ' '}</Text>
+      <RawAnsi lines={visible} width={width} />
+      <Text dimColor>{below > 0 ? `↓ ${below} more below` : ' '}</Text>
+      <Text dimColor>↑↓ scroll · d to day · w to week · Esc to close</Text>
+    </Box>
+  );
 }

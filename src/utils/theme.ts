@@ -513,7 +513,7 @@ const darkTheme: Theme = {
   bashMessageBackgroundColor: 'rgb(65, 60, 65)',
 
   memoryBackgroundColor: 'rgb(55, 65, 70)',
-  rate_limit_fill: 'rgb(177,185,249)', // Light blue-purple
+  rate_limit_fill: 'rgb(215,153,33)', // Amber (matches Claude Code usage bars)
   rate_limit_empty: 'rgb(80,83,112)', // Medium blue-purple
   fastMode: 'rgb(255,120,20)', // Electric orange for dark bg
   fastModeShimmer: 'rgb(255,165,70)', // Lighter orange for shimmer

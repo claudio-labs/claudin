@@ -36,7 +36,7 @@ import { useTerminalNotification } from '../ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from '../ink/terminal.js';
 import instances from '../ink/instances.js';
 import { createFileStateCacheWithSizeLimit, mergeFileStateCaches, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js';
-import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, getTurnHookDurationMs, getTurnHookCount, resetTurnHookDuration, getTurnToolDurationMs, getTurnToolCount, resetTurnToolDuration, getTurnClassifierDurationMs, getTurnClassifierCount, resetTurnClassifierDuration } from '../bootstrap/state.js';
+import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnStart, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, resetTurnHookDuration, getTurnToolDurationMs, getTurnToolCount, resetTurnToolDuration, getTurnClassifierDurationMs, getTurnClassifierCount, resetTurnClassifierDuration } from '../bootstrap/state.js';
 import { asSessionId, asAgentId } from '../types/ids.js';
 import { logForDebugging } from '../utils/debug.js';
 import { QueryGuard } from '../utils/QueryGuard.js';
@@ -1724,6 +1724,10 @@ export function REPL({
       proactiveModule?.pauseProactive();
     }
     queryGuard.forceEnd();
+    // Cancel path: forceEnd() bumps the generation so the stale finally's
+    // end() returns false and won't accumulate — fold the partial active time
+    // in here instead (idempotent if the turn already ended).
+    markTurnEnd();
     skipIdleCheckRef.current = false;
 
     // Preserve partially-streamed text so the user can read what was
@@ -2517,6 +2521,9 @@ export function REPL({
     try {
       // isLoading is derived from queryGuard — tryStart() above already
       // transitioned dispatching→running, so no setter call needed here.
+      // Start the active-wall clock for this turn (frozen while idle so the
+      // Session tab's wall duration reflects work time, not process uptime).
+      markTurnStart();
       resetTimingRefs();
       // Start-of-turn cache tracker reset. The end-of-turn path at the
       // bottom of this function already resets, but mirror the call here
@@ -2559,6 +2566,10 @@ export function REPL({
       // running→idle. Returns false if a newer query owns the guard
       // (cancel+resubmit race where the stale finally fires as a microtask).
       if (queryGuard.end(thisGeneration)) {
+        // Fold this turn's active time into the wall accumulator. Skipped when
+        // end() returns false (a superseded generation), so a cancel+resubmit
+        // stale finally can't double-count.
+        markTurnEnd();
         setLastQueryCompletionTime(Date.now());
         skipIdleCheckRef.current = false;
         // Always reset loading state in finally - this ensures cleanup even
