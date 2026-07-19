@@ -62,6 +62,12 @@ import { modelSupportsAutoMode } from '../betas.js'
 import { logForDebugging } from '../debug.js'
 import { gracefulShutdown } from '../gracefulShutdown.js'
 import { getMainLoopModel } from '../model/model.js'
+import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import {
+  getCachedClassifierProbe,
+  getClassifierProbeKey,
+  probeClassifierCapability,
+} from './classifierProbe.js'
 import {
   CROSS_PLATFORM_CODE_EXEC,
   DANGEROUS_BASH_PATTERNS,
@@ -1087,6 +1093,34 @@ export async function verifyAutoModeGateAccess(
   // Carousel availability: not circuit-broken, not disabled-by-settings,
   // model supports it, disableFastMode breaker not firing, and (enabled or opted-in)
   const mainModel = getMainLoopModel()
+  // Non-Claude providers: lazily probe forced tool-choice capability once per
+  // provider+baseUrl+model key. Claude models pass by name and never probe.
+  // Only probe when a probe result could change the outcome (gate otherwise
+  // open) and only when no result is cached — a cached failure is respected
+  // until /provider doctor re-probes.
+  if (
+    !modelSupportsAutoMode(mainModel) &&
+    enabledState !== 'disabled' &&
+    !disabledBySettings
+  ) {
+    const provider = tryGetActiveProvider()
+    if (provider) {
+      const key = getClassifierProbeKey({
+        provider: provider.transport,
+        baseUrl: provider.baseUrl,
+        model: mainModel,
+      })
+      if (!getCachedClassifierProbe(key)) {
+        const result = await probeClassifierCapability({
+          key,
+          model: mainModel,
+        })
+        logForDebugging(
+          `[auto-mode] classifier probe: model=${mainModel} ok=${result.ok} detail=${result.detail ?? ''}`,
+        )
+      }
+    }
+  }
   // Temp circuit breaker: tengu_auto_mode_config.disableFastMode blocks auto
   // mode when fast mode is on. Checks runtime AppState.fastMode (if provided)
   // and, for ants, model name '-fast' substring (ant-internal fast models
@@ -1095,7 +1129,7 @@ export async function verifyAutoModeGateAccess(
   const disableFastModeBreakerFires =
     !!autoModeConfig?.disableFastMode && !!fastMode
   const modelSupported =
-    modelSupportsAutoMode(mainModel) && !disableFastModeBreakerFires
+    autoModeAllowedForModel(mainModel) && !disableFastModeBreakerFires
   let carouselAvailable = false
   if (enabledState !== 'disabled' && !disabledBySettings && modelSupported) {
     carouselAvailable =
@@ -1258,13 +1292,39 @@ function isAutoModeDisabledBySettings(): boolean {
 }
 
 /**
+ * Sync model check for the auto-mode gate. Claude models (4.6+/5.x) pass by
+ * canonical name. Everything else reaches the API through the openaiShim
+ * tool-choice translation, which is only trusted after the capability probe
+ * (classifierProbe.ts) has passed for this provider+baseUrl+model key —
+ * with GrowthBook stubbed, tengu_iron_gate_closed defaults to fail-CLOSED,
+ * so an incapable provider would deny-loop the session rather than degrade
+ * gracefully. The probe itself runs lazily in verifyAutoModeGateAccess.
+ */
+function autoModeAllowedForModel(model: string): boolean {
+  if (modelSupportsAutoMode(model)) return true
+  const provider = tryGetActiveProvider()
+  if (!provider) return false
+  const key = getClassifierProbeKey({
+    provider: provider.transport,
+    baseUrl: provider.baseUrl,
+    model,
+  })
+  return getCachedClassifierProbe(key)?.ok === true
+}
+
+/** @internal - test-only: exercise the sync gate predicate directly */
+export function __autoModeAllowedForModelForTests(model: string): boolean {
+  return autoModeAllowedForModel(model)
+}
+
+/**
  * Checks if auto mode can be entered: circuit breaker is not active and settings
  * have not disabled it. Synchronous.
  */
 export function isAutoModeGateEnabled(): boolean {
   if (autoModeStateModule?.isAutoModeCircuitBroken() ?? false) return false
   if (isAutoModeDisabledBySettings()) return false
-  if (!modelSupportsAutoMode(getMainLoopModel())) return false
+  if (!autoModeAllowedForModel(getMainLoopModel())) return false
   return true
 }
 
@@ -1277,7 +1337,7 @@ export function getAutoModeUnavailableReason(): AutoModeUnavailableReason | null
   if (autoModeStateModule?.isAutoModeCircuitBroken() ?? false) {
     return 'circuit-breaker'
   }
-  if (!modelSupportsAutoMode(getMainLoopModel())) return 'model'
+  if (!autoModeAllowedForModel(getMainLoopModel())) return 'model'
   return null
 }
 
