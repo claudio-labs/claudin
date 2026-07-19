@@ -11,6 +11,7 @@ import { getClaudinConfigHomeDir } from '../../utils/envUtils.js';
 import { getErrnoCode } from '../../utils/errors.js';
 import { logError } from '../../utils/log.js';
 import { editFileInEditor } from '../../utils/promptEditor.js';
+import { parseMemorySubcommand, runMemoryTidy } from './tidy.js';
 function MemoryCommand({
   onDone
 }: {
@@ -80,7 +81,10 @@ function MemoryCommand({
       </Box>
     </Dialog>;
 }
-export const call: LocalJSXCommandCall = async onDone => {
+export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
+  if (parseMemorySubcommand(args) === 'tidy') {
+    return runMemoryTidy(onDone);
+  }
   // Clear + prime before rendering — Suspense handles the unprimed case,
   // but awaiting here avoids a fallback flash on initial open.
   clearMemoryFileCaches();
