@@ -885,6 +885,14 @@ const WEBFETCH_HEAD_LINES = 100
 const WEBFETCH_TAIL_LINES = 40
 const WEBFETCH_TITLE_LINES = 3
 
+// `<\/script\s*>` (not `<\/script>`) so `</script >` end tags also match.
+const WEBFETCH_SCRIPT_BLOCK_RE = /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi
+const WEBFETCH_STYLE_BLOCK_RE = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
+// Leftover unpaired tags — stripped after the paired blocks so a `<script`
+// opener can't survive sanitization.
+const WEBFETCH_SCRIPT_TAG_RE = /<\/?script\b[^>]*\/?>/gi
+const WEBFETCH_STYLE_TAG_RE = /<\/?style\b[^>]*\/?>/gi
+
 function summarizeWebFetchOutput(text: string): StrategyResult {
   // Detect HTML residual density: > 1 HTML marker per 2KB.
   const htmlMarkers =
@@ -897,10 +905,18 @@ function summarizeWebFetchOutput(text: string): StrategyResult {
   let strategy: StrategyName = 'webfetch-head-tail'
 
   if (htmlDense) {
-    // Strip script/style blocks (non-greedy, multiline).
-    working = working
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Strip script/style blocks, then any unpaired tags, looping to a
+    // fixpoint: single-pass removal can regenerate a tag from the remainder
+    // (`<<script>script>` → `<script>`), so iterate until stable.
+    let prev: string
+    do {
+      prev = working
+      working = working
+        .replace(WEBFETCH_SCRIPT_BLOCK_RE, '')
+        .replace(WEBFETCH_STYLE_BLOCK_RE, '')
+        .replace(WEBFETCH_SCRIPT_TAG_RE, '')
+        .replace(WEBFETCH_STYLE_TAG_RE, '')
+    } while (working !== prev)
     strategy = 'webfetch-stripped'
   }
 

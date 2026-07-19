@@ -25,7 +25,7 @@ import {
 } from '@modelcontextprotocol/sdk/shared/auth.js'
 import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
 import axios from 'axios'
-import { createHash, randomBytes, randomUUID } from 'crypto'
+import { createHash, randomBytes, randomInt, randomUUID } from 'crypto'
 import { mkdir } from 'fs/promises'
 import { createServer, type Server } from 'http'
 import { join } from 'path'
@@ -2184,7 +2184,10 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
             this.serverName,
             `Refresh lock held by another process, waiting (attempt ${retry + 1}/${MAX_LOCK_RETRIES})`,
           )
-          await sleep(1000 + Math.random() * 1000)
+          // randomInt (CSPRNG) instead of Math.random — this backs off an
+          // OAuth credential-refresh lock, a security context (CodeQL
+          // js/insecure-randomness).
+          await sleep(1000 + randomInt(1000))
           continue
         }
         logMCPDebug(

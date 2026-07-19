@@ -483,7 +483,12 @@ async function runBench(args: Args): Promise<{
         // Consume all messages; we don't need to do anything with them
       }
     } catch (err) {
-      console.error(`[turn ${turn}] error:`, err)
+      // Log only the error class — a full error object can embed request
+      // config (API keys, oauthAccount) from the failing call (CodeQL
+      // js/clear-text-logging).
+      console.error(
+        `[turn ${turn}] error: ${err instanceof Error ? err.name : typeof err}`,
+      )
       break
     }
 

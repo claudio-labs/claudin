@@ -19,7 +19,11 @@ const GO_DOWNLOAD = /^go:\s+(?:downloading|finding|found|extracting)\s/
 // Cold-cache success: output is entirely `go: downloading/finding/found` lines.
 // Without a positive confirmation message, stripping leaves the body empty —
 // ambiguous to the model (did the build succeed? did anything run?).
-const GO_BUILD_DOWNLOAD_ONLY = /^(?:go:\s+(?:downloading|finding|found|extracting)[^\n]*\n?)+$/
+// The tempered content class `(?:(?!go:)[^\n])*` keeps each iteration from
+// swallowing the next line's `go:` prefix — without it, a single line holding
+// N repetitions of `go:\tfound` has exponentially many partitions (CodeQL
+// js/redos, alert #1).
+const GO_BUILD_DOWNLOAD_ONLY = /^(?:go:\s+(?:downloading|finding|found|extracting)(?:(?!go:)[^\n])*\n?)+$/
 // Anything that looks like a Go compile error or build failure — keep raw if present.
 const GO_BUILD_HAS_ERROR = /(?:^|\n)(?:.*\b(?:error|undefined|cannot find|cannot use|no required module|build failed|FAIL)\b|.*:\d+:\d+:\s)/i
 

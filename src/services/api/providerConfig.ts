@@ -673,7 +673,13 @@ export function isDirectOpenAIProvider(): boolean {
   const request = resolveProviderRequest()
   if (request.transport !== 'chat_completions') return false
   const url = request.baseUrl.toLowerCase()
-  return url.includes('api.openai.com') || url === DEFAULT_OPENAI_BASE_URL
+  // Hostname comparison, not substring — `url.includes('api.openai.com')` also
+  // matches lookalike hosts (api.openai.com.evil.example) and path segments.
+  try {
+    return new URL(url).hostname === 'api.openai.com'
+  } catch {
+    return url === DEFAULT_OPENAI_BASE_URL
+  }
 }
 
 export function resolveCodexAuthPath(

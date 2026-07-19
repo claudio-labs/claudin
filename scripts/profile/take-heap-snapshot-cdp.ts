@@ -98,7 +98,9 @@ async function main() {
       result?: unknown
       error?: { message: string }
     }
-    if (msg.id != null) {
+    // Only dispatch replies to ids we issued (small sequential integers) —
+    // anything else from the wire is ignored.
+    if (typeof msg.id === 'number' && Number.isInteger(msg.id) && msg.id >= 1 && msg.id < nextId) {
       const cb = pending.get(msg.id)
       if (cb) {
         pending.delete(msg.id)
