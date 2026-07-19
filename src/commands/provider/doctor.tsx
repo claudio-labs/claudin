@@ -16,6 +16,12 @@ import {
 import { getKimiUserAgent } from '../../utils/kimiUserAgent.js'
 import { getKimiDeviceHeaders } from '../../utils/kimiDeviceHeaders.js'
 import { getCurrentProjectConfig } from '../../utils/config.js'
+import { modelSupportsAutoMode } from '../../utils/betas.js'
+import { getMainLoopModel } from '../../utils/model/model.js'
+import {
+  getClassifierProbeKey,
+  probeClassifierCapability,
+} from '../../utils/permissions/classifierProbe.js'
 import { parseModelList } from '../../utils/providerModels.js'
 import {
   type OllamaGenerationReadiness,
@@ -431,6 +437,37 @@ export async function runProviderDoctor(): Promise<string> {
     }
     default:
       results.push(fail('Transport', `Unknown transport "${profile.transport}".`))
+  }
+
+  // Auto-mode capability: Claude models pass by canonical name; anything else
+  // needs the forced tool-choice probe (classifierProbe.ts). Doctor always
+  // re-probes (overwrites the cache) so it's the manual refresh path.
+  const mainModel = getMainLoopModel()
+  if (modelSupportsAutoMode(mainModel)) {
+    results.push(
+      pass(
+        'Auto mode classifier',
+        `${mainModel} is gated by model name — no probe needed.`,
+      ),
+    )
+  } else {
+    const key = getClassifierProbeKey({
+      provider: profile.transport,
+      baseUrl: profile.baseUrl,
+      model: mainModel,
+    })
+    const probe = await probeClassifierCapability({ key, model: mainModel })
+    results.push(
+      probe.ok
+        ? pass(
+            'Auto mode classifier probe',
+            'forced tool-choice honored — auto mode enabled for this model.',
+          )
+        : fail(
+            'Auto mode classifier probe',
+            `${probe.detail ?? 'probe failed'} — auto mode stays unavailable for this model.`,
+          ),
+    )
   }
 
   for (const result of results) {

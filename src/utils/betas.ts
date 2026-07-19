@@ -163,8 +163,20 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   )
 }
 
+// Test hatch: feature('TRANSCRIPT_CLASSIFIER') folds at build time, so under
+// bun test it reads false and modelSupportsAutoMode would always return false.
+// Same pattern as __setBashClassifierEnabledForTests in bashClassifier.ts.
+let __testAutoModeEnabled: boolean | undefined
+
+/** @internal - test-only override; do not call from production code */
+export function __setAutoModeEnabledForTests(v: boolean | undefined): void {
+  __testAutoModeEnabled = v
+}
+
 export function modelSupportsAutoMode(model: string): boolean {
-  if (!feature('TRANSCRIPT_CLASSIFIER')) return false
+  if (!feature('TRANSCRIPT_CLASSIFIER') && __testAutoModeEnabled !== true) {
+    return false
+  }
   const m = getCanonicalName(model)
   // The auto-mode classifier prompt was authored for Claude tool-call
   // shape; non-Claude providers (OpenAI/Gemini/Mistral/Ollama/etc.) are

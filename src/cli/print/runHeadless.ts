@@ -1138,6 +1138,12 @@ function runHeadlessStreaming(
     const hasEffort = modelSupportsEffort(resolvedModel)
     const hasAdaptiveThinking = modelSupportsAdaptiveThinking(resolvedModel)
     const hasFastMode = isFastModeSupportedByModel(option.value)
+    // Static per-model-family capability advertisement for the model picker,
+    // NOT the runtime gate. Intentionally the name-based check, not
+    // autoModeAllowedForModel: this maps over ALL candidate models, while the
+    // probe cache is keyed by the ACTIVE provider — pairing the active provider
+    // with a non-active model's key would be meaningless. Runtime entry is
+    // still enforced by verifyAutoModeGateAccess (probe-gated for non-Claude).
     const hasAutoMode = modelSupportsAutoMode(resolvedModel)
     return {
       value: modelId,

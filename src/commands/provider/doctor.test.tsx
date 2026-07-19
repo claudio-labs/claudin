@@ -1,4 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import type { ResolvedProvider } from '../../services/api/activeProvider.js'
 
 // Capture real modules first so the mock spreads carry every export. Following
@@ -9,26 +12,89 @@ import type { ResolvedProvider } from '../../services/api/activeProvider.js'
 const realActiveProviderNS = { ...(await import('../../services/api/activeProvider.js')) }
 const realGeminiAuthNS = { ...(await import('../../utils/geminiAuth.js')) }
 const realProviderDiscoveryNS = { ...(await import('../../utils/providerDiscovery.js')) }
+const realModelNS = { ...(await import('../../utils/model/model.js')) }
+const realSideQueryNS = { ...(await import('../../utils/sideQuery.js')) }
 
 const realActiveProvider = { ...realActiveProviderNS }
 const realGeminiAuth = { ...realGeminiAuthNS }
 const realProviderDiscovery = { ...realProviderDiscoveryNS }
+const realModel = { ...realModelNS }
+const realSideQuery = { ...realSideQueryNS }
 
 type DoctorMockState = {
   activeProvider: ResolvedProvider | null
   geminiKind: 'api-key' | 'access-token' | 'adc' | 'none'
   ollamaState: 'ready' | 'unreachable' | 'no_models' | 'generation_failed'
+  mainLoopModel: string
+  probeOk: boolean
 }
 
 const state: DoctorMockState = {
   activeProvider: null,
   geminiKind: 'api-key',
   ollamaState: 'ready',
+  mainLoopModel: 'gpt-5.4',
+  probeOk: true,
 }
+
+const fakeProbeMessage = {
+  id: 'msg_probe',
+  type: 'message',
+  role: 'assistant',
+  model: 'probe',
+  content: state.probeOk
+    ? [
+        {
+          type: 'tool_use',
+          id: 'toolu_p',
+          name: 'classify_result',
+          input: { thinking: 'benign', shouldBlock: false, reason: 'probe' },
+        },
+      ]
+    : [{ type: 'text', text: 'ok' }],
+  stop_reason: 'tool_use',
+  stop_sequence: null,
+  usage: { input_tokens: 1, output_tokens: 1 },
+}
+
+const sideQueryMock = async () => ({
+  ...fakeProbeMessage,
+  content: state.probeOk
+    ? [
+        {
+          type: 'tool_use',
+          id: 'toolu_p',
+          name: 'classify_result',
+          input: { thinking: 'benign', shouldBlock: false, reason: 'probe' },
+        },
+      ]
+    : [{ type: 'text', text: 'ok' }],
+})
 
 mock.module('../../services/api/activeProvider.js', () => ({
   ...realActiveProvider,
   tryGetActiveProvider: () => state.activeProvider,
+}))
+
+mock.module('../../utils/model/model.js', () => ({
+  ...realModel,
+  getMainLoopModel: () => state.mainLoopModel,
+}))
+mock.module('src/utils/model/model.js', () => ({
+  ...realModel,
+  getMainLoopModel: () => state.mainLoopModel,
+}))
+
+// The doctor check probes via sideQuery; without a mock it would hit the real
+// API wrapper and fail on build-time MACROs under bun test. Mock both
+// specifier forms so the mock survives cross-file mock pre-application.
+mock.module('../../utils/sideQuery.js', () => ({
+  ...realSideQuery,
+  sideQuery: sideQueryMock,
+}))
+mock.module('src/utils/sideQuery.js', () => ({
+  ...realSideQuery,
+  sideQuery: sideQueryMock,
 }))
 
 mock.module('../../utils/geminiAuth.js', () => ({
@@ -55,9 +121,16 @@ afterAll(() => {
   mock.module('../../services/api/activeProvider.js', () => realActiveProvider)
   mock.module('../../utils/geminiAuth.js', () => realGeminiAuth)
   mock.module('../../utils/providerDiscovery.js', () => realProviderDiscovery)
+  mock.module('../../utils/model/model.js', () => realModel)
+  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('../../utils/sideQuery.js', () => realSideQuery)
+  mock.module('src/utils/sideQuery.js', () => realSideQuery)
 })
 
 const { runProviderDoctor } = await import('./doctor.js')
+const { __setClassifierProbeStoreDirForTests } = await import(
+  '../../utils/permissions/classifierProbeStore.js'
+)
 
 const ORIGINAL_FETCH = globalThis.fetch
 function installFetchMock(impl: () => Promise<Response>): void {
@@ -85,15 +158,25 @@ function profile(overrides: Partial<ResolvedProvider>): ResolvedProvider {
   }
 }
 
+let probeStoreDir: string
+
 beforeEach(() => {
   state.activeProvider = null
   state.geminiKind = 'api-key'
   state.ollamaState = 'ready'
+  state.mainLoopModel = 'gpt-5.4'
+  state.probeOk = true
   installFetchMock(async () => makeOkResponse())
+  // runProviderDoctor probes non-Claude models and persists the result —
+  // point the store at a tmpdir so tests never touch the real ~/.claudin cache.
+  probeStoreDir = mkdtempSync(join(tmpdir(), 'doctor-probe-store-'))
+  __setClassifierProbeStoreDirForTests(probeStoreDir)
 })
 
 afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH
+  __setClassifierProbeStoreDirForTests(undefined)
+  rmSync(probeStoreDir, { recursive: true, force: true })
 })
 
 describe('runProviderDoctor — no active profile', () => {
@@ -297,5 +380,60 @@ describe('runProviderDoctor — failure surfaces', () => {
     })
     const out = await runProviderDoctor()
     expect(out).toContain('All checks passed.')
+  })
+})
+
+// feature('TRANSCRIPT_CLASSIFIER') is false under bun test (folded only at
+// build time), so modelSupportsAutoMode needs the test hatch to exercise the
+// real name-gate logic.
+const { __setAutoModeEnabledForTests } = await import('../../utils/betas.js')
+
+describe('runProviderDoctor — auto mode classifier probe', () => {
+  beforeEach(() => {
+    __setAutoModeEnabledForTests(true)
+  })
+  afterEach(() => {
+    __setAutoModeEnabledForTests(undefined)
+  })
+
+  test('non-Claude model gets a forced tool-choice probe check', async () => {
+    state.mainLoopModel = 'gpt-5.4'
+    state.activeProvider = profile({
+      transport: 'openai_compat',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'gpt-5.4',
+      apiKey: 'sk-x',
+    })
+    const out = await runProviderDoctor()
+    expect(out).toContain('[OK] Auto mode classifier probe')
+    expect(out).toContain('forced tool-choice honored')
+  })
+
+  test('failed probe surfaces FAIL with the detail', async () => {
+    state.probeOk = false
+    state.mainLoopModel = 'gpt-5.4'
+    state.activeProvider = profile({
+      transport: 'openai_compat',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'gpt-5.4',
+      apiKey: 'sk-x',
+    })
+    const out = await runProviderDoctor()
+    expect(out).toContain('[FAIL] Auto mode classifier probe')
+    expect(out).toContain('no tool_use block')
+  })
+
+  test('Claude auto-mode model skips the probe (gated by name)', async () => {
+    state.mainLoopModel = 'claude-sonnet-4-6'
+    state.activeProvider = profile({
+      transport: 'openai_compat',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'claude-sonnet-4-6',
+      apiKey: 'sk-x',
+    })
+    const out = await runProviderDoctor()
+    expect(out).toContain('[OK] Auto mode classifier')
+    expect(out).toContain('gated by model name')
+    expect(out).not.toContain('Auto mode classifier probe')
   })
 })
