@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.11 — 2026-07-19
+
+- docs(memory): team note on byte-length-sensitive bashfilter fixtures (7d43b4c)
+- fix(security): resolve 8 high + 2 medium CodeQL code-scanning alerts (b5a5edc)
+- chore(repo): scrub machine-specific paths/usernames from docs, fixtures, scripts (28b5382)
+- chore(dev): bun run link:dev — reproducible claudindev symlink for contributors (8f81606)
+- feat(memory): /memory tidy — conservative duplicate merge (#22) (ca5e4aa)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.10 — 2026-07-19
 
 - feat(usage): active-only wall duration + 'what's driving your usage' scroll pane (e79aca7)
