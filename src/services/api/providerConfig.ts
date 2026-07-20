@@ -69,6 +69,25 @@ const CODEX_ALIAS_MODELS: Record<
     model: 'gpt-5.5',
     reasoningEffort: 'high',
   },
+  // GPT-5.6 family (July 2026). Bare `gpt-5.6` follows the Codex CLI convention
+  // of resolving the flagship tier (Sol). sol/terra/luna route via the Codex
+  // /responses transport (isCodexAlias → codex_responses).
+  'gpt-5.6': {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'high',
+  },
+  'gpt-5.6-sol': {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'high',
+  },
+  'gpt-5.6-terra': {
+    model: 'gpt-5.6-terra',
+    reasoningEffort: 'high',
+  },
+  'gpt-5.6-luna': {
+    model: 'gpt-5.6-luna',
+    reasoningEffort: 'high',
+  },
   'gpt-5.5': {
     model: 'gpt-5.5',
     reasoningEffort: 'high',

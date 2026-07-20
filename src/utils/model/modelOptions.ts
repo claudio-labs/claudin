@@ -34,6 +34,7 @@ import {
   type ModelSetting,
 } from './model.js'
 import { has1mContext } from '../context.js'
+import { getFilteredCodexCatalog } from './codexModelCatalog.js'
 import { getGlobalConfig } from '../config.js'
 import {
   getActiveOpenAIModelOptionsCache,
@@ -390,59 +391,16 @@ function getCodexSparkOption(): ModelOption {
   }
 }
 
+// Picker list for Codex models. Sourced from the curated catalog and passed
+// through the opencode-style predicate (getFilteredCodexCatalog) so `pro`
+// variants are hidden by rule and future `gpt-X.Y > 5.4` models appear without
+// editing an enumeration. See src/utils/model/codexModelCatalog.ts.
 function getCodexModelOptions(): ModelOption[] {
-  return [
-    {
-      value: 'gpt-5.5',
-      label: 'gpt-5.5',
-      description: 'GPT-5.5 with high reasoning',
-    },
-    {
-      value: 'gpt-5.4',
-      label: 'gpt-5.4',
-      description: 'GPT-5.4 with high reasoning',
-    },
-    {
-      value: 'gpt-5.3-codex',
-      label: 'gpt-5.3-codex',
-      description: 'GPT-5.3 Codex with high reasoning',
-    },
-    {
-      value: 'gpt-5.3-codex-spark',
-      label: 'gpt-5.3-codex-spark',
-      description: 'GPT-5.3 Codex Spark for fast tool loops',
-    },
-    {
-      value: 'codexspark',
-      label: 'codexspark',
-      description: 'GPT-5.3 Codex Spark alias for fast tool loops',
-    },
-    {
-      value: 'gpt-5.2-codex',
-      label: 'gpt-5.2-codex',
-      description: 'GPT-5.2 Codex with high reasoning',
-    },
-    {
-      value: 'gpt-5.1-codex-max',
-      label: 'gpt-5.1-codex-max',
-      description: 'GPT-5.1 Codex Max for deep reasoning',
-    },
-    {
-      value: 'gpt-5.1-codex-mini',
-      label: 'gpt-5.1-codex-mini',
-      description: 'GPT-5.1 Codex Mini - faster, cheaper',
-    },
-    {
-      value: 'gpt-5.5-mini',
-      label: 'gpt-5.5-mini',
-      description: 'GPT-5.5 Mini - faster, cheaper',
-    },
-    {
-      value: 'gpt-5.4-mini',
-      label: 'gpt-5.4-mini',
-      description: 'GPT-5.4 Mini - faster, cheaper',
-    },
-  ]
+  return getFilteredCodexCatalog().map(entry => ({
+    value: entry.id as ModelSetting,
+    label: entry.label,
+    description: entry.description,
+  }))
 }
 
 // @[MODEL LAUNCH]: Update the model picker lists below to include/reorder options for the new model.
