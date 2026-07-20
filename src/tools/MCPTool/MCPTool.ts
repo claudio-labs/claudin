@@ -4,7 +4,9 @@ import { buildTool, type ToolDef, type ValidationResult } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import type { PermissionResult } from '../../types/permissions.js'
 import { isOutputLineTruncated } from '../../utils/terminal.js'
+import { logError } from '../../utils/log.js'
 import { DESCRIPTION, PROMPT } from './prompt.js'
+import { buildMcpValidationError } from './validationMessage.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
@@ -38,7 +40,9 @@ export type Output = z.infer<OutputSchema>
 // Re-export MCPProgress from centralized types to break import cycles
 export type { MCPProgress } from '../../types/tools.js'
 
-const ajv = new Ajv({ strict: false })
+// allErrors: report every violation at once (not just the first) so the model
+// can fix all bad/missing args in a single retry instead of one per round-trip.
+const ajv = new Ajv({ strict: false, allErrors: true })
 
 export const MCPTool = buildTool({
   isMcp: true,
@@ -80,9 +84,23 @@ export const MCPTool = buildTool({
       try {
         const validate = ajv.compile(this.inputJSONSchema)
         if (!validate(input)) {
+          const errorsText = ajv.errorsText(validate.errors)
+          let message = errorsText
+          try {
+            // Append a one-line summary of the accepted arguments so the model
+            // stops re-guessing field names/shape across retries.
+            message = buildMcpValidationError(this.inputJSONSchema, errorsText)
+          } catch (e) {
+            // Fallback pattern: never block the call on a formatting failure,
+            // but leave a signal if the hint builder ever starts throwing.
+            logError(
+              new Error('MCP validation-hint formatting failed', { cause: e }),
+            )
+            message = errorsText
+          }
           return {
             result: false,
-            message: ajv.errorsText(validate.errors),
+            message,
             errorCode: 400,
           }
         }
