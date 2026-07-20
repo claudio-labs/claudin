@@ -11,6 +11,10 @@
  * Prices in tokens as of April 2026 — update as needed.
  */
 import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import {
+  CODEX_CONTEXT_WINDOWS,
+  CODEX_MAX_OUTPUT_TOKENS,
+} from './codexModelCatalog.js'
 
 // Exported for copilotModels.consistency.test.ts. Production code should
 // prefer getOpenAIContextWindow() / getOpenAIMaxOutputTokens() — those handle
@@ -57,12 +61,10 @@ export const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   // omitted. Different OpenAI-compatible providers may impose different context
   // limits for the same model name, so we cannot safely hardcode values here.
 
-  // OpenAI
-  'gpt-5.5':               1_050_000,
-  'gpt-5.5-mini':            400_000,
+  // OpenAI — Codex model context windows are derived from the shared catalog
+  // (codexModelCatalog.ts) so the picker and these budgets never drift.
+  ...CODEX_CONTEXT_WINDOWS,
   'gpt-5.5-nano':            400_000,
-  'gpt-5.4':               1_050_000,
-  'gpt-5.4-mini':            400_000,
   'gpt-5.4-nano':            400_000,
   'gpt-4o':                   128_000,
   'gpt-4o-mini':              128_000,
@@ -271,12 +273,9 @@ export const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
 
   // NOTE: bare Claude model names omitted — see context windows comment above.
 
-  // OpenAI
-  'gpt-5.5':                 128_000,
-  'gpt-5.5-mini':            128_000,
+  // OpenAI — Codex max-output tokens derived from the shared catalog.
+  ...CODEX_MAX_OUTPUT_TOKENS,
   'gpt-5.5-nano':            128_000,
-  'gpt-5.4':                 128_000,
-  'gpt-5.4-mini':            128_000,
   'gpt-5.4-nano':            128_000,
   'gpt-4o':                   16_384,
   'gpt-4o-mini':              16_384,
