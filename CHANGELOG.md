@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.12 — 2026-07-20
+
+- feat(model): dynamic Codex model filter + gpt-5.6 sol/terra/luna (#23) (2bf563c)
+- fix(security): broaden WebFetch script/style end-tag strip to attribute-bearing tags (a867073)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.11 — 2026-07-19
 
 - docs(memory): team note on byte-length-sensitive bashfilter fixtures (7d43b4c)
