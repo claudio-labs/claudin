@@ -34,7 +34,7 @@ jobs:
           ref: ${{ inputs.tag }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           # Node 24 bundles npm >= 11.5.1 for trusted publishing (avoids the
           # 'sigstore' MODULE_NOT_FOUND from self-upgrading npm in place).
