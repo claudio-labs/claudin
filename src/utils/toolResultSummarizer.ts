@@ -885,9 +885,11 @@ const WEBFETCH_HEAD_LINES = 100
 const WEBFETCH_TAIL_LINES = 40
 const WEBFETCH_TITLE_LINES = 3
 
-// `<\/script\s*>` (not `<\/script>`) so `</script >` end tags also match.
-const WEBFETCH_SCRIPT_BLOCK_RE = /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi
-const WEBFETCH_STYLE_BLOCK_RE = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
+// `<\/script[^>]*>` (not `<\/script>`) so `</script >` and attribute-bearing
+// end tags like `</script foo>` — which HTML parsers still treat as end tags —
+// are matched too (CodeQL js/bad-tag-filter).
+const WEBFETCH_SCRIPT_BLOCK_RE = /<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi
+const WEBFETCH_STYLE_BLOCK_RE = /<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi
 // Leftover unpaired tags — stripped after the paired blocks so a `<script`
 // opener can't survive sanitization.
 const WEBFETCH_SCRIPT_TAG_RE = /<\/?script\b[^>]*\/?>/gi
