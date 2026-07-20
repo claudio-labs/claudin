@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.13 — 2026-07-20
+
+- chore(deps): bump execa from 9.6.1 to 10.0.0 (#26) (fc7840f)
+- chore(deps): bump the production-dependencies group with 4 updates (#25) (2c5470d)
+- chore(ci): bump the github-actions group with 3 updates (#24) (6654355)
+- fix(mcp): enrich tool-arg validation errors so models stop re-guessing (#27) (018f46e)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.12 — 2026-07-20
 
 - feat(model): dynamic Codex model filter + gpt-5.6 sol/terra/luna (#23) (2bf563c)
