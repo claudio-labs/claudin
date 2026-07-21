@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.15 — 2026-07-21
+
+- fix(apply_patch): report all batch failures at once, not one per resubmit (6fa96de)
+- feat(apply_patch): instruct models to batch multi-file edits into one call (59eef00)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.14 — 2026-07-21
 
 - fix(codex): stop sending prompt_cache_retention (backend 400s on it) (0d4b5b1)
