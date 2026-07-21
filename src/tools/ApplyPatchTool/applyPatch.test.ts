@@ -166,6 +166,35 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
+  test('reports every unmatched section at once and writes nothing', async () => {
+    const a = join(dir, 'a.txt')
+    const b = join(dir, 'b.txt')
+    writeFileSync(a, 'hello\n')
+    writeFileSync(b, 'world\n')
+    let err: Error | undefined
+    try {
+      await runApplyPatch(
+        {
+          patchText: envelope(
+            `*** Update File: ${a}\n@@\n-nope-a\n+x\n` +
+              `*** Update File: ${b}\n@@\n-nope-b\n+y`,
+          ),
+        },
+        ctx,
+        randomUUID(),
+      )
+    } catch (e) {
+      err = e as Error
+    }
+    expect(err?.message).toContain('2 of 2 file sections')
+    expect(err?.message).toContain(a)
+    expect(err?.message).toContain(b)
+    // Atomic: neither file changed.
+    expect(readFileSync(a, 'utf8')).toBe('hello\n')
+    expect(readFileSync(b, 'utf8')).toBe('world\n')
+    cleanup()
+  })
+
   test('refuses to overwrite an existing Move destination', async () => {
     const src = join(dir, 'src.txt')
     const dest = join(dir, 'dest.txt')
@@ -324,6 +353,33 @@ describe('validateApplyPatchInput', () => {
     )
     expect(r).toMatchObject({ result: false })
     if (!r.result) expect(r.message).toContain('already exists')
+    cleanup()
+  })
+
+  test('reports every problem at once across sections', () => {
+    // One unread file + one duplicate section: both must surface in a single
+    // failure so the model fixes them together, not one resubmit at a time.
+    const unread = join(dir, 'unread.txt')
+    const dup = join(dir, 'dup.txt')
+    writeFileSync(unread, 'a\n')
+    writeFileSync(dup, 'a\n')
+    markRead(dup)
+    const r = validateApplyPatchInput(
+      {
+        patchText: envelope(
+          `*** Update File: ${unread}\n@@\n-a\n+b\n` +
+            `*** Update File: ${dup}\n@@\n-a\n+b\n` +
+            `*** Delete File: ${dup}`,
+        ),
+      },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('2 problems')
+      expect(r.message).toContain('has not been read')
+      expect(r.message).toContain('more than one section')
+    }
     cleanup()
   })
 

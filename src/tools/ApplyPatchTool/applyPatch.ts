@@ -168,33 +168,48 @@ export function validateApplyPatchInput(
   const seen = new Set<string>()
   const fs = getFsImplementation()
 
+  // Collect ALL problems across every file section rather than bailing on the
+  // first — since a patch is atomic, one bad section rejects the whole batch,
+  // so surfacing them one-per-round forces the model into an O(N) fix-resubmit
+  // loop for an N-file patch. Reporting them together lets it converge in one
+  // pass. At most one problem is recorded per file (checks are sequential).
+  const failures: string[] = []
+  let firstErrorCode = 1
+  const note = (message: string, errorCode = 1): void => {
+    if (failures.length === 0) firstErrorCode = errorCode
+    failures.push(message)
+  }
+
   for (const hunk of hunks) {
     let absPath: string
     try {
       absPath = resolveHunkPath(hunk.path)
     } catch (e) {
-      return fail(
+      note(
         `apply_patch: invalid path ${JSON.stringify(hunk.path)}: ${e instanceof Error ? e.message : String(e)}`,
       )
+      continue
     }
     const rel = displayPath(absPath)
 
     if (seen.has(absPath)) {
-      return fail(
+      note(
         `apply_patch: ${rel} appears in more than one section. Combine the changes into a single section.`,
       )
+      continue
     }
     seen.add(absPath)
 
     if (extname(absPath) === '.ipynb') {
-      return fail(
+      note(
         `apply_patch cannot edit Jupyter notebooks. Use the NotebookEdit tool for ${rel}.`,
       )
+      continue
     }
 
     if (hunk.type === 'add') {
       if (fs.existsSync(absPath)) {
-        return fail(
+        note(
           `apply_patch: cannot Add File ${rel} — it already exists. Use "*** Update File:" to modify it.`,
         )
       }
@@ -203,36 +218,47 @@ export function validateApplyPatchInput(
 
     // Update / Delete require the file to exist and to have been read.
     if (!fs.existsSync(absPath)) {
-      return fail(
+      note(
         `apply_patch: cannot ${hunk.type === 'delete' ? 'Delete' : 'Update'} ${rel} — the file does not exist.`,
       )
+      continue
     }
 
     const readTimestamp = context.readFileState.get(absPath)
     if (!readTimestamp || readTimestamp.isPartialView) {
-      return fail(
+      note(
         `apply_patch: ${rel} has not been read yet. Read it first before patching it.`,
         2,
       )
+      continue
     }
     if (getFileModificationTime(absPath) > readTimestamp.timestamp) {
-      return fail(
+      note(
         `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`,
         3,
       )
+      continue
     }
 
     if (hunk.type === 'update' && hunk.movePath) {
       const { movePath } = hunkTargets(hunk)
       if (movePath && fs.existsSync(movePath)) {
-        return fail(
+        note(
           `apply_patch: cannot move ${rel} to ${displayPath(movePath)} — the destination already exists.`,
         )
       }
     }
   }
 
-  return { result: true }
+  if (failures.length === 0) return { result: true }
+  if (failures.length === 1) return fail(failures[0], firstErrorCode)
+  return fail(
+    `apply_patch found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
+      failures
+        .map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`)
+        .join('\n'),
+    firstErrorCode,
+  )
 }
 
 /** Every absolute path the patch would write to or remove (for permissioning). */
@@ -500,7 +526,28 @@ export async function runApplyPatch(
   const hunks = parsePatch(input.patchText).hunks
 
   // Phase 1 — stage all changes in memory. Any failure here writes nothing.
-  const staged = hunks.map(stageHunk)
+  // Collect every staging failure (context mismatch, secret guard, …) instead
+  // of throwing on the first: a patch is atomic, so one unmatched section
+  // rejects the whole batch — reporting them one-per-round would force the
+  // model into an O(N) fix-resubmit loop for an N-file patch.
+  const staged: StagedChange[] = []
+  const stageErrors: string[] = []
+  for (const hunk of hunks) {
+    try {
+      staged.push(stageHunk(hunk))
+    } catch (e) {
+      stageErrors.push(e instanceof Error ? e.message : String(e))
+    }
+  }
+  if (stageErrors.length === 1) {
+    throw new Error(stageErrors[0])
+  }
+  if (stageErrors.length > 1) {
+    throw new Error(
+      `apply_patch could not stage ${stageErrors.length} of ${hunks.length} file sections — fix all of them, then resubmit the whole patch:\n` +
+        stageErrors.map(m => `  • ${m}`).join('\n'),
+    )
+  }
 
   // Phase 2 — commit in order with per-file atomic re-check + rollback.
   const committed: StagedChange[] = []
