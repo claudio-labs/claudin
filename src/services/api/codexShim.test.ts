@@ -965,11 +965,12 @@ describe('performCodexRequest prompt-cache params', () => {
     })
   }
 
-  test('sends prompt_cache_key + retention against the Codex backend', async () => {
+  test('sends prompt_cache_key (but not retention) against the Codex backend', async () => {
     await runRequest('https://chatgpt.com/backend-api/codex')
 
     expect(capturedBody?.prompt_cache_key).toBe(getSessionId())
-    expect(capturedBody?.prompt_cache_retention).toBe('24h')
+    // The Codex backend rejects prompt_cache_retention with a 400 — never send it.
+    expect(capturedBody?.prompt_cache_retention).toBeUndefined()
   })
 
   test('withholds the params against a custom baseUrl', async () => {

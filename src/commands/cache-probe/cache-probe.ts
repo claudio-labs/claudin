@@ -236,7 +236,6 @@ export const call: LocalCommandCall = async (args) => {
       ...(noKey ? {} : {
         store: false,
         prompt_cache_key: cacheKey,
-        prompt_cache_retention: '24h',
       }),
     }
   } else {

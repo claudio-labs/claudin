@@ -97,11 +97,12 @@ audit; integrated regression:
   windows pinned the frontier with sporadic thinking).
 - Shims (`openaiShim/messagesClient.ts`, `codexShim.ts`) — no marker;
   longest-unchanged-prefix providers benefit from byte-stability alone.
-  On top of that, official-OpenAI URLs (`isOfficialOpenAIUrl`) and the
-  Codex backend (`isCodexBaseUrl`) also send
+  On top of that, official-OpenAI URLs (`isOfficialOpenAIUrl`) send
   `prompt_cache_key: getSessionId()` + `prompt_cache_retention: '24h'`
   (cache routing + extended TTL; gated by URL so third-party/local
-  backends that may reject unknown params never see them).
+  backends that may reject unknown params never see them). The Codex
+  backend (`isCodexBaseUrl`) sends only `prompt_cache_key` — it rejects
+  `prompt_cache_retention` with a `400 Unsupported parameter`.
 - `tools/FileReadTool/serverClearingDetection.ts` — Read's dedup
   (`file_unchanged` stub) stands down once a `clear_tool_uses` edit has been
   applied: the stub points at an earlier tool_result the server may have

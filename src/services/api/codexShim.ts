@@ -507,15 +507,15 @@ export async function performCodexRequest(options: {
         ],
     store: false,
     stream: true,
-    // The chatgpt.com backend honors prompt_cache_key / prompt_cache_retention
-    // (same as api.openai.com — see openaiShim/messagesClient.ts): the key
-    // pins requests of one session to the same cache-aware server (~8.5% hit
-    // rate without it) and retention extends the TTL to 24h. Gated on
+    // The chatgpt.com backend honors prompt_cache_key (same as api.openai.com —
+    // see openaiShim/messagesClient.ts): the key pins requests of one session to
+    // the same cache-aware server (~8.5% hit rate without it). Gated on
     // isCodexBaseUrl because this transport also runs against user-supplied
     // baseUrls (local proxies), where unknown body fields can 400.
+    // NOTE: prompt_cache_retention is deliberately NOT sent here — the Codex
+    // backend rejects it with `400 Unsupported parameter: prompt_cache_retention`.
     ...(isCodexBaseUrl(options.request.baseUrl) && {
       prompt_cache_key: getSessionId(),
-      prompt_cache_retention: '24h',
     }),
   }
 

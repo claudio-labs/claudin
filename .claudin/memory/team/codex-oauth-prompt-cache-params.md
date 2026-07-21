@@ -1,26 +1,30 @@
 ---
-name: Codex OAuth prompt-cache params shipped
-description: 2026-07-18 — codexShim now sends prompt_cache_key + 24h retention gated by isCodexBaseUrl; Copilot gate deferred pending /cache-probe evidence
+name: Codex OAuth prompt-cache — retention REJECTED, key only
+description: 2026-07-21 — Codex backend 400s on prompt_cache_retention; codexShim + cache-probe now send prompt_cache_key ONLY (retention removed). Official-OpenAI still sends both.
 type: project
 ---
 
-Branch `feat/codex-prompt-cache-params` (commit 8a9221f, 2026-07-18) closed a
-gap: `codexShim.performCodexRequest` now sends `prompt_cache_key:
-getSessionId()` + `prompt_cache_retention: '24h'` to the chatgpt.com Codex
-backend, gated by `isCodexBaseUrl()` (custom/proxied baseUrls never receive
-them — unknown body fields can 400). `/cache-probe` already sent both on
-codex_responses; production shim was missing them. messagesClient already had
-the equivalent `isOfficialOpenAIUrl` gate for api.openai.com — that change
-only added its first tests.
+Branch `feat/codex-prompt-cache-params` (commit 8a9221f, 2026-07-18) added
+`prompt_cache_key: getSessionId()` + `prompt_cache_retention: '24h'` to
+`codexShim` (and `/cache-probe`'s codex_responses branch), gated by
+`isCodexBaseUrl()`. **The retention param was WRONG:** a live Codex OAuth
+session hits `400 {"detail":"Unsupported parameter: prompt_cache_retention"}`,
+which fails the whole request — every Codex call was broken.
 
-**Why:** OpenAI prompt caching is automatic prefix-based, but the key routes a
-session to the same cache-aware server (~8.5% hit-rate gain per the
-messagesClient comment) and retention extends TTL to 24h.
+**Fix (2026-07-21):** removed `prompt_cache_retention` from the Codex path in
+both `codexShim.ts:~516` and `cache-probe.ts:~238`. The Codex backend now
+receives **`prompt_cache_key` only** (the error named retention specifically,
+so key passes validation). Test at `codexShim.test.ts` flipped to assert
+`prompt_cache_retention` is `undefined`. The `isOfficialOpenAIUrl` path in
+`openaiShim/messagesClient.ts` STILL sends both — api.openai.com (Chat
+Completions) is a different endpoint and accepts retention; do not touch it
+without live evidence.
 
-**How to apply / follow-ups:**
-- Unverified against a live Codex OAuth session — run `/cache-probe` in one
-  and expect HIT on the 2nd request before claiming the benefit.
-- Copilot (`api.githubcopilot.com`) was deliberately NOT gated in — decided to
-  wait for empirical `/cache-probe` evidence in a Copilot session first.
-- OpenAI cache extensions beyond this live per-transport: openaiShim
-  (chat-completions), codexShim (responses), policy in `src/services/cache/`.
+**Why key still helps:** OpenAI prompt caching is automatic prefix-based, but
+the key routes a session to the same cache-aware server (~8.5% hit-rate gain
+per the messagesClient comment).
+
+**Follow-ups:**
+- Live HIT on the Codex backend still unverified — run `/cache-probe` in a
+  Codex OAuth session and expect HIT on the 2nd request.
+- Copilot (`api.githubcopilot.com`) still deliberately NOT gated in.

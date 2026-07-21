@@ -43,7 +43,7 @@ Three rules back the invariant (pinned by the integrated regression suite `reque
 - **History deletions are amortized and announced** — evictions fire in batches, never one-at-a-time churn.
 - **The tool pool never churns bytes gratuitously** — MCP tool updates replace in place, schemas survive transient failures, deferred-tool announcements ride persisted attachments instead of mutating `messages[0]`.
 
-Because OpenAI-style providers match by *longest unchanged prefix* with no explicit marker, byte-stability alone is the whole win there — the shim paths (OpenAI-compatible, Codex) inherit the benefit with zero provider-specific code. On official OpenAI, the shim additionally sends a session-stable `prompt_cache_key` and `prompt_cache_retention: '24h'`.
+Because OpenAI-style providers match by *longest unchanged prefix* with no explicit marker, byte-stability alone is the whole win there — the shim paths (OpenAI-compatible, Codex) inherit the benefit with zero provider-specific code. On official OpenAI, the shim additionally sends a session-stable `prompt_cache_key` and `prompt_cache_retention: '24h'`. The Codex backend gets only `prompt_cache_key` — it rejects `prompt_cache_retention` with a `400 Unsupported parameter`.
 
 ### 4. Head-preserving stubs
 
