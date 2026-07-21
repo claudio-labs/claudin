@@ -43,6 +43,7 @@ Example:
 *** End Patch
 
 Rules:
+- Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one apply_patch call per file — it is atomic and cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
 - You MUST read a file (with the Read tool) before you Update or Delete it. Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - The patch is atomic: if any hunk fails to apply, no files are written.
