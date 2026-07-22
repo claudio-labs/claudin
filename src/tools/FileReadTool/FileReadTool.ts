@@ -102,6 +102,8 @@ import {
   OFFSET_INSTRUCTION_DEFAULT,
   OFFSET_INSTRUCTION_TARGETED,
   renderPromptTemplate,
+  renderRerunBreakerFooter,
+  renderRerunBreakerStub,
 } from './prompt.js'
 import {
   getToolUseSummary,
@@ -378,6 +380,22 @@ const outputSchema = lazySchema(() => {
           ),
       }),
     }),
+    z.object({
+      type: z.literal('rerun_breaker'),
+      file: z.object({
+        filePath: z.string().describe('The path to the file'),
+        message: z
+          .string()
+          .describe(
+            'The full tool_result content the breaker serves — a structural outline plus redirect footer for code, or a plain redirect stub otherwise.',
+          ),
+        servedOutline: z
+          .boolean()
+          .describe(
+            'True when `message` carries a structural outline (code file); false when it is the plain textual redirect stub.',
+          ),
+      }),
+    }),
   ])
 })
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -648,6 +666,10 @@ export const FileReadTool = buildTool({
         } else if (clientClipped) {
           logEvent('tengu_file_read_dedup_skip_client_clipping', {})
         } else {
+          // Prior tool_result is intact in context (not clipped/cleared), so
+          // whatever the model is doing it is NOT the clipped-reread loop — the
+          // breaker streak for this file is stale, drop it.
+          readFileState.clearRerunCount(fullFilePath)
           try {
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
             if (mtimeMs === existingState.timestamp) {
@@ -671,6 +693,61 @@ export const FileReadTool = buildTool({
           } catch {
             // stat failed — fall through to full read
           }
+        }
+        // Re-read circuit breaker. A clipped/cleared stand-down re-sends the
+        // full body — but under the aggressive cache profile the age prune
+        // (pruneOldToolResults, keepTurns=1) clips it again next turn, so the
+        // model re-reads and the stand-down re-sends forever. After
+        // RERUN_BREAKER_THRESHOLD consecutive stand-downs of this exact range,
+        // stop re-sending and serve a stable form instead: the file's
+        // structural outline (survives the prune; the model picks a symbol=),
+        // or a plain redirect stub when there's nothing to outline. The streak
+        // lives in readFileState's range-tagged side-map (not the FileState
+        // value): it survives the loop's own same-range re-sends but is
+        // structurally invalidated by any different-range write — a different
+        // Read range, or Edit/Write — so it only ever counts a genuine loop.
+        if ((serverCleared || clientClipped) && rerunBreakerEnabled()) {
+          const nextCount = readFileState.bumpRerunCount(
+            fullFilePath,
+            offset,
+            limit,
+          )
+          if (nextCount >= RERUN_BREAKER_THRESHOLD) {
+            const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
+            const outlineLang = detectOutlineLang(ext)
+            const scanned = outlineLang
+              ? await scanFile(
+                  fullFilePath,
+                  outlineLang,
+                  context.abortController.signal,
+                )
+              : null
+            logEvent('tengu_file_read_rerun_breaker', {
+              ...(analyticsExt !== undefined && { ext: analyticsExt }),
+              servedOutline: scanned !== null,
+            })
+            const message = scanned
+              ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
+                  overCap: false,
+                }) + renderRerunBreakerFooter(offset, limit, nextCount)
+              : renderRerunBreakerStub(offset, limit, nextCount)
+            return {
+              data: {
+                type: 'rerun_breaker' as const,
+                file: {
+                  filePath: file_path,
+                  message,
+                  servedOutline: scanned !== null,
+                },
+              },
+              // Transcript-dependent like the dedup stub — never replay from
+              // the tool-result cache (would bypass the stand-down/breaker).
+              noResultCache: true,
+            }
+          }
+          // Below the threshold: re-send. bumpRerunCount already persisted the
+          // streak in the side-map, which survives callInner's overwrite — so
+          // nothing to carry.
         }
       } else if (offset > 1 || limit !== undefined) {
         // Slice-walk telemetry candidate (diagnostic only, no behavior
@@ -843,6 +920,12 @@ export const FileReadTool = buildTool({
             ? data.file.content + AUTO_OUTLINE_PIVOT_FOOTER
             : data.file.content,
         }
+      case 'rerun_breaker':
+        return {
+          tool_use_id: toolUseID,
+          type: 'tool_result',
+          content: data.file.message,
+        }
       case 'text': {
         let content: string
 
@@ -925,6 +1008,28 @@ function autoOutlineOnElisionEnabled(): boolean {
   if (feature('AUTO_OUTLINE_ON_ELISION')) return true
   return false
 }
+
+/**
+ * Gate for the re-read circuit breaker (RERUN_BREAKER). Same shape as
+ * autoOutlineOnElisionEnabled: the test-preload stubs every `feature()` to
+ * `false`, so tests force-enable via `CLAUDIN_FORCE_READ_RERUN_BREAKER=1`;
+ * production folds `feature('READ_RERUN_BREAKER')` at build time.
+ */
+function rerunBreakerEnabled(): boolean {
+  // DISABLE is an authoritative runtime killswitch — it wins even over the
+  // test-only force flag, so a user can always turn the breaker off.
+  if (process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER === '1') return false
+  if (process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER === '1') return true
+  if (feature('READ_RERUN_BREAKER')) return true
+  return false
+}
+
+/**
+ * Consecutive clipped/cleared stand-downs of the same (file, range) before the
+ * breaker trips. Allows 1-2 legitimate post-clip recovery re-reads; only a
+ * genuine loop reaches the 3rd.
+ */
+const RERUN_BREAKER_THRESHOLD = 3
 
 export const CYBER_RISK_MITIGATION_REMINDER =
   '\n\n<system-reminder>\nWhenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.\n</system-reminder>\n'

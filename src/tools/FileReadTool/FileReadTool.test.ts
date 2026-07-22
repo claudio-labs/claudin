@@ -614,3 +614,218 @@ describe('FileReadTool — dedup stub is not stored in the tool-result cache', (
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Re-read circuit breaker — when the same (file, range) keeps being clipped
+// out of context and the model keeps re-reading, the dedup stand-down re-sends
+// the full body forever (it just gets clipped again). After K consecutive
+// clipped stand-downs the breaker trips and serves a stable form (the file's
+// structural outline for code, a textual redirect stub otherwise) instead.
+// ---------------------------------------------------------------------------
+
+const BREAKER_ID = 'toolu_rerun_breaker'
+
+/** Read `p` with the transcript showing the prior Read's result clipped to a
+ *  stub — the exact condition the client-clipping stand-down detects. Returns
+ *  the full call result so callers can inspect `noResultCache`. */
+async function readWithPriorClipped(
+  p: string,
+  ctx: ToolUseContext,
+  input: ReadInput = {},
+) {
+  setContextMessages(ctx, [
+    userWithToolResult(BREAKER_ID, buildClipStub('Read', 1234)),
+  ])
+  return read(p, input, ctx)
+}
+
+describe('FileReadTool — re-read breaker disabled (default) never trips', () => {
+  test('five consecutive clipped stand-downs all re-send the full body', async () => {
+    const p = writeFixture('breaker-off.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    for (let i = 0; i < 5; i++) {
+      const { data } = await readWithPriorClipped(p, ctx)
+      expect(data.type).toBe('text')
+    }
+  })
+})
+
+describe('FileReadTool — re-read breaker (forced on)', () => {
+  beforeAll(() => {
+    process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER = '1'
+  })
+  afterAll(() => {
+    delete process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER
+  })
+
+  test('trips on the 3rd consecutive clipped stand-down of a code range → serves an outline', async () => {
+    const p = writeFixture('breaker-trip.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    // read 1: fresh full read (no prior state to dedup against).
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    // stand-downs 1 and 2 (below K): re-send the full body.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+
+    // stand-down 3: TRIP.
+    const tripped = await readWithPriorClipped(p, ctx)
+    expect(tripped.data.type).toBe('rerun_breaker')
+    if (tripped.data.type !== 'rerun_breaker') throw new Error('expected breaker')
+    expect(tripped.data.file.servedOutline).toBe(true)
+    // The served message is the structural outline (carries symbol names) plus
+    // a redirect footer telling the model to stop re-reading.
+    expect(tripped.data.file.message).toContain('alpha')
+    // Footer-exclusive text: renderOutline's own body also mentions symbol=,
+    // so asserting /symbol=/ alone is tautological — this string only exists
+    // in the breaker footer (audit finding).
+    expect(tripped.data.file.message).toContain('keeps clipping it out')
+    // Cache-safety: transcript-dependent, must never be replayed from cache.
+    // (noResultCache is optional across the call() return union; cast to read.)
+    expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
+  })
+
+  test('stays tripped on further same-range re-reads (no re-loop into a full read)', async () => {
+    const p = writeFixture('breaker-stays.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    for (let i = 0; i < 3; i++) await readWithPriorClipped(p, ctx)
+    // 3rd stand-down tripped above; the 4th and 5th keep serving the outline.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
+  })
+
+  test('non-code file (no symbols to outline) trips to a textual redirect stub', async () => {
+    const body = Array.from({ length: 40 }, (_, i) => `plain line ${i}`).join(
+      '\n',
+    )
+    const p = writeFixture('breaker-noncode.txt', body)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    for (let i = 0; i < 3; i++) await readWithPriorClipped(p, ctx)
+    const tripped = await readWithPriorClipped(p, ctx)
+    expect(tripped.data.type).toBe('rerun_breaker')
+    if (tripped.data.type !== 'rerun_breaker') throw new Error('expected breaker')
+    expect(tripped.data.file.servedOutline).toBe(false)
+    expect(tripped.data.file.message).toMatch(/re-read/i)
+    expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
+  })
+
+  test('the server-clearing stand-down arm also counts toward the breaker', async () => {
+    const p = writeFixture('breaker-servercleared.ts', SAMPLE_TS)
+    const ctx = makeContext({
+      toolUseId: BREAKER_ID,
+      messages: [assistantWithClearing(4)],
+    })
+
+    // Static server-cleared transcript on every read.
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    expect((await read(p, {}, ctx)).data.type).toBe('rerun_breaker')
+  })
+
+  test('CLAUDIN_DISABLE_READ_RERUN_BREAKER wins over the force flag', async () => {
+    process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER = '1'
+    try {
+      const p = writeFixture('breaker-disabled.ts', SAMPLE_TS)
+      const ctx = makeContext({ toolUseId: BREAKER_ID })
+      for (let i = 0; i < 6; i++) {
+        expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+      }
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER
+    }
+  })
+
+  test('a different range between clips resets the counter', async () => {
+    const p = writeFixture('breaker-reset-range.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    // Build the count on the default range up to 2 (would trip on the next).
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    // Read a DIFFERENT range — overwrites the entry, dropping the streak.
+    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
+    // Back to the default range: the streak is gone, so three fresh reads
+    // stay text (none of them is the 3rd consecutive same-range stand-down).
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('an intact-content dedup hit between clips resets the counter', async () => {
+    const p = writeFixture('breaker-reset-intact.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    // Two clipped stand-downs (count reaches 2).
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    // A read where the prior result is INTACT → normal dedup hit, resets.
+    setContextMessages(ctx, [
+      userWithToolResult(BREAKER_ID, '     1\texport function alpha'),
+    ])
+    expect((await read(p, {}, ctx)).data.type).toBe('file_unchanged')
+    // Clip again: the counter restarted, so the immediate re-reads are text.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('an explicit-range streak does not leak into the vanilla range', async () => {
+    const p = writeFixture('breaker-vanilla-leak.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    // Streak of 2 on an explicit range.
+    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
+    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
+    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
+    // Switch to vanilla full reads (offset=1, no limit): the range change
+    // must reset the streak — the explicit-range count must NOT carry over
+    // and trip the vanilla range one clip early (audit finding: the vanilla
+    // transition hit neither explicit clear).
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    // And the vanilla streak still counts correctly from its own zero.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
+  })
+
+  test('an Edit/Write-style overwrite resets the streak', async () => {
+    const p = writeFixture('breaker-edit-reset.ts', SAMPLE_TS)
+    const ctx = makeContext({ toolUseId: BREAKER_ID })
+
+    // Streak of 2 on the default range.
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    // Simulate FileEditTool/FileWriteTool updating readFileState after an
+    // edit: offset/limit undefined. Post-edit content is fresh, so the loop
+    // streak must not survive it (audit finding: the side-map outlived the
+    // overwrite the committed version relied on).
+    ctx.readFileState.set(p, {
+      content: SAMPLE_TS,
+      timestamp: Date.now(),
+      offset: undefined,
+      limit: undefined,
+    })
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('bumpRerunCount restarts at 1 on a range mismatch (side-map contract)', () => {
+    // Direct contract test: this restart is redundant with set() invalidation
+    // in every Read flow, but it is the only guard on paths that bypass set()
+    // (load()/clone) — pin it so it can't silently rot (round-2 audit).
+    const cache = makeContext().readFileState
+    expect(cache.bumpRerunCount('/tmp/f.ts', 1, undefined)).toBe(1)
+    expect(cache.bumpRerunCount('/tmp/f.ts', 1, undefined)).toBe(2)
+    // Different range → streak restarts, not continues.
+    expect(cache.bumpRerunCount('/tmp/f.ts', 5, 10)).toBe(1)
+    // And the new range now accrues normally.
+    expect(cache.bumpRerunCount('/tmp/f.ts', 5, 10)).toBe(2)
+  })
+})

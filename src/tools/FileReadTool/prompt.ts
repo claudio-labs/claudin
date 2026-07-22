@@ -7,6 +7,41 @@ export const FILE_READ_TOOL_NAME = 'Read'
 export const FILE_UNCHANGED_STUB =
   'File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.'
 
+/** Human-readable line range for the breaker messages ("line 1450" or
+ *  "lines 1450-1569"). `limit` undefined ⇒ open-ended from `offset`. */
+function formatRange(offset: number, limit: number | undefined): string {
+  if (limit === undefined) return `from line ${offset}`
+  if (limit <= 1) return `line ${offset}`
+  return `lines ${offset}-${offset + limit - 1}`
+}
+
+/**
+ * Footer appended to the structural outline the re-read breaker serves once the
+ * same range has been re-read and clipped past the threshold. Tells the model
+ * the re-send is futile and to switch to a stable navigation move.
+ */
+export function renderRerunBreakerFooter(
+  offset: number,
+  limit: number | undefined,
+  count: number,
+): string {
+  const range = formatRange(offset, limit)
+  return `\n\n<system-reminder>You have re-read ${range} of this file ${count}× and context management keeps clipping it out — re-sending the body again is futile. Stop re-reading this range: pick a symbol above with symbol='name', or use Grep, to fetch a stable slice instead.</system-reminder>`
+}
+
+/**
+ * Standalone redirect stub for the non-code case (nothing to outline). Same
+ * intent as the outline footer, delivered as the whole tool_result.
+ */
+export function renderRerunBreakerStub(
+  offset: number,
+  limit: number | undefined,
+  count: number,
+): string {
+  const range = formatRange(offset, limit)
+  return `<system-reminder>You have re-read ${range} of this file ${count}× and context management keeps clipping it out — re-sending it again is futile. Stop re-reading this range: use Grep to fetch just the lines you need, or read a different part of the file.</system-reminder>`
+}
+
 export const MAX_LINES_TO_READ = 2000
 
 export const DESCRIPTION = 'Read a file from the local filesystem.'

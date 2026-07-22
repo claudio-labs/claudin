@@ -46,12 +46,33 @@ const DEFAULT_MAX_CACHE_SIZE_BYTES = 25 * 1024 * 1024
  */
 export class FileStateCache {
   private cache: LRUCache<string, FileState>
+  // Consecutive clipped/cleared dedup stand-downs per file, for FileReadTool's
+  // re-read circuit breaker. Kept OUT of the FileState value on purpose: a Read
+  // rewrites the whole FileState entry via set() every turn, which would reset
+  // an embedded counter — this side-map survives the loop's own same-range
+  // re-sends, so the streak accumulates. The entry records WHICH range it is
+  // counting, making resets structural rather than call-site-scattered:
+  // set() drops the entry whenever the incoming FileState's range differs
+  // (different-range Read, Edit/Write with offset undefined), and
+  // bumpRerunCount restarts at 1 on a range mismatch. Only populated while a
+  // file is actually looping (rare). In-memory only; never rendered into the
+  // request.
+  private rerunCounts = new Map<
+    string,
+    { offset: number | undefined; limit: number | undefined; count: number }
+  >()
 
   constructor(maxEntries: number, maxSizeBytes: number) {
     this.cache = new LRUCache<string, FileState>({
       max: maxEntries,
       maxSize: maxSizeBytes,
       sizeCalculation: value => Math.max(1, Buffer.byteLength(value.content)),
+      // Keep the side-map from outliving its FileState entry on LRU eviction
+      // (evictions bypass our delete()). 'set' replacements must NOT clear —
+      // the loop's own re-sends replace the entry every turn.
+      dispose: (_value, key, reason) => {
+        if (reason === 'evict') this.rerunCounts.delete(key)
+      },
     })
   }
 
@@ -60,7 +81,19 @@ export class FileStateCache {
   }
 
   set(key: string, value: FileState): this {
-    this.cache.set(normalize(key), value)
+    const normalized = normalize(key)
+    // A write whose range differs from the recorded streak breaks the loop by
+    // definition (different-range Read, or Edit/Write which store offset
+    // undefined) — invalidate. The loop's same-range re-send matches and
+    // preserves the streak.
+    const rerun = this.rerunCounts.get(normalized)
+    if (
+      rerun &&
+      (rerun.offset !== value.offset || rerun.limit !== value.limit)
+    ) {
+      this.rerunCounts.delete(normalized)
+    }
+    this.cache.set(normalized, value)
     return this
   }
 
@@ -69,11 +102,35 @@ export class FileStateCache {
   }
 
   delete(key: string): boolean {
+    this.rerunCounts.delete(normalize(key))
     return this.cache.delete(normalize(key))
   }
 
   clear(): void {
+    this.rerunCounts.clear()
     this.cache.clear()
+  }
+
+  /** Increment and return the re-read-breaker streak for `key` at this exact
+   *  range; a range mismatch with the recorded entry restarts the streak at 1. */
+  bumpRerunCount(
+    key: string,
+    offset: number | undefined,
+    limit: number | undefined,
+  ): number {
+    const normalized = normalize(key)
+    const existing = this.rerunCounts.get(normalized)
+    const count =
+      existing && existing.offset === offset && existing.limit === limit
+        ? existing.count + 1
+        : 1
+    this.rerunCounts.set(normalized, { offset, limit, count })
+    return count
+  }
+
+  /** Drop the re-read-breaker streak for `key` (loop broken / range changed). */
+  clearRerunCount(key: string): void {
+    this.rerunCounts.delete(normalize(key))
   }
 
   get size(): number {
