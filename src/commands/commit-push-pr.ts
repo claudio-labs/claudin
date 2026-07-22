@@ -70,7 +70,7 @@ Analyze all changes that will be included in the pull request, making sure to lo
 
 Based on the above changes:
 1. Create a new branch if on ${defaultBranch} (use SAFEUSER from context above for the branch name prefix, falling back to whoami if SAFEUSER is empty, e.g., \`username/feature-name\`)
-2. Create a single commit with an appropriate message using heredoc syntax${commitAttribution ? `, ending with the attribution text shown in the example below` : ''}:
+2. Create a single commit with an appropriate message using heredoc syntax${commitAttribution ? `, ending with the attribution text shown in the example below` : ` (do NOT add any AI attribution trailer such as "🤖 Generated with Claude Code" or "Co-Authored-By: Claude")`}:
 \`\`\`
 git commit -m "$(cat <<'EOF'
 Commit message here.${commitAttribution ? `\n\n${commitAttribution}` : ''}
@@ -79,7 +79,7 @@ EOF
 \`\`\`
 3. Push the branch to origin
 4. If a PR already exists for this branch (check the gh pr view output above), update the PR title and body using \`gh pr edit\` to reflect the current diff${addReviewerArg}. Otherwise, create a pull request using \`gh pr create\` with heredoc syntax for the body${reviewerArg}.
-   - IMPORTANT: Keep PR titles short (under 70 characters). Use the body for details.
+   - IMPORTANT: Keep PR titles short (under 70 characters). Use the body for details.${effectivePrAttribution ? '' : `\n   - IMPORTANT: Do NOT append any AI attribution footer to the PR body (e.g. "🤖 Generated with Claude Code", "Co-Authored-By: Claude").`}
 \`\`\`
 gh pr create --title "Short, descriptive title" --body "$(cat <<'EOF'
 ## Summary

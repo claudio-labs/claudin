@@ -97,7 +97,7 @@ Git Safety Protocol:
    Note: git status depends on the commit completing, so run it sequentially after the commit.
 4. If the commit fails due to pre-commit hook: fix the issue and create a NEW commit
 
-Important notes:
+Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution trailer to the commit message (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the message with no such footer.`}
 - NEVER run additional commands to read or explore code, besides git bash commands
 - NEVER use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
 - DO NOT push to the remote repository unless the user explicitly asks you to do so
@@ -139,7 +139,7 @@ EOF
 )"
 </example>
 
-Important:
+Important:${prAttribution ? '' : `\n- Do NOT append any AI attribution footer to the PR body (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the body with no such footer.`}
 - DO NOT use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
 - Return the PR URL when you're done, so the user can see it
 
