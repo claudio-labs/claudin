@@ -36,7 +36,14 @@ beforeAll(() => {
   )
   writeFileSync(join(dir, 'gamma.md'), '# Title\na doc mentioning needle once\n')
   writeFileSync(join(dir, 'sub', 'delta.py'), 'x = "needle"\ny = 2\n')
-  writeFileSync(join(dir, 'epsilon.toml'), 'key = "needle"\n')
+  writeFileSync(join(dir, 'epsilon.csv'), 'key,needle\n')
+  // A Ruby fixture for the new-language symbols path. It deliberately does NOT
+  // contain "needle" (the default pattern) so the file-count baselines above
+  // stay at 5; the symbols test below searches its own token.
+  writeFileSync(
+    join(dir, 'zeta.rb'),
+    'class Worker\n  def process\n    harvest_all\n  end\nend\n',
+  )
 })
 
 afterAll(() => {
@@ -170,10 +177,10 @@ describe('GrepTool — symbols mode', () => {
   })
 
   test('an unsupported language falls back to a bare file listing', async () => {
-    const data = await grep({ output_mode: 'symbols', glob: '*.toml' })
+    const data = await grep({ output_mode: 'symbols', glob: '*.csv' })
 
     expect(data.mode).toBe('symbols')
-    expect(data.content).toContain('epsilon.toml')
+    expect(data.content).toContain('epsilon.csv')
     expect(data.content).toContain('language not supported')
   })
 
@@ -183,6 +190,19 @@ describe('GrepTool — symbols mode', () => {
     expect(data.mode).toBe('symbols')
     expect(data.content).toContain('gamma.md')
     expect(data.content).toContain('# Title')
+  })
+
+  test('resolves the enclosing symbol in a new-language file (Ruby)', async () => {
+    const data = await grep({
+      output_mode: 'symbols',
+      glob: '*.rb',
+      pattern: 'harvest_all',
+    })
+
+    expect(data.mode).toBe('symbols')
+    expect(data.content).toContain('zeta.rb')
+    // The match on line 3 sits inside the `process` method of `Worker`.
+    expect(data.content).toContain('def process')
   })
 
   test('works when path targets a single file (not a directory)', async () => {

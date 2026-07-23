@@ -191,4 +191,94 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
       "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>",
     )
   })
+
+  test('a large Ruby (.rb) file auto-pivots to an outline', async () => {
+    // Same char trigger as TS, exercising a new (end-block) scanner language.
+    let body = ''
+    for (let i = 0; i < 40; i++) {
+      body += [
+        `def handler_${i}(arg)`,
+        `  # ${'pad-'.repeat(70)}`,
+        `  arg * ${i}`,
+        'end',
+        '',
+      ].join('\n')
+    }
+    expect(body.length).toBeGreaterThan(10_000)
+    const p = writeFixture('big.rb', body)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBe(true)
+  })
+
+  test('a large SQL (.sql) file auto-pivots to an outline', async () => {
+    let body = ''
+    for (let i = 0; i < 30; i++) {
+      body += [
+        `-- ${'pad-'.repeat(70)}`,
+        `CREATE TABLE t${i} (`,
+        '  id INT PRIMARY KEY,',
+        '  name TEXT',
+        ');',
+        '',
+      ].join('\n')
+    }
+    expect(body.length).toBeGreaterThan(10_000)
+    const p = writeFixture('big.sql', body)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Line-count auto-pivot: a long code file with many short lines can stay under
+// the 10 KB char trigger while still warranting an outline. Fires only when
+// the scan also finds ≥ 3 symbols, so a long single-function file is spared.
+// ---------------------------------------------------------------------------
+
+describe('FileReadTool — line-count auto-pivot', () => {
+  test('≥250 lines with ≥3 symbols pivots even under the char threshold', async () => {
+    const parts: string[] = []
+    for (let i = 0; i < 5; i++) {
+      parts.push(`def fn${i}`, '  x = 1', '  x', 'end', '')
+    }
+    // Pad with short comment lines to cross 250 lines while staying < 10 KB.
+    while (parts.length < 260) parts.push('# note')
+    const body = parts.join('\n')
+    expect(body.length).toBeLessThan(10_000)
+    expect(body.split('\n').length).toBeGreaterThanOrEqual(250)
+
+    const p = writeFixture('many-lines.rb', body)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBe(true)
+  })
+
+  test('a long single-symbol file stays a full read (symbol-count gate)', async () => {
+    const parts = ['def only_one']
+    while (parts.length < 260) parts.push('  x = 1')
+    parts.push('  x', 'end')
+    const body = parts.join('\n')
+    expect(body.length).toBeLessThan(10_000)
+    expect(body.split('\n').length).toBeGreaterThanOrEqual(250)
+
+    const p = writeFixture('one-symbol.rb', body)
+    const { data } = await read(p)
+
+    // 1 symbol < 3 → the line trigger declines; the full body is returned.
+    expect(data.type).toBe('text')
+  })
+
+  test('a short file below both thresholds is unaffected', async () => {
+    const p = writeFixture('short.rb', 'def a\n  1\nend\n')
+    const { data } = await read(p)
+    expect(data.type).toBe('text')
+  })
 })

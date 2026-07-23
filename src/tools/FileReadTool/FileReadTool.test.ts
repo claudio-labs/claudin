@@ -19,7 +19,11 @@ import {
   assistantWithClearing,
   userWithToolResult,
 } from './__test-helpers__/contextManagementFixtures.js'
-import { FileReadTool, MaxFileReadTokenExceededError } from './FileReadTool.js'
+import {
+  FileReadTool,
+  MaxFileReadTokenExceededError,
+  scanFile,
+} from './FileReadTool.js'
 
 // ---------------------------------------------------------------------------
 // Baseline regression suite for FileReadTool.
@@ -302,6 +306,119 @@ describe('FileReadTool — Smart Code Navigation', () => {
     expect(data.file.startLine).toBe(3)
     expect(data.file.numLines).toBe(3)
     expect(data.file.content).toContain('return x')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Smart Code Navigation — one language per scanner family (C-like, end-block,
+// dedicated) exercised end-to-end through the tool: outline, symbol unfold,
+// and the symbol-not-found error.
+// ---------------------------------------------------------------------------
+
+const SAMPLE_CPP = [
+  'struct Point {',
+  '  int x;',
+  '};',
+  '',
+  'int add(int a, int b) {',
+  '  return a + b;',
+  '}',
+].join('\n')
+
+const SAMPLE_RB = [
+  'class Greeter',
+  '  def greet(name)',
+  '    "hi #{name}"',
+  '  end',
+  'end',
+].join('\n')
+
+const SAMPLE_SQL = [
+  'CREATE TABLE users (',
+  '  id INT',
+  ');',
+  '',
+  'CREATE VIEW active AS SELECT 1;',
+].join('\n')
+
+const SAMPLE_CSS = ['.header {', '  color: red;', '}'].join('\n')
+
+const SAMPLE_HTML = ['<main id="app">', '  <h1>Title</h1>', '</main>'].join('\n')
+
+describe('FileReadTool — Smart Code Navigation across scanner families', () => {
+  test("view='outline' works for a C++ file (.cpp)", async () => {
+    const p = writeFixture('sample.cpp', SAMPLE_CPP)
+    const { data } = await read(p, { view: 'outline' })
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('struct Point')
+    expect(data.file.content).toContain('int add(int a, int b)')
+  })
+
+  test("symbol='add' unfolds one C++ function with real line numbers", async () => {
+    const p = writeFixture('sample-sym.cpp', SAMPLE_CPP)
+    const { data } = await read(p, { symbol: 'add' })
+
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.startLine).toBe(5)
+    expect(data.file.content).toContain('int add(int a, int b)')
+  })
+
+  test('a Ruby file (.rb) outlines its class and method', async () => {
+    const p = writeFixture('greeter.rb', SAMPLE_RB)
+    const { data } = await read(p, { view: 'outline' })
+
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.symbolCount).toBe(2) // Greeter + greet
+    expect(data.file.content).toContain('class Greeter')
+  })
+
+  test('an unknown symbol in a Ruby file lists the real ones', async () => {
+    const p = writeFixture('greeter-missing.rb', SAMPLE_RB)
+    await expect(read(p, { symbol: 'nope' })).rejects.toThrow(
+      /not found.*Greeter.*greet/s,
+    )
+  })
+
+  test('a SQL file (.sql) outlines CREATE statements', async () => {
+    const p = writeFixture('schema.sql', SAMPLE_SQL)
+    const { data } = await read(p, { view: 'outline' })
+
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('CREATE TABLE users')
+    expect(data.file.content).toContain('CREATE VIEW active')
+  })
+
+  test('a CSS file (.css) outlines its selectors', async () => {
+    const p = writeFixture('style.css', SAMPLE_CSS)
+    const { data } = await read(p, { view: 'outline' })
+
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('.header')
+  })
+
+  test('an HTML file (.html) outlines landmarks and headings', async () => {
+    const p = writeFixture('page.html', SAMPLE_HTML)
+    const { data } = await read(p, { view: 'outline' })
+
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('main#app')
+    expect(data.file.content).toContain('Title')
+  })
+
+  test('scanFile surfaces the byte-cap truncation flag (small injected cap)', async () => {
+    // A ~4 KB C file read under a tiny 200-byte scan cap must flag the scan
+    // as truncated — no real multi-MB fixture needed.
+    const padded = SAMPLE_CPP + '\n' + 'int filler = 0;\n'.repeat(300)
+    const p = writeFixture('truncated.cpp', padded)
+    const signal = new AbortController().signal
+
+    const capped = await scanFile(p, 'c', signal, { maxBytes: 200 })
+    expect(capped?.truncated).toBe(true)
+
+    const full = await scanFile(p, 'c', signal)
+    expect(full?.truncated).toBe(false)
   })
 })
 

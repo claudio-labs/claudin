@@ -30,6 +30,12 @@ function estimateTokens(text: string): number {
 export type RenderOutlineOptions = {
   /** true when produced because a plain Read exceeded the cap. */
   overCap?: boolean
+  /**
+   * true when the symbol scan only saw the head of the file (it exceeds the
+   * 10 MB scan cap). The header states this so the outline never silently
+   * pretends to be complete.
+   */
+  truncated?: boolean
 }
 
 function rangeLabel(entry: SymbolEntry): string {
@@ -107,9 +113,15 @@ export function renderOutline(
     ? `File '${filePath}' (${totalLines} lines) exceeds the read cap — showing a structural outline instead of the full contents.`
     : `Structural outline of '${filePath}' (${totalLines} lines).`
 
+  // When the scan was byte-capped, the outline only covers the head — say so
+  // explicitly so the model doesn't treat a partial table as the whole file.
+  const truncationNote = options.truncated
+    ? `\nNOTE: the file exceeds the 10 MB scan cap; only the first ${totalLines} scanned lines are outlined — deeper symbols are not listed.`
+    : ''
+
   const header =
     `<system-reminder>\n` +
-    `${lead}\n` +
+    `${lead}${truncationNote}\n` +
     `Call Read(file_path, symbol='${firstSymbol}') to expand one symbol's ` +
     `body with real line numbers, or Read(file_path, offset=N, limit=M) ` +
     `for an arbitrary range.\n` +

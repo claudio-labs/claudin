@@ -1,5 +1,4 @@
 import { readFile } from 'fs/promises'
-import { extname } from 'path'
 import { z } from 'zod/v4'
 import type { ValidationResult } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
@@ -26,7 +25,7 @@ import { semanticBoolean } from '../../utils/semanticBoolean.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
 import {
-  detectOutlineLang,
+  detectOutlineLangFromPath,
   scanSymbols,
   type SymbolEntry,
 } from '../shared/codeOutline/scanSymbols.js'
@@ -61,7 +60,7 @@ const inputSchema = lazySchema(() =>
       .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
       .describe(
-        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS, Python, Go, Java, Kotlin, C#, Rust, Markdown). Defaults to "files_with_matches".',
+        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform). Defaults to "files_with_matches".',
       ),
     '-B': semanticNumber(z.number().optional()).describe(
       'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.',
@@ -211,7 +210,7 @@ async function buildSymbolsOutput(
     const rel = toRelativePath(absPath)
     filenames.push(rel)
     const lineNos = [...byFile.get(absPath)!].sort((a, b) => a - b)
-    const lang = detectOutlineLang(extname(absPath))
+    const lang = detectOutlineLangFromPath(absPath)
 
     if (!lang) {
       blocks.push(`${rel}\n  (matched, language not supported for symbols)`)

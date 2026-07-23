@@ -85,7 +85,7 @@ import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 import { hasServerClearedToolUses } from './serverClearingDetection.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
-  detectOutlineLang,
+  detectOutlineLangFromPath,
   scanSymbols,
   type OutlineLang,
   type SymbolEntry,
@@ -714,7 +714,7 @@ export const FileReadTool = buildTool({
           )
           if (nextCount >= RERUN_BREAKER_THRESHOLD) {
             const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
-            const outlineLang = detectOutlineLang(ext)
+            const outlineLang = detectOutlineLangFromPath(fullFilePath)
             const scanned = outlineLang
               ? await scanFile(
                   fullFilePath,
@@ -813,7 +813,7 @@ export const FileReadTool = buildTool({
           const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
           logEvent('tengu_file_read_slice_walk', {
             ...(analyticsExt !== undefined && { ext: analyticsExt }),
-            isCode: detectOutlineLang(ext) != null,
+            isCode: detectOutlineLangFromPath(fullFilePath) != null,
             priorWasFullRead: sliceWalkPrior.priorWasFullRead,
           })
         }
@@ -995,6 +995,17 @@ export const AUTO_OUTLINE_PIVOT_FOOTER =
 const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
 
 /**
+ * Line-count companion to the char threshold: a long code file with many
+ * short lines can stay under 10 KB while still being tiring to read whole
+ * ("more than 2 functions and more than 250 lines → bring only what
+ * matters"). Only pivots when the scan also finds at least
+ * READ_AUTO_OUTLINE_MIN_SYMBOLS symbols, so a long single-function file still
+ * returns its body.
+ */
+const READ_AUTO_OUTLINE_THRESHOLD_LINES = 250
+const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
+
+/**
  * Single source of truth for the AUTO_OUTLINE_ON_ELISION gate. Tests can
  * force-enable via `CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION=1` because the
  * test-preload (src/stubs/test-preload.ts) stubs every `feature()` call to
@@ -1166,35 +1177,60 @@ type ScannedFile = {
   source: string
   entries: SymbolEntry[]
   mtimeMs: number
+  /** true when the read was byte-capped — the scan only saw the head. */
+  truncated: boolean
+}
+
+/**
+ * Options for {@link scanFile}. `preloaded` reuses source already in memory
+ * (the line-count auto-pivot path) to avoid a redundant disk read; `maxBytes`
+ * lets a test inject a tiny scan cap to exercise the truncation flag without a
+ * real multi-megabyte fixture.
+ */
+type ScanFileOptions = {
+  preloaded?: { source: string; mtimeMs: number; truncated?: boolean }
+  maxBytes?: number
 }
 
 /**
  * Reads a file in full and scans its symbol table. Returns null when the scan
  * yields nothing (unsupported shape, parse failure) so callers degrade to a
  * normal Read. Abort errors propagate; other read errors fail open as null.
+ *
+ * Exported for the truncation unit test, which injects a tiny `maxBytes` to
+ * exercise the byte-cap `truncated` flag without a real multi-MB fixture.
  */
-async function scanFile(
+export async function scanFile(
   resolvedFilePath: string,
   lang: OutlineLang,
   signal: AbortSignal,
+  options: ScanFileOptions = {},
 ): Promise<ScannedFile | null> {
   let source: string
   let mtimeMs: number
-  try {
-    const res = await readFileInRange(
-      resolvedFilePath,
-      0,
-      undefined,
-      SCAN_MAX_BYTES,
-      signal,
-      { truncateOnByteLimit: true },
-    )
-    source = res.content
-    mtimeMs = res.mtimeMs
-  } catch (e) {
-    if (isAbortError(e)) throw e
-    logError(e)
-    return null
+  let truncated: boolean
+  if (options.preloaded) {
+    source = options.preloaded.source
+    mtimeMs = options.preloaded.mtimeMs
+    truncated = options.preloaded.truncated ?? false
+  } else {
+    try {
+      const res = await readFileInRange(
+        resolvedFilePath,
+        0,
+        undefined,
+        options.maxBytes ?? SCAN_MAX_BYTES,
+        signal,
+        { truncateOnByteLimit: true },
+      )
+      source = res.content
+      mtimeMs = res.mtimeMs
+      truncated = res.truncatedByBytes ?? false
+    } catch (e) {
+      if (isAbortError(e)) throw e
+      logError(e)
+      return null
+    }
   }
   const entries = scanSymbols(source, lang)
   if (entries.length === 0) return null
@@ -1205,7 +1241,7 @@ async function scanFile(
   if (lines.length > 1 && lines[lines.length - 1] === '') {
     lines.pop()
   }
-  return { lines, source, entries, mtimeMs }
+  return { lines, source, entries, mtimeMs, truncated }
 }
 
 /**
@@ -1256,7 +1292,7 @@ function makeOutlineData(
     scanned.entries,
     file_path,
     scanned.lines.length,
-    { overCap },
+    { overCap, truncated: scanned.truncated },
   )
   readFileState.set(fullFilePath, {
     content: scanned.source,
@@ -1538,7 +1574,7 @@ async function callInner(
 
   // --- Smart Code Navigation: outline / unfold views ---
   // Precedence: symbol > view > offset/limit. Honoured at any file size.
-  const outlineLang = detectOutlineLang(ext)
+  const outlineLang = detectOutlineLangFromPath(fullFilePath)
   const signal = context.abortController.signal
 
   if (outlineLang && symbol !== undefined) {
@@ -1629,28 +1665,47 @@ async function callInner(
   //
   // Skip when the caller already targeted a slice (offset/limit), explicitly
   // asked for the full body (view==='full'), asked for outline themselves
-  // (handled above), pinned a symbol, or the file is below the threshold.
+  // (handled above), pinned a symbol, or the file is below both thresholds.
+  //
+  // Two triggers share one scan: the char trigger pivots on any symbol table;
+  // the line trigger additionally requires ≥ READ_AUTO_OUTLINE_MIN_SYMBOLS so
+  // a long single-function file still returns its body. The scan reuses the
+  // in-memory `content` (a full read, since offset===1 && limit===undefined)
+  // to avoid a redundant disk read.
   if (
     autoOutlineOnElisionEnabled() &&
     outlineLang &&
     symbol === undefined &&
     view === undefined &&
     offset === 1 &&
-    limit === undefined &&
-    content.length >= READ_AUTO_OUTLINE_THRESHOLD_CHARS
+    limit === undefined
   ) {
-    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
-    if (scanned) {
-      return makeOutlineData(
-        scanned,
-        file_path,
-        fullFilePath,
-        readFileState,
-        true,
-        true,
-      )
+    const charTrigger = content.length >= READ_AUTO_OUTLINE_THRESHOLD_CHARS
+    const lineTrigger = totalLines >= READ_AUTO_OUTLINE_THRESHOLD_LINES
+    if (charTrigger || lineTrigger) {
+      const scanned = await scanFile(resolvedFilePath, outlineLang, signal, {
+        preloaded: {
+          source: content,
+          mtimeMs,
+          truncated: readResult.truncatedByBytes ?? false,
+        },
+      })
+      if (
+        scanned &&
+        (charTrigger ||
+          scanned.entries.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS)
+      ) {
+        return makeOutlineData(
+          scanned,
+          file_path,
+          fullFilePath,
+          readFileState,
+          true,
+          true,
+        )
+      }
+      // below the symbol gate (or scan empty) — fall through to the full body
     }
-    // scan empty — fall through to the normal text return below
   }
 
   readFileState.set(fullFilePath, {
