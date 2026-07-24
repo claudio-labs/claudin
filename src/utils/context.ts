@@ -74,6 +74,7 @@ export function modelSupports1M(model: string): boolean {
     canonical.includes('opus-4-6') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-8') ||
+    canonical.includes('opus-5') ||
     canonical.includes('fable-5')
   )
 }
@@ -120,16 +121,19 @@ export function getContextWindowForModel(
     return cap.max_input_tokens
   }
 
-  // Fable 5 and Sonnet 5 run at 1M context by default — no [1m] suffix or beta
-  // header needed (has1mContext is false, so betas.ts never pushes the
+  // Fable 5, Sonnet 5 and Opus 5 run at 1M context by default — no [1m] suffix
+  // or beta header needed (has1mContext is false, so betas.ts never pushes the
   // context-1m header, and the beta path below never fires for them). Without
   // this branch they'd fall through to the 200k default and auto-compact at
   // 200k despite the picker advertising 1M. (is1mContextDisabled() still wins,
   // for HIPAA-style opt-outs.)
+  // Keep this list in sync with isNative1mModel (src/utils/model/model.ts),
+  // which strips the meaningless [1m] suffix for these same models.
   if (
     !is1mContextDisabled() &&
     (getCanonicalName(model).includes('fable-5') ||
-      getCanonicalName(model).includes('sonnet-5'))
+      getCanonicalName(model).includes('sonnet-5') ||
+      getCanonicalName(model).includes('opus-5'))
   ) {
     return 1_000_000
   }
@@ -209,7 +213,12 @@ export function getModelMaxOutputTokens(model: string): {
 
   const m = getCanonicalName(model)
 
-  if (m.includes('fable-5') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (
+    m.includes('fable-5') ||
+    m.includes('opus-5') ||
+    m.includes('opus-4-7') ||
+    m.includes('opus-4-6')
+  ) {
     defaultTokens = 64_000
     upperLimit = 128_000
   } else if (m.includes('sonnet-4-6')) {

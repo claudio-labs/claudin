@@ -27,6 +27,8 @@ async function importRenderer(mergeEnabled: boolean) {
 }
 
 const CASES: Array<[string, string]> = [
+  // Opus 5 is 1M-native — single label, no "(1M context)" variant (like Sonnet 5).
+  ['claude-opus-5', 'Opus 5'],
   ['claude-opus-4-8', 'Opus 4.8'],
   ['claude-opus-4-8[1m]', 'Opus 4.8 (1M context)'],
   ['claude-opus-4-7', 'Opus 4.7'],

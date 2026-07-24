@@ -1,6 +1,7 @@
 import { checkOpus1mAccess, checkSonnet1mAccess } from './check1mAccess.js'
 import {
   getCanonicalName,
+  getDefaultOpusModel,
   getDefaultSonnetModel,
   getUserSpecifiedModelSetting,
 } from './model.js'
@@ -16,7 +17,14 @@ function getAvailableUpgrade(): {
   multiplier: number
 } | null {
   const currentModelSetting = getUserSpecifiedModelSetting()
-  if (currentModelSetting === 'opus' && checkOpus1mAccess()) {
+  if (
+    currentModelSetting === 'opus' &&
+    checkOpus1mAccess() &&
+    // Opus 5 (the 1P 'opus' default) is already 1M-native, so there is no 1M
+    // upgrade to offer. Only 3P — where 'opus' resolves to Opus 4.6 (200k) —
+    // has a real opus[1m] upgrade path.
+    !getCanonicalName(getDefaultOpusModel()).includes('claude-opus-5')
+  ) {
     return {
       alias: 'opus[1m]',
       name: 'Opus 1M',

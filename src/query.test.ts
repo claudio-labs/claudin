@@ -4,6 +4,7 @@ import {
   getDefaultMainLoopModelSetting,
   getDefaultSonnetModel,
   getDefaultOpusModel,
+  isNative1mModel,
   parseUserSpecifiedModel,
 } from './utils/model/model.js'
 
@@ -43,12 +44,16 @@ describe('query.ts mainLoopModel alias resolution', () => {
     expect(resolved).not.toBe('sonnet')
   })
 
-  test('"sonnet[1m]" alias resolves and preserves the [1m] suffix', () => {
+  test('"sonnet[1m]" alias resolves and drops the [1m] suffix on a native-1M default', () => {
     const resolved = resolveAppStateMainLoopModel({
       mainLoopModel: 'sonnet[1m]',
     })
-    expect(resolved).toBe(getDefaultSonnetModel() + '[1m]')
-    expect(resolved.endsWith('[1m]')).toBe(true)
+    // Premise: the default Sonnet is native-1M, so there is no 200k variant to
+    // opt out of — keeping the suffix would push a context-1m beta header the
+    // model never needs and leave the display name unresolved.
+    expect(isNative1mModel(getDefaultSonnetModel())).toBe(true)
+    expect(resolved).toBe(getDefaultSonnetModel())
+    expect(resolved.endsWith('[1m]')).toBe(false)
     expect(resolved).not.toBe('sonnet[1m]')
   })
 
@@ -58,11 +63,13 @@ describe('query.ts mainLoopModel alias resolution', () => {
     expect(resolved).not.toBe('opus')
   })
 
-  test('"opus[1m]" alias resolves and preserves the [1m] suffix', () => {
+  test('"opus[1m]" alias resolves and drops the [1m] suffix on a native-1M default', () => {
     const resolved = resolveAppStateMainLoopModel({
       mainLoopModel: 'opus[1m]',
     })
-    expect(resolved).toBe(getDefaultOpusModel() + '[1m]')
+    expect(isNative1mModel(getDefaultOpusModel())).toBe(true)
+    expect(resolved).toBe(getDefaultOpusModel())
+    expect(resolved.endsWith('[1m]')).toBe(false)
   })
 
   test('full model ID is passed through unchanged', () => {
@@ -89,7 +96,7 @@ describe('query.ts mainLoopModel alias resolution', () => {
     const resolved = resolveAppStateMainLoopModel({
       mainLoopModelForSession: 'sonnet[1m]',
     })
-    expect(resolved).toBe(getDefaultSonnetModel() + '[1m]')
+    expect(resolved).toBe(getDefaultSonnetModel())
     expect(resolved).not.toBe('sonnet[1m]')
   })
 

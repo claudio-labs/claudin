@@ -9,9 +9,10 @@ test('rejects sampling params for Opus 4.7+ family', () => {
   expect(modelRejectsSamplingParams('claude-opus-4-7[1m]')).toBe(true)
 })
 
-test('rejects sampling params for Fable 5 and Sonnet 5', () => {
+test('rejects sampling params for Fable 5, Sonnet 5 and Opus 5', () => {
   expect(modelRejectsSamplingParams('claude-fable-5')).toBe(true)
   expect(modelRejectsSamplingParams('claude-sonnet-5')).toBe(true)
+  expect(modelRejectsSamplingParams('claude-opus-5')).toBe(true)
 })
 
 test('accepts sampling params for older Anthropic models', () => {

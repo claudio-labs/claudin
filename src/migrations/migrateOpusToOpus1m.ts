@@ -1,6 +1,8 @@
 import { logEvent } from '../services/analytics/index.js'
 import {
   getDefaultMainLoopModelSetting,
+  getDefaultOpusModel,
+  isNative1mModel,
   isOpus1mMergeEnabled,
   parseUserSpecifiedModel,
 } from '../utils/model/model.js'
@@ -28,6 +30,14 @@ export function migrateOpusToOpus1m(): void {
 
   const model = getSettingsForSource('userSettings')?.model
   if (model !== 'opus') {
+    return
+  }
+
+  // Nothing to merge when the default Opus is already native-1M (Opus 5): there
+  // is no 200k variant, so 'opus[1m]' would only persist a phantom
+  // 'claude-opus-5[1m]' into settings.json. The "already equals the default"
+  // check below can't catch it either, since the [1m] string never matches.
+  if (isNative1mModel(getDefaultOpusModel())) {
     return
   }
 

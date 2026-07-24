@@ -90,6 +90,23 @@ test('Sonnet 5 resolves to native 1M on first party (no [1m] suffix, no beta hea
   }
 })
 
+test('Opus 5 resolves to native 1M on first party (no [1m] suffix, no beta header)', () => {
+  // Regression: Opus 5 is native-1M like Sonnet 5 / Fable 5. Without the native
+  // branch in getContextWindowForModel it falls through to the 200k default
+  // while the picker advertises 1M (auto-compact would fire at 200k). Force
+  // first party so isOpenAIShimTransport() is false.
+  const prevProfile = mockProviderProfile
+  mockProviderProfile = null
+  delete process.env.CLAUDE_CODE_USE_OPENAI
+  invalidateActiveProviderCache()
+  try {
+    expect(getContextWindowForModel('claude-opus-5')).toBe(1_000_000)
+  } finally {
+    mockProviderProfile = prevProfile
+    invalidateActiveProviderCache()
+  }
+})
+
 test('deepseek-v4-flash uses provider-specific context and output caps', () => {
   process.env.CLAUDE_CODE_USE_OPENAI = '1'
   delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS

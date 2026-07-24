@@ -116,7 +116,8 @@ export function modelSupportsThinking(model: string): boolean {
   return (
     canonical.includes('sonnet-4') ||
     canonical.includes('sonnet-5') ||
-    canonical.includes('opus-4')
+    canonical.includes('opus-4') ||
+    canonical.includes('opus-5')
   )
 }
 
@@ -131,6 +132,7 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
   if (
     canonical.includes('fable-5') ||
     canonical.includes('sonnet-5') ||
+    canonical.includes('opus-5') ||
     canonical.includes('opus-4-8') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-6') ||
@@ -176,10 +178,16 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
  *   actually accepted. The streaming path omits the thinking param entirely when
  *   thinking is off (it never sends {type: 'disabled'}), so treating Sonnet 5 the
  *   same as Fable here loses no functionality.
+ * - Opus 5: native-1M flagship, thinking always on server-side — same profile as
+ *   Fable/Sonnet 5 (budget_tokens 400s, non-default sampling params rejected).
  */
 export function modelRequiresAdaptiveThinking(model: string): boolean {
   const canonical = getCanonicalName(model)
-  return canonical.includes('fable-5') || canonical.includes('sonnet-5')
+  return (
+    canonical.includes('fable-5') ||
+    canonical.includes('sonnet-5') ||
+    canonical.includes('opus-5')
+  )
 }
 
 /**
