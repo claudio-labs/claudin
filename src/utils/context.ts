@@ -127,6 +127,8 @@ export function getContextWindowForModel(
   // this branch they'd fall through to the 200k default and auto-compact at
   // 200k despite the picker advertising 1M. (is1mContextDisabled() still wins,
   // for HIPAA-style opt-outs.)
+  // Keep this list in sync with isNative1mModel (src/utils/model/model.ts),
+  // which strips the meaningless [1m] suffix for these same models.
   if (
     !is1mContextDisabled() &&
     (getCanonicalName(model).includes('fable-5') ||
@@ -211,7 +213,12 @@ export function getModelMaxOutputTokens(model: string): {
 
   const m = getCanonicalName(model)
 
-  if (m.includes('fable-5') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (
+    m.includes('fable-5') ||
+    m.includes('opus-5') ||
+    m.includes('opus-4-7') ||
+    m.includes('opus-4-6')
+  ) {
     defaultTokens = 64_000
     upperLimit = 128_000
   } else if (m.includes('sonnet-4-6')) {

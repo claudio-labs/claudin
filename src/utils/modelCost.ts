@@ -252,6 +252,22 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
 }
 
 /**
+ * Get the cost tier for Opus 5 based on fast mode. Reads the standard rate from
+ * MODEL_COSTS (currently a provisional placeholder) so that publishing real
+ * Opus 5 pricing there is enough — unlike getOpus46CostTier, which hardcodes the
+ * 4.6/4.7/4.8 tier. Fast mode bills at the same premium rate as the 4.x tiers.
+ */
+export function getOpus5CostTier(fastMode: boolean): ModelCosts {
+  if (isFastModeEnabled() && fastMode) {
+    return COST_TIER_30_150
+  }
+  return (
+    MODEL_COSTS[firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)] ??
+    COST_TIER_5_25
+  )
+}
+
+/**
  * Calculates the USD cost based on token usage and model cost configuration
  */
 function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
@@ -292,6 +308,14 @@ export function getModelCosts(model: string, usage: Usage): ModelCosts {
   ) {
     const isFastMode = usage.speed === 'fast'
     return getOpus46CostTier(isFastMode)
+  }
+
+  // Opus 5 is fast-mode eligible too — without this branch a fast-mode session
+  // would bill at the standard tier while the picker advertises the premium one.
+  if (
+    shortName === firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)
+  ) {
+    return getOpus5CostTier(usage.speed === 'fast')
   }
 
   const costs = MODEL_COSTS[shortName]

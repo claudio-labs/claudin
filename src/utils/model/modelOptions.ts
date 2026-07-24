@@ -28,6 +28,7 @@ import {
   getMarketingNameForModel,
   getUserSpecifiedModelSetting,
   getOpus46PricingSuffix,
+  getOpus5PricingSuffix,
   parseUserSpecifiedModel,
   renderDefaultModelSetting,
   type ModelSetting,
@@ -173,7 +174,7 @@ function getOpus5Option(fastMode = false): ModelOption {
   return {
     value: is3P ? getModelStrings().opus5 : 'opus',
     label: 'Opus',
-    description: `Opus 5 · Most capable for complex work · 1M context${getOpus46PricingSuffix(fastMode)}`,
+    description: `Opus 5 · Most capable for complex work · 1M context${getOpus5PricingSuffix(fastMode)}`,
     descriptionForModel:
       'Opus 5 - most capable for complex work. 1M context by default.',
   }
@@ -298,17 +299,22 @@ function getMaxOpusOption(fastMode = false): ModelOption {
   return {
     value: 'opus',
     label: 'Opus',
-    description: `Opus 5 · Most capable for complex work · 1M context${fastMode ? getOpus46PricingSuffix(true) : ''}`,
+    description: `Opus 5 · Most capable for complex work · 1M context${fastMode ? getOpus5PricingSuffix(true) : ''}`,
   }
 }
 
 function getMergedOpus1MOption(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
+  // On 1P this entry is the 'opus[1m]' alias, so its name must follow whatever
+  // the alias currently resolves to (Opus 5) rather than a pinned version — on
+  // 3P the value is the explicit 4.8 string, so name that instead.
+  const model = is3P ? getModelStrings().opus48 : getDefaultOpusModel()
+  const label = getMarketingNameForModel(model) ?? 'Opus'
   return {
     value: is3P ? getModelStrings().opus48 + '[1m]' : 'opus[1m]',
-    label: 'Opus 4.8',
-    description: `Opus 4.8 · Most capable for complex work${!is3P && fastMode ? getOpus46PricingSuffix(fastMode) : ''}`,
-    descriptionForModel: 'Opus 4.8 - most capable for complex work',
+    label,
+    description: `${label} · Most capable for complex work${!is3P && fastMode ? getOpus5PricingSuffix(fastMode) : ''}`,
+    descriptionForModel: `${label} - most capable for complex work`,
   }
 }
 

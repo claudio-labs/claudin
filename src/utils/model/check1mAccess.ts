@@ -42,7 +42,11 @@ function isExtraUsageEnabled(): boolean {
   }
 }
 
-// @[MODEL LAUNCH]: Add check if the new model supports 1M context
+// @[MODEL LAUNCH]: Add check if the new model supports 1M context.
+// Native-1M models (Opus 5 / Sonnet 5 / Fable 5) do NOT consult these gates:
+// they have no [1m] variant to unlock, so their 1M window comes straight from
+// getContextWindowForModel. These checks only gate the opt-in [1m] variants of
+// the 200k generations (Opus 4.x / Sonnet 4.x).
 export function checkOpus1mAccess(): boolean {
   if (is1mContextDisabled()) {
     return false

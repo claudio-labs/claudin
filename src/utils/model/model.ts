@@ -18,7 +18,11 @@ import {
 import { isEnvTruthy } from '../envUtils.js'
 import { getPrimaryModel } from '../providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
-import { formatModelPricing, getOpus46CostTier } from '../modelCost.js'
+import {
+  formatModelPricing,
+  getOpus46CostTier,
+  getOpus5CostTier,
+} from '../modelCost.js'
 import { getSettings_DEPRECATED } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { getAPIProvider } from './providers.js'
@@ -84,7 +88,29 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
     model === getModelStrings().opus45 ||
     model === getModelStrings().opus46 ||
     model === getModelStrings().opus47 ||
-    model === getModelStrings().opus48
+    model === getModelStrings().opus48 ||
+    model === getModelStrings().opus5
+  )
+}
+
+// @[MODEL LAUNCH]: Add the new model here if it runs at 1M context natively.
+/**
+ * True for models whose context window is 1M by default AND at maximum — no
+ * 200k variant, no `[1m]` opt-in suffix, no context-1m beta header.
+ *
+ * Appending `[1m]` to one of these is always wrong: it pushes a beta header the
+ * model never needs and breaks display-name resolution (there is no
+ * `<model>[1m]` case for them in getPublicModelDisplayName).
+ *
+ * Keep this list in sync with the native-1M branch in
+ * getContextWindowForModel (src/utils/context.ts).
+ */
+export function isNative1mModel(model: ModelName): boolean {
+  const canonical = getCanonicalName(model)
+  return (
+    canonical.includes('opus-5') ||
+    canonical.includes('sonnet-5') ||
+    canonical.includes('fable-5')
   )
 }
 
@@ -369,9 +395,9 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
   // opus5[1m] case). isOpus1mMergeEnabled() is already first-party-only.
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
     const opusModel = getDefaultOpusModel()
-    const opusIsNative1m = getCanonicalName(opusModel).includes('claude-opus-5')
     return (
-      opusModel + (isOpus1mMergeEnabled() && !opusIsNative1m ? '[1m]' : '')
+      opusModel +
+      (isOpus1mMergeEnabled() && !isNative1mModel(opusModel) ? '[1m]' : '')
     )
   }
 
@@ -484,7 +510,7 @@ export function getClaudeAiUserDefaultModelDescription(
 ): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
     // Opus 5 is native-1M — no 200k/merge distinction.
-    return `Opus 5 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    return `Opus 5 · Most capable for complex work${fastMode ? getOpus5PricingSuffix(true) : ''}`
   }
   return 'Sonnet 5 · Best for everyday tasks'
 }
@@ -501,6 +527,17 @@ export function renderDefaultModelSetting(
 export function getOpus46PricingSuffix(fastMode: boolean): string {
   if (getAPIProvider() !== 'firstParty') return ''
   const pricing = formatModelPricing(getOpus46CostTier(fastMode))
+  const fastModeIndicator = fastMode ? ` (${LIGHTNING_BOLT})` : ''
+  return ` ·${fastModeIndicator} ${pricing}`
+}
+
+/**
+ * Same shape as getOpus46PricingSuffix, but reads the Opus 5 cost entry so the
+ * picker can't drift from /cost once real Opus 5 pricing is published.
+ */
+export function getOpus5PricingSuffix(fastMode: boolean): string {
+  if (getAPIProvider() !== 'firstParty') return ''
+  const pricing = formatModelPricing(getOpus5CostTier(fastMode))
   const fastModeIndicator = fastMode ? ` (${LIGHTNING_BOLT})` : ''
   return ` ·${fastModeIndicator} ${pricing}`
 }
@@ -688,15 +725,21 @@ export function parseUserSpecifiedModel(
     : normalizedModel
 
   if (isModelAlias(modelString)) {
+    // A [1m] tag is meaningless on a native-1M default (Opus 5 / Sonnet 5 /
+    // Fable 5): they have no 200k variant, so 'opus[1m]' would resolve to
+    // 'claude-opus-5[1m]' — a phantom ID that pushes a context-1m beta header
+    // and has no display-name case. Drop the tag for those.
+    const withTag = (model: ModelName): ModelName =>
+      has1mTag && !isNative1mModel(model) ? model + '[1m]' : model
     switch (modelString) {
       case 'opusplan':
-        return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '') // Sonnet is default, Opus in plan mode
+        return withTag(getDefaultSonnetModel()) // Sonnet is default, Opus in plan mode
       case 'sonnet':
-        return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '')
+        return withTag(getDefaultSonnetModel())
       case 'haiku':
-        return getDefaultHaikuModel() + (has1mTag ? '[1m]' : '')
+        return withTag(getDefaultHaikuModel())
       case 'opus':
-        return getDefaultOpusModel() + (has1mTag ? '[1m]' : '')
+        return withTag(getDefaultOpusModel())
       case 'best':
         return getBestModel()
       default:

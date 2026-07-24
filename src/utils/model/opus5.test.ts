@@ -20,9 +20,14 @@ afterAll(() => {
 import {
   firstPartyNameToCanonical,
   getMarketingNameForModel,
+  getPublicModelDisplayName,
+  isNative1mModel,
+  isNonCustomOpusModel,
   modelRejectsSamplingParams,
+  parseUserSpecifiedModel,
 } from './model.js'
-import { modelSupports1M } from '../context.js'
+import { getModelMaxOutputTokens, modelSupports1M } from '../context.js'
+import { isFastModeSupportedByModel } from '../fastMode.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
@@ -98,4 +103,40 @@ test('uses the provisional Opus-4.8-tier $5/$25 pricing placeholder', () => {
 
 test('reports the public marketing name', () => {
   expect(getMarketingNameForModel('claude-opus-5')).toBe('Opus 5')
+})
+
+// The config documents "128K max output". Without an explicit branch in
+// getModelMaxOutputTokens, claude-opus-5 matches no `else if` and silently
+// falls through to the 32k/64k default — halving the output budget of the
+// model it replaces and clamping CLAUDE_CODE_MAX_OUTPUT_TOKENS.
+test('gets the 64k/128k max-output tier, not the 32k fallthrough default', () => {
+  expect(getModelMaxOutputTokens('claude-opus-5')).toEqual({
+    default: 64_000,
+    upperLimit: 128_000,
+  })
+})
+
+// Opus 5 is native-1M, so a [1m] tag on the alias must be dropped rather than
+// producing a phantom 'claude-opus-5[1m]' — which would push a context-1m beta
+// header the model never needs and has no display-name case (renders raw).
+test('strips the meaningless [1m] tag from the opus alias', () => {
+  expect(isNative1mModel('claude-opus-5')).toBe(true)
+  const parsed = parseUserSpecifiedModel('opus[1m]')
+  expect(parsed).toBe('claude-opus-5')
+  expect(parsed).not.toContain('[1m]')
+  // A resolvable display name is what keeps the raw ID out of the footer.
+  expect(getPublicModelDisplayName(parsed)).toBe('Opus 5')
+})
+
+// The picker renders the lightning bolt + fast-mode pricing for Opus 5, so the
+// support check must agree — otherwise /fast silently self-disables on the
+// first-party default model.
+test('is eligible for fast mode', () => {
+  expect(isFastModeSupportedByModel('claude-opus-5')).toBe(true)
+})
+
+// Gates the "Opus is not available with the Claude Pro plan" hint (errors.ts)
+// and the 529 Opus-fallback path (withRetry.ts).
+test('counts as a non-custom Opus model', () => {
+  expect(isNonCustomOpusModel('claude-opus-5')).toBe(true)
 })

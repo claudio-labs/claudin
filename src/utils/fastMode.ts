@@ -22,6 +22,8 @@ import { logForDebugging } from './debug.js'
 import { isEnvTruthy } from './envUtils.js'
 import {
   getDefaultMainLoopModelSetting,
+  getDefaultOpusModel,
+  isNative1mModel,
   isOpus1mMergeEnabled,
   type ModelSetting,
   parseUserSpecifiedModel,
@@ -140,10 +142,16 @@ export function getFastModeUnavailableReason(): string | null {
 }
 
 // @[MODEL LAUNCH]: Update supported Fast Mode models.
-export const FAST_MODE_MODEL_DISPLAY = 'Opus 4.7'
+// Names the model /fast switches you to (getFastModeModel resolves the 'opus'
+// alias), not the full supported set — call sites read "model set to X" and
+// "High-speed mode for X".
+export const FAST_MODE_MODEL_DISPLAY = 'Opus 5'
 
 export function getFastModeModel(): string {
-  return 'opus' + (isOpus1mMergeEnabled() ? '[1m]' : '')
+  // The [1m] merge suffix only applies to a 200k Opus. Opus 5 is native-1M, so
+  // appending it would produce a phantom 'claude-opus-5[1m]'.
+  const opusIsNative1m = isNative1mModel(getDefaultOpusModel())
+  return 'opus' + (isOpus1mMergeEnabled() && !opusIsNative1m ? '[1m]' : '')
 }
 
 export function getInitialFastModeSetting(model: ModelSetting): boolean {
@@ -172,7 +180,11 @@ export function isFastModeSupportedByModel(
   }
   const model = modelSetting ?? getDefaultMainLoopModelSetting()
   const parsedModel = parseUserSpecifiedModel(model).toLowerCase()
-  return parsedModel.includes('opus-4-7') || parsedModel.includes('opus-4-6')
+  return (
+    parsedModel.includes('opus-5') ||
+    parsedModel.includes('opus-4-7') ||
+    parsedModel.includes('opus-4-6')
+  )
 }
 
 // --- Fast mode runtime state ---

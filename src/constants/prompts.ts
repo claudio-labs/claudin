@@ -569,7 +569,7 @@ export async function computeSimpleEnvInfo(
     // firstParty-only: fast mode is rejected on every other provider
     // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty').
     isAnthropicFamily && getAPIProvider() === 'firstParty'
-      ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 4.7/4.6.`
+      ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 5/4.7/4.6.`
       : null,
   ].filter(item => item !== null)
 
