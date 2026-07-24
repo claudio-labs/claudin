@@ -13,6 +13,11 @@ import {
   convertLeadingTabsToSpaces,
   readFileSyncCached,
 } from '../../utils/file.js'
+import {
+  findAllMatches,
+  ignoreSurroundingWs,
+  ignoreTrailingWs,
+} from '../shared/fuzzyLineMatch.js'
 import type { EditInput, FileEdit } from './types.js'
 
 /**
@@ -112,6 +117,116 @@ export function findActualString(
   }
 
   return null
+}
+
+const LEADING_WS_RE = /^[ \t]*/
+
+function leadingWhitespace(line: string): string {
+  const m = LEADING_WS_RE.exec(line)
+  return m ? m[0] : ''
+}
+
+/**
+ * Re-indents `newString` so its leading whitespace matches the file's actual
+ * indentation. `oldIndent` is the leading whitespace the model assumed (from
+ * old_string's first line); `fileIndent` is what the matched file line really
+ * uses. Every new line whose prefix equals `oldIndent` gets that prefix swapped
+ * for `fileIndent` (preserving relative indentation); when the model assumed no
+ * indent, `fileIndent` is prepended to each non-blank line. Blank lines and
+ * lines that don't share the prefix are left untouched.
+ */
+function reindentNewString(
+  newString: string,
+  oldIndent: string,
+  fileIndent: string,
+): string {
+  if (oldIndent === fileIndent) return newString
+  return newString
+    .split('\n')
+    .map(line => {
+      if (line === '') return line
+      if (oldIndent !== '' && line.startsWith(oldIndent)) {
+        return fileIndent + line.slice(oldIndent.length)
+      }
+      if (oldIndent === '') {
+        return fileIndent + line
+      }
+      return line
+    })
+    .join('\n')
+}
+
+export type FuzzyEditResult =
+  | { kind: 'match'; matchedOldString: string; adjustedNewString: string }
+  | { kind: 'ambiguous'; count: number }
+  | { kind: 'none' }
+
+/**
+ * Whitespace-tolerant fallback for the exact-substring matcher. Only meant to be
+ * called after findActualString (exact + quote normalization) fails and
+ * replace_all is false. Matches old_string line-by-line ignoring trailing then
+ * surrounding whitespace, stopping at the strictest pass that yields any match;
+ * if that pass yields more than one candidate region it reports `ambiguous`
+ * (so the caller keeps the existing "provide more context" error). On a unique
+ * match it returns the real file bytes for that region (so the rest of the edit
+ * pipeline can keep doing a literal replace) plus new_string re-indented to the
+ * file's actual indentation.
+ */
+export function resolveFuzzyEdit(
+  fileContent: string,
+  oldString: string,
+  newString: string,
+): FuzzyEditResult {
+  // Empty old_string is the file-creation/append path — never fuzzy-match it.
+  if (oldString === '') return { kind: 'none' }
+
+  const hadTrailingNewline = oldString.endsWith('\n')
+  const patternLines = oldString.split('\n')
+  // A trailing newline yields a final '' element that is not a real line to
+  // match — drop it (mirrors ApplyPatch's trailing-empty-line retry).
+  if (hadTrailingNewline) patternLines.pop()
+  if (patternLines.length === 0) return { kind: 'none' }
+
+  // split('\n') keeps a CRLF file's '\r' on each line; join('\n') of any slice
+  // is therefore an exact substring of fileContent, so the returned bytes plug
+  // straight into the downstream literal replace.
+  const fileLines = fileContent.split('\n')
+
+  // Exact matching is already handled by findActualString; start one notch
+  // looser and stop at the strictest pass that finds anything.
+  for (const compare of [ignoreTrailingWs, ignoreSurroundingWs]) {
+    const starts = findAllMatches(fileLines, patternLines, compare)
+    if (starts.length === 0) continue
+    if (starts.length > 1) return { kind: 'ambiguous', count: starts.length }
+
+    const start = starts[0]
+    const matchedSlice = fileLines.slice(start, start + patternLines.length)
+    const core = matchedSlice.join('\n')
+    const followedByNewline = start + patternLines.length < fileLines.length
+    const matchedOldString =
+      hadTrailingNewline && followedByNewline ? `${core}\n` : core
+
+    // The line match is unique, but the downstream pipeline replaces via a
+    // substring String.replace and counts uniqueness via
+    // file.split(matchedOldString) — both byte/substring based. A bare line
+    // block can also occur mid-line elsewhere (e.g. the line "ab" whose bytes
+    // recur inside "xaby"), which would mis-count as ambiguous (error 9) or,
+    // absent the validate→apply gate, replace the wrong bytes. Only accept the
+    // match when its bytes are a unique substring (the same count method the
+    // caller uses); otherwise bail so the edit degrades to the "not found"
+    // error rather than risking a wrong-location replace.
+    if (fileContent.split(matchedOldString).length - 1 !== 1) {
+      return { kind: 'none' }
+    }
+
+    const oldIndent = leadingWhitespace(patternLines[0])
+    const fileIndent = leadingWhitespace(matchedSlice[0])
+    const adjustedNewString = reindentNewString(newString, oldIndent, fileIndent)
+
+    return { kind: 'match', matchedOldString, adjustedNewString }
+  }
+
+  return { kind: 'none' }
 }
 
 /**

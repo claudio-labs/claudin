@@ -9,6 +9,8 @@
 //   - No `maybeParseApplyPatch` (Bash-invocation detection) — out of scope.
 // The parse + fuzzy-match behavior is otherwise identical to the source.
 
+import { seekSequence } from 'src/tools/shared/fuzzyLineMatch.js'
+
 export type Hunk =
   | { type: 'add'; path: string; contents: string }
   | { type: 'delete'; path: string }
@@ -383,91 +385,6 @@ export function parsePatch(patchText: string): { hunks: Hunk[] } {
   }
 
   return { hunks }
-}
-
-// Normalize Unicode punctuation to ASCII equivalents (matches the Rust/opencode
-// normalize_unicode used in the fuzzy pass). Module-level per repo regex rule.
-const SINGLE_QUOTE_RE = /[\u2018\u2019\u201A\u201B]/g
-const DOUBLE_QUOTE_RE = /[\u201C\u201D\u201E\u201F]/g
-const DASH_RE = /[\u2010\u2011\u2012\u2013\u2014\u2015]/g
-const ELLIPSIS_RE = /\u2026/g
-const NBSP_RE = /\u00A0/g
-
-function normalizeUnicode(str: string): string {
-  return str
-    .replace(SINGLE_QUOTE_RE, "'")
-    .replace(DOUBLE_QUOTE_RE, '"')
-    .replace(DASH_RE, '-')
-    .replace(ELLIPSIS_RE, '...')
-    .replace(NBSP_RE, ' ')
-}
-
-type Comparator = (a: string, b: string) => boolean
-
-function matchesAt(
-  lines: string[],
-  pattern: string[],
-  at: number,
-  compare: Comparator,
-): boolean {
-  for (let j = 0; j < pattern.length; j++) {
-    if (!compare(lines[at + j], pattern[j])) return false
-  }
-  return true
-}
-
-function tryMatch(
-  lines: string[],
-  pattern: string[],
-  startIndex: number,
-  compare: Comparator,
-): number {
-  for (let i = startIndex; i <= lines.length - pattern.length; i++) {
-    if (matchesAt(lines, pattern, i, compare)) return i
-  }
-  return -1
-}
-
-// Comparators in order of decreasing strictness: exact, ignore trailing
-// whitespace, ignore leading+trailing whitespace, normalize Unicode punctuation.
-const SEEK_PASSES: Comparator[] = [
-  (a, b) => a === b,
-  (a, b) => a.trimEnd() === b.trimEnd(),
-  (a, b) => a.trim() === b.trim(),
-  (a, b) => normalizeUnicode(a.trim()) === normalizeUnicode(b.trim()),
-]
-
-function seekSequence(
-  lines: string[],
-  pattern: string[],
-  startIndex: number,
-  eof = false,
-): number {
-  if (pattern.length === 0) return -1
-
-  // EOF anchor: the pattern is pinned to the tail of the file. Probe the tail
-  // position with EVERY fuzzy pass before any forward scan, so a trailing line
-  // that only matches after whitespace/Unicode normalization still wins the
-  // anchor over an earlier line that happens to match exactly. (Previously each
-  // pass ran its own tail-check-then-scan in sequence, so Pass 1's exact forward
-  // match stole the anchor from a fuzzy tail and the EOF marker was silently
-  // ignored whenever the last line carried trailing whitespace.)
-  if (eof) {
-    const fromEnd = lines.length - pattern.length
-    if (fromEnd >= startIndex) {
-      for (const compare of SEEK_PASSES) {
-        if (matchesAt(lines, pattern, fromEnd, compare)) return fromEnd
-      }
-    }
-  }
-
-  // Forward scan, passes in order of decreasing strictness.
-  for (const compare of SEEK_PASSES) {
-    const idx = tryMatch(lines, pattern, startIndex, compare)
-    if (idx !== -1) return idx
-  }
-
-  return -1
 }
 
 /**

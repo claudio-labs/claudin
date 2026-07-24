@@ -79,6 +79,7 @@ import {
   findActualString,
   getPatchForEdit,
   preserveQuoteStyle,
+  resolveFuzzyEdit,
 } from './utils.js'
 
 // V8/Bun string length limit is ~2^30 characters (~1 billion). For typical
@@ -318,8 +319,30 @@ export const FileEditTool = buildTool({
 
     const file = fileContent
 
-    // Use findActualString to handle quote normalization
-    const actualOldString = findActualString(file, old_string)
+    // Use findActualString to handle quote normalization, then fall back to a
+    // whitespace-tolerant line match (indentation/trailing-whitespace drift).
+    let actualOldString = findActualString(file, old_string)
+    // The effective replacement string; re-indented when the match is fuzzy so
+    // the settings simulation below validates what will actually be written.
+    let effectiveNewString = new_string
+    if (!actualOldString && !replace_all) {
+      const fuzzy = resolveFuzzyEdit(file, old_string, new_string)
+      if (fuzzy.kind === 'ambiguous') {
+        return {
+          result: false,
+          behavior: 'ask',
+          message: `Found ${fuzzy.count} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+          meta: {
+            isFilePathAbsolute: String(isAbsolute(file_path)),
+          },
+          errorCode: 9,
+        }
+      }
+      if (fuzzy.kind === 'match') {
+        actualOldString = fuzzy.matchedOldString
+        effectiveNewString = fuzzy.adjustedNewString
+      }
+    }
     if (!actualOldString) {
       return {
         result: false,
@@ -355,8 +378,8 @@ export const FileEditTool = buildTool({
       () => {
         // Simulate the edit to get the final content using the exact same logic as the tool
         return replace_all
-          ? file.replaceAll(actualOldString, new_string)
-          : file.replace(actualOldString, new_string)
+          ? file.replaceAll(actualOldString, effectiveNewString)
+          : file.replace(actualOldString, effectiveNewString)
       },
     )
 
@@ -475,15 +498,34 @@ export const FileEditTool = buildTool({
     }
 
     // 3. Use findActualString to handle quote normalization
-    const actualOldString =
+    let actualOldString =
       findActualString(originalFileContents, old_string) || old_string
 
     // Preserve curly quotes in new_string when the file uses them
-    const actualNewString = preserveQuoteStyle(
+    let actualNewString = preserveQuoteStyle(
       old_string,
       actualOldString,
       new_string,
     )
+
+    // Fall back to a whitespace-tolerant line match when the exact/quote-
+    // normalized string is not literally present (indentation drift). Uses the
+    // matched file bytes and re-indents new_string to the file's indentation.
+    if (
+      !replace_all &&
+      old_string !== '' &&
+      !originalFileContents.includes(actualOldString)
+    ) {
+      const fuzzy = resolveFuzzyEdit(
+        originalFileContents,
+        old_string,
+        new_string,
+      )
+      if (fuzzy.kind === 'match') {
+        actualOldString = fuzzy.matchedOldString
+        actualNewString = fuzzy.adjustedNewString
+      }
+    }
 
     // 4. Generate patch
     const { patch, updatedFile } = getPatchForEdit({
