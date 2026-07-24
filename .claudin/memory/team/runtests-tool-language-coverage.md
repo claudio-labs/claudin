@@ -1,0 +1,19 @@
+---
+name: RunTestsTool language coverage — reporter constraints + extension plan
+description: Which test runners RunTestsTool gets structured JUnit-XML/JSON from vs heuristic-only, the 23-runner extension now IMPLEMENTED (branch feat/run-tests-tool), why catch2/doctest are override-only, and the fake-runner validation method
+type: project
+---
+
+RunTestsTool (`src/tools/RunTestsTool/`) picks a per-framework reporter+parser by tier: JUnit-XML (`parsers/junitXml.ts`) → native JSON (`goTest.ts`-style) → TAP → heuristic text. As of 2026-07-24 the extension is **IMPLEMENTED** (uncommitted on branch `feat/run-tests-tool`, 23 runners), validated across build + 3 read-only review rounds (bugs/perf/design + a per-framework coherence audit); 45 tests green. The heuristic-only tier (no injectable reporter → `degraded:true`, text-scraped counts) is: jest, rspec, dotnet, mocha, elixir, minitest, unknown. The load-bearing, non-obvious part is **which runners can be forced to emit a machine report via an injectable CLI flag vs which cannot**:
+
+- **Structured via injectable flag (real wins):** Deno `--junit-path=<file>`, CTest `ctest --output-junit <file>`, Catch2/doctest `-r junit -o <file>`, PHP Pest `--log-junit <file>` (Pest wraps PHPUnit), Playwright `--reporter=junit` + `PLAYWRIGHT_JUNIT_OUTPUT_NAME=<file>` env. All reuse `junitXml.ts` unchanged.
+- **Native JSON, needs a NEW parser:** Dart/Flutter — `dart test --reporter=json` / `flutter test --machine` emit line-delimited JSON (model `dartTest.ts` on `goTest.ts`). Note Dart stack frames print `path.dart LINE:COL` (space-separated, NOT `path:line`) so `stackTrace.ts` needs a dedicated `DART_FRAME_RE`; the generic regex misses them.
+- **NO CLI flag to force JUnit → heuristic-only or deferred:** Elixir `mix test` (needs `junit_formatter` hex in test_helper.exs), Ruby minitest (needs `minitest-reporters` gem), Scala sbt (no default JUnit output; only via plugin/ScalaTest `-u`). Do NOT claim these are "near-free structured" — I overclaimed this once.
+
+**Decisions (2026-07-24, all IMPLEMENTED):** Elixir + minitest included as detection+heuristic (better than `unknown`); sbt DEFERRED; Playwright PROMOTED from coarse `node-test` mapping to first-class `playwright`; Dart = single `dart` framework, command varies (Flutter vs pure Dart) sharing one JSON parser.
+
+**catch2/doctest are OVERRIDE-ONLY (a reachability triad, easy to get wrong):** they are C/C++ test *libraries* linked into an arbitrarily-named binary, so there is NO command token to auto-detect — they're absent from `COMMAND_MATCHERS` by design. Reaching them needs THREE things wired together: (1) membership in the `FRAMEWORKS` zod enum (input `framework` override), (2) a `planReporter`/`applyFilters` case, AND (3) advertisement in the tool `DESCRIPTION` (`prompt.ts`) naming them + the override — else the model literally cannot discover the enum value exists. This bit us twice in one session: the enum initially omitted the new frameworks (so catch2/doctest were unreachable), and DESCRIPTION listed only the original runners. When adding any non-detectable runner, wire all three or it's dead.
+
+**Why:** user asked to extend language coverage; the per-runner reporter reality is easy to get wrong and took web research to pin down.
+
+**How to apply:** when adding a runner to RunTestsTool, first check if it has an injectable JUnit/JSON flag before promising structured `file:line`; if not, it's heuristic-tier. Validate additions the way the fake-`mvn` run did: put a **fake runner on `$PATH`** that writes a real JUnit XML / JSON report and exits non-zero, then drive the CLI (`node dist/cli.mjs -p …`) against a project with the right marker file — this exercises detection→command→report-read→parse→`file:line` without installing the toolchain (user endorsed: Deno real, rest fake). State explicitly which runners were validated real vs simulated.

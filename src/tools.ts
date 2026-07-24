@@ -32,6 +32,8 @@ const getBriefTool = () =>
   require('./tools/BriefTool/BriefTool.js').BriefTool as typeof import('./tools/BriefTool/BriefTool.js').BriefTool
 const getLSPTool = () =>
   require('./tools/LSPTool/LSPTool.js').LSPTool as typeof import('./tools/LSPTool/LSPTool.js').LSPTool
+const getRunTestsTool = () =>
+  require('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool
 // Dead code elimination: conditional import for internal-only tools
 const REPLTool = null
 const SuggestBackgroundPRTool = null
@@ -260,6 +262,7 @@ export function getAllBaseTools(): Tools {
     getReportFindingsTool(),
     getSkillTool(),
     getLSPTool(),
+    getRunTestsTool(),
     getEnterPlanModeTool(),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
     ...(WebBrowserTool ? [WebBrowserTool] : []),
