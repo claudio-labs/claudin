@@ -27,7 +27,6 @@ import {
   getDefaultMainLoopModelSetting,
   getMarketingNameForModel,
   getUserSpecifiedModelSetting,
-  isOpus1mMergeEnabled,
   getOpus46PricingSuffix,
   parseUserSpecifiedModel,
   renderDefaultModelSetting,
@@ -165,16 +164,29 @@ function getOpus41Option(): ModelOption {
   }
 }
 
-function getOpus48Option(fastMode = false): ModelOption {
+// Claude Opus 5 — new default Opus tier. 1M context by default (single entry,
+// no [1m] pair, like Sonnet 5 / Fable 5). On 1P the 'opus' alias resolves to
+// Opus 5, so pin to the alias; on 3P the alias still resolves to Opus 4.6, so
+// pin the explicit model string.
+function getOpus5Option(fastMode = false): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
-  // On 1P, 'opus' alias resolves to 4.8 (default). On 3P, the alias still
-  // resolves to 4.6 (since 4.8 may not be available on Bedrock/Vertex/Foundry
-  // yet), so pin to the 4.8 model string explicitly.
   return {
-    value: is3P ? getModelStrings().opus48 : 'opus',
+    value: is3P ? getModelStrings().opus5 : 'opus',
     label: 'Opus',
-    description: `Opus 4.8 · Most capable for complex work${getOpus46PricingSuffix(fastMode)}`,
-    descriptionForModel: 'Opus 4.8 - most capable for complex work',
+    description: `Opus 5 · Most capable for complex work · 1M context${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel:
+      'Opus 5 - most capable for complex work. 1M context by default.',
+  }
+}
+
+// Opus 4.8 — pinned to the explicit model string on both providers since the
+// 'opus' alias on 1P now resolves to Opus 5. Legacy / opt-in option.
+function getOpus48Option(fastMode = false): ModelOption {
+  return {
+    value: getModelStrings().opus48,
+    label: 'Opus 4.8',
+    description: `Opus 4.8 · Previous Opus${getOpus46PricingSuffix(fastMode)}`,
+    descriptionForModel: 'Opus 4.8 - previous Opus version',
   }
 }
 
@@ -223,19 +235,6 @@ export function getSonnet46_1MOption(): ModelOption {
     description: `Sonnet 4.6 for long sessions${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
     descriptionForModel:
       'Sonnet 4.6 with 1M context window - for long sessions with large codebases',
-  }
-}
-
-export function getOpus47_1MOption(fastMode = false): ModelOption {
-  const is3P = getAPIProvider() !== 'firstParty'
-  // On 1P the 'opus[1m]' alias resolves to Opus 4.8 with 1M; on 3P it pins the
-  // explicit Opus 4.7 1M string (4.8 may not be on Bedrock/Vertex/Foundry yet).
-  const ver = is3P ? '4.7' : '4.8'
-  return {
-    value: is3P ? getModelStrings().opus47 + '[1m]' : 'opus[1m]',
-    label: 'Opus (1M context)',
-    description: `Opus ${ver} for long sessions${getOpus46PricingSuffix(fastMode)}`,
-    descriptionForModel: `Opus ${ver} with 1M context window - for long sessions with large codebases`,
   }
 }
 
@@ -299,7 +298,7 @@ function getMaxOpusOption(fastMode = false): ModelOption {
   return {
     value: 'opus',
     label: 'Opus',
-    description: `Opus 4.8 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`,
+    description: `Opus 5 · Most capable for complex work · 1M context${fastMode ? getOpus46PricingSuffix(true) : ''}`,
   }
 }
 
@@ -326,8 +325,6 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
   const ms = getModelStrings()
   const billing = isClaudeAISubscriber() ? ' · Billed as extra usage' : ''
   const opusPrice = getOpus46PricingSuffix(fastMode)
-  const merge1m = isOpus1mMergeEnabled()
-  const opus1m = merge1m || checkOpus1mAccess()
   const opts: ModelOption[] = []
   // Sonnet 5 is 1M by default — single entry, no [1m] pair (like Fable 5).
   opts.push({
@@ -341,23 +338,16 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
     label: 'Fable 5',
     description: `Fable 5 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
   })
-  // Only the newest Opus generation is offered, and only its 1M-context flavor
-  // when the account can use 1M — no separate 200k duplicate. Falls back to the
-  // 200k entry when there's no 1M so Opus stays selectable. Legacy generations
-  // (Opus 4.6/4.7, Sonnet 4.5/4.6) stay resolvable by explicit string, unlisted.
-  if (opus1m) {
-    opts.push({
-      value: `${ms.opus48}[1m]`,
-      label: 'Opus 4.8 (1M context)',
-      description: `Opus 4.8 · Most capable for complex work · 1M context${billing}${opusPrice}`,
-    })
-  } else {
-    opts.push({
-      value: ms.opus48,
-      label: 'Opus 4.8',
-      description: `Opus 4.8 · Most capable for complex work${opusPrice}`,
-    })
-  }
+  // Opus 5 is 1M by default — single entry, no [1m] pair (like Sonnet/Fable 5).
+  // On 1P the 'opus' alias resolves to Opus 5; on 3P (where the default still
+  // lags at Opus 4.6) pin the explicit Opus 5 string so it stays selectable.
+  // Legacy generations (Opus 4.6/4.7/4.8, Sonnet 4.5/4.6) stay resolvable by
+  // explicit string, unlisted.
+  opts.push({
+    value: getAPIProvider() !== 'firstParty' ? ms.opus5 : 'opus',
+    label: 'Opus 5',
+    description: `Opus 5 · Most capable for complex work · 1M context${billing}${opusPrice}`,
+  })
   return opts
 }
 
@@ -371,7 +361,7 @@ function getOpusPlanOption(): ModelOption {
   return {
     value: 'opusplan',
     label: 'Opus Plan Mode',
-    description: 'Use Opus 4.8 in plan mode, Sonnet 5 otherwise',
+    description: 'Use Opus 5 in plan mode, Sonnet 5 otherwise',
   }
 }
 
@@ -517,20 +507,15 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5 + Opus 4.8 (+1M) + Haiku.
-  // Only the newest of each family is listed; legacy generations (Opus 4.6/4.7,
-  // Sonnet 4.5/4.6) remain resolvable by explicit string but are hidden here.
+  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5 + Opus 5 + Haiku.
+  // Opus 5 is 1M-native (no [1m] variant). Only the newest of each family is
+  // listed; legacy generations (Opus 4.6/4.7/4.8, Sonnet 4.5/4.6) remain
+  // resolvable by explicit string but are hidden here.
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     payg1POptions.push(getSonnet5Option())
     payg1POptions.push(getFable5Option())
-    if (isOpus1mMergeEnabled()) {
-      payg1POptions.push(getMergedOpus1MOption(fastMode))
-    } else {
-      if (checkOpus1mAccess()) {
-        payg1POptions.push(getOpus47_1MOption(fastMode))
-      }
-    }
+    payg1POptions.push(getOpus5Option(fastMode))
     payg1POptions.push(getHaiku45Option())
     payg1POptions.push(...profileModelOptions)
     return payg1POptions
@@ -563,12 +548,14 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (customOpus !== undefined) {
     payg3pOptions.push(customOpus)
   } else {
-    // Add Opus 4.1, Opus 4.6 (current 3P default), Opus 4.7, Opus 4.8 (new), and Opus 4.6 1M.
-    // 4.8 may not be available on all 3P providers yet — added as opt-in.
+    // Add Opus 4.1, Opus 4.6 (current 3P default), Opus 4.7, Opus 4.8, Opus 5
+    // (new, 1M-native), and Opus 4.6 1M. Opus 5 may not be available on all 3P
+    // providers yet — added as opt-in.
     payg3pOptions.push(getOpus41Option()) // legacy
     payg3pOptions.push(getOpus46Option(fastMode))
     payg3pOptions.push(getOpus47Option(fastMode))
     payg3pOptions.push(getOpus48Option(fastMode))
+    payg3pOptions.push(getOpus5Option(fastMode))
     if (checkOpus1mAccess()) {
       payg3pOptions.push(getOpus46_1MOption(fastMode))
     }
@@ -611,7 +598,10 @@ function getModelFamilyInfo(
   }
 
   // Opus family
-  if (canonical.includes('claude-opus-4')) {
+  if (
+    canonical.includes('claude-opus-5') ||
+    canonical.includes('claude-opus-4')
+  ) {
     const currentName = getMarketingNameForModel(getDefaultOpusModel())
     if (currentName) {
       return { alias: 'Opus', currentVersionName: currentName }

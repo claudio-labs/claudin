@@ -205,6 +205,9 @@ function get3PFallbackSuggestion(model: string): string | undefined {
   if (lowerModel.includes('fable-5') || lowerModel.includes('fable_5')) {
     return getModelStrings().opus48
   }
+  if (lowerModel.includes('opus-5') || lowerModel.includes('opus_5')) {
+    return getModelStrings().opus48
+  }
   if (lowerModel.includes('opus-4-8') || lowerModel.includes('opus_4_8')) {
     return getModelStrings().opus47
   }

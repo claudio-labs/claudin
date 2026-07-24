@@ -1063,6 +1063,10 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (m.includes('fable-5') || m.includes('fable_5')) {
     return getModelStrings().opus48
   }
+  // If the failing model looks like an Opus 5 variant, fall back to Opus 4.8
+  if (m.includes('opus-5') || m.includes('opus_5')) {
+    return getModelStrings().opus48
+  }
   // If the failing model looks like an Opus 4.7 variant, fall back to Opus 4.6
   if (m.includes('opus-4-7') || m.includes('opus_4_7')) {
     return getModelStrings().opus46

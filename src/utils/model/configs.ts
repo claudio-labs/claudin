@@ -184,6 +184,27 @@ export const CLAUDE_OPUS_4_8_CONFIG = {
   minimax: 'MiniMax-M2.5',
 } as const satisfies ModelConfig
 
+// Claude Opus 5 — new default Opus tier (2026-07-23). 1M context is the default
+// AND the maximum (no 200k variant, no opt-in header), 128K max output, thinking
+// on by default. Same request-shaping as Fable 5 / Sonnet 5: adaptive thinking
+// always on (budget_tokens and {type:'disabled'} both 400), non-default sampling
+// params (temperature/top_p/top_k) rejected. Effort ladder low→max (xhigh + max
+// supported). Safety fallback is Opus 4.8. Bedrock uses the Messages-API
+// endpoint id (no legacy ARN). Dateless ID is itself the pinned snapshot.
+export const CLAUDE_OPUS_5_CONFIG = {
+  firstParty: 'claude-opus-5',
+  bedrock: 'anthropic.claude-opus-5',
+  vertex: 'claude-opus-5',
+  foundry: 'claude-opus-5',
+  openai: 'gpt-4o',
+  gemini: 'gemini-2.5-pro',
+  github: 'github:copilot',
+  codex: 'gpt-5.5',
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'devstral-latest',
+} as const satisfies ModelConfig
+
 // Claude Fable 5 — frontier tier above Opus. 1M context by default, 128K max
 // output, new tokenizer (~30% more tokens than Opus-tier), thinking always on
 // (adaptive only — budget_tokens and explicit disabled both 400). Requires
@@ -251,6 +272,7 @@ export const ALL_MODEL_CONFIGS = {
   opus46: CLAUDE_OPUS_4_6_CONFIG,
   opus47: CLAUDE_OPUS_4_7_CONFIG,
   opus48: CLAUDE_OPUS_4_8_CONFIG,
+  opus5: CLAUDE_OPUS_5_CONFIG,
   fable5: CLAUDE_FABLE_5_CONFIG,
 } as const satisfies Record<string, ModelConfig>
 

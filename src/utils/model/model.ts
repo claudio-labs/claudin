@@ -214,7 +214,7 @@ export function getDefaultOpusModel(): ModelName {
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().opus46
   }
-  return getModelStrings().opus48
+  return getModelStrings().opus5
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
@@ -362,14 +362,17 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
     return profileModel || 'gpt-5.5'
   }
 
-  // Max users get Opus as default
-  if (isMaxSubscriber()) {
-    return getDefaultOpusModel() + (isOpus1mMergeEnabled() ? '[1m]' : '')
-  }
-
-  // Team Premium gets Opus (same as Max)
-  if (isTeamPremiumSubscriber()) {
-    return getDefaultOpusModel() + (isOpus1mMergeEnabled() ? '[1m]' : '')
+  // Max users and Team Premium get Opus as default. The [1m] merge suffix only
+  // applies to a 200k Opus — Opus 5 (the current first-party default) is
+  // native-1M, so appending [1m] would push a context-1m beta header for a model
+  // that never needs one and break display-name resolution (there is no
+  // opus5[1m] case). isOpus1mMergeEnabled() is already first-party-only.
+  if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
+    const opusModel = getDefaultOpusModel()
+    const opusIsNative1m = getCanonicalName(opusModel).includes('claude-opus-5')
+    return (
+      opusModel + (isOpus1mMergeEnabled() && !opusIsNative1m ? '[1m]' : '')
+    )
   }
 
   // PAYG (1P and 3P), Enterprise, Team Standard, and Pro get Sonnet as default
@@ -398,6 +401,9 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   // Order matters: check more specific versions first (4-8 before 4-7 before 4-6 before 4)
   if (name.includes('claude-fable-5')) {
     return 'claude-fable-5'
+  }
+  if (name.includes('claude-opus-5')) {
+    return 'claude-opus-5'
   }
   if (name.includes('claude-opus-4-8')) {
     return 'claude-opus-4-8'
@@ -477,10 +483,8 @@ export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
-    if (isOpus1mMergeEnabled()) {
-      return `Opus 4.8 with 1M context · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
-    }
-    return `Opus 4.8 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    // Opus 5 is native-1M — no 200k/merge distinction.
+    return `Opus 5 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
   }
   return 'Sonnet 5 · Best for everyday tasks'
 }
@@ -489,7 +493,7 @@ export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
   if (setting === 'opusplan') {
-    return 'Opus 4.8 in plan mode, else Sonnet 5'
+    return 'Opus 5 in plan mode, else Sonnet 5'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
@@ -567,6 +571,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
     case getModelStrings().fable5:
       // 1M context is the default on Fable 5 — no [1m] variant needed.
       return 'Fable 5'
+    case getModelStrings().opus5:
+      // 1M context is the default on Opus 5 — no [1m] variant needed.
+      return 'Opus 5'
     case getModelStrings().opus48:
       return 'Opus 4.8'
     case getModelStrings().opus48 + '[1m]':
@@ -803,6 +810,10 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   if (canonical.includes('claude-fable-5')) {
     return 'Fable 5'
   }
+  if (canonical.includes('claude-opus-5')) {
+    // 1M context is the default on Opus 5 — no [1m] variant.
+    return 'Opus 5'
+  }
   if (canonical.includes('claude-opus-4-8')) {
     return has1m ? 'Opus 4.8 (with 1M context)' : 'Opus 4.8'
   }
@@ -862,6 +873,7 @@ export function modelRejectsSamplingParams(model: string): boolean {
   return (
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-8') ||
+    canonical.includes('opus-5') ||
     canonical.includes('fable-5') ||
     canonical.includes('sonnet-5')
   )

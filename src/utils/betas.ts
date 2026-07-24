@@ -107,6 +107,7 @@ export function modelSupportsISP(model: string): boolean {
   }
   return (
     canonical.includes('claude-opus-4') ||
+    canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4')
   )
@@ -117,6 +118,7 @@ function vertexModelSupportsWebSearch(model: string): boolean {
   // Web search only supported on Claude 4.0+ models on Vertex
   return (
     canonical.includes('claude-opus-4') ||
+    canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4') ||
     canonical.includes('claude-haiku-4')
@@ -135,6 +137,7 @@ export function modelSupportsContextManagement(model: string): boolean {
   }
   return (
     canonical.includes('claude-opus-4') ||
+    canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4') ||
     canonical.includes('claude-haiku-4')
@@ -151,6 +154,7 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   }
   return (
     canonical.includes('claude-fable-5') ||
+    canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4-6') ||
     canonical.includes('claude-sonnet-4-5') ||
