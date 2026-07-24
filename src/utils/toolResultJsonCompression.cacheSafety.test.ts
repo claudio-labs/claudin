@@ -15,6 +15,25 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 
 const realAnalyticsMetadata = { ...(await import('../services/analytics/metadata.js')) }
 const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+const realConfig = { ...(await import('./config.js')) }
+
+// Guard 2 of maybeSummarizeToolResult reads
+// getGlobalConfig().toolResultSummarizerEnabled (default true). The test-config
+// singleton is process-global and Bun's mock.module is suite-wide, so an
+// earlier file that flips the toggle off (or clobbers NODE_ENV so
+// resetGlobalConfigForTests no-ops) would make every strategy here return the
+// raw block. Bind the summarizer to a config whose toggle is forced on,
+// regardless of ambient singleton/NODE_ENV state. Registered BEFORE the
+// summarizer import below so it resolves through this override.
+const forceSummarizerOn = () => ({
+  ...realConfig,
+  getGlobalConfig: () => ({
+    ...realConfig.getGlobalConfig(),
+    toolResultSummarizerEnabled: true,
+  }),
+})
+mock.module('./config.js', forceSummarizerOn)
+mock.module('src/utils/config.js', forceSummarizerOn)
 
 mock.module('../services/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
@@ -39,23 +58,17 @@ mock.module('../services/analytics/index.js', () => ({
 const { maybeSummarizeToolResult, isSummarizedContent, TOOL_RESULT_SUMMARY_TAG } =
   await import('./toolResultSummarizer.js')
 const { injectEnvelopeAttr } = await import('./toolResultStorage.js')
-const { resetGlobalConfigForTests } = await import('./config.js')
 
 afterAll(() => {
   mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
   mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
-  resetGlobalConfigForTests()
+  mock.module('./config.js', () => realConfig)
+  mock.module('src/utils/config.js', () => realConfig)
 })
 
 beforeEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
   delete process.env.CLAUDIN_CODE_OUTLINE
-  // Guard 2 of maybeSummarizeToolResult reads getGlobalConfig().
-  // toolResultSummarizerEnabled (default true). The test-config singleton is
-  // process-global, so an earlier suite that flipped the toggle off and did
-  // not restore it would make every strategy here return the raw block. Reset
-  // to defaults each test — mirrors the sibling toolResultCodeOutline test.
-  resetGlobalConfigForTests()
 })
 afterEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
