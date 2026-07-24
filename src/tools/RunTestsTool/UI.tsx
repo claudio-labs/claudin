@@ -2,7 +2,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import React from 'react'
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from '../../components/MessageResponse.js'
-import { Text } from '../../ink.js'
+import { Box, Text } from '../../ink.js'
 import type { Input, Output } from './RunTestsTool.js'
 
 export function userFacingName(): string {
@@ -48,10 +48,17 @@ export function renderToolResultMessage(
     .filter(Boolean)
     .join(', ')
   return (
-    <MessageResponse height={1}>
-      <Text color={ok ? 'success' : 'error'}>
-        {ok ? '✓' : '✗'} {summary}
-      </Text>
+    <MessageResponse>
+      <Box flexDirection="column">
+        {output.command ? (
+          <Text dimColor wrap="truncate-end">
+            {output.command}
+          </Text>
+        ) : null}
+        <Text color={ok ? 'success' : 'error'}>
+          {ok ? '✓' : '✗'} {summary}
+        </Text>
+      </Box>
     </MessageResponse>
   )
 }
