@@ -10,10 +10,12 @@ import { WEB_SEARCH_TOOL_NAME } from '../WebSearchTool/prompt.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
+  filterToolsForAgent,
 } from './agentToolUtils.js'
 import { WEB_RESEARCHER_AGENT_TYPE } from './built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from './built-in/webResearcherManagerAgent.js'
 import { AGENT_TOOL_NAME } from './constants.js'
+import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js'
 
 // Only `name` is read by filterToolsForAgent/resolveAgentTools.
 const tool = (name: string): Tool => ({ name }) as unknown as Tool
@@ -127,5 +129,31 @@ describe('WebResearcherManager — end-to-end resolution of the real definition'
     // ...and it keeps its web tools.
     expect(result.resolvedTools.some(t => t.name === WEB_SEARCH_TOOL_NAME)).toBe(true)
     expect(result.resolvedTools.some(t => t.name === WEB_FETCH_TOOL_NAME)).toBe(true)
+  })
+})
+
+describe('filterToolsForAgent — RunTests available to every sub-agent', () => {
+  const pool = (names: string[]): Tools => names.map(tool)
+
+  it('keeps RunTests for an ASYNC (background) agent, while the async allowlist still strips Agent', () => {
+    const result = filterToolsForAgent({
+      tools: pool([RUN_TESTS_TOOL_NAME, AGENT_TOOL_NAME]),
+      isBuiltIn: true,
+      isAsync: true,
+    })
+    // RunTests must survive the async allowlist (it's in ASYNC_AGENT_ALLOWED_TOOLS)...
+    expect(result.some(t => t.name === RUN_TESTS_TOOL_NAME)).toBe(true)
+    // ...and the allowlist must still be real: Agent is NOT allowed for async
+    // agents, so its absence proves RunTests passed on merit, not vacuously.
+    expect(result.some(t => t.name === AGENT_TOOL_NAME)).toBe(false)
+  })
+
+  it('keeps RunTests for a SYNC custom sub-agent too', () => {
+    const result = filterToolsForAgent({
+      tools: pool([RUN_TESTS_TOOL_NAME]),
+      isBuiltIn: false,
+      isAsync: false,
+    })
+    expect(result.some(t => t.name === RUN_TESTS_TOOL_NAME)).toBe(true)
   })
 })

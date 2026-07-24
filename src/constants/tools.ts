@@ -29,6 +29,7 @@ import { ENTER_WORKTREE_TOOL_NAME } from '../tools/EnterWorktreeTool/constants.j
 import { EXIT_WORKTREE_TOOL_NAME } from '../tools/ExitWorktreeTool/constants.js'
 import { WORKFLOW_TOOL_NAME } from '../tools/WorkflowTool/constants.js'
 import { WORKFLOW_RUN_TOOL_NAME } from '../tools/AgentWorkflow/constants.js'
+import { RUN_TESTS_TOOL_NAME } from '../tools/RunTestsTool/prompt.js'
 import {
   CRON_CREATE_TOOL_NAME,
   CRON_DELETE_TOOL_NAME,
@@ -70,6 +71,12 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   TOOL_SEARCH_TOOL_NAME,
   ENTER_WORKTREE_TOOL_NAME,
   EXIT_WORKTREE_TOOL_NAME,
+  // Running the suite is the same execution surface async agents already have
+  // via Bash (SHELL_TOOL_NAMES), but the structured summary is far cheaper on
+  // tokens/cache over a long background run — so background agents (e.g. a
+  // `tester` spawned with run_in_background) get the tool instead of scraping
+  // raw `bun test` stdout. See scripts/bench/run-tests-turns-ab.ts.
+  RUN_TESTS_TOOL_NAME,
 ])
 /**
  * Tools allowed only for in-process teammates (not general async agents).
