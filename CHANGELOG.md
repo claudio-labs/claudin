@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.16 — 2026-07-24
+
+- feat(outline): expand symbol scanning to 19 more languages (#28) (4db75cf)
+- feat(read): circuit-breaker for the clipped-Read re-read loop (217fba7)
+- fix(git): suppress "Generated with Claude Code" footer in commits/PRs (883b24a)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.15 — 2026-07-21
 
 - fix(apply_patch): report all batch failures at once, not one per resubmit (6fa96de)
