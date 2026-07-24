@@ -24,7 +24,7 @@ type InputSchema = ReturnType<typeof inputSchema>
 
 export const ApplyPatchTool = buildTool({
   name: APPLY_PATCH_TOOL_NAME,
-  userFacingName: () => 'ApplyPatch',
+  userFacingName: () => 'Patch',
   searchHint: 'multi-file patch add update delete rename atomic',
   maxResultSizeChars: 100_000,
   async description() {
