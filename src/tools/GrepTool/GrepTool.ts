@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises'
+import { readFile, stat } from 'fs/promises'
 import { z } from 'zod/v4'
 import type { ValidationResult } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
@@ -26,6 +26,7 @@ import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
 import {
   detectOutlineLangFromPath,
+  SCAN_MAX_BYTES,
   scanSymbols,
   type SymbolEntry,
 } from '../shared/codeOutline/scanSymbols.js'
@@ -219,6 +220,14 @@ async function buildSymbolsOutput(
 
     let entries: SymbolEntry[]
     try {
+      // Same cap as the Read auto-pivot scan — an unbounded read of a matched
+      // multi-hundred-MB dump.sql/dataset.xml would spike memory before the
+      // scan even starts.
+      const { size } = await stat(absPath)
+      if (size > SCAN_MAX_BYTES) {
+        blocks.push(`${rel}\n  (matched, file too large to scan)`)
+        continue
+      }
       const source = await readFile(absPath, 'utf8')
       entries = scanSymbols(source, lang)
     } catch (e) {

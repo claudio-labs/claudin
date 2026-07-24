@@ -86,6 +86,7 @@ import { hasServerClearedToolUses } from './serverClearingDetection.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLangFromPath,
+  SCAN_MAX_BYTES,
   scanSymbols,
   type OutlineLang,
   type SymbolEntry,
@@ -1166,10 +1167,6 @@ function createImageResponse(
 /**
  * Inner implementation of call, separated to allow ENOENT handling in the outer call.
  */
-// Cap for the full read backing a symbol scan, aligned with readFileInRange's
-// fast-path ceiling. Past it the scan still works on the truncated head.
-const SCAN_MAX_BYTES = 10 * 1024 * 1024
-
 type ScannedFile = {
   /** Full file content split into lines — the basis scanSymbols computed on. */
   lines: string[]

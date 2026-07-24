@@ -177,6 +177,10 @@ const EXTENSIONLESS_BASENAME_TO_LANG: Record<string, OutlineLang> = {
   dockerfile: 'dockerfile',
   containerfile: 'dockerfile',
   makefile: 'makefile',
+  gnumakefile: 'makefile',
+  // Leading-dot config families — the prefix keeps its dot (`.env`,
+  // `.env.local`, `.env.production`), so `env.log` still stays unmatched.
+  '.env': 'env',
 }
 
 /** Maps a file extension (with or without leading dot) to an outline language. */
@@ -199,13 +203,19 @@ export function detectOutlineLangFromPath(filePath: string): OutlineLang | null 
  // Try basename prefix for extensionless files.
  const slashIdx = Math.max(lower.lastIndexOf('/'), lower.lastIndexOf('\\'))
  const base = lower.slice(slashIdx + 1)
- const firstDot = base.indexOf('.')
+ // Skip a leading dot so dotfile variants keep their family prefix
+ // (`.env.local` → `.env`).
+ const firstDot = base.indexOf('.', 1)
  const prefix = firstDot >= 0 ? base.slice(0, firstDot) : base
 if (EXTENSIONLESS_BASENAME_TO_LANG[prefix]) return EXTENSIONLESS_BASENAME_TO_LANG[prefix]
  return null
 }
 
 const MAX_SIGNATURE_CHARS = 160
+
+/** Byte cap callers apply to content fed into a symbol scan (Read auto-pivot,
+ * Grep symbols mode) — aligned with readFileInRange's fast-path ceiling. */
+export const SCAN_MAX_BYTES = 10 * 1024 * 1024
 
 // Declaration regexes — module level (recompiling per call is banned, see
 // .claudin/rules/typescript-patterns.md). Tested on the trimmed line.
@@ -1992,6 +2002,11 @@ const RE_FIRST_WORD = /^([A-Za-z_]\w*)/
 // ---------------------------------------------------------------------------
 
 const RE_RUBY_DEF = /^def\s+(?:self\.|[A-Za-z_]\w*\.)?([A-Za-z_]\w*[?!=]?)/
+/** Ruby 3 endless method — `def name(args) = expr` / `def name = expr`. The
+ * `(?=\s)` alternative keeps setter defs (`def value=(v)`), where `=` is part
+ * of the method name, on the normal `end`-terminated path. */
+const RE_RUBY_ENDLESS_DEF =
+  /^def\s+(?:self\.|[A-Za-z_]\w*\.)?[A-Za-z_]\w*[?!]?(?:\s*\([^)]*\)|(?=\s))\s*=(?![=~>])/
 const RE_RUBY_CLASS_NAME = /^class\s+([A-Za-z_][\w:]*)/
 const RE_RUBY_MODULE_NAME = /^module\s+([A-Za-z_][\w:]*)/
 const RUBY_BLOCK_OPENERS = new Set([
@@ -2124,7 +2139,9 @@ function scanRuby(source: string): SymbolEntry[] {
         ...(doc !== undefined && { docLine: doc + 1 }),
       })
       entryIndex = results.length - 1
-      opened = true
+      // Endless methods have no `end` — opening a frame would imbalance the
+      // stack and discard the whole outline at EOF.
+      opened = !RE_RUBY_ENDLESS_DEF.test(t)
     } else if (first === 'class' || first === 'module') {
       const nameM =
         first === 'class'
@@ -2177,7 +2194,12 @@ const RE_LUA_ASSIGN_FUNCTION =
 const RE_LUA_FUNCTION_KW = /\bfunction\b/g
 const RE_LUA_END = /\bend\b/g
 const RE_LUA_UNTIL = /\buntil\b/g
-const LUA_BLOCK_OPENERS = new Set(['if', 'for', 'while', 'do', 'repeat'])
+/** Block openers counted anywhere on the line: `while`/`for` are announced by
+ * their `do`, `if` by itself (`elseif` has no word boundary before `if`, so it
+ * doesn't re-open), `repeat` closes on `until`. Counting these plus `function`
+ * stays balanced with the anywhere-counted `end`/`until` closers even for
+ * mid-line openers (`x = 1; if y then`). */
+const RE_LUA_BLOCK_KW = /\b(?:if|do|repeat)\b/g
 
 /** Long-bracket level at `[` (`[[`→0, `[==[`→2), or -1 when not one. */
 function luaLongBracketLevel(source: string, start: number): number {
@@ -2271,10 +2293,9 @@ function scanLua(source: string): SymbolEntry[] {
       if (m) symbolName = luaLastSegment(m[1]!)
     }
 
-    const functionOpens = (t.match(RE_LUA_FUNCTION_KW) ?? []).length
-    const first = RE_FIRST_WORD.exec(t)?.[1]
-    const leadingOpen = first !== undefined && LUA_BLOCK_OPENERS.has(first) ? 1 : 0
-    const totalOpens = functionOpens + leadingOpen
+    const totalOpens =
+      (t.match(RE_LUA_FUNCTION_KW) ?? []).length +
+      (t.match(RE_LUA_BLOCK_KW) ?? []).length
 
     if (symbolName) {
       const d = symbolDepth()
@@ -2448,6 +2469,7 @@ function maskCss(source: string): string {
   const out = source.split('')
   const n = source.length
   let i = 0
+  let parens = 0
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
@@ -2464,8 +2486,10 @@ function maskCss(source: string): string {
       }
       continue
     }
-    // SCSS `//` line comment — but not a `:` scheme separator (`http://`).
-    if (c === '/' && c2 === '/' && source[i - 1] !== ':') {
+    // SCSS `//` line comment — but not a `:` scheme separator (`http://`) and
+    // not inside parens (`url(//cdn.example.com/x.png)` is a URL; blanking the
+    // rest of the line would swallow the closing `}`).
+    if (c === '/' && c2 === '/' && source[i - 1] !== ':' && parens === 0) {
       while (i < n && source[i] !== '\n') blank(i++)
       continue
     }
@@ -2483,6 +2507,8 @@ function maskCss(source: string): string {
       if (i < n && source[i] === quote) blank(i++)
       continue
     }
+    if (c === '(') parens++
+    else if (c === ')' && parens > 0) parens--
     i++
   }
   return out.join('')
@@ -2667,11 +2693,16 @@ function scanHtml(source: string): SymbolEntry[] {
             const entry = results[frame.entryIndex]!
             entry.endLine = tagLine
             if (RE_HTML_HEADING.test(tag)) {
-              const text = masked
-                .slice(frame.openEndIdx, m.index)
-                .replace(RE_HTML_TAGS_STRIP, '')
-                .replace(RE_WS_RUN, ' ')
-                .trim()
+              // Strip tags to a fixpoint — a single pass can leave fragments
+              // of nested/split tags behind (CodeQL
+              // js/incomplete-multi-character-sanitization).
+              let text = masked.slice(frame.openEndIdx, m.index)
+              let prev: string
+              do {
+                prev = text
+                text = text.replace(RE_HTML_TAGS_STRIP, '')
+              } while (text !== prev)
+              text = text.replace(RE_WS_RUN, ' ').trim()
               if (text) {
                 entry.name = text
                 // Surface the text in the outline body (the signature column),
@@ -3030,6 +3061,9 @@ function scanDockerfile(source: string): SymbolEntry[] {
   for (let L = 0; L < lineCount; L++) {
     const trimmed = lines[L]!.trim()
     if (continuation) {
+      // Docker skips blank/comment lines inside a continuation and keeps it
+      // open — `RUN a \` / `# note` / `b` is a single RUN instruction.
+      if (!trimmed || trimmed.startsWith('#')) continue
       continuation = trimmed.endsWith('\\')
       continue
     }

@@ -2104,10 +2104,11 @@ describe('scanSymbols — Dockerfile', () => {
     const syms = scanSymbols(src, 'dockerfile')
     expect(syms).toHaveLength(2)
   })
-  test('continuation across a comment line does not drop the next instruction', () => {
-    // A `\`-continued instruction followed by a comment/blank line must not
-    // leave `continuation` stuck true — otherwise the next real instruction
-    // (COPY) is treated as a continuation tail and dropped from the outline.
+  test('continuation across a comment line does not get stuck', () => {
+    // Docker skips comment lines inside a `\`-continuation and keeps it open:
+    // `COPY . .` here is continuation text of the RUN, not an instruction.
+    // The continuation must then end there (the line has no trailing `\`) so
+    // the NEXT real instruction (CMD) is not swallowed too.
     const src = [
       'FROM node:18 AS builder',
       'RUN echo hello \\',
@@ -2119,8 +2120,8 @@ describe('scanSymbols — Dockerfile', () => {
     const byName = Object.fromEntries(syms.map(s => [s.name, s]))
     expect(byName.builder).toBeDefined()
     expect(byName.RUN).toBeDefined()
-    expect(byName.COPY).toMatchObject({ kind: 'key', startLine: 4 })
-    expect(byName.CMD).toBeDefined()
+    expect(byName.COPY).toBeUndefined()
+    expect(byName.CMD).toMatchObject({ kind: 'key', startLine: 5 })
   })
 
   test('empty fails open', () => {
@@ -2353,5 +2354,121 @@ describe('scanSymbols — Terraform / HCL', () => {
   test('empty fails open', () => {
     expect(scanSymbols('', 'terraform')).toEqual([])
     expect(scanSymbols('# only comments\n', 'terraform')).toEqual([])
+  })
+})
+
+// Regression fixes from the PR #28 review pass — each test guards one
+// verified scanner bug (see the PR discussion for the failure scenarios).
+describe('scanSymbols — review regression fixes', () => {
+  test('detects dotenv variants and GNUmakefile', () => {
+    expect(detectOutlineLangFromPath('.env.local')).toBe('env')
+    expect(detectOutlineLangFromPath('/app/.env.production')).toBe('env')
+    expect(detectOutlineLangFromPath('.env.example')).toBe('env')
+    expect(detectOutlineLangFromPath('GNUmakefile')).toBe('makefile')
+    // The extension-key guard still holds.
+    expect(detectOutlineLangFromPath('env.log')).toBeNull()
+    expect(detectOutlineLangFromPath('.envrc')).toBeNull()
+  })
+
+  test('Ruby 3 endless methods do not unbalance the outline', () => {
+    const src = [
+      'class Basket',
+      '  def size = @items.count',
+      '  def total(tax) = @sum * tax',
+      '',
+      '  def add(item)',
+      '    @items << item',
+      '  end',
+      'end',
+    ].join('\n')
+    const syms = scanSymbols(src, 'ruby')
+    const byName = Object.fromEntries(syms.map(s => [s.name, s]))
+
+    expect(syms.map(s => s.name).sort()).toEqual([
+      'Basket',
+      'add',
+      'size',
+      'total',
+    ])
+    expect(byName.size).toMatchObject({ startLine: 2, endLine: 2 })
+    expect(byName.total).toMatchObject({ startLine: 3, endLine: 3 })
+    expect(byName.Basket).toMatchObject({ startLine: 1, endLine: 8 })
+  })
+
+  test('Ruby setter defs (`def value=(v)`) still close on `end`', () => {
+    const src = [
+      'class Cfg',
+      '  def value=(v)',
+      '    @v = v',
+      '  end',
+      'end',
+    ].join('\n')
+    const syms = scanSymbols(src, 'ruby')
+    const byName = Object.fromEntries(syms.map(s => [s.name, s]))
+
+    expect(byName['value=']).toMatchObject({ startLine: 2, endLine: 4 })
+    expect(byName.Cfg).toMatchObject({ endLine: 5 })
+  })
+
+  test('Lua mid-line openers keep the stack balanced', () => {
+    const src = [
+      'function M.tick(y)',
+      '  x = 1; if y then',
+      '    x = 2',
+      '  end',
+      '  return x',
+      'end',
+      '',
+      'function M.other()',
+      '  return 0',
+      'end',
+    ].join('\n')
+    const syms = scanSymbols(src, 'lua')
+    const byName = Object.fromEntries(syms.map(s => [s.name, s]))
+
+    expect(syms.map(s => s.name)).toEqual(['tick', 'other'])
+    expect(byName.tick).toMatchObject({ startLine: 1, endLine: 6 })
+    expect(byName.other).toMatchObject({ startLine: 8, endLine: 10 })
+  })
+
+  test('CSS protocol-relative url(//…) is not treated as a SCSS comment', () => {
+    const src = [
+      '.hero { background: url(//cdn.example.com/x.png) }',
+      '',
+      '.next {',
+      '  color: red;',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'css')
+
+    expect(syms.map(s => s.name)).toEqual(['.hero', '.next'])
+  })
+
+  test('Dockerfile comments inside a continuation keep it open', () => {
+    const src = [
+      'FROM node:20 AS base',
+      'RUN echo start \\',
+      '  # note — Docker keeps the continuation open across comments',
+      '  COPY . .',
+      'ENV FOO=bar',
+    ].join('\n')
+    const syms = scanSymbols(src, 'dockerfile')
+
+    // `COPY . .` is continuation text of the RUN, not a real instruction.
+    expect(syms.map(s => s.name)).toEqual(['base', 'RUN', 'ENV'])
+  })
+
+  test('HTML heading text strips nested/split tags to a fixpoint', () => {
+    const src = [
+      '<html><body>',
+      '<h1>Intro <scr<b>ipt>alert</h1>',
+      '</body></html>',
+    ].join('\n')
+    const syms = scanSymbols(src, 'html')
+    const h1 = syms.find(s => s.signature.includes('<h1>'))
+
+    expect(h1).toBeDefined()
+    // No complete tag (and no dangling `<`) survives in the outline text.
+    expect(h1!.name).not.toMatch(/</)
   })
 })
