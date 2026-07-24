@@ -39,15 +39,23 @@ mock.module('../services/analytics/index.js', () => ({
 const { maybeSummarizeToolResult, isSummarizedContent, TOOL_RESULT_SUMMARY_TAG } =
   await import('./toolResultSummarizer.js')
 const { injectEnvelopeAttr } = await import('./toolResultStorage.js')
+const { resetGlobalConfigForTests } = await import('./config.js')
 
 afterAll(() => {
   mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
   mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  resetGlobalConfigForTests()
 })
 
 beforeEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION
   delete process.env.CLAUDIN_CODE_OUTLINE
+  // Guard 2 of maybeSummarizeToolResult reads getGlobalConfig().
+  // toolResultSummarizerEnabled (default true). The test-config singleton is
+  // process-global, so an earlier suite that flipped the toggle off and did
+  // not restore it would make every strategy here return the raw block. Reset
+  // to defaults each test — mirrors the sibling toolResultCodeOutline test.
+  resetGlobalConfigForTests()
 })
 afterEach(() => {
   delete process.env.CLAUDIN_TOOL_RESULT_JSON_COMPRESSION

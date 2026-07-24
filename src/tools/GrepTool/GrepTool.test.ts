@@ -231,13 +231,12 @@ describe('GrepTool — symbols mode', () => {
   })
 
   test('a file over the scan byte cap is skipped, not read', async () => {
-    // 12 MB of Ruby — over SCAN_MAX_BYTES (10 MB). The symbols path must
-    // stat-and-skip instead of loading the whole file into memory.
+    // A file over SCAN_MAX_BYTES (10 MB) must be stat-and-skipped instead of
+    // read whole into memory. Built from a single newline-filled buffer (real
+    // text so ripgrep matches line 1, but one cheap native allocation).
     const big = join(dir, 'omega.rb')
-    writeFileSync(
-      big,
-      `def giant_hook\nend\n${'x = 1\n'.repeat(2 * 1024 * 1024)}`,
-    )
+    const pad = Buffer.alloc(11 * 1024 * 1024, 0x0a)
+    writeFileSync(big, Buffer.concat([Buffer.from('def giant_hook\nend\n'), pad]))
     try {
       const data = await grep({
         output_mode: 'symbols',
