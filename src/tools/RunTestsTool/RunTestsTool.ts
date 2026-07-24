@@ -186,6 +186,26 @@ export function applyFilters(
   return cmd
 }
 
+/**
+ * Resolve the concrete command that will run for a given input: explicit
+ * `command` verbatim, otherwise the auto-detected runner — then apply the
+ * `path`/`pattern` filters. Returns null when no suite can be detected. Shared
+ * by `call()` (execution) and the UI (so the user sees the command before it
+ * runs, mirroring how Bash shows its command). Declared as a hoisted function
+ * so `UI.tsx` can import it despite the module cycle.
+ */
+export function resolveRunCommand(
+  input: Pick<Input, 'command' | 'framework' | 'path' | 'pattern'>,
+): { command: string; framework: Framework } | null {
+  const cwd = getCwd()
+  const detected = input.command ? null : detectTestRunner(cwd)
+  const baseCommand = input.command ?? detected?.command
+  if (!baseCommand) return null
+  const framework: Framework =
+    input.framework ?? detected?.framework ?? detectFrameworkFromCommand(baseCommand)
+  return { command: applyFilters(baseCommand, framework, input.path, input.pattern), framework }
+}
+
 export const RunTestsTool = buildTool({
   name: RUN_TESTS_TOOL_NAME,
   aliases: ['Test'],
@@ -236,9 +256,8 @@ export const RunTestsTool = buildTool({
   async call(input: Input, context) {
     const cwd = getCwd()
 
-    const detected = input.command ? null : detectTestRunner(cwd)
-    const baseCommand = input.command ?? detected?.command
-    if (!baseCommand) {
+    const resolved = resolveRunCommand(input)
+    if (!resolved) {
       const output: TestResult = {
         framework: 'unknown',
         command: '',
@@ -255,9 +274,7 @@ export const RunTestsTool = buildTool({
       return { data: output }
     }
 
-    const framework: Framework =
-      input.framework ?? detected?.framework ?? detectFrameworkFromCommand(baseCommand)
-    const command = applyFilters(baseCommand, framework, input.path, input.pattern)
+    const { command, framework } = resolved
 
     const result = await runTests({
       command,

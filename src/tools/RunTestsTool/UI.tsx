@@ -4,6 +4,7 @@ import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErr
 import { MessageResponse } from '../../components/MessageResponse.js'
 import { Box, Text } from '../../ink.js'
 import type { Input, Output } from './RunTestsTool.js'
+import { resolveRunCommand } from './RunTestsTool.js'
 
 export function userFacingName(): string {
   return 'Test'
@@ -14,6 +15,10 @@ export function renderToolUseMessage(
   { verbose }: { verbose: boolean },
 ): React.ReactNode {
   if (input.command) return input.command
+  // No explicit command: surface the auto-detected command so the user sees what
+  // will run (mirrors Bash showing its command in the header).
+  const resolved = resolveRunCommand(input)
+  if (resolved) return resolved.command
   const parts: string[] = []
   if (input.path) parts.push(input.path)
   if (input.pattern) parts.push(`-t ${input.pattern}`)
