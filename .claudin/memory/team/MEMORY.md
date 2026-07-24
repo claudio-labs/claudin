@@ -27,6 +27,7 @@
 - [Kimi Code OAuth provider (device-flow)](kimi-code-oauth-provider.md) — mirrors xAI; RE wire-format at docs/tech/kimi-code/; impersonates official CLI (UA+X-Msh-*, gray area); OAuth-web registry; review follow-ups resolved (preset removed, /coding path pinned, test gaps closed)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — provider-quirk fields added to the openaiShim wire body 400 native Anthropic + Copilot-on-Claude unless gated on activeTransportUsesOpenAiShim(model)
 - [Codex OAuth prompt-cache — retention REJECTED, key only](codex-oauth-prompt-cache-params.md) — Codex backend 400s on prompt_cache_retention (2026-07-21 fix: removed from codexShim+cache-probe); sends prompt_cache_key only; official-OpenAI still sends both
+- [Codex 403 HTML-block misread as "Please run /login"](codex-403-html-block-misclassified-as-login.md) — HTML-body 403 = OpenAI/Cloudflare edge block (IP/region/fingerprint), NOT a revoked token; generic errors.ts 401/403 branch wrongly suggests /login; improvement pending
 - [Claudin defaults to essential-traffic privacy level](anthropic-startup-traffic-disabled-default.md) — b2be87b5 (2026-06-06) flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 
 ## Build, release & distribution
