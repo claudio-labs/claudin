@@ -67,6 +67,20 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   around the entry rather than deleting it, so it goes live again the moment the
   predicate stops firing. Anything that must not survive the TTL needs
   `invalidateForPath`, not a bypass.
+  - The predicate itself must answer "is something in flight", never "did this
+    ever happen". Read's asks `isPinShielding`, NOT `isPinRegistered`: the wide
+    one also answers true for a *spent* id, and ids stay spent while their
+    message lives, so keying on it made the path skip the cache permanently
+    after one stand-down cycle. A bypass predicate that can latch is a cache
+    that quietly turns itself off.
+- **A pinned tool_result stalls the clip frontier by design.** `pinShieldsBlock`
+  exempts a block from the clip paths, but `isToolResultBlockMutable` still
+  counts it as mutable, so the `cache_control` marker cannot advance past it.
+  Under `retain` this costs nothing (`agePruneActive` is false and the check
+  short-circuits); under `aggressive` nothing past the static head is cached
+  anyway. Do NOT "optimise" by making a pinned block immutable — the marker
+  would then sit in front of bytes the clip paths are still entitled to rewrite
+  the moment the pin expires.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

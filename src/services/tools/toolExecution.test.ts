@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import type { ToolUseContext } from '../../Tool.js'
 import { SkillTool } from '../../tools/SkillTool/SkillTool.js'
 import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from '../../utils/messages/constants.js'
+import { saveGlobalConfig } from '../../utils/config.js'
 import {
   getSchemaValidationErrorOverride,
   getSchemaValidationToolUseResult,
@@ -130,6 +131,23 @@ function succeededCall(toolName: string, input: unknown): TranscriptMessage[] {
 
 describe('withRepeatedFailureHint', () => {
   const input = { file_path: '/nope.ts' }
+
+  test('the /config toggle suppresses it for every tool', () => {
+    // This hint changes model-facing bytes for EVERY tool, not just the one
+    // whose branch shipped it, so it must be switchable off like every other
+    // default-on behavior in AGENTS.md's table.
+    const ctx = ctxWith([humanTurn(), ...failedCalls('Read', input, 2)])
+    expect(withRepeatedFailureHint('boom', 'Read', input, ctx)).not.toBe('boom')
+
+    saveGlobalConfig(c => ({ ...c, repeatedFailureHintEnabled: false }))
+    try {
+      expect(withRepeatedFailureHint('boom', 'Read', input, ctx)).toBe('boom')
+    } finally {
+      saveGlobalConfig(c => ({ ...c, repeatedFailureHintEnabled: undefined }))
+    }
+    // undefined ⇒ on: the default is opt-OUT, not opt-in.
+    expect(withRepeatedFailureHint('boom', 'Read', input, ctx)).not.toBe('boom')
+  })
 
   test('stays silent while the streak is below the threshold', () => {
     // 1 prior failure + the one being built = 2 < 3.

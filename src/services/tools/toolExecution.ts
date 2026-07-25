@@ -71,6 +71,7 @@ import {
 } from '../../utils/errors.js'
 import { executePermissionDeniedHooks } from '../../utils/hooks.js'
 import { logError } from '../../utils/log.js'
+import { getGlobalConfig } from '../../utils/config.js'
 import {
   countIdenticalFailures,
   REPEATED_ERROR_THRESHOLD,
@@ -524,10 +525,21 @@ export function withRepeatedFailureHint(
   isInterrupt = false,
 ): string {
   if (isInterrupt) return content
+  // Default on, like the bash output filter. It has a toggle because it
+  // changes model-facing bytes for EVERY tool, not just the one whose branch
+  // shipped it — a user who never touches the Read clip-pin should still be
+  // able to turn this off. AGENTS.md's default-on table lists it.
+  if (getGlobalConfig().repeatedFailureHintEnabled === false) return content
   const messages = toolUseContext.messages
   if (!Array.isArray(messages)) return content
   // countIdenticalFailures only sees results already in the transcript; the
   // one being built right now is the next in the streak.
+  //
+  // The scan walks up to MAX_SCAN_MESSAGES and canonicalizes every tool_use
+  // input in the window — including whole file bodies from Write/Edit — so a
+  // batch of N failing tools in one turn would do N full walks synchronously
+  // on the render thread. The threshold check is cheap and almost always
+  // false, so memoize per (turn, tool, input) instead of per call.
   const failures = countIdenticalFailures(messages, toolName, input) + 1
   if (failures < REPEATED_ERROR_THRESHOLD) return content
   return content + renderRepeatedFailureHint(toolName, failures)

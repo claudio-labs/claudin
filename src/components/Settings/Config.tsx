@@ -392,6 +392,24 @@ export function Config({
       });
     }
   }, {
+    id: 'repeatedFailureHintEnabled',
+    label: 'Repeated-failure hint',
+    value: globalConfig.repeatedFailureHintEnabled !== false,
+    type: 'boolean' as const,
+    onChange(repeatedFailureHintEnabled: boolean) {
+      saveGlobalConfig(current => ({
+        ...current,
+        repeatedFailureHintEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        repeatedFailureHintEnabled
+      });
+      logEvent('claudin_repeated_failure_hint_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        enabled: repeatedFailureHintEnabled
+      });
+    }
+  }, {
     id: 'workflowsDefaultBackground',
     label: 'Workflows run in background',
     value: globalConfig.workflowsDefaultBackground === true,
@@ -1289,6 +1307,9 @@ export function Config({
     }
     if (globalConfig.bashOutputFilterEnabled !== initialConfig.current.bashOutputFilterEnabled) {
       formattedChanges.push(`${globalConfig.bashOutputFilterEnabled !== false ? 'Enabled' : 'Disabled'} bash output filter`);
+    }
+    if (globalConfig.repeatedFailureHintEnabled !== initialConfig.current.repeatedFailureHintEnabled) {
+      formattedChanges.push(`${globalConfig.repeatedFailureHintEnabled !== false ? 'Enabled' : 'Disabled'} repeated-failure hint`);
     }
     if (globalConfig.respectGitignore !== initialConfig.current.respectGitignore) {
       formattedChanges.push(`${globalConfig.respectGitignore ? 'Enabled' : 'Disabled'} respect .gitignore in file picker`);

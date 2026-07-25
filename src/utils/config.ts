@@ -698,6 +698,12 @@ export type GlobalConfig = {
   // undefined → off (opt-in). Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
   autoBackgroundAgentsEnabled?: boolean
 
+  // Repeated-failure hint — appends a <system-reminder> to an errored
+  // tool_result once the same (tool, canonical input) has failed 3× in a row.
+  // Applies to EVERY tool, so it gets a toggle like every other default-on
+  // behavior. undefined → true (default on).
+  repeatedFailureHintEnabled?: boolean
+
   // Workflows run in background — when on, a Workflow tool call the model leaves
   // unspecified defaults to background (returns a runId immediately + notifies on
   // completion) instead of blocking the turn, and the /workflows dialog runs its
@@ -822,6 +828,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
   'autoBackgroundAgentsEnabled',
+  'repeatedFailureHintEnabled',
   'workflowsDefaultBackground',
   'oauthBrowser',
   'inlineImagesMode',

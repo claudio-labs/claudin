@@ -26,6 +26,15 @@ only), i.e. the pass-2 copy survived the age prune and the third read returned t
 tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
 (A emitted 4.1k output on turn 1 vs B's 227), so treat −7.3% as directional at n=1.
 
+> **STALE — do not cite this number.** Measured at `f595ba5`. Five review rounds
+> since then changed the measured path materially, not cosmetically: the
+> stand-down now consults the clip registry (so it fires in cases this run never
+> reached), the fallback re-arms instead of latching (so a third read of a range
+> can now return a body where this run got a stub), a `STAND_DOWN_STRIKES` bound
+> applies even with the pin disabled (so arm A's behavior changed too), and
+> `bypassResultCache` altered disk IO on both arms. Re-run before quoting −7.3%.
+> The **bench-design traps below are still valid** and are the reusable part.
+
 **Bench-design traps (each makes the feature unmeasurable if ignored):**
 
 1. Files ≥250 lines AND ≥10k chars are intercepted by `AUTO_OUTLINE_ON_ELISION`.

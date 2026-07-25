@@ -306,6 +306,7 @@ describe('FileReadTool — Smart Code Navigation', () => {
     expect(data.type).toBe('text')
   })
 
+
   test("symbol='name' on overloaded functions expands the implementation", async () => {
     const overloaded = [
       'export function pick(x: number): number;',
@@ -1404,10 +1405,41 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(data.type).toBe('text')
   })
 
+  test('a one-symbol file falls back to the head slice, not a one-line outline', async () => {
+    // scanFile only returns null at ZERO symbols, so a long file whose parser
+    // finds a single top-level symbol used to be "answered" with a one-line
+    // outline. That is technically an outline and useless as a view of the
+    // file — the same floor the auto-outline pivot applies keeps it on the head
+    // slice, which is real content.
+    const body = [
+      'export function onlySymbol() {',
+      ...Array.from({ length: 300 }, (_, i) => `  const v${i} = ${i}`),
+      '}',
+    ].join('\n')
+    const p = writeFixture('clip-pin-onesymbol.ts', body)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const out = await readWithPriorClipped(p, ctx)
+    expect(out.data.type).toBe('clip_pin_fallback')
+    const file = (
+      out.data as { file: { message: string; servedOutline: boolean } }
+    ).file
+    expect(file.servedOutline).toBe(false)
+    // Head slice ⇒ real, line-numbered content from the top of the file.
+    expect(file.message).toContain('onlySymbol')
+    expect(file.message).toMatch(/\b1→/)
+  })
+
   test('a clipped notebook gets the bare redirect, not raw nbformat JSON', async () => {
     // .ipynb has no outline language, so it reaches the head-slice arm — where
     // its first 60 lines are metadata and base64 outputs, line-numbered to look
     // like content the model can aim at. It cannot.
+    //
+    // Sibling case, same arm: `a one-symbol file…` below covers a file that
+    // HAS an outline language but too few symbols for the outline to be worth
+    // serving.
     const nb = writeFixture(
       'clip-pin-nb.ipynb',
       JSON.stringify(

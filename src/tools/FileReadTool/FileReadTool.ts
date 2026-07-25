@@ -864,13 +864,22 @@ export const FileReadTool = buildTool({
           if (pinnedAndGone || strikes >= STAND_DOWN_STRIKES) {
             const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
             const outlineLang = detectOutlineLangFromPath(fullFilePath)
-            const scanned = outlineLang
+            const outline = outlineLang
               ? await scanFile(
                   fullFilePath,
                   outlineLang,
                   context.abortController.signal,
                 )
               : null
+            // Same floor the auto-outline pivot applies. scanFile only returns
+            // null at ZERO symbols, so without this a 2000-line file whose
+            // parser found a single top-level symbol gets "answered" with a
+            // one-line outline — technically an outline, useless as a view of
+            // the file. Below the floor the head slice is the better content.
+            const scanned =
+              outline && outline.entries.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS
+                ? outline
+                : null
             // Event name predates the rename from the re-read breaker; kept
             // for dashboard continuity. The arm separates the two stand-downs:
             // 'clipped' has positive evidence the pinned copy was removed,

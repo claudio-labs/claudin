@@ -913,7 +913,15 @@ function wrapCallWithCache<
       try {
         skipCache = bypass(input, args[1])
       } catch (e) {
-        logError(e)
+        // logError takes a single argument here, so name the source inside the
+        // error rather than dropping the context: a bare stack from this frame
+        // says nothing about WHICH tool's predicate misbehaved.
+        logError(
+          new Error(
+            `${toolName}.bypassResultCache threw; falling back to normal caching`,
+            { cause: e },
+          ),
+        )
       }
     }
     if (skipCache) return origCall(...args)

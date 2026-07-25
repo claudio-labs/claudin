@@ -246,12 +246,44 @@ export function countIdenticalFailures(
   input: unknown,
 ): number {
   try {
-    const { stats } = collectFailureStats(messages)
+    const { stats } = collectFailureStatsMemoized(messages)
     return stats.get(loopKeyFor(toolName, input))?.consecutive ?? 0
   } catch (e) {
     logError(e)
     return 0
   }
+}
+
+// One-entry memo, keyed on the transcript's identity AND length.
+//
+// Every tool that errors in a turn asks this question against the SAME messages
+// array, and answering it walks up to MAX_SCAN_MESSAGES canonicalizing every
+// tool_use input in the window — file bodies from Write/Edit included. A turn
+// with N parallel failing tools therefore did N identical full walks, on the
+// render thread. Identity alone is not enough: the transcript is appended to in
+// place, so the length pins the version.
+let memoMessages: ReadonlyArray<Message> | undefined
+let memoLength = -1
+let memoStats: ReturnType<typeof collectFailureStats> | undefined
+
+function collectFailureStatsMemoized(
+  messages: ReadonlyArray<Message>,
+): ReturnType<typeof collectFailureStats> {
+  if (memoStats && memoMessages === messages && memoLength === messages.length) {
+    return memoStats
+  }
+  const computed = collectFailureStats(messages)
+  memoMessages = messages
+  memoLength = messages.length
+  memoStats = computed
+  return computed
+}
+
+/** Test seam: the memo is module state and would leak across cases. */
+export function _resetFailureStatsMemoForTesting(): void {
+  memoMessages = undefined
+  memoLength = -1
+  memoStats = undefined
 }
 
 /**
