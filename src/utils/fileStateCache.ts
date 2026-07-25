@@ -295,7 +295,6 @@ export function cloneFileStateCache(cache: FileStateCache): FileStateCache {
 export function mergeFileStateCaches(
   first: FileStateCache,
   second: FileStateCache,
-  options?: { replacesInputs?: boolean },
 ): FileStateCache {
   const merged = cloneFileStateCache(first)
   for (const [filePath, fileState] of second.entries()) {
@@ -305,9 +304,29 @@ export function mergeFileStateCaches(
       merged.set(filePath, fileState, { adopt: false })
     }
   }
-  if (options?.replacesInputs) {
-    merged.transferOwnershipFrom(first)
-    merged.transferOwnershipFrom(second)
-  }
+  return merged
+}
+
+/**
+ * Merge for the case where the result is assigned OVER `live` — the REPL
+ * restore and the speculation injection both do `live = merge(live, extracted)`.
+ *
+ * Ownership has to move with it. A plain `mergeFileStateCaches` here is a
+ * guaranteed leak, not a theoretical one: `LRUCache.dispose` does not run on
+ * GC, so the discarded owner's set vanishes with it and from that point NOTHING
+ * in the session can release a pin early.
+ *
+ * This is a separate FUNCTION rather than an option on the merge because the
+ * option was one — a `replacesInputs?: boolean` defaulting to the leaking
+ * behavior, which an audit found no test could catch at any of its call sites.
+ * A caller cannot forget an argument that does not exist.
+ */
+export function mergeReplacingLiveCache(
+  live: FileStateCache,
+  incoming: FileStateCache,
+): FileStateCache {
+  const merged = mergeFileStateCaches(live, incoming)
+  merged.transferOwnershipFrom(live)
+  merged.transferOwnershipFrom(incoming)
   return merged
 }

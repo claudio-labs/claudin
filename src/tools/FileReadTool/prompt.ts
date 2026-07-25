@@ -19,12 +19,18 @@ function formatRange(offset: number, limit: number | undefined): string {
  * Which stand-down arm produced the fallback. The two carry different
  * evidence and must not claim each other's:
  *   'clipped' — the pinned copy is no longer readable in the transcript. Note
- *               this covers TWO cases: the scanner matched the id and found a
- *               clip stub in its place, OR the id is absent entirely (the whole
- *               message was evicted). Only the first is a clip actually
- *               witnessed, so the wording says the copy is gone, not that we
- *               watched it go — see isPriorReadClippedOrMissing, whose name is
- *               the honest one.
+ *               this covers THREE cases: the scanner matched the id and found a
+ *               clip stub in its place, the id is absent entirely (the whole
+ *               message was evicted), or the id was registered as clipped
+ *               mid-prompt. Only the first is a clip actually witnessed, so the
+ *               wording says the copy is gone, not that we watched it go — see
+ *               isPriorReadClippedOrMissing, whose name is the honest one.
+ *
+ *               It also does NOT claim the copy "was protected". An audit
+ *               pointed out this arm fires for an id retired on sight by
+ *               MAX_PINNED_RESULT_TOKENS — registered, but over the size
+ *               ceiling and therefore never actually shielding anything. The
+ *               model would have been told a protection held that never ran.
  *   'cleared' — the API applied clear_tool_uses at some point in this session.
  *               That latches session-wide and reports counts only, so we never
  *               learn which result was cleared, and a client-side pin cannot
@@ -35,7 +41,7 @@ export type ClipPinArm = 'clipped' | 'cleared'
 
 function clipPinReason(arm: ClipPinArm, range: string): string {
   return arm === 'clipped'
-    ? `You already re-read ${range} of this file and that copy is no longer in the conversation, even though it was protected`
+    ? `You already re-read ${range} of this file and that copy is no longer in the conversation`
     : `You already re-read ${range} of this file and the API keeps clearing tool results out of this conversation, so that copy is gone again`
 }
 

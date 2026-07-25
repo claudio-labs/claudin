@@ -3,6 +3,7 @@ import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   mergeFileStateCaches,
+  mergeReplacingLiveCache,
   type FileState,
 } from './fileStateCache.js'
 import {
@@ -128,14 +129,22 @@ describe('FileStateCache — clip-pin ownership', () => {
     expect(isPinRegistered('toolu_second_owned')).toBe(false)
   })
 
-  test('replacesInputs: the merge inherits ownership from BOTH inputs', () => {
+  test('mergeReplacingLiveCache inherits ownership from BOTH inputs', () => {
     // The dominant call shape (REPL restore, speculation injection) is
-    // `live = mergeFileStateCaches(live, extracted)` — the result is assigned
-    // OVER the live cache. A non-owning merge there is a guaranteed leak, not a
-    // theoretical one: LRUCache.dispose does not run on GC, so the discarded
-    // owner's set vanishes with it and from that point NOTHING in the session
-    // can release a pin early. That is the exact failure the dispose hook was
-    // written to prevent, reintroduced by the fix for double-ownership.
+    // `live = merge(live, extracted)` — the result is assigned OVER the live
+    // cache. A non-owning merge there is a guaranteed leak, not a theoretical
+    // one: LRUCache.dispose does not run on GC, so the discarded owner's set
+    // vanishes with it and from that point NOTHING in the session can release a
+    // pin early. That is the exact failure the dispose hook was written to
+    // prevent, reintroduced by the fix for double-ownership.
+    //
+    // This used to be `mergeFileStateCaches(..., { replacesInputs: true })`. An
+    // audit pointed out that deleting the option from all three call sites left
+    // every test green — this file covered the API, nothing covered the callers.
+    // Splitting it into a second named function is the fix: the caller can no
+    // longer forget an argument that does not exist. The remaining risk is
+    // calling the wrong function, which is visible at the call site in a way a
+    // missing optional boolean is not.
     const live = makeCache()
     const extracted = makeCache()
     pinToolResult('toolu_live')
@@ -143,7 +152,7 @@ describe('FileStateCache — clip-pin ownership', () => {
     live.set('/a.ts', entry('toolu_live'))
     extracted.set('/b.ts', entry('toolu_extracted'))
 
-    const merged = mergeFileStateCaches(live, extracted, { replacesInputs: true })
+    const merged = mergeReplacingLiveCache(live, extracted)
     // The donors kept nothing, so they cannot double-release…
     live.clear()
     extracted.clear()

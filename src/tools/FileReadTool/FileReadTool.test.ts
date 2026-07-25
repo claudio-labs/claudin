@@ -872,7 +872,14 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // Footer-exclusive text: renderOutline's own body also mentions symbol=,
     // so asserting /symbol=/ alone is tautological — this string only exists
     // in the fallback footer (audit finding).
-    expect(tripped.data.file.message).toContain('even though it was protected')
+    //
+    // The phrase used to be "…even though it was protected". Dropped: this arm
+    // also fires for an id retired on sight by MAX_PINNED_RESULT_TOKENS, which
+    // is registered but over the ceiling and never actually shielded anything,
+    // so the claim was not always true (audit finding).
+    expect(tripped.data.file.message).toContain(
+      'that copy is no longer in the conversation',
+    )
     // Cache-safety: transcript-dependent, must never be replayed from cache.
     // (noResultCache is optional across the call() return union; cast to read.)
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
@@ -974,7 +981,9 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // observe THIS result being cleared — and a client-side pin cannot stop
     // server-side clearing anyway. Borrowing the clipped arm's wording here
     // would tell the model something we did not verify.
-    expect(tripped.data.file.message).not.toContain('even though it was protected')
+    expect(tripped.data.file.message).not.toContain(
+      'that copy is no longer in the conversation',
+    )
     expect(tripped.data.file.message).toContain('the API keeps clearing tool results')
   })
 
@@ -1403,6 +1412,68 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // Must re-send. Before the registry check this returned 'file_unchanged',
     // pointing the model at content the API had already dropped.
     expect(data.type).toBe('text')
+  })
+
+  test('a cancelled fallback propagates the abort instead of degrading', async () => {
+    // The head-slice helper swallows read errors and returns '' so the fallback
+    // degrades to a bare redirect. An abort is not a failed read — it is the
+    // user pressing escape — and turning it into '' hands the model a truncated
+    // answer for a request that was called off, plus logs a phantom error.
+    // An audit found the `if (isAbortError(e)) throw e` rethrow untested.
+    //
+    // The fixture must have NO outline language (.txt, not .ts): with one, the
+    // fallback calls scanFile first and THAT rethrows the abort, so the head
+    // slice is never reached and the test passes without touching the line it
+    // claims to guard. The first version of this test did exactly that.
+    const p = writeFixture('clip-pin-abort.txt', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+
+    // Third read is the fallback. Abort before it runs the head slice.
+    const priorId = ctx.readFileState.get(p)?.toolUseId
+    setContextMessages(
+      ctx,
+      priorId ? [userWithToolResult(priorId, buildClipStub('Read', 1234))] : [],
+    )
+    assignFreshToolUseId(ctx)
+    ctx.abortController.abort()
+
+    await expect(read(p, {}, ctx)).rejects.toThrow()
+  })
+
+  test('an ordinary dedup hit does not spend the one re-send a later clip is owed', async () => {
+    // retirePinAfterUse runs on EVERY intact dedup hit, including for files
+    // that were never in a clip loop and never had a pin. Its no-op guard is
+    // what keeps such an id out of the spent set — and `spent` is one of the
+    // two halves isPinRegistered answers true for, which is what lane 1 of the
+    // stand-down keys on.
+    //
+    // So without the guard: read a file twice normally, and the second (dedup)
+    // read marks the id spent; the FIRST time that file is ever clipped, lane 1
+    // sees a "registered" id, concludes the protected re-send was already used
+    // and goes straight to the outline. The file is never re-sent even once.
+    // An audit found this consequence documented on the guard but untested.
+    const p = writeFixture('clip-pin-never-pinned.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    assignFreshToolUseId(ctx)
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    const id = ctx.readFileState.get(p)?.toolUseId
+    expect(id).toBeDefined()
+    // No pin was ever placed on this id — an ordinary read of an ordinary file.
+    expect(isPinRegistered(id!)).toBe(false)
+
+    // An intact dedup hit. This calls retirePinAfterUse(id).
+    setContextMessages(ctx, [userWithToolResult(id!, 'the real body')])
+    assignFreshToolUseId(ctx)
+    expect((await read(p, {}, ctx)).data.type).toBe('file_unchanged')
+    // The guard's whole job: an id that never shielded anything stays unknown.
+    expect(isPinRegistered(id!)).toBe(false)
+
+    // Now the first clip this file has ever seen. It is owed a real re-send.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
   })
 
   test('a one-symbol file falls back to the head slice, not a one-line outline', async () => {

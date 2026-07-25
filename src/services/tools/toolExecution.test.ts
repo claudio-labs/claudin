@@ -191,7 +191,15 @@ describe('withRepeatedFailureHint', () => {
     expect(withRepeatedFailureHint('boom', 'Read', input, ctx)).toBe('boom')
   })
 
-  test('a context without a messages array is a no-op', () => {
+  test('a context without a messages array yields no hint and does not throw', () => {
+    // HONEST SCOPE: this pins the OUTCOME, not the `!Array.isArray(messages)`
+    // early return that produces it. An audit showed the guard can be deleted
+    // and this still passes, because countIdenticalFailures fails open — the
+    // walk throws on undefined, the catch swallows it and returns 0, and no
+    // hint is emitted either way. The guard's real value is avoiding a
+    // logError on a path that is not an error, which is not observable here
+    // without mocking the logger (see .claudin/rules/testing.md on why this
+    // suite avoids mock.module). Named for what it verifies.
     expect(
       withRepeatedFailureHint('boom', 'Read', input, {} as ToolUseContext),
     ).toBe('boom')
@@ -244,17 +252,21 @@ describe('repeated-failure hint wiring', () => {
     )
     // Schema-validation site.
     expect(src).toMatch(
-      /content: withRepeatedFailureHint\(\s*`<tool_use_error>InputValidationError/,
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>InputValidationError[^`]*`,\s*tool\.name,\s*input,\s*toolUseContext,/,
     )
     // validateInput rejection site — the one that carries FileEditTool's
     // "String to replace not found" and "File has not been read yet", i.e.
     // the repetition loop the hint most needs to interrupt.
     expect(src).toMatch(
-      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{isValidCall\.message\}/,
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{isValidCall\.message\}[^`]*`,\s*tool\.name,\s*input,\s*toolUseContext,/,
     )
     // Caught-exception site, with the interrupt flag threaded through.
     expect(src).toMatch(
       /content: withRepeatedFailureHint\(\s*content,\s*tool\.name,\s*input,\s*toolUseContext,\s*isInterrupt,/,
     )
+    // All three now pin every argument, not just the first. An audit found the
+    // first two stopped at the content string, so a site passing the wrong
+    // toolName or input — which silently keys the streak to nothing — would
+    // have kept this green.
   })
 })
