@@ -885,6 +885,12 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
  * bypassResultCache is for — it runs before the lookup, so call() stays
  * reachable, and it also suppresses the store so a bypassing call leaves no
  * entry behind for the next one.
+ *
+ * A bypass does NOT delete or refresh the entry already sitting in the cache;
+ * it steps around it. Once the tool stops bypassing — the condition cleared, or
+ * the per-context state the predicate keys on was lost — that older entry is
+ * live again until its TTL expires. A tool whose staleness matters beyond the
+ * TTL must invalidate explicitly (invalidateForPath) rather than lean on this.
  */
 function wrapCallWithCache<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

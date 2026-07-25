@@ -217,16 +217,35 @@ function getPinsForCurrent(): Map<string, number> | undefined {
   return perKeyPinnedIds.get(currentKey())
 }
 
+/**
+ * Make room for a new pin key, evicting the oldest from BOTH registries.
+ *
+ * They must be evicted together. Dropping a key's shielding map while keeping
+ * its spent set is merely conservative (everything still reads as registered),
+ * but dropping the spent set while keeping the pinned map forgets a re-send
+ * that already happened and hands out another one. Independent per-map bounds
+ * let exactly that drift happen, since only one of the two grows on any given
+ * call.
+ */
+function makeRoomForPinKey(key: string): void {
+  if (perKeyPinnedIds.has(key) || perKeySpentPinIds.has(key)) return
+  const tracked = Math.max(perKeyPinnedIds.size, perKeySpentPinIds.size)
+  if (tracked < MAX_TRACKED_KEYS) return
+  const oldest =
+    perKeyPinnedIds.keys().next().value ??
+    perKeySpentPinIds.keys().next().value
+  if (oldest === undefined) return
+  perKeyPinnedIds.delete(oldest)
+  perKeySpentPinIds.delete(oldest)
+}
+
 /** Move an id out of its shielding slot, remembering that it was pinned. */
 function retirePin(key: string, toolUseId: string): void {
   perKeyPinnedIds.get(key)?.delete(toolUseId)
   let spent = perKeySpentPinIds.get(key)
   if (!spent) {
     spent = new Set()
-    if (perKeySpentPinIds.size >= MAX_TRACKED_KEYS) {
-      const oldestKey = perKeySpentPinIds.keys().next().value
-      if (oldestKey !== undefined) perKeySpentPinIds.delete(oldestKey)
-    }
+    makeRoomForPinKey(key)
     perKeySpentPinIds.set(key, spent)
   }
   spent.delete(toolUseId)
@@ -245,10 +264,7 @@ export function pinToolResult(toolUseId: string): void {
   if (!pins) {
     pins = new Map()
     // Same defensive LRU-ish bound as getOrCreateForCurrent.
-    if (perKeyPinnedIds.size >= MAX_TRACKED_KEYS) {
-      const oldest = perKeyPinnedIds.keys().next().value
-      if (oldest !== undefined) perKeyPinnedIds.delete(oldest)
-    }
+    makeRoomForPinKey(key)
     perKeyPinnedIds.set(key, pins)
   }
   // A fresh pin is not spent: this copy is being protected right now.
@@ -370,7 +386,10 @@ export function _getPinnedToolResultsForTesting(): ReadonlySet<string> {
 
 // Test-only: inspect the spent ids for the current (session, agent).
 export function _getSpentPinIdsForTesting(): ReadonlySet<string> {
-  return perKeySpentPinIds.get(currentKey()) ?? EMPTY_SET
+  // A copy, like _getPinnedToolResultsForTesting — a live handle lets a test
+  // observe later mutations and quietly assert the wrong moment in time.
+  const spent = perKeySpentPinIds.get(currentKey())
+  return spent ? new Set(spent) : EMPTY_SET
 }
 
 export function resetClippedIds(): void {
@@ -481,10 +500,13 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
     }
   }
   if (spent) {
-    // Same rule for the memory of a spent pin: once the message is gone the
-    // state machine has nothing left to be right about, and keeping the id
-    // would make a genuinely new read of that file skip straight to the
-    // fallback.
+    // Same rule for the memory of a spent pin — and note this is a deliberate
+    // RESET, not the slot loss the spent registry exists to survive. Losing a
+    // slot (FIFO, expiry, over-ceiling) keeps the block in the transcript, so
+    // the model can still be looping on it and the fallback is the right
+    // answer. Here the message itself is gone: there is nothing to loop on,
+    // and keeping the id would make a genuinely new read of that file skip
+    // straight to the outline.
     for (const id of spent) {
       if (!liveIds.has(id)) spent.delete(id)
     }

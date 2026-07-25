@@ -598,7 +598,11 @@ export const FileReadTool = buildTool({
     try {
       const prior = context.readFileState?.get(expandPath(file_path))
       // First read of this path in this context: nothing to stand down from,
-      // so let it cache and be served from cache like any other tool.
+      // so let it cache and be served from cache like any other tool. Note this
+      // also covers a path whose entry was LRU-evicted (readFileState holds 100,
+      // 10 in queryHelpers) — indistinguishable from a first read, and equally
+      // harmless: the replay still hands the model the real body, it just skips
+      // a dedup that had no state to dedup against anyway.
       if (!prior) return false
       // Already in a stand-down cycle — call() owns the decision from here.
       if (prior.toolUseId !== undefined && isPinRegistered(prior.toolUseId)) {

@@ -405,4 +405,33 @@ describe('countIdenticalFailures', () => {
     )
     expect(detectRepeatedErrorLoop(messages)?.repeatCount).toBe(3)
   })
+
+  test('the scan floor drops a streak that straddles it', () => {
+    // The window is capped at MAX_SCAN_MESSAGES so a boundary-less transcript
+    // (a sub-agent's, where the first message is already a tool turn) cannot
+    // canonicalize() every tool_use input in the session — a single Write
+    // carries a whole file body. The cap is a real trade, not a free one: a
+    // streak split by the floor loses the part below it. Documented here so a
+    // future reader sees the cost rather than rediscovering it in the field.
+    const input = { command: 'false' }
+    const padding: Message[] = []
+    for (let i = 0; i < 420; i++) {
+      const id = uid()
+      padding.push(toolUse([{ id, name: 'Grep', input: { pattern: `p${i}` } }]))
+      padding.push(toolResult(id, false))
+    }
+
+    const straddling = [
+      humanTurn(),
+      ...repeatedBash('false', 2, true), // pushed below the floor by the padding
+      ...padding,
+      ...repeatedBash('false', 1, true), // the only one still in the window
+    ]
+    expect(countIdenticalFailures(straddling, 'Bash', input)).toBe(1)
+
+    // Same three failures, nothing pushing them out: all three count. The
+    // difference between the two numbers IS the cap.
+    const compact = [humanTurn(), ...repeatedBash('false', 3, true)]
+    expect(countIdenticalFailures(compact, 'Bash', input)).toBe(3)
+  })
 })

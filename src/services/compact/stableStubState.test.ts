@@ -2337,6 +2337,56 @@ describe('pinned tool_results', () => {
     expect(contentOf(clipped[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
   })
 
+  test('shielded bytes are excluded from the byte guard trigger, not just its candidates', () => {
+    // The candidate filter `continue`s on a shielded block BEFORE
+    // `clearableTokens += tokens`, so protected bytes must not count toward the
+    // high-water decision either. If they did, the guard would fire on pressure
+    // it cannot relieve and mass-stub the ordinary blocks around it while never
+    // reaching the low water — wiping retained context for no gain. Asserting
+    // "an over-ceiling block still clips" (the test above) cannot see this;
+    // only a trigger sitting BETWEEN the two sizes can.
+    const shielded = 'S'.repeat(4_000) // ~1000 tokens, well under the ceiling
+    const ordinary = 'O'.repeat(2_000) // ~500 tokens
+    const build = (): Msg[] => [
+      assistantToolUse('toolu_shielded', 'Read'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'toolu_shielded', content: shielded },
+        ],
+      },
+      assistantToolUse('toolu_ordinary', 'Grep'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'toolu_ordinary', content: ordinary },
+        ],
+      },
+      assistantToolUse('toolu_recent', 'Bash'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'toolu_recent', content: 'fresh' },
+        ],
+      },
+    ]
+
+    // Sanity: with nothing pinned, ~1500 clearable tokens trips a 800 high water.
+    const before = build()
+    const unpinned = pruneToolResultsByBytes(before, 800, 100, 1)
+    expect(unpinned).not.toBe(before)
+    expect(contentOf(unpinned[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+
+    // Pinned: only the ordinary ~500 tokens are clearable, under the 800 high
+    // water, so the guard must not fire at all — identity return, nothing
+    // clipped, including the ordinary block it would otherwise have taken.
+    _resetAllClippedIdsForTesting()
+    pinToolResult('toolu_shielded')
+    const messages = build()
+    const pinned = pruneToolResultsByBytes(messages, 800, 100, 1)
+    expect(pinned).toBe(messages)
+  })
+
   test('pruneStaleClippedIds reclaims other keys pins, keeps the current one', async () => {
     const { runWithTeammateContext } = await import(
       '../../utils/teammateContext.js'

@@ -57,6 +57,16 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   still empty (`setup.ts` startup, the `--resume`/`--continue` CLI flag in
   `resume.ts`). Encoding cwd into the key was deliberately NOT done (broad
   semantic change).
+- **`bypassResultCache` is per-context; the key is process-global.** A tool may
+  opt a single call out of the cache before the lookup (`Tool.ts`
+  `wrapCallWithCache`) — Read uses it so a clip/clear stand-down stays reachable,
+  since a hit short-circuits `call()` for the whole TTL and `noResultCache` can
+  only suppress the store of the call that produced it, never an entry an
+  EARLIER call left behind. Consequence to keep in mind: two contexts (main
+  thread vs sub-agent) can disagree about the same entry, and a bypass steps
+  around the entry rather than deleting it, so it goes live again the moment the
+  predicate stops firing. Anything that must not survive the TTL needs
+  `invalidateForPath`, not a bypass.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 
