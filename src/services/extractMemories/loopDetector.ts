@@ -34,7 +34,7 @@ function isToolResultBlock(
 }
 
 /** Same failing (tool + input) must error at least this many times to count. */
-const REPEATED_ERROR_THRESHOLD = 3
+export const REPEATED_ERROR_THRESHOLD = 3
 
 /** Separator between tool name and canonical input — NUL never appears in JSON. */
 const KEY_SEP = '\u0000'
@@ -106,6 +106,137 @@ function isUserControlResult(block: unknown): boolean {
   return USER_CONTROL_SENTINELS.some(sentinel => text.includes(sentinel))
 }
 
+type FailureStat = {
+  /** Total errored results for this key in the active task. */
+  count: number
+  /** Errored results since the last success — resets on any success. */
+  consecutive: number
+  name: string
+  mostRecentErrored: boolean
+}
+
+/** Stable identity of a call: tool name + canonical input. */
+function loopKeyFor(toolName: string, input: unknown): string {
+  return toolName + KEY_SEP + canonicalize(input)
+}
+
+/**
+ * True only for a real human turn. `isHumanTurn` alone is not enough here: it
+ * keys on `toolUseResult === undefined`, and two live paths blank that field
+ * on messages that are really tool turns — sub-agent successes
+ * (toolExecution.ts, `agentId && !preserveToolUseResults`) and results swapped
+ * for a persisted preview (toolResultStorage.replaceToolResultContents). Those
+ * masqueraded as the task boundary and truncated the window, so one success
+ * between two failures wiped the streak, leaving the repeated-failure hint
+ * dead inside sub-agents and after any oversized result. A user message
+ * carrying tool_result blocks is never the human's turn.
+ */
+function isTaskBoundary(m: Message): boolean {
+  if (!isHumanTurn(m)) return false
+  const content = m.message?.content
+  if (!Array.isArray(content)) return true
+  return !content.some(isToolResultBlock)
+}
+
+/**
+ * Walk the active task (everything after the most recent human turn),
+ * correlating each tool_use to its tool_result, and tally per-key error
+ * counts. Shared by the memory-extraction signal and the just-in-time
+ * repeated-failure hint.
+ */
+function collectFailureStats(messages: ReadonlyArray<Message>): {
+  stats: Map<string, FailureStat>
+  userTurnUuid: string | undefined
+} {
+  // Boundary: everything after the most recent human turn is the active task.
+  let boundaryIdx = -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m && isTaskBoundary(m)) {
+      boundaryIdx = i
+      break
+    }
+  }
+  const userTurnUuid = boundaryIdx >= 0 ? messages[boundaryIdx]?.uuid : undefined
+
+  const useIdToKey = new Map<string, string>()
+  const useIdToName = new Map<string, string>()
+  const stats = new Map<string, FailureStat>()
+
+  for (let i = boundaryIdx + 1; i < messages.length; i++) {
+    const m = messages[i]
+    if (!m) continue
+    if (m.type === 'assistant' && Array.isArray(m.message.content)) {
+      for (const block of m.message.content) {
+        if (block.type === 'tool_use') {
+          useIdToKey.set(block.id, loopKeyFor(block.name, block.input))
+          useIdToName.set(block.id, block.name)
+        }
+      }
+    } else if (m.type === 'user' && Array.isArray(m.message.content)) {
+      for (const block of m.message.content) {
+        if (!isToolResultBlock(block)) continue
+        const key = useIdToKey.get(block.tool_use_id)
+        if (key === undefined) continue
+        const errored = block.is_error === true
+        // Interrupts/cancels/denials are user-control actions, not approach
+        // failures, and neither are they successes — skip them entirely.
+        if (errored && isUserControlResult(block)) continue
+        const name = useIdToName.get(block.tool_use_id) ?? ''
+        const stat = stats.get(key) ?? {
+          count: 0,
+          consecutive: 0,
+          name,
+          mostRecentErrored: false,
+        }
+        if (errored) {
+          stat.count++
+          stat.consecutive++
+        } else {
+          // A success proves this exact call is not stuck. The just-in-time
+          // hint claims "in a row", so its streak restarts here;
+          // detectRepeatedErrorLoop keeps scoring on the cumulative count
+          // plus its own mostRecentErrored recovery guard.
+          stat.consecutive = 0
+        }
+        // Forward order → this overwrite ends on the most-recent result.
+        stat.mostRecentErrored = errored
+        stats.set(key, stat)
+      }
+    }
+  }
+
+  return { stats, userTurnUuid }
+}
+
+/**
+ * How many times IN A ROW this exact (tool, input) has already produced an
+ * errored tool_result in the active task; any success for the same key resets
+ * the streak. Used just-in-time, while the current failure's result is still
+ * being built — so the ordinal of the call being assembled is the return
+ * value + 1.
+ *
+ * Bound: `messages` is the snapshot taken at the start of the turn (query.ts),
+ * so identical calls issued within the SAME assistant turn all observe the
+ * same streak. Deliberate — they were emitted before any of them could have
+ * been corrected, so nudging on them would be noise.
+ *
+ * Fails open (returns 0) so a surprise here can never block a tool result.
+ */
+export function countIdenticalFailures(
+  messages: ReadonlyArray<Message>,
+  toolName: string,
+  input: unknown,
+): number {
+  try {
+    const { stats } = collectFailureStats(messages)
+    return stats.get(loopKeyFor(toolName, input))?.consecutive ?? 0
+  } catch (e) {
+    logError(e)
+    return 0
+  }
+}
+
 /**
  * Returns a signal when the current human turn contains a repeated-error loop,
  * else null. Scope is the messages after the last human turn (the active task).
@@ -114,58 +245,7 @@ export function detectRepeatedErrorLoop(
   messages: ReadonlyArray<Message>,
 ): LoopSignal | null {
   try {
-    // Boundary: everything after the most recent human turn is the active task.
-    let boundaryIdx = -1
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i]
-      if (m && isHumanTurn(m)) {
-        boundaryIdx = i
-        break
-      }
-    }
-    const userTurnUuid =
-      boundaryIdx >= 0 ? messages[boundaryIdx]?.uuid : undefined
-
-    // Walk the window forward, correlating each tool_use to its tool_result,
-    // building an ordered list of (key, errored) for non-interrupted results.
-    const useIdToKey = new Map<string, string>()
-    const useIdToName = new Map<string, string>()
-    type Stat = { count: number; name: string; mostRecentErrored: boolean }
-    const stats = new Map<string, Stat>()
-
-    for (let i = boundaryIdx + 1; i < messages.length; i++) {
-      const m = messages[i]
-      if (!m) continue
-      if (m.type === 'assistant' && Array.isArray(m.message.content)) {
-        for (const block of m.message.content) {
-          if (block.type === 'tool_use') {
-            const key = block.name + KEY_SEP + canonicalize(block.input)
-            useIdToKey.set(block.id, key)
-            useIdToName.set(block.id, block.name)
-          }
-        }
-      } else if (m.type === 'user' && Array.isArray(m.message.content)) {
-        for (const block of m.message.content) {
-          if (!isToolResultBlock(block)) continue
-          const key = useIdToKey.get(block.tool_use_id)
-          if (key === undefined) continue
-          const errored = block.is_error === true
-          // Interrupts/cancels/denials are user-control actions, not approach
-          // failures, and neither are they successes — skip them entirely.
-          if (errored && isUserControlResult(block)) continue
-          const name = useIdToName.get(block.tool_use_id) ?? ''
-          const stat = stats.get(key) ?? {
-            count: 0,
-            name,
-            mostRecentErrored: false,
-          }
-          if (errored) stat.count++
-          // Forward order → this overwrite ends on the most-recent result.
-          stat.mostRecentErrored = errored
-          stats.set(key, stat)
-        }
-      }
-    }
+    const { stats, userTurnUuid } = collectFailureStats(messages)
 
     // Qualify: >= threshold errors AND still failing on the latest call
     // (recovery guard). Pick the loudest qualifying key.

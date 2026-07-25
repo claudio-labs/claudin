@@ -5,7 +5,10 @@ import {
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   REJECT_MESSAGE,
 } from '../../utils/messages/constants.js'
-import { detectRepeatedErrorLoop } from './loopDetector.js'
+import {
+  countIdenticalFailures,
+  detectRepeatedErrorLoop,
+} from './loopDetector.js'
 
 let counter = 0
 const uid = () => `id-${counter++}`
@@ -72,6 +75,32 @@ function repeatedBash(
     out.push(toolResult(id, isError))
   }
   return out
+}
+
+/**
+ * A tool_result turn whose `toolUseResult` was blanked — what sub-agent
+ * successes (toolExecution.ts, `agentId && !preserveToolUseResults`) and
+ * budget-replaced results (toolResultStorage.replaceToolResultContents)
+ * actually look like in a live transcript.
+ */
+function blankedToolResult(toolUseId: string, isError = false): Message {
+  return {
+    type: 'user',
+    uuid: uid(),
+    isMeta: false,
+    toolUseResult: undefined,
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: toolUseId,
+          is_error: isError,
+          content: isError ? 'boom' : 'ok',
+        },
+      ],
+    },
+  } as unknown as Message
 }
 
 describe('detectRepeatedErrorLoop', () => {
@@ -273,5 +302,107 @@ describe('detectRepeatedErrorLoop', () => {
 
   test('empty / no messages -> null', () => {
     expect(detectRepeatedErrorLoop([])).toBeNull()
+  })
+})
+
+describe('countIdenticalFailures', () => {
+  test('counts only the identical (tool, input) failures in the active turn', () => {
+    const messages = [
+      humanTurn(),
+      ...repeatedBash('false', 2, true),
+      // A different command must not add to the count.
+      ...repeatedBash('other', 3, true),
+    ]
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'false' })).toBe(
+      2,
+    )
+  })
+
+  test('key order in the input does not matter', () => {
+    const id = uid()
+    const messages = [
+      humanTurn(),
+      toolUse([{ id, name: 'Read', input: { file_path: '/a', offset: 1 } }]),
+      toolResult(id, true),
+    ]
+    expect(
+      countIdenticalFailures(messages, 'Read', { offset: 1, file_path: '/a' }),
+    ).toBe(1)
+  })
+
+  test('successes and other tools do not count', () => {
+    const messages = [humanTurn(), ...repeatedBash('false', 3, false)]
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'false' })).toBe(
+      0,
+    )
+    expect(countIdenticalFailures(messages, 'Read', { command: 'false' })).toBe(
+      0,
+    )
+  })
+
+  test('user-control results (interrupt/cancel/deny) never count', () => {
+    const sentinels = [
+      INTERRUPT_MESSAGE_FOR_TOOL_USE,
+      CANCEL_MESSAGE,
+      REJECT_MESSAGE,
+    ]
+    const messages: Message[] = [humanTurn()]
+    for (const sentinel of sentinels) {
+      const id = uid()
+      messages.push(toolUse([{ id, name: 'Bash', input: { command: 'x' } }]))
+      messages.push(toolResult(id, true, sentinel))
+    }
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'x' })).toBe(0)
+  })
+
+  test('failures before the last human turn are out of scope', () => {
+    const messages = [
+      humanTurn('first task'),
+      ...repeatedBash('false', 3, true),
+      humanTurn('second task'),
+    ]
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'false' })).toBe(
+      0,
+    )
+  })
+
+  test('empty transcript -> 0', () => {
+    expect(countIdenticalFailures([], 'Bash', { command: 'false' })).toBe(0)
+  })
+
+  test('counts consecutive failures — a success resets the streak', () => {
+    const messages = [
+      humanTurn(),
+      ...repeatedBash('false', 2, true),
+      ...repeatedBash('false', 1, false),
+      ...repeatedBash('false', 1, true),
+    ]
+    // The just-in-time hint tells the model the call failed "in a row", so it
+    // may only see the run since the last success: 1, not 3.
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'false' })).toBe(
+      1,
+    )
+    // detectRepeatedErrorLoop deliberately keeps its cumulative score (plus
+    // its own mostRecentErrored guard) — the two consumers ask different
+    // questions of the same walk.
+    expect(detectRepeatedErrorLoop(messages)?.repeatCount).toBe(3)
+  })
+
+  test('a blanked tool turn is not the task boundary', () => {
+    const id = uid()
+    const messages = [
+      humanTurn(),
+      ...repeatedBash('false', 2, true),
+      toolUse([{ id, name: 'Read', input: { file_path: '/a' } }]),
+      blankedToolResult(id),
+      ...repeatedBash('false', 1, true),
+    ]
+    // `toolUseResult: undefined` made this turn indistinguishable from the
+    // human's, truncating the window to the single failure after it — which is
+    // how the hint ended up dead inside sub-agents.
+    expect(countIdenticalFailures(messages, 'Bash', { command: 'false' })).toBe(
+      3,
+    )
+    expect(detectRepeatedErrorLoop(messages)?.repeatCount).toBe(3)
   })
 })

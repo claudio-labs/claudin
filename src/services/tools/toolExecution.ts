@@ -72,6 +72,10 @@ import {
 import { executePermissionDeniedHooks } from '../../utils/hooks.js'
 import { logError } from '../../utils/log.js'
 import {
+  countIdenticalFailures,
+  REPEATED_ERROR_THRESHOLD,
+} from '../extractMemories/loopDetector.js'
+import {
   CANCEL_MESSAGE,
   createProgressMessage,
   createStopHookSummaryMessage,
@@ -491,6 +495,44 @@ export async function* runToolUse(
   }
 }
 
+/**
+ * Just-in-time nudge for a model that keeps re-issuing a call which keeps
+ * failing. Appended to the errored tool_result itself (same injection surface
+ * as withMemoryCorrectionHint) once the same (tool, canonical input) has
+ * failed REPEATED_ERROR_THRESHOLD times in the active task.
+ *
+ * Exported for tests.
+ */
+export function renderRepeatedFailureHint(
+  toolName: string,
+  failures: number,
+): string {
+  return `\n\n<system-reminder>\nThis exact ${toolName} call has now failed ${failures} times in a row with the same input — repeating it will fail the same way. Do not re-issue it unchanged: correct the input, verify your assumption with a different tool, or change approach.\n</system-reminder>`
+}
+
+/**
+ * Appends the repeated-failure hint when this errored result completes a
+ * streak of identical failures. Interrupts/cancels/denials never qualify —
+ * they are user actions, not a failing approach (loopDetector's
+ * USER_CONTROL_SENTINELS enforces the same rule on the counting side).
+ */
+export function withRepeatedFailureHint(
+  content: string,
+  toolName: string,
+  input: unknown,
+  toolUseContext: ToolUseContext,
+  isInterrupt = false,
+): string {
+  if (isInterrupt) return content
+  const messages = toolUseContext.messages
+  if (!Array.isArray(messages)) return content
+  // countIdenticalFailures only sees results already in the transcript; the
+  // one being built right now is the next in the streak.
+  const failures = countIdenticalFailures(messages, toolName, input) + 1
+  if (failures < REPEATED_ERROR_THRESHOLD) return content
+  return content + renderRepeatedFailureHint(toolName, failures)
+}
+
 function streamedCheckPermissionsAndCallTool(
   tool: Tool,
   toolUseID: string,
@@ -696,7 +738,12 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content: `<tool_use_error>InputValidationError: ${errorContent}</tool_use_error>`,
+              content: withRepeatedFailureHint(
+                `<tool_use_error>InputValidationError: ${errorContent}</tool_use_error>`,
+                tool.name,
+                input,
+                toolUseContext,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -753,7 +800,12 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content: `<tool_use_error>${isValidCall.message}</tool_use_error>`,
+              content: withRepeatedFailureHint(
+                `<tool_use_error>${isValidCall.message}</tool_use_error>`,
+                tool.name,
+                input,
+                toolUseContext,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -1728,7 +1780,13 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content,
+              content: withRepeatedFailureHint(
+                content,
+                tool.name,
+                input,
+                toolUseContext,
+                isInterrupt,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -1753,4 +1811,3 @@ async function checkPermissionsAndCallTool(
     }
   }
 }
-
