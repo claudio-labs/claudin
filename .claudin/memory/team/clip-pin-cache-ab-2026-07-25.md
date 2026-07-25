@@ -26,7 +26,7 @@ only), i.e. the pass-2 copy survived the age prune and the third read returned t
 tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
 (A emitted 4.1k output on turn 1 vs B's 227), so treat −7.3% as directional at n=1.
 
-**Bench-design traps (both make the feature unmeasurable if ignored):**
+**Bench-design traps (each makes the feature unmeasurable if ignored):**
 
 1. Files ≥250 lines AND ≥10k chars are intercepted by `AUTO_OUTLINE_ON_ELISION`.
    The outline marks the readFileState entry `isPartialView`, which disqualifies
@@ -41,10 +41,12 @@ tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
    of a 10-file cycle ran inside the TTL. Set
    `CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1` on BOTH sides, or space revisits past
    60s, or the early passes measure the cache instead of the feature.
-   (Fixed in the tool itself on 2026-07-25 — `FileReadTool.bypassResultCache`
-   now skips the cache for any re-read of a path this context already read — so
-   a fresh run should show signal earlier than pass 3. Re-bench before citing
-   the −7.3% again.)
+   (Partly fixed in the tool on 2026-07-25 — `FileReadTool.bypassResultCache`
+   skips the cache for a re-read whose stand-down could fire, i.e. when the
+   prior tool_result is clipped/missing or the API has cleared in this session.
+   A re-read with an intact prior result still hits the cache by design, so the
+   bench flag is still required. Re-bench before citing the −7.3% again: the
+   fix changes disk IO on both arms.)
 
 **Cache health (the question the run was meant to answer): fine, and identical on
 both sides.** cache_write happens once at turn 1 (34.9k/36.9k = system+tools) and

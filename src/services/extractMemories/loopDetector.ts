@@ -146,7 +146,11 @@ function isTaskBoundary(m: Message): boolean {
  * tool turn) can yield boundaryIdx === -1 and scan everything. The walk itself
  * is cheap; canonicalize() on every tool_use input is not, since a single
  * Write carries a whole file body. A repeated-failure streak lives in the last
- * handful of turns, so anything older cannot change the verdict.
+ * handful of turns, so in practice the cap does not change the verdict — but
+ * it CAN: detectRepeatedErrorLoop scores on a cumulative count at threshold 3,
+ * so a streak straddling the floor (two failures below it, one above) drops to
+ * 1 and the hint is lost. 400 messages is roughly 200 tool calls, so that
+ * needs a single task running unbroken past that; the trade is deliberate.
  */
 const MAX_SCAN_MESSAGES = 400
 

@@ -16,23 +16,23 @@ function formatRange(offset: number, limit: number | undefined): string {
 }
 
 /**
- * Which stand-down arm produced the fallback. Both arms are only reached with
- * positive client-side evidence that the pinned copy is gone from the
- * transcript (FileReadTool gates on priorGoneClientSide), so neither may
- * claim the copy is still protected. They differ only in what ELSE is known:
- *   'clipped' — a client-side clip path removed it, and nothing suggests the
- *               API is involved.
- *   'cleared' — same, plus the API applied clear_tool_uses somewhere in this
- *               session. That latch reports counts only and names no ids, so
- *               the message must not blame it for THIS copy specifically —
- *               and a client-side pin cannot stop server-side clearing at all.
+ * Which stand-down arm produced the fallback. The two carry different
+ * evidence and must not claim each other's:
+ *   'clipped' — a client-side clip path removed the copy and the scanner SAW
+ *               it happen to a result we had pinned. "Protected and clipped
+ *               anyway" is literally true.
+ *   'cleared' — the API applied clear_tool_uses at some point in this session.
+ *               That latches session-wide and reports counts only, so we never
+ *               learn which result was cleared, and a client-side pin cannot
+ *               stop server-side clearing in the first place. Claiming the copy
+ *               was protected here would be false.
  */
 export type ClipPinArm = 'clipped' | 'cleared'
 
 function clipPinReason(arm: ClipPinArm, range: string): string {
   return arm === 'clipped'
     ? `You already re-read ${range} of this file and context management clipped it out again even though it was protected`
-    : `You already re-read ${range} of this file and the protected copy is gone from the conversation again, with the API also clearing tool results in this session`
+    : `You already re-read ${range} of this file and the API keeps clearing tool results out of this conversation, so that copy is gone again`
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   getClippedIds,
   isPinRegistered,
   MAX_PINNED_RESULT_TOKENS,
+  MAX_SHIELDED_PASSES,
   pinToolResult,
   pruneContentReplacementState,
   pruneOldToolResults,
@@ -2244,8 +2245,7 @@ describe('pinned tool_results', () => {
     // An unbounded pin keeps its block off every clip path, and because the
     // clip frontier still counts it as mutable the cache_control marker cannot
     // advance past it — every later turn re-sends the suffix uncached, at
-    // O(turns). The pin only has to outlive the turn that re-delivered the
-    // body, so it expires and the block resumes clipping.
+    // O(turns). So it expires and the block resumes clipping.
     const clipOnce = () => {
       const messages = twoTurns('toolu_aging')
       return pruneOldToolResults(messages, 1)
@@ -2253,18 +2253,41 @@ describe('pinned tool_results', () => {
     pinToolResult('toolu_aging')
 
     let clippedAt = -1
-    for (let pass = 1; pass <= 40; pass++) {
+    for (let pass = 1; pass <= MAX_SHIELDED_PASSES * 2; pass++) {
       const out = clipOnce()
       if (/\[clipped: ~\d+ tokens from Read/.test(String(contentOf(out[1])))) {
         clippedAt = pass
         break
       }
     }
-    expect(clippedAt).toBeGreaterThan(1)
-    expect(clippedAt).toBeLessThanOrEqual(20)
+    // EXACT, not a range. The count is what pins the tick to the START of a
+    // pass: aging at the END would shield for one pass longer and land on
+    // MAX_SHIELDED_PASSES + 1. Start-of-pass placement is the whole reason the
+    // byte guard's candidate filter and stubOneBlock can't disagree mid-pass.
+    expect(clippedAt).toBe(MAX_SHIELDED_PASSES)
     // Expiry must not re-arm the loop: the id is spent, not forgotten.
     expect(_getPinnedToolResultsForTesting().has('toolu_aging')).toBe(false)
     expect(isPinRegistered('toolu_aging')).toBe(true)
+  })
+
+  test('the byte guard ages pins too — retain never reaches the other two ticks', () => {
+    // retain sets keepTurns to Infinity (pruneOldToolResults returns before its
+    // tick) and leaves the clipped set empty until microcompact (applyStableStubs
+    // returns before its tick), so pruneToolResultsByBytes is the ONLY pass that
+    // can age a pin there — and retain is the one profile where this guard, the
+    // thing the expiry protects, actually runs. Without a tick here a pin placed
+    // under retain was permanently exempt from the RSS bound.
+    pinToolResult('toolu_bytes_aging')
+    let clippedAt = -1
+    for (let pass = 1; pass <= MAX_SHIELDED_PASSES * 2; pass++) {
+      const out = pruneToolResultsByBytes(twoTurns('toolu_bytes_aging'), 1, 0, 1)
+      if (/\[clipped: ~\d+ tokens from Read/.test(String(contentOf(out[1])))) {
+        clippedAt = pass
+        break
+      }
+    }
+    expect(clippedAt).toBe(MAX_SHIELDED_PASSES)
+    expect(isPinRegistered('toolu_bytes_aging')).toBe(true)
   })
 
   /** Same shape as twoTurns, with a result far past the protection ceiling. */

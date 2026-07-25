@@ -16,6 +16,7 @@ import {
   isCacheableTool,
   setCached,
 } from './services/tools/toolResultCache.js'
+import { logError } from './utils/log.js'
 import type { ThinkingConfig } from './utils/thinking.js'
 
 export type ToolInputJSONSchema = {
@@ -436,7 +437,10 @@ export type Tool<
    * EARLIER call from short-circuiting call() on replay. A tool whose result
    * depends on state that only call() inspects (transcript shape, prior
    * tool_results) needs this hook to keep that decision reachable.
-   * Must be cheap, side-effect free, and MUST NOT throw.
+   *
+   * Only consulted for tools isCacheableTool() accepts — a silent no-op
+   * anywhere else. Must be cheap and side-effect free; a throw is caught and
+   * logged, and falls back to ordinary cache behavior.
    */
   bypassResultCache?(args: z.infer<Input>, context: ToolUseContext): boolean
   description(
@@ -894,7 +898,19 @@ function wrapCallWithCache<
   const wrapped = async (...args: Parameters<Fn>): Promise<ToolResult<unknown>> => {
     if (isCacheDisabled()) return origCall(...args)
     const input = args[0]
-    if (bypass?.(input, args[1])) return origCall(...args)
+    // A throwing hook must not take the tool call down with it — this wrapper
+    // sits in front of every cacheable tool, and a cache optimisation is never
+    // worth failing the user's request over. Falling through means "use the
+    // cache as before", the pre-hook behavior.
+    let skipCache = false
+    if (bypass) {
+      try {
+        skipCache = bypass(input, args[1])
+      } catch (e) {
+        logError(e)
+      }
+    }
+    if (skipCache) return origCall(...args)
     const hit = getCached(toolName, input)
     if (hit) {
       return { data: hit.data, mcpMeta: hit.mcpMeta }

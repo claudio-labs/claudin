@@ -139,16 +139,19 @@ function recordStubText(toolUseId: string, stub: string): void {
 // EXPIRE: because a shielded block still counts as mutable, the clip frontier
 // (and the cache_control marker with it) cannot advance past it, so every
 // later turn re-sends the suffix uncached. An unbounded pin therefore costs
-// O(turns) under the AGGRESSIVE profile. The pin only has to survive long
-// enough for the model to consume the re-sent body — a couple of turns — so
-// MAX_SHIELDED_PASSES bounds it and the frontier resumes moving.
+// O(turns) under the AGGRESSIVE profile; MAX_SHIELDED_PASSES bounds it and the
+// frontier resumes moving. Expiring EARLY is cheap, not dangerous: an expired
+// pin is spent, so the next same-range re-read lands on the outline fallback
+// rather than another re-send. The bound trades "one more protected re-send"
+// for "the frontier moves again", and the fallback catches whatever it drops.
 //
 // TWO REGISTRIES, one state machine:
 //   SHIELDING (perKeyPinnedIds) — ids the clip paths must skip. Bounded by
 //     MAX_PINNED_TOOL_RESULTS slots and by MAX_SHIELDED_PASSES of age.
 //   SPENT (perKeySpentPinIds) — ids that WERE pinned and no longer shield
-//     anything, because they aged out, lost their slot to the FIFO, or turned
-//     out to be over MAX_PINNED_RESULT_TOKENS. They carry no obligation, only
+//     anything, because they aged out, lost their slot to the FIFO, turned out
+//     to be over MAX_PINNED_RESULT_TOKENS, or did their job and were retired
+//     by retirePinAfterUse. They carry no obligation, only
 //     the memory that this copy already got its one protected re-send.
 // isPinRegistered answers over BOTH, so FileReadTool's next same-range
 // re-read serves the structural-outline fallback instead of starting another
@@ -188,12 +191,23 @@ const MAX_PINNED_TOOL_RESULTS = 16
 const MAX_SPENT_PIN_IDS = 64
 /**
  * How many clip passes one pin may shield its block before it is spent.
- * Ticked once per pass at the START of applyStableStubs / pruneOldToolResults,
- * never inside pinShieldsBlock: the byte guard's `remaining` accounting is only
- * honest while its candidate filter and stubOneBlock agree on what is exempt,
- * and a counter that tipped between those two calls would break exactly that.
+ *
+ * A "pass" is NOT a turn and is not worth much individually — agePinsForCurrent
+ * is ticked from applyStableStubs, pruneOldToolResults AND pruneToolResultsByBytes,
+ * and those run per appended user message (QueryEngine's `case 'user'`), per API
+ * request (streaming.ts), per ask() and per REPL turn. A single assistant turn
+ * with several tool calls can burn a dozen ticks. The number is therefore a
+ * safety ceiling on the clip-frontier stall, not a promise of N turns of
+ * protection; it is set generously so a normal multi-tool turn does not expire
+ * a pin placed inside it, and expiring early only means the model reaches the
+ * outline fallback sooner (see the EXPIRE note above).
+ *
+ * Ticked at the START of a pass, never inside pinShieldsBlock: the byte guard's
+ * `remaining` accounting is only honest while its candidate filter and
+ * stubOneBlock agree on what is exempt, and a counter that tipped between those
+ * two calls would break exactly that.
  */
-const MAX_SHIELDED_PASSES = 12
+export const MAX_SHIELDED_PASSES = 48
 /** id → number of clip passes this pin has already shielded its block. */
 const perKeyPinnedIds = new Map<string, Map<string, number>>()
 const perKeySpentPinIds = new Map<string, Set<string>>()
@@ -250,16 +264,41 @@ export function pinToolResult(toolUseId: string): void {
 
 /**
  * Full release — the pin is gone AND forgotten, so a later clip of this id
- * starts the stand-down over from the re-send. Used when the evidence says the
- * protection is no longer owed: the model demonstrably still has the content
- * (FileReadTool's intact branch), or the readFileState entry that vouched for
- * it is gone (fileStateCache's dispose hook), or the message left the
- * transcript entirely (the orphan sweeps).
+ * starts the stand-down over from the re-send.
+ *
+ * ONLY for the case where the id itself stops being ours: the readFileState
+ * entry that vouched for it is gone (fileStateCache's dispose hook — range
+ * switch, Edit/Write, delete, LRU eviction), or the message left the transcript
+ * (the orphan sweeps). A new copy of that file is genuinely a new copy and is
+ * entitled to its own protected re-send.
+ *
+ * NOT for "the model still has the content" — that is retirePinAfterUse. Using
+ * a full release there re-arms the loop: retire → the block is still intact →
+ * an ordinary same-range Read forgets the id → the next clip pass stubs it →
+ * full re-send → repeat, one body per rotation, forever.
  */
 export function unpinToolResult(toolUseId: string): void {
   const key = currentKey()
   perKeyPinnedIds.get(key)?.delete(toolUseId)
   perKeySpentPinIds.get(key)?.delete(toolUseId)
+}
+
+/**
+ * The pin did its job: this copy survived and the model demonstrably still has
+ * it. Free the shielding slot (and stop stalling the clip frontier) but REMEMBER
+ * that this copy already had its protected re-send, so if it is clipped later
+ * the stand-down goes straight to the outline fallback instead of starting the
+ * cycle again.
+ *
+ * No-op unless the id is currently shielding — an ordinary dedup hit on a file
+ * that was never in a clip loop must not be marked spent, or its first ever
+ * clip would skip the one re-send it is entitled to.
+ */
+export function retirePinAfterUse(toolUseId: string): void {
+  if (!toolUseId) return
+  const key = currentKey()
+  if (!perKeyPinnedIds.get(key)?.has(toolUseId)) return
+  retirePin(key, toolUseId)
 }
 
 /** One tick of the pin clock; see MAX_SHIELDED_PASSES. */
@@ -999,10 +1038,11 @@ export type ClipFrontierMutability = {
  * counting as mutable, so the frontier (and with it the cache_control marker)
  * stalls just before it while the pin lasts, and every later turn re-sends the
  * suffix uncached. That is why pins EXPIRE (MAX_SHIELDED_PASSES): the stall is
- * bounded to the few passes the pin is actually needed for, instead of growing
- * at O(turns) until autocompact. Note that readMult 1.0 on this profile is a
- * clipping heuristic, NOT a claim that caching is off — breakpoints are still
- * emitted, so the stall does cost real money. Under RETAIN the question does
+ * bounded to the passes the pin is actually needed for, instead of growing at
+ * O(turns) until autocompact. Do NOT read the profile's readMult 1.0 as "this
+ * profile has no cache to lose" — cacheProfile.ts says outright that writeMult
+ * and readMult are rationale fields no arithmetic consumes. Breakpoints are
+ * still emitted, so the stall costs real money. Under RETAIN the question does
  * not arise: a full tool_result is immutable there anyway (see the
  * agePruneActive branch below).
  */
@@ -1238,6 +1278,20 @@ export function pruneToolResultsByBytes<T extends AnyMessage>(
   // context the guard exists to protect, for negligible relief.
   const cutoffIdx = findTurnCutoffIndex(messages, keepRecentTurns)
   if (cutoffIdx <= 0) return messages
+
+  // One tick of the pin clock per real clip pass (see MAX_SHIELDED_PASSES),
+  // taken before the candidate walk so pinShieldsBlock gives the same answer
+  // to the filter below and to stubOneBlock later in this pass.
+  //
+  // This tick is what makes expiry work AT ALL under the retain profile: retain
+  // sets keepTurns to Infinity, so pruneOldToolResults returns before its tick,
+  // and applyStableStubs returns early while the clipped set is empty. Without
+  // this line a pin placed under retain never aged — and retain is the one
+  // profile where the byte guard the expiry protects actually runs, so up to
+  // MAX_PINNED_TOOL_RESULTS × MAX_PINNED_RESULT_TOKENS would sit permanently
+  // exempt from the RSS bound (and, because pinned blocks `continue` before
+  // `clearableTokens += tokens` below, invisible to the high-water trigger too).
+  agePinsForCurrent()
 
   // Pass 1: clearable pressure across pre-cutoff full stubable tool_results.
   // `savings` is what stubbing actually frees: head-stubs retain

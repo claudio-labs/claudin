@@ -85,7 +85,13 @@ export class FileStateCache {
     return this.cache.get(normalize(key))
   }
 
-  set(key: string, value: FileState): this {
+  /**
+   * `adopt: false` inserts the entry WITHOUT claiming its pin — for callers
+   * copying entries another live cache still owns (mergeFileStateCaches). Two
+   * owners of one tool_use id means the first dispose releases a pin the other
+   * still vouches for.
+   */
+  set(key: string, value: FileState, options?: { adopt?: boolean }): this {
     const normalized = normalize(key)
     // Overwriting disposes the previous value first, releasing its pin; only
     // then does this cache claim the incoming id, so a same-key replacement
@@ -95,7 +101,11 @@ export class FileStateCache {
     // value over maxEntrySize — it deletes the key and stores nothing, so no
     // dispose ever fires for it, and an id claimed for an absent entry would
     // sit in this Set for the life of the session.
-    if (value.toolUseId && this.cache.peek(normalized) === value) {
+    if (
+      options?.adopt !== false &&
+      value.toolUseId &&
+      this.cache.peek(normalized) === value
+    ) {
       this.ownedToolUseIds.add(value.toolUseId)
     }
     return this
@@ -179,7 +189,17 @@ export function cloneFileStateCache(cache: FileStateCache): FileStateCache {
   return cloned
 }
 
-// Merge two file state caches, with more recent entries (by timestamp) overriding older ones
+/**
+ * Merge two file state caches, with more recent entries (by timestamp)
+ * overriding older ones.
+ *
+ * Non-owning by construction: `first` is cloned via `load` and `second`'s
+ * entries are inserted with `adopt: false`, so the merged cache holds every pin
+ * WITHOUT claiming it. Using plain `set` here would let two live caches each
+ * believe they own the same tool_use id, and whichever disposed first would
+ * release a pin the other still vouches for — re-arming the clip → re-read loop
+ * for a file the survivor thinks is protected. Same rule as cloneFileStateCache.
+ */
 export function mergeFileStateCaches(
   first: FileStateCache,
   second: FileStateCache,
@@ -189,7 +209,7 @@ export function mergeFileStateCaches(
     const existing = merged.get(filePath)
     // Only override if the new entry is more recent
     if (!existing || fileState.timestamp > existing.timestamp) {
-      merged.set(filePath, fileState)
+      merged.set(filePath, fileState, { adopt: false })
     }
   }
   return merged
