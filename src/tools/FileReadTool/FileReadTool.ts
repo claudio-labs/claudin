@@ -88,7 +88,6 @@ import {
   isPinShielding,
   pinToolResult,
   retirePinAfterUse,
-  unpinToolResult,
 } from '../../services/compact/stableStubState.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
@@ -1075,6 +1074,13 @@ export const FileReadTool = buildTool({
               parentMessage?.message.id,
             )
             maybeFlagSerialReadNudge(altResult?.data, context)
+            // No stand-down bookkeeping here, on purpose: the alt arm only
+            // fires for `AM/PM.png` names, and image reads never write
+            // readFileState (dedup is text/notebook-only, per the comment at
+            // the top of call), so standDownResend cannot be armed when the
+            // alt path succeeds — there are no strikes to carry and nothing
+            // to pin. The clip → re-read loop the stand-down closes does not
+            // exist for images.
             return altResult
           } catch (altError) {
             if (!isENOENT(altError)) {

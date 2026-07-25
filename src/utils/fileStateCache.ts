@@ -173,7 +173,7 @@ export class FileStateCache {
 
   /**
    * Take over `donor`'s pin ownership. For the caller that REPLACES a live
-   * cache with a derived one (mergeFileStateCaches with `replacesInputs`): the
+   * cache with a derived one (mergeReplacingLiveCache): the
    * donor is about to be dropped, and `LRUCache.dispose` does not run on GC, so
    * without this every pin the donor owned becomes ownerless — no cache is
    * entitled to release it and it stalls the clip frontier until it ages out.
@@ -285,12 +285,11 @@ export function cloneFileStateCache(cache: FileStateCache): FileStateCache {
  *   second owner. Two live caches each believing they own one id means whichever
  *   disposes first releases a pin the other still vouches for, re-arming the
  *   clip → re-read loop for a file the survivor thinks is protected.
- * - `replacesInputs: true` (the result is assigned OVER the inputs): takes both
- *   inputs' ownership with it. Without this the merge is a guaranteed leak —
- *   the discarded owner's set goes with it, `dispose` never runs on GC, and from
+ * - the result is assigned OVER either input: use `mergeReplacingLiveCache`
+ *   instead, which takes both inputs' ownership with it via
+ *   `transferOwnershipFrom`. Without that the merge is a guaranteed leak — the
+ *   discarded owner's set goes with it, `dispose` never runs on GC, and from
  *   that point NO pin in the session can be released early by anyone.
- *
- * Pass `replacesInputs` whenever you write the result back over either input.
  */
 export function mergeFileStateCaches(
   first: FileStateCache,

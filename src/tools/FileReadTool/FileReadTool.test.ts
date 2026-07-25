@@ -952,11 +952,18 @@ describe('FileReadTool — clip pin (forced on)', () => {
       // strike bound — a killswitch that reinstates an unbounded loop is a
       // trap, not an opt-out.
       const types: string[] = []
-      for (let i = 0; i < 4; i++) {
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
+      // IMMEDIATELY after the stand-down re-send: this is the id the pin
+      // would protect if the alias were ignored. Asserting any later is
+      // blind — the next fallback deletes the entry and the dispose hook
+      // releases the pin, so a delayed check passes with the env check
+      // deleted.
+      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+      for (let i = 0; i < 2; i++) {
         types.push((await readWithPriorClipped(p, ctx)).data.type)
       }
       expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
-      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER
     }
@@ -1092,11 +1099,17 @@ describe('FileReadTool — clip pin (forced on)', () => {
       const p = writeFixture('clip-pin-disabled.ts', SAMPLE_TS)
       const ctx = makeContext()
       const types: string[] = []
-      for (let i = 0; i < 6; i++) {
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
+      // The killswitch must mean "nothing gets pinned" — checked IMMEDIATELY
+      // after the re-send that would have pinned. The final read of the loop
+      // serves the fallback (never pinned) and a later fallback would release
+      // this id through the dispose hook, so a check anywhere else passes
+      // with the env check deleted.
+      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+      for (let i = 0; i < 4; i++) {
         types.push((await readWithPriorClipped(p, ctx)).data.type)
       }
-      // No pin placed anywhere...
-      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
       // ...but the strike bound still applies (lane 2 is outside the gate).
       expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
     } finally {

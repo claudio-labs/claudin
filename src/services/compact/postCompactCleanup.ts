@@ -53,7 +53,19 @@ export function runPostCompactCleanup(
     querySource.startsWith('repl_main_thread') ||
     querySource === 'sdk'
 
-  resetMicrocompactState()
+  // MAIN-THREAD ONLY, same authority argument as the orphan sweep below:
+  // resetMicrocompactState → resetClippedIds wipes the ENTIRE current
+  // registry key, and an ordinary Agent/fork sub-agent shares the main
+  // thread's key (getAgentId() is blind to it) while compacting only its OWN
+  // transcript — the "same history" premise in resetMicrocompactState's doc
+  // does not hold for it, so an unguarded call deletes the parent's LIVE
+  // pins, spent memory and clipped ids. This gate closes the fork-autocompact
+  // hazard stableStubState's resetClippedIds comment used to document as
+  // unguarded. (Swarm teammates reset their OWN key from their own compact /
+  // cleanup in inProcessRunner.)
+  if (isMainThreadCompact) {
+    resetMicrocompactState()
+  }
 
   // Rebuild ContentReplacementState to release entries for compacted-away
   // messages. Without this, seenIds and replacements grow monotonically
@@ -75,8 +87,15 @@ export function runPostCompactCleanup(
   pruneStaleClippedIds()
 
   // Prune clipped IDs from the current key that reference messages
-  // removed by compaction.
-  if (messages) {
+  // removed by compaction. MAIN-THREAD ONLY: an in-process sub-agent
+  // (Agent/fork) shares the main registry key — getAgentId() is blind to it,
+  // see stableStubState's ownership caveat — but its post-compact transcript
+  // holds none of the parent's ids, so sweeping against it would delete the
+  // parent's LIVE pins, spent memory and clipped ids as false orphans. The
+  // sub-agent's own ids under the shared key never merge back into the
+  // parent transcript, so the next main-thread compact prunes them with
+  // authority; MAX_SHIELDED_PASSES bounds them meanwhile.
+  if (messages && isMainThreadCompact) {
     pruneOrphanClippedIds(messages)
   }
   if (feature('CONTEXT_COLLAPSE')) {

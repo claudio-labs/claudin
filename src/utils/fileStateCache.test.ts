@@ -58,6 +58,24 @@ describe('FileStateCache — clip-pin ownership', () => {
     expect(isPinRegistered('toolu_new')).toBe(true)
   })
 
+  test('a same-id re-set is a handover, not an abandonment — the pin survives', () => {
+    // DEFENSIVE GUARD, named for what it pins: production Read paths always
+    // write a FRESH tool_use id per call, so prevId === newId is not a known
+    // reachable flow today. If a future caller refreshes an entry in place
+    // with the same id, lru-cache still fires dispose(old, 'set') BEFORE the
+    // new value lands; without the handingOver suppression that dispose
+    // releases the pin and the cache then claims ownership of an id that is
+    // no longer pinned.
+    const cache = makeCache()
+    pinToolResult('toolu_same')
+    cache.set('/a.ts', entry('toolu_same'))
+    cache.set('/a.ts', entry('toolu_same', 'refreshed'))
+    expect(isPinRegistered('toolu_same')).toBe(true)
+    // Ownership also survived the handover: deleting now releases, once.
+    cache.delete('/a.ts')
+    expect(isPinRegistered('toolu_same')).toBe(false)
+  })
+
   test('delete and clear release, LRU eviction releases too', () => {
     const cache = makeCache()
     pinToolResult('toolu_del')

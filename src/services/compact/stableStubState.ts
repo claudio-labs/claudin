@@ -68,20 +68,25 @@ function currentKey(): string {
   return agentId ? `${sid}:${agentId}` : sid
 }
 
-function getOrCreateForCurrent(): Set<string> {
-  const key = currentKey()
-  let set = perKeyClippedIds.get(key)
-  if (!set) {
-    set = new Set()
-    // Simple LRU-ish eviction: drop the oldest insertion-order entry once we
-    // exceed the cap. The listener should keep this rare.
-    if (perKeyClippedIds.size >= MAX_TRACKED_KEYS) {
-      const oldest = perKeyClippedIds.keys().next().value
-      if (oldest !== undefined) perKeyClippedIds.delete(oldest)
+// Defensive LRU-ish bound shared by the single-registry per-key maps: drop
+// the oldest insertion-order entry once the cap is exceeded. The listeners
+// should keep this rare. The pin registries cannot use this — a key's
+// shielding map and spent set must be evicted TOGETHER, see makeRoomForPinKey.
+function ensureKey<V>(map: Map<string, V>, key: string, make: () => V): V {
+  let value = map.get(key)
+  if (!value) {
+    value = make()
+    if (map.size >= MAX_TRACKED_KEYS) {
+      const oldest = map.keys().next().value
+      if (oldest !== undefined) map.delete(oldest)
     }
-    perKeyClippedIds.set(key, set)
+    map.set(key, value)
   }
-  return set
+  return value
+}
+
+function getOrCreateForCurrent(): Set<string> {
+  return ensureKey(perKeyClippedIds, currentKey(), () => new Set())
 }
 
 export function getClippedIds(): ReadonlySet<string> {
@@ -104,17 +109,7 @@ function getStubTextForId(toolUseId: string): string | undefined {
 }
 
 function recordStubText(toolUseId: string, stub: string): void {
-  const key = currentKey()
-  let map = perKeyStubText.get(key)
-  if (!map) {
-    map = new Map()
-    // Same defensive LRU-ish bound as getOrCreateForCurrent.
-    if (perKeyStubText.size >= MAX_TRACKED_KEYS) {
-      const oldest = perKeyStubText.keys().next().value
-      if (oldest !== undefined) perKeyStubText.delete(oldest)
-    }
-    perKeyStubText.set(key, map)
-  }
+  const map = ensureKey(perKeyStubText, currentKey(), () => new Map())
   // First-write-wins: never overwrite bytes that may already be cached
   // server-side from an earlier request.
   if (!map.has(toolUseId)) {
@@ -185,6 +180,11 @@ function recordStubText(toolUseId: string, stub: string): void {
 // the parent's pins — it can. The spent registry is what makes that survivable
 // (a stolen slot degrades to the fallback instead of re-arming the loop);
 // closing it properly needs a general current-agent scope, not a change here.
+// The one sweep that was NOT survivable — pruneOrphanClippedIds reading a
+// fork's post-compact transcript as authority for the shared key and deleting
+// the parent's LIVE pins as orphans — is closed at the caller instead:
+// postCompactCleanup only runs it for main-thread compacts (querySource),
+// which is exactly the context this registry cannot name.
 //
 // Within a key, insertion order is the FIFO order; re-pinning refreshes it.
 const MAX_PINNED_TOOL_RESULTS = 16
@@ -427,18 +427,22 @@ export function _getSpentPinIdsForTesting(): ReadonlySet<string> {
 }
 
 export function resetClippedIds(): void {
-  // KNOWN HAZARD, deliberately not guarded here. An ordinary Agent/fork
-  // sub-agent compacting will delete the PARENT's pins, because currentKey()
-  // cannot see forks (they run under the main key — see the registry caveat
-  // above) and this function deletes whatever key it is currently standing in.
+  // This deletes whatever key it is currently standing in, and currentKey()
+  // cannot see ordinary Agent/fork sub-agents (they run under the main key —
+  // see the registry caveat above), so the CALLER must know which context is
+  // asking. The one caller that couldn't — a fork's autocompact reaching here
+  // via runPostCompactCleanup and deleting the PARENT's live pins — is now
+  // gated there on isMainThreadCompact (querySource names the compacting
+  // context, which is exactly what this registry cannot). The remaining
+  // callers are single-context by construction: the REPL and slash-command
+  // paths are the main thread, and swarm teammates reset their own key under
+  // their own AsyncLocalStorage.
   //
-  // The obvious fix, mirroring pruneStaleClippedIds' `if (getAgentId()) return`,
-  // is WRONG here and was tried: that guard protects OTHER keys from a
-  // teammate ("every key but mine"), whereas this function only ever touches
-  // its OWN key. Adding it stops a swarm teammate from resetting the set it
-  // legitimately owns, which the isolation test catches immediately. A correct
-  // guard needs the registry to be able to name a fork; until then the cost is
-  // bounded — one extra full re-send per fork compaction, not a loop.
+  // The other obvious fix, mirroring pruneStaleClippedIds' `if (getAgentId())
+  // return`, is WRONG here and was tried: that guard protects OTHER keys from
+  // a teammate ("every key but mine"), whereas this function only ever
+  // touches its OWN key. Adding it stops a swarm teammate from resetting the
+  // set it legitimately owns, which the isolation test catches immediately.
   perKeyClippedIds.delete(currentKey())
   perKeyStubText.delete(currentKey())
   perKeyPinnedIds.delete(currentKey())
@@ -486,6 +490,13 @@ export function pruneStaleClippedIds(): void {
  * message array (e.g. after compaction removed their messages). Without
  * this, the Set for the current key grows monotonically with IDs whose
  * messages were compacted away.
+ *
+ * CALLER PRECONDITION: `messages` must be the transcript that OWNS the
+ * current key — the main thread's. An ordinary Agent/fork sub-agent shares
+ * the main key (registry caveat above) but compacts against its own view,
+ * which holds none of the parent's ids: sweeping then would delete the
+ * parent's LIVE pins, spent memory and clipped ids as false orphans.
+ * postCompactCleanup enforces this by gating on isMainThreadCompact.
  */
 export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   const ids = perKeyClippedIds.get(currentKey())
