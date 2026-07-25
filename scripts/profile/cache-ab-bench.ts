@@ -140,6 +140,20 @@ type Args = {
   runs: number
   skipClaude: boolean
   revisits: number
+  // Cycle mode: read the first `files` entries `passes` times each (one Read
+  // per turn, so turns = files * passes). Unlike --revisits (one extra pass
+  // over a fixed list), this drives the SAME (file, range) back through Read
+  // repeatedly, which is what the clip → re-read loop needs: a clipped
+  // tool_result is only re-billed when the model asks for that exact range
+  // again. 0/1 leaves the original behavior untouched.
+  files: number
+  passes: number
+  // Override the file pool. The default list is size-diverse, which is the
+  // wrong shape for clip-loop work: files ≥250 lines AND ≥10k chars are
+  // intercepted by AUTO_OUTLINE_ON_ELISION, so the Read never returns a body
+  // to clip and the stand-down can never fire (the outline marks the
+  // readFileState entry isPartialView, which disqualifies dedup outright).
+  fileList: string[]
   // Per-side extra env (e.g. CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1) so the
   // SAME binary can be A/B'd with a feature flag toggled. KEY=VAL form.
   aEnv: Record<string, string>
@@ -171,6 +185,9 @@ function parseArgs(argv: string[]): Args {
     runs: 1,
     skipClaude: false,
     revisits: 0,
+    files: 0,
+    passes: 1,
+    fileList: [],
     aEnv: {},
     bEnv: {},
     workload: 'files',
@@ -183,6 +200,9 @@ function parseArgs(argv: string[]): Args {
     else if (x.startsWith('--runs=')) a.runs = Math.max(1, Number(x.slice('--runs='.length)))
     else if (x.startsWith('--turns=')) a.turns = Number(x.slice('--turns='.length))
     else if (x.startsWith('--revisits=')) a.revisits = Math.max(0, Math.min(REVISIT_FILES.length, Number(x.slice('--revisits='.length)) || 0))
+    else if (x.startsWith('--files=')) a.files = Math.max(0, Number(x.slice('--files='.length)) || 0)
+    else if (x.startsWith('--passes=')) a.passes = Math.max(1, Number(x.slice('--passes='.length)) || 1)
+    else if (x.startsWith('--file-list=')) a.fileList = x.slice('--file-list='.length).split(',').map(s => s.trim()).filter(Boolean)
     else if (x.startsWith('--model=')) a.model = x.slice('--model='.length)
     else if (x.startsWith('--a-env=')) Object.assign(a.aEnv, parseKeyVal(x.slice('--a-env='.length)))
     else if (x.startsWith('--b-env=')) Object.assign(a.bEnv, parseKeyVal(x.slice('--b-env='.length)))
@@ -281,18 +301,30 @@ function buildProseWorkloadPrompt(turns: number): string {
 // read, so the second read re-bills the file; a keep-everything strategy may
 // still hold it in context — this is the fidelity case for real sessions
 // where files get revisited.
-function buildSequentialWorkload(files: string[], turns: number, revisits: number): string[] {
+function buildSequentialWorkload(
+  files: string[],
+  turns: number,
+  revisits: number,
+  fileCount = 0,
+  passes = 1,
+): string[] {
+  // Cycle mode wins when asked for: N distinct files, each read `passes` times.
+  if (passes > 1 && fileCount > 0) {
+    const cycle = files.slice(0, fileCount)
+    return Array.from({ length: passes }, () => cycle).flat()
+  }
   if (revisits > 0) return [...files, ...REVISIT_FILES.slice(0, revisits)]
   return files.slice(0, turns)
 }
 
 function buildSequentialPrompt(workload: string[], revisits: number): string {
-  const firstSeen = new Set<string>()
+  const seen = new Map<string, number>()
   const lines = workload.map((f, i) => {
-    const again = firstSeen.has(f)
-    firstSeen.add(f)
-    return `  ${i + 1}. ${f}${again ? '   (second read — Read it AGAIN in full)' : ''}`
+    const n = (seen.get(f) ?? 0) + 1
+    seen.set(f, n)
+    return `  ${i + 1}. ${f}${n > 1 ? `   (read #${n} of this file — Read it AGAIN in full)` : ''}`
   })
+  const hasRepeats = [...seen.values()].some(n => n > 1)
   return [
     `Read these ${workload.length} files using the Read tool, ONE FILE PER MESSAGE TURN.`,
     `STRICT RULES — the benchmark is INVALID if you break any of them:`,
@@ -300,11 +332,11 @@ function buildSequentialPrompt(workload: string[], revisits: number): string {
     `- NEVER use parallel/batched tool calls. Do not read ahead.`,
     `- After each Read, print a one-line summary of that file, then Read the next`,
     `  file in your NEXT message.`,
-    ...(revisits > 0
+    ...(revisits > 0 || hasRepeats
       ? [
-          `- Some files appear TWICE in the list on purpose. When a file comes up a`,
-          `  second time you MUST call Read on it again — do NOT answer from memory`,
-          `  of the earlier read.`,
+          `- Files repeat in the list on purpose. Every time a file comes up again`,
+          `  you MUST call Read on it again, with NO offset/limit — do NOT answer`,
+          `  from memory of the earlier read, and do NOT skip it as redundant.`,
         ]
       : []),
     `Process them strictly in this order:`,
@@ -649,6 +681,10 @@ async function main() {
     console.log('cache-ab-bench: claudin vs claude, same prompt/files/model, main-loop cache reuse.')
     console.log('  --model=<id> (default claude-sonnet-4-6)  --only=claude|claudin  --a=<bin> --b=<bin>  --json')
     console.log('  --runs=N (default 1; recommend 3 — reports median+min+max)  --skip-claude')
+    console.log('  --files=N --passes=M (cycle: N distinct files read M times each, 1 Read/turn → N*M turns;')
+    console.log('                        drives the clip → re-read loop, which needs the SAME range re-Read)')
+    console.log('  --file-list=a.ts,b.ts (override the pool; keep every file under the auto-outline')
+    console.log('                        threshold — 250 lines / 10k chars — or Reads return outlines, not bodies)')
     console.log('  --workload=files|json|prose (json: big-json fixture each turn — TOOL_RESULT_JSON_COMPRESSION;')
     console.log('                               prose: repo-grounded explanation Qs — VERBOSITY_STEERING, measures OUTPUT tokens + dumps answers)')
     console.log('  --a-env=KEY=VAL --b-env=KEY=VAL (per-side env so the SAME binary can be A/B\'d with a flag toggled)')
@@ -661,18 +697,25 @@ async function main() {
 
   const isJson = args.workload === 'json'
   const isProse = args.workload === 'prose'
-  const workload = buildSequentialWorkload(TWELVE_FILES, args.turns, args.revisits)
+  const pool = args.fileList.length > 0 ? args.fileList : TWELVE_FILES
+  const workload = buildSequentialWorkload(
+    pool,
+    args.turns,
+    args.revisits,
+    args.files,
+    args.passes,
+  )
   const prompt = isProse
     ? buildProseWorkloadPrompt(args.turns)
     : isJson
       ? buildJsonWorkloadPrompt(args.turns)
       : args.sequential
         ? buildSequentialPrompt(workload, args.revisits)
-        : buildPrompt(TWELVE_FILES)
+        : buildPrompt(pool)
   const allowedTools = isProse ? 'Read,Grep,Glob' : isJson ? 'Read,Bash' : 'Read'
   if (isProse) console.log(`(prose workload: ${Math.min(PROSE_QUESTIONS.length, args.turns)} repo-grounded explanation questions \u2014 measuring OUTPUT tokens; dumps written for quality review)`)
   else if (isJson) console.log(`(json workload: ${args.turns} turns running the big-json fixture + source= Read-backs)`)
-  else if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
+  else if (args.sequential) console.log(`(sequential mode: 1 Read/turn, ${workload.length} reads${args.passes > 1 && args.files > 0 ? ` (${args.files} files × ${args.passes} passes)` : args.revisits > 0 ? ` (${TWELVE_FILES.length} files + ${args.revisits} revisits)` : ''} for a fair per-turn cache comparison)`)
   const sides: Array<{ label: string; bin: string; env: Record<string, string> }> = []
   const wantA = !args.skipClaude && (args.only === null || args.only === 'a' || args.only === 'claude')
   const wantB = args.only === null || args.only === 'b' || args.only === 'claudin'
@@ -681,7 +724,7 @@ async function main() {
   if (wantA) sides.push({ label: `A (${args.a})${envLabel(args.aEnv)}`, bin: resolveBin(args.a), env: args.aEnv })
   if (wantB) sides.push({ label: `B (${args.b})${envLabel(args.bEnv)}`, bin: resolveBin(args.b), env: args.bEnv })
 
-  console.log(`\nCache A/B bench — model=${args.model}, ${TWELVE_FILES.length} files, main-loop only, runs=${args.runs}`)
+  console.log(`\nCache A/B bench — model=${args.model}, ${pool.length} files in pool, main-loop only, runs=${args.runs}`)
   console.log(`(auth: active profiles; model pinned via --model + ANTHROPIC_MODEL)\n`)
 
   type SideResult = { label: string; bin: string; runs: Usage[] }
