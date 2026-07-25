@@ -6,7 +6,7 @@ import {
   expect,
   test,
 } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -22,6 +22,7 @@ import {
   _resetAllClippedIdsForTesting,
   _getPinnedToolResultsForTesting,
   addClippedIds,
+  bumpStandDownEpoch,
   isPinRegistered,
   pinToolResult,
 } from '../../services/compact/stableStubState.js'
@@ -885,12 +886,17 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('the fallback re-arms instead of denying the file for the rest of the session', async () => {
-    // The previous version returned WITHOUT touching readFileState, so the
-    // entry kept pointing at a spent id and every later read of this range was
-    // another outline — permanently, for a file sitting readable on disk. Two
-    // properties replace that: never two futile re-sends in a row (the actual
-    // bug), and never an indefinite refusal.
+  test('the fallback TERMINATES the loop instead of re-arming into another body', async () => {
+    // The property the whole feature exists for, stated as the cost the user
+    // actually pays. Two earlier versions each failed it in opposite ways:
+    // returning without touching readFileState left the entry pointing at a
+    // spent id and answered every later read with an outline, permanently;
+    // deleting the entry to re-arm made the NEXT read a genuine first read (a
+    // full body) and the one after it another stand-down re-send — two bodies
+    // per cycle, forever. Bounded, but never finished.
+    //
+    // The sticky marker ends it: once the outline is served, no further read
+    // of this range costs a body while the file and the epoch hold still.
     const p = writeFixture('clip-pin-stays.ts', SAMPLE_TS)
     const ctx = makeContext()
 
@@ -900,11 +906,137 @@ describe('FileReadTool — clip pin (forced on)', () => {
     }
 
     expect(types).toContain('clip_pin_fallback')
-    // The point of the whole feature: consecutive full bodies are bounded.
+    // Consecutive full bodies are bounded (the pre-existing property).
     expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
-    // The point of the re-arm: the model is never stuck on outlines forever.
-    expect(longestRun(types, 'clip_pin_fallback')).toBeLessThan(types.length)
-    expect(types.slice(-4)).toContain('text')
+    // Termination: everything from the first fallback on is a fallback. Under
+    // the delete-to-re-arm version this ran outline, body, body, outline, …
+    const firstFallback = types.indexOf('clip_pin_fallback')
+    expect(types.slice(firstFallback).every(t => t === 'clip_pin_fallback')).toBe(
+      true,
+    )
+    // …so the bodies are a one-off, not a rate. Eight reads, at most three
+    // bodies, no matter how many more reads follow.
+    expect(types.filter(t => t === 'text').length).toBeLessThanOrEqual(
+      STAND_DOWN_STRIKES,
+    )
+  })
+
+  // The sticky marker must be sticky, NOT permanent — the failure mode of the
+  // first version of this fallback. Four ways out; one test each.
+
+  test('a changed file breaks out of the sticky fallback', async () => {
+    const p = writeFixture('clip-pin-escape-mtime.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+    // Still stuck while the bytes hold still.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    // Now the file changes. The outline describes bytes that no longer exist,
+    // so the marker must not answer for them. utimesSync rather than a second
+    // write: two writes inside one millisecond can share an mtime, which would
+    // make this pass or fail on timing rather than on the guard.
+    writeFileSync(p, `${SAMPLE_TS}\nexport const added = 1\n`)
+    const future = new Date(Date.now() + 5_000)
+    utimesSync(p, future, future)
+
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('a main-thread compaction breaks out of the sticky fallback', async () => {
+    const p = writeFixture('clip-pin-escape-epoch.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    // Compaction rewrote the transcript and relieved the pressure that clipped
+    // the body. postCompactCleanup bumps the epoch for main-thread compacts
+    // (its own test pins that gate); here we assert what the bump BUYS.
+    bumpStandDownEpoch()
+
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('a different range is never answered by the sticky fallback', async () => {
+    const p = writeFixture('clip-pin-escape-range.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    // The marker is per (path, offset, limit). A read of a DIFFERENT range is
+    // a different question and must get real content — the fallback's redirect
+    // footer tells the model to do exactly this, so answering it with the same
+    // outline would be a dead end.
+    expect((await readWithPriorClipped(p, ctx, { offset: 2 })).data.type).toBe(
+      'text',
+    )
+  })
+
+  test('the sticky state lives on the entry, so replacing the entry drops it', async () => {
+    // HONEST SCOPE: there is no production line to delete here — this escape
+    // is structural, and that is the point being pinned. Holding the marker in
+    // a module-level side-map keyed by path (the shape the OLD re-read breaker
+    // used, and the shape this design deliberately avoids) would keep it alive
+    // across the write below and leave the model stuck on an outline for
+    // content that no longer exists. The assertion is the design invariant,
+    // not a guard.
+    const p = writeFixture('clip-pin-escape-edit.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    // What FileEditTool/FileWriteTool store after applying a change: an entry
+    // with offset undefined. It replaces the sticky one, so the marker goes
+    // with it and the next read is a real body of the new content.
+    ctx.readFileState.set(p, {
+      content: SAMPLE_TS,
+      timestamp: Date.now(),
+      offset: undefined,
+      limit: undefined,
+    })
+
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  })
+
+  test('the sticky fallback keeps Edit/Write demanding a real Read first', async () => {
+    // The delete-to-re-arm version left NO entry, so Edit correctly said "read
+    // it first" — the model has not seen the body. Keeping an entry must not
+    // quietly buy back that permission: isPartialView is what preserves it
+    // (FileEditTool/FileWriteTool/applyPatch all check the same field).
+    const p = writeFixture('clip-pin-partial-view.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    expect(ctx.readFileState.get(p)?.isPartialView).toBe(true)
+    // …and it carries no tool_use id, so the blind-pointer stub the dedup
+    // serves is not even representable from this state.
+    expect(ctx.readFileState.get(p)?.toolUseId).toBeUndefined()
   })
 
   test('non-code file falls back to the head of the file plus a redirect', async () => {
@@ -1425,6 +1557,95 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // Must re-send. Before the registry check this returned 'file_unchanged',
     // pointing the model at content the API had already dropped.
     expect(data.type).toBe('text')
+  })
+
+  test('a SHIELDING pin means a registered clip id is not evidence of a clip', async () => {
+    // The other half of the registry check above, and the case it got wrong.
+    // The registry records what the clip machinery DECIDED to clip, not what
+    // it managed to clip: microCompact adds candidates without consulting the
+    // pin registry, and stubOneBlock then skips the pinned ones. So a
+    // shielding id sits in the clipped set with its bytes fully intact.
+    //
+    // Reading the registry alone made the pin actively counterproductive: the
+    // model was sent to the outline fallback for content it still had
+    // verbatim, and the fallback's exit released the pin, so the block it had
+    // been protecting was stubbed on the very next pass. The pin bought a
+    // round-trip and nothing else.
+    const p = writeFixture('clip-pin-shielded-id.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    assignFreshToolUseId(ctx)
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    const priorId = ctx.readFileState.get(p)?.toolUseId
+    expect(priorId).toBeDefined()
+
+    // Same setup as above — the id is registered as clipped — except that this
+    // one is SHIELDING, which is why the bytes are still in the transcript.
+    setContextMessages(ctx, [userWithToolResult(priorId!, 'the real body')])
+    pinToolResult(priorId!)
+    addClippedIds([priorId!])
+
+    assignFreshToolUseId(ctx)
+    // Without the isPinShielding check this returned 'clip_pin_fallback': an
+    // outline, for a body sitting in front of the model.
+    expect((await read(p, {}, ctx)).data.type).toBe('file_unchanged')
+  })
+
+  test('a body over the pin ceiling skips the futile re-send', async () => {
+    // Above MAX_PINNED_RESULT_TOKENS pinShieldsBlock retires the id on sight,
+    // so the re-sent copy is clipped in the same pass that first examines it
+    // and the id lands in the spent registry — which sends the NEXT read to
+    // the fallback anyway. One full futile body, every cycle, to reach a
+    // decision that was already made.
+    //
+    // .txt on purpose: with a code fixture the auto-outline pivot intercepts
+    // a file this size and the first read never produces the oversized body
+    // under test — the sibling-path trap from .claudin/rules/agent-safety.md.
+    // ~50k chars sits above the 8k-token ceiling and below the 25k-token read
+    // cap, so neither bound is the thing being measured by accident.
+    const body = Array.from(
+      { length: 1500 },
+      (_, i) => `plain log line ${i} with some filler text to pad the bytes`,
+    ).join('\n')
+    const p = writeFixture('clip-pin-oversized.txt', body)
+    // maxTokens raised on purpose. validateContentTokens calls the counting
+    // API once the estimate passes maxTokens/4 — 6250 by default, which is
+    // BELOW the 8k pin ceiling, so any fixture big enough to test this lane
+    // would drag the VCR layer in and record a fixtures/token-count-*.json.
+    // The read cap is not what is under test here; pin it out of the way.
+    const ctx = makeContext({
+      fileReadingLimits: { maxSizeBytes: 10 * 1024 * 1024, maxTokens: 100_000 },
+    })
+
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    // The stand-down. This used to re-send the whole body and pin it; now it
+    // goes straight to the fallback, because that body could never have been
+    // shielded in the first place.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+  })
+
+  test('a sticky fallback entry bypasses the tool-result cache', async () => {
+    // The fallback's decision lives on the ENTRY, not in the tool input, and a
+    // cache hit short-circuits before call(). Replaying a cached body here
+    // would hand back precisely the content the fallback concluded cannot
+    // survive, while the marker was never consulted — the loop keeps spinning
+    // invisibly for the whole TTL. The old code could not even reach this
+    // question: the fallback deleted the entry, so bypassResultCache returned
+    // at `if (!prior)` before looking at anything.
+    const p = writeFixture('clip-pin-sticky-bypass.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    // An empty transcript on purpose: it fails every OTHER reason this method
+    // has to bypass (no server clearing, no id to ask the pin about), so a
+    // true here can only come from the sticky check.
+    setContextMessages(ctx, [])
+    expect(FileReadTool.bypassResultCache?.({ file_path: p }, ctx)).toBe(true)
   })
 
   test('a cancelled fallback propagates the abort instead of degrading', async () => {

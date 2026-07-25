@@ -4,6 +4,7 @@ import {
   pruneStaleClippedIds,
   addClippedIds,
   getClippedIds,
+  getStandDownEpoch,
   isPinRegistered,
   pinToolResult,
   retirePinAfterUse,
@@ -99,6 +100,22 @@ describe('runPostCompactCleanup — orphan sweep authority', () => {
     expect(isPinRegistered('toolu_parent_pin')).toBe(false)
     expect(isPinRegistered('toolu_parent_spent')).toBe(false)
     expect(getClippedIds().has('toolu_parent_clipped')).toBe(false)
+  })
+
+  test('only a main-thread compact advances the stand-down epoch', () => {
+    // The epoch expires FileReadTool's sticky "outline already served" marker,
+    // i.e. it re-grants a full body for a range the fallback had settled. That
+    // is only true when the compaction relieved THIS transcript's pressure — a
+    // fork sub-agent's compact says nothing about the parent's, and shares
+    // this module's key blindly (getAgentId() is blind to forks). Same
+    // authority argument as the sweeps above, so the same gate.
+    expect(getStandDownEpoch()).toBe(0)
+
+    runPostCompactCleanup('agent:fork' as QuerySourceParam, [])
+    expect(getStandDownEpoch()).toBe(0)
+
+    runPostCompactCleanup('repl_main_thread' as QuerySourceParam, [])
+    expect(getStandDownEpoch()).toBe(1)
   })
 })
 

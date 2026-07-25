@@ -494,6 +494,14 @@ export async function* runToolUse(
               tool.name,
               toolInput,
               toolUseContext,
+              // Same exclusion the inner error path applies at the bottom of
+              // this file: a user interrupt is not a failure. Without it a
+              // cancelled call renders as `Error calling tool (X): …`, which
+              // matches none of the USER_CONTROL_SENTINELS, so it both
+              // receives the hint and counts toward a later streak — telling
+              // the model it "failed 4 times in a row" for aborts the user
+              // asked for.
+              error instanceof AbortError,
             ),
             is_error: true,
             tool_use_id: toolUse.id,

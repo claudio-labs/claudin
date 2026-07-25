@@ -17,7 +17,11 @@ import { diagnosticTracker } from '../../services/diagnosticTracking.js'
 import { clearSessionMessagesCache } from '../../utils/sessionStorage.js'
 import { clearBetaTracingState } from '../../utils/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from './microCompact.js'
-import { pruneStaleClippedIds, pruneOrphanClippedIds } from './stableStubState.js'
+import {
+  bumpStandDownEpoch,
+  pruneStaleClippedIds,
+  pruneOrphanClippedIds,
+} from './stableStubState.js'
 import { clearSkippedTimestamps } from '../../history.js'
 
 /**
@@ -65,6 +69,21 @@ export function runPostCompactCleanup(
   // cleanup in inProcessRunner.)
   if (isMainThreadCompact) {
     resetMicrocompactState()
+    // Same gate, same authority argument, different state: FileReadTool's
+    // stand-down stops re-sending a range by leaving a sticky "outline
+    // already served" marker on the readFileState entry. That marker is
+    // correct only while the context pressure that clipped the body is still
+    // there. Compaction removes it — and rewrites the transcript out from
+    // under the model — so the next read of that range deserves a real body
+    // again. Bumping the epoch expires every marker at once without needing
+    // access to readFileState, which this function does not have.
+    //
+    // Main-thread only for the same reason as the sweeps: a fork sub-agent
+    // shares the main registry key, and its compact says nothing about the
+    // parent's context pressure. The cost of NOT bumping for a sub-agent is
+    // that its own markers outlive its compact, bounded by mtime, Edit/Write
+    // and the entry's own LRU eviction.
+    bumpStandDownEpoch()
   }
 
   // Rebuild ContentReplacementState to release entries for compacted-away

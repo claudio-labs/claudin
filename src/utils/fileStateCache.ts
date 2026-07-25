@@ -37,6 +37,26 @@ export type FileState = {
   // should reset it (range switch, Edit/Write, LRU eviction all replace or
   // drop the entry), so there is no registry to bound, evict or sweep.
   standDownStrikes?: number
+  // The stand-down already gave up on re-sending this (path, offset, limit)
+  // and served a structural outline (or head slice) instead. Holding that
+  // decision here is what makes the fallback TERMINATE: the previous design
+  // deleted the entry to re-arm, so the next read was a first read and paid
+  // another full body, and the cycle never converged.
+  //
+  // `message` is the rendered fallback, replayed verbatim rather than
+  // re-scanned — the entry already carries `content`, so a few KB more is
+  // noise next to a second scanFile per read.
+  //
+  // `epoch` is stableStubState's stand-down epoch at the time it was written.
+  // Together with `timestamp` (mtime) it is what lets this state be sticky
+  // WITHOUT being permanent — the four ways out are a changed mtime, an
+  // Edit/Write or range switch (both replace or drop this entry), and a
+  // main-thread compaction, which advances the epoch.
+  //
+  // Always written with isPartialView: true, so Edit/Write still demand a
+  // real Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts all
+  // check it) — the same cost the delete-to-re-arm version paid, kept.
+  standDownOutline?: { message: string; servedOutline: boolean; epoch: number }
 }
 
 /**

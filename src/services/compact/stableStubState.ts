@@ -412,6 +412,56 @@ export function pinShieldsBlock(toolUseId: string, content: unknown): boolean {
   return false
 }
 
+/**
+ * Would a re-sent body of this text be over the ceiling, i.e. would the pin be
+ * retired on sight by pinShieldsBlock without ever shielding anything?
+ *
+ * Asked BEFORE the re-send rather than after. Pinning first and discovering
+ * the size later cost a full futile body every cycle: the copy was clipped in
+ * the same pass that first examined it, and the id then sat in the spent
+ * registry making the NEXT read take the fallback anyway. The answer was
+ * always going to be the fallback — this just stops paying a body to reach it.
+ *
+ * Lives here so one place owns the ceiling. The caller measures the bytes it
+ * is about to re-send, which is close enough: the rendered result adds line
+ * prefixes, so this under-estimates slightly, in the safe direction (a body
+ * near the boundary still gets its protected re-send).
+ */
+export function exceedsPinnedResultCeiling(text: string): boolean {
+  return roughTokenCountEstimation(text) > MAX_PINNED_RESULT_TOKENS
+}
+
+// --- Stand-down epoch ---------------------------------------------------
+//
+// Bumped when a MAIN-THREAD compaction lands. FileReadTool's stand-down
+// outline state (fileStateCache's standDownOutline) records the epoch it was
+// written in and stops being served once this moves: compaction rewrote the
+// transcript, so the context pressure that clipped the body is gone and the
+// next read of that range deserves a real body again. Without it the sticky
+// state would survive a compact and answer a freshly-summarised conversation
+// with an outline for a file the model can no longer see at all.
+//
+// Kept here, not on the cache: fileStateCache must stay a leaf module (see its
+// setPinReleaseHandler doc for what importing this file from there costs), and
+// postCompactCleanup already imports this one. An epoch counter also avoids
+// threading readFileState through runPostCompactCleanup, which has no access
+// to it and four callers.
+//
+// One global counter, not a per-key one. Only main-thread compacts bump it
+// (postCompactCleanup owns that gate), so a sub-agent's sticky state can
+// expire early — that costs one extra body, which is the conservative
+// direction; the reverse (a sub-agent bumping and stranding the main thread's
+// state) is the one that would matter.
+let standDownEpoch = 0
+
+export function bumpStandDownEpoch(): void {
+  standDownEpoch++
+}
+
+export function getStandDownEpoch(): number {
+  return standDownEpoch
+}
+
 // Test-only: inspect the shielding ids for the current (session, agent).
 export function _getPinnedToolResultsForTesting(): ReadonlySet<string> {
   const pins = getPinsForCurrent()
@@ -577,6 +627,12 @@ export function _resetAllClippedIdsForTesting(): void {
   perKeyStubText.clear()
   perKeyPinnedIds.clear()
   perKeySpentPinIds.clear()
+  // Reset here too: the epoch gates FileReadTool's sticky outline state, so a
+  // test that bumped it would otherwise leave every later test's sticky entry
+  // pre-expired — a cross-file mock leak of exactly the kind testing.md warns
+  // about, and one that reads as "the fallback isn't sticky" rather than as
+  // stale state.
+  standDownEpoch = 0
   // Sync lastSeenSessionId with the current session so that the first
   // switchSession() call in a test correctly identifies which key to evict.
   // Without this, tests that run after a mock of bootstrap/state.js has

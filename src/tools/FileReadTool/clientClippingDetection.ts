@@ -36,6 +36,7 @@
 import {
   getClippedIds,
   isClipStubContent,
+  isPinShielding,
 } from '../../services/compact/stableStubState.js'
 
 interface MessageLike {
@@ -71,7 +72,17 @@ export function isPriorReadClippedOrMissing(
   // gets a dedup stub pointing at bytes it can no longer see. That is exactly
   // the loop this whole mechanism exists to close, surviving inside the one
   // case where the clipping is most aggressive.
-  if (getClippedIds().has(toolUseId)) return true
+  //
+  // But the registry records what the clip machinery DECIDED to clip, not what
+  // it managed to clip: microCompact adds candidate ids without consulting the
+  // pin registry, and stubOneBlock then skips the pinned ones. So a shielding
+  // id can sit in the clipped set with its bytes fully intact. Reporting that
+  // as "clipped" made the pin actively counterproductive — the model was sent
+  // to the outline fallback for content it still had verbatim, and the exit
+  // released the pin, so the block it had been protecting was stubbed on the
+  // very next pass. isPinShielding, not isPinRegistered: a SPENT id is no
+  // longer protecting anything, and its presence here is real evidence.
+  if (getClippedIds().has(toolUseId) && !isPinShielding(toolUseId)) return true
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i] as MessageLike
     if (!m || typeof m !== 'object') continue

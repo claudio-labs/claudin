@@ -274,8 +274,13 @@ describe('repeated-failure hint wiring', () => {
     // every tool" claim true. The two deliberate exclusions stay excluded:
     // permission denials (user control) and the pre-call cancel path
     // (withMemoryCorrectionHint's surface).
+    // …including the interrupt flag. Without it a cancelled call renders as
+    // `Error calling tool (X): …`, which matches none of the
+    // USER_CONTROL_SENTINELS, so the abort the user asked for both receives
+    // the hint and counts toward a later streak. The inner site above threads
+    // the same flag; this one was the odd one out.
     expect(src).toMatch(
-      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,/,
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,(?:\s*\/\/[^\n]*)*\s*error instanceof AbortError,/,
     )
     // All three now pin every argument, not just the first. An audit found the
     // first two stopped at the content string, so a site passing the wrong

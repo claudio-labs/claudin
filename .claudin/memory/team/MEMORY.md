@@ -10,7 +10,7 @@
 - [Durable coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — path-scoped rules own renderer/cache/testing/agent-safety/build gotchas; memory is for state/decisions/refs; procedures → skills
 
 ## Roadmap & major features
-- [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — −7.3% uncached input, all of it in pass 3; two bench traps: auto-outline eats files ≥250 lines, --revisits only does one extra pass
+- [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch on branch feat/self-hosted-background-agent; TriggerSource abstraction (github/url/command + --match), headless runWorkflow, worktree+PR, atomic dedup; docs/tech/background-agent/
 - [/create bundled skill (PR #98)](create-skill-bundled-pr.md) — bundled skill teaching skills/rules/agents authoring; loader gotchas (agent model, arguments format, .claudin write gate)
