@@ -222,3 +222,78 @@ describe('FileStateCache — clip-pin ownership', () => {
     expect(cache.size).toBe(0)
   })
 })
+
+/**
+ * chargeStandDownReplay is the budget that stops the clip-pin sticky marker
+ * from refusing a readable file forever. It was covered only transitively
+ * through FileReadTool, which left its two edge answers — and the concurrency
+ * caveat its own doc comment describes — unexercised.
+ */
+describe('FileStateCache — stand-down replay budget', () => {
+  const marked = (replays: number): FileState => ({
+    content: 'x',
+    timestamp: 1,
+    offset: 1,
+    limit: undefined,
+    isPartialView: true,
+    standDownOutline: {
+      message: '<outline>',
+      servedOutline: true,
+      epoch: 0,
+      replays,
+    },
+  })
+
+  const makeCache = () => createFileStateCacheWithSizeLimit(10, 1024 * 1024)
+
+  test('counts up from the stored value and reports the new total', () => {
+    const cache = makeCache()
+    cache.set('/a.ts', marked(0))
+    expect(cache.chargeStandDownReplay('/a.ts')).toBe(1)
+    expect(cache.chargeStandDownReplay('/a.ts')).toBe(2)
+    expect(cache.get('/a.ts')?.standDownOutline?.replays).toBe(2)
+  })
+
+  test('mutates in place, so the entry keeps its identity and its size', () => {
+    // In place is the whole point: a re-`set` would churn the LRU. Identity is
+    // the observable — same object, so nothing downstream holding a reference
+    // sees a stale counter, and `content` is untouched so the cache's byte
+    // accounting (which measures only `content`) stays exact.
+    const cache = makeCache()
+    cache.set('/a.ts', marked(0))
+    const before = cache.get('/a.ts')
+    const sizeBefore = cache.calculatedSize
+    cache.chargeStandDownReplay('/a.ts')
+    expect(cache.get('/a.ts')).toBe(before!)
+    expect(cache.calculatedSize).toBe(sizeBefore)
+  })
+
+  test('returns 0 for a missing entry and for one with no marker', () => {
+    // Both answers matter to the caller, which decides with `<= budget`. The
+    // missing-entry case is the concurrency window the doc comment describes:
+    // a parallel Read can delete the entry between the caller's `get` and this
+    // call, and the 0 then reads as "serve", costing one stale outline. It
+    // must not throw, and it must not resurrect anything.
+    const cache = makeCache()
+    expect(cache.chargeStandDownReplay('/gone.ts')).toBe(0)
+    expect(cache.has('/gone.ts')).toBe(false)
+
+    cache.set('/plain.ts', {
+      content: 'x',
+      timestamp: 1,
+      offset: 1,
+      limit: undefined,
+    })
+    expect(cache.chargeStandDownReplay('/plain.ts')).toBe(0)
+    expect(cache.get('/plain.ts')?.standDownOutline).toBeUndefined()
+  })
+
+  test('normalizes the key like every other accessor', () => {
+    // set/get/delete all normalize; if this one did not, the budget would
+    // never be charged for a path spelled differently at the two call sites
+    // and the marker would be permanent again.
+    const cache = makeCache()
+    cache.set('/dir/a.ts', marked(0))
+    expect(cache.chargeStandDownReplay('/dir/./a.ts')).toBe(1)
+  })
+})

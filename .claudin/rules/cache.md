@@ -87,8 +87,9 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   both alone: it is temporary by construction (`MAX_SHIELDED_PASSES`, the FIFO
   cap, the 8k ceiling) and `retirePinAfterUse` releases it after a single dedup
   hit, while the file is permanent — so pin-plus-re-arm oscillates at two full
-  bodies every four reads. A permanently sticky marker fixed (1) and broke (2)
-  harder than the version before it. Rules for touching it:
+  bodies every three reads when the pin cannot protect a round, four when it
+  can. A permanently sticky marker fixed (1) and broke (2) harder than the
+  version before it. Rules for touching it:
   - `standDownOutline` must stay ON the readFileState entry, never in a
     side-map keyed by path. Living on the entry is what makes a range switch
     and an LRU eviction clear it for free — the side-map was the actual defect
@@ -113,8 +114,17 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     `!entry || entry.isPartialView`, and `file-pipeline.ts`'s already-read
     optimization must require `!isPartialView` too. NotebookEdit and the
     attachment path each checked only presence, which the sticky marker turned
-    into a blind-notebook-edit path and a suppressed `@`-mention. Any new
-    consumer of `readFileState` inherits this obligation.
+    into a blind-notebook-edit path and a suppressed `@`-mention.
+  - The obligation above belongs to consumers that read presence as **"the
+    model has seen these bytes"** — not to every `readFileState` caller.
+    `attachments/memory.ts:94,258,469` gate on `has()` and look like the same
+    bug, but are not: that module WRITES `isPartialView` itself (`:110`) to
+    mean "I injected a deliberately stripped form", so re-injecting on partial
+    would re-inject every turn, forever. `getChangedFiles`
+    (`attachments/services.ts:318`) is likewise safe by a different route — it
+    bails at `:322` on `offset !== undefined`, which every Read-authored entry
+    (marker included) has. Check what presence is being used to *conclude*
+    before copying the fix.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

@@ -705,8 +705,11 @@ export const FileReadTool = buildTool({
     // the entry to re-arm, so the next read was a first read and paid another
     // full body; the pin is temporary by construction (it expires, loses its
     // slot to the FIFO, or exceeds the ceiling) while the file is permanent,
-    // so the two together settled into an oscillation — roughly two full
-    // bodies every four reads, forever. Bounded, but never finished.
+    // so the two together settled into an oscillation: two full bodies every
+    // THREE reads when the pin cannot protect a round (over the 8k ceiling,
+    // evicted by the FIFO, or no toolUseId to pin), and every four when it can
+    // — the protected round adds one cheap dedup stub before the fallback.
+    // Forever, either way. Bounded, but never finished.
     //
     // Placed BEFORE the dedup gate below, and deliberately not part of it: the
     // gate excludes isPartialView entries and the sticky entry is one (so
@@ -717,22 +720,23 @@ export const FileReadTool = buildTool({
     //
     // Sticky is not permanent, which was the failure mode of an earlier
     // "return the outline and don't touch readFileState" attempt. Five ways
-    // out, three checked here and two structural:
+    // out, four of them checked right here and one structural:
     //   1. the file changed on disk — the outline describes bytes that no
     //      longer exist, so fall through and read it;
     //   2. a main-thread compaction advanced the epoch — the pressure that
     //      clipped the body is gone and the transcript was rewritten, so the
     //      model deserves the real thing;
     //   3. the replay budget is spent (see STICKY_REPLAY_BUDGET);
-    //   4. an Edit/Write replaces this entry, or LRU eviction drops it;
-    //   5. a different offset/limit/view/symbol never reaches this branch.
+    //   4. a different offset/limit/view/symbol fails the checks below;
+    //   5. LRU eviction drops the entry — the only structural one.
     //
     // Exit 3 is the one that does not depend on anything external happening,
-    // and it is load-bearing rather than belt-and-braces. Exit 4 reads like an
-    // escape hatch but cannot open by itself: this marker sets isPartialView,
-    // so Edit/Write are REFUSED while it stands ("read it first"), which means
-    // they can never be the thing that replaces the entry. Exit 2 does not
-    // cover it either — the marker is created by microCompact, whose whole job
+    // and it is load-bearing rather than belt-and-braces. Note what is NOT on
+    // the list: an Edit/Write replacing the entry. That reads like the obvious
+    // escape hatch and cannot open by itself, because this marker sets
+    // isPartialView, so those tools are REFUSED while it stands ("read it
+    // first") — they can never be what replaces the entry. Exit 2 does not
+    // cover it either: the marker is created by microCompact, whose whole job
     // is to keep the session BELOW the autocompact threshold, so a session
     // that clips this way may never reach a main-thread compaction at all.
     // Without the budget the model is left unable to read its way to a body
@@ -1470,13 +1474,14 @@ export const STAND_DOWN_STRIKES = 3
  * (path, offset, limit) before it is spent and Read re-arms with a real body.
  *
  * The marker exists because re-arming on EVERY fallback oscillates (two full
- * bodies every four reads, forever). But re-arming NEVER is worse: the marker
- * is written with isPartialView, so Edit/Write/apply_patch/NotebookEdit refuse
- * with "read it first", and the replay returns without rewriting the entry —
- * the model cannot read its way out and cannot edit, in a file sitting
- * readable on disk. The budget is what keeps both bugs closed at once: bodies
- * cost 2 per (budget + 3) reads instead of 2 per 4, and any refusal the marker
- * causes lifts within `budget` reads.
+ * bodies every three reads when the pin cannot protect a round, four when it
+ * can, forever). But re-arming NEVER is worse: the marker is written with
+ * isPartialView, so Edit/Write/apply_patch/NotebookEdit refuse with "read it
+ * first", and the replay returns without rewriting the entry — the model
+ * cannot read its way out and cannot edit, in a file sitting readable on disk.
+ * The budget keeps both bugs closed at once: bodies cost 2 per (budget + 3)
+ * reads, and any refusal the marker causes lifts within `budget + 1` reads —
+ * `budget` replays plus the fallback that wrote the marker.
  *
  * Three, deliberately the same as STAND_DOWN_STRIKES and for the same reason
  * the repeated-failure hint uses three: it is the point at which a model that

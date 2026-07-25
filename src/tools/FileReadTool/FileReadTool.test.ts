@@ -894,10 +894,11 @@ describe('FileReadTool — clip pin (forced on)', () => {
     //   (2) never an indefinite refusal for a file readable on disk.
     // Returning the outline without touching readFileState kept (1) and broke
     // (2). Deleting the entry to re-arm kept (2) and broke (1) — two bodies
-    // every four reads, forever. A permanently sticky marker kept (1) and
-    // broke (2) again, worse: the marker sets isPartialView, so Edit/Write
-    // were refused too, and Read stopped rewriting the entry, so nothing could
-    // ever lift the refusal.
+    // every THREE reads under this harness (which clips every prior result, so
+    // the pin never protects a round; four when it does), forever. A
+    // permanently sticky marker kept (1) and broke (2) again, worse: the
+    // marker sets isPartialView, so Edit/Write were refused too, and Read
+    // stopped rewriting the entry, so nothing could ever lift the refusal.
     //
     // STICKY_REPLAY_BUDGET holds both at once, and this asserts both.
     const p = writeFixture('clip-pin-stays.ts', SAMPLE_TS)
@@ -913,16 +914,22 @@ describe('FileReadTool — clip pin (forced on)', () => {
 
     expect(types).toContain('clip_pin_fallback')
     expect(types).toContain('text')
-    // (1) Bodies are bounded, both back to back and as a RATE. The rate is the
-    // half the delete-to-re-arm version failed: it satisfied longestRun and
-    // still paid two bodies per four reads.
-    expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
-    expect(types.filter(t => t === 'text').length).toBeLessThanOrEqual(
-      2 * 3 + 1, // 2 bodies per cycle, 3 cycles, +1 for a partial cycle
-    )
-    // (2) Outlines are bounded too, so the refusal always ends. One more than
-    // the budget: the fallback that WRITES the marker, then `budget` replays.
-    expect(longestRun(types, 'clip_pin_fallback')).toBeLessThanOrEqual(
+    // (1) Bodies are bounded, back to back AND as a rate. The rate is the half
+    // the delete-to-re-arm version failed: it satisfied longestRun and still
+    // paid two bodies every three reads.
+    //
+    // Asserted EXACTLY, not with <=. The regime is deterministic, so a loose
+    // bound here would let a real rate regression through: `<= 2 * 3 + 1`
+    // passed while the code delivered 6, i.e. it tolerated a 17% regression
+    // silently. These stay symbolic in STICKY_REPLAY_BUDGET on purpose — the
+    // tuning of the constant is a judgement call documented at its definition,
+    // while the SHAPE it produces is what must not drift.
+    expect(longestRun(types, 'text')).toBe(2)
+    expect(types.filter(t => t === 'text').length).toBe(2 * 3)
+    // (2) Outlines are bounded too, so the refusal always ends. Exactly one
+    // more than the budget: the fallback that WRITES the marker, then `budget`
+    // replays off it.
+    expect(longestRun(types, 'clip_pin_fallback')).toBe(
       STICKY_REPLAY_BUDGET + 1,
     )
     // …stated as the thing the user actually cares about: after the outlines

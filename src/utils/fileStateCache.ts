@@ -50,9 +50,14 @@ export type FileState = {
   // `epoch` is stableStubState's stand-down epoch at the time it was written.
   // Together with `timestamp` (mtime) and `replays` it is what lets this state
   // be sticky WITHOUT being permanent. Five ways out: a changed mtime, a range
-  // switch or an Edit/Write (both replace this entry), LRU eviction, a
-  // main-thread compaction (which advances the epoch), and — the backstop that
-  // does not depend on anything external happening — spending `replays`.
+  // switch (replaces this entry), LRU eviction, a main-thread compaction
+  // (which advances the epoch), and — the backstop that does not depend on
+  // anything external happening — spending `replays`. Same five as the branch
+  // in FileReadTool.ts that reads this field; keep the two counts in step.
+  //
+  // An Edit/Write replacing the entry is NOT on that list, though it looks
+  // like the obvious one. See below: while this marker stands those tools are
+  // refused, so they can never be what clears it.
   //
   // Always written with isPartialView: true, so Edit/Write still demand a real
   // Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts and
@@ -63,10 +68,6 @@ export type FileState = {
   // returns without rewriting this entry, so Read can never clear what Edit is
   // waiting on. The delete-to-re-arm version this replaced refused too, and
   // then handed over a body on the next read; the budget restores that ending.
-  //
-  // `message` is the rendered fallback, replayed verbatim rather than
-  // re-scanned — the entry already carries `content`, so a few KB more is
-  // noise next to a second scanFile per read.
   standDownOutline?: {
     message: string
     servedOutline: boolean
@@ -208,11 +209,19 @@ export class FileStateCache {
    * Charge one replay against the sticky stand-down marker, mutated in place,
    * and report how many have now been served.
    *
-   * In place for a sharper reason than setStandDownStrikes above: the sticky
-   * entry deliberately carries NO toolUseId, so re-`set`ting it would run the
-   * dispose hook for the entry being replaced and release a pin this cache is
-   * still the owner of. Returns 0 when there is no marker, so a caller can
-   * treat "no marker" and "fresh marker" alike.
+   * In place for the same reason as setStandDownStrikes above — churning the
+   * entry to move a counter buys nothing. (An earlier version of this comment
+   * claimed a sharper reason, that a re-`set` would release a pin via the
+   * dispose hook. That was wrong: the sticky entry carries NO toolUseId, and
+   * the hook's first line returns early without one.)
+   *
+   * Returns 0 when there is no marker. Callers use `<= budget` to decide, so
+   * a 0 reads as "serve" — which is right for the ordinary case but NOT for a
+   * concurrent one: two Reads of the same path can interleave across the stat
+   * that precedes this call, and the second may charge an entry the first
+   * already deleted, serving one stale uncharged outline. That costs an extra
+   * outline, never an extra body, and cannot livelock, since the winning read
+   * has already replaced the entry.
    */
   chargeStandDownReplay(key: string): number {
     const value = this.cache.peek(normalize(key))
