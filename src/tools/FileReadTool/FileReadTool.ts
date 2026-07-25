@@ -83,6 +83,11 @@ import {
 } from './serialReadNudge.js'
 import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 import { hasServerClearedToolUses } from './serverClearingDetection.js'
+import {
+  isPinRegistered,
+  pinToolResult,
+  unpinToolResult,
+} from '../../services/compact/stableStubState.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLangFromPath,
@@ -103,8 +108,8 @@ import {
   OFFSET_INSTRUCTION_DEFAULT,
   OFFSET_INSTRUCTION_TARGETED,
   renderPromptTemplate,
-  renderRerunBreakerFooter,
-  renderRerunBreakerStub,
+  renderClipPinFallbackFooter,
+  renderClipPinFallbackStub,
 } from './prompt.js'
 import {
   getToolUseSummary,
@@ -382,13 +387,13 @@ const outputSchema = lazySchema(() => {
       }),
     }),
     z.object({
-      type: z.literal('rerun_breaker'),
+      type: z.literal('clip_pin_fallback'),
       file: z.object({
         filePath: z.string().describe('The path to the file'),
         message: z
           .string()
           .describe(
-            'The full tool_result content the breaker serves — a structural outline plus redirect footer for code, or a plain redirect stub otherwise.',
+            'The full tool_result content the clip-pin fallback serves — a structural outline plus redirect footer for code, or a plain redirect stub otherwise.',
           ),
         servedOutline: z
           .boolean()
@@ -627,6 +632,9 @@ export const FileReadTool = buildTool({
     let sliceWalkPrior:
       | { timestamp: number; priorWasFullRead: boolean }
       | undefined
+    // Set when this Read is the re-send half of a clip-pin stand-down;
+    // consumed after callInner succeeds.
+    let standDownResend = false
     if (
       existingState &&
       !existingState.isPartialView &&
@@ -668,9 +676,19 @@ export const FileReadTool = buildTool({
           logEvent('tengu_file_read_dedup_skip_client_clipping', {})
         } else {
           // Prior tool_result is intact in context (not clipped/cleared), so
-          // whatever the model is doing it is NOT the clipped-reread loop — the
-          // breaker streak for this file is stale, drop it.
-          readFileState.clearRerunCount(fullFilePath)
+          // whatever the model is doing it is NOT the clipped-reread loop. Any
+          // pin we placed on that result has done its job; release it so the
+          // normal clip policy applies again.
+          //
+          // Only this arm may release: under a latched server clear the
+          // client-side view proves nothing about what the API still shows the
+          // model, so an "intact" block there is not evidence the pin can go.
+          // Pins abandoned by a range switch or an Edit/Write are released
+          // structurally instead, when readFileState drops the entry that owns
+          // them (fileStateCache's dispose hook).
+          if (existingState.toolUseId !== undefined) {
+            unpinToolResult(existingState.toolUseId)
+          }
           try {
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
             if (mtimeMs === existingState.timestamp) {
@@ -695,25 +713,37 @@ export const FileReadTool = buildTool({
             // stat failed — fall through to full read
           }
         }
-        // Re-read circuit breaker. A clipped/cleared stand-down re-sends the
-        // full body — but under the aggressive cache profile the age prune
-        // (pruneOldToolResults, keepTurns=1) clips it again next turn, so the
-        // model re-reads and the stand-down re-sends forever. After
-        // RERUN_BREAKER_THRESHOLD consecutive stand-downs of this exact range,
-        // stop re-sending and serve a stable form instead: the file's
-        // structural outline (survives the prune; the model picks a symbol=),
-        // or a plain redirect stub when there's nothing to outline. The streak
-        // lives in readFileState's range-tagged side-map (not the FileState
-        // value): it survives the loop's own same-range re-sends but is
-        // structurally invalidated by any different-range write — a different
-        // Read range, or Edit/Write — so it only ever counts a genuine loop.
-        if ((serverCleared || clientClipped) && rerunBreakerEnabled()) {
-          const nextCount = readFileState.bumpRerunCount(
-            fullFilePath,
-            offset,
-            limit,
-          )
-          if (nextCount >= RERUN_BREAKER_THRESHOLD) {
+        // Clip-pin stand-down. A clipped/cleared stand-down re-sends the full
+        // body — and whatever clipped the first copy (the age prune under the
+        // aggressive profile, microcompact/byte-guard under retain) clips the
+        // re-sent one too, so the model re-reads and we re-send forever.
+        //
+        // So pin the re-delivered copy instead: every clip path skips a pinned
+        // tool_result (stableStubState.pinToolResult), so the content stays put
+        // and the loop ends after ONE re-send. The pin doubles as the state
+        // machine: if the prior copy was ALREADY pinned and got clipped anyway
+        // (server-side clear, message evicted, pin dropped), re-sending is
+        // provably futile — serve a stable form instead: the file's structural
+        // outline (the model picks a symbol=), or a plain redirect stub when
+        // there is nothing to outline. No counter, no streak bookkeeping: the
+        // dedup only reaches here on an exact range match, and Edit/Write
+        // replace the FileState (and its toolUseId) outright.
+        if ((serverCleared || clientClipped) && clipPinEnabled()) {
+          const priorToolUseId = existingState.toolUseId
+          if (
+            priorToolUseId !== undefined &&
+            isPinRegistered(priorToolUseId)
+          ) {
+            // Keep the pin: this path returns WITHOUT touching readFileState,
+            // so the entry keeps pointing at this id — leaving it pinned is
+            // what makes every further same-range re-read land here instead of
+            // flip-flopping back into another futile re-send. Release happens
+            // when readFileState stops pointing at this id — fileStateCache's
+            // dispose hook, covering the range switch that never reaches the
+            // intact-result branch below (rangeMatch is false, so this whole
+            // block is skipped) as well as Edit/Write, delete and eviction —
+            // or when the intact-result branch sees the copy survive, or when
+            // pruneOrphanClippedIds drops the id with its message.
             const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
             const outlineLang = detectOutlineLangFromPath(fullFilePath)
             const scanned = outlineLang
@@ -723,18 +753,26 @@ export const FileReadTool = buildTool({
                   context.abortController.signal,
                 )
               : null
+            // Event name predates the rename from the re-read breaker; kept
+            // for dashboard continuity. The arm separates the two stand-downs:
+            // 'clipped' has positive evidence the pinned copy was removed,
+            // 'cleared' only knows the API cleared something, sometime. Sent
+            // as a boolean because LogEventMetadata takes no free-form strings
+            // (they leak code/filepaths) — see analytics/index.ts:128.
+            const arm = serverCleared ? 'cleared' : 'clipped'
             logEvent('tengu_file_read_rerun_breaker', {
               ...(analyticsExt !== undefined && { ext: analyticsExt }),
               servedOutline: scanned !== null,
+              armCleared: serverCleared,
             })
             const message = scanned
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
                   overCap: false,
-                }) + renderRerunBreakerFooter(offset, limit, nextCount)
-              : renderRerunBreakerStub(offset, limit, nextCount)
+                }) + renderClipPinFallbackFooter(offset, limit, arm)
+              : renderClipPinFallbackStub(offset, limit, arm)
             return {
               data: {
-                type: 'rerun_breaker' as const,
+                type: 'clip_pin_fallback' as const,
                 file: {
                   filePath: file_path,
                   message,
@@ -742,13 +780,23 @@ export const FileReadTool = buildTool({
                 },
               },
               // Transcript-dependent like the dedup stub — never replay from
-              // the tool-result cache (would bypass the stand-down/breaker).
+              // the tool-result cache (would bypass the stand-down/fallback).
               noResultCache: true,
             }
           }
-          // Below the threshold: re-send. bumpRerunCount already persisted the
-          // streak in the side-map, which survives callInner's overwrite — so
-          // nothing to carry.
+          // First clipped stand-down for this (file, range): re-send the body
+          // below and pin the copy that carries it, so the next clip pass
+          // leaves it alone. Contexts without a toolUseId (Tool.ts:301 is
+          // optional) can't be pinned — they keep the old re-send behavior.
+          // priorToolUseId needs no unpin: reaching this line means it was
+          // either absent or NOT pinned (a pinned prior returns above).
+          //
+          // Deferred to after callInner on purpose: pinning right here would
+          // protect whatever that id ends up carrying rather than the body
+          // this stand-down promised. A throw is the reachable case: it leaves
+          // readFileState pointing at the OLD id, so the state machine would
+          // never look at the pinned one again while it sat on a slot.
+          standDownResend = true
         }
       } else if (offset > 1 || limit !== undefined) {
         // Slice-walk telemetry candidate (diagnostic only, no behavior
@@ -820,6 +868,29 @@ export const FileReadTool = buildTool({
         }
       }
       maybeFlagSerialReadNudge(result?.data, context)
+      if (standDownResend) {
+        const resendToolUseId = context.toolUseId
+        // Pin only when the entry that owns the release actually points at
+        // this result. These arms skip the mtime check on purpose, so the file
+        // may have crossed the auto-outline threshold since the clipped read:
+        // that pivot rewrites the entry as a partial view with no toolUseId,
+        // which both disarms the state machine and leaves nobody to release
+        // the pin — the leak the dispose hook exists to prevent.
+        if (
+          resendToolUseId !== undefined &&
+          readFileState.get(fullFilePath)?.toolUseId === resendToolUseId
+        ) {
+          pinToolResult(resendToolUseId)
+        }
+        // Independent of whether anything got pinned: the DECISION to re-send
+        // was transcript-dependent, and a cache hit short-circuits BEFORE
+        // call() (Tool.ts wrapCallWithCache). Replaying this body for the Read
+        // TTL would hand the model an unpinned copy and freeze the stand-down
+        // state machine, so the loop would keep spinning invisibly instead of
+        // reaching the fallback — including in contexts that carry no
+        // toolUseId to pin.
+        return { ...result, noResultCache: true }
+      }
       return result
     } catch (error) {
       // Handle file-not-found: suggest similar files
@@ -921,7 +992,7 @@ export const FileReadTool = buildTool({
             ? data.file.content + AUTO_OUTLINE_PIVOT_FOOTER
             : data.file.content,
         }
-      case 'rerun_breaker':
+      case 'clip_pin_fallback':
         return {
           tool_use_id: toolUseID,
           type: 'tool_result',
@@ -1022,26 +1093,19 @@ function autoOutlineOnElisionEnabled(): boolean {
 }
 
 /**
- * Gate for the re-read circuit breaker (RERUN_BREAKER). Same shape as
+ * Gate for the clip-pin stand-down (READ_CLIP_PIN). Same shape as
  * autoOutlineOnElisionEnabled: the test-preload stubs every `feature()` to
- * `false`, so tests force-enable via `CLAUDIN_FORCE_READ_RERUN_BREAKER=1`;
- * production folds `feature('READ_RERUN_BREAKER')` at build time.
+ * `false`, so tests force-enable via `CLAUDIN_FORCE_READ_CLIP_PIN=1`;
+ * production folds `feature('READ_CLIP_PIN')` at build time.
  */
-function rerunBreakerEnabled(): boolean {
+function clipPinEnabled(): boolean {
   // DISABLE is an authoritative runtime killswitch — it wins even over the
-  // test-only force flag, so a user can always turn the breaker off.
-  if (process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER === '1') return false
-  if (process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER === '1') return true
-  if (feature('READ_RERUN_BREAKER')) return true
+  // test-only force flag, so a user can always turn the pin off.
+  if (process.env.CLAUDIN_DISABLE_READ_CLIP_PIN === '1') return false
+  if (process.env.CLAUDIN_FORCE_READ_CLIP_PIN === '1') return true
+  if (feature('READ_CLIP_PIN')) return true
   return false
 }
-
-/**
- * Consecutive clipped/cleared stand-downs of the same (file, range) before the
- * breaker trips. Allows 1-2 legitimate post-clip recovery re-reads; only a
- * genuine loop reaches the 3rd.
- */
-const RERUN_BREAKER_THRESHOLD = 3
 
 export const CYBER_RISK_MITIGATION_REMINDER =
   '\n\n<system-reminder>\nWhenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.\n</system-reminder>\n'

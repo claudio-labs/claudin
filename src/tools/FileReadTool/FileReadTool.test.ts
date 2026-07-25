@@ -1,14 +1,27 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
 import { READ_FILE_STATE_CACHE_SIZE } from '../../utils/fileStateCache.js'
-import { createFileStateCacheWithSizeLimit } from '../../utils/fileStateCache.js'
+import {
+  cloneFileStateCache,
+  createFileStateCacheWithSizeLimit,
+} from '../../utils/fileStateCache.js'
 import {
   buildClipStub,
   buildClipStubWithHead,
+  _resetAllClippedIdsForTesting,
+  isPinRegistered,
+  pinToolResult,
 } from '../../services/compact/stableStubState.js'
 import {
   getCached,
@@ -733,195 +746,233 @@ describe('FileReadTool — dedup stub is not stored in the tool-result cache', (
 })
 
 // ---------------------------------------------------------------------------
-// Re-read circuit breaker — when the same (file, range) keeps being clipped
-// out of context and the model keeps re-reading, the dedup stand-down re-sends
-// the full body forever (it just gets clipped again). After K consecutive
-// clipped stand-downs the breaker trips and serves a stable form (the file's
-// structural outline for code, a textual redirect stub otherwise) instead.
+// Clip-pin stand-down — when a Read's tool_result is clipped out of context and
+// the model re-reads the same (file, range), re-sending the body is only useful
+// if the copy survives: the stand-down therefore re-sends ONCE and pins that
+// copy, which every clip path skips. If the pinned copy is clipped anyway
+// (server-side clear, eviction), re-sending is provably futile and a stable
+// form is served instead — the file's structural outline for code, a textual
+// redirect stub otherwise.
 // ---------------------------------------------------------------------------
 
-const BREAKER_ID = 'toolu_rerun_breaker'
+let pinIdSeq = 0
+/** tool_use id of the most recent read issued through the helpers below. */
+let lastReadToolUseId = ''
 
-/** Read `p` with the transcript showing the prior Read's result clipped to a
- *  stub — the exact condition the client-clipping stand-down detects. Returns
- *  the full call result so callers can inspect `noResultCache`. */
+function assignFreshToolUseId(ctx: ToolUseContext): void {
+  lastReadToolUseId = `toolu_clip_pin_${++pinIdSeq}`
+  ;(ctx as unknown as { toolUseId: string }).toolUseId = lastReadToolUseId
+}
+
+/** Read `p` with the transcript showing the PRIOR Read's result clipped to a
+ *  stub — the exact condition the client-clipping stand-down detects. Each call
+ *  gets its own tool_use id, like a real turn, so pins never conflate two
+ *  reads. Returns the full call result so callers can inspect `noResultCache`. */
 async function readWithPriorClipped(
   p: string,
   ctx: ToolUseContext,
   input: ReadInput = {},
 ) {
-  setContextMessages(ctx, [
-    userWithToolResult(BREAKER_ID, buildClipStub('Read', 1234)),
-  ])
+  const priorId = ctx.readFileState.get(p)?.toolUseId
+  setContextMessages(
+    ctx,
+    priorId ? [userWithToolResult(priorId, buildClipStub('Read', 1234))] : [],
+  )
+  assignFreshToolUseId(ctx)
   return read(p, input, ctx)
 }
 
-describe('FileReadTool — re-read breaker disabled (default) never trips', () => {
+describe('FileReadTool — clip pin disabled (default) never falls back', () => {
+  beforeEach(() => {
+    _resetAllClippedIdsForTesting()
+  })
+
   test('five consecutive clipped stand-downs all re-send the full body', async () => {
-    const p = writeFixture('breaker-off.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+    const p = writeFixture('clip-pin-off.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
     for (let i = 0; i < 5; i++) {
       const { data } = await readWithPriorClipped(p, ctx)
       expect(data.type).toBe('text')
     }
+    // Gate off ⇒ nothing was pinned either.
+    expect(isPinRegistered(lastReadToolUseId)).toBe(false)
   })
 })
 
-describe('FileReadTool — re-read breaker (forced on)', () => {
+describe('FileReadTool — clip pin (forced on)', () => {
   beforeAll(() => {
-    process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER = '1'
+    process.env.CLAUDIN_FORCE_READ_CLIP_PIN = '1'
   })
   afterAll(() => {
-    delete process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER
+    delete process.env.CLAUDIN_FORCE_READ_CLIP_PIN
+  })
+  // The pin registry is module-global state; isolate each case.
+  beforeEach(() => {
+    _resetAllClippedIdsForTesting()
   })
 
-  test('trips on the 3rd consecutive clipped stand-down of a code range → serves an outline', async () => {
-    const p = writeFixture('breaker-trip.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+  test('the first clipped stand-down re-sends the body and pins the copy', async () => {
+    const p = writeFixture('clip-pin-first.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
-    // read 1: fresh full read (no prior state to dedup against).
+    // read 1: fresh full read (no prior state to dedup against) — nothing to
+    // stand down from, so nothing to protect yet.
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    // stand-downs 1 and 2 (below K): re-send the full body.
+    expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+
+    // read 2: the prior result is clipped → stand down, re-send the body, and
+    // pin THIS copy so the next clip pass skips it (that is what ends the loop
+    // in production; here the fixture keeps clipping regardless).
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect(isPinRegistered(lastReadToolUseId)).toBe(true)
+  })
+
+  test('a pinned copy that is clipped anyway serves an outline instead of re-sending', async () => {
+    const p = writeFixture('clip-pin-fallback.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
 
-    // stand-down 3: TRIP.
+    // The pinned copy got clipped too → re-sending is futile.
     const tripped = await readWithPriorClipped(p, ctx)
-    expect(tripped.data.type).toBe('rerun_breaker')
-    if (tripped.data.type !== 'rerun_breaker') throw new Error('expected breaker')
+    expect(tripped.data.type).toBe('clip_pin_fallback')
+    if (tripped.data.type !== 'clip_pin_fallback') {
+      throw new Error('expected the clip-pin fallback')
+    }
     expect(tripped.data.file.servedOutline).toBe(true)
     // The served message is the structural outline (carries symbol names) plus
     // a redirect footer telling the model to stop re-reading.
     expect(tripped.data.file.message).toContain('alpha')
     // Footer-exclusive text: renderOutline's own body also mentions symbol=,
     // so asserting /symbol=/ alone is tautological — this string only exists
-    // in the breaker footer (audit finding).
-    expect(tripped.data.file.message).toContain('keeps clipping it out')
+    // in the fallback footer (audit finding).
+    expect(tripped.data.file.message).toContain('even though it was protected')
     // Cache-safety: transcript-dependent, must never be replayed from cache.
     // (noResultCache is optional across the call() return union; cast to read.)
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('stays tripped on further same-range re-reads (no re-loop into a full read)', async () => {
-    const p = writeFixture('breaker-stays.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+  test('stays on the fallback for further same-range re-reads (no flip-flop back to a re-send)', async () => {
+    const p = writeFixture('clip-pin-stays.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
     for (let i = 0; i < 3; i++) await readWithPriorClipped(p, ctx)
-    // 3rd stand-down tripped above; the 4th and 5th keep serving the outline.
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
+    // The 3rd read fell back above; the 4th and 5th keep serving the outline.
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
   })
 
-  test('non-code file (no symbols to outline) trips to a textual redirect stub', async () => {
+  test('non-code file (no symbols to outline) falls back to a textual redirect stub', async () => {
     const body = Array.from({ length: 40 }, (_, i) => `plain line ${i}`).join(
       '\n',
     )
-    const p = writeFixture('breaker-noncode.txt', body)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+    const p = writeFixture('clip-pin-noncode.txt', body)
+    const ctx = makeContext()
 
-    for (let i = 0; i < 3; i++) await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
     const tripped = await readWithPriorClipped(p, ctx)
-    expect(tripped.data.type).toBe('rerun_breaker')
-    if (tripped.data.type !== 'rerun_breaker') throw new Error('expected breaker')
+    expect(tripped.data.type).toBe('clip_pin_fallback')
+    if (tripped.data.type !== 'clip_pin_fallback') {
+      throw new Error('expected the clip-pin fallback')
+    }
     expect(tripped.data.file.servedOutline).toBe(false)
     expect(tripped.data.file.message).toMatch(/re-read/i)
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('the server-clearing stand-down arm also counts toward the breaker', async () => {
-    const p = writeFixture('breaker-servercleared.ts', SAMPLE_TS)
-    const ctx = makeContext({
-      toolUseId: BREAKER_ID,
-      messages: [assistantWithClearing(4)],
-    })
+  test('the server-clearing arm reaches the fallback but never claims the copy was protected', async () => {
+    const p = writeFixture('clip-pin-servercleared.ts', SAMPLE_TS)
+    const ctx = makeContext({ messages: [assistantWithClearing(4)] })
 
-    // Static server-cleared transcript on every read.
+    // Static server-cleared transcript on every read; fresh id per read.
+    assignFreshToolUseId(ctx)
     expect((await read(p, {}, ctx)).data.type).toBe('text')
+    assignFreshToolUseId(ctx)
     expect((await read(p, {}, ctx)).data.type).toBe('text')
-    expect((await read(p, {}, ctx)).data.type).toBe('text')
-    expect((await read(p, {}, ctx)).data.type).toBe('rerun_breaker')
+    assignFreshToolUseId(ctx)
+    const tripped = await read(p, {}, ctx)
+    expect(tripped.data.type).toBe('clip_pin_fallback')
+    if (tripped.data.type !== 'clip_pin_fallback') {
+      throw new Error('expected the clip-pin fallback')
+    }
+    // clear_tool_uses latches session-wide and reports counts only, so we never
+    // observe THIS result being cleared — and a client-side pin cannot stop
+    // server-side clearing anyway. Borrowing the clipped arm's wording here
+    // would tell the model something we did not verify.
+    expect(tripped.data.file.message).not.toContain('even though it was protected')
+    expect(tripped.data.file.message).toContain('the API keeps clearing tool results')
   })
 
-  test('CLAUDIN_DISABLE_READ_RERUN_BREAKER wins over the force flag', async () => {
-    process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER = '1'
+  test('CLAUDIN_DISABLE_READ_CLIP_PIN wins over the force flag', async () => {
+    process.env.CLAUDIN_DISABLE_READ_CLIP_PIN = '1'
     try {
-      const p = writeFixture('breaker-disabled.ts', SAMPLE_TS)
-      const ctx = makeContext({ toolUseId: BREAKER_ID })
+      const p = writeFixture('clip-pin-disabled.ts', SAMPLE_TS)
+      const ctx = makeContext()
       for (let i = 0; i < 6; i++) {
         expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
       }
     } finally {
-      delete process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER
+      delete process.env.CLAUDIN_DISABLE_READ_CLIP_PIN
     }
   })
 
-  test('a different range between clips resets the counter', async () => {
-    const p = writeFixture('breaker-reset-range.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+  test('a different range gets its own pin, not the previous range\u2019s', async () => {
+    const p = writeFixture('clip-pin-range.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
-    // Build the count on the default range up to 2 (would trip on the next).
+    // Default range: fresh read, then a stand-down that pins its copy.
     await readWithPriorClipped(p, ctx)
     await readWithPriorClipped(p, ctx)
-    await readWithPriorClipped(p, ctx)
-    // Read a DIFFERENT range — overwrites the entry, dropping the streak.
-    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
-    // Back to the default range: the streak is gone, so three fresh reads
-    // stay text (none of them is the 3rd consecutive same-range stand-down).
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    // A DIFFERENT range overwrites the entry (new id, unpinned), so its first
+    // clipped stand-down re-sends instead of inheriting the other range's pin.
+    expect(
+      (await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })).data.type,
+    ).toBe('text')
+    expect(
+      (await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })).data.type,
+    ).toBe('text')
+    // …and only then does that range reach the fallback on its own.
+    expect(
+      (await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })).data.type,
+    ).toBe('clip_pin_fallback')
   })
 
-  test('an intact-content dedup hit between clips resets the counter', async () => {
-    const p = writeFixture('breaker-reset-intact.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+  test('an intact-content dedup hit releases the pin', async () => {
+    const p = writeFixture('clip-pin-release.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
-    // Two clipped stand-downs (count reaches 2).
     await readWithPriorClipped(p, ctx)
     await readWithPriorClipped(p, ctx)
-    await readWithPriorClipped(p, ctx)
-    // A read where the prior result is INTACT → normal dedup hit, resets.
+    const pinnedId = lastReadToolUseId
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    // A read where the prior result is INTACT → normal dedup hit. The model is
+    // not looping, so the protection is released.
     setContextMessages(ctx, [
-      userWithToolResult(BREAKER_ID, '     1\texport function alpha'),
+      userWithToolResult(pinnedId, '     1\texport function alpha'),
     ])
     expect((await read(p, {}, ctx)).data.type).toBe('file_unchanged')
-    // Clip again: the counter restarted, so the immediate re-reads are text.
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+    expect(isPinRegistered(pinnedId)).toBe(false)
+    // A later clip therefore starts over with a re-send, not the fallback.
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
   })
 
-  test('an explicit-range streak does not leak into the vanilla range', async () => {
-    const p = writeFixture('breaker-vanilla-leak.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
+  test('an Edit/Write-style overwrite drops the dedup entry entirely', async () => {
+    const p = writeFixture('clip-pin-edit.ts', SAMPLE_TS)
+    const ctx = makeContext()
 
-    // Streak of 2 on an explicit range.
-    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
-    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
-    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
-    // Switch to vanilla full reads (offset=1, no limit): the range change
-    // must reset the streak — the explicit-range count must NOT carry over
-    // and trip the vanilla range one clip early (audit finding: the vanilla
-    // transition hit neither explicit clear).
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    // And the vanilla streak still counts correctly from its own zero.
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('rerun_breaker')
-  })
-
-  test('an Edit/Write-style overwrite resets the streak', async () => {
-    const p = writeFixture('breaker-edit-reset.ts', SAMPLE_TS)
-    const ctx = makeContext({ toolUseId: BREAKER_ID })
-
-    // Streak of 2 on the default range.
-    await readWithPriorClipped(p, ctx)
     await readWithPriorClipped(p, ctx)
     await readWithPriorClipped(p, ctx)
     // Simulate FileEditTool/FileWriteTool updating readFileState after an
-    // edit: offset/limit undefined. Post-edit content is fresh, so the loop
-    // streak must not survive it (audit finding: the side-map outlived the
-    // overwrite the committed version relied on).
+    // edit: offset/limit undefined, no toolUseId. The dedup gate requires a
+    // Read-written entry, so the next reads are plain full reads again.
     ctx.readFileState.set(p, {
       content: SAMPLE_TS,
       timestamp: Date.now(),
@@ -930,19 +981,169 @@ describe('FileReadTool — re-read breaker (forced on)', () => {
     })
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
     expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
   })
 
-  test('bumpRerunCount restarts at 1 on a range mismatch (side-map contract)', () => {
-    // Direct contract test: this restart is redundant with set() invalidation
-    // in every Read flow, but it is the only guard on paths that bypass set()
-    // (load()/clone) — pin it so it can't silently rot (round-2 audit).
-    const cache = makeContext().readFileState
-    expect(cache.bumpRerunCount('/tmp/f.ts', 1, undefined)).toBe(1)
-    expect(cache.bumpRerunCount('/tmp/f.ts', 1, undefined)).toBe(2)
-    // Different range → streak restarts, not continues.
-    expect(cache.bumpRerunCount('/tmp/f.ts', 5, 10)).toBe(1)
-    // And the new range now accrues normally.
-    expect(cache.bumpRerunCount('/tmp/f.ts', 5, 10)).toBe(2)
+  // -------------------------------------------------------------------------
+  // Pin ownership: a pin is only justified while the readFileState entry that
+  // asked for it still points at that tool_result. Every way of losing the
+  // entry must release the pin — a leaked pin keeps its block out of every
+  // clip path, which keeps the block mutable, which parks the prompt-cache
+  // clip frontier at that block's index for the rest of the session.
+  // -------------------------------------------------------------------------
+
+  test('switching range releases the abandoned range\u2019s pin', async () => {
+    const p = writeFixture('clip-pin-leak-range.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const pinnedId = lastReadToolUseId
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    // The model moves on to a different range: the entry now vouches for that
+    // read instead, so nothing owns the old pin any more.
+    await readWithPriorClipped(p, ctx, { offset: 2, limit: 2 })
+    expect(isPinRegistered(pinnedId)).toBe(false)
+  })
+
+  test('an Edit/Write-style overwrite releases the pin', async () => {
+    const p = writeFixture('clip-pin-leak-edit.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const pinnedId = lastReadToolUseId
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    ctx.readFileState.set(p, {
+      content: SAMPLE_TS,
+      timestamp: Date.now(),
+      offset: undefined,
+      limit: undefined,
+    })
+    expect(isPinRegistered(pinnedId)).toBe(false)
+  })
+
+  test('dropping the file entry (delete / LRU eviction) releases the pin', async () => {
+    const p = writeFixture('clip-pin-leak-evict.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const pinnedId = lastReadToolUseId
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    // Eviction bypasses delete() in production; both funnel through the same
+    // dispose hook, so exercising the explicit drop covers the pair.
+    ctx.readFileState.delete(p)
+    expect(isPinRegistered(pinnedId)).toBe(false)
+  })
+
+  test('the stand-down re-send is never replayed from the tool-result cache', async () => {
+    const p = writeFixture('clip-pin-nocache.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    // A plain first read is cacheable — that is the whole point of the cache.
+    const first = await readWithPriorClipped(p, ctx)
+    expect(first.data.type).toBe('text')
+    expect((first as { noResultCache?: boolean }).noResultCache).toBeUndefined()
+
+    // The re-send is not: a cache hit short-circuits before call(), so
+    // replaying it would hand the model an UNPINNED copy and leave the state
+    // machine parked for the Read TTL — the loop spins with nothing observing
+    // it. This suite runs with the cache disabled, so the flag is the only
+    // thing standing between the feature and that bypass in production.
+    const resend = await readWithPriorClipped(p, ctx)
+    expect(resend.data.type).toBe('text')
+    expect((resend as { noResultCache?: boolean }).noResultCache).toBe(true)
+  })
+
+  test('a re-send that throws pins nothing', async () => {
+    const p = writeFixture('clip-pin-throws.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    // The file disappears between the stand-down decision and the read: the
+    // pin is placed only on a body actually delivered, so a throw must leave
+    // the registry untouched instead of burning a slot on an id whose content
+    // the state machine will never look at again.
+    rmSync(p)
+    await expect(readWithPriorClipped(p, ctx)).rejects.toThrow(
+      /File does not exist/,
+    )
+    expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+  })
+
+  test('a re-send that pivots to auto-outline pins nothing', async () => {
+    const p = writeFixture('clip-pin-pivot.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+
+    // The stand-down arms skip the mtime check on purpose, so the file can
+    // cross the auto-outline threshold (10k chars / 250 lines / 3 symbols)
+    // between the clipped read and the re-send.
+    writeFileSync(
+      p,
+      Array.from(
+        { length: 400 },
+        (_, i) => `export function fn${i}(): number {\n  return ${i}\n}\n`,
+      ).join('\n'),
+    )
+    const prevForce = process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
+    process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
+    try {
+      const pivoted = await readWithPriorClipped(p, ctx)
+      expect(pivoted.data.type).toBe('outline')
+      // The outline rewrites the entry as a partial view with no toolUseId:
+      // it disarms the dedup gate, so nothing would ever release a pin placed
+      // here. Pinning is conditioned on the entry still owning the id.
+      expect(ctx.readFileState.get(p)?.isPartialView).toBe(true)
+      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+      // Still uncacheable: the decision to re-send was transcript-dependent
+      // whatever shape the answer took.
+      expect((pivoted as { noResultCache?: boolean }).noResultCache).toBe(true)
+    } finally {
+      if (prevForce === undefined) {
+        delete process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
+      } else {
+        process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = prevForce
+      }
+    }
+  })
+
+  test('a clone releases only the pins it took in itself', async () => {
+    const p = writeFixture('clip-pin-clone.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const pinnedId = lastReadToolUseId
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    // Forked sub-agents (the default spawn) run on a clone of the parent's
+    // readFileState and clear() it on exit — runAgent.ts / forkedAgent.ts.
+    // clear() disposes every inherited entry, so an unconditional release
+    // there would unpin a block the parent's entry still vouches for: the
+    // parent would go on believing its content is protected while it had
+    // quietly become clippable again.
+    const clone = cloneFileStateCache(ctx.readFileState)
+    clone.set('/other/file.ts', {
+      content: 'x',
+      timestamp: Date.now(),
+      offset: 1,
+      limit: undefined,
+      toolUseId: 'toolu_clone_own',
+    })
+    pinToolResult('toolu_clone_own')
+
+    clone.clear()
+    expect(isPinRegistered(pinnedId)).toBe(true)
+    // Entries it took in through set() it does own, so those release normally.
+    expect(isPinRegistered('toolu_clone_own')).toBe(false)
+
+    // And the parent still releases when ITS entry goes.
+    ctx.readFileState.delete(p)
+    expect(isPinRegistered(pinnedId)).toBe(false)
   })
 })

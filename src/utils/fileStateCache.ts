@@ -1,5 +1,6 @@
 import { LRUCache } from 'lru-cache'
 import { normalize } from 'path'
+import { unpinToolResult } from '../services/compact/stableStubState.js'
 
 export type FileState = {
   content: string
@@ -46,32 +47,36 @@ const DEFAULT_MAX_CACHE_SIZE_BYTES = 25 * 1024 * 1024
  */
 export class FileStateCache {
   private cache: LRUCache<string, FileState>
-  // Consecutive clipped/cleared dedup stand-downs per file, for FileReadTool's
-  // re-read circuit breaker. Kept OUT of the FileState value on purpose: a Read
-  // rewrites the whole FileState entry via set() every turn, which would reset
-  // an embedded counter — this side-map survives the loop's own same-range
-  // re-sends, so the streak accumulates. The entry records WHICH range it is
-  // counting, making resets structural rather than call-site-scattered:
-  // set() drops the entry whenever the incoming FileState's range differs
-  // (different-range Read, Edit/Write with offset undefined), and
-  // bumpRerunCount restarts at 1 on a range mismatch. Only populated while a
-  // file is actually looping (rare). In-memory only; never rendered into the
-  // request.
-  private rerunCounts = new Map<
-    string,
-    { offset: number | undefined; limit: number | undefined; count: number }
-  >()
+  /**
+   * tool_use ids this cache accepted through `set` — i.e. the pins it is
+   * entitled to release. Entries arriving via `load` (how cloneFileStateCache
+   * copies a parent's state) are held WITHOUT ownership: a forked sub-agent
+   * runs on such a clone and `clear()`s it on exit, which disposes every
+   * inherited entry. Releasing there would unpin blocks the PARENT's entries
+   * still vouch for, so the parent would believe its content is protected
+   * while it had quietly become clippable again.
+   */
+  private readonly ownedToolUseIds = new Set<string>()
 
   constructor(maxEntries: number, maxSizeBytes: number) {
     this.cache = new LRUCache<string, FileState>({
       max: maxEntries,
       maxSize: maxSizeBytes,
       sizeCalculation: value => Math.max(1, Buffer.byteLength(value.content)),
-      // Keep the side-map from outliving its FileState entry on LRU eviction
-      // (evictions bypass our delete()). 'set' replacements must NOT clear —
-      // the loop's own re-sends replace the entry every turn.
-      dispose: (_value, key, reason) => {
-        if (reason === 'evict') this.rerunCounts.delete(key)
+      // A clip-pin protects the tool_result this entry points at, for exactly
+      // as long as the entry vouches that the model still needs that content.
+      // The moment the entry stops pointing at it — replaced by a different
+      // range, overwritten by Edit/Write, deleted, or LRU-evicted — the pin
+      // has no owner left. Releasing it here (every dispose reason, since all
+      // four cases end the ownership) is structural: doing it at the call
+      // sites leaked one pin per abandoned range, and a leaked pin keeps its
+      // block mutable, which freezes the prompt-cache clip frontier at that
+      // block's index for the rest of the session.
+      dispose: value => {
+        const id = value.toolUseId
+        // delete() doubles as the ownership test: only the cache that took
+        // this id in releases it, and only once.
+        if (id && this.ownedToolUseIds.delete(id)) unpinToolResult(id)
       },
     })
   }
@@ -82,18 +87,11 @@ export class FileStateCache {
 
   set(key: string, value: FileState): this {
     const normalized = normalize(key)
-    // A write whose range differs from the recorded streak breaks the loop by
-    // definition (different-range Read, or Edit/Write which store offset
-    // undefined) — invalidate. The loop's same-range re-send matches and
-    // preserves the streak.
-    const rerun = this.rerunCounts.get(normalized)
-    if (
-      rerun &&
-      (rerun.offset !== value.offset || rerun.limit !== value.limit)
-    ) {
-      this.rerunCounts.delete(normalized)
-    }
+    // Overwriting disposes the previous value first, releasing its pin; only
+    // then does this cache claim the incoming id, so a same-key replacement
+    // hands ownership over rather than dropping it.
     this.cache.set(normalized, value)
+    if (value.toolUseId) this.ownedToolUseIds.add(value.toolUseId)
     return this
   }
 
@@ -102,35 +100,11 @@ export class FileStateCache {
   }
 
   delete(key: string): boolean {
-    this.rerunCounts.delete(normalize(key))
     return this.cache.delete(normalize(key))
   }
 
   clear(): void {
-    this.rerunCounts.clear()
     this.cache.clear()
-  }
-
-  /** Increment and return the re-read-breaker streak for `key` at this exact
-   *  range; a range mismatch with the recorded entry restarts the streak at 1. */
-  bumpRerunCount(
-    key: string,
-    offset: number | undefined,
-    limit: number | undefined,
-  ): number {
-    const normalized = normalize(key)
-    const existing = this.rerunCounts.get(normalized)
-    const count =
-      existing && existing.offset === offset && existing.limit === limit
-        ? existing.count + 1
-        : 1
-    this.rerunCounts.set(normalized, { offset, limit, count })
-    return count
-  }
-
-  /** Drop the re-read-breaker streak for `key` (loop broken / range changed). */
-  clearRerunCount(key: string): void {
-    this.rerunCounts.delete(normalize(key))
   }
 
   get size(): number {

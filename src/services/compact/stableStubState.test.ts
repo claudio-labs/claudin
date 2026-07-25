@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   _getClippedIdsMapSizeForTesting,
+  _getPinnedToolResultsForTesting,
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
@@ -9,11 +10,17 @@ import {
   evictToMaxSize,
   getClipFrontierIndex,
   getClippedIds,
+  isPinRegistered,
+  MAX_PINNED_RESULT_TOKENS,
+  pinToolResult,
   pruneContentReplacementState,
   pruneOldToolResults,
+  pruneOrphanClippedIds,
+  pruneStaleClippedIds,
   pruneToolResultsByBytes,
   resetClippedIds,
   stubToolResultForDisplay,
+  unpinToolResult,
 } from './stableStubState.js'
 import {
   getSessionId,
@@ -1959,5 +1966,351 @@ describe('review fixes', () => {
     expect(getCacheProfile().stubKeepHeadChars).toBeLessThanOrEqual(24_000)
     delete process.env.CLAUDIN_STUB_HEAD_CHARS
     _resetCacheProfileForTesting()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Pinned tool_results — the exemption FileReadTool's clip-pin stand-down uses.
+// A pinned id is content the model already lost once and asked for again, so
+// every clip path must leave it alone; without that the re-send is clipped on
+// the next pass and the re-read loops forever.
+// ---------------------------------------------------------------------------
+
+describe('pinned tool_results', () => {
+  // Fat enough to be worth clipping, comfortably UNDER the protection ceiling
+  // so every test below exercises a pin that is actually honoured. Derived so
+  // that lowering MAX_PINNED_RESULT_TOKENS cannot silently turn these into
+  // over-ceiling cases that pass for the wrong reason.
+  const bigContent = 'A'.repeat(MAX_PINNED_RESULT_TOKENS / 2)
+
+  /** Two turns: the first holds `id`'s fat result, the second is current. */
+  function twoTurns(id: string): Msg[] {
+    return [
+      assistantToolUse(id, 'Read'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: id, content: bigContent },
+        ],
+      },
+      assistantToolUse('toolu_cur', 'Grep'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh' },
+        ],
+      },
+    ]
+  }
+
+  function contentOf(msg: Msg, index = 0): string {
+    return ((msg.content as Block[])[index] as { content: string }).content
+  }
+
+  test('the age prune skips a pinned result and still clips an unpinned one', () => {
+    const pinned = twoTurns('toolu_pinned')
+    pinToolResult('toolu_pinned')
+    expect(pruneOldToolResults(pinned, 1)).toBe(pinned)
+    expect(contentOf(pinned[1])).toBe(bigContent)
+
+    // Control: the identical shape without a pin IS clipped.
+    const unpinned = twoTurns('toolu_plain')
+    const result = pruneOldToolResults(unpinned, 1)
+    expect(result).not.toBe(unpinned)
+    expect(contentOf(result[1])).toMatch(/^\[clipped: ~\d+ tokens from Read/)
+  })
+
+  test('applyStableStubs skips a pinned id even when it is in clippedIds', () => {
+    const messages = twoTurns('toolu_pinned')
+    addClippedIds(['toolu_pinned'])
+    pinToolResult('toolu_pinned')
+
+    expect(applyStableStubs(messages)).toBe(messages)
+    expect(contentOf(messages[1])).toBe(bigContent)
+
+    // Unpinning re-arms the pending clip — the pin defers, it does not cancel.
+    unpinToolResult('toolu_pinned')
+    const result = applyStableStubs(messages)
+    expect(result).not.toBe(messages)
+    // This path stubs with the profile's head-preserving form, so the marker
+    // is the tail of the content rather than the whole of it.
+    expect(contentOf(result[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+  })
+
+  test('the RSS byte-guard skips a pinned result', () => {
+    const messages = twoTurns('toolu_pinned')
+    pinToolResult('toolu_pinned')
+    // keepRecentTurns=1: the cutoff lands after turn 1, so the fat result IS a
+    // candidate. (With the default 2 the cutoff is index 0 and the guard bails
+    // before looking at anything — which made an earlier version of this test
+    // tautological: it passed with the pin check deleted.)
+    expect(pruneToolResultsByBytes(messages, 1, 0, 1)).toBe(messages)
+    expect(contentOf(messages[1])).toBe(bigContent)
+
+    // Control: same call, no pin → the guard really does clip here.
+    const unpinned = twoTurns('toolu_plain')
+    const clipped = pruneToolResultsByBytes(unpinned, 1, 0, 1)
+    expect(clipped).not.toBe(unpinned)
+    expect(contentOf(clipped[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+  })
+
+  test('the immediate display stub skips a pinned result', () => {
+    const message: Msg = {
+      role: 'user',
+      content: [
+        { type: 'tool_result', tool_use_id: 'toolu_pinned', content: bigContent },
+      ],
+    }
+    const all: Msg[] = [assistantToolUse('toolu_pinned', 'Read'), message]
+
+    pinToolResult('toolu_pinned')
+    expect(stubToolResultForDisplay(message, all, 10)).toBe(message)
+
+    unpinToolResult('toolu_pinned')
+    const stubbed = stubToolResultForDisplay(message, all, 10)
+    expect(stubbed).not.toBe(message)
+    expect(contentOf(stubbed)).toMatch(/^\[clipped: ~\d+ tokens from Read/)
+  })
+
+  test('the clip frontier ignores pins (no immutability promise)', () => {
+    // Deliberate: the pin can be dropped later, so a pinned full result must
+    // not be advertised as frozen — the frontier must stop before it either
+    // way. Guards the decision recorded in the pin registry comment.
+    const msgs = twoTurns('toolu_pinned')
+    const before = getClipFrontierIndex(msgs)
+    pinToolResult('toolu_pinned')
+    expect(getClipFrontierIndex(msgs)).toBe(before)
+  })
+
+  test('pins are capped at 16, oldest first', () => {
+    for (let i = 0; i < 17; i++) pinToolResult(`toolu_${i}`)
+    expect(_getPinnedToolResultsForTesting().size).toBe(16)
+    expect(isPinRegistered('toolu_0')).toBe(false)
+    expect(isPinRegistered('toolu_16')).toBe(true)
+  })
+
+  test('re-pinning refreshes recency instead of adding a slot', () => {
+    pinToolResult('toolu_first')
+    for (let i = 1; i < 16; i++) pinToolResult(`toolu_${i}`)
+    expect(_getPinnedToolResultsForTesting().size).toBe(16)
+    // Touch the oldest, then overflow by one: the NEXT-oldest is evicted.
+    pinToolResult('toolu_first')
+    pinToolResult('toolu_overflow')
+    expect(isPinRegistered('toolu_first')).toBe(true)
+    expect(isPinRegistered('toolu_1')).toBe(false)
+  })
+
+  test('an empty id is never pinned', () => {
+    pinToolResult('')
+    expect(_getPinnedToolResultsForTesting().size).toBe(0)
+  })
+
+  test('pruneOrphanClippedIds drops pins whose tool_result is gone', () => {
+    const messages = twoTurns('toolu_live')
+    pinToolResult('toolu_live')
+    pinToolResult('toolu_dead')
+
+    pruneOrphanClippedIds(messages as never)
+    expect(isPinRegistered('toolu_live')).toBe(true)
+    expect(isPinRegistered('toolu_dead')).toBe(false)
+  })
+
+  test('resetClippedIds clears the pins too', () => {
+    pinToolResult('toolu_pinned')
+    resetClippedIds()
+    expect(isPinRegistered('toolu_pinned')).toBe(false)
+  })
+
+  test('a session switch clears the pins', () => {
+    // The outgoing session's transcript is gone, so every key belonging to it
+    // (the session itself and its sub-agents) is dropped with it.
+    const original = getSessionId()
+    switchSession(original)
+    pinToolResult('toolu_pinned')
+
+    switchSession('pin-session-switch-xxxx' as SessionId)
+    expect(isPinRegistered('toolu_pinned')).toBe(false)
+
+    switchSession(original)
+  })
+
+  /** Sub-agent context shaped like utils/swarm/inProcessRunner's. */
+  function teammateCtx(agentId: string) {
+    return {
+      agentId,
+      agentName: 'test-agent',
+      teamName: 'team-1',
+      planModeRequired: false,
+      parentSessionId: 'parent-session',
+      isInProcess: true as const,
+      abortController: new AbortController(),
+    }
+  }
+
+  test("a sub-agent's routine cleanup cannot drop the main thread's pins", async () => {
+    const { runWithTeammateContext } = await import(
+      '../../utils/teammateContext.js'
+    )
+    pinToolResult('toolu_parent')
+
+    await runWithTeammateContext(teammateCtx('agent-pin-1'), async () => {
+      // Different transcript, different key: the parent's pin is neither
+      // visible nor reachable from in here.
+      expect(isPinRegistered('toolu_parent')).toBe(false)
+      unpinToolResult('toolu_parent')
+      pinToolResult('toolu_child')
+
+      // The two cleanups a sub-agent runs all the time: post-autocompact reset
+      // (inProcessRunner) and an orphan prune over ITS messages — which of
+      // course never contain the parent's tool_use id.
+      resetClippedIds()
+      pruneOrphanClippedIds(twoTurns('toolu_child_live') as never)
+      expect(isPinRegistered('toolu_child')).toBe(false)
+    })
+
+    // With one shared set, each of those wiped the parent's protection and
+    // re-armed the clip → re-read loop the pin exists to end.
+    expect(isPinRegistered('toolu_parent')).toBe(true)
+  })
+
+  test('the FIFO cap is per (session, agent), not shared across agents', async () => {
+    const { runWithTeammateContext } = await import(
+      '../../utils/teammateContext.js'
+    )
+    pinToolResult('toolu_parent')
+
+    await runWithTeammateContext(teammateCtx('agent-pin-2'), async () => {
+      for (let i = 0; i < 17; i++) pinToolResult(`toolu_child_${i}`)
+      expect(_getPinnedToolResultsForTesting().size).toBe(16)
+    })
+
+    // A busy sub-agent burns through its own 16 slots without evicting the
+    // parent's single pin.
+    expect(isPinRegistered('toolu_parent')).toBe(true)
+    expect(_getPinnedToolResultsForTesting().size).toBe(1)
+  })
+
+  test('a live pin evicted by the FIFO cap becomes clippable again', () => {
+    // Documented degradation, not a defect: 16 newer pins push the oldest out
+    // even while its tool_result is still in the transcript, and the block then
+    // clips like any other. That is the reason the cap is per agent and the
+    // reason isToolResultBlockMutable refuses to treat a pin as immutability.
+    const messages = twoTurns('toolu_old')
+    pinToolResult('toolu_old')
+    for (let i = 0; i < 16; i++) pinToolResult(`toolu_new_${i}`)
+
+    expect(isPinRegistered('toolu_old')).toBe(false)
+    const result = pruneOldToolResults(messages, 1)
+    expect(result).not.toBe(messages)
+    expect(contentOf(result[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+  })
+
+  /** Same shape as twoTurns, with a result far past the protection ceiling. */
+  function twoTurnsHuge(id: string): Msg[] {
+    // Twice the ceiling, whatever the ceiling is.
+    const huge = 'A'.repeat(MAX_PINNED_RESULT_TOKENS * 8)
+    return [
+      assistantToolUse(id, 'Read'),
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: huge }] },
+      assistantToolUse('toolu_cur', 'Grep'),
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'toolu_cur', content: 'fresh' },
+        ],
+      },
+    ]
+  }
+
+  test('a pinned result past the size ceiling is clipped anyway', () => {
+    // The count cap bounds how many blocks are exempt, not how many bytes, and
+    // under AGGRESSIVE the age prune IS the RSS bound — so an unbounded
+    // exemption would hasten the autocompact the profile exists to postpone.
+    const messages = twoTurnsHuge('toolu_huge')
+    pinToolResult('toolu_huge')
+
+    const result = pruneOldToolResults(messages, 1)
+    expect(result).not.toBe(messages)
+    expect(contentOf(result[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+    // The registry entry survives: it is what makes the next same-range
+    // re-read serve the outline instead of another futile re-send.
+    expect(isPinRegistered('toolu_huge')).toBe(true)
+  })
+
+  test('the byte guard and the age prune agree on the ceiling', () => {
+    // If the guard skipped an over-ceiling pin that stubOneBlock then clips,
+    // `remaining` would be debited for bytes the guard never freed.
+    const messages = twoTurnsHuge('toolu_huge')
+    pinToolResult('toolu_huge')
+
+    const clipped = pruneToolResultsByBytes(messages, 1, 0, 1)
+    expect(clipped).not.toBe(messages)
+    expect(contentOf(clipped[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+  })
+
+  test('pruneStaleClippedIds reclaims other keys pins, keeps the current one', async () => {
+    const { runWithTeammateContext } = await import(
+      '../../utils/teammateContext.js'
+    )
+    const ctx = teammateCtx('agent-pin-3')
+    await runWithTeammateContext(ctx, async () => {
+      pinToolResult('toolu_child')
+    })
+    pinToolResult('toolu_parent')
+
+    // Called from the main thread after compaction left sub-agent keys behind.
+    pruneStaleClippedIds()
+
+    expect(isPinRegistered('toolu_parent')).toBe(true)
+    await runWithTeammateContext(ctx, async () => {
+      expect(isPinRegistered('toolu_child')).toBe(false)
+    })
+  })
+
+  test('a session switch clears that session\u2019s sub-agent pins too', async () => {
+    const { runWithTeammateContext } = await import(
+      '../../utils/teammateContext.js'
+    )
+    const original = getSessionId()
+    switchSession(original) // prime lastSeenSessionId
+    const ctx = teammateCtx('agent-pin-4')
+    await runWithTeammateContext(ctx, async () => {
+      pinToolResult('toolu_child')
+    })
+    pinToolResult('toolu_parent')
+
+    switchSession('pin-switch-subagent-xxxx' as SessionId)
+    // Coming back proves the sweep actually deleted the keys instead of the
+    // new session merely looking at a different one: a surviving
+    // `<old>:agent-pin-4` entry would resume protecting a transcript that the
+    // /resume replaced.
+    switchSession(original)
+
+    expect(isPinRegistered('toolu_parent')).toBe(false)
+    await runWithTeammateContext(ctx, async () => {
+      expect(isPinRegistered('toolu_child')).toBe(false)
+    })
+  })
+
+  test('pruneStaleClippedIds from inside a sub-agent touches nothing', async () => {
+    const { runWithTeammateContext } = await import(
+      '../../utils/teammateContext.js'
+    )
+    pinToolResult('toolu_parent')
+    addClippedIds(['clip_parent'])
+
+    const ctx = teammateCtx('agent-pin-5')
+    await runWithTeammateContext(ctx, async () => {
+      pinToolResult('toolu_child')
+      // A teammate autocompacting reaches runPostCompactCleanup with the
+      // teammate ALS installed. Sweeping "every key but mine" from there would
+      // delete the main thread's key while its messages are still live — the
+      // cross-thread corruption that file's own doc comment warns about.
+      pruneStaleClippedIds()
+      expect(isPinRegistered('toolu_child')).toBe(true)
+    })
+
+    expect(isPinRegistered('toolu_parent')).toBe(true)
+    expect(getClippedIds().has('clip_parent')).toBe(true)
   })
 })
