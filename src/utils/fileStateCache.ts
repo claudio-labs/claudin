@@ -1,6 +1,5 @@
 import { LRUCache } from 'lru-cache'
 import { normalize } from 'path'
-import { unpinToolResult } from '../services/compact/stableStubState.js'
 
 export type FileState = {
   content: string
@@ -30,6 +29,38 @@ export type FileState = {
   // Fail-safe by design; do not rely on the id resolving outside its
   // original transcript.
   toolUseId?: string
+  // How many times the clip-pin stand-down has already re-sent this exact
+  // (path, offset, limit) without the copy surviving. The bound for the cases
+  // a pin cannot cover: contexts that carry no toolUseId to pin (MCP/SDK,
+  // @-mentions, MagicDocs, SessionMemory) and the killswitch path. Lives on
+  // the entry on purpose — it then resets for free on exactly the events that
+  // should reset it (range switch, Edit/Write, LRU eviction all replace or
+  // drop the entry), so there is no registry to bound, evict or sweep.
+  standDownStrikes?: number
+}
+
+/**
+ * Called when an entry stops vouching for the tool_use that carried its
+ * content, so the clip pin on that result can be released.
+ *
+ * Injected rather than imported: this module is depended on by nearly
+ * everything that touches files, and importing stableStubState directly took
+ * its reachable-module count from 1 to the whole app AND created a value cycle
+ * back to itself (fileStateCache → stableStubState → tokenEstimation →
+ * utils/messages → … → utils/claudemd → fileStateCache). Keeping the cache a
+ * leaf is what stops `mcp.ts` and the workflow entrypoints from dragging the
+ * entire graph in, and what keeps colocated tests free of the module-init
+ * ordering hazard testing.md warns about.
+ *
+ * If nobody registers a handler the pins are simply never released early —
+ * they still age out via MAX_SHIELDED_PASSES. That is the pre-dispose-hook
+ * behavior, i.e. safe.
+ */
+type PinReleaseHandler = (toolUseId: string) => void
+let releasePin: PinReleaseHandler | undefined
+
+export function setPinReleaseHandler(handler: PinReleaseHandler): void {
+  releasePin = handler
 }
 
 // Default max entries for read file state caches
@@ -57,6 +88,14 @@ export class FileStateCache {
    * while it had quietly become clippable again.
    */
   private readonly ownedToolUseIds = new Set<string>()
+  /**
+   * Set for the duration of one `set` when the incoming entry carries the SAME
+   * tool_use id as the one it replaces. lru-cache fires `dispose(old, 'set')`
+   * BEFORE storing the new value, so without this the handover reads as an
+   * abandonment: the pin gets released and then re-claimed by the new entry,
+   * leaving this cache owning an id that is no longer pinned.
+   */
+  private handingOver: string | undefined
 
   constructor(maxEntries: number, maxSizeBytes: number) {
     this.cache = new LRUCache<string, FileState>({
@@ -76,7 +115,8 @@ export class FileStateCache {
         const id = value.toolUseId
         // delete() doubles as the ownership test: only the cache that took
         // this id in releases it, and only once.
-        if (id && this.ownedToolUseIds.delete(id)) unpinToolResult(id)
+        if (!id || id === this.handingOver) return
+        if (this.ownedToolUseIds.delete(id)) releasePin?.(id)
       },
     })
   }
@@ -93,10 +133,14 @@ export class FileStateCache {
    */
   set(key: string, value: FileState, options?: { adopt?: boolean }): this {
     const normalized = normalize(key)
+    const prevId = this.cache.peek(normalized)?.toolUseId
+    this.handingOver =
+      prevId !== undefined && prevId === value.toolUseId ? prevId : undefined
     // Overwriting disposes the previous value first, releasing its pin; only
     // then does this cache claim the incoming id, so a same-key replacement
     // hands ownership over rather than dropping it.
     this.cache.set(normalized, value)
+    this.handingOver = undefined
     // Claim ownership only if the entry actually landed. lru-cache refuses a
     // value over maxEntrySize — it deletes the key and stores nothing, so no
     // dispose ever fires for it, and an id claimed for an absent entry would
@@ -110,6 +154,18 @@ export class FileStateCache {
     }
     return this
   }
+
+  /**
+   * Carry a stand-down strike count onto whatever entry is currently stored,
+   * mutated in place. In place because the re-send that produced this count
+   * has already overwritten the entry via `set`, and re-`set`ting a copy just
+   * to change a counter would churn the pin ownership for nothing.
+   */
+  setStandDownStrikes(key: string, strikes: number): void {
+    const value = this.cache.peek(normalize(key))
+    if (value) value.standDownStrikes = strikes
+  }
+
 
   has(key: string): boolean {
     return this.cache.has(normalize(key))
@@ -125,7 +181,21 @@ export class FileStateCache {
    */
   transferOwnershipFrom(donor: FileStateCache): void {
     if (donor === this) return
-    for (const id of donor.ownedToolUseIds) this.ownedToolUseIds.add(id)
+    // Only ids this cache can actually release. A donor id whose entry lost
+    // the merge's timestamp race is not in here at all, and adopting it would
+    // park a pin on a cache with no entry to ever dispose it — the same
+    // ownerless leak this method exists to prevent, arriving from the other
+    // side.
+    const live = new Set<string>()
+    for (const [, value] of this.cache.entries()) {
+      if (value.toolUseId) live.add(value.toolUseId)
+    }
+    for (const id of donor.ownedToolUseIds) {
+      if (live.has(id)) this.ownedToolUseIds.add(id)
+    }
+    // The rest are dropped: the donor is being discarded, and an id with no
+    // entry on either side has nothing left to vouch for it. Those pins age
+    // out via MAX_SHIELDED_PASSES instead of being released early.
     donor.ownedToolUseIds.clear()
   }
 

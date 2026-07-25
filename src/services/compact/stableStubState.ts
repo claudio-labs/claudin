@@ -26,6 +26,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { getSessionId, onSessionSwitch } from '../../bootstrap/state.js'
 import { getAgentId } from '../../utils/teammate.js'
+import { setPinReleaseHandler } from '../../utils/fileStateCache.js'
 import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
 import { roughTokenCountEstimation } from '../tokenEstimation.js'
 import { getCacheProfile } from '../cache/cacheProfile.js'
@@ -312,6 +313,13 @@ export function unpinToolResult(toolUseId: string): void {
   perKeySpentPinIds.get(key)?.delete(toolUseId)
 }
 
+// fileStateCache owns the "an entry stopped vouching for this tool_use" event
+// but must stay a leaf module (see setPinReleaseHandler's doc for why), so the
+// dependency is inverted: it calls in here rather than importing this file.
+// Registered at module scope because every path that can place a pin has
+// already imported this module by then — placing one requires pinToolResult.
+setPinReleaseHandler(unpinToolResult)
+
 /**
  * The pin did its job: this copy survived and the model demonstrably still has
  * it. Free the shielding slot (and stop stalling the clip frontier) but REMEMBER
@@ -419,6 +427,18 @@ export function _getSpentPinIdsForTesting(): ReadonlySet<string> {
 }
 
 export function resetClippedIds(): void {
+  // KNOWN HAZARD, deliberately not guarded here. An ordinary Agent/fork
+  // sub-agent compacting will delete the PARENT's pins, because currentKey()
+  // cannot see forks (they run under the main key — see the registry caveat
+  // above) and this function deletes whatever key it is currently standing in.
+  //
+  // The obvious fix, mirroring pruneStaleClippedIds' `if (getAgentId()) return`,
+  // is WRONG here and was tried: that guard protects OTHER keys from a
+  // teammate ("every key but mine"), whereas this function only ever touches
+  // its OWN key. Adding it stops a swarm teammate from resetting the set it
+  // legitimately owns, which the isolation test catches immediately. A correct
+  // guard needs the registry to be able to name a fork; until then the cost is
+  // bounded — one extra full re-send per fork compaction, not a loop.
   perKeyClippedIds.delete(currentKey())
   perKeyStubText.delete(currentKey())
   perKeyPinnedIds.delete(currentKey())

@@ -155,6 +155,14 @@ describe('FileStateCache — clip-pin ownership', () => {
     expect(isPinRegistered('toolu_live')).toBe(false)
     merged.delete('/b.ts')
     expect(isPinRegistered('toolu_extracted')).toBe(false)
+
+    // HONEST SCOPE: `transferOwnershipFrom` also filters out donor ids whose
+    // entry LOST the merge's timestamp race, so they are not adopted by a cache
+    // that has no entry to ever dispose them. That filter is not covered here
+    // and cannot be — release only ever happens through an entry, so an id
+    // parked in the owned set with no entry behind it produces no observable
+    // behavior either way. It is memory hygiene, and asserting around it would
+    // be a test that passes with the filter removed.
   })
 
   test('an entry rejected for size is not stored and leaves neighbours alone', () => {

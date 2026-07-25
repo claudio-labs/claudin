@@ -33,7 +33,10 @@
  * overwrites the readFileState entry with the fresh Read's id.
  */
 
-import { isClipStubContent } from '../../services/compact/stableStubState.js'
+import {
+  getClippedIds,
+  isClipStubContent,
+} from '../../services/compact/stableStubState.js'
 
 interface MessageLike {
   role?: string
@@ -59,6 +62,16 @@ export function isPriorReadClippedOrMissing(
   messages: ReadonlyArray<unknown>,
   toolUseId: string,
 ): boolean {
+  // Ask the clip registry BEFORE reading bytes. The array a tool sees during a
+  // turn (`toolUseContext.messages`, refreshed from `messagesForQuery`) holds
+  // the UNCLIPPED originals — applyStableStubs rewrites a separate copy on its
+  // way to the wire, and the clipped form is only written back post-turn. So a
+  // result clipped by microCompact in the middle of a single long prompt still
+  // looks like intact content here, the stand-down never fires, and the model
+  // gets a dedup stub pointing at bytes it can no longer see. That is exactly
+  // the loop this whole mechanism exists to close, surviving inside the one
+  // case where the clipping is most aggressive.
+  if (getClippedIds().has(toolUseId)) return true
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i] as MessageLike
     if (!m || typeof m !== 'object') continue

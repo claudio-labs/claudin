@@ -21,6 +21,7 @@ import {
   buildClipStubWithHead,
   _resetAllClippedIdsForTesting,
   _getPinnedToolResultsForTesting,
+  addClippedIds,
   isPinRegistered,
   pinToolResult,
 } from '../../services/compact/stableStubState.js'
@@ -36,6 +37,7 @@ import {
 import {
   FileReadTool,
   MaxFileReadTokenExceededError,
+  STAND_DOWN_STRIKES,
   scanFile,
 } from './FileReadTool.js'
 
@@ -765,6 +767,18 @@ function assignFreshToolUseId(ctx: ToolUseContext): void {
   ;(ctx as unknown as { toolUseId: string }).toolUseId = lastReadToolUseId
 }
 
+/** Longest run of consecutive `value`s in `xs` — the shape the bounds are
+ *  stated in ("never two futile re-sends in a row"). */
+function longestRun<T>(xs: readonly T[], value: T): number {
+  let best = 0
+  let cur = 0
+  for (const x of xs) {
+    cur = x === value ? cur + 1 : 0
+    if (cur > best) best = cur
+  }
+  return best
+}
+
 /** Read `p` with the transcript showing the PRIOR Read's result clipped to a
  *  stub — the exact condition the client-clipping stand-down detects. Each call
  *  gets its own tool_use id, like a real turn, so pins never conflate two
@@ -788,14 +802,22 @@ describe('FileReadTool — clip pin disabled (default) never falls back', () => 
     _resetAllClippedIdsForTesting()
   })
 
-  test('five consecutive clipped stand-downs all re-send the full body', async () => {
+  test('the killswitch path is still bounded by the strike counter', async () => {
+    // With the pin gated off there is nothing to remember a stand-down by, so
+    // this used to re-send the full body on every re-read, forever — strictly
+    // worse than the three-strike breaker this feature replaced. The env var a
+    // frustrated user reaches for handed them the original bug. Lane 2 sits
+    // outside clipPinEnabled() precisely so that is no longer true.
     const p = writeFixture('clip-pin-off.ts', SAMPLE_TS)
     const ctx = makeContext()
 
+    const types: string[] = []
     for (let i = 0; i < 5; i++) {
-      const { data } = await readWithPriorClipped(p, ctx)
-      expect(data.type).toBe('text')
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
     }
+    // Bounded: the run of consecutive bodies never exceeds the threshold.
+    expect(types).toContain('clip_pin_fallback')
+    expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
     // Gate off ⇒ nothing was pinned either.
     expect(isPinRegistered(lastReadToolUseId)).toBe(false)
   })
@@ -855,18 +877,26 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('stays on the fallback for further same-range re-reads (no flip-flop back to a re-send)', async () => {
+  test('the fallback re-arms instead of denying the file for the rest of the session', async () => {
+    // The previous version returned WITHOUT touching readFileState, so the
+    // entry kept pointing at a spent id and every later read of this range was
+    // another outline — permanently, for a file sitting readable on disk. Two
+    // properties replace that: never two futile re-sends in a row (the actual
+    // bug), and never an indefinite refusal.
     const p = writeFixture('clip-pin-stays.ts', SAMPLE_TS)
     const ctx = makeContext()
 
-    for (let i = 0; i < 3; i++) await readWithPriorClipped(p, ctx)
-    // The 3rd read fell back above; the 4th and 5th keep serving the outline.
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
-      'clip_pin_fallback',
-    )
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
-      'clip_pin_fallback',
-    )
+    const types: string[] = []
+    for (let i = 0; i < 8; i++) {
+      types.push((await readWithPriorClipped(p, ctx)).data.type)
+    }
+
+    expect(types).toContain('clip_pin_fallback')
+    // The point of the whole feature: consecutive full bodies are bounded.
+    expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
+    // The point of the re-arm: the model is never stuck on outlines forever.
+    expect(longestRun(types, 'clip_pin_fallback')).toBeLessThan(types.length)
+    expect(types.slice(-4)).toContain('text')
   })
 
   test('non-code file falls back to the head of the file plus a redirect', async () => {
@@ -910,9 +940,15 @@ describe('FileReadTool — clip pin (forced on)', () => {
     const ctx = makeContext()
     process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER = '1'
     try {
+      // Still opts out of the PIN (nothing gets protected), but not out of the
+      // strike bound — a killswitch that reinstates an unbounded loop is a
+      // trap, not an opt-out.
+      const types: string[] = []
       for (let i = 0; i < 4; i++) {
-        expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+        types.push((await readWithPriorClipped(p, ctx)).data.type)
       }
+      expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
+      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER
     }
@@ -1045,9 +1081,14 @@ describe('FileReadTool — clip pin (forced on)', () => {
     try {
       const p = writeFixture('clip-pin-disabled.ts', SAMPLE_TS)
       const ctx = makeContext()
+      const types: string[] = []
       for (let i = 0; i < 6; i++) {
-        expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+        types.push((await readWithPriorClipped(p, ctx)).data.type)
       }
+      // No pin placed anywhere...
+      expect(isPinRegistered(lastReadToolUseId)).toBe(false)
+      // ...but the strike bound still applies (lane 2 is outside the gate).
+      expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_CLIP_PIN
     }
@@ -1286,25 +1327,31 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(isPinRegistered(pinnedId)).toBe(false)
   })
 
-  test('a context with no toolUseId gets the fallback, not an endless re-send', async () => {
-    // The un-pinnable case: Tool.ts's toolUseId is optional and MCP/SDK/headless
-    // entry points build contexts without one. There is then no id to pin and
-    // none to remember, so a stand-down cannot be recorded — and one that cannot
-    // be recorded repeats on EVERY re-read. Re-sending there is an unbounded
-    // full-body loop with no counter left to stop it, which is strictly worse
-    // than the three-strike breaker this branch deleted.
+  test('a context with no toolUseId is bounded by strikes, not denied on the first', async () => {
+    // The un-pinnable case: Tool.ts's toolUseId is optional, and the callers
+    // that skip it are user-facing — @-mentions (attachments/file-pipeline.ts
+    // calls FileReadTool.call directly), MagicDocs, SessionMemory, the MCP
+    // entrypoint. Two wrong answers were shipped here in a row: re-sending
+    // forever (nothing records the stand-down), then serving the outline on the
+    // FIRST stand-down, which tells a user who explicitly re-@-mentioned a file
+    // to stop re-reading it. Lane 2 is the third answer: a real bound, but the
+    // model gets bodies first.
     const p = writeFixture('clip-pin-no-id.ts', SAMPLE_TS)
     const ctx = makeContext({ messages: [assistantWithClearing(4)] })
     // No assignFreshToolUseId anywhere in this test: ctx.toolUseId stays
     // undefined, so readFileState entries carry no id.
-    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    const types: string[] = []
+    for (let i = 0; i < 6; i++) {
+      types.push((await read(p, {}, ctx)).data.type)
+    }
     expect(ctx.readFileState.get(p)?.toolUseId).toBeUndefined()
 
-    // Every subsequent re-read must be the stable fallback. Before the fix each
-    // one of these was another full body.
-    for (let i = 0; i < 3; i++) {
-      expect((await read(p, {}, ctx)).data.type).toBe('clip_pin_fallback')
-    }
+    // The first stand-down must NOT be a refusal.
+    expect(types[0]).toBe('text')
+    expect(types[1]).toBe('text')
+    // ...and the run is still bounded.
+    expect(types).toContain('clip_pin_fallback')
+    expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
   })
 
   test('a spent cycle lets the Read cache work again on an intact re-read', async () => {
@@ -1325,6 +1372,36 @@ describe('FileReadTool — clip pin (forced on)', () => {
 
     // Still spent, still intact, nothing in flight → the cache is allowed again.
     expect(FileReadTool.bypassResultCache?.({ file_path: p }, ctx)).toBe(false)
+  })
+
+  test('a clip registered mid-prompt is caught even though the bytes still look intact', async () => {
+    // The blindness the whole feature almost shipped with. The array a tool
+    // sees during a turn (toolUseContext.messages, refreshed from
+    // messagesForQuery) holds the UNCLIPPED originals — applyStableStubs
+    // rewrites a separate copy on its way to the wire and the clipped form is
+    // only written back post-turn. So a Read clipped by microCompact in the
+    // middle of one long prompt still reads as intact content, the stand-down
+    // never fires, and the model gets a dedup stub pointing at bytes it can no
+    // longer see: exactly the loop this mechanism exists to close, surviving
+    // inside the case where clipping is most aggressive.
+    const p = writeFixture('clip-pin-inflight.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    assignFreshToolUseId(ctx)
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    const priorId = ctx.readFileState.get(p)?.toolUseId
+    expect(priorId).toBeDefined()
+
+    // The transcript the tool can see still carries the REAL body — this is
+    // the whole point, the clip has not been written back yet.
+    setContextMessages(ctx, [userWithToolResult(priorId!, 'the real body')])
+    // ...but the clip path has already registered the id on its way to the API.
+    addClippedIds([priorId!])
+
+    assignFreshToolUseId(ctx)
+    const { data } = await read(p, {}, ctx)
+    // Must re-send. Before the registry check this returned 'file_unchanged',
+    // pointing the model at content the API had already dropped.
+    expect(data.type).toBe('text')
   })
 
   test('a clipped notebook gets the bare redirect, not raw nbformat JSON', async () => {
