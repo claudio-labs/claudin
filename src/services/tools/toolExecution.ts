@@ -405,7 +405,12 @@ export async function* runToolUse(
         content: [
           {
             type: 'tool_result',
-            content: `<tool_use_error>Error: No such tool available: ${toolName}</tool_use_error>`,
+            content: withRepeatedFailureHint(
+              `<tool_use_error>Error: No such tool available: ${toolName}</tool_use_error>`,
+              toolName,
+              toolUse.input,
+              toolUseContext,
+            ),
             is_error: true,
             tool_use_id: toolUse.id,
           },
@@ -484,7 +489,12 @@ export async function* runToolUse(
         content: [
           {
             type: 'tool_result',
-            content: `<tool_use_error>${detailedError}</tool_use_error>`,
+            content: withRepeatedFailureHint(
+              `<tool_use_error>${detailedError}</tool_use_error>`,
+              tool.name,
+              toolInput,
+              toolUseContext,
+            ),
             is_error: true,
             tool_use_id: toolUse.id,
           },
@@ -501,10 +511,8 @@ export async function* runToolUse(
  * failing. Appended to the errored tool_result itself (same injection surface
  * as withMemoryCorrectionHint) once the same (tool, canonical input) has
  * failed REPEATED_ERROR_THRESHOLD times in the active task.
- *
- * Exported for tests.
  */
-export function renderRepeatedFailureHint(
+function renderRepeatedFailureHint(
   toolName: string,
   failures: number,
 ): string {
@@ -539,7 +547,9 @@ export function withRepeatedFailureHint(
   // input in the window — including whole file bodies from Write/Edit — so a
   // batch of N failing tools in one turn would do N full walks synchronously
   // on the render thread. The threshold check is cheap and almost always
-  // false, so memoize per (turn, tool, input) instead of per call.
+  // false, so the walk is memoized on the transcript itself — array identity
+  // plus length, since it is appended in place (collectFailureStatsMemoized
+  // in loopDetector) — and all N failing tools in a turn share one walk.
   const failures = countIdenticalFailures(messages, toolName, input) + 1
   if (failures < REPEATED_ERROR_THRESHOLD) return content
   return content + renderRepeatedFailureHint(toolName, failures)

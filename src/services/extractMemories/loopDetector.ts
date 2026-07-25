@@ -279,13 +279,6 @@ function collectFailureStatsMemoized(
   return computed
 }
 
-/** Test seam: the memo is module state and would leak across cases. */
-export function _resetFailureStatsMemoForTesting(): void {
-  memoMessages = undefined
-  memoLength = -1
-  memoStats = undefined
-}
-
 /**
  * Returns a signal when the current human turn contains a repeated-error loop,
  * else null. Scope is the messages after the last human turn (the active task).

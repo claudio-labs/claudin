@@ -241,7 +241,7 @@ describe('withRepeatedFailureHint', () => {
 // permissions are consulted), and a version of this suite that got past that
 // passed alone but failed under the full run, because sibling files'
 // mock.module calls reshape the pipeline's deps (.claudin/rules/testing.md).
-// So the three call sites are pinned statically: unwrapping any one fails.
+// So the five call sites are pinned statically: unwrapping any one fails.
 // ---------------------------------------------------------------------------
 
 describe('repeated-failure hint wiring', () => {
@@ -263,6 +263,19 @@ describe('repeated-failure hint wiring', () => {
     // Caught-exception site, with the interrupt flag threaded through.
     expect(src).toMatch(
       /content: withRepeatedFailureHint\(\s*content,\s*tool\.name,\s*input,\s*toolUseContext,\s*isInterrupt,/,
+    )
+    // Unknown-tool site — a hallucinated tool name retried with the same
+    // input is the purest form of the loop this hint interrupts.
+    expect(src).toMatch(
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>Error: No such tool available[^`]*`,\s*toolName,\s*toolUse\.input,\s*toolUseContext,/,
+    )
+    // runToolUse's outer catch — the path a throwing tool takes (e.g. a
+    // crashed MCP server). Wiring it is what makes AGENTS.md's "applies to
+    // every tool" claim true. The two deliberate exclusions stay excluded:
+    // permission denials (user control) and the pre-call cancel path
+    // (withMemoryCorrectionHint's surface).
+    expect(src).toMatch(
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,/,
     )
     // All three now pin every argument, not just the first. An audit found the
     // first two stopped at the content string, so a site passing the wrong
