@@ -1,32 +1,60 @@
 import * as React from 'react'
 import { useState } from 'react'
 import { FilePathLink } from '../../components/FilePathLink.js'
+import { StructuredDiffList } from '../../components/StructuredDiffList.js'
+import { useTerminalSize } from '../../hooks/useTerminalSize.js'
 import { Box, Text } from '../../ink.js'
 import { getDisplayPath } from '../../utils/file.js'
-import type { RenameOutput } from './rename.js'
+import type { RenameFileResult, RenameOutput } from './rename.js'
 
 /**
- * One file row, revealed under the summary. The path is a link so the user can
- * jump straight to a file the model rewrote without ever showing it to them.
+ * Diff lines rendered inline before the rest collapses into a tail line.
+ * Budgeted in lines rather than hunks or files because that is what actually
+ * floods the transcript: a rename's hunks are near-identical, and one file with
+ * eight sites costs as much room as eight files with one each. `ctrl+o`
+ * (verbose) lifts the cap.
  */
-function FileRow({
-  relPath,
-  sites,
+const MAX_INLINE_DIFF_LINES = 32
+
+/**
+ * One file's changed lines, in the same layout the Edit tool uses: the path,
+ * the added/removed counts, then the hunks themselves. The path is a link so
+ * the user can jump straight to a file the model rewrote without ever showing
+ * it to them.
+ */
+function FileDiff({
+  file,
+  width,
 }: {
-  relPath: string
-  sites: number
+  file: RenameFileResult
+  width: number
 }): React.ReactNode {
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'⎿  '}</Text>
-      <Text dimColor>
-        <FilePathLink filePath={relPath}>
-          {getDisplayPath(relPath)}
-        </FilePathLink>
-      </Text>
-      <Text dimColor>{'  '}</Text>
-      <Text bold>{sites}</Text>
-      <Text dimColor>{` site${sites === 1 ? '' : 's'}`}</Text>
+    <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Text dimColor>{'⎿  '}</Text>
+        <Text dimColor>
+          <FilePathLink filePath={file.absPath}>
+            {getDisplayPath(file.absPath)}
+          </FilePathLink>
+        </Text>
+        <Text color="success">{'  +'}{file.additions}</Text>
+        <Text color="error">{' −'}{file.deletions}</Text>
+      </Box>
+      {/*
+        StructuredDiffList returns one node per hunk, so this Box has to stack
+        them. Without the explicit column direction they lay out side by side
+        and a two-hunk file renders as overlapping columns.
+      */}
+      <Box flexDirection="column" marginLeft={3}>
+        <StructuredDiffList
+          hunks={file.structuredPatch}
+          dim={false}
+          width={width}
+          filePath={file.absPath}
+          firstLine={null}
+        />
+      </Box>
     </Box>
   )
 }
@@ -73,15 +101,27 @@ function RenameResultMessage({
   output: Extract<RenameOutput, { type: 'apply' }>
   verbose: boolean
 }): React.ReactNode {
-  const [expanded, setExpanded] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [hover, setHover] = useState(false)
-  const show = verbose || expanded
+  const { columns } = useTerminalSize()
   const fileCount = output.files.length
+
+  const shown: RenameFileResult[] = []
+  let lines = 0
+  if (!collapsed) {
+    for (const file of output.files) {
+      if (!verbose && lines >= MAX_INLINE_DIFF_LINES) break
+      shown.push(file)
+      lines += file.structuredPatch.reduce((n, h) => n + h.lines.length, 0)
+    }
+  }
+  const hiddenFiles = output.files.length - shown.length
+
   return (
     <Box flexDirection="column" marginLeft={3}>
       <Box
         flexDirection="row"
-        onClick={() => setExpanded(v => !v)}
+        onClick={() => setCollapsed(v => !v)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
@@ -93,15 +133,16 @@ function RenameResultMessage({
           {` file${fileCount === 1 ? '' : 's'}`}
         </Text>
       </Box>
-      {show
-        ? output.files.map(file => (
-            <FileRow
-              key={file.relPath}
-              relPath={file.relPath}
-              sites={file.sites}
-            />
-          ))
-        : null}
+      {shown.map(file => (
+        <FileDiff key={file.absPath} file={file} width={columns - 12} />
+      ))}
+      {hiddenFiles > 0 ? (
+        <Text dimColor>
+          {`… and ${hiddenFiles} more file${
+            hiddenFiles === 1 ? '' : 's'
+          } — run /diff to review full changes`}
+        </Text>
+      ) : null}
       <Caveats output={output} />
     </Box>
   )

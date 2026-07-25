@@ -6,6 +6,8 @@
 import type { UUID } from 'crypto'
 import { createHash } from 'crypto'
 
+import type { StructuredPatchHunk } from 'diff'
+
 import type { ToolUseContext, ValidationResult } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
@@ -34,6 +36,15 @@ export type RenameInput = {
 export type RenameFileResult = {
   relPath: string
   sites: number
+  absPath: string
+  /**
+   * The same hunks the Edit tool renders, so a rename shows the changed lines
+   * instead of only a count. Carried on the output object, which is UI-only —
+   * what the model receives is `summarizeRename`, so this costs no tokens.
+   */
+  structuredPatch: StructuredPatchHunk[]
+  additions: number
+  deletions: number
 }
 
 export type RenameOutput =
@@ -313,6 +324,10 @@ export async function runRename(
       fileResults.push({
         relPath: fileSites[0]!.relPath,
         sites: fileSites.length,
+        absPath,
+        structuredPatch: change.structuredPatch,
+        additions: change.additions,
+        deletions: change.deletions,
       })
     } catch (e) {
       stageErrors.push(e instanceof Error ? e.message : String(e))

@@ -343,7 +343,16 @@ describe('summarizeRename', () => {
     type: 'apply' as const,
     symbol: 'cfg',
     replacement: 'config',
-    files: [{ relPath: 'src/a.ts', sites: 2 }],
+    files: [
+      {
+        relPath: 'src/a.ts',
+        sites: 2,
+        absPath: '/repo/src/a.ts',
+        structuredPatch: [],
+        additions: 2,
+        deletions: 2,
+      },
+    ],
     siteCount: 2,
     excluded: 0,
     skippedMasked: 0,
