@@ -6,34 +6,26 @@
 // thin Tool definition + UI live in ApplyPatchTool.ts / UI.tsx.
 
 import type { UUID } from 'crypto'
-import { dirname, extname, relative } from 'path'
+import { extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
 import type { ToolUseContext, ValidationResult } from '../../Tool.js'
-import { diagnosticTracker } from '../../services/diagnosticTracking.js'
-import {
-  armFileForLateDiagnostics,
-  buildPostEditDiagnosticsMessages,
-} from '../../services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from '../../services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from '../../services/lsp/manager.js'
-import { notifyVscodeFileUpdated } from '../../services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from '../../services/teamMemorySync/teamMemSecretGuard.js'
 import { getCwd } from '../../utils/cwd.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { countLinesChanged, getPatchFromContents } from '../../utils/diff.js'
-import { AbortError, isENOENT } from '../../utils/errors.js'
-import { getFileModificationTime, writeTextContent } from '../../utils/file.js'
-import {
-  fileHistoryEnabled,
-  fileHistoryTrackEdit,
-} from '../../utils/fileHistory.js'
-import { type LineEndingType, readFileSyncWithMetadata } from '../../utils/fileRead.js'
+import { getPatchFromContents } from '../../utils/diff.js'
+import { getFileModificationTime } from '../../utils/file.js'
 import { getFsImplementation } from '../../utils/fsOperations.js'
-import { logError } from '../../utils/log.js'
 import { expandPath } from '../../utils/path.js'
 import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
-import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from '../FileEditTool/constants.js'
+import {
+  BATCH_CONFIRM_THRESHOLD,
+  commitStagedChanges,
+  countAddDel,
+  type DiagnosticAttachment,
+  readFileForStaging,
+  type StagedChange,
+  type StagedChangeType,
+} from '../shared/stagedWrite/stagedWrite.js'
 import {
   deriveNewContentsFromChunks,
   type Hunk,
@@ -41,13 +33,9 @@ import {
 } from './patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from './prompt.js'
 
-// A patch touching this many files prompts once even under acceptEdits — a
-// large multi-file write is qualitatively different from a single edit.
-const BATCH_CONFIRM_THRESHOLD = 20
-
 export type ApplyPatchInput = { patchText: string }
 
-export type ApplyPatchChangeType = 'add' | 'update' | 'delete' | 'move'
+export type ApplyPatchChangeType = StagedChangeType
 
 export type ApplyPatchFileResult = {
   absPath: string
@@ -60,27 +48,6 @@ export type ApplyPatchFileResult = {
 
 export type ApplyPatchOutput = { files: ApplyPatchFileResult[] }
 
-// LSP diagnostic attachment messages, derived from the wiring helper so we
-// don't depend on the AttachmentMessage type's module path.
-type DiagnosticAttachment = Awaited<
-  ReturnType<typeof buildPostEditDiagnosticsMessages>
->[number]
-
-type StagedChange = {
-  type: ApplyPatchChangeType
-  absPath: string
-  movePath?: string
-  // null when the file did not exist before (an `add`).
-  oldContent: string | null
-  // '' for a delete.
-  newContent: string
-  encoding: BufferEncoding
-  endings: LineEndingType
-  additions: number
-  deletions: number
-  structuredPatch: StructuredPatchHunk[]
-}
-
 function resolveHunkPath(hunkPath: string): string {
   // expandPath handles `~`, absolute paths, and resolves relative paths
   // against the working directory (the form Codex models emit natively).
@@ -90,43 +57,6 @@ function resolveHunkPath(hunkPath: string): string {
 function displayPath(absPath: string): string {
   const rel = relative(getCwd(), absPath)
   return rel && !rel.startsWith('..') ? rel : absPath
-}
-
-function readFileForApplyPatch(absPath: string): {
-  content: string
-  fileExists: boolean
-  encoding: BufferEncoding
-  endings: LineEndingType
-} {
-  try {
-    const meta = readFileSyncWithMetadata(absPath)
-    return {
-      content: meta.content,
-      fileExists: true,
-      encoding: meta.encoding,
-      endings: meta.lineEndings,
-    }
-  } catch (e) {
-    if (isENOENT(e)) {
-      return { content: '', fileExists: false, encoding: 'utf8', endings: 'LF' }
-    }
-    throw e
-  }
-}
-
-function countAddDel(hunks: StructuredPatchHunk[]): {
-  additions: number
-  deletions: number
-} {
-  let additions = 0
-  let deletions = 0
-  for (const hunk of hunks) {
-    for (const line of hunk.lines) {
-      if (line.startsWith('+')) additions++
-      else if (line.startsWith('-')) deletions++
-    }
-  }
-  return { additions, deletions }
 }
 
 /** Resolved write targets for a hunk (source path plus the move destination). */
@@ -364,7 +294,7 @@ function stageHunk(hunk: Hunk): StagedChange {
     }
   }
 
-  const current = readFileForApplyPatch(absPath)
+  const current = readFileForStaging(absPath)
 
   if (hunk.type === 'delete') {
     const structuredPatch = getPatchFromContents({
@@ -410,105 +340,6 @@ function stageHunk(hunk: Hunk): StagedChange {
   }
 }
 
-/** True when the on-disk content no longer matches what we staged. */
-function isUnexpectedlyModified(change: StagedChange): boolean {
-  const fs = getFsImplementation()
-  if (change.oldContent === null) {
-    // An add: the file must still not exist.
-    return fs.existsSync(change.absPath)
-  }
-  // A move's destination was validated as non-existent; if it appeared since
-  // (TOCTOU, or call() reached without validateInput), bail out rather than
-  // clobber it — writeChange would otherwise overwrite the destination
-  // unconditionally before unlinking the source.
-  if (change.type === 'move' && change.movePath && fs.existsSync(change.movePath)) {
-    return true
-  }
-  const current = readFileForApplyPatch(change.absPath)
-  return !current.fileExists || current.content !== change.oldContent
-}
-
-function writeChange(change: StagedChange): void {
-  const fs = getFsImplementation()
-  switch (change.type) {
-    case 'add':
-    case 'update':
-      fs.mkdirSync(dirname(change.absPath))
-      writeTextContent(
-        change.absPath,
-        change.newContent,
-        change.encoding,
-        change.endings,
-      )
-      break
-    case 'move':
-      fs.mkdirSync(dirname(change.movePath!))
-      writeTextContent(
-        change.movePath!,
-        change.newContent,
-        change.encoding,
-        change.endings,
-      )
-      fs.unlinkSync(change.absPath)
-      break
-    case 'delete':
-      fs.unlinkSync(change.absPath)
-      break
-  }
-}
-
-/** Best-effort reversal of an already-committed change. Never throws. */
-function rollbackChange(change: StagedChange): void {
-  const fs = getFsImplementation()
-  try {
-    switch (change.type) {
-      case 'add':
-        if (fs.existsSync(change.absPath)) fs.unlinkSync(change.absPath)
-        break
-      case 'update':
-      case 'delete':
-        if (change.oldContent !== null) {
-          writeTextContent(
-            change.absPath,
-            change.oldContent,
-            change.encoding,
-            change.endings,
-          )
-        }
-        break
-      case 'move':
-        if (change.oldContent !== null) {
-          writeTextContent(
-            change.absPath,
-            change.oldContent,
-            change.encoding,
-            change.endings,
-          )
-        }
-        if (change.movePath && fs.existsSync(change.movePath)) {
-          fs.unlinkSync(change.movePath)
-        }
-        break
-    }
-  } catch (e) {
-    logError(e)
-  }
-}
-
-function notifyLsp(target: string, content: string): void {
-  const lspManager = getLspServerManager()
-  if (!lspManager) return
-  clearDeliveredDiagnosticsForFile(`file://${target}`)
-  lspManager.changeFile(target, content).catch((err: Error) => {
-    logForDebugging(`LSP: changeFile failed for ${target}: ${err.message}`)
-    logError(err)
-  })
-  lspManager.saveFile(target).catch((err: Error) => {
-    logForDebugging(`LSP: saveFile failed for ${target}: ${err.message}`)
-    logError(err)
-  })
-}
-
 /**
  * Applies a validated patch: stages everything in memory (failing before any
  * write), then commits in order with an atomic re-check per file and
@@ -520,9 +351,6 @@ export async function runApplyPatch(
   context: ToolUseContext,
   messageId: UUID,
 ): Promise<{ output: ApplyPatchOutput; newMessages: DiagnosticAttachment[] }> {
-  const { readFileState, updateFileHistoryState, agentId, abortController } =
-    context
-
   const hunks = parsePatch(input.patchText).hunks
 
   // Phase 1 — stage all changes in memory. Any failure here writes nothing.
@@ -549,75 +377,12 @@ export async function runApplyPatch(
     )
   }
 
-  // Phase 2 — commit in order with per-file atomic re-check + rollback.
-  const committed: StagedChange[] = []
-  try {
-    for (const change of staged) {
-      if (abortController.signal.aborted) {
-        throw new AbortError()
-      }
-
-      if (isUnexpectedlyModified(change)) {
-        throw new Error(FILE_UNEXPECTEDLY_MODIFIED_ERROR)
-      }
-
-      const historyTargets =
-        change.type === 'move'
-          ? [change.absPath, change.movePath!]
-          : [change.absPath]
-      if (fileHistoryEnabled()) {
-        for (const t of historyTargets) {
-          await fileHistoryTrackEdit(updateFileHistoryState, t, messageId)
-        }
-      }
-      await diagnosticTracker.beforeFileEditedCompat(change.absPath)
-
-      // Record the change as in-flight BEFORE touching the filesystem. A move
-      // writes the destination and then unlinks the source; if that unlink
-      // throws (e.g. a read-only source directory), pushing afterwards would
-      // leave this change out of the rollback loop — orphaning the written
-      // destination while the source survives, a half-applied move that still
-      // propagates the error. rollbackChange is a no-op for a not-yet-written
-      // change (its existsSync/oldContent guards), so tracking intent first
-      // makes a partial write fully reversible.
-      committed.push(change)
-      writeChange(change)
-    }
-  } catch (e) {
-    for (let i = committed.length - 1; i >= 0; i--) {
-      rollbackChange(committed[i])
-    }
-    throw e
-  }
-
-  // Phase 3 — post-commit wiring + diagnostics for every surviving file.
-  const newMessages: DiagnosticAttachment[] = []
-  for (const change of committed) {
-    countLinesChanged(
-      change.structuredPatch,
-      change.type === 'add' ? change.newContent : undefined,
-    )
-
-    if (change.type === 'delete') {
-      readFileState.delete(change.absPath)
-      continue
-    }
-
-    const target = change.type === 'move' ? change.movePath! : change.absPath
-    if (change.type === 'move') {
-      readFileState.delete(change.absPath)
-    }
-    readFileState.set(target, {
-      content: change.newContent,
-      timestamp: getFileModificationTime(target),
-      offset: undefined,
-      limit: undefined,
-    })
-    notifyLsp(target, change.newContent)
-    notifyVscodeFileUpdated(target, change.oldContent ?? '', change.newContent)
-    armFileForLateDiagnostics(target, agentId)
-    newMessages.push(...(await buildPostEditDiagnosticsMessages(target)))
-  }
+  // Phases 2 & 3 — atomic commit with rollback, then post-write wiring.
+  const { committed, newMessages } = await commitStagedChanges(
+    staged,
+    context,
+    messageId,
+  )
 
   return {
     output: {

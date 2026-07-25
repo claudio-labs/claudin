@@ -26,6 +26,7 @@ import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
 import {
   detectOutlineLangFromPath,
+  enclosingSymbol,
   SCAN_MAX_BYTES,
   scanSymbols,
   type SymbolEntry,
@@ -152,19 +153,6 @@ function formatLimitInfo(
 // Cap on files scanned in 'symbols' mode — scanning is per-file work and a
 // broad pattern can match thousands of files; this bounds the cost.
 const SYMBOLS_MAX_FILES = 50
-
-/** The deepest symbol whose [startLine,endLine] range contains `line`. */
-function enclosingSymbol(
-  entries: SymbolEntry[],
-  line: number,
-): SymbolEntry | null {
-  let best: SymbolEntry | null = null
-  for (const e of entries) {
-    if (line < e.startLine || line > e.endLine) continue
-    if (best === null || e.depth > best.depth) best = e
-  }
-  return best
-}
 
 type SymbolsResult = {
   content: string

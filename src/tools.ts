@@ -34,6 +34,8 @@ const getLSPTool = () =>
   require('./tools/LSPTool/LSPTool.js').LSPTool as typeof import('./tools/LSPTool/LSPTool.js').LSPTool
 const getRunTestsTool = () =>
   require('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool
+const getRenameTool = () =>
+  require('./tools/RenameTool/RenameTool.js').RenameTool as typeof import('./tools/RenameTool/RenameTool.js').RenameTool
 // Dead code elimination: conditional import for internal-only tools
 const REPLTool = null
 const SuggestBackgroundPRTool = null
@@ -253,6 +255,7 @@ export function getAllBaseTools(): Tools {
     getFileEditTool(),
     getFileWriteTool(),
     getApplyPatchTool(),
+    getRenameTool(),
     getNotebookEditTool(),
     getWebFetchTool(),
     getTodoWriteTool(),

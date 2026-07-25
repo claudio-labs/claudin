@@ -124,6 +124,7 @@ const CURRENT_BASELINE = [
   'PowerShellTool',
   'REPLTool',
   'ReadMcpResourceTool',
+  'RenameTool',
   'ReportFindingsTool',
   'RunTestsTool',
   'ScheduleCronTool',
