@@ -77,9 +77,15 @@ export type OutlineLang =
   | 'swift'
   | 'scala'
   | 'bash'
+  | 'dart'
+  | 'groovy'
   // end-block scanner.
   | 'ruby'
   | 'lua'
+  // mask-only: string/comment analysis with no symbol scanner, so sites are
+  // exact but carry no enclosing symbol.
+  | 'elixir'
+  | 'powershell'
   // dedicated scanners.
   | 'sql'
   | 'css'
@@ -145,6 +151,20 @@ const EXT_TO_LANG: Record<string, OutlineLang> = {
   lua: 'lua',
   sh: 'bash',
   bash: 'bash',
+  // zsh and ksh are lexical supersets of the bits that matter here (`#`
+  // comments, `'…'` literal, `"…"` expanding); fish differs in syntax but not
+  // in those three.
+  zsh: 'bash',
+  ksh: 'bash',
+  fish: 'bash',
+  dart: 'dart',
+  groovy: 'groovy',
+  gradle: 'groovy',
+  ex: 'elixir',
+  exs: 'elixir',
+  ps1: 'powershell',
+  psm1: 'powershell',
+  psd1: 'powershell',
   sql: 'sql',
   css: 'css',
   scss: 'css',
@@ -449,10 +469,85 @@ export function scanSymbols(source: string, lang: OutlineLang): SymbolEntry[] {
     if (lang === 'toml') return scanToml(source)
     if (lang === 'dockerfile') return scanDockerfile(source)
     if (lang === 'makefile') return scanMakefile(source)
+    // Mask-only languages: string/comment analysis without a symbol scanner.
+    // Rename sites stay exact; they just carry no enclosing symbol.
+    if (lang === 'elixir' || lang === 'powershell') return []
     return scanCLike(source, CLIKE_SPECS[lang])
   } catch (e) {
     logScanError(e)
     return []
+  }
+}
+
+/**
+ * The deepest symbol whose [startLine,endLine] range contains `line`, or null
+ * when the line sits between top-level symbols.
+ */
+export function enclosingSymbol(
+  entries: SymbolEntry[],
+  line: number,
+): SymbolEntry | null {
+  let best: SymbolEntry | null = null
+  for (const e of entries) {
+    if (line < e.startLine || line > e.endLine) continue
+    if (best === null || e.depth > best.depth) best = e
+  }
+  return best
+}
+
+/**
+ * The string/comment mask a scanner would use for `lang`, or null when that
+ * language has no mask.
+ *
+ * Every mask blanks masked spans in place (`blank()` writes `' '` and preserves
+ * `\n`), so the result is the SAME length as `source` and every offset lines up
+ * byte for byte. That makes `masked[k] !== source[k]` an exact test for "offset
+ * k sits inside a string or comment" — the cheap substitute for a parser when
+ * deciding whether a textual match is real code.
+ *
+ * Returns null (never a best-effort mask) for languages whose scanner does no
+ * masking — markdown, yaml, toml, properties/env, dockerfile, makefile — so
+ * callers can tell "analyzed, not masked here" from "not analyzed at all".
+ */
+export function maskSourceForLang(
+  source: string,
+  lang: OutlineLang,
+  opts?: {
+    /**
+     * Keep interpolated expressions as code instead of string text — `${…}`,
+     * `#{…}`, `\(…)`, `"$name"`, an f-string field. See the `Interpolation`
+     * type for why this is opt-in and which languages carry a spec.
+     */
+    stringInterpolations?: boolean
+  },
+): string | null {
+  try {
+    if (!source) return source
+    const interp = opts?.stringInterpolations ? INTERPOLATION[lang] : null
+    if (lang === 'python') return maskPython(source, interp)
+    if (lang === 'ruby') return maskRuby(source, interp)
+    if (lang === 'elixir') return maskElixir(source, interp)
+    if (lang === 'powershell') return maskPowerShell(source, interp)
+    if (lang === 'lua') return maskLua(source)
+    if (lang === 'sql') return maskSql(source)
+    if (lang === 'css') return maskCss(source)
+    if (lang === 'html') return maskHtml(source)
+    if (lang === 'xml') return maskXml(source)
+    if (
+      lang === 'markdown' ||
+      lang === 'yaml' ||
+      lang === 'toml' ||
+      lang === 'properties' ||
+      lang === 'env' ||
+      lang === 'dockerfile' ||
+      lang === 'makefile'
+    ) {
+      return null
+    }
+    return CLIKE_SPECS[lang].mask(source, interp)
+  } catch (e) {
+    logScanError(e)
+    return null
   }
 }
 
@@ -505,6 +600,366 @@ const REGEX_PREV_KEYWORDS = new Set([
 ])
 
 const RE_IDENT_CHAR = /[A-Za-z0-9_$]/
+// Python string-literal prefix letters that may accompany an `f` (rb'' etc.).
+const RE_PY_PREFIX_CHAR = /[rRbBuU]/
+
+// ---------------------------------------------------------------------------
+// String interpolation — opt-in, for callers that resolve references
+// ---------------------------------------------------------------------------
+
+/**
+ * How a language splices code into a string literal.
+ *
+ * The outline scanner never asks for this. For finding *declarations* a literal
+ * is opaque, and that opacity is a feature: a `function` inside a string cannot
+ * mint a phantom symbol. Callers that resolve *references* — the Rename tool —
+ * need the opposite, because `"${cfg(x)}"` is a real call site, and masking it
+ * skips the rename and leaves a half-edited file behind with no warning.
+ *
+ * A language with no entry here keeps every literal opaque, which is correct
+ * for Go, Java, Lua and C: their string syntax has no interpolation at all.
+ */
+type Interpolation = {
+  /** Bracketed forms: `${`…`}` (JS/Kotlin), `#{`…`}` (Ruby), `\(`…`)` (Swift). */
+  braced: ReadonlyArray<{ open: string; close: string }>
+  /** Sigil directly followed by a bare identifier: `"$total"` in Kotlin/PHP/shell. */
+  bareSigil?: string
+  /** A doubled opener is literal text, not a field: `{{` in C# and Python. */
+  doubledOpenerIsLiteral?: boolean
+  /** The language has `//` + `/* *​/` comments, so an interpolation body can hold one. */
+  slashComments?: boolean
+  /**
+   * Which literals interpolate, given the index of the opening quote and the
+   * terminator that will close it. Defaults to every literal in the language.
+   */
+  appliesTo?: (source: string, quoteIdx: number, terminator: string) => boolean
+}
+
+/** `f"…"` / `rf"…"` — an f prefix, possibly behind the r/b/u modifiers. */
+function isPythonFString(source: string, quoteIdx: number): boolean {
+  for (let k = quoteIdx - 1; k >= quoteIdx - 2 && k >= 0; k--) {
+    const ch = source[k]!
+    if (ch === 'f' || ch === 'F') return true
+    if (!RE_PY_PREFIX_CHAR.test(ch)) return false
+  }
+  return false
+}
+
+/** `$"…"` / `$@"…"` / `@$"…"`. */
+function isCSharpInterpolated(source: string, quoteIdx: number): boolean {
+  const prev = source[quoteIdx - 1]
+  if (prev === '$') return true
+  return prev === '@' && source[quoteIdx - 2] === '$'
+}
+
+/** `s"…"` / `f"…"` — Scala's interpolator prefixes, as their own token. */
+function isScalaInterpolated(source: string, quoteIdx: number): boolean {
+  const prev = source[quoteIdx - 1]
+  if (prev !== 's' && prev !== 'f') return false
+  return !RE_IDENT_CHAR.test(source[quoteIdx - 2] ?? '')
+}
+
+/** `r'…'` / `r"""…"""` — Dart's raw string, where `$` is literal. */
+function isDartRawString(source: string, quoteIdx: number): boolean {
+  if (source[quoteIdx - 1] !== 'r') return false
+  return !RE_IDENT_CHAR.test(source[quoteIdx - 2] ?? '')
+}
+
+/**
+ * Rust captures `{name}` only inside a format-family macro, so an ordinary
+ * `"{name}"` must stay opaque. Matched by the nearest `!(` earlier on the same
+ * line whose macro name is a known formatter — `if !(x) { "{name}" }` is
+ * ordinary negation and must NOT qualify, or the rename would edit the string.
+ * A macro call split across lines fails closed (the literal stays masked).
+ */
+const RUST_FORMAT_MACROS = new Set([
+  'assert',
+  'assert_eq',
+  'assert_ne',
+  'debug_assert',
+  'eprint',
+  'eprintln',
+  'format',
+  'format_args',
+  'panic',
+  'print',
+  'println',
+  'todo',
+  'unimplemented',
+  'unreachable',
+  'write',
+  'writeln',
+])
+
+function isRustFormatLiteral(source: string, quoteIdx: number): boolean {
+  const lineStart = source.lastIndexOf('\n', quoteIdx) + 1
+  const bang = source.lastIndexOf('!(', quoteIdx)
+  if (bang < lineStart) return false
+  let j = bang - 1
+  while (j >= lineStart && RE_WORD_CHAR.test(source[j]!)) j--
+  return RUST_FORMAT_MACROS.has(source.slice(j + 1, bang))
+}
+
+const DOUBLE_QUOTED = (_s: string, _i: number, terminator: string) =>
+  terminator === '"'
+
+const INTERPOLATION: Partial<Record<OutlineLang, Interpolation>> = {
+  // Only the backtick template interpolates; `'…'` and `"…"` never do.
+  typescript: {
+    braced: [{ open: '${', close: '}' }],
+    slashComments: true,
+    appliesTo: (_s, _i, terminator) => terminator === '`',
+  },
+  python: {
+    braced: [{ open: '{', close: '}' }],
+    doubledOpenerIsLiteral: true,
+    appliesTo: isPythonFString,
+  },
+  // `"$x"`, `"${x()}"` — including the `"""` raw form, which interpolates too.
+  kotlin: {
+    braced: [{ open: '${', close: '}' }],
+    bareSigil: '$',
+    slashComments: true,
+  },
+  scala: {
+    braced: [{ open: '${', close: '}' }],
+    bareSigil: '$',
+    slashComments: true,
+    appliesTo: isScalaInterpolated,
+  },
+  csharp: {
+    braced: [{ open: '{', close: '}' }],
+    doubledOpenerIsLiteral: true,
+    slashComments: true,
+    appliesTo: isCSharpInterpolated,
+  },
+  swift: {
+    braced: [{ open: '\\(', close: ')' }],
+    slashComments: true,
+  },
+  // Dart interpolates in BOTH quote styles; only an `r` prefix opts out.
+  dart: {
+    braced: [{ open: '${', close: '}' }],
+    bareSigil: '$',
+    slashComments: true,
+    appliesTo: (source, quoteIdx) => !isDartRawString(source, quoteIdx),
+  },
+  // A Groovy GString is double-quoted; `'…'` and `'''…'''` are plain strings.
+  groovy: {
+    braced: [{ open: '${', close: '}' }],
+    bareSigil: '$',
+    slashComments: true,
+    appliesTo: (_s, _i, terminator) => terminator.startsWith('"'),
+  },
+  elixir: {
+    braced: [{ open: '#{', close: '}' }],
+  },
+  // `"$x"`, `"${x}"` and the subexpression form `"$($x.Name)"`.
+  powershell: {
+    braced: [
+      { open: '$(', close: ')' },
+      { open: '${', close: '}' },
+    ],
+    bareSigil: '$',
+  },
+  ruby: {
+    braced: [{ open: '#{', close: '}' }],
+    appliesTo: DOUBLE_QUOTED,
+  },
+  // `{$x}` first: it must win over the `${x}` form when both could match.
+  php: {
+    braced: [
+      { open: '{$', close: '}' },
+      { open: '${', close: '}' },
+    ],
+    bareSigil: '$',
+    appliesTo: DOUBLE_QUOTED,
+  },
+  bash: {
+    braced: [{ open: '${', close: '}' }],
+    bareSigil: '$',
+    appliesTo: DOUBLE_QUOTED,
+  },
+  rust: {
+    braced: [{ open: '{', close: '}' }],
+    doubledOpenerIsLiteral: true,
+    appliesTo: isRustFormatLiteral,
+  },
+}
+INTERPOLATION.javascript = INTERPOLATION.typescript
+
+/** The character that re-opens a nesting level for each interpolation closer. */
+const NEST_OPENER: Record<string, string> = { '}': '{', ')': '(', ']': '[' }
+
+type MaskCtx = {
+  source: string
+  n: number
+  blank: (k: number) => void
+}
+
+type LiteralOpts = {
+  /** Closing token — also the opening token when longer than one char. */
+  terminator: string
+  /**
+   * The character that escapes the next one — `\` almost everywhere, a
+   * backtick in PowerShell, `null` in a raw literal that has no escapes.
+   */
+  escape: string | null
+  /** An unterminated literal ends at the newline (Python's single-quoted form). */
+  stopAtNewline?: boolean
+  /** A doubled terminator is an escaped quote, not the close (C# verbatim). */
+  doubledTerminatorIsEscape?: boolean
+  interp?: Interpolation | null
+}
+
+/**
+ * Blanks one string literal — opening token at `start` through its terminator —
+ * and returns the index just past it. This is the single literal scanner every
+ * language masker delegates to; before it existed each one carried its own
+ * near-identical copy.
+ *
+ * With `interp`, the code inside each interpolation is left visible while the
+ * delimiters themselves are blanked as punctuation, so brace-depth math over
+ * the masked copy is unchanged.
+ */
+function maskLiteral(ctx: MaskCtx, start: number, opts: LiteralOpts): number {
+  const { source, n, blank } = ctx
+  const { terminator, escape, interp } = opts
+  const active =
+    interp && (interp.appliesTo?.(source, start, terminator) ?? true)
+      ? interp
+      : null
+  let k = start
+  for (let t = 0; t < terminator.length && k < n; t++) blank(k++)
+  while (k < n) {
+    const ch = source[k]!
+    if (opts.stopAtNewline && ch === '\n') return k
+    if (source.startsWith(terminator, k)) {
+      const doubled =
+        opts.doubledTerminatorIsEscape &&
+        source.startsWith(terminator, k + terminator.length)
+      const width = doubled ? terminator.length * 2 : terminator.length
+      for (let t = 0; t < width && k < n; t++) blank(k++)
+      if (doubled) continue
+      return k
+    }
+    // Interpolation is tried before the escape rule because Swift's opener IS
+    // an escape (`\(`). The other direction still works: JS `\${` fails the
+    // `${` match here and falls through to the escape branch, which is what
+    // makes an escaped dollar stay literal text.
+    if (active) {
+      const next = maskInterpolationAt(ctx, k, active)
+      if (next > k) {
+        k = next
+        continue
+      }
+    }
+    if (escape && ch === escape) {
+      blank(k++)
+      if (k < n) blank(k++)
+      continue
+    }
+    blank(k++)
+  }
+  return k // unterminated — fail open
+}
+
+/**
+ * Blanks the delimiters of an interpolation opening at `k` and leaves its body
+ * as code, returning the index past it. Returns `k` when nothing opens here.
+ */
+function maskInterpolationAt(
+  ctx: MaskCtx,
+  k: number,
+  interp: Interpolation,
+): number {
+  const { source, n, blank } = ctx
+  for (const form of interp.braced) {
+    if (!source.startsWith(form.open, k)) continue
+    let j = k
+    if (
+      interp.doubledOpenerIsLiteral &&
+      source.startsWith(form.open, k + form.open.length)
+    ) {
+      // `{{` — an escaped literal brace, not a replacement field.
+      for (let t = 0; t < form.open.length * 2; t++) blank(j++)
+      return j
+    }
+    for (let t = 0; t < form.open.length; t++) blank(j++)
+    return maskInterpolationBody(ctx, j, form, interp)
+  }
+  const sigil = interp.bareSigil
+  if (
+    sigil &&
+    source.startsWith(sigil, k) &&
+    RE_IDENT_START.test(source[k + sigil.length] ?? '')
+  ) {
+    // `$name` — blank the sigil, leave the identifier itself as code.
+    let j = k
+    for (let t = 0; t < sigil.length; t++) blank(j++)
+    // Stops at the NEXT sigil: `"$foo$bar"` is two references, and letting
+    // `$` continue the name here would swallow the second sigil unblanked —
+    // which then reads as an identifier character and loses BOTH sites.
+    while (j < n && RE_WORD_CHAR.test(source[j]!)) j++
+    return j
+  }
+  return k
+}
+
+/**
+ * Walks an interpolation body to its matching closer, masking the literals and
+ * comments nested inside it and leaving the rest as code. A closer hidden in a
+ * regex literal is not tracked and ends the body early; the tail then reads as
+ * code, which surfaces as a listed candidate rather than a silent rewrite.
+ */
+function maskInterpolationBody(
+  ctx: MaskCtx,
+  start: number,
+  form: { open: string; close: string },
+  interp: Interpolation,
+): number {
+  const { source, n, blank } = ctx
+  const opener = NEST_OPENER[form.close] ?? ''
+  let k = start
+  let depth = 1
+  while (k < n) {
+    const ch = source[k]!
+    if (ch === '"' || ch === "'" || ch === '`') {
+      k = maskLiteral(ctx, k, { terminator: ch, escape: '\\', interp })
+      continue
+    }
+    if (interp.slashComments && ch === '/' && source[k + 1] === '/') {
+      while (k < n && source[k] !== '\n') blank(k++)
+      continue
+    }
+    if (interp.slashComments && ch === '/' && source[k + 1] === '*') {
+      blank(k++)
+      blank(k++)
+      while (k < n && !(source[k] === '*' && source[k + 1] === '/')) blank(k++)
+      if (k < n) {
+        blank(k++)
+        blank(k++)
+      }
+      continue
+    }
+    if (source.startsWith(form.close, k)) {
+      depth--
+      if (depth === 0) {
+        for (let t = 0; t < form.close.length; t++) blank(k++)
+        return k
+      }
+      k += form.close.length
+      continue
+    }
+    if (opener && source.startsWith(opener, k)) {
+      depth++
+      k += opener.length
+      continue
+    }
+    k++
+  }
+  return k
+}
 /** Valid first character of a heredoc/nowdoc label (never a digit). */
 const RE_IDENT_START = /[A-Za-z_]/
 /** Uppercase-or-underscore start — Ruby heredoc-label convention. */
@@ -534,29 +989,38 @@ type CLikeMaskOptions = {
   /** JS regex-literal heuristic. On for TS/JS (and Go, legacy behavior). */
   regexLiterals: boolean
   /**
-   * `"""` blocks masked as raw text (Java text blocks, Kotlin raw strings,
-   * C# raw strings). No escape processing: Kotlin treats `\` literally; a
-   * Java text block containing an escaped `\"""` closes early here, which
-   * fail-open covers.
+   * Triple-quoted forms. `escapes: false` is a raw block (Java text block,
+   * Kotlin and C# raw strings) where `\` is literal — a text block holding an
+   * escaped `\"""` closes early here, which fail-open covers. Dart and Groovy
+   * take both quote characters and do process escapes.
    */
-  tripleQuotes: boolean
+  tripleQuotes: ReadonlyArray<{ quote: string; escapes: boolean }>
   /** C# verbatim strings — `@"..."` / `$@"..."` with doubled-quote escapes. */
   verbatimStrings: boolean
 }
 
+const NO_TRIPLE_QUOTES: CLikeMaskOptions['tripleQuotes'] = []
+const RAW_TRIPLE_DOUBLE: CLikeMaskOptions['tripleQuotes'] = [
+  { quote: '"', escapes: false },
+]
+const ESCAPED_TRIPLE_BOTH: CLikeMaskOptions['tripleQuotes'] = [
+  { quote: '"', escapes: true },
+  { quote: "'", escapes: true },
+]
+
 const MASK_OPTS_LEGACY: CLikeMaskOptions = {
   regexLiterals: true,
-  tripleQuotes: false,
+  tripleQuotes: NO_TRIPLE_QUOTES,
   verbatimStrings: false,
 }
 const MASK_OPTS_JVM: CLikeMaskOptions = {
   regexLiterals: false,
-  tripleQuotes: true,
+  tripleQuotes: RAW_TRIPLE_DOUBLE,
   verbatimStrings: false,
 }
 const MASK_OPTS_CSHARP: CLikeMaskOptions = {
   regexLiterals: false,
-  tripleQuotes: true,
+  tripleQuotes: RAW_TRIPLE_DOUBLE,
   verbatimStrings: true,
 }
 // Plain brace languages with only `//` + `/* */` comments and simple
@@ -564,11 +1028,27 @@ const MASK_OPTS_CSHARP: CLikeMaskOptions = {
 // triple-quote handling where relevant; C uses the plain variant).
 const MASK_OPTS_PLAIN: CLikeMaskOptions = {
   regexLiterals: false,
-  tripleQuotes: false,
+  tripleQuotes: NO_TRIPLE_QUOTES,
+  verbatimStrings: false,
+}
+const MASK_OPTS_DART: CLikeMaskOptions = {
+  regexLiterals: false,
+  tripleQuotes: ESCAPED_TRIPLE_BOTH,
+  verbatimStrings: false,
+}
+// A Groovy slashy string `/…/` occupies the same syntactic slot as a regex
+// literal, so the same heuristic masks it.
+const MASK_OPTS_GROOVY: CLikeMaskOptions = {
+  regexLiterals: true,
+  tripleQuotes: ESCAPED_TRIPLE_BOTH,
   verbatimStrings: false,
 }
 
-function maskCLike(source: string, opts: CLikeMaskOptions): string {
+function maskCLike(
+  source: string,
+  opts: CLikeMaskOptions,
+  interp?: Interpolation | null,
+): string {
   const out = source.split('')
   const n = source.length
   let i = 0
@@ -578,6 +1058,8 @@ function maskCLike(source: string, opts: CLikeMaskOptions): string {
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
+  const ctx: MaskCtx = { source, n, blank }
+
   while (i < n) {
     const c = source[i]
     const c2 = source[i + 1]
@@ -595,30 +1077,16 @@ function maskCLike(source: string, opts: CLikeMaskOptions): string {
       }
       continue
     }
-    if (
-      opts.tripleQuotes &&
-      c === '"' &&
-      c2 === '"' &&
-      source[i + 2] === '"'
-    ) {
-      blank(i++)
-      blank(i++)
-      blank(i++)
-      while (
-        i < n &&
-        !(
-          source[i] === '"' &&
-          source[i + 1] === '"' &&
-          source[i + 2] === '"'
-        )
-      ) {
-        blank(i++)
-      }
-      if (i < n) {
-        blank(i++)
-        blank(i++)
-        blank(i++)
-      }
+    const triple =
+      c === c2 && source[i + 2] === c
+        ? opts.tripleQuotes.find(t => t.quote === c)
+        : undefined
+    if (triple) {
+      i = maskLiteral(ctx, i, {
+        terminator: triple.quote.repeat(3),
+        escape: triple.escapes ? '\\' : null,
+        interp,
+      })
       prevCode = '"'
       continue
     }
@@ -629,34 +1097,17 @@ function maskCLike(source: string, opts: CLikeMaskOptions): string {
         (c === '$' && c2 === '@' && source[i + 2] === '"'))
     ) {
       while (i < n && source[i] !== '"') blank(i++)
-      blank(i++) // opening quote
-      while (i < n) {
-        if (source[i] === '"') {
-          if (source[i + 1] === '"') {
-            blank(i++)
-            blank(i++)
-            continue
-          }
-          blank(i++)
-          break
-        }
-        blank(i++)
-      }
+      i = maskLiteral(ctx, i, {
+        terminator: '"',
+        escape: null,
+        doubledTerminatorIsEscape: true,
+        interp,
+      })
       prevCode = '"'
       continue
     }
     if (c === '"' || c === "'" || c === '`') {
-      const quote = c
-      blank(i++)
-      while (i < n && source[i] !== quote) {
-        if (source[i] === '\\') {
-          blank(i++)
-          if (i < n) blank(i++)
-          continue
-        }
-        blank(i++)
-      }
-      if (i < n) blank(i++)
+      i = maskLiteral(ctx, i, { terminator: c, escape: '\\', interp })
       // A string/template is a value — a following `/` is division.
       prevCode = '"'
       continue
@@ -696,13 +1147,15 @@ function maskCLike(source: string, opts: CLikeMaskOptions): string {
   return out.join('')
 }
 
-function maskPython(source: string): string {
+function maskPython(source: string, interp?: Interpolation | null): string {
   const out = source.split('')
   const n = source.length
   let i = 0
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
+  const ctx: MaskCtx = { source, n, blank }
+
   while (i < n) {
     const c = source[i]
     if (c === '#') {
@@ -711,43 +1164,14 @@ function maskPython(source: string): string {
     }
     if (c === '"' || c === "'") {
       const triple = source[i + 1] === c && source[i + 2] === c
-      const quote = c
-      if (triple) {
-        blank(i++)
-        blank(i++)
-        blank(i++)
-        while (
-          i < n &&
-          !(
-            source[i] === quote &&
-            source[i + 1] === quote &&
-            source[i + 2] === quote
-          )
-        ) {
-          if (source[i] === '\\') {
-            blank(i++)
-            if (i < n) blank(i++)
-            continue
-          }
-          blank(i++)
-        }
-        if (i < n) {
-          blank(i++)
-          blank(i++)
-          blank(i++)
-        }
-      } else {
-        blank(i++)
-        while (i < n && source[i] !== quote && source[i] !== '\n') {
-          if (source[i] === '\\') {
-            blank(i++)
-            if (i < n) blank(i++)
-            continue
-          }
-          blank(i++)
-        }
-        if (i < n && source[i] === quote) blank(i++)
-      }
+      i = maskLiteral(ctx, i, {
+        terminator: triple ? c.repeat(3) : c,
+        escape: '\\',
+        // A single-quoted literal cannot span lines; an unterminated one ends
+        // at the newline rather than swallowing the rest of the file.
+        stopAtNewline: !triple,
+        interp,
+      })
       continue
     }
     i++
@@ -762,7 +1186,7 @@ function maskPython(source: string): string {
  * real char literal (`'x'`, `'\n'`) is masked. Multi-code-unit char literals
  * (`'🦀'`) fall through the lifetime path; fail-open covers that edge.
  */
-function maskRust(source: string): string {
+function maskRust(source: string, interp?: Interpolation | null): string {
   const out = source.split('')
   const n = source.length
   let i = 0
@@ -770,6 +1194,7 @@ function maskRust(source: string): string {
     if (out[k] !== '\n') out[k] = ' '
   }
   const identChar = (k: number) => k >= 0 && RE_IDENT_CHAR.test(source[k]!)
+  const ctx: MaskCtx = { source, n, blank }
   while (i < n) {
     const c = source[i]
     const c2 = source[i + 1]
@@ -818,16 +1243,7 @@ function maskRust(source: string): string {
       // `r#ident` raw identifier — not a string; fall through.
     }
     if (c === '"') {
-      blank(i++)
-      while (i < n && source[i] !== '"') {
-        if (source[i] === '\\') {
-          blank(i++)
-          if (i < n) blank(i++)
-          continue
-        }
-        blank(i++)
-      }
-      if (i < n) blank(i++)
+      i = maskLiteral(ctx, i, { terminator: '"', escape: '\\', interp })
       continue
     }
     if (c === "'") {
@@ -864,13 +1280,14 @@ function maskRust(source: string): string {
  * heredoc/nowdoc (`<<<EOT … EOT;`, `<<<'EOT'`, `<<<"EOT"`). Best-effort:
  * a malformed heredoc degrades to fail-open at the scanner level.
  */
-function maskPhp(source: string): string {
+function maskPhp(source: string, interp?: Interpolation | null): string {
   const out = source.split('')
   const n = source.length
   let i = 0
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
+  const ctx: MaskCtx = { source, n, blank }
   while (i < n) {
     const c = source[i]
     const c2 = source[i + 1]
@@ -931,17 +1348,7 @@ function maskPhp(source: string): string {
       }
     }
     if (c === '"' || c === "'") {
-      const quote = c
-      blank(i++)
-      while (i < n && source[i] !== quote) {
-        if (source[i] === '\\') {
-          blank(i++)
-          if (i < n) blank(i++)
-          continue
-        }
-        blank(i++)
-      }
-      if (i < n) blank(i++)
+      i = maskLiteral(ctx, i, { terminator: c, escape: '\\', interp })
       continue
     }
     i++
@@ -955,13 +1362,14 @@ function maskPhp(source: string): string {
  * (`<<WORD`, `<<-WORD`, `<<'WORD'`). Only `{`/`}` matter to the scanner;
  * `${…}` stays balanced and `if/fi`, `case/esac` contribute no braces.
  */
-function maskBash(source: string): string {
+function maskBash(source: string, interp?: Interpolation | null): string {
   const out = source.split('')
   const n = source.length
   let i = 0
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
+  const ctx: MaskCtx = { source, n, blank }
   const commentBoundary = (prev: string) =>
     prev === '\n' ||
     prev === ' ' ||
@@ -1024,16 +1432,118 @@ function maskBash(source: string): string {
       continue
     }
     if (c === '"') {
+      i = maskLiteral(ctx, i, { terminator: '"', escape: '\\', interp })
+      continue
+    }
+    i++
+  }
+  return out.join('')
+}
+
+/**
+ * Elixir masking. `#` line comments, `"…"` / `'…'` literals and `"""` /
+ * `'''` heredocs, all of which interpolate with `#{…}`.
+ *
+ * Mask-only: there is no Elixir symbol scanner, so a rename site here carries
+ * no enclosing symbol. Deliberately does NOT reuse `maskRuby` — Ruby's heredoc
+ * rule reads Elixir's `<<"tag">>` binary literal as a heredoc opener and would
+ * mask the rest of the file.
+ */
+function maskElixir(source: string, interp?: Interpolation | null): string {
+  const out = source.split('')
+  const n = source.length
+  let i = 0
+  const blank = (k: number) => {
+    if (out[k] !== '\n') out[k] = ' '
+  }
+  const ctx: MaskCtx = { source, n, blank }
+  while (i < n) {
+    const c = source[i]!
+    if (c === '#' && source[i + 1] !== '{') {
+      while (i < n && source[i] !== '\n') blank(i++)
+      continue
+    }
+    if (c === '"' || c === "'") {
+      const triple = source[i + 1] === c && source[i + 2] === c
+      i = maskLiteral(ctx, i, {
+        terminator: triple ? c.repeat(3) : c,
+        escape: '\\',
+        stopAtNewline: !triple,
+        interp,
+      })
+      continue
+    }
+    i++
+  }
+  return out.join('')
+}
+
+/**
+ * PowerShell masking. `#` line comments, `<# … #>` blocks, `'…'` (literal,
+ * `''` escapes the quote) and `"…"` (expanding, backtick escapes), plus the
+ * `@"…"@` / `@'…'@` here-strings.
+ *
+ * Mask-only, like Elixir: sites are exact, enclosing symbols are not resolved.
+ */
+function maskPowerShell(source: string, interp?: Interpolation | null): string {
+  const out = source.split('')
+  const n = source.length
+  let i = 0
+  const blank = (k: number) => {
+    if (out[k] !== '\n') out[k] = ' '
+  }
+  const ctx: MaskCtx = { source, n, blank }
+  while (i < n) {
+    const c = source[i]!
+    const c2 = source[i + 1]
+    if (c === '<' && c2 === '#') {
       blank(i++)
-      while (i < n && source[i] !== '"') {
-        if (source[i] === '\\') {
+      blank(i++)
+      while (i < n && !(source[i] === '#' && source[i + 1] === '>')) blank(i++)
+      if (i < n) {
+        blank(i++)
+        blank(i++)
+      }
+      continue
+    }
+    if (c === '#') {
+      while (i < n && source[i] !== '\n') blank(i++)
+      continue
+    }
+    // Here-string: `@"` on its own to end of line, closed by `"@` at the start
+    // of a later line.
+    if (c === '@' && (c2 === '"' || c2 === "'")) {
+      const quote = c2
+      const closer = `${quote}@`
+      blank(i++)
+      blank(i++)
+      while (i < n) {
+        if (source[i] === '\n' && source.startsWith(closer, i + 1)) {
+          i++
           blank(i++)
-          if (i < n) blank(i++)
-          continue
+          blank(i++)
+          break
+        }
+        if (quote === '"' && interp) {
+          const next = maskInterpolationAt(ctx, i, interp)
+          if (next > i) {
+            i = next
+            continue
+          }
         }
         blank(i++)
       }
-      if (i < n) blank(i++)
+      continue
+    }
+    if (c === '"' || c === "'") {
+      i = maskLiteral(ctx, i, {
+        terminator: c,
+        // Backtick is PowerShell's escape character; `\` is literal.
+        escape: c === '"' ? '`' : null,
+        doubledTerminatorIsEscape: true,
+        stopAtNewline: true,
+        interp: c === '"' ? interp : null,
+      })
       continue
     }
     i++
@@ -1059,7 +1569,11 @@ type CLikeDetection = {
 }
 
 type CLikeSpec = {
-  mask: (source: string) => string
+  /**
+   * `interp` is threaded per LANGUAGE, not per mask function: Java and Kotlin
+   * share `maskJvm` but only Kotlin interpolates.
+   */
+  mask: (source: string, interp?: Interpolation | null) => string
   /**
    * 'raw' preserves the legacy TS/JS/Go behavior of matching on the raw
    * source line; 'masked' (new languages) means commented-out code never
@@ -1422,10 +1936,18 @@ const TERRAFORM_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
   'interface',
 ])
 
-const maskLegacy = (s: string) => maskCLike(s, MASK_OPTS_LEGACY)
-const maskJvm = (s: string) => maskCLike(s, MASK_OPTS_JVM)
-const maskCSharp = (s: string) => maskCLike(s, MASK_OPTS_CSHARP)
-const maskPlain = (s: string) => maskCLike(s, MASK_OPTS_PLAIN)
+const maskLegacy: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_LEGACY, interp)
+const maskJvm: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_JVM, interp)
+const maskCSharp: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_CSHARP, interp)
+const maskPlain: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_PLAIN, interp)
+const maskDart: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_DART, interp)
+const maskGroovy: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_GROOVY, interp)
 
 const TS_SPEC: CLikeSpec = {
   mask: maskLegacy,
@@ -1441,7 +1963,9 @@ const CLIKE_SPECS: Record<
   Exclude<
     OutlineLang,
     'python' | 'markdown' | 'ruby' | 'lua' | 'sql' | 'css' | 'html' |
-    'yaml' | 'xml' | 'properties' | 'env' | 'toml' | 'dockerfile' | 'makefile'
+    'yaml' | 'xml' | 'properties' | 'env' | 'toml' | 'dockerfile' | 'makefile' |
+    // Mask-only: these have no symbol scanner, so no c-like spec either.
+    'elixir' | 'powershell'
   >,
   CLikeSpec
 > = {
@@ -1470,6 +1994,27 @@ const CLIKE_SPECS: Record<
     detectSource: 'masked',
     detect: detectKotlin,
     methodContainers: KT_METHOD_CONTAINERS,
+    namespaceKinds: NO_KINDS,
+    docPrefixes: ['@'],
+    strictMethodDepth: true,
+  },
+  // Dart and Groovy reuse Java's detection: both declare `class Foo {` and a
+  // `Type name(args) {` member the same way. An arrow-bodied Dart member
+  // (`=> expr;`) opens no brace body, so it contributes no enclosing symbol.
+  dart: {
+    mask: maskDart,
+    detectSource: 'masked',
+    detect: detectJava,
+    methodContainers: JAVA_METHOD_CONTAINERS,
+    namespaceKinds: NO_KINDS,
+    docPrefixes: ['@', '///'],
+    strictMethodDepth: true,
+  },
+  groovy: {
+    mask: maskGroovy,
+    detectSource: 'masked',
+    detect: detectJava,
+    methodContainers: JAVA_METHOD_CONTAINERS,
     namespaceKinds: NO_KINDS,
     docPrefixes: ['@'],
     strictMethodDepth: true,
@@ -2034,13 +2579,14 @@ const RE_RUBY_END = /(?:^|[^.:\w])end(?![\w])/g
  * masking. Heredoc labels are required to start uppercase to disambiguate
  * from the `<<` append/shift operators (`arr << item`).
  */
-function maskRuby(source: string): string {
+function maskRuby(source: string, interp?: Interpolation | null): string {
   const out = source.split('')
   const n = source.length
   let i = 0
   const blank = (k: number) => {
     if (out[k] !== '\n') out[k] = ' '
   }
+  const ctx: MaskCtx = { source, n, blank }
   while (i < n) {
     const c = source[i]
     const c2 = source[i + 1]
@@ -2089,17 +2635,7 @@ function maskRuby(source: string): string {
       }
     }
     if (c === '"' || c === "'") {
-      const quote = c
-      blank(i++)
-      while (i < n && source[i] !== quote) {
-        if (source[i] === '\\') {
-          blank(i++)
-          if (i < n) blank(i++)
-          continue
-        }
-        blank(i++)
-      }
-      if (i < n) blank(i++)
+      i = maskLiteral(ctx, i, { terminator: c, escape: '\\', interp })
       continue
     }
     i++

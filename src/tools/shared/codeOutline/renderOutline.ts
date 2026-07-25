@@ -38,7 +38,12 @@ export type RenderOutlineOptions = {
   truncated?: boolean
 }
 
-function rangeLabel(entry: SymbolEntry): string {
+/**
+ * The `start-end` line-range label an outline row carries. Exported so other
+ * views of the same symbol table (the Rename preview) address a symbol exactly
+ * the way the outline does.
+ */
+export function rangeLabel(entry: SymbolEntry): string {
   return `${entry.startLine}-${entry.endLine}`
 }
 

@@ -1,0 +1,18 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`renderPreview the rendered preview keeps its shape 1`] = `
+"Rename preview — "cfg" → "config": 4 sites across 2 files.
+
+README.md  ~
+  s01  :1  see cfg for details
+src/a.ts
+  1-4  export function loadAll()    2 sites
+    s02  :2  const c = cfg(1)
+    s03  :3  return cfg(c)
+  6-9  export function resetAll()    1 site
+    s04  :8  return cfg()
+
+Skipped 1 occurrence(s) inside strings or comments.
+\`~\` marks a file with no string/comment analysis — every occurrence in it is listed as-is.
+sitesToken: <token> — pass it with \`exclude\` to drop specific sites; it is only valid while the tree is unchanged."
+`;
