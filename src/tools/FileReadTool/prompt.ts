@@ -18,9 +18,13 @@ function formatRange(offset: number, limit: number | undefined): string {
 /**
  * Which stand-down arm produced the fallback. The two carry different
  * evidence and must not claim each other's:
- *   'clipped' — a client-side clip path removed the copy and the scanner SAW
- *               it happen to a result we had pinned. "Protected and clipped
- *               anyway" is literally true.
+ *   'clipped' — the pinned copy is no longer readable in the transcript. Note
+ *               this covers TWO cases: the scanner matched the id and found a
+ *               clip stub in its place, OR the id is absent entirely (the whole
+ *               message was evicted). Only the first is a clip actually
+ *               witnessed, so the wording says the copy is gone, not that we
+ *               watched it go — see isPriorReadClippedOrMissing, whose name is
+ *               the honest one.
  *   'cleared' — the API applied clear_tool_uses at some point in this session.
  *               That latches session-wide and reports counts only, so we never
  *               learn which result was cleared, and a client-side pin cannot
@@ -31,7 +35,7 @@ export type ClipPinArm = 'clipped' | 'cleared'
 
 function clipPinReason(arm: ClipPinArm, range: string): string {
   return arm === 'clipped'
-    ? `You already re-read ${range} of this file and context management clipped it out again even though it was protected`
+    ? `You already re-read ${range} of this file and that copy is no longer in the conversation, even though it was protected`
     : `You already re-read ${range} of this file and the API keeps clearing tool results out of this conversation, so that copy is gone again`
 }
 

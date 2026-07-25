@@ -85,6 +85,7 @@ import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 import { hasServerClearedToolUses } from './serverClearingDetection.js'
 import {
   isPinRegistered,
+  isPinShielding,
   pinToolResult,
   retirePinAfterUse,
   unpinToolResult,
@@ -604,8 +605,13 @@ export const FileReadTool = buildTool({
       // harmless: the replay still hands the model the real body, it just skips
       // a dedup that had no state to dedup against anyway.
       if (!prior) return false
-      // Already in a stand-down cycle — call() owns the decision from here.
-      if (prior.toolUseId !== undefined && isPinRegistered(prior.toolUseId)) {
+      // A stand-down cycle is OPEN — call() owns the decision from here.
+      // isPinShielding, not isPinRegistered: the wide predicate also answers
+      // true for a SPENT id, and the intact branch retires ids into spent while
+      // leaving readFileState pointing at them. Keying on it would make this
+      // path bypass the cache permanently after one cycle — the same
+      // "stays true forever" failure the path-presence version had.
+      if (prior.toolUseId !== undefined && isPinShielding(prior.toolUseId)) {
         return true
       }
       const messages = context.messages
@@ -745,12 +751,14 @@ export const FileReadTool = buildTool({
         // distinguish them, and an outline is real content — the failure mode
         // on the other side is not.
         //
-        // Termination note. With a prior toolUseId the clientClipped arm ends
-        // at the fallback (re-send → pin → clipped anyway → outline). The
-        // serverCleared arm has no such bound: it cannot observe its own
-        // effect, so it re-sends once per re-read for as long as the latch is
-        // on. The old three-strike breaker bounded that with a side-map
-        // counter; this does not.
+        // Termination note. BOTH arms end at the fallback, because the fallback
+        // branch below keys on the pin, not on the arm: re-send → pin →
+        // still gone → outline, and it stays there. The serverCleared arm is
+        // not special here — it cannot observe its own effect, but it does not
+        // need to, since the pin records that this copy already had its turn.
+        //
+        // The one thing that DOES break termination is having no id to pin:
+        // see the priorToolUseId === undefined branch below.
         if (!standDown) {
           // Prior tool_result is intact in context (not clipped/cleared), so
           // whatever the model is doing it is NOT the clipped-reread loop. Any
@@ -820,10 +828,14 @@ export const FileReadTool = buildTool({
         if (standDown && clipPinEnabled()) {
           const priorToolUseId = existingState.toolUseId
           if (
-            priorToolUseId !== undefined &&
+            priorToolUseId === undefined ||
             isPinRegistered(priorToolUseId)
           ) {
-            // Keep the pin: this path returns WITHOUT touching readFileState,
+            // Two ways in.
+            //
+            // (a) priorToolUseId is pinned — this copy already had its one
+            // protected re-send and is gone anyway. Keep the pin: this path
+            // returns WITHOUT touching readFileState,
             // so the entry keeps pointing at this id — leaving it pinned is
             // what makes every further same-range re-read land here instead of
             // flip-flopping back into another futile re-send. Release happens
@@ -833,6 +845,19 @@ export const FileReadTool = buildTool({
             // block is skipped) as well as Edit/Write, delete and eviction —
             // or when the intact-result branch sees the copy survive, or when
             // pruneOrphanClippedIds drops the id with its message.
+            //
+            // (b) there is NO priorToolUseId (Tool.ts's field is optional;
+            // MCP/SDK/headless entry points build contexts without one). Then
+            // there is nothing to pin and nothing to remember, so the state
+            // machine cannot run at all — and a stand-down we cannot remember
+            // is a stand-down that repeats on every single re-read. Re-sending
+            // there is an unbounded full-body loop with no counter left to stop
+            // it (the old three-strike breaker was this branch's only bound and
+            // it is gone). The outline is where the bounded path converges
+            // anyway, so go straight to it: real content, stable across
+            // re-reads, no id required. The cost is that these contexts never
+            // get the one free re-send — which is the correct trade against a
+            // loop that never ends.
             const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
             const outlineLang = detectOutlineLangFromPath(fullFilePath)
             const scanned = outlineLang
@@ -878,10 +903,10 @@ export const FileReadTool = buildTool({
           }
           // First clipped stand-down for this (file, range): re-send the body
           // below and pin the copy that carries it, so the next clip pass
-          // leaves it alone. Contexts without a toolUseId (Tool.ts:301 is
-          // optional) can't be pinned — they keep the old re-send behavior.
-          // priorToolUseId needs no unpin: reaching this line means it was
-          // either absent or NOT pinned (a pinned prior returns above).
+          // leaves it alone. Reaching this line means priorToolUseId is present
+          // and NOT pinned — both the pinned case and the un-pinnable
+          // (undefined) case return the fallback above — so there is nothing to
+          // unpin and the re-send below is guaranteed to be the only one.
           //
           // Deferred to after callInner on purpose: pinning right here would
           // protect whatever that id ends up carrying rather than the body
@@ -1223,11 +1248,19 @@ const CLIP_PIN_HEAD_BYTES = 4_000
  * `N→content` on every line, and the redirect that follows tells the model to
  * go read a different part of the file — which it cannot aim at without
  * anchors.
+ *
+ * Notebooks are excluded. A `.ipynb` has no outline language, so it lands here,
+ * but its first 60 lines are raw nbformat JSON — metadata and base64 image
+ * outputs, not the cells a Read of that path returns. That is worse than
+ * nothing: it looks like content, it is line-numbered like content, and the
+ * line numbers do not correspond to anything the model can ask for. Send the
+ * bare redirect instead.
  */
 async function renderClipPinHeadSlice(
   fullFilePath: string,
   signal: AbortSignal,
 ): Promise<string> {
+  if (fullFilePath.toLowerCase().endsWith('.ipynb')) return ''
   try {
     const { content } = await readFileInRange(
       fullFilePath,
@@ -1240,6 +1273,11 @@ async function renderClipPinHeadSlice(
     if (content.length === 0) return ''
     return `${addLineNumbers({ content, startLine: 1 })}\n\n`
   } catch (e) {
+    // An abort is the user cancelling, not a failed fallback — degrading it to
+    // a bare redirect would hand the model a truncated answer for a request
+    // that was called off, and log a phantom error. scanFile rethrows for the
+    // same reason.
+    if (isAbortError(e)) throw e
     logError(e)
     return ''
   }

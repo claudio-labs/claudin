@@ -192,15 +192,28 @@ const MAX_SPENT_PIN_IDS = 64
 /**
  * How many clip passes one pin may shield its block before it is spent.
  *
- * A "pass" is NOT a turn and is not worth much individually — agePinsForCurrent
- * is ticked from applyStableStubs, pruneOldToolResults AND pruneToolResultsByBytes,
- * and those run per appended user message (QueryEngine's `case 'user'`), per API
- * request (streaming.ts), per ask() and per REPL turn. A single assistant turn
- * with several tool calls can burn a dozen ticks. The number is therefore a
- * safety ceiling on the clip-frontier stall, not a promise of N turns of
- * protection; it is set generously so a normal multi-tool turn does not expire
- * a pin placed inside it, and expiring early only means the model reaches the
- * outline fallback sooner (see the EXPIRE note above).
+ * A "pass" is NOT a turn, and the conversion rate is not even stable. Three
+ * functions tick agePinsForCurrent — applyStableStubs, pruneOldToolResults and
+ * pruneToolResultsByBytes — reached from nine production call sites: every API
+ * request on all three provider paths (claude/streaming.ts, openaiShim/
+ * messagesClient.ts, codexShim.ts), every appended user message and compaction
+ * in QueryEngine, and the REPL's own prune. So the tick rate depends on how
+ * tool-dense the turn is AND on whether microcompact has fired yet (until it
+ * does, applyStableStubs returns early on an empty clipped set and does not
+ * tick at all):
+ *
+ *   quiet, pre-microcompact  ~2 ticks/turn  → 48 passes ≈ 16-24 turns
+ *   busy, post-microcompact  ~13 ticks/turn → 48 passes ≈ 4 turns
+ *
+ * That 5x spread is why this is a safety ceiling on the clip-frontier stall and
+ * NOT a promise of N turns of protection. Both ends are acceptable for what the
+ * pin has to do: it only has to outlive the single turn that re-delivered the
+ * body, so even the 4-turn end is comfortable, and the 24-turn end costs
+ * nothing measurable (the frontier stall is structurally zero under retain,
+ * where isToolResultBlockMutable short-circuits on !agePruneActive, and was
+ * unmeasurable under aggressive, where nothing past the static head is cached
+ * anyway). Buying a stable unit means threading a turn counter through all nine
+ * call sites; the spread does not currently justify it.
  *
  * Ticked at the START of a pass, never inside pinShieldsBlock: the byte guard's
  * `remaining` accounting is only honest while its candidate filter and
@@ -340,6 +353,19 @@ export function isPinRegistered(toolUseId: string): boolean {
   const key = currentKey()
   if (perKeyPinnedIds.get(key)?.has(toolUseId)) return true
   return perKeySpentPinIds.get(key)?.has(toolUseId) ?? false
+}
+
+/**
+ * Is this copy shielding RIGHT NOW — i.e. is a stand-down cycle still open?
+ *
+ * The narrow half of isPinRegistered, for callers asking "is something in
+ * flight" rather than "did this ever happen". Using the wide one for an
+ * in-flight question latches forever, because spent ids are never forgotten
+ * while their message lives.
+ */
+export function isPinShielding(toolUseId: string): boolean {
+  if (!toolUseId) return false
+  return perKeyPinnedIds.get(currentKey())?.has(toolUseId) ?? false
 }
 
 // Ceiling on the size of a single protected result. The count cap bounds how

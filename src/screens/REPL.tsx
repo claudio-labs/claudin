@@ -1587,7 +1587,13 @@ export function REPL({
   // This allows Claude to edit files that were read in previous sessions
   const restoreReadFileState = useCallback((messages: MessageType[], cwd: string) => {
     const extracted = extractReadFilesFromMessages(messages, cwd, READ_FILE_STATE_CACHE_SIZE);
-    readFileState.current = mergeFileStateCaches(readFileState.current, extracted);
+    // replacesInputs: the result is assigned OVER readFileState.current, so it
+    // has to inherit the pin ownership of the cache it replaces — otherwise the
+    // discarded owner takes its ownership set with it and no pin in the session
+    // can be released early again.
+    readFileState.current = mergeFileStateCaches(readFileState.current, extracted, {
+      replacesInputs: true,
+    });
     for (const tool of extractBashToolsFromMessages(messages)) {
       bashTools.current.add(tool);
     }

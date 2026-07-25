@@ -115,6 +115,20 @@ export class FileStateCache {
     return this.cache.has(normalize(key))
   }
 
+  /**
+   * Take over `donor`'s pin ownership. For the caller that REPLACES a live
+   * cache with a derived one (mergeFileStateCaches with `replacesInputs`): the
+   * donor is about to be dropped, and `LRUCache.dispose` does not run on GC, so
+   * without this every pin the donor owned becomes ownerless — no cache is
+   * entitled to release it and it stalls the clip frontier until it ages out.
+   * Clearing the donor keeps the "exactly one owner" invariant intact.
+   */
+  transferOwnershipFrom(donor: FileStateCache): void {
+    if (donor === this) return
+    for (const id of donor.ownedToolUseIds) this.ownedToolUseIds.add(id)
+    donor.ownedToolUseIds.clear()
+  }
+
   delete(key: string): boolean {
     return this.cache.delete(normalize(key))
   }
@@ -193,16 +207,25 @@ export function cloneFileStateCache(cache: FileStateCache): FileStateCache {
  * Merge two file state caches, with more recent entries (by timestamp)
  * overriding older ones.
  *
- * Non-owning by construction: `first` is cloned via `load` and `second`'s
- * entries are inserted with `adopt: false`, so the merged cache holds every pin
- * WITHOUT claiming it. Using plain `set` here would let two live caches each
- * believe they own the same tool_use id, and whichever disposed first would
- * release a pin the other still vouches for — re-arming the clip → re-read loop
- * for a file the survivor thinks is protected. Same rule as cloneFileStateCache.
+ * Pin ownership depends on what the CALLER does with the result, which is the
+ * one thing this function cannot see:
+ *
+ * - default (a transient view — the inputs stay live): owns nothing. `first`
+ *   arrives via `load` and `second`'s entries via `adopt:false`, so no id gets a
+ *   second owner. Two live caches each believing they own one id means whichever
+ *   disposes first releases a pin the other still vouches for, re-arming the
+ *   clip → re-read loop for a file the survivor thinks is protected.
+ * - `replacesInputs: true` (the result is assigned OVER the inputs): takes both
+ *   inputs' ownership with it. Without this the merge is a guaranteed leak —
+ *   the discarded owner's set goes with it, `dispose` never runs on GC, and from
+ *   that point NO pin in the session can be released early by anyone.
+ *
+ * Pass `replacesInputs` whenever you write the result back over either input.
  */
 export function mergeFileStateCaches(
   first: FileStateCache,
   second: FileStateCache,
+  options?: { replacesInputs?: boolean },
 ): FileStateCache {
   const merged = cloneFileStateCache(first)
   for (const [filePath, fileState] of second.entries()) {
@@ -211,6 +234,10 @@ export function mergeFileStateCaches(
     if (!existing || fileState.timestamp > existing.timestamp) {
       merged.set(filePath, fileState, { adopt: false })
     }
+  }
+  if (options?.replacesInputs) {
+    merged.transferOwnershipFrom(first)
+    merged.transferOwnershipFrom(second)
   }
   return merged
 }

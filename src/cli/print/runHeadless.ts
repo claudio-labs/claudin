@@ -2171,6 +2171,11 @@ function runHeadlessStreaming(
                 ? readFileState
                 : mergeFileStateCaches(readFileState, pendingSeeds),
             setReadFileCache: cache => {
+              // The incoming cache may be the transient merge above, which owns
+              // no pins by construction. Promoting it over the live cache would
+              // strand every pin the live one owned — nothing left is entitled
+              // to release them.
+              if (cache !== readFileState) cache.transferOwnershipFrom(readFileState)
               readFileState = cache
               for (const [path, seed] of pendingSeeds.entries()) {
                 const existing = readFileState.get(path)
@@ -4190,4 +4195,3 @@ import {
   type SdkMcpState,
   type McpSetServersResult,
 } from 'src/cli/print/mcpReconcile.js'
-

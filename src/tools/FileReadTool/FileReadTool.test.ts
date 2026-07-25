@@ -1285,4 +1285,77 @@ describe('FileReadTool — clip pin (forced on)', () => {
     ctx.readFileState.delete(p)
     expect(isPinRegistered(pinnedId)).toBe(false)
   })
+
+  test('a context with no toolUseId gets the fallback, not an endless re-send', async () => {
+    // The un-pinnable case: Tool.ts's toolUseId is optional and MCP/SDK/headless
+    // entry points build contexts without one. There is then no id to pin and
+    // none to remember, so a stand-down cannot be recorded — and one that cannot
+    // be recorded repeats on EVERY re-read. Re-sending there is an unbounded
+    // full-body loop with no counter left to stop it, which is strictly worse
+    // than the three-strike breaker this branch deleted.
+    const p = writeFixture('clip-pin-no-id.ts', SAMPLE_TS)
+    const ctx = makeContext({ messages: [assistantWithClearing(4)] })
+    // No assignFreshToolUseId anywhere in this test: ctx.toolUseId stays
+    // undefined, so readFileState entries carry no id.
+    expect((await read(p, {}, ctx)).data.type).toBe('text')
+    expect(ctx.readFileState.get(p)?.toolUseId).toBeUndefined()
+
+    // Every subsequent re-read must be the stable fallback. Before the fix each
+    // one of these was another full body.
+    for (let i = 0; i < 3; i++) {
+      expect((await read(p, {}, ctx)).data.type).toBe('clip_pin_fallback')
+    }
+  })
+
+  test('a spent cycle lets the Read cache work again on an intact re-read', async () => {
+    // isPinRegistered answers true for SPENT ids too, so keying the cache bypass
+    // on it would latch: the intact branch retires the id into spent while
+    // leaving readFileState pointing at it, and the path would then skip the
+    // cache for the rest of the session. isPinShielding is the in-flight half.
+    const p = writeFixture('clip-pin-spent-bypass.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    const pinnedId = lastReadToolUseId
+
+    // Close the cycle: prior result intact ⇒ retirePinAfterUse ⇒ id is spent.
+    setContextMessages(ctx, [userWithToolResult(pinnedId, 'the real body')])
+    await read(p, {}, ctx)
+    expect(isPinRegistered(pinnedId)).toBe(true)
+
+    // Still spent, still intact, nothing in flight → the cache is allowed again.
+    expect(FileReadTool.bypassResultCache?.({ file_path: p }, ctx)).toBe(false)
+  })
+
+  test('a clipped notebook gets the bare redirect, not raw nbformat JSON', async () => {
+    // .ipynb has no outline language, so it reaches the head-slice arm — where
+    // its first 60 lines are metadata and base64 outputs, line-numbered to look
+    // like content the model can aim at. It cannot.
+    const nb = writeFixture(
+      'clip-pin-nb.ipynb',
+      JSON.stringify(
+        {
+          cells: [
+            { cell_type: 'code', source: ['print(1)\n'], outputs: [], metadata: {} },
+          ],
+          metadata: { kernelspec: { name: 'python3' } },
+          nbformat: 4,
+          nbformat_minor: 5,
+        },
+        null,
+        2,
+      ),
+    )
+    const ctx = makeContext()
+    await readWithPriorClipped(nb, ctx) // first read
+    await readWithPriorClipped(nb, ctx) // the one protected re-send
+    const out = await readWithPriorClipped(nb, ctx) // pinned and gone → fallback
+    expect(out.data.type).toBe('clip_pin_fallback')
+    const message = (out.data as { file: { message: string } }).file.message
+    expect(message).not.toContain('nbformat')
+    expect(message).not.toContain('kernelspec')
+    expect(message).toContain('Stop re-reading this range')
+    // The redirect and nothing else — no line-numbered JSON in front of it.
+    expect(message.startsWith('<system-reminder>')).toBe(true)
+  })
 })

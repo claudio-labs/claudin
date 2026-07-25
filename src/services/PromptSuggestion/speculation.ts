@@ -877,9 +877,12 @@ export async function handleSpeculationAccept(
       cwd,
       READ_FILE_STATE_CACHE_SIZE,
     )
+    // replacesInputs: the result is assigned OVER readFileState.current, so it
+    // has to inherit the pin ownership of the cache it replaces.
     readFileState.current = mergeFileStateCaches(
       readFileState.current,
       extracted,
+      { replacesInputs: true },
     )
 
     if (feedbackMessage) {
