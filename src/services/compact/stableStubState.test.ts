@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   _getClippedIdsMapSizeForTesting,
   _getPinnedToolResultsForTesting,
+  _getSpentPinIdsForTesting,
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
@@ -2082,11 +2083,22 @@ describe('pinned tool_results', () => {
     expect(getClipFrontierIndex(msgs)).toBe(before)
   })
 
-  test('pins are capped at 16, oldest first', () => {
+  test('shielding slots are capped at 16, oldest first', () => {
     for (let i = 0; i < 17; i++) pinToolResult(`toolu_${i}`)
     expect(_getPinnedToolResultsForTesting().size).toBe(16)
-    expect(isPinRegistered('toolu_0')).toBe(false)
-    expect(isPinRegistered('toolu_16')).toBe(true)
+    expect(_getPinnedToolResultsForTesting().has('toolu_0')).toBe(false)
+    expect(_getPinnedToolResultsForTesting().has('toolu_16')).toBe(true)
+  })
+
+  test('losing a slot retires the id instead of forgetting it', () => {
+    // The state machine keys on "did this copy already get its protected
+    // re-send?". Forgetting an evicted id answers no, so FileReadTool re-sends
+    // and re-pins, evicting someone else's pin, who then re-sends — one full
+    // body per rotation, forever. Retiring keeps the answer yes.
+    for (let i = 0; i < 17; i++) pinToolResult(`toolu_${i}`)
+    expect(_getPinnedToolResultsForTesting().has('toolu_0')).toBe(false)
+    expect(_getSpentPinIdsForTesting().has('toolu_0')).toBe(true)
+    expect(isPinRegistered('toolu_0')).toBe(true)
   })
 
   test('re-pinning refreshes recency instead of adding a slot', () => {
@@ -2096,8 +2108,28 @@ describe('pinned tool_results', () => {
     // Touch the oldest, then overflow by one: the NEXT-oldest is evicted.
     pinToolResult('toolu_first')
     pinToolResult('toolu_overflow')
-    expect(isPinRegistered('toolu_first')).toBe(true)
-    expect(isPinRegistered('toolu_1')).toBe(false)
+    expect(_getPinnedToolResultsForTesting().has('toolu_first')).toBe(true)
+    expect(_getPinnedToolResultsForTesting().has('toolu_1')).toBe(false)
+  })
+
+  test('re-pinning a spent id makes it shield again', () => {
+    for (let i = 0; i < 17; i++) pinToolResult(`toolu_${i}`)
+    expect(_getSpentPinIdsForTesting().has('toolu_0')).toBe(true)
+    pinToolResult('toolu_0')
+    expect(_getPinnedToolResultsForTesting().has('toolu_0')).toBe(true)
+    expect(_getSpentPinIdsForTesting().has('toolu_0')).toBe(false)
+  })
+
+  test('unpinning clears both registries so a later clip starts over', () => {
+    // unpin means "the protection is no longer owed" (the model demonstrably
+    // has the content, or the entry that vouched for it is gone). Leaving the
+    // id spent would make a genuinely new clip → re-read skip the one re-send
+    // it is entitled to and jump straight to the outline.
+    for (let i = 0; i < 17; i++) pinToolResult(`toolu_${i}`)
+    unpinToolResult('toolu_0')
+    unpinToolResult('toolu_16')
+    expect(isPinRegistered('toolu_0')).toBe(false)
+    expect(isPinRegistered('toolu_16')).toBe(false)
   })
 
   test('an empty id is never pinned', () => {
@@ -2199,10 +2231,40 @@ describe('pinned tool_results', () => {
     pinToolResult('toolu_old')
     for (let i = 0; i < 16; i++) pinToolResult(`toolu_new_${i}`)
 
-    expect(isPinRegistered('toolu_old')).toBe(false)
+    expect(_getPinnedToolResultsForTesting().has('toolu_old')).toBe(false)
     const result = pruneOldToolResults(messages, 1)
     expect(result).not.toBe(messages)
     expect(contentOf(result[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
+    // …but it stays REGISTERED, so the next same-range re-read is answered
+    // with the outline fallback rather than another full re-send.
+    expect(isPinRegistered('toolu_old')).toBe(true)
+  })
+
+  test('a pin stops shielding after MAX_SHIELDED_PASSES clip passes', () => {
+    // An unbounded pin keeps its block off every clip path, and because the
+    // clip frontier still counts it as mutable the cache_control marker cannot
+    // advance past it — every later turn re-sends the suffix uncached, at
+    // O(turns). The pin only has to outlive the turn that re-delivered the
+    // body, so it expires and the block resumes clipping.
+    const clipOnce = () => {
+      const messages = twoTurns('toolu_aging')
+      return pruneOldToolResults(messages, 1)
+    }
+    pinToolResult('toolu_aging')
+
+    let clippedAt = -1
+    for (let pass = 1; pass <= 40; pass++) {
+      const out = clipOnce()
+      if (/\[clipped: ~\d+ tokens from Read/.test(String(contentOf(out[1])))) {
+        clippedAt = pass
+        break
+      }
+    }
+    expect(clippedAt).toBeGreaterThan(1)
+    expect(clippedAt).toBeLessThanOrEqual(20)
+    // Expiry must not re-arm the loop: the id is spent, not forgotten.
+    expect(_getPinnedToolResultsForTesting().has('toolu_aging')).toBe(false)
+    expect(isPinRegistered('toolu_aging')).toBe(true)
   })
 
   /** Same shape as twoTurns, with a result far past the protection ceiling. */
@@ -2235,6 +2297,10 @@ describe('pinned tool_results', () => {
     // The registry entry survives: it is what makes the next same-range
     // re-read serve the outline instead of another futile re-send.
     expect(isPinRegistered('toolu_huge')).toBe(true)
+    // But it must NOT keep a shielding slot it cannot use: sixteen oversized
+    // reads would otherwise evict every pin that was actually working.
+    expect(_getPinnedToolResultsForTesting().has('toolu_huge')).toBe(false)
+    expect(_getSpentPinIdsForTesting().has('toolu_huge')).toBe(true)
   })
 
   test('the byte guard and the age prune agree on the ceiling', () => {

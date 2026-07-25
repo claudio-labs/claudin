@@ -139,6 +139,18 @@ function isTaskBoundary(m: Message): boolean {
 }
 
 /**
+ * Hard bound on how far back a scan may walk when no task boundary is found.
+ * `isTaskBoundary` deliberately refuses to treat a user message carrying
+ * tool_results as the human's turn, which is what fixed the sub-agent window —
+ * but it also means a sub-agent transcript (whose first message is already a
+ * tool turn) can yield boundaryIdx === -1 and scan everything. The walk itself
+ * is cheap; canonicalize() on every tool_use input is not, since a single
+ * Write carries a whole file body. A repeated-failure streak lives in the last
+ * handful of turns, so anything older cannot change the verdict.
+ */
+const MAX_SCAN_MESSAGES = 400
+
+/**
  * Walk the active task (everything after the most recent human turn),
  * correlating each tool_use to its tool_result, and tally per-key error
  * counts. Shared by the memory-extraction signal and the just-in-time
@@ -150,7 +162,8 @@ function collectFailureStats(messages: ReadonlyArray<Message>): {
 } {
   // Boundary: everything after the most recent human turn is the active task.
   let boundaryIdx = -1
-  for (let i = messages.length - 1; i >= 0; i--) {
+  const scanFloor = Math.max(0, messages.length - MAX_SCAN_MESSAGES)
+  for (let i = messages.length - 1; i >= scanFloor; i--) {
     const m = messages[i]
     if (m && isTaskBoundary(m)) {
       boundaryIdx = i
@@ -163,7 +176,7 @@ function collectFailureStats(messages: ReadonlyArray<Message>): {
   const useIdToName = new Map<string, string>()
   const stats = new Map<string, FailureStat>()
 
-  for (let i = boundaryIdx + 1; i < messages.length; i++) {
+  for (let i = Math.max(boundaryIdx + 1, scanFloor); i < messages.length; i++) {
     const m = messages[i]
     if (!m) continue
     if (m.type === 'assistant' && Array.isArray(m.message.content)) {

@@ -868,7 +868,7 @@ describe('FileReadTool — clip pin (forced on)', () => {
     )
   })
 
-  test('non-code file (no symbols to outline) falls back to a textual redirect stub', async () => {
+  test('non-code file falls back to the head of the file plus a redirect', async () => {
     const body = Array.from({ length: 40 }, (_, i) => `plain line ${i}`).join(
       '\n',
     )
@@ -885,6 +885,28 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(tripped.data.file.servedOutline).toBe(false)
     expect(tripped.data.file.message).toMatch(/re-read/i)
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
+    // The code arm serves an outline — a real view of the file. The non-code
+    // arm used to serve a bare system-reminder, i.e. the model asked to read a
+    // file and got zero bytes of it, which is worse than the three-strike
+    // breaker this replaced (two more full bodies first). It must carry the
+    // head of the file with the redirect.
+    expect(tripped.data.file.message).toContain('plain line 0')
+    expect(tripped.data.file.message).toContain('plain line 39')
+  })
+
+  test('the legacy CLAUDIN_DISABLE_READ_RERUN_BREAKER killswitch still works', async () => {
+    // The mechanism shipped under the old name; the rename must not silently
+    // take a working opt-out away from anyone who had already set it.
+    const p = writeFixture('clip-pin-legacy-killswitch.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER = '1'
+    try {
+      for (let i = 0; i < 4; i++) {
+        expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+      }
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER
+    }
   })
 
   test('the server-clearing arm reaches the fallback but never claims the copy was protected', async () => {
@@ -904,10 +926,80 @@ describe('FileReadTool — clip pin (forced on)', () => {
     }
     // clear_tool_uses latches session-wide and reports counts only, so we never
     // observe THIS result being cleared — and a client-side pin cannot stop
-    // server-side clearing anyway. Borrowing the clipped arm's wording here
-    // would tell the model something we did not verify.
+    // server-side clearing anyway. The message may say the protected copy is
+    // gone (that part IS verified client-side, and is what gates this arm) but
+    // must not pin the blame for it on the API.
     expect(tripped.data.file.message).not.toContain('even though it was protected')
-    expect(tripped.data.file.message).toContain('the API keeps clearing tool results')
+    expect(tripped.data.file.message).not.toContain('the API keeps clearing tool results')
+    expect(tripped.data.file.message).toContain(
+      'the API also clearing tool results in this session',
+    )
+  })
+
+  test('a latched server clear does not override a pinned copy we can still see', async () => {
+    const p = writeFixture('clip-pin-latch-visible.ts', SAMPLE_TS)
+    // The clear latch is on for every read, but the prior tool_result is
+    // present and unclipped in the transcript throughout.
+    const ctx = makeContext({ messages: [assistantWithClearing(4)] })
+
+    const readWithPriorVisible = async () => {
+      const priorId = ctx.readFileState.get(p)?.toolUseId
+      setContextMessages(ctx, [
+        assistantWithClearing(4),
+        ...(priorId ? [userWithToolResult(priorId, 'the real body')] : []),
+      ])
+      assignFreshToolUseId(ctx)
+      return read(p, {}, ctx)
+    }
+
+    // 1st: ordinary read. 2nd: the latch alone forces a stand-down re-send,
+    // which pins the copy it delivers.
+    expect((await readWithPriorVisible()).data.type).toBe('text')
+    expect((await readWithPriorVisible()).data.type).toBe('text')
+    expect(isPinRegistered(lastReadToolUseId)).toBe(true)
+
+    // 3rd: the pinned copy is still visibly in the transcript, so the latch is
+    // stale evidence about THIS result — the clip-pin fallback must not fire.
+    // Before this gate, one unrelated clear degraded every file in the session
+    // to "two re-reads then an outline".
+    const third = await readWithPriorVisible()
+    expect(third.data.type).toBe('file_unchanged')
+  })
+
+  test('a cached first read never preempts the stand-down', async () => {
+    const p = writeFixture('clip-pin-cache.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    // The suite disables the cache at module load; enable it for this test.
+    delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
+    try {
+      setContextMessages(ctx, [])
+      assignFreshToolUseId(ctx)
+      expect((await read(p, {}, ctx)).data.type).toBe('text')
+      // The first read is a pure function of input + disk, so it caches.
+      expect(getCached('Read', { file_path: p })).toBeDefined()
+
+      // Same input, but now the prior result is clipped. A cache hit would
+      // short-circuit call() for the whole 60s TTL, handing the model an
+      // UNPINNED replay and freezing the stand-down state machine — the loop
+      // would spin invisibly instead of terminating after one re-send.
+      const { data } = await readWithPriorClipped(p, ctx)
+      expect(data.type).toBe('text')
+      expect(isPinRegistered(lastReadToolUseId)).toBe(true)
+    } finally {
+      process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
+      invalidateAll()
+    }
+  })
+
+  test('bypassResultCache only fires for a path this context already read', async () => {
+    const p = writeFixture('clip-pin-bypass.ts', SAMPLE_TS)
+    const ctx = makeContext()
+    // First read of a path still caches — that is where the cache's IO win is.
+    expect(FileReadTool.bypassResultCache?.({ file_path: p }, ctx)).toBe(false)
+    setContextMessages(ctx, [])
+    assignFreshToolUseId(ctx)
+    await read(p, {}, ctx)
+    expect(FileReadTool.bypassResultCache?.({ file_path: p }, ctx)).toBe(true)
   })
 
   test('CLAUDIN_DISABLE_READ_CLIP_PIN wins over the force flag', async () => {

@@ -133,9 +133,28 @@ function recordStubText(toolUseId: string, stub: string): void {
 //
 // Deliberately NOT consulted by isToolResultBlockMutable: the pin keeps a
 // block from being rewritten, but never promises the clip frontier that the
-// block is frozen forever. A pin can be dropped (FIFO, orphan prune) and the
-// block clipped later — that must stay an ordinary clip event, not a broken
-// immutability claim.
+// block is frozen forever. A pin can be dropped (age, FIFO, orphan prune) and
+// the block clipped later — that must stay an ordinary clip event, not a
+// broken immutability claim. That choice has a price, and it is why pins
+// EXPIRE: because a shielded block still counts as mutable, the clip frontier
+// (and the cache_control marker with it) cannot advance past it, so every
+// later turn re-sends the suffix uncached. An unbounded pin therefore costs
+// O(turns) under the AGGRESSIVE profile. The pin only has to survive long
+// enough for the model to consume the re-sent body — a couple of turns — so
+// MAX_SHIELDED_PASSES bounds it and the frontier resumes moving.
+//
+// TWO REGISTRIES, one state machine:
+//   SHIELDING (perKeyPinnedIds) — ids the clip paths must skip. Bounded by
+//     MAX_PINNED_TOOL_RESULTS slots and by MAX_SHIELDED_PASSES of age.
+//   SPENT (perKeySpentPinIds) — ids that WERE pinned and no longer shield
+//     anything, because they aged out, lost their slot to the FIFO, or turned
+//     out to be over MAX_PINNED_RESULT_TOKENS. They carry no obligation, only
+//     the memory that this copy already got its one protected re-send.
+// isPinRegistered answers over BOTH, so FileReadTool's next same-range
+// re-read serves the structural-outline fallback instead of starting another
+// re-send. Without the spent half, losing a slot silently re-armed the loop:
+// re-send → pin → evict someone else's pin → they re-send → evict yours, one
+// full body per rotation, forever.
 //
 // OWNERSHIP MODEL (the one place it is stated; other comments defer here):
 // a pin is owned by the readFileState entry whose toolUseId it holds. The
@@ -147,22 +166,62 @@ function recordStubText(toolUseId: string, stub: string): void {
 // ids whose transcript is gone: the intact-result branch in FileReadTool,
 // pruneOrphanClippedIds, pruneStaleClippedIds, onSessionSwitch.
 //
-// Keyed per (session, agent) exactly like perKeyClippedIds — NOT a flat set.
-// tool_use ids are globally unique, so a flat set looks sufficient, but every
-// lifecycle operation here is scoped to ONE transcript: pruneOrphanClippedIds
-// receives a single agent's messages, resetClippedIds fires per agent out of
-// microcompact, and onSessionSwitch only knows the outgoing session. Sharing
-// one set across agents let a sub-agent's routine compaction unpin the main
-// thread's protected results, silently re-arming the very loop the pin exists
-// to stop. The FIFO cap is per key for the same reason.
+// Keyed per (session, agent) exactly like perKeyClippedIds — NOT a flat set,
+// because every lifecycle operation here is scoped to ONE transcript:
+// pruneOrphanClippedIds receives a single agent's messages, resetClippedIds
+// fires per agent out of microcompact, and onSessionSwitch only knows the
+// outgoing session. The FIFO caps are per key for the same reason.
+//
+// CAVEAT — the isolation is real ONLY for swarm teammates. currentKey() reads
+// getAgentId(), which is set by swarm/inProcessRunner's AsyncLocalStorage and
+// by the --agent-id CLI args, and by nothing else. An ordinary Agent/fork
+// sub-agent (tools/AgentTool/runAgent.ts, utils/forkedAgent.ts) sets neither,
+// so it shares the MAIN thread's key and therefore the main thread's slots.
+// Do not read the composite key as a guarantee that a sub-agent cannot touch
+// the parent's pins — it can. The spent registry is what makes that survivable
+// (a stolen slot degrades to the fallback instead of re-arming the loop);
+// closing it properly needs a general current-agent scope, not a change here.
 //
 // Within a key, insertion order is the FIFO order; re-pinning refreshes it.
 const MAX_PINNED_TOOL_RESULTS = 16
-const perKeyPinnedIds = new Map<string, Set<string>>()
+/** Spent ids are 8 bytes of state each — keep a longer memory than the slots. */
+const MAX_SPENT_PIN_IDS = 64
+/**
+ * How many clip passes one pin may shield its block before it is spent.
+ * Ticked once per pass at the START of applyStableStubs / pruneOldToolResults,
+ * never inside pinShieldsBlock: the byte guard's `remaining` accounting is only
+ * honest while its candidate filter and stubOneBlock agree on what is exempt,
+ * and a counter that tipped between those two calls would break exactly that.
+ */
+const MAX_SHIELDED_PASSES = 12
+/** id → number of clip passes this pin has already shielded its block. */
+const perKeyPinnedIds = new Map<string, Map<string, number>>()
+const perKeySpentPinIds = new Map<string, Set<string>>()
 
-// Read-only lookup — never allocates a set for the key.
-function getPinsForCurrent(): Set<string> | undefined {
+// Read-only lookup — never allocates a map for the key.
+function getPinsForCurrent(): Map<string, number> | undefined {
   return perKeyPinnedIds.get(currentKey())
+}
+
+/** Move an id out of its shielding slot, remembering that it was pinned. */
+function retirePin(key: string, toolUseId: string): void {
+  perKeyPinnedIds.get(key)?.delete(toolUseId)
+  let spent = perKeySpentPinIds.get(key)
+  if (!spent) {
+    spent = new Set()
+    if (perKeySpentPinIds.size >= MAX_TRACKED_KEYS) {
+      const oldestKey = perKeySpentPinIds.keys().next().value
+      if (oldestKey !== undefined) perKeySpentPinIds.delete(oldestKey)
+    }
+    perKeySpentPinIds.set(key, spent)
+  }
+  spent.delete(toolUseId)
+  spent.add(toolUseId)
+  while (spent.size > MAX_SPENT_PIN_IDS) {
+    const oldest = spent.values().next().value
+    if (oldest === undefined) break
+    spent.delete(oldest)
+  }
 }
 
 export function pinToolResult(toolUseId: string): void {
@@ -170,7 +229,7 @@ export function pinToolResult(toolUseId: string): void {
   const key = currentKey()
   let pins = perKeyPinnedIds.get(key)
   if (!pins) {
-    pins = new Set()
+    pins = new Map()
     // Same defensive LRU-ish bound as getOrCreateForCurrent.
     if (perKeyPinnedIds.size >= MAX_TRACKED_KEYS) {
       const oldest = perKeyPinnedIds.keys().next().value
@@ -178,26 +237,54 @@ export function pinToolResult(toolUseId: string): void {
     }
     perKeyPinnedIds.set(key, pins)
   }
+  // A fresh pin is not spent: this copy is being protected right now.
+  perKeySpentPinIds.get(key)?.delete(toolUseId)
   pins.delete(toolUseId)
-  pins.add(toolUseId)
+  pins.set(toolUseId, 0)
   while (pins.size > MAX_PINNED_TOOL_RESULTS) {
-    const oldest = pins.values().next().value
+    const oldest = pins.keys().next().value
     if (oldest === undefined) break
-    pins.delete(oldest)
+    retirePin(key, oldest)
   }
 }
 
+/**
+ * Full release — the pin is gone AND forgotten, so a later clip of this id
+ * starts the stand-down over from the re-send. Used when the evidence says the
+ * protection is no longer owed: the model demonstrably still has the content
+ * (FileReadTool's intact branch), or the readFileState entry that vouched for
+ * it is gone (fileStateCache's dispose hook), or the message left the
+ * transcript entirely (the orphan sweeps).
+ */
 export function unpinToolResult(toolUseId: string): void {
-  getPinsForCurrent()?.delete(toolUseId)
+  const key = currentKey()
+  perKeyPinnedIds.get(key)?.delete(toolUseId)
+  perKeySpentPinIds.get(key)?.delete(toolUseId)
+}
+
+/** One tick of the pin clock; see MAX_SHIELDED_PASSES. */
+function agePinsForCurrent(): void {
+  const key = currentKey()
+  const pins = perKeyPinnedIds.get(key)
+  if (!pins || pins.size === 0) return
+  for (const [id, passes] of pins) {
+    if (passes + 1 >= MAX_SHIELDED_PASSES) retirePin(key, id)
+    else pins.set(id, passes + 1)
+  }
 }
 
 /**
- * Registry membership only — the question FileReadTool's state machine asks
- * ("did I already pin the copy this entry points at?"). Clip paths must NOT
- * use this: see pinShieldsBlock.
+ * Was this copy ever pinned — shielding now, or spent? This is the question
+ * FileReadTool's state machine asks ("did this copy already get its one
+ * protected re-send?"), and it must stay true after the pin stops shielding,
+ * or every expiry would re-arm the very loop the pin exists to close. Clip
+ * paths must NOT use this: see pinShieldsBlock.
  */
 export function isPinRegistered(toolUseId: string): boolean {
-  return getPinsForCurrent()?.has(toolUseId) ?? false
+  if (!toolUseId) return false
+  const key = currentKey()
+  if (perKeyPinnedIds.get(key)?.has(toolUseId)) return true
+  return perKeySpentPinIds.get(key)?.has(toolUseId) ?? false
 }
 
 // Ceiling on the size of a single protected result. The count cap bounds how
@@ -208,11 +295,12 @@ export function isPinRegistered(toolUseId: string): boolean {
 // full-file Reads would sit untouchable until autocompact, i.e. the mechanism
 // would hasten the compaction the profile exists to postpone.
 //
-// Above the ceiling the id stays in the registry but stops being protected:
-// the block clips like any other, so the next same-range re-read lands on the
-// "pinned yet clipped" branch and gets the structural outline — which is the
-// better answer for a file that big anyway. Degrading into the existing
-// fallback beats holding 25k tokens hostage.
+// Above the ceiling the id is retired to the spent registry on sight: it stops
+// being protected AND stops holding a shielding slot (leaving it in one burned
+// a slot to protect nothing — sixteen oversized reads could evict every pin
+// that was actually working). It stays registered, so the next same-range
+// re-read lands on the "already had its re-send" branch and gets the
+// structural outline — the better answer for a file that big anyway.
 export const MAX_PINNED_RESULT_TOKENS = 8_000
 
 /**
@@ -221,21 +309,36 @@ export const MAX_PINNED_RESULT_TOKENS = 8_000
  * byte guard's accounting is only honest while its candidate filter and
  * stubOneBlock agree on what is exempt, and a registered-but-oversized pin is
  * deliberately not exempt.
+ *
+ * Retiring an oversized id here is a safe side effect precisely because it
+ * cannot change the answer: false before, false after, for every later caller
+ * in the same pass.
  */
 export function pinShieldsBlock(toolUseId: string, content: unknown): boolean {
-  if (!toolUseId || !isPinRegistered(toolUseId)) return false
-  return estimateToolResultTokens(content) <= MAX_PINNED_RESULT_TOKENS
+  if (!toolUseId) return false
+  const key = currentKey()
+  if (!perKeyPinnedIds.get(key)?.has(toolUseId)) return false
+  if (estimateToolResultTokens(content) <= MAX_PINNED_RESULT_TOKENS) return true
+  retirePin(key, toolUseId)
+  return false
 }
 
-// Test-only: inspect the live pin set for the current (session, agent).
+// Test-only: inspect the shielding ids for the current (session, agent).
 export function _getPinnedToolResultsForTesting(): ReadonlySet<string> {
-  return getPinsForCurrent() ?? EMPTY_SET
+  const pins = getPinsForCurrent()
+  return pins ? new Set(pins.keys()) : EMPTY_SET
+}
+
+// Test-only: inspect the spent ids for the current (session, agent).
+export function _getSpentPinIdsForTesting(): ReadonlySet<string> {
+  return perKeySpentPinIds.get(currentKey()) ?? EMPTY_SET
 }
 
 export function resetClippedIds(): void {
   perKeyClippedIds.delete(currentKey())
   perKeyStubText.delete(currentKey())
   perKeyPinnedIds.delete(currentKey())
+  perKeySpentPinIds.delete(currentKey())
 }
 
 /**
@@ -247,13 +350,17 @@ export function resetClippedIds(): void {
  */
 export function pruneStaleClippedIds(): void {
   // "Every key but mine" only reads as "stale" from the main thread. A
-  // sub-agent compacting runs this inside runWithTeammateContext
+  // swarm teammate compacting runs this inside runWithTeammateContext
   // (inProcessRunner), where currentKey() is `<sid>:<agentId>` — so the main
   // thread's `<sid>` key would be deleted while its messages are very much
   // alive, taking its clipped set, stub text and pins with it. That is the
   // cross-thread corruption runPostCompactCleanup's own doc warns about, and
   // for pins it re-opens the clip → re-read loop they exist to close. A
   // sub-agent has no standing to call another key stale.
+  //
+  // Only swarm teammates are caught here: getAgentId() is blind to ordinary
+  // Agent/fork sub-agents (see the registry caveat above), and those already
+  // run under the main key, so "every key but mine" is harmless for them.
   if (getAgentId()) return
   const key = currentKey()
   for (const k of perKeyClippedIds.keys()) {
@@ -264,6 +371,9 @@ export function pruneStaleClippedIds(): void {
   }
   for (const k of perKeyPinnedIds.keys()) {
     if (k !== key) perKeyPinnedIds.delete(k)
+  }
+  for (const k of perKeySpentPinIds.keys()) {
+    if (k !== key) perKeySpentPinIds.delete(k)
   }
 }
 
@@ -281,10 +391,12 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   // Pins are checked against the SAME key's messages only: `messages` is one
   // agent's transcript, so it is not evidence about another agent's pins.
   const pins = getPinsForCurrent()
+  const spent = perKeySpentPinIds.get(currentKey())
   if (
     (!ids || ids.size === 0) &&
     (!stubText || stubText.size === 0) &&
-    (!pins || pins.size === 0)
+    (!pins || pins.size === 0) &&
+    (!spent || spent.size === 0)
   ) {
     return
   }
@@ -325,8 +437,17 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   if (pins) {
     // A pin only means anything while its tool_result is still in the
     // transcript; compaction/eviction makes it dead weight.
-    for (const id of pins) {
+    for (const id of pins.keys()) {
       if (!liveIds.has(id)) pins.delete(id)
+    }
+  }
+  if (spent) {
+    // Same rule for the memory of a spent pin: once the message is gone the
+    // state machine has nothing left to be right about, and keeping the id
+    // would make a genuinely new read of that file skip straight to the
+    // fallback.
+    for (const id of spent) {
+      if (!liveIds.has(id)) spent.delete(id)
     }
   }
 }
@@ -337,6 +458,7 @@ export function _resetAllClippedIdsForTesting(): void {
   perKeyClippedIds.clear()
   perKeyStubText.clear()
   perKeyPinnedIds.clear()
+  perKeySpentPinIds.clear()
   // Sync lastSeenSessionId with the current session so that the first
   // switchSession() call in a test correctly identifies which key to evict.
   // Without this, tests that run after a mock of bootstrap/state.js has
@@ -381,6 +503,11 @@ onSessionSwitch(newId => {
   for (const k of perKeyPinnedIds.keys()) {
     if (k === old || k.startsWith(`${old}:`)) {
       perKeyPinnedIds.delete(k)
+    }
+  }
+  for (const k of perKeySpentPinIds.keys()) {
+    if (k === old || k.startsWith(`${old}:`)) {
+      perKeySpentPinIds.delete(k)
     }
   }
 })
@@ -749,6 +876,10 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
   const clippedIds = perKeyClippedIds.get(currentKey())
   if (!clippedIds || clippedIds.size === 0) return messages
 
+  // One tick of the pin clock per real clip pass (see MAX_SHIELDED_PASSES).
+  // Taken here, before any block is examined, so every pinShieldsBlock call
+  // in this pass gets the same answer.
+  agePinsForCurrent()
   const toolNames = indexToolUses(messages)
   let anyTouched = false
   // Same head-preserving form as the age prune / byte guard: the explicit
@@ -858,18 +989,22 @@ export type ClipFrontierMutability = {
  * tests in stableStubState.test.ts pin the correspondence.
  *
  * ONE deliberate exception: the pin registry. A pinned block will not be
- * rewritten *right now*, but the pin can be dropped later (FIFO, orphan prune,
- * the model moving on) and the block clipped then. Reporting it immutable would
- * advertise a freeze we cannot honor — a cache-prefix break instead of an
- * ordinary clip event. So pins are NOT consulted here, on purpose; the
- * "clip frontier ignores pins" test guards the decision.
+ * rewritten *right now*, but the pin can be dropped later (age, FIFO, orphan
+ * prune, the model moving on) and the block clipped then. Reporting it
+ * immutable would advertise a freeze we cannot honor — a cache-prefix break
+ * instead of an ordinary clip event. So pins are NOT consulted here, on
+ * purpose; the "clip frontier ignores pins" test guards the decision.
  *
  * Cost of that choice: under the AGGRESSIVE profile a pinned full result keeps
  * counting as mutable, so the frontier (and with it the cache_control marker)
- * stalls just before it while the pin lasts. That profile already assumes no
- * usable cache discount (readMult 1.0), and the alternative was an unbounded
- * re-read loop — under RETAIN the question does not arise, since a full
- * tool_result is immutable there anyway (see the agePruneActive branch below).
+ * stalls just before it while the pin lasts, and every later turn re-sends the
+ * suffix uncached. That is why pins EXPIRE (MAX_SHIELDED_PASSES): the stall is
+ * bounded to the few passes the pin is actually needed for, instead of growing
+ * at O(turns) until autocompact. Note that readMult 1.0 on this profile is a
+ * clipping heuristic, NOT a claim that caching is off — breakpoints are still
+ * emitted, so the stall does cost real money. Under RETAIN the question does
+ * not arise: a full tool_result is immutable there anyway (see the
+ * agePruneActive branch below).
  */
 function isToolResultBlockMutable(
   block: AnyContentBlock,
@@ -1035,6 +1170,10 @@ export function pruneOldToolResults<T extends AnyMessage>(
   if (cutoffIdx === -1) return messages  // fewer turns than keepTurns
   if (cutoffIdx === 0) return messages   // nothing before the cutoff to prune
 
+  // One tick of the pin clock per real clip pass (see MAX_SHIELDED_PASSES).
+  // Taken before any block is examined so the shielding answer is constant
+  // for this whole pass.
+  agePinsForCurrent()
   const toolNames = indexToolUses(messages)
   let anyTouched = false
 
@@ -1129,6 +1268,10 @@ export function pruneToolResultsByBytes<T extends AnyMessage>(
       // corrupt the accounting: `remaining` would drop for bytes we never
       // actually free, and the guard would stop short of the low water while
       // believing it got there. Skip them as candidates outright.
+      //
+      // Reachable under RETAIN only: AGGRESSIVE sets retainedHighWaterTokens
+      // to Infinity, so this whole function returns before here. The guard
+      // still belongs here — the profile is user-switchable at runtime.
       const blockToolUseId = (block as { tool_use_id?: string }).tool_use_id
       if (pinShieldsBlock(blockToolUseId ?? '', existing)) continue
       const tokens = estimateToolResultTokens(existing)

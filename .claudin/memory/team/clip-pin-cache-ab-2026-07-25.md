@@ -1,6 +1,6 @@
 ---
 name: Clip-pin A/B (2026-07-25) — dev vs stable, 30 turns, aggressive profile
-description: Measured result of the READ_CLIP_PIN A/B on feat/read-clip-pin, plus the two bench-design traps (auto-outline file sizes, uncached transcript) that make a naive run measure nothing
+description: Measured result of the READ_CLIP_PIN A/B on feat/read-clip-pin, plus the three bench-design traps (auto-outline file sizes, --revisits, the 60s Read tool-result cache) that make a naive run measure nothing
 type: project
 ---
 
@@ -34,6 +34,17 @@ tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
    size-diverse and mostly outlines — pick files under 250 lines.
 2. `--revisits` only does ONE extra pass over a fixed list. The clip → re-read loop
    needs the SAME (file, range) read a third time, which is what `--passes` adds.
+3. **The local Read tool-result cache (`TTL_MS.Read = 60_000`) short-circuits
+   `call()` entirely.** A re-read of the same input within 60s replays the first
+   read's cached body without ever running the dedup or the stand-down. This is
+   almost certainly why the whole measured signal landed in pass 3 — passes 1→2
+   of a 10-file cycle ran inside the TTL. Set
+   `CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1` on BOTH sides, or space revisits past
+   60s, or the early passes measure the cache instead of the feature.
+   (Fixed in the tool itself on 2026-07-25 — `FileReadTool.bypassResultCache`
+   now skips the cache for any re-read of a path this context already read — so
+   a fresh run should show signal earlier than pass 3. Re-bench before citing
+   the −7.3% again.)
 
 **Cache health (the question the run was meant to answer): fine, and identical on
 both sides.** cache_write happens once at turn 1 (34.9k/36.9k = system+tools) and

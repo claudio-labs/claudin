@@ -91,7 +91,13 @@ export class FileStateCache {
     // then does this cache claim the incoming id, so a same-key replacement
     // hands ownership over rather than dropping it.
     this.cache.set(normalized, value)
-    if (value.toolUseId) this.ownedToolUseIds.add(value.toolUseId)
+    // Claim ownership only if the entry actually landed. lru-cache refuses a
+    // value over maxEntrySize — it deletes the key and stores nothing, so no
+    // dispose ever fires for it, and an id claimed for an absent entry would
+    // sit in this Set for the life of the session.
+    if (value.toolUseId && this.cache.peek(normalized) === value) {
+      this.ownedToolUseIds.add(value.toolUseId)
+    }
     return this
   }
 

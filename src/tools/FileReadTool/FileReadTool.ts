@@ -567,6 +567,33 @@ export const FileReadTool = buildTool({
 
     return { result: true }
   },
+  /**
+   * Any re-read of a path this context has already read must reach call().
+   * Both the dedup and the clip-pin stand-down are transcript-dependent
+   * decisions taken INSIDE call(), and a cache hit short-circuits call() for
+   * the whole Read TTL (60s). The entry that does the damage is the FIRST,
+   * ordinary read's: it is a pure function of input + disk, so it is stored
+   * normally, and replaying it during a clip → re-read loop hands the model a
+   * fresh UNPINNED copy, never refreshes readFileState, and freezes the
+   * stand-down state machine — the loop then spins invisibly instead of
+   * terminating after one re-send. `noResultCache` on the re-send cannot
+   * reach that earlier entry; only a pre-lookup bypass can.
+   *
+   * Scoped to re-reads so first reads of a path still cache normally — that
+   * is where the cache's IO/latency win actually lives (a fresh sub-agent
+   * reading a file the main thread already read has no readFileState entry).
+   */
+  bypassResultCache({ file_path }, context) {
+    try {
+      // has(), not get(): this runs on every Read and must not reorder the
+      // LRU it is only inspecting.
+      return context.readFileState?.has(expandPath(file_path)) === true
+    } catch (e) {
+      // Fail open: keep the pre-existing cache behavior rather than blocking.
+      logError(e)
+      return false
+    }
+  },
   async call(
     { file_path, offset = 1, limit = undefined, pages, view, symbol },
     context,
@@ -662,31 +689,54 @@ export const FileReadTool = buildTool({
         // per-file: the entry records which tool_use carried the content, so
         // dedup only disarms when THAT tool_result is clipped or gone. See
         // clientClippingDetection.ts.
-        const clientClipped =
-          !serverCleared &&
+        //
+        // Computed unconditionally, not just when the server latch is off: it
+        // is the ONLY positive, per-file evidence available about this result.
+        // hasServerClearedToolUses latches session-wide and names no ids, so
+        // it can never answer "is THIS copy gone?".
+        const priorGoneClientSide =
           existingState.toolUseId !== undefined &&
           Array.isArray(context.messages) &&
           isPriorReadClippedOrMissing(
             context.messages,
             existingState.toolUseId,
           )
-        if (serverCleared) {
-          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
-        } else if (clientClipped) {
-          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
-        } else {
+        const clientClipped = !serverCleared && priorGoneClientSide
+        // A latched server clear is stale evidence about a copy we pinned and
+        // can still see. The pin keeps every client-side clip path off that
+        // block, so it is physically in the request we are about to send and
+        // the model will see it; whatever the API cleared earlier, it was not
+        // this. Honoring the latch here is what turned one unrelated clear
+        // into "every file in the session degrades to a wasted full re-send
+        // and then an outline" — treat it as the intact case instead.
+        const pinnedCopyStillVisible =
+          existingState.toolUseId !== undefined &&
+          !priorGoneClientSide &&
+          isPinRegistered(existingState.toolUseId)
+        const standDown =
+          (serverCleared || clientClipped) && !pinnedCopyStillVisible
+        // Termination note. With a prior toolUseId the machine always ends:
+        // re-send → pin → (clipped anyway) → fallback. Without one it cannot
+        // pin, so a latched server clear re-sends on every call — unbounded,
+        // where the old three-strike breaker's side-map counter did bound it.
+        // Deliberately left as is: the id-less callers are the attachment,
+        // magic-docs and session-memory paths, which read once per event and
+        // never re-read in a loop, and gating the stand-down off for them
+        // would bring back the blind-pointer bug it exists to fix (a dedup
+        // stub pointing at a tool_result the API already cleared).
+        if (!standDown) {
           // Prior tool_result is intact in context (not clipped/cleared), so
           // whatever the model is doing it is NOT the clipped-reread loop. Any
           // pin we placed on that result has done its job; release it so the
           // normal clip policy applies again.
           //
-          // Only this arm may release: under a latched server clear the
-          // client-side view proves nothing about what the API still shows the
-          // model, so an "intact" block there is not evidence the pin can go.
+          // Not while a server clear is latched, though: there the pin is
+          // precisely what is keeping this copy reachable, and the client-side
+          // view proves nothing about what the API still shows the model.
           // Pins abandoned by a range switch or an Edit/Write are released
           // structurally instead, when readFileState drops the entry that owns
           // them (fileStateCache's dispose hook).
-          if (existingState.toolUseId !== undefined) {
+          if (!serverCleared && existingState.toolUseId !== undefined) {
             unpinToolResult(existingState.toolUseId)
           }
           try {
@@ -712,6 +762,10 @@ export const FileReadTool = buildTool({
           } catch {
             // stat failed — fall through to full read
           }
+        } else if (serverCleared) {
+          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
+        } else {
+          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
         }
         // Clip-pin stand-down. A clipped/cleared stand-down re-sends the full
         // body — and whatever clipped the first copy (the age prune under the
@@ -721,14 +775,16 @@ export const FileReadTool = buildTool({
         // So pin the re-delivered copy instead: every clip path skips a pinned
         // tool_result (stableStubState.pinToolResult), so the content stays put
         // and the loop ends after ONE re-send. The pin doubles as the state
-        // machine: if the prior copy was ALREADY pinned and got clipped anyway
-        // (server-side clear, message evicted, pin dropped), re-sending is
-        // provably futile — serve a stable form instead: the file's structural
-        // outline (the model picks a symbol=), or a plain redirect stub when
-        // there is nothing to outline. No counter, no streak bookkeeping: the
-        // dedup only reaches here on an exact range match, and Edit/Write
-        // replace the FileState (and its toolUseId) outright.
-        if ((serverCleared || clientClipped) && clipPinEnabled()) {
+        // machine: if the prior copy was ALREADY pinned and is gone from the
+        // transcript anyway (`standDown` implies priorGoneClientSide once the
+        // id is pinned — pinnedCopyStillVisible would have routed us to the
+        // intact branch), re-sending would just refill a slot the clip paths
+        // already emptied once. Serve a stable form instead: the file's
+        // structural outline (the model picks a symbol=), or a plain redirect
+        // stub when there is nothing to outline. No counter, no streak
+        // bookkeeping: the dedup only reaches here on an exact range match,
+        // and Edit/Write replace the FileState (and its toolUseId) outright.
+        if (standDown && clipPinEnabled()) {
           const priorToolUseId = existingState.toolUseId
           if (
             priorToolUseId !== undefined &&
@@ -754,9 +810,10 @@ export const FileReadTool = buildTool({
                 )
               : null
             // Event name predates the rename from the re-read breaker; kept
-            // for dashboard continuity. The arm separates the two stand-downs:
-            // 'clipped' has positive evidence the pinned copy was removed,
-            // 'cleared' only knows the API cleared something, sometime. Sent
+            // for dashboard continuity. Both arms are reached only with
+            // positive evidence that the pinned copy is gone (standDown
+            // implies priorGoneClientSide once the id is pinned); the arm just
+            // records whether the API was ALSO clearing in this session. Sent
             // as a boolean because LogEventMetadata takes no free-form strings
             // (they leak code/filepaths) — see analytics/index.ts:128.
             const arm = serverCleared ? 'cleared' : 'clipped'
@@ -769,7 +826,10 @@ export const FileReadTool = buildTool({
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
                   overCap: false,
                 }) + renderClipPinFallbackFooter(offset, limit, arm)
-              : renderClipPinFallbackStub(offset, limit, arm)
+              : (await renderClipPinHeadSlice(
+                  fullFilePath,
+                  context.abortController.signal,
+                )) + renderClipPinFallbackStub(offset, limit, arm)
             return {
               data: {
                 type: 'clip_pin_fallback' as const,
@@ -1102,9 +1162,49 @@ function clipPinEnabled(): boolean {
   // DISABLE is an authoritative runtime killswitch — it wins even over the
   // test-only force flag, so a user can always turn the pin off.
   if (process.env.CLAUDIN_DISABLE_READ_CLIP_PIN === '1') return false
+  // Accepted alias: this mechanism shipped as READ_RERUN_BREAKER, and the
+  // rename would otherwise take a working killswitch away from anyone who had
+  // already set it. Keep honoring it — it costs one env lookup.
+  if (process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER === '1') return false
   if (process.env.CLAUDIN_FORCE_READ_CLIP_PIN === '1') return true
   if (feature('READ_CLIP_PIN')) return true
   return false
+}
+
+/** Lines / bytes of the file handed back with the non-code clip-pin fallback. */
+const CLIP_PIN_HEAD_LINES = 60
+const CLIP_PIN_HEAD_BYTES = 4_000
+
+/**
+ * The code arm of the fallback still answers the question the model asked — a
+ * structural outline is a real view of the file. The non-code arm had nothing
+ * to offer and returned a bare redirect, so a model that asked to read a large
+ * JSON/CSV/log got back zero bytes of it, which is worse than what the old
+ * three-strike breaker did (two more full bodies first). Hand back the head of
+ * the file with the redirect: it is content, it is what a human opens first,
+ * and it is small enough to survive the clip paths that removed the full body.
+ *
+ * Best effort — a failure here must degrade to the bare redirect, never turn
+ * the fallback into a read error.
+ */
+async function renderClipPinHeadSlice(
+  fullFilePath: string,
+  signal: AbortSignal,
+): Promise<string> {
+  try {
+    const { content } = await readFileInRange(
+      fullFilePath,
+      0,
+      CLIP_PIN_HEAD_LINES,
+      CLIP_PIN_HEAD_BYTES,
+      signal,
+      { truncateOnByteLimit: true },
+    )
+    return content.length > 0 ? `${content}\n\n` : ''
+  } catch (e) {
+    logError(e)
+    return ''
+  }
 }
 
 export const CYBER_RISK_MITIGATION_REMINDER =

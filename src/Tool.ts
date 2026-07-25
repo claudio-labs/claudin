@@ -429,6 +429,16 @@ export type Tool<
     parentMessage: AssistantMessage,
     onProgress?: ToolCallProgress<P>,
   ): Promise<ToolResult<Output>>
+  /**
+   * Per-call opt-out from the local tool-result cache, consulted BEFORE the
+   * lookup. `noResultCache` is not a substitute: it can only refuse to STORE
+   * the result call() just produced, and cannot stop an entry left by an
+   * EARLIER call from short-circuiting call() on replay. A tool whose result
+   * depends on state that only call() inspects (transcript shape, prior
+   * tool_results) needs this hook to keep that decision reachable.
+   * Must be cheap, side-effect free, and MUST NOT throw.
+   */
+  bypassResultCache?(args: z.infer<Input>, context: ToolUseContext): boolean
   description(
     input: z.infer<Input>,
     options: {
@@ -832,7 +842,14 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
   // type semantics are proven by the 0-error typecheck across all 60+ tools.
   const wrappedDef =
     isCacheableTool(def.name) && def.call
-      ? { ...def, call: wrapCallWithCache(def.name, def.call.bind(def)) }
+      ? {
+          ...def,
+          call: wrapCallWithCache(
+            def.name,
+            def.call.bind(def),
+            def.bypassResultCache?.bind(def),
+          ),
+        }
       : def
   return {
     ...TOOL_DEFAULTS,
@@ -844,6 +861,7 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
 /**
  * Wraps a tool.call with the local result cache. Bypasses on:
  *   - CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
+ *   - the tool's own bypassResultCache(input, context) predicate
  *   - newMessages or contextModifier present (declared side effects)
  *   - noResultCache on the result (transcript-dependent validity)
  * Hit replay returns a fresh ToolResult with the cached data + mcpMeta;
@@ -856,14 +874,27 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
  * (e.g. a dedup stub pointing at an earlier tool_result that clipping or
  * server clearing can wipe), return it with noResultCache: true — testing
  * with the cache disabled will not surface this bypass.
+ *
+ * noResultCache alone is NOT enough when the validity logic must run on a
+ * LATER call than the one that produced the cacheable result: the entry to
+ * suppress belongs to an earlier, perfectly cacheable call. That is what
+ * bypassResultCache is for — it runs before the lookup, so call() stays
+ * reachable, and it also suppresses the store so a bypassing call leaves no
+ * entry behind for the next one.
  */
 function wrapCallWithCache<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Fn extends (...args: any[]) => Promise<ToolResult<unknown>>,
->(toolName: string, origCall: Fn): Fn {
+>(
+  toolName: string,
+  origCall: Fn,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bypass?: (input: any, context: any) => boolean,
+): Fn {
   const wrapped = async (...args: Parameters<Fn>): Promise<ToolResult<unknown>> => {
     if (isCacheDisabled()) return origCall(...args)
     const input = args[0]
+    if (bypass?.(input, args[1])) return origCall(...args)
     const hit = getCached(toolName, input)
     if (hit) {
       return { data: hit.data, mcpMeta: hit.mcpMeta }

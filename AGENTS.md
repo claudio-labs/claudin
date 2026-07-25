@@ -91,6 +91,7 @@ Several runtime behaviors are **on by default** with their own docs and toggles:
 | Auto-background agents / fork-subagent default | `/config` → "Auto-background agents"; `autoBackgroundAgentsEnabled: false` | AGENTS memory + `scripts/profile/agent-bg-token-bench.ts` |
 | Streaming-highlight deferral | `CLAUDIN_DEFER_HIGHLIGHT=0` | `scripts/profile/streaming-bench.ts` |
 | V8 bytecode cache (`~/.claudin/v8cache/`) | `NODE_DISABLE_COMPILE_CACHE=1` | invalidated on every `bun run build` |
+| Read clip-pin stand-down (re-sent Read body survives the clip paths, then falls back to an outline) | `CLAUDIN_DISABLE_READ_CLIP_PIN=1` — legacy alias `CLAUDIN_DISABLE_READ_RERUN_BREAKER=1` still honored | `src/tools/FileReadTool/FileReadTool.ts`, `src/services/compact/stableStubState.ts` |
 
 ## Build & Tests
 
