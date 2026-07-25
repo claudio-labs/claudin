@@ -66,6 +66,7 @@ import {
   AbortError,
   errorMessage,
   getErrnoCode,
+  isAbortError,
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from '../../utils/errors.js'
@@ -501,7 +502,12 @@ export async function* runToolUse(
               // receives the hint and counts toward a later streak — telling
               // the model it "failed 4 times in a row" for aborts the user
               // asked for.
-              error instanceof AbortError,
+              //
+              // isAbortError, not `instanceof AbortError`: this is the
+              // outermost catch, so it also sees the raw DOMException an
+              // AbortSignal throws and the SDK's APIUserAbortError, neither of
+              // which is our class. utils/errors.ts owns that classification.
+              isAbortError(error),
             ),
             is_error: true,
             tool_use_id: toolUse.id,

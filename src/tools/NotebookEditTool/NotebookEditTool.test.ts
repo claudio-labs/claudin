@@ -148,6 +148,35 @@ describe('NotebookEditTool', () => {
     }
   })
 
+  test('validateInput refuses a PARTIAL read, not just a missing one', async () => {
+    // This gate used to check `!readTimestamp` alone, while its own comment
+    // claimed parity with FileEditTool/FileWriteTool — both of which also
+    // reject `isPartialView`. The clip-pin stand-down turned that gap into a
+    // live data-loss path: renderClipPinHeadSlice returns '' for .ipynb by
+    // design, so the fallback can leave an entry describing ZERO bytes of
+    // content, and this gate was letting an edit through on it. The model
+    // would be replacing a cell it had never seen.
+    const ctx = makeCtx()
+    ctx.readFileState.set(notebookPath, {
+      timestamp: Date.now() + 1_000_000,
+      content: '',
+      isPartialView: true,
+    } as never)
+    const result = await NotebookEditTool.validateInput?.(
+      {
+        notebook_path: notebookPath,
+        new_source: 's',
+      } as never,
+      ctx,
+    )
+    expect(result?.result).toBe(false)
+    if (result && result.result === false) {
+      // Same errorCode as the absent-entry case: from the model's side these
+      // are the same situation — it has not seen the cells.
+      expect(result.errorCode).toBe(9)
+    }
+  })
+
   test('mapToolResultToToolResultBlockParam renders all edit modes and errors', () => {
     const map = NotebookEditTool.mapToolResultToToolResultBlockParam
     const baseOut = {

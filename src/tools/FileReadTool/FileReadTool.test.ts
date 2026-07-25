@@ -39,6 +39,7 @@ import {
   FileReadTool,
   MaxFileReadTokenExceededError,
   STAND_DOWN_STRIKES,
+  STICKY_REPLAY_BUDGET,
   scanFile,
 } from './FileReadTool.js'
 
@@ -886,39 +887,86 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
-  test('the fallback TERMINATES the loop instead of re-arming into another body', async () => {
-    // The property the whole feature exists for, stated as the cost the user
-    // actually pays. Two earlier versions each failed it in opposite ways:
-    // returning without touching readFileState left the entry pointing at a
-    // spent id and answered every later read with an outline, permanently;
-    // deleting the entry to re-arm made the NEXT read a genuine first read (a
-    // full body) and the one after it another stand-down re-send — two bodies
-    // per cycle, forever. Bounded, but never finished.
+  test('the fallback BOUNDS the loop without ever denying the file for good', async () => {
+    // TWO properties, and every version of this mechanism so far has traded
+    // one away for the other:
+    //   (1) never an unbounded run of futile full bodies — the original bug;
+    //   (2) never an indefinite refusal for a file readable on disk.
+    // Returning the outline without touching readFileState kept (1) and broke
+    // (2). Deleting the entry to re-arm kept (2) and broke (1) — two bodies
+    // every four reads, forever. A permanently sticky marker kept (1) and
+    // broke (2) again, worse: the marker sets isPartialView, so Edit/Write
+    // were refused too, and Read stopped rewriting the entry, so nothing could
+    // ever lift the refusal.
     //
-    // The sticky marker ends it: once the outline is served, no further read
-    // of this range costs a body while the file and the epoch hold still.
+    // STICKY_REPLAY_BUDGET holds both at once, and this asserts both.
     const p = writeFixture('clip-pin-stays.ts', SAMPLE_TS)
     const ctx = makeContext()
 
+    // Three full cycles' worth, so the assertions below are about a repeating
+    // regime and not about one lucky prefix.
+    const period = STICKY_REPLAY_BUDGET + 3
     const types: string[] = []
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < period * 3; i++) {
       types.push((await readWithPriorClipped(p, ctx)).data.type)
     }
 
     expect(types).toContain('clip_pin_fallback')
-    // Consecutive full bodies are bounded (the pre-existing property).
+    expect(types).toContain('text')
+    // (1) Bodies are bounded, both back to back and as a RATE. The rate is the
+    // half the delete-to-re-arm version failed: it satisfied longestRun and
+    // still paid two bodies per four reads.
     expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
-    // Termination: everything from the first fallback on is a fallback. Under
-    // the delete-to-re-arm version this ran outline, body, body, outline, …
-    const firstFallback = types.indexOf('clip_pin_fallback')
-    expect(types.slice(firstFallback).every(t => t === 'clip_pin_fallback')).toBe(
-      true,
-    )
-    // …so the bodies are a one-off, not a rate. Eight reads, at most three
-    // bodies, no matter how many more reads follow.
     expect(types.filter(t => t === 'text').length).toBeLessThanOrEqual(
-      STAND_DOWN_STRIKES,
+      2 * 3 + 1, // 2 bodies per cycle, 3 cycles, +1 for a partial cycle
     )
+    // (2) Outlines are bounded too, so the refusal always ends. One more than
+    // the budget: the fallback that WRITES the marker, then `budget` replays.
+    expect(longestRun(types, 'clip_pin_fallback')).toBeLessThanOrEqual(
+      STICKY_REPLAY_BUDGET + 1,
+    )
+    // …stated as the thing the user actually cares about: after the outlines
+    // start, a body always comes back.
+    const firstFallback = types.indexOf('clip_pin_fallback')
+    expect(types.slice(firstFallback)).toContain('text')
+  })
+
+  test('the sticky refusal lifts, so Edit stops being blocked forever', async () => {
+    // The deadlock that the permanent marker created, pinned as the exact
+    // predicate the edit tools use. FileEditTool.ts, FileWriteTool.ts,
+    // applyPatch.ts and NotebookEditTool.ts all gate on `!entry ||
+    // entry.isPartialView`, and the sticky entry sets isPartialView — so while
+    // the marker stands, an Edit is refused with "File has not been read yet".
+    //
+    // That refusal is CORRECT (the model has seen an outline, not the body);
+    // what was broken is that Read replayed the marker without rewriting the
+    // entry, so the model could neither read its way to a body nor edit. The
+    // budget is the only thing that lifts it.
+    const p = writeFixture('clip-pin-edit-unblock.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    const editWouldBeRefused = () => {
+      const entry = ctx.readFileState.get(p)
+      return !entry || entry.isPartialView === true
+    }
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+    expect(editWouldBeRefused()).toBe(true)
+
+    // Keep re-reading the way a blocked model would. The body must come back
+    // within the budget — before the marker was budgeted this loop never
+    // terminated, for any number of iterations.
+    let readsUntilEditable = 0
+    while (editWouldBeRefused() && readsUntilEditable < 20) {
+      readsUntilEditable++
+      await readWithPriorClipped(p, ctx)
+    }
+    expect(editWouldBeRefused()).toBe(false)
+    expect(readsUntilEditable).toBeLessThanOrEqual(STICKY_REPLAY_BUDGET + 1)
   })
 
   // The sticky marker must be sticky, NOT permanent — the failure mode of the
@@ -989,15 +1037,13 @@ describe('FileReadTool — clip pin (forced on)', () => {
     )
   })
 
-  test('the sticky state lives on the entry, so replacing the entry drops it', async () => {
-    // HONEST SCOPE: there is no production line to delete here — this escape
-    // is structural, and that is the point being pinned. Holding the marker in
-    // a module-level side-map keyed by path (the shape the OLD re-read breaker
-    // used, and the shape this design deliberately avoids) would keep it alive
-    // across the write below and leave the model stuck on an outline for
-    // content that no longer exists. The assertion is the design invariant,
-    // not a guard.
-    const p = writeFixture('clip-pin-escape-edit.ts', SAMPLE_TS)
+  test('a different limit is never answered by the sticky fallback either', async () => {
+    // The `limit` half of the range key, which needs its OWN marker to test
+    // against: asserting it right after the offset case above proved nothing,
+    // because that read had already replaced the entry and there was no marker
+    // left for the branch to match. It passed with the limit comparison
+    // deleted — a vacuous assertion, caught by break-and-restore.
+    const p = writeFixture('clip-pin-escape-limit.ts', SAMPLE_TS)
     const ctx = makeContext()
 
     await readWithPriorClipped(p, ctx)
@@ -1006,24 +1052,69 @@ describe('FileReadTool — clip pin (forced on)', () => {
       'clip_pin_fallback',
     )
 
-    // What FileEditTool/FileWriteTool store after applying a change: an entry
-    // with offset undefined. It replaces the sticky one, so the marker goes
-    // with it and the next read is a real body of the new content.
-    ctx.readFileState.set(p, {
-      content: SAMPLE_TS,
-      timestamp: Date.now(),
-      offset: undefined,
-      limit: undefined,
-    })
+    // Same offset as the marker, different limit. Only the limit comparison
+    // can send this to a real read.
+    expect((await readWithPriorClipped(p, ctx, { limit: 2 })).data.type).toBe(
+      'text',
+    )
+  })
 
-    expect((await readWithPriorClipped(p, ctx)).data.type).toBe('text')
+  test('a file that changes before the fallback never goes sticky', async () => {
+    // The fallback's own mtime guard, which is a DIFFERENT line from the one
+    // the sticky replay checks — same expression, 30 lines apart, and only the
+    // replay's copy had a test. Forcing this one to `if (true)` left the whole
+    // suite green (audit finding), which is trap (a) from
+    // .claudin/rules/agent-safety.md exactly: two identical-looking lines.
+    const p = writeFixture('clip-pin-write-arm-mtime.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+
+    // The file changes BETWEEN the pinned re-send and the fallback. The
+    // outline about to be rendered describes the NEW bytes while the entry's
+    // content and timestamp describe the old ones, so there is no coherent
+    // pair to make sticky — and a marker keyed to a stale mtime would just sit
+    // there being skipped.
+    writeFileSync(p, `${SAMPLE_TS}\nexport const added = 1\n`)
+    const future = new Date(Date.now() + 5_000)
+    utimesSync(p, future, future)
+
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+    // Delete-and-re-arm instead: no entry at all, so the next read is a real
+    // body of the new content.
+    expect(ctx.readFileState.get(p)).toBeUndefined()
+  })
+
+  test('the sticky replay is never served from the tool-result cache', async () => {
+    // The first fallback asserts this too, but they are separate returns with
+    // separate flags, and the replay is the one that runs for the rest of the
+    // marker's life. A cached replay would freeze the budget as well, since
+    // call() would never run to charge it.
+    const p = writeFixture('clip-pin-replay-nocache.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+
+    const replay = await readWithPriorClipped(p, ctx)
+    expect(replay.data.type).toBe('clip_pin_fallback')
+    expect((replay as { noResultCache?: boolean }).noResultCache).toBe(true)
   })
 
   test('the sticky fallback keeps Edit/Write demanding a real Read first', async () => {
-    // The delete-to-re-arm version left NO entry, so Edit correctly said "read
-    // it first" — the model has not seen the body. Keeping an entry must not
-    // quietly buy back that permission: isPartialView is what preserves it
-    // (FileEditTool/FileWriteTool/applyPatch all check the same field).
+    // Keeping an entry where the previous design deleted one must not quietly
+    // buy back the Edit permission: isPartialView is what preserves it, and
+    // FileEditTool, FileWriteTool, applyPatch and NotebookEditTool all check
+    // that same field. (A test asserting the marker is DROPPED by a direct
+    // readFileState.set used to sit here, framed as the Edit/Write exit. It
+    // was deleted: it passed with the entire sticky replay disabled, and the
+    // exit it advertised cannot open in production anyway — the marker refuses
+    // the Edit that would have replaced the entry. The budget is that exit
+    // now, covered by "the sticky refusal lifts" above.)
     const p = writeFixture('clip-pin-partial-view.ts', SAMPLE_TS)
     const ctx = makeContext()
 
@@ -1033,10 +1124,14 @@ describe('FileReadTool — clip pin (forced on)', () => {
       'clip_pin_fallback',
     )
 
-    expect(ctx.readFileState.get(p)?.isPartialView).toBe(true)
+    const sticky = ctx.readFileState.get(p)
+    // Assert the entry EXISTS first: `?.toolUseId` being undefined is also
+    // true when there is no entry at all, so on its own it was tautological.
+    expect(sticky?.standDownOutline).toBeDefined()
+    expect(sticky?.isPartialView).toBe(true)
     // …and it carries no tool_use id, so the blind-pointer stub the dedup
     // serves is not even representable from this state.
-    expect(ctx.readFileState.get(p)?.toolUseId).toBeUndefined()
+    expect(sticky?.toolUseId).toBeUndefined()
   })
 
   test('non-code file falls back to the head of the file plus a redirect', async () => {

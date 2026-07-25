@@ -48,15 +48,33 @@ export type FileState = {
   // noise next to a second scanFile per read.
   //
   // `epoch` is stableStubState's stand-down epoch at the time it was written.
-  // Together with `timestamp` (mtime) it is what lets this state be sticky
-  // WITHOUT being permanent — the four ways out are a changed mtime, an
-  // Edit/Write or range switch (both replace or drop this entry), and a
-  // main-thread compaction, which advances the epoch.
+  // Together with `timestamp` (mtime) and `replays` it is what lets this state
+  // be sticky WITHOUT being permanent. Five ways out: a changed mtime, a range
+  // switch or an Edit/Write (both replace this entry), LRU eviction, a
+  // main-thread compaction (which advances the epoch), and — the backstop that
+  // does not depend on anything external happening — spending `replays`.
   //
-  // Always written with isPartialView: true, so Edit/Write still demand a
-  // real Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts all
-  // check it) — the same cost the delete-to-re-arm version paid, kept.
-  standDownOutline?: { message: string; servedOutline: boolean; epoch: number }
+  // Always written with isPartialView: true, so Edit/Write still demand a real
+  // Read first (FileEditTool.ts, FileWriteTool.ts, applyPatch.ts and
+  // NotebookEditTool.ts all check it). That refusal is CORRECT — the model has
+  // seen an outline, not the body, and letting it edit from that trades a
+  // stalled loop for a blind write. But it is also why `replays` is not
+  // optional: with no budget the refusal never lifts, because the replay
+  // returns without rewriting this entry, so Read can never clear what Edit is
+  // waiting on. The delete-to-re-arm version this replaced refused too, and
+  // then handed over a body on the next read; the budget restores that ending.
+  //
+  // `message` is the rendered fallback, replayed verbatim rather than
+  // re-scanned — the entry already carries `content`, so a few KB more is
+  // noise next to a second scanFile per read.
+  standDownOutline?: {
+    message: string
+    servedOutline: boolean
+    epoch: number
+    // Replays already served for this marker. At STICKY_REPLAY_BUDGET the
+    // marker is spent and Read falls back to delete-and-re-arm.
+    replays: number
+  }
 }
 
 /**
@@ -184,6 +202,23 @@ export class FileStateCache {
   setStandDownStrikes(key: string, strikes: number): void {
     const value = this.cache.peek(normalize(key))
     if (value) value.standDownStrikes = strikes
+  }
+
+  /**
+   * Charge one replay against the sticky stand-down marker, mutated in place,
+   * and report how many have now been served.
+   *
+   * In place for a sharper reason than setStandDownStrikes above: the sticky
+   * entry deliberately carries NO toolUseId, so re-`set`ting it would run the
+   * dispose hook for the entry being replaced and release a pin this cache is
+   * still the owner of. Returns 0 when there is no marker, so a caller can
+   * treat "no marker" and "fresh marker" alike.
+   */
+  chargeStandDownReplay(key: string): number {
+    const value = this.cache.peek(normalize(key))
+    if (!value?.standDownOutline) return 0
+    value.standDownOutline.replays += 1
+    return value.standDownOutline.replays
   }
 
 

@@ -685,7 +685,15 @@ export const FileReadTool = buildTool({
       'tengu_read_dedup_killswitch',
       false,
     )
-    const existingState = dedupKillswitch
+    // `let`, not `const`: the sticky branch below can spend its budget and
+    // delete the entry, and everything downstream must then see a genuine
+    // first read rather than a stale local.
+    //
+    // Note the killswitch reach: `tengu_read_dedup_killswitch` nulls this out,
+    // which disables the sticky branch too. That is documented in AGENTS.md
+    // alongside CLAUDIN_DISABLE_READ_CLIP_PIN, because the two killswitches
+    // have different scopes and only this one can restore unbounded re-sends.
+    let existingState = dedupKillswitch
       ? undefined
       : readFileState.get(fullFilePath)
 
@@ -708,16 +716,28 @@ export const FileReadTool = buildTool({
     // to avoid cannot be reached from here.
     //
     // Sticky is not permanent, which was the failure mode of an earlier
-    // "return the outline and don't touch readFileState" attempt. Four ways
-    // out, two of them checked here and two structural:
+    // "return the outline and don't touch readFileState" attempt. Five ways
+    // out, three checked here and two structural:
     //   1. the file changed on disk — the outline describes bytes that no
     //      longer exist, so fall through and read it;
     //   2. a main-thread compaction advanced the epoch — the pressure that
     //      clipped the body is gone and the transcript was rewritten, so the
     //      model deserves the real thing;
-    //   3. an Edit/Write replaces this entry (and any range switch replaces
-    //      it too), which drops the marker with it;
-    //   4. a different offset/limit/view/symbol never reaches this branch.
+    //   3. the replay budget is spent (see STICKY_REPLAY_BUDGET);
+    //   4. an Edit/Write replaces this entry, or LRU eviction drops it;
+    //   5. a different offset/limit/view/symbol never reaches this branch.
+    //
+    // Exit 3 is the one that does not depend on anything external happening,
+    // and it is load-bearing rather than belt-and-braces. Exit 4 reads like an
+    // escape hatch but cannot open by itself: this marker sets isPartialView,
+    // so Edit/Write are REFUSED while it stands ("read it first"), which means
+    // they can never be the thing that replaces the entry. Exit 2 does not
+    // cover it either — the marker is created by microCompact, whose whole job
+    // is to keep the session BELOW the autocompact threshold, so a session
+    // that clips this way may never reach a main-thread compaction at all.
+    // Without the budget the model is left unable to read its way to a body
+    // and unable to edit, which is the permanent-refusal bug wearing a hat.
+    //
     // Outside clipPinEnabled() on purpose, like the strike counter: the
     // killswitch turns off the PIN, not the bound. Handing a frustrated user
     // back an unbounded re-send loop is not an opt-out.
@@ -739,20 +759,34 @@ export const FileReadTool = buildTool({
         // arm below: fail toward giving the model content.
       }
       if (stickyMtimeMs === existingState.timestamp) {
-        return {
-          data: {
-            type: 'clip_pin_fallback' as const,
-            file: {
-              filePath: file_path,
-              message: stickyOutline.message,
-              servedOutline: stickyOutline.servedOutline,
+        // Charge before deciding, so the read that exhausts the budget is the
+        // one that gets a body. Charging after would make the last refusal the
+        // final answer for this marker, which is the deadlock again by one.
+        if (
+          readFileState.chargeStandDownReplay(fullFilePath) <=
+          STICKY_REPLAY_BUDGET
+        ) {
+          return {
+            data: {
+              type: 'clip_pin_fallback' as const,
+              file: {
+                filePath: file_path,
+                message: stickyOutline.message,
+                servedOutline: stickyOutline.servedOutline,
+              },
             },
-          },
-          // Same reason as the fallback that wrote this marker: the decision
-          // depends on the entry and the epoch, not on the tool input, and a
-          // cache hit short-circuits before call().
-          noResultCache: true,
+            // Same reason as the fallback that wrote this marker: the decision
+            // depends on the entry and the epoch, not on the tool input, and a
+            // cache hit short-circuits before call().
+            noResultCache: true,
+          }
         }
+        // Budget spent: drop the marker and fall through as a first read. This
+        // IS the delete-and-re-arm the marker replaced — the point was never
+        // that re-arming is wrong, only that re-arming on every fallback is
+        // too often. Now it happens once per STICKY_REPLAY_BUDGET outlines.
+        readFileState.delete(fullFilePath)
+        existingState = undefined
       }
     }
 
@@ -833,10 +867,12 @@ export const FileReadTool = buildTool({
         // fallback purely on the pin and returned without touching
         // readFileState, so under a latched clear the entry kept pointing at a
         // spent id and EVERY later read of that range was an outline — for the
-        // rest of the session, for a file sitting readable on disk. Both exits
-        // below therefore re-arm (clearStandDownState), which makes the steady
-        // state body → outline → body → outline: never two futile re-sends in
-        // a row, which was the actual bug, and never an indefinite refusal.
+        // rest of the session, for a file sitting readable on disk. The sticky
+        // marker is the successor to that attempt and carries its own defence
+        // against it: STICKY_REPLAY_BUDGET (see the branch near the top of
+        // call()). Two properties have to hold together, and every version so
+        // far has traded one for the other — never two futile re-sends in a
+        // row, and never an indefinite refusal.
         if (!standDown) {
           // Prior tool_result is intact in context (not clipped/cleared), so
           // whatever the model is doing it is NOT the clipped-reread loop. Any
@@ -1004,15 +1040,23 @@ export const FileReadTool = buildTool({
             //
             // So: keep an entry, drop the id, and record the answer. The
             // sticky branch at the top of call() replays this exact message
-            // until the file changes or a compaction advances the epoch. No
-            // toolUseId means no blind pointer is even representable; the
-            // dispose hook releases the old pin on the way through set().
+            // until the file changes, a compaction advances the epoch, or the
+            // replay budget runs out. No toolUseId means no blind pointer is
+            // even representable; the dispose hook releases the old pin on the
+            // way through set().
             //
-            // isPartialView: true keeps the Edit/Write cost the delete already
-            // paid — the model has NOT seen the body, so an Edit before the
-            // next Read must still say "read it first"
-            // (FileEditTool/FileWriteTool/applyPatch all check this field).
-            // It also keeps this entry out of the dedup gate below.
+            // isPartialView: true because the model has NOT seen the body, so
+            // an Edit before the next Read must still say "read it first"
+            // (FileEditTool, FileWriteTool, applyPatch and NotebookEditTool
+            // all check this field). It also keeps this entry out of the dedup
+            // gate below.
+            //
+            // This is NOT the same cost the delete already paid, and an
+            // earlier version of this comment claimed it was. Under delete,
+            // the refusal lifted on the next read, which returned a body.
+            // Under a marker that replays, Read stops rewriting the entry, so
+            // the refusal has nothing to lift it — hence STICKY_REPLAY_BUDGET,
+            // which is what restores the ending the delete used to provide.
             //
             // Only go sticky when the bytes on disk still match what the
             // outline describes. A file that changed since the prior read gets
@@ -1037,6 +1081,7 @@ export const FileReadTool = buildTool({
                   message,
                   servedOutline: scanned !== null,
                   epoch: getStandDownEpoch(),
+                  replays: 0,
                 },
               })
             } else {
@@ -1419,6 +1464,26 @@ const CLIP_PIN_HEAD_BYTES = 4_000
  * than a literal that would silently stop matching if it were retuned.
  */
 export const STAND_DOWN_STRIKES = 3
+
+/**
+ * How many times the sticky stand-down marker may replay its outline for one
+ * (path, offset, limit) before it is spent and Read re-arms with a real body.
+ *
+ * The marker exists because re-arming on EVERY fallback oscillates (two full
+ * bodies every four reads, forever). But re-arming NEVER is worse: the marker
+ * is written with isPartialView, so Edit/Write/apply_patch/NotebookEdit refuse
+ * with "read it first", and the replay returns without rewriting the entry —
+ * the model cannot read its way out and cannot edit, in a file sitting
+ * readable on disk. The budget is what keeps both bugs closed at once: bodies
+ * cost 2 per (budget + 3) reads instead of 2 per 4, and any refusal the marker
+ * causes lifts within `budget` reads.
+ *
+ * Three, deliberately the same as STAND_DOWN_STRIKES and for the same reason
+ * the repeated-failure hint uses three: it is the point at which a model that
+ * keeps re-reading is already being told it is repeating itself, so the body
+ * arrives with the advice instead of long after it.
+ */
+export const STICKY_REPLAY_BUDGET = 3
 
 /**
  * The code arm of the fallback still answers the question the model asked — a

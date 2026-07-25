@@ -32,13 +32,18 @@ tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
 > a `STAND_DOWN_STRIKES` bound applies even with the pin disabled (so arm A's
 > behavior changed too), and `bypassResultCache` altered disk IO on both arms.
 >
-> The design then changed again on 2026-07-25 after a three-agent review found
-> that pin-plus-re-arm never terminates — it settles into ~2 full bodies every 4
-> reads, forever. The fallback now leaves a **sticky** `standDownOutline` marker
-> on the readFileState entry and replays it, so the bodies stop entirely (exits:
-> changed mtime, main-thread-compact epoch bump, Edit/Write or range switch, LRU
-> eviction). Whatever the true saving is, it is strictly larger than this run's
-> −7.3% and measured on a different mechanism. Re-run from scratch.
+> The design then changed twice more on 2026-07-25. First: pin-plus-re-arm never
+> terminates (~2 full bodies every 4 reads), so the fallback started leaving a
+> **sticky** `standDownOutline` marker on the readFileState entry. Then a second
+> three-agent review found that a PERMANENT marker deadlocks Read against
+> Edit — it sets `isPartialView`, so the edit tools refuse, and the replay never
+> rewrites the entry that would lift the refusal. Final shape: the marker is
+> budgeted (`STICKY_REPLAY_BUDGET`), re-arming with a real body once per budget.
+>
+> Do not guess the direction of the saving either. An earlier note here claimed
+> it must be "strictly larger" than −7.3%; that is unsupported — the old regime
+> answered the third read with a tiny unchanged stub, and an outline plus
+> redirect footer is bigger than that stub. Re-run from scratch.
 >
 > The **bench-design traps below are still valid** and are the reusable part.
 

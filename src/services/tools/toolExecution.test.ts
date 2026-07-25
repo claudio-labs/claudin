@@ -279,8 +279,13 @@ describe('repeated-failure hint wiring', () => {
     // USER_CONTROL_SENTINELS, so the abort the user asked for both receives
     // the hint and counts toward a later streak. The inner site above threads
     // the same flag; this one was the odd one out.
+    //
+    // Pinned as `isAbortError(`, not `instanceof AbortError`: this is the
+    // OUTERMOST catch, so it also sees the raw DOMException an AbortSignal
+    // throws and the SDK's APIUserAbortError. The narrow check shipped first
+    // and covered only our own class.
     expect(src).toMatch(
-      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,(?:\s*\/\/[^\n]*)*\s*error instanceof AbortError,/,
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,(?:\s*\/\/[^\n]*)*\s*isAbortError\(error\),/,
     )
     // All three now pin every argument, not just the first. An audit found the
     // first two stopped at the content string, so a site passing the wrong

@@ -81,27 +81,40 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   anyway. Do NOT "optimise" by making a pinned block immutable — the marker
   would then sit in front of bytes the clip paths are still entitled to rewrite
   the moment the pin expires.
-- **The pin bounds one cycle; the STICKY state is what terminates.** The pin is
-  temporary by construction (`MAX_SHIELDED_PASSES`, the FIFO cap, the 8k
-  ceiling) and the file is permanent, so pin-plus-re-arm settled into an
-  oscillation — two full bodies every four reads, forever. The fallback now
-  leaves `standDownOutline` on the readFileState entry and replays it, so the
-  bodies stop. Rules for touching it:
-  - It must stay ON the entry, never in a side-map keyed by path. Living on the
-    entry is what makes a range switch, an Edit/Write and an LRU eviction clear
-    it for free — the side-map was the actual defect of the old re-read breaker.
-  - It must stay `isPartialView: true` and carry NO `toolUseId`. The first keeps
-    Edit/Write demanding a real Read (the model has not seen the body) and keeps
-    the entry out of the dedup gate; the second makes the blind-pointer stub
-    unrepresentable from this state.
-  - Sticky is not permanent, and the four exits are the whole safety argument:
-    changed mtime, advanced epoch (`bumpStandDownEpoch`, main-thread compacts
-    only), Edit/Write or range switch replacing the entry, LRU eviction. Remove
-    one and you are back to the permanent-outline bug.
+- **The Read stand-down must hold TWO properties at once; every version so far
+  has traded one for the other.** (1) No unbounded run of futile full bodies.
+  (2) No indefinite refusal for a file readable on disk. The pin cannot deliver
+  both alone: it is temporary by construction (`MAX_SHIELDED_PASSES`, the FIFO
+  cap, the 8k ceiling) and `retirePinAfterUse` releases it after a single dedup
+  hit, while the file is permanent — so pin-plus-re-arm oscillates at two full
+  bodies every four reads. A permanently sticky marker fixed (1) and broke (2)
+  harder than the version before it. Rules for touching it:
+  - `standDownOutline` must stay ON the readFileState entry, never in a
+    side-map keyed by path. Living on the entry is what makes a range switch
+    and an LRU eviction clear it for free — the side-map was the actual defect
+    of the old re-read breaker.
+  - It must stay `isPartialView: true` and carry NO `toolUseId`. The first
+    keeps the edit tools demanding a real Read (the model has seen an outline,
+    not the body) and keeps the entry out of the dedup gate; the second makes
+    the blind-pointer stub unrepresentable from this state.
+  - **`STICKY_REPLAY_BUDGET` is load-bearing, not belt-and-braces.** Do not
+    "simplify" it away. The other exits cannot cover property (2) on their own:
+    Edit/Write look like an exit but are REFUSED while the marker stands, so
+    they can never be what replaces the entry; and the epoch exit does not fire
+    in the regime that creates the marker, because microCompact's whole job is
+    to keep the session below the autocompact threshold. Without the budget the
+    model can neither read its way to a body nor edit.
   - A registered clip id is NOT evidence of a clip while the pin is shielding.
     microCompact adds candidates without consulting the pin registry and
     `stubOneBlock` then skips the pinned ones, so `getClippedIds()` over-reports;
     `clientClippingDetection` must AND it with `isPinShielding`.
+  - **Read-before-edit is a four-tool invariant.** `FileEditTool`,
+    `FileWriteTool`, `applyPatch` and `NotebookEditTool` must all reject
+    `!entry || entry.isPartialView`, and `file-pipeline.ts`'s already-read
+    optimization must require `!isPartialView` too. NotebookEdit and the
+    attachment path each checked only presence, which the sticky marker turned
+    into a blind-notebook-edit path and a suppressed `@`-mention. Any new
+    consumer of `readFileState` inherits this obligation.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 
