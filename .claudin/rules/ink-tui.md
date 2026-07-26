@@ -138,3 +138,28 @@ the right one.
   re-syncs — do not pin the offset. Verify a mode-char change end-to-end
   (`setValue` → parent `onChange`/`onOffsetChange` → prop change → `useLayoutEffect`
   re-sync), not just the local cursor math.
+
+## 8. A dialog cannot claim PgUp/PgDn — `scroll:page*` is always consumed
+
+- `resolver.ts:45` only resolves a binding whose **context is active**, so
+  `pageup`/`pagedown` (bound in the `Scroll` context, `defaultBindings.ts:209`)
+  only dispatch while `ScrollKeybindingHandler` is mounted — and its
+  `scroll:pageUp`/`scroll:pageDown` handlers (`ScrollKeybindingHandler.tsx:448-463`)
+  **always consume**. Its `scroll:lineUp/lineDown` (`:474`) deliberately returns
+  `false` when the ScrollBox content fits, which is the ONLY reason a wheel event
+  reaches a child list (e.g. Settings Config's paginated slice). Page keys have no
+  such bail, and the REPL handler mounts before any modal, so a
+  `context: 'Settings'` handler for `scroll:page*` is dead code — it registers,
+  typechecks, builds, and never fires.
+- Don't "fix" it by adding the fits→`false` bail to the page handlers: with a long
+  transcript the REPL scrollbox does NOT fit, so the key would scroll the
+  transcript behind the modal instead of acting on the dialog — behavior that
+  changes with session length. Handle the key in the dialog's own `onKeyDown`
+  instead (that path dispatches independently of keybinding consumption, see the
+  j/k carve-out in `Settings/Config.tsx`), with keys nothing else claims —
+  `[`/`]` is the in-repo precedent (`diff:previousSource/nextSource`).
+- Verify keyboard wiring in a real terminal, not by reading the registration:
+  `tmux new-session -d -s probe -x 110 -y 44 -c /tmp/scratch "node dist/cli.mjs"`,
+  then one `send-keys` per key with ~0.5s between (several keys in one call get
+  coalesced/dropped) and `capture-pane -p`. `Usage.tsx:741-742` still registers
+  `scroll:page*` the dead way.

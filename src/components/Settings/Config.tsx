@@ -49,6 +49,7 @@ import { useSearchInput } from '../../hooks/useSearchInput.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from '../../utils/fastMode.js';
 import { isFullscreenEnvEnabled, isFullscreenForcedByEnv } from '../../utils/fullscreen.js';
+import { buildDisplayRows, countSettingRows, firstSelectableIndex, isSelectableRow, lastSelectableIndex, nextSelectableIndex, sectionJumpIndex } from './configGroups.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;
@@ -114,8 +115,14 @@ export function Config({
   // value would insert/remove a row above the cursor and shift the selection.
   const [fullscreenAtMount] = useState(() => isFullscreenEnvEnabled());
   const {
-    rows
+    rows,
+    columns
   } = useTerminalSize();
+  // Label column. Every display row must paint exactly one line — a wrapped
+  // label or value would make the slice() below overflow the pane and desync
+  // the section headers from their settings — so the column shrinks on narrow
+  // terminals to leave room for the value, and both sides truncate.
+  const labelWidth = Math.max(24, Math.min(44, columns - 18));
   // contentHeight is set by Settings.tsx (same value passed to Tabs to fix
   // pane height across all tabs — prevents layout jank when switching).
   // Reserve ~10 rows for chrome (search box, gaps, footer, scroll hints).
@@ -737,7 +744,10 @@ export function Config({
     }
   }, {
     id: 'copyFullResponse',
-    label: 'Always copy full response (skip /copy picker)',
+    // Label + the 2-col pointer prefix must fit the width={44} label column
+    // below, or the row wraps to two lines and overflows the paginated window.
+    label: 'Always copy full response (skip /copy)',
+    searchText: 'Always copy full response skip /copy picker',
     value: globalConfig.copyFullResponse,
     type: 'boolean' as const,
     onChange(copyFullResponse: boolean) {
@@ -1215,13 +1225,35 @@ export function Config({
     });
   }, [settingsItems, searchQuery]);
 
+  // Section headers only while browsing: with a query the result stays a flat
+  // list so match order isn't broken up by headers. Headers and their blank
+  // separators are rows in this same array and every row is height 1, which is
+  // what keeps the slice() below an honest height budget for the pane.
+  // selectedIndex indexes THIS array, not filteredSettingsItems.
+  const displayRows = React.useMemo(() => buildDisplayRows(filteredSettingsItems, {
+    grouped: searchQuery === ''
+  }), [filteredSettingsItems, searchQuery]);
+  // Scroll hints count settings, not rows — a header scrolled out of view is
+  // not a hidden setting.
+  const hiddenAbove = countSettingRows(displayRows.slice(0, scrollOffset));
+  const hiddenBelow = countSettingRows(displayRows.slice(scrollOffset + maxVisible));
+
   // Adjust selected index when filtered list shrinks, and keep the selected
   // item visible when maxVisible changes (e.g., terminal resize).
   React.useEffect(() => {
-    if (selectedIndex >= filteredSettingsItems.length) {
-      const newIndex = Math.max(0, filteredSettingsItems.length - 1);
+    if (selectedIndex >= displayRows.length) {
+      const newIndex = Math.max(0, lastSelectableIndex(displayRows));
       setSelectedIndex(newIndex);
       setScrollOffset(Math.max(0, newIndex - maxVisible + 1));
+      return;
+    }
+    // Cursor sitting on a header/spacer: at mount (selectedIndex starts at 0,
+    // which is the first group's header) or when the group set changed under
+    // it. Snap forward to the next real setting.
+    if (!isSelectableRow(displayRows[selectedIndex])) {
+      const snapped = Math.max(0, nextSelectableIndex(displayRows, selectedIndex, 1));
+      setSelectedIndex(snapped);
+      setScrollOffset(prev_20 => snapped >= prev_20 + maxVisible ? snapped - maxVisible + 1 : prev_20);
       return;
     }
     setScrollOffset(prev_21 => {
@@ -1229,7 +1261,7 @@ export function Config({
       if (selectedIndex >= prev_21 + maxVisible) return selectedIndex - maxVisible + 1;
       return prev_21;
     });
-  }, [filteredSettingsItems.length, selectedIndex, maxVisible]);
+  }, [displayRows, selectedIndex, maxVisible]);
 
   // Keep the selected item visible within the scroll window.
   // Called synchronously from navigation handlers to avoid a render frame
@@ -1466,8 +1498,14 @@ export function Config({
   // Settings navigation and toggle actions via configurable keybindings.
   // Only active when not in search mode and no submenu is open.
   const toggleSetting = useCallback(() => {
-    const setting_0 = filteredSettingsItems[selectedIndex];
-    if (!setting_0 || !setting_0.onChange) {
+    const row = displayRows[selectedIndex];
+    // Headers and spacers are not selectable, but a stale index can still
+    // point at one for a frame — never toggle through them.
+    if (!isSelectableRow(row)) {
+      return;
+    }
+    const setting_0 = row.item;
+    if (!setting_0.onChange) {
       return;
     }
     if (setting_0.type === 'boolean') {
@@ -1551,16 +1589,19 @@ export function Config({
       setting_0.onChange(setting_0.options[nextIndex]!);
       return;
     }
-  }, [autoUpdaterDisabledReason, filteredSettingsItems, selectedIndex, settingsData?.autoUpdatesChannel, setTabsHidden]);
+  }, [autoUpdaterDisabledReason, displayRows, selectedIndex, settingsData?.autoUpdatesChannel, setTabsHidden]);
   const moveSelection = (delta: -1 | 1): void => {
     setShowThinkingWarning(false);
-    const newIndex_1 = Math.max(0, Math.min(filteredSettingsItems.length - 1, selectedIndex + delta));
+    // Skips header/spacer rows in both directions and clamps at the ends.
+    const newIndex_1 = nextSelectableIndex(displayRows, selectedIndex, delta);
+    if (newIndex_1 < 0) return;
     setSelectedIndex(newIndex_1);
     adjustScrollOffset(newIndex_1);
   };
   useKeybindings({
     'select:previous': () => {
-      if (selectedIndex === 0) {
+      const firstIdx = firstSelectableIndex(displayRows);
+      if (firstIdx < 0 || selectedIndex <= firstIdx) {
         // ↑ at top enters search mode so users can type-to-filter after
         // reaching the list boundary. Wheel-up (scroll:lineUp) clamps
         // instead — overshoot shouldn't move focus away from the list.
@@ -1608,7 +1649,7 @@ export function Config({
       if (e.key === 'return' || e.key === 'down' || e.key === 'wheeldown') {
         e.preventDefault();
         setIsSearchMode(false);
-        setSelectedIndex(0);
+        setSelectedIndex(Math.max(0, firstSelectableIndex(displayRows)));
         setScrollOffset(0);
       }
       return;
@@ -1619,6 +1660,23 @@ export function Config({
     if (e.key === 'left' || e.key === 'right' || e.key === 'tab') {
       e.preventDefault();
       toggleSetting();
+      return;
+    }
+    // Section jump, handled here rather than as scroll:page{Up,Down}: those
+    // actions live in the 'Scroll' context and ScrollKeybindingHandler's page
+    // handlers ALWAYS consume (unlike its scroll:line*, which returns false
+    // when the content fits — that's why the wheel reaches this component), so
+    // a Settings-context handler never sees PgUp/PgDn. Brackets mirror
+    // diff:previousSource/nextSource. With a search query there are no headers,
+    // so this degrades to first/last match.
+    if (e.key === '[' || e.key === ']') {
+      e.preventDefault();
+      const target = sectionJumpIndex(displayRows, selectedIndex, e.key === '[' ? -1 : 1);
+      if (target >= 0) {
+        setShowThinkingWarning(false);
+        setSelectedIndex(target);
+        adjustScrollOffset(target);
+      }
       return;
     }
     // Fallback: printable characters (other than those bound to actions)
@@ -1632,7 +1690,7 @@ export function Config({
       setIsSearchMode(true);
       setSearchQuery(e.key);
     }
-  }, [showSubmenu, headerFocused, isSearchMode, searchQuery, setSearchQuery, toggleSetting]);
+  }, [showSubmenu, headerFocused, isSearchMode, searchQuery, setSearchQuery, toggleSetting, displayRows, selectedIndex, adjustScrollOffset]);
   return <Box flexDirection="column" width="100%" tabIndex={0} autoFocus onKeyDown={handleKeyDown}>
       {showSubmenu === 'Theme' ? <>
           <ThemePicker onThemeSelect={setting_1 => {
@@ -1841,26 +1899,38 @@ export function Config({
     }} /> : <Box flexDirection="column" gap={1} marginY={insideModal ? undefined : 1}>
           <SearchBox query={searchQuery} isFocused={isSearchMode && !headerFocused} isTerminalFocused={isTerminalFocused} cursorOffset={searchCursorOffset} placeholder="Search settings…" />
           <Box flexDirection="column">
-            {filteredSettingsItems.length === 0 ? <Text dimColor italic>
+            {displayRows.length === 0 ? <Text dimColor italic>
                 No settings match &quot;{searchQuery}&quot;
               </Text> : <>
-                {scrollOffset > 0 && <Text dimColor>
-                    {figures.arrowUp} {scrollOffset} more above
+                {hiddenAbove > 0 && <Text dimColor>
+                    {figures.arrowUp} {hiddenAbove} more above
                   </Text>}
-                {filteredSettingsItems.slice(scrollOffset, scrollOffset + maxVisible).map((setting_2, i) => {
+                {displayRows.slice(scrollOffset, scrollOffset + maxVisible).map((row_0, i) => {
             const actualIndex = scrollOffset + i;
+            // Spacer: a real row (not marginTop) so one array index is one
+            // painted line and the slice above stays a height budget.
+            if (row_0.kind === 'spacer') {
+              return <Text key={row_0.id}> </Text>;
+            }
+            // Two spaces align the label with the settings' "pointer + space".
+            if (row_0.kind === 'header') {
+              return <Text key={row_0.id} dimColor>
+                        {'  '}{row_0.label}
+                      </Text>;
+            }
+            const setting_2 = row_0.item;
             const isSelected = actualIndex === selectedIndex && !headerFocused && !isSearchMode;
             return <React.Fragment key={setting_2.id}>
                         <Box>
-                          <Box width={44}>
-                            <Text color={isSelected ? 'suggestion' : undefined}>
+                          <Box width={labelWidth} flexShrink={0} paddingRight={1}>
+                            <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                               {isSelected ? figures.pointer : ' '}{' '}
                               {setting_2.label}
                             </Text>
                           </Box>
                           <Box key={isSelected ? 'selected' : 'unselected'}>
                             {setting_2.type === 'boolean' ? <>
-                                <Text color={isSelected ? 'suggestion' : undefined}>
+                                <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                                   {setting_2.value.toString()}
                                 </Text>
                                 {showThinkingWarning && setting_2.id === 'thinkingEnabled' && <Text color="warning">
@@ -1869,32 +1939,29 @@ export function Config({
                                       will increase latency and may reduce
                                       quality.
                                     </Text>}
-                              </> : setting_2.id === 'theme' ? <Text color={isSelected ? 'suggestion' : undefined}>
+                              </> : setting_2.id === 'theme' ? <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                                 {THEME_LABELS[setting_2.value.toString()] ?? setting_2.value.toString()}
-                              </Text> : setting_2.id === 'notifChannel' ? <Text color={isSelected ? 'suggestion' : undefined}>
+                              </Text> : setting_2.id === 'notifChannel' ? <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                                 <NotifChannelLabel value={setting_2.value.toString()} />
-                              </Text> : setting_2.id === 'defaultPermissionMode' ? <Text color={isSelected ? 'suggestion' : undefined}>
+                              </Text> : setting_2.id === 'defaultPermissionMode' ? <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                                 {permissionModeTitle(setting_2.value as PermissionMode)}
-                              </Text> : setting_2.id === 'autoUpdatesChannel' && autoUpdaterDisabledReason ? <Box flexDirection="column">
-                                <Text color={isSelected ? 'suggestion' : undefined}>
-                                  disabled
-                                </Text>
+                              </Text> : setting_2.id === 'autoUpdatesChannel' && autoUpdaterDisabledReason ?
+                              // One line, not a stacked Box: the reason on its
+                              // own row would make this entry two lines tall.
+                              <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
+                                disabled{' '}
                                 <Text dimColor>
-                                  (
-                                  {formatAutoUpdaterDisabledReason(autoUpdaterDisabledReason)}
-                                  )
+                                  ({formatAutoUpdaterDisabledReason(autoUpdaterDisabledReason)})
                                 </Text>
-                              </Box> : <Text color={isSelected ? 'suggestion' : undefined}>
+                              </Text> : <Text color={isSelected ? 'suggestion' : undefined} wrap="truncate-end">
                                 {setting_2.value.toString()}
                               </Text>}
                           </Box>
                         </Box>
                       </React.Fragment>;
           })}
-                {scrollOffset + maxVisible < filteredSettingsItems.length && <Text dimColor>
-                    {figures.arrowDown}{' '}
-                    {filteredSettingsItems.length - scrollOffset - maxVisible}{' '}
-                    more below
+                {hiddenBelow > 0 && <Text dimColor>
+                    {figures.arrowDown} {hiddenBelow} more below
                   </Text>}
               </>}
           </Box>
