@@ -20,6 +20,7 @@ import { getPlansDirectory } from '../../utils/plans.js';
 import { readEditContext } from '../../utils/readEditContext.js';
 import { firstLineOf } from '../../utils/stringUtils.js';
 import type { ThemeName } from '../../utils/theme.js';
+import { FILE_CLIPPED_VIEW_ERROR, FILE_NOT_READ_ERROR, FILE_PARTIAL_VIEW_ERROR } from './constants.js';
 import { inputSchema } from './types.js';
 import type { FileEditInput, FileEditOutput } from './types.js';
 import { findActualString, getPatchForEdit, groupEditsByFile, preserveQuoteStyle } from './utils.js';
@@ -138,9 +139,14 @@ export function renderToolUseErrorMessage(result: ToolResultBlockParam['content'
   if (!verbose && typeof result === 'string' && extractTag(result, 'tool_use_error')) {
     const errorMessage = extractTag(result, 'tool_use_error');
     // Show a less scary message for intended behavior
-    if (errorMessage?.includes('File has not been read yet')) {
+    if (errorMessage?.includes(FILE_NOT_READ_ERROR)) {
       return <MessageResponse>
           <Text dimColor>File must be read first</Text>
+        </MessageResponse>;
+    }
+    if (errorMessage?.includes(FILE_PARTIAL_VIEW_ERROR) || errorMessage?.includes(FILE_CLIPPED_VIEW_ERROR)) {
+      return <MessageResponse>
+          <Text dimColor>File must be re-read in full</Text>
         </MessageResponse>;
     }
     if (errorMessage?.includes(FILE_NOT_FOUND_CWD_NOTE)) {

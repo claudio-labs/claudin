@@ -58,6 +58,10 @@ import {
   FILE_EDIT_TOOL_NAME,
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
 } from './constants.js'
+import {
+  satisfiesReadGate,
+  writeFamilyReadGateError,
+} from '../shared/readBeforeEditMessages.js'
 import { getEditToolDescription } from './prompt.js'
 import {
   type FileEditInput,
@@ -280,12 +284,11 @@ export const FileEditTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    if (!readTimestamp || readTimestamp.isPartialView) {
+    if (!satisfiesReadGate(readTimestamp)) {
       return {
         result: false,
         behavior: 'ask',
-        message:
-          'File has not been read yet. Read it first before writing to it.',
+        message: writeFamilyReadGateError(readTimestamp),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },

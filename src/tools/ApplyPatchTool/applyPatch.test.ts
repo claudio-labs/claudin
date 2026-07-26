@@ -53,6 +53,34 @@ function markRead(absPath: string): void {
   })
 }
 
+/** A read the model only saw as an outline/symbol/range. */
+function markPartial(absPath: string): void {
+  ctx.readFileState.set(absPath, {
+    content: readFileSync(absPath, 'utf8'),
+    timestamp: getFileModificationTime(absPath),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+  })
+}
+
+/** The clip-pin's sticky marker: the body was clipped out of the transcript. */
+function markClipped(absPath: string): void {
+  ctx.readFileState.set(absPath, {
+    content: readFileSync(absPath, 'utf8'),
+    timestamp: getFileModificationTime(absPath),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+    standDownOutline: {
+      message: '<outline>',
+      servedOutline: true,
+      epoch: 0,
+      replays: 0,
+    },
+  })
+}
+
 function envelope(body: string): string {
   return `*** Begin Patch\n${body}\n*** End Patch`
 }
@@ -302,6 +330,114 @@ describe('runApplyPatch', () => {
 })
 
 describe('validateApplyPatchInput', () => {
+  test('a never-read file is reported as never read', () => {
+    const p = join(dir, 'unread.txt')
+    writeFileSync(p, 'a\n')
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('has not been read yet')
+      expect(r.message).not.toContain("view='full'")
+    }
+    cleanup()
+  })
+
+  test('an outline-only read is told to re-read with view=full', () => {
+    const p = join(dir, 'partial.txt')
+    writeFileSync(p, 'a\n')
+    markPartial(p)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      // The old shared wording claimed the file was never read, which is false
+      // here and hides the only fix that works.
+      expect(r.message).toContain("view='full'")
+      expect(r.message).not.toContain('has not been read yet')
+    }
+    cleanup()
+  })
+
+  test('a clipped read explains the loss AND still names view=full', () => {
+    const p = join(dir, 'clipped.txt')
+    writeFileSync(p, 'a\n')
+    markClipped(p)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('clipped out of the transcript')
+      // This assertion used to be inverted. A review proved the old advice —
+      // "just read it again, the next Read re-arms the body" — is wrong: the
+      // sticky marker replays the SAME outline for STICKY_REPLAY_BUDGET reads,
+      // and its guard at FileReadTool.ts:763 requires `view === undefined`, so
+      // view='full' is precisely what escapes the replay.
+      expect(r.message).toContain("view='full'")
+      expect(r.message).toContain('can replay the outline')
+    }
+    cleanup()
+  })
+
+  test('two files needing a read get the batched-read instruction', () => {
+    const a = join(dir, 'a.txt')
+    const b = join(dir, 'b.txt')
+    writeFileSync(a, 'a\n')
+    writeFileSync(b, 'a\n')
+    markPartial(b)
+    const r = validateApplyPatchInput(
+      {
+        patchText: envelope(
+          `*** Update File: ${a}\n@@\n-a\n+b\n*** Update File: ${b}\n@@\n-a\n+b`,
+        ),
+      },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    // Counts across BOTH new branches — one never read, one partial.
+    if (!r.result) {
+      expect(r.message).toContain('do them all in ONE message')
+    }
+    cleanup()
+  })
+
+  test('two problems but only ONE needing a read: no batched-read instruction', () => {
+    // Pins the `readRemedyFailures >= 2` boundary. An earlier version of this
+    // test used a single failing file, which the `failures.length === 1` early
+    // return absorbs before the aggregate tail is ever built — so the negative
+    // assertion could not fail and guarded nothing. Here there ARE two
+    // problems (so the aggregate path runs) but only one is fixed by reading:
+    // the other is a duplicate section.
+    const a = join(dir, 'solo.txt')
+    const b = join(dir, 'ok.txt')
+    writeFileSync(a, 'a\n')
+    writeFileSync(b, 'a\n')
+    markRead(b)
+    const r = validateApplyPatchInput(
+      {
+        patchText: envelope(
+          `*** Update File: ${a}\n@@\n-a\n+b` +
+            `\n*** Update File: ${b}\n@@\n-a\n+b` +
+            `\n*** Delete File: ${b}`,
+        ),
+      },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('2 problems')
+      expect(r.message).toContain('appears in more than one section')
+      expect(r.message).not.toContain('ONE message')
+    }
+    cleanup()
+  })
+
   test('rejects a notebook target', () => {
     const p = join(dir, 'nb.ipynb')
     writeFileSync(p, '{}')
