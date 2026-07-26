@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.17 — 2026-07-26
+
+- feat(tools): steer file reads and searches to Read/Grep/Glob instead of Bash (#36) (ad71f67)
+- feat(tools): steer test runs to RunTests instead of Bash (#35) (f74c518)
+- fix(edit): stop refusing partially-read files with a message that hides the fix (#34) (178b426)
+- feat(read): pin a re-sent Read body so context management stops clipping it (#33) (f2e4806)
+- feat(tools): Rename tool for project-wide identifier renames (#32) (ecfd513)
+- Register Claude Opus 5 as native-1M flagship model (#31) (6c30d1c)
+- refactor(tools): rename ApplyPatch user-facing name to Patch (28d2929)
+- feat(tools): add RunTests tool with framework detection and structured failures (#30) (a19a6ea)
+- feat(edit): whitespace-tolerant fuzzy fallback for FileEditTool (#29) (a598f03)
+- docs(memory): record Codex 403 HTML-block misclassified as login prompt (f40d3ce)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.16 — 2026-07-24
 
 - feat(outline): expand symbol scanning to 19 more languages (#28) (4db75cf)
