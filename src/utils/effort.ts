@@ -1,6 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { isUltrathinkEnabled } from './thinking.js'
-import { getInitialSettings } from './settings/settings.js'
+import { getInitialSettings, getSettingsForSource } from './settings/settings.js'
 import { isProSubscriber, isMaxSubscriber, isTeamSubscriber } from './auth.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { getAPIProvider } from './model/providers.js'
@@ -8,6 +8,8 @@ import { get3PModelCapabilityOverride } from './model/modelSupportOverrides.js'
 import { supportsCodexReasoningEffort } from '../services/api/providerConfig.js'
 import { isEnvTruthy } from './envUtils.js'
 import type { EffortLevel } from 'src/entrypoints/sdk/runtimeTypes.js'
+import { getCurrentProjectConfig, saveCurrentProjectConfig } from './config.js'
+import { logError } from './log.js'
 
 export type { EffortLevel }
 
@@ -286,9 +288,124 @@ export function toPersistableEffort(
 }
 
 export function getInitialEffortSetting(): EffortLevel | AdaptiveEffort | undefined {
+  // Project pin wins over the global setting, mirroring how `/model` resolves
+  // (`getUserSpecifiedModelSetting`). An explicit 'auto' pin means "no effort
+  // here" and deliberately shadows a globally pinned level.
+  const pin = getProjectEffortPin()
+  if (pin === PROJECT_EFFORT_AUTO) {
+    return undefined
+  }
+  if (pin !== undefined) {
+    return pin
+  }
   // toPersistableEffort validates 'max' on read, so a manually
   // edited settings.json with an invalid level doesn't leak into a fresh session.
   return toPersistableEffort(getInitialSettings().effortLevel)
+}
+
+/**
+ * Sentinel stored in `ProjectConfig.activeEffortForProject` meaning "this
+ * project runs on the model default" — distinct from an absent pin, which
+ * means "inherit the global `settings.effortLevel`".
+ */
+export const PROJECT_EFFORT_AUTO = 'auto' as const
+
+export type ProjectEffortPin =
+  | EffortLevel
+  | AdaptiveEffort
+  | typeof PROJECT_EFFORT_AUTO
+
+/**
+ * The effort pinned for the current project, or undefined when the project
+ * inherits the global setting. A hand-edited config with an unknown level is
+ * treated as "no pin" rather than leaking into the session.
+ */
+export function getProjectEffortPin(): ProjectEffortPin | undefined {
+  const raw = getCurrentProjectConfig().activeEffortForProject
+  if (raw === PROJECT_EFFORT_AUTO) {
+    return PROJECT_EFFORT_AUTO
+  }
+  return toPersistableEffort(raw)
+}
+
+function writeProjectEffortPin(pin: ProjectEffortPin | undefined): {
+  error?: Error
+} {
+  try {
+    saveCurrentProjectConfig(current =>
+      current.activeEffortForProject === pin
+        ? current
+        : { ...current, activeEffortForProject: pin },
+    )
+    return {}
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e))
+    logError(error)
+    return { error }
+  }
+}
+
+/**
+ * Persist an effort choice for the current project. Numeric values stay
+ * session-only (the pin schema only accepts named levels), so they are a no-op
+ * here — same as the old settings write, which skipped them too.
+ */
+export function persistEffortForProject(value: EffortValue): {
+  error?: Error
+} {
+  const persistable = toPersistableEffort(value)
+  if (persistable === undefined) {
+    return {}
+  }
+  return writeProjectEffortPin(persistable)
+}
+
+/** Pin "no effort for this project" (`/effort auto`). Overrides the global. */
+export function pinProjectEffortAuto(): { error?: Error } {
+  return writeProjectEffortPin(PROJECT_EFFORT_AUTO)
+}
+
+/** Drop the project pin so the global setting applies again (`/effort inherit`). */
+export function clearProjectEffortPin(): { error?: Error } {
+  return writeProjectEffortPin(undefined)
+}
+
+/**
+ * The last effort the user explicitly persisted, for
+ * `resolvePickerEffortPersistence`. Reads the project pin first, then the
+ * user's own settings.json — never the merged settings, since project/policy
+ * layers must not be mistaken for an explicit choice.
+ */
+export function getPriorPersistedEffort():
+  | EffortLevel
+  | AdaptiveEffort
+  | undefined {
+  const pin = getProjectEffortPin()
+  if (pin === PROJECT_EFFORT_AUTO) {
+    return undefined
+  }
+  if (pin !== undefined) {
+    return pin
+  }
+  return toPersistableEffort(getSettingsForSource('userSettings')?.effortLevel)
+}
+
+/** Where the session's effort came from — backs the `/effort current` message. */
+export function getProjectEffortOrigin():
+  | 'project'
+  | 'project-auto'
+  | 'global'
+  | 'none' {
+  const pin = getProjectEffortPin()
+  if (pin === PROJECT_EFFORT_AUTO) {
+    return 'project-auto'
+  }
+  if (pin !== undefined) {
+    return 'project'
+  }
+  return toPersistableEffort(getInitialSettings().effortLevel) !== undefined
+    ? 'global'
+    : 'none'
 }
 
 /**

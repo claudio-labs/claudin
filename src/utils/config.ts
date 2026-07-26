@@ -176,6 +176,30 @@ export type ProjectConfig = {
    * environment with no provider profiles.
    */
   activeModelForProjectProfileId?: string
+  /**
+   * Effort level pinned via `/effort` for this project. Scoped like
+   * `activeModelForProject` so an effort choice in one repo doesn't leak into
+   * the global `settings.effortLevel` and bleed across projects (see
+   * `getInitialEffortSetting`).
+   *
+   * `'auto'` is an explicit pin meaning "no effort for this project" — it
+   * resolves to the model default AND overrides a globally pinned
+   * `settings.effortLevel`. Absent means "inherit the global value".
+   *
+   * Unlike `activeModelForProject`, this is NOT bound to a provider profile and
+   * is NOT cleared when the project's provider override changes:
+   * `resolveAppliedEffort` already normalizes an effort value per model (Kimi
+   * buckets, `max`/`xhigh` downgrades), so a pin chosen for one provider can
+   * never produce an invalid request against another.
+   */
+  activeEffortForProject?:
+    | 'low'
+    | 'medium'
+    | 'high'
+    | 'xhigh'
+    | 'max'
+    | 'adaptive'
+    | 'auto'
 }
 
 const DEFAULT_PROJECT_CONFIG: ProjectConfig = {

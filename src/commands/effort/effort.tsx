@@ -4,9 +4,8 @@ import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { type EffortValue, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, toPersistableEffort } from '../../utils/effort.js';
+import { type EffortValue, clearProjectEffortPin, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, getInitialEffortSetting, getProjectEffortOrigin, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, persistEffortForProject, pinProjectEffortAuto, toPersistableEffort } from '../../utils/effort.js';
 import { EffortPicker } from '../../components/EffortPicker.js';
-import { updateSettingsForSource } from '../../utils/settings/settings.js';
 const COMMON_HELP_ARGS = ['help', '-h', '--help'];
 type EffortCommandResult = {
   message: string;
@@ -16,15 +15,11 @@ type EffortCommandResult = {
 };
 function setEffortValue(effortValue: EffortValue): EffortCommandResult {
   const persistable = toPersistableEffort(effortValue);
-  if (persistable !== undefined) {
-    const result = updateSettingsForSource('userSettings', {
-      effortLevel: persistable
-    });
-    if (result.error) {
-      return {
-        message: `Failed to set effort level: ${result.error.message}`
-      };
-    }
+  const result = persistEffortForProject(effortValue);
+  if (result.error) {
+    return {
+      message: `Failed to set effort level: ${result.error.message}`
+    };
   }
   logEvent('tengu_effort_command', {
     effort: effortValue as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
@@ -52,7 +47,7 @@ function setEffortValue(effortValue: EffortValue): EffortCommandResult {
     };
   }
   const description = getEffortValueDescription(effortValue);
-  const suffix = persistable !== undefined ? '' : ' (this session only)';
+  const suffix = persistable !== undefined ? ' for this project' : ' (this session only)';
   return {
     message: `Set effort level to ${effortValue}${suffix}: ${description}`,
     effortUpdate: {
@@ -60,24 +55,41 @@ function setEffortValue(effortValue: EffortValue): EffortCommandResult {
     }
   };
 }
+
+/**
+ * Where the effort in play came from. Only meaningful when no env override is
+ * pinning the session, so callers gate on that before appending it.
+ */
+function effortScopeSuffix(): string {
+  switch (getProjectEffortOrigin()) {
+    case 'project':
+      return ' — pinned for this project';
+    case 'project-auto':
+      return ' — auto pinned for this project';
+    case 'global':
+      return ' — inherited from global settings';
+    case 'none':
+      return '';
+  }
+}
+
 export function showCurrentEffort(appStateEffort: EffortValue | undefined, model: string): EffortCommandResult {
   const envOverride = getEffortEnvOverride();
   const effectiveValue = envOverride === null ? undefined : envOverride ?? appStateEffort;
+  const scope = envOverride !== undefined ? '' : effortScopeSuffix();
   if (effectiveValue === undefined) {
     const level = getDisplayedEffortLabel(model, appStateEffort);
     return {
-      message: `Effort level: auto (currently ${level})`
+      message: `Effort level: auto (currently ${level})${scope}`
     };
   }
   const description = getEffortValueDescription(effectiveValue);
   return {
-    message: `Current effort level: ${effectiveValue} (${description})`
+    message: `Current effort level: ${effectiveValue} (${description})${scope}`
   };
 }
 function unsetEffortLevel(): EffortCommandResult {
-  const result = updateSettingsForSource('userSettings', {
-    effortLevel: undefined
-  });
+  const result = pinProjectEffortAuto();
   if (result.error) {
     return {
       message: `Failed to set effort level: ${result.error.message}`
@@ -92,21 +104,48 @@ function unsetEffortLevel(): EffortCommandResult {
   if (envOverride !== undefined && envOverride !== null) {
     const envRaw = process.env.CLAUDE_CODE_EFFORT_LEVEL;
     return {
-      message: `Cleared effort from settings, but CLAUDE_CODE_EFFORT_LEVEL=${envRaw} still controls this session`,
+      message: `Pinned auto effort for this project, but CLAUDE_CODE_EFFORT_LEVEL=${envRaw} still controls this session`,
       effortUpdate: {
         value: undefined
       }
     };
   }
   return {
-    message: 'Effort level set to auto',
+    message: 'Effort level set to auto for this project (model default, ignores the global setting)',
     effortUpdate: {
       value: undefined
     }
   };
 }
+
+/**
+ * `/effort inherit` — drop the project pin so the global `settings.effortLevel`
+ * (or the model default, when there is none) applies again.
+ */
+function inheritEffortLevel(): EffortCommandResult {
+  const result = clearProjectEffortPin();
+  if (result.error) {
+    return {
+      message: `Failed to clear the project effort pin: ${result.error.message}`
+    };
+  }
+  // Read AFTER clearing: with no pin left this resolves the inherited value.
+  const inherited = getInitialEffortSetting();
+  logEvent('tengu_effort_command', {
+    effort: 'inherit' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+  return {
+    message: inherited === undefined ? 'Cleared this project\u2019s effort pin — using the model default' : `Cleared this project\u2019s effort pin — now inheriting ${inherited} from global settings`,
+    effortUpdate: {
+      value: inherited
+    }
+  };
+}
 export function executeEffort(args: string): EffortCommandResult {
   const normalized = args.toLowerCase();
+  if (normalized === 'inherit') {
+    return inheritEffortLevel();
+  }
   if (normalized === 'auto' || normalized === 'unset') {
     return unsetEffortLevel();
   }
@@ -117,7 +156,7 @@ export function executeEffort(args: string): EffortCommandResult {
     return setEffortValue(normalized);
   }
   return {
-    message: `Invalid argument: ${args}. Valid options are: low, medium, high, max, xhigh, auto`
+    message: `Invalid argument: ${args}. Valid options are: low, medium, high, max, xhigh, auto, inherit`
   };
 }
 function ShowCurrentEffort(t0) {
@@ -175,7 +214,7 @@ function ApplyEffortAndClose(t0) {
 export async function call(onDone: LocalJSXCommandOnDone, _context: unknown, args?: string): Promise<React.ReactNode> {
   args = args?.trim() || '';
   if (COMMON_HELP_ARGS.includes(args)) {
-    onDone('Usage: /effort [adaptive|low|medium|high|xhigh|max|auto]\n\nEffort levels:\n- adaptive: Model picks effort per request (low–xhigh, never max)\n- low: Quick, straightforward implementation\n- medium: Balanced approach with standard testing\n- high: Comprehensive implementation with extensive testing\n- xhigh: Extended capability for long-horizon work (Opus 4.7/4.8, Fable 5, Sonnet 5, OpenAI/Codex)\n- max: Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8, Fable 5, Sonnet 5)\n- auto: Use the default effort level for your model');
+    onDone('Usage: /effort [adaptive|low|medium|high|xhigh|max|auto|inherit]\n\nThe choice is saved for the current project. Projects with no choice of their own inherit the global effortLevel from settings.json.\n\nEffort levels:\n- adaptive: Model picks effort per request (low–xhigh, never max)\n- low: Quick, straightforward implementation\n- medium: Balanced approach with standard testing\n- high: Comprehensive implementation with extensive testing\n- xhigh: Extended capability for long-horizon work (Opus 4.7/4.8, Fable 5, Sonnet 5, OpenAI/Codex)\n- max: Maximum capability with deepest reasoning (Opus 4.6/4.7/4.8, Fable 5, Sonnet 5)\n- auto: Use the default effort level for your model, ignoring the global setting\n- inherit: Drop this project\u2019s choice and follow the global setting again');
     return;
   }
   if (args === 'current' || args === 'status') {
@@ -195,10 +234,12 @@ function EffortPickerWrapper({ onDone }: { onDone: LocalJSXCommandOnDone }) {
 
   function handleSelect(effort: EffortValue | undefined) {
     const persistable = toPersistableEffort(effort);
-    if (persistable !== undefined) {
-      updateSettingsForSource('userSettings', {
-        effortLevel: persistable
-      });
+    // A picker choice is always an explicit decision: `undefined` here means
+    // "model default", which is the 'auto' pin, not "don't save anything".
+    if (effort === undefined) {
+      pinProjectEffortAuto();
+    } else {
+      persistEffortForProject(effort);
     }
     logEvent('tengu_effort_command', {
       effort: (effort ?? 'auto') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
@@ -208,7 +249,8 @@ function EffortPickerWrapper({ onDone }: { onDone: LocalJSXCommandOnDone }) {
       effortValue: effort
     }));
     const description = effort ? getEffortValueDescription(effort) : 'Use default effort level for your model';
-    const suffix = persistable !== undefined ? '' : ' (this session only)';
+    const saved = effort === undefined || persistable !== undefined;
+    const suffix = saved ? ' for this project' : ' (this session only)';
     onDone(`Set effort level to ${effort ?? 'auto'}${suffix}: ${description}`);
   }
 

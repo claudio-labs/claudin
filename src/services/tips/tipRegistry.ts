@@ -16,6 +16,7 @@ import { countConcurrentSessions } from '../../utils/concurrentSessions.js'
 import { getGlobalConfig } from '../../utils/config.js'
 import {
   getEffortEnvOverride,
+  getInitialEffortSetting,
   modelSupportsEffort,
 } from '../../utils/effort.js'
 import { env } from '../../utils/env.js'
@@ -548,7 +549,9 @@ const externalTips: Tip[] = [
         return false
       }
       if (getEffortEnvOverride() !== undefined) return false
-      const persisted = getInitialSettings().effortLevel
+      // Project pin first, then the global setting — otherwise the nudge keeps
+      // firing for someone who already pinned high in this repo.
+      const persisted = getInitialEffortSetting()
       if (persisted === 'high' || persisted === 'max') return false
       return (
         getFeatureValue_CACHED_MAY_BE_STALE<'off' | 'copy_a' | 'copy_b'>(
