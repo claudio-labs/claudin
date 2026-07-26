@@ -284,8 +284,16 @@ describe('repeated-failure hint wiring', () => {
     // OUTERMOST catch, so it also sees the raw DOMException an AbortSignal
     // throws and the SDK's APIUserAbortError. The narrow check shipped first
     // and covered only our own class.
+    //
+    // The comment gap is matched line-wise (`\n`, horizontal space, `//`) and
+    // the closing newline is mandatory rather than `\s*`-wrapped. The obvious
+    // spelling — `(?:\s*//[^\n]*)*\s*` — puts `\s*` on both sides of a starred
+    // group, so a run of `//` gives the engine exponentially many ways to
+    // split the whitespace and it backtracks forever on a near-miss. CodeQL
+    // flagged it. `[^\S\n]` cannot cross a line, so each iteration has exactly
+    // one parse.
     expect(src).toMatch(
-      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,(?:\s*\/\/[^\n]*)*\s*isAbortError\(error\),/,
+      /content: withRepeatedFailureHint\(\s*`<tool_use_error>\$\{detailedError\}[^`]*`,\s*tool\.name,\s*toolInput,\s*toolUseContext,(?:\n[^\S\n]*\/\/[^\n]*)*\n[^\S\n]*isAbortError\(error\),/,
     )
     // All three now pin every argument, not just the first. An audit found the
     // first two stopped at the content string, so a site passing the wrong
