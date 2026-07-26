@@ -26,20 +26,23 @@ const SHOW_TOKENS_AFTER_MS = 3_000;
 // Thinking shimmer constants. Previously lived in a separate ThinkingShimmerText
 // component with its own useAnimationFrame(50) — inlined here to reuse our
 // existing 50ms clock and eliminate the redundant subscriber.
-// Wider pulse range than upstream (153↔185): dip darker and peak brighter so
-// the thinking glow is clearly visible.
+// Dips darker than upstream (153↔185) but stops short of white: peaking at 220
+// over a 2s period read as a blink rather than a glow, because outside
+// fullscreen the clock is throttled to 250ms and the sine only gets ~8 samples
+// per cycle. Keep the dark end, pull the peak down and widen the period so each
+// step is small enough to look like breathing.
 const THINKING_INACTIVE = {
   r: 110,
   g: 110,
   b: 110
 };
 const THINKING_INACTIVE_SHIMMER = {
-  r: 220,
-  g: 220,
-  b: 220
+  r: 180,
+  g: 180,
+  b: 180
 };
 const THINKING_DELAY_MS = 3000;
-const THINKING_GLOW_PERIOD_S = 2;
+const THINKING_GLOW_PERIOD_S = 4;
 
 // Animated trailing dots: the verb's static '…' becomes . / .. / ... cycling.
 // Space-padded so the message width (and everything gated on it) stays stable.
