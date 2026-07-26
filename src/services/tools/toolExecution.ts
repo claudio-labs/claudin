@@ -73,6 +73,13 @@ import {
 import { executePermissionDeniedHooks } from '../../utils/hooks.js'
 import { logError } from '../../utils/log.js'
 import { getGlobalConfig } from '../../utils/config.js'
+import { isEnvTruthy } from '../../utils/envUtils.js'
+import {
+  detectSerialEditStreak,
+  EDIT_TOOL_NAMES,
+  renderSerialEditNudge,
+  SERIAL_EDIT_THRESHOLD,
+} from '../../tools/shared/serialEditNudge.js'
 import {
   countIdenticalFailures,
   REPEATED_ERROR_THRESHOLD,
@@ -567,6 +574,45 @@ export function withRepeatedFailureHint(
   const failures = countIdenticalFailures(messages, toolName, input) + 1
   if (failures < REPEATED_ERROR_THRESHOLD) return content
   return content + renderRepeatedFailureHint(toolName, failures)
+}
+
+/**
+ * Just-in-time nudge for a model landing one file per edit turn instead of
+ * batching the change into a single atomic patch. Appended to the SUCCESSFUL
+ * tool_result: the errored paths already carry withRepeatedFailureHint, and
+ * stacking two <system-reminder>s on one failure buries both.
+ *
+ * Gated OFF by default (SERIAL_EDIT_NUDGE in scripts/build.ts). The sibling
+ * intervention, SERIAL_READ_NUDGE, was benched at zero adoption and killed, so
+ * an appended reminder is not assumed to work — this exists to be measured. The
+ * part of the same work that does not depend on persuasion (read-before-edit
+ * refusals that name `view='full'` instead of claiming the file was never read)
+ * is unconditional and lives in applyPatch.ts / FileEditTool.ts.
+ */
+function withSerialEditHint(
+  block: ToolResultBlockParam,
+  toolName: string,
+  toolUseContext: ToolUseContext,
+  currentInput: unknown,
+): ToolResultBlockParam {
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) return block
+  // `feature()` must sit directly in an if/ternary for the build preprocessor.
+  if (!feature('SERIAL_EDIT_NUDGE')) return block
+  if (!EDIT_TOOL_NAMES.has(toolName)) return block
+  // Non-string content is an image/structured result; there is nothing to
+  // append to without changing the block's shape.
+  if (typeof block.content !== 'string') return block
+  const messages = toolUseContext.messages
+  if (!Array.isArray(messages)) return block
+  // The call being answered is NOT in `messages` — query.ts freezes that array
+  // before the current turn streams — so it has to be passed in explicitly.
+  // Without it a successful multi-file patch gets nudged for the single-file
+  // turns that preceded it, which inverts the whole instrument.
+  const streak = detectSerialEditStreak(messages, {
+    currentCall: { name: toolName, input: currentInput },
+  })
+  if (streak < SERIAL_EDIT_THRESHOLD) return block
+  return { ...block, content: block.content + renderSerialEditNudge(streak) }
 }
 
 function streamedCheckPermissionsAndCallTool(
@@ -1524,7 +1570,14 @@ async function checkPermissionsAndCallTool(
         : await processToolResultBlock(tool, toolUseResult, toolUseID)
 
       // Build content blocks - tool result first, then optional feedback
-      const contentBlocks: ContentBlockParam[] = [toolResultBlock]
+      const contentBlocks: ContentBlockParam[] = [
+        withSerialEditHint(
+          toolResultBlock,
+          tool.name,
+          toolUseContext,
+          processedInput,
+        ),
+      ]
       // Add accept feedback if user provided feedback when approving
       // (acceptFeedback only exists on PermissionAllowDecision, which is guaranteed here)
       if (

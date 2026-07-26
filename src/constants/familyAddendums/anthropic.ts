@@ -13,6 +13,11 @@ import { feature } from 'bun:bundle'
 // checkpoints reinforces it for Anthropic models without changing what
 // non-Anthropic providers see.
 //
+// A second, independent clause covers multi-file edits. It is gated on
+// TOOL_BATCHING_NUDGE rather than ANTI_NARRATION on purpose: that flag already
+// owns the 1-file-per-turn round-trip waste, and putting an edit-batching
+// sentence behind the narration kill switch would confound both A/B benches.
+//
 // Gated on the same flag as the universal bullets so flipping
 // ANTI_NARRATION=false fully restores the prior behavior (kill switch for
 // A/B benches; see scripts/build.ts:70).
@@ -27,6 +32,30 @@ import { feature } from 'bun:bundle'
 export const ANTHROPIC_ANTI_NARRATION_ADDENDUM =
   `Failures and unexpected results are reported immediately and succinctly; everything else waits for the summary. Speak only at four checkpoints: (1) task complete — lead with outcome, then \`file:line — what changed\` bullets selected for what changes the reader's next action, not an exhaustive list; (2) blocked and need a decision; (3) about to do something destructive — confirm first; (4) the user asked a question requiring a prose answer. Plan-mode output (EnterPlanMode/ExitPlanMode plans) is the deliverable, not narration — the checkpoint summary rules do not apply there.`
 
-export const ANTHROPIC_ADDENDUM: string | null = feature('ANTI_NARRATION')
+// Exported for the same snapshot reason as the constant above.
+export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
+  `When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.`
+
+const antiNarrationPart = feature('ANTI_NARRATION')
   ? ANTHROPIC_ANTI_NARRATION_ADDENDUM
   : null
+const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')
+  ? ANTHROPIC_BATCHED_EDITS_ADDENDUM
+  : null
+
+/**
+ * Exported so the composition is testable: under the test preload every
+ * feature flag is false, so `ANTHROPIC_ADDENDUM` is always null there and the
+ * join / null-when-empty behavior would otherwise never be exercised.
+ */
+export function composeAnthropicAddendum(
+  parts: ReadonlyArray<string | null>,
+): string | null {
+  const kept = parts.filter((part): part is string => part !== null)
+  return kept.length > 0 ? kept.join('\n\n') : null
+}
+
+export const ANTHROPIC_ADDENDUM: string | null = composeAnthropicAddendum([
+  antiNarrationPart,
+  batchedEditsPart,
+])
