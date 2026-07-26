@@ -43,6 +43,11 @@ import { PATH_EXTRACTORS } from './pathValidation.js'
  *
  * ONE-SHOT per command: re-sending the identical command runs it. Without that
  * escape the refusal would be a wall rather than a signpost.
+ *
+ * On by default; `CLAUDIN_DISABLE_TOOL_REDIRECT=1` turns the whole lane off (see
+ * BashTool.tsx). Deliberately NOT documented in AGENTS.md: that file is read by
+ * every agent harness that opens this repo, and a Claudin-only refusal listed
+ * there reads as an instruction the others cannot honor.
  */
 
 export type ToolTarget = 'Read' | 'Grep' | 'Glob'
@@ -103,6 +108,15 @@ export type RedirectAnalysis = {
 // ---------------------------------------------------------------------------
 
 /**
+ * Command substitution survives shell-quote's parse as ordinary text — `$(id -u)`
+ * comes back as the four characters, and `` `foo` `` as a token still wearing its
+ * backticks. A NAMED variable is caught by the resolver instead (see argvOf); the
+ * resolver cannot decide this one, because shell-quote calls it with an empty name
+ * for a bare trailing `$` (the BRE anchor in `grep "foo$"`) and for `$(` alike.
+ */
+const SHELL_SUBSTITUTION_RE = /\$\(|`/
+
+/**
  * Tokenize one segment into argv, the same way pathValidation's
  * parseCommandArguments does (glob objects flattened to their pattern, empty
  * strings preserved — `grep "" file` depends on that one).
@@ -111,10 +125,22 @@ export type RedirectAnalysis = {
  * The second case matters: splitCommandWithOperators does not throw on
  * malformed syntax, it hands back the whole command as a single segment, and
  * that segment must not be mistaken for a simple command.
+ *
+ * Also returns null the moment the segment expands anything. The resolver hands
+ * the SOURCE text back (`$PAT` → `$PAT`), so downstream nothing can tell an
+ * expansion from a literal. Every PATH argument is existence-checked and would
+ * fail on its own, but a grep pattern and a find -name are not validated at all:
+ * `grep -rE "$PAT" src` would otherwise suggest a search for the four characters
+ * `$PAT`, answer nothing, and never say why.
  */
 function argvOf(segment: CommandSegment): string[] | null {
-  const parsed = tryParseShellCommand(segment.text, name => `$${name}`)
+  let expandsAVariable = false
+  const parsed = tryParseShellCommand(segment.text, name => {
+    if (name !== '') expandsAVariable = true
+    return `$${name}`
+  })
   if (!parsed.success) return null
+  if (expandsAVariable) return null
   const argv: string[] = []
   for (const token of parsed.tokens) {
     if (typeof token === 'string') {
@@ -134,6 +160,7 @@ function argvOf(segment: CommandSegment): string[] | null {
     return null
   }
   if (argv.length === 0) return null
+  if (argv.some(arg => SHELL_SUBSTITUTION_RE.test(arg))) return null
   return argv
 }
 
@@ -173,6 +200,26 @@ function resolveDirectory(candidate: string, cwd: string): string | null {
 function toAbsolute(candidate: string, cwd: string): string {
   const clean = expandTilde(candidate.replace(/^['"]|['"]$/g, ''))
   return isAbsolute(clean) ? clean : resolve(cwd, clean)
+}
+
+/**
+ * GrepTool excludes VCS metadata unconditionally (`--glob '!.git'`, …), so a
+ * search aimed INTO one answers nothing at all — `grep -rn foo .git` has real
+ * hits and the suggested Grep is confidently empty. Kept in sync by hand with
+ * VCS_DIRECTORIES_TO_EXCLUDE in GrepTool.ts; importing that module would drag
+ * the whole tool in for six strings.
+ */
+const VCS_DIRECTORIES_GREP_EXCLUDES = new Set([
+  '.git',
+  '.svn',
+  '.hg',
+  '.bzr',
+  '.jj',
+  '.sl',
+])
+
+function targetsExcludedVcsDir(candidate: string): boolean {
+  return candidate.split('/').some(part => VCS_DIRECTORIES_GREP_EXCLUDES.has(part))
 }
 
 // ---------------------------------------------------------------------------
@@ -556,6 +603,10 @@ function parseGrep(
   // egrep is ERE by definition and rg's engine is ERE-ish; only bare grep is
   // BRE, and -E flips it.
   let dialect: 'bre' | 'ere' = tool === 'grep' ? 'bre' : 'ere'
+  // rg honors .gitignore exactly the way the suggested Grep does, so only the
+  // grep/egrep forms answer a different file set. Flagging rg would put a false
+  // statement in the refusal message.
+  const divergesOnIgnoredFiles = tool !== 'rg'
   const flags: PatternFlags = {
     recursive: tool === 'rg',
     caseInsensitive: false,
@@ -644,6 +695,7 @@ function parseGrep(
   const pattern = positional[0]!
   const paths = positional.slice(1)
   if (paths.length > 1) return null
+  if (paths.length === 1 && targetsExcludedVcsDir(paths[0]!)) return null
   // The pattern reaches rg unchanged, so a dialect Grep cannot reproduce has to
   // stand the whole command down rather than search for something else.
   if (
@@ -688,7 +740,7 @@ function parseGrep(
     try {
       const stats = statSync(abs)
       if (!flags.recursive && !stats.isFile()) return null
-      walksTree = flags.recursive && stats.isDirectory()
+      walksTree = divergesOnIgnoredFiles && flags.recursive && stats.isDirectory()
     } catch {
       return null
     }
@@ -698,7 +750,7 @@ function parseGrep(
     // else's output, not a search of the tree.
     return null
   } else {
-    walksTree = true
+    walksTree = divergesOnIgnoredFiles
   }
 
   const glob = combineIncludes(flags.includes)
@@ -755,14 +807,13 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
   const args = argv.slice(1)
   const roots: string[] = []
   let namePattern: string | undefined
-  let pathPattern: string | undefined
   let sawTypeFile = false
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!
     if (!arg.startsWith('-')) {
       // Positional roots only come before the predicates.
-      if (namePattern !== undefined || pathPattern !== undefined) return null
+      if (namePattern !== undefined) return null
       roots.push(arg)
       continue
     }
@@ -771,12 +822,6 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
         const value = args[++i]
         if (value === undefined || namePattern !== undefined) return null
         namePattern = value
-        break
-      }
-      case '-path': {
-        const value = args[++i]
-        if (value === undefined || pathPattern !== undefined) return null
-        pathPattern = value
         break
       }
       case '-type': {
@@ -788,24 +833,20 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
       }
       default:
         // -exec, -delete, -maxdepth, -mtime, -size, -newer, -iname, -o, -not …
+        // and -path, which LOOKS translatable and is not: its wildcards cross
+        // `/`, ripgrep's globset `*` stops at one segment, so `-path "./src/*"`
+        // would become a Glob over direct children only — silently narrower.
         return null
     }
   }
   if (roots.length > 1) return null
-  if (namePattern === undefined && pathPattern === undefined && !sawTypeFile) {
-    return null
-  }
+  if (namePattern === undefined && !sawTypeFile) return null
 
   const root = roots[0]
   if (root !== undefined && !resolveDirectory(root, cwd)) return null
 
-  // -path is already a path pattern; -name matches the basename at any depth.
-  const pattern =
-    pathPattern !== undefined
-      ? pathPattern.replace(/^\.\//, '')
-      : namePattern !== undefined
-        ? `**/${namePattern}`
-        : '**/*'
+  // -name matches the basename at any depth.
+  const pattern = namePattern !== undefined ? `**/${namePattern}` : '**/*'
 
   return {
     kind: 'source',
@@ -1054,7 +1095,7 @@ export function renderToolRedirect(analysis: RedirectAnalysis): string {
     )
   ) {
     lines.push(
-      'Note: Grep honors .gitignore — the shell command would also have searched ignored files (node_modules, build output, vendored dirs); the suggested call skips them.',
+      'Note: Grep honors .gitignore — the shell command would also have searched ignored files (node_modules, build output, vendored dirs); the suggested call skips them, and answers at most 250 entries unless you pass head_limit.',
     )
   }
   lines.push(

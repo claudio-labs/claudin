@@ -217,6 +217,16 @@ describe('searches → Grep', () => {
     })
   })
 
+  test('rg is not flagged as diverging — it honors .gitignore itself', () => {
+    // walksTree exists only to warn that the two file sets differ. rg and the
+    // Grep tool are the same engine under the same ignore rules, so flagging
+    // the rg form would put a false statement in the refusal message.
+    expect(calls('rg -n foo src')[0]).toMatchObject({ walksTree: undefined })
+    expect(calls('rg -n foo')[0]).toMatchObject({ walksTree: undefined })
+    // …while the grep form, which does diverge, keeps the flag.
+    expect(calls('grep -rn foo src')[0]).toMatchObject({ walksTree: true })
+  })
+
   test('an extended-regex dialect survives — it is what Grep speaks', () => {
     // -E and egrep both mean ERE, which is the dialect Grep hands to ripgrep.
     expect(calls('grep -rnE "foo|bar" src')[0]).toMatchObject({
@@ -380,7 +390,10 @@ describe('stands down', () => {
     // to grep but anchors to rg (a silent zero-match), and a leading star is
     // a literal to grep but a parse error to rg.
     [`grep -c "a^b" ${FILE_A}`, 'a caret mid-pattern is a literal in BRE, an anchor to rg'],
-    [`grep -c "bar$baz" ${FILE_A}`, 'a dollar mid-pattern is a literal in BRE'],
+    // Single-quoted on purpose: in double quotes `$baz` is an expansion, which
+    // stands the segment down at argvOf and would never reach the anchor gate
+    // this row exists to pin.
+    [`grep -c 'bar$baz' ${FILE_A}`, 'a dollar mid-pattern is a literal in BRE'],
     [`grep -c "*foo" ${FILE_A}`, 'a leading star is a literal in BRE, a parse error to rg'],
     [`grep -c "^*foo" ${FILE_A}`, 'a star after a leading caret is still a literal in BRE'],
     // ERE: an alphanumeric escape the engines do not share. grep -E reads \d
@@ -402,6 +415,13 @@ describe('stands down', () => {
     [`sed 's/a/b/' ${FILE_A}`, 'substitution'],
     [`sed -i 's/a/b/' ${FILE_A}`, 'in-place edit'],
     [`sed '330,400p' ${FILE_A}`, 'without -n every line prints, the range twice'],
+    // An empty window is not a read. Without the guards these two carry
+    // `limit: 0` and `limit: -99` into the suggested Read.
+    [
+      `cat ${FILE_A} | head -n 5 | sed -n '10,20p'`,
+      'the selector starts past the upstream window',
+    ],
+    [`sed -n '400,300p' ${FILE_A}`, 'an inverted range selects nothing'],
     ['grep -rn "" src', 'an empty pattern over a tree is not a file read'],
     [`grep foo ${FILE_A} ${FILE_B}`, 'Grep searches one path'],
     ['grep TODO src', 'without -r, grep prints "Is a directory" and matches nothing'],
@@ -410,6 +430,26 @@ describe('stands down', () => {
     ['find src -type d', 'directories, which Glob does not return'],
     ['find src -maxdepth 2 -name "*.ts"', 'depth limit'],
     [`find ${FILE_A} -type f`, 'a file is not a walkable root'],
+    // find's -path wildcards cross `/`; ripgrep's globset `*` stops at one
+    // segment, so the only honest Glob for -path is none at all.
+    ['find . -path "./src/*"', '-path has no equivalent Glob pattern'],
+    ['find . -path "./src/*" -name "*.ts"', '-path poisons the whole predicate set'],
+    // Expansions. The resolver hands the SOURCE text back, so a suggested
+    // search for the literal `$PAT` would answer nothing and never say why.
+    ['grep -rE "$PAT" src', 'a variable expansion is not a literal pattern'],
+    ['grep -rE "${PAT}" src', 'a braced expansion is not a literal pattern'],
+    ['grep -rE "pre$PAT" src', 'an expansion glued to a literal prefix'],
+    ['grep -rE "$(id -u)" src', 'command substitution is not a literal pattern'],
+    // No space inside the backticks on purpose: with one, shell-quote splits
+    // the token and the trailing `-u\`` is rejected as an unknown flag, so the
+    // substitution scan is never what stands it down.
+    ['grep -rn `pat` src', 'backtick substitution is not a literal pattern'],
+    ['find src -name "${N}.ts"', 'a variable expansion is not a literal glob'],
+    // GrepTool excludes VCS metadata unconditionally, so the suggested call is
+    // guaranteed empty while the shell command has real hits. Both roots exist
+    // on disk, so the existence gate is not what rejects them.
+    ['grep -rn foo .git', 'Grep excludes .git, so the suggested call answers nothing'],
+    ['grep -rn foo .git/hooks', 'the exclusion applies at any depth'],
     // Out of scope on purpose.
     ['tail -f /tmp/log', 'tail is the Monitor tool’s job'],
     [`tail -n 20 ${FILE_A}`, 'last-N has no Read spelling'],
@@ -537,6 +577,32 @@ describe('renderToolRedirect', () => {
   test('no .gitignore note for a single-file grep', () => {
     const message = renderToolRedirect(analyze(`grep -n foo ${FILE_A}`)!)
     expect(message).not.toContain('.gitignore')
+  })
+
+  test('no .gitignore note for rg — it honors .gitignore itself', () => {
+    expect(renderToolRedirect(analyze('rg -n foo src')!)).not.toContain(
+      '.gitignore',
+    )
+  })
+
+  test('the divergence note also names Grep’s 250-entry cap', () => {
+    // The other half of "the file sets differ": even over an identical set,
+    // Grep truncates at head_limit and `grep -r` does not.
+    const message = renderToolRedirect(analyze('grep -rn TODO .')!)
+    expect(message).toContain('250')
+    expect(message).toContain('head_limit')
+  })
+
+  test('the header agrees with the number of tools, and segments are numbered only when there are several', () => {
+    const single = renderToolRedirect(analyze(`cat ${FILE_A}`)!)
+    expect(single).toContain('is available.')
+    expect(single).not.toContain('Segment')
+    const compound = renderToolRedirect(
+      analyze(`cat ${FILE_A} && grep -rn foo src`)!,
+    )
+    expect(compound).toContain('are available.')
+    expect(compound).toContain('Segment 1 —')
+    expect(compound).toContain('Segment 2 —')
   })
 })
 
