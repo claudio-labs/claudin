@@ -10,6 +10,7 @@ import { syncPermissionRulesFromDisk } from '../permissions/permissions.js'
 import { loadAllPermissionRulesFromDisk } from '../permissions/permissionsLoader.js'
 import type { SettingSource } from './constants.js'
 import { getInitialSettings } from './settings.js'
+import { getProjectEffortPin } from '../effort.js'
 
 /**
  * Apply a settings change to app state. Re-reads settings from disk,
@@ -61,6 +62,10 @@ export function applySettingsChange(
     const prevEffort = prev.settings.effortLevel
     const newEffort = newSettings.effortLevel
     const effortChanged = prevEffort !== newEffort
+    // A project pin (config.json → projects[].activeEffortForProject) outranks
+    // the global setting, so global churn must not push its value into
+    // AppState. The pin's own writers update AppState themselves.
+    const hasProjectPin = getProjectEffortPin() !== undefined
 
     return {
       ...prev,
@@ -71,7 +76,7 @@ export function applySettingsChange(
       // prev.settings.effortLevel can be stale (internal writes suppress the
       // watcher that would resync AppState.settings), so effortChanged would
       // be true and we'd wipe a session-scoped value held in effortValue.
-      ...(effortChanged && newEffort !== undefined
+      ...(effortChanged && newEffort !== undefined && !hasProjectPin
         ? { effortValue: newEffort }
         : {}),
     }

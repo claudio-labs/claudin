@@ -61,7 +61,7 @@ import { getGlobalConfig, type HistoryEntry, type PastedContent, saveGlobalConfi
 import { logForDebugging } from '../../utils/debug.js';
 import { parseDirectMemberMessage, sendDirectMemberMessage } from '../../utils/directMemberMessage.js';
 import type { EffortLevel } from '../../utils/effort.js';
-import { cycleEffortForModel, effortEnvOverrideConflictsWith, toPersistableEffort } from '../../utils/effort.js';
+import { cycleEffortForModel, effortEnvOverrideConflictsWith, persistEffortForProject } from '../../utils/effort.js';
 import { env } from '../../utils/env.js';
 import { errorMessage } from '../../utils/errors.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
@@ -81,7 +81,7 @@ import { transitionPermissionMode } from '../../utils/permissions/permissionSetu
 import { getPlatform } from '../../utils/platform.js';
 import type { ProcessUserInputContext } from '../../utils/processUserInput/processUserInput.js';
 import { editPromptInEditor } from '../../utils/promptEditor.js';
-import { hasAutoModeOptIn, updateSettingsForSource } from '../../utils/settings/settings.js';
+import { hasAutoModeOptIn } from '../../utils/settings/settings.js';
 import { findBtwTriggerPositions } from '../../utils/sideQuestion.js';
 import { findSlashCommandPositions } from '../../utils/suggestions/commandSuggestions.js';
 import { findSlackChannelPositions, getKnownChannelsVersion, hasSlackMcpServer, subscribeKnownChannels } from '../../utils/suggestions/slackChannelSuggestions.js';
@@ -1483,9 +1483,7 @@ function PromptInput({
       ...prev,
       effortValue: next
     }));
-    const persistResult = updateSettingsForSource('userSettings', {
-      effortLevel: toPersistableEffort(next)
-    });
+    const persistResult = persistEffortForProject(next);
     if (persistResult.error) {
       addNotification({
         key: 'effort-persist-failed',

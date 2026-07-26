@@ -4,9 +4,8 @@ import { Box, Text } from '../ink.js';
 import { isMaxSubscriber, isProSubscriber, isTeamSubscriber } from '../utils/auth.js';
 import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
 import type { EffortLevel } from '../utils/effort.js';
-import { convertEffortValueToLevel, getDefaultEffortForModel, getOpusDefaultEffortConfig, toPersistableEffort } from '../utils/effort.js';
+import { convertEffortValueToLevel, getDefaultEffortForModel, getOpusDefaultEffortConfig, persistEffortForProject, pinProjectEffortAuto } from '../utils/effort.js';
 import { parseUserSpecifiedModel } from '../utils/model/model.js';
-import { updateSettingsForSource } from '../utils/settings/settings.js';
 import type { OptionWithDescription } from './CustomSelect/select.js';
 import { Select } from './CustomSelect/select.js';
 import { effortLevelToSymbol } from './EffortIndicator.js';
@@ -90,9 +89,13 @@ export function EffortCallout(t0) {
   if ($[9] !== defaultLevel) {
     t8 = value => {
       const effortLevel = value === defaultLevel ? undefined : value;
-      updateSettingsForSource("userSettings", {
-        effortLevel: toPersistableEffort(effortLevel)
-      });
+      // Picking the model's own default pins 'auto' for this project: same
+      // effective level, and it still beats a globally pinned effortLevel.
+      if (effortLevel === undefined) {
+        pinProjectEffortAuto();
+      } else {
+        persistEffortForProject(effortLevel);
+      }
       onDoneRef.current(value);
     };
     $[9] = defaultLevel;

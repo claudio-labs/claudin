@@ -21,6 +21,7 @@
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation
 
 ## Providers & models
+- [Effort is project-scoped like provider and model](effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; no REPL surface writes settings.effortLevel; 'auto' sentinel shadows the global, /effort inherit clears it
 - [Runtime /models discovery only parses `context_length`](context-window-discovery-field-names.md) — in-memory per-session; Groq/vLLM/Mistral field names mapped but unshipped; strict OpenAI/DeepSeek/Azure return nothing
 - [provider !== 'anthropic' wrongly includes bedrock/vertex/foundry](provider-tag-not-anthropic-includes-cloud.md) — gate OpenAI-only form behavior (/models discovery) with an exclusion set, not != 'anthropic'
 - [Native-1M models need an explicit getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M=true does NOT set the runtime window for a no-[1m]-suffix model; add it beside the `fable-5` check or it compacts at 200k (bit Sonnet 5)
