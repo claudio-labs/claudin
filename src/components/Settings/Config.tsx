@@ -49,6 +49,7 @@ import { useSearchInput } from '../../hooks/useSearchInput.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from '../../utils/fastMode.js';
 import { isFullscreenEnvEnabled, isFullscreenForcedByEnv } from '../../utils/fullscreen.js';
+import { FRAME_RATE_OPTIONS, type FrameRateSetting, getEffectiveFrameRate, isFrameRateForcedByEnv } from '../../utils/renderCadence.js';
 import { buildDisplayRows, countSettingRows, firstSelectableIndex, isSelectableRow, lastSelectableIndex, nextSelectableIndex, sectionJumpIndex } from './configGroups.js';
 type Props = {
   onClose: (result?: string, options?: {
@@ -813,6 +814,30 @@ export function Config({
         value: String(flickerFreeMode) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }
+  }, {
+    id: 'frameRate',
+    // CLAUDIN_FPS pins the rate — say so rather than leaving a row that ignores
+    // every keypress. The resolved rate rides in the label so `auto` says what
+    // it actually picked (60 off a GPU terminal, 120 on one).
+    label: isFrameRateForcedByEnv() ? `Frame rate (env, ${getEffectiveFrameRate()}fps)` : `Frame rate (${getEffectiveFrameRate()}fps)`,
+    searchText: 'frame rate fps animation smoothness gpu terminal refresh',
+    value: globalConfig.renderFrameRate ?? 'auto',
+    options: [...FRAME_RATE_OPTIONS],
+    type: 'enum' as const,
+    onChange(renderFrameRate: string) {
+      saveGlobalConfig(currentFrameRate => ({
+        ...currentFrameRate,
+        renderFrameRate: renderFrameRate as FrameRateSetting
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        renderFrameRate: renderFrameRate as FrameRateSetting
+      });
+      logEvent('tengu_config_changed', {
+        setting: 'renderFrameRate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        value: String(renderFrameRate) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+      });
+    }
   },
   // autoUpdates setting is hidden - use DISABLE_AUTOUPDATER env var to control
   autoUpdaterDisabledReason ? {
@@ -1366,6 +1391,9 @@ export function Config({
     }
     if (globalConfig.flickerFreeMode !== initialConfig.current.flickerFreeMode) {
       formattedChanges.push(`Set terminal UI renderer to ${chalk.bold(globalConfig.flickerFreeMode ? 'fullscreen' : 'default')}`);
+    }
+    if (globalConfig.renderFrameRate !== initialConfig.current.renderFrameRate) {
+      formattedChanges.push(`Set frame rate to ${chalk.bold(globalConfig.renderFrameRate ?? 'auto')} (applies on restart)`);
     }
     if (globalConfig.terminalProgressBarEnabled !== initialConfig.current.terminalProgressBarEnabled) {
       formattedChanges.push(`${globalConfig.terminalProgressBarEnabled ? 'Enabled' : 'Disabled'} terminal progress bar`);

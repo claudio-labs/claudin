@@ -79,6 +79,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
     label: 'Terminal',
     settingIds: [
       'terminalRenderer',
+      'frameRate',
       'terminalProgressBarEnabled',
       'showStatusInTerminalTab',
       'copyOnSelect',

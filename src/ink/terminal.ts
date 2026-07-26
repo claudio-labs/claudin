@@ -135,6 +135,12 @@ export function setXtversionName(name: string): void {
   if (xtversionName === undefined) xtversionName = name
 }
 
+/** The XTVERSION reply, or undefined while it hasn't arrived (or never does).
+ *  Lets callers outside this module do their own terminal-identity matching. */
+export function getXtversionName(): string | undefined {
+  return xtversionName
+}
+
 export function isGhosttyTerminal(): boolean {
   if (process.env.NODE_ENV === 'test') return false
   if (process.env.TERM_PROGRAM === 'ghostty') return true
