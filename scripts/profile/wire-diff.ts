@@ -14,13 +14,28 @@
 //   bun run scripts/profile/wire-diff.ts                       # claude vs claudindev
 //   bun run scripts/profile/wire-diff.ts --a=claude --b=claudindev
 //   bun run scripts/profile/wire-diff.ts --raw                 # also dump raw bodies to /tmp
+//   bun run scripts/profile/wire-diff.ts --model=claude-sonnet-5
+//
+// STATUS 2026-07-26: BROKEN against claude 2.1.220 / claudin 1.0.16 — both CLIs
+// capture 0 requests. Verified with WIRE_DIFF_TRACE=1: the mock sees NO request at
+// all (not even a non-/v1/messages one), so the CLIs hang before their first API
+// call rather than bypassing ANTHROPIC_BASE_URL. Reproduce standalone with a dead
+// port — `ANTHROPIC_BASE_URL=http://localhost:9999 ANTHROPIC_API_KEY=sk-ant-api03-…
+// claude -p hi` hangs instead of failing on ECONNREFUSED, and claudin under --bare
+// answers "Not logged in · Please run /login". So the blocker is the injected
+// ANTHROPIC_API_KEY being rejected/awaiting approval during startup, not the base
+// URL override. Fixing this means finding the headless-safe way to hand each CLI a
+// throwaway key. Until then use `-p --output-format stream-json --verbose` for
+// message-level inspection; it shows the conversation but not the system prompt.
 
 import { createServer } from 'node:http'
 import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 
 const PORT = 8799
-const MODEL = 'claude-sonnet-4-6'
+// Read straight off argv: the mock SSE payload below is built at module scope and
+// has to echo back the same model id the CLIs are launched with.
+const MODEL = process.argv.slice(2).find(x => x.startsWith('--model='))?.slice('--model='.length) ?? 'claude-sonnet-4-6'
 
 type Args = { a: string; b: string; raw: boolean; help: boolean }
 function parseArgs(argv: string[]): Args {
@@ -86,6 +101,7 @@ function startServer(): Promise<{ close: () => void }> {
           return
         }
         // Any other endpoint (quota, /v1/me, etc.) → benign 200.
+        if (process.env.WIRE_DIFF_TRACE) console.log(`    [trace] ${req.method} ${path}`)
         res.writeHead(200, { 'content-type': 'application/json' })
         res.end('{}')
       })

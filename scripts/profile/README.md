@@ -48,7 +48,33 @@ Run `bun run profile` for the unified summary.
 | `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
 | `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
 | `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/profile/cache-ab-bench.ts` |
+| `agent-bg-token-bench.ts` | End-to-end token + $ cost of the SAME sub-agent workload (orchestrator spawns N agents, each reads M files), claudin vs. claude-code | `bun scripts/profile/agent-bg-token-bench.ts` |
 | `run-all.ts`            | All six back-to-back with a unified summary + verdict                  | `bun run profile`           |
+
+### Comparing agents across CLIs (`agent-bg-token-bench.ts`)
+
+Always **pin the model on both sides** — without `--model` each CLI follows its own
+default (claudin the active `/provider` profile, claude its own setting) and the cost
+column silently compares two different price tiers:
+
+```bash
+bun run scripts/profile/agent-bg-token-bench.ts --probe --model=claude-sonnet-5   # 1st: is the run fair?
+bun run scripts/profile/agent-bg-token-bench.ts --agents=2 --files=10 --model=claude-sonnet-5 --reps=3
+```
+
+Two accounting traps this harness now handles, worth knowing before you read any
+number it prints:
+
+- **`usage` is parent-only, `modelUsage` is the session.** The final result's `usage`
+  block counts just the orchestrator's own turns; sub-agent turns are separate API
+  calls and are absent from it, which is why `total_cost_usd` can price out ~2.7x
+  higher than `usage` implies. The bench prefers `modelUsage` (the whole-session
+  aggregate that reconciles with `total_cost_usd`) and falls back to `usage`.
+- **Cache writes are billed by TTL.** 5m costs 1.25x base input, 1h costs 2x — a
+  ~1.6x spread on what is usually the largest column. `modelUsage` carries no TTL
+  split, so the list-price estimate infers it from the parent's last `usage` block
+  and is only a cross-check. **Trust `cost reported by the CLI`**, which knows the
+  real TTL per request.
 
 ### Investigation-only scripts
 
@@ -63,7 +89,7 @@ future regressions can be diagnosed without re-deriving the toolkit:
 | `prefix-anatomy.ts`          | Break down the request prefix into system / tools / messages with token estimates per segment |
 | `eager-tools.ts`             | Estimate which tools could be lazy-loaded to shrink the static prefix |
 | `subagent-cost-bench.ts`     | Per-turn token + $ accounting for a fan-out of sub-agents, to validate fork-vs-fresh cost claims |
-| `wire-diff.ts`               | Side-by-side wire dump (claudin vs. claude-code) for the same prompt — used to confirm prompt parity before benching cache behavior |
+| `wire-diff.ts`               | Side-by-side wire dump (claudin vs. claude-code) for the same prompt — used to confirm prompt parity before benching cache behavior. **BROKEN since claude 2.1.220 / claudin 1.0.16**: both CLIs hang before their first API call because of the injected mock `ANTHROPIC_API_KEY`, so 0 requests reach the mock. See the header comment for the repro |
 
 ## Usage
 
