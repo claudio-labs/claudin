@@ -188,6 +188,35 @@ export async function resetTaskList(taskListId: string): Promise<void> {
 }
 
 /**
+ * Archives every completed task: flags them `metadata._internal`, which both
+ * the task UI (`useTasksV2`) and the `TaskList` tool already filter out. The
+ * finished batch therefore leaves the screen and the model's context without
+ * the JSON being destroyed — unlike `resetTaskList`, which unlinks the files.
+ *
+ * This is what the "all done" hide timer calls. Hiding used to delete, so a
+ * follow-up discovered a few seconds after the last tick found no history at
+ * all. Keeping the files also means IDs keep climbing on their own, with no
+ * high-water mark to maintain. Old directories are swept by
+ * `cleanupOldTaskListDirs`.
+ *
+ * Returns the number of tasks archived.
+ */
+export async function archiveCompletedTasks(
+  taskListId: string,
+): Promise<number> {
+  const tasks = await listTasks(taskListId)
+  let archived = 0
+  for (const task of tasks) {
+    if (task.status !== 'completed' || task.metadata?._internal) continue
+    const updated = await updateTask(taskListId, task.id, {
+      metadata: { ...task.metadata, _internal: true },
+    })
+    if (updated) archived++
+  }
+  return archived
+}
+
+/**
  * Gets the task list ID based on the current context.
  * Priority:
  * 1. CLAUDE_CODE_TASK_LIST_ID - explicit task list ID

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { parsePlanTasks, seedTasksFromPlan } from './planTasks.js'
-import { listTasks } from './tasks.js'
+import { archiveCompletedTasks, listTasks, updateTask } from './tasks.js'
 
 describe('parsePlanTasks', () => {
   test('parses checkbox items with nested file/note lines into description', () => {
@@ -186,6 +186,27 @@ describe('seedTasksFromPlan', () => {
     // A refined plan only adds the genuinely new item.
     expect(await seedTasksFromPlan(`${PLAN}\n- [ ] Third task`)).toBe(1)
     expect((await listTasks(TASK_LIST_ID)).length).toBe(3)
+  })
+
+  test('re-seeds a subject once the previous batch is archived', async () => {
+    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+
+    // Finish the batch and archive it, exactly like the hide timer does.
+    for (const t of await listTasks(TASK_LIST_ID)) {
+      await updateTask(TASK_LIST_ID, t.id, { status: 'completed' })
+    }
+    expect(await archiveCompletedTasks(TASK_LIST_ID)).toBe(2)
+
+    // A later plan reusing the same subjects must not be swallowed by the
+    // archived copies still on disk.
+    expect(await seedTasksFromPlan(PLAN)).toBe(2)
+    const open = (await listTasks(TASK_LIST_ID)).filter(
+      t => !t.metadata?._internal,
+    )
+    expect(open.map(t => t.subject).sort()).toEqual([
+      'First task',
+      'Second task',
+    ])
   })
 
   test('returns 0 when the plan has no Tasks section', async () => {

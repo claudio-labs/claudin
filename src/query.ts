@@ -111,6 +111,13 @@ import { runTools } from './services/tools/toolOrchestration.js'
 import { applyToolResultBudget } from './utils/toolResultStorage.js'
 import { recordContentReplacement } from './utils/sessionStorage.js'
 import { handleStopHooks } from './query/stopHooks.js'
+import {
+  buildTaskReconcileReminder,
+  shouldReconcileTasks,
+} from './query/taskReconcile.js'
+import { getTaskListId, isTodoV2Enabled, listTasks } from './utils/tasks.js'
+import { isTeammate } from './utils/teammate.js'
+import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { buildQueryConfig } from './query/config.js'
 import { productionDeps, type QueryDeps } from './query/deps.js'
 import type { Terminal, Continue } from './query/transitions.js'
@@ -1376,6 +1383,55 @@ async function* queryLoop(
         }
         state = next
         continue
+      }
+
+      // End-of-turn task reconciliation. The checklist seeded from an approved
+      // plan only advances when the model calls TaskUpdate, and nothing else in
+      // the loop asks it to — so a turn can end with the work done and every
+      // item still pending, which also pins the list on screen (it only hides
+      // once every task is completed). Trigger rules and the once-per-turn cap
+      // live in ./query/taskReconcile.ts. Main thread only: subagents and
+      // teammates share the leader's list and must not drive it from their own
+      // stop path (teammates already run TaskCompleted hooks in stopHooks.ts).
+      if (
+        !toolUseContext.agentId &&
+        !isTeammate() &&
+        !isBareMode() &&
+        isTodoV2Enabled() &&
+        !isEnvTruthy(process.env.CLAUDIN_DISABLE_TASK_RECONCILE) &&
+        !toolUseContext.abortController.signal.aborted
+      ) {
+        const turnMessages = [...messagesForQuery, ...assistantMessages]
+        const decision = shouldReconcileTasks(
+          turnMessages,
+          await listTasks(getTaskListId()),
+        )
+        if (decision) {
+          logForDebugging(
+            `Task reconcile nudge (${decision.reason}): ${decision.stale.length} open task(s)`,
+          )
+          const next: State = {
+            messages: [
+              ...turnMessages,
+              createUserMessage({
+                content: buildTaskReconcileReminder(decision),
+                isMeta: true,
+              }),
+            ],
+            toolUseContext,
+            autoCompactTracking: tracking,
+            maxOutputTokensRecoveryCount: 0,
+            hasAttemptedReactiveCompact,
+            maxOutputTokensOverride: undefined,
+            pendingToolUseSummary: undefined,
+            stopHookActive: undefined,
+            turnCount,
+            continuationNudgeCount: state.continuationNudgeCount,
+            transition: { reason: 'task_reconcile' },
+          }
+          state = next
+          continue
+        }
       }
 
       if (feature('TOKEN_BUDGET')) {

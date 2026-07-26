@@ -4,12 +4,12 @@ import { useAppState, useSetAppState } from '../state/AppState.js'
 import { createSignal } from '../utils/signal.js'
 import type { Task } from '../utils/tasks.js'
 import {
+  archiveCompletedTasks,
   getTaskListId,
   getTasksDir,
   isTodoV2Enabled,
   listTasks,
   onTasksUpdated,
-  resetTaskList,
 } from '../utils/tasks.js'
 import { isTeamLead } from '../utils/teammate.js'
 
@@ -163,7 +163,10 @@ class TasksV2Store {
         tasksToCheck.length > 0 &&
         tasksToCheck.every(t => t.status === 'completed')
       if (allStillCompleted) {
-        await resetTaskList(currentId)
+        // Archive, don't delete: the batch leaves the UI and the model's
+        // TaskList (both filter `_internal`) but the JSON survives, so a
+        // follow-up right after the last tick still has the history.
+        await archiveCompletedTasks(currentId)
         this.#tasks = []
         this.#hidden = true
       }

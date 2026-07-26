@@ -14,6 +14,7 @@ import { cleanupOldPastes } from './pasteStore.js'
 import { getPlansDirectory } from './plans.js'
 import { getProjectsDir } from './sessionStorage.js'
 import { getSettingsWithAllErrors } from './settings/allErrors.js'
+import { getTaskListId, sanitizePathComponent } from './tasks.js'
 import {
   getSettings_DEPRECATED,
   rawSettingsContainsKey,
@@ -400,6 +401,55 @@ export async function cleanupOldSessionEnvDirs(): Promise<CleanupResult> {
 }
 
 /**
+ * Sweeps stale TodoV2 task lists from ~/.claudin/tasks/. One directory is
+ * created per task list — normally per session — and nothing ever removed them:
+ * a session that ended with unfinished tasks left its JSON behind forever, and
+ * finished batches now stay on disk too (they're archived rather than deleted,
+ * see `archiveCompletedTasks`).
+ *
+ * The live list is skipped by name regardless of mtime: a long-running session
+ * whose tasks were all written before the cutoff must not have them deleted out
+ * from under it.
+ */
+export async function cleanupOldTaskListDirs(): Promise<CleanupResult> {
+  const cutoffDate = getCutoffDate()
+  const result: CleanupResult = { messages: 0, errors: 0 }
+  const fsImpl = getFsImplementation()
+
+  try {
+    const tasksBaseDir = join(getClaudinConfigHomeDir(), 'tasks')
+    const activeDirName = sanitizePathComponent(getTaskListId())
+
+    let dirents
+    try {
+      dirents = await fsImpl.readdir(tasksBaseDir)
+    } catch {
+      return result
+    }
+
+    for (const dirent of dirents) {
+      if (!dirent.isDirectory() || dirent.name === activeDirName) continue
+      const taskListDir = join(tasksBaseDir, dirent.name)
+      try {
+        const stats = await fsImpl.stat(taskListDir)
+        if (stats.mtime < cutoffDate) {
+          await fsImpl.rm(taskListDir, { recursive: true, force: true })
+          result.messages++
+        }
+      } catch {
+        result.errors++
+      }
+    }
+
+    await tryRmdir(tasksBaseDir, fsImpl)
+  } catch (error) {
+    logError(error as Error)
+  }
+
+  return result
+}
+
+/**
  * Cleans up old debug log files from ~/.claude/debug/
  * Preserves the 'latest' symlink which points to the current session's log.
  * Debug logs can grow very large (especially with the infinite logging loop bug)
@@ -601,6 +651,7 @@ export async function cleanupOldMessageFilesInBackground(): Promise<void> {
   await cleanupOldPlanFiles()
   await cleanupOldFileHistoryBackups()
   await cleanupOldSessionEnvDirs()
+  await cleanupOldTaskListDirs()
   await cleanupOldDebugLogs()
   await cleanupOldImageCaches()
   await cleanupOldPastes(getCutoffDate())
