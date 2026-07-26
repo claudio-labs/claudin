@@ -376,7 +376,7 @@ export function Config({
   }, {
     id: 'autoBackgroundAgentsEnabled',
     label: 'Auto-background agents',
-    value: globalConfig.autoBackgroundAgentsEnabled !== false,
+    value: globalConfig.autoBackgroundAgentsEnabled === true,
     type: 'boolean' as const,
     onChange(autoBackgroundAgentsEnabled: boolean) {
       saveGlobalConfig(current => ({
@@ -1300,7 +1300,7 @@ export function Config({
       formattedChanges.push(`${globalConfig.toolResultSummarizerEnabled ? 'Enabled' : 'Disabled'} tool result summarizer`);
     }
     if (globalConfig.autoBackgroundAgentsEnabled !== initialConfig.current.autoBackgroundAgentsEnabled) {
-      formattedChanges.push(`${globalConfig.autoBackgroundAgentsEnabled !== false ? 'Enabled' : 'Disabled'} auto-background agents`);
+      formattedChanges.push(`${globalConfig.autoBackgroundAgentsEnabled === true ? 'Enabled' : 'Disabled'} auto-background agents`);
     }
     if (globalConfig.workflowsDefaultBackground !== initialConfig.current.workflowsDefaultBackground) {
       formattedChanges.push(`${globalConfig.workflowsDefaultBackground === true ? 'Enabled' : 'Disabled'} workflows run in background`);

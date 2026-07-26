@@ -86,7 +86,8 @@ argument a caller could forget instead of adding a test that they didn't.
 ## 5. Headless `-p` orphans auto-background sub-agents (bench caveat)
 
 In `claudin -p`, an orchestrator that spawns auto-background sub-agents
-(`autoBackgroundAgentsEnabled` default ON) drains them **non-deterministically** —
+(`autoBackgroundAgentsEnabled`, opt-in since 2026-07-26 — benches that predate
+that ran with it ON) drains them **non-deterministically** —
 sometimes the parent exits before they finish, so their token usage is absent from
 the parent's `usage` and the run looks artificially cheap. For any token/cost bench,
 only trust runs where the drain sentinel appeared (`drained=Y` in

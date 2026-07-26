@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { randomUUID } from 'crypto'
-import { getGlobalConfig, isConfigReadingAllowed } from '../../utils/config.js'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
@@ -28,17 +27,19 @@ import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
  *
  * Mutually exclusive with coordinator mode — coordinator already owns the
  * orchestration role and has its own delegation model.
+ *
+ * Independent of `autoBackgroundAgentsEnabled`. Fork is about *context
+ * inheritance* (the child sees the parent's conversation and shares its prompt
+ * cache); backgrounding is about *when the report arrives*. Gating fork on the
+ * background toggle made "stop backgrounding my agents" also mean "lose context
+ * inheritance" — the two are split so the toggle only moves execution mode.
  */
 export function isForkSubagentEnabled(): boolean {
   if (feature('FORK_SUBAGENT')) {
     if (isCoordinatorMode()) return false
-    // This getter runs at tool-schema build time (Agent inputSchema) — before
-    // enableConfigs() unlocks config reads. Default to enabled until config is
-    // readable, then honor the same /config toggle as auto-background agents:
-    // turning it off reverts to plain isolated subagents. Fork no longer forces
-    // async, so it runs inline in headless (-p) without orphaning.
-    if (!isConfigReadingAllowed()) return true
-    return getGlobalConfig().autoBackgroundAgentsEnabled !== false
+    // No config read: this getter runs at tool-schema build time (Agent
+    // inputSchema), before enableConfigs() unlocks config reads.
+    return true
   }
   return false
 }

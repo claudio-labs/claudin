@@ -693,9 +693,13 @@ export type GlobalConfig = {
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean
 
-  // Auto-background agents — when on, all subagents launch directly in the
+  // Auto-background agents — when on, subagents launch directly in the
   // background (task-notification on completion) instead of running inline.
-  // undefined → off (opt-in). Env CLAUDE_AUTO_BACKGROUND_TASKS overrides to on.
+  // undefined → false (opt-in): a backgrounded spawn's report only reaches the
+  // parent in a LATER turn, so the parent has to be written for it. Env
+  // CLAUDE_AUTO_BACKGROUND_TASKS overrides to on. Even when on, one-shot
+  // built-ins and an explicit run_in_background:false stay inline — see
+  // AgentTool/autoBackground.ts. Independent of whether fork exists.
   autoBackgroundAgentsEnabled?: boolean
 
   // Repeated-failure hint — appends a <system-reminder> to an errored
@@ -775,7 +779,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     openaiAdditionalModelOptionsCacheByProfile: {},
     knowledgeGraphEnabled: true,
     inlineImagesMode: 'auto',
-    autoBackgroundAgentsEnabled: true,
+    autoBackgroundAgentsEnabled: false,
     workflowsDefaultBackground: false,
   }
   return config
