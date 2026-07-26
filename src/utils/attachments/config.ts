@@ -1,6 +1,20 @@
 export const TODO_REMINDER_CONFIG = {
   TURNS_SINCE_WRITE: 10,
+  // TodoV2 (Task* tools) gets its own, much shorter fuse. These counters are
+  // assistant messages, not user turns, and the attachment pipeline re-runs
+  // after every batch of tool results — so this fires *during* a long
+  // implementation turn, which is exactly when a plan-seeded checklist goes
+  // stale on screen. 10 was long enough that the list sat wrong for most of
+  // the turn. The legacy TodoWrite path keeps TURNS_SINCE_WRITE so the change
+  // stays on the lane being fixed.
+  TASK_TURNS_SINCE_WRITE: 4,
   TURNS_BETWEEN_REMINDERS: 10,
+  // Must move together with TASK_TURNS_SINCE_WRITE. With no reminder yet in
+  // the transcript, getTaskReminderTurnCounts reports the total assistant
+  // count as "turns since last reminder", so this gate applies to the FIRST
+  // reminder too — leaving it at 10 made lowering the other threshold a no-op
+  // (proved by a test that expected a reminder at 4 and got nothing).
+  TASK_TURNS_BETWEEN_REMINDERS: 4,
 } as const
 
 export const PLAN_MODE_ATTACHMENT_CONFIG = {

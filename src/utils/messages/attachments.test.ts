@@ -127,4 +127,46 @@ describe('normalizeAttachmentForAPI', () => {
     expect(text).toContain('Progress: found 3 files')
     expect(text).not.toContain('TaskStop')
   })
+
+  // The reminder is the only mid-turn signal about the task list, and it used
+  // to show the list without asking for anything.
+  describe('todo_reminder_delta asks for an update while work is open', () => {
+    const render = (snapshot: Array<{ id: string; status: string }>): string => {
+      const out = normalizeAttachmentForAPI({
+        type: 'todo_reminder_delta',
+        added: snapshot.map(s => ({ ...s, text: `task ${s.id}` })),
+        statusChanged: [],
+        removedIds: [],
+        isInitial: true,
+        snapshot,
+      } as any)
+      expect(out).toHaveLength(1)
+      return (out[0]!.message.content as any).toString()
+    }
+
+    test('asks when a task is still open', () => {
+      const text = render([
+        { id: '1', status: 'completed' },
+        { id: '2', status: 'pending' },
+      ])
+      expect(text).toContain('Keep this list current as you work')
+    })
+
+    test('stays a plain state dump once everything is completed', () => {
+      const text = render([
+        { id: '1', status: 'completed' },
+        { id: '2', status: 'completed' },
+      ])
+      expect(text).toContain('Current task list')
+      expect(text).not.toContain('Keep this list current')
+    })
+
+    test('never tells the model to hide the reminder', () => {
+      // An earlier reminder paired instructions with a gag order and the model
+      // reported it to the user as injected text. Don't reintroduce that.
+      const text = render([{ id: '1', status: 'in_progress' }])
+      expect(text).not.toContain('never mention')
+      expect(text).not.toContain('do not mention')
+    })
+  })
 })

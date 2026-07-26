@@ -57,6 +57,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "skill_discovery",
   "skill_listing",
   "structured_output",
+  "task_reconcile",
   "task_reminder",
   "task_status",
   "team_context",

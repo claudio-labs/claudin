@@ -962,6 +962,17 @@ You have exited auto mode. The user may now want to interact more directly. You 
         }
       }
       if (parts.length === 0) return []
+      // The reminder used to be a pure state dump — it showed the list and
+      // asked for nothing, so a model that had drifted just read it and
+      // carried on. Ask, but only while something is still open; on a finished
+      // list this is noise. No tool name: this attachment is shared with the
+      // legacy TodoWrite path, and no "don't mention this" either — that
+      // pairing is what made an earlier reminder read as prompt injection.
+      if (attachment.snapshot.some(item => item.status !== 'completed')) {
+        parts.push(
+          'Keep this list current as you work: mark an item in progress when you start it and completed when you finish.',
+        )
+      }
       return wrapMessagesInSystemReminder([
         createUserMessage({ content: parts.join('\n\n'), isMeta: true }),
       ])

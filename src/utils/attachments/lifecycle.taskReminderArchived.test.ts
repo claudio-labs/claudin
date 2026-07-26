@@ -38,8 +38,8 @@ function makeContext(): ToolUseContext {
 }
 
 /**
- * The reminder needs TURNS_SINCE_WRITE (10) assistant turns with no Task* call
- * and no earlier reminder before it will fire at all.
+ * Assistant turns with no Task* call in them. The reminder needs
+ * TASK_TURNS_SINCE_WRITE of these (and no earlier reminder) before it fires.
  */
 function quietTurns(count = 12): Message[] {
   return Array.from({ length: count }, () => ({
@@ -95,5 +95,26 @@ describe('getTaskReminderAttachments — archived tasks', () => {
     if (attachment.type !== 'todo_reminder_delta') return
     expect(attachment.snapshot).toEqual([])
     expect(attachment.added).toEqual([])
+  })
+})
+
+// These counters are assistant messages and the pipeline re-runs after every
+// batch of tool results, so this is what decides how deep into a working turn
+// the model gets before anything reminds it the list exists.
+describe('getTaskReminderAttachments — how soon it speaks up', () => {
+  test('fires after 4 quiet assistant turns', async () => {
+    await seed('still open', 'pending')
+
+    const out = await getTaskReminderAttachments(quietTurns(4), makeContext())
+
+    expect(out).toHaveLength(1)
+  })
+
+  test('stays quiet at 3', async () => {
+    await seed('still open', 'pending')
+
+    const out = await getTaskReminderAttachments(quietTurns(3), makeContext())
+
+    expect(out).toEqual([])
   })
 })
