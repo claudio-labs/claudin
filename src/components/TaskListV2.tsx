@@ -15,6 +15,7 @@ import { isTodoV2Enabled, type Task } from '../utils/tasks.js';
 import type { Theme } from '../utils/theme.js';
 import FullWidthRow from './design-system/FullWidthRow.js';
 import ThemedText from './design-system/ThemedText.js';
+import { orderTasksForDisplay } from './tasks/taskOrdering.js';
 type Props = {
   tasks: Task[];
   isStandalone?: boolean;
@@ -161,11 +162,14 @@ export function TaskListV2({
       return byIdAsc(a, b);
     });
     const prioritized = [...recentCompleted, ...inProgress, ...pending, ...olderCompleted];
-    visibleTasks = prioritized.slice(0, maxDisplay);
+    // `prioritized` decides who survives the cut — a completion inside the 30s
+    // window is guaranteed a slot so you see it land. How the survivors are
+    // *shown* is the same rule as the untruncated path, so crossing the
+    // truncation threshold doesn't reshuffle the list under the reader.
+    visibleTasks = orderTasksForDisplay(prioritized.slice(0, maxDisplay));
     hiddenTasks = prioritized.slice(maxDisplay);
   } else {
-    // No truncation needed — sort by ID for stable ordering
-    visibleTasks = [...tasks].sort(byIdAsc);
+    visibleTasks = orderTasksForDisplay(tasks);
     hiddenTasks = [];
   }
   let hiddenSummary = '';

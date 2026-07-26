@@ -481,6 +481,16 @@ export type Attachment =
       snapshot: Array<{ id: string; status: string }>
     }
   | {
+      // End-of-turn task-list reconciliation nudge. See
+      // src/query/taskReconcile.ts for the trigger rules and for why this is
+      // an attachment rather than a loop continuation.
+      type: 'task_reconcile'
+      reason: 'orphan_in_progress' | 'untouched_list'
+      stale: Array<{ id: string; subject: string; status: string }>
+      /** Open-task state this fired for; the repeat-cap compares against it. */
+      signature: string
+    }
+  | {
       type: 'companion_intro'
       name: string
       species: string

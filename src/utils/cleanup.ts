@@ -14,6 +14,7 @@ import { cleanupOldPastes } from './pasteStore.js'
 import { getPlansDirectory } from './plans.js'
 import { getProjectsDir } from './sessionStorage.js'
 import { getSettingsWithAllErrors } from './settings/allErrors.js'
+import { getTaskListId, sanitizePathComponent } from './tasks.js'
 import {
   getSettings_DEPRECATED,
   rawSettingsContainsKey,
@@ -400,6 +401,82 @@ export async function cleanupOldSessionEnvDirs(): Promise<CleanupResult> {
 }
 
 /**
+ * Sweeps stale TodoV2 task lists from ~/.claudin/tasks/. One directory is
+ * created per task list — normally per session — and nothing ever removed them:
+ * a session that ended with unfinished tasks left its JSON behind forever, and
+ * finished batches now stay on disk too (they're archived rather than deleted,
+ * see `archiveCompletedTasks`).
+ *
+ * The live list is skipped by name regardless of mtime. Other sessions' lists
+ * are protected by age alone, which is why the age is the newest mtime *inside*
+ * the directory rather than the directory's own — see `newestTaskListMtime`.
+ */
+export async function cleanupOldTaskListDirs(): Promise<CleanupResult> {
+  const cutoffDate = getCutoffDate()
+  const result: CleanupResult = { messages: 0, errors: 0 }
+  const fsImpl = getFsImplementation()
+
+  try {
+    const tasksBaseDir = join(getClaudinConfigHomeDir(), 'tasks')
+    const activeDirName = sanitizePathComponent(getTaskListId())
+
+    let dirents
+    try {
+      dirents = await fsImpl.readdir(tasksBaseDir)
+    } catch {
+      return result
+    }
+
+    for (const dirent of dirents) {
+      if (!dirent.isDirectory() || dirent.name === activeDirName) continue
+      const taskListDir = join(tasksBaseDir, dirent.name)
+      try {
+        const mtime = await newestTaskListMtime(taskListDir, fsImpl)
+        if (mtime < cutoffDate) {
+          await fsImpl.rm(taskListDir, { recursive: true, force: true })
+          result.messages++
+        }
+      } catch {
+        result.errors++
+      }
+    }
+
+    await tryRmdir(tasksBaseDir, fsImpl)
+  } catch (error) {
+    logError(error as Error)
+  }
+
+  return result
+}
+
+/**
+ * Newest mtime among a task-list directory and the task files in it.
+ *
+ * The directory's own mtime only moves when an entry is added or removed, and
+ * `updateTask` rewrites each JSON in place — so a second Claudin session that
+ * has been ticking statuses all week still looks untouched since the day its
+ * list was created. Reading the files' mtimes is what keeps this sweep from
+ * deleting a list another live session is holding.
+ */
+async function newestTaskListMtime(
+  dir: string,
+  fsImpl: FsOperations,
+): Promise<Date> {
+  let newest = (await fsImpl.stat(dir)).mtime
+  const entries = await fsImpl.readdir(dir).catch(() => [])
+  for (const entry of entries) {
+    if (!entry.isFile()) continue
+    try {
+      const { mtime } = await fsImpl.stat(join(dir, entry.name))
+      if (mtime > newest) newest = mtime
+    } catch {
+      // Unreadable entry — the directory mtime already bounds us.
+    }
+  }
+  return newest
+}
+
+/**
  * Cleans up old debug log files from ~/.claude/debug/
  * Preserves the 'latest' symlink which points to the current session's log.
  * Debug logs can grow very large (especially with the infinite logging loop bug)
@@ -601,6 +678,7 @@ export async function cleanupOldMessageFilesInBackground(): Promise<void> {
   await cleanupOldPlanFiles()
   await cleanupOldFileHistoryBackups()
   await cleanupOldSessionEnvDirs()
+  await cleanupOldTaskListDirs()
   await cleanupOldDebugLogs()
   await cleanupOldImageCaches()
   await cleanupOldPastes(getCutoffDate())

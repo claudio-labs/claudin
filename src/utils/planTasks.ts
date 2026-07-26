@@ -83,9 +83,17 @@ export function parsePlanTasks(planMarkdown: string): ParsedPlanTask[] {
 
 /**
  * Seed the TodoV2 task list from a plan's `## Tasks` section. Skips items whose
- * subject already exists in the list, so re-approving a refined plan doesn't
+ * subject is already live in the list, so re-approving a refined plan doesn't
  * duplicate entries. Fail-soft: any error is logged and swallowed (returns 0)
  * so it never blocks plan exit. Returns the number of tasks created.
+ *
+ * "Live" means *not archived*, which is a different line than "not completed".
+ * `archiveCompletedTasks` is what closes a batch; until it runs, finished tasks
+ * are still on screen and still count as duplicates — otherwise refining a plan
+ * mid-batch recreates every item you already ticked off as a pending twin.
+ * Archived ones must NOT count, or a later plan that legitimately reuses a
+ * subject gets silently swallowed ("Run the tests" is the same three words
+ * every time).
  */
 export async function seedTasksFromPlan(plan: string): Promise<number> {
   try {
@@ -95,7 +103,9 @@ export async function seedTasksFromPlan(plan: string): Promise<number> {
 
     const taskListId = getTaskListId()
     const existingSubjects = new Set(
-      (await listTasks(taskListId)).map(t => t.subject),
+      (await listTasks(taskListId))
+        .filter(t => !t.metadata?._internal)
+        .map(t => t.subject),
     )
 
     let created = 0

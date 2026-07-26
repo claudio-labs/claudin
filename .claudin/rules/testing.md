@@ -180,6 +180,31 @@ it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
 - Provider presets in `providerConfig.ts` — covered by smoke test
 - Feature flags set to `false` — dead code paths
 
+## Verifying attachments/system-reminders at runtime
+
+**Do not grep the session `.jsonl` to check whether an attachment fired.** For
+non-`ant` users `isLoggableMessage` (`src/utils/sessionStorage/pure/logging.ts`)
+drops **every** attachment from the transcript except `hook_additional_context`
+and `deferred_tools_delta`. A `todo_reminder_delta`, a memory delta, a plan-mode
+attachment — none of them are written. Absence in the log is not evidence the
+attachment was skipped, and reading it that way produces a confident false
+negative (it did, while verifying the task reminder on 2026-07-26).
+
+The observation channel that works is a temporary `appendFileSync` to `/tmp`,
+at BOTH ends: the producer (`getTaskReminderAttachments` and friends in
+`src/utils/attachments/lifecycle.ts`) to see the gate decisions and turn
+counters, and the renderer (`normalizeAttachmentForAPI` in
+`src/utils/messages/attachments.ts`) to capture the literal text the model
+receives. Log the bail reason per branch, not just the success case — that is
+what tells you *which* gate closed. `logEvent` is useless here: telemetry is
+stubbed out at build time in this fork.
+
+Drive it under tmux with `claudindev` (see the mouse-verification note for the
+session recipe); a turn's worth of counters lands in the file in seconds.
+Remember the instrumentation lives on top of committed code, so
+`git checkout -- <files>` is the clean revert — and rebuild after, since the
+launcher runs the bundle.
+
 ## Known full-suite flakes & the typecheck baseline
 
 Full `bun test` on a clean `main` fails — but the failure SET depends on the

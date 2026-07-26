@@ -71,6 +71,7 @@ const ALL_ATTACHMENT_TYPES = [
   'git_status_delta',
   'memory_delta',
   'todo_reminder_delta',
+  'task_reconcile',
   'companion_intro',
   'bagel_console',
 ] as const satisfies readonly Attachment['type'][]

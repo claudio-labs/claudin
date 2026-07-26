@@ -51,6 +51,7 @@ const NULL_RENDERING_TYPES = [
   'git_status_delta',
   'memory_delta',
   'todo_reminder_delta',
+  'task_reconcile',
 ] as const satisfies readonly Attachment['type'][]
 
 export type NullRenderingAttachmentType = (typeof NULL_RENDERING_TYPES)[number]
