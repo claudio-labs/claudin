@@ -375,6 +375,27 @@ async function waitForFrameOutput(
   return output
 }
 
+// A Select renders its focused row as "❯ <n>. <label>" (figures.pointer, which
+// degrades to ">" where unicode is unavailable). Waiting for the pointer to
+// land is what makes a keyboard-driven pick deterministic: confirming with
+// Enter after a fixed sleep can otherwise select the previously focused row on
+// a loaded CI runner, and that picks a valid-looking wrong value instead of
+// failing loudly.
+async function waitForFocusedRow(
+  getOutput: () => string,
+  label: string,
+): Promise<void> {
+  await waitForFrameOutput(getOutput, frame =>
+    frame.split('\n').some(line => {
+      const trimmed = line.trimStart()
+      return (
+        line.includes(label) &&
+        (trimmed.startsWith('❯') || trimmed.startsWith('>'))
+      )
+    }),
+  )
+}
+
 async function mountProviderManager(
   ProviderManager: React.ComponentType<{
     mode: 'first-run' | 'manage'
@@ -1004,7 +1025,7 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
   // current model was the initial focus — none of which a "just accept the
   // pre-focused value" test would catch.
   mounted.stdin.write('j')
-  await Bun.sleep(25)
+  await waitForFocusedRow(mounted.getOutput, 'gpt-5.4-mini')
   mounted.stdin.write('\r')
   await waitForCondition(() => updateProviderProfile.mock.calls.length > 0)
 
