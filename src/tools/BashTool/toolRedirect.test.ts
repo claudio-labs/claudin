@@ -227,6 +227,17 @@ describe('searches → Grep', () => {
     })
   })
 
+  test('ERE escapes both engines share keep the redirect', () => {
+    // The ERE gate only fires on an alphanumeric escape ripgrep reads
+    // differently — \w is shared, and \. is not alphanumeric at all.
+    expect(calls('grep -rnE "fo\\w" src')[0]).toMatchObject({
+      pattern: 'fo\\w',
+    })
+    expect(calls('grep -rnE "foo\\.bar" src')[0]).toMatchObject({
+      pattern: 'foo\\.bar',
+    })
+  })
+
   test('anchors at the pattern edges keep the redirect — both engines agree', () => {
     expect(calls('grep -rn "^foo" src')[0]).toMatchObject({ pattern: '^foo' })
     expect(calls('grep -rn "foo$" src')[0]).toMatchObject({ pattern: 'foo$' })
@@ -240,11 +251,21 @@ describe('searches → Grep', () => {
     })
   })
 
+  test('a bracket expression with a literal ] first keeps the redirect', () => {
+    // A `]` in first position inside [...] is a literal member of the class
+    // in both engines; the bracket scanner must not end the class there.
+    expect(calls('grep -rn "[]a]" src')[0]).toMatchObject({
+      pattern: '[]a]',
+    })
+  })
+
   test('a tree-walking grep is flagged so the message can name .gitignore', () => {
     // rg honors .gitignore, grep -r does not — over the repo root or a
     // directory the result sets differ; over a single file they agree.
     expect(calls('grep -rn TODO .')[0]).toMatchObject({ walksTree: true })
     expect(calls('grep -rn foo src')[0]).toMatchObject({ walksTree: true })
+    // GNU grep -r with no FILE searches the cwd — a tree walk like any other.
+    expect(calls('grep -rn foo')[0]).toMatchObject({ walksTree: true })
     expect(calls(`grep -rn foo ${FILE_A}`)[0]).toMatchObject({
       walksTree: undefined,
     })
@@ -344,6 +365,7 @@ describe('stands down', () => {
     [`grep -c "a^b" ${FILE_A}`, 'a caret mid-pattern is a literal in BRE, an anchor to rg'],
     [`grep -c "bar$baz" ${FILE_A}`, 'a dollar mid-pattern is a literal in BRE'],
     [`grep -c "*foo" ${FILE_A}`, 'a leading star is a literal in BRE, a parse error to rg'],
+    [`grep -c "^*foo" ${FILE_A}`, 'a star after a leading caret is still a literal in BRE'],
     // ERE: an alphanumeric escape the engines do not share. grep -E reads \d
     // as a literal d (matching "food"); rg reads a digit class (matching
     // "foo9") — same count, different lines, undetectable downstream.
