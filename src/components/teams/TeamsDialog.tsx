@@ -401,7 +401,7 @@ function TeammateDetailView(t0) {
         if (cancelled) {
           return;
         }
-        setTeammateTasks(allTasks.filter(task => task.owner === teammate.agentId || task.owner === teammate.name));
+        setTeammateTasks(allTasks.filter(task => !task.metadata?._internal && (task.owner === teammate.agentId || task.owner === teammate.name)));
       });
       return () => {
         cancelled = true;

@@ -99,11 +99,15 @@ describe('archiveCompletedTasks', () => {
     expect(stored?.metadata?._internal).toBe(true)
   })
 
-  test('keeps IDs climbing across an archived batch', async () => {
-    const first = await seed('done thing', 'completed')
+  test('archived tasks stay readable, unlike a reset list', async () => {
+    const id = await seed('done thing', 'completed')
     await archiveCompletedTasks(getTaskListId())
-    const second = await seed('next thing', 'pending')
 
-    expect(Number(second)).toBeGreaterThan(Number(first))
+    // The point of archiving: a follow-up turn can still read the history.
+    expect((await listTasks(getTaskListId())).some(t => t.id === id)).toBe(true)
+
+    // resetTaskList — what this replaced — unlinks it instead.
+    await resetTaskList(getTaskListId())
+    expect(existsSync(getTaskPath(getTaskListId(), id))).toBe(false)
   })
 })

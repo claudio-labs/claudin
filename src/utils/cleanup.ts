@@ -407,9 +407,9 @@ export async function cleanupOldSessionEnvDirs(): Promise<CleanupResult> {
  * finished batches now stay on disk too (they're archived rather than deleted,
  * see `archiveCompletedTasks`).
  *
- * The live list is skipped by name regardless of mtime: a long-running session
- * whose tasks were all written before the cutoff must not have them deleted out
- * from under it.
+ * The live list is skipped by name regardless of mtime. Other sessions' lists
+ * are protected by age alone, which is why the age is the newest mtime *inside*
+ * the directory rather than the directory's own — see `newestTaskListMtime`.
  */
 export async function cleanupOldTaskListDirs(): Promise<CleanupResult> {
   const cutoffDate = getCutoffDate()
@@ -431,8 +431,8 @@ export async function cleanupOldTaskListDirs(): Promise<CleanupResult> {
       if (!dirent.isDirectory() || dirent.name === activeDirName) continue
       const taskListDir = join(tasksBaseDir, dirent.name)
       try {
-        const stats = await fsImpl.stat(taskListDir)
-        if (stats.mtime < cutoffDate) {
+        const mtime = await newestTaskListMtime(taskListDir, fsImpl)
+        if (mtime < cutoffDate) {
           await fsImpl.rm(taskListDir, { recursive: true, force: true })
           result.messages++
         }
@@ -447,6 +447,33 @@ export async function cleanupOldTaskListDirs(): Promise<CleanupResult> {
   }
 
   return result
+}
+
+/**
+ * Newest mtime among a task-list directory and the task files in it.
+ *
+ * The directory's own mtime only moves when an entry is added or removed, and
+ * `updateTask` rewrites each JSON in place — so a second Claudin session that
+ * has been ticking statuses all week still looks untouched since the day its
+ * list was created. Reading the files' mtimes is what keeps this sweep from
+ * deleting a list another live session is holding.
+ */
+async function newestTaskListMtime(
+  dir: string,
+  fsImpl: FsOperations,
+): Promise<Date> {
+  let newest = (await fsImpl.stat(dir)).mtime
+  const entries = await fsImpl.readdir(dir).catch(() => [])
+  for (const entry of entries) {
+    if (!entry.isFile()) continue
+    try {
+      const { mtime } = await fsImpl.stat(join(dir, entry.name))
+      if (mtime > newest) newest = mtime
+    } catch {
+      // Unreadable entry — the directory mtime already bounds us.
+    }
+  }
+  return newest
 }
 
 /**

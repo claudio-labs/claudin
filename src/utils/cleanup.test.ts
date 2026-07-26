@@ -48,8 +48,10 @@ function writeAgedTaskListDir(
 ): string {
   const dir = join(tasksBaseDir, name)
   mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, '1.json'), '{}')
+  const taskFile = join(dir, '1.json')
+  writeFileSync(taskFile, '{}')
   const past = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000)
+  utimesSync(taskFile, past, past)
   utimesSync(dir, past, past)
   return dir
 }
@@ -198,6 +200,20 @@ describe('cleanupOldTaskListDirs', () => {
 
     expect(result).toEqual({ messages: 0, errors: 0 })
     expect(existsSync(live)).toBe(true)
+  })
+
+  test('protects another session whose task files were touched recently', async () => {
+    const { tasksBaseDir, cleanupOldTaskListDirs } = await setup()
+    const other = writeAgedTaskListDir(tasksBaseDir, 'other-session', 400)
+    // updateTask rewrites the JSON in place, which never moves the directory's
+    // own mtime — so a live session that only ticks statuses looks ancient.
+    const now = new Date()
+    utimesSync(join(other, '1.json'), now, now)
+
+    const result = await cleanupOldTaskListDirs()
+
+    expect(result).toEqual({ messages: 0, errors: 0 })
+    expect(existsSync(other)).toBe(true)
   })
 
   test('is a no-op when the tasks dir does not exist', async () => {

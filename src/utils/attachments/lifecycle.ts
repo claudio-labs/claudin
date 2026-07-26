@@ -589,7 +589,13 @@ export async function getTaskReminderAttachments(
     turnsSinceLastTaskManagement >= TODO_REMINDER_CONFIG.TURNS_SINCE_WRITE &&
     turnsSinceLastReminder >= TODO_REMINDER_CONFIG.TURNS_BETWEEN_REMINDERS
   ) {
-    const tasks = await listTasks(getTaskListId())
+    // Archived tasks are the hidden tail of finished batches. They must not
+    // reach the snapshot: the reminder would keep re-listing work the user
+    // already watched disappear, and every later delta would carry it along.
+    // Before archiving existed this was moot — the files were deleted.
+    const tasks = (await listTasks(getTaskListId())).filter(
+      t => !t.metadata?._internal,
+    )
 
     const delta = getTodoReminderDelta(
       taskListToSnapshot(tasks),

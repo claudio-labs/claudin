@@ -23,6 +23,7 @@ import { TASK_CREATE_TOOL_NAME } from '../../tools/TaskCreateTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from '../../tools/TaskOutputTool/constants.js'
 import { TASK_STOP_TOOL_NAME } from '../../tools/TaskStopTool/prompt.js'
 import { TASK_UPDATE_TOOL_NAME } from '../../tools/TaskUpdateTool/constants.js'
+import { buildTaskReconcileReminder } from '../../query/taskReconcile.js'
 import type {
   MessageOrigin,
   UserMessage,
@@ -916,6 +917,14 @@ You have exited auto mode. The user may now want to interact more directly. You 
       if (parts.length === 0) return []
       return wrapMessagesInSystemReminder([
         createUserMessage({ content: parts.join('\n\n'), isMeta: true }),
+      ])
+    }
+    case 'task_reconcile': {
+      return wrapMessagesInSystemReminder([
+        createUserMessage({
+          content: buildTaskReconcileReminder(attachment),
+          isMeta: true,
+        }),
       ])
     }
     case 'todo_reminder_delta': {

@@ -36,6 +36,7 @@ import { isAgentSwarmsEnabled } from '../agentSwarmsEnabled.js'
 import { isBuddyEnabled } from '../../buddy/feature.js'
 import { getCompanionIntroAttachment } from '../../buddy/prompt.js'
 import { isTodoV2Enabled } from '../tasks.js'
+import { getTaskReconcileAttachments } from '../../query/taskReconcile.js'
 import type { Attachment } from './types.js'
 import { maybe, createAttachmentMessage } from './shared.js'
 import {
@@ -291,6 +292,17 @@ export async function getAttachments(
         ? getTaskReminderAttachments(messages, toolUseContext)
         : getTodoReminderAttachments(messages, toolUseContext),
     ),
+    // Only on a real user turn. The tool loop calls this pipeline again after
+    // every batch of tool results with input === null; firing there would
+    // staple the reminder onto a file read mid-turn, which reads to the model
+    // exactly like injected text — it flagged it as such when tried.
+    ...(input !== null
+      ? [
+          maybe('task_reconcile', () =>
+            getTaskReconcileAttachments(messages, toolUseContext),
+          ),
+        ]
+      : []),
     ...(isAgentSwarmsEnabled()
       ? [
           // Skip teammate mailbox for the session_memory forked agent.
