@@ -109,7 +109,8 @@ export function _resetTmuxControlModeProbeForTesting(): void {
 /**
  * Whether fullscreen (flicker-free) mode is enabled. Env var takes highest
  * precedence, then the `flickerFreeMode` config setting, then defaults to off.
- * Users can enable via `/config` instead of setting the env.
+ * Users pick it in `/config` → "Terminal UI renderer" (default | fullscreen)
+ * instead of setting the env.
  *
  * Priority order:
  *   CLAUDE_CODE_NO_FLICKER=0    → always off
@@ -147,6 +148,17 @@ export function isFullscreenEnvEnabled(): boolean {
   // the right fit whenever we're already opting into rewrites.
   if (shouldUseMainScreenRewrite()) return true
   return false
+}
+
+/**
+ * True when CLAUDE_CODE_NO_FLICKER pins the renderer, making the `/config`
+ * choice inert. Lets the UI say so instead of looking like a dead toggle.
+ */
+export function isFullscreenForcedByEnv(): boolean {
+  return (
+    isEnvDefinedFalsy(process.env.CLAUDE_CODE_NO_FLICKER) ||
+    isEnvTruthy(process.env.CLAUDE_CODE_NO_FLICKER)
+  )
 }
 
 /**

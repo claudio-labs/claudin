@@ -48,7 +48,7 @@ import { getHardcodedTeammateModelFallback } from '../../utils/swarm/teammateMod
 import { useSearchInput } from '../../hooks/useSearchInput.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from '../../utils/fastMode.js';
-import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
+import { isFullscreenEnvEnabled, isFullscreenForcedByEnv } from '../../utils/fullscreen.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;
@@ -109,6 +109,10 @@ export function Config({
   const [scrollOffset, setScrollOffset] = useState(0);
   const [isSearchMode, setIsSearchMode] = useState(true);
   const isTerminalFocused = useTerminalFocus();
+  // Snapshot the renderer at mount: the "Terminal UI renderer" row below can
+  // flip isFullscreenEnvEnabled() mid-dialog, and gating a row on the live
+  // value would insert/remove a row above the cursor and shift the selection.
+  const [fullscreenAtMount] = useState(() => isFullscreenEnvEnabled());
   const {
     rows
   } = useTerminalSize();
@@ -753,7 +757,7 @@ export function Config({
   },
   // Copy-on-select is only meaningful with in-app selection (fullscreen
   // alt-screen mode). In inline mode the terminal emulator owns selection.
-  ...(isFullscreenEnvEnabled() ? [{
+  ...(fullscreenAtMount ? [{
     id: 'copyOnSelect',
     label: 'Copy on select',
     value: globalConfig.copyOnSelect ?? true,
@@ -773,11 +777,19 @@ export function Config({
       });
     }
   }] : []), {
-    id: 'flickerFreeMode',
-    label: 'Flicker-free mode',
-    value: globalConfig.flickerFreeMode ?? false,
-    type: 'boolean' as const,
-    onChange(flickerFreeMode: boolean) {
+    id: 'terminalRenderer',
+    // CLAUDE_CODE_NO_FLICKER pins the renderer — say so rather than leaving
+    // a row that ignores every keypress.
+    label: isFullscreenForcedByEnv() ? 'Terminal UI renderer (env)' : 'Terminal UI renderer',
+    searchText: 'terminal ui renderer fullscreen flicker-free alt-screen',
+    // Effective renderer, not just the stored flag: reflects the env override
+    // and the auto-fullscreen path so the row never claims "default" while
+    // alt-screen is actually running.
+    value: isFullscreenEnvEnabled() ? 'fullscreen' : 'default',
+    options: ['default', 'fullscreen'],
+    type: 'enum' as const,
+    onChange(renderer: string) {
+      const flickerFreeMode = renderer === 'fullscreen';
       saveGlobalConfig(current => ({
         ...current,
         flickerFreeMode
@@ -1319,6 +1331,9 @@ export function Config({
     }
     if (globalConfig.copyOnSelect !== initialConfig.current.copyOnSelect) {
       formattedChanges.push(`${globalConfig.copyOnSelect ? 'Enabled' : 'Disabled'} copy on select`);
+    }
+    if (globalConfig.flickerFreeMode !== initialConfig.current.flickerFreeMode) {
+      formattedChanges.push(`Set terminal UI renderer to ${chalk.bold(globalConfig.flickerFreeMode ? 'fullscreen' : 'default')}`);
     }
     if (globalConfig.terminalProgressBarEnabled !== initialConfig.current.terminalProgressBarEnabled) {
       formattedChanges.push(`${globalConfig.terminalProgressBarEnabled ? 'Enabled' : 'Disabled'} terminal progress bar`);
