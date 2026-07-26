@@ -17,7 +17,7 @@
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch on branch feat/self-hosted-background-agent; TriggerSource abstraction (github/url/command + --match), headless runWorkflow, worktree+PR, atomic dedup; docs/tech/background-agent/
 - [/create bundled skill (PR #98)](create-skill-bundled-pr.md) — bundled skill teaching skills/rules/agents authoring; loader gotchas (agent model, arguments format, .claudin write gate)
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](lsp-tool-rejected-empirically.md) — was dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg (not isLsp), built-in servers + install UI removed
-- [Fork-subagent-by-default initiative](fork-subagent-by-default.md) — FORK_SUBAGENT shipped 2026-06-04: default spawn forks (inherits context+cache), named agent stays fresh; gated by /config "Auto-background agents"
+- [Fork-subagent-by-default initiative](fork-subagent-by-default.md) — FORK_SUBAGENT shipped 2026-06-04: default spawn forks (inherits context+cache), named agent stays fresh; 2026-07-26 ungated fork + flipped auto-background to opt-in
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation
 
 ## Providers & models

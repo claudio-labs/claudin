@@ -51,6 +51,7 @@ import { setAgentColor } from './agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from './agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from './constants.js';
+import { allowsImplicitAutoBackground } from './autoBackground.js';
 import { buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from './forkSubagent.js';
 import type { AgentDefinition } from './loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from './loadAgentsDir.js';
@@ -81,14 +82,16 @@ function getAutoBackgroundMs(): number {
 
 // When on, every spawned agent launches directly in the background instead of
 // running inline. Read per-invocation so the /config toggle takes effect
-// immediately. Enabled by default; unset → on; env var forces on.
+// immediately. Opt-in: unset → off (a backgrounded report only reaches the
+// parent in a later turn, so the parent has to be written for it); env var
+// forces on.
 function isAutoBackgroundAgentsEnabled(): boolean {
   // In-process teammates can't own background agents — their lifecycle is tied
   // to the leader's process (see the guard near line 289). Auto-background must
   // not route their subagents async, or they'd orphan the agent.
   if (isInProcessTeammate()) return false;
   if (isEnvTruthy(process.env.CLAUDE_AUTO_BACKGROUND_TASKS)) return true;
-  return getGlobalConfig().autoBackgroundAgentsEnabled !== false;
+  return getGlobalConfig().autoBackgroundAgentsEnabled === true;
 }
 
 // Multi-agent type constants are defined inline inside gated blocks to enable dead code elimination
@@ -540,7 +543,15 @@ export const AgentTool = buildTool({
     // matching the "inherit context+cache, drain in-process" contract. Explicit
     // opt-ins (run_in_background, agent.background) and coordinator/proactive
     // re-entry stay honored — those have their own drain paths.
-    const autoBackgroundImplicit = isAutoBackgroundAgentsEnabled() && !getIsNonInteractiveSession();
+    //
+    // allowsImplicitAutoBackground keeps two spawns inline regardless of the
+    // toggle: an explicit `run_in_background: false`, and the one-shot
+    // built-ins whose whole contract is handing a report back mid-turn.
+    const implicitBackgroundAllowed = allowsImplicitAutoBackground(run_in_background, selectedAgent.agentType);
+    const autoBackgroundImplicit =
+      implicitBackgroundAllowed &&
+      isAutoBackgroundAgentsEnabled() &&
+      !getIsNonInteractiveSession();
 
     // Assistant mode: force all agents async. Synchronous subagents hold the
     // main loop's turn open until they complete — the daemon's inputQueue
@@ -836,7 +847,11 @@ export const AgentTool = buildTool({
             selectedAgent,
             setAppState: rootSetAppState,
             toolUseId: toolUseContext.toolUseId,
-            autoBackgroundMs: getAutoBackgroundMs() || undefined
+            // Same carve-out as autoBackgroundImplicit: getAutoBackgroundMs()
+            // is an independent gate (env / GrowthBook), so without this an
+            // inline-only spawn still flipped to async once the 120s timer
+            // fired — see LocalAgentTask's registerAgentForeground.
+            autoBackgroundMs: implicitBackgroundAllowed ? getAutoBackgroundMs() || undefined : undefined
           });
           foregroundTaskId = registration.taskId;
           backgroundPromise = registration.backgroundSignal.then(() => ({
