@@ -67,9 +67,20 @@ chasing dead code. **New Anthropic-internal features go behind `feature('FLAG')`
 2. `MACRO.VERSION` is `99.0.0` — use `MACRO.DISPLAY_VERSION` for real version logic.
 3. New external/internal imports are auto-stubbed → gate real features with `feature()`.
 4. Always `bun run build` after changes; the launcher runs the bundle, not source.
-5. Verifying a `feature()` fold in the bundle: `rm -rf dist/chunks` first — code is
-   code-split into `dist/chunks/*.mjs` and stale hashed chunks are never pruned, so
-   a grep can match an old fold.
+5. **`dist/` is code-split — search the tree, not `dist/cli.mjs`.** The entry file
+   holds only the fast paths (`--version`) and dynamic imports; everything else
+   lands in `dist/chunks/<Name>-<buildId>-<hash>.mjs`. Grepping `dist/cli.mjs` for
+   a string you just added returns 0 for code that shipped perfectly — search all
+   of `dist/`, or just run the built binary. (`verify:privacy` reporting "1398
+   bundle file(s)" is the tell.) The build GCs `dist/chunks` down to the **3 most
+   recent generations**, so a stale fold can still match for two more rebuilds:
+   `rm -rf dist/chunks` before verifying a `feature()` fold.
+6. **A rebuild eventually breaks a claudin session running from this checkout.**
+   Lazily-imported chunks are resolved from disk at call time, so once the GC
+   prunes the generation a live session booted from, its next lazy import fails
+   with `Cannot find module '/…/dist/chunks/processSlashCommand-<oldgen>-….mjs'`
+   — skills and slash commands die first. It takes three rebuilds, not one, and
+   it is not a code regression: restart `claudindev`.
 
 ## Invariant tests (run when touching the build)
 

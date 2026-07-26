@@ -17,7 +17,9 @@ import type { AgentId } from '../../types/ids.js';
 import type { AssistantMessage } from '../../types/message.js';
 import { parseForSecurity } from '../../utils/bash/ast.js';
 import { splitCommand_DEPRECATED, splitCommandWithOperators } from '../../utils/bash/commands.js';
+import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from '../../utils/bash/segments.js';
 import { extractClaudeCodeHints } from '../../utils/claudeCodeHints.js';
+import { getCwd } from '../../utils/cwd.js';
 import { detectCodeIndexingFromCommand } from '../../utils/codeIndexing.js';
 import { isEnvTruthy } from '../../utils/envUtils.js';
 import { isENOENT, ShellError } from '../../utils/errors.js';
@@ -57,6 +59,7 @@ import { checkReadOnlyConstraints } from './readOnlyValidation.js';
 import { parseSedEditCommand } from './sedEditParser.js';
 import { shouldUseSandbox } from './shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from './toolName.js';
+import { renderToolRedirect, shouldRedirectToTools } from './toolRedirect.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from './UI.js';
 import { buildImageToolResult, isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from './utils.js';
 const EOL = '\n';
@@ -81,12 +84,6 @@ const BASH_READ_COMMANDS = new Set(['cat', 'head', 'tail', 'less', 'more',
 // instead of the misleading "Read N files".
 const BASH_LIST_COMMANDS = new Set(['ls', 'tree', 'du']);
 
-// Commands that are semantic-neutral in any position — pure output/status commands
-// that don't change the read/search nature of the overall pipeline.
-// e.g. `ls dir && echo "---" && ls dir2` is still a read-only compound command.
-const BASH_SEMANTIC_NEUTRAL_COMMANDS = new Set(['echo', 'printf', 'true', 'false', ':' // bash no-op
-]);
-
 // Commands that typically produce no stdout on success
 const BASH_SILENT_COMMANDS = new Set(['mv', 'cp', 'rm', 'mkdir', 'rmdir', 'chmod', 'chown', 'chgrp', 'touch', 'ln', 'cd', 'export', 'unset', 'wait']);
 
@@ -107,59 +104,31 @@ export function isSearchOrReadBashCommand(command: string): {
   isRead: boolean;
   isList: boolean;
 } {
-  let partsWithOperators: string[];
-  try {
-    partsWithOperators = splitCommandWithOperators(command);
-  } catch {
-    // If we can't parse the command due to malformed syntax,
-    // it's not a search/read command
-    return {
-      isSearch: false,
-      isRead: false,
-      isList: false
-    };
-  }
-  if (partsWithOperators.length === 0) {
-    return {
-      isSearch: false,
-      isRead: false,
-      isList: false
-    };
+  const NOT_COLLAPSIBLE = {
+    isSearch: false,
+    isRead: false,
+    isList: false
+  };
+  const walked = walkCommandSegments(command);
+  // null covers malformed syntax, an empty command, and a command that is only
+  // operators — none of them collapsible.
+  if (!walked) {
+    return NOT_COLLAPSIBLE;
   }
   let hasSearch = false;
   let hasRead = false;
   let hasList = false;
   let hasNonNeutralCommand = false;
-  let skipNextAsRedirectTarget = false;
-  for (const part of partsWithOperators) {
-    if (skipNextAsRedirectTarget) {
-      skipNextAsRedirectTarget = false;
-      continue;
-    }
-    if (part === '>' || part === '>>' || part === '>&') {
-      skipNextAsRedirectTarget = true;
-      continue;
-    }
-    if (part === '||' || part === '&&' || part === '|' || part === ';') {
-      continue;
-    }
-    const baseCommand = part.trim().split(/\s+/)[0];
-    if (!baseCommand) {
-      continue;
-    }
-    if (BASH_SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {
+  for (const segment of walked.segments) {
+    if (segment.isNeutral) {
       continue;
     }
     hasNonNeutralCommand = true;
-    const isPartSearch = BASH_SEARCH_COMMANDS.has(baseCommand);
-    const isPartRead = BASH_READ_COMMANDS.has(baseCommand);
-    const isPartList = BASH_LIST_COMMANDS.has(baseCommand);
+    const isPartSearch = BASH_SEARCH_COMMANDS.has(segment.name);
+    const isPartRead = BASH_READ_COMMANDS.has(segment.name);
+    const isPartList = BASH_LIST_COMMANDS.has(segment.name);
     if (!isPartSearch && !isPartRead && !isPartList) {
-      return {
-        isSearch: false,
-        isRead: false,
-        isList: false
-      };
+      return NOT_COLLAPSIBLE;
     }
     if (isPartSearch) hasSearch = true;
     if (isPartRead) hasRead = true;
@@ -168,11 +137,7 @@ export function isSearchOrReadBashCommand(command: string): {
 
   // Only neutral commands (e.g., just "echo foo") -- not collapsible
   if (!hasNonNeutralCommand) {
-    return {
-      isSearch: false,
-      isRead: false,
-      isList: false
-    };
+    return NOT_COLLAPSIBLE;
   }
   return {
     isSearch: hasSearch,
@@ -215,7 +180,7 @@ function isSilentBashCommand(command: string): boolean {
     if (!baseCommand) {
       continue;
     }
-    if (lastOperator === '||' && BASH_SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {
+    if (lastOperator === '||' && SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {
       continue;
     }
     hasNonFallbackCommand = true;
@@ -581,6 +546,29 @@ export const BashTool = buildTool({
         message: renderRunTestsRedirect(input.command),
         errorCode: 11
       };
+    }
+    // Same lever, aimed at the other half of this tool's own "avoid running
+    // find/grep/cat/head/sed" advice: a command that only reads or searches
+    // files has a better home in Read/Grep/Glob, and the refusal hands back the
+    // exact calls to make instead. All-or-nothing across a compound command,
+    // one-shot per command, and gated on every target tool being in THIS
+    // agent's toolset; see toolRedirect.ts.
+    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT)) {
+      const toolRedirect = shouldRedirectToTools(input.command, getCwd(), name => findToolByName(context?.options?.tools ?? [], name) !== undefined);
+      if (toolRedirect) {
+        logEvent('tengu_bash_tool_redirect', {
+          unitCount: toolRedirect.units.length,
+          callCount: toolRedirect.units.reduce((total, unit) => total + unit.calls.length, 0),
+          usesRead: toolRedirect.targets.includes('Read'),
+          usesGrep: toolRedirect.targets.includes('Grep'),
+          usesGlob: toolRedirect.targets.includes('Glob')
+        });
+        return {
+          result: false,
+          message: renderToolRedirect(toolRedirect),
+          errorCode: 12
+        };
+      }
     }
     return {
       result: true
