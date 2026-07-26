@@ -12,7 +12,9 @@ import { useTerminalViewport } from './use-terminal-viewport.js'
  *
  * Pass `null` to pause — unsubscribes from the clock so no ticks fire.
  * Time freezes at the last value and resumes from the current clock time
- * when a number is passed again.
+ * when a number is passed again. Pass `0` for "every tick", letting the clock's
+ * own interval be the rate limiter — passing the tick interval itself would
+ * drop roughly every other tick to timer jitter.
  *
  * While the element is scrolled offscreen the time is held (no re-render, so no
  * scrollback flicker), but the subscription stays alive and polls visibility

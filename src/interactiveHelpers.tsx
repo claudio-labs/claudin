@@ -30,6 +30,7 @@ import { applyConfigEnvironmentVariables } from './utils/managedEnv.js';
 import { usesAnthropicAccountFlow } from './utils/model/providers.js';
 import type { PermissionMode } from './utils/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from './utils/renderOptions.js';
+import { applyRenderCadence } from './utils/renderCadence.js';
 import { getSettingsWithAllErrors } from './utils/settings/allErrors.js';
 import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from './utils/settings/settings.js';
 import { profileCheckpoint } from './utils/startupProfiler.js';
@@ -338,6 +339,9 @@ export function getRenderContext(exitOnCtrlC: boolean): {
   getFpsMetrics: () => FpsMetrics | undefined;
   stats: StatsStore;
 } {
+  // Must run before Ink is constructed (its paint throttle is built once in the
+  // constructor) and before ClockProvider mounts.
+  applyRenderCadence();
   let lastFlickerTime = 0;
   const baseOptions = getBaseRenderOptions(exitOnCtrlC);
 

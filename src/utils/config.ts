@@ -579,6 +579,13 @@ export type GlobalConfig = {
   // Env var still takes precedence: =0 always off, =1 always on.
   flickerFreeMode?: boolean
 
+  // TUI frame rate: 'auto' (120fps on GPU terminals, 60fps otherwise) or an
+  // explicit nominal rate. Drives both the animation clock and the paint
+  // throttle, identically in inline and fullscreen. Resolved once at boot by
+  // utils/renderCadence.ts, so a change applies on the next launch. Env var
+  // CLAUDIN_FPS still takes precedence.
+  renderFrameRate?: 'auto' | '120' | '240' | '360'
+
   // GitHub repo path mapping for teleport directory switching
   // Key: "owner/repo" (lowercase), Value: array of absolute paths where repo is cloned
   githubRepoPaths?: Record<string, string[]>
@@ -846,6 +853,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'copyFullResponse',
   'copyOnSelect',
   'flickerFreeMode',
+  'renderFrameRate',
   'permissionExplainerEnabled',
   'prStatusFooterEnabled',
   'prStatusHosts',

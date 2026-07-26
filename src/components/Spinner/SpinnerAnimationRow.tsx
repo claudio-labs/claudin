@@ -6,7 +6,6 @@ import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text, useAnimationFrame } from '../../ink.js';
 import type { InProcessTeammateTaskState } from '../../tasks/InProcessTeammateTask/types.js';
 import { formatDuration, formatNumber } from '../../utils/format.js';
-import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { toInkColor } from '../../utils/ink.js';
 import type { Theme } from '../../utils/theme.js';
 import { Byline } from '../design-system/Byline.js';
@@ -118,12 +117,11 @@ export function SpinnerAnimationRow({
   effortSuffix,
   thinkingVerb = 'thinking'
 }: SpinnerAnimationRowProps): React.ReactNode {
-  // In inline (main-screen) mode the 50ms cadence drives ~20fps repaints
-  // that fight the terminal's native scrollback — viewport snaps to bottom,
-  // user can't scroll up. Fullscreen (alt-screen) mode owns the scroll so
-  // 50ms is fine there. Otherwise back off to 250ms — shimmer/glimmer get
-  // visibly slower but the terminal stays usable.
-  const frameMs = reducedMotion ? null : isFullscreenEnvEnabled() ? 50 : 250;
+  // 0 = every clock tick. The clock itself is the rate limiter (its interval is
+  // resolved once at boot by utils/renderCadence.ts), so this is identical in
+  // inline and fullscreen — deliberately no per-mode branch. Asking for the
+  // tick interval instead of 0 would drop every other tick to timer jitter.
+  const frameMs = reducedMotion ? null : 0;
   const [viewportRef, time] = useAnimationFrame(frameMs);
 
   // === Elapsed time (wall-clock, derived from refs each frame) ===

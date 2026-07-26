@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, useEffect, useState } from 'react';
-import { FRAME_INTERVAL_MS } from '../constants.js';
+import { getFrameIntervalMs } from '../constants.js';
 import { useTerminalFocus } from '../hooks/use-terminal-focus.js';
 export type Clock = {
   subscribe: (onChange: () => void, keepAlive: boolean) => () => void;
@@ -67,7 +67,11 @@ export function createClock(tickIntervalMs: number): Clock {
   };
 }
 export const ClockContext = createContext<Clock | null>(null);
-const BLURRED_TICK_INTERVAL_MS = FRAME_INTERVAL_MS * 2;
+// Half rate while the terminal is blurred. A function, not a const: the frame
+// interval is resolved at boot, which can happen after this module evaluates.
+function blurredTickIntervalMs(): number {
+  return getFrameIntervalMs() * 2;
+}
 
 // Own component so App.tsx doesn't re-render when the clock is created.
 // The clock value is stable (created once via useState), so the provider
@@ -83,7 +87,7 @@ export function ClockProvider(t0) {
   let t2;
   if ($[0] !== clock || $[1] !== focused) {
     t1 = () => {
-      clock.setTickInterval(focused ? FRAME_INTERVAL_MS : BLURRED_TICK_INTERVAL_MS);
+      clock.setTickInterval(focused ? getFrameIntervalMs() : blurredTickIntervalMs());
     };
     t2 = [clock, focused];
     $[0] = clock;
@@ -107,5 +111,5 @@ export function ClockProvider(t0) {
   return t3;
 }
 function _temp() {
-  return createClock(FRAME_INTERVAL_MS);
+  return createClock(getFrameIntervalMs());
 }

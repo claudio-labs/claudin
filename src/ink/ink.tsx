@@ -14,7 +14,7 @@ import { format } from 'util';
 import { colorize } from './colorize.js';
 import App from './components/App.js';
 import type { CursorDeclaration, CursorDeclarationSetter } from './components/CursorDeclarationContext.js';
-import { FRAME_INTERVAL_MS } from './constants.js';
+import { getFrameIntervalMs, scrollDrainIntervalMs } from './constants.js';
 import * as dom from './dom.js';
 import { KeyboardEvent } from './events/keyboard-event.js';
 import { FocusManager } from './focus.js';
@@ -223,7 +223,7 @@ export default class Ink {
     // Test env uses onImmediateRender (direct onRender, no throttle) so
     // existing synchronous lastFrame() tests are unaffected.
     const deferredRender = (): void => queueMicrotask(this.onRender);
-    this.scheduleRender = throttle(deferredRender, FRAME_INTERVAL_MS, {
+    this.scheduleRender = throttle(deferredRender, getFrameIntervalMs(), {
       leading: true,
       trailing: true
     });
@@ -780,10 +780,11 @@ export default class Ink {
     // the top of onRender — no double.
     //
     // Drain frames are cheap (DECSTBM + ~10 patches, ~200 bytes) so run at
-    // quarter interval (~250fps, setTimeout practical floor) for max scroll
-    // speed. Regular renders stay at FRAME_INTERVAL_MS via the throttle.
+    // 4ms (~250fps, setTimeout practical floor) for max scroll speed — or at
+    // the regular cadence when that is already faster. Regular renders stay at
+    // the resolved frame interval via the throttle.
     if (frame.scrollDrainPending) {
-      this.drainTimer = setTimeout(() => this.onRender(), FRAME_INTERVAL_MS >> 2);
+      this.drainTimer = setTimeout(() => this.onRender(), scrollDrainIntervalMs());
     }
     const yogaMs = getLastYogaMs();
     const commitMs = getLastCommitMs();
