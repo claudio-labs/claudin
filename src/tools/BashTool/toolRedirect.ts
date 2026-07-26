@@ -433,6 +433,52 @@ function expandShortFlagClusters(args: string[]): string[] {
  */
 const BRE_DIVERGENT_RE = /[\\|(){}+?]/
 
+/** A character that opens a POSIX class/collating/equivalence inside [...]. */
+const POSIX_CLASS_OPEN_RE = /^[:=.]$/
+
+/**
+ * Maps each pattern position to whether it sits inside a POSIX bracket
+ * expression — the engines disagree about escapes there differently than
+ * outside, so both dialect gates key off the scan. Tracks the POSIX corner
+ * cases: a leading `^` negates, a `]` in first position is a literal, and
+ * `[:alpha:]`-style classes nest their own `[:…:]` pair — closing at that
+ * inner `]` desyncs the scan and would flag a `^` that is still inside the
+ * bracket (an over-gate, but a needless one). An unclosed `[` aborts both
+ * engines alike, so the rest of the pattern is treated as outside.
+ */
+function bracketSpans(pattern: string): boolean[] {
+  const inBracket: boolean[] = new Array<boolean>(pattern.length).fill(false)
+  let i = 0
+  while (i < pattern.length) {
+    if (pattern[i] !== '[') {
+      i++
+      continue
+    }
+    let j = i + 1
+    if (pattern[j] === '^') j++
+    if (pattern[j] === ']') j++
+    let closed = false
+    while (j < pattern.length) {
+      if (pattern[j] === '[' && POSIX_CLASS_OPEN_RE.test(pattern[j + 1] ?? '')) {
+        const closer = pattern.indexOf(pattern[j + 1]! + ']', j + 2)
+        if (closer !== -1) {
+          j = closer + 2
+          continue
+        }
+      }
+      if (pattern[j] === ']') {
+        closed = true
+        break
+      }
+      j++
+    }
+    if (!closed) break
+    for (let k = i; k <= j; k++) inBracket[k] = true
+    i = j + 1
+  }
+  return inBracket
+}
+
 /**
  * Anchors and the repetition star diverge by POSITION, so the character
  * class above cannot see them. In POSIX BRE `^` and `$` are special only at
@@ -444,26 +490,10 @@ const BRE_DIVERGENT_RE = /[\\|(){}+?]/
  * otherwise `grep '[^f]oo'` would stand down for nothing.
  */
 function hasDivergentBreAnchors(pattern: string): boolean {
-  let bracket: 'start' | 'first' | 'in' | null = null
+  const inBracket = bracketSpans(pattern)
   for (let i = 0; i < pattern.length; i++) {
+    if (inBracket[i]) continue
     const ch = pattern[i]!
-    if (bracket === 'start') {
-      // `[^…]` negates; a `]` in first position would be a literal.
-      bracket = ch === '^' ? 'first' : 'in'
-      continue
-    }
-    if (bracket === 'first') {
-      bracket = 'in'
-      continue
-    }
-    if (bracket === 'in') {
-      if (ch === ']') bracket = null
-      continue
-    }
-    if (ch === '[') {
-      bracket = 'start'
-      continue
-    }
     if (ch === '^' && i !== 0) return true
     if (ch === '$' && i !== pattern.length - 1) return true
     if (ch === '*' && (i === 0 || (i === 1 && pattern[0] === '^'))) return true
@@ -471,16 +501,51 @@ function hasDivergentBreAnchors(pattern: string): boolean {
   return false
 }
 
+const ALNUM_RE = /[A-Za-z0-9]/
+const ERE_SHARED_ESCAPE_RE = /[wWsSbB]/
+
 /**
- * In ERE the divergent escapes are the ALPHANUMERIC ones the two engines do
- * not share — anything outside \w \W \s \S \b \B (\< and \> pass as
- * non-alphanumeric; ripgrep supports them too). `grep -E 'foo\d'` matches
- * "food" — the \d is a literal d, with only a "stray \" warning on stderr —
- * while rg matches "foo9": the same count on DIFFERENT lines, a divergence
- * nothing downstream can detect. Back-references (\1…\9) fall out of the
- * same rule, so this subsumes the old backref-only gate.
+ * In ERE the divergent escapes are POSITIONAL. Outside a bracket expression
+ * only the ALPHANUMERIC escapes the two engines do not share stand down —
+ * `grep -E 'foo\d'` matches "food" (the \d is a literal d, with only a
+ * "stray \" warning on stderr) while rg matches "foo9": the same count on
+ * DIFFERENT lines, a divergence nothing downstream can detect.
+ * Back-references (\1…\9) fall out of the same rule, and \w \W \s \S \b \B
+ * pass — GNU honors them outside brackets by extension, verified equal to
+ * rg. INSIDE brackets POSIX makes the backslash ordinary, so grep reads
+ * [\w] as the literals '\' and 'w' where rg reads a word class ([\b] even
+ * aborts rg): any backslash there diverges. Finally, a repetition operator
+ * with no preceding atom — at the start or right after `(` or `|` — is a
+ * literal to grep (with a warning) and a parse error to rg; after `^` the
+ * two AGREE (rg accepts anchor repetition), so that position does not gate.
  */
-const ERE_DIVERGENT_RE = /\\(?![wWsSbB])[A-Za-z0-9]/
+function hasDivergentEreSyntax(pattern: string): boolean {
+  const inBracket = bracketSpans(pattern)
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i]!
+    if (ch === '\\') {
+      if (inBracket[i]) return true
+      const next = pattern[i + 1]
+      if (
+        next !== undefined &&
+        ALNUM_RE.test(next) &&
+        !ERE_SHARED_ESCAPE_RE.test(next)
+      ) {
+        return true
+      }
+      i++ // the escaped char is consumed by the escape — never gated itself
+      continue
+    }
+    if (inBracket[i]) continue
+    const noAtomBefore = i === 0 || pattern[i - 1] === '(' || pattern[i - 1] === '|'
+    if (noAtomBefore && (ch === '*' || ch === '+' || ch === '?')) return true
+    // A leading interval — `{2}a` is literal to grep, a parse error to rg.
+    // (A brace that is not a valid interval is a literal to both; gating it
+    // too only ever over-stands-down.)
+    if (noAtomBefore && ch === '{') return true
+  }
+  return false
+}
 
 function parseGrep(
   argv: string[],
@@ -584,7 +649,7 @@ function parseGrep(
   if (
     dialect === 'bre'
       ? BRE_DIVERGENT_RE.test(pattern) || hasDivergentBreAnchors(pattern)
-      : ERE_DIVERGENT_RE.test(pattern)
+      : hasDivergentEreSyntax(pattern)
   ) {
     return null
   }

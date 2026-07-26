@@ -236,6 +236,23 @@ describe('searches → Grep', () => {
     expect(calls('grep -rnE "foo\\.bar" src')[0]).toMatchObject({
       pattern: 'foo\\.bar',
     })
+    expect(calls('grep -rnE "\\w+TODO" src')[0]).toMatchObject({
+      pattern: '\\w+TODO',
+    })
+  })
+
+  test('ERE repetition after a caret keeps the redirect — both engines agree', () => {
+    // ripgrep accepts anchor repetition, so `^*a` answers the same rows in
+    // grep -E and rg (verified 4=4) — only the start/(/| positions gate.
+    expect(calls('grep -rnE "^*a" src')[0]).toMatchObject({ pattern: '^*a' })
+  })
+
+  test('a POSIX character class does not desync the bracket scan', () => {
+    // The `]` closing [:alpha:] must not end the bracket expression early,
+    // or the `^` after it reads as a mid-pattern anchor and stands down.
+    expect(calls('grep -rn "[[:alpha:]^]x" src')[0]).toMatchObject({
+      pattern: '[[:alpha:]^]x',
+    })
   })
 
   test('anchors at the pattern edges keep the redirect — both engines agree', () => {
@@ -370,6 +387,17 @@ describe('stands down', () => {
     // as a literal d (matching "food"); rg reads a digit class (matching
     // "foo9") — same count, different lines, undetectable downstream.
     ['grep -Ern "foo\\d" src', 'an ERE \\d is a literal d to grep, a digit class to rg'],
+    // ERE inside a bracket expression: POSIX makes the backslash ordinary,
+    // so [\w] is the literals '\' and 'w' to grep (213 rows here) but a word
+    // class to rg (777 rows); [\b] aborts rg outright.
+    ['grep -Ern "[\\w]" src', 'a class escape is literal to grep, a word class to rg'],
+    ['grep -Ern "[\\b]" src', 'grep reads a literal b where rg aborts on \\b in a class'],
+    // ERE repetition with no preceding atom: a literal to grep (with a
+    // stderr warning), a parse error to rg. After ^ they agree and pass.
+    ['grep -rEn "*foo" src', 'a leading star is a literal to grep -E, a parse error to rg'],
+    ['grep -rEn "(*a)" src', 'a star after ( is a literal to grep -E, a parse error to rg'],
+    ['grep -rEn "a|?b" src', 'a question mark after | is a literal to grep -E, a parse error to rg'],
+    ['grep -rEn "{2}a" src', 'a leading interval is a literal to grep -E, a parse error to rg'],
     [`sed -n '/a/,/b/p' ${FILE_A}`, 'regex range'],
     [`sed 's/a/b/' ${FILE_A}`, 'substitution'],
     [`sed -i 's/a/b/' ${FILE_A}`, 'in-place edit'],
