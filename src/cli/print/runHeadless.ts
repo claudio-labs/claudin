@@ -96,6 +96,7 @@ import {
   mergeFileStateCaches,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/utils/fileStateCache.js'
+import { installLiveReadFileCache } from './readFileCacheHandover.js'
 import { expandPath } from 'src/utils/path.js'
 import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
 import { registerHookEventHandler } from 'src/utils/hooks/hookEvents.js'
@@ -2174,16 +2175,13 @@ function runHeadlessStreaming(
               // The incoming cache may be the transient merge above, which owns
               // no pins by construction. Promoting it over the live cache would
               // strand every pin the live one owned — nothing left is entitled
-              // to release them.
-              if (cache !== readFileState) cache.transferOwnershipFrom(readFileState)
-              readFileState = cache
-              for (const [path, seed] of pendingSeeds.entries()) {
-                const existing = readFileState.get(path)
-                if (!existing || seed.timestamp > existing.timestamp) {
-                  readFileState.set(path, seed)
-                }
-              }
-              pendingSeeds.clear()
+              // to release them. installLiveReadFileCache owns that invariant
+              // and has the test this closure could not have.
+              readFileState = installLiveReadFileCache(
+                readFileState,
+                cache,
+                pendingSeeds,
+              )
             },
             customSystemPrompt: options.systemPrompt,
             appendSystemPrompt: options.appendSystemPrompt,

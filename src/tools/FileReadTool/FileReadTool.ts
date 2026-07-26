@@ -701,15 +701,26 @@ export const FileReadTool = buildTool({
     // the re-send lanes and was answered with a structural outline. Serve that
     // same answer again instead of starting the cycle over.
     //
-    // This is what makes the fallback TERMINATE. The version before it deleted
-    // the entry to re-arm, so the next read was a first read and paid another
-    // full body; the pin is temporary by construction (it expires, loses its
-    // slot to the FIFO, or exceeds the ceiling) while the file is permanent,
-    // so the two together settled into an oscillation: two full bodies every
-    // THREE reads when the pin cannot protect a round (over the 8k ceiling,
-    // evicted by the FIFO, or no toolUseId to pin), and every four when it can
-    // — the protected round adds one cheap dedup stub before the fallback.
-    // Forever, either way. Bounded, but never finished.
+    // This RATE-LIMITS the fallback; it does not end it. An earlier version of
+    // this comment claimed the fallback "terminates" and a review falsified it
+    // from 88 lines below: the budget exit at the bottom of this branch deletes
+    // the marker, the write arm re-creates it, and BOTH counters live on the
+    // entry — so nothing survives a cycle to shorten the next one. The steady
+    // state is still `body → pinned body → outline ×STICKY_REPLAY_BUDGET →
+    // body`, forever.
+    //
+    // What changed is the RATE. The version before deleted the entry on every
+    // fallback, so the next read was a first read and paid another full body;
+    // the pin is temporary by construction (it expires, loses its slot to the
+    // FIFO, or exceeds the ceiling) while the file is permanent, so the two
+    // together settled into two full bodies every THREE reads when the pin
+    // cannot protect a round (over the 8k ceiling, evicted by the FIFO, or no
+    // toolUseId to pin), and every four when it can — the protected round adds
+    // one cheap dedup stub before the fallback. With the marker the same two
+    // bodies are spread over six reads, seven when the pin protects a round.
+    //
+    // So the bug this fixes is the PERMANENT REFUSAL and the body rate, not
+    // the cycle. Do not re-describe it as termination.
     //
     // Placed BEFORE the dedup gate below, and deliberately not part of it: the
     // gate excludes isPartialView entries and the sticky entry is one (so
@@ -1456,9 +1467,19 @@ const CLIP_PIN_HEAD_LINES = 60
 const CLIP_PIN_HEAD_BYTES = 4_000
 
 /**
- * How many futile stand-down re-sends of one (path, offset, limit) before the
- * fallback takes over, for the cases a pin cannot bound: contexts with no
- * toolUseId, and the killswitch path.
+ * How many STAND-DOWNS of one (path, offset, limit) the re-send lanes get
+ * before the fallback takes over, for the cases a pin cannot bound: contexts
+ * with no toolUseId, and the killswitch path.
+ *
+ * Stand-downs, not re-sends — the distinction is worth a paragraph because an
+ * earlier version of this doc got it wrong and no test contradicted it. The
+ * count starts at 1 on the FIRST stand-down and the check is
+ * `>= STAND_DOWN_STRIKES`, so the third stand-down serves the fallback instead
+ * of a body: the model gets TWO futile re-sends, not three. The killswitch
+ * test bounds the run of consecutive bodies at `<= STAND_DOWN_STRIKES`, which
+ * a two-body regime satisfies just as well, so it now also pins the exact
+ * sequence for a file that keeps getting clipped: body (the first read, which
+ * stands down from nothing), re-send, re-send, fallback, fallback.
  *
  * Three, matching the breaker this feature replaced — the number was never the
  * problem with that breaker, the side-map it lived in was. Here the count sits

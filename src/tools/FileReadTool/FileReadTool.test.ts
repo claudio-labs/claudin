@@ -821,6 +821,18 @@ describe('FileReadTool — clip pin disabled (default) never falls back', () => 
     // Bounded: the run of consecutive bodies never exceeds the threshold.
     expect(types).toContain('clip_pin_fallback')
     expect(longestRun(types, 'text')).toBeLessThanOrEqual(STAND_DOWN_STRIKES)
+    // …and the exact shape, because the bound above is satisfied by more than
+    // one regime and let STAND_DOWN_STRIKES's doc claim three re-sends for a
+    // while when there are two: the count starts at 1 on the first stand-down
+    // and the check is `>= STAND_DOWN_STRIKES`, so the third one serves the
+    // fallback. Read 1 is the initial body, which stands down from nothing.
+    expect(types).toEqual([
+      'text',
+      'text',
+      'text',
+      'clip_pin_fallback',
+      'clip_pin_fallback',
+    ])
     // Gate off ⇒ nothing was pinned either.
     expect(isPinRegistered(lastReadToolUseId)).toBe(false)
   })
@@ -977,7 +989,11 @@ describe('FileReadTool — clip pin (forced on)', () => {
   })
 
   // The sticky marker must be sticky, NOT permanent — the failure mode of the
-  // first version of this fallback. Four ways out; one test each.
+  // first version of this fallback. Four ways out, one test each — except the
+  // range key, which is four separate comparisons (offset, limit, view,
+  // symbol) and so gets four. They cannot share a fixture: the first read to
+  // escape replaces the entry, leaving the later cases no marker to match and
+  // no way to fail. The limit case found that out the hard way.
 
   test('a changed file breaks out of the sticky fallback', async () => {
     const p = writeFixture('clip-pin-escape-mtime.ts', SAMPLE_TS)
@@ -1063,6 +1079,56 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // can send this to a real read.
     expect((await readWithPriorClipped(p, ctx, { limit: 2 })).data.type).toBe(
       'text',
+    )
+  })
+
+  test('a view request is never answered by the sticky fallback', async () => {
+    // `view`/`symbol` ask a different QUESTION about the same range, and the
+    // stored outline is not an answer to either. An audit found both guards
+    // untested — no clip-pin test passed `view:` or `symbol:` at all, so
+    // deleting `view === undefined` left the whole file green — which meant a
+    // `view:'outline'` issued against a sticky path would have been served the
+    // stale replay instead of the view that was asked for.
+    const p = writeFixture('clip-pin-escape-view.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    const { data } = await readWithPriorClipped(p, ctx, { view: 'outline' })
+    // A freshly rendered outline, which the replay cannot produce: the sticky
+    // answer is a `clip_pin_fallback`, so the type alone separates them, and
+    // the symbol count proves a real scan ran.
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.symbolCount).toBe(4)
+  })
+
+  test('a symbol request is never answered by the sticky fallback either', async () => {
+    // Its OWN fixture and its own marker, for the reason the limit case
+    // documents: the view read above already replaced the entry, so asserting
+    // this against that marker would pass with `symbol === undefined` deleted.
+    const p = writeFixture('clip-pin-escape-symbol.ts', SAMPLE_TS)
+    const ctx = makeContext()
+
+    await readWithPriorClipped(p, ctx)
+    await readWithPriorClipped(p, ctx)
+    expect((await readWithPriorClipped(p, ctx)).data.type).toBe(
+      'clip_pin_fallback',
+    )
+
+    const { data } = await readWithPriorClipped(p, ctx, { symbol: 'beta' })
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    // The expanded symbol specifically — asserting `type === 'text'` alone
+    // would also accept a full body, and the fallback has a text arm of its
+    // own for non-code files.
+    expect(data.file.startLine).toBe(11)
+    expect(data.file.content).toBe(
+      'export const beta = (y: number) => {\n  return y * 2\n}',
     )
   })
 

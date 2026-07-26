@@ -47,6 +47,34 @@ tiny "unchanged" stub. A constant ~4.5k of A's lead is turn-1 output noise
 >
 > The **bench-design traps below are still valid** and are the reusable part.
 
+**Re-run 2026-07-25 (at `0b02d8f` + the view/symbol + handover tests): INCONCLUSIVE,
+and that is the durable finding.** Same command as above plus
+`CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1` on both sides (trap 3), 10 files of 236-240
+lines. A (claudin 1.0.16) $5.99 / 134.8s / cR 1.09m / cW 36.2k; B (claudindev)
+$6.09 / 121.5s / cR 1.15m / cW 38.2k. B is **1.8% more expensive**, and none of
+that is the feature:
+
+- **No clip ever fired, so no stand-down could.** Both session transcripts contain
+  ZERO clip/stub markers and exactly the 20 ordinary `file_unchanged` dedup stubs
+  that passes 2-3 should produce. The timeline says the same thing: uncached input
+  climbs to ~70k over pass 1 (10 bodies) then grows ~0.2k/turn for the remaining 20
+  turns — no ~4k body is ever re-sent, on either arm.
+- **Trap 3 is self-defeating for the dev-vs-stable comparison.** The old −7.3%
+  came from pass 3 falling OUTSIDE the 60s Read TTL, where stable's old breaker
+  re-sent 4 full bodies. Disabling the tool-result cache — which trap 3 tells you
+  to do — removes exactly that asymmetry: every pass now reaches `call()`, dedup
+  answers correctly on both arms, and there is nothing left to differ.
+- **The whole 1.8% is a constant 2.0k larger system+tools block** (cW 36.2k → 38.2k)
+  billed as cache_read on all 30 turns (+60k). That is NOT attributable to the
+  branch: A is the published npm 1.0.16 and B is main+branch, so the delta is
+  everything since the release. To cost the branch itself, A/B the SAME binary with
+  `--a-env=CLAUDIN_DISABLE_READ_CLIP_PIN=1` (the killswitch leaves the prompt text
+  in place, so cW is identical and only behavior differs).
+- **Open question for the next design:** why 70k of pass-1 bodies survive under
+  `aggressive` (`keepTurns=1`) when `pruneOldToolResults` runs on every `role:'user'`
+  message and tool_results are role user. Until that is answered, assume a headless
+  `-p` file-reading workload does not clip and pick a workload that provably does.
+
 **Bench-design traps (each makes the feature unmeasurable if ignored):**
 
 1. Files ≥250 lines AND ≥10k chars are intercepted by `AUTO_OUTLINE_ON_ELISION`.
