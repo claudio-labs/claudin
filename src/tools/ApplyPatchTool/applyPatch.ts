@@ -18,6 +18,11 @@ import { expandPath } from '../../utils/path.js'
 import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import {
+  readGateMessage,
+  readGateReasonFor,
+  satisfiesReadGate,
+} from '../shared/readBeforeEditMessages.js'
+import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,
   countAddDel,
@@ -105,6 +110,11 @@ export function validateApplyPatchInput(
   // pass. At most one problem is recorded per file (checks are sequential).
   const failures: string[] = []
   let firstErrorCode = 1
+  // Failures whose fix is "read the file again". Counted so an N-file patch can
+  // be told to batch those reads into ONE message — otherwise the cheapest path
+  // the model can see is read-one/patch-one, which is the round-trip waste this
+  // tool exists to avoid.
+  let readRemedyFailures = 0
   const note = (message: string, errorCode = 1): void => {
     if (failures.length === 0) firstErrorCode = errorCode
     failures.push(message)
@@ -155,11 +165,14 @@ export function validateApplyPatchInput(
     }
 
     const readTimestamp = context.readFileState.get(absPath)
-    if (!readTimestamp || readTimestamp.isPartialView) {
+    // Shared with Edit / Write / NotebookEdit so all four agree about the same
+    // file state (.claudin/rules/cache.md's four-tool invariant).
+    if (!satisfiesReadGate(readTimestamp)) {
       note(
-        `apply_patch: ${rel} has not been read yet. Read it first before patching it.`,
+        `apply_patch: ${readGateMessage(readGateReasonFor(readTimestamp), rel, 'patching it')}`,
         2,
       )
+      readRemedyFailures++
       continue
     }
     if (getFileModificationTime(absPath) > readTimestamp.timestamp) {
@@ -167,6 +180,7 @@ export function validateApplyPatchInput(
         `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`,
         3,
       )
+      readRemedyFailures++
       continue
     }
 
@@ -186,7 +200,10 @@ export function validateApplyPatchInput(
     `apply_patch found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
       failures
         .map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`)
-        .join('\n'),
+        .join('\n') +
+      (readRemedyFailures >= 2
+        ? '\nAny file above that needs a read: do them all in ONE message (parallel Read calls), then resubmit the whole patch.'
+        : ''),
     firstErrorCode,
   )
 }

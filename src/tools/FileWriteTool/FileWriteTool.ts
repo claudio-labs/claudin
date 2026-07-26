@@ -45,6 +45,10 @@ import {
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from '../FileEditTool/constants.js'
+import {
+  satisfiesReadGate,
+  writeFamilyReadGateError,
+} from '../shared/readBeforeEditMessages.js'
 import { gitDiffSchema, hunkSchema } from '../FileEditTool/types.js'
 import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from './prompt.js'
 import {
@@ -200,11 +204,13 @@ export const FileWriteTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    if (!readTimestamp || readTimestamp.isPartialView) {
+    // Shared with Edit / apply_patch / NotebookEdit: an outline-only entry used
+    // to be refused here as "has not been read yet", which is false and sends
+    // the model back into a re-Read that returns another outline.
+    if (!satisfiesReadGate(readTimestamp)) {
       return {
         result: false,
-        message:
-          'File has not been read yet. Read it first before writing to it.',
+        message: writeFamilyReadGateError(readTimestamp),
         errorCode: 2,
       }
     }

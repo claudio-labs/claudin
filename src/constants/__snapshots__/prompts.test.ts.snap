@@ -51,3 +51,5 @@ exports[`ANTI_NARRATION_HARNESS_BULLETS matches snapshot 1`] = `
 `;
 
 exports[`verbosity steering (roadmap #4) section wording matches snapshot 1`] = `"Default to the shortest response that fully answers the question. Prefer a few sentences over multiple paragraphs, and a short list over a long one, unless the user asks for depth or the task genuinely needs it. Don't pad answers with restated context, caveats, or summaries of what the user can already see."`;
+
+exports[`ANTHROPIC_BATCHED_EDITS_ADDENDUM matches snapshot 1`] = `"When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option."`;

@@ -8,6 +8,7 @@
 
 ## Conventions
 - [Durable coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — path-scoped rules own renderer/cache/testing/agent-safety/build gotchas; memory is for state/decisions/refs; procedures → skills
+- [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — SERIAL_READ_NUDGE killed on merit (adoption 0); fix the friction/refusal message instead, and land new nudges flag-OFF as bench instrumentation
 
 ## Roadmap & major features
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)

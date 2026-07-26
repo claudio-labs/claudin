@@ -17,6 +17,10 @@ import { parseCellId } from '../../utils/notebook.js'
 import { checkWritePermissionForTool } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
+import {
+  satisfiesReadGate,
+  writeFamilyReadGateError,
+} from '../shared/readBeforeEditMessages.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from './constants.js'
 import { DESCRIPTION, PROMPT } from './prompt.js'
 import {
@@ -230,11 +234,10 @@ export const NotebookEditTool = buildTool({
     // field does hold the real bytes; it is what the MODEL was shown that is
     // empty. Presence of an entry has never meant the model saw the file —
     // that gap is the whole reason isPartialView exists.)
-    if (!readTimestamp || readTimestamp.isPartialView) {
+    if (!satisfiesReadGate(readTimestamp)) {
       return {
         result: false,
-        message:
-          'File has not been read yet. Read it first before writing to it.',
+        message: writeFamilyReadGateError(readTimestamp),
         errorCode: 9,
       }
     }

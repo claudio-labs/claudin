@@ -301,3 +301,49 @@ describe('repeated-failure hint wiring', () => {
     // have kept this green.
   })
 })
+
+// ---------------------------------------------------------------------------
+// Wiring: the serial-edit nudge. It ships with SERIAL_EDIT_NUDGE off, so no
+// runtime assertion can reach it — the helper returns the block unchanged under
+// the test preload (which stubs every flag to false). A detached call site
+// would therefore be invisible until someone flips the flag to run the bench
+// and measures nothing. Pinned statically, like the hint sites above.
+//
+// Matched with plain substring checks rather than a regex: the neighbouring
+// assertions needed hand-tuning to stop CodeQL flagging exponential
+// backtracking, and there is nothing here a regex would buy.
+// ---------------------------------------------------------------------------
+
+describe('serial-edit nudge wiring', () => {
+  const src = readFileSync(new URL('./toolExecution.ts', import.meta.url), 'utf8')
+
+  test('the successful tool_result is routed through the nudge', () => {
+    // addToolResult builds the content blocks for every non-error result; if
+    // the wrapper is dropped the array goes back to `[toolResultBlock]`.
+    expect(src).toContain('withSerialEditHint(')
+    expect(src).toContain('toolResultBlock,')
+  })
+
+  test('the nudge is gated on the flag and the reminder killswitch', () => {
+    expect(src).toContain("feature('SERIAL_EDIT_NUDGE')")
+    expect(src).toContain('process.env.CLAUDIN_DISABLE_TOOL_REMINDERS')
+  })
+
+  test('the nudge exists at exactly one call site', () => {
+    // Replaces two negative assertions that encoded the wrong indentation and
+    // so could never match anything — an audit caught them as placebo.
+    // Counting is the real guard: adding the nudge to any error path (where
+    // withRepeatedFailureHint already lives — stacking two <system-reminder>s
+    // on one failed result buries both) pushes this to 3.
+    const occurrences = src.split('withSerialEditHint(').length - 1
+    expect(occurrences).toBe(2) // 1 declaration + 1 call site
+  })
+
+  test('the current call is threaded in, not just the frozen transcript', () => {
+    // toolUseContext.messages is frozen before the turn streams (query.ts), so
+    // without this the detector never sees the call being answered and a
+    // successful MULTI-file patch gets nudged for the single-file turns that
+    // preceded it — the instrument scolding the behavior it asks for.
+    expect(src).toContain('currentCall: { name: toolName, input: currentInput }')
+  })
+})

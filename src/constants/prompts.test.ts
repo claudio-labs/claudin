@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
 import {
   ANTI_NARRATION_HARNESS_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
@@ -8,7 +9,11 @@ import {
   isVerbositySteeringEnabled,
   prependBullets,
 } from './prompts.js'
-import { ANTHROPIC_ANTI_NARRATION_ADDENDUM } from './familyAddendums/anthropic.js'
+import {
+  ANTHROPIC_ANTI_NARRATION_ADDENDUM,
+  ANTHROPIC_BATCHED_EDITS_ADDENDUM,
+  composeAnthropicAddendum,
+} from './familyAddendums/anthropic.js'
 
 describe('getHarnessSection', () => {
   // The test preload (src/stubs/test-preload.ts) stubs `feature()` to false
@@ -91,6 +96,57 @@ describe('ANTHROPIC_ANTI_NARRATION_ADDENDUM', () => {
     for (const marker of ['(1)', '(2)', '(3)', '(4)']) {
       expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain(marker)
     }
+  })
+})
+
+describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM', () => {
+  // Snapshot-locked for the same reason as the constant above: the composed
+  // ANTHROPIC_ADDENDUM resolves to null under the test preload.
+  test('matches snapshot', () => {
+    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toMatchSnapshot()
+  })
+
+  test('names the tool and the read-first requirement', () => {
+    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('ONE apply_patch')
+    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('in a single message')
+  })
+
+  test('is gated on TOOL_BATCHING_NUDGE, not on the narration flag', () => {
+    // The two clauses ride different kill switches so an A/B on one does not
+    // move the other. Asserted against the SOURCE because the test preload
+    // stubs every feature flag to false, so the resolved value cannot tell
+    // these two gates apart. The previous version of this test only checked
+    // that the narration string lacks the substring "apply_patch" — which
+    // stays true no matter which flag guards the batching clause, i.e. it
+    // guarded nothing. An audit caught it.
+    const src = readFileSync(
+      new URL('./familyAddendums/anthropic.ts', import.meta.url),
+      'utf8',
+    )
+    expect(src).toContain(
+      "const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')",
+    )
+    expect(src).toContain("const antiNarrationPart = feature('ANTI_NARRATION')")
+  })
+})
+
+describe('composeAnthropicAddendum', () => {
+  // The composition itself is unreachable through ANTHROPIC_ADDENDUM under the
+  // test preload (both flags false → always null), so it is exported and
+  // exercised directly.
+  test('returns null when every clause is gated off', () => {
+    expect(composeAnthropicAddendum([null, null])).toBeNull()
+  })
+
+  test('returns the lone surviving clause unchanged', () => {
+    expect(composeAnthropicAddendum([null, 'batching'])).toBe('batching')
+    expect(composeAnthropicAddendum(['narration', null])).toBe('narration')
+  })
+
+  test('joins both clauses with a blank line, narration first', () => {
+    expect(composeAnthropicAddendum(['narration', 'batching'])).toBe(
+      'narration\n\nbatching',
+    )
   })
 })
 
