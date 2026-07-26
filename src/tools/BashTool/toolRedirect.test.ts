@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
 import {
   analyzeCommandForRedirect,
+  MEMO_LIMIT,
   renderToolRedirect,
   resetToolRedirectMemoForTesting,
   shouldRedirectToTools,
@@ -29,27 +30,36 @@ function calls(command: string): SuggestedCall[] {
 describe('file reads → Read', () => {
   test('cat maps to a whole-file Read with an absolute path', () => {
     expect(calls(`cat ${FILE_A}`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
     ])
   })
 
   test('cat -n is the same Read — Read numbers lines anyway', () => {
     expect(calls(`cat -n ${FILE_A}`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
     ])
   })
 
   test('nl maps to a whole-file Read', () => {
     expect(calls(`nl ${FILE_A}`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
     ])
   })
 
   test('several files become several Reads', () => {
     expect(calls(`cat ${FILE_A} ${FILE_B}`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_B}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_B}`, view: 'full' },
     ])
+  })
+
+  test('a windowless Read asks for the body, not the auto-outline', () => {
+    // Without view:'full', FileReadTool pivots a code file past its thresholds
+    // to a structural outline — and `cat` promised the body. A windowed Read
+    // never pivots, so it must NOT carry the flag.
+    expect(calls(`cat ${FILE_A}`)[0]).toMatchObject({ view: 'full' })
+    expect(calls(`head -n 50 ${FILE_A}`)[0]).not.toHaveProperty('view')
+    expect(calls(`sed -n '330,$p' ${FILE_A}`)[0]).not.toHaveProperty('view')
   })
 
   test('head -n N becomes a limit', () => {
@@ -97,7 +107,7 @@ describe('file reads → Read', () => {
 
   test('grep -n "" is a whole-file read wearing a search\'s clothes', () => {
     expect(calls(`grep -n "" ${FILE_A}`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
     ])
   })
 })
@@ -147,7 +157,7 @@ describe('pipeline fusion', () => {
 
   test('cat -n in a pipe is a no-op selector', () => {
     expect(calls(`cat ${FILE_A} | cat -n`)).toEqual([
-      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}` },
+      { tool: 'Read', file_path: `${REPO_ROOT}/${FILE_A}`, view: 'full' },
     ])
   })
 
@@ -173,6 +183,7 @@ describe('searches → Grep', () => {
         output_mode: 'content',
         caseInsensitive: undefined,
         context: undefined,
+        walksTree: true,
       },
     ])
   })
@@ -195,6 +206,50 @@ describe('searches → Grep', () => {
     expect(calls('grep -rin foo src -C 3')[0]).toMatchObject({
       caseInsensitive: true,
       context: { flag: '-C', lines: 3 },
+    })
+  })
+
+  test('rg is recursive without -r', () => {
+    expect(calls('rg -n foo src')[0]).toMatchObject({
+      tool: 'Grep',
+      pattern: 'foo',
+      path: 'src',
+    })
+  })
+
+  test('an extended-regex dialect survives — it is what Grep speaks', () => {
+    // -E and egrep both mean ERE, which is the dialect Grep hands to ripgrep.
+    expect(calls('grep -rnE "foo|bar" src')[0]).toMatchObject({
+      pattern: 'foo|bar',
+    })
+    expect(calls('egrep -rn "foo|bar" src')[0]).toMatchObject({
+      pattern: 'foo|bar',
+    })
+  })
+
+  test('anchors at the pattern edges keep the redirect — both engines agree', () => {
+    expect(calls('grep -rn "^foo" src')[0]).toMatchObject({ pattern: '^foo' })
+    expect(calls('grep -rn "foo$" src')[0]).toMatchObject({ pattern: 'foo$' })
+  })
+
+  test('a negated bracket expression keeps the redirect', () => {
+    // `^` inside [...] is literal in both dialects; the anchor gate must not
+    // overreach into brackets.
+    expect(calls('grep -rn "[^f]oo" src')[0]).toMatchObject({
+      pattern: '[^f]oo',
+    })
+  })
+
+  test('a tree-walking grep is flagged so the message can name .gitignore', () => {
+    // rg honors .gitignore, grep -r does not — over the repo root or a
+    // directory the result sets differ; over a single file they agree.
+    expect(calls('grep -rn TODO .')[0]).toMatchObject({ walksTree: true })
+    expect(calls('grep -rn foo src')[0]).toMatchObject({ walksTree: true })
+    expect(calls(`grep -rn foo ${FILE_A}`)[0]).toMatchObject({
+      walksTree: undefined,
+    })
+    expect(calls(`grep -n foo ${FILE_A}`)[0]).toMatchObject({
+      walksTree: undefined,
     })
   })
 })
@@ -254,25 +309,57 @@ describe('stands down', () => {
     [`cat package.json | jq '.scripts'`, 'post-processing with jq'],
     [`cat ${FILE_A} | wc -l`, 'counting, not reading'],
     [`grep -rn foo src | sort | uniq -c`, 'aggregation'],
+    // A Grep head has no line window a selector could narrow, so folding one in
+    // would silently drop it. Unlike the `| sort` case above, `head -n 5` IS a
+    // valid selector, which is what makes this the isolating fixture.
+    ['grep -rn foo src | head -n 5', 'a Grep has no line window to narrow'],
     // Output goes to a file, not into context.
     [`cat ${FILE_A} > /tmp/out`, 'redirected to a file'],
     [`grep -rn foo src >> /tmp/out`, 'appended to a file'],
+    // The shell runs one branch; suggesting both invents a read.
+    [`cat ${FILE_A} || cat ${FILE_B}`, 'only the first branch would have run'],
     // Flags with no tool spelling.
     [`grep -v foo ${FILE_A}`, 'inverted match'],
     [`grep -o foo ${FILE_A}`, 'only-matching'],
     [`grep -P "\\d+" ${FILE_A}`, 'perl regex'],
     [`head -c 100 ${FILE_A}`, 'byte count, not lines'],
+    // Isolates the head flag guard: a single positional file, so the
+    // "several files banner" arm cannot absorb the rejection.
+    [`head -q ${FILE_A}`, 'an unrecognised head flag'],
     [`cat -A ${FILE_A}`, 'shows non-printing characters'],
+    // grep's default dialect is BRE, and Grep hands the pattern to ripgrep
+    // verbatim: `\|` is an alternation to grep and a literal pipe to rg, and a
+    // bare `|` is the exact inverse. Either way the result set would differ.
+    [`grep -rn "foo\\|bar" src`, 'BRE alternation reads as a literal to rg'],
+    ['grep -rn "foo|bar" src', 'an unescaped pipe is a literal in BRE'],
+    [`grep -rn "a\\{2\\}" ${FILE_A}`, 'BRE interval braces'],
+    ['rg "(foo)\\1" src', 'back-references have no ripgrep spelling'],
+    // Same BRE char-class gate, on the characters the fixtures above do not
+    // touch: in BRE these are literals, to rg they are repetition operators.
+    ['grep -rn "a+b" src', 'a plus is a literal in BRE, a repetition to rg'],
+    ['grep -rn "a?b" src', 'a question mark is a literal in BRE, an optional to rg'],
+    // Positional BRE metacharacters: anchors away from the edges are literals
+    // to grep but anchors to rg (a silent zero-match), and a leading star is
+    // a literal to grep but a parse error to rg.
+    [`grep -c "a^b" ${FILE_A}`, 'a caret mid-pattern is a literal in BRE, an anchor to rg'],
+    [`grep -c "bar$baz" ${FILE_A}`, 'a dollar mid-pattern is a literal in BRE'],
+    [`grep -c "*foo" ${FILE_A}`, 'a leading star is a literal in BRE, a parse error to rg'],
+    // ERE: an alphanumeric escape the engines do not share. grep -E reads \d
+    // as a literal d (matching "food"); rg reads a digit class (matching
+    // "foo9") — same count, different lines, undetectable downstream.
+    ['grep -Ern "foo\\d" src', 'an ERE \\d is a literal d to grep, a digit class to rg'],
     [`sed -n '/a/,/b/p' ${FILE_A}`, 'regex range'],
     [`sed 's/a/b/' ${FILE_A}`, 'substitution'],
     [`sed -i 's/a/b/' ${FILE_A}`, 'in-place edit'],
     [`sed '330,400p' ${FILE_A}`, 'without -n every line prints, the range twice'],
     ['grep -rn "" src', 'an empty pattern over a tree is not a file read'],
     [`grep foo ${FILE_A} ${FILE_B}`, 'Grep searches one path'],
+    ['grep TODO src', 'without -r, grep prints "Is a directory" and matches nothing'],
     [`cat ${FILE_A} | echo hi`, 'the read is discarded'],
     [`find . -name "*.ts" -delete`, 'destructive predicate'],
     ['find src -type d', 'directories, which Glob does not return'],
     ['find src -maxdepth 2 -name "*.ts"', 'depth limit'],
+    [`find ${FILE_A} -type f`, 'a file is not a walkable root'],
     // Out of scope on purpose.
     ['tail -f /tmp/log', 'tail is the Monitor tool’s job'],
     [`tail -n 20 ${FILE_A}`, 'last-N has no Read spelling'],
@@ -325,6 +412,29 @@ describe('shouldRedirectToTools — one-shot escape hatch', () => {
     expect(redirect('git status')).toBeNull()
   })
 
+  test('the memo evicts the oldest entry instead of clearing itself', () => {
+    // Refuse MEMO_LIMIT + 21 distinct commands, then check an entry from the
+    // middle: with FIFO eviction the set still holds the last MEMO_LIMIT, so
+    // it keeps its escape. A wholesale clear would have dropped it and
+    // re-armed a command that already spent its escape.
+    expect(redirect(`cat ${FILE_A}`)).not.toBeNull()
+    for (let line = 1; line <= MEMO_LIMIT + 20; line++) {
+      expect(redirect(`sed -n '${line}p' ${FILE_A}`)).not.toBeNull()
+    }
+    expect(redirect(`sed -n '25p' ${FILE_A}`)).toBeNull()
+  })
+
+  test('the memo is bounded — a full memo evicts the oldest instead of growing', () => {
+    // The observable difference between FIFO eviction and NO eviction at
+    // all: with the eviction block deleted the set grows unboundedly and the
+    // oldest command stays memoized forever; with FIFO it re-arms.
+    expect(redirect(`cat ${FILE_A}`)).not.toBeNull()
+    for (let line = 1; line <= MEMO_LIMIT; line++) {
+      expect(redirect(`sed -n '${line}p' ${FILE_A}`)).not.toBeNull()
+    }
+    expect(redirect(`cat ${FILE_A}`)).not.toBeNull()
+  })
+
   test('stands down when a target tool is missing from the toolset', () => {
     const noGrep = (name: string) => name !== 'Grep'
     expect(redirect('grep -rn foo src', noGrep)).toBeNull()
@@ -344,7 +454,7 @@ describe('renderToolRedirect', () => {
   test('spells out each call with its arguments and the escape hatch', () => {
     const command = `grep -n "" ${FILE_A} | sed -n '330,400p' && grep -rn "foo" src --include=*.ts`
     const analysis = analyze(command)!
-    const message = renderToolRedirect(command, analysis)
+    const message = renderToolRedirect(analysis)
     expect(message).toContain(`Read(file_path: "${REPO_ROOT}/${FILE_A}"`)
     expect(message).toContain('offset: 330, limit: 71')
     expect(message).toContain('Grep(pattern: "foo", path: "src", glob: "*.ts"')
@@ -354,14 +464,29 @@ describe('renderToolRedirect', () => {
 
   test('a single call does not ask for parallel blocks', () => {
     const command = `cat ${FILE_A}`
-    const message = renderToolRedirect(command, analyze(command)!)
+    const message = renderToolRedirect(analyze(command)!)
     expect(message).not.toContain('parallel tool_use blocks')
   })
 
   test('names the clamp when it happened', () => {
     const command = `sed -n '1,5000p' ${FILE_A}`
-    const message = renderToolRedirect(command, analyze(command)!)
+    const message = renderToolRedirect(analyze(command)!)
     expect(message).toContain('clamped')
+  })
+
+  test('spells out view: "full" so the model can see the opt-out', () => {
+    const command = `cat ${FILE_A}`
+    expect(renderToolRedirect(analyze(command)!)).toContain('view: "full"')
+  })
+
+  test('names the .gitignore divergence for a tree-walking grep', () => {
+    const message = renderToolRedirect(analyze('grep -rn TODO .')!)
+    expect(message).toContain('.gitignore')
+  })
+
+  test('no .gitignore note for a single-file grep', () => {
+    const message = renderToolRedirect(analyze(`grep -n foo ${FILE_A}`)!)
+    expect(message).not.toContain('.gitignore')
   })
 })
 
@@ -377,7 +502,7 @@ describe('BashTool wiring', () => {
 
   test('validateInput consults the redirect', () => {
     expect(src).toContain('shouldRedirectToTools(input.command, getCwd(),')
-    expect(src).toContain('renderToolRedirect(input.command, toolRedirect)')
+    expect(src).toContain('renderToolRedirect(toolRedirect)')
   })
 
   test('only for tools in this agent toolset', () => {

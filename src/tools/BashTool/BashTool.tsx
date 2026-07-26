@@ -565,7 +565,7 @@ export const BashTool = buildTool({
         });
         return {
           result: false,
-          message: renderToolRedirect(input.command, toolRedirect),
+          message: renderToolRedirect(toolRedirect),
           errorCode: 12
         };
       }

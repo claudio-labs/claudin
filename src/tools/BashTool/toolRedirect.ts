@@ -59,6 +59,11 @@ export type SuggestedCall =
       file_path: string
       offset?: number
       limit?: number
+      /**
+       * Opts out of FileReadTool's auto-outline pivot. Only set when there is
+       * no window at all — see withFullBody.
+       */
+      view?: 'full'
       /** limit was reduced to Read's per-call ceiling. */
       clamped?: boolean
     }
@@ -70,6 +75,13 @@ export type SuggestedCall =
       output_mode: 'content' | 'count' | 'files_with_matches'
       caseInsensitive?: boolean
       context?: { flag: '-A' | '-B' | '-C'; lines: number }
+     /**
+      * The search walks a directory tree, where ripgrep honors .gitignore
+      * and the `grep -r` it replaces did not — the refusal message names
+      * that divergence. Only set on a tree walk; a file search answers
+      * identically. (Glob needs no such flag: it defaults to --no-ignore.)
+      */
+     walksTree?: boolean
     }
   | { tool: 'Glob'; pattern: string; path?: string }
 
@@ -144,12 +156,15 @@ function resolveRegularFile(candidate: string, cwd: string): string | null {
   }
 }
 
-/** Grep/Glob take a directory OR a file, so existence is all that is required. */
-function resolveExistingPath(candidate: string, cwd: string): string | null {
+/**
+ * `find`'s root is walked, so pointing it at a file yields nothing a Glob root
+ * can express — `find AGENTS.md -type f` prints the file, while
+ * `Glob(pattern: "**\/*", path: "AGENTS.md")` is not even a legal search.
+ */
+function resolveDirectory(candidate: string, cwd: string): string | null {
   const abs = toAbsolute(candidate, cwd)
   try {
-    statSync(abs)
-    return abs
+    return statSync(abs).isDirectory() ? abs : null
   } catch {
     return null
   }
@@ -214,10 +229,11 @@ function parseSed(argv: string[], cwd: string): SegmentRole | null {
       quiet = true
       continue
     }
-    // -n is the only flag with a Read spelling. Everything else either edits
-    // (-i), adds scripts (-e, -f), changes the regex dialect (-E, -r) or the
-    // record separator (-z, -s) — none of which a range read reproduces.
-    if (arg.startsWith('-') && arg !== '-') return null
+    // -n is the only flag with a Read spelling, and every other one is already
+    // barred without a check of its own: it lands in `script` (or shifts the
+    // real script into `positional`), and SED_RANGE_RE only matches `N[,N|$]p`,
+    // which no flag can spell. An explicit reject here read like a safety net,
+    // but a break-and-restore pass showed nothing observed it.
     if (script === undefined) {
       script = arg
       continue
@@ -402,12 +418,79 @@ function expandShortFlagClusters(args: string[]): string[] {
   return out
 }
 
+/**
+ * Metacharacters whose meaning DIVERGES between grep's default BRE and the
+ * dialect ripgrep speaks. `grep 'foo\|bar'` is an alternation while rg reads
+ * the same string as a literal pipe — and `grep 'foo|bar'` is the exact
+ * inverse. Grep hands the pattern to rg verbatim, so a BRE pattern carrying any
+ * of these would quietly answer with a different result set than the command it
+ * replaced, which is worse than not redirecting at all.
+ *
+ * Deliberately blunt: `grep 'a\.b'` loses the redirect even though `\.` means
+ * the same in both. Translating BRE to ERE is the alternative and it is its own
+ * bug surface (character classes, `\{n,m\}`, POSIX classes, nested escapes);
+ * standing down costs a round-trip, translating wrong costs correctness.
+ */
+const BRE_DIVERGENT_RE = /[\\|(){}+?]/
+
+/**
+ * Anchors and the repetition star diverge by POSITION, so the character
+ * class above cannot see them. In POSIX BRE `^` and `$` are special only at
+ * the pattern's edges — `grep 'a^b'` matches a literal caret — while
+ * ripgrep reads an anchor anywhere and answers with ZERO matches: a silent
+ * divergence. A leading `*` repeats nothing to rg, which aborts with a
+ * parse error, and is a literal star to grep. Inside a bracket expression
+ * all three are literal in both dialects, so the scan tracks brackets —
+ * otherwise `grep '[^f]oo'` would stand down for nothing.
+ */
+function hasDivergentBreAnchors(pattern: string): boolean {
+  let bracket: 'start' | 'first' | 'in' | null = null
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i]!
+    if (bracket === 'start') {
+      // `[^…]` negates; a `]` in first position would be a literal.
+      bracket = ch === '^' ? 'first' : 'in'
+      continue
+    }
+    if (bracket === 'first') {
+      bracket = 'in'
+      continue
+    }
+    if (bracket === 'in') {
+      if (ch === ']') bracket = null
+      continue
+    }
+    if (ch === '[') {
+      bracket = 'start'
+      continue
+    }
+    if (ch === '^' && i !== 0) return true
+    if (ch === '$' && i !== pattern.length - 1) return true
+    if (ch === '*' && (i === 0 || (i === 1 && pattern[0] === '^'))) return true
+  }
+  return false
+}
+
+/**
+ * In ERE the divergent escapes are the ALPHANUMERIC ones the two engines do
+ * not share — anything outside \w \W \s \S \b \B (\< and \> pass as
+ * non-alphanumeric; ripgrep supports them too). `grep -E 'foo\d'` matches
+ * "food" — the \d is a literal d, with only a "stray \" warning on stderr —
+ * while rg matches "foo9": the same count on DIFFERENT lines, a divergence
+ * nothing downstream can detect. Back-references (\1…\9) fall out of the
+ * same rule, so this subsumes the old backref-only gate.
+ */
+const ERE_DIVERGENT_RE = /\\(?![wWsSbB])[A-Za-z0-9]/
+
 function parseGrep(
   argv: string[],
   cwd: string,
-  tool: 'grep' | 'rg',
+  tool: 'grep' | 'egrep' | 'rg',
 ): SegmentRole | null {
   const args = expandShortFlagClusters(argv.slice(1))
+  // egrep is ERE by definition and rg's engine is ERE-ish; only bare grep is
+  // BRE, and -E flips it.
+  let dialect: 'bre' | 'ere' = tool === 'grep' ? 'bre' : 'ere'
   const flags: PatternFlags = {
     recursive: tool === 'rg',
     caseInsensitive: false,
@@ -459,9 +542,10 @@ function parseGrep(
         break
       case '-E':
       case '--extended-regexp':
-        // rg is extended by default and Grep sends the pattern to rg, so this
-        // is the identity for grep and a no-op for rg.
+        // Not a real rg flag; on grep and egrep it selects the dialect Grep is
+        // going to hand to rg anyway.
         if (tool === 'rg') return null
+        dialect = 'ere'
         break
       case '--include':
       case '-g':
@@ -495,6 +579,15 @@ function parseGrep(
   const pattern = positional[0]!
   const paths = positional.slice(1)
   if (paths.length > 1) return null
+  // The pattern reaches rg unchanged, so a dialect Grep cannot reproduce has to
+  // stand the whole command down rather than search for something else.
+  if (
+    dialect === 'bre'
+      ? BRE_DIVERGENT_RE.test(pattern) || hasDivergentBreAnchors(pattern)
+      : ERE_DIVERGENT_RE.test(pattern)
+  ) {
+    return null
+  }
 
   // `grep -n "" file` matches every line — a whole-file read wearing a search's
   // clothes. It is the exact idiom that produced this feature.
@@ -511,16 +604,36 @@ function parseGrep(
   }
   if (pattern === '') return null
 
+  // A recursive search over the cwd or a directory WALKS A TREE, and that is
+  // where the suggested Grep stops being result-identical: ripgrep honors
+  // .gitignore while grep -r walks everything (measured on this repo:
+  // `grep -rn TODO .` answers 3756 lines, `rg -n TODO .` 171 — 22x fewer;
+  // over src/ the two agree exactly). The redirect still fires — the tree
+  // form is the case the feature exists for — but the refusal message must
+  // say the file set differs, so the flag travels on the call.
+  let walksTree = false
   let path: string | undefined
   if (paths.length === 1) {
     // Resolved only to prove it exists — Grep is happy with the relative form
     // the model already wrote, and echoing that keeps the suggestion readable.
-    if (!resolveExistingPath(paths[0]!, cwd)) return null
+    // A directory is a legal target only when the search is recursive: plain
+    // `grep TODO src` prints `grep: src: Is a directory` and matches nothing,
+    // so mapping it to a recursive Grep would invent results.
+    const abs = toAbsolute(paths[0]!, cwd)
+    try {
+      const stats = statSync(abs)
+      if (!flags.recursive && !stats.isFile()) return null
+      walksTree = flags.recursive && stats.isDirectory()
+    } catch {
+      return null
+    }
     path = paths[0]!
   } else if (!flags.recursive) {
     // Non-recursive grep with no path reads stdin — that is a filter on someone
     // else's output, not a search of the tree.
     return null
+  } else {
+    walksTree = true
   }
 
   const glob = combineIncludes(flags.includes)
@@ -541,6 +654,7 @@ function parseGrep(
             : 'content',
         caseInsensitive: flags.caseInsensitive || undefined,
         context: flags.context,
+        walksTree: walksTree || undefined,
       },
     ],
   }
@@ -618,7 +732,7 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
   }
 
   const root = roots[0]
-  if (root !== undefined && !resolveExistingPath(root, cwd)) return null
+  if (root !== undefined && !resolveDirectory(root, cwd)) return null
 
   // -path is already a path pattern; -name matches the basename at any depth.
   const pattern =
@@ -660,8 +774,9 @@ function classifySegment(
     case 'sed':
       return parseSed(argv, cwd)
     case 'grep':
-    case 'egrep':
       return parseGrep(argv, cwd, 'grep')
+    case 'egrep':
+      return parseGrep(argv, cwd, 'egrep')
     case 'rg':
       return parseGrep(argv, cwd, 'rg')
     case 'find':
@@ -687,6 +802,10 @@ export function analyzeCommandForRedirect(
   if (!walked) return null
   // Writing to a file is not reading into context, and no tool does it.
   if (walked.hasOutputRedirection) return null
+  // `a || b` runs b only when a fails, and that is exactly the trap: both
+  // branches map cleanly, so suggesting both hands back a file the shell would
+  // never have printed.
+  if (walked.segments.some(segment => segment.joinedBy === '||')) return null
 
   const units: RedirectUnit[] = []
   for (const group of groupPipelines(walked.segments)) {
@@ -742,8 +861,22 @@ function classifyPipeline(
     if (window.limit !== undefined && window.limit < 1) return null
   }
 
-  const calls = readCall ? [applyWindow(readCall, window)] : head.calls
+  const calls = (readCall ? [applyWindow(readCall, window)] : head.calls).map(
+    withFullBody,
+  )
   return { text: group.map(segment => segment.text).join(' | '), calls }
+}
+
+/**
+ * A Read with no offset and no limit is the exact shape FileReadTool pivots to
+ * an outline for (the pivot triggers on offset===1 && limit===undefined once a
+ * code file passes its line/char thresholds). The command being replaced —
+ * `cat f`, `nl f`, `grep -n "" f` — promised the body, so ask for the body.
+ */
+function withFullBody(call: SuggestedCall): SuggestedCall {
+  if (call.tool !== 'Read') return call
+  if (call.offset !== undefined || call.limit !== undefined) return call
+  return { ...call, view: 'full' }
 }
 
 function applyWindow(
@@ -771,13 +904,15 @@ function applyWindow(
 // ---------------------------------------------------------------------------
 
 /**
- * Commands already refused once. Cleared wholesale past the limit — re-arming
- * after this many distinct commands in one session is a better failure than a
- * set that grows for the life of the process. Same shape and same reasoning as
- * the RunTests redirect's memo.
+ * Commands already refused once. Past the limit the OLDEST entry is evicted —
+ * a Set iterates in insertion order — so the set cannot grow for the life of
+ * the process AND a command that already escaped is not re-armed just because a
+ * hundred unrelated ones came after it. Same shape and same reasoning as the
+ * RunTests redirect's memo.
  */
 const refusedCommands = new Set<string>()
-const MEMO_LIMIT = 100
+/** Exported so the memo tests derive their fixtures from the real bound. */
+export const MEMO_LIMIT = 100
 
 /**
  * Records the command as refused, so the SECOND identical call runs — the
@@ -791,8 +926,12 @@ const MEMO_LIMIT = 100
  * silence. Ant-native builds fall out of this for free: `hasEmbeddedSearchTools`
  * removes Glob/Grep from the registry there.
  *
- * Safe to consume the one-shot here because `validateInput` has exactly one
- * call site (`services/tools/toolExecution.ts`) and runs once per tool call.
+ * Safe to consume the one-shot here because `validateInput` runs once per tool
+ * call at each of its call sites — `services/tools/toolExecution.ts` and
+ * `entrypoints/mcp.ts`. The memo is module-level, so PROCESS-WIDE and shared
+ * by both entrypoints; under MCP the refusal surfaces as a thrown Error
+ * carrying this same message (mcp.ts wraps a failed validation in
+ * `throw new Error`), not as a tool_result.
  */
 export function shouldRedirectToTools(
   command: string,
@@ -804,7 +943,10 @@ export function shouldRedirectToTools(
   if (!analysis.targets.every(target => hasTool(TOOL_NAME[target]))) return null
   const key = command.trim()
   if (refusedCommands.has(key)) return null
-  if (refusedCommands.size >= MEMO_LIMIT) refusedCommands.clear()
+  if (refusedCommands.size >= MEMO_LIMIT) {
+    const oldest = refusedCommands.values().next().value
+    if (oldest !== undefined) refusedCommands.delete(oldest)
+  }
   refusedCommands.add(key)
   return analysis
 }
@@ -817,10 +959,7 @@ export function resetToolRedirectMemoForTesting(): void {
 // Message
 // ---------------------------------------------------------------------------
 
-export function renderToolRedirect(
-  command: string,
-  analysis: RedirectAnalysis,
-): string {
+export function renderToolRedirect(analysis: RedirectAnalysis): string {
   const names = analysis.targets.map(target => TOOL_NAME[target]).join('/')
   const lines: string[] = [
     `Blocked: this command reads and searches files, and ${names} ${
@@ -844,6 +983,15 @@ export function renderToolRedirect(
   if (totalCalls > 1) {
     lines.push('Emit them as parallel tool_use blocks in one message.')
   }
+  if (
+    analysis.units.some(unit =>
+      unit.calls.some(call => call.tool === 'Grep' && call.walksTree),
+    )
+  ) {
+    lines.push(
+      'Note: Grep honors .gitignore — the shell command would also have searched ignored files (node_modules, build output, vendored dirs); the suggested call skips them.',
+    )
+  }
   lines.push(
     'If you genuinely need the shell form, re-send this exact Bash command and it will run.',
   )
@@ -856,6 +1004,9 @@ function renderCall(call: SuggestedCall): string {
       const args = [`file_path: ${JSON.stringify(call.file_path)}`]
       if (call.offset !== undefined) args.push(`offset: ${call.offset}`)
       if (call.limit !== undefined) args.push(`limit: ${call.limit}`)
+      if (call.view !== undefined) {
+        args.push(`view: ${JSON.stringify(call.view)}`)
+      }
       const clamped = call.clamped
         ? `  (limit clamped to ${FILE_READ_TOOL_NAME}'s ${MAX_LINES_TO_READ}-line ceiling)`
         : ''

@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
   isRedirectableTestCommand,
+  MEMO_LIMIT,
   renderRunTestsRedirect,
   resetRunTestsRedirectMemoForTesting,
   shouldRedirectToRunTests,
@@ -98,6 +99,29 @@ describe('shouldRedirectToRunTests — one-shot escape hatch', () => {
   test('a non-test command is never recorded', () => {
     expect(shouldRedirectToRunTests('git status')).toBe(false)
     expect(shouldRedirectToRunTests('git status')).toBe(false)
+  })
+
+  test('the memo evicts the oldest entry instead of clearing itself', () => {
+    // Refuse MEMO_LIMIT + 21 distinct commands, then check one from the
+    // middle: with FIFO eviction the set still holds the last MEMO_LIMIT, so
+    // it keeps its escape. A wholesale clear would have re-armed a command
+    // that had already spent one.
+    expect(shouldRedirectToRunTests('bun test')).toBe(true)
+    for (let i = 1; i <= MEMO_LIMIT + 20; i++) {
+      expect(shouldRedirectToRunTests(`bun test src/f${i}.test.ts`)).toBe(true)
+    }
+    expect(shouldRedirectToRunTests('bun test src/f25.test.ts')).toBe(false)
+  })
+
+  test('the memo is bounded — a full memo evicts the oldest instead of growing', () => {
+    // The observable difference between FIFO eviction and NO eviction at
+    // all: with the eviction block deleted the set grows unboundedly and the
+    // oldest command stays memoized forever; with FIFO it re-arms.
+    expect(shouldRedirectToRunTests('bun test')).toBe(true)
+    for (let i = 1; i <= MEMO_LIMIT; i++) {
+      expect(shouldRedirectToRunTests(`bun test src/f${i}.test.ts`)).toBe(true)
+    }
+    expect(shouldRedirectToRunTests('bun test')).toBe(true)
   })
 })
 

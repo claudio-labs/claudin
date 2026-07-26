@@ -70,25 +70,34 @@ export function isRedirectableTestCommand(command: string): boolean {
 }
 
 /**
- * Commands already refused once. Cleared wholesale past the limit — re-arming
- * after this many distinct test commands in one session is a better failure
- * than a set that grows for the life of the process.
+ * Commands already refused once. Past the limit the OLDEST entry is evicted —
+ * a Set iterates in insertion order — so the set cannot grow for the life of
+ * the process AND a command that already escaped is not re-armed just because a
+ * hundred unrelated ones came after it.
  */
 const refusedCommands = new Set<string>()
-const MEMO_LIMIT = 100
+/** Exported so the memo tests derive their fixtures from the real bound. */
+export const MEMO_LIMIT = 100
 
 /**
  * Stateful gate. Records the command as refused, so the SECOND identical call
  * runs — that is the escape hatch the message promises.
  *
- * Safe to consume the one-shot here because `validateInput` has exactly one
- * call site (`services/tools/toolExecution.ts`) and runs once per tool call.
+ * Safe to consume the one-shot here because `validateInput` runs once per tool
+ * call at each of its call sites — `services/tools/toolExecution.ts` and
+ * `entrypoints/mcp.ts`. The memo is module-level, so PROCESS-WIDE and shared
+ * by both entrypoints; under MCP the refusal surfaces as a thrown Error
+ * carrying this same message (mcp.ts wraps a failed validation in
+ * `throw new Error`), not as a tool_result.
  */
 export function shouldRedirectToRunTests(command: string): boolean {
   if (!isRedirectableTestCommand(command)) return false
   const key = command.trim()
   if (refusedCommands.has(key)) return false
-  if (refusedCommands.size >= MEMO_LIMIT) refusedCommands.clear()
+  if (refusedCommands.size >= MEMO_LIMIT) {
+    const oldest = refusedCommands.values().next().value
+    if (oldest !== undefined) refusedCommands.delete(oldest)
+  }
   refusedCommands.add(key)
   return true
 }
