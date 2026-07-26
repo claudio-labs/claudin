@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.1.0 — 2026-07-26
+
+- feat(tui): make the frame rate configurable and identical in both renderers (#40) (3810c5a)
+- fix(spinner): make the thinking glow breathe instead of blink (6fe0839)
+- test(provider): wait for the focused row instead of a fixed sleep before Enter (9b1ba8b)
+- feat(config): group the /config settings into sections instead of one flat list (ee607ba)
+- feat(config): let /config pick the terminal renderer instead of hiding it behind a flag (044fc23)
+- fix(tasks): reconcile the task list at end of turn instead of leaving it stale (#39) (b28c709)
+- fix(profile): make the agent token bench price the whole session, not just the parent (92219d5)
+- fix(agents): make auto-background opt-in so inline spawns stay inline (#38) (e20ff18)
+- feat(effort): scope /effort to the project, with global fallback (#37) (49dd307)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.0.17 — 2026-07-26
 
 - feat(tools): steer file reads and searches to Read/Grep/Glob instead of Bash (#36) (ad71f67)
