@@ -12,6 +12,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Read files: Use Read (NOT cat/head/tail)
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
+ - Run tests: Use RunTests (NOT npm test/pytest/go test)
  - Communication: Output text directly (NOT echo/printf)
 
 # Instructions
@@ -47,6 +48,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Read files: Use Read (NOT cat/head/tail)
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
+ - Run tests: Use RunTests (NOT npm test/pytest/go test)
  - Communication: Output text directly (NOT echo/printf)
 
 # Instructions

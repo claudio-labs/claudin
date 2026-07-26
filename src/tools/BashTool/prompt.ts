@@ -18,6 +18,7 @@ import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from '../GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
+import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js'
 import { TodoWriteTool } from '../TodoWriteTool/TodoWriteTool.js'
 import { BASH_TOOL_NAME } from './toolName.js'
 
@@ -259,6 +260,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     `Read files: Use ${FILE_READ_TOOL_NAME} (NOT cat/head/tail)`,
     `Edit files: Use ${FILE_EDIT_TOOL_NAME} (NOT sed/awk)`,
     `Write files: Use ${FILE_WRITE_TOOL_NAME} (NOT echo >/cat <<EOF)`,
+    `Run tests: Use ${RUN_TESTS_TOOL_NAME} (NOT npm test/pytest/go test)`,
     'Communication: Output text directly (NOT echo/printf)',
   ]
 

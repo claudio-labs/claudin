@@ -28,6 +28,18 @@ which is false and hides the fix, so the model settled for one patch per file.
 Splitting that refusal into never-read / partial-view / clip-stuck branches is
 causal; the nudge was not.
 
+Second confirmed instance (2026-07-25): the model kept running `bun test` in
+Bash despite RunTests being loaded (not deferred) and its description already
+saying "Prefer this tool over Bash". Two structural fixes, no nudge — a
+`Run tests: Use RunTests` line in BashTool's own "Prefer:" list (the list the
+model reads at the moment it reaches for Bash, which enumerated Glob/Grep/Read/
+Edit/Write but not tests), and a one-shot refusal in BashTool `validateInput`
+(`src/tools/RunTestsTool/redirect.ts`). Verified live via
+`node dist/cli.mjs -p … --output-format stream-json --verbose`: the plain ask
+now goes straight to RunTests, and forcing Bash yields the refusal, then runs
+on the re-send. **Any behavior change of this kind should be verified that way**
+— a source-text wiring test cannot tell you the model actually complied.
+
 Caveat worth carrying: when you split a refusal by cause, verify each branch's
 **remedy** against the code rather than assuming a distinct cause implies a
 distinct fix. The first version of this split told the clip-stuck branch that
