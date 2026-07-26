@@ -11,7 +11,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { logError } from '../../utils/log.js';
 import { notifyVscodeFileUpdated } from '../../services/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from '../../Tool.js';
-import { buildTool, type ToolDef } from '../../Tool.js';
+import { buildTool, findToolByName, type ToolDef } from '../../Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from '../../tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from '../../types/ids.js';
 import type { AssistantMessage } from '../../types/message.js';
@@ -41,6 +41,8 @@ import { isOutputLineTruncated } from '../../utils/terminal.js';
 import { buildLargeToolResultMessage, ensureToolResultsDir, generatePreview, getToolResultPath, PREVIEW_SIZE_BYTES } from '../../utils/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from '../FileEditTool/UI.js';
 import { trackGitOperations } from '../shared/gitOperationTracking.js';
+import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js';
+import { renderRunTestsRedirect, shouldRedirectToRunTests } from '../RunTestsTool/redirect.js';
 import {
   applyBashFilterToStdout,
   planBashFilter,
@@ -557,7 +559,7 @@ export const BashTool = buildTool({
     const desc = input.description ?? truncate(input.command, TOOL_SUMMARY_MAX_LENGTH);
     return `Running ${desc}`;
   },
-  async validateInput(input: BashToolInput): Promise<ValidationResult> {
+  async validateInput(input: BashToolInput, context: ToolUseContext): Promise<ValidationResult> {
     if (feature('MONITOR_TOOL') && !isBackgroundTasksDisabled && !input.run_in_background) {
       const sleepPattern = detectBlockedSleepPattern(input.command);
       if (sleepPattern !== null) {
@@ -567,6 +569,18 @@ export const BashTool = buildTool({
           errorCode: 10
         };
       }
+    }
+    // A bare test run has a better home: RunTests runs the same command and
+    // answers with failures first. Gated on the tool actually being in THIS
+    // agent's toolset — refusing Bash without an alternative would be a dead
+    // end — and never for a backgrounded run, which RunTests can't do.
+    // The refusal is one-shot per command; see RunTestsTool/redirect.ts.
+    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_RUNTESTS_REDIRECT) && findToolByName(context?.options?.tools ?? [], RUN_TESTS_TOOL_NAME) !== undefined && shouldRedirectToRunTests(input.command)) {
+      return {
+        result: false,
+        message: renderRunTestsRedirect(input.command),
+        errorCode: 11
+      };
     }
     return {
       result: true

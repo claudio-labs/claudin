@@ -45,6 +45,8 @@ bun test path/to/file.test.ts  # focused single-file test
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 ```
 
+Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; BashTool refuses a bare test command once and points there (see the toggle table below).
+
 More test targets (`test:provider`, `test:coverage`, invariant tests) are documented in [testing.md](.claudin/rules/testing.md). After install or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist. There is no dev runner that bypasses the bundle, so **always `bun run build` after a source change**.
 
 ### `claudin` vs `claudindev` (dev convention)
@@ -93,6 +95,7 @@ Several runtime behaviors are **on by default** with their own docs and toggles:
 | V8 bytecode cache (`~/.claudin/v8cache/`) | `NODE_DISABLE_COMPILE_CACHE=1` | invalidated on every `bun run build` |
 | Read clip-pin stand-down (re-sent Read body survives the clip paths; if it is clipped anyway the range serves a **sticky** outline, budgeted by `STICKY_REPLAY_BUDGET` so it re-arms with a real body instead of refusing forever). It bounds the **body rate and the permanent refusal**, not the cycle: the counters live on the readFileState entry and both reset per cycle, so a file that keeps getting clipped settles at two bodies every six-to-seven reads rather than stopping. **Reach** — only an entry a prior full Read wrote enters the stand-down (`offset` set, no `isPartialView`), so the auto-outline pivot's entries never do; in practice that means explicit-range reads, non-code files and code files under the pivot's ≥250-line / 10k-char threshold | `CLAUDIN_DISABLE_READ_CLIP_PIN=1` — legacy alias `CLAUDIN_DISABLE_READ_RERUN_BREAKER=1` still honored. Scope: the **pin** only. The dedup stand-down, Read's tool-result-cache bypass, the `STAND_DOWN_STRIKES` bound and the sticky marker are correctness paths and stay on — the killswitch must not hand back an unbounded re-send loop. Separately, the GrowthBook flag `tengu_read_dedup_killswitch` disables the whole dedup lane **including** the sticky marker, so it *can* restore unbounded re-sends; that is the one to reach for only in an emergency | `src/tools/FileReadTool/FileReadTool.ts`, `src/services/compact/stableStubState.ts` |
 | Repeated-failure hint (a `<system-reminder>` on an errored `tool_result` after 3 identical failures — applies to **every** tool) | `/config` → "Repeated-failure hint"; `repeatedFailureHintEnabled: false` | `src/services/tools/toolExecution.ts`, `src/services/extractMemories/loopDetector.ts` |
+| Bash → RunTests redirect (a bare test command in Bash is refused **once** with a pointer to `RunTests`; re-sending the identical command runs it, which is the only way to get raw runner output). Narrow by design: single command only, must *start* with the runner, no quotes, and raw-output/non-run flags (`-s`, `--nocapture`, `--watch`, `--reporter`, `--no-run`, …) opt out | `CLAUDIN_DISABLE_RUNTESTS_REDIRECT=1`; also skipped when `RunTests` is absent from the agent's toolset or `run_in_background` is set | `src/tools/RunTestsTool/redirect.ts` |
 
 ## Build & Tests
 
