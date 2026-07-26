@@ -17,7 +17,11 @@ import { diagnosticTracker } from '../../services/diagnosticTracking.js'
 import { clearSessionMessagesCache } from '../../utils/sessionStorage.js'
 import { clearBetaTracingState } from '../../utils/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from './microCompact.js'
-import { pruneStaleClippedIds, pruneOrphanClippedIds } from './stableStubState.js'
+import {
+  bumpStandDownEpoch,
+  pruneStaleClippedIds,
+  pruneOrphanClippedIds,
+} from './stableStubState.js'
 import { clearSkippedTimestamps } from '../../history.js'
 
 /**
@@ -53,7 +57,34 @@ export function runPostCompactCleanup(
     querySource.startsWith('repl_main_thread') ||
     querySource === 'sdk'
 
-  resetMicrocompactState()
+  // MAIN-THREAD ONLY, same authority argument as the orphan sweep below:
+  // resetMicrocompactState → resetClippedIds wipes the ENTIRE current
+  // registry key, and an ordinary Agent/fork sub-agent shares the main
+  // thread's key (getAgentId() is blind to it) while compacting only its OWN
+  // transcript — the "same history" premise in resetMicrocompactState's doc
+  // does not hold for it, so an unguarded call deletes the parent's LIVE
+  // pins, spent memory and clipped ids. This gate closes the fork-autocompact
+  // hazard stableStubState's resetClippedIds comment used to document as
+  // unguarded. (Swarm teammates reset their OWN key from their own compact /
+  // cleanup in inProcessRunner.)
+  if (isMainThreadCompact) {
+    resetMicrocompactState()
+    // Same gate, same authority argument, different state: FileReadTool's
+    // stand-down stops re-sending a range by leaving a sticky "outline
+    // already served" marker on the readFileState entry. That marker is
+    // correct only while the context pressure that clipped the body is still
+    // there. Compaction removes it — and rewrites the transcript out from
+    // under the model — so the next read of that range deserves a real body
+    // again. Bumping the epoch expires every marker at once without needing
+    // access to readFileState, which this function does not have.
+    //
+    // Main-thread only for the same reason as the sweeps: a fork sub-agent
+    // shares the main registry key, and its compact says nothing about the
+    // parent's context pressure. The cost of NOT bumping for a sub-agent is
+    // that its own markers outlive its compact, bounded by mtime, Edit/Write
+    // and the entry's own LRU eviction.
+    bumpStandDownEpoch()
+  }
 
   // Rebuild ContentReplacementState to release entries for compacted-away
   // messages. Without this, seenIds and replacements grow monotonically
@@ -75,8 +106,15 @@ export function runPostCompactCleanup(
   pruneStaleClippedIds()
 
   // Prune clipped IDs from the current key that reference messages
-  // removed by compaction.
-  if (messages) {
+  // removed by compaction. MAIN-THREAD ONLY: an in-process sub-agent
+  // (Agent/fork) shares the main registry key — getAgentId() is blind to it,
+  // see stableStubState's ownership caveat — but its post-compact transcript
+  // holds none of the parent's ids, so sweeping against it would delete the
+  // parent's LIVE pins, spent memory and clipped ids as false orphans. The
+  // sub-agent's own ids under the shared key never merge back into the
+  // parent transcript, so the next main-thread compact prunes them with
+  // authority; MAX_SHIELDED_PASSES bounds them meanwhile.
+  if (messages && isMainThreadCompact) {
     pruneOrphanClippedIds(messages)
   }
   if (feature('CONTEXT_COLLAPSE')) {

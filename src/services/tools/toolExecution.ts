@@ -66,11 +66,17 @@ import {
   AbortError,
   errorMessage,
   getErrnoCode,
+  isAbortError,
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from '../../utils/errors.js'
 import { executePermissionDeniedHooks } from '../../utils/hooks.js'
 import { logError } from '../../utils/log.js'
+import { getGlobalConfig } from '../../utils/config.js'
+import {
+  countIdenticalFailures,
+  REPEATED_ERROR_THRESHOLD,
+} from '../extractMemories/loopDetector.js'
 import {
   CANCEL_MESSAGE,
   createProgressMessage,
@@ -400,7 +406,12 @@ export async function* runToolUse(
         content: [
           {
             type: 'tool_result',
-            content: `<tool_use_error>Error: No such tool available: ${toolName}</tool_use_error>`,
+            content: withRepeatedFailureHint(
+              `<tool_use_error>Error: No such tool available: ${toolName}</tool_use_error>`,
+              toolName,
+              toolUse.input,
+              toolUseContext,
+            ),
             is_error: true,
             tool_use_id: toolUse.id,
           },
@@ -479,7 +490,25 @@ export async function* runToolUse(
         content: [
           {
             type: 'tool_result',
-            content: `<tool_use_error>${detailedError}</tool_use_error>`,
+            content: withRepeatedFailureHint(
+              `<tool_use_error>${detailedError}</tool_use_error>`,
+              tool.name,
+              toolInput,
+              toolUseContext,
+              // Same exclusion the inner error path applies at the bottom of
+              // this file: a user interrupt is not a failure. Without it a
+              // cancelled call renders as `Error calling tool (X): …`, which
+              // matches none of the USER_CONTROL_SENTINELS, so it both
+              // receives the hint and counts toward a later streak — telling
+              // the model it "failed 4 times in a row" for aborts the user
+              // asked for.
+              //
+              // isAbortError, not `instanceof AbortError`: this is the
+              // outermost catch, so it also sees the raw DOMException an
+              // AbortSignal throws and the SDK's APIUserAbortError, neither of
+              // which is our class. utils/errors.ts owns that classification.
+              isAbortError(error),
+            ),
             is_error: true,
             tool_use_id: toolUse.id,
           },
@@ -489,6 +518,55 @@ export async function* runToolUse(
       }),
     }
   }
+}
+
+/**
+ * Just-in-time nudge for a model that keeps re-issuing a call which keeps
+ * failing. Appended to the errored tool_result itself (same injection surface
+ * as withMemoryCorrectionHint) once the same (tool, canonical input) has
+ * failed REPEATED_ERROR_THRESHOLD times in the active task.
+ */
+function renderRepeatedFailureHint(
+  toolName: string,
+  failures: number,
+): string {
+  return `\n\n<system-reminder>\nThis exact ${toolName} call has now failed ${failures} times in a row with the same input — repeating it will fail the same way. Do not re-issue it unchanged: correct the input, verify your assumption with a different tool, or change approach.\n</system-reminder>`
+}
+
+/**
+ * Appends the repeated-failure hint when this errored result completes a
+ * streak of identical failures. Interrupts/cancels/denials never qualify —
+ * they are user actions, not a failing approach (loopDetector's
+ * USER_CONTROL_SENTINELS enforces the same rule on the counting side).
+ */
+export function withRepeatedFailureHint(
+  content: string,
+  toolName: string,
+  input: unknown,
+  toolUseContext: ToolUseContext,
+  isInterrupt = false,
+): string {
+  if (isInterrupt) return content
+  // Default on, like the bash output filter. It has a toggle because it
+  // changes model-facing bytes for EVERY tool, not just the one whose branch
+  // shipped it — a user who never touches the Read clip-pin should still be
+  // able to turn this off. AGENTS.md's default-on table lists it.
+  if (getGlobalConfig().repeatedFailureHintEnabled === false) return content
+  const messages = toolUseContext.messages
+  if (!Array.isArray(messages)) return content
+  // countIdenticalFailures only sees results already in the transcript; the
+  // one being built right now is the next in the streak.
+  //
+  // The scan walks up to MAX_SCAN_MESSAGES and canonicalizes every tool_use
+  // input in the window — including whole file bodies from Write/Edit — so a
+  // batch of N failing tools in one turn would do N full walks synchronously
+  // on the render thread. The threshold check is cheap and almost always
+  // false, so the walk is memoized on the transcript itself — array identity
+  // plus length, since it is appended in place (collectFailureStatsMemoized
+  // in loopDetector) — and all N failing tools in a turn share one walk.
+  const failures = countIdenticalFailures(messages, toolName, input) + 1
+  if (failures < REPEATED_ERROR_THRESHOLD) return content
+  return content + renderRepeatedFailureHint(toolName, failures)
 }
 
 function streamedCheckPermissionsAndCallTool(
@@ -696,7 +774,12 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content: `<tool_use_error>InputValidationError: ${errorContent}</tool_use_error>`,
+              content: withRepeatedFailureHint(
+                `<tool_use_error>InputValidationError: ${errorContent}</tool_use_error>`,
+                tool.name,
+                input,
+                toolUseContext,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -753,7 +836,12 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content: `<tool_use_error>${isValidCall.message}</tool_use_error>`,
+              content: withRepeatedFailureHint(
+                `<tool_use_error>${isValidCall.message}</tool_use_error>`,
+                tool.name,
+                input,
+                toolUseContext,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -1728,7 +1816,13 @@ async function checkPermissionsAndCallTool(
           content: [
             {
               type: 'tool_result',
-              content,
+              content: withRepeatedFailureHint(
+                content,
+                tool.name,
+                input,
+                toolUseContext,
+                isInterrupt,
+              ),
               is_error: true,
               tool_use_id: toolUseID,
             },
@@ -1753,4 +1847,3 @@ async function checkPermissionsAndCallTool(
     }
   }
 }
-

@@ -7,7 +7,7 @@ export const FILE_READ_TOOL_NAME = 'Read'
 export const FILE_UNCHANGED_STUB =
   'File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.'
 
-/** Human-readable line range for the breaker messages ("line 1450" or
+/** Human-readable line range for the clip-pin fallback messages ("line 1450" or
  *  "lines 1450-1569"). `limit` undefined ⇒ open-ended from `offset`. */
 function formatRange(offset: number, limit: number | undefined): string {
   if (limit === undefined) return `from line ${offset}`
@@ -16,30 +16,60 @@ function formatRange(offset: number, limit: number | undefined): string {
 }
 
 /**
- * Footer appended to the structural outline the re-read breaker serves once the
- * same range has been re-read and clipped past the threshold. Tells the model
- * the re-send is futile and to switch to a stable navigation move.
+ * Which stand-down arm produced the fallback. The two carry different
+ * evidence and must not claim each other's:
+ *   'clipped' — the pinned copy is no longer readable in the transcript. Note
+ *               this covers THREE cases: the scanner matched the id and found a
+ *               clip stub in its place, the id is absent entirely (the whole
+ *               message was evicted), or the id was registered as clipped
+ *               mid-prompt. Only the first is a clip actually witnessed, so the
+ *               wording says the copy is gone, not that we watched it go — see
+ *               isPriorReadClippedOrMissing, whose name is the honest one.
+ *
+ *               It also does NOT claim the copy "was protected". An audit
+ *               pointed out this arm fires for an id retired on sight by
+ *               MAX_PINNED_RESULT_TOKENS — registered, but over the size
+ *               ceiling and therefore never actually shielding anything. The
+ *               model would have been told a protection held that never ran.
+ *   'cleared' — the API applied clear_tool_uses at some point in this session.
+ *               That latches session-wide and reports counts only, so we never
+ *               learn which result was cleared, and a client-side pin cannot
+ *               stop server-side clearing in the first place. Claiming the copy
+ *               was protected here would be false.
  */
-export function renderRerunBreakerFooter(
+export type ClipPinArm = 'clipped' | 'cleared'
+
+function clipPinReason(arm: ClipPinArm, range: string): string {
+  return arm === 'clipped'
+    ? `You already re-read ${range} of this file and that copy is no longer in the conversation`
+    : `You already re-read ${range} of this file and the API keeps clearing tool results out of this conversation, so that copy is gone again`
+}
+
+/**
+ * Footer appended to the structural outline served when a re-sent range was
+ * lost again anyway. Tells the model the re-send is futile and to switch to a
+ * stable navigation move.
+ */
+export function renderClipPinFallbackFooter(
   offset: number,
   limit: number | undefined,
-  count: number,
+  arm: ClipPinArm,
 ): string {
   const range = formatRange(offset, limit)
-  return `\n\n<system-reminder>You have re-read ${range} of this file ${count}× and context management keeps clipping it out — re-sending the body again is futile. Stop re-reading this range: pick a symbol above with symbol='name', or use Grep, to fetch a stable slice instead.</system-reminder>`
+  return `\n\n<system-reminder>${clipPinReason(arm, range)} — re-sending the body is futile. Stop re-reading this range: pick a symbol above with symbol='name', or use Grep, to fetch a stable slice instead.</system-reminder>`
 }
 
 /**
  * Standalone redirect stub for the non-code case (nothing to outline). Same
  * intent as the outline footer, delivered as the whole tool_result.
  */
-export function renderRerunBreakerStub(
+export function renderClipPinFallbackStub(
   offset: number,
   limit: number | undefined,
-  count: number,
+  arm: ClipPinArm,
 ): string {
   const range = formatRange(offset, limit)
-  return `<system-reminder>You have re-read ${range} of this file ${count}× and context management keeps clipping it out — re-sending it again is futile. Stop re-reading this range: use Grep to fetch just the lines you need, or read a different part of the file.</system-reminder>`
+  return `<system-reminder>${clipPinReason(arm, range)} — re-sending it is futile. Stop re-reading this range: use Grep to fetch just the lines you need, or read a different part of the file.</system-reminder>`
 }
 
 export const MAX_LINES_TO_READ = 2000

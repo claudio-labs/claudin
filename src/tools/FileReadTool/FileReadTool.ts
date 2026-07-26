@@ -83,6 +83,14 @@ import {
 } from './serialReadNudge.js'
 import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 import { hasServerClearedToolUses } from './serverClearingDetection.js'
+import {
+  exceedsPinnedResultCeiling,
+  getStandDownEpoch,
+  isPinRegistered,
+  isPinShielding,
+  pinToolResult,
+  retirePinAfterUse,
+} from '../../services/compact/stableStubState.js'
 import { renderOutline } from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLangFromPath,
@@ -103,8 +111,8 @@ import {
   OFFSET_INSTRUCTION_DEFAULT,
   OFFSET_INSTRUCTION_TARGETED,
   renderPromptTemplate,
-  renderRerunBreakerFooter,
-  renderRerunBreakerStub,
+  renderClipPinFallbackFooter,
+  renderClipPinFallbackStub,
 } from './prompt.js'
 import {
   getToolUseSummary,
@@ -382,13 +390,13 @@ const outputSchema = lazySchema(() => {
       }),
     }),
     z.object({
-      type: z.literal('rerun_breaker'),
+      type: z.literal('clip_pin_fallback'),
       file: z.object({
         filePath: z.string().describe('The path to the file'),
         message: z
           .string()
           .describe(
-            'The full tool_result content the breaker serves — a structural outline plus redirect footer for code, or a plain redirect stub otherwise.',
+            'The full tool_result content the clip-pin fallback serves — a structural outline plus redirect footer for code, or a plain redirect stub otherwise.',
           ),
         servedOutline: z
           .boolean()
@@ -562,6 +570,71 @@ export const FileReadTool = buildTool({
 
     return { result: true }
   },
+  /**
+   * A re-read whose STAND-DOWN COULD FIRE must reach call(). The dedup and the
+   * clip-pin stand-down are transcript-dependent decisions taken INSIDE call(),
+   * and a cache hit short-circuits call() for the whole Read TTL (60s). The
+   * entry that does the damage is the FIRST, ordinary read's: it is a pure
+   * function of input + disk, so it is stored normally, and replaying it during
+   * a clip → re-read loop hands the model a fresh UNPINNED copy, never
+   * refreshes readFileState, and freezes the stand-down state machine — the
+   * loop then spins invisibly instead of terminating. `noResultCache` on the
+   * re-send cannot reach that earlier entry; only a pre-lookup bypass can.
+   *
+   * Scoped to the transcript evidence rather than to "have I read this path",
+   * which sounds equivalent and is not: readFileState is session-lifetime with
+   * no TTL and has at least eight non-Read writers (Bash, Edit, Write,
+   * NotebookEdit, staged writes, the memory attachment pipeline…), so keying on
+   * mere presence made the bypass permanent and path-wide — it would delete
+   * essentially every in-context Read cache hit while its dead entries kept
+   * evicting live Glob/Grep results from the shared LRU. Nor would a sub-agent
+   * escape it: fork is the default spawn mode and forks clone readFileState
+   * (AgentTool/runAgent.ts).
+   *
+   * The checks below are the same ones call() would make, in increasing cost,
+   * and all of them are cheap: hasServerClearedToolUses is WeakSet-latched
+   * after its first positive, and isPriorReadClippedOrMissing early-exits at
+   * the matching tool_result (re-reads cluster near their original Read).
+   */
+  bypassResultCache({ file_path }, context) {
+    try {
+      const prior = context.readFileState?.get(expandPath(file_path))
+      // First read of this path in this context: nothing to stand down from,
+      // so let it cache and be served from cache like any other tool. Note this
+      // also covers a path whose entry was LRU-evicted (readFileState holds 100,
+      // 10 in queryHelpers) — indistinguishable from a first read, and equally
+      // harmless: the replay still hands the model the real body, it just skips
+      // a dedup that had no state to dedup against anyway.
+      if (!prior) return false
+      // Sticky stand-down state: call() owns this, either by replaying the
+      // recorded outline or by expiring it. A cached full body replayed here
+      // would hand back precisely the content the fallback already concluded
+      // cannot survive, and the marker would never be consulted — the loop
+      // would keep spinning invisibly for the whole cache TTL. Checked before
+      // the pin because a sticky entry carries no toolUseId to ask about.
+      if (prior.standDownOutline !== undefined) return true
+      // A stand-down cycle is OPEN — call() owns the decision from here.
+      // isPinShielding, not isPinRegistered: the wide predicate also answers
+      // true for a SPENT id, and the intact branch retires ids into spent while
+      // leaving readFileState pointing at them. Keying on it would make this
+      // path bypass the cache permanently after one cycle — the same
+      // "stays true forever" failure the path-presence version had.
+      if (prior.toolUseId !== undefined && isPinShielding(prior.toolUseId)) {
+        return true
+      }
+      const messages = context.messages
+      if (!Array.isArray(messages)) return false
+      if (hasServerClearedToolUses(messages)) return true
+      return (
+        prior.toolUseId !== undefined &&
+        isPriorReadClippedOrMissing(messages, prior.toolUseId)
+      )
+    } catch (e) {
+      // Fail open: keep the ordinary cache behavior rather than blocking.
+      logError(e)
+      return false
+    }
+  },
   async call(
     { file_path, offset = 1, limit = undefined, pages, view, symbol },
     context,
@@ -612,9 +685,126 @@ export const FileReadTool = buildTool({
       'tengu_read_dedup_killswitch',
       false,
     )
-    const existingState = dedupKillswitch
+    // `let`, not `const`: the sticky branch below can spend its budget and
+    // delete the entry, and everything downstream must then see a genuine
+    // first read rather than a stale local.
+    //
+    // Note the killswitch reach: `tengu_read_dedup_killswitch` nulls this out,
+    // which disables the sticky branch too. That is documented in AGENTS.md
+    // alongside CLAUDIN_DISABLE_READ_CLIP_PIN, because the two killswitches
+    // have different scopes and only this one can restore unbounded re-sends.
+    let existingState = dedupKillswitch
       ? undefined
       : readFileState.get(fullFilePath)
+
+    // STICKY STAND-DOWN. This exact (path, offset, limit) already exhausted
+    // the re-send lanes and was answered with a structural outline. Serve that
+    // same answer again instead of starting the cycle over.
+    //
+    // This RATE-LIMITS the fallback; it does not end it. An earlier version of
+    // this comment claimed the fallback "terminates" and a review falsified it
+    // from 88 lines below: the budget exit at the bottom of this branch deletes
+    // the marker, the write arm re-creates it, and BOTH counters live on the
+    // entry — so nothing survives a cycle to shorten the next one. The steady
+    // state is still `body → pinned body → outline ×STICKY_REPLAY_BUDGET →
+    // body`, forever.
+    //
+    // What changed is the RATE. The version before deleted the entry on every
+    // fallback, so the next read was a first read and paid another full body;
+    // the pin is temporary by construction (it expires, loses its slot to the
+    // FIFO, or exceeds the ceiling) while the file is permanent, so the two
+    // together settled into two full bodies every THREE reads when the pin
+    // cannot protect a round (over the 8k ceiling, evicted by the FIFO, or no
+    // toolUseId to pin), and every four when it can — the protected round adds
+    // one cheap dedup stub before the fallback. With the marker the same two
+    // bodies are spread over six reads, seven when the pin protects a round.
+    //
+    // So the bug this fixes is the PERMANENT REFUSAL and the body rate, not
+    // the cycle. Do not re-describe it as termination.
+    //
+    // Placed BEFORE the dedup gate below, and deliberately not part of it: the
+    // gate excludes isPartialView entries and the sticky entry is one (so
+    // Edit/Write still demand a real Read). It also carries no toolUseId, so
+    // unlike the dedup stub it can never point the model at a tool_result that
+    // is no longer there — the blind-pointer bug this whole mechanism exists
+    // to avoid cannot be reached from here.
+    //
+    // Sticky is not permanent, which was the failure mode of an earlier
+    // "return the outline and don't touch readFileState" attempt. Five ways
+    // out, four of them checked right here and one structural:
+    //   1. the file changed on disk — the outline describes bytes that no
+    //      longer exist, so fall through and read it;
+    //   2. a main-thread compaction advanced the epoch — the pressure that
+    //      clipped the body is gone and the transcript was rewritten, so the
+    //      model deserves the real thing;
+    //   3. the replay budget is spent (see STICKY_REPLAY_BUDGET);
+    //   4. a different offset/limit/view/symbol fails the checks below;
+    //   5. LRU eviction drops the entry — the only structural one.
+    //
+    // Exit 3 is the one that does not depend on anything external happening,
+    // and it is load-bearing rather than belt-and-braces. Note what is NOT on
+    // the list: an Edit/Write replacing the entry. That reads like the obvious
+    // escape hatch and cannot open by itself, because this marker sets
+    // isPartialView, so those tools are REFUSED while it stands ("read it
+    // first") — they can never be what replaces the entry. Exit 2 does not
+    // cover it either: the marker is created by microCompact, whose whole job
+    // is to keep the session BELOW the autocompact threshold, so a session
+    // that clips this way may never reach a main-thread compaction at all.
+    // Without the budget the model is left unable to read its way to a body
+    // and unable to edit, which is the permanent-refusal bug wearing a hat.
+    //
+    // Outside clipPinEnabled() on purpose, like the strike counter: the
+    // killswitch turns off the PIN, not the bound. Handing a frustrated user
+    // back an unbounded re-send loop is not an opt-out.
+    const stickyOutline = existingState?.standDownOutline
+    if (
+      existingState !== undefined &&
+      stickyOutline !== undefined &&
+      view === undefined &&
+      symbol === undefined &&
+      existingState.offset === offset &&
+      existingState.limit === limit &&
+      stickyOutline.epoch === getStandDownEpoch()
+    ) {
+      let stickyMtimeMs: number | undefined
+      try {
+        stickyMtimeMs = await getFileModificationTimeAsync(fullFilePath)
+      } catch {
+        // stat failed — fall through to a full read, same policy as the dedup
+        // arm below: fail toward giving the model content.
+      }
+      if (stickyMtimeMs === existingState.timestamp) {
+        // Charge before deciding, so the read that exhausts the budget is the
+        // one that gets a body. Charging after would make the last refusal the
+        // final answer for this marker, which is the deadlock again by one.
+        if (
+          readFileState.chargeStandDownReplay(fullFilePath) <=
+          STICKY_REPLAY_BUDGET
+        ) {
+          return {
+            data: {
+              type: 'clip_pin_fallback' as const,
+              file: {
+                filePath: file_path,
+                message: stickyOutline.message,
+                servedOutline: stickyOutline.servedOutline,
+              },
+            },
+            // Same reason as the fallback that wrote this marker: the decision
+            // depends on the entry and the epoch, not on the tool input, and a
+            // cache hit short-circuits before call().
+            noResultCache: true,
+          }
+        }
+        // Budget spent: drop the marker and fall through as a first read. This
+        // IS the delete-and-re-arm the marker replaced — the point was never
+        // that re-arming is wrong, only that re-arming on every fallback is
+        // too often. Now it happens once per STICKY_REPLAY_BUDGET outlines.
+        readFileState.delete(fullFilePath)
+        existingState = undefined
+      }
+    }
+
     // Only dedup entries that came from a prior Read (offset is always set
     // by Read). Edit/Write store offset=undefined — their readFileState
     // entry reflects post-edit mtime, so deduping against it would wrongly
@@ -627,6 +817,11 @@ export const FileReadTool = buildTool({
     let sliceWalkPrior:
       | { timestamp: number; priorWasFullRead: boolean }
       | undefined
+    // Set when this Read is the re-send half of a clip-pin stand-down;
+    // consumed after callInner succeeds.
+    let standDownResend = false
+    // Strike count to carry onto the entry the re-send is about to write.
+    let standDownStrikes = 0
     if (
       existingState &&
       !existingState.isPartialView &&
@@ -662,15 +857,66 @@ export const FileReadTool = buildTool({
             context.messages,
             existingState.toolUseId,
           )
-        if (serverCleared) {
-          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
-        } else if (clientClipped) {
-          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
-        } else {
+        const standDown = serverCleared || clientClipped
+        // DO NOT try to "rescue" the serverCleared arm by checking whether the
+        // prior block still looks intact in `context.messages`. It always does:
+        // clear_tool_uses is applied API-side and our local copy is never
+        // rewritten (the response carries counts only), so
+        // isPriorReadClippedOrMissing is structurally blind to it. Treating a
+        // still-visible pinned copy as evidence that the latch is stale — the
+        // obvious-looking optimisation — makes standDown permanently false
+        // under a latched clear and hands the model a dedup stub pointing at
+        // content the API removed, forever. A client-side pin cannot stop
+        // server-side clearing either (prompt.ts says so). Measured cost of
+        // getting this wrong: an infinite blind-pointer loop replacing a
+        // working outline fallback.
+        //
+        // The accepted cost of getting it RIGHT: once any clear lands, every
+        // file re-read at the same range costs an extra round through the
+        // fallback, even if that particular block was never cleared. With
+        // counts-only reporting there is no evidence that could distinguish
+        // them, and an outline is real content — the failure mode on the other
+        // side is not.
+        //
+        // What this must NOT become is permanent. An earlier version keyed the
+        // fallback purely on the pin and returned without touching
+        // readFileState, so under a latched clear the entry kept pointing at a
+        // spent id and EVERY later read of that range was an outline — for the
+        // rest of the session, for a file sitting readable on disk. The sticky
+        // marker is the successor to that attempt and carries its own defence
+        // against it: STICKY_REPLAY_BUDGET (see the branch near the top of
+        // call()). Two properties have to hold together, and every version so
+        // far has traded one for the other — never two futile re-sends in a
+        // row, and never an indefinite refusal.
+        if (!standDown) {
           // Prior tool_result is intact in context (not clipped/cleared), so
-          // whatever the model is doing it is NOT the clipped-reread loop — the
-          // breaker streak for this file is stale, drop it.
-          readFileState.clearRerunCount(fullFilePath)
+          // whatever the model is doing it is NOT the clipped-reread loop. Any
+          // pin we placed on that result has done its job; release it so the
+          // normal clip policy applies again.
+          //
+          // Only this arm may release: under a latched server clear the
+          // client-side view proves nothing about what the API still shows the
+          // model. Pins abandoned by a range switch or an Edit/Write are
+          // released structurally instead, when readFileState drops the entry
+          // that owns them (fileStateCache's dispose hook).
+          //
+          // retirePinAfterUse, NOT unpinToolResult: free the shielding slot but
+          // keep the memory that this copy already had its protected re-send.
+          // A full release here re-arms the loop — the block is still intact,
+          // so this ordinary Read forgets the id, the next clip pass stubs it,
+          // and the stand-down starts over with another full body, once per
+          // rotation, forever. unpinToolResult is for when the id stops being
+          // ours at all (dispose hook, orphan sweeps).
+          if (existingState.toolUseId !== undefined) {
+            retirePinAfterUse(existingState.toolUseId)
+          }
+          // The copy survived, so whatever streak was running is over. Leaving
+          // stale strikes here would let three unrelated clip events months
+          // apart in one session add up to an outline on a file that has been
+          // fine every time in between.
+          if (existingState.standDownStrikes) {
+            readFileState.setStandDownStrikes(fullFilePath, 0)
+          }
           try {
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
             if (mtimeMs === existingState.timestamp) {
@@ -694,47 +940,171 @@ export const FileReadTool = buildTool({
           } catch {
             // stat failed — fall through to full read
           }
+        } else if (serverCleared) {
+          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
+        } else {
+          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
         }
-        // Re-read circuit breaker. A clipped/cleared stand-down re-sends the
-        // full body — but under the aggressive cache profile the age prune
-        // (pruneOldToolResults, keepTurns=1) clips it again next turn, so the
-        // model re-reads and the stand-down re-sends forever. After
-        // RERUN_BREAKER_THRESHOLD consecutive stand-downs of this exact range,
-        // stop re-sending and serve a stable form instead: the file's
-        // structural outline (survives the prune; the model picks a symbol=),
-        // or a plain redirect stub when there's nothing to outline. The streak
-        // lives in readFileState's range-tagged side-map (not the FileState
-        // value): it survives the loop's own same-range re-sends but is
-        // structurally invalidated by any different-range write — a different
-        // Read range, or Edit/Write — so it only ever counts a genuine loop.
-        if ((serverCleared || clientClipped) && rerunBreakerEnabled()) {
-          const nextCount = readFileState.bumpRerunCount(
-            fullFilePath,
-            offset,
-            limit,
-          )
-          if (nextCount >= RERUN_BREAKER_THRESHOLD) {
+        // Clip-pin stand-down. A clipped/cleared stand-down re-sends the full
+        // body — and whatever clipped the first copy (the age prune under the
+        // aggressive profile, microcompact/byte-guard under retain) clips the
+        // re-sent one too, so the model re-reads and we re-send forever.
+        //
+        // So pin the re-delivered copy instead: every clip path skips a pinned
+        // tool_result (stableStubState.pinToolResult), so the content stays put
+        // and the loop ends after ONE re-send. The pin doubles as the state
+        // machine: if the prior copy was ALREADY pinned and is gone from the
+        // transcript anyway (clipped despite the pin, or cleared API-side),
+        // re-sending would just refill a slot something already emptied once.
+        // Serve a stable form instead: the file's structural outline (the
+        // model picks a symbol=), or the head of the file when there is
+        // nothing to outline.
+        //
+        // TWO LANES REACH THAT FALLBACK, and the split is the whole design:
+        //
+        // Lane 1 — the pin. We have an id, it was pinned, and the copy is gone
+        // anyway: one protected re-send already happened and failed, so the
+        // next one would too. Exits after exactly ONE wasted body.
+        //
+        // Lane 2 — the strike counter, for every case a pin structurally
+        // cannot cover. Contexts with no toolUseId to pin (Tool.ts's field is
+        // optional: @-mentions via attachments/file-pipeline.ts, MagicDocs,
+        // SessionMemory, the MCP entrypoint) and the killswitch path, which is
+        // why this lane sits OUTSIDE clipPinEnabled(). Without it those paths
+        // either loop forever (re-send every time, nothing remembers) or —
+        // the version this replaces — get an outline on the FIRST stand-down,
+        // so a user re-@-mentioning a file is told to stop re-reading it. The
+        // counter lives on the FileState entry, so it resets for free on a
+        // range switch, an Edit/Write or an eviction, all of which replace or
+        // drop the entry.
+        //
+        // The branch message once claimed "no counter, no streak bookkeeping".
+        // That was wrong, and this is the correction: the pin bounds the case
+        // it can see, and the counter bounds the rest.
+        if (standDown) {
+          const priorToolUseId = existingState.toolUseId
+          const pinnedAndGone =
+            clipPinEnabled() &&
+            priorToolUseId !== undefined &&
+            isPinRegistered(priorToolUseId)
+          // A re-send is only worth paying for if the copy it produces can
+          // actually be shielded. Above MAX_PINNED_RESULT_TOKENS
+          // pinShieldsBlock retires the id on sight, so the body is clipped in
+          // the same pass that first examines it and the id lands in the spent
+          // registry — which sends the NEXT read straight to this fallback
+          // anyway. That cost one full futile body per cycle to reach a
+          // decision that was already made. Ask first instead.
+          //
+          // existingState.content is what the prior read of this exact range
+          // stored, i.e. the bytes the re-send would carry.
+          //
+          // Gated on clipPinEnabled() because the ceiling is a property of the
+          // pin: with the pin off nothing shields anything, and the strike
+          // counter is the documented bound for that path.
+          const overPinCeiling =
+            clipPinEnabled() && exceedsPinnedResultCeiling(existingState.content)
+          const strikes = (existingState.standDownStrikes ?? 0) + 1
+          if (pinnedAndGone || overPinCeiling || strikes >= STAND_DOWN_STRIKES) {
             const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
             const outlineLang = detectOutlineLangFromPath(fullFilePath)
-            const scanned = outlineLang
+            const outline = outlineLang
               ? await scanFile(
                   fullFilePath,
                   outlineLang,
                   context.abortController.signal,
                 )
               : null
+            // Same floor the auto-outline pivot applies. scanFile only returns
+            // null at ZERO symbols, so without this a 2000-line file whose
+            // parser found a single top-level symbol gets "answered" with a
+            // one-line outline — technically an outline, useless as a view of
+            // the file. Below the floor the head slice is the better content.
+            const scanned =
+              outline && outline.entries.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS
+                ? outline
+                : null
+            // Event name predates the rename from the re-read breaker; kept
+            // for dashboard continuity. The arm separates the two stand-downs:
+            // 'clipped' has positive evidence the pinned copy was removed,
+            // 'cleared' only knows the API cleared something, sometime. Sent
+            // as a boolean because LogEventMetadata takes no free-form strings
+            // (they leak code/filepaths) — see analytics/index.ts:128.
+            const arm = serverCleared ? 'cleared' : 'clipped'
             logEvent('tengu_file_read_rerun_breaker', {
               ...(analyticsExt !== undefined && { ext: analyticsExt }),
               servedOutline: scanned !== null,
+              armCleared: serverCleared,
             })
             const message = scanned
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
                   overCap: false,
-                }) + renderRerunBreakerFooter(offset, limit, nextCount)
-              : renderRerunBreakerStub(offset, limit, nextCount)
+                }) + renderClipPinFallbackFooter(offset, limit, arm)
+              : (await renderClipPinHeadSlice(
+                  fullFilePath,
+                  context.abortController.signal,
+                )) + renderClipPinFallbackStub(offset, limit, arm)
+            // REMEMBER the decision instead of re-arming into another body.
+            //
+            // The previous version deleted the entry here, which made the next
+            // read of this range a genuine first read — a full body — and the
+            // one after it another stand-down re-send. Two bodies per cycle,
+            // forever: bounded, but never finished. Leaving the entry with its
+            // spent toolUseId was not the alternative either; that falls into
+            // the always-armed dedup below and answers with a file_unchanged
+            // stub pointing at the very content we just failed to deliver.
+            //
+            // So: keep an entry, drop the id, and record the answer. The
+            // sticky branch at the top of call() replays this exact message
+            // until the file changes, a compaction advances the epoch, or the
+            // replay budget runs out. No toolUseId means no blind pointer is
+            // even representable; the dispose hook releases the old pin on the
+            // way through set().
+            //
+            // isPartialView: true because the model has NOT seen the body, so
+            // an Edit before the next Read must still say "read it first"
+            // (FileEditTool, FileWriteTool, applyPatch and NotebookEditTool
+            // all check this field). It also keeps this entry out of the dedup
+            // gate below.
+            //
+            // This is NOT the same cost the delete already paid, and an
+            // earlier version of this comment claimed it was. Under delete,
+            // the refusal lifted on the next read, which returned a body.
+            // Under a marker that replays, Read stops rewriting the entry, so
+            // the refusal has nothing to lift it — hence STICKY_REPLAY_BUDGET,
+            // which is what restores the ending the delete used to provide.
+            //
+            // Only go sticky when the bytes on disk still match what the
+            // outline describes. A file that changed since the prior read gets
+            // the old delete-and-re-arm behavior, which is self-correcting:
+            // the next read is a real body of the NEW content, which is what
+            // the model should get. Same policy as everywhere else here — when
+            // the evidence runs out, fail toward giving the model content.
+            let stickyMtimeMs: number | undefined
+            try {
+              stickyMtimeMs = await getFileModificationTimeAsync(fullFilePath)
+            } catch {
+              // stat failed — fall through to the delete below.
+            }
+            if (stickyMtimeMs === existingState.timestamp) {
+              readFileState.set(fullFilePath, {
+                content: existingState.content,
+                timestamp: existingState.timestamp,
+                offset,
+                limit,
+                isPartialView: true,
+                standDownOutline: {
+                  message,
+                  servedOutline: scanned !== null,
+                  epoch: getStandDownEpoch(),
+                  replays: 0,
+                },
+              })
+            } else {
+              readFileState.delete(fullFilePath)
+            }
             return {
               data: {
-                type: 'rerun_breaker' as const,
+                type: 'clip_pin_fallback' as const,
                 file: {
                   filePath: file_path,
                   message,
@@ -742,13 +1112,23 @@ export const FileReadTool = buildTool({
                 },
               },
               // Transcript-dependent like the dedup stub — never replay from
-              // the tool-result cache (would bypass the stand-down/breaker).
+              // the tool-result cache (would bypass the stand-down/fallback).
               noResultCache: true,
             }
           }
-          // Below the threshold: re-send. bumpRerunCount already persisted the
-          // streak in the side-map, which survives callInner's overwrite — so
-          // nothing to carry.
+          // Under both lanes' thresholds: re-send the body below and, if we
+          // have an id, pin the copy that carries it so the next clip pass
+          // leaves it alone. Reaching this line means the prior id was not
+          // pinned (lane 1 returned above if it was), so there is nothing to
+          // unpin here.
+          //
+          // Deferred to after callInner on purpose: pinning right here would
+          // protect whatever that id ends up carrying rather than the body
+          // this stand-down promised. A throw is the reachable case: it leaves
+          // readFileState pointing at the OLD id, so the state machine would
+          // never look at the pinned one again while it sat on a slot.
+          standDownResend = true
+          standDownStrikes = strikes
         }
       } else if (offset > 1 || limit !== undefined) {
         // Slice-walk telemetry candidate (diagnostic only, no behavior
@@ -820,6 +1200,41 @@ export const FileReadTool = buildTool({
         }
       }
       maybeFlagSerialReadNudge(result?.data, context)
+      if (standDownResend) {
+        const resendToolUseId = context.toolUseId
+        // callInner just overwrote the entry with a fresh FileState, which has
+        // no strike count. Carry it across BEFORE the pin: mutated in place, so
+        // no dispose fires and the pin ownership about to be claimed below is
+        // not churned. Lane 2 is only a bound if the count survives the very
+        // read it is counting.
+        readFileState.setStandDownStrikes(fullFilePath, standDownStrikes)
+        // Pin only when the entry that owns the release actually points at
+        // this result. These arms skip the mtime check on purpose, so the file
+        // may have crossed the auto-outline threshold since the clipped read:
+        // that pivot rewrites the entry as a partial view with no toolUseId,
+        // which both disarms the state machine and leaves nobody to release
+        // the pin — the leak the dispose hook exists to prevent.
+        //
+        // clipPinEnabled() is re-checked here because lane 2 sets
+        // standDownResend from OUTSIDE the gate: the strike bound applies to
+        // the killswitch path, but the killswitch must still mean "nothing
+        // gets pinned".
+        if (
+          clipPinEnabled() &&
+          resendToolUseId !== undefined &&
+          readFileState.get(fullFilePath)?.toolUseId === resendToolUseId
+        ) {
+          pinToolResult(resendToolUseId)
+        }
+        // Independent of whether anything got pinned: the DECISION to re-send
+        // was transcript-dependent, and a cache hit short-circuits BEFORE
+        // call() (Tool.ts wrapCallWithCache). Replaying this body for the Read
+        // TTL would hand the model an unpinned copy and freeze the stand-down
+        // state machine, so the loop would keep spinning invisibly instead of
+        // reaching the fallback — including in contexts that carry no
+        // toolUseId to pin.
+        return { ...result, noResultCache: true }
+      }
       return result
     } catch (error) {
       // Handle file-not-found: suggest similar files
@@ -847,6 +1262,13 @@ export const FileReadTool = buildTool({
               parentMessage?.message.id,
             )
             maybeFlagSerialReadNudge(altResult?.data, context)
+            // No stand-down bookkeeping here, on purpose: the alt arm only
+            // fires for `AM/PM.png` names, and image reads never write
+            // readFileState (dedup is text/notebook-only, per the comment at
+            // the top of call), so standDownResend cannot be armed when the
+            // alt path succeeds — there are no strikes to carry and nothing
+            // to pin. The clip → re-read loop the stand-down closes does not
+            // exist for images.
             return altResult
           } catch (altError) {
             if (!isENOENT(altError)) {
@@ -921,7 +1343,7 @@ export const FileReadTool = buildTool({
             ? data.file.content + AUTO_OUTLINE_PIVOT_FOOTER
             : data.file.content,
         }
-      case 'rerun_breaker':
+      case 'clip_pin_fallback':
         return {
           tool_use_id: toolUseID,
           type: 'tool_result',
@@ -1022,26 +1444,123 @@ function autoOutlineOnElisionEnabled(): boolean {
 }
 
 /**
- * Gate for the re-read circuit breaker (RERUN_BREAKER). Same shape as
+ * Gate for the clip-pin stand-down (READ_CLIP_PIN). Same shape as
  * autoOutlineOnElisionEnabled: the test-preload stubs every `feature()` to
- * `false`, so tests force-enable via `CLAUDIN_FORCE_READ_RERUN_BREAKER=1`;
- * production folds `feature('READ_RERUN_BREAKER')` at build time.
+ * `false`, so tests force-enable via `CLAUDIN_FORCE_READ_CLIP_PIN=1`;
+ * production folds `feature('READ_CLIP_PIN')` at build time.
  */
-function rerunBreakerEnabled(): boolean {
+function clipPinEnabled(): boolean {
   // DISABLE is an authoritative runtime killswitch — it wins even over the
-  // test-only force flag, so a user can always turn the breaker off.
+  // test-only force flag, so a user can always turn the pin off.
+  if (process.env.CLAUDIN_DISABLE_READ_CLIP_PIN === '1') return false
+  // Accepted alias: this mechanism shipped as READ_RERUN_BREAKER, and the
+  // rename would otherwise take a working killswitch away from anyone who had
+  // already set it. Keep honoring it — it costs one env lookup.
   if (process.env.CLAUDIN_DISABLE_READ_RERUN_BREAKER === '1') return false
-  if (process.env.CLAUDIN_FORCE_READ_RERUN_BREAKER === '1') return true
-  if (feature('READ_RERUN_BREAKER')) return true
+  if (process.env.CLAUDIN_FORCE_READ_CLIP_PIN === '1') return true
+  if (feature('READ_CLIP_PIN')) return true
   return false
 }
 
+/** Lines / bytes of the file handed back with the non-code clip-pin fallback. */
+const CLIP_PIN_HEAD_LINES = 60
+const CLIP_PIN_HEAD_BYTES = 4_000
+
 /**
- * Consecutive clipped/cleared stand-downs of the same (file, range) before the
- * breaker trips. Allows 1-2 legitimate post-clip recovery re-reads; only a
- * genuine loop reaches the 3rd.
+ * How many STAND-DOWNS of one (path, offset, limit) the re-send lanes get
+ * before the fallback takes over, for the cases a pin cannot bound: contexts
+ * with no toolUseId, and the killswitch path.
+ *
+ * Stand-downs, not re-sends — the distinction is worth a paragraph because an
+ * earlier version of this doc got it wrong and no test contradicted it. The
+ * count starts at 1 on the FIRST stand-down and the check is
+ * `>= STAND_DOWN_STRIKES`, so the third stand-down serves the fallback instead
+ * of a body: the model gets TWO futile re-sends, not three. The killswitch
+ * test bounds the run of consecutive bodies at `<= STAND_DOWN_STRIKES`, which
+ * a two-body regime satisfies just as well, so it now also pins the exact
+ * sequence for a file that keeps getting clipped: body (the first read, which
+ * stands down from nothing), re-send, re-send, fallback, fallback.
+ *
+ * Three, matching the breaker this feature replaced — the number was never the
+ * problem with that breaker, the side-map it lived in was. Here the count sits
+ * on the FileState entry, so it dies with the thing it describes.
+ *
+ * Exported so the tests state their bounds in terms of the constant rather
+ * than a literal that would silently stop matching if it were retuned.
  */
-const RERUN_BREAKER_THRESHOLD = 3
+export const STAND_DOWN_STRIKES = 3
+
+/**
+ * How many times the sticky stand-down marker may replay its outline for one
+ * (path, offset, limit) before it is spent and Read re-arms with a real body.
+ *
+ * The marker exists because re-arming on EVERY fallback oscillates (two full
+ * bodies every three reads when the pin cannot protect a round, four when it
+ * can, forever). But re-arming NEVER is worse: the marker is written with
+ * isPartialView, so Edit/Write/apply_patch/NotebookEdit refuse with "read it
+ * first", and the replay returns without rewriting the entry — the model
+ * cannot read its way out and cannot edit, in a file sitting readable on disk.
+ * The budget keeps both bugs closed at once: bodies cost 2 per (budget + 3)
+ * reads, and any refusal the marker causes lifts within `budget + 1` reads —
+ * `budget` replays plus the fallback that wrote the marker.
+ *
+ * Three, deliberately the same as STAND_DOWN_STRIKES and for the same reason
+ * the repeated-failure hint uses three: it is the point at which a model that
+ * keeps re-reading is already being told it is repeating itself, so the body
+ * arrives with the advice instead of long after it.
+ */
+export const STICKY_REPLAY_BUDGET = 3
+
+/**
+ * The code arm of the fallback still answers the question the model asked — a
+ * structural outline is a real view of the file. The non-code arm had nothing
+ * to offer and returned a bare redirect, so a model that asked to read a large
+ * JSON/CSV/log got back zero bytes of it, which is worse than what the old
+ * three-strike breaker did (two more full bodies first). Hand back the head of
+ * the file with the redirect: it is content, it is what a human opens first,
+ * and it is small enough to survive the clip paths that removed the full body.
+ *
+ * Best effort — a failure here must degrade to the bare redirect, never turn
+ * the fallback into a read error.
+ *
+ * Line-numbered like every other Read result: the tool's own prompt promises
+ * `N→content` on every line, and the redirect that follows tells the model to
+ * go read a different part of the file — which it cannot aim at without
+ * anchors.
+ *
+ * Notebooks are excluded. A `.ipynb` has no outline language, so it lands here,
+ * but its first 60 lines are raw nbformat JSON — metadata and base64 image
+ * outputs, not the cells a Read of that path returns. That is worse than
+ * nothing: it looks like content, it is line-numbered like content, and the
+ * line numbers do not correspond to anything the model can ask for. Send the
+ * bare redirect instead.
+ */
+async function renderClipPinHeadSlice(
+  fullFilePath: string,
+  signal: AbortSignal,
+): Promise<string> {
+  if (fullFilePath.toLowerCase().endsWith('.ipynb')) return ''
+  try {
+    const { content } = await readFileInRange(
+      fullFilePath,
+      0,
+      CLIP_PIN_HEAD_LINES,
+      CLIP_PIN_HEAD_BYTES,
+      signal,
+      { truncateOnByteLimit: true },
+    )
+    if (content.length === 0) return ''
+    return `${addLineNumbers({ content, startLine: 1 })}\n\n`
+  } catch (e) {
+    // An abort is the user cancelling, not a failed fallback — degrading it to
+    // a bare redirect would hand the model a truncated answer for a request
+    // that was called off, and log a phantom error. scanFile rethrows for the
+    // same reason.
+    if (isAbortError(e)) throw e
+    logError(e)
+    return ''
+  }
+}
 
 export const CYBER_RISK_MITIGATION_REMINDER =
   '\n\n<system-reminder>\nWhenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.\n</system-reminder>\n'

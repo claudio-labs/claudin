@@ -16,6 +16,7 @@ import {
   isCacheableTool,
   setCached,
 } from './services/tools/toolResultCache.js'
+import { logError } from './utils/log.js'
 import type { ThinkingConfig } from './utils/thinking.js'
 
 export type ToolInputJSONSchema = {
@@ -429,6 +430,19 @@ export type Tool<
     parentMessage: AssistantMessage,
     onProgress?: ToolCallProgress<P>,
   ): Promise<ToolResult<Output>>
+  /**
+   * Per-call opt-out from the local tool-result cache, consulted BEFORE the
+   * lookup. `noResultCache` is not a substitute: it can only refuse to STORE
+   * the result call() just produced, and cannot stop an entry left by an
+   * EARLIER call from short-circuiting call() on replay. A tool whose result
+   * depends on state that only call() inspects (transcript shape, prior
+   * tool_results) needs this hook to keep that decision reachable.
+   *
+   * Only consulted for tools isCacheableTool() accepts — a silent no-op
+   * anywhere else. Must be cheap and side-effect free; a throw is caught and
+   * logged, and falls back to ordinary cache behavior.
+   */
+  bypassResultCache?(args: z.infer<Input>, context: ToolUseContext): boolean
   description(
     input: z.infer<Input>,
     options: {
@@ -832,7 +846,14 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
   // type semantics are proven by the 0-error typecheck across all 60+ tools.
   const wrappedDef =
     isCacheableTool(def.name) && def.call
-      ? { ...def, call: wrapCallWithCache(def.name, def.call.bind(def)) }
+      ? {
+          ...def,
+          call: wrapCallWithCache(
+            def.name,
+            def.call.bind(def),
+            def.bypassResultCache?.bind(def),
+          ),
+        }
       : def
   return {
     ...TOOL_DEFAULTS,
@@ -844,6 +865,7 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
 /**
  * Wraps a tool.call with the local result cache. Bypasses on:
  *   - CLAUDIN_DISABLE_TOOL_RESULT_CACHE=1 (env opt-out)
+ *   - the tool's own bypassResultCache(input, context) predicate
  *   - newMessages or contextModifier present (declared side effects)
  *   - noResultCache on the result (transcript-dependent validity)
  * Hit replay returns a fresh ToolResult with the cached data + mcpMeta;
@@ -856,14 +878,53 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
  * (e.g. a dedup stub pointing at an earlier tool_result that clipping or
  * server clearing can wipe), return it with noResultCache: true — testing
  * with the cache disabled will not surface this bypass.
+ *
+ * noResultCache alone is NOT enough when the validity logic must run on a
+ * LATER call than the one that produced the cacheable result: the entry to
+ * suppress belongs to an earlier, perfectly cacheable call. That is what
+ * bypassResultCache is for — it runs before the lookup, so call() stays
+ * reachable, and it also suppresses the store so a bypassing call leaves no
+ * entry behind for the next one.
+ *
+ * A bypass does NOT delete or refresh the entry already sitting in the cache;
+ * it steps around it. Once the tool stops bypassing — the condition cleared, or
+ * the per-context state the predicate keys on was lost — that older entry is
+ * live again until its TTL expires. A tool whose staleness matters beyond the
+ * TTL must invalidate explicitly (invalidateForPath) rather than lean on this.
  */
 function wrapCallWithCache<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Fn extends (...args: any[]) => Promise<ToolResult<unknown>>,
->(toolName: string, origCall: Fn): Fn {
+>(
+  toolName: string,
+  origCall: Fn,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bypass?: (input: any, context: any) => boolean,
+): Fn {
   const wrapped = async (...args: Parameters<Fn>): Promise<ToolResult<unknown>> => {
     if (isCacheDisabled()) return origCall(...args)
     const input = args[0]
+    // A throwing hook must not take the tool call down with it — this wrapper
+    // sits in front of every cacheable tool, and a cache optimisation is never
+    // worth failing the user's request over. Falling through means "use the
+    // cache as before", the pre-hook behavior.
+    let skipCache = false
+    if (bypass) {
+      try {
+        skipCache = bypass(input, args[1])
+      } catch (e) {
+        // logError takes a single argument here, so name the source inside the
+        // error rather than dropping the context: a bare stack from this frame
+        // says nothing about WHICH tool's predicate misbehaved.
+        logError(
+          new Error(
+            `${toolName}.bypassResultCache threw; falling back to normal caching`,
+            { cause: e },
+          ),
+        )
+      }
+    }
+    if (skipCache) return origCall(...args)
     const hit = getCached(toolName, input)
     if (hit) {
       return { data: hit.data, mcpMeta: hit.mcpMeta }

@@ -62,6 +62,27 @@ function it asserted on) that only a revert-and-watch pass caught. Don't claim
 "verified clean" for anything the audit didn't actually exercise; acknowledge
 defensive/no-op fixes as such rather than pretending they corrected a reachable bug.
 
+Three traps this method has caught in practice, all of which produce a *green test
+that guards nothing*:
+
+- **Mutate the exact line, not a same-looking one.** `perl -0pi -e 's/…//'` without
+  `/g` hits the FIRST match, and guards like `if (isAbortError(e)) throw e` appear
+  more than once in a file. A mutation that deletes the wrong copy "passes" and
+  certifies an untested line. Confirm with `git diff` that the intended line moved.
+- **A sibling code path can absorb the signal.** A test for the head-slice arm's
+  abort rethrow used a `.ts` fixture, so the fallback hit `scanFile` — which
+  rethrows aborts itself — and the arm under test never ran. The test passed with
+  its own line deleted. When a test targets one branch, pick a fixture that cannot
+  reach the others (`.txt` for "no outline language").
+- **Fail-open catches hide missing guards.** `countIdenticalFailures` swallows and
+  returns 0, so deleting the caller's `!Array.isArray(messages)` check changes no
+  observable outcome. Name such a test for what it pins, not for the guard.
+
+Prefer deleting a footgun over testing it. A `replacesInputs?: boolean` option that
+defaulted to the leaking behavior had no test at any of its three call sites;
+splitting it into a second named function (`mergeReplacingLiveCache`) removed the
+argument a caller could forget instead of adding a test that they didn't.
+
 ## 5. Headless `-p` orphans auto-background sub-agents (bench caveat)
 
 In `claudin -p`, an orchestrator that spawns auto-background sub-agents

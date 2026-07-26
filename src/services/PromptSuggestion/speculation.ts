@@ -20,7 +20,7 @@ import { logForDebugging } from '../../utils/debug.js'
 import { errorMessage } from '../../utils/errors.js'
 import {
   type FileStateCache,
-  mergeFileStateCaches,
+  mergeReplacingLiveCache,
   READ_FILE_STATE_CACHE_SIZE,
 } from '../../utils/fileStateCache.js'
 import {
@@ -877,10 +877,10 @@ export async function handleSpeculationAccept(
       cwd,
       READ_FILE_STATE_CACHE_SIZE,
     )
-    readFileState.current = mergeFileStateCaches(
-      readFileState.current,
-      extracted,
-    )
+    // mergeReplacingLiveCache, NOT mergeFileStateCaches: the result is assigned
+    // OVER readFileState.current, so it has to inherit the pin ownership of the
+    // cache it replaces.
+    readFileState.current = mergeReplacingLiveCache(readFileState.current, extracted)
 
     if (feedbackMessage) {
       setMessages(prev => [...prev, feedbackMessage])

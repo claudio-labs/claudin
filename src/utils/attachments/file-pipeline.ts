@@ -135,7 +135,15 @@ export async function generateFileAttachment(
       // compare modification times. Only use optimization when timestamp <= mtimeMs,
       // indicating it was stored by FileEdit/WriteTool with actual mtimeMs.
 
+      // Never skip the injection for a partial entry. The optimization means
+      // "the model already has this file", which is false when all it has is
+      // an outline, a head slice or a stripped auto-injection. It matters most
+      // for the clip-pin sticky marker, whose timestamp IS the mtime, so it
+      // matches here every time: an @-mention is the user's manual way to put
+      // the real file back in front of the model, and suppressing it removes
+      // the one escape that does not depend on the model's own next move.
       if (
+        !existingFileState.isPartialView &&
         existingFileState.timestamp <= mtimeMs &&
         mtimeMs === existingFileState.timestamp
       ) {

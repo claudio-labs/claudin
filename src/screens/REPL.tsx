@@ -35,7 +35,7 @@ import { sendNotification } from '../services/notifier.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from '../ink/terminal.js';
 import instances from '../ink/instances.js';
-import { createFileStateCacheWithSizeLimit, mergeFileStateCaches, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js';
+import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js';
 import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnStart, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, resetTurnHookDuration, getTurnToolDurationMs, getTurnToolCount, resetTurnToolDuration, getTurnClassifierDurationMs, getTurnClassifierCount, resetTurnClassifierDuration } from '../bootstrap/state.js';
 import { asSessionId, asAgentId } from '../types/ids.js';
 import { logForDebugging } from '../utils/debug.js';
@@ -1587,7 +1587,11 @@ export function REPL({
   // This allows Claude to edit files that were read in previous sessions
   const restoreReadFileState = useCallback((messages: MessageType[], cwd: string) => {
     const extracted = extractReadFilesFromMessages(messages, cwd, READ_FILE_STATE_CACHE_SIZE);
-    readFileState.current = mergeFileStateCaches(readFileState.current, extracted);
+    // mergeReplacingLiveCache, NOT mergeFileStateCaches: the result is assigned
+    // OVER readFileState.current, so it has to inherit the pin ownership of the
+    // cache it replaces — otherwise the discarded owner takes its ownership set
+    // with it and no pin in the session can be released early again.
+    readFileState.current = mergeReplacingLiveCache(readFileState.current, extracted);
     for (const tool of extractBashToolsFromMessages(messages)) {
       bashTools.current.add(tool);
     }

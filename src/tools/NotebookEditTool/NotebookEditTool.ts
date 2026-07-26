@@ -219,7 +219,18 @@ export const NotebookEditTool = buildTool({
     // this, the model could edit a notebook it never saw, or edit against a
     // stale view after an external change — silent data loss.
     const readTimestamp = toolUseContext.readFileState.get(fullPath)
-    if (!readTimestamp) {
+    // isPartialView, not just presence: the comment above claims parity with
+    // FileEditTool/FileWriteTool, and until now it did not have it — those two
+    // (and applyPatch) reject a partial entry, this one accepted it. A partial
+    // entry means the model saw an outline, a head slice or a stripped
+    // injection, never the cells. The clip-pin stand-down made that reachable
+    // for notebooks specifically: renderClipPinHeadSlice returns '' for .ipynb
+    // on purpose, so the fallback shows the model no notebook content at all,
+    // and this gate was letting an edit through on it. (The entry's `content`
+    // field does hold the real bytes; it is what the MODEL was shown that is
+    // empty. Presence of an entry has never meant the model saw the file —
+    // that gap is the whole reason isPartialView exists.)
+    if (!readTimestamp || readTimestamp.isPartialView) {
       return {
         result: false,
         message:
