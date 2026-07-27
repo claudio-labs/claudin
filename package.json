@@ -78,7 +78,7 @@
     "auto-bind": "5.0.1",
     "axios": "^1.18.1",
     "bidi-js": "1.0.3",
-    "chalk": "5.6.2",
+    "chalk": "6.0.0",
     "chokidar": "5.0.0",
     "cli-boxes": "4",
     "cli-highlight": "2.1.11",
