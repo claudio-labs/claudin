@@ -163,3 +163,23 @@ the right one.
   then one `send-keys` per key with ~0.5s between (several keys in one call get
   coalesced/dropped) and `capture-pane -p`. `Usage.tsx:741-742` still registers
   `scroll:page*` the dead way.
+
+## 9. Since chalk 6, a numeric `FORCE_COLOR` pins the level instead of raising it
+
+- chalk 6.0.0 (bumped 2026-07-27, #42) made `envForceColor` return **early with
+  the exact level** for a numeric value, so terminal detection no longer runs.
+  Measured: `FORCE_COLOR=1 COLORTERM=truecolor` → level **3** on chalk 5.6.2,
+  level **1** on 6.0.0. `FORCE_COLOR=true` (and empty) still only enables color
+  and lets detection pick the level, so that is the value to suggest when someone
+  wants "force color, keep truecolor".
+- **How to apply:** a report of a washed-out / 16-color TUI that only reproduces
+  in one shell or in CI is most likely `FORCE_COLOR=1` in the environment, not a
+  theme or renderer bug. Check `chalk.level` before touching `colorize.ts`.
+  Our own writes are unaffected — `RunTestsTool/run.ts` passes `FORCE_COLOR=0` to
+  the child and the profile scripts pass `3`, both of which mean the same thing in
+  either version.
+- Don't re-raise the level in `src/ink/colorize.ts` to restore the old behavior:
+  the level-2→3 (vscode) and >2→2 (tmux) fixups there correct a *detection* miss,
+  whereas a numeric `FORCE_COLOR` is an explicit user request that chalk now
+  honors literally. Overriding it would make the env var unable to select 16-color
+  output at all.
