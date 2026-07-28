@@ -40,14 +40,14 @@ const SHELL_COMPOSITION_RE = /[;|&<>\n`'"]|\$\(/
  * that merely mentions one.
  */
 const TEST_COMMAND_HEAD_RE =
-  /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:npm|npx|pnpm|yarn|bun|bunx|deno|node|python3?|py|py\.test|pytest|go|cargo|dotnet|mvn|gradle|\.\/gradlew|rake|rails|mix|dart|flutter|vitest|jest|mocha|rspec|bundle|phpunit|pest|ctest|vendor\/bin\/(?:phpunit|pest))\b/
+  /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:npm|npx|pnpm|yarn|bun|bunx|deno|node|python3?|py|py\.test|pytest|uv|poetry|pipenv|pdm|go|cargo|dotnet|mvn|\.\/mvnw|gradle|\.\/gradlew|rake|rails|mix|dart|flutter|vitest|jest|mocha|rspec|bundle|composer|phpunit|pest|ctest|\.?venv\/bin\/pytest|vendor\/bin\/(?:phpunit|pest))\b/
 
 /** Flags that ask for raw output, a watcher, or no run at all. */
 const OPT_OUT_FLAG_RE =
   /\s(?:--watch(?:All)?|--watch-path|--ui|--pdb|-s|--capture|--nocapture|--show-output|--inspect(?:-brk)?|--reporters?|--json|--coverage|--no-run|--collect-only|--list|--dry-run|--help|-h)(?:[\s=]|$)/
 
 /** Package-script forms `detectFrameworkFromCommand` has no token for. */
-const PACKAGE_SCRIPT_TEST_RE = /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test$/
+const PACKAGE_SCRIPT_TEST_RE = /^(?:npm|pnpm|yarn|bun|composer)\s+(?:run(?:-script)?\s+)?test$/
 
 /** Runners whose command token also builds/packages — they need a test goal. */
 const NEEDS_TEST_GOAL: ReadonlySet<Framework> = new Set(['maven', 'gradle'])

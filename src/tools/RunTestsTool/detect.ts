@@ -31,7 +31,7 @@ const COMMAND_MATCHERS: Array<[RegExp, Framework]> = [
   [/\bmocha\b/, 'mocha'],
   [/\bplaywright\s+test\b/, 'playwright'],
   [/\bnode\b.*--test\b/, 'node-test'],
-  [/\bdeno\s+test\b/, 'deno'],
+  [/\bdeno\s+(?:task\s+)?test\b/, 'deno'],
   [/\b(?:dart|flutter)\s+test\b/, 'dart'],
   [/\bbun\s+test\b/, 'bun'],
   [/\b(?:py\.?test|python\s+-m\s+pytest)\b/, 'pytest'],
@@ -42,7 +42,7 @@ const COMMAND_MATCHERS: Array<[RegExp, Framework]> = [
   [/(?:^|[;&|]\s*|\bnpx\s+|\/)pest\b/, 'pest'],
   [/\b(?:phpunit|vendor\/bin\/phpunit)\b/, 'phpunit'],
   [/\bdotnet\s+test\b/, 'dotnet'],
-  [/\bmvn\b/, 'maven'],
+  [/\bmvn\b|\.\/mvnw\b/, 'maven'],
   [/\bgradle\b|\.\/gradlew\b/, 'gradle'],
   [/\bctest\b/, 'ctest'],
   [/\bmix\s+test\b/, 'elixir'],
@@ -101,7 +101,14 @@ function detectNode(cwd: string): DetectedRunner | null {
   if (scripts.test) {
     // Wrapped script — can't inject a reporter reliably, falls back to text.
     const fw = detectFrameworkFromCommand(scripts.test)
-    return { framework: fw, command: `${pm} test` }
+    // `npm|pnpm|yarn test` run the script, but `bun test` does NOT: it is Bun's
+    // own runner, and only `bun run test` executes the script. Emitting the
+    // former for a project whose script is ava/uvu/`node --test` either finds
+    // no test files or — worse — picks up `*.test.ts` and runs them under the
+    // wrong runner, reporting failures that belong to nobody. When the script
+    // IS Bun's runner, keep the direct form so a reporter can still be injected.
+    const command = pm === 'bun' && fw !== 'bun' ? 'bun run test' : `${pm} test`
+    return { framework: fw, command }
   }
   return null
 }
@@ -116,6 +123,51 @@ function hasTopLevelFileWithExt(cwd: string, exts: string[]): boolean {
 }
 
 /**
+ * A composer `test` script is either a string or an array of steps; join the
+ * array so the framework matchers can still see the runner token inside it.
+ */
+function composerTestScript(cwd: string): string | null {
+  const composer = readJsonSafe(path.join(cwd, 'composer.json'))
+  const test = (composer?.scripts as Record<string, unknown> | undefined)?.test
+  if (typeof test === 'string') return test
+  if (Array.isArray(test)) {
+    const steps = test.filter((s): s is string => typeof s === 'string')
+    return steps.length > 0 ? steps.join(' ') : null
+  }
+  return null
+}
+
+/**
+ * Python projects almost never run their suite with a bare `pytest`: the deps
+ * live in a manager-owned virtualenv, so a bare invocation resolves to whatever
+ * interpreter happens to be on PATH — usually a global one that cannot import
+ * the project at all. That run does NOT fail loudly. It collects zero tests and
+ * reports the import errors as N failing "tests", which reads as a broken suite
+ * and sends the caller back to Bash. So mirror what the project's own
+ * Makefile/CI does and go through the manager (or the in-tree venv).
+ */
+const PYTHON_MANAGER_LOCKFILES: Array<[string, string]> = [
+  ['uv.lock', 'uv run'],
+  ['poetry.lock', 'poetry run'],
+  ['pdm.lock', 'pdm run'],
+  ['Pipfile.lock', 'pipenv run'],
+  ['Pipfile', 'pipenv run'],
+]
+
+/** In-tree venv interpreters, used when no manager lockfile identifies one. */
+const VENV_PYTEST_BINS = ['.venv/bin/pytest', 'venv/bin/pytest']
+
+function detectPytestCommand(cwd: string): string {
+  for (const [lockfile, prefix] of PYTHON_MANAGER_LOCKFILES) {
+    if (existsSync(path.join(cwd, lockfile))) return `${prefix} pytest`
+  }
+  for (const bin of VENV_PYTEST_BINS) {
+    if (existsSync(path.join(cwd, bin))) return bin
+  }
+  return 'pytest'
+}
+
+/**
  * Inspect the project tree (cwd-scoped, not recursive into subprojects) and
  * synthesize a bare runner command. Returns null when nothing recognizable is
  * found — the caller then reports that it couldn't detect a suite.
@@ -125,8 +177,21 @@ export function detectTestRunner(cwd: string): DetectedRunner | null {
   const node = detectNode(cwd)
   if (node) return node
 
-  if (existsSync(path.join(cwd, 'deno.json')) || existsSync(path.join(cwd, 'deno.jsonc'))) {
-    return { framework: 'deno', command: 'deno test' }
+  const denoConfig = [path.join(cwd, 'deno.json'), path.join(cwd, 'deno.jsonc')].find(f =>
+    existsSync(f),
+  )
+  if (denoConfig) {
+    // Deno tests are sandboxed: a bare `deno test` holds no fs/net permission,
+    // so every test that touches either fails with PermissionDenied — a failure
+    // that reads as real and isn't. The project's own `test` task carries the
+    // flags its suite needs (`-A`, `--unstable-*`), and `deno task` forwards our
+    // injected reporter flag through to the runner, so nothing is lost by
+    // preferring it.
+    const tasks = readJsonSafe(denoConfig)?.tasks as Record<string, unknown> | undefined
+    return {
+      framework: 'deno',
+      command: tasks?.test != null ? 'deno task test' : 'deno test',
+    }
   }
   if (existsSync(path.join(cwd, 'pubspec.yaml'))) {
     const pub = safeRead(path.join(cwd, 'pubspec.yaml'))
@@ -142,7 +207,7 @@ export function detectTestRunner(cwd: string): DetectedRunner | null {
     existsSync(path.join(cwd, 'setup.cfg')) ||
     existsSync(path.join(cwd, 'tox.ini'))
   ) {
-    return { framework: 'pytest', command: 'pytest' }
+    return { framework: 'pytest', command: detectPytestCommand(cwd) }
   }
   if (existsSync(path.join(cwd, 'go.mod'))) {
     return { framework: 'go', command: 'go test ./...' }
@@ -154,13 +219,21 @@ export function detectTestRunner(cwd: string): DetectedRunner | null {
     return { framework: 'rspec', command: 'bundle exec rspec' }
   }
   if (existsSync(path.join(cwd, 'Rakefile')) && existsSync(path.join(cwd, 'test'))) {
-    return { framework: 'minitest', command: 'rake test' }
+    // Same reason the rspec branch above shells through bundler: without it the
+    // gems resolve against the system installation and the suite dies with a
+    // LoadError before running a single test.
+    const bundled = existsSync(path.join(cwd, 'Gemfile')) ? 'bundle exec ' : ''
+    return { framework: 'minitest', command: `${bundled}rake test` }
   }
   if (existsSync(path.join(cwd, 'mix.exs'))) {
     return { framework: 'elixir', command: 'mix test' }
   }
   if (existsSync(path.join(cwd, 'pom.xml'))) {
-    return { framework: 'maven', command: 'mvn test' }
+    // Mirrors the gradle branch below: the wrapper pins the build tool's
+    // version and is frequently the ONLY one present — such a project has no
+    // global `mvn` to call at all.
+    const wrapper = existsSync(path.join(cwd, 'mvnw')) ? './mvnw' : 'mvn'
+    return { framework: 'maven', command: `${wrapper} test` }
   }
   if (existsSync(path.join(cwd, 'build.gradle')) || existsSync(path.join(cwd, 'build.gradle.kts'))) {
     const wrapper = existsSync(path.join(cwd, 'gradlew')) ? './gradlew' : 'gradle'
@@ -169,14 +242,23 @@ export function detectTestRunner(cwd: string): DetectedRunner | null {
   if (hasTopLevelFileWithExt(cwd, ['.csproj', '.sln', '.fsproj'])) {
     return { framework: 'dotnet', command: 'dotnet test' }
   }
-  if (
-    existsSync(path.join(cwd, 'tests/Pest.php')) ||
-    existsSync(path.join(cwd, 'vendor/bin/pest'))
-  ) {
+  if (existsSync(path.join(cwd, 'vendor/bin/pest'))) {
     return { framework: 'pest', command: 'vendor/bin/pest' }
   }
   if (existsSync(path.join(cwd, 'composer.json')) && existsSync(path.join(cwd, 'vendor/bin/phpunit'))) {
     return { framework: 'phpunit', command: 'vendor/bin/phpunit' }
+  }
+  // Neither binary sits at the default path — either vendor/ is not installed
+  // yet or composer's bin-dir is configured elsewhere. The declared script is
+  // the project's own entry point and knows where its runner lives; naming a
+  // `vendor/bin/*` that does not exist would only report a missing file.
+  const composerTest = composerTestScript(cwd)
+  if (composerTest) {
+    const fw = detectFrameworkFromCommand(composerTest)
+    return { framework: fw === 'unknown' ? 'phpunit' : fw, command: 'composer test' }
+  }
+  if (existsSync(path.join(cwd, 'tests/Pest.php'))) {
+    return { framework: 'pest', command: 'vendor/bin/pest' }
   }
   if (existsSync(path.join(cwd, 'CMakeLists.txt'))) {
     const command = existsSync(path.join(cwd, 'build/CTestTestfile.cmake'))

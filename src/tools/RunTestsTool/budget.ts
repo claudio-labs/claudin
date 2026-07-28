@@ -25,6 +25,18 @@ function truncate(s: string, max: number): string {
   return t.length > max ? `${t.slice(0, max)}\n… (truncated)` : t
 }
 
+/**
+ * A reporter `<error>` (as opposed to `<failure>`) means the case never ran —
+ * pytest records an import/collection failure that way. When nothing passed AND
+ * every entry is one of those, "N failed" is actively misleading: the suite did
+ * not run, and the usual cause is the runner being invoked outside the
+ * project's environment (a bare `pytest` against a uv/poetry venv). Say so, or
+ * the reader debugs phantom test failures.
+ */
+function suiteNeverRan(r: TestResult): boolean {
+  return r.passed === 0 && r.failures.length > 0 && r.failures.every(f => f.kind === 'error')
+}
+
 export function formatTestResult(r: TestResult): string {
   if (r.runError) {
     return `Test run could not start: ${r.runError}\ncommand: ${r.command}`
@@ -61,6 +73,14 @@ export function formatTestResult(r: TestResult): string {
   const moreTail =
     remaining > 0 ? [`\n+${remaining} more failing test${remaining === 1 ? '' : 's'}`] : []
 
+  const neverRanNote = suiteNeverRan(r)
+    ? [
+        'The suite never ran: every entry below is a collection/setup error, not a failing assertion.',
+        "Check the runner ran inside the project's environment (e.g. `uv run pytest`, `poetry run pytest`)",
+        'before treating these as test failures.',
+      ].join(' ')
+    : ''
+
   const degradedNote = r.degraded
     ? [
         '\nNote: no machine-readable reporter was available, so this summary was',
@@ -69,7 +89,7 @@ export function formatTestResult(r: TestResult): string {
       ].join('\n')
     : ''
 
-  return [`✗ ${header}`, '', ...blocks, ...moreTail, degradedNote]
+  return [`✗ ${header}`, neverRanNote, '', ...blocks, ...moreTail, degradedNote]
     .filter(Boolean)
     .join('\n')
 }

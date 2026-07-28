@@ -118,6 +118,7 @@ export function parseJUnitXml(
 
     failures.push({
       name: `${suite}${attrs.name ?? 'unknown'}`,
+      kind: fm[1].toLowerCase() === 'error' ? 'error' : 'failure',
       file,
       line,
       message,

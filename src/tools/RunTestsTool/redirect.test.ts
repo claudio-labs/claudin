@@ -20,6 +20,15 @@ describe('isRedirectableTestCommand — fires on a bare test run', () => {
     'pytest',
     'pytest tests/unit',
     'python -m pytest tests',
+    // Python projects run the suite through their env manager — the bare form
+    // is the one that does NOT work there, so the redirect has to see these.
+    'uv run pytest',
+    'uv run pytest modules/backend',
+    'uv run python -m pytest',
+    'poetry run pytest',
+    'pipenv run pytest',
+    'pdm run pytest',
+    '.venv/bin/pytest',
     'go test ./...',
     'go test -run TestFoo ./pkg',
     'cargo test',
@@ -67,6 +76,9 @@ describe('isRedirectableTestCommand — stands down', () => {
     ['bun run build', 'build script'],
     ['bun run typecheck', 'typecheck script'],
     ['bun run test:provider', 'scoped script RunTests parses only degraded'],
+    ['uv run ruff check .', 'env manager, but not a test run'],
+    ['uv sync --all-packages', 'env manager, but not a test run'],
+    ['uv run pytest -s', 'capture disabled'],
     ['git status', 'unrelated'],
     ['', 'empty'],
   ]

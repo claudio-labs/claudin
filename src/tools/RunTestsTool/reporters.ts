@@ -31,8 +31,12 @@ export type ReporterPlan = {
 // A package-manager *script* wrapper hides the real runner, so injected flags
 // wouldn't reach it. `bun test` is deliberately excluded: it is Bun's native
 // test runner (it accepts --reporter=junit), not a script indirection — only
-// `bun run <script>` is a wrapper.
-const WRAPPED_RE = /^\s*(?:(?:npm|pnpm|yarn|bun)\s+run\s+\S+|(?:npm|pnpm|yarn)\s+(?:test|t))\b/
+// `bun run <script>` is a wrapper. `composer test` is one too: composer only
+// forwards extra arguments to the script after a `--` separator, so an injected
+// flag would be read as composer's own and rejected. `deno task test` is NOT
+// listed — it forwards trailing args straight to the task's command.
+const WRAPPED_RE =
+  /^\s*(?:(?:npm|pnpm|yarn|bun)\s+run\s+\S+|(?:npm|pnpm|yarn)\s+(?:test|t)|composer\s+(?:run(?:-script)?\s+)?test)\b/
 const WATCH_RE = /(?:^|\s)(?:--watch(?:All)?|-w|--ui|--watch-path)\b/
 
 export function isWrappedScript(command: string): boolean {

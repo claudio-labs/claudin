@@ -36,6 +36,12 @@ export type Framework =
 export type TestFailure = {
   /** Fully-qualified test name (suite › case) when available. */
   name: string
+  /**
+   * `error` means the case never ran — a collection/import/setup error rather
+   * than a failing assertion. Only reporters that distinguish the two (JUnit
+   * XML: `<error>` vs `<failure>`) set this; elsewhere it stays undefined.
+   */
+  kind?: 'failure' | 'error'
   /** Absolute or repo-relative source file the failure points at, if resolved. */
   file?: string
   /** 1-based line within `file`, if resolved. */

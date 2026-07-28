@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { applyFilters } from './RunTestsTool.js'
 import { readReportDir } from './run.js'
 import { buildDossier } from './dossier.js'
-import { detectFrameworkFromCommand } from './detect.js'
+import { detectFrameworkFromCommand, detectTestRunner } from './detect.js'
 import { formatTestResult } from './budget.js'
 import { parseCargo } from './parsers/cargo.js'
 import { parseDart } from './parsers/dartTest.js'
@@ -25,6 +25,19 @@ import type { Framework, ParseInput, TestFailure, TestResult } from './types.js'
 function emptyInput(over: Partial<ParseInput> = {}): ParseInput {
   return { stdout: '', stderr: '', exitCode: 0, ...over }
 }
+
+/** Materializes a throwaway project tree; keys are paths relative to its root. */
+function projectFixture(files: Record<string, string>): string {
+  const root = mkdtempSync(join(tmpdir(), 'rt-fixture-'))
+  for (const [rel, body] of Object.entries(files)) {
+    const abs = join(root, rel)
+    mkdirSync(join(abs, '..'), { recursive: true })
+    writeFileSync(abs, body)
+  }
+  return root
+}
+
+const pkgJson = (o: Record<string, unknown>) => JSON.stringify(o)
 
 describe('detectFrameworkFromCommand', () => {
   test('maps each runner command to its framework', () => {
@@ -50,6 +63,11 @@ describe('detectFrameworkFromCommand', () => {
       ['mix test', 'elixir'],
       ['rake test', 'minitest'],
       ['bin/rails test', 'minitest'],
+      // Wrapper and task forms: the detected command round-trips through here
+      // whenever the model passes it back explicitly, and landing on `unknown`
+      // would cost the framework's reporter injection.
+      ['./mvnw test', 'maven'],
+      ['deno task test', 'deno'],
       ['make build', 'unknown'],
       // `pest` must match only as a command token, not the bare English word.
       ['echo the best pest around', 'unknown'],
@@ -57,6 +75,184 @@ describe('detectFrameworkFromCommand', () => {
     for (const [cmd, fw] of cases) {
       expect(detectFrameworkFromCommand(cmd)).toBe(fw)
     }
+  })
+})
+
+describe('detectTestRunner — Python environment', () => {
+  // A bare `pytest` resolves to whatever is on PATH, which in a uv/poetry
+  // project is a global interpreter that cannot import the project: it collects
+  // nothing and reports the import errors as failing tests. The detected
+  // command has to go through the project's environment.
+  function pythonProject(files: Record<string, string>): string {
+    return projectFixture({ 'pyproject.toml': '[project]\nname = "x"\n', ...files })
+  }
+
+  const cases: Array<[string, Record<string, string>, string]> = [
+    ['uv', { 'uv.lock': 'version = 1' }, 'uv run pytest'],
+    ['poetry', { 'poetry.lock': '' }, 'poetry run pytest'],
+    ['pdm', { 'pdm.lock': '' }, 'pdm run pytest'],
+    ['pipenv', { Pipfile: '' }, 'pipenv run pytest'],
+    ['in-tree venv', { '.venv/bin/pytest': '#!/bin/sh' }, '.venv/bin/pytest'],
+    ['nothing but pyproject.toml', {}, 'pytest'],
+  ]
+  for (const [label, files, expected] of cases) {
+    test(`${label} → ${expected}`, () => {
+      const root = pythonProject(files)
+      const detected = detectTestRunner(root)
+      expect(detected?.framework).toBe('pytest')
+      expect(detected?.command).toBe(expected)
+      rmSync(root, { recursive: true, force: true })
+    })
+  }
+
+  test('a manager lockfile wins over an in-tree venv binary', () => {
+    const root = pythonProject({ 'uv.lock': 'version = 1', '.venv/bin/pytest': '#!/bin/sh' })
+    expect(detectTestRunner(root)?.command).toBe('uv run pytest')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  test('the detected command still resolves back to the pytest framework', () => {
+    // planReporter/applyFilters key off the framework, so a prefixed command
+    // must not fall through to `unknown` when it round-trips through the
+    // command matchers (the path taken when the model passes it explicitly).
+    expect(detectFrameworkFromCommand('uv run pytest')).toBe('pytest')
+    expect(detectFrameworkFromCommand('poetry run pytest tests/')).toBe('pytest')
+    expect(detectFrameworkFromCommand('.venv/bin/pytest')).toBe('pytest')
+  })
+})
+
+// Every case here is the same defect the Python branch had: the synthesized
+// command runs OUTSIDE the environment the project declares, so it fails (or
+// silently runs the wrong thing) in a way that reads as a broken suite.
+describe('detectTestRunner — other language environments', () => {
+  function expectDetected(files: Record<string, string>, framework: Framework, command: string) {
+    const root = projectFixture(files)
+    const detected = detectTestRunner(root)
+    expect(detected?.framework).toBe(framework)
+    expect(detected?.command).toBe(command)
+    rmSync(root, { recursive: true, force: true })
+  }
+
+  describe('bun: `bun test` is Bun\'s own runner, not the `test` script', () => {
+    test('a bun-lockfile project with a foreign test script runs the script', () => {
+      // `bun test` here would ignore ava entirely and run Bun's runner over any
+      // *.test.ts it finds — failures from a runner the project never chose.
+      expectDetected(
+        { 'bun.lock': '', 'package.json': pkgJson({ scripts: { test: 'ava' } }) },
+        'unknown',
+        'bun run test',
+      )
+      expectDetected(
+        { 'bun.lock': '', 'package.json': pkgJson({ scripts: { test: 'node --test' } }) },
+        'node-test',
+        'bun run test',
+      )
+    })
+
+    test('a script that IS bun test keeps the direct form, so a reporter fits', () => {
+      expectDetected(
+        { 'bun.lock': '', 'package.json': pkgJson({ scripts: { test: 'bun test' } }) },
+        'bun',
+        'bun test',
+      )
+    })
+
+    test('the other package managers still run their script', () => {
+      // `npm|pnpm|yarn test` DO run the script — only bun collides.
+      expectDetected(
+        { 'pnpm-lock.yaml': '', 'package.json': pkgJson({ scripts: { test: 'jest' } }) },
+        'jest',
+        'pnpm test',
+      )
+    })
+  })
+
+  describe('deno: a bare `deno test` has no permissions', () => {
+    test('prefers the declared test task, which carries the suite\'s flags', () => {
+      expectDetected(
+        { 'deno.json': JSON.stringify({ tasks: { test: 'deno test -A' } }) },
+        'deno',
+        'deno task test',
+      )
+      // Deno 2 also allows the object form.
+      expectDetected(
+        { 'deno.jsonc': JSON.stringify({ tasks: { test: { command: 'deno test -A' } } }) },
+        'deno',
+        'deno task test',
+      )
+    })
+
+    test('falls back to the bare runner when no task is declared', () => {
+      expectDetected({ 'deno.json': JSON.stringify({ imports: {} }) }, 'deno', 'deno test')
+    })
+
+    test('the task form is not treated as a script wrapper — deno forwards args', () => {
+      // Verified against deno 2.9: `deno task test --junit-path=x` reaches the
+      // runner and writes the file, so the reporter must still be injected.
+      const plan = planReporter('deno', 'deno task test')
+      expect(plan.wrapped).toBe(false)
+      expect(plan.command).toMatch(/--junit-path=/)
+    })
+  })
+
+  describe('ruby: minitest needs bundler exactly like rspec does', () => {
+    test('shells through bundle exec when a Gemfile is present', () => {
+      expectDetected(
+        { Rakefile: '', 'test/x_test.rb': '', Gemfile: '' },
+        'minitest',
+        'bundle exec rake test',
+      )
+    })
+
+    test('stays bare without a Gemfile — there is no bundle to exec', () => {
+      expectDetected({ Rakefile: '', 'test/x_test.rb': '' }, 'minitest', 'rake test')
+    })
+  })
+
+  describe('maven: the wrapper is often the only build tool present', () => {
+    test('prefers ./mvnw, mirroring the gradle branch', () => {
+      expectDetected({ 'pom.xml': '', mvnw: '' }, 'maven', './mvnw test')
+    })
+
+    test('falls back to a global mvn when there is no wrapper', () => {
+      expectDetected({ 'pom.xml': '' }, 'maven', 'mvn test')
+    })
+  })
+
+  describe('php: vendor/bin is only the default location', () => {
+    test('an installed binary still wins — it parses structured output', () => {
+      expectDetected(
+        { 'composer.json': pkgJson({ scripts: { test: 'phpunit' } }), 'vendor/bin/pest': '' },
+        'pest',
+        'vendor/bin/pest',
+      )
+      expectDetected(
+        { 'composer.json': pkgJson({ scripts: { test: 'phpunit' } }), 'vendor/bin/phpunit': '' },
+        'phpunit',
+        'vendor/bin/phpunit',
+      )
+    })
+
+    test('falls back to the declared script when no binary sits at the default path', () => {
+      expectDetected(
+        { 'composer.json': pkgJson({ scripts: { test: 'pest' } }), 'tests/Pest.php': '' },
+        'pest',
+        'composer test',
+      )
+      // Array form, and a script whose runner token we cannot resolve.
+      expectDetected(
+        { 'composer.json': pkgJson({ scripts: { test: ['@php artisan test'] } }) },
+        'phpunit',
+        'composer test',
+      )
+    })
+
+    test('composer test is a script wrapper — composer eats injected flags', () => {
+      expect(isWrappedScript('composer test')).toBe(true)
+      expect(isWrappedScript('composer run-script test')).toBe(true)
+      expect(planReporter('phpunit', 'composer test').wrapped).toBe(true)
+      expect(planReporter('phpunit', 'composer test').command).toBe('composer test')
+    })
   })
 })
 
@@ -82,6 +278,25 @@ describe('parseJUnitXml', () => {
     expect(r!.failures[0].file).toBe('tests/test_math.py')
     expect(r!.failures[0].line).toBe(9)
     expect(r!.failures[0].message).toBe('assert 3 == 4')
+    expect(r!.failures[0].kind).toBe('failure')
+  })
+
+  test('a collection <error> is tagged as an error, not an assertion failure', () => {
+    // What pytest writes when a conftest import blows up: the cases exist only
+    // as error placeholders, so nothing ran.
+    const xml = `<?xml version="1.0"?>
+<testsuites><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="0.2">
+  <testcase classname="" name="modules.backend.tests" time="0.0">
+    <error message="collection failure">E   ModuleNotFoundError: No module named 'httpx'</error>
+  </testcase>
+  <testcase classname="" name="modules.web.tests" time="0.0">
+    <error message="collection failure">E   ModuleNotFoundError: No module named 'legendarr_backend'</error>
+  </testcase>
+</testsuite></testsuites>`
+    const r = parseJUnitXml(xml, 'pytest', 'pytest', 2)
+    expect(r!.failed).toBe(2)
+    expect(r!.passed).toBe(0)
+    expect(r!.failures.map(f => f.kind)).toEqual(['error', 'error'])
   })
 
   test('counts testcases when suite has no count attributes', () => {
@@ -593,6 +808,44 @@ describe('formatTestResult (token economy)', () => {
     const out = formatTestResult({ ...base, runError: 'no suite found' })
     expect(out).toContain('could not start')
     expect(out).toContain('no suite found')
+  })
+
+  test('flags a run where every entry is a collection error and nothing passed', () => {
+    // "0 passed, 3 failed" on its own reads as three broken tests; it is really
+    // a suite that never ran (wrong environment, bad import).
+    const out = formatTestResult({
+      ...base,
+      framework: 'pytest',
+      total: 3,
+      failed: 3,
+      exitCode: 2,
+      failures: [1, 2, 3].map(i => ({
+        name: `module${i}.tests`,
+        kind: 'error' as const,
+        message: 'collection failure',
+      })),
+    })
+    expect(out).toContain('never ran')
+    expect(out).toContain('uv run pytest')
+  })
+
+  test('does not flag a suite that ran — a passing case, or a real assertion failure', () => {
+    const withPasses = formatTestResult({
+      ...base,
+      total: 4,
+      passed: 3,
+      failed: 1,
+      failures: [{ name: 'setup', kind: 'error', message: 'fixture blew up' }],
+    })
+    expect(withPasses).not.toContain('never ran')
+
+    const assertionOnly = formatTestResult({
+      ...base,
+      total: 1,
+      failed: 1,
+      failures: [{ name: 'test_add', kind: 'failure', message: 'assert 3 == 4' }],
+    })
+    expect(assertionOnly).not.toContain('never ran')
   })
 
   test('no green check when the runner exits non-zero with zero failures', () => {
