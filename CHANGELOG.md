@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.1 — 2026-07-28
+
+- fix(runtests): detect the runner the project actually declares (d285e06)
+- docs(rules): record chalk 6's exact-level FORCE_COLOR semantics (1ef3c76)
+- chore(deps): bump chalk from 5.6.2 to 6.0.0 (#42) (be85070)
+- chore(deps): bump the production-dependencies group with 6 updates (#41) (8dcb494)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.0 — 2026-07-26
 
 - feat(tui): make the frame rate configurable and identical in both renderers (#40) (3810c5a)
