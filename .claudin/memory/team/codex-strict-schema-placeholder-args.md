@@ -63,20 +63,31 @@ required. Four other files looped the same way in that one session.
 - `const` and combinators (`anyOf`/`oneOf`/`allOf`) are still not widened: a
   const has one legal value, and a combinator already has branch structure.
 
-**Unverified against the live backend (2026-07-28):** there is no Codex profile
-on this machine, so the widening — especially the enum form
-`{type:['string','null'], enum:[…,null]}` — was never sent to chatgpt.com. If
-Codex 400s on it, that hunk in `allowNull` is the first suspect.
-`scripts/profile/codex-strict-probe.ts` settles it: five variants (`v0` is the
-pre-fix positive control, `v3` is exactly what production ships, `v4` the
-`anyOf` alternative), N reps each, request body mirroring
-`performCodexRequest`. Read `v0` first — if the control does not come back
-PLACEHOLDER, the run detected nothing and the other verdicts are void.
+**VERIFIED LIVE 2026-07-29** — gpt-5.5 over Codex OAuth, `claudindev -p` with
+`--output-format stream-json`, reading a 40-line file, one variant per build:
 
-**The fix that would delete all of it:** `strict: true` in
-`convertToolsToResponsesTools` is inherited from the initial commit with NO
-recorded evidence that the Codex backend requires it. If the probe shows a
-truthful `required` list is accepted (variant v1 or v2), then `allowNull`, the
-forced-required list and the whole strip layer in `toolExecution.ts` all go
-away — only the `src/entrypoints/mcp.ts` strip stays, because there the liar is
-the *other* harness driving us as an MCP server.
+| shipped? | schema sent | result |
+|---|---|---|
+| ✅ **current** | `strict:true` + forced `required` + widening | 200; model sends `pages/symbol/view/limit/offset: null`; strip removes them; answer **40** (correct) |
+| ✗ | `strict:true` + truthful `required` | **400 `invalid_function_parameters`** — *"Invalid schema for function 'Agent': 'required' … must include every key in properties. Missing 'isolation'."* |
+| ✗ | no `strict` + truthful `required` + widening | 200; model still sends nulls (harmless) |
+| ✗ | no `strict` + truthful `required`, **no widening** | 200, but model invents `limit:1, offset:1, pages:"", symbol:"", view:"full"` → read returns ONE line → **answer wrong (1)** |
+
+Three things this settles:
+1. The "Codex requires strict schemas" claim, unsourced since the initial
+   commit, is **true** — with `strict:true` the backend enforces
+   all-keys-in-`required`.
+2. The backend **accepts the widened enum** (`{type:['string','null'],
+   enum:[…,null]}`). That was the standing risk; it is closed.
+3. **Dropping `strict` would NOT have fixed the bug.** gpt-5.5 invents
+   placeholders even when the schema honestly says the field is optional — and
+   `limit: 1` is a *value*, not a placeholder, so no strip can rescue it. The
+   widening (giving the model an explicit `null` to send) is the part that
+   works. Do not "simplify" this by removing `strict` and the widening.
+
+`scripts/profile/codex-strict-probe.ts` remains the reusable instrument for
+re-checking after a model or backend change (its header carries these results).
+It could not run here: on Linux the Codex OAuth blob lives in libsecret, not in
+`.credentials.json`, so the live check was done through `claudindev` instead —
+which is the better test anyway, since it exercises the real credential path,
+the real tool schemas and the strip together.

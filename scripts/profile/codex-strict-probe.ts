@@ -1,13 +1,33 @@
 #!/usr/bin/env bun
 /**
  * Does the Codex backend actually require `strict: true` with every property in
- * `required`?
+ * `required`? ANSWERED 2026-07-29 — yes; see RESULTS below. This script stays as
+ * the reusable instrument for re-checking after a model or backend change.
  *
- * `convertToolsToResponsesTools` (src/services/api/codexShim.ts) has asserted
- * that since the initial commit — "Codex requires strict schemas: all properties
- * must be required" — with no recorded 400 backing it. That forced-required list
- * is what makes the model invent placeholder arguments (`pages: ""`), because it
+ * `convertToolsToResponsesTools` (src/services/api/codexShim.ts) asserted that
+ * since the initial commit — "Codex requires strict schemas: all properties must
+ * be required" — with no recorded 400 backing it. That forced-required list is
+ * what makes the model invent placeholder arguments (`pages: ""`), because it
  * has no legal way to omit an optional one.
+ *
+ * RESULTS ON RECORD (gpt-5.5 over Codex OAuth). Produced with `claudindev -p
+ * --output-format stream-json`, one variant per build, rather than with this
+ * script: on Linux the Codex OAuth blob lives in libsecret, which the
+ * credential reader below cannot reach.
+ *
+ *   strict + forced required + widening (shipped) → 200, model sends null
+ *   strict + truthful required                    → 400 invalid_function_parameters,
+ *                                                   "'required' … must include every
+ *                                                    key in properties. Missing
+ *                                                    'isolation'."
+ *   no strict + truthful required + widening      → 200, model sends null
+ *   no strict + truthful required, NO widening    → 200, model invents
+ *                                                   limit:1, pages:"", view:"full"
+ *
+ * The last row is the one that matters: dropping `strict` does not stop the
+ * model from inventing arguments, and an invented `limit: 1` is a value no
+ * strip can catch — the read silently returns one line and the answer is wrong.
+ * The widening is what fixes this, not the `required` list.
  *
  * This probe sends the same tool under five schema variants and reports, for
  * each: the HTTP status, and whether the model omitted the optional arguments it
