@@ -417,6 +417,15 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
  * `const` and combinators are still left alone: a const has exactly one legal
  * value (so widening changes nothing the strip can act on) and a combinator
  * already carries its own branch structure.
+ *
+ * Verified live on gpt-5.5 (2026-07-29): the backend accepts this shape,
+ * enum included, and the model answers `{"limit":null,"offset":null,
+ * "pages":null,"symbol":null,"view":null}` — it takes the escape hatch. Drop
+ * the widening and the SAME model on the SAME request invents
+ * `{"limit":1,"offset":1,"pages":"","symbol":"","view":"full"}` instead, and
+ * `limit: 1` is not a placeholder the strip can catch: the read returns one
+ * line and the answer is wrong. The widening, not the `required` list, is what
+ * actually fixes this.
  */
 function allowNull(schema: Record<string, unknown>): Record<string, unknown> {
   if ('const' in schema) return schema
@@ -436,7 +445,15 @@ export function convertToolsToResponsesTools(
     .filter(tool => tool.name && tool.name !== 'ToolSearchTool')
     .map(tool => {
       const rawParameters = tool.input_schema ?? { type: 'object', properties: {} }
-      // Codex requires strict schemas: all properties must be required
+      // Codex requires strict schemas: all properties must be required. This
+      // was an unsourced claim from the initial commit until 2026-07-29, when
+      // sending a truthful `required` under `strict: true` was answered with
+      //   400 invalid_function_parameters — "Invalid schema for function
+      //   'Agent': 'required' is required to be supplied and to be an array
+      //   including every key in properties. Missing 'isolation'."
+      // Dropping `strict` does get the truthful list accepted, but it does not
+      // help: the model keeps inventing placeholder values anyway (see
+      // allowNull above), so the flag stays and the widening carries the fix.
       const parameters = enforceStrictSchema(rawParameters)
 
       return {
