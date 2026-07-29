@@ -214,6 +214,9 @@ export async function resumeAgentBackground({
     selectedAgent,
     setAppState: rootSetAppState,
     toolUseId: toolUseContext.toolUseId,
+    // Footer-panel nesting follows whoever resumed the agent, which is also
+    // who its output now flows back to.
+    parentAgentId: toolUseContext.agentId,
   })
 
   const metadata = {

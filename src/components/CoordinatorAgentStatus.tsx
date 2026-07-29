@@ -23,7 +23,7 @@ import { formatDuration, formatNumber } from '../utils/format.js';
 import { evictTerminalTask } from '../utils/task/framework.js';
 import { isTerminalStatus } from './tasks/taskStatusUtils.js';
 import { countFooterTaskRows } from './tasks/footerSelection.js';
-import { getVisibleAgentTasks } from './tasks/footerTaskGeometry.js';
+import { countVisibleAgentTasks, getAgentPanelRows } from './tasks/footerTaskGeometry.js';
 export function CoordinatorTaskPanel(): React.ReactNode {
   const tasks = useAppState(s => s.tasks);
   const viewingAgentTaskId = useAppState(s_0 => s_0.viewingAgentTaskId);
@@ -32,7 +32,7 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   const tasksSelected = useAppState(s_3 => s_3.footerSelection === 'tasks');
   const selectedIndex = tasksSelected ? coordinatorTaskIndex : undefined;
   const setAppState = useSetAppState();
-  const visibleTasks = getVisibleAgentTasks(tasks);
+  const rows = getAgentPanelRows(tasks);
   const hasTasks = Object.values(tasks).some(isPanelAgentTask);
 
   // 1s tick: re-render for elapsed time + evict tasks past their deadline.
@@ -59,7 +59,7 @@ export function CoordinatorTaskPanel(): React.ReactNode {
     for (const [n, id] of agentNameRegistry) inv.set(id, n);
     return inv;
   }, [agentNameRegistry]);
-  if (visibleTasks.length === 0) {
+  if (rows.length === 0) {
     return null;
   }
   // Layout mirrors the BackgroundTaskGroupTree below: `● main` first, then an
@@ -67,15 +67,21 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   // (├─/└─). The label is purely visual (no collapse) — render it WITHOUT the
   // tree's chevron so users don't expect Enter to toggle it. The other tree
   // headers (Shells/Monitors) DO toggle and keep the chevron. Selection model:
-  // index 0 = main, 1..N = agents.
+  // index 0 = main, 1..N = agents, in row order.
+  //
+  // Rows are a tree, not a flat list: an agent spawned BY another agent
+  // registers into the same root store (see setAppStateForTasks), so it is
+  // indented under its parent instead of posing as one of main's own agents —
+  // that is what made `Agents (4)` unexplainable next to a transcript block
+  // that said `Running 3 agents…`.
   return <Box flexDirection="column">
       <MainLine isSelected={selectedIndex === 0} isViewed={viewingAgentTaskId === undefined} onClick={() => exitTeammateView(setAppState)} />
       <Box flexDirection="row">
         <Text dimColor>{"    "}</Text>
         <Text bold>Agents</Text>
-        <Text dimColor> ({visibleTasks.length})</Text>
+        <Text dimColor> ({rows.length})</Text>
       </Box>
-      {visibleTasks.map((task, i) => <AgentLine key={task.id} task={task} name={nameByAgentId.get(task.id)} connector={i === visibleTasks.length - 1 ? "└─" : "├─"} isSelected={selectedIndex === i + 1} isViewed={viewingAgentTaskId === task.id} onClick={() => enterTeammateView(task.id, setAppState)} />)}
+      {rows.map((row, i) => <AgentLine key={row.task.id} task={row.task} name={nameByAgentId.get(row.task.id)} connector={row.connector} isSelected={selectedIndex === i + 1} isViewed={viewingAgentTaskId === row.task.id} onClick={() => enterTeammateView(row.task.id, setAppState)} />)}
     </Box>;
 }
 
@@ -92,7 +98,7 @@ export function useCoordinatorTaskCount() {
   // after agents, so they're folded into the same count — this is what lets ↓
   // walk the cursor into the tree (and keeps x/enter acting on tree rows).
   return useAppState(s => {
-    const n = getVisibleAgentTasks(s.tasks).length;
+    const n = countVisibleAgentTasks(s.tasks);
     const agentPart = n === 0 ? 0 : n + 1;
     // countFooterTaskRows is a cheap counter — no row-list allocation. Hot path:
     // this selector runs on every AppState change AND on the panel's 1s tick,
@@ -136,8 +142,10 @@ function MainLine(t0: {
 type AgentLineProps = {
   task: LocalAgentTaskState;
   name?: string;
-  /** Tree connector glyph (├─ / └─) rendered before the bullet to group the
-   * agent rows under the `▼ Agents (N)` header, matching BackgroundTaskGroupTree. */
+  /** Tree connector rendered before the bullet to group the agent rows under
+   * the `▼ Agents (N)` header, matching BackgroundTaskGroupTree. Carries the
+   * ancestor guides for nested agents (`│  └─`), so its width varies with
+   * depth — everything below measures it instead of assuming 2 columns. */
   connector?: string;
   isSelected?: boolean;
   isViewed?: boolean;

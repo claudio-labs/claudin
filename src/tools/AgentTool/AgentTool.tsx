@@ -723,7 +723,10 @@ export const AgentTool = buildTool({
         // Don't link to parent's abort controller -- background agents should
         // survive when the user presses ESC to cancel the main thread.
         // They are killed explicitly via chat:killAgents.
-        toolUseId: toolUseContext.toolUseId
+        toolUseId: toolUseContext.toolUseId,
+        // Footer-panel nesting: undefined on the main thread, the spawning
+        // agent's id when an agent spawns another agent.
+        parentAgentId: toolUseContext.agentId
       });
 
       // Register name → agentId for SendMessage routing. Post-registerAsyncAgent
@@ -847,6 +850,9 @@ export const AgentTool = buildTool({
             selectedAgent,
             setAppState: rootSetAppState,
             toolUseId: toolUseContext.toolUseId,
+            // Footer-panel nesting: undefined on the main thread, the spawning
+            // agent's id when an agent spawns another agent.
+            parentAgentId: toolUseContext.agentId,
             // Same carve-out as autoBackgroundImplicit: getAutoBackgroundMs()
             // is an independent gate (env / GrowthBook), so without this an
             // inline-only spawn still flipped to async once the 120s timer

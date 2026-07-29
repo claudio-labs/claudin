@@ -120,6 +120,12 @@ export function createActivityDescriptionResolver(tools: Tools): ActivityDescrip
 export type LocalAgentTaskState = TaskStateBase & {
   type: 'local_agent';
   agentId: string;
+  /** The agent that spawned this one; undefined = spawned from the main
+   * thread. Sub-agents register into the SAME root store at any nesting depth
+   * (ToolUseContext.setAppStateForTasks is always-shared by design), so the
+   * footer panel needs this to indent a grandchild under its parent instead
+   * of listing it as a sibling of main's own agents. */
+  parentAgentId?: string;
   prompt: string;
   selectedAgent?: AgentDefinition;
   agentType: string;
@@ -474,7 +480,8 @@ export function registerAsyncAgent({
   selectedAgent,
   setAppState,
   parentAbortController,
-  toolUseId
+  toolUseId,
+  parentAgentId
 }: {
   agentId: string;
   description: string;
@@ -483,6 +490,7 @@ export function registerAsyncAgent({
   setAppState: SetAppState;
   parentAbortController?: AbortController;
   toolUseId?: string;
+  parentAgentId?: string;
 }): LocalAgentTaskState {
   void initTaskOutputAsSymlink(agentId, getAgentTranscriptPath(asAgentId(agentId)));
 
@@ -493,6 +501,7 @@ export function registerAsyncAgent({
     type: 'local_agent',
     status: 'running',
     agentId,
+    parentAgentId,
     prompt,
     selectedAgent,
     agentType: selectedAgent.agentType ?? 'Code',
@@ -534,7 +543,8 @@ export function registerAgentForeground({
   selectedAgent,
   setAppState,
   autoBackgroundMs,
-  toolUseId
+  toolUseId,
+  parentAgentId
 }: {
   agentId: string;
   description: string;
@@ -543,6 +553,7 @@ export function registerAgentForeground({
   setAppState: SetAppState;
   autoBackgroundMs?: number;
   toolUseId?: string;
+  parentAgentId?: string;
 }): {
   taskId: string;
   backgroundSignal: Promise<void>;
@@ -558,6 +569,7 @@ export function registerAgentForeground({
     type: 'local_agent',
     status: 'running',
     agentId,
+    parentAgentId,
     prompt,
     selectedAgent,
     agentType: selectedAgent.agentType ?? 'Code',

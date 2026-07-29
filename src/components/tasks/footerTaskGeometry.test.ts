@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import type { TaskState } from '../../tasks/types.js';
-import { footerTreeBaseIndex, getVisibleAgentTasks } from './footerTaskGeometry.js';
+import {
+  countVisibleAgentTasks,
+  footerTreeBaseIndex,
+  getAgentPanelRows,
+  getVisibleAgentTasks,
+} from './footerTaskGeometry.js';
 
 // Minimal panel-agent fixture: only the fields isPanelAgentTask and the row
 // sort/visibility rules read. Cast through unknown so we don't have to satisfy
@@ -70,6 +75,92 @@ describe('getVisibleAgentTasks', () => {
   test('returns [] when there are no agents', () => {
     expect(getVisibleAgentTasks(asRecord(shell('s1')))).toEqual([]);
     expect(getVisibleAgentTasks({})).toEqual([]);
+  });
+});
+
+describe('getAgentPanelRows — nesting', () => {
+  // A sub-agent spawned BY another agent registers in the same root store at
+  // any nesting depth, so without the parent link it rendered as a sibling of
+  // main's own agents — `Agents (4)` next to a `Running 3 agents…` block.
+  test('places a child right after its parent, indented', () => {
+    const tasks = asRecord(
+      panelAgent('a1', 100),
+      panelAgent('a2', 200),
+      panelAgent('child-of-a1', 300, { parentAgentId: 'a1' }),
+    );
+    const rows = getAgentPanelRows(tasks);
+    expect(rows.map(r => r.task.id)).toEqual(['a1', 'child-of-a1', 'a2']);
+    expect(rows.map(r => r.depth)).toEqual([0, 1, 0]);
+    expect(rows.map(r => r.connector)).toEqual(['├─', '│  └─', '└─']);
+  });
+
+  test('a grandchild carries its ancestors guides', () => {
+    const tasks = asRecord(
+      panelAgent('a1', 100),
+      panelAgent('kid', 200, { parentAgentId: 'a1' }),
+      panelAgent('grandkid', 300, { parentAgentId: 'kid' }),
+    );
+    const rows = getAgentPanelRows(tasks);
+    expect(rows.map(r => r.task.id)).toEqual(['a1', 'kid', 'grandkid']);
+    expect(rows.map(r => r.depth)).toEqual([0, 1, 2]);
+    // a1 is the last root and kid its last child, so both guides are blank.
+    expect(rows.map(r => r.connector)).toEqual(['└─', '   └─', '      └─']);
+  });
+
+  test('siblings under one parent keep the guide line until the last', () => {
+    const tasks = asRecord(
+      panelAgent('a1', 100),
+      panelAgent('a2', 150),
+      panelAgent('kid1', 200, { parentAgentId: 'a1' }),
+      panelAgent('kid2', 250, { parentAgentId: 'a1' }),
+    );
+    const rows = getAgentPanelRows(tasks);
+    expect(rows.map(r => r.task.id)).toEqual(['a1', 'kid1', 'kid2', 'a2']);
+    expect(rows.map(r => r.connector)).toEqual(['├─', '│  ├─', '│  └─', '└─']);
+  });
+
+  test('an evicted or absent parent leaves the child at the root', () => {
+    // The parent finished and its row is gone; the child is still running and
+    // must stay visible (and selectable) rather than vanish with its parent.
+    const tasks = asRecord(
+      panelAgent('gone', 100, { evictAfter: 0 }),
+      panelAgent('orphan', 200, { parentAgentId: 'gone' }),
+      panelAgent('unknown-parent', 300, { parentAgentId: 'never-existed' }),
+    );
+    const rows = getAgentPanelRows(tasks);
+    expect(rows.map(r => r.task.id)).toEqual(['orphan', 'unknown-parent']);
+    expect(rows.map(r => r.depth)).toEqual([0, 0]);
+  });
+
+  test('a parent link that does not go back in time is ignored', () => {
+    // Guards the walk against a cycle: parent edges may only point at an
+    // earlier-started agent, so every task is reachable from some root and
+    // gets exactly one row.
+    const tasks = asRecord(
+      panelAgent('a', 100, { parentAgentId: 'b' }),
+      panelAgent('b', 200, { parentAgentId: 'a' }),
+      panelAgent('self', 300, { parentAgentId: 'self' }),
+    );
+    const rows = getAgentPanelRows(tasks);
+    expect(rows.map(r => r.task.id)).toEqual(['a', 'b', 'self']);
+    expect(rows.map(r => r.depth)).toEqual([0, 1, 0]);
+  });
+
+  test('nesting never changes the row count', () => {
+    // countVisibleAgentTasks skips the tree build to stay cheap in the footer
+    // selector — it must keep agreeing with the rows the panel renders, or the
+    // cursor bounds drift away from what is on screen.
+    const tasks = asRecord(
+      panelAgent('a1', 100),
+      panelAgent('kid', 200, { parentAgentId: 'a1' }),
+      panelAgent('grandkid', 300, { parentAgentId: 'kid' }),
+      panelAgent('a2', 400),
+      panelAgent('hidden', 500, { evictAfter: 0 }),
+      shell('s1'),
+    );
+    expect(countVisibleAgentTasks(tasks)).toBe(4);
+    expect(getAgentPanelRows(tasks)).toHaveLength(4);
+    expect(footerTreeBaseIndex(tasks)).toBe(5);
   });
 });
 
