@@ -33,16 +33,21 @@ required. Four other files looped the same way in that one session.
   from the SAME JSON Schema (`inputJSONSchema`, else
   `zodToJsonSchema(inputSchema)`), so they cannot drift.
 - **The strip is gated on the transport of the request being made**, via
-  `transportSendsStrictToolSchemas(model)` (`src/services/api/providerConfig.ts`),
-  which just asks `resolveProviderRequest`. Two traps that gate has to survive,
-  both found in review: (1) reading the ACTIVE PROFILE's transport is wrong —
-  `/model`, a sub-agent `model:` override and `--fallback-model` all change the
-  request model without touching the profile, so the model is passed in from
-  `toolUseContext.options.mainLoopModel`; (2) re-deriving the answer instead of
-  asking `resolveProviderRequest` drifts — a Copilot profile reports
-  `github_copilot` yet ships GPT-5+/codex over the Responses API, and a
-  `github:gpt-5` id only matches after normalization. Do not make the strip
-  global either: `""` is a real argument on every other transport.
+  `transportSendsStrictToolSchemas(model)` (`src/services/api/providerConfig.ts`).
+  Three traps that gate has to survive, all found in review: (1) reading the
+  ACTIVE PROFILE's model is wrong — `/model`, a sub-agent `model:` override and
+  `--fallback-model` all change the request model without touching the profile,
+  so the model is passed in from `toolUseContext.options.mainLoopModel`;
+  (2) re-deriving the transport instead of asking `resolveProviderRequest`
+  drifts — a Copilot profile reports `github_copilot` yet resolves to
+  `codex_responses` for GPT-5+/codex, and a `github:gpt-5` id only matches after
+  normalization; (3) **`convertToolsToResponsesTools` has a SECOND call site** —
+  openaiShim's `messagesClient` 400-fallback re-sends the same tools through
+  /responses when Copilot answers "/chat/completions not accessible". That retry
+  is invisible to the resolver (the request resolved to `chat_completions`), so
+  the gate also returns true for ANY `github_copilot` profile. Grep both call
+  sites before touching the gate. Do not make the strip global either: `""` is a
+  real argument on every other transport.
 - **Pass the whole tool, never `tool.inputSchema`.** MCP tools keep a
   passthrough `z.object({}).passthrough()` as their zod schema
   (`src/tools/MCPTool/MCPTool.ts:17`) and the server's real schema in

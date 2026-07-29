@@ -532,17 +532,7 @@ export function resolveProviderRequest(options?: {
   fallbackModel?: string
   reasoningEffortOverride?: ReasoningEffort
 }): ResolvedProviderRequest {
-  // The resolver is best-effort here — some startup/diagnostic call sites run
-  // before the profile exists, so we tolerate `null` and fall back to safe
-  // defaults. require() breaks the activeProvider <-> providerConfig cycle
-  // (activeProvider imports `isOpenAICodexShortcut` from this file).
-  let activeProvider: ResolvedProviderShape | null = null
-  try {
-    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
-    activeProvider = tryGetActiveProvider()
-  } catch {
-    activeProvider = null
-  }
+  const activeProvider = tryGetActiveProviderShape()
 
   const transportFromProfile = activeProvider?.transport
   const isGithubMode = transportFromProfile === 'github_copilot'
@@ -640,21 +630,47 @@ export function resolveProviderRequest(options?: {
 }
 
 /**
- * True when the tools for a request on `model` go out under `strict: true`.
+ * True when the tools for a request on `model` MAY go out under `strict: true`
+ * — i.e. through `convertToolsToResponsesTools`, the one conversion that forces
+ * every optional property into `required` and so makes the model send
+ * placeholder arguments it never meant to pass
+ * (`stripPlaceholderOptionalFields` cleans them up).
  *
- * The Codex Responses transport is the only one where `convertToolsToResponsesTools`
- * forces every optional property into `required`, so it is the only one whose
- * tool inputs carry placeholder arguments the model never meant to send
- * (`stripPlaceholderOptionalFields`). Asking `resolveProviderRequest` rather
- * than re-deriving the answer keeps the two in lockstep: a Copilot profile
- * reports the `github_copilot` transport yet still ships GPT-5+/codex requests
- * over the Responses API, and `github:`-prefixed model ids only resolve after
- * normalization. Pass the model the request will actually use — a session can
- * run `/model`, a sub-agent override or the fallback model, none of which
- * touch the profile's primary model.
+ * Two call sites send those strict tools, and the gate has to cover both:
+ *
+ *  1. The Codex Responses transport (`performCodexRequest`). Asking
+ *     `resolveProviderRequest` rather than re-deriving the answer keeps the two
+ *     in lockstep — a Copilot profile reports the `github_copilot` transport
+ *     yet resolves to `codex_responses` for GPT-5+/codex, and `github:`-prefixed
+ *     ids only match after normalization.
+ *  2. The GitHub 400-fallback in openaiShim's `messagesClient`: when Copilot
+ *     answers /chat/completions with "not accessible", the request is re-sent
+ *     to /responses with the SAME strict conversion. That retry is invisible to
+ *     the resolver — the request resolved to `chat_completions` — so any GitHub
+ *     profile counts, whatever its endpoint type or model. Erring wide costs a
+ *     dropped `""` on an optional argument; erring narrow means the model's
+ *     legal `null` reaches zod, which rejects it.
+ *
+ * Pass the model the request will actually use: `/model`, a sub-agent override
+ * and `--fallback-model` all diverge from the profile's primary model.
  */
 export function transportSendsStrictToolSchemas(model?: string): boolean {
-  return resolveProviderRequest({ model }).transport === 'codex_responses'
+  if (resolveProviderRequest({ model }).transport === 'codex_responses') return true
+  return tryGetActiveProviderShape()?.transport === 'github_copilot'
+}
+
+/**
+ * The active profile, or null. Best-effort: some startup/diagnostic call sites
+ * run before a profile exists. require() breaks the activeProvider <->
+ * providerConfig cycle (activeProvider imports `isOpenAICodexShortcut` here).
+ */
+function tryGetActiveProviderShape(): ResolvedProviderShape | null {
+  try {
+    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
+    return tryGetActiveProvider()
+  } catch {
+    return null
+  }
 }
 
 type ResolvedProviderShape = {
