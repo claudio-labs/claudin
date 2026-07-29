@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.2 — 2026-07-29
+
+- docs(codex): record the live evidence for the strict-schema contract (#44) (57aebd6)
+- fix(plan-mode): keep the plan file put when a Bash `cd` moves the cwd (7da75dd)
+- fix(update): detect the package manager that actually owns the install (9d15216)
+- fix(agents): indent nested sub-agents under their parent in the footer panel (8178001)
+- fix(codex): let the model decline an optional tool argument (#43) (72cc23b)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.1 — 2026-07-28
 
 - fix(runtests): detect the runner the project actually declares (d285e06)
