@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it, mock } from 'bun:test'
+import { readFileSync } from 'node:fs'
 import type { MCPServerConnection } from '../services/mcp/types.js'
 import type { Tool as InternalTool } from '../Tool.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
@@ -30,6 +31,26 @@ describe('getCombinedTools', () => {
     expect(result).toHaveLength(2)
     expect(result[0]).toBe(mcpBash)
     expect(result[1]).toBe(builtinRead)
+  })
+})
+
+describe('placeholder stripping on the MCP server boundary', () => {
+  // The call site is inside the server's CallTool handler, which cannot be
+  // reached without standing up a transport, so this is a source pin — the
+  // semantics are covered in toolInputPlaceholders.test.ts.
+  const src = readFileSync(new URL('./mcp.ts', import.meta.url), 'utf8')
+
+  it('normalizes args before the zod parse', () => {
+    expect(src).toContain(
+      'stripPlaceholderOptionalFields(tool, args ?? {}),',
+    )
+  })
+
+  it('is deliberately ungated here, unlike the in-process tool loop', () => {
+    // In toolExecution the strip is gated on our own transport. Here the
+    // strict-schema harness is on the OTHER side of the wire (Claude Code,
+    // Cursor, …), so our provider says nothing about what the caller sends.
+    expect(src).not.toContain('transportSendsStrictToolSchemas')
   })
 })
 

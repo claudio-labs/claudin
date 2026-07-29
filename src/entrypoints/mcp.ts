@@ -36,6 +36,7 @@ import { hasPermissionsToUseTool } from '../utils/permissions/permissions.js'
 import { setCwd } from '../utils/Shell.js'
 import { jsonStringify } from '../utils/slowOperations.js'
 import { getErrorParts } from '../utils/toolErrors.js'
+import { stripPlaceholderOptionalFields } from '../utils/toolInputPlaceholders.js'
 import { zodToJsonSchema } from '../utils/zodToJsonSchema.js'
 
 type ToolInput = Tool['inputSchema']
@@ -175,8 +176,12 @@ export async function startMCPServer(
           throw new Error(`Tool ${name} is not enabled`)
         }
 
-        // Validate input types with zod
-        const parsedArgs = tool.inputSchema.parse(args ?? {})
+        // Validate input types with zod. Clients driving us through a
+        // strict-schema model send "" / null for optional args they mean to
+        // leave out — same normalization the in-process tool loop applies.
+        const parsedArgs = tool.inputSchema.parse(
+          stripPlaceholderOptionalFields(tool, args ?? {}),
+        )
 
         const validationResult = await tool.validateInput?.(
           (parsedArgs as never) ?? {},
@@ -264,4 +269,3 @@ export async function startMCPServer(
 
   return await runServer()
 }
-

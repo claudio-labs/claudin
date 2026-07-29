@@ -639,6 +639,24 @@ export function resolveProviderRequest(options?: {
   }
 }
 
+/**
+ * True when the tools for a request on `model` go out under `strict: true`.
+ *
+ * The Codex Responses transport is the only one where `convertToolsToResponsesTools`
+ * forces every optional property into `required`, so it is the only one whose
+ * tool inputs carry placeholder arguments the model never meant to send
+ * (`stripPlaceholderOptionalFields`). Asking `resolveProviderRequest` rather
+ * than re-deriving the answer keeps the two in lockstep: a Copilot profile
+ * reports the `github_copilot` transport yet still ships GPT-5+/codex requests
+ * over the Responses API, and `github:`-prefixed model ids only resolve after
+ * normalization. Pass the model the request will actually use — a session can
+ * run `/model`, a sub-agent override or the fallback model, none of which
+ * touch the profile's primary model.
+ */
+export function transportSendsStrictToolSchemas(model?: string): boolean {
+  return resolveProviderRequest({ model }).transport === 'codex_responses'
+}
+
 type ResolvedProviderShape = {
   transport: 'anthropic' | 'openai_compat' | 'gemini' | 'mistral' | 'github_copilot' | 'codex_responses' | 'bedrock' | 'vertex' | 'foundry'
   baseUrl: string
