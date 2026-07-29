@@ -56,6 +56,7 @@ const {
   invalidateActiveProviderCache,
   ActiveProviderNotConfiguredError,
 } = await import('./activeProvider.js')
+const { transportSendsStrictToolSchemas } = await import('./providerConfig.js')
 
 function setProfileState(profiles: ProviderProfile[], activeId?: string): void {
   const id = activeId ?? profiles[0]?.id
@@ -250,5 +251,62 @@ describe('getActiveProvider — caching', () => {
     const b = getActiveProvider()
     expect(b.transport).toBe('gemini')
     expect(b).not.toBe(a)
+  })
+})
+
+// Lives here rather than beside `resolveProviderRequest` because the answer
+// depends on the ACTIVE PROFILE, and this file owns the profile-state fixtures.
+describe('transportSendsStrictToolSchemas', () => {
+  test('a codex alias sends strict tools', () => {
+    setProfileState([
+      profile({ id: 'p1', provider: 'openai', model: 'codexplan', baseUrl: '' }),
+    ])
+    expect(transportSendsStrictToolSchemas('codexplan')).toBe(true)
+  })
+
+  test('anthropic and plain OpenAI-compatible profiles do not', () => {
+    setProfileState([
+      profile({ id: 'p1', provider: 'anthropic', model: 'claude-sonnet-4-6' }),
+    ])
+    expect(transportSendsStrictToolSchemas('claude-sonnet-4-6')).toBe(false)
+
+    invalidateActiveProviderCache()
+    setProfileState([profile({ id: 'p2', provider: 'openai', model: 'gpt-4o' })])
+    expect(transportSendsStrictToolSchemas('gpt-4o')).toBe(false)
+  })
+
+  test('a GitHub profile counts even on a model that resolves to chat_completions', () => {
+    // The 400-fallback in openaiShim's messagesClient re-sends the SAME tools
+    // through /responses — with the strict conversion — when Copilot answers
+    // "/chat/completions not accessible". That retry never reaches the
+    // resolver, so gating on `transport === 'codex_responses'` alone would let
+    // the model's legal `null` through to zod on every GitHub endpoint type.
+    setProfileState([
+      profile({
+        id: 'p1',
+        provider: 'openai',
+        baseUrl: 'https://models.github.ai/inference',
+        model: 'gpt-4o',
+        extras: { githubToken: 'ghp_xxx' },
+      }),
+    ])
+    expect(transportSendsStrictToolSchemas('gpt-4o')).toBe(true)
+  })
+
+  test('the request model wins over the profile model', () => {
+    // `/model`, a sub-agent override and --fallback-model all change the model
+    // without touching the profile.
+    setProfileState([
+      profile({ id: 'p1', provider: 'openai', model: 'gpt-4o', baseUrl: '' }),
+    ])
+    expect(transportSendsStrictToolSchemas('gpt-4o')).toBe(false)
+    expect(transportSendsStrictToolSchemas('codexplan')).toBe(true)
+  })
+
+  test('no configured profile → false', () => {
+    state.globalConfig = {} as GlobalConfig
+    state.activeProfile = undefined
+    invalidateActiveProviderCache()
+    expect(transportSendsStrictToolSchemas('gpt-4o')).toBe(false)
   })
 })

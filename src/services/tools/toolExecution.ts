@@ -102,6 +102,8 @@ import {
 } from '../../utils/sessionActivity.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import { Stream } from '../../utils/stream.js'
+import { stripPlaceholderOptionalFields } from '../../utils/toolInputPlaceholders.js'
+import { transportSendsStrictToolSchemas } from '../api/providerConfig.js'
 import { logOTelEvent } from '../../utils/telemetry/events.js'
 import {
   addToolContentEvent,
@@ -430,8 +432,21 @@ export async function* runToolUse(
     return
   }
 
-  const toolInput = toolUse.input as { [key: string]: string }
+  // The Codex transport cannot express "argument omitted": it forces every
+  // property into `required`, so the model sends a placeholder ("" / null) for
+  // the ones it did not want to pass. Drop those before anything downstream —
+  // validation, permissions and the repeated-failure streak all key off this
+  // object. Gated on the transport this request actually uses, because `""` is
+  // a legitimate argument everywhere else; the model is passed explicitly
+  // since a session can run a different model than its profile's primary
+  // (`/model`, a sub-agent override, the fallback model). The whole tool goes
+  // in, not its zod schema: an MCP tool's real schema is inputJSONSchema.
+  let toolInput = toolUse.input as { [key: string]: string }
   try {
+    if (transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel)) {
+      toolInput = stripPlaceholderOptionalFields(tool, toolInput)
+    }
+
     if (toolUseContext.abortController.signal.aborted) {
       logEvent('tengu_tool_use_cancelled', {
         toolName: sanitizeToolNameForAnalytics(tool.name),

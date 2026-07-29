@@ -161,6 +161,22 @@ describe('Codex provider config', () => {
     expect(resolved.resolvedModel).toBe('gpt-5.5')
   })
 
+  test('transportSendsStrictToolSchemas tracks the per-request model', async () => {
+    const { transportSendsStrictToolSchemas } = await importFreshProviderConfigModule()
+    delete process.env.OPENAI_BASE_URL
+    delete process.env.OPENAI_API_BASE
+    delete process.env.CLAUDE_CODE_USE_GITHUB
+
+    // This is the gate that decides whether tool inputs get placeholder-stripped
+    // (`stripPlaceholderOptionalFields`). It has to answer for the model the
+    // request actually uses — `/model`, a sub-agent override and the fallback
+    // model all diverge from the profile's primary — and it has to agree with
+    // `resolveProviderRequest`, which is why it just asks it.
+    expect(transportSendsStrictToolSchemas('codexplan')).toBe(true)
+    expect(transportSendsStrictToolSchemas('gpt-4o')).toBe(false)
+    expect(transportSendsStrictToolSchemas('claude-sonnet-4-6')).toBe(false)
+  })
+
   test('resolves codexplan to Codex transport even when OPENAI_BASE_URL is the string "undefined"', async () => {
     const { resolveProviderRequest } = await importFreshProviderConfigModule()
     // On Windows, env vars can leak as the literal string "undefined" instead of
@@ -292,7 +308,9 @@ describe('Codex request translation', () => {
           properties: {
             description: { type: 'string' },
             prompt: { type: 'string' },
-            subagent_type: { type: 'string' },
+            // Strict mode forces every key into `required`; nullable is how an
+            // optional argument stays skippable.
+            subagent_type: { type: ['string', 'null'] },
           },
           required: ['description', 'prompt', 'subagent_type'],
           additionalProperties: false,
@@ -362,7 +380,7 @@ describe('Codex request translation', () => {
           type: 'object',
           properties: {
             pattern: { type: 'string', description: 'Search pattern' },
-            path: { type: 'string' },
+            path: { type: ['string', 'null'] },
           },
           required: ['pattern', 'path'],
           additionalProperties: false,
@@ -398,7 +416,7 @@ describe('Codex request translation', () => {
           type: 'object',
           properties: {
             pattern: { type: 'string', description: 'Glob pattern' },
-            path: { type: 'string' },
+            path: { type: ['string', 'null'] },
           },
           required: ['pattern', 'path'],
           additionalProperties: false,
@@ -406,6 +424,155 @@ describe('Codex request translation', () => {
         strict: true,
       },
     ])
+  })
+
+  test('widens optional types, including an optional enum', () => {
+    const tools = convertToolsToResponsesTools([
+      {
+        name: 'Read',
+        description: 'Read a file',
+        input_schema: {
+          type: 'object',
+          properties: {
+            file_path: { type: 'string' },
+            limit: { type: 'number' },
+            // An enum needs `null` in the value list too, or the widened type
+            // union and the enum contradict each other. Left un-widened, this
+            // is the field the model is forced to send on every call.
+            view: { type: 'string', enum: ['outline', 'full'] },
+          },
+          required: ['file_path'],
+          additionalProperties: false,
+        },
+      },
+    ])
+
+    expect(tools[0]?.parameters).toEqual({
+      type: 'object',
+      properties: {
+        file_path: { type: 'string' },
+        limit: { type: ['number', 'null'] },
+        view: { type: ['string', 'null'], enum: ['outline', 'full', null] },
+      },
+      required: ['file_path', 'limit', 'view'],
+      additionalProperties: false,
+    })
+  })
+
+  test('treats a missing required list as "everything optional"', () => {
+    const tools = convertToolsToResponsesTools([
+      {
+        name: 'Legacy',
+        description: 'MCP tool with a sloppy schema',
+        input_schema: {
+          type: 'object',
+          properties: { value: { type: 'string' } },
+        },
+      },
+    ])
+
+    // JSON Schema semantics: no `required` means nothing is required. Reading
+    // it as "all required" left tools like ListMcpResources — whose only field
+    // is optional — uncallable without an invented argument.
+    expect(tools[0]?.parameters).toEqual({
+      type: 'object',
+      properties: { value: { type: ['string', 'null'] } },
+      required: ['value'],
+      additionalProperties: false,
+    })
+  })
+
+  test('leaves a const property alone when widening', () => {
+    const tools = convertToolsToResponsesTools([
+      {
+        name: 'Pinned',
+        description: 'Tool with a const discriminator',
+        input_schema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            // `type` matters: without it the `typeof type !== 'string'` bail
+            // would answer for this case and the const guard would be dead
+            // weight that no test can see.
+            kind: { type: 'string', const: 'file' },
+          },
+          required: ['path'],
+          additionalProperties: false,
+        },
+      },
+    ])
+
+    const properties = (tools[0]?.parameters as { properties: Record<string, unknown> }).properties
+    expect(properties.kind).toEqual({ type: 'string', const: 'file' })
+  })
+
+  test('leaves combinators and already-nullable types alone when widening', () => {
+    const tools = convertToolsToResponsesTools([
+      {
+        name: 'Mixed',
+        description: 'Optional union and optional null-typed field',
+        input_schema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            value: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+            nothing: { type: 'null' },
+          },
+          required: ['path'],
+          additionalProperties: false,
+        },
+      },
+    ])
+
+    const properties = (tools[0]?.parameters as { properties: Record<string, unknown> }).properties
+    // A combinator already carries its own branch structure, and `null` cannot
+    // be widened further. Both stay byte-identical — which also means the model
+    // still has no way to decline them; the downstream strip covers that.
+    expect(properties.value).toEqual({ anyOf: [{ type: 'string' }, { type: 'number' }] })
+    expect(properties.nothing).toEqual({ type: 'null' })
+  })
+
+  test('widens optionals inside nested objects and array items', () => {
+    const tools = convertToolsToResponsesTools([
+      {
+        name: 'ReportFindings',
+        description: 'Nested optional properties',
+        input_schema: {
+          type: 'object',
+          properties: {
+            findings: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  file: { type: 'string' },
+                  line: { type: 'integer' },
+                },
+                required: ['file'],
+              },
+            },
+            meta: {
+              type: 'object',
+              properties: { branch: { type: 'string' }, note: { type: 'string' } },
+              required: ['branch'],
+            },
+          },
+          required: ['findings'],
+          additionalProperties: false,
+        },
+      },
+    ])
+
+    // The widening reaches every level, which is exactly why
+    // stripPlaceholderOptionalFields has to walk the value the same way — a
+    // top-level-only pass leaves `findings[].line: null` for zod to reject.
+    const properties = (tools[0]?.parameters as { properties: Record<string, unknown> }).properties
+    const items = (properties.findings as { items: { properties: Record<string, unknown> } }).items
+    expect(items.properties.line).toEqual({ type: ['integer', 'null'] })
+    expect(items.properties.file).toEqual({ type: 'string' })
+    const meta = properties.meta as { type: unknown; properties: Record<string, unknown> }
+    expect(meta.type).toEqual(['object', 'null'])
+    expect(meta.properties.note).toEqual({ type: ['string', 'null'] })
   })
 
   test('strips validator pattern keyword but keeps string field named pattern in Codex schemas', () => {
@@ -511,9 +678,12 @@ describe('Codex request translation', () => {
           type: 'object',
           properties: {
             priority: {
-              type: 'integer',
+              // No upstream `required`, so `priority` is optional and gets
+              // widened — malformed enum members are dropped first, then
+              // `null` joins both the type union and the value list.
+              type: ['integer', 'null'],
               description: 'Priority: 0=low, 1=medium, 2=high, 3=urgent',
-              enum: [0, 1, 2, 3],
+              enum: [0, 1, 2, 3, null],
             },
           },
           required: ['priority'],

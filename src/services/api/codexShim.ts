@@ -313,6 +313,8 @@ export function convertAnthropicMessagesToResponsesInput(
  * Recursively enforces Codex strict-mode constraints on a JSON schema:
  * - Every `object` type gets `additionalProperties: false`
  * - All property keys are listed in `required`
+ * - Keys that were NOT required upstream become nullable, so the model can
+ *   still express "I am not passing this one" (see allowNull)
  * - Nested schemas (properties, items, anyOf/oneOf/allOf) are processed too
  */
 function enforceStrictSchema(schema: unknown): Record<string, unknown> {
@@ -335,7 +337,19 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
       !Array.isArray(record.properties)
     ) {
       const props = record.properties as Record<string, unknown>
-      const allKeys = Object.keys(props)
+      // Captured before `required` is overwritten below: it is the only
+      // record of which arguments the tool actually considers optional.
+      // An absent `required` is JSON Schema for "nothing is required" — the
+      // same reading stripPlaceholderOptionalFields uses for MCP schemas.
+      // Treating it as "everything is required" (an earlier revision did)
+      // forced every argument of tools like ListMcpResources, whose schema
+      // has no required list at all, so the model could never call them
+      // without inventing a value.
+      const originallyRequired = new Set(
+        Array.isArray(record.required)
+          ? record.required.filter((key): key is string => typeof key === 'string')
+          : [],
+      )
 
       const enforcedProps: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(props)) {
@@ -353,7 +367,9 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
         ) {
           continue
         }
-        enforcedProps[key] = strictValue
+        enforcedProps[key] = originallyRequired.has(key)
+          ? strictValue
+          : allowNull(strictValue)
       }
       record.properties = enforcedProps
       record.required = Object.keys(enforcedProps)
@@ -382,6 +398,37 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
   return record
 }
 
+/**
+ * Makes an optional property nullable — OpenAI's documented way to express
+ * "optional" under strict structured outputs, where every key must be in
+ * `required`. Without it the model has no legal way to skip an argument and
+ * invents a placeholder instead (`pages: ""`, `limit: 2000`,
+ * `view: "full"`), which downstream tools then honor as a real value.
+ * stripPlaceholderOptionalFields (src/utils/toolInputPlaceholders.ts) turns
+ * the resulting `null` back into an absent key.
+ *
+ * An `enum` needs `null` in BOTH the type union and the value list, or the
+ * two contradict each other. The single-schema form is used rather than
+ * `anyOf: [{enum…}, {type:'null'}]` because it introduces no combinator where
+ * the backend previously saw a plain property. Leaving enums un-widened is
+ * what forced `AgentTool.isolation: "worktree"` onto every Codex sub-agent —
+ * a single-value optional enum the model could not decline.
+ *
+ * `const` and combinators are still left alone: a const has exactly one legal
+ * value (so widening changes nothing the strip can act on) and a combinator
+ * already carries its own branch structure.
+ */
+function allowNull(schema: Record<string, unknown>): Record<string, unknown> {
+  if ('const' in schema) return schema
+  if ('anyOf' in schema || 'oneOf' in schema || 'allOf' in schema) return schema
+  const type = schema.type
+  if (typeof type !== 'string' || type === 'null') return schema
+  if (Array.isArray(schema.enum)) {
+    return { ...schema, type: [type, 'null'], enum: [...schema.enum, null] }
+  }
+  return { ...schema, type: [type, 'null'] }
+}
+
 export function convertToolsToResponsesTools(
   tools: Array<{ name?: string; description?: string; input_schema?: Record<string, unknown> }>,
 ): ResponsesTool[] {
@@ -400,64 +447,6 @@ export function convertToolsToResponsesTools(
         strict: true,
       }
     })
-}
-
-function isStrictResponsesSchema(schema: unknown): boolean {
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
-    return true
-  }
-
-  const record = schema as Record<string, unknown>
-  const type = record.type
-
-  if (type === 'object') {
-    const properties =
-      record.properties && typeof record.properties === 'object' && !Array.isArray(record.properties)
-        ? (record.properties as Record<string, unknown>)
-        : {}
-
-    const propertyKeys = Object.keys(properties)
-    const required = Array.isArray(record.required)
-      ? record.required.filter((value): value is string => typeof value === 'string')
-      : null
-
-    if (propertyKeys.length > 0) {
-      if (!required) return false
-
-      const requiredSet = new Set(required)
-      for (const key of propertyKeys) {
-        if (!requiredSet.has(key)) {
-          return false
-        }
-      }
-    }
-
-    for (const child of Object.values(properties)) {
-      if (!isStrictResponsesSchema(child)) {
-        return false
-      }
-    }
-  }
-
-  const combinators = ['anyOf', 'oneOf', 'allOf'] as const
-  for (const key of combinators) {
-    if (key in record) {
-      const value = record[key]
-      if (!Array.isArray(value) || value.some(item => !isStrictResponsesSchema(item))) {
-        return false
-      }
-    }
-  }
-
-  if ('items' in record) {
-    const items = record.items
-    if (Array.isArray(items)) {
-      return items.every(item => isStrictResponsesSchema(item))
-    }
-    return isStrictResponsesSchema(items)
-  }
-
-  return true
 }
 
 function convertToolChoice(toolChoice: unknown): unknown {

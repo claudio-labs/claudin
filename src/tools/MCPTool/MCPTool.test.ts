@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ToolUseContext } from '../../Tool.js'
+import { stripPlaceholderOptionalFields } from '../../utils/toolInputPlaceholders.js'
 import { MCPTool } from './MCPTool.js'
 
 function makeCtx(): ToolUseContext {
@@ -92,6 +93,41 @@ describe('MCPTool (base scaffold)', () => {
     expect(result.message).toContain(
       'Accepted arguments: libraryName (string, required), query (string, required)',
     )
+  })
+
+  test('a nulled optional arg only survives Ajv once the placeholder is stripped', async () => {
+    // Codex sends every optional arg as `null` (codexShim widens them so the
+    // model can express "skip this"), and Ajv here validates against the
+    // SERVER's schema, which says `"type": "string"` — so the null is a hard
+    // rejection unless stripPlaceholderOptionalFields removed the key first.
+    // MCPTool's own zod schema is a passthrough, so that helper has to read
+    // inputJSONSchema; if it goes back to reading only the zod shape, the
+    // first expectation below flips to false.
+    const toolWithSchema = {
+      ...MCPTool,
+      inputJSONSchema: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: { type: 'string' },
+          cursor: { type: 'string' },
+        },
+      },
+    }
+    const raw = { query: 'files', cursor: null }
+    const stripped = stripPlaceholderOptionalFields(toolWithSchema, raw)
+
+    const afterStrip = await toolWithSchema.validateInput?.(
+      stripped as never,
+      makeCtx(),
+    )
+    expect(afterStrip?.result).toBe(true)
+
+    const withPlaceholder = await toolWithSchema.validateInput?.(
+      raw as never,
+      makeCtx(),
+    )
+    expect(withPlaceholder?.result).toBe(false)
   })
 
   test('isResultTruncated returns false for short string and false for short blocks', () => {

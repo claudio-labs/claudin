@@ -347,3 +347,36 @@ describe('serial-edit nudge wiring', () => {
     expect(src).toContain('currentCall: { name: toolName, input: currentInput }')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Wiring: strict-schema placeholder stripping. The behavior itself is covered
+// by src/utils/toolInputPlaceholders.test.ts; what no unit test can see is the
+// call being detached here, which would put `pages: ""` back in front of
+// validateInput on every Codex turn. Pinned statically for the same reason as
+// the two blocks above.
+// ---------------------------------------------------------------------------
+
+describe('placeholder-input wiring', () => {
+  const src = readFileSync(new URL('./toolExecution.ts', import.meta.url), 'utf8')
+
+  // Source-text assertions, not behavior: `runToolUse` is a generator wired to
+  // permissions, analytics and the message store, and standing all of that up
+  // costs more than these pin. What they catch is the wiring being dropped or
+  // ungated by a refactor; the semantics are covered behaviorally in
+  // toolInputPlaceholders.test.ts and the gate in codexShim.test.ts.
+  test('the strip runs, gated on the transport', () => {
+    expect(src).toContain(
+      'if (transportSendsStrictToolSchemas(toolUseContext.options.mainLoopModel)) {',
+    )
+    expect(src).toContain(
+      'toolInput = stripPlaceholderOptionalFields(tool, toolInput)',
+    )
+  })
+
+  test('the gate reads the request model, not the profile default', () => {
+    // A session can run `/model`, a sub-agent override or the fallback model,
+    // none of which touch the profile's primary model — asking the profile
+    // strips on the wrong transport in both directions.
+    expect(src).not.toContain('transportSendsStrictToolSchemas()')
+  })
+})
