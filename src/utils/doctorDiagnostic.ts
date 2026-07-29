@@ -3,8 +3,11 @@ import { readFile, realpath } from 'fs/promises'
 import { homedir } from 'os'
 import { delimiter, join, posix, win32 } from 'path'
 import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from './sourceTreeDetect.js'
-import { checkGlobalInstallPermissions } from './autoUpdater.js'
-import { isInBundledMode } from './bundledMode.js'
+import {
+  checkGlobalInstallPermissions,
+  getBunGlobalPackageDir,
+} from './autoUpdater.js'
+import { getLauncherPath, isInBundledMode } from './bundledMode.js'
 import {
   formatAutoUpdaterDisabledReason,
   getAutoUpdaterDisabledReason,
@@ -87,7 +90,10 @@ export type DiagnosticInfo = {
 }
 
 function getNormalizedPaths(): [invokedPath: string, execPath: string] {
-  let invokedPath = process.argv[1] || ''
+  // getLauncherPath(), not argv[1]: inside the bun-compiled release binary
+  // argv[1] is the in-binary VFS path and matches no install prefix, which
+  // classified every native install as `unknown`.
+  let invokedPath = getLauncherPath()
   let execPath = process.execPath || process.argv[0] || ''
 
   // On Windows, convert backslashes to forward slashes for consistent path matching
@@ -249,7 +255,7 @@ async function getInstallationPath(): Promise<string> {
 
   // For npm installations, use the path of the executable
   try {
-    return process.argv[0] || 'unknown'
+    return getLauncherPath() || 'unknown'
   } catch {
     return 'unknown'
   }
@@ -257,13 +263,9 @@ async function getInstallationPath(): Promise<string> {
 
 export function getInvokedBinary(): string {
   try {
-    // For bundled/compiled executables, show the actual binary path
-    if (isInBundledMode()) {
-      return process.execPath || 'unknown'
-    }
-
-    // For npm/development, show the script path
-    return process.argv[1] || 'unknown'
+    // Resolves to the real binary for compiled executables and to the script
+    // path for npm/development runs.
+    return getLauncherPath() || 'unknown'
   } catch {
     return 'unknown'
   }
@@ -351,6 +353,18 @@ async function detectMultipleInstallations(): Promise<
         }
       }
     }
+  }
+
+  // Bun keeps its own global prefix (~/.bun/install/global by default), which
+  // `npm -g config get prefix` never reports — so an npm+bun pair used to look
+  // like a single installation even though PATH order decides which binary the
+  // OS actually runs.
+  const bunPackagePath = getBunGlobalPackageDir()
+  try {
+    await fs.stat(bunPackagePath)
+    installations.push({ type: 'bun-global', path: bunPackagePath })
+  } catch {
+    // Not found
   }
 
   // Check for native installation

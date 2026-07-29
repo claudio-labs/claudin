@@ -1,11 +1,12 @@
 import { constants as fsConstants } from 'fs'
-import { access, stat, writeFile } from 'fs/promises'
+import { access, readFile, stat, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
+import { getLauncherPath } from './bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
 import { env } from './env.js'
@@ -14,6 +15,7 @@ import { ClaudeError, getErrnoCode, isENOENT } from './errors.js'
 import { execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { getFsImplementation } from './fsOperations.js'
 import { logError } from './log.js'
+import { getPlatform } from './platform.js'
 import { gte } from './semver.js'
 import { getInitialSettings } from './settings/settings.js'
 import {
@@ -26,26 +28,35 @@ import { jsonParse } from './slowOperations.js'
 
 class AutoUpdaterError extends ClaudeError {}
 
+type PackageManager = 'npm' | 'bun'
+
 /**
- * Detect a Bun global install even when the launcher re-exec'd into Node.
- * `bin/claudin` swaps to `process.execPath` (Node) for the heap bump, which
- * means `isRunningWithBun()` returns false; we fall back to inspecting the
- * launcher path to keep the package manager aligned with the install source.
+ * Detect a Bun global install from where the launcher actually lives.
+ *
+ * Location, not runtime: `bin/claudin` may re-exec into Node for the heap bump,
+ * and conversely the release binaries are bun-compiled so they always report a
+ * Bun runtime. Only the install path says which package manager owns us.
  */
 function isInstalledViaBun(): boolean {
-  const invokedPath = process.argv[1] || ''
+  const invokedPath = getLauncherPath()
   if (invokedPath.includes('/.bun/install/global/')) return true
   const bunInstall = process.env.BUN_INSTALL
   if (bunInstall && invokedPath.startsWith(bunInstall)) return true
   return false
 }
 
-async function isBunGlobalInstall(): Promise<boolean> {
-  const result = await execFileNoThrowWithCwd('bun', ['pm', 'ls', '-g'], {
-    cwd: homedir(),
-  })
-  if (result.code !== 0) return false
-  return result.stdout.includes(MACRO.PACKAGE_URL as string)
+/**
+ * Which package manager owns THIS installation.
+ *
+ * Deliberately NOT `isRunningWithBun()`. Every Claudin release binary is
+ * bun-compiled, so `process.versions.bun` is always defined — using it made the
+ * updater run `bun install -g` even for npm installs, which either failed
+ * outright (no `bun` on PATH → `bun pm bin -g` fails → a bogus "insufficient
+ * permissions, try sudo") or quietly built a second, competing global tree
+ * while the npm copy on PATH stayed at the old version.
+ */
+function getInstallPackageManager(): PackageManager {
+  return isInstalledViaBun() ? 'bun' : 'npm'
 }
 
 // The wrapper package ships bin/claudin.exe as a ~600-byte Node stub that its
@@ -57,7 +68,7 @@ const STUB_LAUNCHER_MAX_BYTES = 4096
 // spawn() surfaces a missing executable as an "spawn <cmd> ENOENT" error message.
 const SPAWN_ENOENT_RE = /ENOENT/i
 
-function getBunGlobalPackageDir(): string {
+export function getBunGlobalPackageDir(): string {
   const root = process.env.BUN_INSTALL || join(homedir(), '.bun')
   return join(
     root,
@@ -66,6 +77,95 @@ function getBunGlobalPackageDir(): string {
     'node_modules',
     MACRO.PACKAGE_URL as string,
   )
+}
+
+async function getNpmGlobalPackageDir(): Promise<string | null> {
+  // Run from home directory to avoid reading project-level .npmrc.
+  const result = await execFileNoThrowWithCwd(
+    'npm',
+    ['-g', 'config', 'get', 'prefix'],
+    { cwd: homedir() },
+  )
+  if (result.code !== 0) return null
+  const prefix = result.stdout.trim()
+  if (!prefix) return null
+  return getPlatform() === 'windows'
+    ? join(prefix, 'node_modules', MACRO.PACKAGE_URL as string)
+    : join(prefix, 'lib', 'node_modules', MACRO.PACKAGE_URL as string)
+}
+
+/** Version recorded in an installed package dir, or null when not installed. */
+async function readInstalledVersion(
+  packageDir: string,
+): Promise<string | null> {
+  try {
+    const raw = await readFile(join(packageDir, 'package.json'), 'utf8')
+    const parsed = jsonParse(raw) as { version?: unknown }
+    return typeof parsed.version === 'string' ? parsed.version : null
+  } catch (e) {
+    if (!isENOENT(e)) logError(e as Error)
+    return null
+  }
+}
+
+function getGlobalPackageDir(pm: PackageManager): Promise<string | null> {
+  return pm === 'bun'
+    ? Promise.resolve(getBunGlobalPackageDir())
+    : getNpmGlobalPackageDir()
+}
+
+/**
+ * Refresh the OTHER global tree when it still holds an older copy.
+ *
+ * npm and bun keep independent global prefixes, and PATH — not the updater —
+ * decides which binary the OS ends up running. Updating only the tree we were
+ * launched from leaves the stale one shadowing us, which the user experiences
+ * as "the update did nothing". Reports one line and never fails the update.
+ */
+async function repairStaleSiblingInstall(
+  primary: PackageManager,
+  packageSpec: string,
+  onProgress?: (message: string) => void,
+): Promise<void> {
+  const sibling: PackageManager = primary === 'npm' ? 'bun' : 'npm'
+
+  const siblingDir = await getGlobalPackageDir(sibling)
+  if (!siblingDir) return
+  const siblingVersion = await readInstalledVersion(siblingDir)
+  if (!siblingVersion) return // nothing installed there — nothing to shadow us
+
+  const primaryDir = await getGlobalPackageDir(primary)
+  const primaryVersion = primaryDir
+    ? await readInstalledVersion(primaryDir)
+    : null
+  if (primaryVersion && siblingVersion === primaryVersion) return
+
+  logForDebugging(
+    `update: repairing stale ${sibling} install ${siblingVersion} at ${siblingDir}`,
+  )
+
+  const args =
+    sibling === 'npm'
+      ? ['install', '-g', '--force', packageSpec]
+      : ['install', '-g', packageSpec]
+  const result = await execFileNoThrowWithCwd(sibling, args, { cwd: homedir() })
+  if (result.code !== 0) {
+    // The sibling manager may not even be installed. Nothing the user has to
+    // act on — the tree they launched from is updated either way.
+    logError(
+      new AutoUpdaterError(
+        `Failed to refresh the ${sibling} global install at ${siblingDir}: ${result.stdout} ${result.stderr}`,
+      ),
+    )
+    return
+  }
+
+  // `bun install -g` skips postinstall, leaving the Node stub in place.
+  if (sibling === 'bun') await repairBunGlobalBinary()
+
+  // Reported only once the repair actually landed, so the line never claims
+  // work that failed.
+  onProgress?.(`Repaired old version ${siblingVersion} at ${siblingDir}`)
 }
 
 /**
@@ -340,7 +440,7 @@ async function releaseLock(): Promise<void> {
 
 async function getInstallationPrefix(): Promise<string | null> {
   // Run from home directory to avoid reading project-level .npmrc/.bunfig.toml
-  const isBun = env.isRunningWithBun() || isInstalledViaBun()
+  const isBun = getInstallPackageManager() === 'bun'
   let prefixResult = null
   if (isBun) {
     prefixResult = await execFileNoThrowWithCwd('bun', ['pm', 'bin', '-g'], {
@@ -505,6 +605,7 @@ export async function getVersionHistory(limit: number): Promise<string[]> {
 
 export async function installGlobalPackage(
   specificVersion?: string | null,
+  options?: { onProgress?: (message: string) => void },
 ): Promise<InstallStatus> {
   if (!(await acquireLock())) {
     logError(
@@ -521,8 +622,10 @@ export async function installGlobalPackage(
 
   try {
     await removeClaudeAliasesFromShellConfigs()
+    const packageManager = getInstallPackageManager()
+
     // Check if we're using npm from Windows path in WSL
-    if (!env.isRunningWithBun() && env.isNpmFromWindowsPath()) {
+    if (packageManager === 'npm' && env.isNpmFromWindowsPath()) {
       logError(new Error('Windows NPM detected in WSL environment'))
       logEvent('tengu_auto_updater_windows_npm_in_wsl', {
         currentVersion:
@@ -555,8 +658,6 @@ To fix this issue:
 
     // Run from home directory to avoid reading project-level .npmrc/.bunfig.toml
     // which could be maliciously crafted to redirect to an attacker's registry
-    const packageManager =
-      env.isRunningWithBun() || isInstalledViaBun() ? 'bun' : 'npm'
     const installArgs =
       packageManager === 'npm'
         ? ['install', '-g', '--force', packageSpec]
@@ -574,27 +675,17 @@ To fix this issue:
       return 'install_failed'
     }
 
-    // If npm was used but bun also has the package installed globally, update bun too.
-    // This prevents the bun binary (which often has PATH priority) from staying behind.
-    if (packageManager === 'npm' && (await isBunGlobalInstall())) {
-      const bunResult = await execFileNoThrowWithCwd(
-        'bun',
-        ['install', '-g', packageSpec],
-        { cwd: homedir() },
-      )
-      if (bunResult.code !== 0) {
-        logError(
-          new AutoUpdaterError(
-            `Failed to update bun global install: ${bunResult.stdout} ${bunResult.stderr}`,
-          ),
-        )
-      }
-    }
-
     // Bun skips the postinstall on `bun install -g`, leaving the native launcher
     // as a Node stub that fails to run. Run the skipped postinstall now (no-op
     // for npm-only installs).
     await repairBunGlobalBinary()
+
+    // An older copy left in the other global tree can still win the PATH race.
+    await repairStaleSiblingInstall(
+      packageManager,
+      packageSpec as string,
+      options?.onProgress,
+    )
 
     // Set installMethod to 'global' to track npm global installations
     saveGlobalConfig(current => ({

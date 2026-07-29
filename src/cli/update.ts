@@ -45,33 +45,15 @@ export async function update() {
     `update: Config install method: ${diagnostic.configInstallMethod}`,
   )
 
-  // Check for multiple installations
-  if (diagnostic.multipleInstallations.length > 1) {
-    writeToStdout('\n')
-    writeToStdout(chalk.yellow('Warning: Multiple installations found') + '\n')
-    for (const install of diagnostic.multipleInstallations) {
-      const current =
-        diagnostic.installationType === install.type
-          ? ' (currently running)'
-          : ''
-      writeToStdout(`- ${install.type} at ${install.path}${current}\n`)
-    }
+  // Installation inventory and health warnings belong to `claudin doctor`;
+  // `update` reports what it did to the install, nothing else. The one thing it
+  // does surface is a stale copy in the other global tree, as a single
+  // "Repaired old version ..." line emitted from installGlobalPackage.
+  for (const install of diagnostic.multipleInstallations) {
+    logForDebugging(`update: installation ${install.type} at ${install.path}`)
   }
-
-  // Display warnings if any exist
-  if (diagnostic.warnings.length > 0) {
-    writeToStdout('\n')
-    for (const warning of diagnostic.warnings) {
-      logForDebugging(`update: Warning detected: ${warning.issue}`)
-
-      // Don't skip PATH warnings - they're always relevant
-      // The user needs to know that 'which claude' points elsewhere
-      logForDebugging(`update: Showing warning: ${warning.issue}`)
-
-      writeToStdout(chalk.yellow(`Warning: ${warning.issue}\n`))
-
-      writeToStdout(chalk.bold(`Fix: ${warning.fix}\n`))
-    }
+  for (const warning of diagnostic.warnings) {
+    logForDebugging(`update: warning detected: ${warning.issue}`)
   }
 
   // Self-heal a Bun global install whose postinstall Bun skipped: the native
@@ -99,8 +81,6 @@ export async function update() {
     !config.installMethod &&
     diagnostic.installationType !== 'package-manager'
   ) {
-    writeToStdout('\n')
-    writeToStdout('Updating configuration to track installation method...\n')
     let detectedMethod: 'local' | 'native' | 'global' | 'unknown' = 'unknown'
 
     // Map diagnostic installation type to config install method
@@ -122,7 +102,7 @@ export async function update() {
       ...current,
       installMethod: detectedMethod,
     }))
-    writeToStdout(`Installation method set to: ${detectedMethod}\n`)
+    logForDebugging(`update: installation method set to: ${detectedMethod}`)
   }
 
   // Check if running from development build
@@ -214,23 +194,13 @@ export async function update() {
       normalizedRunningType !== configExpects &&
       configExpects !== 'unknown'
     ) {
-      writeToStdout('\n')
-      writeToStdout(chalk.yellow('Warning: Configuration mismatch') + '\n')
-      writeToStdout(`Config expects: ${configExpects} installation\n`)
-      writeToStdout(`Currently running: ${runningType}\n`)
-      writeToStdout(
-        chalk.yellow(
-          `Updating the ${runningType} installation you are currently using`,
-        ) + '\n',
-      )
-
-      // Update config to match reality
+      // Config disagrees with reality — reality wins, silently.
       saveGlobalConfig(current => ({
         ...current,
         installMethod: normalizedRunningType as InstallMethod,
       }))
-      writeToStdout(
-        `Config updated to reflect current installation method: ${normalizedRunningType}\n`,
+      logForDebugging(
+        `update: config expected ${configExpects}, running ${runningType} — config updated`,
       )
     }
   }
@@ -357,11 +327,8 @@ export async function update() {
       const isLocal = await localInstallationExists()
       useLocalUpdate = isLocal
       updateMethodName = isLocal ? 'local' : 'global'
-      writeToStdout(
-        chalk.yellow('Warning: Could not determine installation type') + '\n',
-      )
-      writeToStdout(
-        `Attempting ${updateMethodName} update based on file detection...\n`,
+      logForDebugging(
+        `update: installation type undetermined, attempting ${updateMethodName} update from file detection`,
       )
       break
     }
@@ -386,7 +353,9 @@ export async function update() {
     status = await installOrUpdateClaudePackage(channel)
   } else {
     logForDebugging('update: Calling installGlobalPackage() for global update')
-    status = await installGlobalPackage()
+    status = await installGlobalPackage(null, {
+      onProgress: message => writeToStdout(`${message}\n`),
+    })
   }
 
   logForDebugging(`update: Installation status: ${status}`)

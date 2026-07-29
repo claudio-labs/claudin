@@ -5,6 +5,7 @@
 import { access, chmod, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
+import { getLauncherPath } from './bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from './config.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
 import { getErrnoCode } from './errors.js'
@@ -59,7 +60,7 @@ export function getLocalClaudePath(): string {
  * Check if we're running from our managed local installation
  */
 export function isRunningFromLocalInstallation(): boolean {
-  return isManagedLocalInstallationPath(process.argv[1] || '')
+  return isManagedLocalInstallationPath(getLauncherPath())
 }
 
 /**
