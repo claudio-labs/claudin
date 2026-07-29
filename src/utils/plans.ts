@@ -13,7 +13,7 @@ import type {
 } from 'src/types/message.js'
 import { getPlanSlugCache, getSessionId } from '../bootstrap/state.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from '../tools/ExitPlanModeTool/constants.js'
-import { getCwd } from './cwd.js'
+import { getSessionRootCwd } from './cwd.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'
@@ -81,10 +81,18 @@ export function clearAllPlanSlugs(): void {
 // first-resolved path for the rest of the process, which is wrong once cwd can change
 // mid-session (worktree enter/exit) or differ per async context (subagent cwd overrides
 // via runWithCwdOverride, including worktree-isolated subagents in AgentTool.tsx).
+//
+// The key is the session ROOT, not getCwd(): a `cd` inside a Bash command persists
+// into the session cwd (Shell.ts calls setCwd after every foreground command) and
+// plan mode allows read-only Bash, so `cd sub && ls` used to relocate the plans
+// directory mid-session. The plan file the model had been told to write then stopped
+// matching isSessionPlanFile(), so every Write/Edit/apply_patch to it was hard-denied
+// with "Only the plan file may be edited" while the plan already written read back
+// as missing.
 export const getPlansDirectory = memoize(function getPlansDirectory(): string {
   const settings = getInitialSettings()
   const settingsDir = settings.plansDirectory
-  const cwd = getCwd()
+  const cwd = getSessionRootCwd()
   let plansPath: string
 
   if (settingsDir) {
@@ -103,7 +111,7 @@ export const getPlansDirectory = memoize(function getPlansDirectory(): string {
   } else {
     // Default: project-local .claudin/plans/, alongside the project's other
     // .claudin/ artifacts (skills, rules, agents)
-    plansPath = join(getCwd(), '.claudin', 'plans')
+    plansPath = join(cwd, '.claudin', 'plans')
   }
 
   // Ensure directory exists (mkdirSync with recursive: true is a no-op if it exists)
@@ -169,7 +177,7 @@ export const getPlansDirectory = memoize(function getPlansDirectory(): string {
   }
 
   return plansPath
-}, getCwd)
+}, getSessionRootCwd)
 
 /**
  * Get the file path for a session's plan

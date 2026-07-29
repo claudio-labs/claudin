@@ -195,4 +195,36 @@ describe('getPlansDirectory', () => {
 
     expect(gitignoreCalls).toEqual([])
   })
+
+  test('a `cd` inside a Bash command does not move the plans directory', async () => {
+    // Regression: Shell.ts persists the cwd after every foreground command and
+    // plan mode allows read-only Bash, so `cd sub && ls` moved getCwd() into the
+    // subdirectory. Keyed on getCwd(), the plans dir moved with it: the plan file
+    // the model had been told to write stopped being recognized as the plan file
+    // and every write to it was denied with "Only the plan file may be edited".
+    const projectDir = freshProjectDir()
+    const subDir = join(projectDir, 'sub')
+    mkdirSync(subDir)
+    const { getPlansDirectory } = await importFreshPlansModule()
+    const { getCwdState, getOriginalCwd, setCwdState, setOriginalCwd } =
+      await import('../bootstrap/state.js')
+    const previousCwd = getCwdState()
+    const previousOriginalCwd = getOriginalCwd()
+
+    try {
+      setOriginalCwd(projectDir)
+      setCwdState(projectDir)
+      const before = getPlansDirectory()
+
+      setCwdState(subDir) // what BashTool's cwd tracking does after `cd sub`
+      const after = getPlansDirectory()
+
+      expect(before).toBe(join(projectDir, '.claudin', 'plans'))
+      expect(after).toBe(before)
+      expect(existsSync(join(subDir, '.claudin'))).toBe(false)
+    } finally {
+      setCwdState(previousCwd)
+      setOriginalCwd(previousOriginalCwd)
+    }
+  })
 })

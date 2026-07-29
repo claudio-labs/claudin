@@ -30,3 +30,17 @@ export function getCwd(): string {
     return getOriginalCwd()
   }
 }
+
+/**
+ * The session's working ROOT — for callers that must stay anchored to the same
+ * directory for a whole session even as the shell wanders.
+ *
+ * Same as getCwd() except that a `cd` inside a Bash command does not move it:
+ * Shell.ts's cwd tracking calls setCwd(), which only rewrites the cwd state,
+ * while the transitions that really do re-root a session (worktree enter/exit,
+ * resume, ssh/direct-connect) also call setOriginalCwd(). A cwd override still
+ * wins, so a worktree-isolated sub-agent keeps its own root.
+ */
+export function getSessionRootCwd(): string {
+  return cwdOverrideStorage.getStore() ?? getOriginalCwd()
+}

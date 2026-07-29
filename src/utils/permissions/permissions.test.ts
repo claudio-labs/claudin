@@ -92,7 +92,14 @@ describe('plan mode hard gate', () => {
     const result = await callGate(tool, makeContext({ mode: 'plan' }))
     if (result.behavior !== 'deny') throw new Error('expected deny')
     expect(result.decisionReason).toEqual({ type: 'mode', mode: 'plan' })
-    expect(result.message).toMatchSnapshot()
+    // Not snapshotted: the message names the session's plan file, whose path
+    // (project dir + random slug) differs per machine and per run.
+    expect(result.message).toStartWith(
+      'Plan mode is active. Tool FileEdit is not read-only and cannot run until you call ExitPlanMode.',
+    )
+    expect(result.message).toMatch(
+      /Only the plan file \(.+\.md\) may be edited\.$/,
+    )
   })
 
   test('2. allows when tool.checkPermissions already returned allow (plan file path)', async () => {

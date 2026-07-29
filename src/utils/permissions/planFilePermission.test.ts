@@ -2,6 +2,12 @@ import { test, expect, describe } from 'bun:test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import {
+  getCwdState,
+  getOriginalCwd,
+  setCwdState,
+  setOriginalCwd,
+} from '../../bootstrap/state.js'
 import { runWithCwdOverride } from '../cwd.js'
 import { getPlansDirectory, setPlanSlug } from '../plans.js'
 import { getSessionId } from '../../bootstrap/state.js'
@@ -99,5 +105,30 @@ describe('isSessionPlanFile (via checkEditableInternalPath)', () => {
       })
       expect(decision.behavior).toBe('passthrough')
     })
+  })
+
+  test('still allows the plan file after a Bash `cd` moved the session cwd (regression)', () => {
+    // The symptom users hit: during planning the model runs `cd sub && ls`,
+    // Shell.ts persists the new cwd, and the next write to its own plan file
+    // comes back "Only the plan file may be edited".
+    const root = mkdtempSync(join(tmpdir(), 'plan-perm-cd-'))
+    const previousCwd = getCwdState()
+    const previousOriginalCwd = getOriginalCwd()
+    try {
+      setOriginalCwd(root)
+      setCwdState(root)
+      const p = join(getPlansDirectory(), 'unified-rolling-ritchie.md')
+
+      setCwdState(join(root, 'sub'))
+      const decision = checkEditableInternalPath(p, {
+        file_path: p,
+        content: 'x',
+      })
+
+      expect(decision.behavior).toBe('allow')
+    } finally {
+      setCwdState(previousCwd)
+      setOriginalCwd(previousOriginalCwd)
+    }
   })
 })

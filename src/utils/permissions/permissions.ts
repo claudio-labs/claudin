@@ -16,6 +16,7 @@ import { extractOutputRedirections } from '../bash/commands.js'
 import { logForDebugging } from '../debug.js'
 import { AbortError, isSdkApiUserAbortError, toError } from '../errors.js'
 import { logError } from '../log.js'
+import { getPlanFilePath } from '../plans.js'
 import { SandboxManager } from '../sandbox/sandbox-adapter.js'
 import {
   getSettingSourceDisplayNameLowercase,
@@ -1081,9 +1082,20 @@ function planModeHardDenyIfApplicable(
   }
   if (readOnly) return null
 
+  // Name the one file that IS editable. A write the model believes targets the
+  // plan file but that resolves elsewhere (a path it remembered from before the
+  // plans dir moved, a hallucinated slug) otherwise dead-ends here, with no way
+  // to tell a wrong path apart from a blanket ban on writing.
+  let planFileClause = 'Only the plan file may be edited.'
+  try {
+    planFileClause = `Only the plan file (${getPlanFilePath(context.agentId)}) may be edited.`
+  } catch (e) {
+    logError(e)
+  }
+
   return {
     behavior: 'deny',
-    message: `Plan mode is active. Tool ${tool.name} is not read-only and cannot run until you call ExitPlanMode. Only the plan file may be edited.`,
+    message: `Plan mode is active. Tool ${tool.name} is not read-only and cannot run until you call ExitPlanMode. ${planFileClause}`,
     decisionReason: {
       type: 'mode',
       mode: 'plan',
