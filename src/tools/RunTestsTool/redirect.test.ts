@@ -6,6 +6,7 @@ import {
   renderRunTestsRedirect,
   resetRunTestsRedirectMemoForTesting,
   shouldRedirectToRunTests,
+  stripOutputTrimTail,
 } from './redirect.js'
 
 describe('isRedirectableTestCommand — fires on a bare test run', () => {
@@ -41,6 +42,15 @@ describe('isRedirectableTestCommand — fires on a bare test run', () => {
     'deno test',
     'node --test',
     'CI=true bun test',
+    // The output-trimming tail the model habitually appends to a verbose
+    // runner. It asks for LESS output, which is what RunTests returns — and in
+    // Rust it is on virtually every real invocation, so treating it as
+    // composition meant the redirect never fired there at all.
+    'cargo test -p ferrous-dns-infrastructure --test cache_bloom_rotation_test 2>&1 | tail -25',
+    'bun test 2>&1',
+    'pytest tests/unit | head -20',
+    'cargo test --test doq_test 2>&1 | grep -E "^test |test result"',
+    'go test ./... 2>&1 | tail -40 | head -5',
   ]
   for (const cmd of REDIRECTED) {
     test(cmd, () => expect(isRedirectableTestCommand(cmd)).toBe(true))
@@ -59,9 +69,18 @@ describe('isRedirectableTestCommand — stands down', () => {
     ['pytest | tee /tmp/out', 'piped'],
     ['go test ./... > /tmp/out', 'redirected'],
     ['cargo test; echo done', 'sequenced'],
+    // Trimming the output does not excuse the rest of the command.
+    ['bun test 2>&1 | tee /tmp/out', 'tee persists the output, it does not trim it'],
+    ['bun test | wc -l', 'pipes to something that is not an output filter'],
+    ['pytest 2>&1 > /tmp/out', 'redirected, the 2>&1 is not the tail'],
+    ['bun run build && bun test 2>&1 | tail -20', 'still chained with a build'],
     // Deliberate raw-output / non-run intent.
     ['pytest -s', 'capture disabled'],
     ['cargo test -- --nocapture', 'capture disabled'],
+    [
+      'cargo test --test zz_repro -- --nocapture 2>&1 | tail -35',
+      'capture disabled — the trimming tail does not override the flag',
+    ],
     ['npx vitest --watch', 'watcher'],
     ['pytest --pdb', 'debugger'],
     ['npx jest --reporters=json', 'explicit reporter'],
@@ -144,6 +163,42 @@ describe('renderRunTestsRedirect', () => {
     expect(msg).toContain('"pytest tests/unit"')
     expect(msg).toContain('re-send this exact Bash command')
   })
+
+  test('suggests the command WITHOUT the output filter', () => {
+    // A piped command handed to RunTests' `command` would have its summary
+    // truncated away before the parser saw it, so the suggestion must be the
+    // bare run — while the escape hatch still points at the command as typed.
+    const msg = renderRunTestsRedirect('cargo test --test doq 2>&1 | tail -40')
+    expect(msg).toContain('command: "cargo test --test doq"')
+    expect(msg).not.toContain('command: "cargo test --test doq 2>&1 | tail -40"')
+    expect(msg).toContain('`cargo test --test doq 2>&1 | tail -40`')
+  })
+})
+
+describe('stripOutputTrimTail', () => {
+  const STRIPPED: Array<[string, string]> = [
+    ['cargo test 2>&1 | tail -35', 'cargo test'],
+    ['cargo test 2>&1', 'cargo test'],
+    ['pytest tests | head -20', 'pytest tests'],
+    ['go test ./... | tail -40 | head -5', 'go test ./...'],
+    // The filter's own args carry quotes AND a `|` — matching "up to the next
+    // pipe" would leave `test result"` behind and read as composition.
+    ['cargo test 2>&1 | grep -E "^test |test result"', 'cargo test'],
+  ]
+  for (const [cmd, core] of STRIPPED) {
+    test(cmd, () => expect(stripOutputTrimTail(cmd)).toBe(core))
+  }
+
+  const UNTOUCHED = [
+    'cargo test',
+    'bun test | tee /tmp/out',
+    'go test ./... > /tmp/out',
+    // No filter and no trailing 2>&1: nothing may be shaved off the command.
+    'grep -rn "bun test" src',
+  ]
+  for (const cmd of UNTOUCHED) {
+    test(`${cmd} — unchanged`, () => expect(stripOutputTrimTail(cmd)).toBe(cmd))
+  }
 })
 
 // ---------------------------------------------------------------------------

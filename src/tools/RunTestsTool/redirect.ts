@@ -35,6 +35,34 @@ import type { Framework } from './types.js'
 const SHELL_COMPOSITION_RE = /[;|&<>\n`'"]|\$\(/
 
 /**
+ * The output-trimming tail the model habitually appends to a verbose runner:
+ * `2>&1 | tail -40`, `| head -20`, `| grep -E "^test "`. Counting it as shell
+ * composition is what kept the redirect from EVER firing on Rust — of 33 real
+ * `cargo test` calls measured in one project, all 33 carried such a tail and
+ * not one was eligible. The intent it expresses is "give me LESS output",
+ * which is exactly what RunTests returns, so it must not read as a second
+ * command RunTests cannot run. Only output *reducers* qualify: `tee` and `>`
+ * persist the output somewhere else and stay composition, and `--nocapture`
+ * (want MORE output) still opts out below, tail or no tail.
+ *
+ * A filter's own arguments may hold quotes and even a `|`
+ * (`grep -E "^test |test result"`), so an argument run is matched as
+ * quoted-string-or-plain-char rather than "everything up to the next pipe".
+ */
+const OUTPUT_TRIM_TAIL_RE =
+  /\s(?:2>&1\s*)?(?:\|\s*(?:head|tail|grep|rg)\b(?:'[^']*'|"[^"]*"|[^|'"])*)+$|\s2>&1$/
+
+/**
+ * The command with that tail removed — the part RunTests would actually run.
+ * A piped command handed to RunTests' `command` would be truncated before its
+ * parser saw the summary, so the refusal must suggest this form, not the one
+ * the model typed.
+ */
+export function stripOutputTrimTail(command: string): string {
+  return command.replace(OUTPUT_TRIM_TAIL_RE, '').trim()
+}
+
+/**
  * The command must OPEN with a runner (optionally behind `FOO=bar` env
  * assignments) — matching the runner token anywhere would catch every command
  * that merely mentions one.
@@ -56,7 +84,7 @@ const TEST_GOAL_RE = /\btest\b/
 
 /** Pure predicate: would RunTests run this command just as well? */
 export function isRedirectableTestCommand(command: string): boolean {
-  const cmd = command.trim()
+  const cmd = stripOutputTrimTail(command.trim())
   if (!cmd) return false
   if (SHELL_COMPOSITION_RE.test(cmd)) return false
   if (!TEST_COMMAND_HEAD_RE.test(cmd)) return false
@@ -108,10 +136,16 @@ export function resetRunTestsRedirectMemoForTesting(): void {
 
 export function renderRunTestsRedirect(command: string): string {
   const cmd = command.trim()
+  const core = stripOutputTrimTail(cmd)
   return [
     `Blocked: \`${cmd}\` runs tests, and ${RUN_TESTS_TOOL_NAME} is available.`,
     `Call ${RUN_TESTS_TOOL_NAME} instead — it runs the same suite and returns a failures-first summary (counts, then each failure's name, file:line and source excerpt), so you get the failing location without a follow-up Read.`,
-    `With no arguments it runs the suite it detects here; pass command: ${JSON.stringify(cmd)} to run this exact one, plus path/pattern to scope it.`,
+    `With no arguments it runs the suite it detects here; pass command: ${JSON.stringify(core)} to run this exact one, plus path/pattern to scope it.`,
+    ...(core === cmd
+      ? []
+      : [
+          `The output filter is dropped on purpose — ${RUN_TESTS_TOOL_NAME} already trims to what failed, and a Bash result carries stderr without \`2>&1\`.`,
+        ]),
     `If you specifically need raw runner output (print debugging, a crash trace), re-send this exact Bash command and it will run.`,
   ].join(' ')
 }
