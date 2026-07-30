@@ -10,13 +10,14 @@ import type { CollapsedReadSearchGroup, NormalizedAssistantMessage } from '../..
 import { uniq } from '../../utils/array.js';
 import { getToolUseIdsFromCollapsedGroup } from '../../utils/collapseReadSearch.js';
 import { getDisplayPath } from '../../utils/file.js';
-import { formatDuration, formatSecondsShort } from '../../utils/format.js';
+import { formatSecondsShort } from '../../utils/format.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import type { buildMessageLookups } from '../../utils/messages.js';
 import type { ThemeName } from '../../utils/theme.js';
 import { CtrlOToExpand } from '../CtrlOToExpand.js';
 import { useSelectedMessageBg } from '../messageActions.js';
 import { PrBadge } from '../PrBadge.js';
+import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from '../shell/ShellElapsedTime.js';
 import { ToolUseLoader } from '../ToolUseLoader.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -268,31 +269,29 @@ export function CollapsedReadSearchContent({
 
   // Find the slowest in-progress shell command in this group. BashTool yields
   // progress every second but the collapsed renderer never showed it — long
-  // commands (npm install, tests) looked frozen. Shown after 2s so fast
-  // commands stay clean; the ticking counter reassures that slow ones aren't stuck.
-  let shellProgressSuffix = '';
+  // commands (npm install, tests) looked frozen. Its elapsed goes on the
+  // header next to the count — that's the line people watch — and its output
+  // size stays on the ⎿ hint below.
+  let slowestShellSeconds: number | undefined;
+  let slowestShellLines = 0;
   if (isFullscreenEnvEnabled() && isActiveGroup) {
-    let elapsed: number | undefined;
-    let lines = 0;
     for (const id_1 of toolUseIds) {
       if (!inProgressToolUseIDs.has(id_1)) continue;
       const data = lookups.progressMessagesByToolUseID.get(id_1)?.at(-1)?.data;
       if (data?.type !== 'bash_progress' && data?.type !== 'powershell_progress') {
         continue;
       }
-      if (elapsed === undefined || data.elapsedTimeSeconds > elapsed) {
-        elapsed = data.elapsedTimeSeconds;
-        lines = data.totalLines;
+      if (slowestShellSeconds === undefined || data.elapsedTimeSeconds > slowestShellSeconds) {
+        slowestShellSeconds = data.elapsedTimeSeconds;
+        slowestShellLines = data.totalLines;
       }
     }
-    if (elapsed !== undefined && elapsed >= 2) {
-      const time = formatDuration(elapsed * 1000);
-      shellProgressSuffix = lines > 0 ? ` (${time} · ${lines} ${lines === 1 ? 'line' : 'lines'})` : ` (${time})`;
-    }
   }
+  // The header owns the clock now, so the hint only adds what it doesn't say.
+  const shellProgressSuffix = slowestShellSeconds !== undefined && slowestShellSeconds >= SHELL_PROGRESS_MIN_SECONDS && slowestShellLines > 0 ? ` (${slowestShellLines} ${slowestShellLines === 1 ? 'line' : 'lines'})` : '';
 
   // Build non-memory parts first (search, read, repl, mcp, bash) — these render
-  // before memory so the line reads "Ran 3 bash commands, recalled 1 memory".
+  // before memory so the line reads "Ran 3 shell commands, recalled 1 memory".
   const nonMemParts: React.ReactNode[] = [];
 
   // Git operations lead the line — they're the load-bearing outcome.
@@ -407,7 +406,7 @@ export function CollapsedReadSearchContent({
       nonMemParts.push(<Text key="comma-bash">, </Text>);
     }
     nonMemParts.push(<Text key="bash">
-        {verb_1} <Text bold>{bashCount}</Text> bash{' '}
+        {verb_1} <Text bold>{bashCount}</Text> shell{' '}
         {bashCount === 1 ? 'command' : 'commands'}
       </Text>);
   }
@@ -456,6 +455,7 @@ export function CollapsedReadSearchContent({
           isActiveGroup,
           hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
         }) : null}
+          {slowestShellSeconds !== undefined && <ShellGroupElapsedTime elapsedTimeSeconds={slowestShellSeconds} />}
           {isActiveGroup && <Text key="ellipsis">…</Text>} <CtrlOToExpand />
         </Text>
       </Box>
