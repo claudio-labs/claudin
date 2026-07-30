@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.1.3 — 2026-07-30
+
+- docs(readme): center the title logo on the cap height (ea5b405)
+- docs(readme): drop the Providers list in favor of the docs link (bf124b6)
+- docs(readme): promote Screenshot to a top-level section (f9681db)
+- docs(readme): give the screenshot its own heading and fix the logo alignment (b4f375e)
+- docs(readme): center the badge row under the title (773f602)
+- docs(readme): center the title and logo above the rule (f6dfb9f)
+- docs(memory): record that the docs site lives outside this checkout (ab103f0)
+- docs(readme): show the launch banner after the dev-binary setup (8773f47)
+- docs(readme): point at the docs site instead of a local feature list (035a976)
+- docs(readme): correct the Node floor and surface project health badges (87e41ae)
+- fix(mcp): pick the OAuth callback port with a CSPRNG (1f7b5f9)
+- fix(runtests): sum every summary line instead of trusting the first (a8e1d65)
+- fix(runtests): let an output-trimming pipe through the Bash redirect (cb54b2a)
+- fix(tui): restore the missing fork-boilerplate message component (469c3bf)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.2 — 2026-07-29
 
 - docs(codex): record the live evidence for the strict-schema contract (#44) (57aebd6)
