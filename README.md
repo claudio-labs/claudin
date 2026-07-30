@@ -1,9 +1,13 @@
 
 # <img src="site/img/icon.png" alt="" width="38" valign="middle" /> Claudin
 
-![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=flat-square&logo=node.js&logoColor=white)
-![npm](https://img.shields.io/npm/v/@claudiolabs/claudin?style=flat-square&label=npm&color=CB3837)
-[![License](https://img.shields.io/badge/license-MIT-2563eb)](LICENSE)
+![Node.js](https://img.shields.io/badge/Node.js-22.12+-339933?style=flat-square&logo=node.js&logoColor=white)
+[![CI](https://img.shields.io/github/actions/workflow/status/claudio-labs/claudin/pr-checks.yml?branch=main&style=flat-square&label=CI)](https://github.com/claudio-labs/claudin/actions/workflows/pr-checks.yml)
+![release](https://img.shields.io/npm/v/@claudiolabs/claudin?style=flat-square&label=release&color=CB3837)
+[![License](https://img.shields.io/badge/license-MIT-2563eb?style=flat-square)](LICENSE)
+[![Issues](https://img.shields.io/github/issues/claudio-labs/claudin?style=flat-square&color=f59e0b)](https://github.com/claudio-labs/claudin/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/claudio-labs/claudin?style=flat-square&color=8b5cf6)](https://github.com/claudio-labs/claudin/pulls)
+[![Security policy](https://img.shields.io/badge/security-policy-0ea5e9?style=flat-square)](SECURITY.md)
 
 **One coding agent CLI. Any LLM.**
 
