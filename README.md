@@ -94,14 +94,14 @@ bun run link:dev                              # local build    → `claudindev`
 `~/.local/bin`, so `claudin` stays pinned to the published release while
 `claudindev` picks up every `bun run build` from your checkout.
 
-### Screenshot
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the build system, feature flags, and pre-PR checks.
 
-Launching it shows the active provider, model, and effort in the banner and in
+## Screenshot
+
+Launching Claudin shows the active provider, model, and effort in the banner and in
 the footer, so you can tell at a glance which build and profile you are on:
 
 ![The Claudin welcome banner and footer, showing provider, model, effort, working directory, and git branch](docs/img/claudin-welcome.png)
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the build system, feature flags, and pre-PR checks.
 
 ## License
 
