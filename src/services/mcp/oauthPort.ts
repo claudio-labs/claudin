@@ -3,6 +3,7 @@
  * auth.ts ↔ xaaIdpLogin.ts circular dependency.
  */
 import { createServer } from 'http'
+import { randomInt } from 'crypto'
 import { getPlatform } from '../../utils/platform.js'
 
 // Windows dynamic port range 49152-65535 is reserved
@@ -31,7 +32,8 @@ function getMcpOAuthCallbackPort(): number | undefined {
 
 /**
  * Finds an available port in the specified range for OAuth redirect
- * Uses random selection for better security
+ * Uses random selection for better security — the port is part of the loopback
+ * redirect URI, so it comes from randomInt (CSPRNG), not Math.random.
  */
 export async function findAvailablePort(): Promise<number> {
   // First, try the configured port if specified
@@ -45,7 +47,7 @@ export async function findAvailablePort(): Promise<number> {
   const maxAttempts = Math.min(range, 100) // Don't try forever
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const port = min + Math.floor(Math.random() * range)
+    const port = min + randomInt(range)
 
     try {
       await new Promise<void>((resolve, reject) => {
