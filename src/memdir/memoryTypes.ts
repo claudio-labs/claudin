@@ -262,15 +262,23 @@ export const TRUSTING_RECALL_SECTION: readonly string[] = [
 
 /**
  * Frontmatter format example with the `type` field.
+ *
+ * `type` stays at the top level, deliberately. The upstream shape nests it
+ * under a `metadata:` key, but memoryScan.ts reads `frontmatter.type`
+ * directly (parseMemoryType) — nesting it here would make every newly
+ * written memory parse as type-less, dropping the `[type]` tags from recall
+ * listings and silently breaking the type filters. The rest of this example
+ * follows upstream: kebab-case name slug, recall-oriented description, and
+ * the wikilink cue in the body placeholder.
  */
 export const MEMORY_FRONTMATTER_EXAMPLE: readonly string[] = [
   '```markdown',
   '---',
-  'name: {{memory name}}',
-  'description: {{one-line description — used to decide relevance in future conversations, so be specific}}',
-  `type: {{${MEMORY_TYPES.join(', ')}}}`,
+  'name: {{short-kebab-case-slug}}',
+  'description: {{one-line summary — used to decide relevance during recall, so be specific}}',
+  `type: {{${MEMORY_TYPES.join(' | ')}}}`,
   '---',
   '',
-  '{{memory content — for feedback/project types, structure as: rule/fact, then **Why:** and **How to apply:** lines}}',
+  '{{the fact; for feedback/project, follow with **Why:** and **How to apply:** lines. Link related memories with [[their-name]].}}',
   '```',
 ]
