@@ -1,5 +1,5 @@
 
-<h1 align="center"><img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="38" valign="middle" /> Claudin</h1>
+<h1 align="center"><img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="38" align="middle" /> Claudin</h1>
 
 <p align="center">
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22.12+-339933?style=flat-square&logo=node.js&logoColor=white" />
@@ -93,6 +93,8 @@ bun run link:dev                              # local build    → `claudindev`
 `link:dev` symlinks `<repo>/bin/claudin` as `claudindev` in `~/.bun/bin` or
 `~/.local/bin`, so `claudin` stays pinned to the published release while
 `claudindev` picks up every `bun run build` from your checkout.
+
+### Screenshot
 
 Launching it shows the active provider, model, and effort in the banner and in
 the footer, so you can tell at a glance which build and profile you are on:
