@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
+  ACT_ON_WHAT_YOU_KNOW_SECTION,
   ANTI_NARRATION_HARNESS_BULLETS,
+  CORRECTIONS_SECTION,
+  DELIVERING_WORK_SECTION,
+  PRONOUNS_SECTION,
   TOOL_BATCHING_HARNESS_BULLET,
   VERBOSITY_STEERING_SECTION,
   buildHarnessItems,
@@ -232,5 +236,92 @@ describe('verbosity steering (roadmap #4)', () => {
       process.env[ENV] = 'false'
       expect(isVerbositySteeringEnabled()).toBe(false)
     })
+  })
+})
+
+describe('pronoun default', () => {
+  // Deliberately its own describe, outside the WORK_CONTRACT block below:
+  // this section is not gated, and grouping it with the gated ones is how
+  // someone later "tidies up" by moving it behind the flag.
+  test('wording matches snapshot', () => {
+    expect(PRONOUNS_SECTION).toMatchSnapshot()
+  })
+
+  test('states the default and forbids inferring from a name', () => {
+    expect(PRONOUNS_SECTION).toContain('use they/them')
+    expect(PRONOUNS_SECTION).toContain('never infer pronouns from a name')
+    // Visible thinking is user-visible text on the extended-thinking
+    // providers; the rule is worthless if it stops at the final answer.
+    expect(PRONOUNS_SECTION).toContain('including visible thinking')
+  })
+})
+
+describe('work contract sections (WORK_CONTRACT)', () => {
+  // Same shape as the ANTI_NARRATION / VERBOSITY_STEERING blocks above: the
+  // test preload stubs feature() to false, so getSystemPrompt can't render
+  // these — lock the exported constants directly.
+  test('delivering-work wording matches snapshot', () => {
+    expect(DELIVERING_WORK_SECTION).toMatchSnapshot()
+  })
+
+  test('corrections wording matches snapshot', () => {
+    expect(CORRECTIONS_SECTION).toMatchSnapshot()
+  })
+
+  test('both sections are static — no interpolation leaked in', () => {
+    // These live BEFORE SYSTEM_PROMPT_DYNAMIC_BOUNDARY. A `${...}` that
+    // survives into the literal means someone made them session-dependent,
+    // which fragments the cacheable prefix (see PR #24490 class of bug).
+    for (const section of [DELIVERING_WORK_SECTION, CORRECTIONS_SECTION]) {
+      expect(section).not.toContain('${')
+      expect(section).not.toContain('undefined')
+    }
+  })
+
+  test('delivering-work keeps the three load-bearing clauses', () => {
+    // Scope fidelity, partial-blocker handling, and refusal calibration —
+    // drop any one and the section stops doing the job it was ported for.
+    expect(DELIVERING_WORK_SECTION).toContain(
+      "don't quietly narrow, widen, or transform it",
+    )
+    expect(DELIVERING_WORK_SECTION).toContain(
+      'finish every other part in full and say explicitly what you left out',
+    )
+    expect(DELIVERING_WORK_SECTION).toContain(
+      'not for ordinary work that merely touches a sensitive-sounding topic',
+    )
+  })
+
+  test('corrections keeps the subagent-skepticism clause', () => {
+    // claudin fans out to Agent/Explore/Plan and workflow workers whose
+    // reports arrive as untagged prose; this clause is the only guard
+    // against a confident wrong worker overwriting a correct conclusion.
+    expect(CORRECTIONS_SECTION).toContain(
+      "don't always take them at face value",
+    )
+    // The carve-out must survive: the budget applies to user-visible text,
+    // never to reasoning.
+    expect(CORRECTIONS_SECTION).toContain(
+      'does not apply to thinking blocks',
+    )
+  })
+
+  test('act-on-what-you-know wording matches snapshot', () => {
+    expect(ACT_ON_WHAT_YOU_KNOW_SECTION).toMatchSnapshot()
+  })
+
+  test('act-on-what-you-know targets re-derivation, not length', () => {
+    // If someone rewrites this into another "be brief" line it stops adding
+    // signal over VERBOSITY_STEERING — the whole point is the re-work axis.
+    expect(ACT_ON_WHAT_YOU_KNOW_SECTION).toContain('re-derive facts already established')
+    expect(ACT_ON_WHAT_YOU_KNOW_SECTION).toContain('re-litigate a decision')
+  })
+
+  test('corrections does not restate the anti-narration bullets', () => {
+    // Overlap at the seams is fine, but a verbatim duplicate of a harness
+    // bullet is pure token waste on the cached prefix.
+    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
+      expect(CORRECTIONS_SECTION).not.toContain(bullet)
+    }
   })
 })

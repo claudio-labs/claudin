@@ -12,7 +12,14 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 }
 
 import { clearSystemPromptSections } from './systemPromptSections.js'
-import { getSystemPrompt, DEFAULT_AGENT_PROMPT } from './prompts.js'
+import {
+  ACT_ON_WHAT_YOU_KNOW_SECTION,
+  CORRECTIONS_SECTION,
+  DEFAULT_AGENT_PROMPT,
+  DELIVERING_WORK_SECTION,
+  PRONOUNS_SECTION,
+  getSystemPrompt,
+} from './prompts.js'
 import { CLI_SYSPROMPT_PREFIXES, getCLISyspromptPrefix } from './system.js'
 import { GEMINI_ADDENDUM } from './familyAddendums/gemini.js'
 import { GLM_ADDENDUM } from './familyAddendums/glm.js'
@@ -130,6 +137,37 @@ test('Anthropic-family system prompt does not include any non-Anthropic family a
     expect(sentinel.length).toBeGreaterThan(20)
     expect(text).not.toContain(sentinel)
   }
+})
+
+test('the system prompt opens by naming Claudin', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  clearSystemPromptSections()
+
+  const [intro] = await getSystemPrompt([], 'claude-opus-4-8')
+
+  // First block, not merely somewhere in the prompt: the point of the line
+  // is that identity arrives before anything else, and the env section (the
+  // only other place that names the product) is provider-conditional.
+  expect(intro).toContain('You are Claudin, an open-source coding agent and CLI.')
+  expect(intro).not.toContain('Claude Code')
+  // Same wording as DEFAULT_AGENT_PROMPT, asserted below — a subagent that
+  // reads a different identity than its parent has to reconcile the two.
+  expect(DEFAULT_AGENT_PROMPT).toContain('Claudin, an open-source coding agent and CLI')
+})
+
+test('the pronoun default ships regardless of the WORK_CONTRACT gate', async () => {
+  delete process.env.CLAUDE_CODE_SIMPLE
+  clearSystemPromptSections()
+
+  // The test preload stubs feature() to false, so this render is the
+  // WORK_CONTRACT-off path — exactly the A/B configuration in which the
+  // pronoun rule must still be present while the gated sections are not.
+  const text = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
+
+  expect(text).toContain(PRONOUNS_SECTION)
+  expect(text).not.toContain(DELIVERING_WORK_SECTION)
+  expect(text).not.toContain(CORRECTIONS_SECTION)
+  expect(text).not.toContain(ACT_ON_WHAT_YOU_KNOW_SECTION)
 })
 
 test('built-in agent prompts describe Claudin instead of Claude Code', () => {
