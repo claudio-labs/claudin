@@ -47,18 +47,6 @@ claudin
 
 On first run, Claudin opens the `/provider` wizard — pick a preset, sign in or paste a key, and start working. No environment variables required. Credentials are saved as profiles under `~/.claudin/`, so you can keep several providers configured and switch between them anytime.
 
-## Providers
-
-Configure everything from inside the app with `/provider`. Claudin fills in the base URL, default model, and the right transport automatically.
-
-- **Sign in with your account (OAuth):** Anthropic, ChatGPT (Codex), GitHub Copilot, xAI Grok, Kimi Code (Moonshot subscription)
-- **Direct API key:** OpenAI, Gemini, Mistral, DeepSeek, Moonshot AI, Z.AI, MiniMax, Qwen / DashScope, NVIDIA NIM, Cloudflare
-- **Aggregators:** OpenRouter, Together AI, Groq, and other OpenAI-compatible gateways
-- **Local:** Ollama, LM Studio, or any custom OpenAI-compatible endpoint
-- **Enterprise:** AWS Bedrock, Google Vertex AI, Azure OpenAI, Azure AI Foundry
-
-Per-provider setup notes live at [claudiolabs.ai/providers](https://www.claudiolabs.ai/providers).
-
 ## Documentation
 
 Full documentation lives at **[claudiolabs.ai/docs](https://www.claudiolabs.ai/docs/)**.
