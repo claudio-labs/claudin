@@ -1,5 +1,5 @@
 
-<h1 align="center"><img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="38" align="middle" /> Claudin</h1>
+<h1 align="center"><img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="34" align="texttop" /> Claudin</h1>
 
 <p align="center">
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22.12+-339933?style=flat-square&logo=node.js&logoColor=white" />
