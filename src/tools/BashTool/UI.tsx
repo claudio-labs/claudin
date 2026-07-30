@@ -4,6 +4,7 @@ import * as React from 'react';
 import { KeyboardShortcutHint } from '../../components/design-system/KeyboardShortcutHint.js';
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
+import { ShellElapsedTime } from '../../components/shell/ShellElapsedTime.js';
 import { ShellProgressMessage } from '../../components/shell/ShellProgressMessage.js';
 import { Box, Text } from '../../ink.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
@@ -144,8 +145,11 @@ export function renderToolUseProgressMessage(progressMessagesForMessage: Progres
 }): React.ReactNode {
   const lastProgress = progressMessagesForMessage.at(-1);
   if (!lastProgress || !lastProgress.data) {
+    // No progress message yet (the poller only starts emitting after
+    // PROGRESS_THRESHOLD_MS), so the stopwatch runs off its own mount time.
     return <MessageResponse height={1}>
-        <Text dimColor>Running…</Text>
+        <Text dimColor>Running… </Text>
+        <ShellElapsedTime />
       </MessageResponse>;
   }
   const data = lastProgress.data;

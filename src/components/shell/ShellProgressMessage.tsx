@@ -5,7 +5,7 @@ import { Box, Text } from '../../ink.js';
 import { formatFileSize } from '../../utils/format.js';
 import { MessageResponse } from '../MessageResponse.js';
 import { OffscreenFreeze } from '../OffscreenFreeze.js';
-import { ShellTimeDisplay } from './ShellTimeDisplay.js';
+import { ShellElapsedTime } from './ShellElapsedTime.js';
 type Props = {
   output: string;
   fullOutput: string;
@@ -62,7 +62,7 @@ export function ShellProgressMessage(t0) {
     }
     let t4;
     if ($[8] !== elapsedTimeSeconds || $[9] !== timeoutMs) {
-      t4 = <MessageResponse><OffscreenFreeze>{t3}<ShellTimeDisplay elapsedTimeSeconds={elapsedTimeSeconds} timeoutMs={timeoutMs} /></OffscreenFreeze></MessageResponse>;
+      t4 = <MessageResponse><OffscreenFreeze>{t3}<ShellElapsedTime elapsedTimeSeconds={elapsedTimeSeconds} timeoutMs={timeoutMs} /></OffscreenFreeze></MessageResponse>;
       $[8] = elapsedTimeSeconds;
       $[9] = timeoutMs;
       $[10] = t4;
@@ -108,7 +108,7 @@ export function ShellProgressMessage(t0) {
   }
   let t7;
   if ($[18] !== elapsedTimeSeconds || $[19] !== timeoutMs) {
-    t7 = <ShellTimeDisplay elapsedTimeSeconds={elapsedTimeSeconds} timeoutMs={timeoutMs} />;
+    t7 = <ShellElapsedTime elapsedTimeSeconds={elapsedTimeSeconds} timeoutMs={timeoutMs} />;
     $[18] = elapsedTimeSeconds;
     $[19] = timeoutMs;
     $[20] = t7;

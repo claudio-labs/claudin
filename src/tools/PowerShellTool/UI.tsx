@@ -4,6 +4,7 @@ import { KeyboardShortcutHint } from '../../components/design-system/KeyboardSho
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { OutputLine } from '../../components/shell/OutputLine.js';
+import { ShellElapsedTime } from '../../components/shell/ShellElapsedTime.js';
 import { ShellProgressMessage } from '../../components/shell/ShellProgressMessage.js';
 import { ShellTimeDisplay } from '../../components/shell/ShellTimeDisplay.js';
 import { Box, Text } from '../../ink.js';
@@ -63,8 +64,10 @@ export function renderToolUseProgressMessage(progressMessagesForMessage: Progres
 }): React.ReactNode {
   const lastProgress = progressMessagesForMessage.at(-1);
   if (!lastProgress || !lastProgress.data) {
+    // Same as BashTool: nothing has been reported yet, so count from mount.
     return <MessageResponse height={1}>
-        <Text dimColor>Running…</Text>
+        <Text dimColor>Running… </Text>
+        <ShellElapsedTime />
       </MessageResponse>;
   }
   const data = lastProgress.data;
