@@ -1,5 +1,5 @@
 
-# <img src="site/img/icon.png" alt="" width="38" valign="middle" /> Claudin
+# <img src="https://www.claudiolabs.ai/img/icon.png" alt="" width="38" valign="middle" /> Claudin
 
 ![Node.js](https://img.shields.io/badge/Node.js-22.12+-339933?style=flat-square&logo=node.js&logoColor=white)
 [![CI](https://img.shields.io/github/actions/workflow/status/claudio-labs/claudin/pr-checks.yml?branch=main&style=flat-square&label=CI)](https://github.com/claudio-labs/claudin/actions/workflows/pr-checks.yml)
@@ -55,17 +55,20 @@ Configure everything from inside the app with `/provider`. Claudin fills in the 
 - **Local:** Ollama, LM Studio, or any custom OpenAI-compatible endpoint
 - **Enterprise:** AWS Bedrock, Google Vertex AI, Azure OpenAI, Azure AI Foundry
 
-## Features
+Per-provider setup notes live at [claudiolabs.ai/providers](https://www.claudiolabs.ai/providers).
 
-- **Bring your own provider** — switch models mid-session with `/provider` and keep multiple profiles.
-- **Privacy-first** — no analytics, no auto-updater, no transcript sharing; verified against the shipped bundle.
-- **Lower token & cost usage** — a command-aware output filter and a stable prompt-cache policy, both on by default.
-- **In-terminal explorer & diff** — `/explorer` is a split-pane file tree with a lightweight editor; `/diff` is a tabbed reviewer for changes, stashes, and git log.
-- **Sub-agents** — run Explore, Plan, and custom agents in parallel, in the background, or in isolated git worktrees.
-- **MCP, skills, hooks & plan mode** — connect external tool servers and extend the agent to your workflow.
-- **Auto-memory** — persistent per-project notes, with private and team-shared scopes.
-- **Headless & scriptable** — `claudin -p "prompt"` for pipes and CI, with text / JSON output.
-- **Self-hosted background agent** — `claudin workflow watch` polls GitHub for labeled issues and turns each into an isolated workflow run + PR, all on your own machine ([docs](docs/tech/background-agent/README.md)).
+## Documentation
+
+Full documentation lives at **[claudiolabs.ai/docs](https://www.claudiolabs.ai/docs/)**.
+
+- [Install](https://www.claudiolabs.ai/install) — platform binaries, the Node fallback, and first run.
+- [Providers](https://www.claudiolabs.ai/providers) — every preset, OAuth vs. API key, local endpoints.
+- [Migrating from Claude Code](https://www.claudiolabs.ai/migrate-from-claude-code) — what carries over and what changes.
+- [Configuration](https://www.claudiolabs.ai/docs/configuration) — settings, permissions, and interface options.
+- [Agents](https://www.claudiolabs.ai/docs/agents) and [workflows](https://www.claudiolabs.ai/docs/workflows) — sub-agents, isolated worktrees, and the self-hosted background agent.
+- [Skills](https://www.claudiolabs.ai/docs/skills), [plugins](https://www.claudiolabs.ai/docs/plugins), [MCP](https://www.claudiolabs.ai/docs/mcp), and [hooks](https://www.claudiolabs.ai/docs/hooks) — extend the agent.
+- [Automation](https://www.claudiolabs.ai/docs/automation) — headless `claudin -p` for pipes and CI.
+- [Cache policy](https://www.claudiolabs.ai/docs/cache-policy) and the [bash output filter](https://www.claudiolabs.ai/docs/bash-output-filter) — the token and cost behavior that ships on by default.
 
 Run `/help` inside the app for the full command list.
 
