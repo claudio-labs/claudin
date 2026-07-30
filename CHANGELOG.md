@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.4 — 2026-07-30
+
+- feat(shell): show the batch elapsed on the collapsed group header (88b4c60)
+- feat(shell): keep the elapsed time moving while a command runs (2ea2b74)
+- fix(memory): stop the stub prompt from teaching an unparseable frontmatter (aa211b9)
+- feat(prompts): add the work-contract sections to the system prompt (34f9b28)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.3 — 2026-07-30
 
 - docs(readme): center the title logo on the cap height (ea5b405)
