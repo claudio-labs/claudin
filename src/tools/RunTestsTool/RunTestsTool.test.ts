@@ -480,6 +480,49 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out`
     expect(r!.failures[0].file).toBe('src/lib.rs')
     expect(r!.failures[0].line).toBe(42)
   })
+
+  // Captured from a real `cargo test` on a crate with a lib and one integration
+  // test: TWO `test result:` lines, the empty lib target reporting first.
+  const MULTI_TARGET = [
+    '     Running unittests src/lib.rs (target/debug/deps/rtprobe-ebe2)',
+    '',
+    'running 0 tests',
+    '',
+    'test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out',
+    '',
+    '     Running tests/probe_test.rs (target/debug/deps/probe_test-30d4)',
+    '',
+    'running 2 tests',
+    'test passes ... ok',
+    'test fails_on_purpose ... FAILED',
+    '',
+    'failures:',
+    '',
+    '---- fails_on_purpose stdout ----',
+    "thread 'fails_on_purpose' panicked at tests/probe_test.rs:7:5:",
+    'assertion `left == right` failed: BUG: add is wrong',
+    '',
+    'test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out',
+  ].join('\n')
+
+  test('sums every per-binary result line instead of trusting the first', () => {
+    const r = parseCargo(emptyInput({ stdout: MULTI_TARGET, exitCode: 101 }), 'cargo test')
+    expect(r).not.toBeNull()
+    // Reading only the first line took the empty lib target's counts, so a
+    // failing run rendered as "0 passed (0 total)" with the failure below it.
+    expect(r!.passed).toBe(1)
+    expect(r!.failed).toBe(1)
+    expect(r!.total).toBe(2)
+    expect(r!.failures.map(f => f.name)).toEqual(['fails_on_purpose'])
+    expect(r!.failures[0].line).toBe(7)
+  })
+
+  test('repeat calls return the same counts (the /g regex keeps no lastIndex)', () => {
+    const first = parseCargo(emptyInput({ stdout: MULTI_TARGET, exitCode: 101 }), 'cargo test')
+    const second = parseCargo(emptyInput({ stdout: MULTI_TARGET, exitCode: 101 }), 'cargo test')
+    expect(second!.passed).toBe(first!.passed)
+    expect(second!.failed).toBe(first!.failed)
+  })
 })
 
 describe('parseHeuristic', () => {
@@ -520,6 +563,165 @@ describe('parseHeuristic', () => {
     expect(r.failed).toBe(2) // failures + errors
     expect(r.skipped).toBe(1)
     expect(r.passed).toBe(0)
+  })
+
+  // ---------------------------------------------------------------------------
+  // Multi-summary output. Every runner in the degraded lane can print MORE than
+  // one summary — one per test binary, project, umbrella app or suite — and
+  // jest/vitest print a FILE-level line before the test-level one. Reading the
+  // first match reported whichever came first.
+  // ---------------------------------------------------------------------------
+
+  test('jest: the "Tests:" line wins over "Test Suites:"', () => {
+    // Captured from a real `bunx jest` run over 2 files / 5 tests. Taking the
+    // first "N passed" read the suite line and reported 1 passed of 2 total.
+    const out = [
+      'Test Suites: 1 failed, 1 passed, 2 total',
+      'Tests:       1 failed, 4 passed, 5 total',
+      'Snapshots:   0 total',
+      'Time:        0.412 s',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stderr: out, exitCode: 1 }), 'jest', 'jest')
+    expect(r.passed).toBe(4)
+    expect(r.failed).toBe(1)
+    expect(r.total).toBe(5)
+  })
+
+  test('vitest through a wrapper script: the "Tests" line wins over "Test Files"', () => {
+    const out = [
+      ' Test Files  1 failed | 2 passed (3)',
+      '      Tests  3 failed | 27 passed (30)',
+      '   Duration  1.20s',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'vitest', 'npm test')
+    expect(r.passed).toBe(27)
+    expect(r.failed).toBe(3)
+    expect(r.total).toBe(30)
+  })
+
+  test('a count-less "Tests" line does not blank out counts found elsewhere', () => {
+    // Preferring that line unconditionally would scope the scrape to a line
+    // holding no numbers and throw away the real summary below it.
+    const out = 'Tests failed!\n\n4 passed, 1 failed'
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'jest', 'jest')
+    expect(r.passed).toBe(4)
+    expect(r.failed).toBe(1)
+  })
+
+  test('dotnet: sums the per-project summaries and reads its label-first counts', () => {
+    // `dotnet test` over a solution prints one line per test project, and writes
+    // the label BEFORE the number, which the digits-first patterns never saw.
+    const out = [
+      'Passed!  - Failed:     0, Passed:     5, Skipped:     0, Total:     5, Duration: 12 ms - Api.Tests.dll',
+      'Failed!  - Failed:     2, Passed:     9, Skipped:     1, Total:    12, Duration: 44 ms - Core.Tests.dll',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'dotnet', 'dotnet test')
+    expect(r.passed).toBe(14)
+    expect(r.failed).toBe(2)
+    expect(r.skipped).toBe(1)
+    expect(r.total).toBe(17)
+  })
+
+  test('dotnet: a per-project summary line is not reported as a failure', () => {
+    // "Failed!" trips the failure-header marker, which named a failure after the
+    // whole summary line — noise on top of a run whose real failures are listed.
+    const out =
+      'Failed!  - Failed:     2, Passed:     9, Skipped:     1, Total:    12, Duration: 44 ms - Core.Tests.dll'
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'dotnet', 'dotnet test')
+    // Only the synthetic "test run" entry the formatter falls back to when a
+    // failing run yielded no per-test failure block — no entry named after the
+    // summary line itself.
+    expect(r.failures.map(f => f.name)).toEqual(['test run'])
+  })
+
+  test('elixir umbrella: sums the per-app summaries', () => {
+    const out = [
+      'Finished in 0.1 seconds',
+      '3 tests, 0 failures',
+      '',
+      'Finished in 0.2 seconds',
+      '8 tests, 2 failures',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'elixir', 'mix test')
+    expect(r.total).toBe(11)
+    expect(r.failed).toBe(2)
+    expect(r.passed).toBe(9)
+  })
+
+  test('minitest: sums the per-suite summaries', () => {
+    const out = [
+      '4 runs, 4 assertions, 0 failures, 0 errors, 0 skips',
+      '',
+      '7 runs, 9 assertions, 1 failures, 0 errors, 2 skips',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'minitest', 'rake test')
+    expect(r.total).toBe(11)
+    expect(r.failed).toBe(1)
+    expect(r.skipped).toBe(2)
+    expect(r.passed).toBe(8)
+  })
+
+  test('rspec "N examples, M failures, K pending"', () => {
+    // rspec counts EXAMPLES, a word none of the digits-first patterns knew, so
+    // the passed count was missing entirely and the total collapsed to 1.
+    const out = 'Failures:\n\n5 examples, 1 failure, 0 pending'
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'rspec', 'bundle exec rspec')
+    expect(r.total).toBe(5)
+    expect(r.failed).toBe(1)
+    expect(r.passed).toBe(4)
+  })
+
+  test('cargo through a wrapper script: sums every per-binary result line', () => {
+    // Same bug parsers/cargo.ts had, on the degraded lane a wrapped cargo takes.
+    const out = [
+      'test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out',
+      'test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 101 }), 'unknown', 'bun run test:rust')
+    expect(r.passed).toBe(1)
+    expect(r.failed).toBe(1)
+    expect(r.total).toBe(2)
+  })
+
+  test('nextest: counts come from its own Summary line', () => {
+    const out = [
+      '    Starting 21 tests across 3 binaries',
+      '        PASS [   0.005s] mycrate::unit tests::works',
+      '        FAIL [   0.006s] mycrate::integration tests::breaks',
+      '------------',
+      '     Summary [   0.030s] 21 tests run: 20 passed, 1 failed, 0 skipped',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 100 }), 'nextest', 'cargo nextest run')
+    expect(r.passed).toBe(20)
+    expect(r.failed).toBe(1)
+    expect(r.skipped).toBe(0)
+    expect(r.total).toBe(21)
+  })
+
+  test('nextest: the summary omits segments that are zero', () => {
+    // Straight from the nextest docs: no "failed" segment on a green run, and
+    // the "Starting N tests … (177 tests skipped)" line must not be scraped.
+    const out = [
+      '     Starting 14 tests across 3 binaries (177 tests skipped)',
+      '     Summary [   0.021s] 14 tests run: 14 passed, 177 skipped',
+    ].join('\n')
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 0 }), 'nextest', 'cargo nextest run')
+    expect(r.passed).toBe(14)
+    expect(r.failed).toBe(0)
+    expect(r.skipped).toBe(177)
+  })
+
+  test('bun through `bun run <script>`: the "N pass / N fail" shape', () => {
+    // A wrapped script gets no --reporter=junit, so bun's own text is all we
+    // have — and "pass"/"fail" never matched the "passed"/"failing" patterns.
+    const out = [' 12 pass', ' 1 fail', ' 2 skip', ' 34 expect() calls', 'Ran 15 tests across 3 files.'].join(
+      '\n',
+    )
+    const r = parseHeuristic(emptyInput({ stdout: out, exitCode: 1 }), 'bun', 'bun run test:provider')
+    expect(r.passed).toBe(12)
+    expect(r.failed).toBe(1)
+    expect(r.skipped).toBe(2)
+    expect(r.total).toBe(15)
   })
 
   test('symbol/colon failure headers (jest ●, ✗, panic:, --- FAIL:) are extracted', () => {
