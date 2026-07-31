@@ -11,6 +11,13 @@ import type { RepoGroup } from './types.js'
 
 export { buildTreeRows, type TreeRow }
 
+/**
+ * Row width used when the list is the whole body (no side pane). Without a cap
+ * the list stretches across the terminal and strands the right-hand badge
+ * column (binary/large/renamed) a hundred columns from the file names.
+ */
+export const INLINE_LIST_WIDTH = 80
+
 type Props = {
   /** Pre-built, collapse-aware tree rows (see buildTreeRows). */
   rows: TreeRow[]
@@ -182,7 +189,11 @@ function TreeRowItem({
   )
   // Folder rows carry the path; files show only their basename, end-truncated
   // ("asdasdsadsd…") so the start of the name stays visible when it overflows.
-  const name = truncateToWidth(basename(row.file.path), budget)
+  // A row with an explicit `label` (a path, from a flat list) is start-
+  // truncated instead, keeping the file name itself visible.
+  const name = row.label
+    ? truncateStartToWidth(row.label, budget)
+    : truncateToWidth(basename(row.file.path), budget)
   return (
     <Box width={width} flexDirection="row">
       <Box flexShrink={1} overflow="hidden">

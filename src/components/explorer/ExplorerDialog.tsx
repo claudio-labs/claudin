@@ -21,8 +21,9 @@ import { readFileSyncWithMetadata } from '../../utils/fileRead.js'
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js'
 import { logError } from '../../utils/log.js'
 import { hasNerdFontGlyphs } from '../../utils/terminalFont.js'
+import type { Theme } from '../../utils/theme.js'
 import { Dialog } from '../design-system/Dialog.js'
-import { DiffFileList } from '../diff/DiffFileList.js'
+import { DiffFileList, INLINE_LIST_WIDTH } from '../diff/DiffFileList.js'
 import { expectEditorHighlighter } from '../StructuredDiff/colorDiff.js'
 import {
   backspace,
@@ -58,22 +59,32 @@ import {
 import { createPrefill, resolveNewFilePath } from './explorerActions.js'
 import { FilePane } from './FilePane.js'
 import { buildFileIndex, FuzzyOverlay } from './fuzzyFinder.js'
-import { buildExplorerGroup, buildExplorerRows, initialCollapsed } from './tree.js'
+import {
+  buildChangedRows,
+  buildExplorerGroup,
+  buildExplorerRows,
+  CHANGED_GROUP_KEY,
+  collectChangedFiles,
+  initialCollapsed,
+} from './tree.js'
 
 type Props = {
   onDone: LocalJSXCommandOnDone
   context: LocalJSXCommandContext
 }
 
-/** Git status → tint color for the tree (modified yellow, new/untracked green, …). */
-const STATUS_COLORS: Record<string, string> = {
-  modified: 'yellow',
-  new: 'green',
-  untracked: 'green',
-  renamed: 'cyan',
+/**
+ * Git status → tint for the tree (modified amber, new/untracked green, renamed
+ * blue). These must be THEME keys: `colorize` only understands theme values
+ * (`ansi:*`, `#hex`, `rgb()`, `ansi256()`), so a bare `'yellow'` silently
+ * renders uncolored.
+ */
+const STATUS_COLORS: Record<string, keyof Theme> = {
+  modified: 'warning',
+  new: 'success',
+  untracked: 'success',
+  renamed: 'suggestion',
 }
-
-const CHANGED_GROUP_KEY = '\u0000explorer-changed'
 
 function statusOf(f: DiffFile): string {
   if (f.isUntracked) return 'untracked'
@@ -119,11 +130,19 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
   const contentHeight = Math.max(6, rows - 12)
   const paneHeight = contentHeight + 2
   const rightWidth = Math.max(20, columns - leftWidth - 10)
-  const listMaxVisible = split ? Math.max(3, contentHeight - 2) : 15
+  // Inline (no side pane) the tree stands in for the editor pane, which already
+  // uses the same budget — so it gets the same height instead of a fixed 15,
+  // which both wasted a tall terminal and overflowed a short one.
+  const listMaxVisible = Math.max(3, contentHeight - 2)
 
   // ── state ─────────────────────────────────────────────────────────────────
   const [paths, setPaths] = useState<string[] | null>(null)
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // The "Changed" group starts collapsed: it is a quick-access accessory, and
+  // on a busy repo its files would otherwise push the project tree — the point
+  // of the explorer — off the bottom of the list.
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set([CHANGED_GROUP_KEY]),
+  )
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [focus, setFocus] = useState<'tree' | 'editor'>('tree')
   const [open, setOpen] = useState<OpenFile | null>(null)
@@ -154,7 +173,12 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     getProjectFilePaths().then(p => {
       if (!alive) return
       setPaths(p)
-      setCollapsed(initialCollapsed(buildExplorerGroup(root, p)))
+      setCollapsed(prev => {
+        const next = initialCollapsed(buildExplorerGroup(root, p))
+        // Keep the user's "Changed" toggle if they hit it while files loaded.
+        if (prev.has(CHANGED_GROUP_KEY)) next.add(CHANGED_GROUP_KEY)
+        return next
+      })
     })
     return () => {
       alive = false
@@ -182,36 +206,20 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     useMemo(() => [root], [root]),
   )
   const changedFiles = useMemo(
-    () => workspace.groups.flatMap(g => g.files),
-    [workspace.groups],
+    () => collectChangedFiles(root, workspace.groups),
+    [workspace.groups, root],
   )
   const statusByPath = useMemo(() => {
     const m = new Map<string, string>()
-    for (const f of changedFiles) m.set(f.path, STATUS_COLORS[statusOf(f)] ?? 'yellow')
+    for (const e of changedFiles) {
+      m.set(e.label, STATUS_COLORS[statusOf(e.file)] ?? 'warning')
+    }
     return m
   }, [changedFiles])
-  const changedRows = useMemo<TreeRow[]>(() => {
-    if (changedFiles.length === 0) return []
-    const collapsedChanged = collapsed.has(CHANGED_GROUP_KEY)
-    const out: TreeRow[] = [
-      {
-        kind: 'group',
-        key: CHANGED_GROUP_KEY,
-        name: 'Changed',
-        meta: `${changedFiles.length} ${changedFiles.length === 1 ? 'file' : 'files'}`,
-        branch: '',
-        repoIndex: 0,
-        collapsed: collapsedChanged,
-        depth: 0,
-      },
-    ]
-    if (!collapsedChanged) {
-      for (const f of [...changedFiles].sort((a, b) => a.path.localeCompare(b.path))) {
-        out.push({ kind: 'file', file: f, root, hunks: [], depth: 0, guides: '' })
-      }
-    }
-    return out
-  }, [changedFiles, collapsed, root])
+  const changedRows = useMemo<TreeRow[]>(
+    () => buildChangedRows(changedFiles, collapsed),
+    [changedFiles, collapsed],
+  )
   const allRows = useMemo(
     () => [...changedRows, ...treeRows],
     [changedRows, treeRows],
@@ -391,7 +399,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     } else if (input === '/') {
       setFuzzy({ query: '', selected: 0 })
     } else if (input === '@') {
-      if (row?.kind === 'file') mentionFile(row.file.path)
+      // Mention the path as seen from the explorer root — a nested repo's file
+      // is `inner/site/index.html` here, not the repo-relative `site/index.html`.
+      if (row?.kind === 'file') mentionFile(row.label ?? row.file.path)
     } else if (input === 'a') {
       setPrompt({ kind: 'create', value: createPrefill(row, root) })
     } else if (input === 'd') {
@@ -721,7 +731,7 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         rows={allRows}
         selectedIndex={selectedIndex}
         maxVisible={listMaxVisible}
-        width={split ? leftWidth - 2 : columns - 4}
+        width={split ? leftWidth - 2 : Math.min(columns - 4, INLINE_LIST_WIDTH)}
         statusByPath={statusByPath}
         alignFiles
       />

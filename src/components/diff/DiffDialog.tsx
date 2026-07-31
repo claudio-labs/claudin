@@ -34,6 +34,7 @@ import {
   buildTreeRows,
   DiffFileList,
   flattenGroupFiles,
+  INLINE_LIST_WIDTH,
   type TreeRow,
 } from './DiffFileList.js'
 import { DiffPane, renderDiffRows } from './DiffPane.js'
@@ -199,7 +200,10 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const diffWidth = Math.max(20, columns - leftWidth - 10)
   // Reserve 2 rows for the file list's ↑/↓ "more" indicators so the list never
   // overflows its (contentHeight-tall) inner area.
-  const listMaxVisible = split ? Math.max(3, contentHeight - 2) : 15
+  // Inline (no side pane) the list stands in for the diff body, which already
+  // uses the same budget — so it gets the same height instead of a fixed 15,
+  // which both wasted a tall terminal and overflowed a short one.
+  const listMaxVisible = Math.max(3, contentHeight - 2)
 
   // ── sources ─────────────────────────────────────────────────────────────
   const sources = useMemo<DiffSource[]>(
@@ -726,7 +730,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           rows={treeRows}
           selectedIndex={selectedIndex}
           maxVisible={listMaxVisible}
-          width={split ? leftWidth - 2 : columns - 4}
+          width={split ? leftWidth - 2 : Math.min(columns - 4, INLINE_LIST_WIDTH)}
         />
       )
     body = split ? (

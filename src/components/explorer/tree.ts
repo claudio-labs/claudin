@@ -11,6 +11,7 @@
 import type { DiffFile } from '../../hooks/useDiffData.js'
 import { buildTreeRows, type TreeRow } from '../diff/fileTree.js'
 import type { RepoGroup } from '../diff/types.js'
+import { basename, relative, resolve } from 'path'
 
 /** Wrap a flat list of project-relative paths as one synthetic RepoGroup. */
 export function buildExplorerGroup(root: string, paths: string[]): RepoGroup {
@@ -50,4 +51,75 @@ export function initialCollapsed(group: RepoGroup): Set<string> {
 /** The collapse key for a dir/group row, or null for a file row. */
 export function collapseKeyOf(row: TreeRow): string | null {
   return row.kind === 'file' ? null : row.key
+}
+
+/** Collapse key of the "Changed" quick-access group (never a real repo root). */
+export const CHANGED_GROUP_KEY = '\u0000explorer-changed'
+
+/**
+ * A changed file tagged with the repo it came from. The workspace scan picks up
+ * nested repos, so a changed file's OWN root — not the explorer's cwd — is what
+ * opens/renames/deletes it, and `label` (its path as seen from the explorer
+ * root) is what keeps same-named files apart in the flat list and what matches
+ * the project tree's keys for status tinting.
+ */
+export type ChangedEntry = { file: DiffFile; root: string; label: string }
+
+/** Path of `path` (relative to `repoRoot`) as seen from the explorer root. */
+function labelFor(explorerRoot: string, repoRoot: string, path: string): string {
+  const rel = relative(explorerRoot, resolve(repoRoot, path))
+  // A workspace root outside the cwd (e.g. `/add-dir`) has no sane relative
+  // form — name it by its repo folder instead of a `../../..` chain.
+  return rel && !rel.startsWith('..') ? rel : `${basename(repoRoot)}/${path}`
+}
+
+/** Flatten every repo group's changed files into root-tagged, labelled entries. */
+export function collectChangedFiles(
+  explorerRoot: string,
+  groups: RepoGroup[],
+): ChangedEntry[] {
+  return groups.flatMap(g =>
+    g.files.map(file => ({
+      file,
+      root: g.root,
+      label: labelFor(explorerRoot, g.root, file.path),
+    })),
+  )
+}
+
+/**
+ * The "Changed" quick-access group: a header row plus (when expanded) one flat,
+ * path-labelled row per changed file. Empty when nothing changed.
+ */
+export function buildChangedRows(
+  entries: ChangedEntry[],
+  collapsed: Set<string>,
+): TreeRow[] {
+  if (entries.length === 0) return []
+  const isCollapsed = collapsed.has(CHANGED_GROUP_KEY)
+  const out: TreeRow[] = [
+    {
+      kind: 'group',
+      key: CHANGED_GROUP_KEY,
+      name: 'Changed',
+      meta: `${entries.length} ${entries.length === 1 ? 'file' : 'files'}`,
+      branch: '',
+      repoIndex: 0,
+      collapsed: isCollapsed,
+      depth: 0,
+    },
+  ]
+  if (isCollapsed) return out
+  for (const e of [...entries].sort((a, b) => a.label.localeCompare(b.label))) {
+    out.push({
+      kind: 'file',
+      file: e.file,
+      root: e.root,
+      hunks: [],
+      depth: 0,
+      guides: '',
+      label: e.label,
+    })
+  }
+  return out
 }

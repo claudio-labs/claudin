@@ -43,6 +43,12 @@ export type TreeRow =
       depth: number
       /** Pre-rendered indent-guide prefix (one segment per level). */
       guides: string
+      /**
+       * Explicit row text, overriding the default basename. Set by flat lists
+       * (the /explorer "Changed" group) where no folder row carries the path,
+       * so same-named files stay distinguishable.
+       */
+      label?: string
     }
 
 // Tree indent-guide segments, each two columns wide so they line up exactly

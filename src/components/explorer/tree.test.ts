@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test'
+import type { DiffFile } from '../../hooks/useDiffData.js'
+import type { RepoGroup } from '../diff/types.js'
 import {
+  buildChangedRows,
   buildExplorerGroup,
   buildExplorerRows,
+  CHANGED_GROUP_KEY,
   collapseKeyOf,
+  collectChangedFiles,
   initialCollapsed,
 } from './tree.js'
 
@@ -62,5 +67,80 @@ describe('collapseKeyOf', () => {
     expect(collapseKeyOf(rows[0]!)).toBe(`${ROOT}\u0000src`)
     const file = rows.find(r => r.kind === 'file')!
     expect(collapseKeyOf(file)).toBeNull()
+  })
+})
+
+function changedFile(path: string): DiffFile {
+  return {
+    path,
+    linesAdded: 1,
+    linesRemoved: 0,
+    isBinary: false,
+    isLargeFile: false,
+    isTruncated: false,
+  }
+}
+
+function repoGroup(root: string, paths: string[]): RepoGroup {
+  return {
+    root,
+    name: root.split('/').pop() ?? root,
+    branch: 'main',
+    files: paths.map(changedFile),
+    hunks: new Map(),
+  }
+}
+
+describe('collectChangedFiles', () => {
+  test('keeps each file on its OWN repo root and labels it from the explorer root', () => {
+    const entries = collectChangedFiles(ROOT, [
+      repoGroup(ROOT, ['a.ts']),
+      repoGroup(`${ROOT}/inner`, ['site/api/index.html']),
+    ])
+    // The nested repo's file must carry the nested root — opening it against
+    // the explorer's root resolves to a path that does not exist.
+    expect(entries).toEqual([
+      { file: changedFile('a.ts'), root: ROOT, label: 'a.ts' },
+      {
+        file: changedFile('site/api/index.html'),
+        root: `${ROOT}/inner`,
+        label: 'inner/site/api/index.html',
+      },
+    ])
+  })
+
+  test('names a repo outside the explorer root by its folder', () => {
+    const entries = collectChangedFiles(ROOT, [
+      repoGroup('/elsewhere/other', ['src/x.ts']),
+    ])
+    expect(entries[0]!.label).toBe('other/src/x.ts')
+  })
+})
+
+describe('buildChangedRows', () => {
+  const entries = collectChangedFiles(ROOT, [
+    repoGroup(`${ROOT}/inner`, ['site/b/index.html', 'site/a/index.html']),
+  ])
+
+  test('collapsed by default state: header only', () => {
+    const rows = buildChangedRows(entries, new Set([CHANGED_GROUP_KEY]))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ kind: 'group', name: 'Changed', meta: '2 files' })
+  })
+
+  test('expanded: one path-labelled row per file, sorted by label', () => {
+    const rows = buildChangedRows(entries, new Set())
+    const files = rows.filter(r => r.kind === 'file')
+    // Same-basename files stay distinguishable — the label, not the basename,
+    // is what the row renders.
+    expect(files.map(r => (r.kind === 'file' ? r.label : ''))).toEqual([
+      'inner/site/a/index.html',
+      'inner/site/b/index.html',
+    ])
+    expect(files[0]).toMatchObject({ root: `${ROOT}/inner`, depth: 0 })
+  })
+
+  test('no rows at all when nothing changed', () => {
+    expect(buildChangedRows([], new Set())).toEqual([])
   })
 })
