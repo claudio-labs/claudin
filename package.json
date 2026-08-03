@@ -94,7 +94,7 @@
     "figures": "6.1.0",
     "fuse.js": "^7.4.2",
     "get-east-asian-width": "^1.6.0",
-    "google-auth-library": "^10.9.0",
+    "google-auth-library": "^11.0.0",
     "https-proxy-agent": "9.1.0",
     "ignore": "7.0.6",
     "indent-string": "5.0.0",
