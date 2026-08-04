@@ -1,0 +1,228 @@
+[
+  {
+    "label": "before",
+    "exitCode": 0,
+    "wallMs": 67658.95599100001,
+    "input": 44943,
+    "output": 4668,
+    "cacheRead": 653340,
+    "cacheCreation": 40981,
+    "endContext": 44457,
+    "costUsd": 0.6467370000000001,
+    "numTurns": 20,
+    "model": "claude-sonnet-5",
+    "sawSentinel": true,
+    "calls": [
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Edit",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Edit",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      }
+    ],
+    "gitToolCalls": 0,
+    "gitToolCommands": 0,
+    "bashVcsCalls": 12,
+    "bursts": 3,
+    "callsPerBurst": 4,
+    "transcript": "/home/viudes/.claudin/projects/-tmp-git-tool-ab-hoiYy4/d99006b0-dc57-4db4-b451-b5e11ea6d9b5.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "after",
+    "exitCode": 0,
+    "wallMs": 94280.681973,
+    "input": 41626,
+    "output": 5780,
+    "cacheRead": 583969,
+    "cacheCreation": 30889,
+    "endContext": 45479,
+    "costUsd": 0.5721027000000001,
+    "numTurns": 18,
+    "model": "claude-sonnet-5",
+    "sawSentinel": true,
+    "calls": [
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 3
+      },
+      {
+        "name": "Bash",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 2
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 1
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Bash",
+        "vcs": false,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 2
+      },
+      {
+        "name": "Read",
+        "vcs": false,
+        "commands": 0
+      },
+      {
+        "name": "Bash",
+        "vcs": false,
+        "commands": 1
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 2
+      },
+      {
+        "name": "Git",
+        "vcs": true,
+        "commands": 2
+      }
+    ],
+    "gitToolCalls": 12,
+    "gitToolCommands": 18,
+    "bashVcsCalls": 1,
+    "bursts": 3,
+    "callsPerBurst": 4.333333333333333,
+    "transcript": "/home/viudes/.claudin/projects/-tmp-git-tool-ab-knwusC/b6197f15-4bb3-46d0-a7b3-75ab48be0ed8.jsonl",
+    "stderr": ""
+  }
+]
