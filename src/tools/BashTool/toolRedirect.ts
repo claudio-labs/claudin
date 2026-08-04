@@ -9,7 +9,10 @@ import { expandTilde } from '../../utils/permissions/pathValidation.js'
 import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from '../FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from '../GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
+import { createOneShotMemo, MEMO_LIMIT } from '../shared/redirect.js'
 import { PATH_EXTRACTORS } from './pathValidation.js'
+
+export { MEMO_LIMIT }
 
 /**
  * Bash → Read/Grep/Glob redirect.
@@ -1010,15 +1013,10 @@ function applyWindow(
 // ---------------------------------------------------------------------------
 
 /**
- * Commands already refused once. Past the limit the OLDEST entry is evicted —
- * a Set iterates in insertion order — so the set cannot grow for the life of
- * the process AND a command that already escaped is not re-armed just because a
- * hundred unrelated ones came after it. Same shape and same reasoning as the
- * RunTests redirect's memo.
+ * This lane's own refusal memo — see `../shared/redirect.ts` for the eviction
+ * reasoning and for why each redirect keeps a separate instance.
  */
-const refusedCommands = new Set<string>()
-/** Exported so the memo tests derive their fixtures from the real bound. */
-export const MEMO_LIMIT = 100
+const memo = createOneShotMemo(MEMO_LIMIT)
 
 /**
  * Records the command as refused, so the SECOND identical call runs — the
@@ -1047,18 +1045,11 @@ export function shouldRedirectToTools(
   const analysis = analyzeCommandForRedirect(command, cwd)
   if (!analysis) return null
   if (!analysis.targets.every(target => hasTool(TOOL_NAME[target]))) return null
-  const key = command.trim()
-  if (refusedCommands.has(key)) return null
-  if (refusedCommands.size >= MEMO_LIMIT) {
-    const oldest = refusedCommands.values().next().value
-    if (oldest !== undefined) refusedCommands.delete(oldest)
-  }
-  refusedCommands.add(key)
-  return analysis
+  return memo.shouldRefuse(command) ? analysis : null
 }
 
 export function resetToolRedirectMemoForTesting(): void {
-  refusedCommands.clear()
+  memo.reset()
 }
 
 // ---------------------------------------------------------------------------

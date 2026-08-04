@@ -29,14 +29,14 @@ import { semanticBoolean } from '../../utils/semanticBoolean.js';
 import { semanticNumber } from '../../utils/semanticNumber.js';
 import { getCachedPowerShellPath } from '../../utils/shell/powershellDetection.js';
 import { EndTruncatingAccumulator } from '../../utils/stringUtils.js';
-import { getTaskOutputPath } from '../../utils/task/diskOutput.js';
 import { TaskOutput } from '../../utils/task/TaskOutput.js';
 import { isOutputLineTruncated } from '../../utils/terminal.js';
-import { buildLargeToolResultMessage, ensureToolResultsDir, generatePreview, getToolResultPath, PREVIEW_SIZE_BYTES } from '../../utils/toolResultStorage.js';
+import { ensureToolResultsDir, getToolResultPath } from '../../utils/toolResultStorage.js';
 import { shouldUseSandbox } from '../BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from '../BashTool/UI.js';
-import { buildImageToolResult, isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from '../BashTool/utils.js';
+import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from '../BashTool/utils.js';
 import { trackGitOperations } from '../shared/gitOperationTracking.js';
+import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from '../shellToolResultMappers.js';
 import { interpretCommandResult } from './commandSemantics.js';
 import { powershellToolHasPermission } from './powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from './prompt.js';
@@ -158,8 +158,9 @@ function isSearchOrReadPowerShellCommand(command: string): {
 // Progress display constants
 const PROGRESS_THRESHOLD_MS = 2000;
 const PROGRESS_INTERVAL_MS = 1000;
-// In assistant mode, blocking commands auto-background after this many ms in the main agent
-const ASSISTANT_BLOCKING_BUDGET_MS = 15_000;
+// In assistant mode, blocking commands auto-background after this many ms in the
+// main agent. Shared with BashTool via shellToolResultMappers, because the
+// backgrounding note quotes the budget.
 
 // Commands that should not be auto-backgrounded (canonical lowercase).
 // 'sleep' is a PS built-in alias for Start-Sleep but not in COMMON_ALIASES,
@@ -387,63 +388,11 @@ export const PowerShellTool = buildTool({
   renderToolUseQueuedMessage,
   renderToolResultMessage,
   renderToolUseErrorMessage,
-  mapToolResultToToolResultBlockParam({
-    interrupted,
-    stdout,
-    stderr,
-    isImage,
-    persistedOutputPath,
-    persistedOutputSize,
-    backgroundTaskId,
-    backgroundedByUser,
-    assistantAutoBackgrounded
-  }: Out, toolUseID: string): ToolResultBlockParam {
-    // For image data, format as image content block for Claude
-    if (isImage) {
-      const block = buildImageToolResult(stdout, toolUseID);
-      if (block) return block;
-    }
-    const normalizedStdout = typeof stdout === 'string' ? stdout : '';
-    const normalizedStderr = typeof stderr === 'string' ? stderr : '';
-    let processedStdout = normalizedStdout;
-    if (persistedOutputPath) {
-      const trimmed = normalizedStdout
-        ? normalizedStdout.replace(/^(\s*\n)+/, '').trimEnd()
-        : '';
-      const preview = generatePreview(trimmed, PREVIEW_SIZE_BYTES);
-      processedStdout = buildLargeToolResultMessage({
-        filepath: persistedOutputPath,
-        originalSize: persistedOutputSize ?? 0,
-        isJson: false,
-        preview: preview.preview,
-        hasMore: preview.hasMore
-      });
-    } else if (normalizedStdout) {
-      processedStdout = normalizedStdout.replace(/^(\s*\n)+/, '');
-      processedStdout = processedStdout.trimEnd();
-    }
-    let errorMessage = normalizedStderr.trim();
-    if (interrupted) {
-      if (normalizedStderr) errorMessage += EOL;
-      errorMessage += '<error>Command was aborted before completion</error>';
-    }
-    let backgroundInfo = '';
-    if (backgroundTaskId) {
-      const outputPath = getTaskOutputPath(backgroundTaskId);
-      if (assistantAutoBackgrounded) {
-        backgroundInfo = `Command exceeded the assistant-mode blocking budget (${ASSISTANT_BLOCKING_BUDGET_MS / 1000}s) and was moved to the background with ID: ${backgroundTaskId}. It is still running — you will be notified when it completes. Output is being written to: ${outputPath}. In assistant mode, delegate long-running work to a subagent or use run_in_background to keep this conversation responsive.`;
-      } else if (backgroundedByUser) {
-        backgroundInfo = `Command was manually backgrounded by user with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
-      } else {
-        backgroundInfo = `Command running in background with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
-      }
-    }
-    return {
-      tool_use_id: toolUseID,
-      type: 'tool_result' as const,
-      content: [processedStdout, errorMessage, backgroundInfo].filter(Boolean).join('\n'),
-      is_error: interrupted
-    };
+  mapToolResultToToolResultBlockParam(data: Out, toolUseID: string): ToolResultBlockParam {
+    // Image block, stdout trim, persisted-output wrapper, stderr + abort
+    // marker and the background note are identical across the shell tools —
+    // see src/tools/shellToolResultMappers.ts.
+    return mapShellResultToToolResultBlockParam(data, toolUseID);
   },
   async call(input: PowerShellToolInput, toolUseContext: Parameters<Tool['call']>[1], _canUseTool?: CanUseToolFn, _parentMessage?: AssistantMessage, onProgress?: ToolCallProgress<PowerShellProgress>): Promise<{
     data: Out;

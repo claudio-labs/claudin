@@ -37,10 +37,9 @@ import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js';
 import { semanticBoolean } from '../../utils/semanticBoolean.js';
 import { semanticNumber } from '../../utils/semanticNumber.js';
 import { EndTruncatingAccumulator } from '../../utils/stringUtils.js';
-import { getTaskOutputPath } from '../../utils/task/diskOutput.js';
 import { TaskOutput } from '../../utils/task/TaskOutput.js';
 import { isOutputLineTruncated } from '../../utils/terminal.js';
-import { buildLargeToolResultMessage, ensureToolResultsDir, generatePreview, getToolResultPath, PREVIEW_SIZE_BYTES } from '../../utils/toolResultStorage.js';
+import { ensureToolResultsDir, getToolResultPath } from '../../utils/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from '../FileEditTool/UI.js';
 import { trackGitOperations } from '../shared/gitOperationTracking.js';
 import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js';
@@ -63,13 +62,15 @@ import { shouldUseSandbox } from './shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from './toolName.js';
 import { renderToolRedirect, shouldRedirectToTools } from './toolRedirect.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from './UI.js';
-import { buildImageToolResult, isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from './utils.js';
+import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from './utils.js';
+import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from '../shellToolResultMappers.js';
 const EOL = '\n';
 
 // Progress display constants
 const PROGRESS_THRESHOLD_MS = 2000; // Show progress after 2 seconds
-// In assistant mode, blocking bash auto-backgrounds after this many ms in the main agent
-const ASSISTANT_BLOCKING_BUDGET_MS = 15_000;
+// In assistant mode, blocking bash auto-backgrounds after this many ms in the
+// main agent. Shared with PowerShellTool via shellToolResultMappers, because the
+// backgrounding note quotes the budget.
 
 // Search commands for collapsible display (grep, find, etc.)
 const BASH_SEARCH_COMMANDS = new Set(['find', 'grep', 'rg', 'ag', 'ack', 'locate', 'which', 'whereis']);
@@ -605,19 +606,12 @@ export const BashTool = buildTool({
   }) {
     return stderr ? `${stdout}\n${stderr}` : stdout;
   },
-  mapToolResultToToolResultBlockParam({
-    interrupted,
-    stdout,
-    stderr,
-    isImage,
-    backgroundTaskId,
-    backgroundedByUser,
-    assistantAutoBackgrounded,
-    structuredContent,
-    persistedOutputPath,
-    persistedOutputSize
-  }, toolUseID): ToolResultBlockParam {
-    // Handle structured content
+  mapToolResultToToolResultBlockParam(data, toolUseID): ToolResultBlockParam {
+    // Structured content replaces the whole block, and only Bash produces it —
+    // so it stays here rather than in the shared mapper.
+    const {
+      structuredContent
+    } = data;
     if (structuredContent && structuredContent.length > 0) {
       return {
         tool_use_id: toolUseID,
@@ -626,55 +620,10 @@ export const BashTool = buildTool({
       };
     }
 
-    // For image data, format as image content block for Claude
-    if (isImage) {
-      const block = buildImageToolResult(stdout, toolUseID);
-      if (block) return block;
-    }
-    const normalizedStdout = typeof stdout === 'string' ? stdout : '';
-    const normalizedStderr = typeof stderr === 'string' ? stderr : '';
-    let processedStdout = normalizedStdout;
-    if (normalizedStdout) {
-      // Replace any leading newlines or lines with only whitespace
-      processedStdout = normalizedStdout.replace(/^(\s*\n)+/, '');
-      // Still trim the end as before
-      processedStdout = processedStdout.trimEnd();
-    }
-
-    // For large output that was persisted to disk, build <persisted-output>
-    // message for the model. The UI never sees this — it uses data.stdout.
-    if (persistedOutputPath) {
-      const preview = generatePreview(processedStdout, PREVIEW_SIZE_BYTES);
-      processedStdout = buildLargeToolResultMessage({
-        filepath: persistedOutputPath,
-        originalSize: persistedOutputSize ?? 0,
-        isJson: false,
-        preview: preview.preview,
-        hasMore: preview.hasMore
-      });
-    }
-    let errorMessage = normalizedStderr.trim();
-    if (interrupted) {
-      if (normalizedStderr) errorMessage += EOL;
-      errorMessage += '<error>Command was aborted before completion</error>';
-    }
-    let backgroundInfo = '';
-    if (backgroundTaskId) {
-      const outputPath = getTaskOutputPath(backgroundTaskId);
-      if (assistantAutoBackgrounded) {
-        backgroundInfo = `Command exceeded the assistant-mode blocking budget (${ASSISTANT_BLOCKING_BUDGET_MS / 1000}s) and was moved to the background with ID: ${backgroundTaskId}. It is still running — you will be notified when it completes. Output is being written to: ${outputPath}. In assistant mode, delegate long-running work to a subagent or use run_in_background to keep this conversation responsive.`;
-      } else if (backgroundedByUser) {
-        backgroundInfo = `Command was manually backgrounded by user with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
-      } else {
-        backgroundInfo = `Command running in background with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
-      }
-    }
-    return {
-      tool_use_id: toolUseID,
-      type: 'tool_result',
-      content: [processedStdout, errorMessage, backgroundInfo].filter(Boolean).join('\n'),
-      is_error: interrupted
-    };
+    // Everything below (image block, stdout trim, persisted-output wrapper,
+    // stderr + abort marker, background note) is identical across the shell
+    // tools — see src/tools/shellToolResultMappers.ts.
+    return mapShellResultToToolResultBlockParam(data, toolUseID);
   },
   async call(input: BashToolInput, toolUseContext, _canUseTool?: CanUseToolFn, parentMessage?: AssistantMessage, onProgress?: ToolCallProgress<BashProgress>) {
     // Handle simulated sed edit - apply directly instead of running sed
