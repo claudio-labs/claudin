@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.7 — 2026-08-04
+
+- feat(typecheck): baseline-aware Typecheck tool (#48) (c3b86a3)
+- chore(deps): dedupe google-auth-library via a $-ref override (241f6af)
+- fix(vertex): hand the SKIP_VERTEX_AUTH stub a real Headers (ea0fefb)
+- chore(deps): bump the dev-dependencies group with 2 updates (#45) (0894d88)
+- chore(deps): bump the production-dependencies group with 4 updates (#46) (a1c9291)
+- chore(deps): bump google-auth-library from 10.9.1 to 11.0.0 (#47) (709a5c3)
+
+### Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.6 — 2026-07-31
 
 - fix(diff,explorer): size the stacked file list to the terminal and fix the Changed group (d8a2950)
