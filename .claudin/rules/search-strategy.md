@@ -16,6 +16,12 @@ Efficient navigation patterns for Claudin's TypeScript codebase.
 
 Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 
+A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
+model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
+(`summarizeGrepOutput` in `src/utils/toolResultSummarizer.ts`). So asking for
+`-C 30` on a wide search does not buy 30 lines of context — scope the search
+instead, or re-run against the one file you care about.
+
 ## Module Map
 
 Approximate `.ts(x)` counts in `(N)` — the big dirs (`utils`, `components`,

@@ -786,6 +786,24 @@ function truncateLine(line: string): string {
 // ============================================================
 // Strategy 2: Grep
 // ============================================================
+//
+// Regroups a content-mode ripgrep body by file: per-file header, up to
+// GREP_MAX_MATCHES_PER_FILE matches with a `+N more` tail, up to GREP_MAX_FILES
+// files with an `<omitted>` tail, context clamped to GREP_CONTEXT_RADIUS lines
+// around each surviving match, and verbatim repeats collapsed to a
+// back-reference. Anything that cannot be anchored to a match is preserved
+// literally, so a malformed or mixed-format body degrades into a passthrough
+// (via the caller's no-win guard) instead of losing lines.
+//
+// Two shapes deliberately do NOT shrink and pass straight through: a body with
+// no parseable prefix (a single-file search, where rg omits the filename) and a
+// match-only body across many files, where the per-file headers cost more than
+// the grouping saves. Both are pinned in toolResultSummarizer.grep.test.ts.
+//
+// Measured over the recorded transcripts (scripts/profile/grep-summarizer-replay.ts,
+// 5,086 real content-mode results): 3.2% of all Grep chars and 9.4% of the
+// context-bearing ones, at the current 6,000-char dispatch threshold. Lowering
+// that threshold to 3,000 doubles the take (6.4%) — the curve is in the bench.
 
 const GREP_MAX_MATCHES_PER_FILE = 10
 const GREP_MAX_FILES = 50
