@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'fs'
 import * as path from 'path'
 import { exec } from '../../utils/Shell.js'
 import { logError } from '../../utils/log.js'
+import { readFullShellOutput } from '../../utils/shell/fullOutput.js'
 import { buildDossier } from './dossier.js'
 import { parseTestOutput } from './parsers/index.js'
 import { hasWatchFlag, planReporter } from './reporters.js'
@@ -97,7 +98,10 @@ export async function runTests(opts: RunOptions): Promise<TestResult> {
         : undefined,
     })
     const result = await shellCommand.result
-    stdout = result.stdout
+    // NOT `result.stdout` — that is capped at BASH_MAX_OUTPUT_LENGTH, so a
+    // verbose suite would be summarised from its first few hundred lines with
+    // counts that look plausible. See utils/shell/fullOutput.ts.
+    stdout = await readFullShellOutput(result)
     stderr = result.stderr
     exitCode = result.code
     if (result.interrupted) {

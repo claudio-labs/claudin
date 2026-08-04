@@ -1,0 +1,3 @@
+--- dotnet build --no-restore -clp:NoSummary (restored by new) ---
+/w/app/Program.cs(1,9): error CS0029: Cannot implicitly convert type 'string' to 'int' [/w/app/app.csproj]
+exit=1

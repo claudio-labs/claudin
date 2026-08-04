@@ -34,6 +34,8 @@ const getLSPTool = () =>
   require('./tools/LSPTool/LSPTool.js').LSPTool as typeof import('./tools/LSPTool/LSPTool.js').LSPTool
 const getRunTestsTool = () =>
   require('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool
+const getTypecheckTool = () =>
+  require('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool as typeof import('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool
 const getRenameTool = () =>
   require('./tools/RenameTool/RenameTool.js').RenameTool as typeof import('./tools/RenameTool/RenameTool.js').RenameTool
 // Dead code elimination: conditional import for internal-only tools
@@ -266,6 +268,7 @@ export function getAllBaseTools(): Tools {
     getSkillTool(),
     getLSPTool(),
     getRunTestsTool(),
+    getTypecheckTool(),
     getEnterPlanModeTool(),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
     ...(WebBrowserTool ? [WebBrowserTool] : []),

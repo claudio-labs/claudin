@@ -12,6 +12,14 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const ORIGINAL_CLAUDIN_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
+/**
+ * Restored below for the same reason as CLAUDIN_CONFIG_DIR, and more urgently:
+ * `afterEach` DELETES the temp home, so leaving it in the environment points
+ * every later test in the run at a directory that no longer exists. That is
+ * invisible until something shells out — `git commit` exits 128 with no usable
+ * stderr, which is how it surfaced, in another suite entirely.
+ */
+const ORIGINAL_HOME = process.env.HOME
 
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
@@ -70,6 +78,11 @@ describe('runProviderMigrate', () => {
       delete process.env.CLAUDIN_CONFIG_DIR
     } else {
       process.env.CLAUDIN_CONFIG_DIR = ORIGINAL_CLAUDIN_CONFIG_DIR
+    }
+    if (ORIGINAL_HOME === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = ORIGINAL_HOME
     }
     resetConfig()
     try {

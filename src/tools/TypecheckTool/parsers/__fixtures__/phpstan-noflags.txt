@@ -1,0 +1,18 @@
+--- phpstan analyse ---
+Note: Using configuration file /w/phpstan.neon.
+ 0/1 [░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   0%[1G[2K 1/1 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100%
+
+ ------ ------------------------------------------------------------- 
+  Line   Money.php                                                    
+ ------ ------------------------------------------------------------- 
+  4      Method Money::cents() should return int but returns string.  
+         🪪  return.type                                              
+  7      Call to an undefined method Money::missingMethod().          
+         🪪  method.notFound                                          
+ ------ ------------------------------------------------------------- 
+
+
+ [ERROR] Found 2 errors                                                         
+
+exit=1
+exit=0

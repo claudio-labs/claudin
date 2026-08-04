@@ -30,6 +30,7 @@ import { EXIT_WORKTREE_TOOL_NAME } from '../tools/ExitWorktreeTool/constants.js'
 import { WORKFLOW_TOOL_NAME } from '../tools/WorkflowTool/constants.js'
 import { WORKFLOW_RUN_TOOL_NAME } from '../tools/AgentWorkflow/constants.js'
 import { RUN_TESTS_TOOL_NAME } from '../tools/RunTestsTool/prompt.js'
+import { TYPECHECK_TOOL_NAME } from '../tools/TypecheckTool/prompt.js'
 import {
   CRON_CREATE_TOOL_NAME,
   CRON_DELETE_TOOL_NAME,
@@ -77,6 +78,10 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // `tester` spawned with run_in_background) get the tool instead of scraping
   // raw `bun test` stdout. See scripts/bench/run-tests-turns-ab.ts.
   RUN_TESTS_TOOL_NAME,
+  // Same argument as RunTests above, and the saving is larger: a background
+  // agent that scrapes raw compiler stdout in a project with a known error
+  // backlog pays for the whole backlog on every check.
+  TYPECHECK_TOOL_NAME,
 ])
 /**
  * Tools allowed only for in-process teammates (not general async agents).

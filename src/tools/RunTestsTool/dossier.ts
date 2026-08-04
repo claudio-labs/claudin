@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, statSync } from 'fs'
+import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
-import { logError } from '../../utils/log.js'
+import { readSourceExcerpt } from '../shared/sourceExcerpt.js'
 import type { TestFailure } from './types.js'
 
 /**
@@ -11,34 +11,11 @@ import type { TestFailure } from './types.js'
  * follow-up Read per failure.
  */
 
-const CONTEXT_LINES = 3
-const MAX_EXCERPT_FILE_BYTES = 2_000_000
 const MAX_SUMMARY_CHARS = 200
 
 function resolveFile(file: string, cwd: string): string | null {
   const abs = isAbsolute(file) ? file : resolve(cwd, file)
   return existsSync(abs) ? abs : null
-}
-
-function readExcerpt(absFile: string, line: number): string | undefined {
-  try {
-    if (statSync(absFile).size > MAX_EXCERPT_FILE_BYTES) return undefined
-    const lines = readFileSync(absFile, 'utf8').split('\n')
-    if (line < 1 || line > lines.length) return undefined
-    const start = Math.max(0, line - 1 - CONTEXT_LINES)
-    const end = Math.min(lines.length, line + CONTEXT_LINES)
-    const width = String(end).length
-    const out: string[] = []
-    for (let i = start; i < end; i++) {
-      const n = i + 1
-      const marker = n === line ? '>' : ' '
-      out.push(`${marker} ${String(n).padStart(width)} | ${lines[i]}`)
-    }
-    return out.join('\n')
-  } catch (e) {
-    logError(`RunTests: failed to read excerpt from ${absFile} — ${String(e)}`)
-    return undefined
-  }
 }
 
 function distillSummary(failure: TestFailure): string {
@@ -59,7 +36,7 @@ export function buildDossier(failures: TestFailure[], cwd: string): void {
     if (f.excerpt || !f.file || !f.line) continue
     const abs = resolveFile(f.file, cwd)
     if (!abs) continue
-    const excerpt = readExcerpt(abs, f.line)
+    const excerpt = readSourceExcerpt(abs, f.line)
     if (excerpt) f.excerpt = excerpt
   }
 }

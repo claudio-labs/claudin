@@ -1,0 +1,8 @@
+--- dart analyze ---
+Analyzing w...
+
+  error - bin/main.dart:2:11 - A value of type 'String' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int'. - invalid_assignment
+
+1 issue found.
+exit=3
+exit=0
