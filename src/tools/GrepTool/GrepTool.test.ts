@@ -309,11 +309,28 @@ describe('GrepTool relativizeRgLine', () => {
     )
   })
 
-  test('leaves a line alone when the candidate path is not under the search root', () => {
-    // A directory named `foo-12-bar` makes the non-greedy match land inside the
-    // path; rewriting then would point at a file that does not exist.
+  test('relativizes past a directory that contains a separator run', () => {
+    // A directory named `foo-12-bar` makes the first split land inside the
+    // path. Rewriting THAT would point at a file that does not exist, so the
+    // guard rejects it — and the walk moves on to the next candidate instead of
+    // giving up, which is what used to leak the absolute path on every line of
+    // a search rooted in a directory like `proj-2026-q1`.
     const line = `${root}/foo-12-bar/a.ts-791-const X = 50`
-    expect(relativizeRgLine(line, `${root}/foo-12-bar`)).toBe(line)
+    expect(relativizeRgLine(line, `${root}/foo-12-bar`)).toBe(
+      'foo-12-bar/a.ts-791-const X = 50',
+    )
+  })
+
+  test('relativizes a file whose own name contains a separator run', () => {
+    const line = `${root}/notes/report-2026-07-25.md:12:const X = 50`
+    expect(relativizeRgLine(line, root)).toBe(
+      'notes/report-2026-07-25.md:12:const X = 50',
+    )
+  })
+
+  test('still gives up when no candidate is under the search root', () => {
+    const line = '/elsewhere/a.ts-791-const X = 50'
+    expect(relativizeRgLine(line, `${root}/src`)).toBe(line)
   })
 
   test('leaves the block separator and unprefixed lines alone', () => {
