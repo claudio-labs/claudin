@@ -1,0 +1,185 @@
+src/utils/permissions/permissions.ts-1030-  }
+src/utils/permissions/permissions.ts-1031-
+src/utils/permissions/permissions.ts-1032-  // Preserve the original classifier value (e.g. 'dangerous-agent-action')
+src/utils/permissions/permissions.ts-1033-  // so downstream analytics in interactiveHandler can log the correct
+src/utils/permissions/permissions.ts-1034-  // user override event.
+src/utils/permissions/permissions.ts-1035-  const originalClassifier =
+src/utils/permissions/permissions.ts-1036-    result.decisionReason?.type === 'classifier'
+src/utils/permissions/permissions.ts-1037-      ? result.decisionReason.classifier
+src/utils/permissions/permissions.ts-1038-      : 'auto-mode'
+src/utils/permissions/permissions.ts-1039-
+src/utils/permissions/permissions.ts-1040-  return {
+src/utils/permissions/permissions.ts-1041-    ...result,
+src/utils/permissions/permissions.ts-1042-    decisionReason: {
+src/utils/permissions/permissions.ts-1043-      type: 'classifier',
+src/utils/permissions/permissions.ts-1044-      classifier: originalClassifier,
+src/utils/permissions/permissions.ts-1045-      reason: `${warning}\n\nLatest blocked action: ${classifierReason}`,
+src/utils/permissions/permissions.ts-1046-    },
+src/utils/permissions/permissions.ts-1047-  }
+src/utils/permissions/permissions.ts-1048-}
+src/utils/permissions/permissions.ts-1049-
+src/utils/permissions/permissions.ts-1050-/**
+src/utils/permissions/permissions.ts-1051- * Plan mode hard gate. Returns a deny decision when the active permission
+src/utils/permissions/permissions.ts-1052- * mode is `plan` AND the tool is non-readonly AND none of the escape hatches
+src/utils/permissions/permissions.ts-1053- * apply (allow from tool.checkPermissions, inherited bypass, or ExitPlanMode).
+src/utils/permissions/permissions.ts-1054- *
+src/utils/permissions/permissions.ts-1055- * Lives in a shared helper so both hasPermissionsToUseToolInner (normal path)
+src/utils/permissions/permissions.ts-1056- * and checkRuleBasedPermissions (PreToolUse hook approval path) enforce the
+src/utils/permissions/permissions.ts-1057- * same gate — otherwise a hook returning `allow` would let writes through in
+src/utils/permissions/permissions.ts-1058- * plan mode.
+src/utils/permissions/permissions.ts-1059- */
+src/utils/permissions/permissions.ts:1060:function planModeHardDenyIfApplicable(
+src/utils/permissions/permissions.ts-1061-  tool: Tool,
+src/utils/permissions/permissions.ts-1062-  input: { [key: string]: unknown },
+src/utils/permissions/permissions.ts-1063-  context: ToolUseContext,
+src/utils/permissions/permissions.ts-1064-  toolPermissionResult: PermissionResult | undefined,
+src/utils/permissions/permissions.ts-1065-): PermissionDenyDecision | null {
+src/utils/permissions/permissions.ts-1066-  const ctx = context.getAppState().toolPermissionContext
+src/utils/permissions/permissions.ts-1067-  if (
+src/utils/permissions/permissions.ts-1068-    ctx.mode !== 'plan' ||
+src/utils/permissions/permissions.ts-1069-    ctx.isBypassPermissionsModeAvailable ||
+src/utils/permissions/permissions.ts-1070-    tool.name === EXIT_PLAN_MODE_V2_TOOL_NAME ||
+src/utils/permissions/permissions.ts-1071-    toolPermissionResult?.behavior === 'allow'
+src/utils/permissions/permissions.ts-1072-  ) {
+src/utils/permissions/permissions.ts-1073-    return null
+src/utils/permissions/permissions.ts-1074-  }
+src/utils/permissions/permissions.ts-1075-
+src/utils/permissions/permissions.ts-1076-  let readOnly = false
+src/utils/permissions/permissions.ts-1077-  try {
+src/utils/permissions/permissions.ts-1078-    readOnly = tool.isReadOnly(tool.inputSchema.parse(input))
+src/utils/permissions/permissions.ts-1079-  } catch {
+src/utils/permissions/permissions.ts-1080-    readOnly = false
+src/utils/permissions/permissions.ts-1081-  }
+src/utils/permissions/permissions.ts-1082-  if (readOnly) return null
+src/utils/permissions/permissions.ts-1083-
+src/utils/permissions/permissions.ts-1084-  return {
+src/utils/permissions/permissions.ts-1085-    behavior: 'deny',
+src/utils/permissions/permissions.ts-1086-    message: `Plan mode is active. Tool ${tool.name} is not read-only and cannot run until you call ExitPlanMode. Only the plan file may be edited.`,
+src/utils/permissions/permissions.ts-1087-    decisionReason: {
+src/utils/permissions/permissions.ts-1088-      type: 'mode',
+src/utils/permissions/permissions.ts-1089-      mode: 'plan',
+src/utils/permissions/permissions.ts-1090-    },
+--
+src/utils/permissions/permissions.ts-1135-      return {
+src/utils/permissions/permissions.ts-1136-        behavior: 'ask',
+src/utils/permissions/permissions.ts-1137-        decisionReason: {
+src/utils/permissions/permissions.ts-1138-          type: 'rule',
+src/utils/permissions/permissions.ts-1139-          rule: askRule,
+src/utils/permissions/permissions.ts-1140-        },
+src/utils/permissions/permissions.ts-1141-        message: createPermissionRequestMessage(tool.name),
+src/utils/permissions/permissions.ts-1142-      }
+src/utils/permissions/permissions.ts-1143-    }
+src/utils/permissions/permissions.ts-1144-    // Fall through to let tool.checkPermissions handle command-specific rules
+src/utils/permissions/permissions.ts-1145-  }
+src/utils/permissions/permissions.ts-1146-
+src/utils/permissions/permissions.ts-1147-  // 1c. Tool-specific permission check (e.g. bash subcommand rules)
+src/utils/permissions/permissions.ts-1148-  let toolPermissionResult: PermissionResult = {
+src/utils/permissions/permissions.ts-1149-    behavior: 'passthrough',
+src/utils/permissions/permissions.ts-1150-    message: createPermissionRequestMessage(tool.name),
+src/utils/permissions/permissions.ts-1151-  }
+src/utils/permissions/permissions.ts-1152-  try {
+src/utils/permissions/permissions.ts-1153-    const parsedInput = tool.inputSchema.parse(input)
+src/utils/permissions/permissions.ts-1154-    toolPermissionResult = await tool.checkPermissions(parsedInput, context)
+src/utils/permissions/permissions.ts-1155-  } catch (e) {
+src/utils/permissions/permissions.ts-1156-    if (e instanceof AbortError || isSdkApiUserAbortError(e)) {
+src/utils/permissions/permissions.ts-1157-      throw e
+src/utils/permissions/permissions.ts-1158-    }
+src/utils/permissions/permissions.ts-1159-    logError(e)
+src/utils/permissions/permissions.ts-1160-  }
+src/utils/permissions/permissions.ts-1161-
+src/utils/permissions/permissions.ts-1162-  // 1c.5. Plan mode hard gate (mirrors hasPermissionsToUseToolInner) — must
+src/utils/permissions/permissions.ts-1163-  // run here too, otherwise a PreToolUse hook returning `allow` would route
+src/utils/permissions/permissions.ts-1164-  // through this function and bypass plan mode.
+src/utils/permissions/permissions.ts:1165:  const planDeny = planModeHardDenyIfApplicable(
+src/utils/permissions/permissions.ts-1166-    tool,
+src/utils/permissions/permissions.ts-1167-    input,
+src/utils/permissions/permissions.ts-1168-    context,
+src/utils/permissions/permissions.ts-1169-    toolPermissionResult,
+src/utils/permissions/permissions.ts-1170-  )
+src/utils/permissions/permissions.ts-1171-  if (planDeny) return planDeny
+src/utils/permissions/permissions.ts-1172-
+src/utils/permissions/permissions.ts-1173-  // 1d. Tool implementation denied (catches bash subcommand denies wrapped
+src/utils/permissions/permissions.ts-1174-  // in subcommandResults — no need to inspect decisionReason.type)
+src/utils/permissions/permissions.ts-1175-  if (toolPermissionResult?.behavior === 'deny') {
+src/utils/permissions/permissions.ts-1176-    return toolPermissionResult
+src/utils/permissions/permissions.ts-1177-  }
+src/utils/permissions/permissions.ts-1178-
+src/utils/permissions/permissions.ts-1179-  // 1f. Content-specific ask rules from tool.checkPermissions
+src/utils/permissions/permissions.ts-1180-  / (e.g. Bash(npm publish:*) → {ask, type:'rule', ruleBehavior:'ask'})
+src/utils/permissions/permissions.ts-1181-  if (
+src/utils/permissions/permissions.ts-1182-    toolPermissionResult?.behavior === 'ask' &&
+src/utils/permissions/permissions.ts-1183-    toolPermissionResult.decisionReason?.type === 'rule' &&
+src/utils/permissions/permissions.ts-1184-    toolPermissionResult.decisionReason.rule.ruleBehavior === 'ask'
+src/utils/permissions/permissions.ts-1185-  ) {
+src/utils/permissions/permissions.ts-1186-    return toolPermissionResult
+src/utils/permissions/permissions.ts-1187-  }
+src/utils/permissions/permissions.ts-1188-
+src/utils/permissions/permissions.ts-1189-  // 1g. Safety checks (e.g. .git/, .claudin/, .vscode/, shell configs) are
+src/utils/permissions/permissions.ts-1190-  // bypass-immune — they must prompt even when a PreToolUse hook returned
+src/utils/permissions/permissions.ts-1191-  / allow. checkPathSafetyForAutoEdit returns {type:'safetyCheck'} for these.
+src/utils/permissions/permissions.ts-1192-  if (
+src/utils/permissions/permissions.ts-1193-    toolPermissionResult?.behavior === 'ask' &&
+src/utils/permissions/permissions.ts-1194-    toolPermissionResult.decisionReason?.type === 'safetyCheck'
+src/utils/permissions/permissions.ts-1195-  ) {
+--
+src/utils/permissions/permissions.ts-1245-          rule: askRule,
+src/utils/permissions/permissions.ts-1246-        },
+src/utils/permissions/permissions.ts-1247-        message: createPermissionRequestMessage(tool.name),
+src/utils/permissions/permissions.ts-1248-      }
+src/utils/permissions/permissions.ts-1249-    }
+src/utils/permissions/permissions.ts-1250-    // Fall through to let Bash's checkPermissions handle command-specific rules
+src/utils/permissions/permissions.ts-1251-  }
+src/utils/permissions/permissions.ts-1252-
+src/utils/permissions/permissions.ts-1253-  // 1c. Ask the tool implementation for a permission result
+src/utils/permissions/permissions.ts-1254-  // Overridden unless tool input schema is not valid
+src/utils/permissions/permissions.ts-1255-  let toolPermissionResult: PermissionResult = {
+src/utils/permissions/permissions.ts-1256-    behavior: 'passthrough',
+src/utils/permissions/permissions.ts-1257-    message: createPermissionRequestMessage(tool.name),
+src/utils/permissions/permissions.ts-1258-  }
+src/utils/permissions/permissions.ts-1259-  try {
+src/utils/permissions/permissions.ts-1260-    const parsedInput = tool.inputSchema.parse(input)
+src/utils/permissions/permissions.ts-1261-    toolPermissionResult = await tool.checkPermissions(parsedInput, context)
+src/utils/permissions/permissions.ts-1262-  } catch (e) {
+src/utils/permissions/permissions.ts-1263-    // Rethrow abort errors so they propagate properly
+src/utils/permissions/permissions.ts-1264-    if (e instanceof AbortError || isSdkApiUserAbortError(e)) {
+src/utils/permissions/permissions.ts-1265-      throw e
+src/utils/permissions/permissions.ts-1266-    }
+src/utils/permissions/permissions.ts-1267-    logError(e)
+src/utils/permissions/permissions.ts-1268-  }
+src/utils/permissions/permissions.ts-1269-
+src/utils/permissions/permissions.ts-1270-  // 1c.5. Plan mode hard gate. Runs before 1d–1g so PowerShell-interactive,
+src/utils/permissions/permissions.ts-1271-  // explicit ask-rules, and safety checks all become hard-deny in plan mode
+src/utils/permissions/permissions.ts-1272-  // without a prompt. Also runs before 2b so plan mode beats user Edit(*)
+src/utils/permissions/permissions.ts-1273-  // always-allow rules. Sub-agents inherit toolPermissionContext.mode from
+src/utils/permissions/permissions.ts-1274-  // the parent (src/tools/AgentTool/runAgent.ts), so this gate covers them too.
+src/utils/permissions/permissions.ts:1275:  const planDeny = planModeHardDenyIfApplicable(
+src/utils/permissions/permissions.ts-1276-    tool,
+src/utils/permissions/permissions.ts-1277-    input,
+src/utils/permissions/permissions.ts-1278-    context,
+src/utils/permissions/permissions.ts-1279-    toolPermissionResult,
+src/utils/permissions/permissions.ts-1280-  )
+src/utils/permissions/permissions.ts-1281-  if (planDeny) return planDeny
+src/utils/permissions/permissions.ts-1282-
+src/utils/permissions/permissions.ts-1283-  // 1d. Tool implementation denied permission
+src/utils/permissions/permissions.ts-1284-  if (toolPermissionResult?.behavior === 'deny') {
+src/utils/permissions/permissions.ts-1285-    return toolPermissionResult
+src/utils/permissions/permissions.ts-1286-  }
+src/utils/permissions/permissions.ts-1287-
+src/utils/permissions/permissions.ts-1288-  // 1e. Tool requires user interaction even in bypass mode
+src/utils/permissions/permissions.ts-1289-  if (
+src/utils/permissions/permissions.ts-1290-    tool.requiresUserInteraction?.() &&
+src/utils/permissions/permissions.ts-1291-    toolPermissionResult?.behavior === 'ask'
+src/utils/permissions/permissions.ts-1292-  ) {
+src/utils/permissions/permissions.ts-1293-    return toolPermissionResult
+src/utils/permissions/permissions.ts-1294-  }
+src/utils/permissions/permissions.ts-1295-
+src/utils/permissions/permissions.ts-1296-  // 1f. Content-specific ask rules from tool.checkPermissions take precedence
+src/utils/permissions/permissions.ts-1297-  // over bypassPermissions mode. When a user explicitly configures a
+src/utils/permissions/permissions.ts-1298-  / content-specific ask rule (e.g. Bash(npm publish:*)), the tool's
+src/utils/permissions/permissions.ts-1299-  / checkPermissions returns {behavior:'ask', decisionReason:{type:'rule',
+src/utils/permissions/permissions.ts-1300-  / rule:{ruleBehavior:'ask'}}}. This must be respected even in bypass mode,
+src/utils/permissions/permissions.ts-1301-  // just as deny rules are respected at step 1d.
+src/utils/permissions/permissions.ts-1302-  if (
+src/utils/permissions/permissions.ts-1303-    toolPermissionResult?.behavior === 'ask' &&
+src/utils/permissions/permissions.ts-1304-    toolPermissionResult.decisionReason?.type === 'rule' &&
+src/utils/permissions/permissions.ts-1305-    toolPermissionResult.decisionReason.rule.ruleBehavior === 'ask'

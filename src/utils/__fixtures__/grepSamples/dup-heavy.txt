@@ -1,0 +1,154 @@
+src/constants/tools.ts:16:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/constants/tools.ts:17:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/constants/tools.ts:19:import { NOTEBOOK_EDIT_TOOL_NAME } from '../tools/NotebookEditTool/constants.js'
+src/constants/tools.ts:62:  FILE_EDIT_TOOL_NAME,
+src/constants/tools.ts:63:  FILE_WRITE_TOOL_NAME,
+src/constants/tools.ts:65:  NOTEBOOK_EDIT_TOOL_NAME,
+src/tools/REPLTool/constants.ts:4:import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
+src/tools/REPLTool/constants.ts:6:import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+src/tools/REPLTool/constants.ts:9:import { NOTEBOOK_EDIT_TOOL_NAME } from '../NotebookEditTool/constants.js'
+src/tools/REPLTool/constants.ts:36:  FILE_WRITE_TOOL_NAME,
+src/tools/REPLTool/constants.ts:37:  FILE_EDIT_TOOL_NAME,
+src/tools/REPLTool/constants.ts:41:  NOTEBOOK_EDIT_TOOL_NAME,
+src/tools/PowerShellTool/prompt.ts:11:import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
+src/tools/PowerShellTool/prompt.ts:13:import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+src/tools/PowerShellTool/prompt.ts:131:    - Edit files: Use ${FILE_EDIT_TOOL_NAME}
+src/tools/PowerShellTool/prompt.ts:132:    - Write files: Use ${FILE_WRITE_TOOL_NAME} (NOT Set-Content/Out-File)
+src/tools/NotebookEditTool/NotebookEditTool.ts:20:import { NOTEBOOK_EDIT_TOOL_NAME } from './constants.js'
+src/tools/NotebookEditTool/NotebookEditTool.ts:91:  name: NOTEBOOK_EDIT_TOOL_NAME,
+src/tools/NotebookEditTool/constants.ts:2:export const NOTEBOOK_EDIT_TOOL_NAME = 'NotebookEdit'
+src/coordinator/coordinatorMode.ts:10:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/coordinator/coordinatorMode.ts:89:    ? [BASH_TOOL_NAME, FILE_READ_TOOL_NAME, FILE_EDIT_TOOL_NAME]
+src/tools/BashTool/prompt.ts:16:import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
+src/tools/BashTool/prompt.ts:18:import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+src/tools/BashTool/prompt.ts:260:    `Edit files: Use ${FILE_EDIT_TOOL_NAME} (NOT sed/awk)`,
+src/tools/BashTool/prompt.ts:261:    `Write files: Use ${FILE_WRITE_TOOL_NAME} (NOT echo >/cat <<EOF)`,
+src/tools/FileWriteTool/prompt.ts:5:export const FILE_WRITE_TOOL_NAME = 'Write'
+src/tools/FileWriteTool/FileWriteTool.ts:49:import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from './prompt.js'
+src/tools/FileWriteTool/FileWriteTool.ts:99:  name: FILE_WRITE_TOOL_NAME,
+src/tools/AgentTool/loadAgentsDir.ts:41:import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
+src/tools/AgentTool/loadAgentsDir.ts:43:import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+src/tools/AgentTool/loadAgentsDir.ts:459:        FILE_WRITE_TOOL_NAME,
+src/tools/AgentTool/loadAgentsDir.ts:460:        FILE_EDIT_TOOL_NAME,
+src/tools/AgentTool/loadAgentsDir.ts:658:        FILE_WRITE_TOOL_NAME,
+src/tools/AgentTool/loadAgentsDir.ts:659:        FILE_EDIT_TOOL_NAME,
+src/services/cache/anthropic/apiMicrocompact.ts:2:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/services/cache/anthropic/apiMicrocompact.ts:4:import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+src/services/cache/anthropic/apiMicrocompact.ts:7:import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+src/services/cache/anthropic/apiMicrocompact.ts:31:  FILE_EDIT_TOOL_NAME,
+src/services/cache/anthropic/apiMicrocompact.ts:32:  FILE_WRITE_TOOL_NAME,
+src/services/cache/anthropic/apiMicrocompact.ts:34:  NOTEBOOK_EDIT_TOOL_NAME,
+src/tools/AgentTool/prompt.ts:8:import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+src/utils/sessionFileAccessHooks.ts:13:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/utils/sessionFileAccessHooks.ts:18:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/utils/sessionFileAccessHooks.ts:58:    case FILE_EDIT_TOOL_NAME: {
+src/utils/sessionFileAccessHooks.ts:62:    case FILE_WRITE_TOOL_NAME: {
+src/utils/sessionFileAccessHooks.ts:179:      case FILE_EDIT_TOOL_NAME:
+src/utils/sessionFileAccessHooks.ts:182:      case FILE_WRITE_TOOL_NAME:
+src/utils/sessionFileAccessHooks.ts:199:      case FILE_EDIT_TOOL_NAME:
+src/utils/sessionFileAccessHooks.ts:203:      case FILE_WRITE_TOOL_NAME:
+src/utils/sessionFileAccessHooks.ts:214:      (input.tool_name === FILE_EDIT_TOOL_NAME ||
+src/utils/sessionFileAccessHooks.ts:215:        input.tool_name === FILE_WRITE_TOOL_NAME)
+src/utils/sessionFileAccessHooks.ts:246:      { matcher: FILE_EDIT_TOOL_NAME, hooks: [hook] },
+src/utils/sessionFileAccessHooks.ts:247:      { matcher: FILE_WRITE_TOOL_NAME, hooks: [hook] },
+src/components/permissions/PermissionRequest.test.ts:41:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/components/permissions/PermissionRequest.test.ts:45:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/components/permissions/PermissionRequest.test.ts:51:import { NOTEBOOK_EDIT_TOOL_NAME } from '../../tools/NotebookEditTool/constants.js'
+src/components/permissions/PermissionRequest.test.ts:86:  { tool: FileEditTool, expectedName: FILE_EDIT_TOOL_NAME, component: FileEditPermissionRequest },
+src/components/permissions/PermissionRequest.test.ts:87:  { tool: FileWriteTool, expectedName: FILE_WRITE_TOOL_NAME, component: FileWritePermissionRequest },
+src/components/permissions/PermissionRequest.test.ts:91:  { tool: NotebookEditTool, expectedName: NOTEBOOK_EDIT_TOOL_NAME, component: NotebookEditPermissionRequest },
+src/utils/collapseReadSearch.ts:6:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/utils/collapseReadSearch.ts:7:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/utils/collapseReadSearch.ts:110:  if (toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME) {
+src/tools/FileEditTool/FileEditTool.ts:56:import { NOTEBOOK_EDIT_TOOL_NAME } from '../NotebookEditTool/constants.js'
+src/tools/FileEditTool/FileEditTool.ts:58:  FILE_EDIT_TOOL_NAME,
+src/tools/FileEditTool/FileEditTool.ts:92:  name: FILE_EDIT_TOOL_NAME,
+src/tools/FileEditTool/FileEditTool.ts:276:        message: `File is a Jupyter Notebook. Use the ${NOTEBOOK_EDIT_TOOL_NAME} to edit this file.`,
+src/tools/AgentTool/built-in/readOnlyAgents.test.ts:3:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/tools/AgentTool/built-in/readOnlyAgents.test.ts:4:import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+src/tools/AgentTool/built-in/readOnlyAgents.test.ts:15:      expect(disallowed).toContain(FILE_EDIT_TOOL_NAME)
+src/tools/AgentTool/built-in/readOnlyAgents.test.ts:16:      expect(disallowed).toContain(FILE_WRITE_TOOL_NAME)
+src/tools/FileEditTool/constants.ts:2:export const FILE_EDIT_TOOL_NAME = 'Edit'
+src/tools/AgentTool/built-in/planAgent.ts:3:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/tools/AgentTool/built-in/planAgent.ts:5:import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+src/tools/AgentTool/built-in/planAgent.ts:8:import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+src/tools/AgentTool/built-in/planAgent.ts:81:    FILE_EDIT_TOOL_NAME,
+src/tools/AgentTool/built-in/planAgent.ts:82:    FILE_WRITE_TOOL_NAME,
+src/tools/AgentTool/built-in/planAgent.ts:83:    NOTEBOOK_EDIT_TOOL_NAME,
+src/utils/attribution.ts:7:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/utils/attribution.ts:9:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/utils/attribution.ts:185:  FILE_EDIT_TOOL_NAME,
+src/utils/attribution.ts:186:  FILE_WRITE_TOOL_NAME,
+src/services/tools/toolExecution.ts:41:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/tools/toolExecution.ts:43:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/services/tools/toolExecution.ts:44:import { NOTEBOOK_EDIT_TOOL_NAME } from '../../tools/NotebookEditTool/constants.js'
+src/services/tools/toolExecution.ts:910:      (tool.name === FILE_EDIT_TOOL_NAME ||
+src/services/tools/toolExecution.ts:911:        tool.name === FILE_WRITE_TOOL_NAME) &&
+src/services/tools/toolExecution.ts:1261:        (tool.name === FILE_EDIT_TOOL_NAME ||
+src/services/tools/toolExecution.ts:1262:          tool.name === FILE_WRITE_TOOL_NAME) &&
+src/services/tools/toolExecution.ts:1268:        if (tool.name === FILE_EDIT_TOOL_NAME && 'diff' in result.data) {
+src/services/tools/toolExecution.ts:1272:        if (tool.name === FILE_WRITE_TOOL_NAME && 'content' in processedInput) {
+src/services/tools/toolExecution.ts:1329:          tool.name === FILE_EDIT_TOOL_NAME ||
+src/services/tools/toolExecution.ts:1330:          tool.name === FILE_WRITE_TOOL_NAME) &&
+src/services/tools/toolExecution.ts:1337:        tool.name === NOTEBOOK_EDIT_TOOL_NAME &&
+src/services/tools/toolExecution.ts:1766:  if (toolName === FILE_EDIT_TOOL_NAME || toolName === FILE_WRITE_TOOL_NAME) {
+src/services/tools/toolExecution.ts:1771:  if (toolName === NOTEBOOK_EDIT_TOOL_NAME) {
+src/tools/AgentTool/built-in/exploreAgent.ts:3:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/tools/AgentTool/built-in/exploreAgent.ts:5:import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+src/tools/AgentTool/built-in/exploreAgent.ts:8:import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+src/tools/AgentTool/built-in/exploreAgent.ts:71:    FILE_EDIT_TOOL_NAME,
+src/tools/AgentTool/built-in/exploreAgent.ts:72:    FILE_WRITE_TOOL_NAME,
+src/tools/AgentTool/built-in/exploreAgent.ts:73:    NOTEBOOK_EDIT_TOOL_NAME,
+src/components/permissions/FilePermissionDialog/usePermissionHandler.ts:9:  FILE_EDIT_TOOL_NAME,
+src/components/permissions/FilePermissionDialog/usePermissionHandler.ts:118:            toolName: FILE_EDIT_TOOL_NAME,
+src/utils/plugins/loadPluginAgents.ts:10:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/utils/plugins/loadPluginAgents.ts:12:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/utils/plugins/loadPluginAgents.ts:189:        FILE_WRITE_TOOL_NAME,
+src/utils/plugins/loadPluginAgents.ts:190:        FILE_EDIT_TOOL_NAME,
+src/utils/permissions/filesystem.ts:11:  FILE_EDIT_TOOL_NAME,
+src/utils/permissions/filesystem.ts:929:        return FILE_EDIT_TOOL_NAME
+src/utils/permissions/filesystem.ts:1320:                toolName: FILE_EDIT_TOOL_NAME,
+src/services/autoDream/autoDream.ts:52:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/autoDream/autoDream.ts:53:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/services/autoDream/autoDream.ts:298:          block.name === FILE_EDIT_TOOL_NAME ||
+src/services/autoDream/autoDream.ts:299:          block.name === FILE_WRITE_TOOL_NAME
+src/utils/sandbox/sandbox-adapter.ts:53:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/utils/sandbox/sandbox-adapter.ts:311:        if (rule.toolName === FILE_EDIT_TOOL_NAME && rule.ruleContent) {
+src/utils/sandbox/sandbox-adapter.ts:320:        if (rule.toolName === FILE_EDIT_TOOL_NAME && rule.ruleContent) {
+src/utils/sandbox/sandbox-adapter.ts:637:        (rule.toolName === FILE_EDIT_TOOL_NAME ||
+src/services/MagicDocs/magicDocs.ts:12:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/MagicDocs/magicDocs.ts:99:    tools: [FILE_EDIT_TOOL_NAME], // Only allow Edit
+src/services/MagicDocs/magicDocs.ts:170:      tool.name === FILE_EDIT_TOOL_NAME &&
+src/services/MagicDocs/magicDocs.ts:182:      message: `only ${FILE_EDIT_TOOL_NAME} is allowed for ${docInfo.path}`,
+src/services/MagicDocs/magicDocs.ts:185:        reason: `only ${FILE_EDIT_TOOL_NAME} is allowed`,
+src/utils/streamlinedTransform.ts:13:import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+src/utils/streamlinedTransform.ts:15:import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+src/utils/streamlinedTransform.ts:19:import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+src/utils/streamlinedTransform.ts:44:  FILE_WRITE_TOOL_NAME,
+src/utils/streamlinedTransform.ts:45:  FILE_EDIT_TOOL_NAME,
+src/utils/streamlinedTransform.ts:46:  NOTEBOOK_EDIT_TOOL_NAME,
+src/utils/teamMemoryOps.ts:2:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/utils/teamMemoryOps.ts:3:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/utils/teamMemoryOps.ts:30:  if (toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME) {
+src/services/SessionMemory/sessionMemory.ts:14:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/SessionMemory/sessionMemory.ts:448:      tool.name === FILE_EDIT_TOOL_NAME &&
+src/services/SessionMemory/sessionMemory.ts:460:      message: `only ${FILE_EDIT_TOOL_NAME} on ${memoryPath} is allowed`,
+src/services/SessionMemory/sessionMemory.ts:463:        reason: `only ${FILE_EDIT_TOOL_NAME} on ${memoryPath} is allowed`,
+src/services/extractMemories/prompts.ts:20:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/extractMemories/prompts.ts:22:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/services/extractMemories/prompts.ts:37:    `Available tools: ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME} (ls/find/cat/stat/wc/head/tail and similar), and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} for paths inside the memory directory only. ${BASH_TOOL_NAME} rm is not permitted. All other tools — MCP, Agent, write-capable ${BASH_TOOL_NAME}, etc — will be denied.`,
+src/services/extractMemories/prompts.ts:39:    `You have a limited turn budget. ${FILE_EDIT_TOOL_NAME} requires a prior ${FILE_READ_TOOL_NAME} of the same file, so the efficient strategy is: turn 1 — issue all ${FILE_READ_TOOL_NAME} calls in parallel for every file you might update; turn 2 — issue all ${FILE_WRITE_TOOL_NAME}/${FILE_EDIT_TOOL_NAME} calls in parallel. Do not interleave reads and writes across multiple turns.`,
+src/services/extractMemories/extractMemories.ts:32:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/extractMemories/extractMemories.ts:34:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/services/extractMemories/extractMemories.ts:208:      (tool.name === FILE_EDIT_TOOL_NAME ||
+src/services/extractMemories/extractMemories.ts:209:        tool.name === FILE_WRITE_TOOL_NAME) &&
+src/services/extractMemories/extractMemories.ts:220:      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${memoryDir} are allowed`,
+src/services/extractMemories/extractMemories.ts:240:    (block.name !== FILE_EDIT_TOOL_NAME && block.name !== FILE_WRITE_TOOL_NAME)
+src/services/compact/microCompact.ts:5:import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
+src/services/compact/microCompact.ts:7:import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
+src/services/compact/microCompact.ts:51:  FILE_EDIT_TOOL_NAME,
+src/services/compact/microCompact.ts:52:  FILE_WRITE_TOOL_NAME,
+src/utils/queryHelpers.ts:12:import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
+src/utils/queryHelpers.ts:18:import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+src/utils/queryHelpers.ts:407:          content.name === FILE_WRITE_TOOL_NAME
+src/utils/queryHelpers.ts:423:          content.name === FILE_EDIT_TOOL_NAME

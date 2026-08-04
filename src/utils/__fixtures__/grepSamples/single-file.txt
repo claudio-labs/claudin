@@ -1,0 +1,46 @@
+src/utils/file.ts:367:export function writeFileSyncAndFlush(
+src/utils/file.ts-368-  filePath: string,
+src/utils/file.ts-369-  content: string,
+src/utils/file.ts-370-  options: { encoding: BufferEncoding; mode?: number } = { encoding: 'utf-8' },
+src/utils/file.ts-371-): void {
+src/utils/file.ts-372-  const fs = getFsImplementation()
+src/utils/file.ts-373-
+src/utils/file.ts-374-  // Check if the target file is a symlink to preserve it for all users
+src/utils/file.ts-375-  // Note: We don't use safeResolvePath here because we need to manually handle
+src/utils/file.ts-376-  // symlinks to ensure we write to the target while preserving the symlink itself
+src/utils/file.ts-377-  let targetPath = filePath
+src/utils/file.ts-378-  try {
+src/utils/file.ts-379-    // Try to read the symlink - if successful, it's a symlink
+src/utils/file.ts-380-    const linkTarget = fs.readlinkSync(filePath)
+src/utils/file.ts-381-    // Resolve to absolute path
+src/utils/file.ts-382-    targetPath = isAbsolute(linkTarget)
+src/utils/file.ts-383-      ? linkTarget
+src/utils/file.ts-384-      : resolve(dirname(filePath), linkTarget)
+src/utils/file.ts-385-    logForDebugging(`Writing through symlink: ${filePath} -> ${targetPath}`)
+src/utils/file.ts-386-  } catch {
+src/utils/file.ts-387-    // ENOENT (doesn't exist) or EINVAL (not a symlink) — keep targetPath = filePath
+src/utils/file.ts-388-  }
+src/utils/file.ts-389-
+src/utils/file.ts-390-  // Try atomic write first
+src/utils/file.ts-391-  const tempPath = `${targetPath}.tmp.${process.pid}.${Date.now()}`
+src/utils/file.ts-392-
+src/utils/file.ts-393-  // Check if target file exists and get its permissions (single stat, reused in both atomic and fallback paths)
+src/utils/file.ts-394-  let targetMode: number | undefined
+src/utils/file.ts-395-  let targetExists = false
+src/utils/file.ts-396-  try {
+src/utils/file.ts-397-    targetMode = fs.statSync(targetPath).mode
+src/utils/file.ts-398-    targetExists = true
+src/utils/file.ts-399-    logForDebugging(`Preserving file permissions: ${targetMode.toString(8)}`)
+src/utils/file.ts-400-  } catch (e) {
+src/utils/file.ts-401-    if (!isENOENT(e)) throw e
+src/utils/file.ts-402-    if (options.mode !== undefined) {
+src/utils/file.ts-403-      // Use provided mode for new files
+src/utils/file.ts-404-      targetMode = options.mode
+src/utils/file.ts-405-      logForDebugging(
+src/utils/file.ts-406-        `Setting permissions for new file: ${targetMode.toString(8)}`,
+src/utils/file.ts-407-      )
+src/utils/file.ts-408-    }
+src/utils/file.ts-409-  }
+src/utils/file.ts-410-
+src/utils/file.ts-411-  try {
+src/utils/file.ts-412-    logForDebugging(`Writing to temp file: ${tempPath}`)

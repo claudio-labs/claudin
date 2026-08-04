@@ -1,0 +1,160 @@
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:113: export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-114-   config = getGlobalConfig(),
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-115- ): ProviderProfile | undefined {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-116-   const profiles = getProviderProfiles(config)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-117-   if (profiles.length === 0) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-118-     return undefined
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-119-   }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-120- 
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-121-   const activeId = trimOrUndefined(config.activeProviderProfileId)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-122--  return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-123-+  const selected = profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-124-+  if (selected && (selected as { disabled?: boolean }).disabled === true) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-125-+    console.warn(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-126-+      `[getActiveProviderProfile] Active profile "${selected.name}" (id=${selected.id}) is disabled.`,
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-127-+    )
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-128-+  }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-129-+  return selected
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-130- }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-131-```
+--
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:147:@@ -548,7 +548,14 @@ export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-148-   config = getGlobalConfig(),
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-149- ): ProviderProfile | undefined {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-150-   const profiles = getProviderProfiles(config)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-151-   if (profiles.length === 0) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-152-     return undefined
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-153-   }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-154- 
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-155-   const activeId = trimOrUndefined(config.activeProviderProfileId)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-156--  return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-157-+  const selected = profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-158-+
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-159-+  if (selected && (selected as { disabled?: boolean }).disabled === true) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-160-+    console.warn(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-161-+      `[getActiveProviderProfile] Active provider profile "${selected.name}" (${selected.id}) is disabled.`,
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-162-+    )
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-163-+  }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-164-+
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-165-+  return selected
+--
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:211:@@ -548,9 +548,14 @@ export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-212-   config = getGlobalConfig(),
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-213- ): ProviderProfile | undefined {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-214-   const profiles = getProviderProfiles(config)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-215-   if (profiles.length === 0) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-216-     return undefined
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-217-   }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-218- 
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-219-   const activeId = trimOrUndefined(config.activeProviderProfileId)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-220--  return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-221-+  const profile = profiles.find(p => p.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-222-+  if (profile?.disabled === true) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-223-+    console.warn(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-224-+      `Active provider profile "${profile.name ?? profile.id}" is disabled.`,
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-225-+    )
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-226-+  }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-227-+  return profile
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-228- }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-229-```
+--
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:245:@@ -550,7 +550,12 @@ export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-246-   const profiles = getProviderProfiles(config)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-247-   if (profiles.length === 0) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-248-     return undefined
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-249-   }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-250- 
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-251-   const activeId = trimOrUndefined(config.activeProviderProfileId)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-252--  return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-253-+  const selected =
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-254-+    profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-255-+  if (selected?.disabled === true) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-256-+    console.warn(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-257-+      `Active provider profile "${selected.name ?? selected.id}" is disabled.`,
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-258-+    )
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-259-+  }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-260-+  return selected
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-261- }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-262-```
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-263-
+--
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:276:@@ -548,7 +548,12 @@ export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md:277: export function getActiveProviderProfile(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-278-   config = getGlobalConfig(),
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-279- ): ProviderProfile | undefined {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-280-   const profiles = getProviderProfiles(config)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-281-   if (profiles.length === 0) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-282-     return undefined
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-283-   }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-284- 
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-285-   const activeId = trimOrUndefined(config.activeProviderProfileId)
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-286--  return profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-287-+  const selected = profiles.find(profile => profile.id === activeId) ?? profiles[0]
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-288-+  if (selected?.disabled === true) {
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-289-+    console.warn(
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-290-+      `[providerProfiles] Active provider profile "${selected.name ?? selected.id}" is disabled.`,
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-291-+    )
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-292-+  }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-293-+  return selected
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-294- }
+scripts/bench/results/fileread-outline-3way-2026-05-28T03-03-50-836Z.md-295-```
+--
+src/utils/providerProfiles.ts:487:export function getActiveProviderProfile(
+src/utils/providerProfiles.ts-488-  config = getGlobalConfig(),
+src/utils/providerProfiles.ts-489-): ProviderProfile | undefined {
+src/utils/providerProfiles.ts-490-  const profiles = getProviderProfiles(config)
+src/utils/providerProfiles.ts-491-  if (profiles.length === 0) {
+src/utils/providerProfiles.ts-492-    return undefined
+src/utils/providerProfiles.ts-493-  }
+src/utils/providerProfiles.ts-494-
+src/utils/providerProfiles.ts-495-  const projectActiveId = trimOrUndefined(
+src/utils/providerProfiles.ts-496-    getCurrentProjectConfig().activeProviderProfileId,
+src/utils/providerProfiles.ts-497-  )
+src/utils/providerProfiles.ts-498-  if (projectActiveId) {
+src/utils/providerProfiles.ts-499-    const match = profiles.find(profile => profile.id === projectActiveId)
+src/utils/providerProfiles.ts-500-    if (match) return match
+src/utils/providerProfiles.ts-501-    // Project override points to a missing profile (deleted/renamed). Fall back
+src/utils/providerProfiles.ts-502-    // to global silently; user can clear the override from /provider.
+src/utils/providerProfiles.ts-503-  }
+src/utils/providerProfiles.ts-504-
+src/utils/providerProfiles.ts-505-  const activeId = trimOrUndefined(config.activeProviderProfileId)
+--
+src/utils/providerProfiles.ts:523:export function getProjectActiveProviderProfileId(): string | undefined {
+src/utils/providerProfiles.ts-524-  const projectActiveId = trimOrUndefined(
+src/utils/providerProfiles.ts-525-    getCurrentProjectConfig().activeProviderProfileId,
+src/utils/providerProfiles.ts-526-  )
+src/utils/providerProfiles.ts-527-  if (!projectActiveId) return undefined
+src/utils/providerProfiles.ts-528-  const profiles = getProviderProfiles()
+src/utils/providerProfiles.ts-529-  return profiles.some(p => p.id === projectActiveId)
+src/utils/providerProfiles.ts-530-    ? projectActiveId
+src/utils/providerProfiles.ts-531-    : undefined
+src/utils/providerProfiles.ts-532-}
+src/utils/providerProfiles.ts-533-
+src/utils/providerProfiles.ts-534-/**
+src/utils/providerProfiles.ts-535- * Returns the raw project-level override id (including stale ids pointing to
+src/utils/providerProfiles.ts-536- * a missing profile). Returns undefined when no override is set.
+src/utils/providerProfiles.ts-537- */
+src/utils/providerProfiles.ts-538-export function getRawProjectActiveProviderProfileId(): string | undefined {
+src/utils/providerProfiles.ts-539-  return trimOrUndefined(getCurrentProjectConfig().activeProviderProfileId)
+src/utils/providerProfiles.ts-540-}
+src/utils/providerProfiles.ts-541-
+--
+src/utils/model/model.ts:41:function getActiveProfileModel(): ModelName | undefined {
+src/utils/model/model.ts-42-  const profile = tryGetActiveProvider()
+src/utils/model/model.ts-43-  if (!profile?.model) return undefined
+src/utils/model/model.ts-44-  return getPrimaryModel(profile.model)
+src/utils/model/model.ts-45-}
+src/utils/model/model.ts-46-
+src/utils/model/model.ts-47-export function getSmallFastModel(): ModelName {
+src/utils/model/model.ts-48-  if (process.env.ANTHROPIC_SMALL_FAST_MODEL) return process.env.ANTHROPIC_SMALL_FAST_MODEL
+src/utils/model/model.ts-49-  const profileModel = getActiveProfileModel()
+src/utils/model/model.ts-50-  // For Gemini provider, use a fast model
+src/utils/model/model.ts-51-  if (getAPIProvider() === 'gemini') {
+src/utils/model/model.ts-52-    return profileModel || 'gemini-2.0-flash-lite'
+src/utils/model/model.ts-53-  }
+src/utils/model/model.ts-54-  if (getAPIProvider() === 'mistral') {
+src/utils/model/model.ts-55-    return profileModel || 'ministral-3b-latest'
+src/utils/model/model.ts-56-  }
+src/utils/model/model.ts-57-  // For OpenAI provider, use the profile model or a sensible default
+src/utils/model/model.ts-58-  if (getAPIProvider() === 'openai') {
+src/utils/model/model.ts-59-    return profileModel || 'gpt-4o-mini'
