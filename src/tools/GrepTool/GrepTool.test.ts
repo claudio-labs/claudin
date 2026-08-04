@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
+import { getCwd } from '../../utils/cwd.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
@@ -276,9 +277,14 @@ describe('GrepTool RG_LINE_RE', () => {
 })
 
 describe('GrepTool relativizeRgLine', () => {
-  // rg is invoked with an absolute target, so every prefixed line starts with
-  // it. cwd is the repo root under `bun test`.
-  const root = process.cwd()
+  // rg is invoked with an absolute target derived from getCwd(), so every
+  // prefixed line starts with that — and relativizing is anchored to the same
+  // value. NOT process.cwd(): the session cwd is realpath-resolved at startup
+  // (bootstrap/state.ts), so on a checkout reached through a symlink the two
+  // differ, every candidate lands outside the anchor, and the function
+  // correctly fails open on input the tool would never produce. That is what
+  // broke this block on CI while it passed locally.
+  const root = getCwd()
 
   test('relativizes a match line', () => {
     expect(relativizeRgLine(`${root}/src/a.ts:42:const needle = 1`, root)).toBe(
