@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
-import { getCwd } from '../../utils/cwd.js'
+import { getCwdState, setCwdState } from '../../bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
@@ -277,14 +277,29 @@ describe('GrepTool RG_LINE_RE', () => {
 })
 
 describe('GrepTool relativizeRgLine', () => {
-  // rg is invoked with an absolute target derived from getCwd(), so every
-  // prefixed line starts with that — and relativizing is anchored to the same
-  // value. NOT process.cwd(): the session cwd is realpath-resolved at startup
-  // (bootstrap/state.ts), so on a checkout reached through a symlink the two
-  // differ, every candidate lands outside the anchor, and the function
-  // correctly fails open on input the tool would never produce. That is what
-  // broke this block on CI while it passed locally.
-  const root = getCwd()
+  // What this block needs is the ONE precondition production always satisfies:
+  // the directory rg is pointed at and the directory relativizing is anchored
+  // to are the same value. GrepTool derives both from getCwd(), so they cannot
+  // drift there — but a test that reads either from the ambient environment
+  // inherits whatever the runner's session cwd happens to be, and on CI that
+  // is not the checkout. (Read from process.cwd() the candidates all landed
+  // outside the anchor and the function correctly failed open; read from
+  // getCwd() the search path did not exist and rg returned nothing.)
+  //
+  // So pin the anchor for the block and restore it after: bootstrap state is
+  // process-global and bun runs test files in one process, so leaving it moved
+  // would follow other files (see .claudin/rules/testing.md on mock leaks).
+  const root = process.cwd()
+  let previousCwdState: string
+
+  beforeAll(() => {
+    previousCwdState = getCwdState()
+    setCwdState(root)
+  })
+
+  afterAll(() => {
+    setCwdState(previousCwdState)
+  })
 
   test('relativizes a match line', () => {
     expect(relativizeRgLine(`${root}/src/a.ts:42:const needle = 1`, root)).toBe(
