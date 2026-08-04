@@ -1,7 +1,8 @@
+import { execFile } from 'child_process'
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join, sep } from 'path'
+import { promisify } from 'util'
 import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { execFileNoThrowWithCwd } from '../../utils/execFileNoThrow.js'
 import { getFsImplementation } from '../../utils/fsOperations.js'
 import { addFileGlobRuleToGitignore } from '../../utils/git/gitignore.js'
 import { logError } from '../../utils/log.js'
@@ -156,8 +157,45 @@ function saveBaselineFile(cwd: string, file: BaselineFile): void {
   }
 }
 
+const execFileAsync = promisify(execFile)
+
+/** Generous for the read-only queries below; a hung git must not hang a check. */
+const GIT_TIMEOUT_MS = 10_000
+/** `status --porcelain` in a very large tree; the 1 MB default would truncate. */
+const GIT_MAX_BUFFER = 16 * 1024 * 1024
+
+/**
+ * Deliberately NOT `../../utils/execFileNoThrow.js`: six unrelated suites
+ * `mock.module` that specifier, and Bun applies a module override for the WHOLE
+ * `bun test` run regardless of file order (see `.claudin/rules/testing.md`).
+ * Every git call here then answered "exit 1", so a real repository resolved as
+ * `not-a-git-repo` and sixteen baseline tests that pass in isolation failed in
+ * CI's full-suite run.
+ *
+ * Calling git directly costs nothing here. The wrapper's value is argv and env
+ * sanitisation for command strings that can carry user input; every invocation
+ * in this module is a fixed verb plus a cwd and shas read back from our own
+ * cache file.
+ */
+async function runGit(cwd: string, args: string[]): Promise<{ stdout: string; code: number }> {
+  try {
+    const { stdout } = await execFileAsync('git', args, {
+      cwd,
+      encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: GIT_MAX_BUFFER,
+    })
+    return { stdout, code: 0 }
+  } catch (error) {
+    // A non-zero exit is an ANSWER for some of these (`merge-base
+    // --is-ancestor`), so it is reported, never logged as a failure.
+    const code = (error as { code?: unknown }).code
+    return { stdout: '', code: typeof code === 'number' ? code : 1 }
+  }
+}
+
 async function git(cwd: string, args: string[]): Promise<string | null> {
-  const { stdout, code } = await execFileNoThrowWithCwd('git', args, { cwd })
+  const { stdout, code } = await runGit(cwd, args)
   return code === 0 ? stdout : null
 }
 
@@ -167,7 +205,7 @@ async function git(cwd: string, args: string[]): Promise<string | null> {
  * is exactly the distinction `merge-base --is-ancestor` exists to make.
  */
 async function gitOk(cwd: string, args: string[]): Promise<boolean> {
-  const { code } = await execFileNoThrowWithCwd('git', args, { cwd })
+  const { code } = await runGit(cwd, args)
   return code === 0
 }
 

@@ -19,12 +19,23 @@ import {
 
 const roots: string[] = []
 
+/**
+ * Hermetic on purpose. Inheriting the ambient environment makes these depend on
+ * whatever the rest of the run did to it: one suite left `HOME` pointing at a
+ * temp directory it had already deleted, and every `git commit` here then
+ * exited 128 — only in a full-suite run, and with `stdio: 'ignore'` swallowing
+ * the reason. The identity and config vars below make the outcome depend on
+ * nothing but this repository.
+ */
 function git(cwd: string, args: string[]): void {
   execFileSync('git', args, {
     cwd,
     stdio: 'ignore',
     env: {
       ...process.env,
+      HOME: cwd,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_AUTHOR_NAME: 'test',
       GIT_AUTHOR_EMAIL: 'test@example.invalid',
       GIT_COMMITTER_NAME: 'test',
