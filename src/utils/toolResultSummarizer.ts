@@ -795,15 +795,21 @@ function truncateLine(line: string): string {
 // literally, so a malformed or mixed-format body degrades into a passthrough
 // (via the caller's no-win guard) instead of losing lines.
 //
-// Two shapes deliberately do NOT shrink and pass straight through: a body with
-// no parseable prefix (a single-file search, where rg omits the filename) and a
-// match-only body across many files, where the per-file headers cost more than
-// the grouping saves. Both are pinned in toolResultSummarizer.grep.test.ts.
+// The header REPLACES the path on the lines it covers — they carry `NN:text`
+// only. That is what makes a match-only body shrink at all: while the path was
+// repeated under the header, the grouping cost more than it saved on every
+// result rg didn't pad with context, and the no-win guard threw those summaries
+// away. One shape still passes straight through: a body with no parseable
+// prefix (a single-file search, where rg omits the filename). A body with one
+// match per file still grows, since the header then replaces a single path;
+// both are pinned in toolResultSummarizer.grep.test.ts.
 //
 // Measured over the recorded transcripts (scripts/profile/grep-summarizer-replay.ts,
-// 5,086 real content-mode results): 3.2% of all Grep chars and 9.4% of the
-// context-bearing ones, at the current 6,000-char dispatch threshold. Lowering
-// that threshold to 3,000 doubles the take (6.4%) — the curve is in the bench.
+// 5,092 real content-mode results): 7.0% of all Grep chars and 16.2% of the
+// context-bearing ones, at the current 6,000-char dispatch threshold, with 136
+// of the 167 results over that threshold summarized (the other 31 grow and are
+// dropped by the no-win guard). Lowering the threshold to 3,000 roughly doubles
+// the take again (14.8%) — the curve is in the bench.
 
 const GREP_MAX_MATCHES_PER_FILE = 10
 const GREP_MAX_FILES = 50
@@ -818,14 +824,16 @@ const GREP_MAX_FILES = 50
 const GREP_CONTEXT_RADIUS = 3
 
 // Ripgrep marks a match line `path:NN:text` and a context line `path-NN-text`.
-// Non-greedy paths so the first separator run wins, which keeps a Windows drive
-// letter (`C:\...`) inside the path.
-const GREP_MATCH_RE = /^(.+?):(\d+):(.*)$/
-const GREP_CONTEXT_RE = /^(.+?)-(\d+)-(.*)$/
+// Unanchored and global: the separator run occurs inside real paths as well as
+// at the true boundary, so every candidate is enumerated and the whole result
+// votes on which one is real (see chooseGrepSplits).
+const GREP_PREFIX_RE = /([:-])(\d+)\1/g
 const GREP_BLANK_RE = /^\s*$/
 // rg prints this between non-contiguous context blocks; the per-file grouping
 // below replaces what it conveyed.
 const GREP_BLOCK_SEPARATOR = '--'
+// `path:count` — the shape of `output_mode: "count"`, which is already small.
+const GREP_COUNT_LINE_RE = /^[^:]+:\d+$/
 
 type GrepEntry = {
   n: number
@@ -833,29 +841,94 @@ type GrepEntry = {
   isMatch: boolean
 }
 
+type GrepSplit = { file: string } & GrepEntry
+
 /**
- * Classifies one ripgrep output line. Both forms are tried and the one whose
- * path ends EARLIER wins: a match line whose code text contains `-5-`, and a
- * context line whose text contains `:9:`, are each parseable as the other, and
- * the true separator is always the leftmost one.
+ * Every way one ripgrep line could be split into `path`, line number and text,
+ * left to right. A line usually has more than one: the code text can contain
+ * `:9:`, and the path itself can contain `-2026-`.
  */
-function parseGrepLine(
-  line: string,
-): ({ file: string } & GrepEntry) | null {
-  const m = GREP_MATCH_RE.exec(line)
-  const c = GREP_CONTEXT_RE.exec(line)
-  if (m && (!c || m[1]!.length <= c[1]!.length)) {
-    return { file: m[1]!, n: Number(m[2]), body: m[3]!, isMatch: true }
+function grepLineSplits(line: string): GrepSplit[] {
+  const out: GrepSplit[] = []
+  for (const m of line.matchAll(GREP_PREFIX_RE)) {
+    const cut = m.index
+    // A prefix-less line (`NN:text`, from `-H false`) has no path to speak of.
+    if (cut === 0) continue
+    out.push({
+      file: line.slice(0, cut),
+      n: Number(m[2]),
+      body: line.slice(cut + m[0].length),
+      isMatch: m[1] === ':',
+    })
   }
-  if (c) {
-    return { file: c[1]!, n: Number(c[2]), body: c[3]!, isMatch: false }
-  }
-  return null
+  return out
 }
 
+/**
+ * Picks one split per line, using the whole result as evidence.
+ *
+ * Taking the leftmost split — what this did before — mislabels every line of a
+ * file whose own name carries a separator run: `notes-2026-07-25.md:12:text`
+ * reads as file `notes`, line 2026, and the file then has context but no match,
+ * so the strategy drops it into the literal bucket and summarizes nothing. The
+ * three kinds of candidate are separable by how they behave ACROSS lines:
+ *
+ * - the real path recurs with a different line number on every line it appears;
+ * - a split inside the path pins the same number every time (`notes` is always
+ *   line 2026);
+ * - a split inside the code text belongs to one line only.
+ *
+ * So rank by distinct line numbers, then by lines covered, and keep the
+ * leftmost on a tie — which is what a single-line result gets, i.e. the old
+ * behavior, and it degrades to the literal bucket rather than to a wrong path.
+ */
+function chooseGrepSplits(lines: string[]): Array<GrepSplit | null> {
+  const perLine = lines.map(grepLineSplits)
+  const numbers: Record<string, Set<number>> = Object.create(null)
+  const covered: Record<string, number> = Object.create(null)
+  for (const splits of perLine) {
+    for (const s of splits) {
+      numbers[s.file] ??= new Set()
+      numbers[s.file]!.add(s.n)
+      covered[s.file] = (covered[s.file] ?? 0) + 1
+    }
+  }
+  return perLine.map(splits => {
+    let best: GrepSplit | null = null
+    let bestDistinct = -1
+    let bestCovered = -1
+    for (const s of splits) {
+      const distinct = numbers[s.file]!.size
+      const cover = covered[s.file]!
+      if (
+        distinct > bestDistinct ||
+        (distinct === bestDistinct && cover > bestCovered)
+      ) {
+        best = s
+        bestDistinct = distinct
+        bestCovered = cover
+      }
+    }
+    return best
+  })
+}
+
+/** Full `path:NN:text` — for lines emitted OUTSIDE a per-file header. */
 function renderGrepLine(file: string, entry: GrepEntry, body: string): string {
   const sep = entry.isMatch ? ':' : '-'
   return `${file}${sep}${entry.n}${sep}${body}`
+}
+
+/**
+ * `NN:text` — for lines under a `--- file (N matches) ---` header, where the
+ * path is dead weight. Repeating it is what made the summary of a match-only
+ * body LARGER than the input: the path is the longest term on most lines, so
+ * the grouping paid for a header AND kept everything the header replaced. The
+ * `file:line` reference the model needs is still reconstructable from the two.
+ */
+function renderGrepBlockLine(entry: GrepEntry, body: string): string {
+  const sep = entry.isMatch ? ':' : '-'
+  return `${entry.n}${sep}${body}`
 }
 
 /**
@@ -869,25 +942,29 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
 
   // Count-mode passthrough: if ≥80% of lines look like `path:count`,
   // the output is already small and structured.
-  const countLineRegex = /^[^:]+:\d+$/
   const countLineMatches = lines.reduce(
-    (n, l) => (countLineRegex.test(l) ? n + 1 : n),
+    (n, l) => (GREP_COUNT_LINE_RE.test(l) ? n + 1 : n),
     0,
   )
   if (countLineMatches / lines.length >= 0.8) return null
 
   // Parse lines into (file, lineNumber, text, isMatch). Unparseable lines go to
   // the "other" bucket, preserved verbatim.
-  // Plain object with explicit sorted iteration for determinism.
-  const byFile: Record<string, GrepEntry[]> = {}
+  // Null-prototype objects with explicit sorted iteration: determinism, and a
+  // file (or a line body) literally named `__proto__` must not reach through to
+  // Object.prototype — assigning it on a plain object leaves `byFile[file]`
+  // without a `push`, which threw where the whole path is supposed to fail open.
+  const byFile: Record<string, GrepEntry[]> = Object.create(null)
   const files: string[] = []
   const other: string[] = []
   let totalMatches = 0
   let totalContext = 0
 
-  for (const line of lines) {
+  const splits = chooseGrepSplits(lines)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
     if (line === GREP_BLOCK_SEPARATOR) continue
-    const parsed = parseGrepLine(line)
+    const parsed = splits[i]
     if (!parsed) {
       other.push(line)
       continue
@@ -939,19 +1016,21 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
 
   // Dedupe runs last, over surviving lines only: a back-reference to a line
   // that the clamp or the per-file cap removed would point at nothing.
-  const firstSeen: Record<string, string> = {}
+  const firstSeen: Record<string, string> = Object.create(null)
   const emit = (file: string, entry: GrepEntry, out: string[]): void => {
+    // The locator stays fully qualified: a back-reference routinely points at a
+    // line under a DIFFERENT file's header.
     const locator = `${file}:${entry.n}`
     const seen = firstSeen[entry.body]
     if (seen === undefined) {
       firstSeen[entry.body] = locator
-      out.push(truncateLine(renderGrepLine(file, entry, entry.body)))
+      out.push(truncateLine(renderGrepBlockLine(entry, entry.body)))
       return
     }
     const marker = `… same as ${seen}`
     // Only a win when the repeated body is longer than the reference to it.
     const body = marker.length < entry.body.length ? marker : entry.body
-    out.push(truncateLine(renderGrepLine(file, entry, body)))
+    out.push(truncateLine(renderGrepBlockLine(entry, body)))
   }
 
   const fileBlocks: string[] = []
@@ -977,7 +1056,7 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
     }
     const extra = matches.length - shownMatches.length
     if (extra > 0) {
-      fileBlocks.push(`${file}: +${extra} more match${extra === 1 ? '' : 'es'}`)
+      fileBlocks.push(`+${extra} more match${extra === 1 ? '' : 'es'}`)
     }
   }
 

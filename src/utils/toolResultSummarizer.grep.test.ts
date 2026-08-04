@@ -45,16 +45,48 @@ function matchLocators(text: string): string[] {
   return out
 }
 
+const BLOCK_HEADER_RE = /^--- (.+) \(\d+ match(?:es)?\) ---$/
+const BLOCK_LINE_RE = /^(\d+)([:-])/
+const OTHER_HEADER = '--- other (preserved literally) ---'
+
+/**
+ * Rebuilds `file:line` locators from a SUMMARIZED body, where the path lives on
+ * the block header and each line carries only `NN:text`. The honesty checks
+ * below are about what the model can still resolve, so they go through the same
+ * reconstruction the model would.
+ */
+function blockLocators(body: string): { matches: string[]; context: string[] } {
+  const matches: string[] = []
+  const context: string[] = []
+  let file: string | null = null
+  for (const line of body.split('\n')) {
+    if (line === OTHER_HEADER) break
+    const header = BLOCK_HEADER_RE.exec(line)
+    if (header) {
+      file = header[1]!
+      continue
+    }
+    const entry = BLOCK_LINE_RE.exec(line)
+    if (!entry || file === null) continue
+    ;(entry[2] === ':' ? matches : context).push(`${file}:${entry[1]}`)
+  }
+  return { matches, context }
+}
+
 // ---------------------------------------------------------------------------
 // R10 — ROI floor table. One row per fixture; `floor` is the minimum acceptable
-// reduction of the strategy body, or null when the fixture is not expected to
-// shrink (the no-win guard then keeps the original — asserted separately).
+// reduction of the strategy body. The floors sit a few points under what the
+// current build measures, deliberately tight: a floor with slack is a floor
+// that no longer notices a rung being switched off. Every rung of the strategy
+// is load-bearing for at least one row — clamp (context-*), dedupe (dup-heavy),
+// per-file cap (dup-heavy), file cap (multi-file), literal bucket
+// (legacy-mixed-paths) — so disabling any one of them fails a row here.
 // Modelled on src/outputFilter/Bash/phase13Report.test.ts.
 // ---------------------------------------------------------------------------
 type Row = {
   fixture: string
   shape: string
-  floor: number | null
+  floor: number
   /** Strings that MUST survive the strategy. */
   preserves: string[]
 }
@@ -63,46 +95,46 @@ const ROWS: Row[] = [
   {
     fixture: 'context-12',
     shape: 'context-heavy (-C 12)',
-    floor: 70,
+    floor: 90,
     preserves: ['performCodexRequest'],
   },
   {
     fixture: 'context-30',
     shape: 'context-heavy (-C 30)',
-    floor: 70,
+    floor: 90,
     preserves: ['planModeHardDenyIfApplicable'],
   },
   {
     fixture: 'unscoped-wide',
     shape: 'unscoped, wide context',
-    floor: 10,
+    floor: 85,
     preserves: ['getProjectActiveProvider'],
   },
   {
     fixture: 'single-file',
     shape: 'single file, huge context',
-    floor: 70,
+    floor: 88,
     preserves: ['writeFileSyncAndFlush'],
   },
   {
     fixture: 'legacy-mixed-paths',
     shape: 'absolute context + relative matches',
-    floor: 10,
+    floor: 18,
     preserves: ['planModeHardDenyIfApplicable'],
   },
-  // Match-only bodies do not shrink: the per-file headers cost more than the
-  // grouping saves. They are listed so a future change that makes them shrink
-  // (or grow further) is noticed rather than assumed.
+  // Match-only bodies: the per-file header replaces the path on every line it
+  // covers, so these shrink too — they did NOT while the path was repeated
+  // under the header, and the no-win guard threw both summaries away.
   {
     fixture: 'dup-heavy',
     shape: 'match-only, repeated bodies',
-    floor: null,
+    floor: 28,
     preserves: ['FILE_EDIT_TOOL_NAME'],
   },
   {
     fixture: 'multi-file',
     shape: 'match-only, 66 files',
-    floor: null,
+    floor: 12,
     preserves: [],
   },
 ]
@@ -113,9 +145,7 @@ describe('grep summarizer — ROI floors (R10)', () => {
       const text = fixture(row.fixture)
       const body = bodyOf(text)
       const reduction = 100 * (1 - body.length / text.length)
-      if (row.floor !== null) {
-        expect(reduction).toBeGreaterThanOrEqual(row.floor)
-      }
+      expect(reduction).toBeGreaterThanOrEqual(row.floor)
       for (const needle of row.preserves) {
         expect(body).toContain(needle)
       }
@@ -124,21 +154,50 @@ describe('grep summarizer — ROI floors (R10)', () => {
 })
 
 describe('grep summarizer — identity guards', () => {
-  // R1: a body the strategy cannot parse is returned untouched by the caller.
+  // R1: a body the strategy cannot parse is returned untouched.
   test('R1 leaves an unparseable body alone', () => {
     for (const name of ['no-path-prefix', 'no-line-numbers', 'zero-matches']) {
       expect(summarizeGrepOutput(fixture(name))).toBeNull()
     }
   })
 
+  // R1b: the dispatch threshold is the other identity path, and the one that
+  // actually fires in production — `under-threshold` is a body the strategy
+  // would happily shrink by ~39%, which the caller must still leave alone.
+  test('R1b a result below the dispatch threshold is not summarized', () => {
+    const text = fixture('under-threshold')
+    expect(text.length).toBeLessThan(6000)
+    expect(bodyOf(text).length).toBeLessThan(text.length)
+    const block = {
+      type: 'tool_result' as const,
+      tool_use_id: 'under-threshold',
+      content: text,
+    }
+    expect(maybeSummarizeToolResult(block, GREP_TOOL_NAME)).toBe(block)
+  })
+
   // R6: the strategy may legitimately not shrink a body, but the caller's
   // no-win guard is the only thing standing between that and a bigger payload.
-  // Pin which fixtures grow so the guard is never quietly removed.
-  test('R6 a body that grows is reported, not shipped as a saving', () => {
-    for (const name of ['dup-heavy', 'multi-file']) {
-      const text = fixture(name)
-      expect(bodyOf(text).length).toBeGreaterThan(text.length)
+  //
+  // One match per file is the shape that always grows: the block header costs
+  // more than the one path it replaces. Built here rather than taken from a
+  // fixture because every fixture now shrinks — a growth pin that depends on a
+  // fixture staying bad stops guarding the moment the fixture gets better.
+  test('R6 a body that grows is never shipped', () => {
+    const growing = Array.from({ length: 50 }, (_, i) => {
+      const pad = `value ${i} `.repeat(11)
+      return `src/generated/module-${String(i).padStart(2, '0')}.ts:${i + 1}:const v${i} = "${pad}"`
+    }).join('\n')
+    // Over the dispatch threshold, so the no-win guard — not the threshold — is
+    // what has to catch this.
+    expect(growing.length).toBeGreaterThan(6000)
+    expect(bodyOf(growing).length).toBeGreaterThan(growing.length)
+    const block = {
+      type: 'tool_result' as const,
+      tool_use_id: 'no-win',
+      content: growing,
     }
+    expect(maybeSummarizeToolResult(block, GREP_TOOL_NAME).content).toBe(growing)
   })
 
   // R2: the killswitch must be a real escape hatch — with it set, even a
@@ -206,20 +265,41 @@ describe('grep summarizer — honesty', () => {
   // R7: every match that existed must still be reachable — either printed, or
   // counted in a `+N more matches` / `<omitted>` line.
   test('R7 no match line vanishes silently', () => {
-    for (const name of ['context-12', 'context-30', 'unscoped-wide']) {
+    // dup-heavy trips the per-file cap (14 matches in one file) and multi-file
+    // trips the 50-file cap, so both accounting lines are exercised — with only
+    // the context fixtures neither cap ever fires and the test is vacuous.
+    for (const name of [
+      'context-12',
+      'context-30',
+      'unscoped-wide',
+      'dup-heavy',
+      'multi-file',
+    ]) {
       const text = fixture(name)
       const body = bodyOf(text)
       const locators = matchLocators(text)
       expect(locators.length).toBeGreaterThan(0)
-      const shown = locators.filter(l => body.includes(l))
+      const printed = new Set(blockLocators(body).matches)
+      const shown = locators.filter(l => printed.has(l))
       const accountedFor =
         shown.length +
         [...body.matchAll(/\+(\d+) more match/g)].reduce(
           (n, m) => n + Number(m[1]),
           0,
+        ) +
+        [...body.matchAll(/<omitted>: \d+ files?, (\d+) match/g)].reduce(
+          (n, m) => n + Number(m[1]),
+          0,
         )
       expect(accountedFor).toBeGreaterThanOrEqual(locators.length)
     }
+  })
+
+  // R7b: the caps must actually fire on the fixtures R7 leans on, otherwise
+  // R7 is satisfied by "everything was printed" and guards nothing.
+  test('R7b the fixtures behind R7 really do hit both caps', () => {
+    expect(bodyOf(fixture('dup-heavy'))).toContain(' more match')
+    expect(bodyOf(fixture('multi-file'))).toContain('<omitted>:')
   })
 
   // R8: the header counts must equal what the body actually contains.
@@ -243,15 +323,22 @@ describe('grep summarizer — honesty', () => {
     const kept = Number(ctx![1])
     const total = Number(ctx![2])
     expect(kept).toBeLessThanOrEqual(total)
-    const printedContext = body
+    expect(blockLocators(body).context.length).toBe(kept)
+  })
+
+  // R8b: `total` is the honest denominator — every context line rg emitted,
+  // including the ones that ended up in the literal bucket. legacy-mixed-paths
+  // is the fixture where those two numbers differ.
+  test('R8b the context denominator counts every context line', () => {
+    const text = fixture('legacy-mixed-paths')
+    const body = bodyOf(text)
+    const ctx = /context=(\d+)\/(\d+)/.exec(body.split('\n')[0]!)
+    expect(ctx).not.toBeNull()
+    const rawContext = text
       .split('\n')
-      .slice(1)
-      .filter(l => {
-        const m = MATCH_RE.exec(l)
-        const c = CONTEXT_RE.exec(l)
-        return Boolean(c) && (!m || c![1]!.length < m[1]!.length)
-      }).length
-    expect(printedContext).toBe(kept)
+      .filter(l => l && !MATCH_RE.test(l) && CONTEXT_RE.test(l)).length
+    expect(Number(ctx![2])).toBeLessThanOrEqual(rawContext)
+    expect(Number(ctx![1])).toBe(blockLocators(body).context.length)
   })
 
   // R9: fail-open on malformed input — never throw, never empty.
@@ -291,12 +378,14 @@ describe('grep summarizer — context handling', () => {
 
   test('keeps context within ±3 of a match and drops the rest', () => {
     const body = bodyOf(wide)
-    expect(body).toContain('src/a.ts:112:the match')
+    expect(body).toContain('--- src/a.ts (1 match) ---')
+    expect(body).toContain('112:the match')
     // 109..111 and 113..115 survive; 108 and 116 do not.
-    expect(body).toContain('src/a.ts-109-')
-    expect(body).toContain('src/a.ts-115-')
-    expect(body).not.toContain('src/a.ts-108-')
-    expect(body).not.toContain('src/a.ts-116-')
+    const { context } = blockLocators(body)
+    expect(context).toContain('src/a.ts:109')
+    expect(context).toContain('src/a.ts:115')
+    expect(context).not.toContain('src/a.ts:108')
+    expect(context).not.toContain('src/a.ts:116')
   })
 
   test('sorts each file block by line number', () => {
@@ -311,7 +400,7 @@ describe('grep summarizer — context handling', () => {
     ].join('\n')
     const numbers = bodyOf(shuffled)
       .split('\n')
-      .map(l => /^src\/a\.ts[:-](\d+)[:-]/.exec(l)?.[1])
+      .map(l => /^(\d+)[:-]/.exec(l)?.[1])
       .filter((n): n is string => n !== undefined)
       .map(Number)
     expect(numbers).toEqual([10, 11, 20, 30])
@@ -329,9 +418,9 @@ describe('grep summarizer — context handling', () => {
     // separator survives as a LINE, which is what must be gone — including out
     // of the "preserved literally" bucket at the end of the body.
     expect(body.split('\n')).not.toContain('--')
-    expect(body).not.toContain('src/a.ts-11-')
-    expect(body).toContain('src/a.ts:10:hit one')
-    expect(body).toContain('src/a.ts:40:hit two')
+    expect(blockLocators(body).context).not.toContain('src/a.ts:11')
+    expect(body).toContain('10:hit one')
+    expect(body).toContain('40:hit two')
   })
 
   test('collapses a repeated body to a back-reference that resolves', () => {
@@ -342,9 +431,12 @@ describe('grep summarizer — context handling', () => {
       `src/c.ts:30:${long}`,
     ].join('\n')
     const body = bodyOf(text)
+    // The back-reference stays fully qualified — it points into another file's
+    // block, where a bare line number would resolve against the wrong header.
     expect(body).toContain('… same as src/a.ts:10')
     // The referenced line is present in the output, not dropped by another rung.
-    expect(body).toContain(`src/a.ts:10:${long}`)
+    expect(blockLocators(body).matches).toContain('src/a.ts:10')
+    expect(body).toContain(`10:${long}`)
     expect(body.length).toBeLessThan(text.length + 200)
   })
 
@@ -352,7 +444,7 @@ describe('grep summarizer — context handling', () => {
     const text = ['src/a.ts:10:x', 'src/b.ts:20:x'].join('\n')
     const body = bodyOf(text)
     expect(body).not.toContain('same as')
-    expect(body).toContain('src/b.ts:20:x')
+    expect(body).toContain('20:x')
   })
 
   test('a context-only file is preserved literally, never dropped', () => {
@@ -363,5 +455,71 @@ describe('grep summarizer — context handling', () => {
     const body = bodyOf(text)
     expect(body).toContain('other (preserved literally)')
     expect(body).toContain('orphan context line that has no anchor')
+    // The literal bucket has no header above it, so it keeps its full path.
+    expect(body).toContain('/abs/path/b.ts-99-')
+  })
+})
+
+describe('grep summarizer — line splitting', () => {
+  test('does not repeat the path under its own block header', () => {
+    const path = 'src/services/api/providerConfiguration.ts'
+    const text = [
+      `${path}:10:const a = 1`,
+      `${path}-11-  helper()`,
+      `${path}:20:const b = 2`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`--- ${path} (2 matches) ---`)
+    // Exactly once, in the header. This is the whole saving on a match-only
+    // body: the path is the longest term on most ripgrep lines.
+    expect(body.split(path).length - 1).toBe(1)
+    expect(body).toContain('10:const a = 1')
+    expect(body).toContain('11-  helper()')
+  })
+
+  test('splits a path that contains its own separator run', () => {
+    // `-2026-` inside the file name reads as a line-number separator, so the
+    // leftmost split called this file `notes/report` at line 2026 on every
+    // line — a file with context and no match, i.e. the literal bucket, i.e.
+    // no summary at all. This repo has such names under .claudin/memory/team/.
+    const path = 'notes/report-2026-07-25.md'
+    const text = [
+      `${path}:10:const a = 1`,
+      `${path}-11-  helper()`,
+      `${path}:12:const b = 2`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`--- ${path} (2 matches) ---`)
+    expect(body).not.toContain('other (preserved literally)')
+    expect(blockLocators(body).matches).toEqual([`${path}:10`, `${path}:12`])
+  })
+
+  test('still reads a code line whose text contains a separator run', () => {
+    // The other direction: `:2:` inside the code text must not win over the
+    // real prefix. Two lines of one file, so the vote has something to go on.
+    const text = [
+      'src/ratio.ts:10:if (ratio === 1:2:3) return',
+      'src/ratio.ts:11:if (ratio === 4:5:6) return',
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain('--- src/ratio.ts (2 matches) ---')
+    expect(body).toContain('10:if (ratio === 1:2:3) return')
+  })
+
+  test('a file or a line body named __proto__ does not throw', () => {
+    // `byFile[file] = []` on a plain object with file === '__proto__' sets the
+    // prototype instead of a key, and the next `.push` throws — inside a
+    // strategy whose entire contract is to fail open. Same for a line body of
+    // '__proto__' or 'toString' reaching the dedupe map.
+    const text = [
+      '__proto__:10:__proto__',
+      '__proto__:11:toString',
+      '__proto__:12:__proto__',
+      'src/b.ts:1:constructor',
+    ].join('\n')
+    expect(() => summarizeGrepOutput(text)).not.toThrow()
+    const body = bodyOf(text)
+    expect(body).toContain('--- __proto__ (3 matches) ---')
+    expect(body).toContain('10:__proto__')
   })
 })

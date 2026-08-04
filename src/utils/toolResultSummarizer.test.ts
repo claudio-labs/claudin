@@ -480,12 +480,14 @@ test('grep: grouped by file with per-file cap', () => {
   expect(body).toContain('files=3')
   expect(body).toContain('src/a.ts (40 matches)')
   expect(body).toContain('src/b.ts (20 matches)')
-  // Per-file cap of 10 → +30 more matches for a.ts.
-  expect(body).toContain('src/a.ts: +30 more')
-  expect(body).toContain('src/b.ts: +10 more')
+  // Per-file cap of 10 → +30 more matches for a.ts. The counter sits inside
+  // the file's block, so it names no path — same reason the lines don't.
+  expect(body).toContain('+30 more')
+  expect(body).toContain('+10 more')
   // c.ts has 5 so no "+X more" line.
   expect(body).toContain('src/c.ts (5 matches)')
-  expect(body).not.toMatch(/src\/c\.ts: \+\d+ more/)
+  // Exactly two counters in the whole body: a.ts and b.ts, not c.ts.
+  expect([...body.matchAll(/\+\d+ more match/g)]).toHaveLength(2)
 
   const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
   expect(evt?.metadata.strategyId).toBe(2)
