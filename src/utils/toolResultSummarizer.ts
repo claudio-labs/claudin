@@ -790,7 +790,62 @@ function truncateLine(line: string): string {
 const GREP_MAX_MATCHES_PER_FILE = 10
 const GREP_MAX_FILES = 50
 
-function summarizeGrepOutput(text: string): StrategyResult | null {
+/**
+ * How far a context line may sit from the nearest surviving match in its own
+ * file before it is dropped. Ripgrep's `-A/-B/-C` lines are 91% of the body of
+ * every context-bearing Grep result and 43.6% of all content-mode Grep chars
+ * (measured over a week of transcripts), and callers routinely ask for `-C 12`
+ * or more. ±3 keeps a readable window around each hit.
+ */
+const GREP_CONTEXT_RADIUS = 3
+
+// Ripgrep marks a match line `path:NN:text` and a context line `path-NN-text`.
+// Non-greedy paths so the first separator run wins, which keeps a Windows drive
+// letter (`C:\...`) inside the path.
+const GREP_MATCH_RE = /^(.+?):(\d+):(.*)$/
+const GREP_CONTEXT_RE = /^(.+?)-(\d+)-(.*)$/
+const GREP_BLANK_RE = /^\s*$/
+// rg prints this between non-contiguous context blocks; the per-file grouping
+// below replaces what it conveyed.
+const GREP_BLOCK_SEPARATOR = '--'
+
+type GrepEntry = {
+  n: number
+  body: string
+  isMatch: boolean
+}
+
+/**
+ * Classifies one ripgrep output line. Both forms are tried and the one whose
+ * path ends EARLIER wins: a match line whose code text contains `-5-`, and a
+ * context line whose text contains `:9:`, are each parseable as the other, and
+ * the true separator is always the leftmost one.
+ */
+function parseGrepLine(
+  line: string,
+): ({ file: string } & GrepEntry) | null {
+  const m = GREP_MATCH_RE.exec(line)
+  const c = GREP_CONTEXT_RE.exec(line)
+  if (m && (!c || m[1]!.length <= c[1]!.length)) {
+    return { file: m[1]!, n: Number(m[2]), body: m[3]!, isMatch: true }
+  }
+  if (c) {
+    return { file: c[1]!, n: Number(c[2]), body: c[3]!, isMatch: false }
+  }
+  return null
+}
+
+function renderGrepLine(file: string, entry: GrepEntry, body: string): string {
+  const sep = entry.isMatch ? ':' : '-'
+  return `${file}${sep}${entry.n}${sep}${body}`
+}
+
+/**
+ * Exported for the replay bench (scripts/profile/grep-summarizer-replay.ts) and
+ * the regression tests, which need the raw strategy body without the envelope
+ * and without the dispatch threshold.
+ */
+export function summarizeGrepOutput(text: string): StrategyResult | null {
   const lines = text.split('\n').filter(l => l.length > 0)
   if (lines.length === 0) return null
 
@@ -803,36 +858,60 @@ function summarizeGrepOutput(text: string): StrategyResult | null {
   )
   if (countLineMatches / lines.length >= 0.8) return null
 
-  // Parse lines into (file, lineNumber, text). Non-matching lines go to
-  // "other" bucket preserved verbatim.
-  const matchRegex = /^([^:]+):(\d+):(.*)$/
+  // Parse lines into (file, lineNumber, text, isMatch). Unparseable lines go to
+  // the "other" bucket, preserved verbatim.
   // Plain object with explicit sorted iteration for determinism.
-  const byFile: Record<string, Array<{ line: string; n: number }>> = {}
+  const byFile: Record<string, GrepEntry[]> = {}
   const files: string[] = []
   const other: string[] = []
   let totalMatches = 0
+  let totalContext = 0
 
   for (const line of lines) {
-    const m = matchRegex.exec(line)
-    if (!m) {
+    if (line === GREP_BLOCK_SEPARATOR) continue
+    const parsed = parseGrepLine(line)
+    if (!parsed) {
       other.push(line)
       continue
     }
-    const file = m[1]!
+    // A blank context line carries nothing the surrounding lines don't.
+    if (!parsed.isMatch && GREP_BLANK_RE.test(parsed.body)) continue
+    const { file, ...entry } = parsed
     if (!(file in byFile)) {
       byFile[file] = []
       files.push(file)
     }
-    byFile[file]!.push({ line, n: Number(m[2]) })
-    totalMatches++
+    byFile[file]!.push(entry)
+    if (entry.isMatch) totalMatches++
+    else totalContext++
   }
 
   if (files.length === 0) return null
 
+  const matchCount = (file: string): number =>
+    byFile[file]?.reduce((n, e) => n + (e.isMatch ? 1 : 0), 0) ?? 0
+
+  // A file with context but no match cannot happen in well-formed rg output —
+  // context only exists around a match in the same file. It DOES happen when a
+  // result mixes path forms (transcripts recorded before context lines were
+  // relativized have absolute-path context and relative-path matches). Those
+  // lines have no anchor, so clamping them would be guesswork: preserve them
+  // literally instead of silently dropping them, and let the no-win guard
+  // decide whether the summary is still worth shipping.
+  const matchedFiles = files.filter(f => matchCount(f) > 0)
+  if (matchedFiles.length === 0) return null
+  for (const file of files) {
+    if (matchCount(file) > 0) continue
+    for (const entry of byFile[file]!) {
+      other.push(renderGrepLine(file, entry, entry.body))
+      totalContext--
+    }
+  }
+
   // Sort files: primary by match count DESC, secondary by filename ASC
   // — pure deterministic ordering (no Map iteration, no Date).
-  const sortedFiles = [...files].sort((a, b) => {
-    const diff = (byFile[b]?.length ?? 0) - (byFile[a]?.length ?? 0)
+  const sortedFiles = [...matchedFiles].sort((a, b) => {
+    const diff = matchCount(b) - matchCount(a)
     if (diff !== 0) return diff
     return a < b ? -1 : a > b ? 1 : 0
   })
@@ -840,30 +919,60 @@ function summarizeGrepOutput(text: string): StrategyResult | null {
   const kept = sortedFiles.slice(0, GREP_MAX_FILES)
   const dropped = sortedFiles.slice(GREP_MAX_FILES)
 
-  const body: string[] = []
-  body.push(
-    `Grep summary: files=${files.length}, matches=${totalMatches}` +
-      (other.length > 0 ? `, other=${other.length}` : ''),
-  )
+  // Dedupe runs last, over surviving lines only: a back-reference to a line
+  // that the clamp or the per-file cap removed would point at nothing.
+  const firstSeen: Record<string, string> = {}
+  const emit = (file: string, entry: GrepEntry, out: string[]): void => {
+    const locator = `${file}:${entry.n}`
+    const seen = firstSeen[entry.body]
+    if (seen === undefined) {
+      firstSeen[entry.body] = locator
+      out.push(truncateLine(renderGrepLine(file, entry, entry.body)))
+      return
+    }
+    const marker = `… same as ${seen}`
+    // Only a win when the repeated body is longer than the reference to it.
+    const body = marker.length < entry.body.length ? marker : entry.body
+    out.push(truncateLine(renderGrepLine(file, entry, body)))
+  }
+
+  const fileBlocks: string[] = []
+  let contextKept = 0
 
   for (const file of kept) {
-    const entries = byFile[file]!
-    const shown = entries.slice(0, GREP_MAX_MATCHES_PER_FILE)
-    body.push(`--- ${file} (${entries.length} match${entries.length === 1 ? '' : 'es'}) ---`)
+    const entries = [...byFile[file]!].sort((a, b) => a.n - b.n)
+    const matches = entries.filter(e => e.isMatch)
+    const shownMatches = matches.slice(0, GREP_MAX_MATCHES_PER_FILE)
+    const anchors = shownMatches.map(e => e.n)
+    const shown = entries.filter(entry => {
+      if (entry.isMatch) return shownMatches.includes(entry)
+      // Context survives only next to a match that is itself still shown.
+      return anchors.some(a => Math.abs(a - entry.n) <= GREP_CONTEXT_RADIUS)
+    })
+
+    fileBlocks.push(
+      `--- ${file} (${matches.length} match${matches.length === 1 ? '' : 'es'}) ---`,
+    )
     for (const entry of shown) {
-      body.push(truncateLine(entry.line))
+      if (!entry.isMatch) contextKept++
+      emit(file, entry, fileBlocks)
     }
-    const extra = entries.length - shown.length
+    const extra = matches.length - shownMatches.length
     if (extra > 0) {
-      body.push(`${file}: +${extra} more match${extra === 1 ? '' : 'es'}`)
+      fileBlocks.push(`${file}: +${extra} more match${extra === 1 ? '' : 'es'}`)
     }
   }
 
+  const body: string[] = []
+  body.push(
+    `Grep summary: files=${matchedFiles.length}, matches=${totalMatches}` +
+      (totalContext > 0 ? `, context=${contextKept}/${totalContext}` : '') +
+      (other.length > 0 ? `, other=${other.length}` : ''),
+  )
+  body.push(...fileBlocks)
+
   if (dropped.length > 0) {
-    const droppedMatches = dropped.reduce(
-      (n, f) => n + (byFile[f]?.length ?? 0),
-      0,
-    )
+    const droppedMatches = dropped.reduce((n, f) => n + matchCount(f), 0)
     body.push(
       `<omitted>: ${dropped.length} file${dropped.length === 1 ? '' : 's'}, ${droppedMatches} match${droppedMatches === 1 ? '' : 'es'} not shown`,
     )
