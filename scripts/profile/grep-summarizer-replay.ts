@@ -27,6 +27,7 @@ import {
 } from '../../src/utils/toolResultSummarizer.js'
 import { GREP_TOOL_NAME } from '../../src/tools/GrepTool/prompt.js'
 import { relativizeRgLine } from '../../src/tools/GrepTool/relativize.js'
+import { getCwd } from '../../src/utils/cwd.js'
 
 type Sample = { input: Record<string, unknown>; text: string }
 
@@ -119,7 +120,11 @@ function collect(dir: string): Sample[] {
  * normalised the way the current GrepTool emits it.
  */
 function normalize(text: string): string {
-  const root = process.cwd()
+  // Same anchor GrepTool relativizes against. Not process.cwd(): the session
+  // cwd is realpath-resolved, so on a checkout reached through a symlink the
+  // two differ and every line would silently normalize to nothing — the bench
+  // would then report the path fix as saving zero.
+  const root = getCwd()
   return text
     .split('\n')
     .map(line => relativizeRgLine(line, root))
