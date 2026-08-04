@@ -12,6 +12,7 @@ import {
 import { getFsImplementation } from '../../utils/fsOperations.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { expandPath, toRelativePath } from '../../utils/path.js'
+import { relativizeRgLine } from './relativize.js'
 import {
   checkReadPermissionForTool,
   getFileReadIgnorePatterns,
@@ -166,6 +167,8 @@ type SymbolsResult = {
 // letters (`C:\...`) part of the path instead of being mistaken for the
 // line-number separator.
 export const RG_LINE_RE = /^(.+?):(\d+):/
+
+export { RG_PREFIX_RE, relativizeRgLine } from './relativize.js'
 
 /**
  * Maps ripgrep content lines (`abs:line:text`) to the enclosing symbol in
@@ -594,16 +597,9 @@ export const GrepTool = buildTool({
         offset,
       )
 
-      const finalLines = limitedResults.map(line => {
-        // Lines have format: /absolute/path:line_content or /absolute/path:num:content
-        const colonIndex = line.indexOf(':')
-        if (colonIndex > 0) {
-          const filePath = line.substring(0, colonIndex)
-          const rest = line.substring(colonIndex)
-          return toRelativePath(filePath) + rest
-        }
-        return line
-      })
+      const finalLines = limitedResults.map(line =>
+        relativizeRgLine(line, absolutePath),
+      )
       const output = {
         mode: 'content' as const,
         numFiles: 0, // Not applicable for content mode

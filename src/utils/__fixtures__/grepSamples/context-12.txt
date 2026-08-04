@@ -1,0 +1,175 @@
+src/services/api/codexShim.test.ts-975-        textDeltas.push(delta.text)
+src/services/api/codexShim.test.ts-976-      }
+src/services/api/codexShim.test.ts-977-    }
+src/services/api/codexShim.test.ts-978-
+src/services/api/codexShim.test.ts-979-    expect(textDeltas.join('')).toBe(
+src/services/api/codexShim.test.ts-980-      'I should note that the user role requires a briefly concise friendly response format.',
+src/services/api/codexShim.test.ts-981-    )
+src/services/api/codexShim.test.ts-982-  })
+src/services/api/codexShim.test.ts-983-})
+src/services/api/codexShim.test.ts-984-
+src/services/api/codexShim.test.ts-985-describe('performCodexRequest prompt-cache params', () => {
+src/services/api/codexShim.test.ts-986-  const realFetch = globalThis.fetch
+src/services/api/codexShim.test.ts-987-  let capturedBody: Record<string, unknown> | undefined
+src/services/api/codexShim.test.ts-988-
+src/services/api/codexShim.test.ts-989-  beforeEach(() => {
+src/services/api/codexShim.test.ts-990-    capturedBody = undefined
+src/services/api/codexShim.test.ts-991-    ;(globalThis as { fetch: typeof fetch }).fetch = (async (
+src/services/api/codexShim.test.ts-992-      _input: unknown,
+src/services/api/codexShim.test.ts-993-      init?: RequestInit,
+src/services/api/codexShim.test.ts-994-    ) => {
+src/services/api/codexShim.test.ts-995-      capturedBody = JSON.parse(init?.body as string) as Record<string, unknown>
+src/services/api/codexShim.test.ts-996-      return new Response('', { status: 200 })
+src/services/api/codexShim.test.ts-997-    }) as typeof fetch
+src/services/api/codexShim.test.ts-998-  })
+src/services/api/codexShim.test.ts-999-
+src/services/api/codexShim.test.ts-1000-  afterEach(() => {
+src/services/api/codexShim.test.ts-1001-    ;(globalThis as { fetch: typeof fetch }).fetch = realFetch
+src/services/api/codexShim.test.ts-1002-  })
+src/services/api/codexShim.test.ts-1003-
+src/services/api/codexShim.test.ts-1004-  async function runRequest(baseUrl: string): Promise<void> {
+src/services/api/codexShim.test.ts:1005:    await performCodexRequest({
+src/services/api/codexShim.test.ts-1006-      request: {
+src/services/api/codexShim.test.ts-1007-        transport: 'codex_responses',
+src/services/api/codexShim.test.ts-1008-        requestedModel: 'gpt-5.4',
+src/services/api/codexShim.test.ts-1009-        resolvedModel: 'gpt-5.4',
+src/services/api/codexShim.test.ts-1010-        baseUrl,
+src/services/api/codexShim.test.ts-1011-      },
+src/services/api/codexShim.test.ts-1012-      credentials: { apiKey: 'test-key', source: 'env' },
+src/services/api/codexShim.test.ts-1013-      params: {
+src/services/api/codexShim.test.ts-1014-        model: 'gpt-5.4',
+src/services/api/codexShim.test.ts-1015-        messages: [{ role: 'user', content: 'hi' }],
+src/services/api/codexShim.test.ts-1016-        max_tokens: 1024,
+src/services/api/codexShim.test.ts-1017-      },
+--
+src/services/api/codexShim.ts-481-      }
+src/services/api/codexShim.ts-482-    }
+src/services/api/codexShim.ts-483-  }
+src/services/api/codexShim.ts-484-
+src/services/api/codexShim.ts-485-  if ('items' in record) {
+src/services/api/codexShim.ts-486-    const items = record.items
+src/services/api/codexShim.ts-487-    if (Array.isArray(items)) {
+src/services/api/codexShim.ts-488-      return items.every(item => isStrictResponsesSchema(item))
+src/services/api/codexShim.ts-489-    }
+src/services/api/codexShim.ts-490-    return isStrictResponsesSchema(items)
+src/services/api/codexShim.ts-491-  }
+src/services/api/codexShim.ts-492-
+src/services/api/codexShim.ts-493-  return true
+src/services/api/codexShim.ts-494-}
+src/services/api/codexShim.ts-495-
+src/services/api/codexShim.ts-496-function convertToolChoice(toolChoice: unknown): unknown {
+src/services/api/codexShim.ts-497-  const choice = toolChoice as { type?: string; name?: string } | undefined
+src/services/api/codexShim.ts-498-  if (!choice?.type) return undefined
+src/services/api/codexShim.ts-499-  if (choice.type === 'auto') return 'auto'
+src/services/api/codexShim.ts-500-  if (choice.type === 'any') return 'required'
+src/services/api/codexShim.ts-501-  if (choice.type === 'none') return 'none'
+src/services/api/codexShim.ts-502-  if (choice.type === 'tool' && choice.name) {
+src/services/api/codexShim.ts-503-    return {
+src/services/api/codexShim.ts-504-      type: 'function',
+src/services/api/codexShim.ts-505-      name: choice.name,
+src/services/api/codexShim.ts-506-    }
+src/services/api/codexShim.ts-507-  }
+src/services/api/codexShim.ts-508-  return undefined
+src/services/api/codexShim.ts-509-}
+src/services/api/codexShim.ts-510-
+src/services/api/codexShim.ts:511:export async function performCodexRequest(options: {
+src/services/api/codexShim.ts-512-  request: ResolvedProviderRequest
+src/services/api/codexShim.ts-513-  credentials: ResolvedCodexCredentials
+src/services/api/codexShim.ts-514-  params: ShimCreateParams
+src/services/api/codexShim.ts-515-  defaultHeaders: Record<string, string>
+src/services/api/codexShim.ts-516-  signal?: AbortSignal
+src/services/api/codexShim.ts-517-}): Promise<Response> {
+src/services/api/codexShim.ts-518-  // applyStableStubs runs at the API boundary so the stable bytes are
+src/services/api/codexShim.ts-519-  // what goes on the wire. No ensureToolResultPairing analogue exists
+src/services/api/codexShim.ts-520-  // here — convertAnthropicMessagesToResponsesInput handles orphan
+src/services/api/codexShim.ts-521-  // tool_results downstream.
+src/services/api/codexShim.ts-522-  const compressedMessages = applyStableStubs(
+src/services/api/codexShim.ts-523-    options.params.messages as Array<{
+--
+src/services/api/openaiShim/messagesClient.ts-240-            response: httpResponse ?? new Response(),
+src/services/api/openaiShim/messagesClient.ts-241-            request_id:
+src/services/api/openaiShim/messagesClient.ts-242-              httpResponse?.headers.get('x-request-id') ?? makeMessageId(),
+src/services/api/openaiShim/messagesClient.ts-243-          }
+src/services/api/openaiShim/messagesClient.ts-244-        }
+src/services/api/openaiShim/messagesClient.ts-245-
+src/services/api/openaiShim/messagesClient.ts-246-    return promise
+src/services/api/openaiShim/messagesClient.ts-247-  }
+src/services/api/openaiShim/messagesClient.ts-248-
+src/services/api/openaiShim/messagesClient.ts-249-  private async _doRequest(
+src/services/api/openaiShim/messagesClient.ts-250-    request: ReturnType<typeof resolveProviderRequest>,
+src/services/api/openaiShim/messagesClient.ts-251-    params: ShimCreateParams,
+src/services/api/openaiShim/messagesClient.ts-252-    options?: { signal?: AbortSignal; headers?: Record<string, string> },
+src/services/api/openaiShim/messagesClient.ts-253-  ): Promise<Response> {
+src/services/api/openaiShim/messagesClient.ts-254-    const githubEndpointType = getGithubEndpointType(request.baseUrl)
+src/services/api/openaiShim/messagesClient.ts-255-    const isGithubMode = isGithubModelsMode()
+src/services/api/openaiShim/messagesClient.ts-256-    const isGithubWithCodexTransport = isGithubMode && request.transport === 'codex_responses'
+src/services/api/openaiShim/messagesClient.ts-257-
+src/services/api/openaiShim/messagesClient.ts-258-    if (isGithubWithCodexTransport) {
+src/services/api/openaiShim/messagesClient.ts-259-      const profile = tryGetActiveProvider()
+src/services/api/openaiShim/messagesClient.ts-260-      const apiKey =
+src/services/api/openaiShim/messagesClient.ts-261-        profile?.extras?.githubToken ??
+src/services/api/openaiShim/messagesClient.ts-262-        profile?.apiKey ??
+src/services/api/openaiShim/messagesClient.ts-263-        ''
+src/services/api/openaiShim/messagesClient.ts-264-      if (!apiKey) {
+src/services/api/openaiShim/messagesClient.ts-265-        throw new Error(
+src/services/api/openaiShim/messagesClient.ts-266-          'GitHub Copilot auth is required. Run /provider and choose GitHub Copilot.',
+src/services/api/openaiShim/messagesClient.ts-267-        )
+src/services/api/openaiShim/messagesClient.ts-268-      }
+src/services/api/openaiShim/messagesClient.ts-269-
+src/services/api/openaiShim/messagesClient.ts:270:      return performCodexRequest({
+src/services/api/openaiShim/messagesClient.ts-271-        request,
+src/services/api/openaiShim/messagesClient.ts-272-        credentials: {
+src/services/api/openaiShim/messagesClient.ts-273-          apiKey,
+src/services/api/openaiShim/messagesClient.ts-274-          source: 'env',
+src/services/api/openaiShim/messagesClient.ts-275-        },
+src/services/api/openaiShim/messagesClient.ts-276-        params,
+src/services/api/openaiShim/messagesClient.ts-277-        defaultHeaders: {
+src/services/api/openaiShim/messagesClient.ts-278-          ...this.defaultHeaders,
+src/services/api/openaiShim/messagesClient.ts-279-          ...filterAnthropicHeaders(options?.headers),
+src/services/api/openaiShim/messagesClient.ts-280-          ...COPILOT_HEADERS,
+src/services/api/openaiShim/messagesClient.ts-281-          ...buildCopilotDynamicHeaders(params.messages),
+src/services/api/openaiShim/messagesClient.ts-282-        },
+--
+src/services/api/openaiShim/messagesClient.ts-291-            `[codex] access token refresh failed before request: ${error instanceof Error ? error.message : String(error)}`,
+src/services/api/openaiShim/messagesClient.ts-292-            { level: 'warn' },
+src/services/api/openaiShim/messagesClient.ts-293-          )
+src/services/api/openaiShim/messagesClient.ts-294-          return {
+src/services/api/openaiShim/messagesClient.ts-295-            refreshed: false,
+src/services/api/openaiShim/messagesClient.ts-296-            credentials: await readCodexCredentialsAsync(),
+src/services/api/openaiShim/messagesClient.ts-297-          }
+src/services/api/openaiShim/messagesClient.ts-298-        },
+src/services/api/openaiShim/messagesClient.ts-299-      )
+src/services/api/openaiShim/messagesClient.ts-300-      const credentials = resolveRuntimeCodexCredentials({
+src/services/api/openaiShim/messagesClient.ts-301-        storedCredentials: refreshResult.credentials,
+src/services/api/openaiShim/messagesClient.ts-302-      })
+src/services/api/openaiShim/messagesClient.ts-303-      if (!credentials.apiKey) {
+src/services/api/openaiShim/messagesClient.ts-304-        const oauthHint = isBareMode() ? '' : ', choose Codex OAuth in /provider'
+src/services/api/openaiShim/messagesClient.ts-305-        const authHint = credentials.authPath
+src/services/api/openaiShim/messagesClient.ts-306-          ? `${oauthHint} or place a Codex auth.json at ${credentials.authPath}`
+src/services/api/openaiShim/messagesClient.ts-307-          : oauthHint
+src/services/api/openaiShim/messagesClient.ts-308-        const safeModel =
+src/services/api/openaiShim/messagesClient.ts-309-          redactSecretValueForDisplay(request.requestedModel, process.env as SecretValueSource) ??
+src/services/api/openaiShim/messagesClient.ts-310-          'the requested model'
+src/services/api/openaiShim/messagesClient.ts-311-        throw new Error(
+src/services/api/openaiShim/messagesClient.ts-312-          `Codex auth is required for ${safeModel}. Set CODEX_API_KEY${authHint}.`,
+src/services/api/openaiShim/messagesClient.ts-313-        )
+src/services/api/openaiShim/messagesClient.ts-314-      }
+src/services/api/openaiShim/messagesClient.ts-315-      if (!credentials.accountId) {
+src/services/api/openaiShim/messagesClient.ts-316-        throw new Error(
+src/services/api/openaiShim/messagesClient.ts-317-          'Codex auth is missing chatgpt_account_id. Re-login with Codex OAuth, the Codex CLI, or set CHATGPT_ACCOUNT_ID/CODEX_ACCOUNT_ID.',
+src/services/api/openaiShim/messagesClient.ts-318-        )
+src/services/api/openaiShim/messagesClient.ts-319-      }
+src/services/api/openaiShim/messagesClient.ts-320-
+src/services/api/openaiShim/messagesClient.ts:321:      return performCodexRequest({
+src/services/api/openaiShim/messagesClient.ts-322-        request,
+src/services/api/openaiShim/messagesClient.ts-323-        credentials,
+src/services/api/openaiShim/messagesClient.ts-324-        params,
+src/services/api/openaiShim/messagesClient.ts-325-        defaultHeaders: {
+src/services/api/openaiShim/messagesClient.ts-326-          ...this.defaultHeaders,
+src/services/api/openaiShim/messagesClient.ts-327-          ...filterAnthropicHeaders(options?.headers),
+src/services/api/openaiShim/messagesClient.ts-328-        },
+src/services/api/openaiShim/messagesClient.ts-329-        signal: options?.signal,
+src/services/api/openaiShim/messagesClient.ts-330-      })
+src/services/api/openaiShim/messagesClient.ts-331-    }
+src/services/api/openaiShim/messagesClient.ts-332-
+src/services/api/openaiShim/messagesClient.ts-333-    return this._doOpenAIRequest(request, params, options)

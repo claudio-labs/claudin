@@ -1,0 +1,62 @@
+.claudin/memory/team/kimi-code-oauth-provider.md:15:**K3 thinking-effort levels (2026-07-18 capture):** `k3` is the only Kimi model with granular effort. The official CLI sends `thinking: { type: 'enabled', effort: <low|high|max>, keep: 'all' }`; it does **not** use OpenAI's `reasoning_effort`. Other Kimi models (`kimi-for-coding`, `kimi-for-coding-highspeed`) only support `thinking` on/off. Claudin's `/effort` for K3 therefore maps to the Kimi levels `[low, high, max]` and serializes them as `thinking.effort`.
+src/utils/config.ts:240:  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
+src/components/StartupScreen.ts:82:  const extrasEffort = provider.extras?.reasoningEffort
+src/components/StartupScreen.ts:142:      const resolvedEffort = resolvedRequest.reasoning?.effort ?? provider.extras?.reasoningEffort
+src/utils/providerProfiles.ts:90:): NonNullable<ProviderProfile['extras']>['reasoningEffort'] {
+src/utils/providerProfiles.ts:137:  const reasoningEffort = sanitizeReasoningEffort(extras.reasoningEffort)
+src/utils/providerProfiles.ts:138:  if (reasoningEffort) out.reasoningEffort = reasoningEffort
+src/components/StartupBanner.test.tsx:102:      extras: { reasoningEffort: 'high' },
+src/utils/model/codexModelCatalog.ts:27:  reasoningEffort?: ReasoningEffort
+src/utils/model/codexModelCatalog.ts:46:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:54:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:62:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:70:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:78:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:86:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:102:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:108:    reasoningEffort: 'high',
+src/utils/model/codexModelCatalog.ts:119:    reasoningEffort: 'medium',
+src/utils/model/codexModelCatalog.ts:127:    reasoningEffort: 'medium',
+src/utils/model/copilotModelCatalog.ts:53:      reasoning_effort?: unknown
+src/utils/model/copilotModelCatalog.ts:135:    Array.isArray(supports.reasoning_effort) ||
+src/utils/model/copilotModelCatalog.test.ts:80:        supports: { tool_calls: true, reasoning_effort: ['low', 'high'] },
+src/utils/status.tsx:345:      const reasoningEffort = resolved.reasoning?.effort;
+src/utils/status.tsx:350:      if (reasoningEffort) {
+src/utils/status.tsx:351:        modelDisplay = `${modelDisplay} (${reasoningEffort})`;
+src/services/api/providerConfig.ts:65:    reasoningEffort?: ReasoningEffort
+src/services/api/providerConfig.ts:70:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:77:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:81:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:85:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:89:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:93:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:97:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:101:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:111:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:115:    reasoningEffort: 'high',
+src/services/api/providerConfig.ts:122:    reasoningEffort: 'medium',
+src/services/api/providerConfig.ts:126:    reasoningEffort: 'medium',
+src/services/api/providerConfig.ts:130:    reasoningEffort: 'medium',
+src/services/api/providerConfig.ts:244:        reasoning: aliasConfig.reasoningEffort
+src/services/api/providerConfig.ts:245:          ? { effort: aliasConfig.reasoningEffort }
+src/services/api/providerConfig.ts:262:    (aliasConfig?.reasoningEffort
+src/services/api/providerConfig.ts:263:      ? { effort: aliasConfig.reasoningEffort }
+src/services/api/providerConfig.ts:533:  reasoningEffortOverride?: ReasoningEffort
+src/services/api/providerConfig.ts:619:  const reasoning = options?.reasoningEffortOverride
+src/services/api/providerConfig.ts:620:    ? { effort: options.reasoningEffortOverride }
+src/services/api/providerConfig.ts:622:       (activeProvider?.extras?.reasoningEffort
+src/services/api/providerConfig.ts:623:         ? { effort: activeProvider.extras.reasoningEffort }
+src/services/api/providerConfig.ts:656:    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
+src/services/api/providerConfig.ts:999:  return aliasConfig?.reasoningEffort
+src/services/api/openaiShim.test.ts:3800:    reasoningEffort: 'xhigh',
+src/services/api/openaiShim.test.ts:3812:  expect(requestBody?.reasoning_effort).toBe('max')
+src/services/api/openaiShim.test.ts:3848:  expect(requestBody?.reasoning_effort).toBeUndefined()
+src/services/api/openaiShim.test.ts:3882:  expect(requestBody?.reasoning_effort).toBeUndefined()
+src/services/api/openaiShim.test.ts:3920:  expect(requestBody?.reasoning_effort).toBeUndefined()
+src/services/api/openaiShim.test.ts:3954:  expect(requestBody?.reasoning_effort).toBeUndefined()
+src/services/api/openaiShim/messagesClient.ts:115:  private reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
+src/services/api/openaiShim/messagesClient.ts:117:  constructor(defaultHeaders: Record<string, string>, reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh') {
+src/services/api/openaiShim/messagesClient.ts:119:    this.reasoningEffort = reasoningEffort
+src/services/api/openaiShim/messagesClient.ts:139:      const reasoningEffort: ReasoningEffort | undefined =
+
+[Showing results with pagination = limit: 60]

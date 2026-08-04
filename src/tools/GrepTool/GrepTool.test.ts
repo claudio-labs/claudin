@@ -4,11 +4,12 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
+import { getCwdState, setCwdState } from '../../bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
 import '../GlobTool/GlobTool.js'
-import { GrepTool, RG_LINE_RE } from './GrepTool.js'
+import { GrepTool, RG_LINE_RE, relativizeRgLine } from './GrepTool.js'
 
 // ---------------------------------------------------------------------------
 // Regression + feature suite for GrepTool.
@@ -272,5 +273,114 @@ describe('GrepTool RG_LINE_RE', () => {
     const m = RG_LINE_RE.exec('/x/a.ts:3:if (ratio === 1:2) return')
     expect(m?.[1]).toBe('/x/a.ts')
     expect(m?.[2]).toBe('3')
+  })
+})
+
+describe('GrepTool relativizeRgLine', () => {
+  // What this block needs is the ONE precondition production always satisfies:
+  // the directory rg is pointed at and the directory relativizing is anchored
+  // to are the same value. GrepTool derives both from getCwd(), so they cannot
+  // drift there — but a test that reads either from the ambient environment
+  // inherits whatever the runner's session cwd happens to be, and on CI that
+  // is not the checkout. (Read from process.cwd() the candidates all landed
+  // outside the anchor and the function correctly failed open; read from
+  // getCwd() the search path did not exist and rg returned nothing.)
+  //
+  // So pin the anchor for the block and restore it after: bootstrap state is
+  // process-global and bun runs test files in one process, so leaving it moved
+  // would follow other files (see .claudin/rules/testing.md on mock leaks).
+  const root = process.cwd()
+  let previousCwdState: string
+
+  beforeAll(() => {
+    previousCwdState = getCwdState()
+    setCwdState(root)
+  })
+
+  afterAll(() => {
+    setCwdState(previousCwdState)
+  })
+
+  test('relativizes a match line', () => {
+    expect(relativizeRgLine(`${root}/src/a.ts:42:const needle = 1`, root)).toBe(
+      'src/a.ts:42:const needle = 1',
+    )
+  })
+
+  test('relativizes a context line whose text has no colon', () => {
+    // The bug: indexOf(':') returned -1 here, so the whole absolute path was
+    // kept — 30 wasted chars on every colon-less context line of every -C grep.
+    expect(
+      relativizeRgLine(`${root}/src/a.ts-791-const GREP_MAX_FILES = 50`, root),
+    ).toBe('src/a.ts-791-const GREP_MAX_FILES = 50')
+  })
+
+  test('relativizes a context line whose text does contain a colon', () => {
+    expect(
+      relativizeRgLine(`${root}/src/a.ts-12-  // note: see below`, root),
+    ).toBe('src/a.ts-12-  // note: see below')
+  })
+
+  test('keeps a Windows drive letter inside the path', () => {
+    const line = 'C:\\proj\\src\\a.ts-7-export function helper()'
+    expect(relativizeRgLine(line, 'C:\\proj')).toBe(
+      // Outside cwd, so toRelativePath keeps it absolute — the point is that
+      // the drive-letter colon was not mistaken for the separator.
+      line,
+    )
+  })
+
+  test('relativizes past a directory that contains a separator run', () => {
+    // A directory named `foo-12-bar` makes the first split land inside the
+    // path. Rewriting THAT would point at a file that does not exist, so the
+    // guard rejects it — and the walk moves on to the next candidate instead of
+    // giving up, which is what used to leak the absolute path on every line of
+    // a search rooted in a directory like `proj-2026-q1`.
+    const line = `${root}/foo-12-bar/a.ts-791-const X = 50`
+    expect(relativizeRgLine(line, `${root}/foo-12-bar`)).toBe(
+      'foo-12-bar/a.ts-791-const X = 50',
+    )
+  })
+
+  test('relativizes a file whose own name contains a separator run', () => {
+    const line = `${root}/notes/report-2026-07-25.md:12:const X = 50`
+    expect(relativizeRgLine(line, root)).toBe(
+      'notes/report-2026-07-25.md:12:const X = 50',
+    )
+  })
+
+  test('still gives up when no candidate is under the search root', () => {
+    const line = '/elsewhere/a.ts-791-const X = 50'
+    expect(relativizeRgLine(line, `${root}/src`)).toBe(line)
+  })
+
+  test('leaves the block separator and unprefixed lines alone', () => {
+    expect(relativizeRgLine('--', root)).toBe('--')
+    expect(relativizeRgLine('117:const DEFAULT = 250', root)).toBe(
+      '117:const DEFAULT = 250',
+    )
+  })
+
+  test('still relativizes the -n:false form, which has no line number', () => {
+    expect(relativizeRgLine(`${root}/src/a.ts:const needle = 1`, root)).toBe(
+      'src/a.ts:const needle = 1',
+    )
+  })
+
+  test('end-to-end: a -C search inside cwd leaks no absolute path', async () => {
+    // Searches the repo itself (not the tmp fixture dir) because
+    // toRelativePath deliberately keeps paths outside cwd absolute.
+    const { data } = await GrepTool.call(
+      {
+        pattern: 'GREP_MAX_FILES',
+        path: `${root}/src/utils`,
+        output_mode: 'content',
+        '-C': 1,
+      } as never,
+      makeContext(),
+    )
+    const content = (data as GrepData).content ?? ''
+    expect(content).toContain('toolResultSummarizer.ts-')
+    expect(content).not.toContain(root)
   })
 })
