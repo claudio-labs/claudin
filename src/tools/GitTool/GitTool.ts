@@ -34,6 +34,18 @@ import {
  * NOT added to `isCacheableTool`'s whitelist in
  * `src/services/tools/toolResultCache.ts`: git state changes faster than that
  * cache's 30s TTL, and a replayed `git status` is a wrong answer.
+ *
+ * The rest of the subsystem, and the two killswitches that do not live here:
+ *
+ *  - `grammar.ts`  — what is accepted, and read vs mutate (fails closed).
+ *  - `permissions.ts` — delegation to `bashToolHasPermission`.
+ *  - `run.ts`      — sequential execution; its error/success branch is what
+ *                    guarantees a failure is never budgeted or elided.
+ *  - `budget.ts` + `parsers/` — the summarizers, ≤70% no-win guard.
+ *  - `delta.ts`    — re-run elision, on by default; `CLAUDIN_DISABLE_GIT_DELTA=1`.
+ *  - `redirect.ts` — the Bash refusal that points here;
+ *                    `CLAUDIN_DISABLE_GIT_REDIRECT=1`.
+ *  - `errors.ts`   — one-line diagnosis prepended to a failure's raw text.
  */
 
 const DEFAULT_TIMEOUT_MS = 120_000
