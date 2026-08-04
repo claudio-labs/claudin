@@ -11,6 +11,7 @@ import { BashTool } from '../../tools/BashTool/BashTool.js';
 import { FileEditTool } from '../../tools/FileEditTool/FileEditTool.js';
 import { FileReadTool } from '../../tools/FileReadTool/FileReadTool.js';
 import { FileWriteTool } from '../../tools/FileWriteTool/FileWriteTool.js';
+import { GitTool } from '../../tools/GitTool/GitTool.js';
 import { GlobTool } from '../../tools/GlobTool/GlobTool.js';
 import { GrepTool } from '../../tools/GrepTool/GrepTool.js';
 import { NotebookEditTool } from '../../tools/NotebookEditTool/NotebookEditTool.js';
@@ -27,6 +28,7 @@ import { FallbackPermissionRequest } from './FallbackPermissionRequest.js';
 import { FileEditPermissionRequest } from './FileEditPermissionRequest/FileEditPermissionRequest.js';
 import { FilesystemPermissionRequest } from './FilesystemPermissionRequest/FilesystemPermissionRequest.js';
 import { FileWritePermissionRequest } from './FileWritePermissionRequest/FileWritePermissionRequest.js';
+import { GitPermissionRequest } from './GitPermissionRequest/GitPermissionRequest.js';
 import { NotebookEditPermissionRequest } from './NotebookEditPermissionRequest/NotebookEditPermissionRequest.js';
 import { PowerShellPermissionRequest } from './PowerShellPermissionRequest/PowerShellPermissionRequest.js';
 import { SkillPermissionRequest } from './SkillPermissionRequest/SkillPermissionRequest.js';
@@ -54,6 +56,10 @@ function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionR
       return BashPermissionRequest;
     case PowerShellTool:
       return PowerShellPermissionRequest;
+    // Not the fallback: its "don't ask again" would save a tool-wide `Git`
+    // grant, and this tool's permissions are checked as `Bash(...)` rules.
+    case GitTool:
+      return GitPermissionRequest;
     case ReviewArtifactTool:
       return ReviewArtifactPermissionRequest ?? FallbackPermissionRequest;
     case WebFetchTool:
