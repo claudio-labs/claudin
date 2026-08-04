@@ -27,6 +27,12 @@ import {
 } from '../../src/utils/toolResultSummarizer.js'
 import { GREP_TOOL_NAME } from '../../src/tools/GrepTool/prompt.js'
 import { relativizeRgLine } from '../../src/tools/GrepTool/relativize.js'
+import { buildSymbolsOutput } from '../../src/tools/GrepTool/symbolsOutput.js'
+import {
+  measureGrepShape,
+  pivotWins,
+  shouldAutoPivot,
+} from '../../src/tools/GrepTool/autoPivot.js'
 import { getCwd } from '../../src/utils/cwd.js'
 
 type Sample = { input: Record<string, unknown>; text: string }
@@ -147,7 +153,119 @@ function pct(part: number, whole: number): string {
   return whole === 0 ? '0.0%' : `${((100 * part) / whole).toFixed(1)}%`
 }
 
-function main(): void {
+/**
+ * `--pivot`: evaluates the auto-pivot policy (src/tools/GrepTool/autoPivot.ts)
+ * over the same recorded results.
+ *
+ * Two caveats the numbers carry, stated in the output as well: the recorded
+ * bodies are already relativized and already past `head_limit`, so this
+ * measures the emitted slice (which is the thing that costs tokens); and the
+ * map is rebuilt against TODAY's tree, so a file that moved since scans as
+ * missing. The population a policy admits is exact; the map size is an estimate.
+ *
+ * The column that decides the trade is not "saved vs raw" — the summarizer
+ * already compacts these results losslessly — but "saved vs summarized", i.e.
+ * what the lossy map buys ON TOP of what we already get for free.
+ */
+type PivotPolicy = {
+  label: string
+  chars: number
+  matchLines: number
+  files: number
+}
+
+const PIVOT_POLICIES: PivotPolicy[] = [
+  { label: 'F>=5  C>=6,000  L>=60 (shipping)', chars: 6000, matchLines: 60, files: 5 },
+  { label: 'F>=5  C>=6,000  L>=inf', chars: 6000, matchLines: Infinity, files: 5 },
+  { label: 'F>=3  C>=6,000  L>=60', chars: 6000, matchLines: 60, files: 3 },
+  { label: 'F>=5  C>=8,000  L>=60', chars: 8000, matchLines: 60, files: 5 },
+  { label: 'F>=8  C>=6,000  L>=60', chars: 6000, matchLines: 60, files: 8 },
+  { label: 'F>=5  C>=10,000 L>=100', chars: 10000, matchLines: 100, files: 5 },
+]
+
+function admits(p: PivotPolicy, shape: ReturnType<typeof measureGrepShape>): boolean {
+  return (
+    shape.files >= p.files &&
+    (shape.chars >= p.chars || shape.matchLines >= p.matchLines)
+  )
+}
+
+async function runPivot(samples: Sample[], dir: string): Promise<void> {
+  type Acc = { pivots: number; gated: number; replaced: number; map: number; summarized: number; degraded: number }
+  const acc = new Map<string, Acc>()
+  for (const p of PIVOT_POLICIES) {
+    acc.set(p.label, { pivots: 0, gated: 0, replaced: 0, map: 0, summarized: 0, degraded: 0 })
+  }
+
+  // Building a map costs up to SYMBOLS_MAX_FILES reads, and the corpus repeats
+  // identical results across resumed sessions — memoize on the body.
+  const mapCache = new Map<string, { content: string; degraded: boolean }>()
+  let total = 0
+  let eligible = 0
+
+  for (const s of samples) {
+    const text = normalize(s.text)
+    total += text.length
+    const lines = text.split('\n').filter(l => l.length > 0)
+    const shape = measureGrepShape(lines, text.length)
+    // Isolates the suppression half of the gate: a shape that clears every
+    // threshold, so the only thing that can return false is head_limit/offset/-n.
+    const suppressed = !shouldAutoPivot({
+      shape: { chars: Infinity, matchLines: 0, files: Infinity },
+      headLimitGiven: s.input.head_limit !== undefined,
+      offset: Number(s.input.offset ?? 0),
+      lineNumbers: s.input['-n'] !== false,
+    })
+    if (suppressed) continue
+    if (!PIVOT_POLICIES.some(p => admits(p, shape))) continue
+    eligible++
+
+    let built = mapCache.get(text)
+    if (!built) {
+      const symbols = await buildSymbolsOutput(lines)
+      built = {
+        content: symbols.content,
+        degraded: symbols.content.includes('(matched,'),
+      }
+      mapCache.set(text, built)
+    }
+    const summarized = summarize(text).length
+
+    for (const p of PIVOT_POLICIES) {
+      if (!admits(p, shape)) continue
+      const a = acc.get(p.label)!
+      if (!pivotWins(built.content.length, text.length)) {
+        a.gated++
+        continue
+      }
+      a.pivots++
+      a.replaced += text.length
+      a.map += built.content.length
+      a.summarized += summarized
+      if (built.degraded) a.degraded++
+    }
+  }
+
+  console.log(`Grep auto-pivot replay — ${dir}`)
+  console.log(`  results ${samples.length}, ${total.toLocaleString()} chars`)
+  console.log(`  reached the map builder: ${eligible}`)
+  console.log(
+    '  NOTE: bodies are post-head_limit and rebuilt against today\'s tree — the admitted population is exact, the map size is an estimate.\n',
+  )
+  console.log(
+    `    ${'policy'.padEnd(34)}${'pivots'.padEnd(8)}${'no-win'.padEnd(8)}${'replaced'.padEnd(14)}${'as map'.padEnd(14)}${'vs raw'.padEnd(20)}${'vs summarized'.padEnd(20)}degraded`,
+  )
+  for (const p of PIVOT_POLICIES) {
+    const a = acc.get(p.label)!
+    const vsRaw = a.replaced - a.map
+    const vsSum = a.summarized - a.map
+    console.log(
+      `    ${p.label.padEnd(34)}${String(a.pivots).padEnd(8)}${String(a.gated).padEnd(8)}${a.replaced.toLocaleString().padEnd(14)}${a.map.toLocaleString().padEnd(14)}${`${vsRaw.toLocaleString()} (${pct(vsRaw, total)})`.padEnd(20)}${`${vsSum.toLocaleString()} (${pct(vsSum, total)})`.padEnd(20)}${a.degraded}`,
+    )
+  }
+}
+
+async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   const dirFlag = argv.indexOf('--dir')
   const dir = dirFlag >= 0 ? argv[dirFlag + 1]! : DEFAULT_DIR
@@ -156,6 +274,11 @@ function main(): void {
   if (samples.length === 0) {
     console.error(`No Grep content-mode results found under ${dir}`)
     process.exit(1)
+  }
+
+  if (argv.includes('--pivot')) {
+    await runPivot(samples, dir)
+    return
   }
 
   let before = 0
@@ -303,4 +426,4 @@ function main(): void {
   }
 }
 
-main()
+void main()

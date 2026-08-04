@@ -1,5 +1,16 @@
 import { toRelativePath } from '../../utils/path.js'
 
+// Splits a ripgrep content line into path + line number. The path is matched
+// non-greedily so the first `:<digits>:` wins — this keeps Windows drive
+// letters (`C:\...`) part of the path instead of being mistaken for the
+// line-number separator. Only the match form (`path:NN:`) is covered: context
+// lines use `-` as the separator and are deliberately left out, so every
+// caller that counts hits with this counts matches only.
+//
+// Lives here rather than in GrepTool.ts so autoPivot.ts can share it without
+// importing the tool back (a cycle).
+export const RG_LINE_RE = /^(.+?):(\d+):/
+
 // Ripgrep prefixes every content line with the file it came from: `path:NN:text`
 // for a match and `path-NN-text` for a context line (-A/-B/-C). The
 // backreference pins both separators to the same character because rg never

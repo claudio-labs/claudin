@@ -81,6 +81,9 @@ type GrepData = {
   numMatches?: number
   appliedLimit?: number
   appliedOffset?: number
+  autoPivot?: boolean
+  totalMatchLines?: number
+  totalMatchFiles?: number
 }
 
 async function grep(
@@ -251,6 +254,207 @@ describe('GrepTool — symbols mode', () => {
     } finally {
       rmSync(big, { force: true })
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GREP_AUTO_PIVOT: a broad content search comes back as the symbol map.
+// The gate itself is unit-tested in autoPivot.test.ts; these cases pin the
+// wiring — that the tool honours it, that every suppression reaches it, and
+// that the rendered tool_result carries the footer.
+// ---------------------------------------------------------------------------
+describe('GrepTool — auto-pivot on a broad search', () => {
+  let wideDir: string
+  let hugeDir: string
+  let noWinDir: string
+  const prevForce = process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT
+  const prevCache = process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
+
+  /** `files` modules, 4 functions each, 3 lines per body carrying the token. */
+  function makeModules(root: string, files: number): void {
+    for (let f = 0; f < files; f++) {
+      const fns: string[] = []
+      for (let n = 0; n < 4; n++) {
+        fns.push(
+          `export function handler${f}_${n}(input: string): string {\n` +
+            `  const widetoken = input\n` +
+            `  const again = widetoken + widetoken\n` +
+            `  return widetoken.concat(again)\n` +
+            `}\n`,
+        )
+      }
+      writeFileSync(join(root, `mod${f}.ts`), fns.join('\n'))
+    }
+  }
+
+  beforeAll(() => {
+    process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT = '1'
+    // buildTool wraps Grep in the 30s tool-result cache, keyed on the input
+    // alone — without this, every test below that repeats an input replays the
+    // FIRST test's pivoted result instead of exercising its own gate (which is
+    // also why flipping the killswitch mid-session only takes effect for
+    // inputs the cache has not already answered).
+    process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
+    wideDir = mkdtempSync(join(tmpdir(), 'grep-pivot-'))
+    // 8 files × 4 functions × 3 hits = 96 match lines over 8 files: past the
+    // match-line trigger and the file floor, under the 250 head_limit (so the
+    // whole set is mapped, which keeps the per-file assertions independent of
+    // ripgrep's traversal order), and dense enough per symbol that the map is
+    // a fraction of the lines.
+    makeModules(wideDir, 8)
+
+    // 24 files → 288 match lines, past the default head_limit, so the pivot
+    // has to report how much it did not map.
+    hugeDir = mkdtempSync(join(tmpdir(), 'grep-pivot-huge-'))
+    makeModules(hugeDir, 24)
+
+    // Wide and dense enough to open the gate, but every hit sits in its own
+    // long-signature function — so one match line maps to one much longer
+    // symbol line and the map is BIGGER than the lines it would replace.
+    noWinDir = mkdtempSync(join(tmpdir(), 'grep-pivot-nowin-'))
+    for (let f = 0; f < 6; f++) {
+      const fns: string[] = []
+      for (let n = 0; n < 12; n++) {
+        fns.push(
+          `export async function extremelyDescriptiveHandlerName${f}_${n}(` +
+            `request: IncomingRequestEnvelope, context: ExecutionContext, ` +
+            `options: HandlerOptions = defaultHandlerOptions): Promise<HandlerOutcome> {\n` +
+            `  widetoken()\n` +
+            `}\n`,
+        )
+      }
+      writeFileSync(join(noWinDir, `mod${f}.ts`), fns.join('\n'))
+    }
+  })
+
+  afterAll(() => {
+    if (prevForce === undefined) {
+      delete process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT
+    } else {
+      process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT = prevForce
+    }
+    if (prevCache === undefined) {
+      delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
+    } else {
+      process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = prevCache
+    }
+    rmSync(wideDir, { recursive: true, force: true })
+    rmSync(hugeDir, { recursive: true, force: true })
+    rmSync(noWinDir, { recursive: true, force: true })
+  })
+
+  async function wideGrep(input: Record<string, unknown> = {}): Promise<GrepData> {
+    const { data } = await GrepTool.call(
+      {
+        pattern: 'widetoken',
+        path: wideDir,
+        output_mode: 'content',
+        ...input,
+      } as never,
+      makeContext(),
+    )
+    return data as GrepData
+  }
+
+  test('returns the symbol map instead of the matching lines', async () => {
+    const data = await wideGrep()
+
+    expect(data.mode).toBe('symbols')
+    expect(data.autoPivot).toBe(true)
+    expect(data.content).toContain('handler0_0')
+    // The map dedupes by symbol: 4 hits inside one function collapse to a line.
+    expect(data.numMatches).toBe(32)
+    expect(data.numFiles).toBe(8)
+  })
+
+  test('reports how wide the search actually was', async () => {
+    const data = await wideGrep()
+
+    // 3 lines per function body carry the token, 4 functions, 8 files.
+    expect(data.totalMatchLines).toBe(96)
+    expect(data.totalMatchFiles).toBe(8)
+  })
+
+  test('the rendered result carries the opt-out footer', async () => {
+    const data = await wideGrep()
+    const block = GrepTool.mapToolResultToToolResultBlockParam(
+      data as never,
+      'tool-use-1',
+    )
+
+    expect(String(block.content)).toContain('Re-run with head_limit set')
+  })
+
+  test('a truncated pivot reports the part it did not map', async () => {
+    const { data } = await GrepTool.call(
+      { pattern: 'widetoken', path: hugeDir, output_mode: 'content' } as never,
+      makeContext(),
+    )
+    const pivoted = data as GrepData
+    const block = GrepTool.mapToolResultToToolResultBlockParam(
+      pivoted as never,
+      'tool-use-2',
+    )
+
+    expect(pivoted.mode).toBe('symbols')
+    expect(pivoted.appliedLimit).toBe(250)
+    expect(pivoted.totalMatchLines).toBe(288)
+    expect(pivoted.totalMatchFiles).toBe(24)
+    expect(String(block.content)).toContain(
+      'The search matched 288 lines in 24 files; the first 250 are mapped below.',
+    )
+  })
+
+  test('a map that is not materially smaller keeps the lines', async () => {
+    const { data } = await GrepTool.call(
+      { pattern: 'widetoken', path: noWinDir, output_mode: 'content' } as never,
+      makeContext(),
+    )
+
+    expect((data as GrepData).mode).toBe('content')
+  })
+
+  test('an explicit head_limit keeps the lines', async () => {
+    const data = await wideGrep({ head_limit: 200 })
+
+    expect(data.mode).toBe('content')
+    expect(data.numLines).toBe(96)
+  })
+
+  test('an offset keeps the lines', async () => {
+    const data = await wideGrep({ offset: 10 })
+
+    expect(data.mode).toBe('content')
+  })
+
+  test('-n: false keeps the lines', async () => {
+    // Double-covered on purpose: the explicit suppression AND the fact that
+    // `path:text` lines measure as zero files. Deleting the guard alone does
+    // not make this fail — autoPivot.test.ts is what pins the guard itself.
+    const data = await wideGrep({ '-n': false })
+
+    expect(data.mode).toBe('content')
+  })
+
+  test('the killswitch keeps the lines', async () => {
+    process.env.CLAUDIN_DISABLE_GREP_AUTO_PIVOT = '1'
+    try {
+      const data = await wideGrep()
+      expect(data.mode).toBe('content')
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_GREP_AUTO_PIVOT
+    }
+  })
+
+  test('a small search over the same file count keeps its lines', async () => {
+    // The default fixture dir matches 5 files — at the file floor, but a few
+    // dozen chars. Breadth alone must not pivot.
+    const { data } = await GrepTool.call(
+      { pattern: 'needle', path: dir, output_mode: 'content' } as never,
+      makeContext(),
+    )
+
+    expect((data as GrepData).mode).toBe('content')
   })
 })
 

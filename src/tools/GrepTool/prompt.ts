@@ -14,5 +14,6 @@ export function getDescription(): string {
   - Use ${AGENT_TOOL_NAME} tool for open-ended searches requiring multiple rounds
   - Pattern syntax: Uses ripgrep (not grep) - literal braces need escaping (use \`interface\\{\\}\` to find \`interface{}\` in Go code)
   - Multiline matching: By default patterns match within single lines only. For cross-line patterns like \`struct \\{[\\s\\S]*?field\`, use \`multiline: true\`
+  - Broad "content" searches (matches spread across many files) come back as the "symbols" map instead of the matching lines; pass \`head_limit\` explicitly, or narrow with \`path\`/\`glob\`, to get the lines.
 `
 }
