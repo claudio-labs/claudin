@@ -1,0 +1,3 @@
+--- dart analyze --format=machine ---
+ERROR|COMPILE_TIME_ERROR|INVALID_ASSIGNMENT|/w/bin/main.dart|2|11|14|A value of type 'String' can't be assigned to a variable of type 'int'.
+exit=3

@@ -1,0 +1,9 @@
+--- NEVER RESTORED: dotnet build --no-restore -clp:NoSummary ---
+/usr/share/dotnet/sdk/9.0.316/Sdks/Microsoft.NET.Sdk/targets/Microsoft.PackageDependencyResolution.targets(266,5): error NETSDK1004: Assets file '/w/fresh/obj/project.assets.json' not found. Run a NuGet package restore to generate this file. [/w/fresh/fresh.csproj]
+exit=1
+--- same project, restore allowed ---
+  Determining projects to restore...
+  Restored /w/fresh/fresh.csproj (in 60 ms).
+/w/fresh/Program.cs(1,9): error CS0029: Cannot implicitly convert type 'string' to 'int' [/w/fresh/fresh.csproj]
+exit=1
+exit=0

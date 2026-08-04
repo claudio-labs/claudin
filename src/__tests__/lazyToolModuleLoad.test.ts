@@ -143,6 +143,7 @@ const CURRENT_BASELINE = [
   'TeamDeleteTool',
   'TodoWriteTool',
   'ToolSearchTool',
+  'TypecheckTool',
   'VerifyPlanExecutionTool',
   'WebFetchTool',
   'WebSearchTool',

@@ -1,0 +1,30 @@
+--- gradle compileJava ---
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :compileJava FAILED
+/w/src/main/java/Main.java:3: error: incompatible types: String cannot be converted to int
+    int n = "not a number";
+            ^
+1 error
+
+[Incubating] Problems report is available at: file:///w/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  /w/src/main/java/Main.java:3: error: incompatible types: String cannot be converted to int
+      int n = "not a number";
+              ^
+  1 error
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 3s
+1 actionable task: 1 executed
+exit=1
+exit=0

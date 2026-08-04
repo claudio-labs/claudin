@@ -45,6 +45,8 @@ import { userFacingName as fileEditUserFacingName } from '../FileEditTool/UI.js'
 import { trackGitOperations } from '../shared/gitOperationTracking.js';
 import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js';
 import { renderRunTestsRedirect, shouldRedirectToRunTests } from '../RunTestsTool/redirect.js';
+import { TYPECHECK_TOOL_NAME } from '../TypecheckTool/prompt.js';
+import { renderTypecheckRedirect, shouldRedirectToTypecheck } from '../TypecheckTool/redirect.js';
 import {
   applyBashFilterToStdout,
   planBashFilter,
@@ -545,6 +547,19 @@ export const BashTool = buildTool({
         result: false,
         message: renderRunTestsRedirect(input.command),
         errorCode: 11
+      };
+    }
+    // The same lever one step earlier in the loop: a bare type-check has a
+    // better home in Typecheck, which reports only the diagnostics missing from
+    // the project's recorded backlog. Gated identically — the tool must be in
+    // THIS agent's toolset, never for a backgrounded run — and narrowed to the
+    // pure checkers, so `go build`/`dotnet build`/`mvn` still run here.
+    // The refusal is one-shot per command; see TypecheckTool/redirect.ts.
+    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TYPECHECK_REDIRECT) && findToolByName(context?.options?.tools ?? [], TYPECHECK_TOOL_NAME) !== undefined && shouldRedirectToTypecheck(input.command)) {
+      return {
+        result: false,
+        message: renderTypecheckRedirect(input.command),
+        errorCode: 13
       };
     }
     // Same lever, aimed at the other half of this tool's own "avoid running
