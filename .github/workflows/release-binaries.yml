@@ -47,6 +47,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
       - name: Resolve version
         id: bump
         run: |
@@ -71,14 +74,10 @@ jobs:
           else
             RANGE="${PREV_TAG}..HEAD"
           fi
-          # Insert a zero-width space after every '@' in commit subjects so that
-          # literal mentions like "@opentelemetry" don't trigger GitHub's own
-          # auto "Contributors" strip on the release page (which duplicates the
-          # curated "### Contributors" section built below). The ZWSP is
-          # invisible in rendered notes and in CHANGELOG.md.
-          ZWSP=$'\u200b'
-          # shellcheck disable=SC2086
-          COMMITS=$(git log $RANGE --pretty='- %s (%h)' --no-merges | sed "s/@/@${ZWSP}/g")
+          # Groups the commits by conventional-commit type under emoji headings
+          # ("### ✨ Features", …) and neutralizes literal @mentions. Emits the
+          # "_No user-facing commits…_" line itself when the range is empty.
+          COMMITS=$(bun run scripts/release-notes.ts --range "$RANGE")
           # Credit contributors by their real GitHub identity (avatar + @handle),
           # resolved from the commit authors' logins via the API. Fall back to the
           # git author name for any commit whose email isn't linked to a GitHub
@@ -105,14 +104,10 @@ jobs:
             echo 'body<<CHANGELOG_EOF'
             echo "## ${{ steps.bump.outputs.tag }}"
             echo
-            if [ -z "$COMMITS" ]; then
-              echo "_No user-facing commits since previous tag._"
-            else
-              echo "$COMMITS"
-            fi
+            echo "$COMMITS"
             if [ -n "$CONTRIBUTORS" ]; then
               echo
-              echo "### Contributors"
+              echo "### 👥 Contributors"
               echo
               echo "$CONTRIBUTORS"
             fi

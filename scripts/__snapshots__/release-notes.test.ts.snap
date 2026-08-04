@@ -1,0 +1,15 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`renderNotes groups the commits under emoji headings in a fixed order 1`] = `
+"### ✨ Features
+
+- feat(typecheck): baseline-aware Typecheck tool (#48) (c3b86a3)
+
+### 🐛 Bug Fixes
+
+- fix(vertex): hand the SKIP_VERTEX_AUTH stub a real Headers (ea0fefb)
+
+### 📦 Dependencies
+
+- chore(deps): dedupe google-auth-library via a $-ref override (241f6af)"
+`;
