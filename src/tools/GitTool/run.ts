@@ -6,6 +6,9 @@ import { exec } from '../../utils/Shell.js'
 import { logError } from '../../utils/log.js'
 import { trimShellStdout } from '../shellToolResultMappers.js'
 import { trackGitOperations } from '../shared/gitOperationTracking.js'
+import { summarizeGitOutput } from './budget.js'
+import { applyGitDelta } from './delta.js'
+import { diagnoseGitFailure } from './errors.js'
 import type { GitBatchResult, GitCommandOutcome } from './types.js'
 
 /**
@@ -26,6 +29,8 @@ export type RunGitBatchOptions = {
   commands: readonly string[]
   abortSignal: AbortSignal
   timeoutMs: number
+  /** `full: true` on the tool input opts out of the delta lane. */
+  full?: boolean
 }
 
 export async function runGitBatch(
@@ -54,11 +59,19 @@ export async function runGitBatch(
       trackGitOperations(command, result.code, rawStdout)
 
       const isError = result.code !== 0 || result.interrupted
+      const filtered = applyBashFilterToStdout(rawStdout, isError, plan)
+      // This branch IS the guarantee that errors are never budgeted and never
+      // delta'd — both lanes are unreachable from a non-zero exit.
+      const rendered = isError
+        ? diagnoseGitFailure(command, result.code, filtered)
+        : applyGitDelta(command, summarizeGitOutput(command, filtered), {
+            full: opts.full === true,
+          })
       outcome = {
         command,
         effectiveCommand: plan.effectiveCommand,
         exitCode: result.code,
-        output: applyBashFilterToStdout(rawStdout, isError, plan),
+        output: rendered,
         interrupted: result.interrupted,
       }
     } catch (e) {
