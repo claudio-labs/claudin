@@ -155,6 +155,7 @@
   },
   "overrides": {
     "@anthropic-ai/sdk": "$@anthropic-ai/sdk",
+    "google-auth-library": "$google-auth-library",
     "lodash-es": "4.18.1"
   }
 }
