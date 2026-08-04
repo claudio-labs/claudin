@@ -16,6 +16,7 @@ import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
 import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
+import { GIT_TOOL_NAME } from '../GitTool/prompt.js'
 import { GLOB_TOOL_NAME } from '../GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js'
@@ -82,24 +83,24 @@ Git Safety Protocol:
 - When staging files, prefer adding specific files by name rather than using "git add -A" or "git add .", which can accidentally include sensitive files (.env, credentials) or large binaries
 - NEVER commit changes unless the user explicitly asks you to. It is VERY IMPORTANT to only commit when explicitly asked, otherwise the user will feel that you are being too proactive
 
-1. Run the following bash commands in parallel, each using the ${BASH_TOOL_NAME} tool:
-  - Run a git status command to see all untracked files. IMPORTANT: Never use the -uall flag as it can cause memory issues on large repos.
-  - Run a git diff command to see both staged and unstaged changes that will be committed.
-  - Run a git log command to see recent commit messages, so that you can follow this repository's commit message style.
+1. Run the following in a SINGLE ${GIT_TOOL_NAME} call, passing all three as one \`commands\` list:
+  - A git status command to see all untracked files. IMPORTANT: Never use the -uall flag as it can cause memory issues on large repos.
+  - A git diff command to see both staged and unstaged changes that will be committed.
+  - A git log command to see recent commit messages, so that you can follow this repository's commit message style.
 2. Analyze all staged changes (both previously staged and newly added) and draft a commit message:
   - Summarize the nature of the changes (eg. new feature, enhancement to an existing feature, bug fix, refactoring, test, docs, etc.). Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.).
   - Do not commit files that likely contain secrets (.env, credentials.json, etc). Warn the user if they specifically request to commit those files
   - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
   - Ensure it accurately reflects the changes and their purpose
-3. Run the following commands in parallel:
+3. Run the following, in this order:
    - Add relevant untracked files to the staging area.
    - Create the commit with a message${commitAttribution ? ` ending with:\n   ${commitAttribution}` : '.'}
    - Run git status after the commit completes to verify success.
-   Note: git status depends on the commit completing, so run it sequentially after the commit.
+   These depend on each other and must run in order. The commit itself uses a HEREDOC (below), which needs a shell — send that one through the ${BASH_TOOL_NAME} tool; the staging and the verifying status are plain commands and belong in ${GIT_TOOL_NAME}.
 4. If the commit fails due to pre-commit hook: fix the issue and create a NEW commit
 
 Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution trailer to the commit message (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the message with no such footer.`}
-- NEVER run additional commands to read or explore code, besides git bash commands
+- NEVER run additional commands to read or explore code, besides the git/gh commands this protocol calls for
 - NEVER use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
 - DO NOT push to the remote repository unless the user explicitly asks you to do so
 - Never use git commands with the \`-i\` flag (rebase/add interactive) — they require TTY input. Also never use \`--no-edit\` with \`git rebase\` — it is not a valid rebase flag.
@@ -113,22 +114,22 @@ git commit -m "$(cat <<'EOF'
 </example>
 
 # Creating pull requests
-Use the gh command via the Bash tool for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases. If given a Github URL use the gh command to get the information needed.
+Use gh for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases — via the ${GIT_TOOL_NAME} tool, which runs gh as well as git. If given a Github URL use gh to get the information needed.
 
 IMPORTANT: When the user asks you to create a pull request, follow these steps carefully:
 
-1. Run the following bash commands in parallel using the ${BASH_TOOL_NAME} tool, in order to understand the current state of the branch since it diverged from the main branch:
-   - Run a git status command to see all untracked files (never use -uall flag)
-   - Run a git diff command to see both staged and unstaged changes that will be committed
-   - Check if the current branch tracks a remote branch and is up to date with the remote, so you know if you need to push to the remote
-   - Run a git log command and \`git diff [base-branch]...HEAD\` to understand the full commit history for the current branch (from the time it diverged from the base branch)
+1. Run the following in a SINGLE ${GIT_TOOL_NAME} call, passing them as one \`commands\` list, in order to understand the current state of the branch since it diverged from the main branch:
+   - A git status command to see all untracked files (never use -uall flag)
+   - A git diff command to see both staged and unstaged changes that will be committed
+   - A check of whether the current branch tracks a remote branch and is up to date with it, so you know if you need to push to the remote
+   - A git log command and \`git diff [base-branch]...HEAD\` to understand the full commit history for the current branch (from the time it diverged from the base branch)
 2. Analyze all changes that will be included in the pull request, making sure to look at all relevant commits (NOT just the latest commit, but ALL commits that will be included in the pull request!!!), and draft a pull request title and summary:
    - Keep the PR title short (under 70 characters)
    - Use the description/body for details, not the title
-3. Run the following commands in parallel:
+3. Run the following, in this order:
    - Create new branch if needed
    - Push to remote with -u flag if needed
-   - Create PR using gh pr create with the format below. Use a HEREDOC to pass the body to ensure correct formatting.
+   - Create PR using gh pr create with the format below. Use a HEREDOC to pass the body to ensure correct formatting — a HEREDOC needs a shell, so send that one through the ${BASH_TOOL_NAME} tool.
 <example>
 gh pr create --title "the pr title" --body "$(cat <<'EOF'
 ## Summary
@@ -145,7 +146,7 @@ Important:${prAttribution ? '' : `\n- Do NOT append any AI attribution footer to
 - Return the PR URL when you're done, so the user can see it
 
 # Other common operations
-- View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments`
+- View comments on a Github PR: \`gh api repos/foo/bar/pulls/123/comments\` (via ${GIT_TOOL_NAME})`
 }
 
 function getCommitAndPRInstructions(): string {
@@ -261,6 +262,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     `Edit files: Use ${FILE_EDIT_TOOL_NAME} (NOT sed/awk)`,
     `Write files: Use ${FILE_WRITE_TOOL_NAME} (NOT echo >/cat <<EOF)`,
     `Run tests: Use ${RUN_TESTS_TOOL_NAME} (NOT npm test/pytest/go test)`,
+    `git and gh: Use ${GIT_TOOL_NAME}, several commands per call (NOT one shell call each)`,
     'Communication: Output text directly (NOT echo/printf)',
   ]
 
@@ -276,7 +278,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     ...(lean
       ? []
       : [
-          `If the commands are independent and can run in parallel, make multiple ${BASH_TOOL_NAME} tool calls in a single message. Example: if you need to run "git status" and "git diff", send a single message with two ${BASH_TOOL_NAME} tool calls in parallel.`,
+          `If the commands are independent and can run in parallel, make multiple ${BASH_TOOL_NAME} tool calls in a single message. Example: if you need to run "ls dist" and "cat package.json", send a single message with two ${BASH_TOOL_NAME} tool calls in parallel. (For a burst of git/gh commands, use one ${GIT_TOOL_NAME} call carrying the whole list instead.)`,
         ]),
     `If the commands depend on each other and must run sequentially, use a single ${BASH_TOOL_NAME} call with '&&' to chain them together.`,
     "Use ';' only when you need to run commands sequentially but don't care if earlier commands fail.",

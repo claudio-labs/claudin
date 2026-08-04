@@ -13,6 +13,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
  - Run tests: Use RunTests (NOT npm test/pytest/go test)
+ - git and gh: Use Git, several commands per call (NOT one shell call each)
  - Communication: Output text directly (NOT echo/printf)
 
 # Instructions
@@ -22,7 +23,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - You may specify an optional timeout in milliseconds (up to 600000ms / 10 minutes). By default, your command will timeout after 120000ms (2 minutes).
  - You can use the \`run_in_background\` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes. You do not need to use '&' at the end of the command when using this parameter.
  - When issuing multiple commands:
-  - If the commands are independent and can run in parallel, make multiple Bash tool calls in a single message. Example: if you need to run "git status" and "git diff", send a single message with two Bash tool calls in parallel.
+  - If the commands are independent and can run in parallel, make multiple Bash tool calls in a single message. Example: if you need to run "ls dist" and "cat package.json", send a single message with two Bash tool calls in parallel. (For a burst of git/gh commands, use one Git call carrying the whole list instead.)
   - If the commands depend on each other and must run sequentially, use a single Bash call with '&&' to chain them together.
   - Use ';' only when you need to run commands sequentially but don't care if earlier commands fail.
   - DO NOT use newlines to separate commands (newlines are ok in quoted strings).
@@ -49,6 +50,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
  - Run tests: Use RunTests (NOT npm test/pytest/go test)
+ - git and gh: Use Git, several commands per call (NOT one shell call each)
  - Communication: Output text directly (NOT echo/printf)
 
 # Instructions

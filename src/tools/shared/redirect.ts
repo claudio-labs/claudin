@@ -48,6 +48,19 @@ export const DEFAULT_OUTPUT_TRIM_FILTERS = ['head', 'tail', 'grep', 'rg'] as con
  * (`grep -E "^test |test result"`), so an argument run is matched as
  * quoted-string-or-plain-char rather than "everything up to the next pipe".
  *
+ * The unquoted run stops at `;`, `&`, `<` and `>` on purpose. Without that it
+ * swallows whatever follows the filter, and since a redirect SUGGESTS the
+ * stripped command back to the model, the suggestion would silently drop real
+ * work:
+ *
+ *     git show --stat X | head -30; echo ---; git log --oneline -8
+ *                      └───────────── all of this was removed ────┘
+ *
+ * A tail that carries another command or a redirection is not a trim tail; the
+ * command keeps its pipes, fails the composition check, and stays in Bash.
+ * `2>&1` is unaffected — it is matched by its own alternatives, before and
+ * after the run.
+ *
  * Called once per consumer at module load — never per invocation. That is why
  * `createOutputTrimTailStripper` closes over the compiled result instead of
  * rebuilding it, which would violate the module-level-regex rule in
@@ -56,7 +69,7 @@ export const DEFAULT_OUTPUT_TRIM_FILTERS = ['head', 'tail', 'grep', 'rg'] as con
 export function buildOutputTrimTailRe(filters: readonly string[]): RegExp {
   const alternation = filters.join('|')
   return new RegExp(
-    `\\s(?:2>&1\\s*)?(?:\\|\\s*(?:${alternation})\\b(?:'[^']*'|"[^"]*"|[^|'"])*)+$|\\s2>&1$`,
+    `\\s(?:2>&1\\s*)?(?:\\|\\s*(?:${alternation})\\b(?:'[^']*'|"[^"]*"|[^|'";&<>\\n])*)+$|\\s2>&1$`,
   )
 }
 

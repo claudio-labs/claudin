@@ -3,6 +3,7 @@ import {
   planBashFilter,
 } from '../../outputFilter/Bash/index.js'
 import { exec } from '../../utils/Shell.js'
+import { GIT_NO_PROMPT_ENV } from '../../utils/git/noPromptEnv.js'
 import { logError } from '../../utils/log.js'
 import { trimShellStdout } from '../shellToolResultMappers.js'
 import { trackGitOperations } from '../shared/gitOperationTracking.js'
@@ -23,6 +24,11 @@ import type { GitBatchResult, GitCommandOutcome } from './types.js'
  *
  * Sequential, never parallel: `git status` refreshes `.git/index`, so
  * concurrent commands contend on the index lock.
+ *
+ * The child gets `GIT_NO_PROMPT_ENV` on top of the shell's own environment, so
+ * a command that would ask for a credential fails instead of blocking on
+ * /dev/tty. The forms that read from stdin or an editor never get this far —
+ * `grammar.ts` declines them at validate time.
  */
 
 export type RunGitBatchOptions = {
@@ -31,6 +37,12 @@ export type RunGitBatchOptions = {
   timeoutMs: number
   /** `full: true` on the tool input opts out of the delta lane. */
   full?: boolean
+  /**
+   * The `tool_use_id` this batch's result will be delivered under. The delta
+   * lane needs it to ask whether the body it wants to elide is still visible
+   * to the model; absent, the lane declines and returns everything.
+   */
+  toolUseId?: string
 }
 
 export async function runGitBatch(
@@ -49,7 +61,10 @@ export async function runGitBatch(
         plan.effectiveCommand,
         opts.abortSignal,
         'bash',
-        { timeout: opts.timeoutMs },
+        // A credential prompt opens /dev/tty and blocks until the timeout;
+        // GIT_NO_PROMPT_ENV makes `git push` to an unauthenticated remote fail
+        // in milliseconds with a message instead.
+        { timeout: opts.timeoutMs, env: GIT_NO_PROMPT_ENV },
       )
       const result = await shellCommand.result
       const rawStdout = result.stdout || ''
@@ -66,6 +81,7 @@ export async function runGitBatch(
         ? diagnoseGitFailure(command, result.code, filtered)
         : applyGitDelta(command, summarizeGitOutput(command, filtered), {
             full: opts.full === true,
+            toolUseId: opts.toolUseId,
           })
       outcome = {
         command,

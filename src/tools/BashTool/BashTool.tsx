@@ -46,6 +46,8 @@ import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js';
 import { renderRunTestsRedirect, shouldRedirectToRunTests } from '../RunTestsTool/redirect.js';
 import { TYPECHECK_TOOL_NAME } from '../TypecheckTool/prompt.js';
 import { renderTypecheckRedirect, shouldRedirectToTypecheck } from '../TypecheckTool/redirect.js';
+import { GIT_TOOL_NAME } from '../GitTool/prompt.js';
+import { renderGitRedirect, shouldRedirectToGit } from '../GitTool/redirect.js';
 import {
   applyBashFilterToStdout,
   planBashFilter,
@@ -561,6 +563,19 @@ export const BashTool = buildTool({
         result: false,
         message: renderTypecheckRedirect(input.command),
         errorCode: 13
+      };
+    }
+    // Same lever again, aimed at the repository reads. Only the READ shapes are
+    // refused — a mutation runs fine through Git but refusing it here would put
+    // a dialog in front of a command that already had permission, for no token
+    // payoff. Gated identically: the tool must be in THIS agent's toolset,
+    // never for a backgrounded run. The refusal is one-shot per command; see
+    // GitTool/redirect.ts.
+    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_GIT_REDIRECT) && findToolByName(context?.options?.tools ?? [], GIT_TOOL_NAME) !== undefined && shouldRedirectToGit(input.command)) {
+      return {
+        result: false,
+        message: renderGitRedirect(input.command),
+        errorCode: 14
       };
     }
     // Same lever, aimed at the other half of this tool's own "avoid running

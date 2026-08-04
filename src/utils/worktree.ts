@@ -19,6 +19,7 @@ import { logForDebugging } from './debug.js'
 import { errorMessage, getErrnoCode } from './errors.js'
 import { execFileNoThrow, execFileNoThrowWithCwd } from './execFileNoThrow.js'
 import { parseGitConfigValue } from './git/gitConfigParser.js'
+import { GIT_NO_PROMPT_ENV } from './git/noPromptEnv.js'
 import {
   getCommonDir,
   readWorktreeHeadSha,
@@ -229,14 +230,10 @@ export function _resetGitWorktreeMutationLocksForTesting(): void {
   gitWorktreeMutationLocks.clear()
 }
 
-// Env vars to prevent git/SSH from prompting for credentials (which hangs the CLI).
-// GIT_TERMINAL_PROMPT=0 prevents git from opening /dev/tty for credential prompts.
-// GIT_ASKPASS='' disables askpass GUI programs.
-// stdin: 'ignore' closes stdin so interactive prompts can't block.
-const GIT_NO_PROMPT_ENV = {
-  GIT_TERMINAL_PROMPT: '0',
-  GIT_ASKPASS: '',
-}
+// Env vars to prevent git/SSH from prompting for credentials (which hangs the
+// CLI); defined in ./git/noPromptEnv.js so the Git tool can reuse the same
+// constant without importing this module. stdin: 'ignore' at each call site
+// closes stdin so interactive prompts can't block.
 
 function worktreesDir(repoRoot: string): string {
   return join(repoRoot, '.claudin', 'worktrees')

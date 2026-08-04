@@ -7,11 +7,13 @@
 // read-only string assertions. The stub is load-bearing — without it the
 // tests blow up at import-resolution time.
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { GIT_TOOL_NAME } from '../GitTool/prompt.js'
 import {
   getBashGitInstructionsBody,
   getSimplePrompt,
   shouldInjectBashGitInstructionsInMessages,
 } from './prompt.js'
+import { BASH_TOOL_NAME } from './toolName.js'
 
 describe('shouldInjectBashGitInstructionsInMessages', () => {
   const originalEnv = process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
@@ -98,6 +100,26 @@ describe('getBashGitInstructionsBody', () => {
     expect(body).toContain(`git commit -m "$(cat <<'EOF'`)
   })
 
+  it('points the repository reads at the Git tool, batched', () => {
+    // The protocol used to order three parallel Bash calls for status/diff/log.
+    // With the Bash→Git redirect in place that text would fight the tool: the
+    // model would be told to do the exact thing Bash now refuses.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).toContain(`SINGLE ${GIT_TOOL_NAME} call`)
+    expect(body).not.toContain(
+      `Run the following bash commands in parallel, each using the ${BASH_TOOL_NAME} tool`,
+    )
+  })
+
+  it('still sends the HEREDOC commit through Bash', () => {
+    // `$(cat <<'EOF'` is command substitution, which the Git tool refuses by
+    // design. If the protocol routed it there the commit step would be
+    // unreachable, so the split has to stay explicit.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).toContain(`needs a shell — send that one through the ${BASH_TOOL_NAME} tool`)
+  })
 })
 
 describe('BashTool description vs git block injection', () => {

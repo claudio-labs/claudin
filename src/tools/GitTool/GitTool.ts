@@ -62,6 +62,12 @@ const inputSchema = lazySchema(() =>
       .max(MAX_TIMEOUT_MS)
       .optional()
       .describe(`Timeout in ms per command (default ${DEFAULT_TIMEOUT_MS}).`),
+    full: z
+      .boolean()
+      .optional()
+      .describe(
+        'Return the whole body even when an identical earlier call already delivered part of it.',
+      ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -140,6 +146,10 @@ export const GitTool = buildTool({
       commands: input.commands,
       abortSignal: context.abortController.signal,
       timeoutMs: input.timeout ?? DEFAULT_TIMEOUT_MS,
+      full: input.full,
+      // Rule 1 of the delta lane: without this id it cannot tell whether the
+      // body it would elide is still visible to the model, and it declines.
+      toolUseId: context.toolUseId,
     })
     return { data: result }
   },
