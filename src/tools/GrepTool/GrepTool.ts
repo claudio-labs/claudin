@@ -1,4 +1,3 @@
-import { readFile, stat } from 'fs/promises'
 import { z } from 'zod/v4'
 import type { ValidationResult } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
@@ -12,7 +11,7 @@ import {
 import { getFsImplementation } from '../../utils/fsOperations.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { expandPath, toRelativePath } from '../../utils/path.js'
-import { relativizeRgLine } from './relativize.js'
+import { relativizeRgLine, RG_LINE_RE } from './relativize.js'
 import {
   checkReadPermissionForTool,
   getFileReadIgnorePatterns,
@@ -25,14 +24,15 @@ import { ripGrep } from '../../utils/ripgrep.js'
 import { semanticBoolean } from '../../utils/semanticBoolean.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
-import {
-  detectOutlineLangFromPath,
-  enclosingSymbol,
-  SCAN_MAX_BYTES,
-  scanSymbols,
-  type SymbolEntry,
-} from '../shared/codeOutline/scanSymbols.js'
+import { buildSymbolsOutput } from './symbolsOutput.js'
 import { GREP_TOOL_NAME, getDescription } from './prompt.js'
+import {
+  GREP_AUTO_PIVOT_FOOTER,
+  grepAutoPivotEnabled,
+  measureGrepShape,
+  pivotWins,
+  shouldAutoPivot,
+} from './autoPivot.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
@@ -151,107 +151,7 @@ function formatLimitInfo(
   return parts.join(', ')
 }
 
-// Cap on files scanned in 'symbols' mode — scanning is per-file work and a
-// broad pattern can match thousands of files; this bounds the cost.
-const SYMBOLS_MAX_FILES = 50
-
-type SymbolsResult = {
-  content: string
-  numFiles: number
-  numMatches: number
-  filenames: string[]
-}
-
-// Splits a ripgrep content line into path + line number. The path is matched
-// non-greedily so the first `:<digits>:` wins — this keeps Windows drive
-// letters (`C:\...`) part of the path instead of being mistaken for the
-// line-number separator.
-export const RG_LINE_RE = /^(.+?):(\d+):/
-
-export { RG_PREFIX_RE, relativizeRgLine } from './relativize.js'
-
-/**
- * Maps ripgrep content lines (`abs:line:text`) to the enclosing symbol in
- * each file. Files in an unsupported language, or where the scan fails, fall
- * back to a bare relative-path listing. Fail-open throughout.
- */
-async function buildSymbolsOutput(
-  rgLines: string[],
-): Promise<SymbolsResult> {
-  // Group matched line numbers by absolute file path.
-  const byFile = new Map<string, Set<number>>()
-  for (const raw of rgLines) {
-    const m = RG_LINE_RE.exec(raw)
-    if (!m) continue
-    const file = m[1]
-    const lineNo = parseInt(m[2], 10)
-    let set = byFile.get(file)
-    if (!set) {
-      set = new Set()
-      byFile.set(file, set)
-    }
-    set.add(lineNo)
-  }
-
-  const files = [...byFile.keys()].sort().slice(0, SYMBOLS_MAX_FILES)
-  const blocks: string[] = []
-  let numMatches = 0
-  const filenames: string[] = []
-
-  for (const absPath of files) {
-    const rel = toRelativePath(absPath)
-    filenames.push(rel)
-    const lineNos = [...byFile.get(absPath)!].sort((a, b) => a - b)
-    const lang = detectOutlineLangFromPath(absPath)
-
-    if (!lang) {
-      blocks.push(`${rel}\n  (matched, language not supported for symbols)`)
-      continue
-    }
-
-    let entries: SymbolEntry[]
-    try {
-      // Same cap as the Read auto-pivot scan — an unbounded read of a matched
-      // multi-hundred-MB dump.sql/dataset.xml would spike memory before the
-      // scan even starts.
-      const { size } = await stat(absPath)
-      if (size > SCAN_MAX_BYTES) {
-        blocks.push(`${rel}\n  (matched, file too large to scan)`)
-        continue
-      }
-      const source = await readFile(absPath, 'utf8')
-      entries = scanSymbols(source, lang)
-    } catch (e) {
-      logError(e)
-      blocks.push(`${rel}\n  (matched, could not scan)`)
-      continue
-    }
-
-    const seen = new Set<string>()
-    const lines: string[] = []
-    for (const lineNo of lineNos) {
-      const sym = enclosingSymbol(entries, lineNo)
-      if (!sym) continue
-      const key = `${sym.startLine}-${sym.endLine}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      lines.push(`  ${key}  ${sym.signature}`)
-      numMatches++
-    }
-    blocks.push(
-      lines.length > 0
-        ? `${rel}\n${lines.join('\n')}`
-        : `${rel}\n  (matched outside any symbol)`,
-    )
-  }
-
-  return {
-    content: blocks.join('\n\n'),
-    numFiles: files.length,
-    numMatches,
-    filenames,
-  }
-}
+export { RG_LINE_RE, RG_PREFIX_RE, relativizeRgLine } from './relativize.js'
 
 const outputSchema = lazySchema(() =>
   z.object({
@@ -265,6 +165,12 @@ const outputSchema = lazySchema(() =>
     numMatches: z.number().optional(), // For count mode
     appliedLimit: z.number().optional(), // The limit that was applied (if any)
     appliedOffset: z.number().optional(), // The offset that was applied
+    // Set when a content-mode search was broad enough that the symbol map
+    // replaced its lines (see autoPivot.ts). Drives the footer and the
+    // breadth clause in the header below.
+    autoPivot: z.boolean().optional(),
+    totalMatchLines: z.number().optional(), // Match lines the search produced
+    totalMatchFiles: z.number().optional(), // Files those lines came from
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -375,6 +281,9 @@ export const GrepTool = buildTool({
       numMatches,
       appliedLimit,
       appliedOffset,
+      autoPivot,
+      totalMatchLines,
+      totalMatchFiles,
     },
     toolUseID,
   ) {
@@ -415,11 +324,19 @@ export const GrepTool = buildTool({
       }
       const matches = numMatches ?? 0
       const files = numFiles ?? 0
-      const header = `Found ${matches} matched ${matches === 1 ? 'symbol' : 'symbols'} across ${files} ${files === 1 ? 'file' : 'files'}${limitInfo ? ` (pagination = ${limitInfo})` : ''}`
+      let header = `Found ${matches} matched ${matches === 1 ? 'symbol' : 'symbols'} across ${files} ${files === 1 ? 'file' : 'files'}${limitInfo ? ` (pagination = ${limitInfo})` : ''}`
+      // An auto-pivoted result maps only the lines that would have been sent,
+      // so state how much wider the search actually was — that is the number
+      // the model needs to decide between narrowing and paginating.
+      if (autoPivot && totalMatchLines !== undefined && appliedLimit) {
+        header += `\nThe search matched ${totalMatchLines} lines in ${totalMatchFiles} files; the first ${appliedLimit} are mapped below.`
+      }
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: `${header}\n\n${content}`,
+        content: autoPivot
+          ? `${header}\n\n${content}${GREP_AUTO_PIVOT_FOOTER}`
+          : `${header}\n\n${content}`,
       }
     }
 
@@ -600,11 +517,47 @@ export const GrepTool = buildTool({
       const finalLines = limitedResults.map(line =>
         relativizeRgLine(line, absolutePath),
       )
+      const contentText = finalLines.join('\n')
+
+      // A search wide enough that its first N lines are an arbitrary slice
+      // answers better as a symbol map. Measured on the raw rg lines (so the
+      // file count is the map's file count) but sized on the relativized text
+      // that would actually be sent. See autoPivot.ts for the thresholds.
+      if (grepAutoPivotEnabled()) {
+        const shape = measureGrepShape(limitedResults, contentText.length)
+        if (
+          shouldAutoPivot({
+            shape,
+            headLimitGiven: head_limit !== undefined,
+            offset,
+            lineNumbers: show_line_numbers,
+          })
+        ) {
+          const symbols = await buildSymbolsOutput(limitedResults)
+          if (pivotWins(symbols.content.length, contentText.length)) {
+            const total = measureGrepShape(results, 0)
+            return {
+              data: {
+                mode: 'symbols' as const,
+                autoPivot: true,
+                numFiles: symbols.numFiles,
+                filenames: symbols.filenames,
+                content: symbols.content,
+                numMatches: symbols.numMatches,
+                totalMatchLines: total.matchLines,
+                totalMatchFiles: total.files,
+                ...(appliedLimit !== undefined && { appliedLimit }),
+              },
+            }
+          }
+        }
+      }
+
       const output = {
         mode: 'content' as const,
         numFiles: 0, // Not applicable for content mode
         filenames: [],
-        content: finalLines.join('\n'),
+        content: contentText,
         numLines: finalLines.length,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),

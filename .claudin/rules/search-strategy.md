@@ -25,6 +25,17 @@ the same regrouping applies, but only when it costs no match line: a result
 dense enough that one file exceeds 10 matches is sent whole rather than capped,
 so a *match locator* is never traded away below the full threshold.
 
+A **broad** content search goes further and comes back as the symbol map
+(`output_mode:"symbols"`) instead of the lines: ≥5 distinct files AND either
+≥6 KB or ≥60 match lines, with no explicit `head_limit` and no `offset`
+(`src/tools/GrepTool/autoPivot.ts` — the search-side twin of the Read
+auto-outline). The map only ships when it is ≤70% of the lines it replaces, and
+the result reports how much wider the search actually was. To get the lines
+anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
+`CLAUDIN_DISABLE_GREP_AUTO_PIVOT=1` turns it off for the session. Note that the
+30s tool-result cache keys on the input alone, so flipping that env mid-session
+does not re-answer a search it already served.
+
 ## Module Map
 
 Approximate `.ts(x)` counts in `(N)` — the big dirs (`utils`, `components`,
