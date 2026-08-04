@@ -875,6 +875,12 @@ const GREP_COUNT_LINE_RE = /^[^:]+:\d+$/
 
 type GrepEntry = {
   n: number
+  /**
+   * The line number exactly as rg wrote it. `n` is for arithmetic (sorting and
+   * the context clamp); this is what gets printed, so a summary cannot hand
+   * back a locator that differs by a character from the line it came from.
+   */
+  raw: string
   body: string
   isMatch: boolean
 }
@@ -906,6 +912,7 @@ function grepLineSplits(line: string, allowPathless: boolean): GrepSplit[] {
       out.push({
         file: GREP_NO_PATH,
         n: Number(m[1]),
+        raw: m[1]!,
         body: line.slice(m[0].length),
         isMatch: m[2] === ':',
       })
@@ -917,6 +924,7 @@ function grepLineSplits(line: string, allowPathless: boolean): GrepSplit[] {
     out.push({
       file: line.slice(0, cut),
       n: Number(m[2]),
+      raw: m[2]!,
       body: line.slice(cut + m[0].length),
       isMatch: m[1] === ':',
     })
@@ -992,7 +1000,7 @@ function rankGrepSplits(perLine: GrepSplit[][]): Array<GrepSplit | null> {
 /** Full `path:NN:text` — for lines emitted OUTSIDE a per-file header. */
 function renderGrepLine(file: string, entry: GrepEntry, body: string): string {
   const sep = entry.isMatch ? ':' : '-'
-  return `${file}${sep}${entry.n}${sep}${body}`
+  return `${file}${sep}${entry.raw}${sep}${body}`
 }
 
 /**
@@ -1004,7 +1012,7 @@ function renderGrepLine(file: string, entry: GrepEntry, body: string): string {
  */
 function renderGrepBlockLine(entry: GrepEntry, body: string): string {
   const sep = entry.isMatch ? ':' : '-'
-  return `${entry.n}${sep}${body}`
+  return `${entry.raw}${sep}${body}`
 }
 
 /** Whichever of the two forms reproduces the line rg actually emitted. */
@@ -1109,7 +1117,7 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
     // The locator stays fully qualified: a back-reference routinely points at a
     // line under a DIFFERENT file's header.
     const locator =
-      file === GREP_NO_PATH ? `line ${entry.n}` : `${file}:${entry.n}`
+      file === GREP_NO_PATH ? `line ${entry.raw}` : `${file}:${entry.raw}`
     const seen = firstSeen[entry.body]
     if (seen === undefined) {
       firstSeen[entry.body] = locator

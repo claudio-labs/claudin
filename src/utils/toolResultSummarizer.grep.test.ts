@@ -30,6 +30,21 @@ function bodyOf(text: string): string {
   return result === null ? text : result.body
 }
 
+/** Every recorded shape in the fixture corpus, for the whole-corpus invariants. */
+const FIXTURES = [
+  'context-12',
+  'context-30',
+  'dup-heavy',
+  'legacy-mixed-paths',
+  'multi-file',
+  'no-line-numbers',
+  'no-path-prefix',
+  'single-file',
+  'under-threshold',
+  'unscoped-wide',
+  'zero-matches',
+]
+
 const MATCH_RE = /^(.+?):(\d+):/
 const CONTEXT_RE = /^(.+?)-(\d+)-/
 
@@ -731,5 +746,237 @@ describe('grep summarizer — the two-tier dispatch gate', () => {
     const elided = summarizeGrepOutput(lines.join('\n'))?.matchesElided
     // 15 over the per-file cap on busy.ts, plus every file past the 50th.
     expect(elided).toBe(15 + 11)
+  })
+})
+
+describe('grep summarizer — line shapes that must not surprise it', () => {
+  const pad = ' '.repeat(50)
+
+  test('a Windows drive letter is not mistaken for the line-number split', () => {
+    // R9 names this case: `C:` looks like the start of a prefix. It is not one
+    // (no digits between two separators), but the path also contains the real
+    // one, so the vote has to land past the drive letter.
+    const path = String.raw`C:\proj\src\a.ts`
+    const body = bodyOf(
+      [
+        `${path}:10:const x = 1${pad}`,
+        `${path}-11-const y = 2${pad}`,
+        `${path}:12:const z = 3${pad}`,
+      ].join('\n'),
+    )
+    expect(body).toContain(`--- ${path} (2 matches) ---`)
+    expect(blockLocators(body).matches).toEqual([`${path}:10`, `${path}:12`])
+  })
+
+  test('a path that itself contains `:N:` still groups under its full name', () => {
+    // The leftmost split cuts at `:1:` and calls the file `src/a`; that reading
+    // pins line 1 on every line, which is exactly what the vote rejects.
+    const path = 'src/a:1:b.ts'
+    const body = bodyOf(
+      [
+        `${path}:10:first${pad}`,
+        `${path}:11:second${pad}`,
+        `${path}:12:third${pad}`,
+      ].join('\n'),
+    )
+    expect(blockLocators(body).matches).toEqual([
+      `${path}:10`,
+      `${path}:11`,
+      `${path}:12`,
+    ])
+  })
+
+  test('a match whose text is `--` survives; rg\'s own separator does not', () => {
+    const body = bodyOf(['src/a.ts:10:--', '--', 'src/a.ts:11:real'].join('\n'))
+    expect(body).toContain('src/a.ts:10:--')
+    expect(body).toContain('matches=2')
+    // The bare separator is dropped, not preserved literally.
+    expect(body).not.toContain('other (preserved literally)')
+  })
+
+  test('empty match bodies neither crash nor collapse into each other', () => {
+    const body = bodyOf(
+      ['src/a.ts:10:', 'src/a.ts:11:', 'src/a.ts:12:'].join('\n'),
+    )
+    expect(body).toContain('matches=3')
+    // A back-reference to an empty body would be longer than the body itself.
+    expect(body).not.toContain('… same as')
+  })
+
+  test('carriage returns and control bytes come back byte for byte', () => {
+    const text = [
+      `src/a.ts:10:one\r`,
+      `src/a.ts:11:\u0000\u0001\u0002binary\r`,
+      `src/a.ts:12:three\r`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`10:one\r`)
+    expect(body).toContain(`11:\u0000\u0001\u0002binary\r`)
+  })
+
+  test('a line number is printed exactly as rg wrote it', () => {
+    // `n` is a number for sorting and the clamp; printing it would rewrite
+    // `007` as `7` and hand back a locator that is not what the source said.
+    const body = bodyOf(
+      [`src/a.ts:007:x${pad}`, `src/a.ts:008:y${pad}`, `src/a.ts:009:z${pad}`].join(
+        '\n',
+      ),
+    )
+    expect(body).toContain('src/a.ts:007:x')
+    expect(body).not.toContain('src/a.ts:7:x')
+  })
+
+  test('a back-reference quotes the line number rg wrote, not a parsed one', () => {
+    // The marker is the one place a locator is built rather than reproduced,
+    // so it needs its own pin: a target of `src/a.ts:7` resolves to nothing in
+    // a body whose lines all say `007`.
+    const long = 'const shared = aVeryLongCallExpression(withSeveralArguments)'
+    const body = bodyOf(
+      [`src/a.ts:007:${long}`, `src/b.ts:1:${long}`].join('\n'),
+    )
+    expect(body).toContain('… same as src/a.ts:007')
+  })
+
+  test('a filename that mimics a block header does not break the grouping', () => {
+    const path = 'src/--- fake (9 matches) ---.ts'
+    const body = bodyOf(
+      [`${path}:10:one${pad}`, `${path}:11:two${pad}`, `${path}:12:three${pad}`].join(
+        '\n',
+      ),
+    )
+    expect(body).toContain('matches=3')
+    expect(body).toContain('one')
+    expect(body).toContain('three')
+  })
+})
+
+describe('grep summarizer — boundaries of the two caps', () => {
+  const pad = ' '.repeat(50)
+  const file = (n: number): string =>
+    Array.from({ length: n }, (_, i) => `src/a.ts:${i + 1}:hit ${i}${pad}`).join(
+      '\n',
+    )
+  const files = (n: number): string =>
+    Array.from({ length: n }, (_, i) => `src/f${i}.ts:1:hit ${i}${pad}`).join('\n')
+
+  test('a file at exactly the per-file cap elides nothing', () => {
+    const r = summarizeGrepOutput(file(10))!
+    expect(r.matchesElided).toBe(0)
+    expect(r.body).not.toContain('more match')
+  })
+
+  test('one match past the cap elides exactly one', () => {
+    const r = summarizeGrepOutput(file(11))!
+    expect(r.matchesElided).toBe(1)
+    expect(r.body).toContain('+1 more match')
+    expect(r.body).not.toContain('+1 more matches')
+  })
+
+  test('a result at exactly the file cap omits nothing', () => {
+    const r = summarizeGrepOutput(files(50))!
+    expect(r.matchesElided).toBe(0)
+    expect(r.body).not.toContain('<omitted>')
+  })
+
+  test('one file past the cap omits exactly one', () => {
+    const r = summarizeGrepOutput(files(51))!
+    expect(r.matchesElided).toBe(1)
+    expect(r.body).toContain('<omitted>: 1 file, 1 match not shown')
+  })
+})
+
+describe('grep summarizer — back-references resolve backwards', () => {
+  const pad = ' '.repeat(50)
+
+  /** Every `file:line` a summarized body prints, in the order it prints them. */
+  function locatorsInOrder(body: string): string[] {
+    const out: string[] = []
+    let file: string | null = null
+    for (const line of body.split('\n')) {
+      const header = /^--- (.+) \(\d+ match(?:es)?\) ---$/.exec(line)
+      if (header) {
+        file = header[1]!
+        continue
+      }
+      const bare = /^(\d+)[:-]/.exec(line)
+      if (bare) {
+        out.push(file === null ? bare[1]! : `${file}:${bare[1]}`)
+        continue
+      }
+      const inline = /^(.+?)([:-])(\d+)\2/.exec(line)
+      if (inline) out.push(`${inline[1]}:${inline[3]}`)
+    }
+    return out
+  }
+
+  function forwardReferences(body: string): string[] {
+    const seen = new Set<string>()
+    const bad: string[] = []
+    let file: string | null = null
+    for (const line of body.split('\n')) {
+      const header = /^--- (.+) \(\d+ match(?:es)?\) ---$/.exec(line)
+      if (header) {
+        file = header[1]!
+        continue
+      }
+      const ref = /… same as (?:line )?(.+?)\s*$/.exec(line)
+      if (ref) {
+        const target = ref[1]!.includes(':') ? ref[1]! : ref[1]!
+        if (!seen.has(target)) bad.push(`${line} → ${target}`)
+      }
+      const bare = /^(\d+)[:-]/.exec(line)
+      if (bare) {
+        seen.add(file === null ? bare[1]! : `${file}:${bare[1]}`)
+        continue
+      }
+      const inline = /^(.+?)([:-])(\d+)\2/.exec(line)
+      if (inline) seen.add(`${inline[1]}:${inline[3]}`)
+    }
+    return bad
+  }
+
+  // R7's other half: a marker the model cannot resolve is worse than the
+  // repeated text it replaced, and the two ways to produce one are pointing at
+  // a line a later rung removed, or pointing forward into a block that has not
+  // been printed yet.
+  for (const name of FIXTURES) {
+    test(`${name}: every back-reference points at an earlier line`, () => {
+      const result = summarizeGrepOutput(fixture(name))
+      if (result === null) return
+      expect(forwardReferences(result.body)).toEqual([])
+    })
+  }
+
+  test('a repeat of a line the per-file cap removed is printed in full', () => {
+    // src/a.ts has 12 matches and a cap of 10, so line 12 is never printed.
+    // src/b.ts repeats its body — and must not point at a line that is gone.
+    const repeated = `UNIQUE BODY NUMBER 11 that is quite long indeed${pad}`
+    const text = [
+      ...Array.from(
+        { length: 12 },
+        (_, i) => `src/a.ts:${i + 1}:UNIQUE BODY NUMBER ${i} that is quite long indeed${pad}`,
+      ),
+      `src/b.ts:1:${repeated}`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`src/b.ts:1:${repeated}`)
+    expect(body).not.toContain('… same as src/a.ts:12')
+    expect(forwardReferences(body)).toEqual([])
+  })
+
+  test('files tied on match count are emitted in name order', () => {
+    // Determinism has a second consumer: a back-reference is only readable if
+    // the block it points into came first, and ties decide that order.
+    const body = bodyOf(
+      [
+        `src/zebra.ts:1:shared body that is long enough to dedupe${pad}`,
+        `src/zebra.ts:2:second${pad}`,
+        `src/alpha.ts:1:shared body that is long enough to dedupe${pad}`,
+        `src/alpha.ts:2:second${pad}`,
+      ].join('\n'),
+    )
+    expect(locatorsInOrder(body)[0]).toBe('src/alpha.ts:1')
+    expect(body).toContain('… same as src/alpha.ts:1')
+    expect(forwardReferences(body)).toEqual([])
   })
 })
