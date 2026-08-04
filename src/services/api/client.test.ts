@@ -10,6 +10,12 @@ type ShimClient = {
   }
 }
 
+type VertexClient = {
+  messages: {
+    create: (params: Record<string, unknown>) => Promise<unknown>
+  }
+}
+
 // client.ts and openaiShim.ts both consume `tryGetActiveProvider()` for
 // transport routing, baseUrl/apiKey resolution, and customHeaders. Spread the
 // real module so other exports (getActiveProvider, ActiveProviderNotConfiguredError)
@@ -45,6 +51,8 @@ const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
   ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
+  CLAUDE_CODE_SKIP_VERTEX_AUTH: process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH,
+  ANTHROPIC_VERTEX_PROJECT_ID: process.env.ANTHROPIC_VERTEX_PROJECT_ID,
 }
 
 function restoreEnv(key: string, value: string | undefined): void {
@@ -65,6 +73,8 @@ beforeEach(() => {
   delete process.env.OPENAI_BASE_URL
   delete process.env.OPENAI_MODEL
   delete process.env.ANTHROPIC_AUTH_TOKEN
+  delete process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH
+  delete process.env.ANTHROPIC_VERTEX_PROJECT_ID
   resolvedOverride = null
 })
 
@@ -76,6 +86,8 @@ afterEach(() => {
   restoreEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL)
   restoreEnv('OPENAI_MODEL', originalEnv.OPENAI_MODEL)
   restoreEnv('ANTHROPIC_AUTH_TOKEN', originalEnv.ANTHROPIC_AUTH_TOKEN)
+  restoreEnv('CLAUDE_CODE_SKIP_VERTEX_AUTH', originalEnv.CLAUDE_CODE_SKIP_VERTEX_AUTH)
+  restoreEnv('ANTHROPIC_VERTEX_PROJECT_ID', originalEnv.ANTHROPIC_VERTEX_PROJECT_ID)
   globalThis.fetch = originalFetch
   resolvedOverride = null
 })
@@ -223,3 +235,65 @@ test('strips Anthropic-specific custom headers before sending OpenAI-compatible 
   expect(capturedHeaders?.get('authorization')).toBe('Bearer openai-test-key')
 })
 
+
+// CLAUDE_CODE_SKIP_VERTEX_AUTH swaps a stub in for GoogleAuth so requests can be
+// pointed at an auth-injecting proxy. @anthropic-ai/vertex-sdk calls
+// `.get('x-goog-user-project')` on whatever `getRequestHeaders()` returns and then
+// passes it to `buildHeaders()`, so the stub has to hand back a real `Headers`.
+// While it returned a plain object every request under the escape hatch died with
+// "googleAuthHeaders.get is not a function" before reaching the network.
+test('CLAUDE_CODE_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read', async () => {
+  let capturedUrl: string | undefined
+
+  process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH = '1'
+  process.env.ANTHROPIC_VERTEX_PROJECT_ID = 'test-project'
+
+  // Partial fixture on purpose: the Vertex branch only reads `transport`,
+  // `model` and the optional `extras.gcp*`, and a fuller literal would just
+  // add fields this path never touches.
+  resolvedOverride = {
+    transport: 'vertex',
+    model: 'claude-sonnet-4-5',
+  } as unknown as ResolvedProvider
+
+  globalThis.fetch = (async input => {
+    capturedUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
+
+    return new Response(
+      JSON.stringify({
+        id: 'msg_vertex',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-sonnet-4-5',
+        content: [{ type: 'text', text: 'vertex ok' }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 8, output_tokens: 3 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = (await getAnthropicClient({
+    maxRetries: 0,
+    model: 'claude-sonnet-4-5',
+  })) as unknown as VertexClient
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    messages: [{ role: 'user', content: 'hello' }],
+    max_tokens: 64,
+    stream: false,
+  })
+
+  // Reaching a URL at all proves `.get()` resolved: the SDK reads the project id
+  // off the auth headers on the line before it builds this path.
+  expect(capturedUrl).toContain('/projects/test-project/locations/')
+  expect(capturedUrl).toContain(':rawPredict')
+  expect(response).toMatchObject({ role: 'assistant', model: 'claude-sonnet-4-5' })
+})

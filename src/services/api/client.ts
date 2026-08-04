@@ -329,13 +329,16 @@ export async function getAnthropicClient({
     const profileGcpProject = activeProvider?.extras?.gcpProject
     const googleAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)
       ? ({
-          // Mock GoogleAuth for testing/proxy scenarios
+          // Mock GoogleAuth for testing/proxy scenarios. `getRequestHeaders`
+          // MUST return a `Headers` — @anthropic-ai/vertex-sdk calls `.get()`
+          // on the result and feeds it to `buildHeaders()`, so a plain object
+          // throws "googleAuthHeaders.get is not a function" on every request.
           getClient: () => ({
-            getRequestHeaders: () => ({}),
+            getRequestHeaders: () => new Headers(),
           }),
         } as {
           getClient: () => {
-            getRequestHeaders: () => Record<string, string>
+            getRequestHeaders: () => Headers
           }
         })
       : new GoogleAuth({
