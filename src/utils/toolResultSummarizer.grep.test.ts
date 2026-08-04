@@ -47,12 +47,15 @@ function matchLocators(text: string): string[] {
 
 const BLOCK_HEADER_RE = /^--- (.+) \(\d+ match(?:es)?\) ---$/
 const BLOCK_LINE_RE = /^(\d+)([:-])/
+const INLINE_LINE_RE = /^(.+?)([:-])(\d+)\2/
 const OTHER_HEADER = '--- other (preserved literally) ---'
 
 /**
- * Rebuilds `file:line` locators from a SUMMARIZED body, where the path lives on
- * the block header and each line carries only `NN:text`. The honesty checks
- * below are about what the model can still resolve, so they go through the same
+ * Rebuilds `file:line` locators from a SUMMARIZED body. Three line shapes can
+ * appear: `NN:text` under a block header (the path is on the header), a full
+ * `path:NN:text` where the block was cheaper left inline, and a bare `NN:text`
+ * for a single-file search that never had a path. The honesty checks below are
+ * about what the model can still resolve, so they go through the same
  * reconstruction the model would.
  */
 function blockLocators(body: string): { matches: string[]; context: string[] } {
@@ -66,9 +69,15 @@ function blockLocators(body: string): { matches: string[]; context: string[] } {
       file = header[1]!
       continue
     }
-    const entry = BLOCK_LINE_RE.exec(line)
-    if (!entry || file === null) continue
-    ;(entry[2] === ':' ? matches : context).push(`${file}:${entry[1]}`)
+    const bare = BLOCK_LINE_RE.exec(line)
+    if (bare) {
+      const locator = file === null ? bare[1]! : `${file}:${bare[1]}`
+      ;(bare[2] === ':' ? matches : context).push(locator)
+      continue
+    }
+    const inline = INLINE_LINE_RE.exec(line)
+    if (!inline) continue
+    ;(inline[2] === ':' ? matches : context).push(`${inline[1]}:${inline[3]}`)
   }
   return { matches, context }
 }
@@ -156,9 +165,19 @@ describe('grep summarizer — ROI floors (R10)', () => {
 describe('grep summarizer — identity guards', () => {
   // R1: a body the strategy cannot parse is returned untouched.
   test('R1 leaves an unparseable body alone', () => {
-    for (const name of ['no-path-prefix', 'no-line-numbers', 'zero-matches']) {
-      expect(summarizeGrepOutput(fixture(name))).toBeNull()
+    expect(summarizeGrepOutput(fixture('no-line-numbers'))).toBeNull()
+    expect(
+      summarizeGrepOutput('no files were searched, check your glob'),
+    ).toBeNull()
+    // Parseable but a single line: the strategy may produce something, and the
+    // caller must still ship the original — this is 9 bytes.
+    const tiny = fixture('zero-matches')
+    const block = {
+      type: 'tool_result' as const,
+      tool_use_id: 'tiny',
+      content: tiny,
     }
+    expect(maybeSummarizeToolResult(block, GREP_TOOL_NAME)).toBe(block)
   })
 
   // R1b: the dispatch threshold is the other identity path, and the one that
@@ -502,8 +521,13 @@ describe('grep summarizer — line splitting', () => {
       'src/ratio.ts:11:if (ratio === 4:5:6) return',
     ].join('\n')
     const body = bodyOf(text)
-    expect(body).toContain('--- src/ratio.ts (2 matches) ---')
-    expect(body).toContain('10:if (ratio === 1:2:3) return')
+    // Two short lines do not pay for a header, so this block stays inline —
+    // what matters here is that both lines were split at the path.
+    expect(blockLocators(body).matches).toEqual([
+      'src/ratio.ts:10',
+      'src/ratio.ts:11',
+    ])
+    expect(body).toContain('src/ratio.ts:10:if (ratio === 1:2:3) return')
   })
 
   test('a file or a line body named __proto__ does not throw', () => {
@@ -521,5 +545,99 @@ describe('grep summarizer — line splitting', () => {
     const body = bodyOf(text)
     expect(body).toContain('--- __proto__ (3 matches) ---')
     expect(body).toContain('10:__proto__')
+  })
+})
+
+describe('grep summarizer — when a header is worth its cost', () => {
+  test('leaves a block inline when the header would replace one path', () => {
+    // One match and no context: the header names a path in order to strip that
+    // same path off a single line, and the summary grows. This is the shape the
+    // no-win guard was throwing away wholesale.
+    const text = [
+      'src/services/api/providerConfig.ts:10:the only match here',
+      'src/services/api/activeProvider.ts:20:the only match there',
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).not.toContain('---')
+    expect(body).toContain('src/services/api/providerConfig.ts:10:the only match here')
+  })
+
+  test('heads a block as soon as there are lines to amortize it over', () => {
+    const path = 'src/services/api/providerConfig.ts'
+    const text = [
+      `${path}:10:first`,
+      `${path}:11:second`,
+      `${path}:12:third`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`--- ${path} (3 matches) ---`)
+    expect(body.split(path).length - 1).toBe(1)
+  })
+
+  test('the choice is made per file, not for the whole body', () => {
+    const busy = 'src/busy.ts'
+    const lonely = 'src/lonely/path/that/is/long/enough/to/matter.ts'
+    const text = [
+      ...Array.from({ length: 4 }, (_, i) => `${busy}:${10 + i}:hit ${i}`),
+      `${lonely}:99:the only match`,
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain(`--- ${busy} (4 matches) ---`)
+    expect(body).toContain(`${lonely}:99:the only match`)
+    expect(body).not.toContain(`--- ${lonely}`)
+  })
+})
+
+describe('grep summarizer — searches with no path at all', () => {
+  const pad = ' '.repeat(40)
+  // What rg emits when the search is scoped to a single file: no filename on
+  // any line, just `NN:text`. The strategy parsed none of it and every such
+  // result shipped in full.
+  const singleFile = [
+    ...Array.from({ length: 12 }, (_, i) => `${100 + i}-before ${i}${pad}`),
+    `112:the match${pad}`,
+    ...Array.from({ length: 12 }, (_, i) => `${113 + i}-after ${i}${pad}`),
+  ].join('\n')
+
+  test('clamps context on a body that carries no path', () => {
+    const body = bodyOf(singleFile)
+    expect(body.length).toBeLessThan(singleFile.length)
+    expect(body).toContain(`112:the match${pad}`)
+    const { context } = blockLocators(body)
+    expect(context).toContain('109')
+    expect(context).toContain('115')
+    expect(context).not.toContain('108')
+    expect(context).not.toContain('116')
+  })
+
+  test('emits no header, because there is no path to hoist', () => {
+    const body = bodyOf(singleFile)
+    expect(body).not.toContain('---')
+    // Every surviving line is byte-identical to the one rg emitted.
+    for (const line of body.split('\n').slice(1)) {
+      expect(singleFile.split('\n')).toContain(line)
+    }
+  })
+
+  test('a stray line-numbered line in a normal result stays literal', () => {
+    // The retry is gated on the majority of lines having no path. Without that
+    // gate this line would join a pathless block and become clampable, i.e.
+    // droppable — and the literal bucket exists precisely so it cannot be.
+    const text = [
+      'src/a.ts:10:the match',
+      'src/a.ts:11:more of the match',
+      '117:const DEFAULT = 250',
+    ].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain('other (preserved literally)')
+    expect(body).toContain('117:const DEFAULT = 250')
+  })
+
+  test('a pathless repeat collapses to a line reference, not a bare colon', () => {
+    const long = 'const duplicated = someVeryLongCallExpression(withArguments)'
+    const text = [`10:${long}`, `20:${long}`, `30:${long}`].join('\n')
+    const body = bodyOf(text)
+    expect(body).toContain('… same as line 10')
+    expect(body).not.toContain(':10:')
   })
 })
