@@ -1,7 +1,7 @@
 ---
 name: pre-pr
 description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
-allowed-tools: Bash
+allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
 ---
@@ -18,11 +18,19 @@ Run these in order. Stop and report on the first failure; otherwise continue.
 
 1. **Build** — `bun run build`
 2. **Smoke** — `bun run smoke` (build + `--version` sanity)
-3. **Typecheck** — `bun run typecheck` (expect zero *new* `tsc` errors; the
-   baseline on `main` is ~4320 pre-existing — compare, don't count absolute).
-4. **Focused tests** — run the tests for the changed code. If `$ARGUMENTS`
-   names test files, run exactly those: `bun test $ARGUMENTS`. Otherwise infer
-   the colocated `*.test.ts` next to the files in `git diff --name-only` and run
+3. **Typecheck** — call the **Typecheck** tool with no arguments. It runs the
+   project's checker and reports only the diagnostics missing from the recorded
+   baseline, so the pass condition is simply **zero new**. Do not count absolute
+   errors and do not compare against a remembered number: this repo carries
+   thousands of pre-existing `tsc` errors and that total drifts.
+   - `⚠ … provenance unknown` means no baseline exists for the current commit
+     and none could be reconstructed — uncommon, since a dirty tree with no
+     baseline re-checks HEAD in a temporary worktree. That is not a failure by
+     itself: read the listed diagnostics and judge whether any belong to this
+     change.
+4. **Focused tests** — call the **RunTests** tool for the changed code. If
+   `$ARGUMENTS` names test files, pass them as `path`. Otherwise infer the
+   colocated `*.test.ts` next to the files in `git diff --name-only` and run
    those.
 
 ## Conditional steps (only when the diff touches these areas)

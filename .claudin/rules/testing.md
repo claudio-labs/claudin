@@ -24,6 +24,12 @@ re-send the identical command when you genuinely need the raw output (print
 debugging, a crash trace). The invocations below are the underlying commands —
 pass one as RunTests' `command` when auto-detection picks the wrong suite.
 
+Type-check through the **Typecheck tool**, for the same reason and with a bigger
+payoff here: it reports only the diagnostics missing from the project's recorded
+baseline, which in this repo is the difference between a handful of lines and
+several thousand. `bun run typecheck` in Bash is refused once and points there;
+re-send it when you genuinely need raw compiler output.
+
 ```bash
 bun test                                   # full suite (~198 files)
 bun test src/path/to/file.test.ts          # single file
@@ -228,19 +234,23 @@ regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
 2026-07 main; keep it in mind if they resurface.)
 
-**Typecheck baseline:** `bun run typecheck` reports **4617** pre-existing
-`error TS` on `main` as of 2026-07-18 (was ~4320 — drifts upward over time;
-re-measure if in doubt: `bun run typecheck 2>&1 | grep -c "error TS"`).
-Compare the COUNT to main; don't chase absolute errors. `<new-diagnostics>`
-system-reminders can be STALE mid-edit snapshots — verify a cited diagnostic
-with `bun run typecheck 2>&1 | grep <file>` before acting on it.
+**Typecheck baseline:** `main` carries thousands of pre-existing `error TS`
+(4617 on 2026-07-18, 4624 on 2026-08-03 — it drifts upward). Don't hand-compare
+that count against a remembered number: call the **Typecheck** tool, which
+records the backlog for a commit whenever it runs on a clean tree and afterwards
+reports only what is new. The pass condition is **zero new**; the absolute total
+is noise. A `⚠ … provenance unknown` result means no baseline exists for the
+current commit — read the listed diagnostics rather than assuming they are
+yours. `<new-diagnostics>` system-reminders can be STALE mid-edit snapshots —
+confirm a cited diagnostic with the tool (`path:` filters the report) first.
 
 ## Pre-PR Checklist
 
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
-- [ ] `bun test path/to/changed.test.ts` — focused test passes
+- [ ] Focused test passes (RunTests tool, scoped with `path`)
 - [ ] If touching `src/services/api/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated
-- [ ] `bun run typecheck` passes (zero tsc errors)
+- [ ] Typecheck tool reports **zero new** diagnostics (the absolute count is
+      irrelevant — the backlog is thousands deep)
