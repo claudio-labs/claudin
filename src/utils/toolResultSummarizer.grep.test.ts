@@ -180,12 +180,15 @@ describe('grep summarizer — identity guards', () => {
     expect(maybeSummarizeToolResult(block, GREP_TOOL_NAME)).toBe(block)
   })
 
-  // R1b: the dispatch threshold is the other identity path, and the one that
-  // actually fires in production — `under-threshold` is a body the strategy
-  // would happily shrink by ~39%, which the caller must still leave alone.
-  test('R1b a result below the dispatch threshold is not summarized', () => {
+  // R1b: the dispatch gate is the other identity path, and the one that
+  // actually fires in production. `under-threshold` is a body the strategy
+  // would happily shrink by ~40% — it stays untouched because it is under
+  // 6,000 AND its summary would count 16 matches away instead of printing
+  // them. The lossless half of that rule is exercised below.
+  test('R1b a lossy result below the dispatch threshold is not summarized', () => {
     const text = fixture('under-threshold')
     expect(text.length).toBeLessThan(6000)
+    expect(summarizeGrepOutput(text)?.matchesElided).toBe(16)
     expect(bodyOf(text).length).toBeLessThan(text.length)
     const block = {
       type: 'tool_result' as const,
@@ -639,5 +642,94 @@ describe('grep summarizer — searches with no path at all', () => {
     const body = bodyOf(text)
     expect(body).toContain('… same as line 10')
     expect(body).not.toContain(':10:')
+  })
+})
+
+describe('grep summarizer — the two-tier dispatch gate', () => {
+  const pad = ' '.repeat(60)
+
+  /**
+   * A body whose ONLY elision is clamped context: one match per file, well
+   * under both caps, so `matchesElided` is 0 no matter how much it shrinks.
+   * `contextEachSide` sets the size, which is what the gate turns on.
+   */
+  function losslessBody(contextEachSide: number, files: number): string {
+    const out: string[] = []
+    for (let f = 0; f < files; f++) {
+      const base = 1000 * (f + 1)
+      const path = `src/module${f}/handler.ts`
+      for (let i = contextEachSide; i > 0; i--) {
+        out.push(`${path}-${base - i}-context above ${i}${pad}`)
+      }
+      out.push(`${path}:${base}:the match in file ${f}${pad}`)
+      for (let i = 1; i <= contextEachSide; i++) {
+        out.push(`${path}-${base + i}-context below ${i}${pad}`)
+      }
+    }
+    return out.join('\n')
+  }
+
+  function ship(text: string, id: string): string | null {
+    const block = { type: 'tool_result' as const, tool_use_id: id, content: text }
+    const out = maybeSummarizeToolResult(block, GREP_TOOL_NAME)
+    return out === block ? null : String(out.content)
+  }
+
+  test('below the floor nothing ships, however well it would compress', () => {
+    const text = losslessBody(10, 1)
+    expect(text.length).toBeLessThan(3000)
+    // The strategy itself would gladly take it — the floor is the only thing
+    // holding it back, so this fails the moment the floor moves down.
+    expect(bodyOf(text).length).toBeLessThan(text.length / 2)
+    expect(ship(text, 'below-floor')).toBeNull()
+  })
+
+  test('between floor and threshold a lossless summary ships', () => {
+    const text = losslessBody(20, 1)
+    expect(text.length).toBeGreaterThan(3000)
+    expect(text.length).toBeLessThan(6000)
+    expect(summarizeGrepOutput(text)?.matchesElided).toBe(0)
+    const shipped = ship(text, 'lossless-band')
+    expect(shipped).not.toBeNull()
+    // Every match rg reported is still individually addressable.
+    expect(shipped).toContain('1000:the match in file 0')
+  })
+
+  test('between floor and threshold a summary that counts a match away does not', () => {
+    // Same band, but one file carries more matches than the per-file cap, so
+    // the summary would print `+N more matches` instead of those lines.
+    const dense = Array.from(
+      { length: 40 },
+      (_, i) => `src/dense/registry.ts:${i + 1}:const entry${i} = register()${pad}`,
+    ).join('\n')
+    expect(dense.length).toBeGreaterThan(3000)
+    expect(dense.length).toBeLessThan(6000)
+    expect(summarizeGrepOutput(dense)?.matchesElided).toBe(30)
+    expect(bodyOf(dense).length).toBeLessThan(dense.length)
+    expect(ship(dense, 'lossy-band')).toBeNull()
+  })
+
+  test('above the threshold a lossy summary still ships', () => {
+    // The rule is a floor concession, not a new restriction: nothing that used
+    // to be summarized stops being summarized.
+    const text = fixture('multi-file')
+    expect(text.length).toBeGreaterThan(6000)
+    expect(summarizeGrepOutput(text)?.matchesElided).toBeGreaterThan(0)
+    expect(ship(text, 'lossy-over-threshold')).not.toBeNull()
+  })
+
+  test('matchesElided counts both elision paths, not just the per-file cap', () => {
+    // 60 files > GREP_MAX_FILES, and the first file also blows the per-file
+    // cap: the count has to include the `<omitted>` files as well.
+    const lines: string[] = []
+    for (let i = 0; i < 25; i++) {
+      lines.push(`src/busy.ts:${i + 1}:hit ${i}${pad}`)
+    }
+    for (let f = 0; f < 60; f++) {
+      lines.push(`src/other${f}.ts:1:single hit${pad}`)
+    }
+    const elided = summarizeGrepOutput(lines.join('\n'))?.matchesElided
+    // 15 over the per-file cap on busy.ts, plus every file past the 50th.
+    expect(elided).toBe(15 + 11)
   })
 })

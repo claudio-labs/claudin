@@ -20,7 +20,10 @@ A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
 model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
 (`summarizeGrepOutput` in `src/utils/toolResultSummarizer.ts`). So asking for
 `-C 30` on a wide search does not buy 30 lines of context — scope the search
-instead, or re-run against the one file you care about.
+instead, or re-run against the one file you care about. Between ~3 KB and ~6 KB
+the same regrouping applies, but only when it costs no match line: a result
+dense enough that one file exceeds 10 matches is sent whole rather than capped,
+so a *match locator* is never traded away below the full threshold.
 
 ## Module Map
 

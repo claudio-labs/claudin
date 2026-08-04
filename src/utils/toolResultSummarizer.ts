@@ -57,6 +57,21 @@ const CODE_OUTLINE_MIN_SYMBOLS = 3
 // Per-tool thresholds (chars). Kept local to avoid importing toolLimits cycles.
 const BASH_SUMMARIZE_THRESHOLD = 8_000
 const GREP_SUMMARIZE_THRESHOLD = 6_000
+/**
+ * Grep has a second, lower gate. Between the floor and the threshold a summary
+ * ships ONLY if it elides no match line — clamped context and collapsed
+ * duplicates are fine, a `+N more matches` counter is not.
+ *
+ * Measured over the recorded transcripts before choosing this shape: dropping
+ * the threshold to 3,000 outright would newly summarize 552 results and save
+ * 908,145 chars, but HALF of them (275) would trade a match locator for a
+ * counter, against a third in the band already summarized. Small results skew
+ * match-dense — a body that clears 3,000 without context is a listing where
+ * every line is a distinct hit — so the naive cut buys its extra bytes with
+ * exactly the information a search is for. Restricted to the lossless ones it
+ * is 404,528 chars over 277 results and nothing a match line said is lost.
+ */
+const GREP_SUMMARIZE_FLOOR = 3_000
 const WEBFETCH_SUMMARIZE_THRESHOLD = 12_000
 const GLOB_SUMMARIZE_THRESHOLD = 3_000
 const AGENT_SUMMARIZE_THRESHOLD = 8_000
@@ -118,6 +133,14 @@ type StrategyResult = {
   body: string
   strategy: StrategyName
   errorWindowPreserved?: boolean
+  /**
+   * grep-grouped only: how many match lines the body replaced with a counter
+   * (`+N more matches`, `<omitted>`). Zero means every match rg reported is
+   * still individually addressable in the summary. The dispatch gate reads it
+   * rather than grepping the body, so a change to the counter wording cannot
+   * silently turn a lossy summary into an eligible one.
+   */
+  matchesElided?: number
   /**
    * json-structural only: count of salient (error-keyword / rare-status) rows
    * pinned out of the dropped middle. Surfaced in analytics so the real-world
@@ -267,9 +290,19 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
       // Code-outline runs after JSON (JSON isn't code) and before the blind
       // head/tail, which thrashes on source files (see Read note below).
       return maybeCodeOutline(text, BASH_SUMMARIZE_THRESHOLD) ?? summarizeBashOutput(text)
-    case GREP_TOOL_NAME:
-      if (text.length < GREP_SUMMARIZE_THRESHOLD) return null
-      return summarizeGrepOutput(text)
+    case GREP_TOOL_NAME: {
+      if (text.length < GREP_SUMMARIZE_FLOOR) return null
+      const grep = summarizeGrepOutput(text)
+      if (grep === null) return null
+      // Under the full threshold, only a summary that keeps every match ships.
+      if (
+        text.length < GREP_SUMMARIZE_THRESHOLD &&
+        (grep.matchesElided ?? 0) > 0
+      ) {
+        return null
+      }
+      return grep
+    }
     case WEB_FETCH_TOOL_NAME:
       if (text.length < WEBFETCH_SUMMARIZE_THRESHOLD) return null
       // Catches raw-source fetches (e.g. raw.githubusercontent.com/.../foo.ts).
@@ -805,12 +838,13 @@ function truncateLine(line: string): string {
 // content search scoped to one file) groups headerless under GREP_NO_PATH.
 //
 // Measured over the recorded transcripts (scripts/profile/grep-summarizer-replay.ts,
-// 5,093 real content-mode results): 10.0% of all Grep chars and 20.5% of the
-// context-bearing ones, at the current 6,000-char dispatch threshold, with 166
-// of the 167 results over that threshold summarized. Lowering the threshold to
-// 3,000 more than doubles the take (22.5%, 718 of 727) — the curve is in the
-// bench; whether a result that small is one the model wanted verbatim has not
-// been evaluated.
+// 5,095 real content-mode results): 15.5% of all Grep chars and 33.5% of the
+// context-bearing ones, across 443 results. That is the two-tier gate above
+// (GREP_SUMMARIZE_FLOOR): 166 results from the ≥6,000 band and 277 lossless
+// ones between 3,000 and 6,000. The bench prints the three policies side by
+// side — admitting everything over 3,000 would reach 22.5%, but the count of
+// results that trade a match line for a counter goes from 56 to 331, which is
+// the column that decided this.
 
 const GREP_MAX_MATCHES_PER_FILE = 10
 const GREP_MAX_FILES = 50
@@ -1088,6 +1122,9 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
 
   const fileBlocks: string[] = []
   let contextKept = 0
+  // Match lines this body replaces with a counter rather than printing. The
+  // dispatch gate turns on it, so it counts BOTH elision paths.
+  let matchesElided = 0
 
   for (const file of kept) {
     const entries = [...byFile[file]!].sort((a, b) => a.n - b.n)
@@ -1108,6 +1145,7 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
       if (!entry.isMatch) contextKept++
     }
     const extra = matches.length - shownMatches.length
+    matchesElided += extra
     const more =
       extra > 0 ? `+${extra} more match${extra === 1 ? '' : 'es'}` : null
 
@@ -1151,6 +1189,7 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
 
   if (dropped.length > 0) {
     const droppedMatches = dropped.reduce((n, f) => n + matchCount(f), 0)
+    matchesElided += droppedMatches
     body.push(
       `<omitted>: ${dropped.length} file${dropped.length === 1 ? '' : 's'}, ${droppedMatches} match${droppedMatches === 1 ? '' : 'es'} not shown`,
     )
@@ -1161,7 +1200,7 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
     for (const line of other) body.push(truncateLine(line))
   }
 
-  return { body: body.join('\n'), strategy: 'grep-grouped' }
+  return { body: body.join('\n'), strategy: 'grep-grouped', matchesElided }
 }
 
 // ============================================================

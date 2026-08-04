@@ -13,9 +13,9 @@
  * injects; NODE_ENV=test is what lets getGlobalConfig() run outside the app
  * boot sequence (otherwise every call fails open and the run reports 0 saved).
  *
- * Reports total chars saved, the split between context clamping / dedupe /
- * per-file capping, how many results stop tripping the no-win guard, and the
- * saving curve at candidate thresholds.
+ * Reports total chars saved, how many results stop tripping the no-win guard,
+ * and a comparison of dispatch policies — including how many results each one
+ * buys its bytes with, i.e. how many trade a match locator for a counter.
  */
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { homedir } from 'os'
@@ -184,6 +184,39 @@ function main(): void {
   for (const t of [3000, 4000, 6000, 8000]) {
     curve.set(t, { saved: 0, hits: 0, eligible: 0 })
   }
+  // Policies, evaluated on the same samples. `lossy` counts the results whose
+  // summary replaced at least one match line with a counter — the cost side of
+  // lowering a threshold, which a chars-saved column alone hides.
+  type Policy = {
+    label: string
+    admits: (len: number, elided: number) => boolean
+    saved: number
+    hits: number
+    lossy: number
+  }
+  const policies: Policy[] = [
+    {
+      label: '>=6,000 only (before)',
+      admits: len => len >= 6000,
+      saved: 0,
+      hits: 0,
+      lossy: 0,
+    },
+    {
+      label: '>=3,000, any summary',
+      admits: len => len >= 3000,
+      saved: 0,
+      hits: 0,
+      lossy: 0,
+    },
+    {
+      label: '>=3,000 lossless, >=6,000 any',
+      admits: (len, elided) => len >= 6000 || (len >= 3000 && elided === 0),
+      saved: 0,
+      hits: 0,
+      lossy: 0,
+    },
+  ]
   for (const s of samples) {
     const text = normalize(s.text)
     const strategy = summarizeGrepOutput(text)
@@ -196,6 +229,16 @@ function main(): void {
       if (kept >= text.length) continue
       acc.hits++
       acc.saved += text.length - kept
+    }
+    if (!strategy) continue
+    const keptBytes = strategy.body.length + 100
+    if (keptBytes >= text.length) continue
+    const elided = strategy.matchesElided ?? 0
+    for (const p of policies) {
+      if (!p.admits(text.length, elided)) continue
+      p.hits++
+      p.saved += text.length - keptBytes
+      if (elided > 0) p.lossy++
     }
   }
 
@@ -241,6 +284,16 @@ function main(): void {
   for (const [t, acc] of curve) {
     console.log(
       `    ${String(t).padEnd(8)}${String(acc.eligible).padEnd(10)}${String(acc.hits).padEnd(12)}${acc.saved.toLocaleString()} (${pct(acc.saved, before)})`,
+    )
+  }
+
+  console.log('\n  dispatch policies (strategy only, envelope approximated):')
+  console.log(
+    `    ${'policy'.padEnd(32)}${'summarized'.padEnd(12)}${'saved'.padEnd(22)}lose a match`,
+  )
+  for (const p of policies) {
+    console.log(
+      `    ${p.label.padEnd(32)}${String(p.hits).padEnd(12)}${`${p.saved.toLocaleString()} (${pct(p.saved, before)})`.padEnd(22)}${p.lossy}`,
     )
   }
 }
