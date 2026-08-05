@@ -5,7 +5,7 @@ import { join } from 'path'
 import { runWithCwdOverride } from '../../utils/cwd.js'
 import { formatBuildResult } from './budget.js'
 import { BuildTool, resolveBuildCommand } from './BuildTool.js'
-import type { BuildResult } from './types.js'
+import type { BuildProgress, BuildResult } from './types.js'
 
 const roots: string[] = []
 
@@ -29,7 +29,7 @@ const context = { abortController: new AbortController() } as Parameters<typeof 
 
 async function callIn(root: string, input: Parameters<typeof BuildTool.call>[0]) {
   return runWithCwdOverride(root, async () => {
-    const { data } = await BuildTool.call(input, context)
+    const { data } = await BuildTool.call(input, context, undefined as never, undefined as never)
     return data as BuildResult
   })
 }
@@ -128,6 +128,28 @@ describe('BuildTool.call — fake gradle wrapper', () => {
     // Stated as an observation, never as a diagnosis of a hang.
     expect(rendered).toContain('That is silence, not proof of a hang')
     expect(rendered).toContain('Raise idleTimeout')
+  }, 30_000)
+
+  test('a running build reports what it is doing, and the label tracks the newest line', async () => {
+    const root = gradleProject(
+      [
+        'echo "> Task :app:processResources"',
+        'sleep 1',
+        'echo "> Task :app:compileKotlin"',
+        'sleep 1',
+      ].join('\n'),
+    )
+    const seen: BuildProgress[] = []
+    await runWithCwdOverride(root, () =>
+      BuildTool.call({}, context, undefined as never, undefined as never, p => seen.push(p.data)),
+    )
+
+    // The poller ticks about once a second, so a ~2s build yields several.
+    expect(seen.length).toBeGreaterThanOrEqual(2)
+    expect(seen.at(-1)?.system).toBe('gradle')
+    expect(seen.at(-1)?.label).toBe('> Task :app:compileKotlin')
+    // Elapsed only ever moves forward.
+    expect(seen.at(-1)!.elapsedMs).toBeGreaterThanOrEqual(seen[0]!.elapsedMs)
   }, 30_000)
 })
 

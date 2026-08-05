@@ -1,14 +1,22 @@
-import { existsSync, statSync } from 'fs'
+import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
 import { parseDiagnostics } from '../shared/diagnostics/index.js'
 import { readSourceExcerpt } from '../shared/sourceExcerpt.js'
 import { logError } from '../../utils/log.js'
 import { exec } from '../../utils/Shell.js'
 import { readFullShellOutput } from '../../utils/shell/fullOutput.js'
+import { TaskOutput } from '../../utils/task/TaskOutput.js'
 import { extractFailureBlock } from './failureBlock.js'
 import { isUpToDate } from './noOp.js'
 import { parsersFor } from './parseChain.js'
-import type { BuildDiagnostic, BuildResult, BuildSystem, StallReport } from './types.js'
+import { lastNonEmptyLine, progressLabel } from './progressLine.js'
+import type {
+  BuildDiagnostic,
+  BuildProgress,
+  BuildResult,
+  BuildSystem,
+  StallReport,
+} from './types.js'
 
 /**
  * Execution orchestrator: run the build, watch it for silence, read its FULL
@@ -24,11 +32,10 @@ const SIGTERM_EXIT = 143
 /** Bounded because a build with no baseline can legitimately have thousands. */
 const MAX_EXCERPTS = 20
 /**
- * How often the watchdog looks at the output file. Small relative to any
- * sensible idle threshold, and a `stat` on a path we already own is cheap
- * enough that the cadence costs nothing next to a compile.
+ * How long the output must be frozen before the live label says so. Below this
+ * every build would flicker into "silent" between two ordinary lines.
  */
-const POLL_MS = 2_000
+const SILENT_LABEL_MS = 10_000
 
 export type RunOptions = {
   command: string
@@ -43,6 +50,8 @@ export type RunOptions = {
   severity: 'errors' | 'all'
   pathFilter?: string | string[]
   alsoDetected: BuildSystem[]
+  /** TUI only — never serialized, so it cannot affect what the model reads. */
+  onProgress?: (progress: BuildProgress) => void
 }
 
 function tail(text: string, max: number): string {
@@ -151,15 +160,6 @@ function attachExcerpts(diagnostics: BuildDiagnostic[], cwd: string): void {
   }
 }
 
-export function lastNonEmptyLine(text: string): string | undefined {
-  const lines = text.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]!.trim()
-    if (line !== '') return line
-  }
-  return undefined
-}
-
 function emptyResult(opts: RunOptions, runError: string, exitCode = 1): BuildResult {
   return {
     system: opts.system,
@@ -183,12 +183,17 @@ type ExecOutcome =
 /**
  * Run the build and watch it for silence.
  *
- * The watchdog polls the size of the output file rather than subscribing to
- * `ExecOptions.onProgress`: in file mode that callback only fires while the TUI
- * has asked `TaskOutput` to poll (`startPolling` is driven by React
- * visibility), so a headless run or a collapsed tool block would never see a
- * tick and every build would look stalled. The file itself is the child's
- * stdio target and grows regardless of who is watching.
+ * Both jobs — the idle watchdog and the live progress label — ride
+ * `ExecOptions.onProgress`, which the shared `TaskOutput` poller drives once a
+ * second. Two things have to be true for a tick to arrive, and neither is
+ * automatic: the callback must be passed to `exec` (that is what registers the
+ * task, `TaskOutput.ts:72`) and `startPolling` must be called (`:81`). Nothing
+ * else starts it — despite the comment there, it has no React caller, and its
+ * interval is `unref()`d, so this works headless and with the tool block
+ * collapsed just as well.
+ *
+ * `onProgress` and not `onStdout` (`Shell.ts:170`): the latter pipes stdout
+ * instead of writing the file, which would break `readFullShellOutput` below.
  *
  * The wall ceiling is left to `exec`'s own timeout, which arrives as SIGTERM.
  */
@@ -224,40 +229,53 @@ ${opts.command}
   else abortSignal.addEventListener('abort', forwardAbort, { once: true })
 
   const startedAt = Date.now()
-  let watchdog: ReturnType<typeof setInterval> | null = null
   let idleStall: { silentMs: number } | null = null
+  let lastBytes = -1
+  let lastChangeAt = Date.now()
+  // Captured so the `finally` can stop the poller even when `exec` throws
+  // after the task was registered.
+  let taskId: string | null = null
 
   try {
+    // Fires ~1s apart, and fires even when the file has not grown — that empty
+    // tick is what lets a silent build be noticed at all (`TaskOutput.ts:122`).
+    const onTick = (lastLines: string, _all: string, _lines: number, totalBytes: number) => {
+      const now = Date.now()
+      if (totalBytes !== lastBytes) {
+        lastBytes = totalBytes
+        lastChangeAt = now
+      }
+      const silentMs = now - lastChangeAt
+      if (silentMs >= idleTimeoutMs) {
+        idleStall = { silentMs }
+        internal.abort()
+        return
+      }
+      if (!opts.onProgress) return
+      const tail = stripProgressRewrites(lastLines)
+      opts.onProgress({
+        type: 'build_progress',
+        system: opts.system,
+        label:
+          silentMs >= SILENT_LABEL_MS
+            ? `silent for ${Math.round(silentMs / 1000)}s`
+            : (progressLabel(opts.system, tail) ?? ''),
+        elapsedMs: now - startedAt,
+        silentMs,
+        totalBytes,
+      })
+    }
+
     const shellCommand = await exec(execCommand, internal.signal, 'bash', {
       timeout: timeoutMs,
       // The `cd` above is ours, not the user's — it must not move the session's
       // shell out from under the next Bash call.
       preventCwdChanges: true,
+      onProgress: onTick,
     })
 
-    const outputPath = shellCommand.taskOutput.path
-    let lastSize = -1
-    let lastChangeAt = Date.now()
-    watchdog = setInterval(() => {
-      let size = 0
-      try {
-        size = statSync(outputPath).size
-      } catch {
-        // Not created yet: no output has been produced, which is the very
-        // condition the idle threshold measures.
-        size = 0
-      }
-      if (size !== lastSize) {
-        lastSize = size
-        lastChangeAt = Date.now()
-        return
-      }
-      const silentMs = Date.now() - lastChangeAt
-      if (silentMs >= idleTimeoutMs) {
-        idleStall = { silentMs }
-        internal.abort()
-      }
-    }, POLL_MS)
+    taskId = shellCommand.taskOutput.taskId
+    TaskOutput.startPolling(taskId)
 
     const result = await shellCommand.result
     // NOT result.stdout: it is capped at BASH_MAX_OUTPUT_LENGTH, and a build
@@ -295,7 +313,7 @@ ${opts.command}
     logError(`Build: exec failed — ${String(e)}`)
     return { ok: false, message: e instanceof Error ? e.message : String(e) }
   } finally {
-    if (watchdog) clearInterval(watchdog)
+    if (taskId) TaskOutput.stopPolling(taskId)
     abortSignal.removeEventListener('abort', forwardAbort)
   }
 }

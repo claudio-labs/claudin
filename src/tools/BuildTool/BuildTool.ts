@@ -2,7 +2,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { statSync } from 'fs'
 import path from 'path'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from '../../Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { bashToolHasPermission } from '../BashTool/bashPermissions.js'
@@ -17,11 +17,12 @@ import {
 } from './detect.js'
 import { BUILD_TOOL_NAME, DESCRIPTION } from './prompt.js'
 import { runBuild } from './run.js'
-import type { BuildResult, BuildSystem } from './types.js'
+import type { BuildProgress, BuildResult, BuildSystem } from './types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
+  renderToolUseProgressMessage,
   userFacingName,
 } from './UI.js'
 
@@ -38,6 +39,9 @@ const MAX_TIMEOUT_MS = 1_800_000
  * short enough that a genuinely wedged build does not burn the whole ceiling.
  */
 const DEFAULT_IDLE_TIMEOUT_MS = 180_000
+
+/** Each progress message needs its own id; the renderer keeps only the last. */
+let progressCounter = 0
 
 const SYSTEMS = [
   'cargo',
@@ -228,8 +232,9 @@ export const BuildTool = buildTool({
   },
   renderToolUseMessage,
   renderToolUseErrorMessage,
+  renderToolUseProgressMessage,
   renderToolResultMessage,
-  async call(input: Input, context) {
+  async call(input: Input, context, _canUseTool, _parentMessage, onProgress?: ToolCallProgress<BuildProgress>) {
     const cwd = resolveBuildCwd(input.directory)
     if (input.directory && !isDirectory(cwd)) {
       const output: BuildResult = {
@@ -282,6 +287,12 @@ export const BuildTool = buildTool({
       severity: input.severity ?? 'errors',
       pathFilter: input.path,
       alsoDetected: detectAllBuildSystems(cwd),
+      // Purely a TUI signal: every `progress` message is dropped before the
+      // request is serialized (`utils/messages/normalize.ts:965`), so this
+      // cannot add a token to what the model reads.
+      onProgress: onProgress
+        ? data => onProgress({ toolUseID: `build-progress-${progressCounter++}`, data })
+        : undefined,
     })
 
     return { data: result }
@@ -293,4 +304,4 @@ export const BuildTool = buildTool({
       content: formatBuildResult(output),
     }
   },
-} satisfies ToolDef<InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output, BuildProgress>)

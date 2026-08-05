@@ -68,6 +68,32 @@ export type StallReport = {
   lastLine?: string
 }
 
+/**
+ * What the TUI shows while the build is still running.
+ *
+ * Declared here rather than added to the `ToolProgressData` union in
+ * `src/types/tools.js`, because that module does not exist in this fork — all
+ * 19 imports of it are unresolved and stubbed at bundle time, so the union is
+ * effectively `any`. Creating it to hold this one type would make every one of
+ * those imports resolve at once against a partial file. Nothing needs the
+ * membership: the only type-based dispatch on progress is `!== 'hook_progress'`
+ * (`Tool.ts:348`, `AssistantToolUseMessage.tsx:348`).
+ *
+ * Never reaches the model — `normalizeMessagesForAPI` drops every `progress`
+ * message before serialization (`utils/messages/normalize.ts:965`), so this
+ * costs nothing in tokens and cannot undo what the tool trims.
+ */
+export type BuildProgress = {
+  type: 'build_progress'
+  system: BuildSystem
+  /** What the build is doing, already reduced to one line. Empty until it prints. */
+  label: string
+  elapsedMs: number
+  /** How long since the output last grew. Drives the "silent for Xs" state. */
+  silentMs: number
+  totalBytes: number
+}
+
 /** The normalized result of a whole build. */
 export type BuildResult = {
   system: BuildSystem
