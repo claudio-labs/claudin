@@ -113,6 +113,7 @@ const CURRENT_BASELINE = [
   'FileEditTool',
   'FileReadTool',
   'FileWriteTool',
+  'GitTool',
   'GlobTool',
   'GrepTool',
   'LSPTool',
