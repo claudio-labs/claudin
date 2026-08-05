@@ -16,7 +16,7 @@
 ## Roadmap & major features
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
-- [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — Read/Bash/Grep = 91% of tool-result tokens; D1 Grep budget → D2 git diff wrapper → D3 Read re-read dedup → D4 widen redirects → D5 build wrapper
+- [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — re-measured over 760 sessions: Read 58.4% of tool-result chars vs git+gh 5.0%; D1 ✅ D2 ✅ (Git tool) → **D3 Read dedup is now the big one** → D4 widen redirects → D5 build wrapper
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch on branch feat/self-hosted-background-agent; TriggerSource abstraction (github/url/command + --match), headless runWorkflow, worktree+PR, atomic dedup; docs/tech/background-agent/
 - [/create bundled skill (PR #98)](create-skill-bundled-pr.md) — bundled skill teaching skills/rules/agents authoring; loader gotchas (agent model, arguments format, .claudin write gate)
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](lsp-tool-rejected-empirically.md) — was dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg (not isLsp), built-in servers + install UI removed
@@ -25,6 +25,7 @@
 - [Typecheck A/B bench — what to cite and what is noise](typecheck-ab-bench-fixture-flaw.md) — cost −16/−18% and payload −80% hold across 5 runs; context swings −13%→−1%; fixture backlog must overlap the edited files
 - [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](runtests-tool-shell-env-bugs.md) — ignores its cwd (worktree sub-agent tests main), FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation
+- [Git tool — D2, shipped 2026-08-04](git-tool-design.md) — Git({commands:[…]}) over all git+gh; permissions delegate to bashToolHasPermission; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 
 ## Providers & models
 - [Effort is project-scoped like provider and model](effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; no REPL surface writes settings.effortLevel; 'auto' sentinel shadows the global, /effort inherit clears it
