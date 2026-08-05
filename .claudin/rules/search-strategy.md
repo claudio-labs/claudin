@@ -71,19 +71,26 @@ being already short) and never fires for a command that also installs,
 publishes or runs something.
 
 `git` and `gh` are the fourth lane of the same idea. A Bash command that only
-READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|checks`
+READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|checks|diff`,
+`gh issue view`, `gh run view`
 — is refused once with the `Git` call to make instead, and re-sending the
 identical command runs it (`src/tools/GitTool/redirect.ts`,
 `CLAUDIN_DISABLE_GIT_REDIRECT=1`). A trailing `| head -50`-style trim is stripped
 before that decision, so a piped read still redirects; mutations are never
-refused, since a dialog in front of a `git push` buys nothing. The tool takes a
+refused, since a dialog in front of a `git push` buys nothing. The `gh` side is
+deliberately narrower than what the tool ACCEPTS (24 read-only command pairs,
+`grammar.ts`): only the shapes with a renderer behind them are refused, because
+a refusal costs a round-trip and the tool hands a table like `gh run list` back
+unchanged. The tool takes a
 **list** — `Git({commands:["git status","git diff","git log -5"]})` — so a burst
 that would have been three Bash calls is one call and one result.
 
 What comes back is budgeted. A unified diff at or above 6 KB, or touching 6+
 files, loses its hunks for a stat table naming the command that fetches one
 file's hunks back; below that each file gets 60 lines before the remainder is
-named (`src/tools/GitTool/parsers/diff.ts`). Re-running an identical read returns
+named (`src/tools/GitTool/parsers/diff.ts`) — `gh pr diff` routes through that
+same renderer, and `gh run view --log` through the CI-log one (job/step headers
+hoisted, timestamps and `##[group]` markers dropped, tail kept). Re-running an identical read returns
 only the sections that changed — the stat table still lists every file, with the
 ones you already received marked `unchanged, elided` — so pass `full: true` for
 the whole body, or `CLAUDIN_DISABLE_GIT_DELTA=1` to turn that lane off. Both
