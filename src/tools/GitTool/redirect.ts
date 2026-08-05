@@ -64,9 +64,28 @@ export const stripOutputTrimTail = createOutputTrimTailStripper()
  *
  * Anchored at the start with no room for global options, so every match is
  * `git <sub>` or `gh <family> <sub>` exactly.
+ *
+ * The `gh` side is NARROWER than the grammar's read-only set (24 command pairs
+ * plus the `search`/`status` families). What earns a place here is a shape the
+ * tool returns something BETTER than the raw dump for, because a refusal costs
+ * a round-trip and batching alone did not survive the A/B:
+ *
+ *  - `gh run view` — the CI-log renderer (`parsers/gh.ts`), and the reason this
+ *    line exists. `gh run` is 202k chars of the recorded corpus, third behind
+ *    `git diff` and `git status`, and the model reaches for it with a
+ *    `| tail -60` glued on precisely because the raw log is unreadable.
+ *  - `gh pr diff` — a unified diff, so it gets the diff budget AND the delta
+ *    lane on a re-read, exactly like `git diff`.
+ *  - `gh pr view` / `gh issue view` — the body budget.
+ *
+ * Left in Bash on purpose: the table reads (`gh run list`, `gh issue list`,
+ * `gh workflow view`, `gh release view`) and `gh api`. The tool hands all of
+ * them back unchanged — `renderRunLog` declines a table by design — so
+ * refusing them would spend a round-trip for nothing. `gh pr list`/`gh pr
+ * checks` predate this rule and stay for continuity.
  */
 const REDIRECTABLE_RE =
-  /^(?:git\s+(?:diff|log|status|show|blame)|gh\s+pr\s+(?:view|list|checks))\b/
+  /^(?:git\s+(?:diff|log|status|show|blame)|gh\s+(?:pr\s+(?:view|list|checks|diff)|issue\s+view|run\s+view))\b/
 
 /**
  * Flags that mean the model wants something this tool is not.

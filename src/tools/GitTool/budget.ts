@@ -61,24 +61,41 @@ function subcommandOf(tokens: readonly string[]): string | undefined {
 }
 
 /**
- * Pick a renderer from the command. Keyed on the binary and the subcommand
- * because the family alone decides nothing — `gh run view` is a log dump,
- * `gh run list` is a table.
+ * Pick a renderer from the command.
+ *
+ * For `gh` the FAMILY alone decides nothing and picking on it is a real bug,
+ * not a missed win: `gh run view` is a log dump and `gh run list` a table;
+ * `gh pr view` is a header-plus-body and `gh pr diff` a unified diff. Keying on
+ * `pr` alone sent a 25k-char `gh pr diff` and a long `gh pr list` through
+ * `renderIssueView`, which cut both mid-line at the body budget and told the
+ * model to fetch "the description" with `--json body`. So the `gh` side keys on
+ * the family AND the action, and anything else falls through unchanged.
+ *
+ * Those two tokens are read positionally, exactly like the grammar's
+ * `classifyGh`. The tokenizers have to agree: a command classified read-only
+ * there must not pick a renderer here that its output does not fit.
  */
 function rendererFor(command: string): Renderer | null {
   const tokens = command.trim().split(WHITESPACE_RE)
   const binary = tokens[0]
-  const sub = subcommandOf(tokens)
 
   if (binary === 'git') {
+    const sub = subcommandOf(tokens)
     // `show` is a commit message plus a diff; renderDiff declines the message.
     if (sub === 'diff' || sub === 'show') return renderDiff
     if (sub === 'status') return renderStatusShort
     return null
   }
   if (binary === 'gh') {
-    if (sub === 'run') return renderRunLog
-    if (sub === 'pr' || sub === 'issue') return renderIssueView
+    const family = tokens[1]
+    const action = tokens[2]
+    // `run view` is pinned for symmetry, not for a bug: `renderRunLog` already
+    // declines anything without a timestamp, so `gh run list` was safe.
+    if (family === 'run' && action === 'view') return renderRunLog
+    if (family === 'pr' && action === 'diff') return renderDiff
+    if ((family === 'pr' || family === 'issue') && action === 'view') {
+      return renderIssueView
+    }
     return null
   }
   return null

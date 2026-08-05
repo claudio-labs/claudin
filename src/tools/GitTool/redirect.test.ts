@@ -30,6 +30,37 @@ describe('isRedirectableGitCommand', () => {
     }
   })
 
+  it('redirects the gh reads the tool renders better', () => {
+    // Each of these has a renderer on the other side: the CI-log parser for
+    // `run view`, the diff budget (plus the delta lane) for `pr diff`, the
+    // body budget for `issue view`.
+    for (const cmd of [
+      'gh run view 18492',
+      'gh run view --job 92198424809 --repo claudio-labs/claudin --log',
+      'gh run view --job 92198424809 --log-failed',
+      'gh pr diff 52',
+      'gh pr diff 52 --repo claudio-labs/claudin',
+      'gh issue view 31',
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  it('leaves the gh reads the tool hands back unchanged in Bash', () => {
+    // A refusal costs a round-trip. Spending one on output the tool does not
+    // reduce buys nothing — batching alone did not survive the A/B.
+    for (const cmd of [
+      'gh run list --limit 20',
+      'gh issue list --state open',
+      'gh workflow view ci.yml',
+      'gh release view v1.0.8',
+      'gh api repos/claudio-labs/claudin/pulls/52/comments',
+      'gh search prs --author @me',
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(false)
+    }
+  })
+
   it('leaves mutations in Bash', () => {
     // Reads carry 1.36M of the 1.70M recorded git/gh chars; refusing a
     // mutation would buy nothing and put a dialog in front of a command the
@@ -42,6 +73,9 @@ describe('isRedirectableGitCommand', () => {
       'git stash',
       'gh pr create --title x --body y',
       'gh pr merge 12',
+      'gh run rerun 18492',
+      'gh run cancel 18492',
+      'gh issue create --title x --body y',
     ]) {
       expect(isRedirectableGitCommand(cmd)).toBe(false)
     }
@@ -72,6 +106,7 @@ describe('isRedirectableGitCommand', () => {
     expect(isRedirectableGitCommand('git log -i --grep=fix')).toBe(false)
     expect(isRedirectableGitCommand('gh pr view 12 --web')).toBe(false)
     expect(isRedirectableGitCommand('git diff --help')).toBe(false)
+    expect(isRedirectableGitCommand('gh run view 18492 --web')).toBe(false)
   })
 
   it('still redirects `-p`, which is a patch and not an interactive prompt', () => {
@@ -96,6 +131,28 @@ describe('output-trim tails', () => {
       'gh pr checks 31 2>&1 | tail -15',
     ]) {
       expect(isRedirectableGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  it('redirects a CI log read through its trim tail', () => {
+    // The recorded shape this whole `gh run view` line exists for: the model
+    // pipes the log into `tail`/`grep` because the raw dump is unreadable,
+    // which is exactly what the tool's log renderer does for it.
+    expect(
+      isRedirectableGitCommand(
+        'gh run view --job 92198424809 --repo claudio-labs/claudin --log-failed 2>&1 | tail -60',
+      ),
+    ).toBe(true)
+  })
+
+  it('leaves a `2>/dev/null` read in Bash — that is a shell redirect', () => {
+    // Only `2>&1` is a trim tail. `/dev/null` needs a shell, and the tool
+    // refuses the string outright, so redirecting it would deadlock.
+    for (const cmd of [
+      'gh run view --job 92198424809 --log 2>/dev/null | grep -A 25 "label tracks" | head -45',
+      'gh run view --job 92198424809 --log 2>/dev/null > /tmp/ci.log; grep -nE "error:" /tmp/ci.log',
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(false)
     }
   })
 
@@ -177,6 +234,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   // Trim tails — the coverage this redirect exists to reach.
   'gh pr checks 157 --repo ferrous-networking/ferrous-dns 2>&1 | head -50',
   'gh pr view 33 --json number,title,state,headRefName,url,isDraft,body 2>&1 | head -40',
+  'gh run view --job 92198424809 --repo claudio-labs/claudin --log-failed 2>&1 | tail -60',
   'git diff --stat | tail -5',
   'git diff main...HEAD --stat 2>&1 | tail -15',
   'git diff src/components/workflows/RunningWorkflowsTab.tsx | grep "^@@"',
@@ -187,6 +245,8 @@ const RECORDED_COMMANDS: readonly string[] = [
   'gh pr checks 5 2>&1',
   'gh pr view 13 --json state,mergedAt,headRefName 2>&1',
   'gh pr view 3416 --repo morpheus65535/bazarr --comments',
+  'gh pr diff 52',
+  'gh run view --job 92198424809 --repo claudio-labs/claudin --log',
   'git diff',
   'git diff -- src/components/explorer/ExplorerDialog.tsx',
   'git diff --stat ROADMAP.md',
@@ -200,6 +260,8 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git status -sb',
   // Head matches but composition keeps them in Bash.
   'git diff --stat && git diff',
+  'gh run view --job 92198424809 --log 2>/dev/null | grep -A 25 "label tracks" | head -45',
+  'gh run view --job 92198424809 --log 2>/dev/null > /tmp/ci.log; grep -nE "error:" /tmp/ci.log',
   'git diff v1.0.16..HEAD -- .env.example | cat',
   'git log --oneline -3 && git status --short | head -20',
   'git show --stat 6016051 | head -30; echo ---; git log --oneline --graph HEAD -8',
@@ -211,6 +273,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git add -A && git commit -q -m "x"',
   'git push -u origin feat/git-tool',
   'git stash push -m wip',
+  "git commit -q -F - <<'EOF'",
 ]
 
 describe('deadlock invariant', () => {

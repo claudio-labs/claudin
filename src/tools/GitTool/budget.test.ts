@@ -23,6 +23,26 @@ function makeDiff(path: string, hunks: number, linesPerHunk: number): string {
   return parts.join('\n')
 }
 
+/**
+ * `gh pr view` / `gh issue view` plain text: a header block, then a body.
+ * No dashes-only line, so it stays one part — the shape `renderIssueView`
+ * budgets.
+ */
+function makeIssueView(bodyChars: number): string {
+  return ['title:\tSome pull request', 'state:\tOPEN', 'x'.repeat(bodyChars)].join(
+    '\n',
+  )
+}
+
+/** A tab-separated table, the shape `gh pr list` / `gh run list` return. */
+function makeTable(rows: number): string {
+  return Array.from(
+    { length: rows },
+    (_, i) =>
+      `${i}\tSome pull request title number ${i} with a reasonably long subject\tfeat/branch-${i}\tOPEN`,
+  ).join('\n')
+}
+
 describe('summarizeGitOutput dispatch', () => {
   test('leaves a command with no summarizer untouched', () => {
     const output = 'abc123 some commit subject\n'.repeat(50)
@@ -52,6 +72,41 @@ describe('summarizeGitOutput dispatch', () => {
     // the renderer must fail open rather than cost the model its output.
     const weird = `@@ -1,1 +1,1 @@\n${'x'.repeat(9_000)}`
     expect(summarizeGitOutput('git diff', weird)).toBe(weird)
+  })
+})
+
+describe('gh dispatch — family AND action', () => {
+  test('`gh pr diff` is a diff, not a description', () => {
+    // Keyed on the `pr` family alone this went through renderIssueView, which
+    // cut the diff mid-line at the body budget and told the model to fetch
+    // "the description" with `--json body`.
+    const diff = makeDiff('src/a.ts', 40, 8)
+    const out = summarizeGitOutput('gh pr diff 52', diff)
+    expect(out).toBe(summarizeGitOutput('git diff', diff))
+    expect(out).not.toContain('of the description omitted')
+  })
+
+  test('a long `gh pr list` table is returned whole', () => {
+    // Same bug, worse outcome: a table has no body to budget, so truncating it
+    // at 1200 chars is pure data loss.
+    const table = makeTable(120)
+    expect(table.length).toBeGreaterThan(3_000)
+    expect(summarizeGitOutput('gh pr list --limit 120', table)).toBe(table)
+  })
+
+  test('`gh pr view` and `gh issue view` still get the body budget', () => {
+    const body = makeIssueView(6_000)
+    for (const cmd of ['gh pr view 12', 'gh issue view 7']) {
+      const out = summarizeGitOutput(cmd, body)
+      expect(out).not.toBe(body)
+      expect(out).toContain('of the description omitted')
+    }
+  })
+
+  test('an unknown gh action falls through unchanged', () => {
+    const body = makeIssueView(6_000)
+    expect(summarizeGitOutput('gh pr checks 12', body)).toBe(body)
+    expect(summarizeGitOutput('gh release view v1.0.8', body)).toBe(body)
   })
 })
 
@@ -169,6 +224,21 @@ describe('diff rendering', () => {
 describe('gh run log rendering', () => {
   const line = (job: string, step: string, ts: string, text: string) =>
     `${job}\t${step}\t${ts} ${text}`
+
+  test('`gh run view --log` reaches the renderer past its flags', () => {
+    // The recorded shape carries `--job <id> --repo <o/r>` between the action
+    // and `--log`; the dispatch must not read a flag value as the action.
+    const raw = Array.from({ length: 100 }, (_, i) =>
+      line('smoke-and-tests', 'Run tests', '2026-08-05T03:24:45.1589141Z', `step ${i}`),
+    ).join('\n')
+    const out = summarizeGitOutput(
+      'gh run view --job 92198424809 --repo claudio-labs/claudin --log',
+      raw,
+    )
+    expect(out).not.toBe(raw)
+    expect(out).toContain('## smoke-and-tests › Run tests')
+    expect(out).not.toContain('2026-08-05T03:24:45')
+  })
 
   test('hoists the repeated job/step prefix and drops the timestamps', () => {
     const raw = [
