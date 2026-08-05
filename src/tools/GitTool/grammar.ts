@@ -557,6 +557,24 @@ export function isReadOnlyGitCommand(raw: string): boolean {
 }
 
 /**
+ * The `git` subcommand a command string resolves to, past any global options,
+ * or `null` when it is not a `git` command at all.
+ *
+ * Exported so callers that need to recognise a subcommand do it through this
+ * tokenizer rather than with a regex of their own: `resolveGitSubcommand`
+ * already knows that `-c x=y` and `--git-dir d` swallow a following value,
+ * which is the part a hand-written pattern gets wrong. It also keeps those
+ * callers off a pattern like `(?:-\S+\s+|--\S+\s+)*`, whose two branches match
+ * the same text and so backtrack exponentially when the subcommand does not
+ * match (CodeQL flagged exactly that in `delta.ts`).
+ */
+export function gitSubcommandOf(raw: string): string | null {
+  const tokens = raw.trim().split(WHITESPACE_RE)
+  if (tokens[0] !== 'git') return null
+  return resolveGitSubcommand(tokens.slice(1)).subcommand
+}
+
+/**
  * A batch is read-only only when EVERY element is, so a mixed batch is refused
  * in plan mode rather than half-executed. An empty list is not read-only —
  * there is nothing to vouch for.

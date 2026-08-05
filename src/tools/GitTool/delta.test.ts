@@ -176,6 +176,32 @@ describe('rule 3 — a baseline move drops every remembered body', () => {
     })
     expect(_getRememberedCountForTesting()).toBe(1)
   })
+
+  // Recognising the subcommand through the grammar's tokenizer rather than a
+  // regex fixed a real miss: `-c key=value` consumes a following token, so a
+  // pattern that walks flags one at a time stops at `key=value` and never sees
+  // the checkout.
+  test.each([
+    ['git -c core.pager=cat checkout main'],
+    ['git -C /some/path reset --hard'],
+    ['git --git-dir /tmp/x.git stash'],
+  ])('%s invalidates despite the global options', command => {
+    firstDelivery()
+    applyGitDelta(command, '', { full: false, toolUseId: 'toolu_global' })
+    expect(_getRememberedCountForTesting()).toBe(0)
+  })
+
+  // CodeQL flagged the previous pattern as exponentially backtracking: its two
+  // alternatives matched the same text, so a long flag run that never reaches a
+  // baseline-moving subcommand took 2^n steps. Any regression re-introducing a
+  // pattern of that shape hangs here instead of in production.
+  test('a pathological flag run is classified in linear time', () => {
+    const command = `git\t${'--!\t'.repeat(64)}diff`
+    const started = performance.now()
+    firstDelivery()
+    applyGitDelta(command, '', { full: false, toolUseId: 'toolu_redos' })
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
 })
 
 describe('rule 4 — it re-arms', () => {

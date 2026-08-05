@@ -22,6 +22,7 @@ import { isEnvTruthy } from '../../utils/envUtils.js'
 import { logError } from '../../utils/log.js'
 import { getAgentId } from '../../utils/teammate.js'
 import { detectGitOperation } from '../shared/gitOperationTracking.js'
+import { gitSubcommandOf } from './grammar.js'
 
 /**
  * How many consecutive deltas one command gets before a full body is served
@@ -70,8 +71,24 @@ const DIFF_PATH_PREFIX_RE = /^[a-z]\//
  * Deliberately NOT gated on the model's file edits — those are precisely what
  * the delta is for. Only operations that move HEAD or the index count.
  */
-const BASELINE_MOVING_RE =
-  /^\s*git\s+(?:-[^\s]+\s+|--\S+\s+)*(add|am|apply|checkout|cherry-pick|clean|merge|mv|pull|rebase|reset|restore|revert|rm|stash|switch)\b/
+const BASELINE_MOVING_SUBCOMMANDS: ReadonlySet<string> = new Set([
+  'add',
+  'am',
+  'apply',
+  'checkout',
+  'cherry-pick',
+  'clean',
+  'merge',
+  'mv',
+  'pull',
+  'rebase',
+  'reset',
+  'restore',
+  'revert',
+  'rm',
+  'stash',
+  'switch',
+])
 
 const DELTA_KILLSWITCH = 'CLAUDIN_DISABLE_GIT_DELTA'
 
@@ -201,7 +218,8 @@ function remember(
  * the one that happens to share its command string.
  */
 function invalidatesBaseline(command: string, output: string): boolean {
-  if (BASELINE_MOVING_RE.test(command)) return true
+  const sub = gitSubcommandOf(command)
+  if (sub !== null && BASELINE_MOVING_SUBCOMMANDS.has(sub)) return true
   const op = detectGitOperation(command, output)
   return Boolean(op.commit ?? op.push ?? op.branch ?? op.pr)
 }
