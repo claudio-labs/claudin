@@ -68,15 +68,20 @@ export class TaskOutput {
     this.#onProgress = onProgress
 
     // Register for polling when stdout goes to a file and progress is needed.
-    // Actual polling is started/stopped by React via startPolling/stopPolling.
+    // Registering is not enough to get a tick: the owner must also call
+    // startPolling.
     if (stdoutToFile && onProgress) {
       TaskOutput.#registry.set(taskId, this)
     }
   }
 
   /**
-   * Begin polling the output file for progress. Called from React
-   * useEffect when the progress component mounts.
+   * Begin polling the output file for progress.
+   *
+   * Called by the TOOL that owns the task, not by React — BashTool
+   * (`BashTool.tsx:1236`), PowerShellTool (`:852`) and BuildTool
+   * (`BuildTool/run.ts`). Nothing mounts or unmounts it, and the interval is
+   * `unref()`d, so polling works headless and with the tool block collapsed.
    */
   static startPolling(taskId: string): void {
     const instance = TaskOutput.#registry.get(taskId)
@@ -91,8 +96,9 @@ export class TaskOutput {
   }
 
   /**
-   * Stop polling the output file. Called from React useEffect cleanup
-   * when the progress component unmounts.
+   * Stop polling the output file. Called by the owning tool when its command
+   * finishes — pair it with `startPolling` in a `finally`, since a task left
+   * polling keeps the shared interval alive for every other task too.
    */
   static stopPolling(taskId: string): void {
     TaskOutput.#activePolling.delete(taskId)

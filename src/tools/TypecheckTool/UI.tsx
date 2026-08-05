@@ -6,8 +6,16 @@ import { Box, Text } from '../../ink.js'
 import type { Input, Output } from './TypecheckTool.js'
 import { resolveCheckCommand } from './TypecheckTool.js'
 
+/**
+ * Display label only — the wire name stays `Typecheck` (see prompt.ts), which is
+ * what the description, the alias and the Bash refusal message address. `Build`
+ * sits beside this tool now, and `SourceCheck` is the honest label for the one
+ * that reads the source without producing anything: it also drives `phpstan`,
+ * `psalm` and `dart analyze`, none of which are type checkers. Same split as
+ * `RunTests`, which renders as `Test` (RunTestsTool/UI.tsx).
+ */
 export function userFacingName(): string {
-  return 'Typecheck'
+  return 'SourceCheck'
 }
 
 export function renderToolUseMessage(

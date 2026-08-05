@@ -1,9 +1,22 @@
 /**
- * Normalized, checker-agnostic diagnostic model produced by every parser and
- * consumed by the baseline, the dossier and the formatter. One shape here is
- * what lets the tool speak the same structured language for tsc, cargo check,
- * pyright, go build, dart analyze and the rest.
+ * Normalized, checker-agnostic diagnostic model consumed by the baseline, the
+ * dossier and the formatter. One shape here is what lets the tool speak the
+ * same structured language for tsc, cargo check, pyright, go build, dart
+ * analyze and the rest.
+ *
+ * The parser-facing half (`RawDiagnostic`, `ParseInput`, `ParsedDiagnostics`)
+ * moved to `../shared/diagnostics/types.js` when `Build` began sharing the same
+ * parsers, and is re-exported here so this file stays the one import site for
+ * everything inside this tool.
  */
+
+export type {
+  ParseInput,
+  ParsedDiagnostics,
+  RawDiagnostic,
+} from '../shared/diagnostics/types.js'
+
+import type { RawDiagnostic } from '../shared/diagnostics/types.js'
 
 /** The static checker we detected/ran, used to pick a flag plan + parser. */
 export type Checker =
@@ -40,30 +53,6 @@ export type DiagnosticStatus = 'new' | 'preexisting'
 export type DiagnosticSite = {
   file: string
   line: number
-}
-
-/**
- * What a parser produces: position + text, nothing derived. Fingerprinting,
- * baseline classification, excerpts and grouping are all added downstream so a
- * parser stays a pure function of the checker's output.
- */
-export type RawDiagnostic = {
-  /** Path as the checker printed it — resolved against cwd downstream. */
-  file: string
-  /** 1-based line. Checkers that omit it report 0, which never resolves an excerpt. */
-  line: number
-  /** 1-based column when the checker gives one. */
-  column?: number
-  severity: 'error' | 'warning'
-  /** Checker-native rule id: TS2322, E0308, reportGeneralTypeIssues, CS0103… */
-  code?: string
-  /**
-   * Full message including any indented continuation lines (tsc chains
-   * "Types of parameters … are incompatible" under the head line). Kept whole
-   * because the fingerprint hashes it: a chain that changes IS a different
-   * error.
-   */
-  message: string
 }
 
 export type Diagnostic = RawDiagnostic & {
@@ -182,18 +171,3 @@ export type CheckResult = {
   /** A short tail of raw output, attached only on degraded runs. */
   stdoutTail?: string
 }
-
-/**
- * Raw checker output handed to the parse chain. Parsers must be pure and never
- * throw — on unrecognized input they return null so the chain can fall through.
- */
-export type ParseInput = {
-  stdout: string
-  stderr: string
-  exitCode: number
-}
-
-/** What a parser returns: diagnostics, or null when the shape is not its own. */
-export type ParsedDiagnostics = {
-  diagnostics: RawDiagnostic[]
-} | null

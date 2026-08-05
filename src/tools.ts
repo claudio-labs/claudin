@@ -36,6 +36,8 @@ const getRunTestsTool = () =>
   require('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool
 const getTypecheckTool = () =>
   require('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool as typeof import('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool
+const getBuildTool = () =>
+  require('./tools/BuildTool/BuildTool.js').BuildTool as typeof import('./tools/BuildTool/BuildTool.js').BuildTool
 const getGitTool = () =>
   require('./tools/GitTool/GitTool.js').GitTool as typeof import('./tools/GitTool/GitTool.js').GitTool
 const getRenameTool = () =>
@@ -271,6 +273,10 @@ export function getAllBaseTools(): Tools {
     getLSPTool(),
     getRunTestsTool(),
     getTypecheckTool(),
+    // CLAUDIN_DISABLE_BUILD_TOOL=1 drops it entirely, for the same reason as
+    // the Git tool below: the description is paid on every request, so the
+    // killswitch has to remove the schema, not just the behaviour.
+    ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_BUILD_TOOL) ? [] : [getBuildTool()]),
     // CLAUDIN_DISABLE_GIT_TOOL=1 drops it entirely — the description is paid on
     // every request, so the killswitch has to remove the schema, not just the
     // behaviour. See src/tools/GitTool/GitTool.ts.

@@ -1,4 +1,4 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from '../types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
 
 /**
  * The two Python checkers, both JSON but shaped differently.

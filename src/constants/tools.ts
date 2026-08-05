@@ -31,6 +31,7 @@ import { WORKFLOW_TOOL_NAME } from '../tools/WorkflowTool/constants.js'
 import { WORKFLOW_RUN_TOOL_NAME } from '../tools/AgentWorkflow/constants.js'
 import { RUN_TESTS_TOOL_NAME } from '../tools/RunTestsTool/prompt.js'
 import { TYPECHECK_TOOL_NAME } from '../tools/TypecheckTool/prompt.js'
+import { BUILD_TOOL_NAME } from '../tools/BuildTool/prompt.js'
 import {
   CRON_CREATE_TOOL_NAME,
   CRON_DELETE_TOOL_NAME,
@@ -82,6 +83,10 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // agent that scrapes raw compiler stdout in a project with a known error
   // backlog pays for the whole backlog on every check.
   TYPECHECK_TOOL_NAME,
+  // And the build, for the same reason: a cold Gradle or CMake build streams
+  // thousands of progress lines that a background agent would otherwise carry
+  // in full for the sake of the few that name the failure.
+  BUILD_TOOL_NAME,
 ])
 /**
  * Tools allowed only for in-process teammates (not general async agents).
