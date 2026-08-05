@@ -74,17 +74,53 @@ Two traps this work exposed, both live outside the Grep code:
   GlobTool/UI cycle** ("Cannot access 'GrepTool' before initialization"). That
   is why `buildSymbolsOutput` now lives in its own `symbolsOutput.ts`.
 
-### D2 — `git diff` wrapper (103k chars in 21 calls, effort M)
-The single largest Bash command shape (mean 4,903 chars, max 16,819; 16% of all
-Bash chars). A Diff/Review tool returning stat + summarized hunks with
-expand-on-demand per file fits the Typecheck mould, with merge-base playing the
-role of the baseline. Runs in nearly every session because it gates every commit.
+### D2 — Git tool — DONE 2026-08-04 (branch `feat/git-tool`)
+Landed much wider than "a `git diff` wrapper": one `Git({commands: [...]})` tool
+covering **all** of git and gh, reads and mutations, with the list as the input
+so a burst is one call.
 
-### D3 — Read re-read dedup (~160k tok, effort M, delicate)
+**Re-measured first, over 760 sessions** (`scripts/profile/git-tool-baseline.ts`,
+which is the reusable measurement) — the 34-session numbers this roadmap was
+written from were off: git+gh is **22.6% of Bash chars, 5.0% of ALL tool-result
+chars** (1.70M of 33.98M). `git diff` 162 calls/428k chars, `git status`
+268/234k, **`gh run` 117/202k** (unplanned #3, CI log dumps), `git log`
+137/153k, `git add` 274 calls but only 422 mean. **Only 199 of 760 sessions
+(26%) ran any git command** — the number that decides whether an always-present
+tool pays for its description.
+
+Numbers to cite:
+- **Replay** (`git-summarizer-replay.ts` over the recorded corpus): **30.6%
+  take** on the 230 addressable calls; 27.4% projected with output-trim tails
+  stripped. `git diff` 37%, `gh run` 42%, `gh pr` 34%. `git log` got **no
+  summarizer** — the Bash filter's `--oneline` rewrite already took it, and the
+  replay proved there was nothing left.
+- **Live A/B** (1 run/arm, 15 turns, Sonnet 5, one build with
+  `CLAUDIN_DISABLE_GIT_TOOL=1` as the "before" arm): cost **−11.5%**,
+  cache_creation **−24.6%**, cache_read −10.6%, input −7.4%.
+
+**The batching claim did NOT survive.** Bash already batches with `&&` at 1.50
+git commands per call vs the tool's 1.46, and calls-per-burst rose 4.00 → 4.33
+because the one-shot redirect refusal costs an extra call. Cite payload and
+cache, never call count.
+
+Design notes worth keeping: permissions delegate to `bashToolHasPermission`
+verbatim (so `Bash(git push:*)` rules still apply and the ~900-line security
+pipeline is not reimplemented); `isReadOnly` is per-command and fails closed,
+which is what lets `git diff` run inside plan mode; the diff pivot is at 6 KB
+because file-count pivots are useless (43 of 83 recorded diffs are single-file).
+
+### D3 — Read re-read dedup (effort M, delicate) — NOW THE BIGGEST ITEM BY FAR
 196 of 429 Read calls (639,163 chars) re-read a path already read in the same
 session. Existing clip-pin / dedup stand-down only covers entries a prior FULL
 Read wrote; the gap is "file unchanged since your last read" → return the delta,
 not the body. Touches the clip-frontier cache invariant, so plan it separately.
+
+The 760-session re-measurement makes the ranking stark: **Read is 58.4% of all
+tool-result chars (19.8M) against git+gh's 5.0%** — an order of magnitude more
+than D2 was. `src/tools/GitTool/delta.ts` is now a working precedent for the
+elide-what-you-already-sent lane, including the rule that matters: fire only
+when the previous body's `tool_use_id` is absent from `getClippedIds()`, so
+nothing invisible is ever elided.
 
 ### D4 — Make the existing redirects actually fire (52k chars, effort S)
 99 Bash calls contained `bun run typecheck`/`tsc --noEmit` (52,471 chars) against
@@ -101,12 +137,27 @@ detect/parse/budget/redirect family — see `runtests-tool-language-coverage.md`
 `typecheck-tool-baseline-design.md` for the shape, and reuse
 `src/tools/shared/sourceExcerpt.ts`.
 
-## Shared-code debt this exposes
-`RunTestsTool/` and `TypecheckTool/` duplicate their `redirect.ts` (both
-re-implement `SHELL_COMPOSITION_RE` + `OPT_OUT_FLAG_RE` + a 100-entry one-shot
-memo) and their `budget.ts` caps. Only `src/tools/shared/sourceExcerpt.ts` is
-genuinely shared. Factor those into `src/tools/shared/` when adding D2 or D5
-rather than copying a third time. `RunTestsTool` also still lacks a `budget.test.ts`.
+## Shared-code debt — PAID 2026-08-04 during D2
+`src/tools/shared/redirect.ts` now owns the shell-composition guard, the
+output-trim-tail stripper (a FACTORY, because RunTests deliberately excludes
+`wc` and Typecheck includes it) and the one-shot memo; RunTests, Typecheck and
+`BashTool/toolRedirect.ts` all consume it. `src/tools/shellToolResultMappers.ts`
+now exists — its test file had been sitting there without the module — and Bash
+and PowerShell share it.
+
+That extraction immediately paid: the shared stripper's argument run swallowed
+whole commands chained after the filter (`… | head -30; echo ---; git log -8`
+stripped to `git show --stat X`), so a redirect would have suggested a command
+with the rest silently dropped. Fixed once, for all three consumers.
+
+Still open: `RunTestsTool` lacks a `budget.test.ts`, and the `budget.ts` caps
+themselves were NOT unified — each tool's budget is genuinely different.
+
+Also unblocked along the way: profile scripts that import `src/` died on the
+missing `@growthbook/growthbook` (the build stubs analytics, so it is not a
+dependency). `scripts/profile/preload-stubs.ts` is the preload —
+`bun --preload ./scripts/profile/preload-stubs.ts scripts/profile/<name>.ts`.
+The grep replay harness had been silently unrunnable for the same reason.
 
 ## Out of scope for now
 `PowerShellTool` has no output filter (the `src/outputFilter/Bash/` pipeline is

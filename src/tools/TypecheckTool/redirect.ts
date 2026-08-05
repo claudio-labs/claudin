@@ -1,4 +1,13 @@
 import { TYPECHECK_TOOL_NAME } from './prompt.js'
+import {
+  createOneShotMemo,
+  createOutputTrimTailStripper,
+  DEFAULT_OUTPUT_TRIM_FILTERS,
+  hasShellComposition,
+  MEMO_LIMIT,
+} from '../shared/redirect.js'
+
+export { MEMO_LIMIT }
 
 /**
  * Bash → Typecheck redirect.
@@ -32,21 +41,21 @@ import { TYPECHECK_TOOL_NAME } from './prompt.js'
  * refusal would be a wall rather than a signpost.
  */
 
-const SHELL_COMPOSITION_RE = /[;|&<>\n`'"]|\$\(/
-
 /**
  * The output-trimming tail the model habitually appends to a verbose checker
  * (`2>&1 | tail -40`, `| grep "error TS"`). It expresses "give me LESS output",
  * which is exactly what this tool returns, so it must not read as a second
  * command. Only output REDUCERS qualify — `tee` and `>` persist the output
  * somewhere else and stay composition.
+ *
+ * `wc` is added to the shared default set here: `tsc --noEmit | wc -l` asks
+ * "how many errors", and a baseline-filtered diagnostic list answers that
+ * better than a raw count does.
  */
-const OUTPUT_TRIM_TAIL_RE =
-  /\s(?:2>&1\s*)?(?:\|\s*(?:head|tail|grep|rg|wc)\b(?:'[^']*'|"[^"]*"|[^|'"])*)+$|\s2>&1$/
-
-export function stripOutputTrimTail(command: string): string {
-  return command.replace(OUTPUT_TRIM_TAIL_RE, '').trim()
-}
+export const stripOutputTrimTail = createOutputTrimTailStripper([
+  ...DEFAULT_OUTPUT_TRIM_FILTERS,
+  'wc',
+])
 
 /** Flags that ask for raw output, a watcher, or no check at all. */
 const OPT_OUT_FLAG_RE =
@@ -75,20 +84,16 @@ const REDIRECTABLE_RES: RegExp[] = [
 export function isRedirectableCheckCommand(command: string): boolean {
   const cmd = stripOutputTrimTail(command.trim())
   if (!cmd) return false
-  if (SHELL_COMPOSITION_RE.test(cmd)) return false
+  if (hasShellComposition(cmd)) return false
   if (OPT_OUT_FLAG_RE.test(cmd)) return false
   return REDIRECTABLE_RES.some(re => re.test(cmd))
 }
 
 /**
- * Commands already refused once. Past the limit the OLDEST entry is evicted — a
- * Set iterates in insertion order — so the set cannot grow for the life of the
- * process AND a command that already escaped is not re-armed just because a
- * hundred unrelated ones came after it.
+ * This tool's own refusal memo — see the shared module for why it is not
+ * shared with the sibling redirects.
  */
-const refusedCommands = new Set<string>()
-/** Exported so the memo tests derive their fixtures from the real bound. */
-export const MEMO_LIMIT = 100
+const memo = createOneShotMemo(MEMO_LIMIT)
 
 /**
  * Stateful gate. Records the command as refused, so the SECOND identical call
@@ -96,18 +101,11 @@ export const MEMO_LIMIT = 100
  */
 export function shouldRedirectToTypecheck(command: string): boolean {
   if (!isRedirectableCheckCommand(command)) return false
-  const key = command.trim()
-  if (refusedCommands.has(key)) return false
-  if (refusedCommands.size >= MEMO_LIMIT) {
-    const oldest = refusedCommands.values().next().value
-    if (oldest !== undefined) refusedCommands.delete(oldest)
-  }
-  refusedCommands.add(key)
-  return true
+  return memo.shouldRefuse(command)
 }
 
 export function resetTypecheckRedirectMemoForTesting(): void {
-  refusedCommands.clear()
+  memo.reset()
 }
 
 export function renderTypecheckRedirect(command: string): string {

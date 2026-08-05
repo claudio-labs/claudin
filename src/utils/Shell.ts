@@ -168,6 +168,12 @@ export type ExecOptions = {
   shouldAutoBackground?: boolean
   /** When provided, stdout is piped (not sent to file) and this callback fires on each data chunk. */
   onStdout?: (data: string) => void
+  /**
+   * Extra environment for the child, applied LAST so it wins over the shell
+   * provider's overrides. Omitting it leaves the environment byte-identical to
+   * before this option existed (`...undefined` spreads to nothing).
+   */
+  env?: Readonly<Record<string, string>>
 }
 
 /**
@@ -187,6 +193,7 @@ export async function exec(
     shouldUseSandbox,
     shouldAutoBackground,
     onStdout,
+    env: envExtra,
   } = options ?? {}
   const commandTimeout = timeout || DEFAULT_TIMEOUT
 
@@ -328,6 +335,7 @@ export async function exec(
         GIT_EDITOR: 'true',
         CLAUDECODE: '1',
         ...envOverrides,
+        ...envExtra,
       },
       cwd,
       stdio: usePipeMode

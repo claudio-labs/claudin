@@ -36,6 +36,28 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 30s tool-result cache keys on the input alone, so flipping that env mid-session
 does not re-answer a search it already served.
 
+`git` and `gh` are the third lane of the same idea. A Bash command that only
+READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|checks`
+— is refused once with the `Git` call to make instead, and re-sending the
+identical command runs it (`src/tools/GitTool/redirect.ts`,
+`CLAUDIN_DISABLE_GIT_REDIRECT=1`). A trailing `| head -50`-style trim is stripped
+before that decision, so a piped read still redirects; mutations are never
+refused, since a dialog in front of a `git push` buys nothing. The tool takes a
+**list** — `Git({commands:["git status","git diff","git log -5"]})` — so a burst
+that would have been three Bash calls is one call and one result.
+
+What comes back is budgeted. A unified diff at or above 6 KB, or touching 6+
+files, loses its hunks for a stat table naming the command that fetches one
+file's hunks back; below that each file gets 60 lines before the remainder is
+named (`src/tools/GitTool/parsers/diff.ts`). Re-running an identical read returns
+only the sections that changed — the stat table still lists every file, with the
+ones you already received marked `unchanged, elided` — so pass `full: true` for
+the whole body, or `CLAUDIN_DISABLE_GIT_DELTA=1` to turn that lane off. Both
+lanes ship a summary only when it is ≤70% of what it replaces, and a FAILING
+command is never budgeted or elided: it gets a one-line diagnosis prepended and
+keeps its raw text. `CLAUDIN_DISABLE_GIT_TOOL=1` removes the tool, and with it
+the redirect.
+
 ## Module Map
 
 Approximate `.ts(x)` counts in `(N)` — the big dirs (`utils`, `components`,
@@ -54,6 +76,7 @@ src/
 │   ├── BashTool/                ← shell execution, permissions, sandbox
 │   ├── FileReadTool/ FileEditTool/ FileWriteTool/ NotebookEditTool/  ← file IO
 │   ├── GrepTool/ GlobTool/      ← ripgrep + glob wrappers
+│   ├── GitTool/                 ← git + gh, batched; permissions delegate to BashTool's
 │   ├── AgentTool/               ← sub-agent spawning (built-in agents in built-in/)
 │   ├── TaskCreateTool/ …        ← task tool surface (runtime backends live in src/tasks/)
 │   ├── WebFetchTool/ WebSearchTool/  ← Firecrawl or DuckDuckGo/raw
