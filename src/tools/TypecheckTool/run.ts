@@ -6,7 +6,7 @@ import { readFullShellOutput } from '../../utils/shell/fullOutput.js'
 import { readSourceExcerpt } from '../shared/sourceExcerpt.js'
 import { resolveBaseline, type BaselineMode } from './baseline.js'
 import { fingerprintDiagnostic, normalizeDiagnosticPath } from './fingerprint.js'
-import { parseCheckerOutput } from './parsers/index.js'
+import { parseCheckerOutput } from './parseChain.js'
 import type { Checker, CheckResult, Diagnostic, RawDiagnostic } from './types.js'
 
 /**

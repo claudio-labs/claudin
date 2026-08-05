@@ -36,7 +36,37 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 30s tool-result cache keys on the input alone, so flipping that env mid-session
 does not re-answer a search it already served.
 
-`git` and `gh` are the third lane of the same idea. A Bash command that only
+`Build` is the artifact-producing sibling of `Typecheck` — same
+detect/parse/budget/redirect family, different job. It runs the project's build
+(cargo, gradle, maven, sbt, msbuild, cmake/make/ninja, swift, zig, mix, rebar3,
+and the `build` script of a package.json, among others) and returns the
+diagnostics with `file:line` plus a source excerpt instead of the progress log.
+Two things it does that the check lane does not: it extracts the **failure
+block** for a failure that carries no position
+(`src/tools/BuildTool/failureBlock.ts` — a Gradle `* What went wrong:`, a Maven
+goal failure, a cargo linker error, a `make: *** Error 2`), and it reports an
+incremental **no-op** as "up to date, nothing rebuilt" rather than as a clean
+build (`noOp.ts`), because a cached run compiles nothing and `0 warnings` would
+describe a compilation that never happened. There is no baseline here,
+deliberately: a second run prints nothing, and recording that would mark the
+whole backlog as newly introduced.
+
+The run is stopped after a stretch with **no output at all** (`idleTimeout`,
+default 180s) under a wall ceiling (`timeout`, default 600s), and the result
+says how long it ran, how long it had been silent and the last line it printed —
+as observations, since linking and a cold daemon are legitimately quiet. The
+watchdog polls the size of the shell's output file rather than subscribing to
+`ExecOptions.onProgress`, because in file mode that callback only fires while
+the TUI has asked `TaskOutput` to poll. Diagnostic parsers are shared with
+`Typecheck` in `src/tools/shared/diagnostics/`; the chain takes a parser LIST
+and MERGES the native ones, so one Gradle run reports its Kotlin and its javac
+errors together. `CLAUDIN_DISABLE_BUILD_TOOL=1` removes the tool,
+`CLAUDIN_DISABLE_BUILD_REDIRECT=1` only the Bash refusal — which is narrowed to
+the noisy toolchains (`npm run build` is deliberately never refused, its output
+being already short) and never fires for a command that also installs,
+publishes or runs something.
+
+`git` and `gh` are the fourth lane of the same idea. A Bash command that only
 READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|checks`
 — is refused once with the `Git` call to make instead, and re-sending the
 identical command runs it (`src/tools/GitTool/redirect.ts`,

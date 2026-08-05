@@ -25,6 +25,7 @@
 - [Typecheck A/B bench — what to cite and what is noise](typecheck-ab-bench-fixture-flaw.md) — cost −16/−18% and payload −80% hold across 5 runs; context swings −13%→−1%; fixture backlog must overlap the edited files
 - [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](runtests-tool-shell-env-bugs.md) — ignores its cwd (worktree sub-agent tests main), FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation
+- [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run was +27% cost because the tool only built getCwd(); with `directory` it is −7.7% cost / −25% output (median of 3)
 - [Git tool — D2, shipped 2026-08-04](git-tool-design.md) — Git({commands:[…]}) over all git+gh; permissions delegate to bashToolHasPermission; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 
 ## Providers & models

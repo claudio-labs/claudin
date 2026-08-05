@@ -46,6 +46,8 @@ import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js';
 import { renderRunTestsRedirect, shouldRedirectToRunTests } from '../RunTestsTool/redirect.js';
 import { TYPECHECK_TOOL_NAME } from '../TypecheckTool/prompt.js';
 import { renderTypecheckRedirect, shouldRedirectToTypecheck } from '../TypecheckTool/redirect.js';
+import { BUILD_TOOL_NAME } from '../BuildTool/prompt.js';
+import { renderBuildRedirect, shouldRedirectToBuild } from '../BuildTool/redirect.js';
 import { GIT_TOOL_NAME } from '../GitTool/prompt.js';
 import { renderGitRedirect, shouldRedirectToGit } from '../GitTool/redirect.js';
 import {
@@ -563,6 +565,18 @@ export const BashTool = buildTool({
         result: false,
         message: renderTypecheckRedirect(input.command),
         errorCode: 13
+      };
+    }
+    // And the artifact-producing half of the same idea. Narrowed to the
+    // toolchains that print hundreds of progress lines — `npm run build` is
+    // deliberately absent, since a JS build's output is already short — and
+    // never for a command that also installs, publishes or runs something.
+    // The refusal is one-shot per command; see BuildTool/redirect.ts.
+    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_BUILD_REDIRECT) && findToolByName(context?.options?.tools ?? [], BUILD_TOOL_NAME) !== undefined && shouldRedirectToBuild(input.command)) {
+      return {
+        result: false,
+        message: renderBuildRedirect(input.command),
+        errorCode: 15
       };
     }
     // Same lever again, aimed at the repository reads. Only the READ shapes are

@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import type { ParseInput } from '../types.js'
+import type { ParseInput } from './types.js'
 import { parseCargoJson } from './cargoJson.js'
 import { parseDartMachine } from './dartMachine.js'
 import { parseDenoText } from './denoText.js'
 import { parseGnuStyle } from './gnuStyle.js'
 import { scrapeCounts } from './heuristic.js'
-import { parseCheckerOutput } from './index.js'
+import { parseDiagnostics } from './index.js'
 import { parseMsvcStyle } from './msvcStyle.js'
 import { parsePhpstanJson, parsePsalmJson } from './phpJson.js'
 import { parseMypyJson, parsePyrightJson } from './pythonJson.js'
@@ -268,13 +268,13 @@ describe('parseDenoText', () => {
 
   test('reads the coloured form, which deno emits even under NO_COLOR', () => {
     // deno colourises whenever FORCE_COLOR is merely PRESENT, whatever its
-    // value, so the escape stripping in parseCheckerOutput is load-bearing.
+    // value, so the escape stripping in parseDiagnostics is load-bearing.
     const coloured = [
       '\u001B[0m\u001B[32mCheck\u001B[0m main.ts',
       "\u001B[0m\u001B[1mTS2322 \u001B[0m[ERROR]: Type 'string' is not assignable to type 'number'.",
       '    at \u001B[0m\u001B[36mfile:///tmp/dn/main.ts\u001B[0m:\u001B[0m\u001B[33m1\u001B[0m:\u001B[0m\u001B[33m14\u001B[0m',
     ].join('\n')
-    const outcome = parseCheckerOutput('deno', input(coloured))
+    const outcome = parseDiagnostics([parseDenoText], input(coloured))
     expect(outcome.degraded).toBe(false)
     expect(outcome.diagnostics[0]).toMatchObject({
       file: '/tmp/dn/main.ts',
@@ -434,9 +434,9 @@ describe('php parsers', () => {
   })
 })
 
-describe('parseCheckerOutput chain', () => {
+describe('parseDiagnostics chain', () => {
   test('a clean exit with no output is a pass, not a degraded run', () => {
-    const outcome = parseCheckerOutput('tsc', input('', 0))
+    const outcome = parseDiagnostics([parseMsvcStyle], input('', 0))
     expect(outcome.degraded).toBe(false)
     expect(outcome.diagnostics).toEqual([])
   })
@@ -444,13 +444,13 @@ describe('parseCheckerOutput chain', () => {
   test('falls back to the generic parsers when the native one finds nothing', () => {
     // A cargo run through a composed script never gets --message-format=json,
     // so its human output must still be read rather than degraded.
-    const outcome = parseCheckerOutput('cargo', input('src/main.rs:4:9: mismatched types'))
+    const outcome = parseDiagnostics([parseCargoJson], input('src/main.rs:4:9: mismatched types'))
     expect(outcome.degraded).toBe(false)
     expect(outcome.diagnostics[0]?.line).toBe(4)
   })
 
   test('unreadable failing output degrades with a scraped count', () => {
-    const outcome = parseCheckerOutput('tsc', input('something went badly error somewhere', 2))
+    const outcome = parseDiagnostics([parseMsvcStyle], input('something went badly error somewhere', 2))
     expect(outcome.degraded).toBe(true)
     expect(outcome.estimatedErrors).toBeGreaterThan(0)
   })
