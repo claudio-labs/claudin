@@ -54,10 +54,14 @@ whole backlog as newly introduced.
 The run is stopped after a stretch with **no output at all** (`idleTimeout`,
 default 180s) under a wall ceiling (`timeout`, default 600s), and the result
 says how long it ran, how long it had been silent and the last line it printed —
-as observations, since linking and a cold daemon are legitimately quiet. The
-watchdog polls the size of the shell's output file rather than subscribing to
-`ExecOptions.onProgress`, because in file mode that callback only fires while
-the TUI has asked `TaskOutput` to poll. Diagnostic parsers are shared with
+as observations, since linking and a cold daemon are legitimately quiet. While
+it runs, the tool block shows the phase it is in — `cargo · Compiling syn
+v1.0.109`, `ninja · [312/847] …`, or `silent for 40s` once the output stops
+(`progressLine.ts`). That label and the idle watchdog share one tick: both ride
+`ExecOptions.onProgress`, which needs BOTH the callback passed to `exec` and a
+`TaskOutput.startPolling` call — the tool makes that call itself, so it works
+headless and with the block collapsed. Progress messages are dropped before
+serialization, so none of this reaches the model. Diagnostic parsers are shared with
 `Typecheck` in `src/tools/shared/diagnostics/`; the chain takes a parser LIST
 and MERGES the native ones, so one Gradle run reports its Kotlin and its javac
 errors together. `CLAUDIN_DISABLE_BUILD_TOOL=1` removes the tool,

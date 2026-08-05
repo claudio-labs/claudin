@@ -130,7 +130,7 @@ describe('BuildTool.call — fake gradle wrapper', () => {
     expect(rendered).toContain('Raise idleTimeout')
   }, 30_000)
 
-  test('a running build reports what it is doing, and the label tracks the newest line', async () => {
+  test('a running build reports what it is doing', async () => {
     const root = gradleProject(
       [
         'echo "> Task :app:processResources"',
@@ -144,12 +144,18 @@ describe('BuildTool.call — fake gradle wrapper', () => {
       BuildTool.call({}, context, undefined as never, undefined as never, p => seen.push(p.data)),
     )
 
-    // The poller ticks about once a second, so a ~2s build yields several.
-    expect(seen.length).toBeGreaterThanOrEqual(2)
-    expect(seen.at(-1)?.system).toBe('gradle')
-    expect(seen.at(-1)?.label).toBe('> Task :app:compileKotlin')
-    // Elapsed only ever moves forward.
-    expect(seen.at(-1)!.elapsedMs).toBeGreaterThanOrEqual(seen[0]!.elapsedMs)
+    // The two `sleep 1`s outlast the ~1s poll interval, so at least one tick
+    // lands. How MANY land is a race against the scheduler — asserting a count
+    // here is what made this flaky on a slower CI runner (it saw exactly one),
+    // and it would have measured the poller's cadence rather than this wiring.
+    expect(seen.length).toBeGreaterThanOrEqual(1)
+    expect(seen.every(p => p.system === 'gradle')).toBe(true)
+    // What this test alone can prove: the label reaching the UI is the phase
+    // the extractor pulled out, not a raw tail. Which line it caught depends on
+    // when the tick fired; that the newest one wins is pinned deterministically
+    // in progressLine.test.ts.
+    const tasks = ['> Task :app:processResources', '> Task :app:compileKotlin']
+    expect(seen.every(p => p.label === '' || tasks.includes(p.label))).toBe(true)
   }, 30_000)
 })
 
