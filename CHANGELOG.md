@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.1.8 — 2026-08-06
+
+### ✨ Features
+
+- feat(tui): a live progress line for SourceCheck and Test (#54) (b19e5e2)
+- feat(build): a Build tool that reports diagnostics instead of the build log (#52) (115d35f)
+- feat(git): a Git tool for batched git/gh commands with Bash-parity permissions (#51) (d477bf4)
+- feat(release): group the release notes by commit type (18e7142)
+
+### 🐛 Bug Fixes
+
+- fix(git): route the gh reads the tool renders better, and stop mangling them (#53) (65729e7)
+
+### ⚡ Performance
+
+- perf(grep): pivot a broad content search to the symbol map (#50) (fc513f1)
+- perf(summarizer): teach the Grep strategy about ripgrep context lines (#49) (5d50ab0)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.7 — 2026-08-04
 
 - feat(typecheck): baseline-aware Typecheck tool (#48) (c3b86a3)
