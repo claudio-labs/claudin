@@ -124,6 +124,34 @@ export type BaselineState =
       reason: 'dirty-tree-no-baseline' | 'not-a-git-repo' | 'ignored'
     }
 
+/**
+ * What the TUI shows while the check is still running.
+ *
+ * Declared here rather than added to the `ToolProgressData` union in
+ * `src/types/tools.js` for the same reason as `BuildProgress`: that module does
+ * not exist in this fork and is stubbed at bundle time. Nothing needs the
+ * membership — the only type-based dispatch on progress is
+ * `!== 'hook_progress'`.
+ *
+ * Never reaches the model: `normalizeMessagesForAPI` drops every `progress`
+ * message before serialization, so this costs nothing in tokens and cannot undo
+ * what the tool trims.
+ */
+export type CheckProgress = {
+  type: 'check_progress'
+  checker: Checker
+  /**
+   * Which run is on screen. Reconstructing a baseline re-runs the same checker
+   * against a detached checkout of HEAD, which can take as long again — without
+   * naming that phase the clock just looks like it kept going after the check
+   * was done.
+   */
+  phase: 'check' | 'baseline'
+  /** What the checker last printed, reduced to one line. Empty until it prints. */
+  label: string
+  elapsedMs: number
+}
+
 /** The normalized result of a whole check. */
 export type CheckResult = {
   checker: Checker

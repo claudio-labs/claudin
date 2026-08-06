@@ -3,7 +3,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { applyFilters } from './RunTestsTool.js'
-import { readReportDir } from './run.js'
+import { readReportDir, runTests } from './run.js'
 import { buildDossier } from './dossier.js'
 import { detectFrameworkFromCommand, detectTestRunner } from './detect.js'
 import { formatTestResult } from './budget.js'
@@ -20,7 +20,7 @@ import {
   extractFileLine,
   refineFailureLinesFromStdout,
 } from './stackTrace.js'
-import type { Framework, ParseInput, TestFailure, TestResult } from './types.js'
+import type { Framework, ParseInput, TestFailure, TestProgress, TestResult } from './types.js'
 
 function emptyInput(over: Partial<ParseInput> = {}): ParseInput {
   return { stdout: '', stderr: '', exitCode: 0, ...over }
@@ -1111,4 +1111,28 @@ describe('integration: real bun JUnit XML + dossier', () => {
     expect(f.excerpt).toContain('> 3 |')
     expect(f.excerpt).toContain('expect(2 + 2).toBe(5)')
   })
+})
+
+describe('runTests — the live progress line', () => {
+  test('a running suite reports what it last printed', async () => {
+    const seen: TestProgress[] = []
+    await runTests({
+      command: 'echo "ok 1 - first"; sleep 1; echo "ok 2 - second"; sleep 1',
+      // `unknown` so `planReporter` leaves the command alone — a reporter flag
+      // injected into `echo` would change what the tail says.
+      framework: 'unknown',
+      cwd: process.cwd(),
+      abortSignal: new AbortController().signal,
+      timeoutMs: 30_000,
+      onProgress: p => seen.push(p),
+    })
+
+    // The two `sleep 1`s outlast the ~1s poll interval, so at least one tick
+    // lands. How MANY land is a race against the scheduler — asserting a count
+    // would measure the poller's cadence rather than this wiring.
+    expect(seen.length).toBeGreaterThanOrEqual(1)
+    expect(seen.every(p => p.framework === 'unknown')).toBe(true)
+    const lines = ['ok 1 - first', 'ok 2 - second']
+    expect(seen.every(p => p.label === '' || lines.includes(p.label))).toBe(true)
+  }, 30_000)
 })

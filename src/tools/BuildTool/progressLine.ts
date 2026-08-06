@@ -1,4 +1,9 @@
 import type { BuildSystem } from './types.js'
+import { lastNonEmptyLine, tidyLabel } from '../shared/progressTail.js'
+
+// Re-exported because `run.ts` takes both the label and the stall report's
+// `lastLine` from this module.
+export { lastNonEmptyLine }
 
 /**
  * What the build is doing RIGHT NOW, reduced to one line.
@@ -66,36 +71,15 @@ function lastMatch(text: string, pattern: RegExp): string | null {
 }
 
 /**
- * The last line that has anything on it.
- *
- * Lives here rather than in `run.ts` so the dependency runs one way: `run.ts`
- * imports this module for the live label, and would import it back for the
- * stall report's `lastLine` if this stayed there.
+ * The phase line for a build, or null when it has printed nothing yet.
  */
-export function lastNonEmptyLine(text: string): string | undefined {
-  const lines = text.split('\n')
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i]!.trim()
-    if (line !== '') return line
-  }
-  return undefined
-}
-
-/** Collapse the runs of whitespace a build tool uses to align its columns. */
-function tidy(line: string, maxChars: number): string {
-  const collapsed = line.replace(/\s+/g, ' ').trim()
-  return collapsed.length > maxChars ? `${collapsed.slice(0, maxChars - 1)}…` : collapsed
-}
-
-const MAX_LABEL_CHARS = 90
-
 export function progressLabel(system: BuildSystem, tail: string): string | null {
   if (!tail.trim()) return null
   const rule = RULES[system]
   for (const pattern of rule?.patterns ?? []) {
     const hit = lastMatch(tail, pattern)
-    if (hit) return tidy(hit, MAX_LABEL_CHARS)
+    if (hit) return tidyLabel(hit)
   }
   const fallback = lastNonEmptyLine(tail)
-  return fallback ? tidy(fallback, MAX_LABEL_CHARS) : null
+  return fallback ? tidyLabel(fallback) : null
 }

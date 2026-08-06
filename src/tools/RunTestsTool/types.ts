@@ -32,6 +32,22 @@ export type Framework =
   | 'minitest'
   | 'unknown'
 
+/**
+ * What the TUI shows while the suite is still running.
+ *
+ * Declared here rather than added to the `ToolProgressData` union in
+ * `src/types/tools.js`, which does not exist in this fork and is stubbed at
+ * bundle time. Never reaches the model: every `progress` message is dropped
+ * before serialization, so this costs nothing in tokens.
+ */
+export type TestProgress = {
+  type: 'test_progress'
+  framework: Framework
+  /** What the runner last printed, reduced to one line. Empty until it prints. */
+  label: string
+  elapsedMs: number
+}
+
 /** A single failing (or errored) test case. */
 export type TestFailure = {
   /** Fully-qualified test name (suite › case) when available. */

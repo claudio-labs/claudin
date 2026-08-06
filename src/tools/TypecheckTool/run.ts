@@ -3,11 +3,13 @@ import { isAbsolute, join, resolve } from 'path'
 import { logError } from '../../utils/log.js'
 import { exec } from '../../utils/Shell.js'
 import { readFullShellOutput } from '../../utils/shell/fullOutput.js'
+import { TaskOutput } from '../../utils/task/TaskOutput.js'
 import { readSourceExcerpt } from '../shared/sourceExcerpt.js'
+import { tailLabel } from '../shared/progressTail.js'
 import { resolveBaseline, type BaselineMode } from './baseline.js'
 import { fingerprintDiagnostic, normalizeDiagnosticPath } from './fingerprint.js'
 import { parseCheckerOutput } from './parseChain.js'
-import type { Checker, CheckResult, Diagnostic, RawDiagnostic } from './types.js'
+import type { Checker, CheckProgress, CheckResult, Diagnostic, RawDiagnostic } from './types.js'
 
 /**
  * Execution orchestrator: run the checker, read its FULL output, parse it,
@@ -58,6 +60,8 @@ export type RunOptions = {
   /** One path, or several — a change touching N files needs ONE call, not N. */
   pathFilter?: string | string[]
   alsoDetected: Checker[]
+  /** TUI only — never serialized, so it cannot affect what the model reads. */
+  onProgress?: (progress: CheckProgress) => void
 }
 
 function tail(text: string, max: number): string {
@@ -183,9 +187,18 @@ type ExecOutcome =
  *
  * `dir` is a parameter rather than `opts.cwd` because baseline reconstruction
  * runs the identical command against a detached checkout of HEAD.
+ *
+ * `startedAt` is the whole CALL's clock, not this exec's, so the live counter
+ * keeps climbing across the check and the reconstruction instead of restarting
+ * halfway through.
  */
-async function execChecker(opts: RunOptions, dir: string): Promise<ExecOutcome> {
+async function execChecker(
+  opts: RunOptions,
+  dir: string,
+  startedAt: number,
+): Promise<ExecOutcome> {
   const { abortSignal, timeoutMs } = opts
+  const phase: CheckProgress['phase'] = dir === opts.cwd ? 'check' : 'baseline'
   // Only when checking somewhere other than the project itself; the main run
   // must execute exactly the command that was detected. The PATH entry covers
   // the `npm run <script>` shape, where the binary is resolved by the package
@@ -223,13 +236,33 @@ unset FORCE_COLOR
 ${binPath}${command}
 }`
 
+  // Captured so the `finally` can stop the poller even when `exec` throws after
+  // the task was registered.
+  let taskId: string | null = null
   try {
     const shellCommand = await exec(execCommand, abortSignal, 'bash', {
       timeout: timeoutMs,
       // The `cd` above is ours, not the user's — it must not move the session's
       // shell out from under the next Bash call.
       preventCwdChanges: true,
+      // Purely a TUI signal, and `onProgress` rather than `onStdout`: the latter
+      // pipes stdout instead of writing the file, which would break
+      // `readFullShellOutput` below. Two things have to be true for a tick to
+      // arrive and neither is automatic — the callback registers the task, and
+      // `startPolling` is what drives it (see BuildTool/run.ts).
+      onProgress: opts.onProgress
+        ? (lastLines: string) =>
+            opts.onProgress?.({
+              type: 'check_progress',
+              checker: opts.checker,
+              phase,
+              label: tailLabel(lastLines) ?? '',
+              elapsedMs: Date.now() - startedAt,
+            })
+        : undefined,
     })
+    taskId = shellCommand.taskOutput.taskId
+    TaskOutput.startPolling(taskId)
     const result = await shellCommand.result
     if (result.interrupted) {
       return { ok: false, message: 'The check was interrupted before completing.' }
@@ -254,6 +287,8 @@ ${binPath}${command}
   } catch (e) {
     logError(`Typecheck: exec failed — ${String(e)}`)
     return { ok: false, message: e instanceof Error ? e.message : String(e) }
+  } finally {
+    if (taskId) TaskOutput.stopPolling(taskId)
   }
 }
 
@@ -284,8 +319,12 @@ export function eraseCheckoutPath(text: string, from: string, to: string): strin
  * empty list: a silent empty baseline would mark the whole backlog as newly
  * introduced.
  */
-async function collectFingerprintsAt(opts: RunOptions, dir: string): Promise<string[] | null> {
-  const raw = await execChecker(opts, dir)
+async function collectFingerprintsAt(
+  opts: RunOptions,
+  dir: string,
+  startedAt: number,
+): Promise<string[] | null> {
+  const raw = await execChecker(opts, dir, startedAt)
   if (!raw.ok) return null
   const parsed = parseCheckerOutput(opts.checker, {
     stdout: eraseCheckoutPath(raw.stdout, dir, opts.cwd),
@@ -303,7 +342,7 @@ export async function runTypecheck(opts: RunOptions): Promise<CheckResult> {
   const { checker, cwd } = opts
   const startedAt = Date.now()
 
-  const raw = await execChecker(opts, cwd)
+  const raw = await execChecker(opts, cwd, startedAt)
   if (!raw.ok) return emptyResult(opts, raw.message, raw.exitCode)
   const { stdout, stderr, exitCode } = raw
 
@@ -338,7 +377,7 @@ export async function runTypecheck(opts: RunOptions): Promise<CheckResult> {
     fingerprints,
     // Withheld when our own parse failed: reconstruction is only meaningful as
     // a comparison against this run, and there is nothing to compare against.
-    reconstruct: parsed.degraded ? undefined : dir => collectFingerprintsAt(opts, dir),
+    reconstruct: parsed.degraded ? undefined : dir => collectFingerprintsAt(opts, dir, startedAt),
   })
 
   const classified: Diagnostic[] = normalized.map((d, i) => ({
