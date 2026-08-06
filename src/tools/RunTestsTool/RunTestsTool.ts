@@ -1,23 +1,27 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
 import { bashToolHasPermission } from '../BashTool/bashPermissions.js'
-import { buildTool, type ToolDef } from '../../Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { formatTestResult } from './budget.js'
 import { detectFrameworkFromCommand, detectTestRunner } from './detect.js'
 import { DESCRIPTION, RUN_TESTS_TOOL_NAME } from './prompt.js'
 import { runTests } from './run.js'
-import type { Framework, TestResult } from './types.js'
+import type { Framework, TestProgress, TestResult } from './types.js'
 import {
   renderToolUseErrorMessage,
   renderToolUseMessage,
+  renderToolUseProgressMessage,
   renderToolResultMessage,
   userFacingName,
 } from './UI.js'
 
 const DEFAULT_TIMEOUT_MS = 300_000
 const MAX_TIMEOUT_MS = 900_000
+
+/** Each progress message needs its own id; the renderer keeps only the last. */
+let progressCounter = 0
 
 const FRAMEWORKS = [
   'vitest',
@@ -252,8 +256,15 @@ export const RunTestsTool = buildTool({
   },
   renderToolUseMessage,
   renderToolUseErrorMessage,
+  renderToolUseProgressMessage,
   renderToolResultMessage,
-  async call(input: Input, context) {
+  async call(
+    input: Input,
+    context,
+    _canUseTool,
+    _parentMessage,
+    onProgress?: ToolCallProgress<TestProgress>,
+  ) {
     const cwd = getCwd()
 
     const resolved = resolveRunCommand(input)
@@ -282,6 +293,12 @@ export const RunTestsTool = buildTool({
       cwd,
       abortSignal: context.abortController.signal,
       timeoutMs: input.timeout ?? DEFAULT_TIMEOUT_MS,
+      // Purely a TUI signal: every `progress` message is dropped before the
+      // request is serialized, so this cannot add a token to what the model
+      // reads.
+      onProgress: onProgress
+        ? data => onProgress({ toolUseID: `test-progress-${progressCounter++}`, data })
+        : undefined,
     })
 
     return { data: result }
@@ -293,4 +310,4 @@ export const RunTestsTool = buildTool({
       content: formatTestResult(output),
     }
   },
-} satisfies ToolDef<InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output, TestProgress>)

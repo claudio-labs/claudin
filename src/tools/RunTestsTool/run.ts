@@ -3,11 +3,13 @@ import * as path from 'path'
 import { exec } from '../../utils/Shell.js'
 import { logError } from '../../utils/log.js'
 import { readFullShellOutput } from '../../utils/shell/fullOutput.js'
+import { TaskOutput } from '../../utils/task/TaskOutput.js'
+import { tailLabel } from '../shared/progressTail.js'
 import { buildDossier } from './dossier.js'
 import { parseTestOutput } from './parsers/index.js'
 import { hasWatchFlag, planReporter } from './reporters.js'
 import { enrichFailuresWithStackLocation, refineFailureLinesFromStdout } from './stackTrace.js'
-import type { Framework, ParseInput, TestResult } from './types.js'
+import type { Framework, ParseInput, TestProgress, TestResult } from './types.js'
 
 /**
  * Execution orchestrator: strip watch flags, inject a reporter, run the command
@@ -24,7 +26,8 @@ export type RunOptions = {
   cwd: string
   abortSignal: AbortSignal
   timeoutMs: number
-  onProgress?: (line: string) => void
+  /** TUI only — never serialized, so it cannot affect what the model reads. */
+  onProgress?: (progress: TestProgress) => void
 }
 
 function readReportFile(file: string): string | undefined {
@@ -86,17 +89,34 @@ export async function runTests(opts: RunOptions): Promise<TestResult> {
   // (surefire/gradle dirs are not cleared between runs). 2s grace absorbs coarse
   // filesystem mtime resolution.
   const runStartedMs = Date.now() - 2000
+  const startedAt = Date.now()
 
   let stdout = ''
   let stderr = ''
   let exitCode = 0
+  // Captured so the `finally` can stop the poller even when `exec` throws after
+  // the task was registered.
+  let taskId: string | null = null
   try {
     const shellCommand = await exec(execCommand, abortSignal, 'bash', {
       timeout: timeoutMs,
+      // Purely a TUI signal, and `onProgress` rather than `onStdout`: the latter
+      // pipes stdout instead of writing the file, which would break
+      // `readFullShellOutput` below. Two things have to be true for a tick to
+      // arrive and neither is automatic — the callback registers the task, and
+      // `startPolling` is what drives it (see BuildTool/run.ts).
       onProgress: opts.onProgress
-        ? (lastLines: string) => opts.onProgress?.(lastLines)
+        ? (lastLines: string) =>
+            opts.onProgress?.({
+              type: 'test_progress',
+              framework,
+              label: tailLabel(lastLines) ?? '',
+              elapsedMs: Date.now() - startedAt,
+            })
         : undefined,
     })
+    taskId = shellCommand.taskOutput.taskId
+    TaskOutput.startPolling(taskId)
     const result = await shellCommand.result
     // NOT `result.stdout` — that is capped at BASH_MAX_OUTPUT_LENGTH, so a
     // verbose suite would be summarised from its first few hundred lines with
@@ -132,6 +152,8 @@ export async function runTests(opts: RunOptions): Promise<TestResult> {
       exitCode: 1,
       runError: e instanceof Error ? e.message : String(e),
     }
+  } finally {
+    if (taskId) TaskOutput.stopPolling(taskId)
   }
 
   // Gather any machine report the reporter wrote.

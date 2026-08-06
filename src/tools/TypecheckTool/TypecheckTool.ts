@@ -1,6 +1,6 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from '../../Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { bashToolHasPermission } from '../BashTool/bashPermissions.js'
@@ -14,16 +14,20 @@ import {
 } from './detect.js'
 import { DESCRIPTION, TYPECHECK_TOOL_NAME } from './prompt.js'
 import { runTypecheck } from './run.js'
-import type { Checker, CheckResult } from './types.js'
+import type { Checker, CheckProgress, CheckResult } from './types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
+  renderToolUseProgressMessage,
   userFacingName,
 } from './UI.js'
 
 const DEFAULT_TIMEOUT_MS = 300_000
 const MAX_TIMEOUT_MS = 900_000
+
+/** Each progress message needs its own id; the renderer keeps only the last. */
+let progressCounter = 0
 
 const CHECKERS = [
   'tsc',
@@ -191,8 +195,15 @@ export const TypecheckTool = buildTool({
   },
   renderToolUseMessage,
   renderToolUseErrorMessage,
+  renderToolUseProgressMessage,
   renderToolResultMessage,
-  async call(input: Input, context) {
+  async call(
+    input: Input,
+    context,
+    _canUseTool,
+    _parentMessage,
+    onProgress?: ToolCallProgress<CheckProgress>,
+  ) {
     const cwd = getCwd()
     const resolved = resolveCheckCommand(input)
     if (!resolved) {
@@ -227,6 +238,12 @@ export const TypecheckTool = buildTool({
       severity: input.severity ?? 'errors',
       pathFilter: input.path,
       alsoDetected: detectAllCheckers(cwd),
+      // Purely a TUI signal: every `progress` message is dropped before the
+      // request is serialized, so this cannot add a token to what the model
+      // reads.
+      onProgress: onProgress
+        ? data => onProgress({ toolUseID: `check-progress-${progressCounter++}`, data })
+        : undefined,
     })
 
     return { data: result }
@@ -238,4 +255,4 @@ export const TypecheckTool = buildTool({
       content: formatCheckResult(output),
     }
   },
-} satisfies ToolDef<InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output, CheckProgress>)

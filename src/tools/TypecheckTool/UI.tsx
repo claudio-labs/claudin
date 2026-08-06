@@ -2,9 +2,11 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import React from 'react'
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from '../../components/MessageResponse.js'
+import { ShellElapsedTime } from '../../components/shell/ShellElapsedTime.js'
 import { Box, Text } from '../../ink.js'
 import type { Input, Output } from './TypecheckTool.js'
 import { resolveCheckCommand } from './TypecheckTool.js'
+import type { CheckProgress } from './types.js'
 
 /**
  * Display label only — the wire name stays `Typecheck` (see prompt.ts), which is
@@ -38,6 +40,49 @@ export function renderToolUseErrorMessage(
   { verbose }: { verbose: boolean },
 ): React.ReactNode {
   return <FallbackToolUseErrorMessage result={result} verbose={verbose} />
+}
+
+/**
+ * Structural, rather than the framework's `ProgressMessage<CheckProgress>`:
+ * `src/types/message.js` does not exist in this fork (it is stubbed at bundle
+ * time), so importing it would add one more unresolved module to the backlog
+ * for a type we only read one field of.
+ */
+type CheckProgressMessage = { data?: CheckProgress }
+
+/**
+ * The live line, replaced by the result the moment the check finishes.
+ *
+ * A whole-project check takes as long as a build, and with nothing on screen it
+ * was indistinguishable from a hang — Bash shows a stopwatch for far shorter
+ * commands. The clock is `ShellElapsedTime` rather than the reported
+ * `elapsedMs` so it ticks every second instead of once per poll, and keeps
+ * moving if the poller goes quiet.
+ */
+export function renderToolUseProgressMessage(
+  progressMessagesForMessage: CheckProgressMessage[],
+): React.ReactNode {
+  const data = progressMessagesForMessage.at(-1)?.data
+  if (!data) {
+    return (
+      <MessageResponse height={1}>
+        <Text dimColor>Checking… </Text>
+        <ShellElapsedTime />
+      </MessageResponse>
+    )
+  }
+  const what =
+    data.phase === 'baseline'
+      ? `rebuilding baseline${data.label ? ` · ${data.label}` : ''}`
+      : data.label
+  return (
+    <MessageResponse height={1}>
+      <Text dimColor wrap="truncate-end">
+        {what ? `${data.checker} · ${what} ` : `Checking with ${data.checker}… `}
+      </Text>
+      <ShellElapsedTime elapsedTimeSeconds={Math.floor(data.elapsedMs / 1000)} />
+    </MessageResponse>
+  )
 }
 
 export function renderToolResultMessage(
