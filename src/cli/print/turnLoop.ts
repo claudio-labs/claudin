@@ -163,9 +163,15 @@ export async function runTurnLoop(
     await ctx.refreshPluginState()
 
     // Set up hot-reload for plugin hooks now that the initial install is done.
-    // In sync-install mode, setup.ts skips this to avoid racing with the install.
+    // In sync-install mode, setup.ts skips this to avoid racing with the install,
+    // so this is the ONLY call site that arms it under CLAUDE_CODE_SYNC_PLUGIN_INSTALL.
+    // Path-aliased on purpose. This specifier was relative until #57 and had been
+    // resolving one directory short since 2e178cf7 moved runHeadless deeper, so the
+    // rejected import left `run()` unfinished and the output stream never closed --
+    // `-p` under this env var HUNG rather than failing. An alias cannot rot the same
+    // way when a file changes depth, which is why the repo rule forbids `../../`.
     const { setupPluginHookHotReload } = await import(
-      '../utils/plugins/loadPluginHooks.js'
+      'src/utils/plugins/loadPluginHooks.js'
     )
     setupPluginHookHotReload()
   }

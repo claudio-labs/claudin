@@ -3,8 +3,8 @@
   "checker": "tsc",
   "command": "tsc --noEmit --pretty false",
   "capturedAt": "2026-08-07",
-  "capturedFrom": "7060d1b5c84a0fb602d952dfa687f7811a379bfa",
-  "count": 2837,
+  "capturedFrom": "c9b8db9eec42d485d27567a2a7fbd02ebb41e407",
+  "count": 2836,
   "fingerprints": [
     "004394a7d4fd",
     "004394a7d4fd",
@@ -1799,7 +1799,6 @@
     "a0e30fb48084",
     "a112ddafd169",
     "a11ae79b7f0b",
-    "a13bca757844",
     "a1448339d4d4",
     "a1493cdde671",
     "a168109f3311",
