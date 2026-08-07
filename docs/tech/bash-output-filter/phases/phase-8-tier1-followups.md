@@ -194,7 +194,7 @@ PowerShell tem 2 peculiaridades vs bash que precisam de spec antes de implementa
 
 ## Implementation notes
 
-- **Two sample directories.** O harness (`bashFilter.test.ts:21`) lê de `docs/discovery/bash-output-filter/validation/samples/`, não de `src/outputFilter/Bash/__fixtures__/samples/`. Toda fixture nova precisa ser duplicada nos dois diretórios. (Causa pegou a primeira execução desta fase — 6 testes falharam porque só copiei pra `__fixtures__/`.)
+- **Two sample directories.** ~~O harness (`bashFilter.test.ts:21`) lê de `docs/discovery/bash-output-filter/validation/samples/`, não de `src/outputFilter/Bash/__fixtures__/samples/`. Toda fixture nova precisa ser duplicada nos dois diretórios.~~ (Causa pegou a primeira execução desta fase — 6 testes falharam porque só copiei pra `__fixtures__/`.) **RESOLVIDO:** os dois diretórios foram fundidos em `__fixtures__/samples/` e todos os consumidores apontam pra lá — não duplique mais nada.
 - **`runFilterBody` vs `applyBashFilterToStdout`.** O helper de teste já strippa o `<bash-output-filtered>` wrapper antes de retornar — usar nos asserts. O `applyBashFilterToStdout` raw retorna com wrapper.
 - **Bench fixture target ≠ test fixture target.** Reduzi `git-show` de 8% → 5% após medir; o teto real é a metadata (commit/Author/Date/index/diff--git lines), o body do diff é >95% do output e é preservado por design. Para um fixture com diff curtos a redução pode ir mais alto, mas 5% é o mínimo seguro.
 - **Two-alternation forms.** `RSPEC_MATCH = /^rspec\b|^bundle\s+exec\s+rspec\b/` e similares são intencionais — evitam o flag REDOS_PATTERNS #5 (nested optional with quantifier). Não trocar por `^(?:bundle\s+exec\s+)?rspec\b`.

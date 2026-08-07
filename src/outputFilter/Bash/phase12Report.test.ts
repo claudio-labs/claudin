@@ -18,7 +18,7 @@ import type { FilterSpec } from "./types.js";
 
 const SAMPLES_DIR = resolve(
   import.meta.dir,
-  "../../../docs/discovery/bash-output-filter/validation/samples",
+  "__fixtures__/samples",
 );
 
 const WRAPPER_RE =

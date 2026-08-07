@@ -1,7 +1,0 @@
-CONTAINER ID   IMAGE                          COMMAND                  CREATED       STATUS                   PORTS                                         NAMES
-f355494d7fe4   postgres:16-alpine             "docker-entrypoint.s…"   2 weeks ago   Up 3 hours (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   aargau-postgres
-c8984cc60490   redis:7-alpine                 "docker-entrypoint.s…"   2 weeks ago   Up 3 hours (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   aargau-redis
-64542445addb   ghcr.io/ericc-ch/copilot-api   "/entrypoint.sh"         3 weeks ago   Exited (1) 3 weeks ago                                                 tender_hopper
-76e4a0489afd   ghcr.io/ericc-ch/copilot-api   "/entrypoint.sh"         3 weeks ago   Exited (1) 3 weeks ago                                                 reverent_carver
-0075ac80f31a   ghcr.io/ericc-ch/copilot-api   "/entrypoint.sh"         3 weeks ago   Exited (1) 3 weeks ago                                                 optimistic_agnesi
-a46092eda420   ghcr.io/ericc-ch/copilot-api   "/entrypoint.sh"         3 weeks ago   Exited (1) 3 weeks ago                                                 vigorous_colden

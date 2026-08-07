@@ -1,8 +1,0 @@
-  File: /home/devusr/projects/claudio/package.json
-  Size: 5422      	Blocks: 16         IO Block: 4096   regular file
-Device: 0,49	Inode: 1076123     Links: 1
-Access: (0644/-rw-r--r--)  Uid: ( 1000/  devusr)   Gid: ( 1000/  devusr)
-Access: 2026-05-13 00:36:46.900051324 -0300
-Modify: 2026-05-13 00:36:46.900051324 -0300
-Change: 2026-05-13 00:36:46.900051324 -0300
- Birth: 2026-05-13 00:36:46.900051324 -0300

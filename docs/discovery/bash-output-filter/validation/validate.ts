@@ -24,7 +24,12 @@ import {
 } from './pipeline.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const SAMPLES = join(__dirname, 'samples')
+// The sample corpus lives in the source tree — this directory used to hold a
+// second, drifting copy. See src/outputFilter/Bash/__fixtures__/samples/README.md.
+const SAMPLES = join(
+  __dirname,
+  '../../../../src/outputFilter/Bash/__fixtures__/samples',
+)
 
 interface TestCase {
   name: string

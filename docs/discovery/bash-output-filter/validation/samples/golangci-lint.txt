@@ -1,3 +1,0 @@
-main.go:13:11: var-declaration: should omit type int from declaration of var x; it will be inferred from the right-hand side (revive)
-    var x int = 10
-          ^

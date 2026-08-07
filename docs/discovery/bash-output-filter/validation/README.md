@@ -17,12 +17,12 @@ validation/
 ├── README.md           # este arquivo
 ├── pipeline.ts         # implementação minimal do pipeline (8 estágios, ~150 linhas)
 ├── validate.ts         # casos de teste + safety tests + runner + report writer
-├── samples/            # outputs reais capturados de comandos no ambiente local
-│   ├── git-status.txt
-│   ├── git-log-default.txt
-│   ├── ...
 └── results.md          # gerado por validate.ts — atualizado a cada run
 ```
+
+> As samples **não vivem mais aqui**. O corpus é único e fica em
+> `src/outputFilter/Bash/__fixtures__/samples/` — esta era a segunda cópia e
+> ficou uma rebrand inteira para trás. `validate.ts` lê de lá.
 
 ## O que valida
 
@@ -40,7 +40,7 @@ Plus **safety tests** sintéticos:
 
 1. Capturar sample real:
    ```bash
-   <comando> > docs/discovery/bash-output-filter/validation/samples/<nome>.txt 2>&1
+   <comando> > src/outputFilter/Bash/__fixtures__/samples/<nome>.txt 2>&1
    ```
 2. Adicionar entrada em `CASES` array em `validate.ts`:
    ```ts

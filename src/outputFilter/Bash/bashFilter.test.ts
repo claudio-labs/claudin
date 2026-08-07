@@ -15,12 +15,16 @@ import type { FilterSpec } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Phase 6.1.2 harness helpers — load real shell output captured in
-// docs/discovery/.../samples/ and measure byte-reduction against the
-// predicted ROI (see .claudin/plans/fizzy-churning-stearns.md, decision D1).
+// __fixtures__/samples/ and measure byte-reduction against the predicted ROI
+// (see .claudin/plans/fizzy-churning-stearns.md, decision D1).
+//
+// This used to read docs/discovery/.../validation/samples/, a second copy of
+// the same corpus that drifted a whole rebrand behind this one. The two are
+// now one directory; see the header of __fixtures__/samples/README.md.
 // ---------------------------------------------------------------------------
 const SAMPLES_DIR = resolve(
   import.meta.dir,
-  "../../../docs/discovery/bash-output-filter/validation/samples",
+  "__fixtures__/samples",
 );
 
 function loadSample(name: string): string {

@@ -1,6 +1,0 @@
-src/utils/attachments.ts:import { isAbortError } from './errors.js'
-src/utils/attachments.ts:    if (!isAbortError(e)) {
-src/services/api/openaiShim.ts:        const isAbortError =
-src/services/api/openaiShim.ts:        if (isAbortError) {
-src/services/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
-src/utils/errors.ts:export function isAbortError(e: unknown): boolean {
