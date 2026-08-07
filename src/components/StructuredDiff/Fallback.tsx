@@ -78,7 +78,7 @@ type Props = {
 
 // Threshold for when we show a full-line diff instead of word-level diffing
 const CHANGE_THRESHOLD = 0.4;
-export function StructuredDiffFallback(t0) {
+export function StructuredDiffFallback(t0: Props) {
   const $ = _c(10);
   const {
     patch,

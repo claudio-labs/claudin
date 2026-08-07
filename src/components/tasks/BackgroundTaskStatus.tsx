@@ -24,7 +24,7 @@ type Props = {
   isLeaderIdle?: boolean;
   onOpenDialog?: (taskId?: string) => void;
 };
-export function BackgroundTaskStatus(t0) {
+export function BackgroundTaskStatus(t0: Props) {
   const $ = _c(48);
   const {
     tasksSelected,

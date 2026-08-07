@@ -31,7 +31,7 @@ export function TaskStatusText(t0: TaskStatusTextProps) {
   }
   return t1;
 }
-export function ShellProgress(t0) {
+export function ShellProgress(t0: TaskStatusTextProps) {
   const $ = _c(4);
   const {
     shell

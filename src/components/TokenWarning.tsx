@@ -84,7 +84,7 @@ function CollapseLabel(t0) {
   }
   return t5;
 }
-export function TokenWarning(t0) {
+export function TokenWarning(t0: Props) {
   const $ = _c(13);
   const {
     tokenUsage,

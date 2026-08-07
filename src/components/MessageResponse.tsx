@@ -7,7 +7,7 @@ type Props = {
   children: React.ReactNode;
   height?: number;
 };
-export function MessageResponse(t0) {
+export function MessageResponse(t0: Props) {
   const $ = _c(8);
   const {
     children,

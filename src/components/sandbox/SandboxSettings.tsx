@@ -19,7 +19,7 @@ type Props = {
   depCheck: SandboxDependencyCheck;
 };
 type SandboxMode = 'auto-allow' | 'regular' | 'disabled';
-export function SandboxSettings(t0) {
+export function SandboxSettings(t0: Props) {
   const $ = _c(34);
   const {
     onComplete,

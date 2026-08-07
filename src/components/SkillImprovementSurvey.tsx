@@ -14,7 +14,7 @@ type Props = {
   inputValue: string;
   setInputValue: (value: string) => void;
 };
-export function SkillImprovementSurvey(t0) {
+export function SkillImprovementSurvey(t0: Props) {
   const $ = _c(6);
   const {
     isOpen,

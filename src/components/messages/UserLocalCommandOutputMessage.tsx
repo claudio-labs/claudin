@@ -10,7 +10,7 @@ import { MessageResponse } from '../MessageResponse.js';
 type Props = {
   content: string;
 };
-export function UserLocalCommandOutputMessage(t0) {
+export function UserLocalCommandOutputMessage(t0: Props) {
   const $ = _c(4);
   const {
     content
