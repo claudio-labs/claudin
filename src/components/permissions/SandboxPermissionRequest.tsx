@@ -12,7 +12,7 @@ export type SandboxPermissionRequestProps = {
     persistToSettings: boolean;
   }) => void;
 };
-export function SandboxPermissionRequest(t0) {
+export function SandboxPermissionRequest(t0: SandboxPermissionRequestProps) {
   const $ = _c(22);
   const {
     hostPattern: t1,

@@ -301,7 +301,7 @@ type ShellOutputContentProps = {
   outputPromise: Promise<TaskOutputResult>;
   columns: number;
 };
-function ShellOutputContent(t0) {
+function ShellOutputContent(t0: ShellOutputContentProps) {
   const $ = _c(19);
   const {
     outputPromise,

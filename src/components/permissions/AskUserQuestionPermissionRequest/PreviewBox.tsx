@@ -81,7 +81,7 @@ function PreviewBoxWithHighlight(props) {
   }
   return t1;
 }
-function PreviewBoxBody(t0) {
+function PreviewBoxBody(t0: PreviewBoxProps) {
   const $ = _c(34);
   const {
     content,

@@ -41,7 +41,7 @@ type PromptCharProps = {
  * Renders the prompt character (❯).
  * Teammate color overrides the default color when set.
  */
-function PromptChar(t0) {
+function PromptChar(t0: PromptCharProps) {
   const $ = _c(3);
   const {
     isLoading,

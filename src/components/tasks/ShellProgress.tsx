@@ -10,7 +10,7 @@ type TaskStatusTextProps = {
   label?: string;
   suffix?: string;
 };
-export function TaskStatusText(t0) {
+export function TaskStatusText(t0: TaskStatusTextProps) {
   const $ = _c(4);
   const {
     status,

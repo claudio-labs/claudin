@@ -15,7 +15,7 @@ export type Props = {
   onCancel?: () => void;
   isMidConversation?: boolean;
 };
-export function ThinkingToggle(t0) {
+export function ThinkingToggle(t0: Props) {
   const $ = _c(27);
   const {
     currentValue,

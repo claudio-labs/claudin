@@ -14,7 +14,7 @@ type DiagnosticsDisplayProps = {
   attachment: DiagnosticsAttachment;
   verbose: boolean;
 };
-export function DiagnosticsDisplay(t0) {
+export function DiagnosticsDisplay(t0: DiagnosticsDisplayProps) {
   const $ = _c(14);
   const {
     attachment,

@@ -194,7 +194,7 @@ type VirtualItemProps = {
 // verbose). Memoing with a comparator that ignores renderItem would use a
 // STALE closure on bail (wrong selection highlight, stale verbose). Including
 // renderItem in the comparator defeats memo since it's fresh each render.
-function VirtualItem(t0) {
+function VirtualItem(t0: VirtualItemProps) {
   const $ = _c(30);
   const {
     itemKey: k,

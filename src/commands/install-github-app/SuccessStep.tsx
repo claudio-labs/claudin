@@ -7,7 +7,7 @@ type SuccessStepProps = {
   secretName: string;
   skipWorkflow?: boolean;
 };
-export function SuccessStep(t0) {
+export function SuccessStep(t0: SuccessStepProps) {
   const $ = _c(21);
   const {
     secretExists,

@@ -65,7 +65,7 @@ function extractCwdResetWarning(stderr: string): {
     cwdResetWarning
   };
 }
-export default function BashToolResultMessage(t0) {
+export default function BashToolResultMessage(t0: Props) {
   const $ = _c(36);
   const {
     content: t1,

@@ -35,7 +35,7 @@ type Props = {
   }) => void;
 };
 const HasAppStateContext = React.createContext<boolean>(false);
-export function AppStateProvider(t0) {
+export function AppStateProvider(t0: Props) {
   const $ = _c(13);
   const {
     children,

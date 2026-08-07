@@ -8,7 +8,7 @@ type FeedColumnProps = {
   feeds: FeedConfig[];
   maxWidth: number;
 };
-export function FeedColumn(t0) {
+export function FeedColumn(t0: FeedColumnProps) {
   const $ = _c(10);
   const {
     feeds,

@@ -19,7 +19,7 @@ type Props = {
   context: LocalJSXCommandContext;
   defaultTab: 'Status' | 'Config' | 'Usage' | 'Session' | 'Gates';
 };
-export function Settings(t0) {
+export function Settings(t0: Props) {
   const $ = _c(25);
   const {
     onClose,

@@ -39,7 +39,7 @@ type Props = {
   onImagePaste?: (base64Image: string, mediaType?: string, filename?: string, dimensions?: ImageDimensions, sourcePath?: string) => void;
   onRemoveImage?: (id: number) => void;
 };
-export function QuestionView(t0) {
+export function QuestionView(t0: Props) {
   const $ = _c(114);
   const {
     question,

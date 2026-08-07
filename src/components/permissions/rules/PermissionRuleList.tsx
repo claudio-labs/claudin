@@ -34,7 +34,7 @@ type TabType = 'recent' | 'allow' | 'ask' | 'deny' | 'workspace';
 type RuleSourceTextProps = {
   rule: PermissionRule;
 };
-function RuleSourceText(t0) {
+function RuleSourceText(t0: RuleSourceTextProps) {
   const $ = _c(4);
   const {
     rule

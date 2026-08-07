@@ -15,7 +15,7 @@ interface ApiKeyStepProps {
   selectedOption?: 'existing' | 'new' | 'oauth';
   onSelectOption?: (option: 'existing' | 'new' | 'oauth') => void;
 }
-export function ApiKeyStep(t0) {
+export function ApiKeyStep(t0: ApiKeyStepProps) {
   const $ = _c(55);
   const {
     existingApiKey,

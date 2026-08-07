@@ -9,7 +9,7 @@ type Props = {
   shouldAnimate: boolean;
   isAsync?: boolean;
 };
-export function ToolUseLoader(t0) {
+export function ToolUseLoader(t0: Props) {
   const $ = _c(7);
   const {
     isError,

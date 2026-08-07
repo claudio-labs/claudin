@@ -25,7 +25,7 @@ export type OutputStylePickerProps = {
   onCancel: () => void;
   isStandaloneCommand?: boolean;
 };
-export function OutputStylePicker(t0) {
+export function OutputStylePicker(t0: OutputStylePickerProps) {
   const $ = _c(16);
   const {
     initialStyle,

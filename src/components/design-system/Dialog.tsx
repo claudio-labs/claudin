@@ -28,7 +28,7 @@ type DialogProps = {
    */
   isCancelActive?: boolean;
 };
-export function Dialog(t0) {
+export function Dialog(t0: DialogProps) {
   const $ = _c(27);
   const {
     title,

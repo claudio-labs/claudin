@@ -125,7 +125,7 @@ function ProactiveCountdown() {
   }
   return t4;
 }
-export function PromptInputFooterLeftSide(t0) {
+export function PromptInputFooterLeftSide(t0: Props) {
   const $ = _c(27);
   const {
     exitMessage,

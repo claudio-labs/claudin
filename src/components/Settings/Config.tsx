@@ -2040,7 +2040,7 @@ const THEME_LABELS: Record<string, string> = {
   nord: 'Nord',
   'gruvbox-dark': 'Gruvbox Dark'
 };
-function NotifChannelLabel(t0) {
+function NotifChannelLabel(t0: Props) {
   const $ = _c(4);
   const {
     value

@@ -15,7 +15,7 @@ type Props = {
   shimmerColor: keyof Theme;
   stalledIntensity?: number;
 };
-export function GlimmerMessage(t0) {
+export function GlimmerMessage(t0: Props) {
   const $ = _c(75);
   const {
     message,

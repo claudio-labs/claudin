@@ -289,7 +289,7 @@ type AgentPillProps = {
   onClick?: () => void;
   tokenCount?: number;
 };
-function AgentPill(t0) {
+function AgentPill(t0: AgentPillProps) {
   const $ = _c(20);
   const {
     name,

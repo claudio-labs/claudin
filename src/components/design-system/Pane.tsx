@@ -30,7 +30,7 @@ type PaneProps = {
  *   <Tabs title="Sandbox:">...</Tabs>
  * </Pane>
  */
-export function Pane(t0) {
+export function Pane(t0: PaneProps) {
   const $ = _c(9);
   const {
     children,

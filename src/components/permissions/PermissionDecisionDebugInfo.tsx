@@ -46,7 +46,7 @@ function decisionReasonDisplayString(decisionReason: PermissionDecisionReason & 
       return '';
   }
 }
-function PermissionDecisionInfoItem(t0) {
+function PermissionDecisionInfoItem(t0: PermissionDecisionInfoItemProps) {
   const $ = _c(10);
   const {
     title,

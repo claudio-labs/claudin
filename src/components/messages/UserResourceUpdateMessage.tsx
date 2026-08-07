@@ -58,7 +58,7 @@ function formatUri(uri: string): string {
   }
   return uri;
 }
-export function UserResourceUpdateMessage(t0) {
+export function UserResourceUpdateMessage(t0: Props) {
   const $ = _c(12);
   const {
     addMargin,

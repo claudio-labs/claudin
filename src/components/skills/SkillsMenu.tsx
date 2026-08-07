@@ -49,7 +49,7 @@ function getSkillListLabel(skill: SkillCommand): string {
   const leafName = skill.name.split(':').pop() ?? skill.name;
   return leafName === skill.name ? skill.name : `${skill.name} - ${leafName}`;
 }
-export function SkillsMenu(t0) {
+export function SkillsMenu(t0: Props) {
   const $ = _c(35);
   const {
     onExit,

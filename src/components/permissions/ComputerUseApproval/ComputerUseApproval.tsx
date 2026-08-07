@@ -27,7 +27,7 @@ const DENY_ALL_RESPONSE: CuPermissionResponse = {
  * irrelevant — show a TCC panel that opens System Settings. Otherwise show the
  * app allowlist + grant-flags panel.
  */
-export function ComputerUseApproval(t0) {
+export function ComputerUseApproval(t0: ComputerUseApprovalProps) {
   const $ = _c(3);
   const {
     request,

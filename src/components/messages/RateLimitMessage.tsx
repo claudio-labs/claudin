@@ -49,7 +49,7 @@ type RateLimitMessageProps = {
   text: string;
   onOpenRateLimitOptions?: () => void;
 };
-export function RateLimitMessage(t0) {
+export function RateLimitMessage(t0: RateLimitMessageProps) {
   const $ = _c(16);
   const {
     text,

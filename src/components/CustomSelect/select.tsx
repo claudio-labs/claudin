@@ -189,7 +189,7 @@ export type SelectProps<T> = {
    */
   readonly onRemoveImage?: (id: number) => void;
 };
-export function Select(t0) {
+export function Select(t0: SelectProps) {
   const $ = _c(72);
   const {
     isDisabled: t1,
