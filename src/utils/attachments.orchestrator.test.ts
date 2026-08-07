@@ -115,11 +115,10 @@ describe('getAttachments — subagent context-omission gates', () => {
     } as unknown as ToolUseContext
   }
 
-  test('omit flags suppress claude_md_delta / memory_delta / nested_memory / git_status_delta', async () => {
+  test('omit flags suppress claude_md_delta / nested_memory / git_status_delta', async () => {
     const out = await getAttachments(null, makeSubagentContext(true), null, [])
     const types = out.map(a => a.type)
     expect(types).not.toContain('claude_md_delta')
-    expect(types).not.toContain('memory_delta')
     expect(types).not.toContain('nested_memory')
     expect(types).not.toContain('git_status_delta')
   })

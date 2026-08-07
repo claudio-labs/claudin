@@ -456,16 +456,6 @@ export type Attachment =
       content: string
     }
   | {
-      // Phase 2 static-dedup: nested memory files. See
-      // src/utils/memoryDelta.ts.
-      type: 'memory_delta'
-      addedNames: string[]
-      addedContent: string[]
-      addedHashes: string[]
-      removedNames: string[]
-      isInitial: boolean
-    }
-  | {
       // Phase 2 static-dedup: todo/task reminder diff. See
       // src/utils/todoReminderDelta.ts.
       type: 'todo_reminder_delta'

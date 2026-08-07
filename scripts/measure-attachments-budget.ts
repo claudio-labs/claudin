@@ -361,15 +361,6 @@ function fixtures(profile: Profile): Attachment[] {
   })
 
   result.push({
-    type: 'memory_delta',
-    isInitial: true,
-    addedNames: Array.from({ length: fileN }, (_, i) => `m${i}.md`),
-    addedContent: Array.from({ length: fileN }, () => bodyOfSize(small)),
-    addedHashes: Array.from({ length: fileN }, (_, i) => `hash${i}`),
-    removedNames: [],
-  })
-
-  result.push({
     type: 'todo_reminder_delta',
     isInitial: true,
     added: Array.from({ length: 3 }, (_, i) => ({

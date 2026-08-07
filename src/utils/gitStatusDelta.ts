@@ -17,9 +17,9 @@
  *   - `src/utils/toolSearch.ts` (`getDeferredToolsDelta`)
  *   - `src/utils/attachments.ts` (`getAgentListingDeltaAttachment`)
  *
- * Complementary to the other three Phase-2 deltas (`claudeMdDelta`,
- * `memoryDelta`, `todoReminderDelta`): together they cover the static
- * context that was previously re-serialized every turn.
+ * Complementary to the other two Phase-2 deltas (`claudeMdDelta`,
+ * `todoReminderDelta`): together they cover the static context that was
+ * previously re-serialized every turn.
  */
 
 import { logEvent } from '../services/analytics/index.js'

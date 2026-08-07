@@ -159,8 +159,8 @@ export async function measureCumulativeDrift(options: {
 
   // Delta attachments injected on the first turn (initial announcement) plus
   // a smaller drip on every subsequent turn (typical: nothing, occasionally
-  // a memory_delta / git_status_delta / claude_md_delta).
-  const initialDeltaBytes = 4500 // claude_md_delta + memory + agents/skills listing
+  // a git_status_delta / claude_md_delta).
+  const initialDeltaBytes = 4500 // claude_md_delta + agents/skills listing
   const recurringDeltaBytes = 200 // small status nudge
 
   // Walk turn-by-turn so we can report cumulative billed tokens at each

@@ -49,7 +49,6 @@ const NULL_RENDERING_TYPES = [
   'bash_git_instructions',
   'claude_md_delta',
   'git_status_delta',
-  'memory_delta',
   'todo_reminder_delta',
   'task_reconcile',
 ] as const satisfies readonly Attachment['type'][]

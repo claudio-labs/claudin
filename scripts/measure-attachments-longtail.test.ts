@@ -3,9 +3,9 @@ import { describe, expect, test } from 'bun:test'
 import { measureLongtailAttachments } from './measure-attachments-longtail.ts'
 
 describe('measureLongtailAttachments', () => {
-  test('produces 4 kinds × 4 counts × 3 body sizes = 48 rows by default', async () => {
+  test('produces 3 kinds × 4 counts × 3 body sizes = 36 rows by default', async () => {
     const result = await measureLongtailAttachments()
-    expect(result.rows).toHaveLength(48)
+    expect(result.rows).toHaveLength(36)
   })
 
   test('within each (kind, body), bytes grow monotonically with count', async () => {
@@ -27,7 +27,7 @@ describe('measureLongtailAttachments', () => {
 
   test('slopes are reported per (kind, body) combination', async () => {
     const result = await measureLongtailAttachments()
-    expect(result.slopesPerEntry.length).toBe(12) // 4 kinds × 3 bodies
+    expect(result.slopesPerEntry.length).toBe(9) // 3 kinds × 3 bodies
     for (const s of result.slopesPerEntry) {
       expect(s.bytesPerEntry).toBeGreaterThan(0)
       expect(s.tokensPerEntry).toBeGreaterThan(0)
@@ -39,14 +39,14 @@ describe('measureLongtailAttachments', () => {
       bodyBytes: [100, 3000],
       counts: [1, 50],
     })
-    // For memory_delta (body-bearing), bigger body → bigger slope.
-    const memSmall = result.slopesPerEntry.find(
-      s => s.kind === 'memory_delta' && s.bodyBytes === 100,
+    // For mcp_instructions_delta (body-bearing), bigger body → bigger slope.
+    const mcpSmall = result.slopesPerEntry.find(
+      s => s.kind === 'mcp_instructions_delta' && s.bodyBytes === 100,
     )!
-    const memLarge = result.slopesPerEntry.find(
-      s => s.kind === 'memory_delta' && s.bodyBytes === 3000,
+    const mcpLarge = result.slopesPerEntry.find(
+      s => s.kind === 'mcp_instructions_delta' && s.bodyBytes === 3000,
     )!
-    expect(memLarge.bytesPerEntry).toBeGreaterThan(memSmall.bytesPerEntry * 5)
+    expect(mcpLarge.bytesPerEntry).toBeGreaterThan(mcpSmall.bytesPerEntry * 5)
   })
 
   test('mcp_instructions_delta has higher slope than agent_listing_delta at same body size', async () => {
@@ -65,7 +65,7 @@ describe('measureLongtailAttachments', () => {
       counts: [0],
       bodyBytes: [100],
     })
-    expect(result.rows.length).toBe(4)
+    expect(result.rows.length).toBe(3)
     for (const r of result.rows) {
       expect(r.bytes).toBeGreaterThanOrEqual(0)
     }
