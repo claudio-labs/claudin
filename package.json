@@ -34,6 +34,8 @@
     "test:coverage:ui": "bun run scripts/render-coverage-heatmap.ts",
     "security:pr-scan": "bun run scripts/pr-intent-scan.ts",
     "typecheck": "tsc --noEmit",
+    "generate:sdk-types": "bun run scripts/generate-sdk-types.ts",
+    "verify:sdk-types": "bun run scripts/generate-sdk-types.ts --check",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
