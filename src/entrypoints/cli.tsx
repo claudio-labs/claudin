@@ -16,7 +16,6 @@ if (typeof globalThis.File === 'undefined') {
     // Node 18.13+ exposes File in node:buffer but not as a global.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { File: NodeFile } = require('node:buffer')
-    // @ts-expect-error -- polyfilling missing global
     globalThis.File = NodeFile
   } catch {
     // Absolute fallback: stub so `MakeTypeAssertion(File)` doesn't throw.
@@ -41,7 +40,6 @@ if (typeof globalThis.File === 'undefined') {
 // in undici evaluates — keep it at the top with the File polyfill above.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function') {
-  // @ts-expect-error -- polyfilling missing static
   Promise.withResolvers = function withResolvers<T>() {
     let resolve: (value: T | PromiseLike<T>) => void = () => {}
     let reject: (reason?: unknown) => void = () => {}

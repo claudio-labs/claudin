@@ -15,6 +15,7 @@ afterAll(() => {
 describe('readGithubModelsToken', () => {
   test('returns undefined in bare mode', async () => {
     const { readGithubModelsToken } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?read-bare-mode'
     )
 
@@ -32,6 +33,7 @@ describe('readGithubModelsToken', () => {
 describe('saveGithubModelsToken / clearGithubModelsToken', () => {
   test('save returns failure in bare mode', async () => {
     const { saveGithubModelsToken } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?save-bare-mode'
     )
 
@@ -49,6 +51,7 @@ describe('saveGithubModelsToken / clearGithubModelsToken', () => {
 
   test('clear succeeds in bare mode', async () => {
     const { clearGithubModelsToken } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?clear-bare-mode'
     )
 
@@ -90,8 +93,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       tryGetActiveProvider: () => ({ transport: 'anthropic' }),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-not-copilot'
     )
 
@@ -102,8 +105,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   test('returns false when bare mode is active', async () => {
     process.env.CLAUDE_CODE_SIMPLE = '1'
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-bare'
     )
 
@@ -139,8 +142,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       }),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-valid-token'
     )
 
@@ -205,8 +208,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       }),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-expired-token'
     )
 
@@ -235,8 +238,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       }),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-no-tokens'
     )
 
@@ -297,8 +300,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       updateProviderProfile: mock(() => ({ success: true })),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-dedupe'
     )
 
@@ -370,8 +373,8 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       updateProviderProfile: mock(() => ({ success: true })),
     }))
 
-    // @ts-expect-error cache-busting query string for Bun module mocks
     const { refreshGithubModelsTokenIfNeeded } = await import(
+      // @ts-expect-error cache-busting query string for Bun module mocks
       './githubModelsCredentials.js?refresh-clears-flight'
     )
 
