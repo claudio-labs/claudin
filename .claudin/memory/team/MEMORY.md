@@ -67,6 +67,7 @@
 - [Footer PR pill supports GitLab + Gitea](pr-status-gitlab-gitea.md) — fetchPrStatus dispatches host→gh/glab/tea; auto-detects self-hosted; prStatusHosts lives in config.json NOT settings.json; Bitbucket deferred
 - [collapseRuns + blank-strip is SAFE since the 2026-06-27 root fix](bashfilter-collapseruns-blankstrip-footgun.md) — collapseIdenticalRuns no longer marks blank runs; the combo is now allowed; don't reintroduce the marker-on-blank behavior
 - [bashfilter fixture edits must preserve byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction % per sample; scrub fixtures with equal-length placeholders (viudes→devusr)
+- [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; don't recreate the mirror; 87 of 142 unmapped in FIXTURE_MAP
 - [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only works in fullscreen (CLAUDE_CODE_NO_FLICKER=1); inject SGR clicks via `send-keys`; ctrl+o verifies the render, SGR verifies the click
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; harness applies updatedInput verbatim; echo real input on allow; green unit tests missed it
 
