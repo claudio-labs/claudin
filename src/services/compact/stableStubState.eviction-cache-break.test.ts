@@ -1,7 +1,8 @@
 /**
  * S1 regression — display eviction is amortized and announced.
  *
- * The REPL's post-turn pipeline (src/screens/REPL.tsx) runs
+ * The REPL's post-turn pipeline (src/screens/repl/controllers/useOnQuery.ts,
+ * extracted from src/screens/REPL.tsx by ROADMAP 11e) runs
  * evictOldStubbedMessages / evictToMaxSize on messagesRef.current — the
  * SAME array that seeds the next turn's API request. getClipFrontierIndex
  * treats already-applied pure stubs as byte-stable, so the cache_control
@@ -272,35 +273,48 @@ describe('S1 regression: evictToMaxSize hysteresis band', () => {
 })
 
 describe('S1 regression: REPL wiring', () => {
-  test('the REPL post-turn path notifies the detector and uses the amortized params; onSubmit has the idle sweep', () => {
-    const replSource = readFileSync(
-      join(import.meta.dir, '../../screens/REPL.tsx'),
+  // The wiring this guards used to live in src/screens/REPL.tsx. ROADMAP 11e's
+  // deferred half moved the controllers into src/screens/repl/controllers/, so
+  // the guard follows them: the post-turn pipeline is now onQueryImpl's tail in
+  // useOnQuery.ts and the idle-gap sweep is onSubmit's in useOnSubmit.ts. Each
+  // assertion is checked against the file that actually owns the call, rather
+  // than a concatenation, so a failure still names where to look.
+  const controllerSource = (name: string) =>
+    readFileSync(
+      join(import.meta.dir, '../../screens/repl/controllers/', name),
       'utf8',
     )
+
+  test('the post-turn path notifies the detector and uses the amortized params', () => {
+    const onQuerySource = controllerSource('useOnQuery.ts')
     // Amortized params at the post-turn call sites.
-    expect(replSource).toContain(
+    expect(onQuerySource).toContain(
       'evictOldStubbedMessages(stubbed, 2, EVICT_MIN_BATCH)',
     )
-    expect(replSource).toContain(
+    expect(onQuerySource).toContain(
       'evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)',
     )
     // Intentional evictions are announced to the cache-break detector —
     // call-shaped and line-anchored so neither the import line nor a
     // commented-out call can satisfy the guard.
-    expect(replSource).toMatch(
+    expect(onQuerySource).toMatch(
       /^\s*notifyCacheDeletion\(getQuerySourceForREPL\(\)\)/m,
     )
+  })
+
+  test('onSubmit has the idle sweep', () => {
+    const onSubmitSource = controllerSource('useOnSubmit.ts')
     // Idle-gap sweep before seeding the request.
-    expect(replSource).toContain('evaluateTimeBasedTrigger(sweepSnapshot')
+    expect(onSubmitSource).toContain('evaluateTimeBasedTrigger(sweepSnapshot')
     // The sweep must not fire while a query is in flight (queued-submit
     // path): the in-flight turn keeps using its unswept array, so sweeping
     // here would diverge display from request bytes and make the next
     // turn's break full instead of free.
-    expect(replSource).toMatch(
+    expect(onSubmitSource).toMatch(
       /!queryGuard\.isActive &&\s*\n\s*evaluateTimeBasedTrigger\(sweepSnapshot/,
     )
     // Same-tick races: concurrent appends after the snapshot survive.
-    expect(replSource).toContain(
+    expect(onSubmitSource).toContain(
       '[...swept, ...prev.slice(sweepSnapshot.length)]',
     )
   })

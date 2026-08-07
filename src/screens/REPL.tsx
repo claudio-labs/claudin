@@ -1,8 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount, getTotalInputTokens } from '../bootstrap/state.js';
-import { parseTokenBudget } from '../utils/tokenBudget.js';
+import { snapshotOutputTokensForTurn, getTotalInputTokens } from '../bootstrap/state.js';
 import { count } from '../utils/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
@@ -22,6 +21,11 @@ import { getFocusedInputDialog } from './repl/utils/getFocusedInputDialog.js';
 import { useReplExit } from './repl/hooks/useReplExit.js';
 import { useReplLifecycle } from './repl/hooks/useReplLifecycle.js';
 import { resumeSession } from './repl/services/resumeSession.js';
+import { useSandboxAsk } from './repl/controllers/useSandboxAsk.js';
+import { useMessageActionsController } from './repl/controllers/useMessageActionsController.js';
+import { useToolUseContext } from './repl/controllers/useToolUseContext.js';
+import { useOnQuery } from './repl/controllers/useOnQuery.js';
+import { useOnSubmit } from './repl/controllers/useOnSubmit.js';
 import { renderMessagesToPlainText } from '../utils/exportRenderer.js';
 import { openFileInExternalEditor } from '../utils/editor.js';
 import { writeFile } from 'fs/promises';
@@ -36,27 +40,24 @@ import { useTerminalNotification } from '../ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from '../ink/terminal.js';
 import instances from '../ink/instances.js';
 import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from '../utils/fileStateCache.js';
-import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnStart, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, resetTurnHookDuration, getTurnToolDurationMs, getTurnToolCount, resetTurnToolDuration, getTurnClassifierDurationMs, getTurnClassifierCount, resetTurnClassifierDuration } from '../bootstrap/state.js';
+import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, getTurnToolDurationMs, getTurnToolCount, getTurnClassifierDurationMs, getTurnClassifierCount } from '../bootstrap/state.js';
 import { asSessionId, asAgentId } from '../types/ids.js';
 import { logForDebugging } from '../utils/debug.js';
 import { QueryGuard } from '../utils/QueryGuard.js';
 import { isEnvTruthy } from '../utils/envUtils.js';
 import { formatTokens, truncateToWidth } from '../utils/format.js';
 import { consumeEarlyInput } from '../utils/earlyInput.js';
-import { setMemberActive } from '../utils/swarm/teamHelpers.js';
-import { isSwarmWorker, generateSandboxRequestId, sendSandboxPermissionRequestViaMailbox, sendSandboxPermissionResponseViaMailbox } from '../utils/swarm/permissionSync.js';
-import { registerSandboxPermissionCallback } from '../hooks/useSwarmPermissionPoller.js';
-import { getTeamName, getAgentName } from '../utils/teammate.js';
+import { sendSandboxPermissionResponseViaMailbox } from '../utils/swarm/permissionSync.js';
 import { WorkerPendingPermission } from '../components/permissions/WorkerPendingPermission.js';
 import { injectUserMessageToTeammate, getAllInProcessTeammateTasks } from '../tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { isLocalAgentTask, queuePendingMessage, appendMessageToLocalAgent, type LocalAgentTaskState } from '../tasks/LocalAgentTask/LocalAgentTask.js';
-import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue, registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from '../utils/swarm/leaderPermissionBridge.js';
+import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue } from '../utils/swarm/leaderPermissionBridge.js';
 import { endInteractionSpan } from '../utils/telemetry/sessionTracing.js';
 import { useLogMessages } from '../hooks/useLogMessages.js';
 import { useReplBridge } from '../hooks/useReplBridge.js';
-import { type Command, type CommandResultDisplay, type ResumeEntrypoint, getCommandName, isCommandEnabled } from '../commands.js';
+import { type Command, type ResumeEntrypoint } from '../commands.js';
 import type { PromptInputMode, QueuedCommand, VimMode } from '../types/textInputTypes.js';
-import { MessageSelector, selectableUserMessagesFilter, messagesAfterAreOnlySynthetic } from '../components/MessageSelector.js';
+import { MessageSelector } from '../components/MessageSelector.js';
 import { useIdeLogging } from '../hooks/useIdeLogging.js';
 import { PermissionRequest, type ToolUseConfirm } from '../components/permissions/PermissionRequest.js';
 import { ElicitationDialog } from '../components/mcp/ElicitationDialog.js';
@@ -84,9 +85,6 @@ import { useCostSummary } from '../costHook.js';
 import { useFpsMetrics } from '../context/fpsMetrics.js';
 import { useAfterFirstRender } from '../hooks/useAfterFirstRender.js';
 import { useDeferredHookMessages } from '../hooks/useDeferredHookMessages.js';
-import { addToHistory, removeLastFromHistory, expandPastedTextRefs, parseReferences } from '../history.js';
-import { prependModeCharacterToInput } from '../components/PromptInput/inputModes.js';
-import { prependToShellHistoryCache } from '../utils/suggestions/shellHistoryCompletion.js';
 import { useApiKeyVerification } from '../hooks/useApiKeyVerification.js';
 import { GlobalKeybindingHandlers } from '../hooks/useGlobalKeybindings.js';
 import { CommandKeybindingHandlers } from '../hooks/useCommandKeybindings.js';
@@ -126,11 +124,10 @@ const getCoordinatorUserContext: (mcpClients: ReadonlyArray<{
 } = feature('COORDINATOR_MODE') ? require('../coordinator/coordinatorMode.js').getCoordinatorUserContext : () => ({});
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 import useCanUseTool from '../hooks/useCanUseTool.js';
-import type { ToolPermissionContext, Tool } from '../Tool.js';
+import type { Tool } from '../Tool.js';
 import { applyPermissionUpdate, applyPermissionUpdates, persistPermissionUpdate } from '../utils/permissions/PermissionUpdate.js';
 import { buildPermissionUpdates } from '../components/permissions/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.js';
 import { stripDangerousPermissionsForAutoMode } from '../utils/permissions/permissionSetup.js';
-import { getScratchpadDir, isScratchpadEnabled } from '../utils/permissions/filesystem.js';
 import { WEB_FETCH_TOOL_NAME } from '../tools/WebFetchTool/prompt.js';
 import { SLEEP_TOOL_NAME } from '../tools/SleepTool/prompt.js';
 import { clearSpeculativeChecks } from '../tools/BashTool/bashPermissions.js';
@@ -138,24 +135,19 @@ import { getGlobalConfig, saveGlobalConfig, getGlobalConfigWriteCount } from '..
 import { hasConsoleBillingAccess } from '../utils/billing.js';
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { textForResubmit, handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createUserMessage, createAssistantMessage, createTurnDurationMessage, createAgentsKilledMessage, createApiMetricsMessage, createSystemMessage, createCommandInputMessage, formatCommandInputTags } from '../utils/messages.js';
-import { getCurrentTurnCacheMetrics, resetCurrentTurn } from '../services/api/cacheStatsTracker.js';
-import { formatCacheMetricsCompact, formatCacheMetricsFull } from '../services/api/cacheMetrics.js';
-import { generateSessionTitle } from '../utils/sessionTitle.js';
-import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_STDOUT_TAG } from '../constants/xml.js';
+import { textForResubmit, handleMessageFromStream, type StreamingToolUse, type StreamingThinking, getMessagesAfterCompactBoundary, createUserMessage, createAssistantMessage, createTurnDurationMessage, createAgentsKilledMessage, createApiMetricsMessage, createSystemMessage, createCommandInputMessage, formatCommandInputTags } from '../utils/messages.js';
+import { LOCAL_COMMAND_STDOUT_TAG } from '../constants/xml.js';
 import { escapeXml } from '../utils/xml.js';
 import type { ThinkingConfig } from '../utils/thinking.js';
 import { gracefulShutdownSync, isShuttingDown } from '../utils/gracefulShutdown.js';
 import { handlePromptSubmit, type PromptInputHelpers } from '../utils/handlePromptSubmit.js';
 import { useQueueProcessor } from '../hooks/useQueueProcessor.js';
 import { useMailboxBridge } from '../hooks/useMailboxBridge.js';
-import { queryCheckpoint, logQueryProfileReport } from '../utils/queryProfiler.js';
 import type { Message as MessageType, UserMessage, ProgressMessage, HookResultMessage, PartialCompactDirection } from '../types/message.js';
 import { query } from '../query.js';
-import { mergeClients, useMergedClients } from '../hooks/useMergedClients.js';
+import { useMergedClients } from '../hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from '../utils/promptCategory.js';
 import { useMergedTools } from '../hooks/useMergedTools.js';
-import { mergeAndFilterTools } from '../utils/toolPool.js';
 import { useMergedCommands } from '../hooks/useMergedCommands.js';
 import { useSkillsChange } from '../hooks/useSkillsChange.js';
 import { useManagePlugins } from '../hooks/useManagePlugins.js';
@@ -163,38 +155,30 @@ import { Messages } from '../components/Messages.js';
 import { TaskListV2 } from '../components/TaskListV2.js';
 import { TeammateViewHeader } from '../components/TeammateViewHeader.js';
 import { useTasksV2WithCollapseEffect } from '../hooks/useTasksV2.js';
-import { maybeMarkProjectOnboardingComplete } from '../projectOnboardingState.js';
 import type { MCPServerConnection } from '../services/mcp/types.js';
 import type { ScopedMcpServerConfig } from '../services/mcp/types.js';
 import { randomUUID, type UUID } from 'crypto';
 import { processSessionStartHooks } from '../utils/sessionStart.js';
 import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from '../utils/hooks.js';
 import { type IDESelection, useIdeSelection } from '../hooks/useIdeSelection.js';
-import { getTools, assembleToolPool } from '../tools.js';
+import { getTools } from '../tools.js';
 import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from '../tools/AgentTool/agentToolUtils.js';
 import { resumeAgentBackground } from '../tools/AgentTool/resumeAgent.js';
 import { useMainLoopModel } from '../hooks/useMainLoopModel.js';
 import { useAppState, useSetAppState, useAppStateStore } from '../state/AppState.js';
-import type { ContentBlockParam, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-import type { ProcessUserInputContext } from '../utils/processUserInput/processUserInput.js';
+import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { PastedContent } from '../utils/config.js';
 import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from '../utils/plans.js';
-import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile, removeTranscriptMessage, restoreSessionMetadata, getCurrentSessionTitle, isEphemeralToolProgress, isLoggableMessage, saveWorktreeState, getAgentTranscript } from '../utils/sessionStorage.js';
+import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile, restoreSessionMetadata, getCurrentSessionTitle, isLoggableMessage, saveWorktreeState, getAgentTranscript } from '../utils/sessionStorage.js';
 import { deserializeMessages } from '../utils/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages } from '../utils/queryHelpers.js';
-import { evaluateTimeBasedTrigger, resetMicrocompactState } from '../services/compact/microCompact.js';
 import { runPostCompactCleanup } from '../services/compact/postCompactCleanup.js';
-import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, EVICT_MIN_BATCH, EVICT_TRIGGER_AT, MAX_DISPLAY_MESSAGES, type AnyMessage } from '../services/compact/stableStubState.js';
-import { notifyCacheDeletion } from '../services/api/promptCacheBreakDetection.js';
-import { getCacheProfile } from '../services/cache/cacheProfile.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from '../utils/toolResultStorage.js';
 import { partialCompactConversation } from '../services/compact/compact.js';
 import type { LogOption } from '../types/logs.js';
 import type { AgentColorName } from '../tools/AgentTool/agentColorManager.js';
-import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type FileHistorySnapshot, copyFileHistoryForResume, fileHistoryEnabled, fileHistoryHasAnyChanges } from '../utils/fileHistory.js';
-import { type AttributionState, incrementPromptCount } from '../utils/commitAttribution.js';
-import { recordAttributionSnapshot } from '../utils/sessionStorage.js';
+import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type FileHistorySnapshot, copyFileHistoryForResume, fileHistoryEnabled } from '../utils/fileHistory.js';
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionStateFromLog, restoreWorktreeForResume, exitRestoredWorktree } from '../utils/sessionRestore.js';
 import { updateSessionName } from '../utils/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from '../tasks/InProcessTeammateTask/types.js';
@@ -211,21 +195,19 @@ const useScheduledTasks = require('../hooks/useScheduledTasks.js').useScheduledT
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isAgentSwarmsEnabled } from '../utils/agentSwarmsEnabled.js';
 import { useTaskListWatcher } from '../hooks/useTaskListWatcher.js';
-import type { SandboxAskCallback, NetworkHostPattern } from '../utils/sandbox/sandbox-adapter.js';
-import { type IDEExtensionInstallationStatus, closeOpenDiffs, getConnectedIdeClient, type IdeType } from '../utils/ide.js';
+import type { NetworkHostPattern } from '../utils/sandbox/sandbox-adapter.js';
+import { type IDEExtensionInstallationStatus, type IdeType } from '../utils/ide.js';
 import { useIDEIntegration } from '../hooks/useIDEIntegration.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
-import { popAllEditable, enqueue, type SetAppState, getCommandQueue, getCommandQueueLength, removeByFilter } from '../utils/messageQueueManager.js';
+import { popAllEditable, getCommandQueue, getCommandQueueLength } from '../utils/messageQueueManager.js';
 import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from '../utils/toolJSXStore.js';
 import { useCommandQueue } from '../hooks/useCommandQueue.js';
 import { SessionBackgroundHint } from '../components/SessionBackgroundHint.js';
-import { startBackgroundSession } from '../tasks/LocalMainSessionTask.js';
 import { useSessionBackgrounding } from '../hooks/useSessionBackgrounding.js';
 import { diagnosticTracker } from '../services/diagnosticTracking.js';
-import { handleSpeculationAccept, type ActiveSpeculationState } from '../services/PromptSuggestion/speculation.js';
+import { handleSpeculationAccept } from '../services/PromptSuggestion/speculation.js';
 import { IdeOnboardingDialog } from '../components/IdeOnboardingDialog.js';
 import { EffortCallout, shouldShowEffortCallout } from '../components/EffortCallout.js';
-import type { EffortValue } from '../utils/effort.js';
 import { RemoteCallout } from '../components/RemoteCallout.js';
 import { getAPIProvider } from '../utils/model/providers.js';
 const AntModelSwitchCallout = null;
@@ -244,9 +226,8 @@ import { getTipToShowOnSpinner, recordShownTip } from 'src/services/tips/tipSche
 import type { Theme } from 'src/utils/theme.js';
 import { isPromptTypingSuppressionActive } from './replInputSuppression.js';
 import { shouldRunStartupChecks } from './replStartupGates.js';
-import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded, useKickOffCheckAndDisableBypassPermissionsIfNeeded, useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/utils/permissions/bypassPermissionsKillswitch.js';
+import { useKickOffCheckAndDisableBypassPermissionsIfNeeded, useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/utils/permissions/bypassPermissionsKillswitch.js';
 import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
-import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/cli/structuredIO.js';
 import { useFileHistorySnapshotInit } from 'src/hooks/useFileHistorySnapshotInit.js';
 import { SandboxPermissionRequest } from 'src/components/permissions/SandboxPermissionRequest.js';
 import { SandboxViolationExpandedView } from 'src/components/SandboxViolationExpandedView.js';
@@ -281,20 +262,16 @@ import { IssueFlagBanner } from '../components/PromptInput/IssueFlagBanner.js';
 import { useIssueFlagBanner } from '../hooks/useIssueFlagBanner.js';
 import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from '../buddy/CompanionSprite.js';
 import { isBuddyEnabled } from '../buddy/feature.js';
-import { fireCompanionObserver } from '../buddy/observer.js';
 // Session manager removed - using AppState now
 import type { RemoteSessionConfig } from '../remote/RemoteSessionManager.js';
 import { REMOTE_SAFE_COMMANDS } from '../commands.js';
-import type { RemoteMessageContent } from '../utils/teleport/api.js';
 import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from '../components/FullscreenLayout.js';
 import { StartupBanner } from '../components/StartupBanner.js';
 import { isFullscreenEnvEnabled, maybeGetTmuxMouseHint, isMouseTrackingEnabled } from '../utils/fullscreen.js';
 import { AlternateScreen } from '../ink/components/AlternateScreen.js';
 import { ScrollKeybindingHandler } from '../components/ScrollKeybindingHandler.js';
-import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type MessageActionsState, type MessageActionsNav, type MessageActionCaps } from '../components/messageActions.js';
-import { setClipboard } from '../ink/termio/osc.js';
+import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type MessageActionsState, type MessageActionsNav } from '../components/messageActions.js';
 import type { ScrollBoxHandle } from '../ink/components/ScrollBox.js';
-import { createAttachmentMessage, getQueuedCommandAttachments } from '../utils/attachments.js';
 
 // Stable empty array for hooks that accept MCPServerConnection[] — avoids
 // creating a new [] literal on every render in remote mode, which would
@@ -323,6 +300,23 @@ const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
 //   src/screens/repl/components/TranscriptModeFooter.tsx
 //   src/screens/repl/components/TranscriptSearchBar.tsx
 //   src/screens/repl/components/AnimatedTerminalTitle.tsx
+//
+// The controllers ROADMAP 11e deferred ("REPL.tsx mantém controllers
+// (`onSubmit`/`onQuery*`) e composição") now live in
+// src/screens/repl/controllers/. Each is a custom hook invoked from exactly the
+// position its original declaration occupied, so the component's hook-call
+// sequence is unchanged (verified: 301 hook calls, identical order, before and
+// after). See:
+//   src/screens/repl/controllers/useSandboxAsk.ts
+//   src/screens/repl/controllers/useToolUseContext.ts
+//   src/screens/repl/controllers/useOnQuery.ts
+//   src/screens/repl/controllers/useOnSubmit.ts
+//   src/screens/repl/controllers/useMessageActionsController.ts
+//
+// What deliberately stayed here: the JSX composition (`mainReturn`), the
+// initial-message effect (it sits BETWEEN useOnQuery and useOnSubmit and closes
+// over both), `onCancel`/`cancelRequestProps`, `executeQueuedInput` (28 lines,
+// pure passthrough to handlePromptSubmit) and `onAgentSubmit`.
 
 export type Props = {
   commands: Command[];
@@ -1832,101 +1826,12 @@ export function REPL({
       }
     }
   }, [messages, showCostDialog, haveShownCostDialog]);
-  const sandboxAskCallback: SandboxAskCallback = useCallback(async (hostPattern: NetworkHostPattern) => {
-    // If running as a swarm worker, forward the request to the leader via mailbox
-    if (isAgentSwarmsEnabled() && isSwarmWorker()) {
-      const requestId = generateSandboxRequestId();
-
-      // Send the request to the leader via mailbox
-      const sent = await sendSandboxPermissionRequestViaMailbox(hostPattern.host, requestId);
-      return new Promise(resolveShouldAllowHost => {
-        if (!sent) {
-          // If we couldn't send via mailbox, fall back to local handling
-          setSandboxPermissionRequestQueue(prev => [...prev, {
-            hostPattern,
-            resolvePromise: resolveShouldAllowHost
-          }]);
-          return;
-        }
-
-        // Register the callback for when the leader responds
-        registerSandboxPermissionCallback({
-          requestId,
-          host: hostPattern.host,
-          resolve: resolveShouldAllowHost
-        });
-
-        // Update AppState to show pending indicator
-        setAppState(prev => ({
-          ...prev,
-          pendingSandboxRequest: {
-            requestId,
-            host: hostPattern.host
-          }
-        }));
-      });
-    }
-
-    // Normal flow for non-workers: show local UI and optionally race
-    // against the REPL bridge (Remote Control) if connected.
-    return new Promise(resolveShouldAllowHost => {
-      let resolved = false;
-      function resolveOnce(allow: boolean): void {
-        if (resolved) return;
-        resolved = true;
-        resolveShouldAllowHost(allow);
-      }
-
-      // Queue the local sandbox permission dialog
-      setSandboxPermissionRequestQueue(prev => [...prev, {
-        hostPattern,
-        resolvePromise: resolveOnce
-      }]);
-
-      // When the REPL bridge is connected, also forward the sandbox
-      // permission request as a can_use_tool control_request so the
-      // remote user (e.g. on claude.ai) can approve it too.
-      if (feature('BRIDGE_MODE')) {
-        const bridgeCallbacks = store.getState().replBridgePermissionCallbacks;
-        if (bridgeCallbacks) {
-          const bridgeRequestId = randomUUID();
-          bridgeCallbacks.sendRequest(bridgeRequestId, SANDBOX_NETWORK_ACCESS_TOOL_NAME, {
-            host: hostPattern.host
-          }, randomUUID(), `Allow network connection to ${hostPattern.host}?`);
-          const unsubscribe = bridgeCallbacks.onResponse(bridgeRequestId, response => {
-            unsubscribe();
-            const allow = response.behavior === 'allow';
-            // Resolve ALL pending requests for the same host, not just
-            // this one — mirrors the local dialog handler pattern.
-            setSandboxPermissionRequestQueue(queue => {
-              queue.filter(item => item.hostPattern.host === hostPattern.host).forEach(item => item.resolvePromise(allow));
-              return queue.filter(item => item.hostPattern.host !== hostPattern.host);
-            });
-            // Clean up all sibling bridge subscriptions for this host
-            // (other concurrent same-host requests) before deleting.
-            const siblingCleanups = sandboxBridgeCleanupRef.current.get(hostPattern.host);
-            if (siblingCleanups) {
-              for (const fn of siblingCleanups) {
-                fn();
-              }
-              sandboxBridgeCleanupRef.current.delete(hostPattern.host);
-            }
-          });
-
-          // Register cleanup so the local dialog handler can cancel
-          // the remote prompt and unsubscribe when the local user
-          // responds first.
-          const cleanup = () => {
-            unsubscribe();
-            bridgeCallbacks.cancelRequest(bridgeRequestId);
-          };
-          const existing = sandboxBridgeCleanupRef.current.get(hostPattern.host) ?? [];
-          existing.push(cleanup);
-          sandboxBridgeCleanupRef.current.set(hostPattern.host, existing);
-        }
-      }
-    });
-  }, [setAppState, store]);
+  const sandboxAskCallback = useSandboxAsk({
+    setAppState,
+    store,
+    setSandboxPermissionRequestQueue,
+    sandboxBridgeCleanupRef,
+  });
 
   // #34044: if user explicitly set sandbox.enabled=true but deps are missing,
   // isSandboxingEnabled() returns false silently. Surface the reason once at
@@ -1961,227 +1866,57 @@ export function REPL({
       gracefulShutdownSync(1, 'other');
     });
   }
-  const setToolPermissionContext = useCallback((context: ToolPermissionContext, options?: {
-    preserveMode?: boolean;
-  }) => {
-    setAppState(prev => ({
-      ...prev,
-      toolPermissionContext: {
-        ...context,
-        // Preserve the coordinator's mode only when explicitly requested.
-        // Workers' getAppState() returns a transformed context with mode
-        // 'acceptEdits' that must not leak into the coordinator's actual
-        // state via permission-rule updates — those call sites pass
-        // { preserveMode: true }. User-initiated mode changes (e.g.,
-        // selecting "allow all edits") must NOT be overridden.
-        mode: options?.preserveMode ? prev.toolPermissionContext.mode : context.mode
-      }
-    }));
-
-    // When permission context changes, recheck all queued items
-    // This handles the case where approving item1 with "don't ask again"
-    // should auto-approve other queued items that now match the updated rules
-    setImmediate(setToolUseConfirmQueue => {
-      // Use setToolUseConfirmQueue callback to get current queue state
-      // instead of capturing it in the closure, to avoid stale closure issues
-      setToolUseConfirmQueue(currentQueue => {
-        currentQueue.forEach(item => {
-          void item.recheckPermission();
-        });
-        return currentQueue;
-      });
-    }, setToolUseConfirmQueue);
-  }, [setAppState, setToolUseConfirmQueue]);
-
-  // Register the leader's setToolPermissionContext for in-process teammates
-  useEffect(() => {
-    registerLeaderSetToolPermissionContext(setToolPermissionContext);
-    return () => unregisterLeaderSetToolPermissionContext();
-  }, [setToolPermissionContext]);
-  const canUseTool = useCanUseTool(setToolUseConfirmQueue, setToolPermissionContext);
-  const requestPrompt = useCallback((title: string, toolInputSummary?: string | null) => (request: PromptRequest): Promise<PromptResponse> => new Promise<PromptResponse>((resolve, reject) => {
-    setPromptQueue(prev => [...prev, {
-      request,
-      title,
-      toolInputSummary,
-      resolve,
-      reject
-    }]);
-  }), []);
-  const getToolUseContext = useCallback((messages: MessageType[], newMessages: MessageType[], abortController: AbortController, mainLoopModel: string): ProcessUserInputContext => {
-    // Read mutable values fresh from the store rather than closure-capturing
-    // useAppState() snapshots. Same values today (closure is refreshed by the
-    // render between turns); decouples freshness from React's render cycle for
-    // a future headless conversation loop. Same pattern refreshTools() uses.
-    const s = store.getState();
-
-    // Compute tools fresh from store.getState() rather than the closure-
-    // captured `tools`. useManageMCPConnections populates appState.mcp
-    // async as servers connect — the store may have newer MCP state than
-    // the closure captured at render time. Also doubles as refreshTools()
-    // for mid-query tool list updates.
-    const computeTools = () => {
-      const state = store.getState();
-      const assembled = assembleToolPool(state.toolPermissionContext, state.mcp.tools);
-      const merged = mergeAndFilterTools(combinedInitialTools, assembled, state.toolPermissionContext.mode);
-      if (!mainThreadAgentDefinition) return merged;
-      return resolveAgentTools(mainThreadAgentDefinition, merged, false, true).resolvedTools;
-    };
-    return {
-      abortController,
-      options: {
-        commands,
-        tools: computeTools(),
-        debug,
-        verbose: s.verbose,
-        mainLoopModel,
-        thinkingConfig: s.thinkingEnabled !== false ? thinkingConfig : {
-          type: 'disabled'
-        },
-        // Merge fresh from store rather than closing over useMergedClients'
-        // memoized output. initialMcpClients is a prop (session-constant).
-        mcpClients: mergeClients(initialMcpClients, s.mcp.clients),
-        mcpResources: s.mcp.resources,
-        ideInstallationStatus: ideInstallationStatus,
-        isNonInteractiveSession: false,
-        dynamicMcpConfig,
-        theme,
-        agentDefinitions: allowedAgentTypes ? {
-          ...s.agentDefinitions,
-          allowedAgentTypes
-        } : s.agentDefinitions,
-        customSystemPrompt,
-        appendSystemPrompt,
-        refreshTools: computeTools
-      },
-      getAppState: () => store.getState(),
-      setAppState,
-      messages,
-      setMessages,
-      updateFileHistoryState(updater: (prev: FileHistoryState) => FileHistoryState) {
-        // Perf: skip the setState when the updater returns the same reference
-        // (e.g. fileHistoryTrackEdit returns `state` when the file is already
-        // tracked). Otherwise every no-op call would notify all store listeners.
-        setAppState(prev => {
-          const updated = updater(prev.fileHistory);
-          if (updated === prev.fileHistory) return prev;
-          return {
-            ...prev,
-            fileHistory: updated
-          };
-        });
-      },
-      updateAttributionState(updater: (prev: AttributionState) => AttributionState) {
-        setAppState(prev => {
-          const updated = updater(prev.attribution);
-          if (updated === prev.attribution) return prev;
-          return {
-            ...prev,
-            attribution: updated
-          };
-        });
-      },
-      openMessageSelector: () => {
-        if (!disabled) {
-          setIsMessageSelectorVisible(true);
-        }
-      },
-      onChangeAPIKey: reverify,
-      readFileState: readFileState.current,
-      setToolJSX,
-      addNotification,
-      appendSystemMessage: msg => setMessages(prev => [...prev, msg]),
-      sendOSNotification: opts => {
-        void sendNotification(opts, terminal);
-      },
-      onChangeDynamicMcpConfig,
-      onInstallIDEExtension: setIDEToInstallExtension,
-      nestedMemoryAttachmentTriggers: new Set<string>(),
-      loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
-      dynamicSkillDirTriggers: new Set<string>(),
-      discoveredSkillNames: discoveredSkillNamesRef.current,
-      setResponseLength,
-      pushApiMetricsEntry: undefined,
-      setStreamMode,
-      onCompactProgress: event => {
-        switch (event.type) {
-          case 'hooks_start':
-            setSpinnerColor('claudeBlue_FOR_SYSTEM_SPINNER');
-            setSpinnerShimmerColor('claudeBlueShimmer_FOR_SYSTEM_SPINNER');
-            setSpinnerMessage(event.hookType === 'pre_compact' ? 'Running PreCompact hooks\u2026' : event.hookType === 'post_compact' ? 'Running PostCompact hooks\u2026' : 'Running SessionStart hooks\u2026');
-            break;
-          case 'compact_start':
-            setSpinnerMessage('Compacting conversation');
-            break;
-          case 'compact_end':
-            setSpinnerMessage(null);
-            setSpinnerColor(null);
-            setSpinnerShimmerColor(null);
-            break;
-        }
-      },
-      setInProgressToolUseIDs,
-      setHasInterruptibleToolInProgress: (v: boolean) => {
-        hasInterruptibleToolInProgressRef.current = v;
-      },
-      resume,
-      setConversationId,
-      requestPrompt: feature('HOOK_PROMPTS') ? requestPrompt : undefined,
-      contentReplacementState: contentReplacementStateRef.current,
-      syncToolResultReplacements
-    };
-  }, [commands, combinedInitialTools, mainThreadAgentDefinition, debug, initialMcpClients, ideInstallationStatus, dynamicMcpConfig, theme, allowedAgentTypes, store, setAppState, reverify, addNotification, setMessages, onChangeDynamicMcpConfig, resume, requestPrompt, disabled, customSystemPrompt, appendSystemPrompt, setConversationId, syncToolResultReplacements]);
-
-  // Session backgrounding (Ctrl+B to background/foreground)
-  const handleBackgroundQuery = useCallback(() => {
-    // Stop the foreground query so the background one takes over
-    abortController?.abort('background');
-    // Aborting subagents may produce task-completed notifications.
-    // Clear task notifications so the queue processor doesn't immediately
-    // start a new foreground query; forward them to the background session.
-    const removedNotifications = removeByFilter(cmd => cmd.mode === 'task-notification');
-    void (async () => {
-      const toolUseContext = getToolUseContext(messagesRef.current, [], new AbortController(), mainLoopModel);
-      const [defaultSystemPrompt, userContext, systemContext] = await Promise.all([getSystemPrompt(toolUseContext.options.tools, mainLoopModel, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), toolUseContext.options.mcpClients), getUserContext(), getSystemContext()]);
-      const systemPrompt = buildEffectiveSystemPrompt({
-        mainThreadAgentDefinition,
-        toolUseContext,
-        customSystemPrompt,
-        defaultSystemPrompt,
-        appendSystemPrompt
-      });
-      toolUseContext.renderedSystemPrompt = systemPrompt;
-      const notificationAttachments = await getQueuedCommandAttachments(removedNotifications).catch(() => []);
-      const notificationMessages = notificationAttachments.map(createAttachmentMessage);
-
-      // Deduplicate: if the query loop already yielded a notification into
-      // messagesRef before we removed it from the queue, skip duplicates.
-      // We use prompt text for dedup because source_uuid is not set on
-      // task-notification QueuedCommands (enqueuePendingNotification callers
-      // don't pass uuid), so it would always be undefined.
-      const existingPrompts = new Set<string>();
-      for (const m of messagesRef.current) {
-        if (m.type === 'attachment' && m.attachment.type === 'queued_command' && m.attachment.commandMode === 'task-notification' && typeof m.attachment.prompt === 'string') {
-          existingPrompts.add(m.attachment.prompt);
-        }
-      }
-      const uniqueNotifications = notificationMessages.filter(m => m.attachment.type === 'queued_command' && (typeof m.attachment.prompt !== 'string' || !existingPrompts.has(m.attachment.prompt)));
-      startBackgroundSession({
-        messages: [...messagesRef.current, ...uniqueNotifications],
-        queryParams: {
-          systemPrompt,
-          userContext,
-          systemContext,
-          canUseTool,
-          toolUseContext,
-          querySource: getQuerySourceForREPL()
-        },
-        description: terminalTitle,
-        setAppState,
-        agentDefinition: mainThreadAgentDefinition
-      });
-    })();
-  }, [abortController, mainLoopModel, toolPermissionContext, mainThreadAgentDefinition, getToolUseContext, customSystemPrompt, appendSystemPrompt, canUseTool, setAppState]);
+  const {
+    setToolPermissionContext,
+    canUseTool,
+    getToolUseContext,
+    handleBackgroundQuery
+  } = useToolUseContext({
+    commands,
+    debug,
+    disabled,
+    combinedInitialTools,
+    initialMcpClients,
+    mainThreadAgentDefinition,
+    allowedAgentTypes,
+    customSystemPrompt,
+    appendSystemPrompt,
+    thinkingConfig,
+    dynamicMcpConfig,
+    ideInstallationStatus,
+    theme,
+    terminal,
+    terminalTitle,
+    mainLoopModel,
+    toolPermissionContext,
+    abortController,
+    store,
+    messagesRef,
+    readFileState,
+    discoveredSkillNamesRef,
+    loadedNestedMemoryPathsRef,
+    contentReplacementStateRef,
+    hasInterruptibleToolInProgressRef,
+    resume,
+    reverify,
+    onChangeDynamicMcpConfig,
+    syncToolResultReplacements,
+    addNotification,
+    setToolJSX,
+    setAppState,
+    setMessages,
+    setConversationId,
+    setToolUseConfirmQueue,
+    setPromptQueue,
+    setIsMessageSelectorVisible,
+    setIDEToInstallExtension,
+    setInProgressToolUseIDs,
+    setResponseLength,
+    setStreamMode,
+    setSpinnerColor,
+    setSpinnerShimmerColor,
+    setSpinnerMessage,
+  });
   const {
     handleBackgroundSession
   } = useSessionBackgrounding({
@@ -2191,505 +1926,54 @@ export function REPL({
     setAbortController,
     onBackgroundQuery: handleBackgroundQuery
   });
-  const onQueryEvent = useCallback((event: Parameters<typeof handleMessageFromStream>[0]) => {
-    handleMessageFromStream(event, newMessage => {
-      // Apply any frame-coalesced streamingToolUses updates queued before this
-      // message (including the message_stop `() => []` reset) in the same task
-      // as the setMessages below, so React auto-batches both into one commit
-      // (the LegacyRoot tag is vestigial — react-reconciler 0.33 runs every
-      // root in ConcurrentMode) and the streaming-preview → final-message
-      // switch never paints an intermediate frame. Ink's throttled stdout
-      // paint is a second, independent net.
-      coalescedStreamingToolUses.flush();
-      if (isCompactBoundaryMessage(newMessage)) {
-        // Fullscreen: keep pre-compact messages for scrollback. query.ts
-        // slices at the boundary for API calls, Messages.tsx skips the
-        // boundary filter in fullscreen, and useLogMessages treats this
-        // as an incremental append (first uuid unchanged). Cap at one
-        // compact-interval of scrollback — normalizeMessages/applyGrouping
-        // are O(n) per render, so drop everything before the previous
-        // boundary to keep n bounded across multi-day sessions.
-        if (isFullscreenEnvEnabled()) {
-          setMessages(old => [...getMessagesAfterCompactBoundary(old, {
-            includeSnipped: true
-          }), newMessage]);
-        } else {
-          setMessages(() => [newMessage]);
-        }
-        // Bump conversationId so Messages.tsx row keys change and
-        // stale memoized rows remount with post-compact content.
-        setConversationId(randomUUID());
-        // Compaction succeeded — clear the context-blocked flag so ticks resume
-        if (feature('PROACTIVE') || feature('KAIROS')) {
-          proactiveModule?.setContextBlocked(false);
-        }
-      } else if (newMessage.type === 'progress' && isEphemeralToolProgress(newMessage.data.type)) {
-        // Replace the previous ephemeral progress tick for the same tool
-        // call instead of appending. Sleep/Bash emit a tick per second and
-        // only the last one is rendered; appending blows up the messages
-        // array (13k+ observed) and the transcript (120MB of sleep_progress
-        // lines). useLogMessages tracks length, so same-length replacement
-        // also skips the transcript write.
-        // agent_progress / hook_progress / skill_progress are NOT ephemeral
-        // — each carries distinct state the UI needs (e.g. subagent tool
-        // history). Replacing those leaves the AgentTool UI stuck at
-        // "Initializing…" because it renders the full progress trail.
-        setMessages(oldMessages => {
-          const last = oldMessages.at(-1);
-          if (last?.type === 'progress' && last.parentToolUseID === newMessage.parentToolUseID && last.data.type === newMessage.data.type) {
-            const copy = oldMessages.slice();
-            copy[copy.length - 1] = newMessage;
-            return copy;
-          }
-          return [...oldMessages, newMessage];
-        });
-      } else {
-        // Immediately stub large tool_results for display to prevent
-        // mid-turn memory spikes. Full content is preserved in
-        // QueryEngine.mutableMessages (API-facing) and transcript.
-        const displayProfile = getCacheProfile()
-        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current as AnyMessage[], displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
-        setMessages(oldMessages => [...oldMessages, displayMessage]);
-      }
-      // Block ticks on API errors to prevent tick → error → tick
-      // runaway loops (e.g., auth failure, rate limit, blocking limit).
-      // Cleared on compact boundary (above) or successful response (below).
-      if (feature('PROACTIVE') || feature('KAIROS')) {
-        if (newMessage.type === 'assistant' && 'isApiErrorMessage' in newMessage && newMessage.isApiErrorMessage) {
-          proactiveModule?.setContextBlocked(true);
-        } else if (newMessage.type === 'assistant') {
-          proactiveModule?.setContextBlocked(false);
-        }
-      }
-    }, newContent => {
-      // setResponseLength handles updating both responseLengthRef (for
-      // spinner animation) and apiMetricsRef (endResponseLength/lastTokenTime
-      // for OTPS). No separate metrics update needed here.
-      setResponseLength(length => length + newContent.length);
-    }, setStreamMode, coalescedStreamingToolUses.enqueue, tombstonedMessage => {
-      // Filter by uuid, not reference: query.ts yields a backfilled clone of
-      // each assistant message (tool_use input backfill), so the array entry
-      // can be a different object than the tombstoned original.
-      setMessages(oldMessages => oldMessages.filter(m => m.uuid !== tombstonedMessage.uuid));
-      void removeTranscriptMessage(tombstonedMessage.uuid);
-    }, setStreamingThinking, metrics => {
-      const now = Date.now();
-      const baseline = responseLengthRef.current;
-      apiMetricsRef.current.push({
-        ...metrics,
-        firstTokenTime: now,
-        lastTokenTime: now,
-        responseLengthBaseline: baseline,
-        endResponseLength: baseline
-      });
-    }, onStreamingText);
-  }, [setMessages, setResponseLength, setStreamMode, coalescedStreamingToolUses, setStreamingThinking, onStreamingText]);
-  const onQueryImpl = useCallback(async (messagesIncludingNewMessages: MessageType[], newMessages: MessageType[], abortController: AbortController, shouldQuery: boolean, additionalAllowedTools: string[], mainLoopModelParam: string, effort?: EffortValue) => {
-    // Prepare IDE integration for new prompt. Read mcpClients fresh from
-    // store — useManageMCPConnections may have populated it since the
-    // render that captured this closure (same pattern as computeTools).
-    if (shouldQuery) {
-      const freshClients = mergeClients(initialMcpClients, store.getState().mcp.clients);
-      void diagnosticTracker.handleQueryStart(freshClients);
-      const ideClient = getConnectedIdeClient(freshClients);
-      if (ideClient) {
-        void closeOpenDiffs(ideClient);
-      }
-    }
-
-    // Mark onboarding as complete when any user message is sent to Claude
-    void maybeMarkProjectOnboardingComplete();
-
-    // Extract a session title from the first real user message. One-shot
-    // via ref (was tengu_birch_mist experiment: first-message-only to save
-    // Haiku calls). The ref replaces the old `messages.length <= 1` check,
-    // which was broken by SessionStart hook messages (prepended via
-    // useDeferredHookMessages) and attachment messages (appended by
-    // processTextPrompt) — both pushed length past 1 on turn one, so the
-    // title silently fell through to the "Claude Code" default.
-    if (!titleDisabled && !sessionTitle && !agentTitle && !haikuTitleAttemptedRef.current) {
-      const firstUserMessage = newMessages.find(m => m.type === 'user' && !m.isMeta);
-      const text = firstUserMessage?.type === 'user' ? getContentText(firstUserMessage.message.content) : null;
-      // Skip synthetic breadcrumbs — slash-command output, prompt-skill
-      // expansions (/commit → <command-message>), local-command headers
-      // (/help → <command-name>), and bash-mode (!cmd → <bash-input>).
-      // None of these are the user's topic; wait for real prose.
-      if (text && !text.startsWith(`<${LOCAL_COMMAND_STDOUT_TAG}>`) && !text.startsWith(`<${COMMAND_MESSAGE_TAG}>`) && !text.startsWith(`<${COMMAND_NAME_TAG}>`) && !text.startsWith(`<${BASH_INPUT_TAG}>`)) {
-        haikuTitleAttemptedRef.current = true;
-        void generateSessionTitle(text, new AbortController().signal).then(title => {
-          if (title) setHaikuTitle(title); else haikuTitleAttemptedRef.current = false;
-        }, () => {
-          haikuTitleAttemptedRef.current = false;
-        });
-      }
-    }
-
-    // Apply slash-command-scoped allowedTools (from skill frontmatter) to the
-    // store once per turn. This also covers the reset: the next non-skill turn
-    // passes [] and clears it. Must run before the !shouldQuery gate: forked
-    // commands (executeForkedSlashCommand) return shouldQuery=false, and
-    // createGetAppStateWithAllowedTools in forkedAgent.ts reads this field, so
-    // stale skill tools would otherwise leak into forked agent permissions.
-    // Previously this write was hidden inside getToolUseContext's getAppState
-    // (~85 calls/turn); hoisting it here makes getAppState a pure read and stops
-    // ephemeral contexts (permission dialog, BackgroundTasksDialog) from
-    // accidentally clearing it mid-turn.
-    store.setState(prev => {
-      const cur = prev.toolPermissionContext.alwaysAllowRules.command;
-      if (cur === additionalAllowedTools || cur?.length === additionalAllowedTools.length && cur.every((v, i) => v === additionalAllowedTools[i])) {
-        return prev;
-      }
-      return {
-        ...prev,
-        toolPermissionContext: {
-          ...prev.toolPermissionContext,
-          alwaysAllowRules: {
-            ...prev.toolPermissionContext.alwaysAllowRules,
-            command: additionalAllowedTools
-          }
-        }
-      };
-    });
-
-    // The last message is an assistant message if the user input was a bash command,
-    // or if the user input was an invalid slash command.
-    if (!shouldQuery) {
-      // Manual /compact sets messages directly (shouldQuery=false) bypassing
-      // handleMessageFromStream. Clear context-blocked if a compact boundary
-      // is present so proactive ticks resume after compaction.
-      if (newMessages.some(isCompactBoundaryMessage)) {
-        // Bump conversationId so Messages.tsx row keys change and
-        // stale memoized rows remount with post-compact content.
-        setConversationId(randomUUID());
-        if (feature('PROACTIVE') || feature('KAIROS')) {
-          proactiveModule?.setContextBlocked(false);
-        }
-      }
-      resetLoadingState();
-      setAbortController(null);
-      return;
-    }
-    const toolUseContext = getToolUseContext(messagesIncludingNewMessages, newMessages, abortController, mainLoopModelParam);
-    // getToolUseContext reads tools/mcpClients fresh from store.getState()
-    // (via computeTools/mergeClients). Use those rather than the closure-
-    // captured `tools`/`mcpClients` — useManageMCPConnections may have
-    // flushed new MCP state between the render that captured this closure
-    // and now. Turn 1 via processInitialMessage is the main beneficiary.
-    const {
-      tools: freshTools,
-      mcpClients: freshMcpClients
-    } = toolUseContext.options;
-
-    // Scope the skill's effort override to this turn's context only —
-    // wrapping getAppState keeps the override out of the global store so
-    // background agents and UI subscribers (Spinner, LogoV2) never see it.
-    if (effort !== undefined) {
-      const previousGetAppState = toolUseContext.getAppState;
-      toolUseContext.getAppState = () => ({
-        ...previousGetAppState(),
-        effortValue: effort
-      });
-    }
-    queryCheckpoint('query_context_loading_start');
-    const [, , defaultSystemPrompt, baseUserContext, systemContext] = await Promise.all([
-      // IMPORTANT: do this after setMessages() above, to avoid UI jank
-      checkAndDisableBypassPermissionsIfNeeded(toolPermissionContext, setAppState),
-      // Gated on TRANSCRIPT_CLASSIFIER so GrowthBook kill switch runs wherever auto mode is built in
-      feature('TRANSCRIPT_CLASSIFIER') ? checkAndDisableAutoModeIfNeeded(toolPermissionContext, setAppState, store.getState().fastMode) : undefined, getSystemPrompt(freshTools, mainLoopModelParam, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), freshMcpClients), getUserContext(), getSystemContext()]);
-    const userContext = {
-      ...baseUserContext,
-      ...getCoordinatorUserContext(freshMcpClients, isScratchpadEnabled() ? getScratchpadDir() : undefined),
-      ...((feature('PROACTIVE') || feature('KAIROS')) && proactiveModule?.isProactiveActive() && !terminalFocusRef.current ? {
-        terminalFocus: 'The terminal is unfocused \u2014 the user is not actively watching.'
-      } : {})
-    };
-    queryCheckpoint('query_context_loading_end');
-    const systemPrompt = buildEffectiveSystemPrompt({
-      mainThreadAgentDefinition,
-      toolUseContext,
-      customSystemPrompt,
-      defaultSystemPrompt,
-      appendSystemPrompt
-    });
-    toolUseContext.renderedSystemPrompt = systemPrompt;
-    queryCheckpoint('query_query_start');
-    resetTurnHookDuration();
-    resetTurnToolDuration();
-    resetTurnClassifierDuration();
-    for await (const event of query({
-      messages: messagesIncludingNewMessages,
-      systemPrompt,
-      userContext,
-      systemContext,
-      canUseTool,
-      toolUseContext,
-      querySource: getQuerySourceForREPL()
-    })) {
-      onQueryEvent(event);
-    }
-    // Free RSS from large tool_result payloads after each turn.
-    // pruneOldToolResults: stubs results outside the rolling window (every turn).
-    // applyStableStubs: stubs microcompact-marked blocks (fires at ≥50% context)
-    //   while preserving prompt-cache prefix stability.
-    // evictOldStubbedMessages: removes fully-stubbed message pairs.
-    // evictToMaxSize: caps total display messages to prevent unbounded growth.
-    // Applied before onTurnComplete so callers receive the pruned array.
-    //
-    // The two eviction passes REMOVE messages from the array that seeds the
-    // next turn's API view — a prefix mutation behind the cache marker that
-    // invalidates the cached prefix. Both are therefore amortized
-    // (EVICT_MIN_BATCH batch floor / EVICT_TRIGGER_AT hysteresis band) so
-    // the break is paid once per accumulated batch, not once per turn, and
-    // the cache-break detector is notified when it happens. The idle-gap
-    // sweep in onSubmit handles the free case (cache already expired).
-    const before = messagesRef.current as AnyMessage[]
-    // Profile-aware: aggressive clips by age (keepTurns=1); retain keeps
-    // full results (the display array seeds the next turn's API view) and
-    // bounds RSS with the byte-guard instead.
-    const cacheProfile = getCacheProfile()
-    const stubbed = applyStableStubs(pruneToolResultsByBytes(
-      pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars),
-      cacheProfile.retainedHighWaterTokens,
-      cacheProfile.retainedLowWaterTokens,
-      undefined,
-      cacheProfile.stubKeepHeadChars,
-    ))
-    const evicted = evictOldStubbedMessages(stubbed, 2, EVICT_MIN_BATCH)
-    const after = evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)
-    if (after !== before) {
-      setMessages(() => after as MessageType[])
-      if (after !== stubbed && feature('PROMPT_CACHE_BREAK_DETECTION')) {
-        // Eviction removed messages from the next request's prefix — an
-        // intentional, amortized break. Tell the detector to expect the
-        // cache-read drop so it isn't reported as a regression.
-        notifyCacheDeletion(getQuerySourceForREPL())
-      }
-    }
-    // Prune orphaned contentReplacementState entries for IDs no longer
-    // in the display array. Run unconditionally — orphans can accumulate
-    // even when `after === before` (text-only turns, /compact, rewind,
-    // resume). pruneContentReplacementState is idempotent and O(N) over
-    // the display array plus the state Map, so the cost is microseconds
-    // per turn. Without this, seenIds and replacements grow monotonically
-    // — evicted messages' preview strings (~2KB each) are never looked up
-    // again but never freed.
-    pruneContentReplacementState(after, contentReplacementStateRef.current)
-    if (isBuddyEnabled()) {
-      void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
-        ...prev,
-        companionReaction: reaction
-      }));
-    }
-    queryCheckpoint('query_end');
-
-    resetLoadingState();
-
-    // Log query profiling report if enabled
-    logQueryProfileReport();
-
-    // Signal that a query turn has completed successfully
-    await onTurnComplete?.(messagesRef.current);
-  }, [initialMcpClients, resetLoadingState, getToolUseContext, toolPermissionContext, setAppState, customSystemPrompt, onTurnComplete, appendSystemPrompt, canUseTool, mainThreadAgentDefinition, onQueryEvent, sessionTitle, titleDisabled]);
-  const onQuery = useCallback(async (newMessages: MessageType[], abortController: AbortController, shouldQuery: boolean, additionalAllowedTools: string[], mainLoopModelParam: string, onBeforeQueryCallback?: (input: string, newMessages: MessageType[]) => Promise<boolean>, input?: string, effort?: EffortValue): Promise<void> => {
-    // If this is a teammate, mark them as active when starting a turn
-    if (isAgentSwarmsEnabled()) {
-      const teamName = getTeamName();
-      const agentName = getAgentName();
-      if (teamName && agentName) {
-        // Fire and forget - turn starts immediately, write happens in background
-        void setMemberActive(teamName, agentName, true);
-      }
-    }
-
-    // Concurrent guard via state machine. tryStart() atomically checks
-    // and transitions idle→running, returning the generation number.
-    // Returns null if already running — no separate check-then-set.
-    const thisGeneration = queryGuard.tryStart();
-    if (thisGeneration === null) {
-      logEvent('tengu_concurrent_onquery_detected', {});
-
-      // Extract and enqueue user message text, skipping meta messages
-      // (e.g. expanded skill content, tick prompts) that should not be
-      // replayed as user-visible text.
-      newMessages.filter((m): m is UserMessage => m.type === 'user' && !m.isMeta).map(_ => getContentText(_.message.content)).filter(_ => _ !== null).forEach((msg, i) => {
-        enqueue({
-          value: msg,
-          mode: 'prompt'
-        });
-        if (i === 0) {
-          logEvent('tengu_concurrent_onquery_enqueued', {});
-        }
-      });
-      return;
-    }
-    try {
-      // isLoading is derived from queryGuard — tryStart() above already
-      // transitioned dispatching→running, so no setter call needed here.
-      // Start the active-wall clock for this turn (frozen while idle so the
-      // Session tab's wall duration reflects work time, not process uptime).
-      markTurnStart();
-      resetTimingRefs();
-      // Start-of-turn cache tracker reset. The end-of-turn path at the
-      // bottom of this function already resets, but mirror the call here
-      // so a turn that never reaches end-of-turn (crash, unhandled
-      // rejection, process exit) still starts clean on the next one.
-      // Idempotent with respect to the end-of-turn reset — double-reset
-      // is a no-op.
-      resetCurrentTurn();
-      setMessages(oldMessages => [...oldMessages, ...newMessages]);
-      responseLengthRef.current = 0;
-      if (feature('TOKEN_BUDGET')) {
-        const parsedBudget = input ? parseTokenBudget(input) : null;
-        snapshotOutputTokensForTurn(parsedBudget ?? getCurrentTurnTokenBudget());
-      }
-      apiMetricsRef.current = [];
-      coalescedStreamingToolUses.cancel();
-      setStreamingToolUses([]);
-      streamingTextStore.clear();
-
-      // messagesRef is updated synchronously by the setMessages wrapper
-      // above, so it already includes newMessages from the append at the
-      // top of this try block.  No reconstruction needed, no waiting for
-      // React's scheduler (previously cost 20-56ms per prompt; the 56ms
-      // case was a GC pause caught during the await).
-      const latestMessages = messagesRef.current;
-      if (input) {
-        await mrOnBeforeQuery(input, latestMessages, newMessages.length);
-      }
-
-      // Pass full conversation history to callback
-      if (onBeforeQueryCallback && input) {
-        const shouldProceed = await onBeforeQueryCallback(input, latestMessages);
-        if (!shouldProceed) {
-          return;
-        }
-      }
-      await onQueryImpl(latestMessages, newMessages, abortController, shouldQuery, additionalAllowedTools, mainLoopModelParam, effort);
-    } finally {
-      // queryGuard.end() atomically checks generation and transitions
-      // running→idle. Returns false if a newer query owns the guard
-      // (cancel+resubmit race where the stale finally fires as a microtask).
-      if (queryGuard.end(thisGeneration)) {
-        // Fold this turn's active time into the wall accumulator. Skipped when
-        // end() returns false (a superseded generation), so a cancel+resubmit
-        // stale finally can't double-count.
-        markTurnEnd();
-        setLastQueryCompletionTime(Date.now());
-        skipIdleCheckRef.current = false;
-        // Always reset loading state in finally - this ensures cleanup even
-        // if onQueryImpl throws. onTurnComplete is called separately in
-        // onQueryImpl only on successful completion.
-        resetLoadingState();
-        await mrOnTurnComplete(messagesRef.current, abortController.signal.aborted);
-
-        // Notify bridge clients that the turn is complete so mobile apps
-        // can stop the spark animation and show post-turn UI.
-        sendBridgeResultRef.current();
-
-        // Capture budget info before clearing (internal-only)
-        let budgetInfo: {
-          tokens: number;
-          limit: number;
-          nudges: number;
-        } | undefined;
-        if (feature('TOKEN_BUDGET')) {
-          if (getCurrentTurnTokenBudget() !== null && getCurrentTurnTokenBudget()! > 0 && !abortController.signal.aborted) {
-            budgetInfo = {
-              tokens: getTurnOutputTokens(),
-              limit: getCurrentTurnTokenBudget()!,
-              nudges: getBudgetContinuationCount()
-            };
-          }
-          snapshotOutputTokensForTurn(null);
-        }
-
-        // Add turn duration message for turns longer than 30s or with a budget
-        // Skip if user aborted or if in loop mode (too noisy between ticks)
-        // Defer if swarm teammates are still running (show when they finish)
-        const turnDurationMs = Date.now() - loadingStartTimeRef.current - totalPausedMsRef.current;
-        if ((turnDurationMs > 30000 || budgetInfo !== undefined) && !abortController.signal.aborted && !proactiveActive) {
-          const hasRunningSwarmAgents = getAllInProcessTeammateTasks(store.getState().tasks).some(t => t.status === 'running');
-          if (hasRunningSwarmAgents) {
-            // Only record start time on the first deferred turn
-            if (swarmStartTimeRef.current === null) {
-              swarmStartTimeRef.current = loadingStartTimeRef.current;
-            }
-            // Always update budget — later turns may carry the actual budget
-            if (budgetInfo) {
-              swarmBudgetInfoRef.current = budgetInfo;
-            }
-          } else {
-            setMessages(prev => [...prev, createTurnDurationMessage(turnDurationMs, budgetInfo, count(prev, isLoggableMessage))]);
-          }
-        }
-        // Cache stats line — controlled by `/config showCacheStats`. Shows
-        // per-query read/hit stats using the provider-normalized metrics
-        // from cacheStatsTracker. 'off' skips, 'compact' gives a one-liner,
-        // 'full' gives a breakdown. Display is skipped when the user
-        // aborted or proactive mode is active — but the counter reset
-        // below still runs in those cases.
-        if (!abortController.signal.aborted && !proactiveActive) {
-          // Defensive default: config layer already merges 'compact' from
-          // DEFAULT_GLOBAL_CONFIG (see config.ts:1494) for configs that
-          // predate this feature, so `mode` should always be defined.
-          // The `?? 'compact'` fallback covers pathological cases — a
-          // corrupt config read that returned an empty object, or a
-          // race between writer and reader — where the merge didn't
-          // land. Rendering the line is the safer failure mode than
-          // silently hiding it.
-          const mode = getGlobalConfig().showCacheStats ?? 'compact';
-          if (mode !== 'off') {
-            const turnMetrics = getCurrentTurnCacheMetrics();
-            // Skip rendering if the turn recorded no API activity at all —
-            // avoids a spurious "[Cache: cold]" on local-only commands.
-            if (turnMetrics.supported || turnMetrics.read > 0 || turnMetrics.total > 0) {
-              const line = mode === 'full' ? formatCacheMetricsFull(turnMetrics) : formatCacheMetricsCompact(turnMetrics);
-              setMessages(prev => [...prev, createSystemMessage(line, 'info')]);
-            }
-          }
-        }
-        // Reset turn counters UNCONDITIONALLY — users routinely interrupt
-        // (Ctrl+C) mid-turn, and if we kept the reset gated on
-        // !aborted, the in-flight turn's metrics would leak into the
-        // next turn's aggregate. Proactive turns also need the reset so
-        // their metrics don't pile onto the following user turn.
-        resetCurrentTurn();
-        // Clear the controller so CancelRequestHandler's canCancelRunningTask
-        // reads false at the idle prompt. Without this, the stale non-aborted
-        // controller makes ctrl+c fire onCancel() (aborting nothing) instead of
-        // propagating to the double-press exit flow.
-        setAbortController(null);
-      }
-
-      // Auto-restore: if the user interrupted before any meaningful response
-      // arrived, rewind the conversation and restore their prompt — same as
-      // opening the message selector and picking the last message.
-      // This runs OUTSIDE the queryGuard.end() check because onCancel calls
-      // forceEnd(), which bumps the generation so end() returns false above.
-      // Guards: reason === 'user-cancel' (onCancel/Esc; programmatic aborts
-      // use 'background'/'interrupt' and must not rewind — note abort() with
-      // no args sets reason to a DOMException, not undefined), !isActive (no
-      // newer query started — cancel+resubmit race), empty input (don't
-      // clobber text typed during loading), no queued commands (user queued
-      // B while A was loading → they've moved on, don't restore A; also
-      // avoids removeLastFromHistory removing B's entry instead of A's),
-      // not viewing a teammate (messagesRef is the main conversation — the
-      // old Up-arrow quick-restore had this guard, preserve it).
-      if (abortController.signal.reason === 'user-cancel' && !queryGuard.isActive && inputValueRef.current === '' && getCommandQueueLength() === 0 && !store.getState().viewingAgentTaskId) {
-        const msgs = messagesRef.current;
-        const lastUserMsg = msgs.findLast(selectableUserMessagesFilter);
-        if (lastUserMsg) {
-          const idx = msgs.lastIndexOf(lastUserMsg);
-          if (messagesAfterAreOnlySynthetic(msgs, idx)) {
-            // The submit is being undone — undo its history entry too,
-            // otherwise Up-arrow shows the restored text twice.
-            removeLastFromHistory();
-            restoreMessageSyncRef.current(lastUserMsg);
-          }
-        }
-      }
-    }
-  }, [onQueryImpl, setAppState, resetLoadingState, queryGuard, mrOnBeforeQuery, mrOnTurnComplete]);
+  const {
+    onQuery
+  } = useOnQuery({
+    getToolUseContext,
+    canUseTool,
+    queryGuard,
+    store,
+    toolPermissionContext,
+    initialMcpClients,
+    mainThreadAgentDefinition,
+    customSystemPrompt,
+    appendSystemPrompt,
+    onTurnComplete,
+    sessionTitle,
+    agentTitle,
+    titleDisabled,
+    setHaikuTitle,
+    haikuTitleAttemptedRef,
+    mrOnBeforeQuery,
+    mrOnTurnComplete,
+    coalescedStreamingToolUses,
+    onStreamingText,
+    setStreamingThinking,
+    setStreamingToolUses,
+    setStreamMode,
+    setResponseLength,
+    messagesRef,
+    inputValueRef,
+    restoreMessageSyncRef,
+    sendBridgeResultRef,
+    contentReplacementStateRef,
+    responseLengthRef,
+    apiMetricsRef,
+    loadingStartTimeRef,
+    totalPausedMsRef,
+    swarmStartTimeRef,
+    swarmBudgetInfoRef,
+    terminalFocusRef,
+    skipIdleCheckRef,
+    proactiveActive,
+    setMessages,
+    setAppState,
+    setAbortController,
+    setConversationId,
+    setLastQueryCompletionTime,
+    resetLoadingState,
+    resetTimingRefs,
+  });
 
   // Handle initial message (from CLI args or plan mode exit with context clear)
   // This effect runs when isLoading becomes false and there's a pending message
@@ -2799,449 +2083,49 @@ export function REPL({
     }
     void processInitialMessage(pending);
   }, [initialMessage, isLoading, setMessages, setAppState, onQuery, mainLoopModel, tools]);
-  const onSubmit = useCallback(async (input: string, helpers: PromptInputHelpers, speculationAccept?: {
-    state: ActiveSpeculationState;
-    speculationSessionTimeSavedMs: number;
-    setAppState: SetAppState;
-  }, options?: {
-    fromKeybinding?: boolean;
-  }) => {
-    // Re-pin scroll to bottom on submit so the user always sees the new
-    // exchange (matches OpenCode's auto-scroll behavior).
-    repinScroll();
-
-    // Resume loop mode if paused
-    if (feature('PROACTIVE') || feature('KAIROS')) {
-      proactiveModule?.resumeProactive();
-    }
-
-    // Handle immediate commands - these bypass the queue and execute right away
-    // even while Claude is processing. Commands opt-in via `immediate: true`.
-    // Commands triggered via keybindings are always treated as immediate.
-    if (!speculationAccept && input.trim().startsWith('/')) {
-      // Expand [Pasted text #N] refs so immediate commands (e.g. /btw) receive
-      // the pasted content, not the placeholder. The non-immediate path gets
-      // this expansion later in handlePromptSubmit.
-      const trimmedInput = expandPastedTextRefs(input, pastedContents).trim();
-      const spaceIndex = trimmedInput.indexOf(' ');
-      const commandName = spaceIndex === -1 ? trimmedInput.slice(1) : trimmedInput.slice(1, spaceIndex);
-      const commandArgs = spaceIndex === -1 ? '' : trimmedInput.slice(spaceIndex + 1).trim();
-
-      // Find matching command - treat as immediate if:
-      // 1. Command has `immediate: true`, OR
-      // 2. Command was triggered via keybinding (fromKeybinding option)
-      const matchingCommand = commands.find(cmd => isCommandEnabled(cmd) && (cmd.name === commandName || cmd.aliases?.includes(commandName) || getCommandName(cmd) === commandName));
-      if (matchingCommand?.name === 'new' && idleHintShownRef.current) {
-        logEvent('tengu_idle_return_action', {
-          action: 'hint_converted' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          variant: idleHintShownRef.current as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          idleMinutes: Math.round((Date.now() - lastQueryCompletionTimeRef.current) / 60_000),
-          messageCount: messagesRef.current.length,
-          totalInputTokens: getTotalInputTokens()
-        });
-        idleHintShownRef.current = false;
-      }
-      const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding);
-      if (matchingCommand && shouldTreatAsImmediate && matchingCommand.type === 'local-jsx') {
-        // Only clear input if the submitted text matches what's in the prompt.
-        // When a command keybinding fires, input is "/<command>" but the actual
-        // input value is the user's existing text - don't clear it in that case.
-        if (input.trim() === inputValueRef.current.trim()) {
-          setInputValue('');
-          helpers.setCursorOffset(0);
-          helpers.clearBuffer();
-          setPastedContents({});
-        }
-        const pastedTextRefs = parseReferences(input).filter(r => pastedContents[r.id]?.type === 'text');
-        const pastedTextCount = pastedTextRefs.length;
-        const pastedTextBytes = pastedTextRefs.reduce((sum, r) => sum + (pastedContents[r.id]?.content.length ?? 0), 0);
-        logEvent('tengu_paste_text', {
-          pastedTextCount,
-          pastedTextBytes
-        });
-        logEvent('tengu_immediate_command_executed', {
-          commandName: matchingCommand.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          fromKeybinding: options?.fromKeybinding ?? false
-        });
-
-        // Execute the command directly
-        const executeImmediateCommand = async (): Promise<void> => {
-          let doneWasCalled = false;
-          const onDone = (result?: string, doneOptions?: {
-            display?: CommandResultDisplay;
-            metaMessages?: string[];
-          }): void => {
-            doneWasCalled = true;
-            setToolJSX({
-              jsx: null,
-              shouldHidePromptInput: false,
-              clearLocalJSX: true
-            });
-            const newMessages: MessageType[] = [];
-            if (result && doneOptions?.display !== 'skip') {
-              addNotification({
-                key: `immediate-${matchingCommand.name}`,
-                text: result,
-                priority: 'immediate'
-              });
-              // In fullscreen the command just showed as a centered modal
-              // pane — the notification above is enough feedback. Adding
-              // "❯ /config" + "⎿ dismissed" to the transcript is clutter
-              // (those messages are type:system subtype:local_command —
-              // user-visible but NOT sent to the model, so skipping them
-              // doesn't change model context). Outside fullscreen the
-              // transcript entry stays so scrollback shows what ran.
-              if (!isFullscreenEnvEnabled()) {
-                newMessages.push(createCommandInputMessage(formatCommandInputTags(getCommandName(matchingCommand), commandArgs)), createCommandInputMessage(`<${LOCAL_COMMAND_STDOUT_TAG}>${escapeXml(result)}</${LOCAL_COMMAND_STDOUT_TAG}>`));
-              }
-            }
-            // Inject meta messages (model-visible, user-hidden) into the transcript
-            if (doneOptions?.metaMessages?.length) {
-              newMessages.push(...doneOptions.metaMessages.map(content => createUserMessage({
-                content,
-                isMeta: true
-              })));
-            }
-            if (newMessages.length) {
-              setMessages(prev => [...prev, ...newMessages]);
-            }
-            // Restore stashed prompt after local-jsx command completes.
-            // The normal stash restoration path (below) is skipped because
-            // local-jsx commands return early from onSubmit.
-            if (stashedPrompt !== undefined) {
-              setInputValue(stashedPrompt.text);
-              helpers.setCursorOffset(stashedPrompt.cursorOffset);
-              setPastedContents(stashedPrompt.pastedContents);
-              setStashedPrompt(undefined);
-            }
-          };
-
-          // Build context for the command (reuses existing getToolUseContext).
-          // Read messages via ref to keep onSubmit stable across message
-          // updates — matches the pattern at L2384/L2400/L2662 and avoids
-          // pinning stale REPL render scopes in downstream closures.
-          const context = getToolUseContext(messagesRef.current, [], createAbortController(), mainLoopModel);
-          // Capture the generation token BEFORE any await — see toolJSXStore.ts.
-          const generation = getCurrentLocalJSXGeneration();
-          const mod = await matchingCommand.load();
-          const jsx = await mod.call(onDone, context, commandArgs);
-
-          // doneWasCalled guards sync onDone; generation guards the async race.
-          if (jsx && !doneWasCalled) {
-            // shouldHidePromptInput: false keeps Notifications mounted
-            // so the onDone result isn't lost
-            setToolJSX({
-              jsx,
-              shouldHidePromptInput: false,
-              isLocalJSXCommand: true,
-              generation
-            });
-          }
-        };
-        void executeImmediateCommand();
-        return; // Always return early - don't add to history or queue
-      }
-    }
-
-    // Remote mode: skip empty input early before any state mutations
-    if (activeRemote.isRemoteMode && !input.trim()) {
-      return;
-    }
-
-    // Idle-return: prompt returning users to start fresh when the
-    // conversation is large and the cache is cold. tengu_willow_mode
-    // controls treatment: "dialog" (blocking), "hint" (notification), "off".
-    {
-      const willowMode = getFeatureValue_CACHED_MAY_BE_STALE('tengu_willow_mode', 'off');
-      const idleThresholdMin = Number(process.env.CLAUDE_CODE_IDLE_THRESHOLD_MINUTES ?? 75);
-      const tokenThreshold = Number(process.env.CLAUDE_CODE_IDLE_TOKEN_THRESHOLD ?? 100_000);
-      if (willowMode !== 'off' && !getGlobalConfig().idleReturnDismissed && !skipIdleCheckRef.current && !speculationAccept && !input.trim().startsWith('/') && lastQueryCompletionTimeRef.current > 0 && getTotalInputTokens() >= tokenThreshold) {
-        const idleMs = Date.now() - lastQueryCompletionTimeRef.current;
-        const idleMinutes = idleMs / 60_000;
-        if (idleMinutes >= idleThresholdMin && willowMode === 'dialog') {
-          setIdleReturnPending({
-            input,
-            idleMinutes
-          });
-          setInputValue('');
-          helpers.setCursorOffset(0);
-          helpers.clearBuffer();
-          return;
-        }
-      }
-    }
-
-    // Add to history for direct user submissions.
-    // Queued command processing (executeQueuedInput) doesn't call onSubmit,
-    // so notifications and already-queued user input won't be added to history here.
-    // Skip history for keybinding-triggered commands (user didn't type the command).
-    if (!options?.fromKeybinding) {
-      addToHistory({
-        display: speculationAccept ? input : prependModeCharacterToInput(input, inputMode),
-        pastedContents: speculationAccept ? {} : pastedContents
-      });
-      // Add the just-submitted command to the front of the ghost-text
-      // cache so it's suggested immediately (not after the 60s TTL).
-      if (inputMode === 'bash') {
-        prependToShellHistoryCache(input.trim());
-      }
-    }
-
-    // Restore stash if present, but NOT for slash commands or when loading.
-    // - Slash commands (especially interactive ones like /model, /context) hide
-    //   the prompt and show a picker UI. Restoring the stash during a command would
-    //   place the text in a hidden input, and the user would lose it by typing the
-    //   next command. Instead, preserve the stash so it survives across command runs.
-    // - When loading, the submitted input will be queued and handlePromptSubmit
-    //   will clear the input field (onInputChange('')), which would clobber the
-    //   restored stash. Defer restoration to after handlePromptSubmit (below).
-    //   Remote mode is exempt: it sends via WebSocket and returns early without
-    //   calling handlePromptSubmit, so there's no clobbering risk — restore eagerly.
-    // In both deferred cases, the stash is restored after await handlePromptSubmit.
-    const isSlashCommand = !speculationAccept && input.trim().startsWith('/');
-    // Submit runs "now" (not queued) when not already loading, or when
-    // accepting speculation, or in remote mode (which sends via WS and
-    // returns early without calling handlePromptSubmit).
-    const submitsNow = !isLoading || speculationAccept || activeRemote.isRemoteMode;
-    if (stashedPrompt !== undefined && !isSlashCommand && submitsNow) {
-      setInputValue(stashedPrompt.text);
-      helpers.setCursorOffset(stashedPrompt.cursorOffset);
-      setPastedContents(stashedPrompt.pastedContents);
-      setStashedPrompt(undefined);
-    } else if (submitsNow) {
-      if (!options?.fromKeybinding) {
-        // Clear input when not loading or accepting speculation.
-        // Preserve input for keybinding-triggered commands.
-        setInputValue('');
-        helpers.setCursorOffset(0);
-      }
-      setPastedContents({});
-    }
-    if (submitsNow) {
-      setInputMode('prompt');
-      setIDESelection(undefined);
-      setSubmitCount(_ => _ + 1);
-      helpers.clearBuffer();
-      tipPickedThisTurnRef.current = false;
-
-      // Show the placeholder in the same React batch as setInputValue('').
-      // Skip for slash/bash (they have their own echo), speculation and remote
-      // mode (both setMessages directly with no gap to bridge).
-      if (!isSlashCommand && inputMode === 'prompt' && !speculationAccept && !activeRemote.isRemoteMode) {
-        setUserInputOnProcessing(input);
-        // showSpinner includes userInputOnProcessing, so the spinner appears
-        // on this render. Reset timing refs now (before queryGuard.reserve()
-        // would) so elapsed time doesn't read as Date.now() - 0. The
-        // isQueryActive transition above does the same reset — idempotent.
-        resetTimingRefs();
-      }
-
-      // Increment prompt count for attribution tracking and save snapshot
-      // The snapshot persists promptCount so it survives compaction
-      if (feature('COMMIT_ATTRIBUTION')) {
-        setAppState(prev => ({
-          ...prev,
-          attribution: incrementPromptCount(prev.attribution, snapshot => {
-            void recordAttributionSnapshot(snapshot).catch(error => {
-              logForDebugging(`Attribution: Failed to save snapshot: ${error}`);
-            });
-          })
-        }));
-      }
-    }
-
-    // Handle speculation acceptance
-    if (speculationAccept) {
-      const {
-        queryRequired
-      } = await handleSpeculationAccept(speculationAccept.state, speculationAccept.speculationSessionTimeSavedMs, speculationAccept.setAppState, input, {
-        setMessages,
-        readFileState,
-        cwd: getOriginalCwd()
-      });
-      if (queryRequired) {
-        const newAbortController = createAbortController();
-        setAbortController(newAbortController);
-        void onQuery([], newAbortController, true, [], mainLoopModel);
-      }
-      return;
-    }
-
-    // Remote mode: send input via stream-json instead of local query.
-    // Permission requests from the remote are bridged into toolUseConfirmQueue
-    // and rendered using the standard PermissionRequest component.
-    //
-    // local-jsx slash commands (e.g. /agents, /config) render UI in THIS
-    // process — they have no remote equivalent. Let those fall through to
-    // handlePromptSubmit so they execute locally. Prompt commands and
-    // plain text go to the remote.
-    if (activeRemote.isRemoteMode && !(isSlashCommand && commands.find(c => {
-      const name = input.trim().slice(1).split(/\s/)[0];
-      return isCommandEnabled(c) && (c.name === name || c.aliases?.includes(name!) || getCommandName(c) === name);
-    })?.type === 'local-jsx')) {
-      // Build content blocks when there are pasted attachments (images)
-      const pastedValues = Object.values(pastedContents);
-      const imageContents = pastedValues.filter(c => c.type === 'image');
-      const imagePasteIds = imageContents.length > 0 ? imageContents.map(c => c.id) : undefined;
-      let messageContent: string | ContentBlockParam[] = input.trim();
-      let remoteContent: RemoteMessageContent = input.trim();
-      if (pastedValues.length > 0) {
-        const contentBlocks: ContentBlockParam[] = [];
-        const remoteBlocks: Array<{
-          type: string;
-          [key: string]: unknown;
-        }> = [];
-        const trimmedInput = input.trim();
-        if (trimmedInput) {
-          contentBlocks.push({
-            type: 'text',
-            text: trimmedInput
-          });
-          remoteBlocks.push({
-            type: 'text',
-            text: trimmedInput
-          });
-        }
-        for (const pasted of pastedValues) {
-          if (pasted.type === 'image') {
-            const source = {
-              type: 'base64' as const,
-              media_type: (pasted.mediaType ?? 'image/png') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: pasted.content
-            };
-            contentBlocks.push({
-              type: 'image',
-              source
-            });
-            remoteBlocks.push({
-              type: 'image',
-              source
-            });
-          } else {
-            contentBlocks.push({
-              type: 'text',
-              text: pasted.content
-            });
-            remoteBlocks.push({
-              type: 'text',
-              text: pasted.content
-            });
-          }
-        }
-        messageContent = contentBlocks;
-        remoteContent = remoteBlocks;
-      }
-
-      // Create and add user message to UI
-      // Note: empty input already handled by early return above
-      const userMessage = createUserMessage({
-        content: messageContent,
-        imagePasteIds
-      });
-      setMessages(prev => [...prev, userMessage]);
-
-      // Send to remote session
-      await activeRemote.sendMessage(remoteContent, {
-        uuid: userMessage.uuid
-      });
-      return;
-    }
-
-    // Ensure SessionStart hook context is available before the first API call.
-    await awaitPendingHooks();
-    // Idle-gap opportunistic sweep: when the gap since the last assistant
-    // message exceeds the time-based microcompact threshold, the server-side
-    // cache has expired anyway — so the amortization gates above (post-turn
-    // EVICT_MIN_BATCH / EVICT_TRIGGER_AT) would be hoarding evictable
-    // messages for a break that is already free. Evict everything evictable
-    // now, before this submission seeds the request. The swept array is
-    // passed straight to handlePromptSubmit (messagesRef updates via
-    // setMessages are not synchronous).
-    //
-    // Guarded on no query in flight: on the queued-submit path (isLoading,
-    // e.g. a turn parked ≥60min at a permission prompt) the in-flight turn
-    // keeps using its own unswept array — sweeping the display here would
-    // diverge it from the request bytes and turn the next turn's "free"
-    // break into a full one. Queued submits skip the sweep; the next
-    // non-queued submit picks it up if the gap still qualifies.
-    const sweepSnapshot = messagesRef.current;
-    let messagesForSubmit = sweepSnapshot;
-    if (
-      !queryGuard.isActive &&
-      evaluateTimeBasedTrigger(sweepSnapshot, getQuerySourceForREPL())
-    ) {
-      const swept = evictToMaxSize(
-        evictOldStubbedMessages(sweepSnapshot as AnyMessage[], 2, 1),
-        MAX_DISPLAY_MESSAGES,
-        MAX_DISPLAY_MESSAGES,
-      ) as MessageType[];
-      if (swept !== sweepSnapshot) {
-        messagesForSubmit = swept;
-        // Preserve anything appended after the snapshot (same-tick races):
-        // appends are strictly additive, so re-attach the tail.
-        setMessages(prev =>
-          prev === sweepSnapshot
-            ? swept
-            : [...swept, ...prev.slice(sweepSnapshot.length)],
-        );
-      }
-    }
-    await handlePromptSubmit({
-      input,
-      helpers,
-      queryGuard,
-      isExternalLoading,
-      mode: inputMode,
-      commands,
-      onInputChange: setInputValue,
-      setPastedContents,
-      setToolJSX,
-      getToolUseContext,
-      messages: messagesForSubmit,
-      mainLoopModel,
-      pastedContents,
-      ideSelection,
-      setUserInputOnProcessing,
-      setAbortController,
-      abortController,
-      onQuery,
-      setAppState,
-      querySource: getQuerySourceForREPL(),
-      onBeforeQuery,
-      canUseTool,
-      addNotification,
-      setMessages,
-      // Read via ref so streamMode can be dropped from onSubmit deps —
-      // handlePromptSubmit only uses it for debug log + telemetry event.
-      streamMode: streamModeRef.current,
-      hasInterruptibleToolInProgress: hasInterruptibleToolInProgressRef.current
-    });
-
-    // Restore stash that was deferred above. Two cases:
-    // - Slash command: handlePromptSubmit awaited the full command execution
-    //   (including interactive pickers). Restoring now places the stash back in
-    //   the visible input.
-    // - Loading (queued): handlePromptSubmit enqueued + cleared input, then
-    //   returned quickly. Restoring now places the stash back after the clear.
-    if ((isSlashCommand || isLoading) && stashedPrompt !== undefined) {
-      setInputValue(stashedPrompt.text);
-      helpers.setCursorOffset(stashedPrompt.cursorOffset);
-      setPastedContents(stashedPrompt.pastedContents);
-      setStashedPrompt(undefined);
-    }
-  }, [queryGuard,
-    // isLoading is read at the !isLoading checks above for input-clearing
-    // and submitCount gating. It's derived from isQueryActive || isExternalLoading,
-    // so including it here ensures the closure captures the fresh value.
-    isLoading, isExternalLoading, inputMode, commands, setInputValue, setInputMode, setPastedContents, setSubmitCount, setIDESelection, setToolJSX, getToolUseContext,
-    // messages is read via messagesRef.current inside the callback to
-    // keep onSubmit stable across message updates (see L2384/L2400/L2662).
-    // Without this, each setMessages call (~30× per turn) recreates
-    // onSubmit, pinning the REPL render scope (1776B) + that render's
-    // messages array in downstream closures (PromptInput, handleAutoRunIssue).
-    // Heap analysis showed ~9 REPL scopes and ~15 messages array versions
-    // accumulating after #20174/#20175, all traced to this dep.
-    mainLoopModel, pastedContents, ideSelection, setUserInputOnProcessing, setAbortController, addNotification, onQuery, stashedPrompt, setStashedPrompt, setAppState, onBeforeQuery, canUseTool, remoteSession, setMessages, awaitPendingHooks, repinScroll]);
+  const onSubmit = useOnSubmit({
+    onQuery,
+    getToolUseContext,
+    canUseTool,
+    onBeforeQuery,
+    queryGuard,
+    awaitPendingHooks,
+    commands,
+    mainLoopModel,
+    ideSelection,
+    isLoading,
+    isExternalLoading,
+    abortController,
+    activeRemote,
+    remoteSession,
+    inputMode,
+    pastedContents,
+    stashedPrompt,
+    messagesRef,
+    inputValueRef,
+    readFileState,
+    streamModeRef,
+    idleHintShownRef,
+    lastQueryCompletionTimeRef,
+    skipIdleCheckRef,
+    tipPickedThisTurnRef,
+    hasInterruptibleToolInProgressRef,
+    setMessages,
+    setAppState,
+    setAbortController,
+    setInputValue,
+    setInputMode,
+    setPastedContents,
+    setStashedPrompt,
+    setSubmitCount,
+    setIDESelection,
+    setIdleReturnPending,
+    setUserInputOnProcessing,
+    setToolJSX,
+    addNotification,
+    repinScroll,
+    resetTimingRefs,
+  });
 
   // Callback for when user submits input while viewing a teammate's transcript
   const onAgentSubmit = useCallback(async (input: string, task: InProcessTeammateTaskState | LocalAgentTaskState, helpers: PromptInputHelpers) => {
@@ -3336,133 +2220,25 @@ export function REPL({
   // Does NOT touch the prompt input. Index is computed from messagesRef (always
   // fresh via the setMessages wrapper) so callers don't need to worry about
   // stale closures.
-  const rewindConversationTo = useCallback((message: UserMessage) => {
-    const prev = messagesRef.current;
-    const messageIndex = prev.lastIndexOf(message);
-    if (messageIndex === -1) return;
-    logEvent('tengu_conversation_rewind', {
-      preRewindMessageCount: prev.length,
-      postRewindMessageCount: messageIndex,
-      messagesRemoved: prev.length - messageIndex,
-      rewindToMessageIndex: messageIndex
-    });
-    setMessages(prev.slice(0, messageIndex));
-    // Careful, this has to happen after setMessages
-    setConversationId(randomUUID());
-    // Reset cached microcompact state so stale pinned cache edits
-    // don't reference tool_use_ids from truncated messages
-    resetMicrocompactState();
-    if (feature('CONTEXT_COLLAPSE')) {
-      // Rewind truncates the REPL array. Commits whose archived span
-      // was past the rewind point can't be projected anymore
-      // (projectView silently skips them) but the staged queue and ID
-      // maps reference stale uuids. Simplest safe reset: drop
-      // everything. The ctx-agent will re-stage on the next
-      // threshold crossing.
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      ;
-      (require('../services/contextCollapse/index.js') as typeof import('../services/contextCollapse/index.js')).resetContextCollapse();
-      /* eslint-enable @typescript-eslint/no-require-imports */
-    }
-
-    // Restore state from the message we're rewinding to
-    setAppState(prev => ({
-      ...prev,
-      // Restore permission mode from the message
-      toolPermissionContext: message.permissionMode && prev.toolPermissionContext.mode !== message.permissionMode ? {
-        ...prev.toolPermissionContext,
-        mode: message.permissionMode
-      } : prev.toolPermissionContext,
-      // Clear stale prompt suggestion from previous conversation state
-      promptSuggestion: {
-        text: null,
-        promptId: null,
-        shownAt: 0,
-        acceptedAt: 0,
-        generationRequestId: null
-      }
-    }));
-  }, [setMessages, setAppState]);
-
-  // Synchronous rewind + input population. Used directly by auto-restore on
-  // interrupt (so React batches with the abort's setMessages → single render,
-  // no flicker). MessageSelector wraps this in setImmediate via handleRestoreMessage.
-  const restoreMessageSync = useCallback((message: UserMessage) => {
-    rewindConversationTo(message);
-    const r = textForResubmit(message);
-    if (r) {
-      setInputValue(r.text);
-      setInputMode(r.mode);
-    }
-
-    // Restore pasted images
-    if (Array.isArray(message.message.content) && message.message.content.some(block => block.type === 'image')) {
-      const imageBlocks: Array<ImageBlockParam> = message.message.content.filter(block => block.type === 'image');
-      if (imageBlocks.length > 0) {
-        const newPastedContents: Record<number, PastedContent> = {};
-        imageBlocks.forEach((block, index) => {
-          if (block.source.type === 'base64') {
-            const id = message.imagePasteIds?.[index] ?? index + 1;
-            newPastedContents[id] = {
-              id,
-              type: 'image',
-              content: block.source.data,
-              mediaType: block.source.media_type
-            };
-          }
-        });
-        setPastedContents(newPastedContents);
-      }
-    }
-  }, [rewindConversationTo, setInputValue]);
-  restoreMessageSyncRef.current = restoreMessageSync;
-
-  // MessageSelector path: defer via setImmediate so the "Interrupted" message
-  // renders to static output before rewind — otherwise it remains vestigial
-  // at the top of the screen.
-  const handleRestoreMessage = useCallback(async (message: UserMessage) => {
-    setImmediate((restore, message) => restore(message), restoreMessageSync, message);
-  }, [restoreMessageSync]);
-
-  // Not memoized — hook stores caps via ref, reads latest closure at dispatch.
-  // 24-char prefix: deriveUUID preserves first 24, renderable uuid prefix-matches raw source.
-  const findRawIndex = (uuid: string) => {
-    const prefix = uuid.slice(0, 24);
-    return messages.findIndex(m => m.uuid.slice(0, 24) === prefix);
-  };
-  const messageActionCaps: MessageActionCaps = {
-    copy: text =>
-      // setClipboard RETURNS OSC 52 — caller must stdout.write (tmux side-effects load-buffer, but that's tmux-only).
-      void setClipboard(text).then(raw => {
-        if (raw) process.stdout.write(raw);
-        addNotification({
-          // Same key as text-selection copy — repeated copies replace toast, don't queue.
-          key: 'selection-copied',
-          text: 'copied',
-          color: 'success',
-          priority: 'immediate',
-          timeoutMs: 2000
-        });
-      }),
-    edit: async msg => {
-      // Same skip-confirm check as /rewind: lossless → direct, else confirm dialog.
-      const rawIdx = findRawIndex(msg.uuid);
-      const raw = rawIdx >= 0 ? messages[rawIdx] : undefined;
-      if (!raw || !selectableUserMessagesFilter(raw)) return;
-      const noFileChanges = !(await fileHistoryHasAnyChanges(fileHistory, raw.uuid));
-      const onlySynthetic = messagesAfterAreOnlySynthetic(messages, rawIdx);
-      if (noFileChanges && onlySynthetic) {
-        // rewindConversationTo's setMessages races stream appends — cancel first (idempotent).
-        onCancel();
-        // handleRestoreMessage also restores pasted images.
-        void handleRestoreMessage(raw);
-      } else {
-        // Dialog path: onPreRestore (= onCancel) fires when user CONFIRMS, not on nevermind.
-        setMessageSelectorPreselect(raw);
-        setIsMessageSelectorVisible(true);
-      }
-    }
-  };
+  const {
+    handleRestoreMessage,
+    messageActionCaps
+  } = useMessageActionsController({
+    messages,
+    messagesRef,
+    restoreMessageSyncRef,
+    fileHistory,
+    setMessages,
+    setAppState,
+    setConversationId,
+    setInputValue,
+    setInputMode,
+    setPastedContents,
+    setMessageSelectorPreselect,
+    setIsMessageSelectorVisible,
+    addNotification,
+    onCancel,
+  });
   const {
     enter: enterMessageActions,
     handlers: messageActionHandlers

@@ -16,9 +16,11 @@
 ## Repo health
 - [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and a CORRECTION: its "React-Compiler output cannot be hand-fixed" claim was disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
+- [CLAUDE_CODE_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
 
 ## Roadmap & major features
+- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — lives ONLY in a deleted ROADMAP.md (`git show cbf3325d:ROADMAP.md`); 11b/11e done 2026-08-07, 11i/11j/11k open; two split-only traps
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
 - [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — re-measured over 760 sessions: Read 58.4% of tool-result chars vs git+gh 5.0%; D1 ✅ D2 ✅ (Git tool) → **D3 Read dedup is now the big one** → D4 widen redirects → D5 build wrapper
