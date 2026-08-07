@@ -46,6 +46,18 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    imports, which do NOT gate: this fork resolves ~30 module names to stubs in
    `scripts/build.ts` that knip cannot see, so "undeclared" is the intended
    state there rather than a defect.
+7. **Generated SDK types** — `bun run verify:sdk-types`. Gates in CI, so a green
+   local run without it ships a red PR. It fails when
+   `src/entrypoints/sdk/coreTypes.generated.ts` no longer matches what
+   `coreSchemas.ts` would produce.
+   - **Do not just regenerate and commit.** Regeneration always makes the check
+     pass, including when the reason it broke is that a schema went missing —
+     the shrunk output is then a silent break of the SDK's public API. Read the
+     diff first: removed `export type` lines mean restore the schema, not accept
+     the loss.
+   - The inputs are invisible to `deadcode:ci`, which is how they get deleted in
+     the first place. Nothing in this repo imports `OutputFormatSchema` or
+     `HookJSONOutputSchema`; the generator is their only consumer.
 
 ## Conditional steps (only when the diff touches these areas)
 
