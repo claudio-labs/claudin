@@ -32,7 +32,10 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage --coverage-reporter=lcov --coverage-dir=coverage --max-concurrency=1 && bun run scripts/render-coverage-heatmap.ts",
     "test:coverage:ui": "bun run scripts/render-coverage-heatmap.ts",
+    "test:floor": "bun run scripts/test-floor.ts",
+    "test:floor:update": "bun run scripts/test-floor.ts --update",
     "security:pr-scan": "bun run scripts/pr-intent-scan.ts",
+    "deadcode": "knip --include files,dependencies",
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "bun run scripts/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/typecheck-ci.ts --update",
@@ -145,6 +148,7 @@
     "@types/semver": "^7.8.0",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
+    "knip": "^6.32.0",
     "tsx": "^4.22.5",
     "typescript": "7.0.2"
   },

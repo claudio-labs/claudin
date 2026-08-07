@@ -1,0 +1,13 @@
+{
+  "//": "Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/test-floor.ts.",
+  "ratioPct": 19.23,
+  "testLoc": 118132,
+  "sourceLoc": 614313,
+  "testFiles": 556,
+  "requiredSuites": [
+    "src/services/compact/requestDeterminism.invariant.test.ts",
+    "src/services/compact/stableStubState.stub-byte-stability.test.ts",
+    "src/outputFilter/Bash/phase12Report.test.ts"
+  ],
+  "capturedAt": "2026-08-07"
+}

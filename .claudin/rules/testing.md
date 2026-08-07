@@ -179,6 +179,61 @@ it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
 | `src/utils/*` | 75%+ | Shared utils used everywhere |
 | Build scripts | 60%+ | Invariants via the guard tests |
 
+### The test floor (`bun run test:floor`)
+
+A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
+(19.23% as of 2026-08-07) and the check fails when it drops more than 0.5pp, or
+when one of the named invariant suites disappears:
+
+```
+src/services/compact/requestDeterminism.invariant.test.ts
+src/services/compact/stableStubState.stub-byte-stability.test.ts
+src/outputFilter/Bash/phase12Report.test.ts
+```
+
+Do **not** chase the percentage. It cannot tell a real assertion from
+`expect(true).toBe(true)`, and the three suites above are worth more than any
+number it could report — they pin request-byte determinism (the prompt cache
+stops hitting the moment it breaks) and per-filter reduction. What the ratio is
+good for is noticing a *loss*: a refactor that deletes a suite along with the
+code it covered. Re-record deliberately with `bun run test:floor:update`.
+
+### Type-level tests (`*.types.test.ts`)
+
+Compile-time assertions using `Expect<Equal<…>>` from
+`src/types/typeAssertions.ts`. They are enforced by `tsc` — that is, by
+`bun run typecheck:ci` — not by the runner, so a broken invariant shows up as a
+new diagnostic on the `Expect<…>` line. Each file also carries a `test()` or
+two pinning the runtime half of the same invariant.
+
+They exist where a type is load-bearing and documented only in prose:
+`src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
+`src/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s two
+deviations from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
+versus what `buildTool` actually spreads, including the fail-closed defaults).
+
+> **Adding one perturbs the typecheck baseline.** `fingerprintDiagnostic` hashes
+> file + code + *message*, and tsc's message for a large-union error embeds a
+> truncated elaboration (`… | … 30 more … |`) whose contents shift when an
+> unrelated file enters the program. Adding `src/Tool.types.test.ts` re-hashed
+> pre-existing diagnostics in `runHeadless.ts` and
+> `matching.characterization.test.ts` and the ratchet called them new — twice,
+> once on the file's arrival and again when its import moved from `zod` to
+> `zod/v4`. They were not new: the same errors reproduce at the same lines on a
+> clean HEAD, and the total held at 3161 across both refreshes. If a PR that
+> only *adds* files reports new errors in files it never touched, check for this
+> before hunting a phantom regression, and refresh with
+> `bun run typecheck:baseline`.
+
+### Dead code (`bun run deadcode`)
+
+`knip`, configured in `knip.json`. A report, not a gate — it exits non-zero on
+findings, so do not wire it into CI until the findings are cleared. Two blind
+spots to know about: it does not read `bunfig.toml`, so the `[alias]` targets
+(`src/stubs/growthbook-stub.ts`, `src/stubs/sandbox-runtime-stub.ts`) are listed
+in `ignore` by hand; and it does not see the module names that
+`scripts/build.ts` resolves to stubs as string literals.
+
 ## What NOT to Test
 
 - `dist/cli.mjs` — it's generated, test the source

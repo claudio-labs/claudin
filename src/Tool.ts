@@ -764,7 +764,7 @@ export type Tools = readonly Tool[]
  * Methods that `buildTool` supplies a default for. A `ToolDef` may omit these;
  * the resulting `Tool` always has them.
  */
-type DefaultableToolKeys =
+export type DefaultableToolKeys =
   | 'isEnabled'
   | 'isConcurrencySafe'
   | 'isReadOnly'
@@ -792,7 +792,7 @@ export type ToolDef<
  * default fills in. All other keys come from D verbatim — preserving arity,
  * optional presence, and literal types exactly as `satisfies Tool` did.
  */
-type BuiltTool<D> = Omit<D, DefaultableToolKeys> & {
+export type BuiltTool<D> = Omit<D, DefaultableToolKeys> & {
   [K in DefaultableToolKeys]-?: K extends keyof D
     ? undefined extends D[K]
       ? ToolDefaults[K]
@@ -831,7 +831,7 @@ const TOOL_DEFAULTS = {
 // The defaults type is the ACTUAL shape of TOOL_DEFAULTS (optional params so
 // both 0-arg and full-arg call sites type-check — stubs varied in arity and
 // tests relied on that), not the interface's strict signatures.
-type ToolDefaults = typeof TOOL_DEFAULTS
+export type ToolDefaults = typeof TOOL_DEFAULTS
 
 // D infers the concrete object-literal type from the call site. The
 // constraint provides contextual typing for method parameters; `any` in
