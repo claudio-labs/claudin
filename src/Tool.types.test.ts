@@ -88,9 +88,19 @@ const minimalDef = {
   maxResultSizeChars: 1000,
 } as const
 
+/**
+ * A full `ToolDef` also demands the React render members, which testing.md
+ * records as unimportable under `bun test`, so the fixture above is a partial
+ * one and this is the single place that says so. The cast costs nothing here:
+ * every claim about the TYPE is asserted above against synthetic `D`s with no
+ * cast at all, and these tests exist only to check that the runtime spread
+ * agrees with them.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const build = (def: object) => buildTool(def as any)
+
 test('buildTool fills every defaultable key, fail-closed', async () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const built = buildTool(minimalDef as any)
+  const built = build(minimalDef)
 
   expect(built.isEnabled()).toBe(true)
   // Assume-not-safe / assume-writes: flipping either of these silently widens
@@ -107,26 +117,23 @@ test('buildTool defaults userFacingName to the tool name, not the empty default'
   // TOOL_DEFAULTS.userFacingName returns ''; buildTool overrides it with
   // `() => def.name` AFTER the spread. The two disagree, and the override is
   // the one that ships — this is the assertion that keeps the doc honest.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const built = buildTool(minimalDef as any)
+  const built = build(minimalDef)
   expect(built.userFacingName({})).toBe('TypeTestTool')
 })
 
 test('a def-supplied defaultable key beats both the default and the override', async () => {
-  const built = buildTool({
+  const built = build({
     ...minimalDef,
     isReadOnly: () => true,
     userFacingName: () => 'Renamed',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any)
+  })
 
   expect(built.isReadOnly({})).toBe(true)
   expect(built.userFacingName({})).toBe('Renamed')
 })
 
 test('checkPermissions defaults to allow, echoing the real input back', async () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const built = buildTool(minimalDef as any)
+  const built = build(minimalDef)
   const input = { file_path: '/tmp/x', content: 'y' }
   const result = await built.checkPermissions(input, undefined as never)
 

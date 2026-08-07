@@ -19,6 +19,12 @@
  *     byte-identical across runs for the same reason.
  *   - phase12Report — the per-filter reduction report for the bash filter.
  *
+ * …plus the four build-system invariant suites in `scripts/`, which
+ * .claudin/rules/testing.md already names as must-run when touching
+ * scripts/build.ts. They live outside `src/`, so an earlier version of this
+ * script could not see them at all: deleting every one of them left the floor
+ * green. Both trees are walked now.
+ *
  * Deleting one of those is a decision, not a cleanup, so it has to be made
  * here rather than by dropping a file.
  *
@@ -48,7 +54,14 @@ const REQUIRED_SUITES = [
   'src/services/compact/requestDeterminism.invariant.test.ts',
   'src/services/compact/stableStubState.stub-byte-stability.test.ts',
   'src/outputFilter/Bash/phase12Report.test.ts',
+  'scripts/feature-flags-source-guard.test.ts',
+  'scripts/measure-tool-schemas.test.ts',
+  'scripts/no-telemetry-growthbook-stub.test.ts',
+  'scripts/pr-intent-scan.test.ts',
 ]
+
+/** Trees the ratio is measured over. `scripts/` carries the build invariants. */
+const ROOTS = ['src', 'scripts']
 
 function isTestFile(path: string): boolean {
   return /\.test\.tsx?$/.test(path) || path.includes('/__tests__/')
@@ -77,14 +90,16 @@ export function measure(): Omit<Floor, '//' | 'capturedAt' | 'requiredSuites'> {
   let testLoc = 0
   let sourceLoc = 0
   let testFiles = 0
-  for (const file of walk(join(CWD, 'src'))) {
-    const rel = relative(CWD, file)
-    const lines = countLines(file)
-    if (isTestFile(rel)) {
-      testLoc += lines
-      testFiles++
-    } else {
-      sourceLoc += lines
+  for (const root of ROOTS) {
+    for (const file of walk(join(CWD, root))) {
+      const rel = relative(CWD, file)
+      const lines = countLines(file)
+      if (isTestFile(rel)) {
+        testLoc += lines
+        testFiles++
+      } else {
+        sourceLoc += lines
+      }
     }
   }
   return {

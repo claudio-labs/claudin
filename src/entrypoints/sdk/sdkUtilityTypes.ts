@@ -20,18 +20,21 @@ import type { BetaUsage } from '@anthropic-ai/sdk/resources/beta/messages/messag
  * the fields Claudin reads include `iterations` (context-window size) and
  * `speed` (fast-mode cost tier), which only exist there.
  *
- * Two deviations from a plain mapping, both pinned by the only two values of
- * this type in the tree — `EMPTY_USAGE` (services/api/emptyUsage.ts) and the
- * literal `accumulateUsage` returns (services/api/claude/streaming.ts). Each
- * supplies exactly eleven fields:
+ * One deviation from a plain mapping, pinned by the only two values of this
+ * type in the tree — `EMPTY_USAGE` (services/api/emptyUsage.ts) and the
+ * literal `accumulateUsage` returns (services/api/claude/streaming.ts):
+ * `fallback_credit` is dropped. Neither value supplies it, and nothing in
+ * `src/` reads it, so keeping it would make both literals incomplete. That
+ * leaves the eleven fields both values supply.
  *
- *   - `fallback_credit` is dropped. Neither value supplies it, and nothing in
- *     `src/` reads it, so keeping it would make both literals incomplete.
- *   - `speed` is added. It is absent from `BetaUsage` itself (it lives on the
- *     beta message-params type), but both values set it.
+ * `speed` needs no special handling, and used to get some anyway. An earlier
+ * version of this file intersected `& { speed: 'standard' | 'fast' }` on the
+ * stated grounds that the field "is absent from `BetaUsage` itself (it lives
+ * on the beta message-params type)". It is not absent: `BetaUsage` declares
+ * `speed: 'standard' | 'fast' | null`, so the mapping already produced exactly
+ * that type and the intersection was inert. The params type does also declare
+ * a `speed?`, which is the likely source of the confusion.
  */
 export type NonNullableUsage = {
   [K in keyof Omit<BetaUsage, 'fallback_credit'>]-?: NonNullable<BetaUsage[K]>
-} & {
-  speed: 'standard' | 'fast'
 }
