@@ -37,7 +37,6 @@ import { SETTING_SOURCES, type SettingSource } from '../settings/constants.js'
 import { getManagedSettingsDropInDir } from '../settings/managedPath.js'
 import {
   getInitialSettings,
-  getSettings_DEPRECATED,
   getSettingsFilePathForSource,
   getSettingsForSource,
   getSettingsRootPathForSource,
@@ -476,17 +475,17 @@ function getSandboxEnabledSetting(): boolean {
 }
 
 function isAutoAllowBashIfSandboxedEnabled(): boolean {
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   return settings?.sandbox?.autoAllowBashIfSandboxed ?? true
 }
 
 function areUnsandboxedCommandsAllowed(): boolean {
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   return settings?.sandbox?.allowUnsandboxedCommands ?? true
 }
 
 function isSandboxRequired(): boolean {
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   return (
     getSandboxEnabledSetting() &&
     (settings?.sandbox?.failIfUnavailable ?? false)
@@ -611,7 +610,7 @@ function getLinuxGlobPatternWarnings(): string[] {
   }
 
   try {
-    const settings = getSettings_DEPRECATED()
+    const settings = getInitialSettings()
 
     // Only return warnings when sandboxing is enabled (check settings directly, not cached value)
     if (!settings?.sandbox?.enabled) {
@@ -703,7 +702,7 @@ async function setSandboxSettings(options: {
  * Get excluded commands (commands that should not be sandboxed)
  */
 function getExcludedCommands(): string[] {
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   return settings?.sandbox?.excludedCommands ?? []
 }
 
@@ -775,7 +774,7 @@ async function initialize(
         worktreeMainRepoPath = await detectWorktreeMainRepoPath(getCwdState())
       }
 
-      const settings = getSettings_DEPRECATED()
+      const settings = getInitialSettings()
       const runtimeConfig = convertToSandboxRuntimeConfig(settings)
 
       // Log monitor is automatically enabled for macOS
@@ -783,7 +782,7 @@ async function initialize(
 
       // Subscribe to settings changes to update sandbox config dynamically
       settingsSubscriptionCleanup = settingsChangeDetector.subscribe(() => {
-        const settings = getSettings_DEPRECATED()
+        const settings = getInitialSettings()
         const newConfig = convertToSandboxRuntimeConfig(settings)
         BaseSandboxManager.updateConfig(newConfig)
         logForDebugging('Sandbox configuration updated from settings change')
@@ -806,7 +805,7 @@ async function initialize(
  */
 function refreshConfig(): void {
   if (!isSandboxingEnabled()) return
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   const newConfig = convertToSandboxRuntimeConfig(settings)
   BaseSandboxManager.updateConfig(newConfig)
 }

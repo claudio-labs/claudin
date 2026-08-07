@@ -166,7 +166,7 @@ import {
 } from 'src/constants/outputStyles.js'
 import { TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/constants/xml.js'
 import {
-  getSettings_DEPRECATED,
+  getInitialSettings,
   getSettingsWithSources,
 } from 'src/utils/settings/settings.js'
 import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'

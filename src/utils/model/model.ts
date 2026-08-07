@@ -23,7 +23,7 @@ import {
   getOpus46CostTier,
   getOpus5CostTier,
 } from '../modelCost.js'
-import { getSettings_DEPRECATED } from '../settings/settings.js'
+import { getInitialSettings } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { getAPIProvider } from './providers.js'
 import { LIGHTNING_BOLT } from '../../constants/figures.js'
@@ -133,7 +133,7 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
   if (modelOverride !== undefined) {
     specifiedModel = modelOverride
   } else {
-    const settings = getSettings_DEPRECATED() || {}
+    const settings = getInitialSettings() || {}
     const setting = normalizeModelSetting(settings.model)
     // Read the model from the active provider profile to prevent cross-provider
     // leaks (e.g. an Anthropic model setting sent to the OpenAI API). When no
@@ -365,7 +365,7 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
   const profileModel = getActiveProfileModel()
   // GitHub Copilot provider: check settings.model first, then profile, then default
   if (getAPIProvider() === 'github') {
-    const settings = getSettings_DEPRECATED() || {}
+    const settings = getInitialSettings() || {}
     return (
       normalizeModelSetting(settings.model) ||
       profileModel ||

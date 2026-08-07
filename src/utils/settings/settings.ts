@@ -815,11 +815,6 @@ export function getInitialSettings(): SettingsJson {
   return settings || {}
 }
 
-/**
- * @deprecated Use getInitialSettings() instead. This alias exists for backwards compatibility.
- */
-export const getSettings_DEPRECATED = getInitialSettings
-
 export type SettingsWithSources = {
   effective: SettingsJson
   /** Ordered low-to-high priority — later entries override earlier ones. */

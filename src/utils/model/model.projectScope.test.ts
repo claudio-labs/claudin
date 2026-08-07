@@ -45,7 +45,7 @@ function installMocks(): void {
   }))
   mock.module('../settings/settings.js', () => ({
     ...realSettings,
-    getSettings_DEPRECATED: () => ({ model: settingsModel }),
+    getInitialSettings: () => ({ model: settingsModel }),
   }))
   mock.module('./modelAllowlist.js', () => ({
     ...realAllowlist,

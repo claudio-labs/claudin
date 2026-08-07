@@ -33,7 +33,7 @@ import {
   setInitJsonSchema,
 } from 'src/bootstrap/state.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { getSettings_DEPRECATED } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
   getAllOutputStyles,
@@ -141,7 +141,7 @@ export async function handleInitializeRequest(
     }
   }
 
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   const outputStyle = settings?.outputStyle || DEFAULT_OUTPUT_STYLE_NAME
   const availableOutputStyles = await getAllOutputStyles(getCwd())
 

@@ -661,12 +661,6 @@ export async function deleteResolvedPermission(
   }
 }
 
-/**
- * @deprecated Alias for writePermissionRequest, which is itself deprecated.
- * Use sendPermissionRequestViaMailbox() instead.
- */
-export const submitPermissionRequest = writePermissionRequest
-
 // ============================================================================
 // Mailbox-Based Permission System
 // ============================================================================

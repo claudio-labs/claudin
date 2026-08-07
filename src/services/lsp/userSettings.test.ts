@@ -12,7 +12,6 @@ const SETTINGS_MOCK_FACTORY = () => ({
   getSettingsForSource: () => ({}),
   getSettingsWithSources: () => ({}),
   getSettingsWithErrors: () => ({ settings: {}, errors: [] }),
-  getSettings_DEPRECATED: () => ({}),
   loadManagedFileSettings: () => ({ settings: {}, errors: [] }),
   getManagedFileSettingsPresence: () => ({}),
   parseSettingsFile: () => ({ settings: {}, errors: [] }),

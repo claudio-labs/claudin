@@ -3,7 +3,7 @@
   "checker": "tsc",
   "command": "tsc --noEmit --pretty false",
   "capturedAt": "2026-08-07",
-  "capturedFrom": "0d38132b9a4326aa053bad0b235ab66d8275bc84",
+  "capturedFrom": "c13de9dd20137801c699c353ef1c7004af8ffb01",
   "count": 2849,
   "fingerprints": [
     "004394a7d4fd",

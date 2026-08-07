@@ -34,7 +34,7 @@ async function importFreshCleanupModule(options: {
   }))
   mock.module('./settings/settings.js', () => ({
     ...realSettings,
-    getSettings_DEPRECATED: () => ({}),
+    getInitialSettings: () => ({}),
   }))
   process.env.CLAUDIN_CONFIG_DIR = options.legacyHomeConfigDir
   return import(`./cleanup.js?t=${Date.now()}-${Math.random()}`)
