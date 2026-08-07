@@ -1,33 +1,34 @@
 ---
-name: typecheck ratchet reports phantom new errors when a file is added
-description: fingerprintDiagnostic hashes the tsc message, whose union elaboration shifts when unrelated files enter the program — check the total count before hunting the regression
+name: typecheck ratchet phantom "new" errors — fixed 2026-08-07
+description: fingerprintDiagnostic hashed tsc's union elaboration, so adding any file re-hashed unrelated diagnostics; elideTruncatedUnion fixes it, and the triage step still applies if one slips through
 type: project
 ---
 
-`bun run typecheck:ci` can report "N new type errors" in files your branch
-never opened. It is usually not a regression.
+`bun run typecheck:ci` used to report "N new type errors" in files a branch
+never opened. Fixed on 2026-08-07 in `src/tools/TypecheckTool/fingerprint.ts`.
 
-`fingerprintDiagnostic` (shared by `scripts/typecheck-ci.ts` and
-`src/tools/TypecheckTool/fingerprint.ts`) hashes **file + code + message**,
-excluding line and column so an added import does not re-report everything
-below it. But for an error against a large union, tsc's message embeds a
-truncated elaboration — `{ type: "result"; … } | … 30 more … | { …; }` — and
-both the constituent it prints first and the truncation count depend on what
-else is interned in the program. Add a file, and a diagnostic that has not
-moved gets re-worded, re-hashed, and reported as new.
+**Cause.** The fingerprint hashes file + code + message. For an error against a
+union too large to print, tsc expands ONE arbitrary constituent as the
+representative and truncates the rest to `| ... 17 more ... |`. Which member it
+picks depends on what else has been interned in the program, so adding an
+unrelated file re-words a diagnostic that has not moved.
 
-**Triage:** does the same diagnostic reproduce at the same line on a clean
-HEAD (`git archive HEAD | tar -x -C /tmp/x`, symlink node_modules, run the
-script there), and did the TOTAL count move? Unchanged total plus swapped
-hashes means this, and `bun run typecheck:baseline` is correct. A moved total
-means a real error.
+**Why the obvious fix was not enough.** Eliding the printed type literal leaves
+the explanation chain, which is a narrative about that same arbitrary member —
+the same diagnostic went from `SDKAssistantMessage` → property `message` →
+`Message` to `SDKResultSuccess` → property `usage` → `NonNullableUsage`. Those
+are named types and property names. `elideTruncatedUnion` therefore drops the
+chain outright for any diagnostic showing a truncated union, and reduces the
+union to its (stable) member count.
 
-Observed twice on 2026-08-07 while adding `src/Tool.types.test.ts`: once on
-arrival (2 fingerprints swapped) and again when its import moved from `zod` to
-`zod/v4` (3 swapped). Total held at 3161 both times. Affected
-`src/cli/print/runHeadless.ts` and `src/utils/hooks/matching.characterization.test.ts`.
+**Measured**, by adding a two-line file importing `SDKMessage`: 4 phantom
+errors before, 0 after, with the unique-fingerprint count unchanged at 2372 of
+3161 — no discrimination lost. 16 messages are touched.
 
-Fixing it means normalizing the elaboration out of the message before hashing,
-which also changes what the Typecheck tool considers pre-existing — not done,
-deliberately. See [[bash-filter-sample-corpus-unified]] for the neighbouring
-habit of verifying against HEAD rather than trusting a green/red signal.
+**If one still slips through**, the triage is: does the diagnostic reproduce at
+the same line on a clean HEAD, and did the TOTAL count move? Unchanged total
+plus swapped hashes is a false positive and `bun run typecheck:baseline` is
+correct. A moved total is a real error.
+
+See [[bash-filter-sample-corpus-unified]] for the neighbouring habit of
+verifying against HEAD rather than trusting a green/red signal.

@@ -182,21 +182,31 @@ it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
 ### The test floor (`bun run test:floor`)
 
 A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
-(19.23% as of 2026-08-07) and the check fails when it drops more than 0.5pp, or
-when one of the named invariant suites disappears:
+(18.87% as of 2026-08-07, over `src/` and `scripts/`) and the check fails when
+it drops more than 0.5pp, or when one of the named invariant suites disappears:
 
 ```
 src/services/compact/requestDeterminism.invariant.test.ts
 src/services/compact/stableStubState.stub-byte-stability.test.ts
 src/outputFilter/Bash/phase12Report.test.ts
+scripts/feature-flags-source-guard.test.ts
+scripts/measure-tool-schemas.test.ts
+scripts/no-telemetry-growthbook-stub.test.ts
+scripts/pr-intent-scan.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
-`expect(true).toBe(true)`, and the three suites above are worth more than any
+`expect(true).toBe(true)`, and the seven suites above are worth more than any
 number it could report — they pin request-byte determinism (the prompt cache
-stops hitting the moment it breaks) and per-filter reduction. What the ratio is
-good for is noticing a *loss*: a refactor that deletes a suite along with the
-code it covered. Re-record deliberately with `bun run test:floor:update`.
+stops hitting the moment it breaks), per-filter reduction, and the build-system
+invariants. What the ratio is good for is noticing a *loss*: a refactor that
+deletes a suite along with the code it covered. Re-record deliberately with
+`bun run test:floor:update`.
+
+Both trees are walked because the first version was not: it measured `src/`
+only, so deleting all four `scripts/` invariant suites left it green, reporting
+"3/3 invariant suites present" while three of the four it should have been
+counting no longer existed.
 
 ### Type-level tests (`*.types.test.ts`)
 
@@ -208,31 +218,39 @@ two pinning the runtime half of the same invariant.
 
 They exist where a type is load-bearing and documented only in prose:
 `src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
-`src/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s two
-deviations from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
+`src/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
+deviation from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
 versus what `buildTool` actually spreads, including the fail-closed defaults).
 
-> **Adding one perturbs the typecheck baseline.** `fingerprintDiagnostic` hashes
-> file + code + *message*, and tsc's message for a large-union error embeds a
-> truncated elaboration (`… | … 30 more … |`) whose contents shift when an
-> unrelated file enters the program. Adding `src/Tool.types.test.ts` re-hashed
-> pre-existing diagnostics in `runHeadless.ts` and
-> `matching.characterization.test.ts` and the ratchet called them new — twice,
-> once on the file's arrival and again when its import moved from `zod` to
-> `zod/v4`. They were not new: the same errors reproduce at the same lines on a
-> clean HEAD, and the total held at 3161 across both refreshes. If a PR that
-> only *adds* files reports new errors in files it never touched, check for this
-> before hunting a phantom regression, and refresh with
-> `bun run typecheck:baseline`.
+Writing them is what surfaced two defects worth more than the assertions: the
+`speed` intersection on `NonNullableUsage` was inert and justified by a false
+claim about the SDK's `BetaUsage`, and `fingerprintDiagnostic` reported phantom
+new errors whenever a file was added. Both are fixed. Watch for the tautology
+trap in a new one — an assertion pinning "not null" against a field that was
+never nullable passes with the whole mapping deleted, which is how three of the
+first five in `sdkUtilityTypes.types.test.ts` shipped guarding nothing. Break
+the production line and watch the assertion fail before believing it.
 
-### Dead code (`bun run deadcode`)
+### Dead code (`bun run deadcode`, gated by `deadcode:ci`)
 
-`knip`, configured in `knip.json`. A report, not a gate — it exits non-zero on
-findings, so do not wire it into CI until the findings are cleared. Two blind
-spots to know about: it does not read `bunfig.toml`, so the `[alias]` targets
+`knip`, configured in `knip.json`, in two forms:
+
+- `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Scoped to
+  declared dependencies nothing imports, which is the finding that costs every
+  user an install. Clean as of 2026-08-07, when `code-excerpt`, `stack-utils`
+  and `tsx` were removed.
+- `bun run deadcode` — the **report**, which also lists unused files (20 open,
+  needing case-by-case review).
+
+`unlisted` and `unresolved` are deliberately outside the gate. This fork
+resolves ~30 module names to stubs in `scripts/build.ts` and carries 138 imports
+of files the fork never received, so in this repo "undeclared" is overwhelmingly
+the intended state; gating on it would mean 30 hand-maintained ignores that
+silently drift from build.ts. Two narrower blind spots ARE configured around:
+knip does not read `bunfig.toml`, so the `[alias]` targets
 (`src/stubs/growthbook-stub.ts`, `src/stubs/sandbox-runtime-stub.ts`) are listed
-in `ignore` by hand; and it does not see the module names that
-`scripts/build.ts` resolves to stubs as string literals.
+in `ignore` by hand, and the external CLI tools the code shells out to
+(`rec`, `wslpath`, `secret-tool`, …) are in `ignoreBinaries`.
 
 ## What NOT to Test
 
@@ -304,6 +322,8 @@ confirm a cited diagnostic with the tool (`path:` filters the report) first.
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
 - [ ] Focused test passes (RunTests tool, scoped with `path`)
+- [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
+- [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] If touching `src/services/api/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated

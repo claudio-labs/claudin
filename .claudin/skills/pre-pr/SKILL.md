@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
+description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
 allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
@@ -32,6 +32,18 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    `$ARGUMENTS` names test files, pass them as `path`. Otherwise infer the
    colocated `*.test.ts` next to the files in `git diff --name-only` and run
    those.
+5. **Test floor** — `bun run test:floor`. A ratchet, not a target: it fails if
+   the test-to-source LOC ratio drops more than 0.5pp below the recorded floor,
+   or if one of the seven named invariant suites has disappeared. A refactor
+   that deletes a suite along with the code it covered is what this catches.
+   Raising the floor is deliberate — `bun run test:floor:update`, in the same
+   commit that earned it.
+6. **Unused dependencies** — `bun run deadcode:ci`. Scoped to declared
+   dependencies that nothing imports, which is the part that costs every user
+   an install. The full `bun run deadcode` also lists unused FILES and
+   used-but-undeclared imports; both are report-only and neither gates, because
+   this fork resolves ~30 module names to stubs in `scripts/build.ts` that knip
+   cannot see, so "undeclared" there is the intended state rather than a defect.
 
 ## Conditional steps (only when the diff touches these areas)
 

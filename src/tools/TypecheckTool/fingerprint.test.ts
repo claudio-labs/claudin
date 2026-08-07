@@ -93,6 +93,51 @@ describe('fingerprintDiagnostic', () => {
     const wrapped = fingerprintDiagnostic(diag({ message: 'a\n   b' }), CWD)
     expect(wrapped).toBe(single)
   })
+
+  test('survives tsc picking a different representative of a truncated union', () => {
+    // Reproduced by adding a two-line file that imports SDKMessage: tsc expands
+    // one arbitrary member of a union it cannot print in full, and the pick
+    // moves when anything else enters the program. Same file, same line, same
+    // code — a different story about a different member.
+    const message = (member: string, property: string, propertyType: string) =>
+      [
+        `Argument of type '{ type: "${member}"; session_id: string; } | ... 17 more ... | { ...; }' is not assignable to parameter of type 'SDKMessage'.`,
+        `  Type '{ type: "${member}"; session_id: string; }' is not assignable to type 'SDKMessage'.`,
+        `    Types of property '${property}' are incompatible.`,
+        `      Type 'unknown' is not assignable to type '${propertyType}'.`,
+      ].join('\n')
+    const first = fingerprintDiagnostic(
+      diag({ code: 'TS2345', message: message('assistant', 'message', 'Message') }),
+      CWD,
+    )
+    const second = fingerprintDiagnostic(
+      diag({ code: 'TS2345', message: message('result', 'usage', 'NonNullableUsage') }),
+      CWD,
+    )
+    expect(second).toBe(first)
+  })
+
+  test('the union member COUNT still distinguishes two truncated diagnostics', () => {
+    // Which member gets expanded is arbitrary; how many were elided is not. It
+    // is the one part of the printed union worth keeping, and it is what stops
+    // this normalisation from collapsing genuinely different unions.
+    const message = (count: number) =>
+      `Argument of type '{ a: 1; } | ... ${count} more ... | { ...; }' is not assignable to parameter of type 'X'.`
+    const seventeen = fingerprintDiagnostic(diag({ message: message(17) }), CWD)
+    const four = fingerprintDiagnostic(diag({ message: message(4) }), CWD)
+    expect(four).not.toBe(seventeen)
+  })
+
+  test('a diagnostic with no truncated union keeps its whole chain', () => {
+    // The elision must not leak into ordinary diagnostics: dropping every
+    // chain would collapse the two below, and the chain is the only thing
+    // telling them apart.
+    const message = (property: string) =>
+      `Type 'A' is not assignable to type 'B'.\n  Types of property '${property}' are incompatible.`
+    const one = fingerprintDiagnostic(diag({ message: message('alpha') }), CWD)
+    const other = fingerprintDiagnostic(diag({ message: message('beta') }), CWD)
+    expect(other).not.toBe(one)
+  })
 })
 
 describe('normalizeDiagnosticPath', () => {

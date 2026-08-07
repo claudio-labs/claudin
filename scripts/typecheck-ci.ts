@@ -16,22 +16,16 @@
  * and re-report the lot as newly introduced. Comparison is a MULTISET, so three
  * copies of an error the baseline recorded once still count two as new.
  *
- * KNOWN FALSE POSITIVE — the message is not as stable as the line number.
- * For an error against a large union, tsc prints a truncated elaboration
- * (`{ type: "result"; … } | … 30 more … | { …; }`), and BOTH which constituent
- * it prints first and how many it truncates depend on what else has been
- * interned in the program. Adding an unrelated file can therefore re-word a
- * diagnostic that has not moved, changing its hash and getting it reported as
- * newly introduced. Seen twice on 2026-08-07, on `runHeadless.ts` and
- * `matching.characterization.test.ts`, from nothing but a new *.types.test.ts
- * file arriving and later changing one import specifier.
- *
- * So before hunting a regression in a file the branch never touched: check
- * whether the same diagnostic reproduces at the same line on a clean HEAD, and
- * whether the TOTAL count moved. If the total is unchanged and only the hashes
- * differ, it is this, and `--update` is the right answer. A stable fingerprint
- * would have to normalize the elaboration out of the message, which changes
- * behavior for the Typecheck tool too.
+ * The message used to be less stable than the line number, and the tool used to
+ * report phantom new errors because of it: for a large union tsc expands one
+ * arbitrary constituent and truncates the rest, and the pick moves when
+ * anything else enters the program. Three real occurrences on 2026-08-07 in
+ * `runHeadless.ts` and `matching.characterization.test.ts`, each from a branch
+ * that had only ADDED a file. `elideTruncatedUnion` in fingerprint.ts handles
+ * it now — see the comment there for why eliding the printed type is not
+ * enough. If a phantom does slip through, the triage is unchanged: check the
+ * TOTAL count against a clean HEAD before hunting a regression in a file the
+ * branch never opened, and `--update` when only hashes moved.
  *
  *   bun run typecheck:ci        check the tree against typecheck-baseline.json
  *   bun run typecheck:baseline  rewrite that file from the current tree

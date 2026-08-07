@@ -18,6 +18,16 @@
   ],
   "ignoreDependencies": [
     "@anthropic-ai/vertex-sdk",
-    "@anthropic-ai/foundry-sdk"
+    "@anthropic-ai/foundry-sdk",
+    "@opentelemetry/.+",
+    "vscode"
+  ],
+  "ignoreBinaries": [
+    "arecord",
+    "caffeinate",
+    "claudindev",
+    "rec",
+    "secret-tool",
+    "wslpath"
   ]
 }

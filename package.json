@@ -36,6 +36,7 @@
     "test:floor:update": "bun run scripts/test-floor.ts --update",
     "security:pr-scan": "bun run scripts/pr-intent-scan.ts",
     "deadcode": "knip --include files,dependencies",
+    "deadcode:ci": "knip --include dependencies,devDependencies --no-config-hints",
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "bun run scripts/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/typecheck-ci.ts --update",
@@ -89,7 +90,6 @@
     "chokidar": "5.0.0",
     "cli-boxes": "4",
     "cli-highlight": "2.1.11",
-    "code-excerpt": "4.0.0",
     "commander": "15",
     "cross-spawn": "7.0.6",
     "diff": "9.0.0",
@@ -120,7 +120,6 @@
     "sharp": "^0.35.3",
     "shell-quote": "1.10.0",
     "signal-exit": "4.1.0",
-    "stack-utils": "2.0.6",
     "strip-ansi": "^7.2.0",
     "supports-hyperlinks": "4",
     "tree-kill": "1.2.2",
@@ -149,7 +148,6 @@
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
     "knip": "^6.32.0",
-    "tsx": "^4.22.5",
     "typescript": "7.0.2"
   },
   "engines": {
