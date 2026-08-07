@@ -61,10 +61,6 @@ import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { getErrnoCode } from './errors.js'
 import { normalizePathForComparison } from './file.js'
 import { cacheKeys, type FileStateCache } from './fileStateCache.js'
-import {
-  parseFrontmatter,
-  splitPathInFrontmatter,
-} from './frontmatterParser.js'
 import { getFsImplementation, safeResolvePath } from './fsOperations.js'
 import { findCanonicalGitRoot, findGitRoot } from './git.js'
 import {
@@ -80,6 +76,7 @@ import {
   getProjectInstructionFilePath,
   isProjectInstructionFileName,
 } from './projectInstructions.js'
+import { inspectRuleFrontmatter } from './ruleFrontmatter.js'
 import { isSettingSourceEnabled } from './settings/constants.js'
 import { getInitialSettings } from './settings/settings.js'
 
@@ -260,27 +257,8 @@ function parseFrontmatterPaths(rawContent: string): {
   content: string
   paths?: string[]
 } {
-  const { frontmatter, content } = parseFrontmatter(rawContent)
-
-  if (!frontmatter.paths) {
-    return { content }
-  }
-
-  const patterns = splitPathInFrontmatter(frontmatter.paths)
-    .map(pattern => {
-      // Remove /** suffix - ignore library treats 'path' as matching both
-      // the path itself and everything inside it
-      return pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern
-    })
-    .filter((p: string) => p.length > 0)
-
-  // If all patterns are ** (match-all), treat as no globs (undefined)
-  // This means the file applies to all paths
-  if (patterns.length === 0 || patterns.every((p: string) => p === '**')) {
-    return { content }
-  }
-
-  return { content, paths: patterns }
+  const { content, paths } = inspectRuleFrontmatter(rawContent)
+  return paths ? { content, paths } : { content }
 }
 
 
@@ -1452,5 +1430,4 @@ export function isMemoryFilePath(filePath: string): boolean {
 
   return false
 }
-
 

@@ -14,6 +14,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
 import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
+import { registerRefreshRulesSkill } from './refreshRules.js'
 import { registerRunSkill } from './run.js'
 import { registerSimplifySkill } from './simplify.js'
 import { registerVerifySkill } from './verify.js'
@@ -112,5 +113,33 @@ describe('fewer-permission-prompts skill', () => {
     expect(text).toContain('CLAUDIN_CONFIG_DIR')
     // does not instruct writing to the legacy .claude/settings.json
     expect(text).not.toContain('`.claude/settings.json`')
+  })
+})
+
+describe('refresh-rules skill', () => {
+  test('scopes the scan to this project and forbids rewriting an existing rule', async () => {
+    registerRefreshRulesSkill()
+    const text = await promptText('refresh-rules')
+    // A single project dir, not the whole projects/ tree: rules are
+    // project-scoped, unlike the permissions allowlist.
+    expect(text).toContain('/projects/')
+    expect(text).not.toContain('across the projects dir')
+    expect(text).toContain('do not write anything')
+    expect(text).toContain('.claudin/rules/search-strategy.md')
+  })
+
+  test('embeds the mechanical findings so the model does not re-derive them', async () => {
+    registerRefreshRulesSkill()
+    const text = await promptText('refresh-rules')
+    expect(text).toContain('rule file(s)')
+    expect(text).toMatch(/Always-loaded rules: \d+/)
+  })
+
+  test('states the create threshold and the supported frontmatter key', async () => {
+    registerRefreshRulesSkill()
+    const text = await promptText('refresh-rules')
+    expect(text).toContain('20 sessions')
+    expect(text).toContain('`paths` is the ONLY supported key')
+    expect(text).toContain('globs:')
   })
 })

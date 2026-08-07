@@ -119,7 +119,7 @@ export function Doctor(t0: Props) {
   const tools = t1;
   const [diagnostic, setDiagnostic] = useState(null);
   const [agentInfo, setAgentInfo] = useState(null);
-  const [contextWarnings, setContextWarnings] = useState(null);
+  const [contextWarnings, setContextWarnings] = useState<ContextWarnings | null>(null);
   const [versionLockInfo, setVersionLockInfo] = useState(null);
   const validationErrors = useSettingsErrors();
   let t2;
@@ -474,7 +474,7 @@ export function Doctor(t0: Props) {
   }
   let t39;
   if ($[73] !== contextWarnings) {
-    t39 = contextWarnings && (contextWarnings.claudeMdWarning || contextWarnings.agentWarning || contextWarnings.mcpWarning) && <Box flexDirection="column"><Text bold={true}>Context Usage Warnings</Text>{contextWarnings.claudeMdWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.claudeMdWarning.message}</Text></Text><Text>{"  "}└ Files:</Text>{contextWarnings.claudeMdWarning.details.map(_temp16)}</>}{contextWarnings.agentWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.agentWarning.message}</Text></Text><Text>{"  "}└ Top contributors:</Text>{contextWarnings.agentWarning.details.map(_temp17)}</>}{contextWarnings.mcpWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.mcpWarning.message}</Text></Text><Text>{"  "}└ MCP servers:</Text>{contextWarnings.mcpWarning.details.map(_temp18)}</>}</Box>;
+    t39 = contextWarnings && (contextWarnings.claudeMdWarning || contextWarnings.agentWarning || contextWarnings.mcpWarning || contextWarnings.ruleFilesWarning) && <Box flexDirection="column"><Text bold={true}>Context Usage Warnings</Text>{contextWarnings.claudeMdWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.claudeMdWarning.message}</Text></Text><Text>{"  "}└ Files:</Text>{contextWarnings.claudeMdWarning.details.map(_temp16)}</>}{contextWarnings.agentWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.agentWarning.message}</Text></Text><Text>{"  "}└ Top contributors:</Text>{contextWarnings.agentWarning.details.map(_temp17)}</>}{contextWarnings.mcpWarning && <><Text>└{" "}<Text color="warning">{figures.warning} {contextWarnings.mcpWarning.message}</Text></Text><Text>{"  "}└ MCP servers:</Text>{contextWarnings.mcpWarning.details.map(_temp18)}</>}{contextWarnings.ruleFilesWarning && <><Text>└{" "}<Text color={contextWarnings.ruleFilesWarning.severity === "error" ? "error" : "warning"}>{figures.warning} {contextWarnings.ruleFilesWarning.message}</Text></Text><Text>{"  "}└ Rules:</Text>{contextWarnings.ruleFilesWarning.details.map(_temp19)}</>}</Box>;
     $[73] = contextWarnings;
     $[74] = t39;
   } else {
@@ -502,6 +502,9 @@ export function Doctor(t0: Props) {
     t41 = $[83];
   }
   return t41;
+}
+function _temp19(detail_3: string, i_9: number) {
+  return <Text key={i_9} dimColor={true}>{"    "}└ {detail_3}</Text>;
 }
 function _temp18(detail_2, i_8) {
   return <Text key={i_8} dimColor={true}>{"    "}└ {detail_2}</Text>;

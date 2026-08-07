@@ -6,6 +6,7 @@ import { registerDebugSkill } from './debug.js'
 import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
 import { registerKeybindingsSkill } from './keybindings.js'
 import { registerLoopSkill } from './loop.js'
+import { registerRefreshRulesSkill } from './refreshRules.js'
 import { registerRunSkill } from './run.js'
 import { registerSimplifySkill } from './simplify.js'
 import { registerUpdateConfigSkill } from './updateConfig.js'
@@ -35,6 +36,9 @@ export function initBundledSkills(): void {
   // Claudin-native: teaches the model to create/refine skills, rules, and
   // agents in the .claudin structure (project + global).
   registerCreateSkill()
+  // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
+  // that are invisible at runtime and proposes corrections from session history.
+  registerRefreshRulesSkill()
   if (feature('KAIROS') || feature('KAIROS_DREAM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerDreamSkill } = require('./dream.js')

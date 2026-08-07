@@ -42,6 +42,7 @@
     "typecheck:baseline": "bun run scripts/typecheck-ci.ts --update",
     "generate:sdk-types": "bun run scripts/generate-sdk-types.ts",
     "verify:sdk-types": "bun run scripts/generate-sdk-types.ts --check",
+    "verify:rules": "bun run scripts/rules-check.ts",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
