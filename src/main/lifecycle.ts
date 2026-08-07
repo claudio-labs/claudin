@@ -21,6 +21,7 @@ import { loadAllPluginsCacheOnly } from '../utils/plugins/pluginLoader.js';
 import { migrateAutoUpdatesToSettings } from '../migrations/migrateAutoUpdatesToSettings.js';
 import { migrateBypassPermissionsAcceptedToSettings } from '../migrations/migrateBypassPermissionsAcceptedToSettings.js';
 import { migrateEnableAllProjectMcpServersToSettings } from '../migrations/migrateEnableAllProjectMcpServersToSettings.js';
+import { migrateFennecToOpus } from '../migrations/migrateFennecToOpus.js';
 import { migrateLegacyOpusToCurrent } from '../migrations/migrateLegacyOpusToCurrent.js';
 import { migrateOpusToOpus1m } from '../migrations/migrateOpusToOpus1m.js';
 import { migrateReplBridgeEnabledToRemoteControlAtStartup } from '../migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.js';
@@ -112,7 +113,7 @@ export async function logStartupTelemetry(): Promise<void> {
 
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
 // Bump this when adding a new sync migration so existing users re-run the set.
-const CURRENT_MIGRATION_VERSION = 11;
+const CURRENT_MIGRATION_VERSION = 12;
 
 export function runMigrations(): void {
   if (getGlobalConfig().migrationVersion !== CURRENT_MIGRATION_VERSION) {
@@ -123,6 +124,10 @@ export function runMigrations(): void {
     migrateSonnet1mToSonnet45();
     migrateLegacyOpusToCurrent();
     migrateSonnet45ToSonnet46();
+    // Before migrateOpusToOpus1m, not after: that one only fires on an exact
+    // 'opus', so a user arriving from 'fennec-latest' has to land on 'opus'
+    // first to get the same 1M merge every other Opus user gets.
+    migrateFennecToOpus();
     migrateOpusToOpus1m();
     migrateReplBridgeEnabledToRemoteControlAtStartup();
     if (feature('TRANSCRIPT_CLASSIFIER')) {

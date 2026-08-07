@@ -16,7 +16,6 @@ import { jsonStringify } from '../slowOperations.js'
 const TELEPORT_RETRY_DELAYS = [2000, 4000, 8000, 16000] // 4 retries with exponential backoff
 const MAX_TELEPORT_RETRIES = TELEPORT_RETRY_DELAYS.length
 
-export const CCR_BYOC_BETA = 'ccr-byoc-2025-07-29'
 
 /**
  * Checks if an axios error is a transient network error that should be retried

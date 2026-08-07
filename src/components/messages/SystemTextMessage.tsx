@@ -33,7 +33,7 @@ type Props = {
   verbose: boolean;
   isTranscriptMode?: boolean;
 };
-export function SystemTextMessage(t0) {
+export function SystemTextMessage(t0: Props) {
   const $ = _c(51);
   const {
     message,

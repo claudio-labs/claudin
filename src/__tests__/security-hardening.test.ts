@@ -46,7 +46,7 @@ describe('MCP tool result sanitization', () => {
 // Fix 2: Sandbox settings source filtering
 // ---------------------------------------------------------------------------
 describe('Sandbox settings trust boundary', () => {
-  test('getSandboxEnabledSetting does not use getSettings_DEPRECATED', async () => {
+  test('getSandboxEnabledSetting does not use getInitialSettings', async () => {
     const content = await file('utils/sandbox/sandbox-adapter.ts').text()
     // Extract the getSandboxEnabledSetting function body
     const fnMatch = content.match(
@@ -54,8 +54,8 @@ describe('Sandbox settings trust boundary', () => {
     )
     expect(fnMatch).not.toBeNull()
     const fnBody = fnMatch![1]
-    // Must NOT use getSettings_DEPRECATED (reads all sources including project)
-    expect(fnBody).not.toContain('getSettings_DEPRECATED')
+    // Must NOT use getInitialSettings (reads all sources including project)
+    expect(fnBody).not.toContain('getInitialSettings')
     // Must use getSettingsForSource for individual trusted sources
     expect(fnBody).toContain("getSettingsForSource('userSettings')")
     expect(fnBody).toContain("getSettingsForSource('policySettings')")
@@ -169,9 +169,11 @@ describe('Swarm permission file polling removed', () => {
       'removeWorkerResponse',
     ]
     for (const fn of deprecatedFns) {
-      // Find the function and check that @deprecated appears before it
+      // Find the function and check that @deprecated appears before it.
+      // Assert it was found rather than skipping: a `continue` here turns any
+      // rename or async-to-sync change into a silently unguarded function.
       const fnIndex = content.indexOf(`export async function ${fn}(`)
-      if (fnIndex === -1) continue // submitPermissionRequest is a const, not async function
+      expect(fnIndex).not.toBe(-1)
       const preceding = content.slice(Math.max(0, fnIndex - 500), fnIndex)
       expect(preceding).toContain('@deprecated')
     }

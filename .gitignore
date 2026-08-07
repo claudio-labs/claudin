@@ -4,7 +4,6 @@ dist/
 .env
 .env.*
 !.env.example
-.openclaude-profile.json
 reports/
 GEMINI.md
 package-lock.json
@@ -15,8 +14,9 @@ package-lock.json
 !/.claudin/memory/
 /.claudin/memory/*
 !/.claudin/memory/team/
-/.openclaude
 coverage/
 agent.log
 dist-baseline/
 dist-bench-baseline/
+__pycache__/
+*.pyc

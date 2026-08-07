@@ -6,11 +6,7 @@ import type { TeleportRemoteResponse } from 'src/utils/conversationRecovery.js';
 import type { CodeSession } from 'src/utils/teleport/api.js';
 import { errorMessage, TeleportOperationError } from '../utils/errors.js';
 import { teleportResumeCodeSession } from '../utils/teleport.js';
-export type TeleportResumeError = {
-  message: string;
-  formattedMessage?: string;
-  isOperationError: boolean;
-};
+
 export type TeleportSource = 'cliArg' | 'localCommand';
 export function useTeleportResume(source) {
   const $ = _c(8);

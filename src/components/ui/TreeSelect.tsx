@@ -107,7 +107,7 @@ export type TreeSelectProps<T> = {
  * It handles expand/collapse state, keyboard navigation, and renders the tree as a flat list
  * using the Select component.
  */
-export function TreeSelect(t0) {
+export function TreeSelect(t0: TreeSelectProps) {
   const $ = _c(48);
   const {
     nodes,

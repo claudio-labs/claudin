@@ -61,7 +61,7 @@ function _temp2() {
 function _temp(content) {
   return safeParseJSON(content) as NotebookContent | null;
 }
-function NotebookEditToolDiffInner(t0) {
+function NotebookEditToolDiffInner(t0: Props) {
   const $ = _c(34);
   const {
     notebook_path,

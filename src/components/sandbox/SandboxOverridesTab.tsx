@@ -11,7 +11,7 @@ type Props = {
   }) => void;
 };
 type OverrideMode = 'open' | 'closed';
-export function SandboxOverridesTab(t0) {
+export function SandboxOverridesTab(t0: Props) {
   const $ = _c(5);
   const {
     onComplete

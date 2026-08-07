@@ -87,10 +87,6 @@ export function ghPrListRule(prs: readonly Record<string, unknown>[]): FakeGhRul
   return { match: 'pr list', stdout: `${JSON.stringify(prs)}\n` }
 }
 
-/** `gh pr checks` — plain-text form; pass JSON yourself when `--json` is used. */
-export function ghPrChecksRule(body: string, exitCode = 0): FakeGhRule {
-  return { match: 'pr checks', stdout: body.endsWith('\n') ? body : `${body}\n`, exitCode }
-}
 
 /** `gh run view --log` — the CI dump that is the third-largest recorded shape. */
 export function ghRunViewLogRule(log: string): FakeGhRule {
@@ -196,11 +192,6 @@ export function installFakeGh(
   return fake
 }
 
-export function uninstallFakeGh(fake: FakeGh): void {
-  fake.cleanup()
-  const idx = installed.indexOf(fake)
-  if (idx >= 0) installed.splice(idx, 1)
-}
 
 /** Removes every fake this module installed. Safe to call more than once. */
 export function cleanupAllFakeGh(): void {

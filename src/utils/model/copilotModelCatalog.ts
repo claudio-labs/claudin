@@ -248,9 +248,6 @@ export function prefetchCopilotModelCatalog(): void {
     })
 }
 
-export function getCachedCopilotCatalog(): CopilotCatalogEntry[] | null {
-  return cachedCatalog
-}
 
 /**
  * Models for the /model picker: the account's live picker-enabled list when

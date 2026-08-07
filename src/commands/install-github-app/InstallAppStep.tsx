@@ -8,7 +8,7 @@ interface InstallAppStepProps {
   repoUrl: string;
   onSubmit: () => void;
 }
-export function InstallAppStep(t0) {
+export function InstallAppStep(t0: InstallAppStepProps) {
   const $ = _c(12);
   const {
     repoUrl,

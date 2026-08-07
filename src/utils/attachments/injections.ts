@@ -22,7 +22,7 @@ import { filterAgentsByMcpRequirements } from '../../tools/AgentTool/loadAgentsD
 import { filterDeniedAgents } from '../permissions/permissions.js'
 import { getSubscriptionType } from '../auth.js'
 import { mcpInfoFromString } from '../../services/mcp/mcpStringUtils.js'
-import { getSettings_DEPRECATED } from '../settings/settings.js'
+import { getInitialSettings } from '../settings/settings.js'
 import { getLocalISODate } from '../../constants/common.js'
 import {
   getLastEmittedDate,
@@ -395,7 +395,7 @@ export function getCriticalSystemReminderAttachment(
 }
 
 export function getOutputStyleAttachment(): Attachment[] {
-  const settings = getSettings_DEPRECATED()
+  const settings = getInitialSettings()
   const outputStyle = settings?.outputStyle || 'default'
 
   // Only show for non-default styles

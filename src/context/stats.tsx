@@ -101,7 +101,7 @@ type Props = {
   store?: StatsStore;
   children: React.ReactNode;
 };
-export function StatsProvider(t0) {
+export function StatsProvider(t0: Props) {
   const $ = _c(7);
   const {
     store: externalStore,
@@ -161,59 +161,5 @@ export function useStats() {
   }
   return store;
 }
-export function useCounter(name) {
-  const $ = _c(3);
-  const store = useStats();
-  let t0;
-  if ($[0] !== name || $[1] !== store) {
-    t0 = value => store.increment(name, value);
-    $[0] = name;
-    $[1] = store;
-    $[2] = t0;
-  } else {
-    t0 = $[2];
-  }
-  return t0;
-}
-export function useGauge(name) {
-  const $ = _c(3);
-  const store = useStats();
-  let t0;
-  if ($[0] !== name || $[1] !== store) {
-    t0 = value => store.set(name, value);
-    $[0] = name;
-    $[1] = store;
-    $[2] = t0;
-  } else {
-    t0 = $[2];
-  }
-  return t0;
-}
-export function useTimer(name) {
-  const $ = _c(3);
-  const store = useStats();
-  let t0;
-  if ($[0] !== name || $[1] !== store) {
-    t0 = value => store.observe(name, value);
-    $[0] = name;
-    $[1] = store;
-    $[2] = t0;
-  } else {
-    t0 = $[2];
-  }
-  return t0;
-}
-export function useSet(name) {
-  const $ = _c(3);
-  const store = useStats();
-  let t0;
-  if ($[0] !== name || $[1] !== store) {
-    t0 = value => store.add(name, value);
-    $[0] = name;
-    $[1] = store;
-    $[2] = t0;
-  } else {
-    t0 = $[2];
-  }
-  return t0;
-}
+
+

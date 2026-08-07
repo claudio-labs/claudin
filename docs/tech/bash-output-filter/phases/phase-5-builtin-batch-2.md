@@ -64,10 +64,10 @@ Para cada filter, mesmo template do Phase 2:
 ### Specs concretos (vêm de discovery + validate.ts)
 
 Discovery files:
-- [`commands/git-status.md`](../../../discovery/bash-output-filter/commands/git-status.md), [`git-log.md`](../../../discovery/bash-output-filter/commands/git-log.md), [`git-blame.md`](../../../discovery/bash-output-filter/commands/git-blame.md), [`git-pull.md`](../../../discovery/bash-output-filter/commands/git-pull.md), [`git-add.md`](../../../discovery/bash-output-filter/commands/git-add.md), [`git-commit.md`](../../../discovery/bash-output-filter/commands/git-commit.md), [`git-push.md`](../../../discovery/bash-output-filter/commands/git-push.md)
-- [`docker-ps.md`](../../../discovery/bash-output-filter/commands/docker-ps.md), [`docker-images.md`](../../../discovery/bash-output-filter/commands/docker-images.md), [`docker-logs.md`](../../../discovery/bash-output-filter/commands/docker-logs.md)
-- [`curl.md`](../../../discovery/bash-output-filter/commands/curl.md) (network)
-- [`journalctl.md`](../../../discovery/bash-output-filter/commands/journalctl.md)
+- [`commands/git-status.md`](../../../archive/discovery/bash-output-filter/commands/git-status.md), [`git-log.md`](../../../archive/discovery/bash-output-filter/commands/git-log.md), [`git-blame.md`](../../../archive/discovery/bash-output-filter/commands/git-blame.md), [`git-pull.md`](../../../archive/discovery/bash-output-filter/commands/git-pull.md), [`git-add.md`](../../../archive/discovery/bash-output-filter/commands/git-add.md), [`git-commit.md`](../../../archive/discovery/bash-output-filter/commands/git-commit.md), [`git-push.md`](../../../archive/discovery/bash-output-filter/commands/git-push.md)
+- [`docker-ps.md`](../../../archive/discovery/bash-output-filter/commands/docker-ps.md), [`docker-images.md`](../../../archive/discovery/bash-output-filter/commands/docker-images.md), [`docker-logs.md`](../../../archive/discovery/bash-output-filter/commands/docker-logs.md)
+- [`curl.md`](../../../archive/discovery/bash-output-filter/commands/curl.md) (network)
+- [`journalctl.md`](../../../archive/discovery/bash-output-filter/commands/journalctl.md)
 
 Validate.ts case names: `git-status (clean state)`, `git-log (default — Opção B declarativa)`, `git blame (author + date dominam)`, `git pull (synthetic, fast-forward 3 files)`, `docker ps -a`, `docker images`, `docker logs (postgres tail 50)`, `curl -v (TLS noise dominates)`, `wget`, `dig (DNS query)`, `journalctl -u systemd-logind`.
 
@@ -159,7 +159,7 @@ Implements 10+ filter specs covering git family (without rewrite — Phase 4 add
 ### Refs
 - Spec: docs/tech/bash-output-filter/architecture.md §17 Phase 5
 - Phase doc: docs/tech/bash-output-filter/phases/phase-5-builtin-batch-2.md
-- Discovery: docs/discovery/bash-output-filter/optimization-matrix.md
+- Discovery: docs/archive/discovery/bash-output-filter/optimization-matrix.md
 ```
 
 ## Implementation notes

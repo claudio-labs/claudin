@@ -1,9 +1,21 @@
 name: Publish to npm
 
-# Manual-only. Run after release.yml has tagged a version + created the
-# GitHub release. This workflow trusts that release.yml validated the code
-# (tests, smoke, privacy) and only does the bare minimum to ship: install
-# deps, build the bundle, npm publish.
+# Manual-only fallback. Publishes the ROOT package (the Node-bundle
+# @claudiolabs/claudin) from an existing tag.
+#
+# It used to say it "trusts that release.yml validated the code (tests, smoke,
+# privacy)". release.yml was deleted — see the header of release-binaries.yml —
+# so that trust had nothing behind it and this path shipped whatever the tag
+# happened to contain. The gates below are the same ones pr-checks.yml runs, so
+# what a PR cannot merge past, a release cannot ship past either.
+#
+# CAVEAT, not fixed here: this publishes the same NAME as the wrapper that
+# release-binaries.yml assembles, but the root package has no
+# optionalDependencies, so a successful run for a version the real flow never
+# published would point `latest` at a package with no native binaries. npm
+# refuses to overwrite an existing version, which is the only thing making that
+# narrow today. Prefer release-binaries.yml; reach for this only to recover a
+# version that flow could not finish.
 on:
   workflow_dispatch:
     inputs:
@@ -21,9 +33,12 @@ jobs:
     name: Publish ${{ inputs.tag }} to npm
     runs-on: ubuntu-latest
     # NOTE: trusted publishing matches ONE workflow filename per Trusted
-    # Publisher entry on npmjs.com. The configured entry is release.yml, so to
-    # use this manual workflow you must add a second Trusted Publisher for
-    # `publish-npm.yml` (otherwise npm rejects the OIDC token with a 404).
+    # Publisher entry on npmjs.com. The configured entry is now
+    # release-binaries.yml (release.yml no longer exists), so using this manual
+    # workflow means adding a second Trusted Publisher for `publish-npm.yml` —
+    # otherwise npm rejects the OIDC token with a 404. Given the caveat in the
+    # header, not adding one is the safer default: while it is absent, this
+    # workflow cannot publish over the wrapper even if someone dispatches it.
     permissions:
       contents: read
       id-token: write
@@ -44,17 +59,35 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.11
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # `npm publish` triggers the `prepack` script, which runs
-      # `build:release` (CLAUDIN_RELEASE_BUILD=1). Running a separate
-      # `bun run build` before publish would produce dev-mode chunks that
-      # survive into the tarball alongside the release chunks (the dist/
-      # chunks dir was kept across rebuilds for local-CLI safety). Trust
-      # prepack to build — single source of truth for the published bundle.
+      - name: Typecheck (new errors only)
+        run: bun run typecheck:ci
+
+      - name: Verify generated SDK types are in sync
+        run: bun run verify:sdk-types
+
+      - name: Run tests
+        run: bun test
+
+      # No `bun run build` / `build:verified` step on purpose, and the reason is
+      # not the one that used to be written here. That comment claimed a dev
+      # build's chunks would survive into the tarball beside the release chunks;
+      # `scripts/build.ts` has since wiped `dist/chunks` on release builds
+      # (verified: 2754 dev chunks in, 459 release chunks out, zero survivors),
+      # so they would not.
+      #
+      # The actual reason is that a dev build is the WRONG ARTIFACT to verify.
+      # `npm publish` runs `prepack` → `build:release`, which is minified, drops
+      # sourcemaps and names chunks by version — so a privacy scan of a
+      # preceding dev build would certify a bundle that never ships. The scan
+      # now runs inside `prepack`, after the release build and before the
+      # tarball is packed, which is the only point where the thing verified and
+      # the thing published are the same file. It also covers a human running
+      # `npm publish` by hand, which no workflow step can.
       - name: Publish to npm
         run: npm publish --access public
 

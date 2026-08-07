@@ -168,12 +168,6 @@ export function consumeEarlyInput(): string {
   return input
 }
 
-/**
- * Check if there is any early input available without consuming it.
- */
-export function hasEarlyInput(): boolean {
-  return earlyInputBuffer.trim().length > 0
-}
 
 /**
  * Seed the early input buffer with text that will appear pre-filled
@@ -183,9 +177,4 @@ export function seedEarlyInput(text: string): void {
   earlyInputBuffer = text
 }
 
-/**
- * Check if early input capture is currently active.
- */
-export function isCapturingEarlyInput(): boolean {
-  return isCapturing
-}
+

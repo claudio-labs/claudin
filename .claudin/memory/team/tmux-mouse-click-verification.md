@@ -33,3 +33,23 @@ inline mode and is easier to drive (`send-keys C-o`) — use it to verify the
 expanded RENDER; use the SGR injection above only to verify the CLICK toggles
 local state. Hover-bold can't be captured statically (mouse isn't held during
 capture); it shares the same `Box onMouseEnter` path as the verified click.
+
+## Two capture artifacts that look like regressions (2026-08-06)
+
+Both reproduce **identically on the release baseline**, so A/B every TUI anomaly
+against a build of the previous commit before believing it is yours — the
+checkout+`bun run build`+relaunch cycle is ~15s and settles the question.
+
+- **`send-keys "<prompt>" Enter` leaves the prompt in the input box** after it
+  submits. The submitted turn renders correctly and the buffer keeps a live copy
+  — typing appends to it, so it is real input state, not a vacated-cell ghost.
+  An artifact of the burst-typed keys, not of the code under test.
+- **`/help`'s shortcut grid overlaps its middle column**: it renders
+  `\⏎ for newlineggle tasks`, two entries written over the same cells. Present
+  in shipped v1.1.8.
+
+Cheap surfaces worth driving after a broad refactor, all inline-mode: the trust
+dialog, `/status` and its Config/Usage tabs, `tmux resize-window` at 60/100/140
+columns (footer pills and separators reflow), and one real tool-using prompt.
+**The Session tab renders empty for a fresh session** — that is baseline
+behavior, not a break.

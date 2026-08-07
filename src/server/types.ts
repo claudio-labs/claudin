@@ -10,18 +10,6 @@ export const connectResponseSchema = lazySchema(() =>
   }),
 )
 
-export type ServerConfig = {
-  port: number
-  host: string
-  authToken: string
-  unix?: string
-  /** Idle timeout for detached sessions (ms). 0 = never expire. */
-  idleTimeoutMs?: number
-  /** Maximum number of concurrent sessions. */
-  maxSessions?: number
-  /** Default workspace directory for sessions that don't specify cwd. */
-  workspace?: string
-}
 
 export type SessionState =
   | 'starting'
@@ -54,4 +42,4 @@ export type SessionIndexEntry = {
   lastActiveAt: number
 }
 
-export type SessionIndex = Record<string, SessionIndexEntry>
+

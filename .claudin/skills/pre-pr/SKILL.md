@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
+description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
 allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
@@ -32,6 +32,32 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    `$ARGUMENTS` names test files, pass them as `path`. Otherwise infer the
    colocated `*.test.ts` next to the files in `git diff --name-only` and run
    those.
+5. **Test floor** — `bun run test:floor`. A ratchet, not a target: it fails if
+   the test-to-source LOC ratio drops more than 0.5pp below the recorded floor,
+   or if one of the seven named invariant suites has disappeared. A refactor
+   that deletes a suite along with the code it covered is what this catches.
+   Raising the floor is deliberate — `bun run test:floor:update`, in the same
+   commit that earned it.
+6. **Dead code** — `bun run deadcode:ci`. Covers unused files and declared
+   dependencies that nothing imports; both were cleared to zero on 2026-08-07,
+   so any finding belongs to the branch. A file finding is a question, not a
+   verdict — one of the nineteen deleted turned out to be a migration nobody
+   had wired up. The wider `bun run deadcode` also lists used-but-undeclared
+   imports, which do NOT gate: this fork resolves ~30 module names to stubs in
+   `scripts/build.ts` that knip cannot see, so "undeclared" is the intended
+   state there rather than a defect.
+7. **Generated SDK types** — `bun run verify:sdk-types`. Gates in CI, so a green
+   local run without it ships a red PR. It fails when
+   `src/entrypoints/sdk/coreTypes.generated.ts` no longer matches what
+   `coreSchemas.ts` would produce.
+   - **Do not just regenerate and commit.** Regeneration always makes the check
+     pass, including when the reason it broke is that a schema went missing —
+     the shrunk output is then a silent break of the SDK's public API. Read the
+     diff first: removed `export type` lines mean restore the schema, not accept
+     the loss.
+   - The inputs are invisible to `deadcode:ci`, which is how they get deleted in
+     the first place. Nothing in this repo imports `OutputFormatSchema` or
+     `HookJSONOutputSchema`; the generator is their only consumer.
 
 ## Conditional steps (only when the diff touches these areas)
 

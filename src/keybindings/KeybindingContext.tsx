@@ -181,13 +181,7 @@ export function KeybindingProvider(t0) {
   return t6;
 }
 function _temp() {}
-export function useKeybindingContext() {
-  const ctx = useContext(KeybindingContext);
-  if (!ctx) {
-    throw new Error("useKeybindingContext must be used within KeybindingProvider");
-  }
-  return ctx;
-}
+
 
 /**
  * Optional hook that returns undefined outside of KeybindingProvider.

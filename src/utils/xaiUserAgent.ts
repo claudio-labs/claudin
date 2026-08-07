@@ -12,9 +12,7 @@ function readMacroDisplayVersion(): string | undefined {
   // `MACRO.DISPLAY_VERSION` is inlined at build time. Under tests / direct
   // bun runs the global is undefined, so guard with typeof + try/catch.
   try {
-    // @ts-expect-error MACRO is build-time inlined; undefined under tests
     if (typeof MACRO !== 'undefined' && typeof MACRO.DISPLAY_VERSION === 'string') {
-      // @ts-expect-error MACRO is build-time inlined; undefined under tests
       return MACRO.DISPLAY_VERSION
     }
   } catch {

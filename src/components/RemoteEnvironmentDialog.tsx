@@ -23,7 +23,7 @@ type Props = {
   onDone: (message?: string) => void;
 };
 type LoadingState = 'loading' | 'updating' | null;
-export function RemoteEnvironmentDialog(t0) {
+export function RemoteEnvironmentDialog(t0: Props) {
   const $ = _c(27);
   const {
     onDone

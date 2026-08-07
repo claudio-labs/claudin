@@ -37,28 +37,6 @@ export function edges(a: number, b?: number, c?: number, d?: number): Edges {
   return { top: a, right: b, bottom: c, left: d! }
 }
 
-/** Add two edge values */
-export function addEdges(a: Edges, b: Edges): Edges {
-  return {
-    top: a.top + b.top,
-    right: a.right + b.right,
-    bottom: a.bottom + b.bottom,
-    left: a.left + b.left,
-  }
-}
-
-/** Zero edges constant */
-export const ZERO_EDGES: Edges = { top: 0, right: 0, bottom: 0, left: 0 }
-
-/** Convert partial edges to full edges with defaults */
-export function resolveEdges(partial?: Partial<Edges>): Edges {
-  return {
-    top: partial?.top ?? 0,
-    right: partial?.right ?? 0,
-    bottom: partial?.bottom ?? 0,
-    left: partial?.left ?? 0,
-  }
-}
 
 export function unionRect(a: Rectangle, b: Rectangle): Rectangle {
   const minX = Math.min(a.x, b.x)
@@ -68,27 +46,6 @@ export function unionRect(a: Rectangle, b: Rectangle): Rectangle {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 }
 
-export function clampRect(rect: Rectangle, size: Size): Rectangle {
-  const minX = Math.max(0, rect.x)
-  const minY = Math.max(0, rect.y)
-  const maxX = Math.min(size.width - 1, rect.x + rect.width - 1)
-  const maxY = Math.min(size.height - 1, rect.y + rect.height - 1)
-  return {
-    x: minX,
-    y: minY,
-    width: Math.max(0, maxX - minX + 1),
-    height: Math.max(0, maxY - minY + 1),
-  }
-}
-
-export function withinBounds(size: Size, point: Point): boolean {
-  return (
-    point.x >= 0 &&
-    point.y >= 0 &&
-    point.x < size.width &&
-    point.y < size.height
-  )
-}
 
 export function clamp(value: number, min?: number, max?: number): number {
   if (min !== undefined && value < min) return min

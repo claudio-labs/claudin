@@ -95,13 +95,6 @@ export function getClaudeSocketName(): string {
   return socketName
 }
 
-/**
- * Gets the socket path if the socket has been initialized.
- * Returns null if not yet initialized.
- */
-export function getClaudeSocketPath(): string | null {
-  return socketPath
-}
 
 /**
  * Sets socket info after initialization.
@@ -179,71 +172,6 @@ export function isTmuxAvailable(): boolean {
   return tmuxAvailabilityChecked && tmuxAvailable
 }
 
-/**
- * Marks that the Tmux tool has been used at least once.
- * Called by TungstenTool before initialization.
- * After this is called, Shell.ts will initialize the socket for subsequent Bash commands.
- */
-export function markTmuxToolUsed(): void {
-  tmuxToolUsed = true
-}
-
-/**
- * Returns whether the Tmux tool has been used at least once.
- * Used by Shell.ts to decide whether to initialize the socket.
- */
-export function hasTmuxToolBeenUsed(): boolean {
-  return tmuxToolUsed
-}
-
-/**
- * Ensures the socket is initialized with a tmux session.
- * Called by Shell.ts when the Tmux tool has been used or the command includes "tmux".
- * Safe to call multiple times; will only initialize once.
- *
- * If tmux is not installed, this function returns gracefully without
- * initializing the socket. getClaudeTmuxEnv() will return null, and
- * Bash commands will run without tmux isolation.
- */
-export async function ensureSocketInitialized(): Promise<void> {
-  // Already initialized
-  if (isSocketInitialized()) {
-    return
-  }
-
-  // Check if tmux is available before trying to use it
-  const available = await checkTmuxAvailable()
-  if (!available) {
-    return
-  }
-
-  // Another call is already initializing - wait for it but don't propagate errors
-  // The original caller handles the error and sets up graceful degradation
-  if (isInitializing && initPromise) {
-    try {
-      await initPromise
-    } catch {
-      // Ignore - the original caller logs the error
-    }
-    return
-  }
-
-  isInitializing = true
-  initPromise = doInitialize()
-
-  try {
-    await initPromise
-  } catch (error) {
-    // Log error but don't throw - graceful degradation
-    const err = toError(error)
-    logError(err)
-    logForDebugging(
-      `[Socket] Failed to initialize tmux socket: ${err.message}. Tmux isolation will be disabled.`,
-    )
-  } finally {
-    isInitializing = false
-  }
-}
 
 /**
  * Kills the tmux server for Claude's isolated socket.
@@ -415,13 +343,4 @@ async function doInitialize(): Promise<void> {
 }
 
 // For testing purposes
-export function resetSocketState(): void {
-  socketName = null
-  socketPath = null
-  serverPid = null
-  isInitializing = false
-  initPromise = null
-  tmuxAvailabilityChecked = false
-  tmuxAvailable = false
-  tmuxToolUsed = false
-}
+

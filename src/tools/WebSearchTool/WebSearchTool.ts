@@ -159,20 +159,6 @@ const CODEX_PAYLOAD_CACHE = createTwoTierCache<string, Record<string, unknown>>(
   max: 64,
 })
 
-export function getWebSearchCacheStats(): {
-  adapter: ReturnType<typeof ADAPTER_RESULT_CACHE.getStats>
-  codex: ReturnType<typeof CODEX_PAYLOAD_CACHE.getStats>
-} {
-  return {
-    adapter: ADAPTER_RESULT_CACHE.getStats(),
-    codex: CODEX_PAYLOAD_CACHE.getStats(),
-  }
-}
-
-export function clearWebSearchCache(): void {
-  ADAPTER_RESULT_CACHE.clear()
-  CODEX_PAYLOAD_CACHE.clear()
-}
 
 // Stable, normalized cache keys. Query is trimmed + lowercased so
 // "React Hooks" and "react hooks  " hit the same entry — search engines

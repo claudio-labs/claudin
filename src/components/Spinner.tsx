@@ -311,7 +311,7 @@ type BriefSpinnerProps = {
   mode: SpinnerMode;
   overrideMessage?: string | null;
 };
-function BriefSpinner(t0) {
+function BriefSpinner(t0: BriefSpinnerProps) {
   const $ = _c(31);
   const {
     mode,

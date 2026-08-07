@@ -99,7 +99,7 @@ function PropertyValue(t0) {
   }
   return value;
 }
-export function Status(t0) {
+export function Status(t0: Props) {
   const $ = _c(20);
   const {
     context,

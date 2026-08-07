@@ -28,13 +28,6 @@ export function getSystemThemeName(): SystemTheme {
   return cachedSystemTheme
 }
 
-/**
- * Update the cached terminal theme. Called by the watcher when the OSC 11
- * query returns so non-React call sites stay in sync.
- */
-export function setCachedSystemTheme(theme: SystemTheme): void {
-  cachedSystemTheme = theme
-}
 
 /**
  * Resolve a ThemeSetting (which may be 'auto') to a concrete ThemeName.
@@ -46,24 +39,6 @@ export function resolveThemeSetting(setting: ThemeSetting): ThemeName {
   return setting
 }
 
-/**
- * Parse an OSC color response data string into a theme.
- *
- * Accepts XParseColor formats returned by OSC 10/11 queries:
- * - `rgb:R/G/B` where each component is 1–4 hex digits (each scaled to
- *   [0, 16^n - 1] for n digits). This is what xterm, iTerm2, Terminal.app,
- *   Ghostty, kitty, Alacritty, etc. return.
- * - `#RRGGBB` / `#RRRRGGGGBBBB` (rare, but cheap to accept).
- *
- * Returns undefined for unrecognized formats so callers can fall back.
- */
-export function themeFromOscColor(data: string): SystemTheme | undefined {
-  const rgb = parseOscRgb(data)
-  if (!rgb) return undefined
-  // ITU-R BT.709 relative luminance. Midpoint split: > 0.5 is light.
-  const luminance = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b
-  return luminance > 0.5 ? 'light' : 'dark'
-}
 
 type Rgb = { r: number; g: number; b: number }
 

@@ -19,9 +19,6 @@ import { permissionUpdateSchema } from 'src/utils/permissions/PermissionUpdateSc
 import type { AppState } from '../state/AppState.js'
 import type { AttributionState } from '../utils/commitAttribution.js'
 
-export function isHookEvent(value: string): value is HookEvent {
-  return HOOK_EVENTS.includes(value as HookEvent)
-}
 
 // Prompt elicitation protocol types. The `prompt` key acts as discriminator
 // (mirroring the {async:true} pattern), with the id as its value.

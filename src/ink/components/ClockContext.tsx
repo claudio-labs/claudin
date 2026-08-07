@@ -76,7 +76,7 @@ function blurredTickIntervalMs(): number {
 // Own component so App.tsx doesn't re-render when the clock is created.
 // The clock value is stable (created once via useState), so the provider
 // never causes consumer re-renders on its own.
-export function ClockProvider(t0) {
+export function ClockProvider(t0: Clock) {
   const $ = _c(7);
   const {
     children

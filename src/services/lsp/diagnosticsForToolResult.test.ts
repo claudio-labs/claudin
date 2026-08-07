@@ -62,7 +62,6 @@ mock.module('../../utils/settings/settings.js', () => ({
   getSettingsForSource: () => ({}),
   getSettingsWithSources: () => ({}),
   getSettingsWithErrors: () => ({ settings: {}, errors: [] }),
-  getSettings_DEPRECATED: () => ({}),
   loadManagedFileSettings: () => ({ settings: {}, errors: [] }),
   getManagedFileSettingsPresence: () => ({}),
   parseSettingsFile: () => ({ settings: {}, errors: [] }),

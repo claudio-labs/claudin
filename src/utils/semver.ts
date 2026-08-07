@@ -37,12 +37,6 @@ export function lt(a: string, b: string): boolean {
   return getNpmSemver().lt(a, b, { loose: true })
 }
 
-export function lte(a: string, b: string): boolean {
-  if (typeof Bun !== 'undefined') {
-    return Bun.semver.order(a, b) <= 0
-  }
-  return getNpmSemver().lte(a, b, { loose: true })
-}
 
 export function satisfies(version: string, range: string): boolean {
   if (typeof Bun !== 'undefined') {

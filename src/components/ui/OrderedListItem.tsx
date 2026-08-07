@@ -7,7 +7,7 @@ export const OrderedListItemContext = createContext({
 type OrderedListItemProps = {
   children: ReactNode;
 };
-export function OrderedListItem(t0) {
+export function OrderedListItem(t0: OrderedListItemProps) {
   const $ = _c(7);
   const {
     children

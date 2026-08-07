@@ -16,7 +16,7 @@ import { isEnvTruthy } from '../envUtils.js'
 import type { SettingSource } from '../settings/constants.js'
 import { SETTING_SOURCES } from '../settings/constants.js'
 import {
-  getSettings_DEPRECATED,
+  getInitialSettings,
   getSettingsFilePathForSource,
   getUseAutoModeDuringPlan,
   hasAllowBypassPermissionsMode,
@@ -414,43 +414,6 @@ export function findOverlyBroadBashPermissions(
   return overlyBroad
 }
 
-/**
- * PowerShell equivalent of findOverlyBroadBashPermissions.
- */
-export function findOverlyBroadPowerShellPermissions(
-  rules: PermissionRule[],
-  cliAllowedTools: string[],
-): DangerousPermissionInfo[] {
-  const overlyBroad: DangerousPermissionInfo[] = []
-
-  for (const rule of rules) {
-    if (
-      rule.ruleBehavior === 'allow' &&
-      isOverlyBroadPowerShellAllowRule(rule.ruleValue)
-    ) {
-      overlyBroad.push({
-        ruleValue: rule.ruleValue,
-        source: rule.source,
-        ruleDisplay: `${POWERSHELL_TOOL_NAME}(*)`,
-        sourceDisplay: formatPermissionSource(rule.source),
-      })
-    }
-  }
-
-  for (const toolSpec of cliAllowedTools) {
-    const parsed = permissionRuleValueFromString(toolSpec)
-    if (isOverlyBroadPowerShellAllowRule(parsed)) {
-      overlyBroad.push({
-        ruleValue: parsed,
-        source: 'cliArg',
-        ruleDisplay: `${POWERSHELL_TOOL_NAME}(*)`,
-        sourceDisplay: '--allowed-tools',
-      })
-    }
-  }
-
-  return overlyBroad
-}
 
 /**
  * Type guard to check if a PermissionRuleSource is a valid PermissionUpdateDestination.
@@ -696,7 +659,7 @@ export function initialPermissionModeFromCLI({
   permissionModeCli: string | undefined
   dangerouslySkipPermissions: boolean | undefined
 }): { mode: PermissionMode; notification?: string } {
-  const settings = getSettings_DEPRECATED() || {}
+  const settings = getInitialSettings() || {}
 
   // Check GrowthBook gate first - highest precedence
   const growthBookDisableBypassPermissionsMode =
@@ -936,7 +899,7 @@ export async function initializeToolPermissionContext({
     checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
       'tengu_disable_bypass_permissions_mode',
     )
-  const settings = getSettings_DEPRECATED() || {}
+  const settings = getInitialSettings() || {}
   const settingsDisableBypassPermissionsMode =
     settings.permissions?.disableBypassPermissionsMode === 'disable'
   const settingsAllowBypassPermissionsMode = hasAllowBypassPermissionsMode()
@@ -1282,7 +1245,7 @@ export function shouldDisableBypassPermissions(): Promise<boolean> {
 }
 
 function isAutoModeDisabledBySettings(): boolean {
-  const settings = getSettings_DEPRECATED() || {}
+  const settings = getInitialSettings() || {}
   return (
     (settings as { disableAutoMode?: 'disable' }).disableAutoMode ===
       'disable' ||
@@ -1418,7 +1381,7 @@ export function isBypassPermissionsModeDisabled(): boolean {
     checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
       'tengu_disable_bypass_permissions_mode',
     )
-  const settings = getSettings_DEPRECATED() || {}
+  const settings = getInitialSettings() || {}
   const settingsDisableBypassPermissionsMode =
     settings.permissions?.disableBypassPermissionsMode === 'disable'
 
@@ -1477,7 +1440,7 @@ export async function checkAndDisableBypassPermissions(
 
 export function isDefaultPermissionModeAuto(): boolean {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const settings = getSettings_DEPRECATED() || {}
+    const settings = getInitialSettings() || {}
     return settings.permissions?.defaultMode === 'auto'
   }
   return false

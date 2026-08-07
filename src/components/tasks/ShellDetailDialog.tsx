@@ -46,7 +46,7 @@ async function getTaskOutput(shell: DeepImmutable<LocalShellTaskState>): Promise
     };
   }
 }
-export function ShellDetailDialog(t0) {
+export function ShellDetailDialog(t0: Props) {
   const $ = _c(57);
   const {
     shell,
@@ -301,7 +301,7 @@ type ShellOutputContentProps = {
   outputPromise: Promise<TaskOutputResult>;
   columns: number;
 };
-function ShellOutputContent(t0) {
+function ShellOutputContent(t0: ShellOutputContentProps) {
   const $ = _c(19);
   const {
     outputPromise,

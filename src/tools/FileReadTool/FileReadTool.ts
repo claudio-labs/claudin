@@ -192,15 +192,6 @@ function getAlternateScreenshotPath(filePath: string): string | undefined {
 type FileReadListener = (filePath: string, content: string) => void
 const fileReadListeners: FileReadListener[] = []
 
-export function registerFileReadListener(
-  listener: FileReadListener,
-): () => void {
-  fileReadListeners.push(listener)
-  return () => {
-    const i = fileReadListeners.indexOf(listener)
-    if (i >= 0) fileReadListeners.splice(i, 1)
-  }
-}
 
 export class MaxFileReadTokenExceededError extends Error {
   constructor(

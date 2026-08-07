@@ -1575,43 +1575,13 @@ export function hasCommandNamed(
  * (Set-Location, cd, sl, chdir, Push-Location, pushd, Pop-Location, popd)
  */
 // exported for testing
-export function hasDirectoryChange(parsed: ParsedPowerShellCommand): boolean {
-  for (const cmdName of getAllCommandNames(parsed)) {
-    if (
-      DIRECTORY_CHANGE_CMDLETS.has(cmdName) ||
-      DIRECTORY_CHANGE_ALIASES.has(cmdName)
-    ) {
-      return true
-    }
-  }
-  return false
-}
+
 
 /**
  * Check if the command is a single simple command (no pipes, no semicolons, no operators).
  */
 // exported for testing
-export function isSingleCommand(parsed: ParsedPowerShellCommand): boolean {
-  const stmt = parsed.statements[0]
-  return (
-    parsed.statements.length === 1 &&
-    stmt !== undefined &&
-    stmt.commands.length === 1 &&
-    (!stmt.nestedCommands || stmt.nestedCommands.length === 0)
-  )
-}
 
-/**
- * Check if a specific command has a given argument/flag (case-insensitive).
- * Useful for checking "-EncodedCommand", "-Recurse", etc.
- */
-export function commandHasArg(
-  command: ParsedCommandElement,
-  arg: string,
-): boolean {
-  const lowerArg = arg.toLowerCase()
-  return command.args.some(a => a.toLowerCase() === lowerArg)
-}
 
 /**
  * Tokenizer-level dash characters that PowerShell's parser accepts as

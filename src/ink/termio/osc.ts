@@ -243,10 +243,6 @@ function copyNative(text: string): void {
   }
 }
 
-/** @internal test-only */
-export function _resetLinuxCopyCache(): void {
-  linuxCopy = undefined
-}
 
 /**
  * OSC command numbers

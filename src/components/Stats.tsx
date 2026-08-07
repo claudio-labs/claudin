@@ -79,7 +79,7 @@ function createAllTimeStatsPromise(): Promise<StatsResult> {
     };
   });
 }
-export function Stats(t0) {
+export function Stats(t0: Props) {
   const $ = _c(4);
   const {
     onClose
@@ -118,7 +118,7 @@ type StatsContentProps = {
  * Inner component that uses React 19's use() to read the stats promise.
  * Suspends while loading all-time stats, then handles date range changes without suspending.
  */
-function StatsContent(t0) {
+function StatsContent(t0: StatsContentProps) {
   const $ = _c(34);
   const {
     allTimePromise,
@@ -829,7 +829,7 @@ type ModelEntryProps = {
   };
   totalTokens: number;
 };
-function ModelEntry(t0) {
+function ModelEntry(t0: ModelEntryProps) {
   const $ = _c(21);
   const {
     model,

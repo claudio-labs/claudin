@@ -64,18 +64,6 @@ export function onPluginsAutoUpdated(
   }
 }
 
-/**
- * Check if pending updates came from autoupdate (for notification purposes).
- * Returns the list of plugin names that have pending updates.
- */
-export function getAutoUpdatedPluginNames(): string[] {
-  if (!hasPendingUpdates()) {
-    return []
-  }
-  return getPendingUpdatesDetails().map(
-    d => parsePluginIdentifier(d.pluginId).name,
-  )
-}
 
 /**
  * Get the set of marketplaces that have autoUpdate enabled.

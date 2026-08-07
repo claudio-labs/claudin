@@ -42,6 +42,43 @@ const WHITESPACE_RUN_RE = /\s+/g
 const VOLATILE_EXPORT_NAME_RE = /but it is exported as '[^']*'/g
 
 /**
+ * The same problem one level up, and the one that actually bit: when a type is
+ * a union too large to print, tsc expands ONE arbitrary constituent as the
+ * representative and truncates the rest to `| ... 17 more ... |`. Which member
+ * it picks depends on what else has been interned in the program, so adding an
+ * unrelated file re-words a diagnostic that has not moved.
+ *
+ * Measured on this repo: a two-line probe file importing `SDKMessage` re-worded
+ * four diagnostics in `runHeadless.ts` and `matching.characterization.test.ts`,
+ * which the ratchet then reported as newly introduced. It had already happened
+ * three times for real — twice while adding `src/Tool.types.test.ts` and once
+ * while removing an inert intersection from `NonNullableUsage`.
+ *
+ * Eliding the printed constituent is NOT enough, because the whole explanation
+ * chain beneath the header is a narrative about that constituent — the same
+ * diagnostic went from `SDKAssistantMessage` → property `message` → `Message`
+ * to `SDKResultSuccess` → property `usage` → `NonNullableUsage`. Those are
+ * named types and property names, so no amount of type-literal rewriting
+ * catches them. For a diagnostic that shows a truncated union the chain is
+ * therefore dropped outright and the union itself reduced to its (stable)
+ * member count.
+ *
+ * Scope: only diagnostics that ALREADY show `| ... N more ... |`. Everything
+ * else keeps its full chain, which is why this costs no discrimination — over
+ * the repo's 3161 diagnostics it touches 16 messages and leaves the unique
+ * fingerprint count at 2372, unchanged.
+ */
+const TRUNCATED_UNION_RE = /'[^']*\| \.\.\. (\d+) more \.\.\. \|[^']*'/
+const TRUNCATED_UNION_RE_G = new RegExp(TRUNCATED_UNION_RE, 'g')
+
+function elideTruncatedUnion(message: string): string {
+  if (!TRUNCATED_UNION_RE.test(message)) return message
+  return message
+    .split('\n')[0]!
+    .replace(TRUNCATED_UNION_RE_G, (_match, members: string) => `'<union of ${members} + 2>'`)
+}
+
+/**
  * Checkers disagree about paths: tsc prints them relative to the project,
  * pyright absolute. Normalising to a project-relative POSIX path is what lets a
  * baseline survive the project being moved or checked out at another path.
@@ -54,7 +91,9 @@ export function normalizeDiagnosticPath(file: string, cwd: string): string {
 
 export function fingerprintDiagnostic(diagnostic: RawDiagnostic, cwd: string): string {
   const file = normalizeDiagnosticPath(diagnostic.file, cwd)
-  const message = diagnostic.message
+  // Before the whitespace collapse, which would fold the chain into one line
+  // and leave nothing to drop.
+  const message = elideTruncatedUnion(diagnostic.message)
     .replace(VOLATILE_EXPORT_NAME_RE, 'but it is exported as <name>')
     .replace(WHITESPACE_RUN_RE, ' ')
     .trim()

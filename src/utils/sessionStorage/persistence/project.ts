@@ -95,7 +95,7 @@ import {
   extractLastJsonStringField,
   LITE_READ_BUF_SIZE,
 } from 'src/utils/sessionStoragePortable.js'
-import { getSettings_DEPRECATED } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/utils/toolResultStorage.js'
 import {
@@ -679,7 +679,7 @@ export class Project {
     )
     return (
       (getNodeEnv() === 'test' && !allowTestPersistence) ||
-      getSettings_DEPRECATED()?.cleanupPeriodDays === 0 ||
+      getInitialSettings()?.cleanupPeriodDays === 0 ||
       isSessionPersistenceDisabled() ||
       isEnvTruthy(process.env.CLAUDE_CODE_SKIP_PROMPT_HISTORY)
     )

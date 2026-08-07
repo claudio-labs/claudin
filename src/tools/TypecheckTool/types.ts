@@ -34,17 +34,6 @@ export type Checker =
   | 'psalm'
   | 'unknown'
 
-/**
- * Checkers that genuinely BUILD: they write artifacts to disk, run project
- * plugins and cost what a build costs. The other checkers only analyze. Callers
- * surface this so a "cheap check" never silently turns into a multi-minute
- * packaging run.
- */
-export const BUILDING_CHECKERS: ReadonlySet<Checker> = new Set([
-  'dotnet',
-  'maven',
-  'gradle',
-])
 
 /** Whether a diagnostic was already in the project's recorded backlog. */
 export type DiagnosticStatus = 'new' | 'preexisting'

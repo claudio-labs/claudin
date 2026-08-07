@@ -80,14 +80,6 @@ function createPasteKey(content: string): ParsedKey {
   }
 }
 
-/** DECRPM status values (response to DECRQM) */
-export const DECRPM_STATUS = {
-  NOT_RECOGNIZED: 0,
-  SET: 1,
-  RESET: 2,
-  PERMANENTLY_SET: 3,
-  PERMANENTLY_RESET: 4,
-} as const
 
 /**
  * A response sequence received from the terminal (not a keypress).

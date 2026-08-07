@@ -223,13 +223,6 @@ export const COPILOT_DISPLAY_NAMES: Record<string, string> = Object.fromEntries(
   Object.values(COPILOT_MODELS).map(model => [model.id, model.name]),
 )
 
-export function getCopilotModelIds(): string[] {
-  return Object.keys(COPILOT_MODELS)
-}
-
-export function getCopilotModel(id: string): CopilotModel | undefined {
-  return COPILOT_MODELS[id]
-}
 
 export function getAllCopilotModels(): CopilotModel[] {
   return Object.values(COPILOT_MODELS)

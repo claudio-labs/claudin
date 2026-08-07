@@ -3,7 +3,7 @@
 > **Status:** ✅ Concluída — 29 filters em 5 commits + report consolidado. Branch `feat/bash-filters-expansion`, aguardando PR.
 > **Parent spec:** [`../architecture.md`](../architecture.md)
 > **Discovery refs:**
-> - [`../../../discovery/bash-output-filter/rtk-refinement-2026-05.md`](../../../discovery/bash-output-filter/rtk-refinement-2026-05.md)
+> - [`../../../archive/discovery/bash-output-filter/rtk-refinement-2026-05.md`](../../../archive/discovery/bash-output-filter/rtk-refinement-2026-05.md)
 > - Plan file: `/home/dev/.claudin/plans/cozy-tinkering-gray.md`
 
 Auditoria comparativa Claudin vs **rtk** (Rust CLI proxy de filtragem) revelou ~30 comandos de alto uso ainda passando *raw* pelo BashTool. Esta fase fecha o gap por ROI, em 5 commits dentro da mesma branch.

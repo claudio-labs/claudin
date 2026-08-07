@@ -191,7 +191,7 @@ export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
   // Skip-routine guidance: discard low-signal work at the source rather than
   // compressing it later. A noisy memory costs tokens in every future session
   // (the MEMORY.md index is always loaded). See
-  // docs/discovery/claude-mem-insights/structured-extraction.md (technique 2).
+  // docs/archive/discovery/claude-mem-insights/structured-extraction.md (technique 2).
   '- Routine work with no surprising outcome: trivial commands that succeeded (installs, builds, status checks), exploratory reads or searches that led to no conclusion, and plain navigation steps. A session can legitimately produce nothing worth saving — memory is for the non-obvious, not a log of activity.',
   '',
   // H2: explicit-save gate. Eval-validated (memory-prompt-iteration case 3,
@@ -206,59 +206,6 @@ export const WHAT_NOT_TO_SAVE_SECTION: readonly string[] = [
 export const MEMORY_DRIFT_CAVEAT =
   '- Memory records can become stale over time. Use memory as context for what was true at a given point in time. Before answering the user or building assumptions based solely on information in memory records, verify that the memory is still correct and up-to-date by reading the current state of the files or resources. If a recalled memory conflicts with current information, trust what you observe now — and update or remove the stale memory rather than acting on it.'
 
-/**
- * `## When to access memories` section. Includes MEMORY_DRIFT_CAVEAT.
- *
- * H6 (branch-pollution evals #22856, case 5 1/3 on capy): the "ignore" bullet
- * is the delta. Failure mode: user says "ignore memory about X" → Claude reads
- * code correctly but adds "not Y as noted in memory" — treats "ignore" as
- * "acknowledge then override" rather than "don't reference at all." The bullet
- * names that anti-pattern explicitly.
- *
- * Token budget (H6a): merged old bullets 1+2, tightened both. Old 4 lines
- * were ~70 tokens; new 4 lines are ~73 tokens. Net ~+3.
- */
-export const WHEN_TO_ACCESS_SECTION: readonly string[] = [
-  '## When to access memories',
-  '- When memories seem relevant, or the user references prior-conversation work.',
-  '- You MUST access memory when the user explicitly asks you to check, recall, or remember.',
-  '- If the user says to *ignore* or *not use* memory: proceed as if MEMORY.md were empty. Do not apply remembered facts, cite, compare against, or mention memory content.',
-  MEMORY_DRIFT_CAVEAT,
-]
-
-/**
- * `## Trusting what you recall` section. Heavier-weight guidance on HOW to
- * treat a memory once you've recalled it — separate from WHEN to access.
- *
- * Eval-validated (memory-prompt-iteration.eval.ts, 2026-03-17):
- *   H1 (verify function/file claims): 0/2 → 3/3 via appendSystemPrompt. When
- *      buried as a bullet under "When to access", dropped to 0/3 — position
- *      matters. The H1 cue is about what to DO with a memory, not when to
- *      look, so it needs its own section-level trigger context.
- *   H5 (read-side noise rejection): 0/2 → 3/3 via appendSystemPrompt, 2/3
- *      in-place as a bullet. Partial because "snapshot" is intuitively closer
- *      to "when to access" than H1 is.
- *
- * Known gap: H1 doesn't cover slash-command claims (0/3 on the /fork case —
- * slash commands aren't files or functions in the model's ontology).
- */
-export const TRUSTING_RECALL_SECTION: readonly string[] = [
-  // Header wording matters: "Before recommending" (action cue at the decision
-  // point) tested better than "Trusting what you recall" (abstract). The
-  // appendSystemPrompt variant with this header went 3/3; the abstract header
-  // went 0/3 in-place. Same body text — only the header differed.
-  '## Before recommending from memory',
-  '',
-  'A memory that names a specific function, file, or flag is a claim that it existed *when the memory was written*. It may have been renamed, removed, or never merged. Before recommending it:',
-  '',
-  '- If the memory names a file path: check the file exists.',
-  '- If the memory names a function or flag: grep for it.',
-  '- If the user is about to act on your recommendation (not just asking about history), verify first.',
-  '',
-  '"The memory says X exists" is not the same as "X exists now."',
-  '',
-  'A memory that summarizes repo state (activity logs, architecture snapshots) is frozen in time. If the user asks about *recent* or *current* state, prefer `git log` or reading the code over recalling the snapshot.',
-]
 
 /**
  * Frontmatter format example with the `type` field.

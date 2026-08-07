@@ -13,6 +13,11 @@
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for attachments stapled mid-turn; gate new producers on input !== null, never add a gag order
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
 
+## Repo health
+- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and a CORRECTION: its "React-Compiler output cannot be hand-fixed" claim was disproven
+- [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
+- [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
+
 ## Roadmap & major features
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
@@ -22,6 +27,9 @@
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](lsp-tool-rejected-empirically.md) — was dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg (not isLsp), built-in servers + install UI removed
 - [Fork-subagent-by-default initiative](fork-subagent-by-default.md) — FORK_SUBAGENT shipped 2026-06-04: default spawn forks (inherits context+cache), named agent stays fresh; 2026-07-26 ungated fork + flipped auto-background to opt-in
 - [Typecheck tool — baseline design + the traps it hides](typecheck-tool-baseline-design.md) — clean-tree baseline keyed by HEAD, line-independent fingerprints; worktree reconstruction for the first dirty check; exec() caps stdout at 30k
+- [typecheck ratchet phantom "new" errors — fixed 2026-08-07](typecheck-baseline-message-fingerprint-fragile.md) — tsc's union elaboration used to shift the hash on any added file; elideTruncatedUnion fixes it, triage step kept
+- [React Compiler's t0 param is the root of ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403) not errors (1710); the props type is already in the file; grade every guess with the compiler
+- [The 107 TS2307 are the fork's shape, not a backlog](missing-subsystems-are-not-fixable-by-declaration.md) — 70 files never received, all unreachable; generating .d.ts measured WORSE (2849→2880) and was reverted
 - [Typecheck A/B bench — what to cite and what is noise](typecheck-ab-bench-fixture-flaw.md) — cost −16/−18% and payload −80% hold across 5 runs; context swings −13%→−1%; fixture backlog must overlap the edited files
 - [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](runtests-tool-shell-env-bugs.md) — ignores its cwd (worktree sub-agent tests main), FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation
@@ -63,6 +71,7 @@
 - [Footer PR pill supports GitLab + Gitea](pr-status-gitlab-gitea.md) — fetchPrStatus dispatches host→gh/glab/tea; auto-detects self-hosted; prStatusHosts lives in config.json NOT settings.json; Bitbucket deferred
 - [collapseRuns + blank-strip is SAFE since the 2026-06-27 root fix](bashfilter-collapseruns-blankstrip-footgun.md) — collapseIdenticalRuns no longer marks blank runs; the combo is now allowed; don't reintroduce the marker-on-blank behavior
 - [bashfilter fixture edits must preserve byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction % per sample; scrub fixtures with equal-length placeholders (viudes→devusr)
+- [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; don't recreate the mirror; 87 of 142 unmapped in FIXTURE_MAP
 - [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only works in fullscreen (CLAUDE_CODE_NO_FLICKER=1); inject SGR clicks via `send-keys`; ctrl+o verifies the render, SGR verifies the click
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; harness applies updatedInput verbatim; echo real input on allow; green unit tests missed it
 

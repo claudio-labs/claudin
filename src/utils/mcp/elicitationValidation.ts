@@ -252,40 +252,6 @@ const hasStringFormat = (
   )
 }
 
-/**
- * Returns a helpful placeholder/hint for a given format
- */
-export function getFormatHint(
-  schema: PrimitiveSchemaDefinition,
-): string | undefined {
-  if (schema.type === 'string') {
-    if (!hasStringFormat(schema)) {
-      return undefined
-    }
-
-    const { description, example } = STRING_FORMATS[schema.format] || {}
-    return `${description}, e.g. ${example}`
-  }
-
-  if (schema.type === 'number' || schema.type === 'integer') {
-    const isInteger = schema.type === 'integer'
-    const formatNum = (n: number) =>
-      Number.isInteger(n) && !isInteger ? `${n}.0` : String(n)
-
-    if (schema.minimum !== undefined && schema.maximum !== undefined) {
-      return `(${schema.type} between ${formatNum(schema.minimum!)} and ${formatNum(schema.maximum!)})`
-    } else if (schema.minimum !== undefined) {
-      return `(${schema.type} >= ${formatNum(schema.minimum!)})`
-    } else if (schema.maximum !== undefined) {
-      return `(${schema.type} <= ${formatNum(schema.maximum!)})`
-    } else {
-      const example = schema.type === 'integer' ? '42' : '3.14'
-      return `(${schema.type}, e.g. ${example})`
-    }
-  }
-
-  return undefined
-}
 
 /**
  * Check if a schema is a date or date-time format that supports NL parsing

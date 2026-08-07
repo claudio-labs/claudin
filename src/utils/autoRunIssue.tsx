@@ -14,7 +14,7 @@ type Props = {
  * Component that shows a notification about running /issue command
  * with the ability to cancel via ESC key
  */
-export function AutoRunIssueNotification(t0) {
+export function AutoRunIssueNotification(t0: Props) {
   const $ = _c(8);
   const {
     onRun,

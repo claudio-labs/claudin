@@ -4,9 +4,9 @@
 > **Owner:** BashTool runtime
 > **Scope:** v1 (everything below is v1 unless explicitly tagged "v2 / deferred")
 > **Discovery references:**
-> - Decision log: `docs/discovery/bash-output-filter/README.md`
-> - Empirical ROI: `docs/discovery/bash-output-filter/optimization-matrix.md`
-> - Pipeline reference impl: `docs/discovery/bash-output-filter/validation/pipeline.ts`
+> - Decision log: `docs/archive/discovery/bash-output-filter/README.md`
+> - Empirical ROI: `docs/archive/discovery/bash-output-filter/optimization-matrix.md`
+> - Pipeline reference impl: `docs/archive/discovery/bash-output-filter/validation/pipeline.ts`
 
 This document IS the spec. PRs against it land before code does.
 
@@ -623,7 +623,7 @@ src/outputFilter/Bash/
 - Each `CASES[i]` becomes a `test('...')` body inside `bashFilter.test.ts`. Wrap in `describe('integration harness', ...)`. Predicted reductions become `expect(reductionPct).toBeGreaterThanOrEqual(predicted - 5)`.
 - The 3 safety tests + new ones (sandbox annotation preservation, etc.) live inline in the same file as their own `describe('safety', ...)` block.
 - Rewrite tests → `describe('rewrite', ...)` block. Each asserts `effectiveCommand`.
-- Samples are checked in to `__fixtures__/samples/`. Discovery samples are the source of truth; we copy at Phase 1.
+- Samples are checked in to `__fixtures__/samples/`. Discovery samples were the source of truth and were copied at Phase 1 — that copy is exactly what later drifted, so the two directories have since been merged into `__fixtures__/samples/`, which is now the only one.
 
 **Coverage targets** (from `.claudin/rules/testing.md` `src/utils/*` 75%+ guideline):
 

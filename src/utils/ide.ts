@@ -1189,13 +1189,6 @@ export async function detectRunningIDEsCached(): Promise<IdeType[]> {
   return cachedRunningIDEs
 }
 
-/**
- * Resets the cache for detectRunningIDEsCached.
- * Exported for testing - allows resetting state between tests.
- */
-export function resetDetectRunningIDEs(): void {
-  cachedRunningIDEs = null
-}
 
 export function getConnectedIdeName(
   mcpClients: MCPServerConnection[],

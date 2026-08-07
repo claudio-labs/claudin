@@ -18,7 +18,7 @@ type FileReadResult = {
   oldContent: string;
   fileExists: boolean;
 };
-export function SedEditPermissionRequest(t0) {
+export function SedEditPermissionRequest(t0: SedEditPermissionRequestProps) {
   const $ = _c(9);
   let props;
   let sedInfo;

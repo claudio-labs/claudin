@@ -1,7 +1,7 @@
 # Bash Output Filter — Technical Design
 
 > **Status:** v1 spec rev 2 — pós-review aplicado. Pronta para implementação.
-> **Discovery:** [`docs/discovery/bash-output-filter/`](../../discovery/bash-output-filter/) — fechado em 2026-05-05.
+> **Discovery:** [`docs/archive/discovery/bash-output-filter/`](../../archive/discovery/bash-output-filter/) — fechado em 2026-05-05.
 
 ## Resumo de uma frase
 

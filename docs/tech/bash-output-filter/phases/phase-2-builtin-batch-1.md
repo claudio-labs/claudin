@@ -69,17 +69,17 @@ Para cada filter, seguir o template:
 
 Os filter specs são portados das discovery files. Para cada:
 
-- **`pkg.ts:bundleInstall`** — usar regex e match_output documentados em [`../../../discovery/bash-output-filter/validation/validate.ts`](../../../discovery/bash-output-filter/validation/validate.ts) (case "bundle install")
-- **`tests.ts:pytest`** — usar [`../../../discovery/bash-output-filter/commands/pytest.md`](../../../discovery/bash-output-filter/commands/pytest.md) + validate.ts case "pytest (clean)"
+- **`pkg.ts:bundleInstall`** — usar regex e match_output documentados em [`../../../archive/discovery/bash-output-filter/validation/validate.ts`](../../../archive/discovery/bash-output-filter/validation/validate.ts) (case "bundle install")
+- **`tests.ts:pytest`** — usar [`../../../archive/discovery/bash-output-filter/commands/pytest.md`](../../../archive/discovery/bash-output-filter/commands/pytest.md) + validate.ts case "pytest (clean)"
 - **`tests.ts:rspec`** — validate.ts case "rspec (clean)"
-- **`tests.ts:goTest`** — [`../../../discovery/bash-output-filter/commands/go-test.md`](../../../discovery/bash-output-filter/commands/go-test.md) + validate.ts case
-- **`system.ts:psAux`** — [`../../../discovery/bash-output-filter/commands/ps-aux.md`](../../../discovery/bash-output-filter/commands/ps-aux.md)
-- **`system.ts:top`** — [`../../../discovery/bash-output-filter/commands/top.md`](../../../discovery/bash-output-filter/commands/top.md)
+- **`tests.ts:goTest`** — [`../../../archive/discovery/bash-output-filter/commands/go-test.md`](../../../archive/discovery/bash-output-filter/commands/go-test.md) + validate.ts case
+- **`system.ts:psAux`** — [`../../../archive/discovery/bash-output-filter/commands/ps-aux.md`](../../../archive/discovery/bash-output-filter/commands/ps-aux.md)
+- **`system.ts:top`** — [`../../../archive/discovery/bash-output-filter/commands/top.md`](../../../archive/discovery/bash-output-filter/commands/top.md)
 - **`linters.ts:rubocop`** — validate.ts case "rubocop (preamble dominate)"
-- **`linters.ts:ruffCheck`** — [`../../../discovery/bash-output-filter/commands/ruff-check.md`](../../../discovery/bash-output-filter/commands/ruff-check.md)
-- **`ls.ts:lsLa`** — [`../../../discovery/bash-output-filter/commands/ls.md`](../../../discovery/bash-output-filter/commands/ls.md)
-- **`grep-rg.ts:grepRg`** — [`../../../discovery/bash-output-filter/commands/grep-rg.md`](../../../discovery/bash-output-filter/commands/grep-rg.md)
-- **`cargo.ts:cargoBuild/check/test/clippy`** — [`../../../discovery/bash-output-filter/commands/cargo-build.md`](../../../discovery/bash-output-filter/commands/cargo-build.md) e [`cargo-test.md`](../../../discovery/bash-output-filter/commands/cargo-test.md)
+- **`linters.ts:ruffCheck`** — [`../../../archive/discovery/bash-output-filter/commands/ruff-check.md`](../../../archive/discovery/bash-output-filter/commands/ruff-check.md)
+- **`ls.ts:lsLa`** — [`../../../archive/discovery/bash-output-filter/commands/ls.md`](../../../archive/discovery/bash-output-filter/commands/ls.md)
+- **`grep-rg.ts:grepRg`** — [`../../../archive/discovery/bash-output-filter/commands/grep-rg.md`](../../../archive/discovery/bash-output-filter/commands/grep-rg.md)
+- **`cargo.ts:cargoBuild/check/test/clippy`** — [`../../../archive/discovery/bash-output-filter/commands/cargo-build.md`](../../../archive/discovery/bash-output-filter/commands/cargo-build.md) e [`cargo-test.md`](../../../archive/discovery/bash-output-filter/commands/cargo-test.md)
 
 ## Tests
 
@@ -123,7 +123,7 @@ This PR only adds filter specs to the registry. Phase 3 wires the registry into 
 ### Refs
 - Spec: docs/tech/bash-output-filter/architecture.md §4
 - Phase doc: docs/tech/bash-output-filter/phases/phase-2-builtin-batch-1.md
-- Discovery measurements: docs/discovery/bash-output-filter/optimization-matrix.md
+- Discovery measurements: docs/archive/discovery/bash-output-filter/optimization-matrix.md
 ```
 
 ## Implementation notes

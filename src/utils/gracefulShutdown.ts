@@ -373,24 +373,6 @@ export function isShuttingDown(): boolean {
   return shutdownInProgress
 }
 
-/** Reset shutdown state - only for use in tests */
-export function resetShutdownState(): void {
-  shutdownInProgress = false
-  resumeHintPrinted = false
-  if (failsafeTimer !== undefined) {
-    clearTimeout(failsafeTimer)
-    failsafeTimer = undefined
-  }
-  pendingShutdown = undefined
-}
-
-/**
- * Returns the in-flight shutdown promise, if any. Only for use in tests
- * to await completion before restoring mocks.
- */
-export function getPendingShutdownForTesting(): Promise<void> | undefined {
-  return pendingShutdown
-}
 
 // Graceful shutdown function that drains the event loop
 export async function gracefulShutdown(

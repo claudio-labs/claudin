@@ -22,28 +22,17 @@ export { runHeadless } from 'src/cli/print/runHeadless.js'
 export {
   joinPromptValues,
   canBatchWith,
-  type PromptValue,
 } from 'src/cli/print/promptBatching.js'
 
-export {
-  trackReceivedMessageUuid,
-  hasReceivedMessageUuid,
-} from 'src/cli/print/uuidDedupe.js'
 
 export { removeInterruptedMessage } from 'src/cli/print/messageOps.js'
 
 export { handleOrphanedPermissionResponse } from 'src/cli/print/orphanPermission.js'
 
 export {
-  createCanUseToolWithPermissionPrompt,
   getCanUseToolFn,
 } from 'src/cli/print/permissionGlue.js'
 
-export type {
-  DynamicMcpState,
-  SdkMcpState,
-  McpSetServersResult,
-} from 'src/cli/print/mcpReconcile.js'
 export {
   handleMcpSetServers,
   reconcileMcpServers,

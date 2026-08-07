@@ -433,11 +433,6 @@ export function addToHistory(command: HistoryEntry | string): void {
   void addToPromptHistory(command)
 }
 
-export function clearPendingHistoryEntries(): void {
-  pendingEntries = []
-  lastAddedEntry = null
-  skippedTimestamps.clear()
-}
 
 /**
  * Clear skipped timestamps after compaction. Entries flushed before

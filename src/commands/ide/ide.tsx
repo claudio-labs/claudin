@@ -22,7 +22,7 @@ type IDEScreenProps = {
   onClose: () => void;
   onSelect: (ide?: DetectedIDEInfo) => void;
 };
-function IDEScreen(t0) {
+function IDEScreen(t0: IDEScreenProps) {
   const $ = _c(39);
   const {
     availableIDEs,
@@ -224,7 +224,7 @@ type IDEOpenSelectionProps = {
     display?: CommandResultDisplay;
   }) => void;
 };
-function IDEOpenSelection(t0) {
+function IDEOpenSelection(t0: IDEOpenSelectionProps) {
   const $ = _c(18);
   const {
     availableIDEs,

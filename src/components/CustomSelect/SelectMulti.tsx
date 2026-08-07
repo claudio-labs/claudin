@@ -55,7 +55,7 @@ export type SelectMultiProps<T> = {
   readonly pastedContents?: Record<number, PastedContent>;
   readonly onRemoveImage?: (id: number) => void;
 };
-export function SelectMulti(t0) {
+export function SelectMulti(t0: SelectMultiProps) {
   const $ = _c(44);
   const {
     isDisabled: t1,

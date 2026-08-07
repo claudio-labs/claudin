@@ -52,25 +52,6 @@ export function getLastKill(): string {
   return killRing[0] ?? ''
 }
 
-export function getKillRingItem(index: number): string {
-  if (killRing.length === 0) return ''
-  const normalizedIndex =
-    ((index % killRing.length) + killRing.length) % killRing.length
-  return killRing[normalizedIndex] ?? ''
-}
-
-export function getKillRingSize(): number {
-  return killRing.length
-}
-
-export function clearKillRing(): void {
-  killRing = []
-  killRingIndex = 0
-  lastActionWasKill = false
-  lastActionWasYank = false
-  lastYankStart = 0
-  lastYankLength = 0
-}
 
 export function resetKillAccumulation(): void {
   lastActionWasKill = false
@@ -84,9 +65,6 @@ export function recordYank(start: number, length: number): void {
   killRingIndex = 0
 }
 
-export function canYankPop(): boolean {
-  return lastActionWasYank && killRing.length > 1
-}
 
 export function yankPop(): {
   text: string

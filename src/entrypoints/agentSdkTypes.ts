@@ -15,12 +15,6 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { z } from 'zod/v4'
 
-// Control protocol types for SDK builders (bridge subpath consumers)
-/** @alpha */
-export type {
-  SDKControlRequest,
-  SDKControlResponse,
-} from './sdk/controlTypes.js'
 // Re-export core types (common serializable types)
 export * from './sdk/coreTypes.js'
 // Re-export runtime types (callbacks, interfaces with methods)
@@ -121,28 +115,6 @@ export function query(): Query {
   throw new Error('query is not implemented in the SDK')
 }
 
-/**
- * V2 API - UNSTABLE
- * Create a persistent session for multi-turn conversations.
- * @alpha
- */
-export function unstable_v2_createSession(
-  _options: SDKSessionOptions,
-): SDKSession {
-  throw new Error('unstable_v2_createSession is not implemented in the SDK')
-}
-
-/**
- * V2 API - UNSTABLE
- * Resume an existing session by ID.
- * @alpha
- */
-export function unstable_v2_resumeSession(
-  _sessionId: string,
-  _options: SDKSessionOptions,
-): SDKSession {
-  throw new Error('unstable_v2_resumeSession is not implemented in the SDK')
-}
 
 // @[MODEL LAUNCH]: Update the example model ID in this docstring.
 /**

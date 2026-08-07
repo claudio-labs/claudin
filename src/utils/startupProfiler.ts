@@ -154,9 +154,6 @@ export function profileReport(): void {
   }
 }
 
-export function isDetailedProfilingEnabled(): boolean {
-  return DETAILED_PROFILING
-}
 
 export function getStartupPerfLogPath(): string {
   return join(getClaudinConfigHomeDir(), 'startup-perf', `${getSessionId()}.txt`)

@@ -1,8 +1,6 @@
 export type {
   MiniMaxUsageData,
   MiniMaxUsageRow,
-  MiniMaxUsageSnapshot,
-  MiniMaxUsageWindow,
 } from './minimaxUsage/types.js'
 
 export {
@@ -13,5 +11,4 @@ export {
 export {
   fetchMiniMaxUsage,
   getMiniMaxUsageUrls,
-  resolveMiniMaxUsageBaseUrl,
 } from './minimaxUsage/fetch.js'

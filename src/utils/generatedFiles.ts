@@ -124,12 +124,4 @@ export function isGeneratedFile(filePath: string): boolean {
   return false
 }
 
-/**
- * Filter a list of files to exclude generated files.
- *
- * @param files - Array of file paths
- * @returns Array of files that are not generated
- */
-export function filterGeneratedFiles(files: string[]): string[] {
-  return files.filter(file => !isGeneratedFile(file))
-}
+

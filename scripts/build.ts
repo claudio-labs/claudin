@@ -293,6 +293,13 @@ const result = await Bun.build({
     'MACRO.BUILD_TIME': JSON.stringify(new Date().toISOString()),
     'MACRO.ISSUES_EXPLAINER':
       JSON.stringify('report the issue at https://github.com/anthropics/claude-code/issues'),
+    // Referenced by the workspace-trust warnings in `utils/auth.ts` and
+    // `services/mcp/headersHelper.ts`. Without a define the identifier survives
+    // into the bundle and those paths throw `ReferenceError: MACRO is not
+    // defined` instead of printing the warning.
+    'MACRO.FEEDBACK_CHANNEL': JSON.stringify(
+      'https://github.com/claudio-labs/claudin/issues',
+    ),
     'MACRO.PACKAGE_URL': JSON.stringify('@claudiolabs/claudin'),
     'MACRO.NATIVE_PACKAGE_URL': 'undefined',
     'MACRO.IDE_EXTENSION_VERSION': JSON.stringify(ideExtensionVersion),

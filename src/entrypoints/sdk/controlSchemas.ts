@@ -162,15 +162,6 @@ export const SDKControlMcpStatusRequestSchema = lazySchema(() =>
     .describe('Requests the current status of all MCP server connections.'),
 )
 
-export const SDKControlMcpStatusResponseSchema = lazySchema(() =>
-  z
-    .object({
-      mcpServers: z.array(McpServerStatusSchema()),
-    })
-    .describe(
-      'Response containing the current status of all MCP server connections.',
-    ),
-)
 
 export const SDKControlGetContextUsageRequestSchema = lazySchema(() =>
   z
@@ -315,17 +306,6 @@ export const SDKControlRewindFilesRequestSchema = lazySchema(() =>
     .describe('Rewinds file changes made since a specific user message.'),
 )
 
-export const SDKControlRewindFilesResponseSchema = lazySchema(() =>
-  z
-    .object({
-      canRewind: z.boolean(),
-      error: z.string().optional(),
-      filesChanged: z.array(z.string()).optional(),
-      insertions: z.number().optional(),
-      deletions: z.number().optional(),
-    })
-    .describe('Result of a rewindFiles operation.'),
-)
 
 export const SDKControlCancelAsyncMessageRequestSchema = lazySchema(() =>
   z
@@ -338,15 +318,6 @@ export const SDKControlCancelAsyncMessageRequestSchema = lazySchema(() =>
     ),
 )
 
-export const SDKControlCancelAsyncMessageResponseSchema = lazySchema(() =>
-  z
-    .object({
-      cancelled: z.boolean(),
-    })
-    .describe(
-      'Result of a cancel_async_message operation. cancelled=false means the message was not in the queue (already dequeued or never enqueued).',
-    ),
-)
 
 export const SDKControlSeedReadStateRequestSchema = lazySchema(() =>
   z

@@ -204,10 +204,4 @@ export function checkPermissionMode(
   }
 }
 
-export function getAutoAllowedCommands(
-  mode: ToolPermissionContext['mode'],
-): readonly string[] {
-  return mode === 'acceptEdits'
-    ? [...ACCEPT_EDITS_WRITE_COMMANDS, ...ACCEPT_EDITS_READ_ONLY_COMMANDS]
-    : []
-}
+

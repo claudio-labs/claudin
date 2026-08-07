@@ -35,7 +35,7 @@ export type Props = {
   skipSettingsWrite?: boolean;
 };
 const NO_PREFERENCE = '__NO_PREFERENCE__';
-export function ModelPicker(t0) {
+export function ModelPicker(t0: Props) {
   const $ = _c(82);
   const {
     initial,

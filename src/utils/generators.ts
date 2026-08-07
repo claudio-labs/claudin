@@ -1,15 +1,5 @@
 const NO_VALUE = Symbol('NO_VALUE')
 
-export async function lastX<A>(as: AsyncGenerator<A>): Promise<A> {
-  let lastValue: A | typeof NO_VALUE = NO_VALUE
-  for await (const a of as) {
-    lastValue = a
-  }
-  if (lastValue === NO_VALUE) {
-    throw new Error('No items in generator')
-  }
-  return lastValue
-}
 
 export async function returnValue<A>(
   as: AsyncGenerator<unknown, A>,

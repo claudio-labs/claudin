@@ -89,10 +89,6 @@ export function maybeRecordPluginHint(hint: ClaudeCodeHint): void {
 
 const triedThisSession = new Set<string>()
 
-/** Test-only reset. */
-export function _resetHintRecommendationForTesting(): void {
-  triedThisSession.clear()
-}
 
 /**
  * Resolve the pending hint to a renderable recommendation. Runs the async

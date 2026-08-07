@@ -46,6 +46,9 @@ export const JsonSchemaOutputFormatSchema = lazySchema(() =>
   }),
 )
 
+// Consumed by scripts/generate-sdk-types.ts, not by any import in this repo:
+// it is what emits the public `OutputFormat` type. Static unused-export
+// analysis cannot see the generator, so do not delete this as dead code.
 export const OutputFormatSchema = lazySchema(() =>
   JsonSchemaOutputFormatSchema(),
 )
@@ -973,6 +976,8 @@ export const WorktreeCreateHookSpecificOutputSchema = lazySchema(() =>
     ),
 )
 
+// Same as OutputFormatSchema above: generator-only input, emitting the public
+// `HookJSONOutput` type. Not imported anywhere in this repo by design.
 export const HookJSONOutputSchema = lazySchema(() =>
   z.union([AsyncHookJSONOutputSchema(), SyncHookJSONOutputSchema()]),
 )

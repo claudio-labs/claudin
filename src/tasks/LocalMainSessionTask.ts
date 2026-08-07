@@ -261,44 +261,6 @@ function enqueueMainSessionNotification(
   enqueuePendingNotification({ value: message, mode: 'task-notification' })
 }
 
-/**
- * Foreground a main session task - mark it as foregrounded so its output
- * appears in the main view. The background query keeps running.
- * Returns the task's accumulated messages, or undefined if task not found.
- */
-export function foregroundMainSessionTask(
-  taskId: string,
-  setAppState: SetAppState,
-): Message[] | undefined {
-  let taskMessages: Message[] | undefined
-
-  setAppState(prev => {
-    const task = prev.tasks[taskId]
-    if (!task || task.type !== 'local_agent') {
-      return prev
-    }
-
-    taskMessages = (task as LocalMainSessionTaskState).messages
-
-    // Restore previous foregrounded task to background if it exists
-    const prevId = prev.foregroundedTaskId
-    const prevTask = prevId ? prev.tasks[prevId] : undefined
-    const restorePrev =
-      prevId && prevId !== taskId && prevTask?.type === 'local_agent'
-
-    return {
-      ...prev,
-      foregroundedTaskId: taskId,
-      tasks: {
-        ...prev.tasks,
-        ...(restorePrev && { [prevId]: { ...prevTask, isBackgrounded: true } }),
-        [taskId]: { ...task, isBackgrounded: false },
-      },
-    }
-  })
-
-  return taskMessages
-}
 
 /**
  * Check if a task is a main session task (vs a regular agent task).

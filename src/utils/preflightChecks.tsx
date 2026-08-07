@@ -81,7 +81,7 @@ async function checkEndpoints(): Promise<PreflightCheckResult> {
 interface PreflightStepProps {
   onSuccess: () => void;
 }
-export function PreflightStep(t0) {
+export function PreflightStep(t0: PreflightStepProps) {
   const $ = _c(12);
   const {
     onSuccess

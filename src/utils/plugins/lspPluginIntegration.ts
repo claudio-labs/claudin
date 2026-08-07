@@ -357,31 +357,4 @@ export async function getPluginLspServers(
   return addPluginScopeToLspServers(resolvedServers, plugin.name)
 }
 
-/**
- * Extract all LSP servers from loaded plugins
- */
-export async function extractLspServersFromPlugins(
-  plugins: LoadedPlugin[],
-  errors: PluginError[] = [],
-): Promise<Record<string, ScopedLspServerConfig>> {
-  const allServers: Record<string, ScopedLspServerConfig> = {}
 
-  for (const plugin of plugins) {
-    if (!plugin.enabled) continue
-
-    const servers = await loadPluginLspServers(plugin, errors)
-    if (servers) {
-      const scopedServers = addPluginScopeToLspServers(servers, plugin.name)
-      Object.assign(allServers, scopedServers)
-
-      // Store the servers on the plugin for caching
-      plugin.lspServers = servers
-
-      logForDebugging(
-        `Loaded ${Object.keys(servers).length} LSP servers from plugin ${plugin.name}`,
-      )
-    }
-  }
-
-  return allServers
-}

@@ -179,6 +179,84 @@ it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
 | `src/utils/*` | 75%+ | Shared utils used everywhere |
 | Build scripts | 60%+ | Invariants via the guard tests |
 
+### The test floor (`bun run test:floor`)
+
+A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
+(18.87% as of 2026-08-07, over `src/` and `scripts/`) and the check fails when
+it drops more than 0.5pp, or when one of the named invariant suites disappears:
+
+```
+src/services/compact/requestDeterminism.invariant.test.ts
+src/services/compact/stableStubState.stub-byte-stability.test.ts
+src/outputFilter/Bash/phase12Report.test.ts
+scripts/feature-flags-source-guard.test.ts
+scripts/measure-tool-schemas.test.ts
+scripts/no-telemetry-growthbook-stub.test.ts
+scripts/pr-intent-scan.test.ts
+```
+
+Do **not** chase the percentage. It cannot tell a real assertion from
+`expect(true).toBe(true)`, and the seven suites above are worth more than any
+number it could report — they pin request-byte determinism (the prompt cache
+stops hitting the moment it breaks), per-filter reduction, and the build-system
+invariants. What the ratio is good for is noticing a *loss*: a refactor that
+deletes a suite along with the code it covered. Re-record deliberately with
+`bun run test:floor:update`.
+
+Both trees are walked because the first version was not: it measured `src/`
+only, so deleting all four `scripts/` invariant suites left it green, reporting
+"3/3 invariant suites present" while three of the four it should have been
+counting no longer existed.
+
+### Type-level tests (`*.types.test.ts`)
+
+Compile-time assertions using `Expect<Equal<…>>` from
+`src/types/typeAssertions.ts`. They are enforced by `tsc` — that is, by
+`bun run typecheck:ci` — not by the runner, so a broken invariant shows up as a
+new diagnostic on the `Expect<…>` line. Each file also carries a `test()` or
+two pinning the runtime half of the same invariant.
+
+They exist where a type is load-bearing and documented only in prose:
+`src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
+`src/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
+deviation from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
+versus what `buildTool` actually spreads, including the fail-closed defaults).
+
+Writing them is what surfaced two defects worth more than the assertions: the
+`speed` intersection on `NonNullableUsage` was inert and justified by a false
+claim about the SDK's `BetaUsage`, and `fingerprintDiagnostic` reported phantom
+new errors whenever a file was added. Both are fixed. Watch for the tautology
+trap in a new one — an assertion pinning "not null" against a field that was
+never nullable passes with the whole mapping deleted, which is how three of the
+first five in `sdkUtilityTypes.types.test.ts` shipped guarding nothing. Break
+the production line and watch the assertion fail before believing it.
+
+### Dead code (`bun run deadcode`, gated by `deadcode:ci`)
+
+`knip`, configured in `knip.json`, in two forms:
+
+- `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Covers unused
+  FILES and declared dependencies nothing imports. Both were cleared on
+  2026-08-07 — three dependencies (`code-excerpt`, `stack-utils`, `tsx`) and
+  nineteen files — so the gate starts from zero and any new finding is yours.
+- `bun run deadcode` — the wider report, which additionally surfaces
+  `unlisted`/`unresolved`.
+
+One of the twenty "unused" files was not dead: `migrateFennecToOpus` was the
+only one of eleven startup migrations never wired into `lifecycle.ts`. Treat a
+knip file finding as a question, not a verdict — "nothing imports this" and
+"this should not exist" are different claims.
+
+`unlisted` and `unresolved` are deliberately outside the gate. This fork
+resolves ~30 module names to stubs in `scripts/build.ts` and carries 138 imports
+of files the fork never received, so in this repo "undeclared" is overwhelmingly
+the intended state; gating on it would mean 30 hand-maintained ignores that
+silently drift from build.ts. Two narrower blind spots ARE configured around:
+knip does not read `bunfig.toml`, so the `[alias]` targets
+(`src/stubs/growthbook-stub.ts`, `src/stubs/sandbox-runtime-stub.ts`) are listed
+in `ignore` by hand, and the external CLI tools the code shells out to
+(`rec`, `wslpath`, `secret-tool`, …) are in `ignoreBinaries`.
+
 ## What NOT to Test
 
 - `dist/cli.mjs` — it's generated, test the source
@@ -249,6 +327,8 @@ confirm a cited diagnostic with the tool (`path:` filters the report) first.
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
 - [ ] Focused test passes (RunTests tool, scoped with `path`)
+- [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
+- [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] If touching `src/services/api/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated

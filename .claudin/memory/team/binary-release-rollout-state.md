@@ -18,6 +18,23 @@ release-binaries.yml's `version` job. Publish auth is npm **trusted publishing
 NPM_TOKEN.**
 
 **Durable gotchas:**
+- **`publish-npm.yml` still exists and publishes the ROOT package** — same npm name
+  as the assembled wrapper, but the root `package.json` has no
+  `optionalDependencies`, so a successful run for a version release-binaries.yml
+  never published would point `latest` at a package with no native binaries. Two
+  things keep that narrow today: npm refuses to overwrite an existing version, and
+  the Trusted Publisher entry names `release-binaries.yml`, so OIDC 404s for this
+  workflow. **Do not add a TP entry for `publish-npm.yml` casually**, and prefer
+  deleting the workflow over "fixing" it.
+- **The privacy gate lives in `prepack`, not in a workflow step** (2026-08-06).
+  `prepack` is `build:release && verify:privacy`, so the bundle scanned is the one
+  packed. A `build:verified` step before publish would scan a DEV build — minified
+  off, sourcemaps on, different chunk names — i.e. certify a bundle that never
+  ships. Note `verify-no-phone-home.ts` walks all of `dist/` recursively, so split
+  chunks are covered, but the native binaries are NOT (still the open TODO).
+- **Release validation gates the `version` job, not `publish`** — `version` commits
+  a bump, pushes a tag and opens the GitHub release, so a suite that only ran at
+  publish time would still leave a tag for a version that never shipped.
 - **npm OIDC cannot do a package's FIRST publish** — npmjs.com requires the package
   to exist before a Trusted Publisher can be configured (unlike PyPI). New platform
   packages must be bootstrapped with a placeholder publish

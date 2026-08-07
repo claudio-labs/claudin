@@ -24,7 +24,7 @@ type Props = {
   isLeaderIdle?: boolean;
   onOpenDialog?: (taskId?: string) => void;
 };
-export function BackgroundTaskStatus(t0) {
+export function BackgroundTaskStatus(t0: Props) {
   const $ = _c(48);
   const {
     tasksSelected,
@@ -289,7 +289,7 @@ type AgentPillProps = {
   onClick?: () => void;
   tokenCount?: number;
 };
-function AgentPill(t0) {
+function AgentPill(t0: AgentPillProps) {
   const $ = _c(20);
   const {
     name,

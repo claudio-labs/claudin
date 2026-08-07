@@ -459,79 +459,6 @@ export async function resolvePermission(
   }
 }
 
-/**
- * Clean up old resolved permission files
- * Called periodically to prevent file accumulation
- *
- * @param teamName - Team name
- * @param maxAgeMs - Maximum age in milliseconds (default: 1 hour)
- */
-export async function cleanupOldResolutions(
-  teamName?: string,
-  maxAgeMs = 3600000,
-): Promise<number> {
-  const team = teamName || getTeamName()
-  if (!team) {
-    return 0
-  }
-
-  const resolvedDir = getResolvedDir(team)
-
-  let files: string[]
-  try {
-    files = await readdir(resolvedDir)
-  } catch (e: unknown) {
-    const code = getErrnoCode(e)
-    if (code === 'ENOENT') {
-      return 0
-    }
-    logForDebugging(`[PermissionSync] Failed to cleanup resolutions: ${e}`)
-    logError(e)
-    return 0
-  }
-
-  const now = Date.now()
-  const jsonFiles = files.filter(f => f.endsWith('.json'))
-
-  const cleanupResults = await Promise.all(
-    jsonFiles.map(async file => {
-      const filePath = join(resolvedDir, file)
-      try {
-        const content = await readFile(filePath, 'utf-8')
-        const request = jsonParse(content) as SwarmPermissionRequest
-
-        // Check if the resolution is old enough to clean up
-        // Use >= to handle edge case where maxAgeMs is 0 (clean up everything)
-        const resolvedAt = request.resolvedAt || request.createdAt
-        if (now - resolvedAt >= maxAgeMs) {
-          await unlink(filePath)
-          logForDebugging(`[PermissionSync] Cleaned up old resolution: ${file}`)
-          return 1
-        }
-        return 0
-      } catch {
-        // If we can't parse it, clean it up anyway
-        try {
-          await unlink(filePath)
-          return 1
-        } catch {
-          // Ignore deletion errors
-          return 0
-        }
-      }
-    }),
-  )
-
-  const cleanedCount = cleanupResults.reduce<number>((sum, n) => sum + n, 0)
-
-  if (cleanedCount > 0) {
-    logForDebugging(
-      `[PermissionSync] Cleaned up ${cleanedCount} old resolutions`,
-    )
-  }
-
-  return cleanedCount
-}
 
 /**
  * Legacy response type for worker polling
@@ -660,12 +587,6 @@ export async function deleteResolvedPermission(
     return false
   }
 }
-
-/**
- * @deprecated Alias for writePermissionRequest, which is itself deprecated.
- * Use sendPermissionRequestViaMailbox() instead.
- */
-export const submitPermissionRequest = writePermissionRequest
 
 // ============================================================================
 // Mailbox-Based Permission System

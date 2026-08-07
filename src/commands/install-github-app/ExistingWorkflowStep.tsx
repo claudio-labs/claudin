@@ -6,7 +6,7 @@ interface ExistingWorkflowStepProps {
   repoName: string;
   onSelectAction: (action: 'update' | 'skip' | 'exit') => void;
 }
-export function ExistingWorkflowStep(t0) {
+export function ExistingWorkflowStep(t0: ExistingWorkflowStepProps) {
   const $ = _c(16);
   const {
     repoName,

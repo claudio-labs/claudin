@@ -238,19 +238,7 @@ export function isMediaSizeError(raw: string): boolean {
   )
 }
 
-/**
- * Message-level predicate: is this assistant message a media-size rejection?
- * Parallel to isPromptTooLongMessage. Checks errorDetails (the raw API error
- * string populated by the getAssistantMessageFromError branches at ~L523/560/573)
- * rather than content text, since media errors have per-variant content strings.
- */
-export function isMediaSizeErrorMessage(msg: AssistantMessage): boolean {
-  return (
-    msg.isApiErrorMessage === true &&
-    msg.errorDetails !== undefined &&
-    isMediaSizeError(msg.errorDetails)
-  )
-}
+
 export const CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE = 'Credit balance is too low'
 export const INVALID_API_KEY_ERROR_MESSAGE = 'Not logged in · Please run /login'
 export const INVALID_API_KEY_ERROR_MESSAGE_EXTERNAL =
@@ -487,21 +475,6 @@ function logToolUseToolResultMismatch(
   }
 }
 
-/**
- * Type guard to check if a value is a valid Message response from the API
- */
-export function isValidAPIMessage(value: unknown): value is BetaMessage {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'content' in value &&
-    'model' in value &&
-    'usage' in value &&
-    Array.isArray((value as BetaMessage).content) &&
-    typeof (value as BetaMessage).model === 'string' &&
-    typeof (value as BetaMessage).usage === 'object'
-  )
-}
 
 /** Lower-level error that AWS can return. */
 type AmazonError = {
@@ -511,22 +484,6 @@ type AmazonError = {
   Version?: string
 }
 
-/**
- * Given a response that doesn't look quite right, see if it contains any known error types we can extract.
- */
-export function extractUnknownErrorFormat(value: unknown): string | undefined {
-  // Check if value is a valid object first
-  if (!value || typeof value !== 'object') {
-    return undefined
-  }
-
-  // Amazon Bedrock routing errors
-  if ((value as AmazonError).Output?.__type) {
-    return (value as AmazonError).Output!.__type
-  }
-
-  return undefined
-}
 
 export function getAssistantMessageFromError(
   error: unknown,

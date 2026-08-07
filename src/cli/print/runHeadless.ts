@@ -129,7 +129,9 @@ import type {
   SDKControlMcpSetServersResponse,
   SDKControlReloadPluginsResponse,
 } from 'src/entrypoints/sdk/controlTypes.js'
-import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk'
+// This repo's own copy of the published SDK surface — the package itself is
+// not a dependency here.
+import type { PermissionMode } from 'src/entrypoints/agentSdkTypes.js'
 import type { PermissionMode as InternalPermissionMode } from 'src/types/permissions.js'
 import { cwd } from 'process'
 import { getCwd } from 'src/utils/cwd.js'
@@ -164,7 +166,7 @@ import {
 } from 'src/constants/outputStyles.js'
 import { TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/constants/xml.js'
 import {
-  getSettings_DEPRECATED,
+  getInitialSettings,
   getSettingsWithSources,
 } from 'src/utils/settings/settings.js'
 import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'

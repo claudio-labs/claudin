@@ -1499,11 +1499,6 @@ export async function dispatchHookChainsForEvent(args: {
   }
 }
 
-export function resetHookChainsRuntimeStateForTests(): void {
-  configCache = null
-  ruleCooldownUntil.clear()
-  dedupKeyUntil.clear()
-}
 
 function categorizeReason(reason: string): string {
   const normalized = reason.toLowerCase()

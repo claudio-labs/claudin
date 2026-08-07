@@ -244,7 +244,7 @@ function getTaskIcon(status: Task['status']): {
       };
   }
 }
-function TaskItem(t0) {
+function TaskItem(t0: TaskItemProps) {
   const $ = _c(37);
   const {
     task,

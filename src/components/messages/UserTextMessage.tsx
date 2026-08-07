@@ -26,7 +26,7 @@ type Props = {
   isTranscriptMode?: boolean;
   timestamp?: string;
 };
-export function UserTextMessage(t0) {
+export function UserTextMessage(t0: Props) {
   const $ = _c(49);
   const {
     addMargin,

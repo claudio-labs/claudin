@@ -43,15 +43,6 @@ function logLoadOnce(success: boolean): void {
   logEvent('tengu_tree_sitter_load', { success })
 }
 
-/**
- * Awaits WASM init (Parser.init + Language.load). Must be called before
- * parseCommand/parseCommandRaw for the parser to be available. Idempotent.
- */
-export async function ensureInitialized(): Promise<void> {
-  if (feature('TREE_SITTER_BASH') || feature('TREE_SITTER_BASH_SHADOW')) {
-    await ensureParserInitialized()
-  }
-}
 
 export async function parseCommand(
   command: string,

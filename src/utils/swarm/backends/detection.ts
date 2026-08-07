@@ -119,10 +119,4 @@ export async function isIt2CliAvailable(): Promise<boolean> {
   return result.code === 0
 }
 
-/**
- * Resets all cached detection results. Used for testing.
- */
-export function resetDetectionCache(): void {
-  isInsideTmuxCached = null
-  isInITerm2Cached = null
-}
+

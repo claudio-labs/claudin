@@ -73,7 +73,7 @@ function MarkdownWithHighlight(props) {
   }
   return t1;
 }
-function MarkdownBody(t0) {
+function MarkdownBody(t0: Props) {
   const $ = _c(8);
   const {
     children,

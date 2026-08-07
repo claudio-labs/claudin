@@ -42,7 +42,7 @@ type Props = {
   onSelect: (path: string) => void;
   onCancel: () => void;
 };
-export function MemoryFileSelector(t0) {
+export function MemoryFileSelector(t0: Props) {
   const $ = _c(58);
   const {
     onSelect,

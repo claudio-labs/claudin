@@ -197,7 +197,7 @@ type VerboseAgentTranscriptProps = {
   tools: Tools;
   verbose: boolean;
 };
-function VerboseAgentTranscript(t0) {
+function VerboseAgentTranscript(t0: VerboseAgentTranscriptProps) {
   const $ = _c(15);
   const {
     progressMessages,

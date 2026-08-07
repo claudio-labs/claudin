@@ -20,7 +20,7 @@ type Props = {
   glimmerIndex?: number;
   shimmerColor?: keyof Theme;
 };
-export function SpinnerGlyph(t0) {
+export function SpinnerGlyph(t0: Props) {
   const $ = _c(11);
   const {
     frame,

@@ -581,10 +581,6 @@ export function getCachedDefaultBranch(): Promise<string> {
   return gitWatcher.get('defaultBranch', computeDefaultBranch)
 }
 
-/** Reset the git file watcher state. For testing only. */
-export function resetGitFileWatcher(): void {
-  gitWatcher.reset()
-}
 
 /**
  * Read the HEAD SHA for an arbitrary directory (not using the watcher).

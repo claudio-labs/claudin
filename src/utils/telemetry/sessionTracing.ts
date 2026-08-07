@@ -772,62 +772,6 @@ export function addToolContentEvent(
   currentSpanCtx.span.addEvent(eventName, processedAttributes)
 }
 
-export function getCurrentSpan(): Span | null {
-  if (!isAnyTracingEnabled()) {
-    return null
-  }
-
-  return (
-    toolContext.getStore()?.span ?? interactionContext.getStore()?.span ?? null
-  )
-}
-
-export async function executeInSpan<T>(
-  spanName: string,
-  fn: (span: Span) => Promise<T>,
-  attributes?: Record<string, string | number | boolean>,
-): Promise<T> {
-  if (!isAnyTracingEnabled()) {
-    return fn(trace.getActiveSpan() || getTracer().startSpan('dummy'))
-  }
-
-  const tracer = getTracer()
-  const parentSpanCtx = toolContext.getStore() ?? interactionContext.getStore()
-
-  const finalAttributes = createSpanAttributes('tool', {
-    ...attributes,
-  })
-
-  const ctx = parentSpanCtx
-    ? trace.setSpan(otelContext.active(), parentSpanCtx.span)
-    : otelContext.active()
-  const span = tracer.startSpan(spanName, { attributes: finalAttributes }, ctx)
-
-  const spanId = getSpanId(span)
-  const spanContextObj: SpanContext = {
-    span,
-    startTime: Date.now(),
-    attributes: finalAttributes,
-  }
-  activeSpans.set(spanId, new WeakRef(spanContextObj))
-  strongSpans.set(spanId, spanContextObj)
-
-  try {
-    const result = await fn(span)
-    span.end()
-    activeSpans.delete(spanId)
-    strongSpans.delete(spanId)
-    return result
-  } catch (error) {
-    if (error instanceof Error) {
-      span.recordException(error)
-    }
-    span.end()
-    activeSpans.delete(spanId)
-    strongSpans.delete(spanId)
-    throw error
-  }
-}
 
 /**
  * Start a hook execution span.

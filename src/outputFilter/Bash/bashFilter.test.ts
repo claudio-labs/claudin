@@ -1,7 +1,7 @@
 /**
  * Bash Output Filter — integration harness tests
  *
- * These tests are ported from docs/discovery/bash-output-filter/validation/validate.ts.
+ * These tests are ported from docs/archive/discovery/bash-output-filter/validation/validate.ts.
  * They are all test.skip() because builtInFilters is empty in Phase 1.
  * Phase 2 will unskip them as filters land.
  */
@@ -15,12 +15,16 @@ import type { FilterSpec } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Phase 6.1.2 harness helpers — load real shell output captured in
-// docs/discovery/.../samples/ and measure byte-reduction against the
-// predicted ROI (see .claudin/plans/fizzy-churning-stearns.md, decision D1).
+// __fixtures__/samples/ and measure byte-reduction against the predicted ROI
+// (see .claudin/plans/fizzy-churning-stearns.md, decision D1).
+//
+// This used to read docs/discovery/.../validation/samples/, a second copy of
+// the same corpus that drifted a whole rebrand behind this one. The two are
+// now one directory; see the header of __fixtures__/samples/README.md.
 // ---------------------------------------------------------------------------
 const SAMPLES_DIR = resolve(
   import.meta.dir,
-  "../../../docs/discovery/bash-output-filter/validation/samples",
+  "__fixtures__/samples",
 );
 
 function loadSample(name: string): string {
@@ -3418,7 +3422,7 @@ describe("phase 12 — prisma-migrate", () => {
 // Phase 12.2 — Universal linters (rtk gap-fill).
 //
 // Samples for yamllint / markdownlint / hadolint / pre-commit / shellcheck
-// live under docs/discovery/.../samples/. Some are real (markdownlint via
+// live under __fixtures__/samples/. Some are real (markdownlint via
 // npx) and some are synthetic-with-source-header (the rest — tools are
 // not installed in the dev container; samples mirror the official output
 // formats documented in each tool's README/docs).

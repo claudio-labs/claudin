@@ -87,7 +87,6 @@ export const UserFiltersFileSchema = z.object({
   filters: z.array(UserFilterSpecSchema),
 });
 
-export type UserFiltersFile = z.infer<typeof UserFiltersFileSchema>;
 
 // ---------------------------------------------------------------------------
 // Compile user JSON → FilterSpec[]

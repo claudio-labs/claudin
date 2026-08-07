@@ -91,21 +91,6 @@ export type EnabledVia =
   | 'default-enable'
   | 'seed-mount'
 
-/** How a skill/command invocation was triggered. */
-export type InvocationTrigger =
-  | 'user-slash'
-  | 'claude-proactive'
-  | 'nested-skill'
-
-/** Where a skill invocation executes. */
-export type SkillExecutionContext = 'fork' | 'inline' | 'remote'
-
-/** How a plugin install was initiated. */
-export type InstallSource =
-  | 'cli-explicit'
-  | 'ui-discover'
-  | 'ui-suggestion'
-  | 'deep-link'
 
 export function getEnabledVia(
   plugin: LoadedPlugin,

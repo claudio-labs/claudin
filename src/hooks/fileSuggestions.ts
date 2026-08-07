@@ -382,19 +382,6 @@ async function getFilesUsingGit(
   }
 }
 
-/**
- * This function collects all parent directories for each file path
- * and returns a list of unique directory names with a trailing separator.
- * For example, if the input is ['src/index.js', 'src/utils/helpers.js'],
- * the output will be ['src/', 'src/utils/'].
- * @param files An array of file paths
- * @returns An array of unique directory names with a trailing separator
- */
-export function getDirectoryNames(files: string[]): string[] {
-  const directoryNames = new Set<string>()
-  collectDirectoryNames(files, 0, files.length, directoryNames)
-  return [...directoryNames].map(d => d + path.sep)
-}
 
 /**
  * Async variant: yields every ~10k files so 270k+ file lists don't block

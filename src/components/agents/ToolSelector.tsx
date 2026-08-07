@@ -94,7 +94,7 @@ function getMcpServerBuckets(tools: Tools): Array<{
     tools
   })).sort((a, b) => a.serverName.localeCompare(b.serverName));
 }
-export function ToolSelector(t0) {
+export function ToolSelector(t0: Props) {
   const $ = _c(69);
   const {
     tools,

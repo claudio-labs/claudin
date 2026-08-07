@@ -98,7 +98,7 @@ function DistTagsDisplay(t0) {
   }
   return t3;
 }
-export function Doctor(t0) {
+export function Doctor(t0: Props) {
   const $ = _c(84);
   const {
     onDone
