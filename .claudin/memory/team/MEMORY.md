@@ -14,7 +14,7 @@
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
 
 ## Repo health
-- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — ~66% is committed React-Compiler output; 22 missing type modules restored 2026-08-06; globals.d.ts/stubbed-modules.d.ts must track scripts/build.ts
+- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — ~66% is committed React-Compiler output; CI runs the typecheck:ci ratchet; tsc embeds absolute paths in messages, so validate baselines from a fresh clone
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
 
 ## Roadmap & major features

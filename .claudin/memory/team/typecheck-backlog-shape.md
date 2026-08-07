@@ -4,8 +4,20 @@ description: tsc --noEmit never reaches zero here — ~2/3 is committed React-Co
 type: project
 ---
 
-`bun run typecheck` is **not** a pass/fail gate and is not run in CI. Read it as a
-diff (before vs. after your change), never as an absolute number.
+`bun run typecheck` is **not** a pass/fail gate — read it as a diff, never as an
+absolute number. What CI runs is `bun run typecheck:ci`, a ratchet that fails a PR
+only for fingerprints absent from the committed `typecheck-baseline.json`; refresh
+it with `bun run typecheck:baseline`.
+
+**The trap that broke it on the first clean-clone run:** tsc quotes ABSOLUTE paths
+inside the *message* (`typeof import("/abs/src/...")`, and the second sentence of
+every TS7016), and the fingerprint hashes the message verbatim — so 38 diagnostics
+here hash differently under `/home/runner/work/...` than under a dev's home dir and
+came back as phantom "new" errors. `scripts/typecheck-ci.ts` erases the checkout
+path from raw output before parsing (same fix as `eraseCheckoutPath` in the tool's
+`run.ts`). **Any new baseline-style check must be validated from a fresh clone at a
+different path**, not just re-run in place — a fingerprint is a hash, so
+machine-specific text in it is invisible on inspection.
 
 Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 (4623 → 3161 errors over that branch):
