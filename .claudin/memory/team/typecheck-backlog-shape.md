@@ -1,6 +1,6 @@
 ---
 name: typecheck-backlog-shape
-description: tsc --noEmit never reaches zero here — ~2/3 is committed React-Compiler output; the fork was missing 22 type modules (restored 2026-08-06)
+description: how to read the tsc backlog and the baseline ratchet; the "React-Compiler output cannot be hand-fixed" claim here was disproven 2026-08-07 — see the correction
 type: project
 ---
 
@@ -24,14 +24,21 @@ Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 
 - **~66% sits in committed React-Compiler output.** `src/components/*.tsx` files
   with `const $ = _c(N)` / `$[i]` bookkeeping are the real source; the transform
-  strips parameter types, so 1529 of the 1710 implicit-`any` errors live there
-  and cannot be hand-fixed — the pre-compiler sources are not in this fork. See
-  `.claudin/rules/ink-tui.md` §6 before editing one.
-- **~107 unresolved modules are deliberate**: source behind a disabled
-  `feature()` flag that was never mirrored (`src/daemon/`, `src/server/`,
-  `src/ssh/`, `src/proactive/`, `src/assistant/`, `src/tools/WorkflowTool/` —
-  the last being upstream's `WORKFLOW_SCRIPTS` tool, NOT Claudin's own
-  `src/tools/AgentWorkflow/`). `scripts/build.ts` stubs them at build time.
+  strips parameter types, so 1529 of the 1710 implicit-`any` errors live there.
+  See `.claudin/rules/ink-tui.md` §6 before editing one.
+
+  **CORRECTION, 2026-08-07: "and cannot be hand-fixed — the pre-compiler sources
+  are not in this fork" was wrong**, and stood here for a day as a reason not to
+  try. The compiler leaves the props type declared a few lines above the function
+  it rewrote, so annotating the `t0` parameter fixes whole clusters at once.
+  242 annotations took the branch 3161 → 2863. Read
+  [[react-compiler-props-param-typing]] before believing any "structural,
+  unfixable" framing about this half of the backlog — including this file's.
+- **~107 unresolved modules are deliberate**, and are NOT fixable by declaring
+  them; that was measured and reverted. See
+  [[missing-subsystems-are-not-fixable-by-declaration]] for the current list,
+  which is wider than the obvious optional subsystems (`src/services` and
+  `src/tools` account for 21 of the 70 missing modules).
 - The rest are genuine mismatches, newly visible now that the central types
   resolve.
 

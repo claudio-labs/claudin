@@ -14,7 +14,7 @@
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
 
 ## Repo health
-- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — ~66% is committed React-Compiler output; CI runs the typecheck:ci ratchet; tsc embeds absolute paths in messages, so validate baselines from a fresh clone
+- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and a CORRECTION: its "React-Compiler output cannot be hand-fixed" claim was disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
 
 ## Roadmap & major features

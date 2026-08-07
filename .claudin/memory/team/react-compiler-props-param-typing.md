@@ -29,6 +29,22 @@ annotating it that way added nine errors.
 A file going 0 → 2 may mean the annotation is RIGHT and exposed two real
 errors. That is different work; revert it here and come back to it separately.
 
-136 sites remain, with no cheap rule left — they need a human choosing among
-several declared types. See [[typecheck-baseline-message-fingerprint-fragile]]
-for re-recording the baseline afterwards.
+**What is left, measured 2026-08-07 at 2849 total errors:**
+
+- **141 sites in 92 files, worth 639 TS7006.** No cheap rule left — each needs a
+  human choosing among several declared types. Concentrated enough to attack
+  top-down: twelve files carry 312 of those, led by `ContextVisualization.tsx`
+  (58), `AskUserQuestionPermissionRequest.tsx` (35), `PermissionRuleList.tsx`
+  (33) and `LogSelector.tsx` (33).
+- **775 TS7006 sit in files with NO `function X(t0)` site at all** — a second,
+  still-undiagnosed cause. This is the largest single block and the only one
+  that might still hide another systematic fix like the `t0` one. Diagnose it
+  before estimating any of the rest.
+- **26 files where an annotation was applied and reverted.** These are the
+  interesting ones: the type may be right and the code may hold a real error.
+  `LogSelector.tsx` and `ContextVisualization.tsx` appear here AND in the 141,
+  so some of that 639 is really this.
+
+See [[typecheck-baseline-message-fingerprint-fragile]] for re-recording the
+baseline afterwards, and [[typecheck-backlog-shape]] — whose "cannot be
+hand-fixed" claim about this class this memory exists to correct.
