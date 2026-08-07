@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1.9 — 2026-08-07
+
+### ✨ Features
+
+- feat(rules): catch the two ways a rule file fails silently (#58) (e62ab9f)
+
+### 🐛 Bug Fixes
+
+- fix(memdir): measure and cut MEMORY.md against real UTF-8 bytes (#56) (7060d1b)
+
+### ⚡ Performance
+
+- perf(attachments): stop sending every rule and CLAUDE.md twice per session (#59) (7ea132c)
+
+### ♻️ Refactoring
+
+- refactor: finish ROADMAP 11b/11e + fix the hang they surfaced (#57) (909bdf9)
+
+### 🔧 Miscellaneous
+
+- chore(repo): type backlog, three CI guards, and a dead-code sweep (#55) (38f6f26)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.8 — 2026-08-06
 
 ### ✨ Features
