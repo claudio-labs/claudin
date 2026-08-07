@@ -60,10 +60,4 @@ export function markGitUnavailable(): void {
   checkGitAvailable.cache?.set?.(undefined, Promise.resolve(false))
 }
 
-/**
- * Clear the git availability cache.
- * Used for testing purposes.
- */
-export function clearGitAvailabilityCache(): void {
-  checkGitAvailable.cache?.clear?.()
-}
+

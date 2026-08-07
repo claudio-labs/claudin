@@ -210,7 +210,4 @@ export async function getOutputStyleConfig(): Promise<OutputStyleConfig | null> 
   return allStyles[outputStyle] ?? null
 }
 
-export function hasCustomOutputStyle(): boolean {
-  const style = getInitialSettings()?.outputStyle
-  return style !== undefined && style !== DEFAULT_OUTPUT_STYLE_NAME
-}
+

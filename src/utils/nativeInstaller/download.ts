@@ -32,52 +32,6 @@ const GCS_BUCKET_URL = ''
 export const ARTIFACTORY_REGISTRY_URL =
   process.env.CLAUDE_CODE_INTERNAL_ARTIFACTORY_REGISTRY_URL ?? ''
 
-export async function getLatestVersionFromArtifactory(
-  tag: string = 'latest',
-): Promise<string> {
-  if (!ARTIFACTORY_REGISTRY_URL) {
-    throw new Error('Internal artifactory registry URL is not configured')
-  }
-  const startTime = Date.now()
-  const { stdout, code, stderr } = await execFileNoThrowWithCwd(
-    'npm',
-    [
-      'view',
-      `${MACRO.NATIVE_PACKAGE_URL}@${tag}`,
-      'version',
-      '--prefer-online',
-      '--registry',
-      ARTIFACTORY_REGISTRY_URL,
-    ],
-    {
-      timeout: 30000,
-      preserveOutputOnError: true,
-    },
-  )
-
-  const latencyMs = Date.now() - startTime
-
-  if (code !== 0) {
-    logEvent('tengu_version_check_failure', {
-      latency_ms: latencyMs,
-      source_npm: true,
-      exit_code: code,
-    })
-    const error = new Error(`npm view failed with code ${code}: ${stderr}`)
-    logError(error)
-    throw error
-  }
-
-  logEvent('tengu_version_check_success', {
-    latency_ms: latencyMs,
-    source_npm: true,
-  })
-  logForDebugging(
-    `npm view ${MACRO.NATIVE_PACKAGE_URL}@${tag} version: ${stdout}`,
-  )
-  const latestVersion = stdout.trim()
-  return latestVersion
-}
 
 export async function getLatestVersionFromBinaryRepo(
   channel: ReleaseChannel = 'latest',
@@ -149,128 +103,6 @@ export async function getLatestVersion(
   return getLatestVersionFromBinaryRepo(channel, GCS_BUCKET_URL)
 }
 
-export async function downloadVersionFromArtifactory(
-  version: string,
-  stagingPath: string,
-) {
-  if (!ARTIFACTORY_REGISTRY_URL) {
-    throw new Error('Internal artifactory registry URL is not configured')
-  }
-  const fs = getFsImplementation()
-
-  // If we get here, we own the lock and can delete a partial download
-  await fs.rm(stagingPath, { recursive: true, force: true })
-
-  // Get the platform-specific package name
-  const platform = getPlatform()
-  const platformPackageName = `${MACRO.NATIVE_PACKAGE_URL}-${platform}`
-
-  // Fetch integrity hash for the platform-specific package
-  logForDebugging(
-    `Fetching integrity hash for ${platformPackageName}@${version}`,
-  )
-  const {
-    stdout: integrityOutput,
-    code,
-    stderr,
-  } = await execFileNoThrowWithCwd(
-    'npm',
-    [
-      'view',
-      `${platformPackageName}@${version}`,
-      'dist.integrity',
-      '--registry',
-      ARTIFACTORY_REGISTRY_URL,
-    ],
-    {
-      timeout: 30000,
-      preserveOutputOnError: true,
-    },
-  )
-
-  if (code !== 0) {
-    throw new Error(`npm view integrity failed with code ${code}: ${stderr}`)
-  }
-
-  const integrity = integrityOutput.trim()
-  if (!integrity) {
-    throw new Error(
-      `Failed to fetch integrity hash for ${platformPackageName}@${version}`,
-    )
-  }
-
-  logForDebugging(`Got integrity hash for ${platform}: ${integrity}`)
-
-  // Create isolated npm project in staging
-  await fs.mkdir(stagingPath)
-
-  const packageJson = {
-    name: 'claude-native-installer',
-    version: '0.0.1',
-    dependencies: {
-      [MACRO.NATIVE_PACKAGE_URL!]: version,
-    },
-  }
-
-  // Create package-lock.json with integrity verification for platform-specific package
-  const packageLock = {
-    name: 'claude-native-installer',
-    version: '0.0.1',
-    lockfileVersion: 3,
-    requires: true,
-    packages: {
-      '': {
-        name: 'claude-native-installer',
-        version: '0.0.1',
-        dependencies: {
-          [MACRO.NATIVE_PACKAGE_URL!]: version,
-        },
-      },
-      [`node_modules/${MACRO.NATIVE_PACKAGE_URL}`]: {
-        version: version,
-        optionalDependencies: {
-          [platformPackageName]: version,
-        },
-      },
-      [`node_modules/${platformPackageName}`]: {
-        version: version,
-        integrity: integrity,
-      },
-    },
-  }
-
-  writeFileSync_DEPRECATED(
-    join(stagingPath, 'package.json'),
-    jsonStringify(packageJson, null, 2),
-    { encoding: 'utf8', flush: true },
-  )
-
-  writeFileSync_DEPRECATED(
-    join(stagingPath, 'package-lock.json'),
-    jsonStringify(packageLock, null, 2),
-    { encoding: 'utf8', flush: true },
-  )
-
-  // Install with npm - it will verify integrity from package-lock.json
-  // Use --prefer-online to force fresh metadata checks, helping with Artifactory replication delays
-  const result = await execFileNoThrowWithCwd(
-    'npm',
-    ['ci', '--prefer-online', '--registry', ARTIFACTORY_REGISTRY_URL],
-    {
-      timeout: 60000,
-      preserveOutputOnError: true,
-      cwd: stagingPath,
-    },
-  )
-
-  if (result.code !== 0) {
-    throw new Error(`npm ci failed with code ${result.code}: ${result.stderr}`)
-  }
-
-  logForDebugging(
-    `Successfully downloaded and verified ${MACRO.NATIVE_PACKAGE_URL}@${version}`,
-  )
-}
 
 // Stall timeout: abort if no bytes received for this duration
 const DEFAULT_STALL_TIMEOUT_MS = 60000 // 60 seconds
@@ -526,5 +358,5 @@ export async function downloadVersion(
 
 // Exported for testing
 export { StallTimeoutError, MAX_DOWNLOAD_RETRIES }
-export const STALL_TIMEOUT_MS = DEFAULT_STALL_TIMEOUT_MS
-export const _downloadAndVerifyBinaryForTesting = downloadAndVerifyBinary
+
+

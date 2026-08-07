@@ -28,6 +28,4 @@ export function getValueFromInput(input: string): string {
   return input.slice(1)
 }
 
-export function isInputModeCharacter(input: string): boolean {
-  return input === '!'
-}
+

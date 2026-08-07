@@ -249,10 +249,4 @@ export interface SerializedClient {
   capabilities?: ServerCapabilities
 }
 
-export interface MCPCliState {
-  clients: SerializedClient[]
-  configs: Record<string, ScopedMcpServerConfig>
-  tools: SerializedTool[]
-  resources: Record<string, ServerResource[]>
-  normalizedNames?: Record<string, string> // Maps normalized names to original names
-}
+

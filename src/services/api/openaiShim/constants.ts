@@ -1,11 +1,4 @@
-/**
- * Constants used across the openaiShim modules.
- *
- * Kept in a leaf module so every other shim file (providerModes, urlRedaction,
- * messagesClient, etc.) can import without creating cycles.
- */
 
-export const GITHUB_COPILOT_BASE = 'https://api.githubcopilot.com'
 export const GITHUB_429_MAX_RETRIES = 3
 export const GITHUB_429_BASE_DELAY_SEC = 1
 export const GITHUB_429_MAX_DELAY_SEC = 32

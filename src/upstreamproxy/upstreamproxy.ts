@@ -200,10 +200,6 @@ export function getUpstreamProxyEnv(): Record<string, string> {
   }
 }
 
-/** Test-only: reset module state between test cases. */
-export function resetUpstreamProxyForTests(): void {
-  state = { enabled: false }
-}
 
 /**
  * Validate that a string contains only well-formed PEM certificate blocks.

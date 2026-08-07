@@ -87,9 +87,6 @@ const RATE_LIMIT_DISPLAY_NAMES: Record<RateLimitType, string> = {
   overage: 'extra usage limit',
 }
 
-export function getRateLimitDisplayName(type: RateLimitType): string {
-  return RATE_LIMIT_DISPLAY_NAMES[type] || type
-}
 
 /**
  * Calculate what fraction of a time window has elapsed.

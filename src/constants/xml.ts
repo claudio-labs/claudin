@@ -13,14 +13,7 @@ export const LOCAL_COMMAND_STDERR_TAG = 'local-command-stderr'
 export const LOCAL_COMMAND_CAVEAT_TAG = 'local-command-caveat'
 
 // All terminal-related tags that indicate a message is terminal output, not a user prompt
-export const TERMINAL_OUTPUT_TAGS = [
-  BASH_INPUT_TAG,
-  BASH_STDOUT_TAG,
-  BASH_STDERR_TAG,
-  LOCAL_COMMAND_STDOUT_TAG,
-  LOCAL_COMMAND_STDERR_TAG,
-  LOCAL_COMMAND_CAVEAT_TAG,
-] as const
+
 
 export const TICK_TAG = 'tick'
 
@@ -32,7 +25,7 @@ export const TASK_TYPE_TAG = 'task-type'
 export const OUTPUT_FILE_TAG = 'output-file'
 export const STATUS_TAG = 'status'
 export const SUMMARY_TAG = 'summary'
-export const REASON_TAG = 'reason'
+
 export const WORKTREE_TAG = 'worktree'
 export const WORKTREE_PATH_TAG = 'worktreePath'
 export const WORKTREE_BRANCH_TAG = 'worktreeBranch'
@@ -52,11 +45,11 @@ export const REMOTE_REVIEW_PROGRESS_TAG = 'remote-review-progress'
 export const TEAMMATE_MESSAGE_TAG = 'teammate-message'
 
 // XML tag name for external channel messages
-export const CHANNEL_MESSAGE_TAG = 'channel-message'
+
 export const CHANNEL_TAG = 'channel'
 
 // XML tag name for cross-session UDS messages (another Claude session's inbox)
-export const CROSS_SESSION_MESSAGE_TAG = 'cross-session-message'
+
 
 // XML tag wrapping the rules/format boilerplate in a fork child's first message.
 // Lets the transcript renderer collapse the boilerplate and show only the directive.

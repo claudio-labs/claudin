@@ -496,13 +496,6 @@ function findLastUuid(logs: Entry[] | null): UUID | undefined {
   return entry && 'uuid' in entry ? (entry.uuid as UUID) : undefined
 }
 
-/**
- * Clear cached state for a session
- */
-export function clearSession(sessionId: string): void {
-  lastUuidMap.delete(sessionId)
-  sequentialAppendBySession.delete(sessionId)
-}
 
 /**
  * Clear all cached session state (all sessions).

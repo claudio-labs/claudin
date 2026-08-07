@@ -46,9 +46,6 @@ export const JsonSchemaOutputFormatSchema = lazySchema(() =>
   }),
 )
 
-export const OutputFormatSchema = lazySchema(() =>
-  JsonSchemaOutputFormatSchema(),
-)
 
 // ============================================================================
 // Config Types
@@ -973,9 +970,6 @@ export const WorktreeCreateHookSpecificOutputSchema = lazySchema(() =>
     ),
 )
 
-export const HookJSONOutputSchema = lazySchema(() =>
-  z.union([AsyncHookJSONOutputSchema(), SyncHookJSONOutputSchema()]),
-)
 
 export const PromptRequestOptionSchema = lazySchema(() =>
   z.object({

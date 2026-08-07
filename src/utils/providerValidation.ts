@@ -131,15 +131,6 @@ export async function getProviderValidationError(
   return null
 }
 
-export async function validateProviderEnvOrExit(
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<void> {
-  const error = await getProviderValidationError(env)
-  if (error) {
-    console.error(error)
-    process.exit(1)
-  }
-}
 
 export function shouldExitForStartupProviderValidationError(options: {
   args?: string[]

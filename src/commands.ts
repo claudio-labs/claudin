@@ -227,34 +227,7 @@ export type {
 export { getCommandName, isCommandEnabled } from './types/command.js'
 
 // Commands that get eliminated from the external build
-export const INTERNAL_ONLY_COMMANDS = [
-  backfillSessions,
-  breakCache,
-  bughunter,
-  commitPushPr,
-  ctx_viz,
-  goodClaude,
-  issue,
-  initVerifiers,
-  ...(forceSnip ? [forceSnip] : []),
-  mockLimits,
-  version,
-  ...(ultraplan ? [ultraplan] : []),
-  ...(subscribePr ? [subscribePr] : []),
-  resetLimits,
-  resetLimitsNonInteractive,
-  onboarding,
-  share,
-  summary,
-  teleport,
-  antTrace,
-  perfIssue,
-  env,
-  oauthRefresh,
-  debugToolCall,
-  agentsPlatform,
-  autofixPr,
-].filter(Boolean)
+
 
 // Declared as a function so that we don't run this until getCommands is called,
 // since underlying functions read from config, which can't be read at module initialization time

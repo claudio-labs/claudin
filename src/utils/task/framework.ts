@@ -249,25 +249,6 @@ export function applyTaskOffsetsAndEvictions(
   })
 }
 
-/**
- * Poll all running tasks and check for updates.
- * This is the main polling loop called by the framework.
- */
-export async function pollTasks(
-  getAppState: () => AppState,
-  setAppState: SetAppState,
-): Promise<void> {
-  const state = getAppState()
-  const { attachments, updatedTaskOffsets, evictedTaskIds } =
-    await generateTaskAttachments(state)
-
-  applyTaskOffsetsAndEvictions(setAppState, updatedTaskOffsets, evictedTaskIds)
-
-  // Send notifications for completed tasks
-  for (const attachment of attachments) {
-    enqueueTaskNotification(attachment)
-  }
-}
 
 /**
  * Enqueue a task notification to the message queue.

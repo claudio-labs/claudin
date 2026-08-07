@@ -155,30 +155,4 @@ export async function getAncestorCommandsAsync(
   return result.stdout.split('\0').filter(Boolean)
 }
 
-/**
- * Gets the child process IDs for a given process
- * @param pid - The parent process ID
- * @returns Array of child process IDs as numbers
- */
-export function getChildPids(pid: string | number): number[] {
-  try {
-    const pidStr = String(pid)
-    const command =
-      process.platform === 'win32'
-        ? `powershell.exe -NoProfile -Command "(Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${pidStr}\\").ProcessId"`
-        : `pgrep -P ${pidStr}`
 
-    const result = execSyncWithDefaults_DEPRECATED(command, { timeout: 1000 })
-    if (!result) {
-      return []
-    }
-    return result
-      .trim()
-      .split('\n')
-      .filter(Boolean)
-      .map(p => parseInt(p, 10))
-      .filter(p => !isNaN(p))
-  } catch {
-    return []
-  }
-}

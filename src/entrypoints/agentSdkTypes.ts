@@ -117,28 +117,6 @@ export function query(): Query {
   throw new Error('query is not implemented in the SDK')
 }
 
-/**
- * V2 API - UNSTABLE
- * Create a persistent session for multi-turn conversations.
- * @alpha
- */
-export function unstable_v2_createSession(
-  _options: SDKSessionOptions,
-): SDKSession {
-  throw new Error('unstable_v2_createSession is not implemented in the SDK')
-}
-
-/**
- * V2 API - UNSTABLE
- * Resume an existing session by ID.
- * @alpha
- */
-export function unstable_v2_resumeSession(
-  _sessionId: string,
-  _options: SDKSessionOptions,
-): SDKSession {
-  throw new Error('unstable_v2_resumeSession is not implemented in the SDK')
-}
 
 // @[MODEL LAUNCH]: Update the example model ID in this docstring.
 /**

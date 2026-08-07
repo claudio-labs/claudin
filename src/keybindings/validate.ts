@@ -464,35 +464,4 @@ export function formatWarning(warning: KeybindingWarning): string {
   return msg
 }
 
-/**
- * Format multiple warnings for display.
- */
-export function formatWarnings(warnings: KeybindingWarning[]): string {
-  if (warnings.length === 0) return ''
 
-  const errors = warnings.filter(w => w.severity === 'error')
-  const warns = warnings.filter(w => w.severity === 'warning')
-
-  const lines: string[] = []
-
-  if (errors.length > 0) {
-    lines.push(
-      `Found ${errors.length} keybinding ${plural(errors.length, 'error')}:`,
-    )
-    for (const e of errors) {
-      lines.push(formatWarning(e))
-    }
-  }
-
-  if (warns.length > 0) {
-    if (lines.length > 0) lines.push('')
-    lines.push(
-      `Found ${warns.length} keybinding ${plural(warns.length, 'warning')}:`,
-    )
-    for (const w of warns) {
-      lines.push(formatWarning(w))
-    }
-  }
-
-  return lines.join('\n')
-}

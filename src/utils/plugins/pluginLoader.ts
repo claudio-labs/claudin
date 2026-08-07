@@ -251,40 +251,6 @@ export function getLegacyCachePath(pluginName: string): string {
   return join(cachePath, pluginName.replace(/[^a-zA-Z0-9\-_]/g, '-'))
 }
 
-/**
- * Resolve plugin path with fallback to legacy location.
- *
- * Always:
- * 1. Try versioned path first if version is provided
- * 2. Fall back to legacy path for existing installations
- * 3. Return versioned path for new installations
- *
- * @param pluginId - Plugin identifier in format "name@marketplace"
- * @param version - Optional version string
- * @returns Absolute path to plugin directory
- */
-export async function resolvePluginPath(
-  pluginId: string,
-  version?: string,
-): Promise<string> {
-  // Try versioned path first
-  if (version) {
-    const versionedPath = getVersionedCachePath(pluginId, version)
-    if (await pathExists(versionedPath)) {
-      return versionedPath
-    }
-  }
-
-  // Fall back to legacy path for existing installations
-  const pluginName = parsePluginIdentifier(pluginId).name || pluginId
-  const legacyPath = getLegacyCachePath(pluginName)
-  if (await pathExists(legacyPath)) {
-    return legacyPath
-  }
-
-  // Return versioned path for new installations
-  return version ? getVersionedCachePath(pluginId, version) : legacyPath
-}
 
 /**
  * Recursively copy a directory.

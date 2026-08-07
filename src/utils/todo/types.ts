@@ -12,7 +12,7 @@ export const TodoItemSchema = lazySchema(() =>
     activeForm: z.string().min(1, 'Active form cannot be empty'),
   }),
 )
-export type TodoItem = z.infer<ReturnType<typeof TodoItemSchema>>
+
 
 export const TodoListSchema = lazySchema(() => z.array(TodoItemSchema()))
 export type TodoList = z.infer<ReturnType<typeof TodoListSchema>>

@@ -7,18 +7,6 @@
 import { randomUUID } from 'crypto'
 import { logForDebugging } from './debug.js'
 
-export interface RequestLog {
-  correlationId: string
-  timestamp: number
-  provider: string
-  model: string
-  duration: number
-  status: 'success' | 'error'
-  tokensIn: number
-  tokensOut: number
-  error?: string
-  streaming: boolean
-}
 
 export function createCorrelationId(): string {
   return randomUUID()

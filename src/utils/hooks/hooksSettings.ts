@@ -160,12 +160,6 @@ export function getAllHooks(appState: AppState): IndividualHookConfig[] {
   return hooks
 }
 
-export function getHooksForEvent(
-  appState: AppState,
-  event: HookEvent,
-): IndividualHookConfig[] {
-  return getAllHooks(appState).filter(hook => hook.event === event)
-}
 
 export function hookSourceDescriptionDisplayString(source: HookSource): string {
   switch (source) {

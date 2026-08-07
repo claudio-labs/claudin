@@ -172,10 +172,6 @@ export async function resolveLinuxBrowser(): Promise<string | null> {
   }
 }
 
-/** For tests — reset memoized detection. */
-export function _resetLinuxBrowserCacheForTesting(): void {
-  cachedLinuxBrowser = undefined
-}
 
 async function tryExec(bin: string, url: string): Promise<boolean> {
   const { code } = await execFileNoThrow(bin, [url])

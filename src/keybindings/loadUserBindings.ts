@@ -455,18 +455,4 @@ export function getCachedKeybindingWarnings(): KeybindingWarning[] {
   return cachedWarnings
 }
 
-/**
- * Reset internal state for testing.
- */
-export function resetKeybindingLoaderForTesting(): void {
-  initialized = false
-  disposed = false
-  cachedBindings = null
-  cachedWarnings = []
-  lastCustomBindingsLogDate = null
-  if (watcher) {
-    void watcher.close()
-    watcher = null
-  }
-  keybindingsChanged.clear()
-}
+

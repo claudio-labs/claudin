@@ -60,29 +60,4 @@ export async function parseAndValidateManifestFromBytes(
   return parseAndValidateManifestFromText(manifestText)
 }
 
-/**
- * Generates an extension ID from author name and extension name.
- * Uses the same algorithm as the directory backend for consistency.
- */
-export function generateExtensionId(
-  manifest: McpbManifest,
-  prefix?: 'local.unpacked' | 'local.dxt',
-): string {
-  const sanitize = (str: string) =>
-    str
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-_.]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '')
 
-  const authorName = manifest.author.name
-  const extensionName = manifest.name
-
-  const sanitizedAuthor = sanitize(authorName)
-  const sanitizedName = sanitize(extensionName)
-
-  return prefix
-    ? `${prefix}.${sanitizedAuthor}.${sanitizedName}`
-    : `${sanitizedAuthor}.${sanitizedName}`
-}

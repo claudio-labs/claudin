@@ -54,10 +54,6 @@ export function getTaskOutputDir(): string {
   return _taskOutputDir
 }
 
-/** Test helper — clears the memoized dir. */
-export function _resetTaskOutputDirForTest(): void {
-  _taskOutputDir = undefined
-}
 
 /**
  * Ensure the task output directory exists
@@ -232,25 +228,6 @@ export class DiskTaskOutput {
 
 const outputs = new Map<string, DiskTaskOutput>()
 
-/**
- * Test helper — cancel pending writes, await in-flight ops, clear the map.
- * backgroundShells.test.ts and other task tests spawn real shells that
- * write through this module without afterEach cleanup; their entries
- * leak into diskOutput.test.ts on the same shard.
- *
- * Awaits all tracked promises until the set stabilizes — a settling promise
- * may spawn another (initTaskOutputAsSymlink's catch → initTaskOutput).
- * Call this in afterEach BEFORE rmSync to avoid async-ENOENT-after-teardown.
- */
-export async function _clearOutputsForTest(): Promise<void> {
-  for (const output of outputs.values()) {
-    output.cancel()
-  }
-  while (_pendingOps.size > 0) {
-    await Promise.allSettled([..._pendingOps])
-  }
-  outputs.clear()
-}
 
 function getOrCreateOutput(taskId: string): DiskTaskOutput {
   let output = outputs.get(taskId)
@@ -269,16 +246,6 @@ export function appendTaskOutput(taskId: string, content: string): void {
   getOrCreateOutput(taskId).append(content)
 }
 
-/**
- * Wait for all pending writes for a task to complete.
- * Useful before reading output to ensure all data is flushed.
- */
-export async function flushTaskOutput(taskId: string): Promise<void> {
-  const output = outputs.get(taskId)
-  if (output) {
-    await output.flush()
-  }
-}
 
 /**
  * Evict a task's DiskTaskOutput from the in-memory map after flushing.
@@ -356,21 +323,6 @@ export async function getTaskOutput(
   }
 }
 
-/**
- * Get the current size (offset) of a task's output file.
- */
-export async function getTaskOutputSize(taskId: string): Promise<number> {
-  try {
-    return (await stat(getTaskOutputPath(taskId))).size
-  } catch (e) {
-    const code = getErrnoCode(e)
-    if (code === 'ENOENT') {
-      return 0
-    }
-    logError(e)
-    return 0
-  }
-}
 
 /**
  * Clean up a task's output file and write queue.

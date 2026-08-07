@@ -173,9 +173,6 @@ export function getFilteredCodexCatalog(): CodexModelEntry[] {
   )
 }
 
-export function getCodexModelById(id: string): CodexModelEntry | undefined {
-  return CODEX_MODEL_CATALOG.find(entry => entry.id === id)
-}
 
 // Context-window records derived from the catalog, spread into the OpenAI maps
 // in openaiContextWindows.ts so the two never drift.

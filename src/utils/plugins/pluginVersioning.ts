@@ -146,12 +146,4 @@ export function getVersionFromPath(installPath: string): string | null {
   return null
 }
 
-/**
- * Check if a path is a versioned plugin path.
- *
- * @param path - Path to check
- * @returns True if path follows versioned structure
- */
-export function isVersionedPath(path: string): boolean {
-  return getVersionFromPath(path) !== null
-}
+

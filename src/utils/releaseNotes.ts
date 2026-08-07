@@ -42,10 +42,6 @@ function getChangelogCachePath(): string {
 // helpers) read from this cache after setup.ts awaits checkForReleaseNotes().
 let changelogMemoryCache: string | null = null
 
-/** @internal exported for tests */
-export function _resetChangelogCacheForTesting(): void {
-  changelogMemoryCache = null
-}
 
 /**
  * Migrate changelog from old config-based storage to file-based storage.

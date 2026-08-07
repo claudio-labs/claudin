@@ -225,16 +225,6 @@ export function getRecentActivitySync(): LogOption[] {
   return cachedActivity
 }
 
-/**
- * Formats release notes for display, with smart truncation
- */
-export function formatReleaseNoteForDisplay(
-  note: string,
-  maxWidth: number,
-): string {
-  // Simply truncate at the max width, same as Recent Activity descriptions
-  return truncate(note, maxWidth)
-}
 
 /**
  * Gets the common logo display data used by both LogoV2 and CondensedLogo

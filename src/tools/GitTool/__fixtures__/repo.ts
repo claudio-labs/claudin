@@ -133,9 +133,6 @@ export function writeRepoFile(root: string, rel: string, body: string): void {
   writeFileSync(abs, body)
 }
 
-export function readRepoFile(root: string, rel: string): string {
-  return readFileSync(join(root, rel), 'utf8')
-}
 
 function init(root: string): void {
   git(root, ['init', '-q', '-b', 'main'])

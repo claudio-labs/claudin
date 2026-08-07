@@ -441,21 +441,7 @@ export function isRowEmptyFrom(screen: Screen, x: number, y: number): boolean {
   return true
 }
 
-/**
- * Check if a Cell (view object) represents an empty cell.
- */
-export function isCellEmpty(screen: Screen, cell: Cell): boolean {
-  // Check if cell looks like an empty cell (space, empty style, narrow, no link).
-  // Note: After cellAt mapping, unwritten cells have emptyStyleId, so this
-  // returns true for both unwritten AND cleared cells. Use isEmptyCellAt
-  // for the internal distinction.
-  return (
-    cell.char === ' ' &&
-    cell.styleId === screen.emptyStyleId &&
-    cell.width === CellWidth.Narrow &&
-    !cell.hyperlink
-  )
-}
+
 // Intern a hyperlink string and return its ID (0 = no hyperlink)
 function internHyperlink(screen: Screen, hyperlink: Hyperlink): number {
   return screen.hyperlinkPool.intern(hyperlink)

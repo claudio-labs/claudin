@@ -115,52 +115,6 @@ export function addFunctionHook(
   return id
 }
 
-/**
- * Remove a function hook by ID from the session.
- */
-export function removeFunctionHook(
-  setAppState: (updater: (prev: AppState) => AppState) => void,
-  sessionId: string,
-  event: HookEvent,
-  hookId: string,
-): void {
-  setAppState(prev => {
-    const store = prev.sessionHooks.get(sessionId)
-    if (!store) {
-      return prev
-    }
-
-    const eventMatchers = store.hooks[event] || []
-
-    // Remove the hook with matching ID from all matchers
-    const updatedMatchers = eventMatchers
-      .map(matcher => {
-        const updatedHooks = matcher.hooks.filter(h => {
-          if (h.hook.type !== 'function') return true
-          return h.hook.id !== hookId
-        })
-
-        return updatedHooks.length > 0
-          ? { ...matcher, hooks: updatedHooks }
-          : null
-      })
-      .filter((m): m is SessionHookMatcher => m !== null)
-
-    const newHooks =
-      updatedMatchers.length > 0
-        ? { ...store.hooks, [event]: updatedMatchers }
-        : Object.fromEntries(
-            Object.entries(store.hooks).filter(([e]) => e !== event),
-          )
-
-    prev.sessionHooks.set(sessionId, { hooks: newHooks })
-    return prev
-  })
-
-  logForDebugging(
-    `Removed function hook ${hookId} for event ${event} in session ${sessionId}`,
-  )
-}
 
 /**
  * Internal helper to add a hook to session state

@@ -181,11 +181,6 @@ export function hasShownHintThisSession(): boolean {
   return shownThisSession
 }
 
-/** Test-only reset. */
-export function _resetClaudeCodeHintStore(): void {
-  pendingHint = null
-  shownThisSession = false
-}
 
 export const _test = {
   parseAttrs,

@@ -202,25 +202,4 @@ export function parseZipModes(data: Uint8Array): Record<string, number> {
   return modes
 }
 
-/**
- * Reads a zip file from disk asynchronously and unzips it.
- * Returns its contents as a record of file paths to Uint8Array data.
- */
-export async function readAndUnzipFile(
-  filePath: string,
-): Promise<Record<string, Uint8Array>> {
-  const fs = getFsImplementation()
 
-  try {
-    const zipData = await fs.readFileBytes(filePath)
-    // await is required here: without it, rejections from the now-async
-    // unzipFile() escape the try/catch and bypass the error wrapping below.
-    return await unzipFile(zipData)
-  } catch (error) {
-    if (isENOENT(error)) {
-      throw error
-    }
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    throw new Error(`Failed to read or unzip file: ${errorMessage}`)
-  }
-}

@@ -56,15 +56,6 @@ export function parsePluginIdentifier(plugin: string): ParsedPluginIdentifier {
   return { name: plugin }
 }
 
-/**
- * Build a plugin ID from name and marketplace
- * @param name The plugin name
- * @param marketplace Optional marketplace name
- * @returns Plugin ID in format "name" or "name@marketplace"
- */
-export function buildPluginId(name: string, marketplace?: string): string {
-  return marketplace ? `${name}@${marketplace}` : name
-}
 
 /**
  * Check if a marketplace name is an official (Anthropic-controlled) marketplace.

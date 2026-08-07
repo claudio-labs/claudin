@@ -162,16 +162,6 @@ export function getPluginEditableScopes(): Map<string, ExtendedPluginScope> {
   return result
 }
 
-/**
- * Check if a scope is persistable (not session-only).
- * @param scope The scope to check
- * @returns true if the scope should be persisted to installed_plugins.json
- */
-export function isPersistableScope(
-  scope: ExtendedPluginScope,
-): scope is PersistablePluginScope {
-  return scope !== 'flag'
-}
 
 /**
  * Convert SettingSource to plugin scope.
@@ -208,46 +198,6 @@ export async function getInstalledPlugins(): Promise<string[]> {
   return installed
 }
 
-/**
- * Finds plugins that are enabled but not installed
- * @param enabledPlugins Array of enabled plugin IDs
- * @returns Array of missing plugin IDs
- */
-export async function findMissingPlugins(
-  enabledPlugins: string[],
-): Promise<string[]> {
-  try {
-    const installedPlugins = await getInstalledPlugins()
-
-    // Filter to not-installed synchronously, then look up all in parallel.
-    // Results are collected in original enabledPlugins order.
-    const notInstalled = enabledPlugins.filter(
-      id => !installedPlugins.includes(id),
-    )
-    const lookups = await Promise.all(
-      notInstalled.map(async pluginId => {
-        try {
-          const plugin = await getPluginById(pluginId)
-          return { pluginId, found: plugin !== null && plugin !== undefined }
-        } catch (error) {
-          logForDebugging(
-            `Failed to check plugin ${pluginId} in marketplace: ${error}`,
-          )
-          // Plugin doesn't exist in any marketplace, will be handled as an error
-          return { pluginId, found: false }
-        }
-      }),
-    )
-    const missing = lookups
-      .filter(({ found }) => found)
-      .map(({ pluginId }) => pluginId)
-
-    return missing
-  } catch (error) {
-    logError(error)
-    return []
-  }
-}
 
 /**
  * Result of plugin installation attempt

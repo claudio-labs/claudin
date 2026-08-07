@@ -145,12 +145,5 @@ export const SandboxSettingsSchema = lazySchema(() =>
 
 // Inferred types from schemas
 export type SandboxSettings = z.infer<ReturnType<typeof SandboxSettingsSchema>>
-export type SandboxNetworkConfig = NonNullable<
-  z.infer<ReturnType<typeof SandboxNetworkConfigSchema>>
->
-export type SandboxFilesystemConfig = NonNullable<
-  z.infer<ReturnType<typeof SandboxFilesystemConfigSchema>>
->
-export type SandboxIgnoreViolations = NonNullable<
-  SandboxSettings['ignoreViolations']
->
+
+

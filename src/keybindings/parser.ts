@@ -175,15 +175,6 @@ export function keystrokeToDisplayString(
   return parts.join('+')
 }
 
-/**
- * Convert a Chord to a platform-appropriate display string.
- */
-export function chordToDisplayString(
-  chord: Chord,
-  platform: DisplayPlatform = 'linux',
-): string {
-  return chord.map(ks => keystrokeToDisplayString(ks, platform)).join(' ')
-}
 
 /**
  * Parse keybinding blocks (from JSON config) into a flat list of ParsedBindings.

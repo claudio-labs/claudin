@@ -218,17 +218,6 @@ export function getAutoModeClassifierErrorDumpPath(): string {
   )
 }
 
-/**
- * Snapshot of the most recent classifier API request(s), stringified lazily
- * only when /share reads it. Array because the XML path may send two requests
- * (stage1 + stage2). Stored in bootstrap/state.ts to avoid module-scope
- * mutable state.
- */
-export function getAutoModeClassifierTranscript(): string | null {
-  const requests = getLastClassifierRequests()
-  if (requests === null) return null
-  return jsonStringify(requests, null, 2)
-}
 
 /**
  * Dump classifier input prompts + context-comparison diagnostics on API error.
@@ -378,22 +367,6 @@ function messageToTranscriptEntry(msg: Message): TranscriptEntry | null {
   return null
 }
 
-/**
- * Build transcript entries from messages.
- * Includes user text messages and assistant tool_use blocks (excluding assistant text).
- * Queued user messages (attachment messages with queued_command type) are extracted
- * and emitted as user turns.
- */
-export function buildTranscriptEntries(messages: Message[]): TranscriptEntry[] {
-  const transcript: TranscriptEntry[] = []
-  for (const msg of messages) {
-    const entry = messageToTranscriptEntry(msg)
-    if (entry) {
-      transcript.push(entry)
-    }
-  }
-  return transcript
-}
 
 type ToolLookup = ReadonlyMap<string, Tool>
 

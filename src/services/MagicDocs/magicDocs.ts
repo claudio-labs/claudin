@@ -76,18 +76,6 @@ export function detectMagicDocHeader(
   return { title }
 }
 
-/**
- * Register a file as a Magic Doc when it's read
- * Only registers once per file path - the hook always reads latest content
- */
-export function registerMagicDoc(filePath: string): void {
-  // Only register if not already tracked
-  if (!trackedMagicDocs.has(filePath)) {
-    trackedMagicDocs.set(filePath, {
-      path: filePath,
-    })
-  }
-}
 
 /**
  * Create Magic Docs agent definition

@@ -61,26 +61,6 @@ function createJsonlWriter(options: {
 // Buffered writers for JSONL log files, keyed by path
 const logWriters = new Map<string, JsonlWriter>()
 
-/**
- * Flush all buffered log writers. Used for testing.
- * @internal
- */
-export function _flushLogWritersForTesting(): void {
-  for (const writer of logWriters.values()) {
-    writer.flush()
-  }
-}
-
-/**
- * Clear all buffered log writers. Used for testing.
- * @internal
- */
-export function _clearLogWritersForTesting(): void {
-  for (const writer of logWriters.values()) {
-    writer.dispose()
-  }
-  logWriters.clear()
-}
 
 function getLogWriter(path: string): JsonlWriter {
   let writer = logWriters.get(path)

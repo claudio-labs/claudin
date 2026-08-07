@@ -58,8 +58,7 @@ function clampChalkLevelForTmux(): boolean {
 // Computed once at module load — terminal/tmux environment doesn't change mid-session.
 // Order matters: boost first so the tmux clamp can re-clamp if tmux is running
 // inside a VS Code terminal. Exported for debugging — tree-shaken if unused.
-export const CHALK_BOOSTED_FOR_XTERMJS = boostChalkLevelForXtermJs()
-export const CHALK_CLAMPED_FOR_TMUX = clampChalkLevelForTmux()
+
 
 export type ColorType = 'foreground' | 'background'
 

@@ -834,50 +834,6 @@ export function endUserInputPerfettoSpan(
   pendingSpans.delete(spanId)
 }
 
-/**
- * Emit an instant event (marker)
- */
-export function emitPerfettoInstant(
-  name: string,
-  category: string,
-  args?: Record<string, unknown>,
-): void {
-  if (!isEnabled) return
-
-  const agentInfo = getCurrentAgentInfo()
-
-  events.push({
-    name,
-    cat: category,
-    ph: 'i',
-    ts: getTimestamp(),
-    pid: agentInfo.processId,
-    tid: agentInfo.threadId,
-    args,
-  })
-}
-
-/**
- * Emit a counter event for tracking metrics over time
- */
-export function emitPerfettoCounter(
-  name: string,
-  values: Record<string, number>,
-): void {
-  if (!isEnabled) return
-
-  const agentInfo = getCurrentAgentInfo()
-
-  events.push({
-    name,
-    cat: 'counter',
-    ph: 'C',
-    ts: getTimestamp(),
-    pid: agentInfo.processId,
-    tid: agentInfo.threadId,
-    args: values,
-  })
-}
 
 /**
  * Start an interaction span (wraps a full user request cycle)
@@ -1070,51 +1026,4 @@ function writePerfettoTraceSync(): void {
   }
 }
 
-/**
- * Get all recorded events (for testing)
- */
-export function getPerfettoEvents(): TraceEvent[] {
-  return [...metadataEvents, ...events]
-}
 
-/**
- * Reset the tracer state (for testing)
- */
-export function resetPerfettoTracer(): void {
-  if (staleSpanCleanupId) {
-    clearInterval(staleSpanCleanupId)
-    staleSpanCleanupId = null
-  }
-  stopWriteInterval()
-  metadataEvents.length = 0
-  events.length = 0
-  pendingSpans.clear()
-  agentRegistry.clear()
-  agentIdToProcessId.clear()
-  totalAgentCount = 0
-  processIdCounter = 1
-  spanIdCounter = 0
-  isEnabled = false
-  tracePath = null
-  startTimeMs = 0
-  traceWritten = false
-}
-
-/**
- * Trigger a periodic write immediately (for testing)
- */
-export async function triggerPeriodicWriteForTesting(): Promise<void> {
-  await periodicWrite()
-}
-
-/**
- * Evict stale spans immediately (for testing)
- */
-export function evictStaleSpansForTesting(): void {
-  evictStaleSpans()
-}
-
-export const MAX_EVENTS_FOR_TESTING = MAX_EVENTS
-export function evictOldestEventsForTesting(): void {
-  evictOldestEvents()
-}

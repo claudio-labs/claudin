@@ -66,7 +66,6 @@ export function notifyTasksUpdated(): void {
   }
 }
 
-export const TASK_STATUSES = ['pending', 'in_progress', 'completed'] as const
 
 export const TaskStatusSchema = lazySchema(() =>
   z.enum(['pending', 'in_progress', 'completed']),
@@ -767,50 +766,6 @@ async function readTeamMembers(
   }
 }
 
-/**
- * Gets the status of all agents in a team based on task ownership.
- * An agent is considered "idle" if they don't own any open tasks.
- * An agent is considered "busy" if they own at least one open task.
- *
- * @param teamName - The name of the team (also used as taskListId)
- * @returns Array of agent statuses, or null if team not found
- */
-export async function getAgentStatuses(
-  teamName: string,
-): Promise<AgentStatus[] | null> {
-  const teamData = await readTeamMembers(teamName)
-  if (!teamData) {
-    return null
-  }
-
-  const taskListId = sanitizeName(teamName)
-  const allTasks = await listTasks(taskListId)
-
-  // Get unresolved tasks grouped by owner (open or in_progress)
-  const unresolvedTasksByOwner = new Map<string, string[]>()
-  for (const task of allTasks) {
-    if (task.status !== 'completed' && task.owner) {
-      const existing = unresolvedTasksByOwner.get(task.owner) || []
-      existing.push(task.id)
-      unresolvedTasksByOwner.set(task.owner, existing)
-    }
-  }
-
-  // Build status for each agent (leader is already in members)
-  return teamData.members.map(member => {
-    // Check both name (new) and agentId (legacy) for backwards compatibility
-    const tasksByName = unresolvedTasksByOwner.get(member.name) || []
-    const tasksById = unresolvedTasksByOwner.get(member.agentId) || []
-    const currentTasks = uniq([...tasksByName, ...tasksById])
-    return {
-      agentId: member.agentId,
-      name: member.name,
-      agentType: member.agentType,
-      status: currentTasks.length === 0 ? 'idle' : 'busy',
-      currentTasks,
-    }
-  })
-}
 
 /**
  * Result of unassigning tasks from a teammate

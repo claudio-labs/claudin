@@ -691,23 +691,6 @@ export function selectionBounds(s: SelectionState): {
     : { start: s.focus, end: s.anchor }
 }
 
-/**
- * Check if a cell at (col, row) is within the current selection range.
- * Used by the renderer to apply inverse style.
- */
-export function isCellSelected(
-  s: SelectionState,
-  col: number,
-  row: number,
-): boolean {
-  const b = selectionBounds(s)
-  if (!b) return false
-  const { start, end } = b
-  if (row < start.row || row > end.row) return false
-  if (row === start.row && col < start.col) return false
-  if (row === end.row && col > end.col) return false
-  return true
-}
 
 /** Extract text from one screen row. When the next row is a soft-wrap
  *  continuation (screen.softWrap[row+1]>0), clamp to that content-end

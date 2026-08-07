@@ -15,9 +15,6 @@ export const RemoteManagedSettingsResponseSchema = lazySchema(() =>
   }),
 )
 
-export type RemoteManagedSettingsResponse = z.infer<
-  ReturnType<typeof RemoteManagedSettingsResponseSchema>
->
 
 /**
  * Result of fetching remotely managed settings

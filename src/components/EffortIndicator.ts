@@ -17,18 +17,6 @@ import {
 import { buildEffortPill } from '../utils/format-branch.js'
 import type { Theme } from '../utils/theme.js'
 
-/**
- * Build the text for the effort-changed notification, e.g. "◐ medium".
- * Returns undefined if the model doesn't support effort.
- */
-export function getEffortNotificationText(
-  effortValue: EffortValue | undefined,
-  model: string,
-): string | undefined {
-  if (!modelSupportsEffort(model)) return undefined
-  const level = getDisplayedEffortLabel(model, effortValue)
-  return `${effortLevelToSymbol(level)} ${level}`
-}
 
 /**
  * Resolve the traffic-light pill background for an effort level so higher
