@@ -16,6 +16,7 @@
 ## Repo health
 - [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and a CORRECTION: its "React-Compiler output cannot be hand-fixed" claim was disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
+- [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
 
 ## Roadmap & major features
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
