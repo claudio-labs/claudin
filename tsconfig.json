@@ -1,8 +1,18 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    // The runtime floor is Node >=22.12 (see package.json engines), which has
+    // the whole ES2024 surface. Without this, `Array#findLast`,
+    // `Promise.withResolvers` and friends are reported as missing even though
+    // they are used deliberately.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // `tsc` is only ever run as `--noEmit` (there is no emit path — the bundle
+    // comes from scripts/build.ts), and test files import each other with
+    // explicit `.ts`/`.tsx` extensions, which bundler resolution allows.
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
