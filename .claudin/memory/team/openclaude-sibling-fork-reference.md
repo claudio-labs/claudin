@@ -22,6 +22,46 @@ FREE WIN found during this audit: `src/services/api/smartModelRouting.ts` alread
 
 ### memdir deep-diff (same audit)
 
+### cache/perf diff (2026-08-07, separate pass)
+
+Ranked, all verified absent in claudin:
+1. **Local-provider fast path** — `getLocalFastPathConfig()` at their
+   `services/api/providerConfig.ts:600-640` (`OPENCLAUDE_LOCAL_FAST_PATH`, else
+   `isLocalProviderUrl` decides) turns off three per-request costs for
+   loopback/RFC1918/`.local` endpoints: `skipStableStringify`,
+   `skipStrictTools`, `skipToolHistoryCompression`; consumed at
+   `openaiShim.ts:853,1025,1063`. claudin HAS `isLocalProviderUrl` but uses it
+   only for display (`components/StartupScreen.ts:81,108`). Effort S, real win
+   for Ollama/vLLM, and cache-invariant-safe (local endpoints have no prompt
+   cache; the toggles only remove work).
+2. **`compressToolHistory` — port the GATE, not the rewriter.** claudin deleted
+   its copy in `f4ac9281` in favour of the unified stable-stub path. What is
+   genuinely missing is the *trigger*: their `claude.ts:1399-1413`
+   `shouldCompressNativeToolHistory({apiProvider, isFirstPartyBaseUrl,
+   isGithubNativeAnthropic, hasProviderOverride, promptCachingEnabled})`
+   compresses native traffic **only when prompt caching is inactive**. claudin's
+   `applyStableStubs`/`stableStubState.ts` is clip/microcompact-policy-driven
+   with no provider-capability arm. Their own comment (`claude.ts:1389-1395`)
+   restates claudin's clip-frontier invariant, so keep stable-stub as the
+   rewriter and add only the predicate.
+3. **`contextCollapse` + `snipCompact` are REAL code there** (2,360 LOC over 12
+   files + `snipCompact.ts` 281) where claudin has 148-byte and 104-byte stubs —
+   so it is a transplant, not a flag flip. Effort L, invariant-risky.
+4. `conversationCache.ts` (LRU/TTL 24h) — low value, claudin's
+   `tools/shared/twoTierCache.ts` is a better primitive.
+
+claudin is AHEAD, do NOT port: `addCacheBreakpoints` (they pin the marker at
+`messages.length-1`, `claude.ts:3448`; claudin defers it via `clipFrontierIndex`
+at `claude/paramBuilders.ts:319`); the whole `src/services/cache/` tree and
+`toolResultCache.ts`/`cacheInvalidation.ts`, which have **no counterpart there**;
+`fileStateCache.ts` (395 vs 142 lines); `modelCache.ts`, `mcp/client/authCache.ts`.
+**`CACHED_MICROCOMPACT` being ON in their flag map buys them nothing** —
+`compact/cachedMicrocompact.ts:1` is literally "Stub — not included in source
+snapshot". `memoize.ts` and the v8 compile cache are identical on both sides.
+
+Claudin's own per-turn scan findings from the same day are in
+[[per-turn-fs-scan-audit]].
+
 The two `src/memdir/` are near-identical in size (2703 vs 2577 LOC) and share filenames — the delta is behavioral. `findRelevantMemories.ts` and `memoryAge.ts` are **byte-identical** on both sides (Sonnet `sideQuery`, `querySource:'memdir_relevance'`, max 5 picks, no embeddings/recency scoring; neither prunes stale memories). claudin is AHEAD on: project-local team dir + `isTeamMemLikelyGitIgnored` gitignore carve-out (`teamMemPaths.ts:99-132` — openclaude's team dir is still global with no git awareness), the loop-error extraction trigger, and the anti-noise prompt guards.
 
 openclaude is ahead on five things, ranked by port value:

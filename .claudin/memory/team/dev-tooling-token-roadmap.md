@@ -122,6 +122,41 @@ elide-what-you-already-sent lane, including the rule that matters: fire only
 when the previous body's `tool_use_id` is absent from `getClippedIds()`, so
 nothing invisible is ever elided.
 
+**Re-sized 2026-08-07** (504 transcripts, 258 sessions with main-thread calls,
+2026-07-06 → 2026-08-07, 17,124 calls / 21.59M tool_result chars; method as
+above). Read **59.7%** (4,196 calls, 12.90M chars), Bash 19.7%, Grep 11.0%,
+Agent 2.9%, ExitPlanMode 2.5%.
+
+The honest ceiling is much smaller than "45.9% of Read is re-reads" suggests:
+- re-reads of an already-read path: 2,004 calls / 5.92M chars (27.4% of ALL)
+- of those, **identical input** only 184 calls / 563k chars (2.6% of ALL) — the
+  bucket today's dedup already targets
+- **redundant** (same-or-narrower range already delivered AND no intervening
+  Edit/Write/apply_patch to that path): **551 calls / 1.89M chars = 14.1% of
+  Read, 8.7% of ALL**; partial-overlap re-sends add ~166k chars (+0.8%)
+- genuinely new view/slice: 1,077 calls / 3.06M chars (22.9% of Read) — not
+  elidable, at most deltable
+
+**So D3 ≈ 9.5% of all main-thread tool_result chars (~510k tok over 258
+sessions)** — still the biggest single item, but cite this, not 58%. Shape of
+the demand: 2,569 range reads vs 1,318 full, 192 outline, 117 symbol; 33.3% of
+path-instances are read ≥2×, 141 read ≥5×, tail at 20×; 248 results (5.9%) came
+back as an auto-outline.
+
+What exists today, verified in code: the dedup gate at
+`FileReadTool.ts:816-824` fires ONLY on `existingState && !isPartialView &&
+offset !== undefined && view === undefined && symbol === undefined` plus an
+exact `offset`/`limit` match and `mtimeMs === timestamp`, returning
+`{type:'file_unchanged'}` with `noResultCache` (`:918-929`). The slice-walk case
+— a different range against a prior range — is **telemetry only, explicitly no
+behavior change** (`:1124-1141`), and that is exactly the 22.9% bucket.
+Constraints any delta reply must clear: gate on `getClippedIds()` like
+`GitTool/delta.ts:303`; `isPartialView: true` REFUSES Edit/Write/apply_patch/
+NotebookEdit, so a delta must be modelled as a real body or it blocks editing;
+`readFileState` is an LRU of 100 entries / 25 MB (`fileStateCache.ts:106,110`),
+so an eviction is indistinguishable from a first read; mtime is the only
+freshness signal.
+
 ### D4 — Make the existing redirects actually fire (52k chars, effort S)
 99 Bash calls contained `bun run typecheck`/`tsc --noEmit` (52,471 chars) against
 only 15 Typecheck calls; 64 test-ish Bash calls against 117 RunTests calls (mean
