@@ -14,11 +14,8 @@ import { PermissionRuleSchema } from './permissionValidation.js'
 // Re-export hook schemas and types from centralized location for backward compatibility
 export {
   type AgentHook,
-  type BashCommandHook,
   type HookCommand,
-  HookCommandSchema,
   type HookMatcher,
-  HookMatcherSchema,
   HooksSchema,
   type HooksSettings,
   type HttpHook,

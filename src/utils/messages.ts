@@ -11,8 +11,6 @@ export {
   extractTextContent,
   getContentText,
   wrapInSystemReminder,
-  wrapMessagesInSystemReminder,
-  wrapCommandText,
 } from './messages/text.js'
 
 export {
@@ -47,7 +45,6 @@ export {
   getLastAssistantMessage,
   hasToolCallsInLastAssistantTurn,
   isNotEmptyMessage,
-  isToolUseRequestMessage,
   isToolUseResultMessage,
   isSystemLocalCommandMessage,
   isCompactBoundaryMessage,
@@ -62,14 +59,10 @@ export {
 export {
   normalizeMessages,
   reorderMessagesInUI,
-  reorderAttachmentsForAPI,
   stripToolReferenceBlocksFromUserMessage,
   stripCallerFieldFromAssistantMessage,
   normalizeMessagesForAPI,
   mergeUserMessagesAndToolResults,
-  mergeAssistantMessages,
-  mergeUserMessages,
-  mergeUserContentBlocks,
   normalizeContentFromAPI,
   filterUnresolvedToolUses,
   filterWhitespaceOnlyAssistantMessages,
@@ -104,16 +97,12 @@ export {
   createApiMetricsMessage,
   createCommandInputMessage,
   createCompactBoundaryMessage,
-  createMicrocompactBoundaryMessage,
   createSystemAPIErrorMessage,
   createToolUseSummaryMessage,
 } from './messages/factories.js'
 
 export {
-  hasUnresolvedHooks,
   getToolResultIDs,
-  getSiblingToolUseIDs,
-  type MessageLookups,
   buildMessageLookups,
   EMPTY_LOOKUPS,
   buildSubagentLookups,

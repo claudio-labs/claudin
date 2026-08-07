@@ -13,6 +13,7 @@
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
   "ignore": [
     "src/types/generated/**",
+    "src/entrypoints/sdk/coreTypes.generated.ts",
     "src/stubs/growthbook-stub.ts",
     "src/stubs/sandbox-runtime-stub.ts"
   ],

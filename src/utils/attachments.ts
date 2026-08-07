@@ -21,32 +21,14 @@
 //   pipeline.ts         — getAttachments orchestrator + getAttachmentMessages
 
 export type {
-  FileAttachment,
-  CompactFileReferenceAttachment,
-  PDFReferenceAttachment,
-  AlreadyReadFileAttachment,
   AgentMentionAttachment,
-  AsyncHookResponseAttachment,
   HookAttachment,
   HookPermissionDecisionAttachment,
-  HookSystemMessageAttachment,
-  HookCancelledAttachment,
-  HookErrorDuringExecutionAttachment,
-  HookSuccessAttachment,
-  HookNonBlockingErrorAttachment,
   Attachment,
-  TeammateMailboxAttachment,
-  TeamContextAttachment,
 } from './attachments/types.js'
 
 export {
-  TODO_REMINDER_CONFIG,
   PLAN_MODE_ATTACHMENT_CONFIG,
-  AUTO_MODE_ATTACHMENT_CONFIG,
-  RELEVANT_MEMORIES_CONFIG,
-  VERIFY_PLAN_REMINDER_CONFIG,
-  MAX_MEMORY_LINES,
-  MAX_MEMORY_BYTES,
 } from './attachments/config.js'
 
 export {
@@ -60,9 +42,6 @@ export {
 export {
   extractAtMentionedFiles,
   extractMcpResourceMentions,
-  extractAgentMentions,
-  parseAtMentionedFileLines,
-  type AtMentionedFileLines,
 } from './attachments/mentions.js'
 
 export {
@@ -71,50 +50,16 @@ export {
 } from './attachments/file-pipeline.js'
 
 export {
-  getDirectoriesToProcess,
-  memoryFilesToAttachments,
-  getNestedMemoryAttachmentsForFile,
-  getNestedMemoryAttachments,
-  collectSurfacedMemories,
-  readMemoriesForSurfacing,
   memoryHeader,
   startRelevantMemoryPrefetch,
-  collectRecentSuccessfulTools,
   filterDuplicateMemoryAttachments,
-  type MemoryPrefetch,
 } from './attachments/memory.js'
 
-export {
-  getPlanModeAttachments,
-  getPlanModeExitAttachment,
-  getAutoModeAttachments,
-  getAutoModeExitAttachment,
-  todoListToSnapshot,
-  taskListToSnapshot,
-  getTodoReminderAttachments,
-  getTaskReminderAttachments,
-  getUnifiedTaskAttachments,
-  getVerifyPlanReminderTurnCount,
-  getVerifyPlanReminderAttachment,
-  getCompactionReminderAttachment,
-} from './attachments/lifecycle.js'
 
 export {
-  getDateChangeAttachments,
-  getUltrathinkEffortAttachment,
   getDeferredToolsDeltaAttachment,
   getAgentListingDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
-  getClaudeMdDeltaAttachment,
-  getGitStatusDeltaAttachment,
-  getMemoryDeltaAttachment,
-  getCriticalSystemReminderAttachment,
-  getOutputStyleAttachment,
-  getTeamContextAttachment,
-  getTokenUsageAttachment,
-  getOutputTokenUsageAttachment,
-  getMaxBudgetUsdAttachment,
-  getContextEfficiencyAttachment,
 } from './attachments/injections.js'
 
 export {
@@ -123,29 +68,17 @@ export {
   _getSkillLatchSnapshotForTests,
   _seedSentSkillNamesForTests,
   filterToBundledAndMcp,
-  getSkillListingAttachments,
   resetSentBashGitInstructions,
   suppressNextBashGitInstructions,
   getBashGitInstructionsAttachment,
 } from './attachments/skill-bash-gates.js'
 
 export {
-  getSelectedLinesFromIDE,
-  getOpenedFileFromIDE,
-  processAtMentionedFiles,
-  processAgentMentions,
-  processMcpResourceAttachments,
-  getChangedFiles,
-  getDynamicSkillAttachments,
-  getDiagnosticAttachments,
   getLSPDiagnosticAttachments,
-  getAsyncHookResponseAttachments,
-  getTeammateMailboxAttachments,
 } from './attachments/services.js'
 
 export {
   getAttachments,
   getQueuedCommandAttachments,
-  getAgentPendingMessageAttachments,
   getAttachmentMessages,
 } from './attachments/pipeline.js'

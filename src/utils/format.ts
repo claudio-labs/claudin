@@ -306,5 +306,4 @@ export {
   truncateStartToWidth,
   truncateToWidth,
   truncateToWidthNoEllipsis,
-  wrapText,
 } from './truncate.js'
