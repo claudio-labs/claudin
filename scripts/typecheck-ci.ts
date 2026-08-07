@@ -16,6 +16,23 @@
  * and re-report the lot as newly introduced. Comparison is a MULTISET, so three
  * copies of an error the baseline recorded once still count two as new.
  *
+ * KNOWN FALSE POSITIVE — the message is not as stable as the line number.
+ * For an error against a large union, tsc prints a truncated elaboration
+ * (`{ type: "result"; … } | … 30 more … | { …; }`), and BOTH which constituent
+ * it prints first and how many it truncates depend on what else has been
+ * interned in the program. Adding an unrelated file can therefore re-word a
+ * diagnostic that has not moved, changing its hash and getting it reported as
+ * newly introduced. Seen twice on 2026-08-07, on `runHeadless.ts` and
+ * `matching.characterization.test.ts`, from nothing but a new *.types.test.ts
+ * file arriving and later changing one import specifier.
+ *
+ * So before hunting a regression in a file the branch never touched: check
+ * whether the same diagnostic reproduces at the same line on a clean HEAD, and
+ * whether the TOTAL count moved. If the total is unchanged and only the hashes
+ * differ, it is this, and `--update` is the right answer. A stable fingerprint
+ * would have to normalize the elaboration out of the message, which changes
+ * behavior for the Typecheck tool too.
+ *
  *   bun run typecheck:ci        check the tree against typecheck-baseline.json
  *   bun run typecheck:baseline  rewrite that file from the current tree
  *
