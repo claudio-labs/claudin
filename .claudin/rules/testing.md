@@ -235,12 +235,17 @@ the production line and watch the assertion fail before believing it.
 
 `knip`, configured in `knip.json`, in two forms:
 
-- `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Scoped to
-  declared dependencies nothing imports, which is the finding that costs every
-  user an install. Clean as of 2026-08-07, when `code-excerpt`, `stack-utils`
-  and `tsx` were removed.
-- `bun run deadcode` — the **report**, which also lists unused files (20 open,
-  needing case-by-case review).
+- `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Covers unused
+  FILES and declared dependencies nothing imports. Both were cleared on
+  2026-08-07 — three dependencies (`code-excerpt`, `stack-utils`, `tsx`) and
+  nineteen files — so the gate starts from zero and any new finding is yours.
+- `bun run deadcode` — the wider report, which additionally surfaces
+  `unlisted`/`unresolved`.
+
+One of the twenty "unused" files was not dead: `migrateFennecToOpus` was the
+only one of eleven startup migrations never wired into `lifecycle.ts`. Treat a
+knip file finding as a question, not a verdict — "nothing imports this" and
+"this should not exist" are different claims.
 
 `unlisted` and `unresolved` are deliberately outside the gate. This fork
 resolves ~30 module names to stubs in `scripts/build.ts` and carries 138 imports

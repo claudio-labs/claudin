@@ -36,7 +36,7 @@
     "test:floor:update": "bun run scripts/test-floor.ts --update",
     "security:pr-scan": "bun run scripts/pr-intent-scan.ts",
     "deadcode": "knip --include files,dependencies",
-    "deadcode:ci": "knip --include dependencies,devDependencies --no-config-hints",
+    "deadcode:ci": "knip --include files,dependencies,devDependencies --no-config-hints",
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "bun run scripts/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/typecheck-ci.ts --update",

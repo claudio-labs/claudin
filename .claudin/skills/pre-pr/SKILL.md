@@ -38,12 +38,14 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    that deletes a suite along with the code it covered is what this catches.
    Raising the floor is deliberate — `bun run test:floor:update`, in the same
    commit that earned it.
-6. **Unused dependencies** — `bun run deadcode:ci`. Scoped to declared
-   dependencies that nothing imports, which is the part that costs every user
-   an install. The full `bun run deadcode` also lists unused FILES and
-   used-but-undeclared imports; both are report-only and neither gates, because
-   this fork resolves ~30 module names to stubs in `scripts/build.ts` that knip
-   cannot see, so "undeclared" there is the intended state rather than a defect.
+6. **Dead code** — `bun run deadcode:ci`. Covers unused files and declared
+   dependencies that nothing imports; both were cleared to zero on 2026-08-07,
+   so any finding belongs to the branch. A file finding is a question, not a
+   verdict — one of the nineteen deleted turned out to be a migration nobody
+   had wired up. The wider `bun run deadcode` also lists used-but-undeclared
+   imports, which do NOT gate: this fork resolves ~30 module names to stubs in
+   `scripts/build.ts` that knip cannot see, so "undeclared" is the intended
+   state there rather than a defect.
 
 ## Conditional steps (only when the diff touches these areas)
 
