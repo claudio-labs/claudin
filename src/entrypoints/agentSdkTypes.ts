@@ -15,8 +15,6 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { z } from 'zod/v4'
 
-// Control protocol types for SDK builders (bridge subpath consumers)
-/** @alpha */
 // Re-export core types (common serializable types)
 export * from './sdk/coreTypes.js'
 // Re-export runtime types (callbacks, interfaces with methods)
