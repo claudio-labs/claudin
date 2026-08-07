@@ -6,9 +6,9 @@
 > **Priority rationale:** maior ganho de tokens remanescente após Phase 8 — ping/rsync/tree são comandos comuns que despejam centenas de linhas sem filtro hoje. 4 sub-PRs (9a-9d) sem bloqueio de framework, cada um ~30 LOC e shippable independentemente.
 > **Parent spec:** [`../architecture.md`](../architecture.md)
 > **Discovery refs (leitura obrigatória antes de pegar):**
-> - [`system-coverage-detail-2026-05.md`](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md) — gap analysis Claudin × RTK, FilterSpec proposta por comando, bloqueios de framework
-> - [`system-utils-deep-dive-2026-05.md`](../../../discovery/bash-output-filter/system-utils-deep-dive-2026-05.md) — análise individual de cada comando com FilterSpec e ROI estimado
-> - [`rtk-refinement-2026-05.md`](../../../discovery/bash-output-filter/rtk-refinement-2026-05.md) — visão das 6 famílias
+> - [`system-coverage-detail-2026-05.md`](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md) — gap analysis Claudin × RTK, FilterSpec proposta por comando, bloqueios de framework
+> - [`system-utils-deep-dive-2026-05.md`](../../../archive/discovery/bash-output-filter/system-utils-deep-dive-2026-05.md) — análise individual de cada comando com FilterSpec e ROI estimado
+> - [`rtk-refinement-2026-05.md`](../../../archive/discovery/bash-output-filter/rtk-refinement-2026-05.md) — visão das 6 famílias
 
 Continuação da auditoria post-Phase 8: cobre os comandos de sistema (utilitários de FS, rede, processos) que o RTK trata mas o Claudin ainda não. Levantamento empírico em maio/2026 mostrou **8 gaps acionáveis sem bloqueio de framework** + **1 parcialmente cobertos** (curl) + **4 bloqueados por RFC**.
 
@@ -24,16 +24,16 @@ Phase 9 **não cria arquivos novos** — extende `system.ts` (8 specs) e `networ
 
 | Filter | Comando | Família | Estratégia | ROI esperado | LOC | Estudo |
 |---|---|---|---|---|---|---|
-| **ping** | `ping`, `ping6` | `system.ts` (EXTEND) | head 3 + tail 9 — preserva resolução DNS + `--- statistics ---` + `rtt min/avg/max` | ALTO | ~10 | [§3.4](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#34-ping--p1) |
-| **rsync** | `rsync …` | `system.ts` (EXTEND) | strip linhas de arquivo individual + banner `sending incremental file list`, preserva `sent X / received Y / total size / speedup` | ALTO | ~14 | [§3.5](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#35-rsync--p1) |
-| **tree** | `tree`, `tree -L N` | `system.ts` (EXTEND) | head 50 + tail 25, strip ANSI, reject `-J`/`-X` (formatos estruturados) | ALTO | ~12 | [§3.1](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#31-tree--p2) |
-| **ssh** | `ssh host …` | `system.ts` (EXTEND) | strip `^debug\d+:` (verbosidade `-v`/`-vv`/`-vvv`) | MÉDIO | ~8 | [§3.6](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#36-ssh--p2) |
-| **df** | `df`, `df -h` | `system.ts` (EXTEND) | strip `^(tmpfs|devtmpfs|squashfs|overlay|fuse\.)`, reject `-a`/`--all` | ALTO | ~14 | [§3.2](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#32-df--p1) |
-| **du** | `du`, `du -h` | `system.ts` (EXTEND) | strip subpaths profundos em `node_modules/.*/node_modules/` e `.git/(refs\|objects)/`, head 30 + tail 30 | MÉDIO (sem sort) | ~12 | [§3.3](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#33-du--p1) |
-| **dmesg** | `dmesg` | `system.ts` (EXTEND) | tail 60 (eventos mais recentes são mais relevantes) | MÉDIO | ~8 | [§3.8](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#38-dmesg--p3) |
-| **stat** | `stat path` | `system.ts` (EXTEND) | `maxLines: 40` — output já curto, P3 | BAIXO | ~6 | [§3.7](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#37-stat--p3) |
-| **jq** | `jq '…' [file]` | `system.ts` (EXTEND) | `maxLines: 100`; reject agressivo (`-r`/`--raw-output`/`-c`/`--compact-output`/`--tab`/`-j`) p/ preservar parseável | BAIXO | ~8 | [§3.9](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#39-jq--p2) |
-| **curlPlain** | `curl URL` (sem `-v`/`-s`/`-I`/`-o`) | `network.ts` (EXTEND) | strip progress-bar header + linhas `Dload Upload` + linhas `\d+ \d+[kKMG]? \d+` | ALTO | ~12 | [§3.10](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#310-curl-extension--p1-parcial-pode-ir-já) |
+| **ping** | `ping`, `ping6` | `system.ts` (EXTEND) | head 3 + tail 9 — preserva resolução DNS + `--- statistics ---` + `rtt min/avg/max` | ALTO | ~10 | [§3.4](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#34-ping--p1) |
+| **rsync** | `rsync …` | `system.ts` (EXTEND) | strip linhas de arquivo individual + banner `sending incremental file list`, preserva `sent X / received Y / total size / speedup` | ALTO | ~14 | [§3.5](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#35-rsync--p1) |
+| **tree** | `tree`, `tree -L N` | `system.ts` (EXTEND) | head 50 + tail 25, strip ANSI, reject `-J`/`-X` (formatos estruturados) | ALTO | ~12 | [§3.1](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#31-tree--p2) |
+| **ssh** | `ssh host …` | `system.ts` (EXTEND) | strip `^debug\d+:` (verbosidade `-v`/`-vv`/`-vvv`) | MÉDIO | ~8 | [§3.6](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#36-ssh--p2) |
+| **df** | `df`, `df -h` | `system.ts` (EXTEND) | strip `^(tmpfs|devtmpfs|squashfs|overlay|fuse\.)`, reject `-a`/`--all` | ALTO | ~14 | [§3.2](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#32-df--p1) |
+| **du** | `du`, `du -h` | `system.ts` (EXTEND) | strip subpaths profundos em `node_modules/.*/node_modules/` e `.git/(refs\|objects)/`, head 30 + tail 30 | MÉDIO (sem sort) | ~12 | [§3.3](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#33-du--p1) |
+| **dmesg** | `dmesg` | `system.ts` (EXTEND) | tail 60 (eventos mais recentes são mais relevantes) | MÉDIO | ~8 | [§3.8](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#38-dmesg--p3) |
+| **stat** | `stat path` | `system.ts` (EXTEND) | `maxLines: 40` — output já curto, P3 | BAIXO | ~6 | [§3.7](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#37-stat--p3) |
+| **jq** | `jq '…' [file]` | `system.ts` (EXTEND) | `maxLines: 100`; reject agressivo (`-r`/`--raw-output`/`-c`/`--compact-output`/`--tab`/`-j`) p/ preservar parseável | BAIXO | ~8 | [§3.9](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#39-jq--p2) |
+| **curlPlain** | `curl URL` (sem `-v`/`-s`/`-I`/`-o`) | `network.ts` (EXTEND) | strip progress-bar header + linhas `Dload Upload` + linhas `\d+ \d+[kKMG]? \d+` | ALTO | ~12 | [§3.10](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#310-curl-extension--p1-parcial-pode-ir-já) |
 
 **Subtotal:** ~104 LOC de specs novas (sem testes/fixtures). Phase 9 é a maior por contagem de specs, mas cada uma é pequena por ser declarativa pura.
 
@@ -52,7 +52,7 @@ Cada sub-PR é independente — pegar na ordem da tabela é o caminho de menor r
 
 ## Bloqueado — não está nesta fase
 
-Estes itens **requerem RFC de framework** antes (`FilterSpec` não tem capability hoje). Documentados em [`system-coverage-detail-2026-05.md` §4.2–4.3](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#42-prs-bloqueados-por-rfc-de-framework):
+Estes itens **requerem RFC de framework** antes (`FilterSpec` não tem capability hoje). Documentados em [`system-coverage-detail-2026-05.md` §4.2–4.3](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#42-prs-bloqueados-por-rfc-de-framework):
 
 | Item | Bloqueio | RFC necessário |
 |---|---|---|
@@ -72,7 +72,7 @@ Após Phase 9, abrir RFC separado para essas 4 capabilities — habilitam Phase 
 | `env` | Output é dado (variáveis). Filtrar tokens não ajuda; risco de leak. Issue separada de **secret masking** (camada diferente). |
 | `top` (interativo) | TUI — não chega ao filter via captura. Caso `top -b -n 1` já coberto em Phase 5. |
 
-Justificativa completa: [§5 do system-coverage-detail](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#5-decisões-de-não-implementar-skip-deliberado).
+Justificativa completa: [§5 do system-coverage-detail](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#5-decisões-de-não-implementar-skip-deliberado).
 
 ## O que muda no codebase
 
@@ -267,7 +267,7 @@ CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table
 bun run typecheck
 ```
 
-Cada `describe('phase 9 — <filter>')` cobre (template de [§6 do system-coverage-detail](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md#6-onde-colocar-o-código-módulo-a-módulo)):
+Cada `describe('phase 9 — <filter>')` cobre (template de [§6 do system-coverage-detail](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md#6-onde-colocar-o-código-módulo-a-módulo)):
 
 - **ROI** — `assertReduction` com target da tabela acima
 - **match positivo** — comando happy path
@@ -301,7 +301,7 @@ Cada `describe('phase 9 — <filter>')` cobre (template de [§6 do system-covera
 
 Adds 10 declarative FilterSpecs covering system utilities (filesystem, network, process)
 that RTK covers but Claudin did not. Auditoria de gaps em maio/2026
-(docs/discovery/bash-output-filter/system-coverage-detail-2026-05.md).
+(docs/archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md).
 
 ### Filters added
 - **ping** (ALTO ROI): head 3 + tail 9, preserva `--- statistics ---` + rtt
@@ -332,7 +332,7 @@ that RTK covers but Claudin did not. Auditoria de gaps em maio/2026
 
 ### Refs
 - Phase doc: docs/tech/bash-output-filter/phases/phase-9-system-utils.md
-- Discovery: docs/discovery/bash-output-filter/system-coverage-detail-2026-05.md
+- Discovery: docs/archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md
 - Roadmap: 6.3 (Active)
 ```
 

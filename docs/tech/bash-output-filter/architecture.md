@@ -4,9 +4,9 @@
 > **Owner:** BashTool runtime
 > **Scope:** v1 (everything below is v1 unless explicitly tagged "v2 / deferred")
 > **Discovery references:**
-> - Decision log: `docs/discovery/bash-output-filter/README.md`
-> - Empirical ROI: `docs/discovery/bash-output-filter/optimization-matrix.md`
-> - Pipeline reference impl: `docs/discovery/bash-output-filter/validation/pipeline.ts`
+> - Decision log: `docs/archive/discovery/bash-output-filter/README.md`
+> - Empirical ROI: `docs/archive/discovery/bash-output-filter/optimization-matrix.md`
+> - Pipeline reference impl: `docs/archive/discovery/bash-output-filter/validation/pipeline.ts`
 
 This document IS the spec. PRs against it land before code does.
 

@@ -6,7 +6,7 @@
 // to a coding agent. journalctl repeats the hostname on every line — strip it.
 // Phase 9 (system utilities) adds 9 declarative specs that cover commands the
 // RTK reference filter covered but Claudin did not — see
-// docs/discovery/bash-output-filter/system-utils-deep-dive-2026-05.md.
+// docs/archive/discovery/bash-output-filter/system-utils-deep-dive-2026-05.md.
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 

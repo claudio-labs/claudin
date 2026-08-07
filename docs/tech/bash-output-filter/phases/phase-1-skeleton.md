@@ -19,7 +19,7 @@ Cria o módulo `src/outputFilter/Bash/` com toda a infraestrutura, mas **dead co
 | Arquivo | LoC est. | Conteúdo |
 |---|---|---|
 | `src/outputFilter/Bash/index.ts` | ~120 | Public API: `planFilter`, `applyFilterToStdout`, types (`FilterSpec`, `RewriteContext`, `PreExecPlan`, `PipelineResult`), inline `safeApply` |
-| `src/outputFilter/Bash/pipeline.ts` | ~200 | 11-stage pure pipeline (port direto de [`validation/pipeline.ts`](../../../discovery/bash-output-filter/validation/pipeline.ts)) |
+| `src/outputFilter/Bash/pipeline.ts` | ~200 | 11-stage pure pipeline (port direto de [`validation/pipeline.ts`](../../../archive/discovery/bash-output-filter/validation/pipeline.ts)) |
 | `src/outputFilter/Bash/registry.ts` | ~70 | `findFilterForCommand`, `canonicalizeForMatching` (strip `sudo`, env vars), `matchesCommand` |
 | `src/outputFilter/Bash/markers.ts` | ~40 | `wrapStdoutWithMarkers` reusando `escapeXmlAttr` de `src/utils/xml.ts` |
 | `src/outputFilter/Bash/userFilters.ts` | ~140 | Stub: zod schema + safe loader. Carregamento real em Phase 6. |
@@ -39,7 +39,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
 
 1. **Setup do módulo:** criar `src/outputFilter/Bash/` + sub-folders.
 
-2. **Port `pipeline.ts`** de `docs/discovery/bash-output-filter/validation/pipeline.ts`:
+2. **Port `pipeline.ts`** de `docs/archive/discovery/bash-output-filter/validation/pipeline.ts`:
    - Copiar literal os 11 estágios
    - Trocar `collapseIdenticalRuns` e `collapseDigitTemplates` para imports de `src/utils/toolResultSummarizer.js` (Phase 0 fez o export)
    - Adicionar `logForDebugging(msg, { level: 'info' })` calls condicionais em `isEnvTruthy(process.env.CLAUDIN_BASH_FILTER_DEBUG)` em cada stage que muta

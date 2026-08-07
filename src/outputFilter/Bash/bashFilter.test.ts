@@ -1,7 +1,7 @@
 /**
  * Bash Output Filter — integration harness tests
  *
- * These tests are ported from docs/discovery/bash-output-filter/validation/validate.ts.
+ * These tests are ported from docs/archive/discovery/bash-output-filter/validation/validate.ts.
  * They are all test.skip() because builtInFilters is empty in Phase 1.
  * Phase 2 will unskip them as filters land.
  */
@@ -3422,7 +3422,7 @@ describe("phase 12 — prisma-migrate", () => {
 // Phase 12.2 — Universal linters (rtk gap-fill).
 //
 // Samples for yamllint / markdownlint / hadolint / pre-commit / shellcheck
-// live under docs/discovery/.../samples/. Some are real (markdownlint via
+// live under __fixtures__/samples/. Some are real (markdownlint via
 // npx) and some are synthetic-with-source-header (the rest — tools are
 // not installed in the dev container; samples mirror the official output
 // formats documented in each tool's README/docs).

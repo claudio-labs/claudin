@@ -1,7 +1,7 @@
 # Implementation phases — bash-output-filter v1
 
 > **Parent spec:** [`../architecture.md`](../architecture.md) (rev 2)
-> **Discovery:** [`../../../discovery/bash-output-filter/`](../../../discovery/bash-output-filter/)
+> **Discovery:** [`../../../archive/discovery/bash-output-filter/`](../../../archive/discovery/bash-output-filter/)
 
 8 PRs sequenciados (Phases 0–7), cada um shippable independentemente atrás de `bashOutputFilterEnabled: false` até Phase 7. Phase 8 é uma fase pós-default-on — adiciona filtros tier-1 que não estavam no escopo original.
 
@@ -29,7 +29,7 @@ in [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Priority queue
 
-1. ~~**Phase 9 — system utilities**~~ ✅ shipped 2026-05-13 — 10 declarative FilterSpecs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain) extending `system.ts` + `network.ts`. All targets met; aggregated gain table (41 filters) lands at **69.9%** reduction. Specs in [`phase-9-system-utils.md`](phase-9-system-utils.md); discovery refs preserved at [`system-coverage-detail-2026-05.md`](../../../discovery/bash-output-filter/system-coverage-detail-2026-05.md) and [`system-utils-deep-dive-2026-05.md`](../../../discovery/bash-output-filter/system-utils-deep-dive-2026-05.md). RFC-bloqueados (curl-body w/ `maxBytes`, du-sort, per-spec `preserveOnError`, `tee_and_hint`) listados na §"Bloqueado" do phase doc — abrir RFC separado quando houver capacidade.
+1. ~~**Phase 9 — system utilities**~~ ✅ shipped 2026-05-13 — 10 declarative FilterSpecs (ping/rsync/tree/ssh/df/du/dmesg/stat/jq + curl-plain) extending `system.ts` + `network.ts`. All targets met; aggregated gain table (41 filters) lands at **69.9%** reduction. Specs in [`phase-9-system-utils.md`](phase-9-system-utils.md); discovery refs preserved at [`system-coverage-detail-2026-05.md`](../../../archive/discovery/bash-output-filter/system-coverage-detail-2026-05.md) and [`system-utils-deep-dive-2026-05.md`](../../../archive/discovery/bash-output-filter/system-utils-deep-dive-2026-05.md). RFC-bloqueados (curl-body w/ `maxBytes`, du-sort, per-spec `preserveOnError`, `tee_and_hint`) listados na §"Bloqueado" do phase doc — abrir RFC separado quando houver capacidade.
 
 ## Dependências entre fases
 

@@ -18,7 +18,7 @@ Everything now reads this directory:
 | `src/outputFilter/Bash/phase12Report.test.ts` | Phase 12 per-filter report |
 | `scripts/measure-bash-filter-roi.test.ts` | prints the ROI table; reads the whole dir, maps names via `FIXTURE_MAP` |
 | `scripts/profile/bash-filter-gain.test.ts` | bench, opt-in with `CLAUDIN_BENCH=1` |
-| `docs/discovery/bash-output-filter/validation/validate.ts` | the original discovery runner, kept as a research artifact |
+| `docs/archive/discovery/bash-output-filter/validation/validate.ts` | the original discovery runner, kept as a research artifact |
 
 ## Adding a sample
 

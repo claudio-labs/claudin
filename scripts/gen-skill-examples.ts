@@ -1,6 +1,10 @@
 /**
  * Regenerates src/skills/bundled/verifyRunExamples.ts from the captured
- * example markdown under docs/plans/builtin-skills/captured/.
+ * example markdown under src/skills/bundled/__fixtures__/skill-examples/.
+ *
+ * Those files used to live under docs/plans/ (now docs/archive/plans/), where
+ * they looked like plan residue; they are build inputs — the module generated
+ * from them ships in the bundle.
  *
  * The /verify and /run bundled skills carry their examples/*.md as `files:`
  * entries (extracted to disk on first invocation). We store the content
@@ -12,7 +16,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
-const CAPTURED = 'docs/plans/builtin-skills/captured'
+const CAPTURED = 'src/skills/bundled/__fixtures__/skill-examples'
 const OUT = 'src/skills/bundled/verifyRunExamples.ts'
 
 function encodeDir(dir: string): Record<string, string> {
@@ -42,7 +46,7 @@ function emit(name: string, rec: Record<string, string>): string {
 const verify = encodeDir(`${CAPTURED}/verify-examples`)
 const run = encodeDir(`${CAPTURED}/run-examples`)
 
-const header = `// AUTO-GENERATED from docs/plans/builtin-skills/captured/{verify,run}-examples/.
+const header = `// AUTO-GENERATED from src/skills/bundled/__fixtures__/skill-examples/{verify,run}-examples/.
 // Regenerate with scripts/gen-skill-examples.ts. Do not edit by hand.
 // Example files are carried as base64 so backticks/template-literals in the
 // captured markdown survive bundling without escaping hazards.
