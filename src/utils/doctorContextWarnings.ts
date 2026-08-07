@@ -1,3 +1,4 @@
+import { getOriginalCwd } from '../bootstrap/state.js'
 import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
 import type { Tool, ToolPermissionContext } from '../Tool.js'
 import type { AgentDefinitionsResult } from '../tools/AgentTool/loadAgentsDir.js'
@@ -10,6 +11,7 @@ import {
 import { getMainLoopModel } from './model/model.js'
 import { permissionRuleValueToString } from './permissions/permissionRuleParser.js'
 import { detectUnreachableRules } from './permissions/shadowedRuleDetection.js'
+import { lintRuleFiles, relativeFindingPath } from './rulesLint.js'
 import { SandboxManager } from './sandbox/sandbox-adapter.js'
 import {
   AGENT_DESCRIPTIONS_THRESHOLD,
@@ -26,6 +28,7 @@ export type ContextWarning = {
     | 'agent_descriptions'
     | 'mcp_tools'
     | 'unreachable_rules'
+    | 'rule_files'
   severity: 'warning' | 'error'
   message: string
   details: string[]
@@ -38,6 +41,7 @@ export type ContextWarnings = {
   agentWarning: ContextWarning | null
   mcpWarning: ContextWarning | null
   unreachableRulesWarning: ContextWarning | null
+  ruleFilesWarning: ContextWarning | null
 }
 
 async function checkClaudeMdFiles(): Promise<ContextWarning | null> {
@@ -243,23 +247,57 @@ async function checkUnreachableRules(
 /**
  * Check all context warnings for the doctor command
  */
+/**
+ * Reports rule files that cannot do what they claim. Distinct from
+ * checkUnreachableRules above, which is about *permission* rules — this one is
+ * about the markdown under `.claudin/rules/`.
+ */
+async function checkRuleFiles(): Promise<ContextWarning | null> {
+  const root = getOriginalCwd()
+  const { findings } = await lintRuleFiles({ root })
+  if (findings.length === 0) {
+    return null
+  }
+
+  const errors = findings.filter(f => f.severity === 'error')
+  const details = findings.map(
+    f => `${relativeFindingPath(root, f.file)}: ${f.message}`,
+  )
+
+  return {
+    type: 'rule_files',
+    severity: errors.length > 0 ? 'error' : 'warning',
+    message: `${findings.length} rule ${plural(findings.length, 'file problem')} detected`,
+    details,
+    currentValue: findings.length,
+    threshold: 0,
+  }
+}
+
 export async function checkContextWarnings(
   tools: Tool[],
   agentInfo: AgentDefinitionsResult | null,
   getToolPermissionContext: () => Promise<ToolPermissionContext>,
 ): Promise<ContextWarnings> {
-  const [claudeMdWarning, agentWarning, mcpWarning, unreachableRulesWarning] =
-    await Promise.all([
-      checkClaudeMdFiles(),
-      checkAgentDescriptions(agentInfo),
-      checkMcpTools(tools, getToolPermissionContext, agentInfo),
-      checkUnreachableRules(getToolPermissionContext),
-    ])
+  const [
+    claudeMdWarning,
+    agentWarning,
+    mcpWarning,
+    unreachableRulesWarning,
+    ruleFilesWarning,
+  ] = await Promise.all([
+    checkClaudeMdFiles(),
+    checkAgentDescriptions(agentInfo),
+    checkMcpTools(tools, getToolPermissionContext, agentInfo),
+    checkUnreachableRules(getToolPermissionContext),
+    checkRuleFiles(),
+  ])
 
   return {
     claudeMdWarning,
     agentWarning,
     mcpWarning,
     unreachableRulesWarning,
+    ruleFilesWarning,
   }
 }

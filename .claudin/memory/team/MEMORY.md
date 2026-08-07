@@ -23,6 +23,8 @@
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — lives ONLY in a deleted ROADMAP.md (`git show cbf3325d:ROADMAP.md`); 11b/11e done 2026-08-07, 11i/11j/11k open; two split-only traps
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
+- [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — orientation is 32% of tool-result chars but Glob is 0.3% of it; 59.5% of read paths are one-offs; no task→location signal. Read (D3) is the real target
+- [Rule files have two silent failure modes](rule-files-two-silent-failure-modes.md) — inert `paths:` vs `globs:` silently making a rule unconditional; verify:rules + /doctor + /refresh-rules; prose-path checks need a project anchor
 - [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — re-measured over 760 sessions: Read 58.4% of tool-result chars vs git+gh 5.0%; D1 ✅ D2 ✅ (Git tool) → **D3 Read dedup is now the big one** → D4 widen redirects → D5 build wrapper
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch on branch feat/self-hosted-background-agent; TriggerSource abstraction (github/url/command + --match), headless runWorkflow, worktree+PR, atomic dedup; docs/tech/background-agent/
 - [/create bundled skill (PR #98)](create-skill-bundled-pr.md) — bundled skill teaching skills/rules/agents authoring; loader gotchas (agent model, arguments format, .claudin write gate)
@@ -79,7 +81,7 @@
 
 ## References (sibling repos, wire formats, archives)
 - [Public docs site claudiolabs.ai lives outside this repo](claudiolabs-docs-site.md) — no site/ dir tracked (README icon 404'd); URLs are extensionless; README links pages instead of duplicating features
-- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — re-audited 2026-08-07 (their v0.27.0); Tier-1: integrations/ registry, compressToolHistory, doomLoop block, repoMap — plus claudin's DEAD smartModelRouting.ts as a free R1 win
+- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — re-audited 2026-08-07 (their v0.27.0); Tier-1: integrations/ registry, compressToolHistory, doomLoop block (repoMap now REJECTED) — plus claudin's DEAD smartModelRouting.ts as a free R1 win
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; real gaps: apply_patch, auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)
 - [Windsurf upstream reference repo](windsurf-upstream-reference.md) — sibling repo opencode-windsurf-auth holds the wire-format docs, proto field tags, OAuth flow Claudin's windsurf/ was ported from
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE+NODE_EXTRA_CA_CERTS+REQUESTS_CA_BUNDLE bundle trick verified against Devin Rust binary

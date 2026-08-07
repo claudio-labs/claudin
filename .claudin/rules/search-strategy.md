@@ -111,6 +111,8 @@ src/
 ├── QueryEngine.ts               ← agent loop: model drive, tool dispatch, streaming, compaction
 ├── query.ts                     ← query helpers, SDKMessage types (see also query/ for config/deps)
 ├── query/ (4)                   ← config.ts, deps.ts, stopHooks.ts, tokenBudget.ts
+├── context.ts                   ← getSystemContext/getUserContext: the memoized system-prompt
+│                                  context blocks (git status, dir structure). NOT src/context/
 ├── Tool.ts                      ← central type system: Tool, Tools, ToolUseContext, buildTool()
 ├── tools.ts                     ← dynamic tool registry (sandbox/plan/coordinator/MCP-aware)
 ├── tools/ (326)                 ← built-in tools, one dir per tool
@@ -151,7 +153,8 @@ src/
 ├── native-ts/ (5)              ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
 ├── screens/ (32)               ← REPL.tsx (main loop), ResumeConversation, StartupScreen
 ├── hooks/ (118)                ← React hooks, file suggestions, prompt-suggestion ghost, notifs
-├── context/ (9) state/ (8)     ← React context providers + AppState store (getState/selectors)
+├── context/ (9) state/ (8)     ← React context providers + AppState store (getState/selectors).
+│                                 The TUI providers only — the system-prompt context is src/context.ts
 ├── keybindings/ (14)           ← keybinding parser, defaultBindings, loadUserBindings, match
 ├── outputFilter/ (51)          ← command-aware Bash output filter (noise stripping/rewrites)
 ├── main/ (44)                  ← boot sequence: bootContext, argvPreparse, action, commands
@@ -176,6 +179,18 @@ src/
 └── bootstrap/
     └── state.ts                ← getSessionId, getIsNonInteractiveSession, cwd helpers
 ```
+
+### Root files worth knowing
+
+Not under `src/`, but among the most-opened files in practice:
+
+| File | What it answers |
+|------|-----------------|
+| `package.json` | the script names (`build`, `smoke`, `verify:*`, `typecheck:ci`) and which deps are real vs stubbed |
+| `tsconfig.json` | the `src/…` path aliases and the compiler settings the typecheck backlog is measured against |
+| `bunfig.toml` | the test runner's preload/config — start here when a test behaves differently under `bun test` than standalone |
+| `AGENTS.md` | repo orientation; the toggle table for on-by-default runtime behaviors |
+| `typecheck-baseline.json` | the ratchet's recorded backlog (`bun run typecheck:baseline` regenerates) |
 
 ## Common Search Patterns
 

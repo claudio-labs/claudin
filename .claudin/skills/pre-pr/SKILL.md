@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
+description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, rule health, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
 allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
@@ -58,6 +58,15 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    - The inputs are invisible to `deadcode:ci`, which is how they get deleted in
      the first place. Nothing in this repo imports `OutputFormatSchema` or
      `HookJSONOutputSchema`; the generator is their only consumer.
+8. **Rule health** — `bun run verify:rules`. Gates in CI. It fails on the two
+   rule defects that are invisible at runtime: a `paths:` matching no tracked
+   file (the rule never loads) and an unsupported frontmatter key such as
+   `globs:` (the rule loads into *every* session instead of the files it was
+   scoped to). Stale path references in prose are reported as warnings and do
+   not gate.
+   - It also prints how many characters the always-loaded rules cost per turn.
+     That number is informational — there is no threshold — but a jump means a
+     rule lost its `paths:`.
 
 ## Conditional steps (only when the diff touches these areas)
 

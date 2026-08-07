@@ -49,6 +49,13 @@ jobs:
       - name: Verify generated SDK types are in sync
         run: bun run verify:sdk-types
 
+      # Rules are injected into context with no validation, so a rule that
+      # matches nothing (never loads) or uses an unsupported frontmatter key
+      # (loads into every session) is invisible at runtime. See
+      # src/utils/rulesLint.ts.
+      - name: Verify rule files
+        run: bun run verify:rules
+
       - name: Smoke check
         run: bun run smoke
 
