@@ -33,6 +33,17 @@ jobs:
           echo "bun version: $(bun --version)"
           bun install --frozen-lockfile
 
+      # Not `bun run typecheck`: tsc does not come back clean here and is not
+      # going to — two thirds of its output is in the checked-in React-Compiler
+      # component sources, whose pre-compiler originals do not exist in this
+      # fork. The ratchet fails the PR for the errors it ADDS, measured against
+      # typecheck-baseline.json. See scripts/typecheck-ci.ts.
+      - name: Typecheck (new errors only)
+        run: bun run typecheck:ci
+
+      - name: Verify generated SDK types are in sync
+        run: bun run verify:sdk-types
+
       - name: Smoke check
         run: bun run smoke
 
