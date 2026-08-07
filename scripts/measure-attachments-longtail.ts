@@ -8,12 +8,11 @@
  * monorepos those lists can run 50-200 entries deep and drive a real
  * per-turn cost.
  *
- * This bench sweeps `fileCount` ∈ {1, 10, 50, 200} for the four delta-style
+ * This bench sweeps `fileCount` ∈ {1, 10, 50, 200} for the three delta-style
  * attachments that scale linearly with project size:
  *
  *   - `agent_listing_delta`
  *   - `deferred_tools_delta`
- *   - `memory_delta`
  *   - `mcp_instructions_delta`
  *
  * Output: per-attachment row with bytes/tokens at each fileCount step,
@@ -89,11 +88,10 @@ function renderAttachment(att: Attachment): string {
 type Kind =
   | 'agent_listing_delta'
   | 'deferred_tools_delta'
-  | 'memory_delta'
   | 'mcp_instructions_delta'
 
 /**
- * Per-entry body-size knobs. The MCP and memory deltas are fixture-driven:
+ * Per-entry body-size knobs. The MCP delta is fixture-driven:
  * production server-instruction sizes vary widely (some <100 B, some
  * Notion/Solana ones ~3-5 KB), so the slope is meaningless without
  * sweeping. We expose `bodyBytes` so callers can probe multiple sizes.
@@ -122,15 +120,6 @@ function build(kind: Kind, n: number, bodyBytes: number): Attachment {
         ),
         removedNames: [],
       }
-    case 'memory_delta':
-      return {
-        type: 'memory_delta',
-        isInitial: true,
-        addedNames: Array.from({ length: n }, (_, i) => `m${i}.md`),
-        addedContent: Array.from({ length: n }, () => bodyOfSize(bodyBytes)),
-        addedHashes: Array.from({ length: n }, (_, i) => `hash${i}`),
-        removedNames: [],
-      }
     case 'mcp_instructions_delta':
       return {
         type: 'mcp_instructions_delta',
@@ -147,7 +136,6 @@ function build(kind: Kind, n: number, bodyBytes: number): Attachment {
 const KINDS: Kind[] = [
   'agent_listing_delta',
   'deferred_tools_delta',
-  'memory_delta',
   'mcp_instructions_delta',
 ]
 

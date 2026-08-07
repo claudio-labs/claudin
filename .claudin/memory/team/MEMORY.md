@@ -18,6 +18,8 @@
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
 - [CLAUDE_CODE_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
+- [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — CORRECTED: scanMemoryFiles is uncached but gated OFF per-turn (tengu_moth_copse) and benched at 0.014 ms/file; getMemoryFiles memo omits cwd; worktree-exit *dialog* leaks stale rule caches
+- [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
 
 ## Roadmap & major features
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — lives ONLY in a deleted ROADMAP.md (`git show cbf3325d:ROADMAP.md`); 11b/11e done 2026-08-07, 11i/11j/11k open; two split-only traps
@@ -25,7 +27,7 @@
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
 - [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — orientation is 32% of tool-result chars but Glob is 0.3% of it; 59.5% of read paths are one-offs; no task→location signal. Read (D3) is the real target
 - [Rule files have two silent failure modes](rule-files-two-silent-failure-modes.md) — inert `paths:` vs `globs:` silently making a rule unconditional; verify:rules + /doctor + /refresh-rules; prose-path checks need a project anchor
-- [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — re-measured over 760 sessions: Read 58.4% of tool-result chars vs git+gh 5.0%; D1 ✅ D2 ✅ (Git tool) → **D3 Read dedup is now the big one** → D4 widen redirects → D5 build wrapper
+- [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — Read is 59.7% of tool-result chars but D3's honest ceiling is 9.5% of ALL (re-sized 2026-08-07); D1 ✅ D2 ✅ → **D3** → D4 widen redirects → D5 build wrapper
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch on branch feat/self-hosted-background-agent; TriggerSource abstraction (github/url/command + --match), headless runWorkflow, worktree+PR, atomic dedup; docs/tech/background-agent/
 - [/create bundled skill (PR #98)](create-skill-bundled-pr.md) — bundled skill teaching skills/rules/agents authoring; loader gotchas (agent model, arguments format, .claudin write gate)
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](lsp-tool-rejected-empirically.md) — was dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg (not isLsp), built-in servers + install UI removed

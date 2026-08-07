@@ -894,31 +894,6 @@ You have exited auto mode. The user may now want to interact more directly. You 
         }),
       ])
     }
-    case 'memory_delta': {
-      const parts: string[] = []
-      if (attachment.addedContent.length > 0) {
-        const header = attachment.isInitial
-          ? 'Nested memory files for this workspace:'
-          : 'Nested memory files changed since last turn:'
-        parts.push(
-          `${header}\n\n${attachment.addedNames
-            .map(
-              (name, i) =>
-                `## ${name}\n${attachment.addedContent[i] ?? ''}`,
-            )
-            .join('\n\n')}`,
-        )
-      }
-      if (attachment.removedNames.length > 0) {
-        parts.push(
-          `The following memory files are no longer active. Their contents above no longer apply:\n${attachment.removedNames.map(n => `- ${n}`).join('\n')}`,
-        )
-      }
-      if (parts.length === 0) return []
-      return wrapMessagesInSystemReminder([
-        createUserMessage({ content: parts.join('\n\n'), isMeta: true }),
-      ])
-    }
     case 'task_reconcile': {
       return wrapMessagesInSystemReminder([
         createUserMessage({

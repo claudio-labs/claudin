@@ -298,7 +298,7 @@ export type SubagentContextOverrides = {
    *  Used by speculation for overlay file path rewriting. */
   requireCanUseTool?: boolean
   /** Honor AgentDefinition.omitClaudeMd in the attachment pipeline
-   * (suppresses claude_md_delta / memory_delta / nested_memory). */
+   * (suppresses claude_md_delta / nested_memory). */
   omitClaudeMdAttachments?: boolean
   /** Honor AgentDefinition.omitGitStatus in the attachment pipeline
    * (suppresses git_status_delta). */

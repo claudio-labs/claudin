@@ -60,7 +60,6 @@ import {
   getMcpInstructionsDeltaAttachment,
   getClaudeMdDeltaAttachment,
   getGitStatusDeltaAttachment,
-  getMemoryDeltaAttachment,
   getCriticalSystemReminderAttachment,
   getOutputStyleAttachment,
   getTeamContextAttachment,
@@ -242,13 +241,6 @@ export async function getAttachments(
       : [
           maybe('git_status_delta', () =>
             getGitStatusDeltaAttachment(messages),
-          ),
-        ]),
-    ...(omitClaudeMd
-      ? []
-      : [
-          maybe('memory_delta', () =>
-            Promise.resolve(getMemoryDeltaAttachment(messages)),
           ),
         ]),
     ...(isBuddyEnabled()

@@ -53,7 +53,6 @@ import {
 import type { MCPServerConnection } from '../../services/mcp/types.js'
 import { getClaudeMdDelta } from '../claudeMdDelta.js'
 import { getGitStatusDelta } from '../gitStatusDelta.js'
-import { getMemoryDelta, type MemoryFileInput } from '../memoryDelta.js'
 import { getSystemContext, getUserContext } from '../../context.js'
 import {
   getAgentName,
@@ -300,88 +299,6 @@ export async function getGitStatusDeltaAttachment(
   )
   if (!delta) return []
   return [{ type: 'git_status_delta', content: delta.content }]
-}
-
-/**
- * Nested-memory delta attachment — reconstructs the current nested
- * memory set from `nested_memory` attachments emitted in PRIOR turns
- * (already part of `messages`), diffs against prior `memory_delta`
- * attachments, and emits only added/changed content + retraction
- * names. See src/utils/memoryDelta.ts.
- *
- * 📌 NOT A RACE: although this wrapper runs in the same Promise.all
- * batch as `getNestedMemoryAttachments` (see `allThreadAttachments`
- * in getAttachments), it reads `messages` — the INPUT parameter,
- * which is the accumulated conversation up through the last completed
- * turn. New outputs of THIS turn aren't in `messages` yet; they get
- * appended by the caller after getAttachments returns. So the scanner
- * only ever sees prior-turn `nested_memory`, and that is by design:
- *   Turn 1: scanner sees no prior nested_memory → returns null.
- *   Turn 2+: scanner sees turn 1's nested_memory → emits memory_delta.
- *
- * ⚠️ INTENTIONAL ASYMMETRY vs the three sibling deltas
- * (`claudeMdDelta`, `gitStatusDelta`, `todoReminderDelta`). Those three
- * REPLACE their raw counterpart: `filterStaticDedupKeys` (in
- * src/utils/api.ts) strips `claudeMd` / `gitStatus` from the
- * system/user context so they only flow through the delta.
- * memory_delta, by contrast, COEXISTS with raw `nested_memory` — raw
- * still fires every turn because downstream consumers
- * (claude.ts::getSystemBlocksWithScope prompt-cache scoping;
- * getUserContext memory injection) read `nested_memory` directly and
- * don't understand the delta shape yet. The result: turn 2 carries
- * memory content twice (raw + delta) before stabilizing from turn 3+.
- *
- * Model-context invariant: the model NEVER loses access to memory
- * because raw nested_memory continues emitting on every turn. The
- * delta is a COMPLEMENT that sets up future savings once consumers
- * migrate — not a replacement that could drop content.
- *
- * TODO(follow-up, separate PR): teach getSystemBlocksWithScope and
- * getUserContext to read from `memory_delta`, then drop raw
- * `nested_memory` to match the other three deltas. Expected
- * additional savings: ~9KB per turn 2+ of redundant memory content on
- * 3P providers without cache.
- */
-export function getMemoryDeltaAttachment(
-  messages: Message[] | undefined,
-): Attachment[] {
-  // The "current" set is reconstructed from nested_memory attachments
-  // produced earlier in the same turn (the caller invokes them ahead
-  // of this delta in allThreadAttachments). We also look at nested
-  // memory entries from prior turns to build the present snapshot.
-  //
-  // Reading from the transcript keeps this function pure (no
-  // filesystem I/O) — the authoritative source for "what memory is
-  // currently loaded" is the attachments generated upstream.
-  const current: MemoryFileInput[] = []
-  const seen = new Set<string>()
-  for (const msg of messages ?? []) {
-    if (msg.type !== 'attachment') continue
-    if (msg.attachment.type !== 'nested_memory') continue
-    const path = msg.attachment.path
-    if (seen.has(path)) continue
-    seen.add(path)
-    current.push({
-      path,
-      content: msg.attachment.content.content ?? '',
-    })
-  }
-
-  const delta = getMemoryDelta(
-    current,
-    (messages ?? []) as Parameters<typeof getMemoryDelta>[1],
-  )
-  if (!delta) return []
-  return [
-    {
-      type: 'memory_delta',
-      addedNames: delta.addedNames,
-      addedContent: delta.addedContent,
-      addedHashes: delta.addedHashes,
-      removedNames: delta.removedNames,
-      isInitial: delta.isInitial,
-    },
-  ]
 }
 
 export function getCriticalSystemReminderAttachment(

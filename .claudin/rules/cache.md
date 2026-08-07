@@ -140,8 +140,8 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   `SHORT_LIVED_QUERY_SOURCES` or it silently pays the 1h tier; anything that
   re-sends the main thread's prefix must NOT be added.
 - Slim-subagent: `omitClaudeMdAttachments`/`omitGitStatusAttachments` on
-  ToolUseContext gate `claude_md_delta`/`memory_delta`/`nested_memory`/
-  `git_status_delta` in `pipeline.ts`. New attachment producers read globals and
+  ToolUseContext gate `claude_md_delta`/`nested_memory`/`git_status_delta` in
+  `pipeline.ts`. New attachment producers read globals and
   bypass the gate — honor the flags explicitly or Explore/Plan/WebResearcher get
   full CLAUDE.md + rules re-injected per Read.
 

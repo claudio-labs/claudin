@@ -261,7 +261,7 @@ export type ToolUseContext = {
   agentType?: string // Subagent type name. For the main thread's --agent type, hooks fall back to getMainThreadAgentType().
   /** Subagent-only: honor AgentDefinition.omitClaudeMd in the attachment
    * pipeline. runAgent strips claudeMd from the subagent's userContext, but
-   * claude_md_delta / memory_delta / nested_memory read global state and
+   * claude_md_delta / nested_memory read global state and
    * would re-inject it every turn without this flag. */
   omitClaudeMdAttachments?: boolean
   /** Subagent-only: honor AgentDefinition.omitGitStatus in the attachment

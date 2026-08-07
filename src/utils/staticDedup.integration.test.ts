@@ -3,15 +3,23 @@
  *
  * WHY: the unit tests in *Delta.test.ts verify each scanner in
  * isolation. This file asserts the CLAIM of Phase 2 — that a session
- * with unchanged static context (CLAUDE.md, gitStatus, nested memory
- * files, todo list) sends measurably fewer bytes on turns 2+ when
- * CLAUDIN_STATIC_DEDUP is active.
+ * with unchanged static context (CLAUDE.md, gitStatus, todo list)
+ * sends measurably fewer bytes on turns 2+.
  *
  * Without this, the Phase 2 -30 to -40% body-JSON target is a
  * hypothesis with no guardrail. A future refactor could silently
  * disable one of the swap-ins (wrong conditional, renamed symbol,
  * missing gate) and every unit test would still pass while every
  * turn kept re-emitting the same content.
+ *
+ * SCOPE: the three scanners that REPLACE their raw counterpart —
+ * claudeMd and gitStatus are stripped from the system/user context by
+ * `filterStaticDedupKeys`, and the todo reminder diffs its snapshot.
+ * Nested memory is NOT one of them and is deliberately absent here:
+ * it has no delta scanner at all. Its raw `nested_memory` attachment
+ * is emitted once per session by `memoryFilesToAttachments`, and that
+ * one-copy-per-session invariant is owned by
+ * `src/utils/attachments/memory.dedup.test.ts`.
  *
  * We measure with `stableStringify` — the exact same serializer the
  * openaiShim / codexShim use on the request body, so the numbers
@@ -28,7 +36,6 @@ import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from './api.js'
 import { getClaudeMdDelta } from './claudeMdDelta.js'
 import { getGitStatusDelta } from './gitStatusDelta.js'
-import { getMemoryDelta, type MemoryFileInput } from './memoryDelta.js'
 import { stableStringify } from './stableStringify.js'
 import {
   getTodoReminderDelta,
@@ -49,10 +56,6 @@ const MIN_SAVINGS_RATIO = 0.25
 const TYPICAL_CLAUDE_MD_SIZE = 15_000
 // gitStatus: ~2KB when a handful of files are modified.
 const TYPICAL_GIT_STATUS_SIZE = 2_000
-// Nested memory: 3 files × 3KB is a common pattern (per-dir CLAUDE.md
-// in a project with nested packages).
-const TYPICAL_MEMORY_FILE_SIZE = 3_000
-const TYPICAL_MEMORY_FILE_COUNT = 3
 
 // Union of the fields each scanner's local ScannableMessage reads.
 // Keeping them all optional here lets a single helper array satisfy
@@ -123,26 +126,6 @@ function gitStatusDeltaMsg(content: string): AttachmentMessage {
   }
 }
 
-function memoryDeltaMsg(
-  addedNames: string[],
-  addedContent: string[],
-  addedHashes: string[],
-  removedNames: string[],
-  isInitial: boolean,
-): AttachmentMessage {
-  return {
-    type: 'attachment',
-    attachment: {
-      type: 'memory_delta',
-      addedNames,
-      addedContent,
-      addedHashes,
-      removedNames,
-      isInitial,
-    },
-  }
-}
-
 function todoReminderDeltaMsg(
   snapshot: Array<{ id: string; status: string }>,
 ): AttachmentMessage {
@@ -161,16 +144,6 @@ function baselineClaudeMd(content: string): Record<string, unknown> {
 
 function baselineGitStatus(content: string): Record<string, unknown> {
   return { type: 'system_context', gitStatus: content }
-}
-
-function baselineMemoryAttachments(
-  files: MemoryFileInput[],
-): Record<string, unknown>[] {
-  return files.map(f => ({
-    type: 'nested_memory',
-    path: f.path,
-    content: { content: f.content },
-  }))
 }
 
 function baselineTodoReminder(
@@ -239,42 +212,6 @@ describe('static-dedup integration: per-scanner byte savings', () => {
     expect(byteSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
   })
 
-  test('nested memory: turn 2+ emits zero bytes when files unchanged', () => {
-    const memoryFiles: MemoryFileInput[] = Array.from(
-      { length: TYPICAL_MEMORY_FILE_COUNT },
-      (_, index) => ({
-        path: `/pkg-${index}/CLAUDE.md`,
-        content: repeat(TYPICAL_MEMORY_FILE_SIZE),
-      }),
-    )
-    const transcript: AttachmentMessage[] = []
-
-    const turn1Delta = getMemoryDelta(memoryFiles, transcript)
-    expect(turn1Delta).not.toBeNull()
-    expect(turn1Delta!.isInitial).toBe(true)
-    expect(turn1Delta!.addedNames.length).toBe(TYPICAL_MEMORY_FILE_COUNT)
-    transcript.push(
-      memoryDeltaMsg(
-        turn1Delta!.addedNames,
-        turn1Delta!.addedContent,
-        turn1Delta!.addedHashes,
-        turn1Delta!.removedNames,
-        turn1Delta!.isInitial,
-      ),
-    )
-
-    expect(getMemoryDelta(memoryFiles, transcript)).toBeNull()
-    expect(getMemoryDelta(memoryFiles, transcript)).toBeNull()
-
-    const baselineTurn2Bytes = serialize(
-      baselineMemoryAttachments(memoryFiles),
-    )
-    const dedupTurn2Bytes = serialize([])
-    const byteSavings =
-      (baselineTurn2Bytes - dedupTurn2Bytes) / baselineTurn2Bytes
-    expect(byteSavings).toBeGreaterThanOrEqual(MIN_SAVINGS_RATIO)
-  })
-
   test('todo reminder: turn 2+ emits zero bytes when list unchanged', () => {
     const todoSnapshot: TodoSnapshotItem[] = Array.from(
       { length: 10 },
@@ -307,13 +244,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
   test('total payload across turns 2-3 is ≥25% smaller than baseline', () => {
     const claudeMdContent = repeat(TYPICAL_CLAUDE_MD_SIZE)
     const gitStatusSnapshot = repeat(TYPICAL_GIT_STATUS_SIZE)
-    const memoryFiles: MemoryFileInput[] = Array.from(
-      { length: TYPICAL_MEMORY_FILE_COUNT },
-      (_, index) => ({
-        path: `/pkg-${index}/CLAUDE.md`,
-        content: repeat(TYPICAL_MEMORY_FILE_SIZE),
-      }),
-    )
     const todoSnapshot: TodoSnapshotItem[] = Array.from(
       { length: 10 },
       (_, index) => ({
@@ -327,7 +257,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
     const bytesPerBaselineTurn = serialize([
       baselineClaudeMd(claudeMdContent),
       baselineGitStatus(gitStatusSnapshot),
-      ...baselineMemoryAttachments(memoryFiles),
       baselineTodoReminder(todoSnapshot),
     ])
     const baselineBytesTurns23 = bytesPerBaselineTurn * 2
@@ -347,16 +276,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
     )
     const turn1GitStatus = getGitStatusDelta(gitStatusSnapshot, transcript)
     transcript.push(gitStatusDeltaMsg(turn1GitStatus!.content))
-    const turn1Memory = getMemoryDelta(memoryFiles, transcript)
-    transcript.push(
-      memoryDeltaMsg(
-        turn1Memory!.addedNames,
-        turn1Memory!.addedContent,
-        turn1Memory!.addedHashes,
-        turn1Memory!.removedNames,
-        turn1Memory!.isInitial,
-      ),
-    )
     const turn1Todo = getTodoReminderDelta(todoSnapshot, transcript)
     transcript.push(todoReminderDeltaMsg(turn1Todo!.snapshot))
 
@@ -368,9 +287,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
     const turn2GitStatus = getGitStatusDelta(gitStatusSnapshot, transcript)
     if (turn2GitStatus)
       turn2Additions.push({ type: 'git_status_delta', ...turn2GitStatus })
-    const turn2Memory = getMemoryDelta(memoryFiles, transcript)
-    if (turn2Memory)
-      turn2Additions.push({ type: 'memory_delta', ...turn2Memory })
     const turn2Todo = getTodoReminderDelta(todoSnapshot, transcript)
     if (turn2Todo)
       turn2Additions.push({ type: 'todo_reminder_delta', ...turn2Todo })
@@ -383,9 +299,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
     const turn3GitStatus = getGitStatusDelta(gitStatusSnapshot, transcript)
     if (turn3GitStatus)
       turn3Additions.push({ type: 'git_status_delta', ...turn3GitStatus })
-    const turn3Memory = getMemoryDelta(memoryFiles, transcript)
-    if (turn3Memory)
-      turn3Additions.push({ type: 'memory_delta', ...turn3Memory })
     const turn3Todo = getTodoReminderDelta(todoSnapshot, transcript)
     if (turn3Todo)
       turn3Additions.push({ type: 'todo_reminder_delta', ...turn3Todo })
@@ -404,7 +317,6 @@ describe('static-dedup integration: combined 3-turn session', () => {
       estimateTokens([
         baselineClaudeMd(claudeMdContent),
         baselineGitStatus(gitStatusSnapshot),
-        ...baselineMemoryAttachments(memoryFiles),
         baselineTodoReminder(todoSnapshot),
       ]) * 2
     const dedupTokensTurns23 =
@@ -463,7 +375,6 @@ describe('static-dedup integration: end-to-end savings', () => {
     transcript: AttachmentMessage[],
     claudeMdContent: string,
     gitStatusSnapshot: string,
-    memoryFiles: MemoryFileInput[],
     todoSnapshot: TodoSnapshotItem[],
   ): Record<string, unknown>[] {
     const emitted: Record<string, unknown>[] = []
@@ -483,19 +394,6 @@ describe('static-dedup integration: end-to-end savings', () => {
       emitted.push({ type: 'git_status_delta', ...gitStatusDelta })
       transcript.push(gitStatusDeltaMsg(gitStatusDelta.content))
     }
-    const memoryDelta = getMemoryDelta(memoryFiles, transcript)
-    if (memoryDelta) {
-      emitted.push({ type: 'memory_delta', ...memoryDelta })
-      transcript.push(
-        memoryDeltaMsg(
-          memoryDelta.addedNames,
-          memoryDelta.addedContent,
-          memoryDelta.addedHashes,
-          memoryDelta.removedNames,
-          memoryDelta.isInitial,
-        ),
-      )
-    }
     const todoDelta = getTodoReminderDelta(todoSnapshot, transcript)
     if (todoDelta) {
       emitted.push({ type: 'todo_reminder_delta', ...todoDelta })
@@ -512,13 +410,11 @@ describe('static-dedup integration: end-to-end savings', () => {
   function emitBaselineTurnPayload(
     claudeMdContent: string,
     gitStatusSnapshot: string,
-    memoryFiles: MemoryFileInput[],
     todoSnapshot: TodoSnapshotItem[],
   ): Record<string, unknown>[] {
     return [
       baselineClaudeMd(claudeMdContent),
       baselineGitStatus(gitStatusSnapshot),
-      ...baselineMemoryAttachments(memoryFiles),
       baselineTodoReminder(todoSnapshot),
     ]
   }
@@ -530,13 +426,6 @@ describe('static-dedup integration: end-to-end savings', () => {
   ): { totalBytes: number; totalTokens: number; turnBytes: number[] } {
     const claudeMdContent = repeat(TYPICAL_CLAUDE_MD_SIZE)
     const gitStatusSnapshot = repeat(TYPICAL_GIT_STATUS_SIZE)
-    const memoryFiles: MemoryFileInput[] = Array.from(
-      { length: TYPICAL_MEMORY_FILE_COUNT },
-      (_, index) => ({
-        path: `/pkg-${index}/CLAUDE.md`,
-        content: repeat(TYPICAL_MEMORY_FILE_SIZE),
-      }),
-    )
     const todoSnapshot: TodoSnapshotItem[] = Array.from(
       { length: 10 },
       (_, index) => ({
@@ -557,13 +446,11 @@ describe('static-dedup integration: end-to-end savings', () => {
               transcript,
               claudeMdContent,
               gitStatusSnapshot,
-              memoryFiles,
               todoSnapshot,
             )
           : emitBaselineTurnPayload(
               claudeMdContent,
               gitStatusSnapshot,
-              memoryFiles,
               todoSnapshot,
             )
       const bytes = serialize(turnPayload)
@@ -704,19 +591,19 @@ describe('static-dedup integration: production injection functions', () => {
   })
 
   // INVARIANT: memory-related context keys must NOT be stripped by
-  // filterStaticDedupKeys. See src/utils/attachments.ts comment on
-  // getMemoryDeltaAttachment — raw `nested_memory` intentionally
-  // COEXISTS with memory_delta on turn 1/2 because upstream consumers
-  // (claude.ts::getSystemBlocksWithScope, getUserContext) still read
-  // nested_memory directly. If a future contributor mistakes this for
-  // a bug and adds a NESTED_MEMORY_CONTEXT_KEY to the strip list, the
-  // coexistence breaks silently without this test failing.
+  // filterStaticDedupKeys. Only claudeMd and gitStatus have a delta
+  // scanner standing in for them; nested memory has none. Its content
+  // reaches the model solely through the raw `nested_memory`
+  // attachment (deduped per session by `memoryFilesToAttachments` —
+  // see src/utils/attachments/memory.dedup.test.ts), so adding a
+  // NESTED_MEMORY_CONTEXT_KEY to the strip list here would drop
+  // content with nothing re-emitting it.
   test('filterStaticDedupKeys does NOT strip memory or non-dedup keys', () => {
     const context = {
       claudeMd: 'should be stripped',
       gitStatus: 'should be stripped',
       // Keys below are NOT dedup targets and must survive the filter.
-      nestedMemory: 'nested memory payload — coexists with memory_delta',
+      nestedMemory: 'nested memory payload — no delta scanner replaces it',
       directoryStructure: 'src/\n  utils/\n',
       platform: 'linux',
       mcpInstructions: 'some mcp instructions',

@@ -69,7 +69,6 @@ const ALL_ATTACHMENT_TYPES = [
   'mcp_instructions_delta',
   'claude_md_delta',
   'git_status_delta',
-  'memory_delta',
   'todo_reminder_delta',
   'task_reconcile',
   'companion_intro',
