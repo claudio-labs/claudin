@@ -77,7 +77,7 @@
 
 ## References (sibling repos, wire formats, archives)
 - [Public docs site claudiolabs.ai lives outside this repo](claudiolabs-docs-site.md) — no site/ dir tracked (README icon 404'd); URLs are extensionless; README links pages instead of duplicating features
-- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — ../openclaude (gitlawb fork) feature-gap backlog 2026-06-23; Tier-1 ports: providerFallbackChain, credential pool, compactModel, fuzzy edit, MD/JSON export
+- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — re-audited 2026-08-07 (their v0.27.0); Tier-1: integrations/ registry, compressToolHistory, doomLoop block, repoMap — plus claudin's DEAD smartModelRouting.ts as a free R1 win
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; real gaps: apply_patch, auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)
 - [Windsurf upstream reference repo](windsurf-upstream-reference.md) — sibling repo opencode-windsurf-auth holds the wire-format docs, proto field tags, OAuth flow Claudin's windsurf/ was ported from
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE+NODE_EXTRA_CA_CERTS+REQUESTS_CA_BUNDLE bundle trick verified against Devin Rust binary

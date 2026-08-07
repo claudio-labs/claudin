@@ -35,6 +35,11 @@ export const MAX_ENTRYPOINT_LINES = 200
 export const MAX_ENTRYPOINT_BYTES = 25_000
 const AUTO_MEM_DISPLAY_NAME = 'auto memory'
 
+// UTF-8 byte constants for the byte-space cut below.
+const NEWLINE_BYTE = 0x0a
+const CONTINUATION_MASK = 0xc0
+const CONTINUATION_BITS = 0x80
+
 export type EntrypointTruncation = {
   content: string
   lineCount: number
@@ -55,7 +60,11 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
   const trimmed = raw.trim()
   const contentLines = trimmed.split('\n')
   const lineCount = contentLines.length
-  const byteCount = trimmed.length
+  // Real UTF-8 size. `.length` counts UTF-16 code units, which undercounts
+  // multibyte content (CJK/emoji are 3-4 bytes each) by up to ~4x — a large
+  // non-ASCII index would slip past this budget entirely while reporting
+  // wasByteTruncated: false, and the warning names the value as a file size.
+  const byteCount = Buffer.byteLength(trimmed)
 
   const wasLineTruncated = lineCount > MAX_ENTRYPOINT_LINES
   // Check original byte count — long lines are the failure mode the byte cap
@@ -76,9 +85,19 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
     ? contentLines.slice(0, MAX_ENTRYPOINT_LINES).join('\n')
     : trimmed
 
-  if (truncated.length > MAX_ENTRYPOINT_BYTES) {
-    const cutAt = truncated.lastIndexOf('\n', MAX_ENTRYPOINT_BYTES)
-    truncated = truncated.slice(0, cutAt > 0 ? cutAt : MAX_ENTRYPOINT_BYTES)
+  if (Buffer.byteLength(truncated) > MAX_ENTRYPOINT_BYTES) {
+    // Cut in byte space so the cap actually bounds bytes. Prefer the last
+    // newline before the cap so we don't slice mid-line; otherwise hard-cut.
+    const buf = Buffer.from(truncated, 'utf8')
+    const newlineByte = buf.lastIndexOf(NEWLINE_BYTE, MAX_ENTRYPOINT_BYTES)
+    let cutAt = newlineByte > 0 ? newlineByte : MAX_ENTRYPOINT_BYTES
+    // Never slice through a multibyte character. A hard cut landing on a
+    // continuation byte (0b10xxxxxx) decodes to U+FFFD, which is 3 bytes and
+    // would push the body back over the cap — back up to the char's first byte.
+    while (cutAt > 0 && (buf[cutAt]! & CONTINUATION_MASK) === CONTINUATION_BITS) {
+      cutAt--
+    }
+    truncated = buf.subarray(0, cutAt).toString('utf8')
   }
 
   const reason =
