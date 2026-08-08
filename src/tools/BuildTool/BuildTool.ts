@@ -114,6 +114,14 @@ const inputSchema = lazySchema(() =>
 )
 type InputSchema = ReturnType<typeof inputSchema>
 
+/**
+ * Every field the RESULT RENDERER reads has to be declared here, not just the
+ * ones MCP wants: `UserToolSuccessMessage` validates `toolUseResult` against
+ * this schema before rendering and hands the renderer the PARSED value, and a
+ * `z.object` strips whatever it does not declare. `durationMs` and `stall` were
+ * missing, so the TUI rendered a bare "built" with no time for every build, and
+ * a stopped one could not report itself as stopped at all.
+ */
 const outputSchema = lazySchema(() =>
   z.object({
     system: z.string(),
@@ -121,9 +129,18 @@ const outputSchema = lazySchema(() =>
     upToDate: z.boolean(),
     errors: z.number(),
     warnings: z.number(),
+    durationMs: z.number().optional(),
     degraded: z.boolean(),
     exitCode: z.number(),
     runError: z.string().optional(),
+    stall: z
+      .object({
+        reason: z.enum(['idle', 'ceiling']),
+        ranMs: z.number(),
+        silentMs: z.number(),
+        lastLine: z.string().optional(),
+      })
+      .optional(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>

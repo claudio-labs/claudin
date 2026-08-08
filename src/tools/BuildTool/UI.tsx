@@ -3,7 +3,7 @@ import React from 'react'
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from '../../components/MessageResponse.js'
 import { ShellElapsedTime } from '../../components/shell/ShellElapsedTime.js'
-import { Box, Text } from '../../ink.js'
+import { Text } from '../../ink.js'
 import { formatDuration } from './budget.js'
 import type { Input, Output } from './BuildTool.js'
 import { resolveBuildCommand } from './BuildTool.js'
@@ -95,6 +95,13 @@ export function renderToolResultMessage(
 
   const ok = output.exitCode === 0 && !output.stall
   const took = formatDuration(output.durationMs)
+  const warnings =
+    output.warnings > 0 ? `${output.warnings} warning${output.warnings === 1 ? '' : 's'}` : null
+  // "built" would be a claim about compilation, and this tool runs whatever
+  // command it is given — `make lint` produces no artifact and built nothing.
+  // A verdict ("succeeded"/"failed") is true of every command it can run, and
+  // it makes the two arms symmetric: the failing line used to report only
+  // counts, never that the build had failed at all.
   const summary = output.stall
     ? `stopped after ${formatDuration(output.stall.ranMs)}`
     : output.degraded
@@ -102,25 +109,27 @@ export function renderToolResultMessage(
       : output.upToDate
         ? 'up to date, nothing rebuilt'
         : ok
-          ? [`built${took ? ` in ${took}` : ''}`, output.warnings > 0 ? `${output.warnings} warnings` : null]
+          ? [`build succeeded${took ? ` in ${took}` : ''}`, warnings].filter(Boolean).join(' · ')
+          : [
+              'build failed',
+              [
+                output.errors > 0 ? `${output.errors} error${output.errors === 1 ? '' : 's'}` : null,
+                warnings,
+              ]
+                .filter(Boolean)
+                .join(', '),
+            ]
               .filter(Boolean)
-              .join(', ')
-          : [`${output.errors} errors`, output.warnings > 0 ? `${output.warnings} warnings` : null]
-              .filter(Boolean)
-              .join(', ')
+              .join(' · ')
 
+  // No command echo: `renderToolUseMessage` resolves the command the same way
+  // this result did, so the header above already shows it verbatim — quiet
+  // flags included — and repeating it here only costs a line.
   return (
     <MessageResponse>
-      <Box flexDirection="column">
-        {output.command ? (
-          <Text dimColor wrap="truncate-end">
-            {output.command}
-          </Text>
-        ) : null}
-        <Text color={ok ? 'success' : 'error'}>
-          {ok ? '✓' : '✗'} {summary}
-        </Text>
-      </Box>
+      <Text color={ok ? 'success' : 'error'}>
+        {ok ? '✓' : '✗'} {summary}
+      </Text>
     </MessageResponse>
   )
 }

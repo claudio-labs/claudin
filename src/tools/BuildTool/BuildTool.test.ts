@@ -54,8 +54,8 @@ describe('resolveBuildCommand', () => {
 
 describe('BuildTool.call — nothing to run', () => {
   test('reports an actionable error instead of an empty green result', async () => {
-    // The failure mode to avoid: "built" for a project that was never built at
-    // all reads exactly like a successful build.
+    // The failure mode to avoid: "build succeeded" for a project that was never
+    // built at all reads exactly like a successful build.
     const result = await callIn(project(), {})
     expect(result.runError).toContain('Could not detect a build system')
     expect(formatBuildResult(result)).toStartWith('Build could not run')
@@ -237,6 +237,40 @@ describe('BuildTool.call — real bun build', () => {
     expect(result.exitCode).toBe(0)
     expect(result.errors).toBe(0)
     expect(existsSync(join(root, 'out', 'ok.js'))).toBe(true)
-    expect(formatBuildResult(result)).toStartWith('✓ node · built')
+    expect(formatBuildResult(result)).toStartWith('✓ node · build succeeded')
   }, 30_000)
+})
+
+describe('BuildTool.outputSchema — what survives to the renderer', () => {
+  // The TUI renders the value this schema PARSES, not the raw result
+  // (`UserToolSuccessMessage.tsx`), and `z.object` drops undeclared keys. So a
+  // field the renderer reads but the schema omits is not a cosmetic mismatch:
+  // it reaches `renderToolResultMessage` as `undefined`.
+  const result: BuildResult = {
+    system: 'make',
+    command: 'make lint',
+    upToDate: false,
+    errors: 0,
+    warnings: 2,
+    diagnostics: [],
+    artifacts: [],
+    alsoDetected: [],
+    degraded: false,
+    exitCode: 0,
+    durationMs: 135,
+    stall: { reason: 'idle', ranMs: 180_000, silentMs: 180_000, lastLine: 'linking' },
+  }
+
+  test('the duration reaches the renderer', () => {
+    const parsed = BuildTool.outputSchema.parse(result) as BuildResult
+    expect(parsed.durationMs).toBe(135)
+  })
+
+  test('a stopped build still knows it was stopped', () => {
+    // Without this the summary cannot reach its "stopped after …" arm, and a
+    // build killed by the watchdog renders as an ordinary failure.
+    const parsed = BuildTool.outputSchema.parse(result) as BuildResult
+    expect(parsed.stall?.reason).toBe('idle')
+    expect(parsed.stall?.ranMs).toBe(180_000)
+  })
 })

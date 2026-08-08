@@ -155,7 +155,10 @@ export function formatBuildResult(result: BuildResult): string {
     // because the code is clean.
     const header = result.upToDate
       ? `✓ ${result.system} · up to date, nothing rebuilt${took ? ` (${took})` : ''}`
-      : `✓ ${result.system} · built${took ? ` in ${took}` : ''}`
+      : // "succeeded", not "built": the tool runs whatever command it is given,
+        // and `make lint` or a codegen target compiles nothing. It also pairs
+        // with the failing header below, which already reads "build failed".
+        `✓ ${result.system} · build succeeded${took ? ` in ${took}` : ''}`
     return [
       header,
       result.upToDate ? '' : artifactNote(result),
