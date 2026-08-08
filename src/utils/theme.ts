@@ -956,8 +956,8 @@ const catppuccinLatteTheme: Theme = {
 const tokyoNightTheme: Theme = {
   autoAccept: 'rgb(187,154,247)', // Magenta
   bashBorder: 'rgb(187,154,247)', // Magenta (mode accent — must not read as `error`)
-  claude: 'rgb(215,119,87)', // Claude orange (brand, shared with the dark theme)
-  claudeShimmer: 'rgb(235,159,127)', // Lighter claude orange for shimmer effect
+  claude: 'ansi:redBright', // Claude orange — the dark-ansi one (follows the terminal palette)
+  claudeShimmer: 'ansi:yellowBright', // Lighter claude orange for shimmer (dark-ansi)
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(122,162,247)', // Blue
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(152,192,255)', // Lighter blue for shimmer
   permission: 'rgb(122,162,247)', // Blue (links/inline code, matches dark-ansi)
@@ -1000,7 +1000,7 @@ const tokyoNightTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(224,175,104)',
   // TUI V2 colors
-  clawd_body: 'rgb(215,119,87)',
+  clawd_body: 'ansi:redBright',
   clawd_background: 'rgb(26,27,38)',
   userMessageBackground: 'rgb(40, 44, 62)',
   userMessageBackgroundHover: 'rgb(52, 57, 80)',
@@ -1014,7 +1014,7 @@ const tokyoNightTheme: Theme = {
   fastMode: 'rgb(255,140,70)', // Electric orange for dark bg
   fastModeShimmer: 'rgb(255,175,120)', // Lighter orange for shimmer
   briefLabelYou: 'rgb(125,207,255)', // Cyan
-  briefLabelClaude: 'rgb(215,119,87)', // Brand orange
+  briefLabelClaude: 'ansi:redBright', // Brand orange (dark-ansi)
   rainbow_red: 'rgb(247,118,142)',
   rainbow_orange: 'rgb(255,158,100)',
   rainbow_yellow: 'rgb(224,175,104)',
