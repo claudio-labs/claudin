@@ -19,6 +19,14 @@ path from raw output before parsing (same fix as `eraseCheckoutPath` in the tool
 different path**, not just re-run in place — a fingerprint is a hash, so
 machine-specific text in it is invisible on inspection.
 
+**The absolute number moves constantly, and other memories quote stale snapshots
+of it.** Read it live rather than citing one: `count` in the committed
+`typecheck-baseline.json` (which also carries `capturedAt` and `capturedFrom`),
+or `bunx tsc --noEmit | grep -c "error TS"`. On 2026-08-07 at `8b63601f` both
+say **2820**. Every other figure in team memory — 4623, ~4320, 3161, 2849,
+2841 — is a dated snapshot of the same shrinking number, not a contradiction;
+treat any of them as evidence about its own date only.
+
 Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 (4623 → 3161 errors over that branch):
 

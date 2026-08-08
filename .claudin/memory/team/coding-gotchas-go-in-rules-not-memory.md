@@ -29,3 +29,13 @@ writing a team memory. Keep team memory for state/decisions/references. When
 consolidating, on close read keep "shipped X" memories that carry an opt-out env
 var or an open follow-up (not purely derivable), and surface that rather than
 deleting as "derivable".
+
+**The `name:` frontmatter field is deliberately NOT normalized here.** Most files
+in this directory carry a prose title (`name: Node engine floor raised to
+22.12.0`) rather than the kebab-case slug the memory format documents, and about
+ten carry the slug. That mismatch is harmless and was reviewed on 2026-08-07: the
+user chose to leave it, because the `[[…]]` links in this corpus resolve against
+the FILENAME, not against `name:`, and every link was verified to point at an
+existing file. Do not propose a bulk `name:` rewrite in a tidy or consolidation
+pass — the prose titles are more informative than the slugs, and the slug already
+lives in the filename.

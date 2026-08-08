@@ -42,6 +42,8 @@ reasons.
   repo, `node_modules` symlinked) and diff the **path-normalized message
   multisets**, not the counts. The 2026-08-07 split came back 2841→2837 with zero
   new error kinds; the handful that looked new were the same mismatch printed with
-  a different union-member order or diagnostic code.
+  a different union-member order or diagnostic code. (Those two figures are the
+  split branch pre-merge — `main` reads 2820 the same day. See
+  [[typecheck-backlog-shape]] before citing any absolute total.)
 
 See also [[coding-gotchas-go-in-rules-not-memory]], [[typecheck-backlog-shape]].

@@ -8,8 +8,10 @@ type: reference
 
 **Already in claudin (NOT gaps — verified against Claude Code inheritance):** markdown custom agents (`loadPluginAgents.ts`/`markdownConfigLoader.ts`), markdown slash commands w/ $ARGUMENTS/@file/!`shell`, wildcard permission allow/deny/ask (`settings/types.ts` PermissionsSchema), hooks, fork/auto-background subagents, read-only 9-op LSPTool, /resume + auto-compaction + auto-memory.
 
+**Shipped since this scout (were real gaps on 2026-06-24, verified present 2026-08-07):**
+- **apply_patch** — `src/tools/ApplyPatchTool/` exists and is the batched multi-file editor. Do not re-port it; see [[checkbatchwrite-updatedinput-clobbers-input]] for the permission bug it hit.
+
 **Real port candidates (claudin genuinely lacks):**
-- **apply_patch** `tool/apply_patch.ts` — codex-style multi-file atomic add/update/delete/rename; registry SWAPS edit/write→apply_patch for gpt-* models (`registry.ts:273-276`). Low effort, helps OpenAI-compat users.
 - **Auto-format on edit/write** `format/` (wired at `edit.ts:156`/`write.ts:65`) — prettier/gofmt/ruff detection. claudin has NO auto-format. Low effort, isolated.
 - **LSP diagnostics injected after edit/write** `edit.ts:197-201`/`write.ts:75-90` — claudin's LSPTool is read-only and does NOT auto-inject diagnostics. Medium effort.
 - **ACP/Zed adapter** `acp/` (`opencode acp`, Agent Client Protocol over stdio) — diffs/click-to-open/permission prompt, 100% local. `acp/tool.ts`+`acp/permission.ts` liftable. High value.
@@ -18,7 +20,7 @@ type: reference
 - **Truncation spill-to-disk + delegate-to-subagent hint** `tool/truncate.ts:129-131`.
 - **Background promote-to-foreground registry** `background/` — promote a bg job to foreground.
 
-**Skip:** Share (`share/share-next.ts` uploads transcript to https://opncd.ai — violates privacy stance; build local HTML/MD exporter instead, schema at `share-next.ts:292-298`). Server/SDK REST+OpenAPI (claudin chose gRPC; use endpoint list as parity checklist). websearch Exa/Parallel-via-MCP + webfetch Cloudflare-challenge fallback = minor.
+**Skip:** Share (`share/share-next.ts` uploads transcript to https://opncd.ai — violates privacy stance; build local HTML/MD exporter instead, schema at `share-next.ts:292-298`). Server/SDK REST+OpenAPI — this line used to read "claudin chose gRPC", which is now wrong: the headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, the `dev:grpc*` scripts) was **removed in #22** and verified absent 2026-08-07, so claudin has no headless API surface at all; keep the endpoint list only as a parity checklist if one ever comes back. websearch Exa/Parallel-via-MCP + webfetch Cloudflare-challenge fallback = minor.
 
 **Tax:** everything is Effect/Layer → de-Effect for claudin's plain Node runtime.
 

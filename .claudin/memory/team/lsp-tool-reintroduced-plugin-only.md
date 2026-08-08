@@ -1,5 +1,5 @@
 ---
-name: LSPTool reintroduced 2026-06-17 (was empirically rejected) — cache-safe, plugin-only servers
+name: lsp-tool-reintroduced-plugin-only
 description: LSPTool dropped 2026-05-28 (0 usage in 36 benches) then REINTRODUCED 2026-06-17 on feat/lsp-tool-reintroduce as a deliberate openclaude-shape match; read-only 9 ops, cache-stable, servers plugin-only
 type: project
 ---

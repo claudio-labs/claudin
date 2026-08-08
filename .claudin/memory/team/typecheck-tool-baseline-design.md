@@ -6,10 +6,12 @@ type: project
 
 `src/tools/TypecheckTool/` (branch `feat/typecheck-tool`, 2026-08-03) is the
 RunTests-shaped wrapper for the type-check step: detect the checker, run it,
-report only the diagnostics missing from a recorded backlog. Ten checkers —
+report only the diagnostics missing from a recorded backlog. Twelve checkers —
 tsc, deno, cargo, pyright, mypy, go, dart, dotnet, maven, gradle, phpstan,
-psalm. It exists because `main` carries **4623 pre-existing `tsc` errors**, so
-raw compiler output is unusable in context and nothing distinguished an error
+psalm. It exists because `main` carried **4623 pre-existing `tsc` errors** when
+it was built (2026-08-03 — a dated snapshot, not a fixed figure; `main` reads
+2820 on 2026-08-07, and [[typecheck-backlog-shape]] says how to read it live),
+so raw compiler output is unusable in context and nothing distinguished an error
 the agent caused from one that was already there.
 
 **Baseline mechanism (the load-bearing decision).** When `git status --porcelain`
@@ -19,8 +21,8 @@ fingerprints are persisted for that HEAD sha in project-local
 mutation. Consequences that are easy to get wrong:
 
 - Fingerprints hash file + code + message and **exclude line/column**. With a
-  4600-deep backlog, a line-based key would re-report thousands as "new" after a
-  one-line insertion.
+  backlog thousands deep, a line-based key would re-report thousands as "new"
+  after a one-line insertion.
 - Comparison is a **multiset**, not a set: three copies of a once-baselined error
   means two are new.
 - Entries under `.claudin/` are filtered out of the clean-tree check, and
