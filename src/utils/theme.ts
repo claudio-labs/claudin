@@ -976,7 +976,7 @@ const tokyoNightTheme: Theme = {
   background: 'rgb(125,207,255)', // Cyan accent
   success: 'rgb(158,206,106)', // Green
   error: 'rgb(247,118,142)', // Red
-  spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
+  spinnerStalled: 'ansi:redBright', // Stalled-spinner (mirrors error for ANSI, like dark-ansi)
   warning: 'rgb(224,175,104)', // Yellow
   merged: 'rgb(187,154,247)', // Magenta (matches autoAccept)
   warningShimmer: 'rgb(255,205,134)', // Lighter yellow for shimmer
