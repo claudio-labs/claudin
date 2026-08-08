@@ -119,8 +119,8 @@ export type ThemeSetting = (typeof THEME_SETTINGS)[number]
 /**
  * Default stalled-spinner red, shared by the RGB themes (the loading spinner
  * shifts toward this when no new tokens arrive ~3s). ANSI themes mirror their
- * own `error` color instead; tokyo-night overrides with a warm orange. The
- * parsed RGB fallback lives in Spinner/utils.ts (STALL_RED) — keep in sync.
+ * own `error` color instead. The parsed RGB fallback lives in
+ * Spinner/utils.ts (STALL_RED) — keep in sync.
  */
 const DEFAULT_STALL_RED = 'rgb(171,43,63)'
 
@@ -956,8 +956,8 @@ const catppuccinLatteTheme: Theme = {
 const tokyoNightTheme: Theme = {
   autoAccept: 'rgb(187,154,247)', // Magenta
   bashBorder: 'rgb(247,118,142)', // Red
-  claude: 'rgb(255,158,100)', // Orange
-  claudeShimmer: 'rgb(255,178,130)', // Lighter orange for shimmer effect
+  claude: 'rgb(215,119,87)', // Claude orange (brand, shared with the dark theme)
+  claudeShimmer: 'rgb(235,159,127)', // Lighter claude orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(122,162,247)', // Blue
   claudeBlueShimmer_FOR_SYSTEM_SPINNER: 'rgb(152,192,255)', // Lighter blue for shimmer
   permission: 'rgb(122,162,247)', // Blue (links/inline code, matches dark-ansi)
@@ -976,7 +976,7 @@ const tokyoNightTheme: Theme = {
   background: 'rgb(125,207,255)', // Cyan accent
   success: 'rgb(158,206,106)', // Green
   error: 'rgb(247,118,142)', // Red
-  spinnerStalled: 'rgb(255,120,60)', // Warm orange (stalled spinner) — not the pink error red
+  spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
   warning: 'rgb(224,175,104)', // Yellow
   merged: 'rgb(187,154,247)', // Magenta (matches autoAccept)
   warningShimmer: 'rgb(255,205,134)', // Lighter yellow for shimmer
@@ -1000,7 +1000,7 @@ const tokyoNightTheme: Theme = {
   // Chrome colors
   chromeYellow: 'rgb(224,175,104)',
   // TUI V2 colors
-  clawd_body: 'rgb(255,158,100)',
+  clawd_body: 'rgb(215,119,87)',
   clawd_background: 'rgb(26,27,38)',
   userMessageBackground: 'rgb(40, 44, 62)',
   userMessageBackgroundHover: 'rgb(52, 57, 80)',
@@ -1014,7 +1014,7 @@ const tokyoNightTheme: Theme = {
   fastMode: 'rgb(255,140,70)', // Electric orange for dark bg
   fastModeShimmer: 'rgb(255,175,120)', // Lighter orange for shimmer
   briefLabelYou: 'rgb(125,207,255)', // Cyan
-  briefLabelClaude: 'rgb(255,158,100)', // Orange
+  briefLabelClaude: 'rgb(215,119,87)', // Brand orange
   rainbow_red: 'rgb(247,118,142)',
   rainbow_orange: 'rgb(255,158,100)',
   rainbow_yellow: 'rgb(224,175,104)',
