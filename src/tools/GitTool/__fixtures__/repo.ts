@@ -136,6 +136,18 @@ export function writeRepoFile(root: string, rel: string, body: string): void {
 
 function init(root: string): void {
   git(root, ['init', '-q', '-b', 'main'])
+  // Written INTO the repo, not just passed to `git()`. A fixture is also driven
+  // by things that are not this helper — the Git tool runs through a real shell
+  // and inherits the machine's git config, not `gitFixtureEnv`. CI has no
+  // identity at all, so a commit made that way fails there and passes locally.
+  git(root, ['config', 'user.name', 'fixture'])
+  git(root, ['config', 'user.email', 'fixture@example.invalid'])
+  git(root, ['config', 'commit.gpgsign', 'false'])
+  // `diff.mnemonicPrefix` turns `a/ b/` into `i/ w/`, which changes which
+  // header lines the Bash output filter recognises and therefore what the diff
+  // budget receives. A developer who sets it globally would otherwise be
+  // testing a different code path than CI. The prefixed shape has its own test.
+  git(root, ['config', 'diff.mnemonicPrefix', 'false'])
 }
 
 function commitAll(root: string, message: string): void {

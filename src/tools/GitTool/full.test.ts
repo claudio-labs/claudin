@@ -51,6 +51,32 @@ describe('full: true', () => {
     expect(output).not.toContain('@@')
     // The hint has to name this flag, or the model reaches for Bash again.
     expect(output).toContain('full: true')
+
+    // Every changed file, first one included. The Bash filter wraps its result
+    // in a marker glued to the first line, and parsing that as part of the
+    // first section used to drop `src/app.ts` from the table without a word —
+    // a stat table that lies about what changed.
+    expect(output).toContain('7 files changed')
+    for (const path of ['src/app.ts', 'src/mod1.ts', 'src/mod6.ts']) {
+      expect(output).toContain(path)
+    }
+  }, 60_000)
+
+  test('the stat table is complete under diff.mnemonicPrefix too', async () => {
+    // With `i/ w/` prefixes the Bash filter keeps the `diff --git` headers
+    // instead of stripping them, so the summarizer takes its OTHER branch — the
+    // one where the filter's marker sits on the same line as the first
+    // `diff --git`. Parsing that line as part of the section silently dropped
+    // the first file from the table.
+    const root = wideDirtyRepo()
+    git(root, ['config', 'diff.mnemonicPrefix', 'true'])
+
+    const result = await run(root, ['git diff'])
+    const output = result.outcomes[0]?.output ?? ''
+
+    expect(output).toContain('hunks omitted')
+    expect(output).toContain('7 files changed')
+    expect(output).toContain('src/app.ts')
   }, 60_000)
 
   test('the same diff comes back whole with full: true', async () => {

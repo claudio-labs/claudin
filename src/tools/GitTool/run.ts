@@ -2,6 +2,7 @@ import {
   applyBashFilterToStdout,
   planBashFilter,
 } from '../../outputFilter/Bash/index.js'
+import { stripOutputMarkers } from '../../outputFilter/Bash/markers.js'
 import { exec } from '../../utils/Shell.js'
 import { GIT_NO_PROMPT_ENV } from '../../utils/git/noPromptEnv.js'
 import { logError } from '../../utils/log.js'
@@ -52,6 +53,25 @@ export type RunGitBatchOptions = {
   toolUseId?: string
 }
 
+/**
+ * Run the summarizers over the filtered output.
+ *
+ * The filter wraps its result in `<bash-output-filtered …>` markers, glued to
+ * the first line, and every summarizer here parses a line-anchored format. That
+ * one line was enough to make a wide diff lose its FIRST file from the stat
+ * table, silently — a stat table that lies is worse than no summary. So parse
+ * the bare body.
+ *
+ * When the summarizer declines, the marker-wrapped text is what goes back, not
+ * the bare body: the markers are how the model learns the filter already
+ * trimmed this output, and dropping them would invite a `| head` on top.
+ */
+function budgetFilteredOutput(command: string, filtered: string): string {
+  const body = stripOutputMarkers(filtered)
+  const summarized = summarizeGitOutput(command, body)
+  return summarized === body ? filtered : summarized
+}
+
 export async function runGitBatch(
   opts: RunGitBatchOptions,
 ): Promise<GitBatchResult> {
@@ -95,7 +115,7 @@ export async function runGitBatch(
         ? diagnoseGitFailure(command, result.code, filtered)
         : applyGitDelta(
             command,
-            full ? filtered : summarizeGitOutput(command, filtered),
+            full ? filtered : budgetFilteredOutput(command, filtered),
             { full, toolUseId: opts.toolUseId },
           )
       outcome = {

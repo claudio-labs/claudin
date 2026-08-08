@@ -56,7 +56,16 @@ const HEADER_PATH_RE = /^.\/(.+?) .\/(.+)$/
  */
 const MINUS_HEADER_SPLIT_RE = /^--- /m
 const PLUS_HEADER_RE = /^\+\+\+ (?:.\/)?(.+)$/m
-const HUNK_HEADER_RE = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/
+/**
+ * Multiline on purpose. The Bash output filter strips the `diff --git` and
+ * `index` headers, so for most users the FIRST thing in a diff is `--- a/…`
+ * and the only proof it is a diff is a hunk header partway down. Without the
+ * `m` this matched at position 0 only, `isUnifiedDiff` said no, and the diff
+ * budget quietly never fired on a filtered diff — which is the default
+ * configuration. `summarizeDiffFiles` has always handled the headerless shape;
+ * this is what lets it be reached.
+ */
+const HUNK_HEADER_RE = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/m
 const BINARY_RE = /^Binary files /m
 const NEW_FILE_RE = /^new file mode /m
 const DELETED_FILE_RE = /^deleted file mode /m
