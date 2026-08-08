@@ -11,4 +11,4 @@ export const DESCRIPTION = `Run git and gh commands and get back a compact resul
 
 Pass \`commands\` as a list of verbatim shell commands, each starting with \`git\` or \`gh\` — e.g. ["git status", "git diff", "git log -5"]. Sending a burst as ONE call is cheaper than one call each.
 
-One command per element: no pipes, \`&&\`, \`;\` or redirects — use Bash for those. Reads and writes both run; a mutating command asks for permission exactly as it would in Bash, and your existing Bash permission rules apply unchanged. Commands run in order and stop at the first failure.`
+One command per element: no pipes, \`&&\`, \`;\` or redirects outside quotes — use Bash for those. Inside quotes they are literal, so a multi-line \`git commit -m\` or \`gh pr create --body\` belongs here; quote with '…' when the text holds a backtick or a \`$\`. Writes run too, asking for permission exactly as in Bash, under your existing Bash rules. Commands run in order and stop at the first failure; \`full: true\` returns the whole body instead of a summary.`

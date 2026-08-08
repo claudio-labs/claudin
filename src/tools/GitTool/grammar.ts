@@ -4,8 +4,10 @@
  * Three jobs, all narrow on purpose:
  *
  *  - **Accept/refuse.** One command per element, starting with `git` or `gh`,
- *    no shell operators. Anything else belongs in Bash, which parses shell
- *    syntax properly.
+ *    and nothing in it that the shell would act on rather than pass to git —
+ *    scanned with bash's own quoting rules by `scanShellHazards`, so a quoted
+ *    argument may hold operators and newlines while an unquoted one may not.
+ *    Anything else belongs in Bash, which parses shell syntax properly.
  *  - **Decline the forms that cannot work here.** `git add -p` reads from a
  *    stdin nobody writes to, so it blocks until the timeout; `git rebase -i`
  *    and `git commit` with no message reach an editor that `Shell.ts` pins to
@@ -24,27 +26,156 @@
  * ask, and they stay out of plan mode.
  */
 
+import {
+  hasMalformedTokens,
+  hasShellQuoteSingleQuoteBug,
+  tryParseShellCommand,
+} from '../../utils/bash/shellQuote.js'
+import { oneLineCommand } from './display.js'
+
 export const GIT_BINARIES = ['git', 'gh'] as const
 export type GitBinary = (typeof GIT_BINARIES)[number]
 
 const BINARY_SET: ReadonlySet<string> = new Set(GIT_BINARIES)
 
+const LEADING_WORD_RE = /^(\S+)/
+
 /**
- * Operators that make one element do more than one thing.
+ * Only for `gitSubcommandOf`, which needs the subcommand and nothing else: it
+ * always sits before any quoted argument, so splitting is enough there.
+ */
+const WHITESPACE_RE = /\s+/
+
+/**
+ * Characters that make one element do more than one thing when they are not
+ * inside quotes.
  *
  * NOT `hasShellComposition` from `src/tools/shared/redirect.ts`: that regex
  * also treats `'` and `"` as composition. That is right for a *redirect* (a
  * quoted command should stay in Bash) but would make `git commit -m "…"` —
  * the single most important mutating command — impossible to express here.
- *
- * Quotes are safe to allow: `exec()` hands the command to `quoteShellCommand`
- * (`src/utils/shell/bashProvider.ts:125`), the same escaping BashTool relies
- * on. A `;` or `|` inside a quoted argument is still refused — that is the
- * safe direction, and the command falls back to Bash.
  */
-const COMPOSITION_RE = /[;|&<>\n`]|\$\(/
+const UNQUOTED_OPERATORS: ReadonlySet<string> = new Set([
+  ';',
+  '|',
+  '&',
+  '<',
+  '>',
+  '(',
+  ')',
+  '\n',
+  '\r',
+])
 
-const WHITESPACE_RE = /\s+/
+/**
+ * Walk the command with bash's own quoting rules and report the first thing
+ * bash would do to it that git would then never see.
+ *
+ * The rule this encodes is bash's, not a blanket ban, because the two shapes
+ * that matter most are a quoted *message*: `git commit -m` and
+ * `gh pr create --body`. Inside single quotes everything is literal, so a
+ * backtick in a PR body or a `$` in "costs $50" is safe; inside double quotes
+ * `$` and a backtick still expand, so those are refused and the message names
+ * the fix. Operators are literal inside either kind of quote and only compose
+ * outside them, which is what lets a message contain `;` and, crucially,
+ * newlines.
+ *
+ * Fail-closed in the direction that matters: whatever this accepts reaches git
+ * byte-for-byte, so the tool can never commit a message the shell quietly
+ * rewrote. Anything else falls back to Bash, which parses shell syntax
+ * properly.
+ *
+ * Doing this scan ourselves is not optional. shell-quote — which resolves the
+ * arguments below — has no newline in its operator set and drops unquoted
+ * newlines as plain separators, so `git status\nrm -rf /` parses to tokens with
+ * no operator in them at all.
+ */
+function scanShellHazards(command: string): string | null {
+  const shown = oneLineCommand(command)
+  let inSingle = false
+  let inDouble = false
+
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i] as string
+    if (inSingle) {
+      // Bash prints every character literally inside '…', backslash included.
+      if (c === "'") inSingle = false
+      continue
+    }
+    if (c === '\\') {
+      i += 1
+      continue
+    }
+    if (c === '"') {
+      inDouble = !inDouble
+      continue
+    }
+    if (c === "'" && !inDouble) {
+      inSingle = true
+      continue
+    }
+    if (c === '$') {
+      if (command[i + 1] === '(') {
+        return `\`${shown}\` uses command substitution \`$(…)\`, which needs a shell this tool does not give it. Work out the value first and pass it literally, or run the whole thing with Bash.`
+      }
+      return `\`${shown}\` has an unescaped \`$\` outside single quotes, and bash would expand it before git saw it. Put that argument in single quotes ('…'), or escape it as \\$.`
+    }
+    if (c === '`') {
+      return `\`${shown}\` has a backtick outside single quotes, which bash would run as a command. Put that argument in single quotes ('…') — inside them a backtick is literal, which is what a PR body needs.`
+    }
+    if (!inDouble && UNQUOTED_OPERATORS.has(c)) {
+      const named = c === '\n' || c === '\r' ? 'a newline' : `\`${c}\``
+      return `\`${shown}\` contains a shell operator (${named}) outside quotes. Send one plain command per list element — several commands go in the list, not in one string — or run it with Bash if it genuinely needs a shell.`
+    }
+  }
+
+  if (inSingle || inDouble) {
+    return `\`${shown}\` has an unterminated quote.`
+  }
+  return null
+}
+
+/**
+ * Resolve the command into argument tokens with quoting applied, so a quoted
+ * message is ONE token instead of a handful of fragments.
+ *
+ * This is what the classification below reads, and resolving it properly is a
+ * correctness fix rather than a nicety: whitespace-splitting made
+ * `git stash push -m "wip -p thing"` look like patch mode, and made
+ * `git branch --list "-D x"` safe only by the accident of the quote character
+ * gluing itself onto the token.
+ *
+ * @returns null when the command cannot be tokenized confidently, in which case
+ * the caller refuses and the command falls back to Bash.
+ */
+function resolveArgs(command: string): string[] | null {
+  // shell-quote and bash disagree about a backslash inside single quotes; the
+  // guard is the existing one from the Bash permission path.
+  if (hasShellQuoteSingleQuoteBug(command)) return null
+
+  const parsed = tryParseShellCommand(command)
+  if (!parsed.success) return null
+  if (hasMalformedTokens(command, parsed.tokens)) return null
+
+  const tokens: string[] = []
+  for (const entry of parsed.tokens) {
+    if (typeof entry === 'string') {
+      tokens.push(entry)
+      continue
+    }
+    // `src/*.ts` — the pattern is the token bash would pass to git.
+    if ('pattern' in entry) {
+      tokens.push(entry.pattern)
+      continue
+    }
+    // An operator or a comment. The scan above already refused every operator,
+    // and shell-quote treats an unquoted `#` as a comment ANYWHERE in a token
+    // (bash only does at the start of a word) and drops the rest of the line,
+    // so there is no token list here that is safe to classify.
+    return null
+  }
+  return tokens.slice(1)
+}
 
 /** `-p`, `-ip`, `-p5` — a short-flag cluster containing the letter. */
 function hasShortFlag(args: readonly string[], letter: string): boolean {
@@ -485,7 +616,7 @@ export type GitCommandAccepted = {
   ok: true
   command: string
   binary: GitBinary
-  /** Whitespace-split tokens after the binary. Quoting is NOT resolved. */
+  /** Tokens after the binary, with quoting resolved: `-m "a b"` is one token. */
   args: readonly string[]
   readOnly: boolean
 }
@@ -510,23 +641,26 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
     return { ok: false, reason: 'Empty command.' }
   }
 
-  const tokens = command.split(WHITESPACE_RE)
-  const binary = tokens[0] ?? ''
+  const binary = LEADING_WORD_RE.exec(command)?.[1] ?? ''
   if (!BINARY_SET.has(binary)) {
     return {
       ok: false,
-      reason: `\`${command}\` does not start with \`git\` or \`gh\`. Run it with Bash instead.`,
+      reason: `\`${oneLineCommand(command)}\` does not start with \`git\` or \`gh\`. Run it with Bash instead.`,
     }
   }
 
-  if (COMPOSITION_RE.test(command)) {
+  const hazard = scanShellHazards(command)
+  if (hazard !== null) {
+    return { ok: false, reason: hazard }
+  }
+
+  const args = resolveArgs(command)
+  if (args === null) {
     return {
       ok: false,
-      reason: `\`${command}\` contains a shell operator (a pipe, \`&&\`, \`;\` or a redirect). Send one plain command per list element — several commands go in the list, not in one string — or run it with Bash if it genuinely needs a shell.`,
+      reason: `\`${oneLineCommand(command)}\` could not be read as a single plain command — the quoting is ambiguous. Simplify it, or run it with Bash, which parses shell syntax properly.`,
     }
   }
-
-  const args = tokens.slice(1)
   const typedBinary = binary as GitBinary
   const { subcommand, rest } =
     typedBinary === 'git'

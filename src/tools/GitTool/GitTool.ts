@@ -78,7 +78,7 @@ const inputSchema = lazySchema(() =>
       .boolean()
       .optional()
       .describe(
-        'Return the whole body even when an identical earlier call already delivered part of it.',
+        'Return the whole body: no summary, no rewrite, and no eliding of what an identical earlier call already delivered. Use it to get every hunk of a large diff.',
       ),
   }),
 )

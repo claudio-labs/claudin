@@ -25,12 +25,99 @@ describe('accept / refuse', () => {
       'git diff | head -50',
       'git status; git diff',
       'git log > out.txt',
-      'git commit -m "$(date)"',
     ]) {
       const parsed = parseGitCommand(cmd)
       expect(parsed.ok).toBe(false)
       if (!parsed.ok) expect(parsed.reason).toContain('shell operator')
     }
+  })
+
+  test('refuses an unquoted newline, which shell-quote does not see as an operator', () => {
+    // parse('git status\nrm -rf /') yields tokens with no `op` entry at all,
+    // so this can only be caught by the scan, never by the tokenizer.
+    const parsed = parseGitCommand('git status\nrm -rf /')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) expect(parsed.reason).toContain('newline')
+  })
+
+  test('accepts a multi-line quoted message — the commit body case', () => {
+    const command = 'git commit -m "feat: the subject\n\nThe body, on its own line."'
+    const parsed = parseGitCommand(command)
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      // ONE token, newlines intact: what reaches git is what was written.
+      expect(parsed.args).toEqual([
+        'commit',
+        '-m',
+        'feat: the subject\n\nThe body, on its own line.',
+      ])
+    }
+  })
+
+  test('accepts operators that are literal because they are quoted', () => {
+    for (const cmd of [
+      'git commit -m "fix: a; b"',
+      'git commit -m "fix: a | b"',
+      'git commit -m "fix" --author="A Name <a@b.co>"',
+      "git commit -m 'fix: a; b'",
+    ]) {
+      expect(acceptsGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  test('refuses expansion the shell would perform before git saw it', () => {
+    const substitution = parseGitCommand('git commit -m "$(date)"')
+    expect(substitution.ok).toBe(false)
+    if (!substitution.ok) {
+      expect(substitution.reason).toContain('command substitution')
+    }
+
+    // Silent corruption is the point: bash turns "costs $50" into "costs 0".
+    const variable = parseGitCommand('git commit -m "costs $50"')
+    expect(variable.ok).toBe(false)
+    if (!variable.ok) expect(variable.reason).toContain("single quotes")
+
+    const backtick = parseGitCommand('gh pr create --title t --body "see `date`"')
+    expect(backtick.ok).toBe(false)
+    if (!backtick.ok) expect(backtick.reason).toContain('backtick')
+  })
+
+  test('accepts $ and backticks inside single quotes, where bash leaves them alone', () => {
+    // A PR body is markdown: backticks are the normal case, not an edge one.
+    expect(
+      acceptsGitCommand("gh pr create --title t --body '## Summary\n- fixes `foo()`'"),
+    ).toBe(true)
+    expect(acceptsGitCommand("git commit -m 'costs $50'")).toBe(true)
+  })
+
+  test('refuses an unterminated quote instead of guessing where it ends', () => {
+    const parsed = parseGitCommand('git commit -m "fix: thing')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) expect(parsed.reason).toContain('unterminated quote')
+  })
+
+  test('refuses an unquoted # — shell-quote drops the rest of the line', () => {
+    // bash treats a mid-word `#` as literal and shell-quote does not, so there
+    // is no token list here that can be classified honestly.
+    expect(acceptsGitCommand('git log --grep=#123')).toBe(false)
+    expect(acceptsGitCommand("git log --grep='#123'")).toBe(true)
+  })
+
+  test('reads flags from resolved tokens, not from inside a message', () => {
+    // Whitespace-splitting saw the `-p` in the message and refused this as
+    // patch mode, which it never was.
+    expect(acceptsGitCommand('git stash push -m "wip -p thing"')).toBe(true)
+    // The real flag is still caught.
+    const patchy = parseGitCommand('git stash push -p')
+    expect(patchy.ok).toBe(false)
+    if (!patchy.ok) expect(patchy.reason).toContain('patch/interactive')
+  })
+
+  test('a quoted write flag is an argument, not a flag', () => {
+    // `git branch --list "-D x"` lists branches matching a pattern; it only
+    // escaped BRANCH_WRITE_FLAGS before because the quote glued onto the token.
+    expect(isReadOnlyGitCommand('git branch --list "-D x"')).toBe(true)
+    expect(isReadOnlyGitCommand('git branch -D x')).toBe(false)
   })
 
   test('refuses a command that is not git or gh', () => {

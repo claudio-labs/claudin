@@ -184,7 +184,7 @@ export function renderDiffStat(
   return [
     `${files.length} ${noun} changed, +${added}/-${removed} (${reason} — hunks omitted)`,
     ...files.map(statLine),
-    `Ask for one file's hunks with Git({commands:["git diff -- <path>"]}).`,
+    `Ask for one file's hunks with Git({commands:["git diff -- <path>"]}), or for all of them at once by re-sending this command with full: true.`,
   ].join('\n')
 }
 
@@ -219,7 +219,7 @@ function renderFileBudgeted(
     text: [
       head,
       ...kept,
-      `  … ${dropped} more ${noun} (${droppedLines} lines) — Git({commands:["git diff -- ${file.path}"]}) for the rest.`,
+      `  … ${dropped} more ${noun} (${droppedLines} lines) — Git({commands:["git diff -- ${file.path}"]}), or full: true, for the rest.`,
     ].join('\n'),
     elided: true,
   }

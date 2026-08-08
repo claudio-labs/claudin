@@ -3,6 +3,7 @@ import React from 'react'
 import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from '../../components/MessageResponse.js'
 import { Box, Text } from '../../ink.js'
+import { oneLineCommand } from './display.js'
 import type { Input, Output } from './GitTool.js'
 
 export function userFacingName(): string {
@@ -15,11 +16,13 @@ export function renderToolUseMessage(
 ): React.ReactNode {
   const commands = input.commands ?? []
   if (commands.length === 0) return ''
-  if (commands.length === 1) return commands[0]
+  // A `-m "…"` argument can carry newlines; the header is one line.
+  const shown = commands.map(c => oneLineCommand(c))
+  if (shown.length === 1) return shown[0]
   // ' · ' rather than '; ' or ' && ': the batch is a list, and a shell operator
   // in the header would misrepresent what ran.
-  if (verbose) return commands.join(' · ')
-  return `${commands[0]} · +${commands.length - 1} more`
+  if (verbose) return shown.join(' · ')
+  return `${shown[0]} · +${shown.length - 1} more`
 }
 
 export function renderToolUseErrorMessage(
@@ -41,12 +44,12 @@ export function renderToolResultMessage(
             <Text color={outcome.exitCode === 0 ? 'success' : 'error'}>
               {outcome.exitCode === 0 ? '✓' : '✗'}
             </Text>{' '}
-            {outcome.command}
+            {oneLineCommand(outcome.command)}
           </Text>
         ))}
         {output.notRun.map(command => (
           <Text key={command} dimColor wrap="truncate-end">
-            ⊘ {command}
+            ⊘ {oneLineCommand(command)}
           </Text>
         ))}
         {output.runError ? <Text color="error">{output.runError}</Text> : null}

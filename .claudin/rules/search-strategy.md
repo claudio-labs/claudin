@@ -85,6 +85,18 @@ unchanged. The tool takes a
 **list** — `Git({commands:["git status","git diff","git log -5"]})` — so a burst
 that would have been three Bash calls is one call and one result.
 
+What it accepts is scanned with bash's own quoting rules
+(`scanShellHazards` in `grammar.ts`), not with a blanket ban on punctuation. An
+operator only composes OUTSIDE quotes, so a quoted argument may hold `;`, `|`,
+`<`, `>` and — the point of the rule — newlines: a multi-line `git commit -m`
+or `gh pr create --body` goes through the tool, and the commit protocol
+prescribes that instead of a Bash HEREDOC. What is refused is what the shell
+would rewrite before git saw it: `$(…)`, an unescaped `$` and a backtick
+outside single quotes, since inside `'…'` both are literal (which is what a PR
+body full of backticks needs). Arguments are then resolved through shell-quote,
+so a flag inside a message is an argument rather than a flag —
+`git stash push -m "wip -p x"` used to be refused as patch mode.
+
 What comes back is budgeted. A unified diff at or above 6 KB, or touching 6+
 files, loses its hunks for a stat table naming the command that fetches one
 file's hunks back; below that each file gets 60 lines before the remainder is
@@ -92,8 +104,12 @@ named (`src/tools/GitTool/parsers/diff.ts`) — `gh pr diff` routes through that
 same renderer, and `gh run view --log` through the CI-log one (job/step headers
 hoisted, timestamps and `##[group]` markers dropped, tail kept). Re-running an identical read returns
 only the sections that changed — the stat table still lists every file, with the
-ones you already received marked `unchanged, elided` — so pass `full: true` for
-the whole body, or `CLAUDIN_DISABLE_GIT_DELTA=1` to turn that lane off. Both
+ones you already received marked `unchanged, elided` — or
+`CLAUDIN_DISABLE_GIT_DELTA=1` to turn that lane off. `full: true` is the escape
+from all of it: no summary, no elision, and no Bash-filter rewrite either, so
+`full: true` on `git log` is the real log and not the `--oneline` one. It is the
+answer to a diff too wide to come back whole, and past the 30k result cap the
+harness persists the body to a file rather than truncating it. Both
 lanes ship a summary only when it is ≤70% of what it replaces, and a FAILING
 command is never budgeted or elided: it gets a one-line diagnosis prepended and
 keeps its raw text. `CLAUDIN_DISABLE_GIT_TOOL=1` removes the tool, and with it

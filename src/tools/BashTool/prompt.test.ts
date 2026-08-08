@@ -7,6 +7,7 @@
 // read-only string assertions. The stub is load-bearing — without it the
 // tests blow up at import-resolution time.
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { parseGitCommand } from '../GitTool/grammar.js'
 import { GIT_TOOL_NAME } from '../GitTool/prompt.js'
 import {
   getBashGitInstructionsBody,
@@ -91,13 +92,14 @@ describe('getBashGitInstructionsBody', () => {
     expect(body).toContain('--no-edit')
   })
 
-  it('keeps the HEREDOC commit-message example intact', () => {
-    // The HEREDOC pattern is the model's only path to multi-line commit
-    // messages without shell-quoting hazards. A naive "trim verbose
-    // examples" pass would remove it; this test prevents that.
+  it('shows a multi-line commit message the model can pass in one argument', () => {
+    // The HEREDOC used to be the only path to a multi-line message; the Git
+    // tool takes one now, and a "trim verbose examples" pass must not drop the
+    // blank line that separates subject from body.
     delete process.env.USER_TYPE
     const body = getBashGitInstructionsBody()
-    expect(body).toContain(`git commit -m "$(cat <<'EOF'`)
+    expect(body).toContain('git commit -m')
+    expect(body).toContain('\\n\\nBody line here.')
   })
 
   it('points the repository reads at the Git tool, batched', () => {
@@ -112,13 +114,31 @@ describe('getBashGitInstructionsBody', () => {
     )
   })
 
-  it('still sends the HEREDOC commit through Bash', () => {
-    // `$(cat <<'EOF'` is command substitution, which the Git tool refuses by
-    // design. If the protocol routed it there the commit step would be
-    // unreachable, so the split has to stay explicit.
+  it('every example command in the protocol is one the Git tool accepts', () => {
+    // The protocol now routes the commit and the PR through the Git tool, so a
+    // prompt example the grammar refuses would leave those steps unreachable —
+    // which is exactly what the `$(cat <<'EOF'` HEREDOC example would do.
     delete process.env.USER_TYPE
     const body = getBashGitInstructionsBody()
-    expect(body).toContain(`needs a shell — send that one through the ${BASH_TOOL_NAME} tool`)
+
+    const examples = [...body.matchAll(/\{commands: (\[[\s\S]*?\])\}\)/g)]
+    expect(examples.length).toBe(2)
+
+    for (const [, json] of examples) {
+      for (const command of JSON.parse(json as string) as string[]) {
+        const parsed = parseGitCommand(command)
+        expect(parsed.ok ? '' : `${command} → ${parsed.reason}`).toBe('')
+      }
+    }
+  })
+
+  it('no longer sends the commit or the PR body through Bash', () => {
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).not.toContain(`git commit -m "$(cat <<'EOF'`)
+    expect(body).not.toContain(`needs a shell — send that one through the ${BASH_TOOL_NAME} tool`)
+    // The one case neither quote can express is still named.
+    expect(body).toContain('BOTH a backtick and an apostrophe')
   })
 })
 
