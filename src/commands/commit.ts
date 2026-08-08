@@ -37,13 +37,13 @@ Based on the above changes, create a single git commit:
    - Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.)
    - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
 
-2. Stage relevant files and create the commit using HEREDOC syntax:
+2. Stage relevant files and create the commit, passing the whole message as one quoted \`-m\` argument — a newline inside the quotes is literal, so subject and body keep their formatting:
 \`\`\`
-git commit -m "$(cat <<'EOF'
-Commit message here.${commitAttribution ? `\n\n${commitAttribution}` : ''}
-EOF
-)"
+git commit -m "Commit subject here.
+
+Body line here.${commitAttribution ? `\n\n${commitAttribution}` : ''}"
 \`\`\`
+Quote it with '…' instead when the message contains a backtick or a \`$\`.
 
 You have the capability to call multiple tools in a single response. Stage and create the commit using a single message. Do not use any other tools or do anything else. Do not send any other text or messages besides these tool calls.`
 }

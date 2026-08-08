@@ -96,7 +96,7 @@ Git Safety Protocol:
    - Add relevant untracked files to the staging area.
    - Create the commit with a message${commitAttribution ? ` ending with:\n   ${commitAttribution}` : '.'}
    - Run git status after the commit completes to verify success.
-   These depend on each other and must run in order. The commit itself uses a HEREDOC (below), which needs a shell — send that one through the ${BASH_TOOL_NAME} tool; the staging and the verifying status are plain commands and belong in ${GIT_TOOL_NAME}.
+   These depend on each other and must run in order, which is exactly what one ${GIT_TOOL_NAME} call gives you: the list runs in order and stops at the first failure, so send all three as one \`commands\` list.
 4. If the commit fails due to pre-commit hook: fix the issue and create a NEW commit
 
 Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution trailer to the commit message (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the message with no such footer.`}
@@ -105,13 +105,11 @@ Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution
 - DO NOT push to the remote repository unless the user explicitly asks you to do so
 - Never use git commands with the \`-i\` flag (rebase/add interactive) — they require TTY input. Also never use \`--no-edit\` with \`git rebase\` — it is not a valid rebase flag.
 - If there are no changes to commit, do not create an empty commit.
-- ALWAYS pass the commit message via a HEREDOC for proper formatting, e.g.:
+- Pass the whole message — subject, blank line and body — as ONE quoted \`-m\` argument. Inside quotes a newline is literal, so the message keeps its formatting, e.g.:
 <example>
-git commit -m "$(cat <<'EOF'
-   Commit message here.${commitAttribution ? `\n\n   ${commitAttribution}` : ''}
-   EOF
-   )"
+${GIT_TOOL_NAME}({commands: ["git add file-one.ts file-two.ts", "git commit -m \\"Commit subject here.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
 </example>
+- Quote that argument with '…' instead of "…" when the message contains a backtick or a \`$\`, which bash would otherwise expand before git saw it. If it contains BOTH a backtick and an apostrophe, neither quote works — that one message goes through ${BASH_TOOL_NAME} with a \`<<'EOF'\` HEREDOC.
 
 # Creating pull requests
 Use gh for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases — via the ${GIT_TOOL_NAME} tool, which runs gh as well as git. If given a Github URL use gh to get the information needed.
@@ -129,16 +127,9 @@ IMPORTANT: When the user asks you to create a pull request, follow these steps c
 3. Run the following, in this order:
    - Create new branch if needed
    - Push to remote with -u flag if needed
-   - Create PR using gh pr create with the format below. Use a HEREDOC to pass the body to ensure correct formatting — a HEREDOC needs a shell, so send that one through the ${BASH_TOOL_NAME} tool.
+   - Create PR using gh pr create with the format below, through ${GIT_TOOL_NAME}. A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal.
 <example>
-gh pr create --title "the pr title" --body "$(cat <<'EOF'
-## Summary
-<1-3 bullet points>
-
-## Test plan
-[Bulleted markdown checklist of TODOs for testing the pull request...]${prAttribution ? `\n\n${prAttribution}` : ''}
-EOF
-)"
+${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullet points>\\n\\n## Test plan\\n[Bulleted markdown checklist of TODOs for testing the pull request...]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
 </example>
 
 Important:${prAttribution ? '' : `\n- Do NOT append any AI attribution footer to the PR body (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the body with no such footer.`}

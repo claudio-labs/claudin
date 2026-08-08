@@ -70,25 +70,21 @@ Analyze all changes that will be included in the pull request, making sure to lo
 
 Based on the above changes:
 1. Create a new branch if on ${defaultBranch} (use SAFEUSER from context above for the branch name prefix, falling back to whoami if SAFEUSER is empty, e.g., \`username/feature-name\`)
-2. Create a single commit with an appropriate message using heredoc syntax${commitAttribution ? `, ending with the attribution text shown in the example below` : ` (do NOT add any AI attribution trailer such as "🤖 Generated with Claude Code" or "Co-Authored-By: Claude")`}:
+2. Create a single commit with an appropriate message, passing the whole message as one quoted \`-m\` argument — a newline inside the quotes is literal${commitAttribution ? `, and end it with the attribution text shown in the example below` : ` (do NOT add any AI attribution trailer such as "🤖 Generated with Claude Code" or "Co-Authored-By: Claude")`}:
 \`\`\`
-git commit -m "$(cat <<'EOF'
-Commit message here.${commitAttribution ? `\n\n${commitAttribution}` : ''}
-EOF
-)"
+git commit -m "Commit subject here.
+
+Body line here.${commitAttribution ? `\n\n${commitAttribution}` : ''}"
 \`\`\`
 3. Push the branch to origin
-4. If a PR already exists for this branch (check the gh pr view output above), update the PR title and body using \`gh pr edit\` to reflect the current diff${addReviewerArg}. Otherwise, create a pull request using \`gh pr create\` with heredoc syntax for the body${reviewerArg}.
+4. If a PR already exists for this branch (check the gh pr view output above), update the PR title and body using \`gh pr edit\` to reflect the current diff${addReviewerArg}. Otherwise, create a pull request using \`gh pr create\`${reviewerArg}. A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal.
    - IMPORTANT: Keep PR titles short (under 70 characters). Use the body for details.${effectivePrAttribution ? '' : `\n   - IMPORTANT: Do NOT append any AI attribution footer to the PR body (e.g. "🤖 Generated with Claude Code", "Co-Authored-By: Claude").`}
 \`\`\`
-gh pr create --title "Short, descriptive title" --body "$(cat <<'EOF'
-## Summary
+gh pr create --title "Short, descriptive title" --body '## Summary
 <1-3 bullet points>
 
 ## Test plan
-[Bulleted markdown checklist of TODOs for testing the pull request...]${changelogSection}${effectivePrAttribution ? `\n\n${effectivePrAttribution}` : ''}
-EOF
-)"
+[Bulleted markdown checklist of TODOs for testing the pull request...]${changelogSection}${effectivePrAttribution ? `\n\n${effectivePrAttribution}` : ''}'
 \`\`\`
 
 You have the capability to call multiple tools in a single response. You MUST do all of the above in a single message.${slackStep}

@@ -13,9 +13,13 @@ test('the description stays inside its per-request budget', () => {
   expect(DESCRIPTION.length).toBeLessThanOrEqual(MAX_DESCRIPTION_CHARS)
 })
 
-test('the description states the three things the model gets wrong without it', () => {
+test('the description states the things the model gets wrong without it', () => {
   // A list, not a string; no shell operators; writes are allowed but prompt.
   expect(DESCRIPTION).toContain('commands')
   expect(DESCRIPTION).toContain('no pipes')
   expect(DESCRIPTION).toContain('permission')
+  // The two escapes it would otherwise leave for Bash: a multi-line message,
+  // and a diff too wide to come back whole.
+  expect(DESCRIPTION).toContain('multi-line')
+  expect(DESCRIPTION).toContain('full: true')
 })

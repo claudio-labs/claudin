@@ -2,6 +2,7 @@ import {
   applyBashFilterToStdout,
   planBashFilter,
 } from '../../outputFilter/Bash/index.js'
+import { stripOutputMarkers } from '../../outputFilter/Bash/markers.js'
 import { exec } from '../../utils/Shell.js'
 import { GIT_NO_PROMPT_ENV } from '../../utils/git/noPromptEnv.js'
 import { logError } from '../../utils/log.js'
@@ -9,6 +10,7 @@ import { trimShellStdout } from '../shellToolResultMappers.js'
 import { trackGitOperations } from '../shared/gitOperationTracking.js'
 import { summarizeGitOutput } from './budget.js'
 import { applyGitDelta } from './delta.js'
+import { oneLineCommand } from './display.js'
 import { diagnoseGitFailure } from './errors.js'
 import type { GitBatchResult, GitCommandOutcome } from './types.js'
 
@@ -35,7 +37,13 @@ export type RunGitBatchOptions = {
   commands: readonly string[]
   abortSignal: AbortSignal
   timeoutMs: number
-  /** `full: true` on the tool input opts out of the delta lane. */
+  /**
+   * `full: true` on the tool input means the whole body: it opts out of the
+   * delta lane, out of the summarizers, AND out of the Bash filter's command
+   * rewrites, so the command runs as written. Without that last part
+   * `full: true` on `git log` would still return the `--oneline` rewrite
+   * capped at 50 lines, which is not what the flag says.
+   */
   full?: boolean
   /**
    * The `tool_use_id` this batch's result will be delivered under. The delta
@@ -45,15 +53,35 @@ export type RunGitBatchOptions = {
   toolUseId?: string
 }
 
+/**
+ * Run the summarizers over the filtered output.
+ *
+ * The filter wraps its result in `<bash-output-filtered …>` markers, glued to
+ * the first line, and every summarizer here parses a line-anchored format. That
+ * one line was enough to make a wide diff lose its FIRST file from the stat
+ * table, silently — a stat table that lies is worse than no summary. So parse
+ * the bare body.
+ *
+ * When the summarizer declines, the marker-wrapped text is what goes back, not
+ * the bare body: the markers are how the model learns the filter already
+ * trimmed this output, and dropping them would invite a `| head` on top.
+ */
+function budgetFilteredOutput(command: string, filtered: string): string {
+  const body = stripOutputMarkers(filtered)
+  const summarized = summarizeGitOutput(command, body)
+  return summarized === body ? filtered : summarized
+}
+
 export async function runGitBatch(
   opts: RunGitBatchOptions,
 ): Promise<GitBatchResult> {
   const outcomes: GitCommandOutcome[] = []
+  const full = opts.full === true
 
   for (const [index, command] of opts.commands.entries()) {
     // Tier B: keep the existing command-aware Bash filter, which already knows
     // how to strip git noise and rewrite `git log` → `git log --oneline`.
-    const plan = planBashFilter(command)
+    const plan = planBashFilter(command, full ? { allowRewrite: false } : undefined)
 
     let outcome: GitCommandOutcome
     try {
@@ -74,15 +102,22 @@ export async function runGitBatch(
       trackGitOperations(command, result.code, rawStdout)
 
       const isError = result.code !== 0 || result.interrupted
-      const filtered = applyBashFilterToStdout(rawStdout, isError, plan)
+      const filtered = full
+        ? rawStdout
+        : applyBashFilterToStdout(rawStdout, isError, plan)
       // This branch IS the guarantee that errors are never budgeted and never
       // delta'd — both lanes are unreachable from a non-zero exit.
+      // `full` skips the summarizer but still goes THROUGH the delta lane,
+      // which returns the body unchanged for a full run and is also where a
+      // history-touching command drops the remembered baselines. Skipping it
+      // would leave a stale diff baseline alive across a `full: true` commit.
       const rendered = isError
         ? diagnoseGitFailure(command, result.code, filtered)
-        : applyGitDelta(command, summarizeGitOutput(command, filtered), {
-            full: opts.full === true,
-            toolUseId: opts.toolUseId,
-          })
+        : applyGitDelta(
+            command,
+            full ? filtered : budgetFilteredOutput(command, filtered),
+            { full, toolUseId: opts.toolUseId },
+          )
       outcome = {
         command,
         effectiveCommand: plan.effectiveCommand,
@@ -124,7 +159,9 @@ export function formatGitBatchResult(result: GitBatchResult): string {
 
   for (const outcome of result.outcomes) {
     const parts: string[] = []
-    if (multi) parts.push(`$ ${outcome.command}`)
+    // One line, whatever the command carries: a commit body in the header
+    // would make a three-command batch look like nine.
+    if (multi) parts.push(`$ ${oneLineCommand(outcome.command)}`)
     const body = trimShellStdout(outcome.output)
     if (body) parts.push(body)
     if (outcome.interrupted) {
@@ -146,10 +183,12 @@ export function formatGitBatchResult(result: GitBatchResult): string {
 
   if (result.notRun.length > 0) {
     const failed = result.outcomes[result.outcomes.length - 1]
-    const because = failed ? `\`${failed.command}\` failed` : 'the run failed'
+    const because = failed
+      ? `\`${oneLineCommand(failed.command)}\` failed`
+      : 'the run failed'
     sections.push(
       `Stopped because ${because} — not run: ${result.notRun
-        .map(c => `\`${c}\``)
+        .map(c => `\`${oneLineCommand(c)}\``)
         .join(', ')}.`,
     )
   }
