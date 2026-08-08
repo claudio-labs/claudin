@@ -4,7 +4,7 @@ import { Box, Text, useTheme } from '../../ink.js';
 import { getTheme, type Theme } from '../../utils/theme.js';
 import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, resolveStallColor, toRGBColor } from './utils.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
-// No mirroring: the arc→C frames are a directional rotation (see getDefaultCharacters).
+// No mirroring: the orbit is a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
 const REDUCED_MOTION_DOT = '●';
 const REDUCED_MOTION_CYCLE_MS = 2000; // 2-second cycle: 1s visible, 1s dim
@@ -50,7 +50,6 @@ export function SpinnerGlyph(t0: Props) {
     return t4;
   }
   const spinnerChar = SPINNER_FRAMES[frame % SPINNER_FRAMES.length];
-  // Brand C weight: bold during the first ~3s of the resolved C, normal after.
   const bold = isBoldSpinnerFrame(frame);
   // Let the verb's shimmer sweep continue across the glyph cell while the
   // brand C is showing (the glyph sits at message-coordinate -2).

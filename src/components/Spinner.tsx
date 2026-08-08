@@ -22,7 +22,7 @@ import type { Task } from '../utils/tasks.js';
 import { useAppState } from '../state/AppState.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
-import { getDefaultCharacters, isBoldSpinnerFrame, type SpinnerMode } from './Spinner/index.js';
+import { getDefaultCharacters, isBoldSpinnerFrame, SPINNER_FRAME_MS, type SpinnerMode } from './Spinner/index.js';
 import { SpinnerAnimationRow } from './Spinner/SpinnerAnimationRow.js';
 import { useSettings } from '../hooks/useSettings.js';
 import { isInProcessTeammateTask } from '../tasks/InProcessTeammateTask/types.js';
@@ -40,7 +40,7 @@ import { useAnimationFrame } from '../ink.js';
 import { getGlobalConfig } from '../utils/config.js';
 export type { SpinnerMode } from './Spinner/index.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
-// No mirroring: the arc→C frames are a directional rotation (see getDefaultCharacters).
+// No mirroring: the orbit is a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
 const BRIEF_MINI_FRAMES = ['·', '✢', '✦'];
 type Props = {
@@ -514,7 +514,7 @@ export function Spinner() {
   const $ = _c(9);
   const settings = useSettings();
   const reducedMotion = settings.prefersReducedMotion ?? false;
-  const [ref, time] = useAnimationFrame(reducedMotion ? null : 120);
+  const [ref, time] = useAnimationFrame(reducedMotion ? null : SPINNER_FRAME_MS);
   if (reducedMotion) {
     let t0;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -533,9 +533,8 @@ export function Spinner() {
     }
     return t1;
   }
-  const frame = Math.floor(time / 120) % SPINNER_FRAMES.length;
+  const frame = Math.floor(time / SPINNER_FRAME_MS) % SPINNER_FRAMES.length;
   const t0 = SPINNER_FRAMES[frame];
-  // Brand C weight: bold during the first ~3s of the resolved C, normal after.
   const bold = isBoldSpinnerFrame(frame);
   let t1;
   if ($[3] !== t0 || $[4] !== bold) {

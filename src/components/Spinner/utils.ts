@@ -3,46 +3,35 @@ import type { Theme } from '../../utils/theme.js'
 import type { RGBColor as RGBColorType } from './types.js'
 
 export function getDefaultCharacters(): string[] {
-  // Claudin brand "braille orbit → C": the classic 10-frame braille dots
-  // spinner orbits three full turns, then resolves on the brand C — bold for
-  // ~3s, normal weight for ~2s (see isBoldSpinnerFrame). Each braille frame is
-  // held BRAILLE_HOLD ticks so the orbit spins slower (~7.2s for three turns at
-  // the 120ms tick with BRAILLE_HOLD=2). Braille glyphs (U+2800 block) are true
-  // narrow width everywhere, unlike the ◜◝◞◟ arcs.
+  // Claudin's spinner: a dense braille orbit that reads as a solid orb turning
+  // (~0.64s per revolution at SPINNER_FRAME_MS). It never rests on a static
+  // glyph — the earlier "orbit three turns then resolve on the brand C" cycle
+  // spent 5 of its 12.2s parked on a motionless C, which read as a hang.
+  // Braille glyphs (U+2800 block) are true narrow width everywhere, unlike the
+  // ◜◝◞◟ arcs.
   // NOTE: rotation is directional, so consumers must NOT mirror these frames
   // (forward + reverse would make the orbit ping-pong instead of spin).
-  return [
-    ...SLOW_ORBIT,
-    ...SLOW_ORBIT,
-    ...SLOW_ORBIT,
-    ...Array(BOLD_C_FRAMES + NORMAL_C_FRAMES).fill('C'),
-  ]
+  return [...ORB]
 }
 
-const ORBIT = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-// Hold each braille frame for this many animation ticks; higher = slower spin
-// (1 = original speed, 2 ≈ half speed at the 120ms tick).
-const BRAILLE_HOLD = 2
-const SLOW_ORBIT = ORBIT.flatMap((c) => Array(BRAILLE_HOLD).fill(c) as string[])
-const ORBIT_FRAMES = SLOW_ORBIT.length * 3
-const BOLD_C_FRAMES = 25 // ~3s at the 120ms tick
-const NORMAL_C_FRAMES = 17 // ~2s
-const TOTAL_FRAMES = ORBIT_FRAMES + BOLD_C_FRAMES + NORMAL_C_FRAMES
+const ORB = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
 
-// Whether this frame index falls in the bold window of the resolved C
-// (first ~3s after the orbit; the trailing ~2s render at normal weight).
-// Accepts either a raw monotonically-increasing frame counter or an index
-// already reduced modulo the frame count.
-export function isBoldSpinnerFrame(frame: number): boolean {
-  const i = frame % TOTAL_FRAMES
-  return i >= ORBIT_FRAMES && i < ORBIT_FRAMES + BOLD_C_FRAMES
+/** How long one spinner frame is held. Every consumer derives its frame index
+ *  as `Math.floor(time / SPINNER_FRAME_MS)`, so the cadence lives here. */
+export const SPINNER_FRAME_MS = 80
+
+// No frame of the orbit renders bold — the resolved brand C this used to mark
+// is gone. Kept as the single decision point for the glyph's weight (and so a
+// future resolved frame only has to change this).
+export function isBoldSpinnerFrame(_frame: number): boolean {
+  return false
 }
 
-// Whether this frame index falls anywhere in the resolved-C window (bold or
-// normal weight). Used to let the verb's shimmer sweep continue across the
-// glyph cell while the brand C is showing.
-export function isBrandCFrame(frame: number): boolean {
-  return frame % TOTAL_FRAMES >= ORBIT_FRAMES
+// The verb's shimmer used to continue across the glyph cell while the brand C
+// was showing; with the orbit always turning there is no such window, so the
+// sweep stops at the message.
+export function isBrandCFrame(_frame: number): boolean {
+  return false
 }
 
 // The glyph cell sits two columns left of the message's first character

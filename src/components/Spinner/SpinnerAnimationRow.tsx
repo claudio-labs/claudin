@@ -14,7 +14,7 @@ import { GlimmerMessage } from './GlimmerMessage.js';
 import { SpinnerGlyph } from './SpinnerGlyph.js';
 import type { SpinnerMode } from './types.js';
 import { useStalledAnimation } from './useStalledAnimation.js';
-import { interpolateColor, toRGBColor } from './utils.js';
+import { interpolateColor, SPINNER_FRAME_MS, toRGBColor } from './utils.js';
 const SEP_WIDTH = stringWidth(' · ');
 // Claudin: upstream waits 30s before surfacing the timer + token count, so on
 // short responses the spinner never shows them. Drop to ~3s — still skips the
@@ -150,7 +150,7 @@ export function SpinnerAnimationRow({
     isStalled,
     stalledIntensity
   } = useStalledAnimation(time, currentResponseLength, hasActiveTools || leaderIsIdle, reducedMotion);
-  const frame = reducedMotion ? 0 : Math.floor(time / 120);
+  const frame = reducedMotion ? 0 : Math.floor(time / SPINNER_FRAME_MS);
   const glimmerSpeed = mode === 'requesting' ? 50 : 200;
   // Animate the trailing ellipsis (… → . / .. / ...); keep it static under
   // reduced motion. Width is space-padded constant, so layout gating below
