@@ -130,6 +130,23 @@ const def: ToolDef<typeof inputSchema> = {
 export const MyTool = buildTool(def)
 ```
 
+### `outputSchema` gates what the RESULT RENDERER sees
+
+`UserToolSuccessMessage.tsx` runs `tool.outputSchema?.safeParse(toolUseResult)`
+and passes the **parsed** value to `renderToolResultMessage` — a guard against
+crashing on an old-format result from a resumed transcript. A `z.object` strips
+every key it does not declare, so a field the renderer reads but the schema
+omits arrives as `undefined`, silently and only in the TUI: the model-facing
+string (`mapToolResultToToolResultBlockParam`) gets the raw result and looks
+correct, and no test that calls the formatter can see it.
+
+`BuildTool` shipped this way — `durationMs` and `stall` were absent from the
+schema, so every build rendered a bare `✓ built` with no time, and a build
+stopped by the idle watchdog could not reach its "stopped after …" arm at all.
+**Rule:** when adding a field to a tool's UI, add it to `outputSchema` too, and
+pin it with a `outputSchema.parse(fullResult)` test — a formatter test will not
+catch it.
+
 ## Regex — Always Module-Level
 
 ```typescript

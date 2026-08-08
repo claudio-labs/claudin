@@ -43,7 +43,7 @@ describe('formatDuration', () => {
 describe('formatBuildResult', () => {
   test('a successful build names its duration and what it produced', () => {
     const rendered = formatBuildResult(result({ artifacts: ['/p/target/debug/app'] }))
-    expect(rendered).toStartWith('✓ cargo · built in 12.3s')
+    expect(rendered).toStartWith('✓ cargo · build succeeded in 12.3s')
     expect(rendered).toContain('Produced /p/target/debug/app')
   })
 
