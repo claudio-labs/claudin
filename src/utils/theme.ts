@@ -955,7 +955,7 @@ const catppuccinLatteTheme: Theme = {
  */
 const tokyoNightTheme: Theme = {
   autoAccept: 'rgb(187,154,247)', // Magenta
-  bashBorder: 'rgb(247,118,142)', // Red
+  bashBorder: 'rgb(187,154,247)', // Magenta (mode accent — must not read as `error`)
   claude: 'rgb(215,119,87)', // Claude orange (brand, shared with the dark theme)
   claudeShimmer: 'rgb(235,159,127)', // Lighter claude orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(122,162,247)', // Blue
@@ -1037,7 +1037,7 @@ const tokyoNightTheme: Theme = {
  */
 const nordTheme: Theme = {
   autoAccept: 'rgb(180,142,173)', // Aurora purple
-  bashBorder: 'rgb(191,97,106)', // Aurora red
+  bashBorder: 'rgb(180,142,173)', // Aurora purple (mode accent — must not read as `error`)
   claude: 'rgb(208,135,112)', // Aurora orange
   claudeShimmer: 'rgb(228,165,142)', // Lighter orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(136,192,208)', // Frost cyan
@@ -1119,7 +1119,7 @@ const nordTheme: Theme = {
  */
 const gruvboxDarkTheme: Theme = {
   autoAccept: 'rgb(211,134,155)', // Bright purple
-  bashBorder: 'rgb(251,73,52)', // Bright red
+  bashBorder: 'rgb(211,134,155)', // Bright purple (mode accent — must not read as `error`)
   claude: 'rgb(254,128,25)', // Bright orange
   claudeShimmer: 'rgb(255,158,75)', // Lighter orange for shimmer effect
   claudeBlue_FOR_SYSTEM_SPINNER: 'rgb(131,165,152)', // Bright blue

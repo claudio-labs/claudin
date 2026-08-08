@@ -335,7 +335,9 @@ function ModeIndicator({
   // In-process mode uses Shift+Down/Up navigation, not footer teams menu
   const hasTeams = isAgentSwarmsEnabled() && !isInProcessEnabled() && teamContext !== undefined && count(Object.values(teamContext.teammates), t_0 => t_0.name !== 'team-lead') > 0;
   if (mode === 'bash') {
-    return <Text color="bashBorder">! for bash mode</Text>;
+    // No hint: the tinted prompt rules and the `!` char already say we're in
+    // bash mode, and the byline's other items don't apply here.
+    return null;
   }
   const currentMode = toolPermissionContext?.mode;
   const hasActiveMode = !isDefaultMode(currentMode);

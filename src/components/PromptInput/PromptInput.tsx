@@ -2414,6 +2414,16 @@ function PromptInput({
     }
     return 'promptBorder';
   };
+
+  // The two rules that frame the prompt are dim by default. A prompt MODE tints
+  // them and labels the top one, so bash mode reads from the frame and not just
+  // from the `!`. undefined keeps the default dim rule and no label.
+  const modeBorderColor: keyof Theme | undefined = mode === 'bash' ? 'bashBorder' : undefined;
+  const modeRuleLabel = mode === 'bash' ? '[ bash mode ]' : undefined;
+  // `──[ bash mode ]───…`, clamped to one row: every glyph here is single-width,
+  // so the slice is a width clamp, and a rule that wrapped would advance the
+  // terminal by a row Ink did not measure.
+  const modeRuleLine = modeRuleLabel ? `──${modeRuleLabel}${'─'.repeat(Math.max(0, columns - 2 - stringWidth(modeRuleLabel)))}`.slice(0, Math.max(0, columns)) : undefined;
   if (isExternalEditorActive) {
     return <>{historyPickerEl}<Box flexDirection="row" alignItems="center" justifyContent="center" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%">
         <Text dimColor italic>
@@ -2428,7 +2438,7 @@ function PromptInput({
           <Text dimColor>Waiting for permission…</Text>
         </Box>}
       <PromptInputStashNotice hasStash={stashedPrompt !== undefined} />
-      <Box width="100%" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} borderDimColor />
+      {modeBorderColor && modeRuleLine ? <Text color={modeBorderColor}>{modeRuleLine}</Text> : <Box width="100%" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} borderDimColor />}
 
       {swarmBanner ? <>
           <Text color={swarmBanner.bgColor}>
@@ -2467,7 +2477,7 @@ function PromptInput({
                   <ProviderModelIndicator nextBg={effort?.bg} />
                   {effort ? <Text>{effort.pill}</Text> : null}
                 </Box>
-                <Box flexGrow={1} flexShrink={1} borderStyle="single" borderBottom borderTop={false} borderLeft={false} borderRight={false} borderDimColor />
+                <Box flexGrow={1} flexShrink={1} borderStyle="single" borderBottom borderTop={false} borderLeft={false} borderRight={false} borderColor={modeBorderColor} borderDimColor={!modeBorderColor} />
                 <Box flexShrink={0}>
                   {bottomRight ? <Text>{bottomRight}</Text> : null}
                 </Box>
