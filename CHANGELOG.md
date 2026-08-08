@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.1.10 — 2026-08-08
+
+### ✨ Features
+
+- feat(spinner): replace the orbit-then-brand-C cycle with a dense braille orb (#63) (fb38624)
+- feat(prompt): let bash mode read from the prompt frame instead of a footer hint (#62) (fafc169)
+- feat(git-tool): take a multi-line message, and make `full: true` mean whole (#60) (74a8cef)
+
+### 🐛 Bug Fixes
+
+- fix(build): report a verdict, and stop dropping the duration on the way to the TUI (#65) (fec479f)
+- fix(theme): follow the terminal palette for Tokyo Night's stalled spinner (#64) (fadaa01)
+- fix(theme): take Tokyo Night brand orange from the dark-ansi theme (f2fb7fb)
+- fix(theme): align Tokyo Night brand orange and stalled spinner with the other themes (#61) (e692f16)
+
+### 📚 Documentation
+
+- docs(memory): date the typecheck snapshots and fix the stale claims (4abb1b7)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.9 — 2026-08-07
 
 ### ✨ Features
