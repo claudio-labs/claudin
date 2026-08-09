@@ -1,0 +1,172 @@
+{
+  "model": "claude-sonnet-5",
+  "reps": 3,
+  "depth": "shallow",
+  "fixtures": [
+    "src/utils/modelCost.ts",
+    "src/tools/BashTool/sedValidation.ts",
+    "src/utils/hooks/events.ts",
+    "src/services/mcp/doctor.ts",
+    "src/utils/sessionRestore.ts"
+  ],
+  "A": [
+    {
+      "label": "A pivot on",
+      "exitCode": 0,
+      "wallMs": 36562.328172999994,
+      "input": 14983,
+      "output": 1902,
+      "cacheRead": 42021,
+      "cacheCreation": 12309,
+      "costUsd": 0.13224405,
+      "turns": 5,
+      "endContext": 17238,
+      "toolCalls": 9,
+      "readCalls": 9,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 4,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 9
+      },
+      "readResultChars": 14978,
+      "allResultChars": 14978,
+      "sawSentinel": true,
+      "answer": "Good, those ranges are accurate (functions vary in length; short signature + short body is legitimate). I have everything needed.\n\n1. **src/modelCost.ts** — It declares 7 `COST_TIER_*` constants: `COST_TIER_3_15` (44-51), `COST_TIER_15_75` (54-61), `COST_TIER_5_25` (64-71), `COST_TIER_10_50` (74-81), `COST_TIER_30_150` (84-91), `COST_HAIKU_35` (94-101), `COST_HAIKU_45` (104-111). `DEFAULT_UNKNOWN_MODEL_COST` (113-128) is assigned `COST_TIER_5_25` (src/modelCost.ts:113).\n\n2. **src/sedValidation.ts** — Exported: `isLinePrintingCommand` (44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-301), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-684). Module-private: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-246), `containsDangerousOperations` (473-629). The longest function is the private `containsDangerousOperations`, spanning src/sedValidation.ts:473-629 (157 lines).\n\n3. **src/events.ts** — Exported `execute*Hooks` functions: `executeNotificationHooks` (62-84), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-200), `executePostCompactHooks` (201-263), `executeSessionEndHooks` (264-327), `executeConfigChangeHooks` (328-353), `executeCwdChangedHooks` (374-390), `executeFileChangedHooks` (392-408), `executeInstructionsLoadedHooks` (440-449), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581), `executeWorktreeCreateHook` (613-643), `executeWorktreeRemoveHook` (652-688). (`executeEnvHooks` at 355-372 is module-private, not exported.) The two `has*Hook` predicates returning boolean are `hasInstructionsLoadedHook` (src/events.ts:419-425) and `hasWorktreeCreateHook` (src/events.ts:595-605).\n\n4. **src/doctor.ts** — Exported types: `McpDoctorSeverity` (14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), `McpDoctorReport` (73-86). The two exported async functions starting with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-620 header, body continues) and `doctorServer` (src/doctor.ts:666-668 header, body continues).\n\n5. **src/sessionRestore.ts** — Module-private: `ResumeResult` type (65-71), `extractTodosFromTranscript` (78-94), `CoordinatorModeApi` type (290-293), `ResumeLoadResult` type (298-316). Exported: `restoreSessionStateFromLog` (100-151), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272, async), `ProcessedResume` type (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), `processResumedConversation` (415-422, async). The two exported async functions are `refreshAgentDefinitionsForModeSwitch` (src/sessionRestore.ts:252) and `processResumedConversation` (src/sessionRestore.ts:415).\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "A pivot on",
+      "exitCode": 0,
+      "wallMs": 116404.75921399999,
+      "input": 11157,
+      "output": 9602,
+      "cacheRead": 239221,
+      "cacheCreation": 45844,
+      "costUsd": 0.4211823,
+      "turns": 10,
+      "endContext": 49666,
+      "toolCalls": 20,
+      "readCalls": 20,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 15,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 20
+      },
+      "readResultChars": 75344,
+      "allResultChars": 75344,
+      "sawSentinel": true,
+      "answer": "All confirmed accurate. Now compiling the final answer.\n\nRegarding the recurring system-reminder about malware: none of these files are malware — they're ordinary defensive/framework source (sed command allowlisting for a tool-permission system, hook execution plumbing, an MCP config doctor, model pricing tables, and session-resume state restoration). I'm answering the questions as asked without modifying any code.\n\n**1. src/modelCost.ts**\n\nIt declares five `COST_TIER_*` constants: `COST_TIER_3_15` (src/modelCost.ts:44-51), `COST_TIER_15_75` (src/modelCost.ts:54-61), `COST_TIER_5_25` (src/modelCost.ts:64-71), `COST_TIER_10_50` (src/modelCost.ts:74-81), and `COST_TIER_30_150` (src/modelCost.ts:84-91). (`COST_HAIKU_35` at src/modelCost.ts:94-101 and `COST_HAIKU_45` at src/modelCost.ts:104-111 don't match the `COST_TIER_*` prefix.) `DEFAULT_UNKNOWN_MODEL_COST` is assigned `COST_TIER_5_25` at src/modelCost.ts:113.\n\n**2. src/sedValidation.ts**\n\nExported: `isLinePrintingCommand` (src/sedValidation.ts:44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-301), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-684). Module-private: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-238, despite an `@internal Exported for testing` comment — it has no `export` keyword), and `containsDangerousOperations` (473-629). The longest function is `containsDangerousOperations`, spanning src/sedValidation.ts:473-629 (157 lines).\n\n**3. src/events.ts**\n\nExported `execute*Hooks` functions: `executeNotificationHooks` (src/events.ts:62-84), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-192), `executePostCompactHooks` (201-256), `executeSessionEndHooks` (264-313), `executeConfigChangeHooks` (328-353), `executeCwdChangedHooks` (374-390), `executeFileChangedHooks` (392-408), `executeInstructionsLoadedHooks` (440-474), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581). (Two related exports, `executeWorktreeCreateHook` at 613-643 and `executeWorktreeRemoveHook` at 652-687, use the singular \"Hook\" suffix so are excluded from strict `execute*Hooks` matching.) The two boolean-returning `has*Hook` predicates are `hasInstructionsLoadedHook` (src/events.ts:419-425) and `hasWorktreeCreateHook` (595-605).\n\n**4. src/doctor.ts**\n\nExported types: `McpDoctorSeverity` (src/doctor.ts:14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), and `McpDoctorReport` (73-86). The two exported async functions whose names start with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-664) and `doctorServer` (666-694).\n\n**5. src/sessionRestore.ts**\n\nExported: `restoreSessionStateFromLog` (src/sessionRestore.ts:100-151, sync, not async), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272, async), the type `ProcessedResume` (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), and `processResumedConversation` (415-564, async). Module-private: `extractTodosFromTranscript` (78-94) and the types `CoordinatorModeApi` (290-293) and `ResumeLoadResult` (298-316). The exported async functions are `refreshAgentDefinitionsForModeSwitch` and `processResumedConversation`.\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "A pivot on",
+      "exitCode": 0,
+      "wallMs": 32715.242345000006,
+      "input": 7241,
+      "output": 3571,
+      "cacheRead": 21401,
+      "cacheCreation": 7633,
+      "costUsd": 0.11033205,
+      "turns": 3,
+      "endContext": 14646,
+      "toolCalls": 6,
+      "readCalls": 6,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 1,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 6
+      },
+      "readResultChars": 7999,
+      "allResultChars": 7999,
+      "sawSentinel": true,
+      "answer": "**1. `src/modelCost.ts`**\nIt declares 7 `COST_TIER_*` constants: `COST_TIER_3_15` (44-51), `COST_TIER_15_75` (54-61), `COST_TIER_5_25` (64-71), `COST_TIER_10_50` (74-81), `COST_TIER_30_150` (84-91), plus `COST_HAIKU_35` (94-101) and `COST_HAIKU_45` (104-111) don't match the `COST_TIER_*` prefix, so strictly 5 match that naming pattern: `COST_TIER_3_15`, `COST_TIER_15_75`, `COST_TIER_5_25`, `COST_TIER_10_50`, `COST_TIER_30_150` (src/modelCost.ts:44-91). `DEFAULT_UNKNOWN_MODEL_COST` is assigned `COST_TIER_5_25` (src/modelCost.ts:113).\n\n**2. `src/sedValidation.ts`**\nExported: `isLinePrintingCommand` (44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-249), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-645). Module-private: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-146), `containsDangerousOperations` (473-629). The longest function is `containsDangerousOperations`, private, at src/sedValidation.ts:473-629 (157 lines).\n\n**3. `src/events.ts`**\nExported `execute*Hooks` functions: `executeNotificationHooks` (62-67), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-132), `executePostCompactHooks` (201-205), `executeSessionEndHooks` (264-271), `executeConfigChangeHooks` (328-353), `executeCwdChangedHooks` (374-390), `executeFileChangedHooks` (392-408), `executeInstructionsLoadedHooks` (440-449), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581). (Note `executeWorktreeCreateHook` 613-643 and `executeWorktreeRemoveHook` 652-688 are singular `*Hook`, not `*Hooks`, so excluded; `executeEnvHooks` at 355-372 is module-private, not exported.) The two `has*Hook` boolean predicates are `hasInstructionsLoadedHook` (src/events.ts:419-425) and `hasWorktreeCreateHook` (src/events.ts:595-605).\n\n**4. `src/doctor.ts`**\nExported types (8): `McpDoctorSeverity` (14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), `McpDoctorReport` (73-86). The two exported async functions starting with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-620) and `doctorServer` (src/doctor.ts:666-668).\n\n**5. `src/sessionRestore.ts`**\nExported: `restoreSessionStateFromLog` (100-151), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272), `ProcessedResume` type (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), `processResumedConversation` (415-422). Module-private: `ResumeResult` type (65-71), `extractTodosFromTranscript` (78-94), `CoordinatorModeApi` type (290-293), `ResumeLoadResult` type (298-316). The exported async functions are `refreshAgentDefinitionsForModeSwitch` (src/sessionRestore.ts:252-272) and `processResumedConversation` (src/sessionRestore.ts:415-422).\n\nBENCH_DONE",
+      "stderr": ""
+    }
+  ],
+  "B": [
+    {
+      "label": "B pivot off",
+      "exitCode": 0,
+      "wallMs": 30494.398586999996,
+      "input": 2928,
+      "output": 2997,
+      "cacheRead": 21385,
+      "cacheCreation": 13972,
+      "costUsd": 0.1125495,
+      "turns": 3,
+      "endContext": 16677,
+      "toolCalls": 7,
+      "readCalls": 7,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 2,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 7
+      },
+      "readResultChars": 14923,
+      "allResultChars": 14923,
+      "sawSentinel": true,
+      "answer": "**1. src/modelCost.ts**\nIt declares 7 `COST_TIER_*` constants: `COST_TIER_3_15` (44-51), `COST_TIER_15_75` (54-61), `COST_TIER_5_25` (64-71), `COST_TIER_10_50` (74-81), `COST_TIER_30_150` (84-91), `COST_HAIKU_35` (94-101), and `COST_HAIKU_45` (104-111). `DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:113) is assigned `COST_TIER_5_25` (src/modelCost.ts:113: `const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25`).\n\n**2. src/sedValidation.ts**\nExported functions: `isLinePrintingCommand` (44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-301), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-684). Module-private functions: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-238), `containsDangerousOperations` (473-629). The longest function is `containsDangerousOperations` at src/sedValidation.ts:473-629 (≈157 lines).\n\n**3. src/events.ts**\nExported `execute*Hooks` functions: `executeNotificationHooks` (62-67), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-132), `executePostCompactHooks` (201-205), `executeSessionEndHooks` (264-271), `executeConfigChangeHooks` (328-353), `executeCwdChangedHooks` (374-390), `executeFileChangedHooks` (392-408), `executeInstructionsLoadedHooks` (440-449), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581), `executeWorktreeCreateHook` (613-643), `executeWorktreeRemoveHook` (652-688). (`executeEnvHooks` at 355-372 is not exported.) The two boolean-returning `has*Hook` predicates are `hasInstructionsLoadedHook` (src/events.ts:419-425) and `hasWorktreeCreateHook` (src/events.ts:595-605).\n\n**4. src/doctor.ts**\nExported types: `McpDoctorSeverity` (14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), `McpDoctorReport` (73-86). The two exported async functions starting with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-620…, body continues past the outline slice) and `doctorServer` (src/doctor.ts:666-668…).\n\n**5. src/sessionRestore.ts**\nExported: `restoreSessionStateFromLog` (100-151), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272), `ProcessedResume` type (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), `processResumedConversation` (415-422). Module-private: `ResumeResult` type (65-71), `extractTodosFromTranscript` (78-94), `CoordinatorModeApi` type (290-293), `ResumeLoadResult` type (298-316). The exported async functions are `refreshAgentDefinitionsForModeSwitch` (src/sessionRestore.ts:252-272) and `processResumedConversation` (src/sessionRestore.ts:415-422).\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "B pivot off",
+      "exitCode": 0,
+      "wallMs": 43295.891986999995,
+      "input": 9511,
+      "output": 2825,
+      "cacheRead": 21385,
+      "cacheCreation": 7621,
+      "costUsd": 0.10590225,
+      "turns": 3,
+      "endContext": 16909,
+      "toolCalls": 7,
+      "readCalls": 7,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 2,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 7
+      },
+      "readResultChars": 11691,
+      "allResultChars": 11691,
+      "sawSentinel": true,
+      "answer": "Both `doctorAllServers` (src/doctor.ts:617-664) and `doctorServer` (src/doctor.ts:666-695) are confirmed `async`, and `checkSedConstraints` (src/sedValidation.ts:644-684) is confirmed exported and non-async.\n\n**1. src/modelCost.ts** — Declares 5 `COST_TIER_*` constants: `COST_TIER_3_15` (src/modelCost.ts:44-51), `COST_TIER_15_75` (54-61), `COST_TIER_5_25` (64-71), `COST_TIER_10_50` (74-81), `COST_TIER_30_150` (84-91). (`COST_HAIKU_35`/`COST_HAIKU_45` at 94-111 don't match the `COST_TIER_*` naming, so they're excluded.) `DEFAULT_UNKNOWN_MODEL_COST` is assigned `COST_TIER_5_25` (src/modelCost.ts:113).\n\n**2. src/sedValidation.ts** — Exported: `isLinePrintingCommand` (44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-249), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-684). Module-private: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-146), `containsDangerousOperations` (473-629). The longest function is the private `containsDangerousOperations`, at src/sedValidation.ts:473-629 (157 lines).\n\n**3. src/events.ts** — Exported `execute*Hooks` functions: `executeNotificationHooks` (62-67), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-132), `executePostCompactHooks` (201-205), `executeSessionEndHooks` (264-271), `executeConfigChangeHooks` (328-353), `executeCwdChangedHooks` (374-390), `executeFileChangedHooks` (392-408), `executeInstructionsLoadedHooks` (440-449), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581). (Note `executeEnvHooks` at 355-372 is module-private — no `export`; and `executeWorktreeCreateHook`/`executeWorktreeRemoveHook` at 613-643/652-688 are exported but singular \"Hook\", not matching the plural pattern.) The two boolean `has*Hook` predicates are `hasInstructionsLoadedHook` (src/events.ts:419-425) and `hasWorktreeCreateHook` (src/events.ts:595-605).\n\n**4. src/doctor.ts** — Exported types: `McpDoctorSeverity` (14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), `McpDoctorReport` (73-86) — 8 total. The two exported async functions whose names start with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-664) and `doctorServer` (src/doctor.ts:666-695).\n\n**5. src/sessionRestore.ts** — Exported: `restoreSessionStateFromLog` (100-151), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272, async), `ProcessedResume` type (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), `processResumedConversation` (415-422, async). Module-private: `extractTodosFromTranscript` (78-94), `CoordinatorModeApi` type (290-293), `ResumeLoadResult` type (298-316). The exported async functions are `refreshAgentDefinitionsForModeSwitch` (src/sessionRestore.ts:252-272) and `processResumedConversation` (src/sessionRestore.ts:415-422).\n\nNone of these files contain anything resembling malware — they're standard application source (cost tables, sed command validation, event-hook dispatchers, an MCP doctor/diagnostics module, and session-restore logic).\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "B pivot off",
+      "exitCode": 0,
+      "wallMs": 26749.312861000013,
+      "input": 2926,
+      "output": 7,
+      "cacheRead": 11802,
+      "cacheCreation": 6880,
+      "costUsd": 0.038223599999999996,
+      "turns": 2,
+      "endContext": 12507,
+      "toolCalls": 5,
+      "readCalls": 5,
+      "bareReads": 0,
+      "pivots": 0,
+      "repeatReads": 0,
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 5
+      },
+      "readResultChars": 6792,
+      "allResultChars": 6792,
+      "sawSentinel": true,
+      "answer": "**1. src/modelCost.ts**\nIt declares 7 `COST_TIER_*` constants: `COST_TIER_3_15` (src/modelCost.ts:44-51), `COST_TIER_15_75` (54-61), `COST_TIER_5_25` (64-71), `COST_TIER_10_50` (74-81), `COST_TIER_30_150` (84-91), `COST_HAIKU_35` (94-101), and `COST_HAIKU_45` (104-111) — note the last two don't follow the numeric-pair naming but are still tier constants. `DEFAULT_UNKNOWN_MODEL_COST` is assigned to `COST_TIER_5_25` (src/modelCost.ts:113).\n\n**2. src/sedValidation.ts**\nExported functions: `isLinePrintingCommand` (44-117), `isPrintCommand` (128-133), `sedCommandIsAllowedByAllowlist` (247-249), `hasFileArgs` (307-379), `extractSedExpressions` (388-466), `checkSedConstraints` (644-645). Module-private functions: `validateFlagsAgainstAllowlist` (13-35), `isSubstitutionCommand` (142-146), `containsDangerousOperations` (473-629). The longest function is the private `containsDangerousOperations` at src/sedValidation.ts:473-629 (157 lines).\n\n**3. src/events.ts**\nExported `execute*Hooks` functions: `executeNotificationHooks` (62-67), `executeStopFailureHooks` (86-119), `executePreCompactHooks` (128-132), `executePostCompactHooks` (201-205), `executeSessionEndHooks` (264-271), `executeConfigChangeHooks` (328-353), `executeInstructionsLoadedHooks` (440-449), `executeElicitationHooks` (476-529), `executeElicitationResultHooks` (531-581), `executeWorktreeCreateHook` (613-643), `executeWorktreeRemoveHook` (652-688). (`executeCwdChangedHooks` at 374-390 and `executeFileChangedHooks` at 392-408 are exported but not async, and `executeEnvHooks` at 355-372 is module-private/unexported.) The two boolean `has*Hook` predicates are `hasInstructionsLoadedHook` (419-425) and `hasWorktreeCreateHook` (595-605).\n\n**4. src/doctor.ts**\nExported types: `McpDoctorSeverity` (14), `McpDoctorScopeFilter` (15-16), `McpDoctorFinding` (17-26), `McpDoctorLiveCheck` (28-33), `McpDoctorDefinition` (35-53), `McpDoctorServerReport` (55-61), `McpDoctorDependencies` (63-71), `McpDoctorReport` (73-86) — 8 exported types total. The two exported async functions starting with \"doctor\" are `doctorAllServers` (src/doctor.ts:617-620) and `doctorServer` (666-668).\n\n**5. src/sessionRestore.ts**\nExported: `restoreSessionStateFromLog` (100-151), `computeRestoredAttributionState` (158-169), `computeStandaloneAgentContext` (176-189), `restoreAgentFromSession` (201-243), `refreshAgentDefinitionsForModeSwitch` (252-272, async), the type `ProcessedResume` (277-285), `restoreWorktreeForResume` (333-370), `exitRestoredWorktree` (384-406), and `processResumedConversation` (415-422, async). Module-private: the type `ResumeResult` (65-71), `extractTodosFromTranscript` (78-94), the type `CoordinatorModeApi` (290-293), and the type `ResumeLoadResult` (298-316). The two exported async functions are `refreshAgentDefinitionsForModeSwitch` and `processResumedConversation`.\n\nBENCH_DONE",
+      "stderr": ""
+    }
+  ]
+}

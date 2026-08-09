@@ -1,6 +1,8 @@
 {
   "model": "claude-sonnet-5",
-  "reps": 3,
+  "reps": 4,
+  "depth": "deep",
+  "compare": "pivot",
   "fixtures": [
     "src/utils/modelCost.ts",
     "src/tools/BashTool/sedValidation.ts",
@@ -12,80 +14,601 @@
     {
       "label": "A pivot on",
       "exitCode": 0,
-      "wallMs": 85537.083654,
-      "input": 12157,
-      "output": 6265,
-      "cacheRead": 281630,
-      "cacheCreation": 57301,
-      "costUsd": 0.42981375,
-      "turns": 9,
-      "endContext": 59204,
+      "wallMs": 71353.846876,
+      "input": 14383,
+      "output": 6393,
+      "cacheRead": 97178,
+      "cacheCreation": 49888,
+      "costUsd": 0.3552774,
+      "turns": 5,
+      "endContext": 56925,
       "toolCalls": 20,
       "readCalls": 20,
       "bareReads": 5,
       "pivots": 5,
       "repeatReads": 15,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
         "Read": 20
       },
-      "readResultChars": 103234,
-      "allResultChars": 103234,
+      "readResultChars": 102322,
+      "allResultChars": 102322,
       "sawSentinel": true,
-      "answer": "This is a security validation allowlist for `sed` command usage — the general shape of `containsDangerousOperations` (src/sedValidation.ts:473-629) is the reject list; that's sufficient detail for the answer. I now have everything needed.\n\n## 1. src/modelCost.ts\n\nWhen `getModelCosts` (src/modelCost.ts:300) can't find a cost entry in `MODEL_COSTS` for the resolved short name, it first tries the non-Claude family table via `lookupNonClaudeCost` (src/modelCost.ts:194,325). If that also misses, it calls `trackUnknownModelCost` (src/modelCost.ts:327) and falls back to `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:328-331). `DEFAULT_UNKNOWN_MODEL_COST` is defined at src/modelCost.ts:113 as `COST_TIER_5_25`, i.e. $5/Mtok input, $25/Mtok output (src/modelCost.ts:64-71) — the Opus 4.5/4.6+ tier.\n\n## 2. src/sedValidation.ts\n\n`containsDangerousOperations` (src/sedValidation.ts:473-629) rejects: non-ASCII characters/homoglyphs (\"too complex to parse\" territory, guards against lookalike bypasses) at line 484; curly-brace blocks as \"too complex to parse\" (489-491); newlines as \"multi-line commands are too complex\" (494-496); a bare `#` not immediately preceded by `s` as a disguised comment (501-504); the negation operator `!` (509-511); GNU step-address `~` (513-517); a leading bare comma, shorthand for `1,$` (520-522); comma+offset GNU addresses like `,+N` (525-527); backslash-delimiter tricks (`s\\` or `\\|`,`\\#`,`\\%`,`\\@`) (532-534); escaped-slash patterns followed by `w`/`W` (537-539); ambiguous `/pattern/ w|e` sequences (544-546); malformed `s/.../.../` forms with the wrong delimiter count (550-552); any `s`-command ending in `w/W/e/E` that isn't a recognized well-formed substitution, \"paranoid\" catch-all (557-563); write commands (`w`/`W`) in any addressed form — bare, numbered, `$`, pattern, or range (569-579), because they write output to a file; execute commands (`e`) in the same address forms (585-595), because they run shell commands; substitution flags containing `w`/`W` or `e`/`E` (600-613), same write/execute reasons; and any `y` (transliterate) command combined anywhere with `w`/`W`/`e`/`E`, called out as \"paranoid but safe\" (619-626).\n\n## 3. src/events.ts\n\nThe file's header comment (src/events.ts:4-6) enumerates all the event names it dispatches: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`. Firing times for three of them: `SessionEnd` fires when a session is exiting, given an `ExitReason`, and afterward clears session-scoped hooks and resets goal state (src/events.ts:264-313). `ConfigChange` fires when config files (settings, skills, or commands) change on disk during a session, dispatched by file watchers, for enterprise audit logging (src/events.ts:316-353). `InstructionsLoaded` fires whenever an instruction file (`CLAUDE.md` or `.claudin/rules/*.md`) is loaded into context — at session start, after a post-compaction reload, or lazily when a touched file triggers a nested `CLAUDE.md`/conditional rule (src/events.ts:427-439).\n\n## 4. src/doctor.ts\n\nPer server, `buildServerReport` (src/doctor.ts:517-601) runs checks in this order: (1) config/schema validation findings passed in from `findingsFromValidationErrors` (src/doctor.ts:146-162, e.g. invalid JSON, missing env vars, Windows npx wrapper, schema mismatch); (2) shadowing findings across scopes via `buildShadowingFindings` (src/doctor.ts:333-364); (3) state findings via `buildStateFindings` (src/doctor.ts:366-397); (4) if no definitions were found anywhere and none needed to be synthesized, it stops adding structural findings and just emits a blocking `state.not_found` finding (src/doctor.ts:580-589); (5) a live connectivity check via `getLiveCheck` (src/doctor.ts:420-468) — this step is skipped entirely (`result: 'skipped'`) if `configOnly` is set, or if there's no active runtime config (reporting `pending`/`disabled`/`skipped` instead of connecting, src/doctor.ts:427-438); only if an active config exists does it actually call `connectToServer`; (6) live findings from the connection result via `buildLiveFindings` (src/doctor.ts:470-515), producing a warning for `needs-auth` or a blocking error for `failed` (including a special `stdio.command_not_found` code when the executable can't be found on PATH, src/doctor.ts:491-506). The pipeline doesn't hard-stop on any earlier step's failure — it accumulates findings from all steps — but it effectively skips the live-check step under the `configOnly`/no-active-config conditions above.\n\n## 5. src/sessionRestore.ts\n\nThis file doesn't itself parse or repair a raw JSONL transcript (that happens upstream, before `ResumeResult`/`ResumeLoadResult` reach it); its own defenses are narrower and each degrades gracefully rather than throwing:\n- `extractTodosFromTranscript` (src/sessionRestore.ts:78-94) walks messages backward looking for the last `TodoWrite` call; if the tool-use input isn't an object it returns `[]` (line 87), and if the `todos` field fails `TodoListSchema().safeParse` it also returns `[]` (line 91) — a malformed or partially-written todo payload is silently discarded rather than crashing restore.\n- `restoreSessionStateFromLog` (src/sessionRestore.ts:100-151) only attempts todo restoration `if (... result.messages && result.messages.length > 0)` (line 141), so an empty/missing message array (e.g. a transcript truncated to nothing) is simply skipped.\n- `restoreAgentFromSession` (src/sessionRestore.ts:201-243): if the resumed session's `agentSetting` no longer matches any currently available agent definition, it logs a debug message (\"...but it is no longer available. Using default behavior.\", line 225) and falls back to default behavior instead of failing (lines 223-229).\n- `restoreWorktreeForResume`/`exitRestoredWorktree` (src/sessionRestore.ts:333-370, 384-406): if the transcript's recorded worktree directory no longer exists, `process.chdir` throws `ENOENT`, which is caught and treated as \"directory is gone\" — it clears the cached worktree state (or just stays put) instead of propagating the error (lines 343-351, 397-403).\n\nBENCH_DONE",
+      "answer": "## 1. `src/modelCost.ts` — unknown model fallback\n\nWhen `getModelCosts` can't find a cost entry for a model, it first tries the non-Claude pattern table (`lookupNonClaudeCost`, `src/modelCost.ts:325-326`). If that also misses, it calls `trackUnknownModelCost` (telemetry + `setHasUnknownModelCost()`) and falls back to the cost tier of the currently configured default main-loop model, or — if even that lookup fails — the constant `DEFAULT_UNKNOWN_MODEL_COST`, defined at `src/modelCost.ts:113` as `DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25` (i.e. Opus-4.5-tier pricing, $5 input / $25 output per Mtok). The fallback chain is at `src/modelCost.ts:328-331`.\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\nAll in `containsDangerousOperations` (`src/sedValidation.ts:473-629`), each with its stated reason:\n- Non-ASCII characters — \"Unicode homoglyphs, combining chars, etc.\" (`:484`)\n- Curly braces `{}` — \"too complex to parse\" (`:489`)\n- Newlines — \"multi-line commands are too complex\" (`:494`)\n- `#` not immediately after `s` — comments vs. `s#pat#repl#` delimiter ambiguity (`:501-504`)\n- Negation `!` (leading or after an address) — reserved denylist reason not spelled out beyond \"Reject negation operator\" (`:506-511`)\n- GNU step-address tilde (`N~M`, `,~N`, `$~N`) — GNU step address format (`:513-517`)\n- Leading comma — \"shorthand for 1,$ address range\" (`:519-522`)\n- Comma followed by `+`/`-` — \"GNU offset addresses\" (`:524-527`)\n- `s\\` or backslash + alt delimiter (`\\|`, `\\#`, `\\%`, `\\@`) — \"backslash tricks\" for alternate delimiters (`:529-534`)\n- Escaped slash followed by `w`/`W` — pattern like `/\\/path\\/to\\/file/w` (`:536-539`)\n- Slash-pattern followed by whitespace then `w/W/e/E` — \"malformed/suspicious patterns we don't understand\" (`:541-546`)\n- Malformed `s/...` not matching the 3-delimiter shape — missing/extra delimiters (`:548-552`)\n- Any `s`-command ending in `w/W/e/E` that isn't a well-formed substitution — paranoid catch for non-slash delimiters hiding dangerous flags (`:554-563`)\n- `w`/`W` write commands in any address form (bare, line number, `$`, pattern, range) — dangerous write commands (`:565-579`)\n- `e` execute commands in any address form — dangerous execute commands (`:581-595`)\n- Substitution flags containing `w`/`W` (write) or `e`/`E` (execute) — dangerous flags (`:597-613`)\n- `y` (transliterate) command combined anywhere with `w/W/e/E` — \"paranoid but safe\" (`:615-626`)\n\nTwo more rejections live outside this function: `extractSedExpressions` throws on combined `-e`/`-w` flag pairs like `-ew`, `-eW`, `-ee`, `-we` (\"Dangerous flag combination detected\", `src/sedValidation.ts:398-400`) and on malformed shell syntax it can't tokenize (`:404-407`).\n\n## 3. `src/events.ts` — hook events\n\nThe file header lists all thirteen: Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove (`src/events.ts:4-6`). Examples of when three fire:\n- **PreCompact** (`src/events.ts:128-192`) fires when a compaction is about to run (manual or auto trigger), letting hooks supply replacement custom instructions before compaction proceeds.\n- **SessionEnd** (`src/events.ts:264-313`) fires when the session is exiting, passing an `ExitReason`; afterwards it clears session-scoped hooks and resets goal state (`:303-312`).\n- **CwdChanged** (`src/events.ts:374-390`) fires whenever the working directory changes (old/new cwd), and invalidates the session environment cache as a side effect (`executeEnvHooks`, `:363-365`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\n`buildServerReport` (`src/doctor.ts:517-601`) runs, in order:\n1. Gathers scoped configs (enterprise/local/project/user) and the live active config, building `definitions` per included scope (`:527-551`).\n2. Adds a synthetic \"observed\" definition if a runtime config exists but isn't backed by any file source (`:553-567`).\n3. Collects findings: prior validation findings for that server, then shadowing findings (`buildShadowingFindings`), then state findings (`buildStateFindings`) (`:574-578`).\n4. If there are still zero definitions, appends a blocking `state.not_found` error and **stops there for config-level checks** (`:580-589`).\n5. Only then calls `getLiveCheck` to attempt an actual connection, and folds in `buildLiveFindings` (`:591-592`).\n\nWithin `getLiveCheck` (`src/doctor.ts:420-468`) the stop order is: first `configOnly` → return `skipped` without attempting anything (`:427-429`); else if there's no active config, check `pendingApproval` → `pending` (`:432-434`), then `disabled` → `disabled` (`:435-437`), else `skipped` (`:438`); only if an active config exists does it actually connect and switch on the connection result (`connected`, `needs-auth`, `disabled`, `pending`, `failed`) (`:441-462`), always running cache cleanup in a `finally` (`:463-466`).\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nTodo restoration is the resilient path: `extractTodosFromTranscript` scans backward for the last `TodoWrite` tool_use; if its `input` is `null` or not an object it returns an empty list immediately (`src/sessionRestore.ts:86-87`), and if the `todos` field fails Zod validation (`TodoListSchema().safeParse`), it likewise returns `[]` rather than throwing (`:88-91`). `restoreSessionStateFromLog` only applies todos when `todos.length > 0`, so a malformed transcript simply leaves `AppState.todos` untouched rather than erroring (`:141-150`). Similarly, file-history and attribution restoration are gated on the snapshot arrays being non-empty (`:105, 112-116`), so absent/short data is skipped rather than treated as an error. The context-collapse restore, by contrast, is called unconditionally with `?? []`/`undefined` defaults even when commits/snapshot are missing (`:128-137`), intentionally resetting the store rather than leaving stale state. There is no explicit handling in this file for a transcript that fails to parse at the JSONL level — that would be caught upstream in whatever loads `ResumeLoadResult.messages` before it reaches these functions.\n\nBENCH_DONE",
       "stderr": ""
     },
     {
       "label": "A pivot on",
       "exitCode": 0,
-      "wallMs": 78213.839908,
-      "input": 22522,
-      "output": 7601,
-      "cacheRead": 79246,
-      "cacheCreation": 33535,
-      "costUsd": 0.33111104999999996,
-      "turns": 5,
-      "endContext": 44026,
-      "toolCalls": 27,
+      "wallMs": 91901.726405,
+      "input": 7507,
+      "output": 8444,
+      "cacheRead": 166656,
+      "cacheCreation": 35175,
+      "costUsd": 0.33108404999999996,
+      "turns": 8,
+      "endContext": 42114,
+      "toolCalls": 26,
       "readCalls": 26,
       "bareReads": 5,
       "pivots": 5,
       "repeatReads": 21,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 4,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 5,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 5,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 6,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 6,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 6,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 7,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 7,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 7,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
-        "Read": 26,
-        "Glob": 1
+        "Read": 26
       },
-      "readResultChars": 72481,
-      "allResultChars": 72502,
+      "readResultChars": 65207,
+      "allResultChars": 65207,
       "sawSentinel": true,
-      "answer": "## 1. `src/modelCost.ts` — unknown model fallback\n\n`getModelCosts` (src/modelCost.ts:300-334) first checks Opus 4.6/4.7/4.8 and Opus 5 special cases, then looks up `MODEL_COSTS[shortName]`. If that's missing, it tries `lookupNonClaudeCost(model)` against the `NON_CLAUDE_MODEL_COSTS` regex table (src/modelCost.ts:325-326, table at 129-194). If that also fails, it calls `trackUnknownModelCost` for telemetry (src/modelCost.ts:327, body at 336-343 — logs `tengu_unknown_model_cost` and sets an \"unknown model cost\" flag) and returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:328-331). The named fallback constant is `DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25` (src/modelCost.ts:113), whose exact value is `{ inputTokens: 5, outputTokens: 25, promptCacheWriteTokens: 6.25, promptCacheWrite1hTokens: 10, promptCacheReadTokens: 0.5, webSearchRequests: 0.01 }` (src/modelCost.ts:64-71) — i.e. Opus-tier ($5/$25 per Mtok) pricing.\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\n`containsDangerousOperations` (src/sedValidation.ts:473-629) rejects, with these stated reasons:\n- Non-ASCII characters — Unicode homoglyphs/combining chars could disguise dangerous commands (sedValidation.ts:480-486).\n- Curly braces `{`/`}` — sed blocks are \"too complex to parse\" (sedValidation.ts:488-491).\n- Newlines — multi-line commands are \"too complex\" (sedValidation.ts:493-496).\n- `#` not immediately after `s` — treated as a comment, which could hide intent (sedValidation.ts:498-504).\n- Negation (`!`) — appears at start or after an address, \"too complex\"-style unpredictability (sedValidation.ts:506-511).\n- GNU step-address tilde (`digit~digit`, `,~digit`, `$~digit`) (sedValidation.ts:513-517).\n- Leading bare comma — shorthand for `1,$` address range (sedValidation.ts:519-522).\n- Comma followed by `+`/`-` — GNU offset addresses (sedValidation.ts:524-527).\n- Backslash tricks: `s\\` (backslash delimiter) or `\\|`, `\\#`, `\\%`, `\\@` (alternate-delimiter escapes) (sedValidation.ts:529-534).\n- Escaped slash followed by `w`/`W` — e.g. `/\\/path\\/to\\/file/w` (sedValidation.ts:536-539).\n- Malformed patterns: slash + non-slash text + whitespace + `w/W/e/E` (sedValidation.ts:541-546); malformed `s/.../...` missing/extra delimiters (sedValidation.ts:548-552); any `s`-prefixed command ending in `w/W/e/E` that isn't a well-formed substitution (\"PARANOID\" catch-all, sedValidation.ts:554-563).\n- Write commands (`w`/`W`) in any addressed form — start, line number, `$`, pattern, range (sedValidation.ts:565-579).\n- Execute commands (`e`) in any addressed form (sedValidation.ts:581-595).\n- Substitution flags containing `w`/`W` (write) or `e`/`E` (execute) (sedValidation.ts:597-613).\n- `y` (transliterate) commands containing any `w`/`W`/`e`/`E` afterward — \"paranoid but safe\" (sedValidation.ts:615-626).\n\n`checkSedConstraints` (src/sedValidation.ts:644-684) then wraps this: for each `sed` invocation in the compound command, it calls `sedCommandIsAllowedByAllowlist`; if disallowed it returns `behavior: 'ask'` with the message \"sed command contains operations that require explicit approval (e.g., write commands, execute commands)\" (sedValidation.ts:665-676), otherwise `passthrough` (sedValidation.ts:679-683).\n\n## 3. `src/events.ts` — hook events\n\nThe file's header comment (src/events.ts:3-6) enumerates all 13 non-tool hook events it dispatches: **Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove**, each matching an exported `execute*Hooks` function.\n\nTiming for three:\n- **Notification** (`executeNotificationHooks`, src/events.ts:62-84) fires whenever a notification with a message/title/type needs to be surfaced; it builds the `Notification` hook input and dispatches immediately, matched by `notificationType`.\n- **StopFailure** (`executeStopFailureHooks`, src/events.ts:86-119) fires after the agent's last assistant message ends in an error/failed stop — it reads `lastMessage.error` (defaulting to `'unknown'`, src/events.ts:104) and only runs if a `StopFailure` hook is actually registered (src/events.ts:96).\n- **PreCompact** (`executePreCompactHooks`, src/events.ts:128-191) fires before a context compaction, either `'manual'` or `'auto'` triggered (src/events.ts:130), and its hook outputs can inject `newCustomInstructions` for the compaction and a `userDisplayMessage`.\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\nFor a single server, `buildServerReport` (src/doctor.ts:517-601) runs checks in this order, and can short-circuit at each blocking finding:\n1. Resolve active/effective config and build scope `definitions` across enterprise/local/project/user (src/doctor.ts:527-551).\n2. Optionally synthesize an \"observed\" definition if a runtime config exists but wasn't captured by scope configs (src/doctor.ts:553-567).\n3. Merge in prior validation findings, then **shadowing** findings (`buildShadowingFindings`, config in one scope shadowed by another) and **state** findings (`buildStateFindings`, e.g. disabled/pending) (src/doctor.ts:574-578).\n4. If no definitions were found at all, push a blocking `state.not_found` error and stop adding further scope-derived findings (src/doctor.ts:580-589).\n5. Run the **live check** (`getLiveCheck`, src/doctor.ts:420-468): skipped if `configOnly`; skipped as `pending`/`disabled` if no active config but a definition is pending approval or disabled; otherwise connects to the server and returns `connected`, `needs-auth`, `disabled`, `pending`, or `failed` (with error), always running best-effort cache cleanup in `finally` (src/doctor.ts:463-466).\n6. Convert the live check into findings (`buildLiveFindings`, src/doctor.ts:470-515): `needs-auth` → blocking:false warn \"requires authentication\"; `failed` → blocking:true error, distinguishing `stdio.command_not_found` (when the error mentions \"not found\" on a stdio transport) from a generic `health.failed`.\n\n`doctorAllServers`/`doctorServer` (src/doctor.ts:617-668) run this per-server report for every discovered name (or one target name) in parallel via `Promise.all`, then summarize. The only place execution actually \"stops\" for a given server is the not-found case at step 4 — everything else (live check, findings) still runs to completion and is aggregated, not short-circuited across servers.\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThis file doesn't parse the raw `.jsonl` transcript itself (that happens in an upstream loader that produces `ResumeLoadResult`/`ResumeResult`); it only degrades gracefully when the already-parsed data is incomplete or malformed:\n- `extractTodosFromTranscript` (src/sessionRestore.ts:78-94) scans backward for the last `TodoWrite` tool_use; if the input isn't an object it returns `[]` immediately (line 87), and it runs the `todos` field through `TodoListSchema().safeParse`, returning `[]` on validation failure rather than throwing (lines 88-91).\n- `restoreSessionStateFromLog` (src/sessionRestore.ts:100-151) treats all restore inputs as optional — file history, attribution, and message-derived todos are only restored `if` present and non-empty (lines 105, 112-116, 141); a truncated transcript with missing fields simply skips that restoration step rather than erroring.\n- `restoreWorktreeForResume` (src/sessionRestore.ts:333-370) and `exitRestoredWorktree` (src/sessionRestore.ts:384-406) wrap `process.chdir` in try/catch: if the worktree directory referenced by a stale/crashed session no longer exists, it catches ENOENT, resets the cached worktree state (`saveWorktreeState(null)`), and returns without throwing (lines 343-351, 397-403) — a \"malformed\" (stale) worktree reference is treated as \"gone\" rather than fatal.\n\nNo path in this file throws or aborts session resume on bad transcript data; it consistently falls back to empty/undefined state.\n\nBENCH_DONE",
+      "answer": "## 1. `src/modelCost.ts` — fallback for unknown models\n\n`getModelCosts()` first checks `MODEL_COSTS[shortName]` (`src/modelCost.ts:321`); if that misses, it tries the non-Claude family table via `lookupNonClaudeCost()` (regex-matched providers like GPT-5/DeepSeek/Gemini, `src/modelCost.ts:129-194,325-326`). Only if both miss does it call `trackUnknownModelCost()` and fall back to `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:327-331`). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` (`src/modelCost.ts:113`), i.e. `$5/Mtok` input, `$25/Mtok` output, `$6.25` cache write, `$10` 1h cache write, `$0.5` cache read, `$0.01` web search (`src/modelCost.ts:64-71`) — used only if the default main-loop model itself has no `MODEL_COSTS` entry, since normally that default resolves first.\n\n## 2. `src/sedValidation.ts` — rejected constructs\n\nAll in `containsDangerousOperations()` (`src/sedValidation.ts:473-629`), each with its own reason:\n- Non-ASCII chars — \"Unicode homoglyphs, combining chars, etc.\" (`:480-486`)\n- `{`/`}` — \"too complex to parse\" (`:488-491`)\n- Newlines — \"multi-line commands are too complex\" (`:493-496`)\n- `#` not right after `s` — treated as a comment, not a delimiter (`:498-504`)\n- Negation (`!`) — negated addresses like `/pat/!` or `1,10!` (`:506-511`)\n- GNU step-address tilde (`N~M`) (`:513-517`)\n- Leading comma — shorthand for `1,$` range (`:519-522`)\n- Comma followed by `+`/`-` — GNU offset addresses (`:524-527`)\n- Backslash tricks — `s\\` delimiter or `\\|`,`\\#`,`\\%`,`\\@` alternate-delimiter escapes (`:529-534`)\n- Escaped slash followed by `w`/`W` (`:536-539`)\n- Malformed `/pattern w file`-style commands (space before `w`/`e`/`E`) (`:541-546`)\n- Malformed `s/...` missing/extra delimiters (`:548-552`)\n- Any `s...` ending in `w`/`W`/`e`/`E` that isn't a \"properly formed\" substitution — paranoid catch-all (`:554-563`)\n- Write commands (`w`/`W` in various address forms) — file-write side effect (`:565-579`)\n- Execute commands (`e` in various address forms) — shell execution (`:581-595`)\n- Substitution `w`/`W`/`e`/`E` flags — write/execute flags on `s///` (`:597-613`)\n- `y` (transliterate) command combined with any `w`/`W`/`e`/`E` anywhere after — \"paranoid but safe\" (`:615-626`)\n\n## 3. `src/events.ts` — hook events\n\nFull list per the file header (`src/events.ts:4-6`): `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`.\n\n- `Notification` fires whenever a notification is about to be shown to the user; `executeNotificationHooks()` builds the hook input from `message`/`title`/`notificationType` and matches hooks by `notificationType` (`src/events.ts:62-84`).\n- `StopFailure` fires when the assistant's turn ends in an error; `executeStopFailureHooks()` gates on `hasHookForEvent('StopFailure', ...)`, pulls the last assistant text and `error`/`errorDetails` off the failing message, and matches hooks by the error string (`src/events.ts:86-119`).\n- `PreCompact` fires before a context compaction, either `manual` or `auto` triggered, passing the pending `customInstructions` and returning any hook-supplied replacement instructions/display message (`src/events.ts:128-146`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\nPer server, `buildServerReport()` (`src/doctor.ts:517-601`) runs, in order:\n1. Collect per-scope config validation findings (`validationFindingsByName`, passed in) (`:574-575`).\n2. Build scope definitions across enterprise/local/project/user (respecting `scopeFilter`) and, if the runtime config has no matching definition, add an \"observed\" definition (`:538-567`).\n3. Shadowing findings — multiple definitions for the same server (`buildShadowingFindings`, `:576`).\n4. State findings — disabled/stale definitions (`buildStateFindings`, `:577`).\n5. Not-found finding — pushed if `definitions.length === 0` and no observed definition was added (`:580-589`).\n6. Live check via `getLiveCheck()` (`:591`, defined `:420-468`), which short-circuits in this order: `configOnly` → `{attempted:false, result:'skipped'}` immediately, no connection attempted (`:427-429`); else if no active config → checks `pendingApproval` first (`'pending'`), then `disabled` (`'disabled'`), else `'skipped'` (`:431-438`) — again no connection attempted; only if an active config exists does it actually `connectToServer()` and return `connected`/`needs-auth`/`disabled`/`pending`/`failed` (`:441-462`), always followed by a best-effort `clearServerCache()` (`:463-466`).\n7. Live findings built from the result — `needs-auth` becomes a warn, `failed` becomes a blocking error (with a special `stdio.command_not_found` code when the transport is stdio and the error mentions \"not found\") (`buildLiveFindings`, `:470-515`).\n\nSo the pipeline never truly aborts early per server — it always assembles the full findings list — but the *live* health check itself stops early (skips the actual connection attempt) whenever `configOnly`, `pendingApproval`, or `disabled` applies.\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThis file doesn't parse the raw `.jsonl` itself (that happens upstream); it defends against malformed *structured* data it receives:\n- `extractTodosFromTranscript()` finds the last `TodoWrite` tool_use and returns `[]` if `input` isn't an object, or if `TodoListSchema().safeParse(...)` fails validation — it never throws on malformed todo data (`src/sessionRestore.ts:78-94`).\n- `restoreWorktreeForResume()` treats a missing/gone worktree directory as recoverable: `process.chdir()` is wrapped in try/catch, and on failure it calls `saveWorktreeState(null)` and returns instead of crashing (`src/sessionRestore.ts:333-351`).\n- `exitRestoredWorktree()` does the same for `originalCwd` — if `process.chdir()` throws (dir gone), it just returns and stays put (`src/sessionRestore.ts:384-406`).\n\nNo other truncation-specific handling (e.g. partial JSON lines) exists in this file — malformed data is handled defensively via schema validation and try/catch around filesystem operations, not by detecting truncation per se.\n\nBENCH_DONE",
       "stderr": ""
     },
     {
       "label": "A pivot on",
       "exitCode": 0,
-      "wallMs": 86318.343517,
-      "input": 8257,
-      "output": 8268,
-      "cacheRead": 119741,
-      "cacheCreation": 37917,
-      "costUsd": 0.32690205,
-      "turns": 6,
-      "endContext": 43758,
+      "wallMs": 59031.69881699997,
+      "input": 2016,
+      "output": 1667,
+      "cacheRead": 80085,
+      "cacheCreation": 27876,
+      "costUsd": 0.1596135,
+      "turns": 5,
+      "endContext": 31667,
       "toolCalls": 22,
       "readCalls": 22,
       "bareReads": 5,
       "pivots": 5,
       "repeatReads": 17,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
         "Read": 22
       },
-      "readResultChars": 71158,
-      "allResultChars": 71158,
+      "readResultChars": 43852,
+      "allResultChars": 43852,
       "sawSentinel": true,
-      "answer": "## 1. `src/modelCost.ts` — unknown model fallback\n\nWhen `getModelCosts()` can't find a match in `MODEL_COSTS` (canonical Claude models) or in the non-Claude family table (`lookupNonClaudeCost`), it logs an analytics event via `trackUnknownModelCost()` and falls back to the *default main-loop model's* cost tier, or if that's also unavailable, to `DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:328-331`). That constant is defined as `COST_TIER_5_25` (`src/modelCost.ts:113`) — i.e. the model is billed as if it were priced at $5/$25 per Mtok (the Opus-tier rate), per the comment at `src/modelCost.ts:117-118`.\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\nAll rejections live in `containsDangerousOperations()` (`src/sedValidation.ts:473-629`):\n- Non-ASCII characters — Unicode homoglyphs/combining chars could disguise commands (`:480-486`).\n- Curly braces `{}` — blocks are \"too complex to parse\" (`:488-491`).\n- Newlines — multi-line commands are \"too complex\" (`:493-496`).\n- `#` not immediately preceded by `s` — treated as a comment (`:498-504`).\n- Negation (`!`) at the start or after an address — the negation operator (`:506-511`).\n- GNU step-address tilde (`digit~digit`, `,~digit`, `$~digit`) (`:513-517`).\n- Leading comma — shorthand for the `1,$` address range (`:519-522`).\n- Comma followed by `+`/`-` — GNU offset addresses (`:524-527`).\n- Backslash tricks: `s\\` delimiter or `\\|`, `\\#`, `\\%`, `\\@` alternate-delimiter escapes (`:529-534`).\n- Escaped slash followed by `w`/`W` (e.g. `/\\/path\\/to\\/file/w`) (`:536-539`).\n- A slash-pattern followed by whitespace then `w/W/e/E` — \"malformed/suspicious patterns we don't understand\" (`:541-546`).\n- Malformed `s/...` substitutions that don't match the 3-delimiter form (`:548-552`).\n- Any `s`-prefixed command ending in `w/W/e/E` that isn't a well-formed substitution — paranoid catch-all (`:554-563`).\n- Write commands (`w`/`W`) in any address form — dangerous file-write side effect (`:565-579`).\n- Execute commands (`e`) in any address form — dangerous shell execution (`:581-595`).\n- Substitution flags containing `w`/`W` (write) or `e`/`E` (execute) (`:597-613`).\n- `y` (transliterate) commands where `w`/`W`/`e`/`E` appears anywhere afterward — \"paranoid but safe\" (`:615-626`).\n\n## 3. `src/events.ts` — hook events\n\nThe file's header comment lists all 13 non-tool lifecycle events it dispatches: `Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove` (`src/events.ts:3-6`).\n\n- **ConfigChange** fires when settings, skills, or commands change on disk, triggered by file watchers, primarily so enterprise admins can audit configuration changes (`src/events.ts:316-318`).\n- **PreCompact** fires before a context compaction, with a `trigger` of `'manual'` or `'auto'`, and can return replacement custom instructions (`src/events.ts:121-134`).\n- **SessionEnd** fires when a session is ending, carrying an `ExitReason`; afterward it clears session-scoped hooks and resets goal state (`src/events.ts:258-284, 303-312`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\nPer server, `buildServerReport()` (`src/doctor.ts:517-601`) runs, in order:\n1. Look up scoped configs (enterprise/local/project/user) and the active runtime config, and whether the server is disabled (`:527-536`).\n2. Build per-scope definitions (`buildScopeDefinitions`) for the requested scopes (`:538-551`), optionally adding a synthetic \"observed\" definition if the runtime config isn't represented in any scope (`:553-567`).\n3. Collect config-validation findings, cross-scope shadowing findings, and state findings (`buildShadowingFindings`, `buildStateFindings`) (`:574-578`).\n4. If no definitions were found at all, push a blocking `state.not_found` error and stop building further definition-based findings (`:580-589`).\n5. Run the live connectivity check via `getLiveCheck()` and append live findings (`:591-592`).\n\n`getLiveCheck()` (`src/doctor.ts:420-468`) is itself a short-circuit chain that stops at the first applicable case: if `configOnly` is set it returns `skipped` immediately without any check (`:427-429`); otherwise if there's no active config it checks `pendingApproval` first, then `disabled`, defaulting to `skipped` if neither applies — never attempting a network connection in any of those cases (`:431-438`); only if an active config exists does it call `deps.connectToServer` and classify the result as `connected`, `needs-auth`, `disabled`, `pending`, or `failed`, always followed by best-effort cache cleanup (`:440-467`).\n\n## 5. `src/sessionRestore.ts` — malformed/truncated transcripts\n\nThis file doesn't itself parse the raw transcript file (that happens upstream, e.g. in the loader that produces `ResumeLoadResult`), so there's no explicit \"truncated transcript\" handling here. The graceful-degradation patterns it does contain for bad/missing data are:\n- `extractTodosFromTranscript()` scans backward for the last `TodoWrite` tool call; if the `input` isn't an object, or the `todos` field fails Zod validation (`TodoListSchema().safeParse`), it silently returns an empty todo list rather than throwing (`src/sessionRestore.ts:78-94`).\n- `restoreAgentFromSession()`: if the resumed session references an agent type that's no longer defined, it logs a debug message and falls back to default behavior (no agent restored) instead of failing (`src/sessionRestore.ts:220-229`).\n- `restoreWorktreeForResume()`: if the worktree path recorded in the transcript no longer exists on disk, `process.chdir` throws and is caught, clearing the stale worktree cache instead of crashing the resume (`src/sessionRestore.ts:343-351`).\n\nBENCH_DONE",
+      "answer": "I now have enough to answer all five questions with citations.\n\n**1. src/modelCost.ts — unknown model fallback**\n`getModelCosts` (src/modelCost.ts:300-334) resolves a model's short name and looks it up in `MODEL_COSTS`. If that's missing, it first tries `lookupNonClaudeCost` for known non-Anthropic families (src/modelCost.ts:325-326); only if that also fails does it call `trackUnknownModelCost` (logs `tengu_unknown_model_cost` and sets a \"has unknown model cost\" flag, src/modelCost.ts:327, 336-343) and return `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:328-331). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` (src/modelCost.ts:113), i.e. the $5 input / $25 output per-Mtok tier (src/modelCost.ts:64-71) — used only if the default main-loop model itself has no cost entry.\n\n**2. src/sedValidation.ts — rejected sed constructs**\nAll in `containsDangerousOperations` (src/sedValidation.ts:473-629): non-ASCII characters — homoglyph/combining-char evasion (line 484); curly braces `{}` — \"too complex to parse\" (489-491); newlines — \"multi-line commands are too complex\" (494-496); `#` not immediately preceded by `s` — treated as a comment (501-504); negation `!` — at start or after an address (509-511); GNU step-address tilde (`N~M`) (515-517); leading bare comma (shorthand for `1,$`) (520-522); comma followed by `+`/`-` (GNU offset addresses) (525-527); `s\\` or backslash before `|#%@` — alternate-delimiter tricks (532-534); escaped slash followed by `w`/`W` (537-539); a slash-pattern followed by whitespace then `w/W/e/E` — unrecognized/suspicious form (544-546); malformed `s/...` missing proper delimiters (550-552); any `s...` command ending in `w/W/e/E` that isn't a recognized well-formed substitution — \"paranoid\" catch-all (554-563); write commands (`w`/`W` after an address, `$`, pattern, or range) (569-579); execute commands (`e` after an address, `$`, pattern, or range) (585-595); substitution flags containing `w`/`W` (write) or `e`/`E` (execute) (600-613); and `y` (transliterate) commands where any `w/W/e/E` appears anywhere afterward (619-626).\n\n**3. src/events.ts — hook events**\nPer the module header (src/events.ts:4-6) and the exported dispatchers, the events are: Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove. Three examples:\n- **StopFailure** (`executeStopFailureHooks`, src/events.ts:86-119) fires when the agent stops due to an error — it's gated by `hasHookForEvent('StopFailure', ...)` (line 96) and builds the hook input from `lastMessage.error ?? 'unknown'` and the last assistant text (98-111), matching on the error string.\n- **PreCompact** (`executePreCompactHooks`, src/events.ts:128 ff., doc comment 121-127) fires before context compaction, given `compactData` describing whether the trigger was `'manual'` or `'auto'`.\n- **CwdChanged** (`executeCwdChangedHooks`, src/events.ts:374-390) fires when the working directory changes, passing `old_cwd`/`new_cwd` (383-388) through the shared `executeEnvHooks` path.\n\n**4. src/doctor.ts — MCP server checks and stop order**\n`buildServerReport` (src/doctor.ts:517-601) runs checks in this order and only \"stops\" (skips remaining checks) at the not-found step: (1) gathers scoped configs per requested scope and determines the active runtime config, accounting for whether the server is disabled (527-536); (2) builds per-scope `definitions` via `buildScopeDefinitions`, optionally adding a synthetic \"observed\" definition if the runtime config isn't explained by any scope (538-567); (3) computes `findings` from prior validation errors plus `buildShadowingFindings` (definitions shadowing each other) and `buildStateFindings` (disabled/pending state) (574-578); (4) if there are no definitions at all, pushes a blocking `state.not_found` error and does **not** attempt a live check for that server (580-591, the `not_found` case short-circuits `visibleRuntimeConfig`/live check meaningfully since there's nothing to connect to); (5) otherwise calls `getLiveCheck` (src/doctor.ts:420-468), which itself stops early — returning `skipped` if `configOnly` is set (427-429), or `pending`/`disabled`/`skipped` based on definition state if there's no active config (431-439) — and only actually connects (`deps.connectToServer`) if an active config exists, mapping the connection result to `connected`/`needs-auth`/`disabled`/`pending`/`failed` (445-462); (6) finally `buildLiveFindings` is added based on the live-check result (592).\n\n**5. src/sessionRestore.ts — truncated/malformed transcript**\n`extractTodosFromTranscript` (src/sessionRestore.ts:78-94) scans messages from the end for the last assistant `TodoWrite` tool_use; if that tool_use's `input` is `null` or not an object, it returns `[]` immediately (line 87), and if the `todos` field fails Zod schema validation (`TodoListSchema().safeParse`, 88-91) it likewise returns `[]` rather than throwing — so a malformed/truncated todo entry is silently dropped, not the whole restore. `restoreSessionStateFromLog` (src/sessionRestore.ts:100-151) guards each restoration step independently: it only restores todos if `result.messages` is non-empty and the extracted list is non-empty (141-149), so a transcript with no valid todo entries simply leaves `AppState.todos` unchanged for that session; file-history, attribution, and context-collapse restoration are similarly gated on their own optional/empty checks (105-120, 128-137) rather than failing the whole function if one part of the log is missing.\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "A pivot on",
+      "exitCode": 0,
+      "wallMs": 97480.98800999997,
+      "input": 6176,
+      "output": 9862,
+      "cacheRead": 83276,
+      "cacheCreation": 39709,
+      "costUsd": 0.34034955,
+      "turns": 5,
+      "endContext": 43478,
+      "toolCalls": 28,
+      "readCalls": 28,
+      "bareReads": 5,
+      "pivots": 5,
+      "repeatReads": 23,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "modelCost.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sedValidation.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "doctor.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 2,
+          "file": "sessionRestore.ts",
+          "kind": "symbol"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "events.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sedValidation.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "doctor.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 3,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        },
+        {
+          "turn": 4,
+          "file": "sessionRestore.ts",
+          "kind": "offset,limit"
+        }
+      ],
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 28
+      },
+      "readResultChars": 70869,
+      "allResultChars": 70869,
+      "sawSentinel": true,
+      "answer": "## 1. src/modelCost.ts\n\nWhen `getModelCosts()` can't find a cost entry for a model (`MODEL_COSTS[shortName]` is `undefined`, `src/modelCost.ts:321-322`), it first tries the non-Claude pattern table via `lookupNonClaudeCost(model)` (`:325`). If that also misses, it calls `trackUnknownModelCost(model, shortName)` — which logs a `tengu_unknown_model_cost` analytics event and calls `setHasUnknownModelCost()` (`:336-343`) — then returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`:328-331`). The named fallback constant is `DEFAULT_UNKNOWN_MODEL_COST`, defined at `:113` as `COST_TIER_5_25` (the $5/$25-per-Mtok Opus-tier pricing, per the comment at `:117-118`), used only if even the current default main-loop model's tier lookup fails.\n\n## 2. src/sedValidation.ts\n\n`containsDangerousOperations()` (`src/sedValidation.ts:473-629`) rejects an expression for these reasons: non‑ASCII characters/homoglyphs (`:480-486`, could disguise characters); curly braces `{`/`}` (`:488-491`, \"too complex to parse\"); newlines (`:493-496`, \"multi-line commands are too complex\"); a `#` not immediately preceded by `s` (`:498-504`, distinguishes a real comment from an `s#...#...#` delimiter); a leading `!` or `!` after an address (`:506-511`, negation operator); GNU step-address `~` like `digit~digit` (`:513-517`); a leading bare `,` (`:519-522`, shorthand for `1,$`); `,` followed by `+`/`-` (`:524-527`, GNU offset addresses); backslash-delimiter tricks like `s\\` or `\\|`, `\\#`, `\\%`, `\\@` (`:529-534`); an escaped slash followed by `w`/`W` (`:536-539`); malformed patterns of the form `/pattern w file` (`:541-546`); malformed `s/...` commands that don't match the 3-delimiter shape (`:548-552`); any `s`-command ending in `w`/`W`/`e`/`E` that isn't a well-formed substitution (`:554-563`, \"paranoid\" catch-all); explicit write commands `w`/`W` in any address form (`:565-579`, \"dangerous write commands\"); explicit execute commands `e` in any address form (`:581-595`, \"dangerous execute commands\"); substitution flags containing `w`/`W`/`e`/`E` (`:597-613`); and any `y` (transliterate) command combined anywhere with `w`/`W`/`e`/`E` (`:615-626`, paranoid since `y` is rare). Separately, `isSubstitutionCommand()` (`:142-238`) enforces a strict allowlist shape (only `/` delimiter, exactly one expression, flags restricted to `[gpimIM]` plus one digit) rather than a rejection list.\n\n## 3. src/events.ts\n\nThe file's header comment (`src/events.ts:4-6`) enumerates all 13 events it dispatches: Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove. Three firing points:\n- **Notification** (`executeNotificationHooks`, `:62-84`): fired by a caller supplying `{message, title, notificationType}`; it's matched against configured hooks by `notificationType` (`:82`).\n- **StopFailure** (`executeStopFailureHooks`, `:86-119`): fired when the last assistant message ended in an error — it reads `lastMessage.error ?? 'unknown'` (`:104`, defaulting because some `createAssistantAPIErrorMessage` call sites omit `error`, per the comment at `:101-103`) and is gated up front by `hasHookForEvent('StopFailure', ...)` (`:96`).\n- **PreCompact** (`executePreCompactHooks`, `:128-192`): fired before a context compaction, with `trigger: 'manual' | 'auto'` (`:130,142`), and its return value can inject `newCustomInstructions` into the compaction from successful hook output (`:157-160,186-189`).\n\n## 4. src/doctor.ts\n\n`buildServerReport()` (`src/doctor.ts:517-601`) runs, in order: (1) schema/config validation findings for that server name (`:575`, pulled from `getValidationErrorsForSelectedScopes`); (2) definitions gathered per scope via `buildScopeDefinitions` for enterprise/local/project/user (`:538-551`), plus an \"observed\" runtime definition if the server is running but undeclared in any scope (`:553-567`); (3) shadowing findings — multiple scopes defining the same server (`:576`, `buildShadowingFindings`); (4) state findings — e.g. disabled/pending state (`:577`, `buildStateFindings`); (5) a blocking `state.not_found` error if no definition exists anywhere and none was synthesized (`:580-589`); (6) a live connectivity check (`:591`, `getLiveCheck`); (7) live findings derived from that connection result (`:592`, `buildLiveFindings`).\n\nThe live check itself (`getLiveCheck`, `:420-468`) is where it stops early, in this order: if `configOnly` is true, it returns immediately with `{attempted: false, result: 'skipped'}` and never connects (`:427-429`); otherwise if there's no active config, it checks `pendingApproval` first → `'pending'` (`:432-434`), then `disabled` → `'disabled'` (`:435-437`), else falls through to `'skipped'` (`:438`); only if an active config exists does it actually call `deps.connectToServer` (`:442`) and stop on the connection's terminal state — `connected`, `needs-auth`, `disabled`, `pending`, or `failed` (`:446-462`) — always running `clearServerCache` in a `finally` afterward (`:463-467`). `doctorServer()` (`:666-695`) wraps this for a single named server, stopping after building that one report and summarizing it.\n\n## 5. src/sessionRestore.ts\n\nThis file operates on an already-parsed `Message[]`, so it doesn't itself parse raw transcript JSON; its truncation/malformation handling is defensive rather than a parser. `extractTodosFromTranscript()` (`:78-94`) scans backward for the last `TodoWrite` tool_use and bails safely at each malformed point: if the tool_use's `input` is `null` or not an object, it returns `[]` immediately (`:86-87`); if `input.todos` fails `TodoListSchema().safeParse`, it also returns `[]` (`:88-91`); if no matching tool_use is found at all, it returns `[]` after the loop (`:93`). `restoreSessionStateFromLog()` guards the call to this function with `result.messages && result.messages.length > 0` (`:141`), so an empty or missing (e.g. truncated-to-nothing) transcript simply skips todo restoration with no error. Similarly, the context-collapse restore path (`:128-137`) is called unconditionally with `result.contextCollapseCommits ?? []`, tolerating an absent/empty commit log rather than erroring.\n\nBENCH_DONE",
       "stderr": ""
     }
   ],
@@ -93,19 +616,48 @@
     {
       "label": "B pivot off",
       "exitCode": 0,
-      "wallMs": 38465.47587899999,
-      "input": 41475,
-      "output": 369,
+      "wallMs": 40072.670258,
+      "input": 4,
+      "output": 3604,
       "cacheRead": 11754,
-      "cacheCreation": 18881,
-      "costUsd": 0.20428995,
+      "cacheCreation": 60342,
+      "costUsd": 0.2838807,
       "turns": 2,
-      "endContext": 63057,
+      "endContext": 63047,
       "toolCalls": 5,
       "readCalls": 5,
       "bareReads": 5,
       "pivots": 0,
       "repeatReads": 0,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
         "Read": 5
@@ -113,25 +665,54 @@
       "readResultChars": 120277,
       "allResultChars": 120277,
       "sawSentinel": true,
-      "answer": "## 1. `src/modelCost.ts` — fallback for unknown model cost\n\nWhen `getModelCosts()` can't find a cost entry for a model's canonical short name in `MODEL_COSTS`, it first tries the non-Claude pattern table `NON_CLAUDE_MODEL_COSTS` via `lookupNonClaudeCost()` (`src/modelCost.ts:325-326`). If that also misses, it calls `trackUnknownModelCost()` (fires a `tengu_unknown_model_cost` analytics event and sets `hasUnknownModelCost` state, `src/modelCost.ts:327`, `src/modelCost.ts:336-343`), then returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:328-331`). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` — $5 input / $25 output per Mtok (`src/modelCost.ts:113`, tier defined at `src/modelCost.ts:64-71`).\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\n`containsDangerousOperations()` (denylist, `src/sedValidation.ts:473-629`) rejects: non-ASCII characters — to block Unicode homoglyph tricks (`:484`); curly-brace blocks — \"too complex to parse\" (`:489`); embedded newlines — \"multi-line commands are too complex\" (`:494`); comments (`#` not immediately preceded by `s`) (`:501-504`); the negation operator `!` (`:509`); GNU step-address `~` (`:515`); a leading bare comma (shorthand for `1,$`) (`:520`); comma+offset addresses like `,+N`/`,-N` (`:525`); backslash-delimiter tricks (`s\\` or `\\|`, `\\#`, `\\%`, `\\@`) (`:532`); escaped-slash patterns followed by `w`/`W` (`:537`); malformed patterns like `/pattern w file` (`:544`); malformed substitution syntax with wrong delimiter counts (`:550`); any `s...` command ending in `w/W/e/E` that isn't a well-formed substitution (`:557-563`); explicit write commands (`w`/`W` with a filename, in various address forms) (`:569-579`); explicit execute commands (`e`, in various address forms) (`:585-595`); substitution flags containing `w`/`W` or `e`/`E` (`:600-613`); and `y` (transliterate) commands paired anywhere with `w`/`W`/`e`/`E` (`:619-626`). Additionally, `extractSedExpressions()` throws on dangerous combined flags like `-ew`, `-eW`, `-ee`, `-we` — \"Dangerous flag combination detected\" (`src/sedValidation.ts:398-400`).\n\n## 3. `src/events.ts` — hook events\n\nEvents defined/dispatched: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove` (listed in the file banner, `src/events.ts:5-6`, each implemented by its own `execute*Hooks` function). Timing for three:\n- `PreCompact` fires just before a context compaction (manual or auto), passing prior custom instructions and allowing hooks to supply new ones (`src/events.ts:128-192`).\n- `SessionEnd` fires when a session is ending, with an `ExitReason`; it also clears session-scoped hooks and resets `/goal` state afterward (`src/events.ts:264-313`).\n- `WorktreeCreate` fires when a new git worktree needs to be created as a fallback, and the hook's stdout supplies the worktree path (`src/events.ts:613-643`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\nFor each server, `buildServerReport()` runs checks in this order: (1) collect **validation-error findings** from config parsing across the enterprise/local/project/user scopes (`src/doctor.ts:574-575`, sourced from `findingsFromValidationErrors` at `:146-162`, e.g. invalid JSON, missing env vars, Windows npx-wrapper issue, schema mismatch); (2) **shadowing check** — if the same server name is defined in more than one user-editable scope, emit `duplicate.same_name_multiple_scopes` and `scope.shadowed` warnings (`src/doctor.ts:333-364`, `:576`); (3) **state checks** — pending project approval (`state.pending_project_approval`) and disabled (`state.disabled`) warnings per definition (`src/doctor.ts:366-397`, `:577`); (4) if no definitions were found at all (and none observed at runtime), emit a blocking `state.not_found` finding and **stop there** — the live check is still attempted but with no config (`src/doctor.ts:580-589`); (5) **live connectivity check** via `getLiveCheck()`, which is skipped entirely in `configOnly` mode (`result: 'skipped'`, `:427-428`) or if there's no active config (returns `pending`/`disabled`/`skipped` based on definitions, `:431-439`); otherwise it calls `connectToServer` and maps the outcome to `connected`, `needs-auth`, `disabled`, `pending`, or `failed` (`src/doctor.ts:441-462`), always running `clearServerCache` as cleanup (`:463-467`); (6) failed/needs-auth live checks generate final findings — `auth.needs_auth` (warn) or `health.failed`/`stdio.command_not_found` (blocking, with the latter detected when the transport is stdio and the error mentions \"not found\") (`src/doctor.ts:470-515`).\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThis module operates on an already-parsed `Message[]`, not the raw transcript file, so its defenses are narrow, localized fallbacks rather than transcript-wide validation:\n- `extractTodosFromTranscript()` scans backward for the last `TodoWrite` tool_use block; if the block's `input` is `null` or not an object, it returns an empty todo list immediately (`src/sessionRestore.ts:87`), and if the `todos` field fails `TodoListSchema().safeParse()`, it likewise returns `[]` instead of throwing (`src/sessionRestore.ts:88-91`). No todos are restored into `AppState` if the transcript never yields a valid list (`src/sessionRestore.ts:141-150`).\n- `restoreWorktreeForResume()` treats a missing worktree directory as recoverable: `process.chdir` failing (e.g., ENOENT) is caught and the code just clears the cached worktree state via `saveWorktreeState(null)` rather than erroring (`src/sessionRestore.ts:343-351`).\n- `exitRestoredWorktree()` similarly catches a failed `process.chdir` back to the original directory and just returns, leaving the process where it is (`src/sessionRestore.ts:397-403`).\nThere is no explicit handling in this file for a truncated/corrupt transcript JSONL itself (that parsing happens upstream, e.g. `sessionStorage.js`/log loaders); this file only degrades gracefully when the already-parsed message list lacks expected structure.\n\nBENCH_DONE",
+      "answer": "## 1. src/modelCost.ts\n\nWhen `getModelCosts` can't find a cost entry in `MODEL_COSTS` for a Claude model, it first tries `lookupNonClaudeCost` against the `NON_CLAUDE_MODEL_COSTS` regex table (src/modelCost.ts:194-199, 325-326). If that also misses, it calls `trackUnknownModelCost` (logs `tengu_unknown_model_cost` and calls `setHasUnknownModelCost()`, src/modelCost.ts:327, 336-343) and falls back to the cost of the current default main-loop model, or, if that's also unresolvable, to `DEFAULT_UNKNOWN_MODEL_COST`, which is `COST_TIER_5_25` — i.e. $5 input / $25 output per Mtok, the Opus 4.5 pricing tier (src/modelCost.ts:113, 328-331).\n\n## 2. src/sedValidation.ts\n\n`containsDangerousOperations` (src/sedValidation.ts:473-629) rejects, with reasons given inline as comments:\n- Non-ASCII characters — \"Unicode homoglyphs, combining chars, etc.\" could hide dangerous chars (line 480-486).\n- Curly braces `{`/`}` — \"too complex to parse\" (line 488-491).\n- Newlines — \"multi-line commands are too complex\" (line 493-496).\n- `#` not immediately preceded by `s` — treated as a comment, could hide commands (line 498-504).\n- Negation (`!`) — could invert an address match to affect unintended lines (line 506-511).\n- GNU step-address tilde (`N~M`) — non-standard addressing not modeled by the allowlist (line 513-517).\n- Leading bare comma — shorthand for `1,$` full-file range (line 519-522).\n- Comma followed by `+`/`-` (GNU offset addresses) — not modeled (line 524-527).\n- Backslash-delimiter tricks (`s\\` or `\\|`, `\\#`, `\\%`, `\\@`) — alternate delimiters could smuggle a dangerous command (line 529-534).\n- Escaped slash followed by `w`/`W` — disguised write command (line 536-539).\n- Slash-address followed by whitespace then `w`/`W`/`e`/`E` — malformed/suspicious pattern that \"we don't understand\" (line 541-546).\n- Malformed `s/.../` missing proper delimiters (line 548-552).\n- Any `s`-command ending in `w`/`W`/`e`/`E` that isn't a recognized well-formed substitution — \"paranoid\" catch-all (line 554-563).\n- Write commands (`w`/`W`) in any addressed form — write commands \"dangerous\" (line 565-579).\n- Execute commands (`e`) in any addressed form — dangerous (line 581-595).\n- Substitution flags containing `w`/`W` (write) or `e`/`E` (execute) (line 597-613).\n- `y` (transliterate) command combined with any `w`/`W`/`e`/`E` anywhere in the command — \"paranoid but safe\" (line 615-626).\n\n## 3. src/events.ts\n\nHook events defined: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove` (listed in the file header, src/events.ts:5-6; each has a builder function below).\n\nThree examples:\n- **PreCompact** fires when context compaction is about to happen, either `manual` or `auto` trigger (src/events.ts:128-144), and its hook output can supply replacement custom instructions for the compaction.\n- **CwdChanged** fires when the working directory changes, passing `old_cwd`/`new_cwd` (src/events.ts:374-390), and invalidates the session environment cache afterward.\n- **SessionEnd** fires when a session is ending, carrying an `ExitReason` (src/events.ts:264-313); after running, it clears session-scoped hooks and resets goal state via `resetGoalStateForSessionEnd`.\n\n## 4. src/doctor.ts\n\nFor each server, `buildServerReport` (src/doctor.ts:517-601) runs checks in this order, and can short-circuit at each blocking point:\n1. Validation errors from config files for the server (`validationFindingsByName`) — added first, not blocking on their own unless severity is `fatal` (src/doctor.ts:574-575, 135-144).\n2. Shadowing check — if the server is defined in multiple user-editable scopes, adds `duplicate.same_name_multiple_scopes` and `scope.shadowed` warnings (non-blocking) (src/doctor.ts:333-364, 576).\n3. State checks — `pendingApproval` and `disabled` flags each produce non-blocking warnings (src/doctor.ts:366-397, 577).\n4. Existence check — if there are no definitions in any selected scope and no observed runtime config, adds a **blocking** `state.not_found` finding (src/doctor.ts:580-589).\n5. Live connectivity check (`getLiveCheck`, src/doctor.ts:420-468) — skipped entirely if `configOnly` is set, or if the server is pending/disabled with no active config; otherwise it attempts `connectToServer` and produces findings via `buildLiveFindings`: `needs-auth` → non-blocking warning (src/doctor.ts:477-489); `failed` → **blocking** error, either `stdio.command_not_found` (if it's a stdio transport and the error message contains \"not found\") or generic `health.failed` (src/doctor.ts:491-512).\n\nThe only hard-blocking findings are `state.not_found` and the live-check `failed` result (`health.failed`/`stdio.command_not_found`); everything else (shadowing, pending, disabled, needs-auth, and non-fatal validation errors) is a warning that doesn't stop the report from being built, and the live check itself is skipped once a server is known to be unreachable via config (disabled/pending) or when `configOnly` is requested.\n\n## 5. src/sessionRestore.ts\n\nThis file doesn't parse or repair the raw transcript file itself — it operates on an already-parsed `Message[]` (`ResumeResult`/`ResumeLoadResult`) handed to it by the transcript loader, so truncation/JSON-repair of the `.jsonl` isn't handled here. The one piece of defensive handling over potentially malformed message content is `extractTodosFromTranscript` (src/sessionRestore.ts:78-94): it scans backward for the last assistant `TodoWrite` tool_use block, and if that block's `input` isn't an object (line 87) or its `todos` field fails the `TodoListSchema` zod validation (lines 88-91), it returns an empty todo list (`[]`) rather than throwing — so a malformed/truncated final tool_use simply results in no restored todos, silently. Separately, worktree-directory restoration guards against a worktree path that no longer exists (e.g., from a crash mid-write) by wrapping `process.chdir` in try/catch and falling back to clearing the worktree state (src/sessionRestore.ts:343-351, 397-403) rather than throwing.\n\nBENCH_DONE",
       "stderr": ""
     },
     {
       "label": "B pivot off",
       "exitCode": 0,
-      "wallMs": 42429.91940300001,
+      "wallMs": 40192.67229,
       "input": 41475,
-      "output": 3783,
-      "cacheRead": 11754,
-      "cacheCreation": 18881,
-      "costUsd": 0.25549995000000003,
+      "output": 3940,
+      "cacheRead": 11749,
+      "cacheCreation": 18872,
+      "costUsd": 0.2578197,
       "turns": 2,
-      "endContext": 63057,
+      "endContext": 63048,
       "toolCalls": 5,
       "readCalls": 5,
       "bareReads": 5,
       "pivots": 0,
       "repeatReads": 0,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
         "Read": 5
@@ -139,25 +720,54 @@
       "readResultChars": 120277,
       "allResultChars": 120277,
       "sawSentinel": true,
-      "answer": "## 1. `src/modelCost.ts` — unknown model fallback\n\nWhen `getModelCosts()` can't find a cost entry for a model's canonical short name (`src/modelCost.ts:321-322`), it first tries the non-Claude pattern table via `lookupNonClaudeCost()` (`src/modelCost.ts:325-326`). If that also misses, it calls `trackUnknownModelCost()` for analytics/state tracking (`src/modelCost.ts:327`) and falls back to `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:328-331`). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` (`src/modelCost.ts:113`), i.e. $5 input / $25 output per Mtok (the Opus 4.5 tier, `src/modelCost.ts:64-71`).\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\nAll rejections happen in `containsDangerousOperations()` (denylist, `src/sedValidation.ts:473-629`), on top of a strict allowlist (only `-n`/print commands or a single `s///` substitution are structurally accepted, `src/sedValidation.ts:44-238`):\n- Non-ASCII characters — \"Unicode homoglyphs, combining chars, etc.\" could smuggle disguised commands (`sedValidation.ts:480-486`)\n- Curly braces `{`/`}` — \"too complex to parse\" (blocks, `sedValidation.ts:488-491`)\n- Newlines — \"multi-line commands are too complex\" (`sedValidation.ts:493-496`)\n- `#` not right after `s` (comments) — could hide a delimiter vs. a real comment; rejected to be safe (`sedValidation.ts:498-504`)\n- Negation `!` — could flip an address match unexpectedly (`sedValidation.ts:506-511`)\n- GNU step-address tilde (`N~M`) — non-standard addressing not modeled (`sedValidation.ts:513-517`)\n- Leading bare comma (shorthand for `1,$`) — implicit whole-file range (`sedValidation.ts:519-522`)\n- Comma followed by `+`/`-` (GNU offset addresses) — non-standard addressing (`sedValidation.ts:524-527`)\n- Backslash tricks: `s\\` or `\\|`, `\\#`, `\\%`, `\\@` — alternate-delimiter substitution abuse (`sedValidation.ts:529-534`)\n- Escaped slash followed by `w`/`W` (e.g. `/\\/path\\/to\\/file/w`) — disguised write command (`sedValidation.ts:536-539`)\n- `/pattern w file` style malformed/unrecognized patterns before `w`/`W`/`e`/`E` — \"malformed/suspicious patterns we don't understand\" (`sedValidation.ts:541-546`)\n- Malformed `s/...` missing/extra delimiters — doesn't match the expected 3-delimiter shape (`sedValidation.ts:548-552`)\n- Any `s`-starting command ending in `w`/`W`/`e`/`E` that isn't a \"properly formed substitution\" — paranoid catch-all for disguised write/execute flags with non-slash delimiters (`sedValidation.ts:554-563`)\n- Write commands `w`/`W filename` in any address form (bare, line number, `$`, pattern, range) — file write is dangerous (`sedValidation.ts:565-579`)\n- Execute commands `e [cmd]` in any address form — arbitrary command execution (`sedValidation.ts:581-595`)\n- Substitution flags containing `w`/`W` or `e`/`E` (e.g. `s/old/new/w file`, `s/old/new/e`) — same write/execute risk via flags (`sedValidation.ts:597-613`)\n- `y` (transliterate) commands containing any `w`/`W`/`e`/`E` anywhere — \"paranoid but safe\" since `y` is rare (`sedValidation.ts:615-626`)\n\nSeparately, `extractSedExpressions()` throws (rejected before reaching the denylist) on combined dangerous flags like `-ew`, `-eW`, `-ee`, `-we` (`sedValidation.ts:397-400`).\n\n## 3. `src/events.ts` — hook events\n\nThe module header lists: Notification, StopFailure, PreCompact, PostCompact, SessionEnd, ConfigChange, CwdChanged, FileChanged, InstructionsLoaded, Elicitation, ElicitationResult, WorktreeCreate, WorktreeRemove (`src/events.ts:4-6`).\n\n- **PreCompact** fires before context compaction, given a `trigger: 'manual' | 'auto'` (`src/events.ts:128-151`).\n- **ConfigChange** fires \"when configuration files change during a session,\" dispatched by file watchers when settings, skills, or commands change on disk (`src/events.ts:316-318`).\n- **InstructionsLoaded** fires when an instruction file (CLAUDE.md or `.claudin/rules/*.md`) is loaded into context — at session-start eager load, after-compaction eager reload, or lazy load when Claude touches a file that triggers nested CLAUDE.md/conditional rules (`src/events.ts:428-439`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\n`buildServerReport()` (`src/doctor.ts:517-601`) runs checks in this order, and later steps only add findings without stopping earlier ones — the effective \"gates\" are:\n1. **Config validation errors** from settings files, pre-computed and merged in by server name (`doctor.ts:574-575`, sourced from `findingsFromValidationErrors`, `doctor.ts:146-162`).\n2. **Duplicate/shadowing check** — if the server is defined in more than one user-editable scope (local/project/user/enterprise), warns about duplicate definitions and shadowing (`doctor.ts:333-364`, called at `doctor.ts:576`).\n3. **State checks** — pending project approval or disabled state, each producing a non-blocking warning (`doctor.ts:366-397`, called at `doctor.ts:577`).\n4. **Existence check** — if no definitions were found in any selected scope, emits a blocking `state.not_found` error (`doctor.ts:580-589`).\n5. **Live connectivity check** — only if `configOnly` is false; skipped (`result: 'skipped'`) if configOnly, skipped as `'pending'`/`'disabled'` if no active config exists due to approval/disablement (`doctor.ts:427-438`), otherwise calls `connectToServer` and maps the outcome to connected/needs-auth/disabled/pending/failed, always cleaning up via `clearServerCache` in a `finally` (`doctor.ts:441-467`).\n6. **Live-check findings** — `needs-auth` becomes a non-blocking warning telling the user to authenticate (`doctor.ts:477-489`); `failed` becomes a blocking error, further distinguishing `stdio.command_not_found` (executable not on PATH) from a generic `health.failed` (`doctor.ts:491-512`).\n\nNothing here short-circuits the whole report — every server always gets validation, shadowing, and state findings; only the live check is skipped in config-only mode or when the server has no active/live-eligible config.\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThis file doesn't parse the raw transcript file itself (that happens upstream, before `ResumeResult`/`ResumeLoadResult` are handed in); its defenses are narrower:\n- `extractTodosFromTranscript()` looks for the last assistant `TodoWrite` tool_use and validates its `todos` payload with `TodoListSchema().safeParse()`; if the input isn't an object or the schema fails, it returns `[]` (silently drops todos) rather than throwing (`sessionRestore.ts:78-94`, especially `87` and `91`). `restoreSessionStateFromLog()` then only applies restored todos if the array is non-empty (`sessionRestore.ts:141-150`), so malformed/missing todo data is a silent no-op.\n- Worktree restoration guards against a stale/missing directory: `restoreWorktreeForResume()` wraps `process.chdir()` in try/catch and, on failure (e.g., `ENOENT` because the worktree was deleted), calls `saveWorktreeState(null)` and returns rather than crashing (`sessionRestore.ts:343-351`). `exitRestoredWorktree()` does the analogous try/catch around `process.chdir(current.originalCwd)` (`sessionRestore.ts:397-403`).\n\nThere is no explicit \"truncated JSONL\" recovery logic in this file — if `result.messages` is empty or missing, the todo-restore branch is simply skipped (`sessionRestore.ts:141`), and cost-state falls back from the fast path to recomputation by walking whatever messages were loaded: `if (!restoreCostStateForSession(sid)) { recomputeCostStateFromMessages(result.messages) }` (`sessionRestore.ts:461-463`).\n\nBENCH_DONE",
+      "answer": "**1. src/modelCost.ts — fallback for unknown models**\n`getModelCosts` (`src/modelCost.ts:300-334`) first tries `MODEL_COSTS[shortName]`; if missing, it tries `lookupNonClaudeCost(model)` (`src/modelCost.ts:325-326`) against the `NON_CLAUDE_MODEL_COSTS` regex table. If that also misses, it calls `trackUnknownModelCost` (logs `tengu_unknown_model_cost` and sets `hasUnknownModelCost`, `src/modelCost.ts:327,336-343`) and returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:328-331`). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` (`src/modelCost.ts:113`) — i.e. $5 input / $25 output per Mtok (the Opus 4.5 tier, `src/modelCost.ts:63-71`) — used only if the default main-loop model itself has no cost entry.\n\n**2. src/sedValidation.ts — rejected sed constructs and reasons**\nIn `containsDangerousOperations` (`src/sedValidation.ts:473-629`):\n- Non-ASCII characters — homoglyph/combining-char evasion (`:480-486`)\n- `{`/`}` blocks — \"too complex to parse\" (`:488-491`)\n- Newlines — \"multi-line commands are too complex\" (`:493-496`)\n- `#` not immediately after `s` — treated as a comment (`:498-504`)\n- Negation (`!`) — leading `!` or after an address (`:506-511`)\n- GNU step addresses (`digit~digit` etc.) (`:513-517`)\n- Leading bare comma (shorthand for `1,$` range) (`:519-522`)\n- Comma followed by `+`/`-` (GNU offset addresses) (`:524-527`)\n- Backslash tricks: `s\\` delimiter or `\\|`, `\\#`, `\\%`, `\\@` alternate delimiters (`:529-534`)\n- Escaped slash followed by `w`/`W` (`:536-539`)\n- Slash/pattern followed by whitespace then `w`/`W`/`e`/`E` — \"malformed/suspicious\" (`:541-546`)\n- Malformed `s/.../...` missing proper delimiter structure (`:548-552`)\n- Any `s`-command ending in `w`/`W`/`e`/`E` that isn't a recognized well-formed substitution — paranoid catch-all (`:554-563`)\n- Write commands (`w`/`W` after start/line-number/`$`/pattern/range) — explicit file-write commands (`:565-579`)\n- Execute commands (`e` after start/line-number/`$`/pattern/range) — explicit shell-execute commands (`:581-595`)\n- Substitution `w`/`W`/`e`/`E` flags (`s/old/new/w file`, `s/old/new/e`) (`:597-613`)\n- `y` (transliterate) commands combined anywhere with `w`/`W`/`e`/`E` — paranoid, since y+w/e is \"suspicious\" (`:615-626`)\n\nSeparately, `extractSedExpressions` rejects combined `-e`/`-w` flag combos (`-ew`, `-eW`, `-ee`, `-we`) as a \"Dangerous flag combination\" (`src/sedValidation.ts:397-400`).\n\n**3. src/events.ts — hook events defined**\nThe header comment (`src/events.ts:4-6`) lists: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`.\n- `Notification` fires when `executeNotificationHooks` is called with notification data, matched by `notificationType` (`src/events.ts:62-84`).\n- `PreCompact` fires before a context compaction, carrying `trigger: 'manual' | 'auto'` and existing custom instructions, invoked via `executePreCompactHooks` (`src/events.ts:128-192`).\n- `SessionEnd` fires on session termination with an `ExitReason`, then clears session hooks and resets goal state (`src/events.ts:264-313`).\n(Others: `StopFailure` on an unsuccessful stop with the last assistant message/error `:86-119`; `PostCompact` after compaction with the summary `:201-256`; `ConfigChange` when settings/skills/commands files change on disk `:328-353`; `CwdChanged`/`FileChanged` as generic \"env\" hooks invalidating the session env cache `:374-408`; `InstructionsLoaded` when a CLAUDE.md/rules file loads `:440-474`; `Elicitation`/`ElicitationResult` around MCP elicitation requests `:476-581`; `WorktreeCreate`/`WorktreeRemove` around git worktree lifecycle `:613-688`.)\n\n**4. src/doctor.ts — MCP server checks and stop order**\n`buildServerReport` (`src/doctor.ts:517-601`) runs checks in this order, and later findings only apply once earlier structural findings are established:\n1. Gather config-scope definitions (enterprise/local/project/user) and merge in an \"observed\" runtime definition if one wasn't already declared (`:538-567`).\n2. Attach pre-computed validation-error findings for this server name (`:575`).\n3. Shadowing check — `buildShadowingFindings`: warns if the same server is defined in multiple user-editable scopes (`:333-364`, `:576`).\n4. State checks — `buildStateFindings`: warns if pending project approval or disabled (`:366-397`, `:577`).\n5. If there are no definitions at all and no observed runtime config, push a blocking `state.not_found` finding (`:580-589`) — this is the only point where \"not found\" short-circuits later liveness checking (since `visibleRuntimeConfig` becomes `undefined`).\n6. Live check (`getLiveCheck`, `:420-468`) — skipped entirely if `configOnly` (`:427-429`); if no active config, reports `pending`/`disabled`/`skipped` based on definitions; otherwise actually calls `connectToServer` and, in a `finally`, best-effort `clearServerCache` (`:441-467`).\n7. `buildLiveFindings` (`:470-515`) converts the live-check result into findings: `needs-auth` → warn `auth.needs_auth`; `failed` → blocking `stdio.command_not_found` (if stdio + \"not found\" in the error) or `health.failed`.\nThe overall run doesn't literally \"stop\" partway — every server always goes through all these steps — but a server with no config and no observed runtime entry never reaches a real connection attempt (live check reports `skipped`), and `configOnly` mode skips the live-check/connection step for every server (`:427-429`).\n\n**5. src/sessionRestore.ts — truncated/malformed transcript handling**\nThis file operates on an already-parsed `Message[]` (the `ResumeResult`/`ResumeLoadResult` types, `src/sessionRestore.ts:65-71,298-316`); it doesn't itself parse the raw JSONL transcript, so file-level truncation/JSON errors are handled upstream. Within this file, the one place that defends against malformed transcript *content* is `extractTodosFromTranscript` (`src/sessionRestore.ts:78-94`): scanning backward for the last `TodoWrite` tool_use block, it checks `msg?.type !== 'assistant'`, verifies the tool_use block exists and is type `'tool_use'`, checks `input` is a non-null object, and validates the `todos` payload with `TodoListSchema().safeParse` — returning `[]` if any of these checks fail rather than throwing (`:87,91`). Separately, `restoreWorktreeForResume` and `exitRestoredWorktree` treat a missing worktree directory as non-fatal: `process.chdir` failures are caught and the worktree cache is cleared/reset instead of raising (`src/sessionRestore.ts:343-351,397-403`).\n\nBENCH_DONE",
       "stderr": ""
     },
     {
       "label": "B pivot off",
       "exitCode": 0,
-      "wallMs": 43538.136057999975,
-      "input": 41475,
-      "output": 3980,
-      "cacheRead": 11754,
-      "cacheCreation": 18881,
-      "costUsd": 0.25845495,
+      "wallMs": 49116.46767000004,
+      "input": 9860,
+      "output": 4558,
+      "cacheRead": 11749,
+      "cacheCreation": 50487,
+      "costUsd": 0.29080095,
       "turns": 2,
-      "endContext": 63057,
+      "endContext": 63048,
       "toolCalls": 5,
       "readCalls": 5,
       "bareReads": 5,
       "pivots": 0,
       "repeatReads": 0,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        }
+      ],
       "escapeToolCalls": 0,
       "toolMix": {
         "Read": 5
@@ -165,7 +775,62 @@
       "readResultChars": 120277,
       "allResultChars": 120277,
       "sawSentinel": true,
-      "answer": "## 1. `src/modelCost.ts` — unknown model fallback\n\nWhen `getModelCosts` can't find a cost entry for a model's canonical short name, it first tries `lookupNonClaudeCost(model)` against the `NON_CLAUDE_MODEL_COSTS` regex table (`src/modelCost.ts:325-326`). If that also misses, it calls `trackUnknownModelCost` (fires `tengu_unknown_model_cost` analytics event and sets `hasHasUnknownModelCost` state, `src/modelCost.ts:327,336-343`) and returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (`src/modelCost.ts:328-331`). `DEFAULT_UNKNOWN_MODEL_COST` is defined as `COST_TIER_5_25` — i.e. $5 input / $25 output per Mtok, the Opus 4.5 tier (`src/modelCost.ts:64-71,113`).\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\n`containsDangerousOperations` (denylist, `src/sedValidation.ts:473-629`) rejects, with reasons given inline as comments:\n- Non-ASCII characters — \"Unicode homoglyphs, combining chars, etc.\" could smuggle disallowed chars (`:480-486`).\n- Curly braces `{`/`}` — \"too complex to parse\" (`:488-491`).\n- Newlines — \"multi-line commands are too complex\" (`:493-496`).\n- Comments (`#` not immediately preceded by `s`) — to avoid disguised payloads (`:498-504`).\n- Negation operator `!` — flags addresses/patterns being negated (`:506-511`).\n- GNU step-address tilde (`digit~digit` etc.) — blocked as an unhandled GNU extension (`:513-517`).\n- Leading comma (shorthand for `1,$` range) — rejected (`:519-522`).\n- Comma followed by `+`/`-` (GNU offset addresses) — rejected (`:524-527`).\n- Backslash delimiter tricks (`s\\` or `\\|`, `\\#`, `\\%`, `\\@`) — \"backslash tricks\" bypassing the `/`-only delimiter assumption (`:529-534`).\n- Escaped slash followed by `w`/`W` — disguised write commands (`:536-539`).\n- Malformed slash-pattern followed by whitespace + `w/W/e/E` — \"malformed/suspicious patterns we don't understand\" (`:541-546`).\n- Malformed substitution missing/extra delimiters — rejected as not matching the known-safe `s/…/…/…` shape (`:548-552`).\n- Any `s…` command ending in `w/W/e/E` that isn't a properly-delimited substitution — \"PARANOID\" catch-all for non-slash delimiters hiding dangerous flags (`:554-563`).\n- Write commands (`w`/`W`) in any address/pattern/range context — direct file writes (`:565-579`).\n- Execute commands (`e`) in any address/pattern/range context — arbitrary shell execution (`:581-595`).\n- Substitution flags containing `w`/`W`/`e`/`E` (e.g. `s/…/…/w file`, `s/…/…/e`) — write/execute side effects via flags (`:597-613`).\n- `y` (transliterate) commands combined with any `w`/`W`/`e`/`E` elsewhere in the command — \"paranoid but safe\" (`:615-626`).\n\nAdditionally the allowlist layer independently rejects anything outside two strict patterns: line-printing (`sed -n` + only `p`/`Np`/`N,Mp` expressions, `isPrintCommand` at `:128-133`) and single substitution commands with `/`-delimited `s///` and only `g,p,i,I,m,M` flags plus one digit (`:142-238`); file arguments are rejected unless `allowFileWrites` is set (`:150-153`), and `extractSedExpressions` throws on dangerous `-e`/`-w` flag combos like `-ew` (`:397-400`).\n\n## 3. `src/events.ts` — hook events\n\nThe file's header comment (`src/events.ts:3-6`) lists every event it dispatches: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`.\n\nThree examples:\n- **PreCompact** (`executePreCompactHooks`, `:128-192`) fires before a context compaction, carrying `trigger: 'manual' | 'auto'` and existing custom instructions, so hooks can inject new custom instructions ahead of the compact.\n- **CwdChanged** (`executeCwdChangedHooks`, `:374-390`) fires whenever the working directory changes (`old_cwd`/`new_cwd`), and invalidates the session environment cache once any hook runs (`:363-366`).\n- **WorktreeRemove** (`executeWorktreeRemoveHook`, `:652-687`) fires when a git worktree is being removed, passing `worktree_path`, and is used for cleanup notification (only runs, and returns `true`, if hooks are actually configured — `:659-661`).\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\n`buildServerReport` (`src/doctor.ts:517-601`) runs checks in this order and returns after the first terminal condition in each branch:\n1. **Config validation findings** for the server (from `getValidationErrorsForSelectedScopes`/`findingsFromValidationErrors`, `:574-578,146-162`) — e.g. invalid JSON, missing env vars, Windows npx wrapper, invalid schema.\n2. **Shadowing check** — if the server is defined in more than one user-editable scope (local/project/user/enterprise), emits `duplicate.same_name_multiple_scopes` and `scope.shadowed` warnings (`buildShadowingFindings`, `:333-364`, invoked at `:576`).\n3. **State checks** — per definition, flags `state.pending_project_approval` and `state.disabled` (`buildStateFindings`, `:366-397`, invoked at `:577`).\n4. **Not-found check** — if no definitions exist at all (and none was synthesized from runtime), emits a *blocking* `state.not_found` error and stops adding definition-based findings (`:580-589`).\n5. **Live connectivity check** — unless `configOnly` (skipped, `:427-429`) or the server is pending/disabled with no active config (skipped with `pending`/`disabled` result, `:431-439`), it calls `deps.connectToServer` and classifies the result as `connected`/`needs-auth`/`disabled`/`pending`/`failed` (`getLiveCheck`, `:420-468`), always cleaning up via `clearServerCache` in a `finally` (`:463-467`).\n6. **Live-check findings** — `needs-auth` produces a non-blocking `auth.needs_auth` warning; `failed` produces a *blocking* `error`-severity finding, further specialized to `stdio.command_not_found` if the transport is stdio and the error text contains \"not found\" (`buildLiveFindings`, `:470-515`, invoked at `:592`).\n\nNothing here is a hard \"stop and skip the rest of the pipeline\" except that a blocking `state.not_found` (step 4) means no live check is attempted only when there's also no runtime config to check against (`getLiveCheck` returns `skipped` if `activeConfig` is undefined, `:431-439`) — otherwise every server still proceeds through all applicable steps and all findings accumulate rather than short-circuiting the whole report.\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThis file operates on an already-parsed `Message[]` (transcript loading/JSONL parsing itself lives elsewhere), so it doesn't detect truncation directly, but it defends against malformed/partial data at two points:\n- `extractTodosFromTranscript` (`:78-94`) scans backward for the last `TodoWrite` tool_use block; if the block's `input` isn't an object (`:87`) or its `todos` field fails `TodoListSchema().safeParse` (`:88-91`), it silently returns `[]` rather than throwing — a malformed/truncated last tool call just means todos aren't restored.\n- `restoreWorktreeForResume` (`:333-370`) treats a transcript-recorded worktree path as possibly stale: `process.chdir` is used as a \"TOCTOU-safe existence check\" (`:322-325`), and if it throws (directory gone, e.g. from a session that crashed/was truncated mid-worktree), it clears the cached worktree state (`saveWorktreeState(null)`) instead of failing (`:343-351`).\n\nNo other explicit truncation/corruption handling (e.g. for `fileHistorySnapshots`, `attributionSnapshots`, or `contextCollapseCommits`) appears in this file — those are passed through as-is to their respective `restoreFromEntries`/`fileHistoryRestoreStateFromLog`/`attributionRestoreStateFromLog` calls (`:105-137`) with no validation performed here.\n\nBENCH_DONE",
+      "answer": "## 1. `src/modelCost.ts` — fallback for unmatched model cost\n\nIn `getModelCosts` (src/modelCost.ts:300-334), when `MODEL_COSTS[shortName]` is undefined, it first tries `lookupNonClaudeCost(model)` against the `NON_CLAUDE_MODEL_COSTS` regex table (src/modelCost.ts:194-199, 129-192). If that also misses, it calls `trackUnknownModelCost` (src/modelCost.ts:327, defined 336-343) to log a `tengu_unknown_model_cost` analytics event and set `hasUnknownModelCost` state, then returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:328-331). `DEFAULT_UNKNOWN_MODEL_COST` is defined at src/modelCost.ts:113 as `COST_TIER_5_25` — i.e. $5 input / $25 output per Mtok (src/modelCost.ts:64-71) — used only if even the current default main-loop model has no cost entry.\n\n## 2. `src/sedValidation.ts` — rejected sed constructs\n\n`containsDangerousOperations` (src/sedValidation.ts:473-629) denylists, each with its own comment/reason:\n- Non-ASCII chars — homoglyph/combining-char spoofing of allowed chars (src/sedValidation.ts:480-486)\n- `{`/`}` blocks — \"too complex to parse\" (488-491)\n- Newlines — \"multi-line commands are too complex\" (493-496)\n- `#` not immediately preceded by `s` — comments, could hide payload (498-504)\n- Negation `!` — at start or after an address (506-511)\n- GNU step-address `~` (e.g. `1~2`) (513-517)\n- Bare leading comma (shorthand for `1,$`) (519-522)\n- Comma followed by `+`/`-` (GNU offset addresses) (524-527)\n- Backslash-delimiter tricks (`s\\`) or `\\|`,`\\#`,`\\%`,`\\@` alt-delimiter escapes (529-534)\n- Escaped slash followed by `w`/`W` (536-539)\n- Malformed patterns like `/pattern w file` (542-546)\n- Malformed substitution missing/extra delimiters (548-552)\n- `s...` ending in `w`/`W`/`e`/`E` without matching the proper substitution shape — paranoid catch-all (554-563)\n- `w`/`W` (write-to-file) commands in any address form (565-579)\n- `e` (execute shell) commands in any address form (581-595)\n- Substitution flags containing `w`/`W` (write) or `e`/`E` (execute) (597-613)\n- `y` (transliterate) command combined anywhere with `w`/`W`/`e`/`E` (615-626)\n\nSeparately, `extractSedExpressions` throws (rejected before reaching the denylist) on combined dangerous flags like `-ew`, `-eW`, `-ee`, `-we` (src/sedValidation.ts:397-400).\n\n## 3. `src/events.ts` — hook events\n\nThe header comment (src/events.ts:1-13) lists all 13 non-tool events: `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`, each implemented as an `execute*Hooks` function.\n\n- `ConfigChange` (src/events.ts:328-353): fired by file watchers when settings, skills, or commands change on disk (316-318), so enterprise admins can audit config changes; policy-source results are always forced non-blocking (346-350).\n- `PreCompact`/`PostCompact` (128-256): fire around a context-compaction event, tagged `trigger: 'manual' | 'auto'` — `PreCompact` before compaction with the pending custom instructions, `PostCompact` after, carrying the `compactSummary`.\n- `InstructionsLoaded` (427-474): fires whenever an instruction file (CLAUDE.md or `.claudin/rules/*.md`) is loaded into context, from three dispatch sites documented at 432-438 — eager load at session start, eager reload after compaction, or lazy load when a touched file triggers nested/conditional rules.\n- `WorktreeCreate`/`WorktreeRemove` (583-688): fire when a git worktree is created (returns the worktree path from hook stdout, throws if none) or removed.\n\n## 4. `src/doctor.ts` — MCP server checks and stop order\n\n`buildServerReport` (src/doctor.ts:517-601) runs, in order:\n1. Collect per-scope config definitions (enterprise/local/project/user) and validation findings passed in from `findingsFromValidationErrors` (146-162, invoked at 630-633/678-681) — code `config.invalid_json`, `config.missing_env_vars`, `config.windows_npx_wrapper_required`, `config.invalid_schema`, or generic `config.validation_error` (119-133).\n2. Possibly synthesize an \"observed\" definition for a runtime-active server not declared in any scope (`buildObservedDefinition`, 287-310, gated by `shouldAddObservedDefinition`, 553-557).\n3. `buildShadowingFindings` (333-364) — warns (non-blocking) if the same name is defined in >1 user-editable scope.\n4. `buildStateFindings` (366-397) — warns (non-blocking) on `state.pending_project_approval` and `state.disabled`.\n5. If no definitions were found anywhere and none was synthesized, push a **blocking** `state.not_found` finding (580-589) — \"was not found in the selected MCP configuration sources.\"\n6. `getLiveCheck` (420-468): skipped entirely if `configOnly` (427-429) or if there's no active config (returns `pending`/`disabled`/`skipped`, 431-438); otherwise it actually connects (`deps.connectToServer`, 442) and always runs `clearServerCache` in a `finally` (463-467).\n7. `buildLiveFindings` (470-515) turns a live-check result into findings: `needs-auth` → non-blocking `auth.needs_auth` (477-489); `failed` → **blocking** `stdio.command_not_found` (if the transport is stdio and the error mentions \"not found\") or `health.failed` otherwise (491-512).\n\nThe only thing that actually short-circuits further checking is the `configOnly`/no-active-config branch in `getLiveCheck`, which skips the live connection attempt (420-439); everything else (shadowing, state, not-found) is additive — findings accumulate rather than stopping the pipeline, and blocking-ness is only reflected afterward in `summarizeReport` (399-418).\n\n## 5. `src/sessionRestore.ts` — truncated/malformed transcript handling\n\nThe only transcript-parsing logic in this file is `extractTodosFromTranscript` (src/sessionRestore.ts:78-94), which scans backward through `messages` for the last `TodoWrite` tool_use block. It's defensive at every step rather than throwing: it skips non-assistant messages (`msg?.type !== 'assistant'`, line 81), skips if no matching tool_use block is found (85), returns `[]` immediately if `input` isn't a non-null object (86-87), and validates the `todos` payload with `TodoListSchema().safeParse(...)`, returning `parsed.data` only `if (parsed.success)` else `[]` (88-91). If no matching block exists anywhere, it falls through to `return []` (93). This result then only hydrates `AppState.todos` if `todos.length > 0` (src/sessionRestore.ts:141-149) — so a truncated/malformed transcript simply yields an empty todo list rather than raising an error, and nothing else in the file re-parses or repairs the transcript itself.\n\nSeparately, `restoreWorktreeForResume` (333-370) treats a stale/deleted worktree directory recorded in the session similarly defensively: `process.chdir` is used as a TOCTOU-safe existence check, and on `ENOENT` it just calls `saveWorktreeState(null)` and returns (343-351) rather than throwing.\n\nBENCH_DONE",
+      "stderr": ""
+    },
+    {
+      "label": "B pivot off",
+      "exitCode": 0,
+      "wallMs": 40608.23462199996,
+      "input": 41475,
+      "output": 360,
+      "cacheRead": 11754,
+      "cacheCreation": 18871,
+      "costUsd": 0.20411745,
+      "turns": 2,
+      "endContext": 63047,
+      "toolCalls": 5,
+      "readCalls": 5,
+      "bareReads": 5,
+      "pivots": 0,
+      "repeatReads": 0,
+      "viewFullCalls": 0,
+      "askedForBody": false,
+      "readSeq": [
+        {
+          "turn": 1,
+          "file": "modelCost.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sedValidation.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "events.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "doctor.ts",
+          "kind": "bare"
+        },
+        {
+          "turn": 1,
+          "file": "sessionRestore.ts",
+          "kind": "bare"
+        }
+      ],
+      "escapeToolCalls": 0,
+      "toolMix": {
+        "Read": 5
+      },
+      "readResultChars": 120277,
+      "allResultChars": 120277,
+      "sawSentinel": true,
+      "answer": "**1. src/modelCost.ts — fallback for unmatched model costs**\nIn `getModelCosts` (src/modelCost.ts:300-334), if `MODEL_COSTS[shortName]` is undefined, it first tries `lookupNonClaudeCost(model)` (src/modelCost.ts:325, using the regex table at src/modelCost.ts:129-192). If that also misses, it calls `trackUnknownModelCost` (src/modelCost.ts:327, 336-343) to log an analytics event and flip `setHasUnknownModelCost()`, then returns `MODEL_COSTS[getCanonicalName(getDefaultMainLoopModelSetting())] ?? DEFAULT_UNKNOWN_MODEL_COST` (src/modelCost.ts:328-331). `DEFAULT_UNKNOWN_MODEL_COST` is defined at src/modelCost.ts:113 as `COST_TIER_5_25`, i.e. $5 input / $25 output per Mtok (src/modelCost.ts:64-71) — the Opus 4.5 tier.\n\n**2. src/sedValidation.ts — rejected sed constructs and reasons**\n`containsDangerousOperations` (src/sedValidation.ts:473-629) rejects, with the stated reason in each comment:\n- Non-ASCII characters — \"Unicode homoglyphs, combining chars, etc.\" could smuggle disguised commands (src/sedValidation.ts:480-486).\n- Curly braces `{`/`}` — \"too complex to parse\" (blocks) (src/sedValidation.ts:488-491).\n- Newlines — \"multi-line commands are too complex\" (src/sedValidation.ts:493-496).\n- `#` not immediately preceded by `s` — treated as a comment, since `#` can only legitimately appear as an `s` delimiter (src/sedValidation.ts:498-504).\n- Negation operator (`!`) — flagged as dangerous negation syntax (src/sedValidation.ts:506-511).\n- GNU step-address tilde (`N~M`) — rejected as a GNU extension address form (src/sedValidation.ts:513-517).\n- Leading bare comma — shorthand for the `1,$` address range (src/sedValidation.ts:519-522).\n- Comma followed by `+`/`-` — GNU offset addresses (src/sedValidation.ts:524-527).\n- `s\\` or backslash before `|#%@` — \"backslash tricks\" / alternate-delimiter substitution (src/sedValidation.ts:529-534).\n- Escaped slash followed by `w`/`W` — disguised write command in a path-like pattern (src/sedValidation.ts:536-539).\n- `/pattern` followed by whitespace then `w/W/e/E` — \"malformed/suspicious patterns we don't understand\" (src/sedValidation.ts:541-546).\n- Malformed `s/...` missing proper 3-slash structure — rejected as malformed substitution (src/sedValidation.ts:548-552).\n- Command starting with `s` and ending in `w/W/e/E` that isn't a well-formed substitution — \"PARANOID\" catch-all for disguised dangerous flags (src/sedValidation.ts:554-563).\n- Any `w`/`W` (write) command in address-prefixed forms (start, line number, `$`, pattern, range) — dangerous write command (src/sedValidation.ts:565-579).\n- Any `e` (execute) command in the same address forms — dangerous execute command (src/sedValidation.ts:581-595).\n- Substitution flags containing `w`/`W`/`e`/`E` — write/execute flags on `s///` (src/sedValidation.ts:597-613).\n- `y` (transliterate) command combined anywhere with `w`/`W`/`e`/`E` — \"paranoid but safe\" since `y` is rare and suspicious alongside those letters (src/sedValidation.ts:615-626).\nAdditionally, `extractSedExpressions` throws on the flag combos `-e[wWe]`/`-w[eE]` as a \"dangerous flag combination\" (src/sedValidation.ts:397-400).\n\n**3. src/events.ts — hook events**\nFull list (per the file header, src/events.ts:4-6): `Notification`, `StopFailure`, `PreCompact`, `PostCompact`, `SessionEnd`, `ConfigChange`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`.\nFiring times for three:\n- `PreCompact` fires before context compaction, triggered `manual` or `auto` (src/events.ts:128-151), letting hooks supply replacement custom instructions.\n- `SessionEnd` fires when a session terminates, carrying an `ExitReason`, and afterward clears session-scoped hooks and goal state (src/events.ts:264-313).\n- `InstructionsLoaded` fires whenever an instruction file (CLAUDE.md or `.claudin/rules/*.md`) is loaded into context — at session start, after compaction reload, or lazily when a touched file triggers nested/conditional rules (src/events.ts:427-439).\n\n**4. src/doctor.ts — MCP server checks and stop order**\nFor each server, `buildServerReport` (src/doctor.ts:517-601) runs checks in this order:\n1. Pull config-validation findings already computed per scope (`validationFindingsByName`, src/doctor.ts:574-575).\n2. Build per-scope definitions and detect shadowing across `local/project/user/enterprise` scopes (`buildShadowingFindings`, src/doctor.ts:333-364, 576).\n3. Check state findings: `pendingApproval` and `disabled` (`buildStateFindings`, src/doctor.ts:366-397, 577).\n4. If no definitions exist anywhere and none was \"observed\" from the active runtime config, emit a blocking `state.not_found` finding (src/doctor.ts:580-589) — this is the only point that terminates the report early via a blocking finding without attempting a connection.\n5. Otherwise, if not `configOnly`, attempt a live connection (`getLiveCheck` → `deps.connectToServer`, src/doctor.ts:420-468, 591), which resolves to `connected`, `needs-auth`, `disabled`, `pending`, or `failed`.\n6. Translate the live-check result into findings: `needs-auth` → non-blocking warn (src/doctor.ts:477-489); `failed` → blocking error, further distinguishing `stdio.command_not_found` when the error text contains \"not found\" (src/doctor.ts:491-512).\nThe overall report then aggregates blocking/warning/healthy counts in `summarizeReport` (src/doctor.ts:399-418), where \"healthy\" requires `liveCheck.result === 'connected'` and no blocking/warn findings.\n\n**5. src/sessionRestore.ts — truncated/malformed transcript handling**\nThis file doesn't parse the raw transcript file itself (that happens upstream); it operates on an already-parsed `Message[]`. Its only defensive handling of malformed transcript content is in `extractTodosFromTranscript` (src/sessionRestore.ts:78-94): it scans backward for the last `TodoWrite` tool_use block, and if the `input` isn't a non-null object (line 87) or the todos fail `TodoListSchema().safeParse` validation, it silently returns `[]` (src/sessionRestore.ts:88-93) rather than throwing — so a corrupted/malformed todo block just results in no restored todos, with no error surfaced. Separately, `restoreWorktreeForResume` and `exitRestoredWorktree` treat a missing worktree directory (a form of stale/broken restore state, though not the transcript itself) as non-fatal: `process.chdir` failures are caught and the code falls back to clearing/overriding cached state instead of crashing (src/sessionRestore.ts:343-351, 397-403). There is no explicit handling in this file for a truncated JSONL transcript (e.g., a cut-off last line) — that would need to be handled by whatever loader produces `result.messages` before it reaches this module.\n\nBENCH_DONE",
       "stderr": ""
     }
   ]

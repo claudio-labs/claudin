@@ -30,7 +30,25 @@
 // so a regression here is visible rather than silent.
 //
 // Usage:
-//   bun run scripts/profile/read-outline-pivot-ab.ts [--reps=N] [--keep] [--dry-run]
+//   bun run scripts/profile/read-outline-pivot-ab.ts \
+//     [--reps=N] [--depth=deep|shallow] [--compare=pivot|wording] [--keep] [--dry-run]
+//
+// --compare picks WHAT the two arms differ by:
+//   pivot   (default) same binary, arm A forces the auto-outline pivot ON and
+//           arm B forces it OFF. Measures the mechanism.
+//   wording BOTH arms force the pivot ON and the BINARY differs: arm A is the
+//           published release (which serves the false "exceeds the read cap"
+//           header) and arm B is this checkout (which serves "is large"). The
+//           footer is byte-identical in both, so the header is the only thing
+//           that changes. Measures whether the correction changes behavior.
+//           Wall time is NOT comparable here — the release is a Bun-compiled
+//           binary and the dev build is a chunked Node bundle.
+//
+// --depth picks the question set over the same five fixtures. `deep` (default)
+// needs the implementation for every answer; `shallow` is answerable from the
+// structural outline alone. Deep alone measures the pivot's WORST case — see
+// the QUESTIONS_* comment. Results land in read-outline-pivot-ab.json for deep
+// and read-outline-pivot-ab.shallow.json for shallow; never pool the two.
 //
 // NOTE ON REPS: agent-safety.md asks for N>=3 and a median. --reps defaults to
 // 3 for that reason; a single rep is a smoke test, not a result.
@@ -42,6 +60,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'fs'
@@ -63,17 +82,64 @@ const FIXTURES = [
 ]
 
 /**
- * One question per fixture, each answerable only from the implementation —
- * not from a signature. A question a symbol table alone could answer would
- * hand arm A the win by construction.
+ * Two question sets over the SAME five fixtures, because question depth turned
+ * out to drive the result more than anything else in this bench.
+ *
+ * `deep` is the original set: every question needs the implementation, never a
+ * signature. It was written to avoid handing the pivot arm a free win, but by
+ * excluding EVERY outline-answerable question it excluded the pivot's best case
+ * instead — the census measured 27.4% of real reads needing no follow-up at
+ * all, and this set forces that bucket to 0%. It measures the pivot's WORST
+ * case, not its typical one.
+ *
+ * `shallow` fills that bucket: each question is answerable from the structural
+ * outline alone (exported names, signatures, line ranges, a constant whose
+ * initializer the outline prints). Verified against the real `view='outline'`
+ * output of each fixture before being written.
+ *
+ * Keep both sets frozen — the N=6 deep runs already committed are only
+ * comparable to later deep runs.
  */
-const QUESTIONS = [
+const QUESTIONS_DEEP = [
   'what happens when a model has no matching cost entry? Name the fallback and the exact value it uses.',
   'which sed constructs does it reject, and what is the reason given for each?',
   'list every hook event name it defines and, for three of them, when they fire.',
   'what checks does it run against an MCP server, and in what order does it stop?',
   'what does it do when the transcript it is restoring is truncated or malformed?',
 ]
+
+const QUESTIONS_SHALLOW = [
+  'how many COST_TIER_* constants does it declare, name them, and name the constant DEFAULT_UNKNOWN_MODEL_COST is assigned to.',
+  'which functions does it export and which does it keep module-private? Name the longest function and give its line range.',
+  'list every exported execute*Hooks function with its line range, and name the two has*Hook predicates that return boolean.',
+  'list every exported type it declares, and name the two exported async functions whose names start with "doctor".',
+  'which functions does it export and which are module-private? Name every exported async function.',
+]
+
+/** Selected by --depth in main(); every read of it happens after that. */
+let DEPTH: 'deep' | 'shallow' = 'deep'
+let QUESTIONS: string[] = QUESTIONS_DEEP
+
+const DEV_BIN = join(REPO_ROOT, 'bin', 'claudin')
+
+/**
+ * The globally installed release, i.e. what `claudin` on PATH runs (as opposed
+ * to `claudindev`, which is DEV_BIN). Resolved rather than hard-coded because
+ * the package layout differs between the npm install and a linked checkout.
+ */
+function resolveReleaseBin(): string {
+  const which = spawnSync('sh', ['-c', 'command -v claudin'], { encoding: 'utf8' })
+  const p = (which.stdout ?? '').trim()
+  if (!p) throw new Error('no `claudin` on PATH — install the release or use --binary=dev')
+  const real = realpathSync(p)
+  if (real === realpathSync(DEV_BIN)) {
+    throw new Error(
+      '`claudin` on PATH resolves to this checkout, not the published release.\n' +
+        'That would compare a binary against itself. Install the npm package first.',
+    )
+  }
+  return real
+}
 
 function buildWorkspace(): string {
   const dir = mkdtempSync(join(tmpdir(), 'outline-ab-'))
@@ -85,7 +151,9 @@ function buildWorkspace(): string {
 }
 
 function buildPrompt(): string {
-  const list = FIXTURES.map((f, i) => `${i + 1}. src/${basename(f)} — ${QUESTIONS[i]}`).join('\n')
+  const list = FIXTURES.map(
+    (f, i) => `${i + 1}. src/${basename(f)} — ${QUESTIONS[i]}`,
+  ).join('\n')
   return [
     'Answer the following questions about the files in src/. They are copies of',
     'real source files, so answer from what the code actually does.',
@@ -180,13 +248,20 @@ function transcriptPath(sessionId: string): string | null {
   return p && p.length > 0 ? p : null
 }
 
-type ToolCall = { name: string; input: Record<string, unknown>; resultChars: number; result: string }
+type ToolCall = {
+  name: string
+  input: Record<string, unknown>
+  resultChars: number
+  result: string
+  /** Owning assistant message. Parallel calls in one batch share it. */
+  msgId: string
+}
 
 function toolCallsFrom(events: Record<string, unknown>[]): ToolCall[] {
   const byId = new Map<string, ToolCall>()
   const order: string[] = []
   for (const e of events) {
-    const msg = e.message as { content?: unknown } | undefined
+    const msg = e.message as { content?: unknown; id?: unknown } | undefined
     const content = msg?.content
     if (!Array.isArray(content)) continue
     for (const b of content) {
@@ -202,6 +277,7 @@ function toolCallsFrom(events: Record<string, unknown>[]): ToolCall[] {
             input: (blk.input ?? {}) as Record<string, unknown>,
             resultChars: 0,
             result: '',
+            msgId: String(msg?.id ?? ''),
           })
         }
       } else if (blk.type === 'tool_result') {
@@ -254,6 +330,15 @@ type ArmResult = {
   bareReads: number
   pivots: number
   repeatReads: number
+  /**
+   * PRE-REGISTERED primary metric for --compare=wording. The old header claims
+   * the body is out of reach; the new one does not. Neither footer advertises
+   * view='full', so a difference here comes from the header alone.
+   */
+  viewFullCalls: number
+  askedForBody: boolean
+  /** Ordered reads, grouped into the assistant turn that emitted them. */
+  readSeq: { turn: number; file: string; kind: string }[]
   escapeToolCalls: number
   toolMix: Record<string, number>
   readResultChars: number
@@ -263,12 +348,18 @@ type ArmResult = {
   stderr: string
 }
 
-function runArm(label: string, extraEnv: Record<string, string>, timeoutMs: number, keep: boolean): ArmResult {
+function runArm(
+  label: string,
+  binPath: string,
+  extraEnv: Record<string, string>,
+  timeoutMs: number,
+  keep: boolean,
+): ArmResult {
   const cwd = buildWorkspace()
   const prompt = buildPrompt()
   const t0 = performance.now()
   const res = spawnSync(
-    join(REPO_ROOT, 'bin', 'claudin'),
+    binPath,
     [
       '-p', prompt,
       '--model', MODEL,
@@ -341,6 +432,23 @@ function runArm(label: string, extraEnv: Record<string, string>, timeoutMs: numb
   const allowed = new Set(ALLOWED_TOOLS.split(','))
   const escapes = calls.filter(c => !allowed.has(c.name)).length
 
+  const viewFull = reads.filter(c => c.input.view === 'full')
+  // One entry per Read, numbered by the assistant turn that emitted it, so a
+  // batch of parallel calls keeps one turn number. Reconstructing this from the
+  // transcript by hand was needed once already; the count alone loses the shape.
+  const turnOf = new Map<string, number>()
+  const readSeq = reads.map(c => {
+    if (!turnOf.has(c.msgId)) turnOf.set(c.msgId, turnOf.size + 1)
+    const kind = c.input.view
+      ? `view=${String(c.input.view)}`
+      : c.input.symbol
+        ? 'symbol'
+        : c.input.offset !== undefined || c.input.limit !== undefined
+          ? 'offset,limit'
+          : 'bare'
+    return { turn: turnOf.get(c.msgId)!, file: basename(String(c.input.file_path ?? '?')), kind }
+  })
+
   if (!keep) rmSync(cwd, { recursive: true, force: true })
 
   return {
@@ -358,6 +466,9 @@ function runArm(label: string, extraEnv: Record<string, string>, timeoutMs: numb
     bareReads: bare.length,
     pivots: pivots.length,
     repeatReads: repeats,
+    viewFullCalls: viewFull.length,
+    askedForBody: viewFull.length > 0,
+    readSeq,
     escapeToolCalls: escapes,
     toolMix,
     readResultChars: reads.reduce((a, c) => a + c.resultChars, 0),
@@ -372,11 +483,15 @@ function median(v: number[]): number {
   if (v.length === 0) return 0
   const s = [...v].sort((a, b) => a - b)
   const m = Math.floor(s.length / 2)
-  return s.length % 2 ? s[m]! : Math.round((s[m - 1]! + s[m]!) / 2)
+  // Do NOT round here. An even count averages the two middle values, and
+  // rounding that to an integer sends every fractional metric to zero — cost
+  // came out as $0.000 on the first even-reps run this bench ever did, while
+  // the integer rows looked fine. Rounding is a display concern; see fmt.
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2
 }
 
 function fmt(n: number): string {
-  return n.toLocaleString('en-US')
+  return Math.round(n).toLocaleString('en-US')
 }
 
 function delta(a: number, b: number): string {
@@ -390,6 +505,22 @@ function main(): void {
   const reps = Number(argv.find(a => a.startsWith('--reps='))?.split('=')[1] ?? 3)
   const keep = argv.includes('--keep')
   const timeoutMs = Number(argv.find(a => a.startsWith('--timeout='))?.split('=')[1] ?? 600_000)
+  const depthArg = argv.find(a => a.startsWith('--depth='))?.split('=')[1]
+  if (depthArg === 'shallow' || depthArg === 'deep') DEPTH = depthArg
+  else if (depthArg) throw new Error(`--depth must be "deep" or "shallow", got "${depthArg}"`)
+  QUESTIONS = DEPTH === 'deep' ? QUESTIONS_DEEP : QUESTIONS_SHALLOW
+
+  const cmpArg = argv.find(a => a.startsWith('--compare='))?.split('=')[1] ?? 'pivot'
+  if (cmpArg !== 'pivot' && cmpArg !== 'wording') {
+    throw new Error(`--compare must be "pivot" or "wording", got "${cmpArg}"`)
+  }
+  const compare = cmpArg
+  // The shallow set makes the model go straight to an explicit view='outline',
+  // so the pivot never fires and the header under test is never served. That
+  // combination measures nothing at all, so refuse it outright.
+  if (compare === 'wording' && DEPTH !== 'deep') {
+    throw new Error('--compare=wording requires --depth=deep: the shallow set never triggers the pivot')
+  }
 
   if (argv.includes('--dry-run')) {
     const cwd = buildWorkspace()
@@ -397,6 +528,10 @@ function main(): void {
     console.log(`fixtures : ${FIXTURES.length}`)
     console.log(`model    : ${MODEL}`)
     console.log(`tools    : ${ALLOWED_TOOLS}`)
+    console.log(`depth    : ${DEPTH}`)
+    console.log(`compare  : ${compare}`)
+    console.log(`bin A    : ${compare === 'wording' ? resolveReleaseBin() : DEV_BIN}`)
+    console.log(`bin B    : ${DEV_BIN}`)
     console.log('\n--- prompt ---\n' + buildPrompt())
     if (!keep) rmSync(cwd, { recursive: true, force: true })
     return
@@ -408,19 +543,57 @@ function main(): void {
     )
   }
 
+  // Arm order alternates per rep, which only BALANCES on an even count: with
+  // --reps=3 arm A runs first in 2 of 3 reps and pays the cold prompt cache
+  // that much more often. That is a systematic, same-direction bias, and it is
+  // large — an A/A control (both arms doing identical work) came out 1.25x on
+  // cost under exactly this imbalance. Odd counts are fine for the metrics that
+  // separate by multiples (turns, end context), not for cost.
+  if (reps % 2 !== 0) {
+    console.log(
+      `\n⚠  --reps=${reps} is ODD: arm order cannot be balanced, so arm A runs first\n` +
+        `   ${Math.ceil(reps / 2)} of ${reps} times and eats the cold cache. Do NOT read a cost\n` +
+        '   delta off this run — use an even --reps for that.\n',
+    )
+  }
+
   const A: ArmResult[] = []
   const B: ArmResult[] = []
-  const ARM_A = ['A pivot on', { CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION: '1' }] as const
-  const ARM_B = ['B pivot off', { CLAUDIN_DISABLE_AUTO_OUTLINE_ON_ELISION: '1' }] as const
+  const FORCE = { CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION: '1' }
+  // In `wording` mode BOTH arms force the pivot on and only the binary differs,
+  // so `pivots served` must come back 5 in each — a metric that can be non-zero
+  // on both sides, which is what makes the comparison meaningful.
+  const ARM_A: readonly [string, string, Record<string, string>] =
+    compare === 'wording'
+      ? ['A release (cap wording)', resolveReleaseBin(), FORCE]
+      : ['A pivot on', DEV_BIN, FORCE]
+  const ARM_B: readonly [string, string, Record<string, string>] =
+    compare === 'wording'
+      ? ['B dev (large wording)', DEV_BIN, FORCE]
+      : ['B pivot off', DEV_BIN, { CLAUDIN_DISABLE_AUTO_OUTLINE_ON_ELISION: '1' }]
   for (let i = 0; i < reps; i++) {
     // Alternate which arm goes first. Whichever runs first pays the cold
     // prompt cache and the second inherits its warm prefix even from a
     // different cwd — worth ~19% of the gap on the first run of this bench.
     const order = i % 2 === 0 ? [ARM_A, ARM_B] : [ARM_B, ARM_A]
-    for (const [label, env] of order) {
+    for (const [label, bin, env] of order) {
       console.log(`rep ${i + 1}/${reps} — ${label}…`)
-      const r = runArm(label, { ...env }, timeoutMs, keep)
+      const r = runArm(label, bin, { ...env }, timeoutMs, keep)
       ;(label === ARM_A[0] ? A : B).push(r)
+    }
+    // Fail on the FIRST rep, not after paying for all of them: a release binary
+    // that ignored --tools or never served a pivot invalidates the whole run,
+    // and would otherwise only surface in the summary.
+    if (compare === 'wording' && i === 0) {
+      for (const r of [A[0], B[0]]) {
+        if (!r) continue
+        if (r.pivots === 0) {
+          throw new Error(`${r.label}: served 0 pivots — the header under test never reached the model`)
+        }
+        if (r.escapeToolCalls > 0) {
+          throw new Error(`${r.label}: ${r.escapeToolCalls} call(s) outside "${ALLOWED_TOOLS}" — toolset gate not honored`)
+        }
+      }
     }
   }
 
@@ -439,19 +612,36 @@ function main(): void {
     ['  bare Reads', 'bareReads'],
     ['  pivots served', 'pivots'],
     ['  repeat Reads', 'repeatReads'],
+    ['  view=full calls', 'viewFullCalls'],
     ['  ESCAPED allowlist', 'escapeToolCalls'],
     ['Read result chars', 'readResultChars'],
     ['all result chars', 'allResultChars'],
     ['wall ms', 'wallMs'],
   ]
 
-  console.log(`\n${'metric'.padEnd(20)}${'A pivot on'.padStart(14)}${'B pivot off'.padStart(14)}${'B vs A'.padStart(10)}`)
-  console.log('-'.repeat(58))
+  console.log(
+    `\n${'metric'.padEnd(20)}${ARM_A[0].padStart(24)}${ARM_B[0].padStart(24)}${'B vs A'.padStart(10)}`,
+  )
+  console.log('-'.repeat(78))
   for (const [label, key] of metrics) {
     const a = pick(A, key)
     const b = pick(B, key)
     const f = key === 'costUsd' ? (n: number) => `$${n.toFixed(3)}` : fmt
-    console.log(`${label.padEnd(20)}${f(a).padStart(14)}${f(b).padStart(14)}${delta(a, b).padStart(10)}`)
+    console.log(`${label.padEnd(20)}${f(a).padStart(24)}${f(b).padStart(24)}${delta(a, b).padStart(10)}`)
+  }
+
+  if (compare === 'wording') {
+    // Pre-registered before the run: the old header claims the body is out of
+    // reach, the new one does not. Printed on its own so it is read as the
+    // result, not picked out of the table afterwards.
+    const body = (arr: ArmResult[]) => `${arr.filter(r => r.askedForBody).length}/${arr.length} runs`
+    console.log(
+      `\nPRE-REGISTERED primary — asked for the body (view='full'):` +
+        `\n  ${ARM_A[0]}: ${body(A)}  calls ${JSON.stringify(A.map(r => r.viewFullCalls))}` +
+        `\n  ${ARM_B[0]}: ${body(B)}  calls ${JSON.stringify(B.map(r => r.viewFullCalls))}` +
+        `\n  Wall time is NOT comparable in this mode (compiled binary vs Node bundle).` +
+        `\n  N=${reps}: a null here is INCONCLUSIVE, not evidence the wording does not matter.`,
+    )
   }
 
   console.log(
@@ -469,11 +659,14 @@ function main(): void {
   }
 
   const outDir = join(REPO_ROOT, 'scripts', 'profile')
+  const suffix =
+    compare === 'wording' ? '.wording' : DEPTH === 'deep' ? '' : `.${DEPTH}`
+  const outName = `read-outline-pivot-ab${suffix}.json`
   writeFileSync(
-    join(outDir, 'read-outline-pivot-ab.json'),
-    JSON.stringify({ model: MODEL, reps, fixtures: FIXTURES, A, B }, null, 2),
+    join(outDir, outName),
+    JSON.stringify({ model: MODEL, reps, depth: DEPTH, compare, fixtures: FIXTURES, A, B }, null, 2),
   )
-  console.log(`\nfull results + both answers → scripts/profile/read-outline-pivot-ab.json`)
+  console.log(`\nfull results + both answers → scripts/profile/${outName}`)
   console.log('Token counts do not grade the ANSWERS. Read both before concluding.')
 }
 

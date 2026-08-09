@@ -84,6 +84,15 @@ redundant — not that moving the char threshold would change any outcome.
 (`read-outline-pivot-ab.run1.json` + `.json`). Both clean: 0 toolset escapes,
 sentinel 3/3 both arms, arm order alternated per rep.
 
+**Where that data lives now.** A later N=4 run overwrote
+`read-outline-pivot-ab.json`, so the working copy holds the balanced N=4 run,
+not the N=3 half of this pool. The original is
+`git show 6cdbdadd:scripts/profile/read-outline-pivot-ab.json` (reps=3, cost A
+.430/.331/.327, B .204/.255/.258). `run1.json` is untouched. The bench writes a
+per-condition filename now (`.wording.json`, `.shallow.json`), but the default
+`pivot` condition still overwrites the same file — pass `--keep`-style care or
+copy it off before re-running if a committed run still needs to be cited.
+
 **Report these per metric — four separate perfectly, cost does not.** p is an
 exact two-sided Mann-Whitney; **0.0022 is the FLOOR for 6v6**, so it means
 total separation and nothing stronger is expressible at this N.
@@ -101,15 +110,112 @@ moving ~35% fewer result chars — and pays in round-trips: 4.6× the Read calls
 17-19 repeat reads vs 0, **2× wall time**. Latency is the headline cost, and it
 is the cleanest result in the table.
 
-**On cost, state the caveat with the number.** Ranges still overlap at N=6 and
-p=0.026 does **not** survive Bonferroni over the five metrics tested (α=0.01).
-What supports it instead is reproducibility: 1.30× / 1.30× / 1.31× across two
-independent runs and the pool. Cite it as "~1.3×, marginal", never as a clean
-finding. Note also that pivot-OFF end context is essentially deterministic
-(63,057-63,058 across all six), so any spread in that column is the pivot's.
+**RETRACTED 2026-08-09 — the cost row above is an artifact. Do not cite it.**
+The "~1.3×, marginal" reading was defended here on *reproducibility*
+(1.30× / 1.30× / 1.31×). That consistency was the confound repeating, not an
+effect: arm order alternates as `i % 2`, which only BALANCES on an even rep
+count, so at `--reps=3` arm A ran first in 2 of 3 reps — in every run — and ate
+the cold prompt cache that much more often. Two later measurements killed it:
+
+| run | cost A/B |
+|---|---|
+| N=4, order balanced | **1.24×** |
+| A/A null control (both arms identical work) | **1.25×** |
+
+The effect sits exactly on the noise floor. Cost is a **wash**; the pivot is
+neither cheaper nor dearer. What survives is context (`0.68×` at N=4, same
+direction as the −24.5% above) and the round-trip cost (2.5× turns, 4.8× Read
+calls, 19 repeat reads vs 0). Note pivot-OFF end context is essentially
+deterministic (63,057-63,058), so spread in that column is the pivot's.
+
+Two bench bugs this exposed, both of which silently produce a plausible number:
+
+- `median()` rounded the even-length branch with `Math.round`, sending every
+  **fractional** metric to zero while the integer rows looked fine — cost
+  printed `$0.000` on the first even-reps run the bench ever did. Fixed; the
+  odd-N runs above were never affected.
+- Checking "is the bench still running?" with
+  `pgrep -f "read-outline-pivot-ab.ts --depth=deep --reps=4"` **matches the
+  wrapper shell running that very check**, so it always answers yes. A wait
+  loop built on it never exits. Run sequential benches in one process instead.
+
+Separately: **editing the script while a run is executing kills the run.** A
+`--reps=4` run died ~1 min in, left an orphan `/tmp/outline-ab-*` workspace and
+wrote no JSON, while the self-matching `pgrep` above reported it healthy.
 
 Answers were equivalent in substance in both runs — all five questions, same
 files, same functions and line numbers where spot-checked.
+
+## Two conditions that measured nothing, and why that is worth knowing
+
+**Outline-answerable questions never reach the pivot.** A `--depth=shallow`
+set (exported names, signatures, line ranges) produced `pivots served: 0` and
+`bare Reads: 0` in BOTH arms across six runs: the model read the question, went
+straight to an explicit `view='outline'`, and never asked for a body, so there
+was nothing for the pivot to intervene on. The pivot's supposed best case is
+where it is **redundant** — it only ever acts when the model asked for the
+body. Caveat: that prompt named the files and telegraphed the shape. The
+census's 27.4% no-follow-up bucket is real and comes from blind orientation
+reads; measuring THAT needs a question answerable from the outline that does
+not announce itself as structural. Since both arms got identical treatment,
+the run doubles as the A/A null quoted above.
+
+**The wording fix has no measurable behavioral effect at N=4.** Released
+v1.1.10 (`exceeds the read cap`) vs this checkout (`is large`), both arms with
+the pivot forced ON, `--tools Read,Glob` — under which the only reachable
+production delta is `FileReadTool.ts`. The footer is byte-identical in both and
+neither advertises `view='full'`, so the header is the single variable.
+Pre-registered primary — did the model ask for the body: release **1/4** runs,
+dev **0/4**, i.e. the direction predicted was not observed and 1-vs-0 is
+nothing. Cost 1.25× and Read calls 1.32× both land on the A/A null
+(1.25× and 1.29×). **Per pre-registration this is INCONCLUSIVE, not evidence
+the wording does not matter** — N=4 has no power over a two-word change. The
+PR stands on correctness (the string was false), not on measured behavior.
+
+## What the model actually DOES after a pivot (2026-08-09)
+
+The bench now records, per run, the ordered Read sequence grouped by the
+assistant `message.id` that emitted it, so a parallel batch keeps one turn
+number. That instrumentation is what made the shape visible — the counts alone
+hide it, and reconstructing it from transcripts by hand cost a pass.
+
+**Turn 1 is identical in both arms**: the same five bare `Read` calls, fired in
+parallel. Only the return differs. Pivot-OFF gets five bodies and finishes in
+2 turns / 5 reads; pivot-ON gets five outlines and then spends ~6 more turns and
+~21 more reads rebuilding the bodies. Measured on one 33-read run:
+
+- **Near-disjoint sweep, not repetition.** Overlapping range pairs per file:
+  0-1, and the 1 is the initial outline read. `events.ts` (689 lines) came back
+  as `1-63, 62-128, 128-201, 264-329, 392-422` plus 4 `symbol` reads — roughly
+  half the file, in 9 trips. It is reconstructing, not flailing.
+- **Ranges are a poor-man's multi-symbol fetch.** Each range starts exactly on a
+  symbol it had already named and runs to the next: `62-128` is
+  `executeNotificationHooks` **plus** `executeStopFailureHooks`, which it never
+  requested by name. `symbol` takes exactly one name, so "these two adjacent
+  symbols" is only expressible as a range.
+- **Batching is not the bottleneck.** It already fires 4-5 `symbol` calls in one
+  turn. What it cannot parallelize is what it does not yet know to ask for, so a
+  list-valued `symbol` would cut call count, not turn count — and turns are what
+  cost 2.5× and 2× wall time.
+- **`view='full'` was used 0 times** across every arm of every run (a single call
+  in the whole wording condition). The one-trip escape hatch is invisible:
+  `AUTO_OUTLINE_PIVOT_FOOTER` (FileReadTool.ts:1404) offers `view='outline'` —
+  useless, the model is already holding one — and `offset/limit/symbol`; the
+  outline header (renderOutline.ts:156) repeats `symbol` and `offset/limit`.
+  Neither mentions `view='full'`. The model is doing exactly what it was told.
+
+**The irony worth keeping:** the threshold comment at FileReadTool.ts:1408 says
+10k chars is the floor where the body still fits "without inducing the
+slice-walk loop". The pivot was built to *prevent* slice-walking and measurably
+*produces* one.
+
+**How to apply:** three candidate fixes, cheapest first — advertise `view='full'`
+in the footer and header (one string; the 0-adoption number is the hypothesis),
+let `symbol` accept a list (small, and the coalesced ranges are direct evidence
+of the want), or raise the pivot threshold (most invasive, best supported by the
+2-turn pivot-OFF arm). **None is measured yet**, the shape above is one run, and
+[[tool-result-nudges-benched-zero-adoption]] is the standing warning that a
+wording change can land at exactly zero adoption.
 
 **A "quality signal" from run 1 did not reproduce; this is why the second run
 mattered.** Run 1 had pivot-OFF citing file:line 2-3× more often in every rep

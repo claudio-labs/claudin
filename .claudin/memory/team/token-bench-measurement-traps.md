@@ -1,6 +1,6 @@
 ---
 name: token-bench-measurement-traps
-description: Five traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth, metrics structurally zero in one arm, and dropping cache-read from cost
+description: Traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth and its odd-N imbalance, metrics structurally zero in one arm, dropping cache-read from cost, a rounding median, and process checks that match themselves
 type: project
 ---
 
