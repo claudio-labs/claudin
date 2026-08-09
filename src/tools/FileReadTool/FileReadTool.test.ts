@@ -894,6 +894,15 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(tripped.data.file.message).toContain(
       'that copy is no longer in the conversation',
     )
+    // The sticky outline is served because the pinned copy got clipped — no
+    // cap was hit and the file never crossed the auto-outline threshold, so
+    // the header must stay neutral. Mutation testing found this call site
+    // (FileReadTool.ts, reason: 'explicit') unguarded: flipping it to
+    // 'overcap' passed the entire suite, which is how the same wording bug
+    // reached production on the pivot path.
+    expect(tripped.data.file.message).toContain('Structural outline')
+    expect(tripped.data.file.message).not.toContain('exceeds the read cap')
+    expect(tripped.data.file.message).not.toContain('is large')
     // Cache-safety: transcript-dependent, must never be replayed from cache.
     // (noResultCache is optional across the call() return union; cast to read.)
     expect((tripped as { noResultCache?: boolean }).noResultCache).toBe(true)
