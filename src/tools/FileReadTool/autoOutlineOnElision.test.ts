@@ -37,6 +37,7 @@ import {
 //   - footer text is stable              → exact-match assertion
 //   - pivot header                       → "is large", never a cap claim
 //   - genuinely over-cap file            → still claims the cap
+//   - explicit view='outline'            → neutral header, no footer
 // ---------------------------------------------------------------------------
 
 process.env.CLAUDE_CODE_SIMPLE = '1'
@@ -169,6 +170,31 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
     expect(data.file.content).toContain('exceeds the read cap')
     // Not a pivot: the body genuinely does not fit, so no opt-in footer.
     expect(data.file.autoPivot).toBeUndefined()
+  })
+
+  test("explicit view='outline' keeps the neutral header and no footer", async () => {
+    // Guards the third makeOutlineData call site. Mutation testing found it
+    // unguarded: flipping its reason to 'pivot' passed every other test, and
+    // an outline the caller asked for would start claiming the file "is
+    // large" and pick up the opt-back-in footer for a pivot that never
+    // happened.
+    const p = writeFixture('big-explicit.ts', BIG_TS)
+    const { data } = await read(p, { view: 'outline' })
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('Structural outline')
+    expect(data.file.content).not.toContain('is large')
+    expect(data.file.content).not.toContain('exceeds the read cap')
+    expect(data.file.autoPivot).toBeUndefined()
+
+    const rendered = FileReadTool.mapToolResultToToolResultBlockParam(
+      data,
+      'tool_use_id_test',
+    )
+    if (typeof rendered.content !== 'string')
+      throw new Error('expected string content')
+    expect(rendered.content.endsWith(AUTO_OUTLINE_PIVOT_FOOTER)).toBe(false)
   })
 
   test("view='full' on a large code file returns full body, no footer", async () => {
