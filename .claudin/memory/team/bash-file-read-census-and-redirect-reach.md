@@ -35,14 +35,21 @@ had only seen through `Bash: cat`/`grep` (Bash output never populates
   not either number**; the conclusion (no "Read → outline → Bash" loop) holds at
   both ends.
 - **The one real escape hatch is the ERROR path, and it is tiny.** After a Read
-  that *errored*, the next call is a Bash read of the same path **14.6%**
-  (28/192) — about 25× the outline rate. But errors are only **0.78%** of all
-  reads, so this explains ~28 Bash reads out of 8,630. And the top error is not
-  Read holding information back: **"File does not exist" is ~29% of errors** (a
-  wrong path guess), against ~7% for the real under-delivery case
-  (`File content (35147 tokens) exceeds maximum allowed tokens (25000)`).
-  There is no truncation bucket to count — FileReadTool has no truncation
-  footer, so an over-cap read surfaces as that error instead.
+  that *errored*, the next call is a Bash read of the same path — but **the
+  14.6% (28/192) originally recorded here was wrong twice over**, and it is what
+  seeded the rejected PR #67. Re-counted 2026-08-09: there are **193** Read
+  errors, and 14.6% counted Bash merely *mentioning* the path; Bash actually
+  *reading* it is **6.7%**. The ratio to the outline rate survives (~20×), the
+  absolute does not. The error-class split was also wrong: **"File does not
+  exist" is 46.6%** of errors (not ~29%) — it is the largest class by far — and
+  over-cap is **34 of 193** (17.6%), not 13. There is no truncation bucket to
+  count: FileReadTool has no truncation footer, so an over-cap read surfaces as
+  that error instead.
+- **Do not re-derive a Read fix from the error path.** All 28 over-cap reads
+  eligible for a head-window fix were machine-generated scratch — agent task
+  outputs, tool-result spill, /tmp review diffs, `dist/` bundle chunks. Zero
+  user source or data files, 0.11% of 24,741 Reads. PR #67 was closed on this.
+  See [[auto-outline-pivot-false-cap-claim]] for where the volume actually is.
 - **Repeat reads are navigation, not failure.** Over 15,701 session×path pairs:
   1× 74.3%, 2× 14.0%, 3× 5.8%, 4× 2.6%, 5×+ 3.3%. Of the 8,989 extra reads only
   **10.1% repeat identical parameters** — 89.9% ask for a different range or
