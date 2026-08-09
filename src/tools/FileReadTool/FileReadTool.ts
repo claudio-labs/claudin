@@ -91,7 +91,10 @@ import {
   pinToolResult,
   retirePinAfterUse,
 } from '../../services/compact/stableStubState.js'
-import { renderOutline } from '../shared/codeOutline/renderOutline.js'
+import {
+  renderOutline,
+  type OutlineReason,
+} from '../shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLangFromPath,
   SCAN_MAX_BYTES,
@@ -1028,7 +1031,7 @@ export const FileReadTool = buildTool({
             })
             const message = scanned
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
-                  overCap: false,
+                  reason: 'explicit',
                 }) + renderClipPinFallbackFooter(offset, limit, arm)
               : (await renderClipPinHeadSlice(
                   fullFilePath,
@@ -1792,14 +1795,13 @@ function makeOutlineData(
   file_path: string,
   fullFilePath: string,
   readFileState: ToolUseContext['readFileState'],
-  overCap: boolean,
-  autoPivot = false,
+  reason: OutlineReason,
 ): { data: Output } {
   const content = renderOutline(
     scanned.entries,
     file_path,
     scanned.lines.length,
-    { overCap, truncated: scanned.truncated },
+    { reason, truncated: scanned.truncated },
   )
   readFileState.set(fullFilePath, {
     content: scanned.source,
@@ -1816,7 +1818,7 @@ function makeOutlineData(
         content,
         totalLines: scanned.lines.length,
         symbolCount: scanned.entries.length,
-        ...(autoPivot ? { autoPivot: true } : {}),
+        ...(reason === 'pivot' ? { autoPivot: true } : {}),
       },
     },
   }
@@ -2115,7 +2117,7 @@ async function callInner(
         file_path,
         fullFilePath,
         readFileState,
-        false,
+        'explicit',
       )
     }
     // scan empty — degrade to a normal read
@@ -2152,7 +2154,7 @@ async function callInner(
           file_path,
           fullFilePath,
           readFileState,
-          true,
+          'overcap',
         )
       }
     }
@@ -2207,8 +2209,7 @@ async function callInner(
           file_path,
           fullFilePath,
           readFileState,
-          true,
-          true,
+          'pivot',
         )
       }
       // below the symbol gate (or scan empty) — fall through to the full body

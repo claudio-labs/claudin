@@ -35,6 +35,8 @@ import {
 //   - offset/limit set                   → full body, no footer
 //   - small file                         → full body, no footer
 //   - footer text is stable              → exact-match assertion
+//   - pivot header                       → "is large", never a cap claim
+//   - genuinely over-cap file            → still claims the cap
 // ---------------------------------------------------------------------------
 
 process.env.CLAUDE_CODE_SIMPLE = '1'
@@ -56,13 +58,16 @@ function writeFixture(name: string, content: string): string {
   return p
 }
 
-function makeContext(): ToolUseContext {
+function makeContext(fileReadingLimits?: {
+  maxSizeBytes: number
+  maxTokens: number
+}): ToolUseContext {
   return {
     abortController: new AbortController(),
     readFileState: createFileStateCacheWithSizeLimit(
       READ_FILE_STATE_CACHE_SIZE,
     ),
-    fileReadingLimits: undefined,
+    fileReadingLimits,
     getAppState: () => ({ toolPermissionContext: {} }),
     setAppState: () => {},
     options: {},
@@ -138,8 +143,32 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
     expect(typeof rendered.content).toBe('string')
     if (typeof rendered.content !== 'string')
       throw new Error('expected string content')
-    expect(rendered.content).toContain('exceeds the read cap')
+    // The pivot withholds the body by POLICY — it must not claim a cap was
+    // hit. BIG_TS is ~30 KB against a 10 MB byte cap, and the view='full'
+    // case below returns that same body in full, so "exceeds the read cap"
+    // was telling the model the content was unreachable when it never was.
+    expect(rendered.content).not.toContain('exceeds the read cap')
+    expect(rendered.content).toContain('is large')
     expect(rendered.content.endsWith(AUTO_OUTLINE_PIVOT_FOOTER)).toBe(true)
+  })
+
+  test('a genuinely over-cap file still says the cap was exceeded', async () => {
+    // The discriminator the `reason` parameter exists for. Same fixture, read
+    // under a 1 KB cap so readFileInRange really throws FileTooLargeError and
+    // the catch-arm outline is the one that answers. Without this the change
+    // above could be "fixed" by deleting the cap wording everywhere.
+    const p = writeFixture('big-overcap.ts', BIG_TS)
+    const { data } = await read(
+      p,
+      {},
+      makeContext({ maxSizeBytes: 1024, maxTokens: 25_000 }),
+    )
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain('exceeds the read cap')
+    // Not a pivot: the body genuinely does not fit, so no opt-in footer.
+    expect(data.file.autoPivot).toBeUndefined()
   })
 
   test("view='full' on a large code file returns full body, no footer", async () => {
