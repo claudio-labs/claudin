@@ -16,8 +16,12 @@ threshold pivot and the genuine over-cap fallback passed `overCap=true`, so
 `renderOutline` emitted **"exceeds the read cap"** for a file that had merely
 crossed the 250-line / 10k-char auto-outline threshold. It contradicted
 `AUTO_OUTLINE_PIVOT_FOOTER` two lines below ("File is large; returned outline
-instead of full body") and told the model the body was unreachable when a
-plain re-read returns it. Collapsed into a single `OutlineReason` discriminator
+instead of full body") and told the model the body was out of reach when
+`view='full'`, `offset/limit` or `symbol` returns it. (A *plain* re-read pivots
+again — the trigger is deterministic — so the cap wording was wrong about the
+**reason**, not about the repeat. An earlier draft of this memory and of the
+commit message had that backwards.) Collapsed into a single `OutlineReason`
+discriminator
 (`'explicit' | 'overcap' | 'pivot'`) so the cap wording is reachable only from
 the `catch` arm where the error was actually thrown.
 
@@ -31,6 +35,16 @@ falsification — those cap claims were false in the transcript itself.
 
 A test *pinned the bug*: `autoOutlineOnElision.test.ts` asserted
 `toContain('exceeds the read cap')` on the pivot result.
+
+Its replacement then repeated the shape in reverse and review caught it: the new
+test asserted `toContain('is large')` on the **rendered** result, but the footer
+itself reads "File is large…", so the assertion passed with the entire pivot
+branch deleted from the header. Assert a header claim on the pre-footer payload
+(`data.file.content`), never on output that has a suffix appended. Same round:
+running a mutation against only the test files the diff touched certified an
+"unguarded" line that a third file already guarded. Both belong in
+`.claudin/rules/agent-safety.md` §4 next to the other green-test-guards-nothing
+traps whenever that rule is next edited.
 
 ## The pivot itself is NOT broken — do not "fix" it again
 
@@ -63,29 +77,44 @@ lines × ~40 chars/line ≈ 10,000 chars: on ordinary source they fire together 
 construction. The measured 95.6% overlap therefore says the LINE trigger is
 redundant — not that moving the char threshold would change any outcome.
 
-## Live A/B (2026-08-09, N=1 — indicative only)
+## Live A/B (2026-08-09, N=3, corrected) — the pivot buys context with latency
 
-`scripts/profile/read-outline-pivot-ab.ts`. Five real files, 21.0-21.9 KB, all
-over 250 lines, comprehension task, claude-sonnet-5. Pivot ON cost **2.35×**
-pivot OFF ($0.578 vs $0.245) on **12 assistant turns vs 3**, while moving 30%
-FEWER result characters (84k vs 120k). The pivot trades characters for
-round-trips and the round-trips cost more. Answers were equivalent.
+`scripts/profile/read-outline-pivot-ab.ts`, claude-sonnet-5, five real files
+21.0-21.9 KB / >250 lines, comprehension task. Clean run: 0 toolset escapes,
+sentinel 3/3 both arms, arm order alternated per rep.
 
-Three caveats that bound it: N=1 against the N≥3 the rules require; the fixtures
-sit in the census's WORST band and never the 40k+ band where the pivot looks
-good; and `--allowedTools` is a permission gate, **not** a registry filter — arm
-A escaped through Grep twice. What the run does support is the mechanism (9
-extra sequential turns, visible in the transcript). What it does not support is
-any cost multiple, or anything about the 10k-char threshold specifically, since
-the fixtures trip the line trigger too.
+**Report these four separately — three separate cleanly and one does not.**
 
-Two measurement traps this bench hit, both worth re-checking in any transcript
-bench: the transcript writes ONE LINE PER CONTENT BLOCK sharing `message.id`,
-where `input`/`cache_*` repeat but `output_tokens` GROWS — summing every line
-inflates input, keeping the first undercounts output by up to 100×, and neither
-error is uniform across arms. Take the max per id. And whichever arm runs first
-pays the cold prompt cache; the second inherits the warm prefix even from a
-different cwd (~19% of the gap here), so alternate the order.
+| | pivot ON | pivot OFF | separated? |
+|---|---|---|---|
+| assistant turns | 7,7,7 | 2,2,2 | **yes**, no overlap |
+| end context | 36.7k / 51.2k / 53.1k | 63.1k ×3 | **yes**, −18.8%, no overlap |
+| wall time | 78/95/86 s | 47/40/62 s | **yes**, ~1.8× slower |
+| cost USD | .257/.344/.360 | .265/.258/.312 | **NO — ranges overlap** |
+
+So: the pivot **delivers on its stated purpose** (ends 18.8% smaller, moving
+30% FEWER result chars — 84k vs 120k) and pays for it in round-trips: 24 Read
+calls vs 5, 19 repeat reads vs 0, ~1.8× wall time. Median cost is 1.30× but the
+cheapest pivot-ON run beat the priciest pivot-OFF one, so **do not cite a cost
+multiple** — at N=3 cost is a wash and latency is the real price.
+
+Answers were equivalent in substance (all five questions, same files, same
+functions and line numbers where spot-checked), but pivot-OFF cited file:line
+2-3× more often every rep (43/53/17 vs 14/16/11) — consistent, unexplained,
+and the one quality signal that favors the full body.
+
+**Two earlier numbers from this same bench were wrong; do not resurrect them.**
+A first pass reported 2.01× (dedup kept the first `output_tokens` per message
+id, which grows as the message streams), then 2.35× (still N=1, arm order
+fixed, and arm A had escaped its toolset through Grep). The traps are
+generalizable and live in [[token-bench-measurement-traps]] — read that before
+trusting any delta here. The gate that finally worked is `--tools Read,Glob
+--strict-mcp-config`: `--allowedTools` is a permission allowlist that never
+reaches the registry, so it leaves all 40 tools visible.
+
+Still **not** answered: the fixtures sit in the census's worst band and trip
+the line trigger as well as the char one, so this says nothing about the 40k+
+band or about the 10k-char threshold specifically.
 
 ## Method (the trap that cost an hour)
 
