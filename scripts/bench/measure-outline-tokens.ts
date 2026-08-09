@@ -63,7 +63,7 @@ for (const rel of FILES) {
     continue
   }
   const loc = src.split('\n').length
-  const outline = renderOutline(symbols, rel, loc, { overCap: false })
+  const outline = renderOutline(symbols, rel, loc, { reason: 'explicit' })
   rows.push({
     file: rel,
     loc,

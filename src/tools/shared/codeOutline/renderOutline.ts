@@ -27,9 +27,29 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / BYTES_PER_TOKEN)
 }
 
+/**
+ * Why an outline is being served — selects the header lead.
+ *
+ * `overcap` is the ONLY value allowed to claim a cap was hit: it is reached
+ * exclusively from the `catch` around readFileInRange/validateContentTokens,
+ * so a real FileTooLargeError or MaxFileReadTokenExceededError has already
+ * been thrown. Nothing enforces that but convention, so keep it that way.
+ *
+ * `pivot` withholds the body by policy (the file merely crossed the
+ * auto-outline threshold). `explicit` is the neutral lead — the caller asked
+ * for `view: 'outline'`, or, at the clip-pin sticky-outline site, no lead
+ * about size or caps would be true either.
+ *
+ * Neither of those exceeded anything, and saying they did told the model the
+ * body was out of reach when `view: 'full'`, `offset/limit` or `symbol`
+ * returns it. (A *plain* re-read pivots again — the trigger is deterministic
+ * — so the cap wording was wrong about the reason, not about the repeat.)
+ */
+export type OutlineReason = 'explicit' | 'overcap' | 'pivot'
+
 export type RenderOutlineOptions = {
-  /** true when produced because a plain Read exceeded the cap. */
-  overCap?: boolean
+  /** Why the outline is being served. Defaults to `explicit`. */
+  reason?: OutlineReason
   /**
    * true when the symbol scan only saw the head of the file (it exceeds the
    * 10 MB scan cap). The header states this so the outline never silently
@@ -114,9 +134,15 @@ export function renderOutline(
   // Code identifiers never contain quotes, so this is a no-op for code files.
   const firstSymbol =
     entries.find(e => !e.name.includes("'"))?.name ?? 'name'
-  const lead = options.overCap
-    ? `File '${filePath}' (${totalLines} lines) exceeds the read cap — showing a structural outline instead of the full contents.`
-    : `Structural outline of '${filePath}' (${totalLines} lines).`
+  const lead =
+    options.reason === 'overcap'
+      ? `File '${filePath}' (${totalLines} lines) exceeds the read cap — showing a structural outline instead of the full contents.`
+      : options.reason === 'pivot'
+        ? // Matches AUTO_OUTLINE_PIVOT_FOOTER's "File is large; returned
+          // outline instead of full body" — the two used to contradict each
+          // other, the header claiming a cap and the footer a policy choice.
+          `File '${filePath}' (${totalLines} lines) is large — showing a structural outline instead of the full contents.`
+        : `Structural outline of '${filePath}' (${totalLines} lines).`
 
   // When the scan was byte-capped, the outline only covers the head — say so
   // explicitly so the model doesn't treat a partial table as the whole file.

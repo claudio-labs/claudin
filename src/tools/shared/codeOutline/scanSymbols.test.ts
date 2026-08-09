@@ -1756,7 +1756,7 @@ describe('renderOutline', () => {
       '}',
     ].join('\n')
     const syms = scanSymbols(src, 'typescript')
-    const out = renderOutline(syms, 'demo.ts', 8, { overCap: true })
+    const out = renderOutline(syms, 'demo.ts', 8, { reason: 'overcap' })
 
     expect(out).toContain('<system-reminder>')
     expect(out).toContain("exceeds the read cap")
@@ -1785,6 +1785,19 @@ describe('renderOutline', () => {
     expect(out).not.toContain('exceeds the read cap')
   })
 
+  test('pivot header says the file is large, never that a cap was exceeded', () => {
+    const syms = scanSymbols('function a() {\n  return 1\n}', 'typescript')
+    const out = renderOutline(syms, 'demo.ts', 360, { reason: 'pivot' })
+
+    // The defect this pins: the auto-outline pivot reused the over-cap lead,
+    // so files well under every cap were told they exceeded one — measured at
+    // 1,809 events over 504 files, none above 3k lines.
+    expect(out).not.toContain('exceeds the read cap')
+    expect(out).toContain("File 'demo.ts' (360 lines) is large")
+    // Still an outline, and still says how to drill in.
+    expect(out).toContain("Read(file_path, symbol='a')")
+  })
+
   test('auto-cap truncates a pathological symbol count with a trailer', () => {
     // Enough symbols that the rendered body blows OUTLINE_MAX_TOKENS.
     const lines: string[] = []
@@ -1794,7 +1807,7 @@ describe('renderOutline', () => {
     const syms = scanSymbols(lines.join('\n'), 'typescript')
     expect(syms.length).toBe(6000)
 
-    const out = renderOutline(syms, 'huge.ts', 6000, { overCap: true })
+    const out = renderOutline(syms, 'huge.ts', 6000, { reason: 'overcap' })
     expect(out).toMatch(/… \(\+\d+ more symbols/)
 
     const bodyTokens = out.length / 4 // crude upper bound
