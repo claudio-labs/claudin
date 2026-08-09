@@ -83,6 +83,15 @@ export type SuggestedCall =
       output_mode: 'content' | 'count' | 'files_with_matches'
       caseInsensitive?: boolean
       context?: { flag: '-A' | '-B' | '-C'; lines: number }
+      /**
+       * The window a trailing selector folded in — `| head -N` becomes
+       * `head_limit`, `| sed -n 'A,Bp'` adds `offset`. Grep's `offset` skips
+       * N entries and is 0-INDEXED, unlike the 1-indexed `LineWindow` this
+       * module carries (and unlike Read's own `offset`), so applyWindow
+       * converts rather than copying.
+       */
+      offset?: number
+      head_limit?: number
      /**
       * The search walks a directory tree, where ripgrep honors .gitignore
       * and the `grep -r` it replaces did not — the refusal message names
@@ -409,12 +418,13 @@ type PatternFlags = {
   lineNumbers: boolean
   countOnly: boolean
   filesOnly: boolean
+  noFilename: boolean
   includes: string[]
   context?: { flag: '-A' | '-B' | '-C'; lines: number }
 }
 
 /** Short options that take no value, so they can be written clustered. */
-const GREP_SHORT_NO_ARG = new Set(['r', 'R', 'i', 'n', 'c', 'l', 'E'])
+const GREP_SHORT_NO_ARG = new Set(['r', 'R', 'i', 'n', 'c', 'l', 'E', 'h'])
 
 /** Short options that take a value, fused (`-C3`) or separate (`-C 3`). */
 const GREP_SHORT_WITH_ARG = new Set(['A', 'B', 'C'])
@@ -616,6 +626,7 @@ function parseGrep(
     lineNumbers: false,
     countOnly: false,
     filesOnly: false,
+    noFilename: false,
     includes: [],
   }
   const positional: string[] = []
@@ -658,6 +669,26 @@ function parseGrep(
       case '-l':
       case '--files-with-matches':
         flags.filesOnly = true
+        break
+      case '-h':
+        // Only on grep/egrep. ripgrep spells --no-filename in full and gives
+        // `-h` to --help, so mapping the short form there would turn a request
+        // for the manual into a search.
+        if (tool === 'rg') return null
+        flags.noFilename = true
+        break
+      case '--no-filename':
+        // Presentation only — it drops the `file:` prefix grep puts on every
+        // line. Checked against the target below, since Grep always prefixes.
+        flags.noFilename = true
+        break
+      case '--no-heading':
+        // rg-only, and a no-op for this mapping: without it rg groups matches
+        // under a filename header, with it (and by default when its output is
+        // a pipe) it prints the `file:line:` form Grep already returns. Not a
+        // grep flag at all, so accepting it there would map a command the
+        // shell would have rejected.
+        if (tool !== 'rg') return null
         break
       case '-E':
       case '--extended-regexp':
@@ -732,6 +763,7 @@ function parseGrep(
   // form is the case the feature exists for — but the refusal message must
   // say the file set differs, so the flag travels on the call.
   let walksTree = false
+  let targetIsDirectory = false
   let path: string | undefined
   if (paths.length === 1) {
     // Resolved only to prove it exists — Grep is happy with the relative form
@@ -743,7 +775,8 @@ function parseGrep(
     try {
       const stats = statSync(abs)
       if (!flags.recursive && !stats.isFile()) return null
-      walksTree = divergesOnIgnoredFiles && flags.recursive && stats.isDirectory()
+      targetIsDirectory = stats.isDirectory()
+      walksTree = divergesOnIgnoredFiles && flags.recursive && targetIsDirectory
     } catch {
       return null
     }
@@ -755,6 +788,13 @@ function parseGrep(
   } else {
     walksTree = divergesOnIgnoredFiles
   }
+
+  // `-h` asked for output WITHOUT filenames and Grep always prefixes them, so
+  // it is only accepted where the answer can name a single file anyway: one
+  // path, and that path a regular file. Over a tree — or over stdin-less
+  // recursion with no path at all — the suggestion would answer with the
+  // prefixes the model explicitly suppressed.
+  if (flags.noFilename && (paths.length !== 1 || targetIsDirectory)) return null
 
   const glob = combineIncludes(flags.includes)
   if (glob === null) return null
@@ -956,21 +996,25 @@ function classifyPipeline(
   const head = classifySegment(group[0]!, cwd)
   if (!head || head.kind !== 'source') return null
 
-  // Only a single Read has a line window to narrow. Folding a selector into a
-  // Grep, a Glob or several Reads would change what the model gets back.
+  // Only a SINGLE call has a window to narrow — folding a selector into
+  // several Reads would change what the model gets back, and Glob has nothing
+  // to fold it into. Grep does: `grep -n foo f.ts | head -20` is the most
+  // common shape the shell is still being used for, and `head_limit`/`offset`
+  // spell it exactly.
   const only = head.calls.length === 1 ? head.calls[0] : undefined
-  const readCall = only?.tool === 'Read' ? only : undefined
+  const windowable =
+    only && (only.tool === 'Read' || only.tool === 'Grep') ? only : undefined
 
   let window: LineWindow = head.window ?? IDENTITY_WINDOW
   for (const segment of group.slice(1)) {
-    if (!readCall) return null
+    if (!windowable) return null
     const role = classifySegment(segment, cwd)
     if (!role || role.kind !== 'selector') return null
     window = composeWindow(window, role.window)
     if (window.limit !== undefined && window.limit < 1) return null
   }
 
-  const calls = (readCall ? [applyWindow(readCall, window)] : head.calls).map(
+  const calls = (windowable ? [applyWindow(windowable, window)] : head.calls).map(
     withFullBody,
   )
   return { text: group.map(segment => segment.text).join(' | '), calls }
@@ -989,9 +1033,18 @@ function withFullBody(call: SuggestedCall): SuggestedCall {
 }
 
 function applyWindow(
-  call: Extract<SuggestedCall, { tool: 'Read' }>,
+  call: Extract<SuggestedCall, { tool: 'Read' | 'Grep' }>,
   window: LineWindow,
 ): SuggestedCall {
+  if (call.tool === 'Grep') {
+    // Grep's `offset` skips entries and counts from 0; the window counts lines
+    // from 1. The trim also lands on rg's ordering rather than grep's — for a
+    // tree walk that is the same divergence `walksTree` already announces.
+    const next = { ...call }
+    if (window.offset > 1) next.offset = window.offset - 1
+    if (window.limit !== undefined) next.head_limit = window.limit
+    return next
+  }
   const next: Extract<SuggestedCall, { tool: 'Read' }> = {
     tool: 'Read',
     file_path: call.file_path,
@@ -1116,6 +1169,10 @@ function renderCall(call: SuggestedCall): string {
       args.push(`output_mode: ${JSON.stringify(call.output_mode)}`)
       if (call.caseInsensitive) args.push('"-i": true')
       if (call.context) args.push(`"${call.context.flag}": ${call.context.lines}`)
+      if (call.offset !== undefined) args.push(`offset: ${call.offset}`)
+      if (call.head_limit !== undefined) {
+        args.push(`head_limit: ${call.head_limit}`)
+      }
       return `${GREP_TOOL_NAME}(${args.join(', ')})`
     }
     case 'Glob': {
