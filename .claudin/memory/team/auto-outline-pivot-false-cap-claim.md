@@ -112,9 +112,22 @@ trusting any delta here. The gate that finally worked is `--tools Read,Glob
 --strict-mcp-config`: `--allowedTools` is a permission allowlist that never
 reaches the registry, so it leaves all 40 tools visible.
 
-Still **not** answered: the fixtures sit in the census's worst band and trip
-the line trigger as well as the char one, so this says nothing about the 40k+
-band or about the 10k-char threshold specifically.
+**The fixture design is adversarial to the pivot — read ~1.8× as a CEILING on
+the latency penalty, not a typical value.** The script picks "one question per
+fixture, each answerable only from the implementation — not from a signature",
+reasoning that an outline-answerable question would hand the pivot arm a free
+win. That excludes the pivot's best case by construction: the census measured
+**27.4% of reads needing no follow-up at all**, and this bench forces that
+bucket to 0%. The size band compounds it — 21.0-21.9 KB, chosen so both
+triggers fire, while the census puts the pivot's payoff at 40k+. Both choices
+push the same way.
+
+Fixing it means a mixed question set (some outline-answerable, some not) in the
+census's real proportions, plus a 40k+ band. Until then the between-arm
+comparison is fair (same five files copied byte-for-byte, same questions, same
+model, alternating order) but the absolute penalty is a worst case, and this
+says nothing about the 10k-char threshold specifically since the fixtures trip
+the line trigger too.
 
 ## Method (the trap that cost an hour)
 
