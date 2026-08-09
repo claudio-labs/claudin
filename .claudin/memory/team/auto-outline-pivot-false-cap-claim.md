@@ -77,31 +77,47 @@ lines × ~40 chars/line ≈ 10,000 chars: on ordinary source they fire together 
 construction. The measured 95.6% overlap therefore says the LINE trigger is
 redundant — not that moving the char threshold would change any outcome.
 
-## Live A/B (2026-08-09, N=3, corrected) — the pivot buys context with latency
+## Live A/B (2026-08-09, N=6, corrected) — the pivot buys context with latency
 
 `scripts/profile/read-outline-pivot-ab.ts`, claude-sonnet-5, five real files
-21.0-21.9 KB / >250 lines, comprehension task. Clean run: 0 toolset escapes,
+21.0-21.9 KB / >250 lines, comprehension task. Two independent N=3 runs pooled
+(`read-outline-pivot-ab.run1.json` + `.json`). Both clean: 0 toolset escapes,
 sentinel 3/3 both arms, arm order alternated per rep.
 
-**Report these four separately — three separate cleanly and one does not.**
+**Report these per metric — four separate perfectly, cost does not.** p is an
+exact two-sided Mann-Whitney; **0.0022 is the FLOOR for 6v6**, so it means
+total separation and nothing stronger is expressible at this N.
 
-| | pivot ON | pivot OFF | separated? |
-|---|---|---|---|
-| assistant turns | 7,7,7 | 2,2,2 | **yes**, no overlap |
-| end context | 36.7k / 51.2k / 53.1k | 63.1k ×3 | **yes**, −18.8%, no overlap |
-| wall time | 78/95/86 s | 47/40/62 s | **yes**, ~1.8× slower |
-| cost USD | .257/.344/.360 | .265/.258/.312 | **NO — ranges overlap** |
+| | pivot ON (n=6) | pivot OFF (n=6) | median | p |
+|---|---|---|---|---|
+| assistant turns | 5,6,7,7,7,9 | 2 ×6 | 3.50× | 0.0022 |
+| Read calls | 20-26 | 5 ×6 | 4.60× | 0.0022 |
+| end context | 36.7k-59.2k | 63,057-63,058 | **−24.5%** | 0.0022 |
+| wall time | 78-95 s | 38-62 s | **1.99×** | 0.0022 |
+| cost USD | .257-.430 | .204-.312 | 1.31× | **0.026** |
 
-So: the pivot **delivers on its stated purpose** (ends 18.8% smaller, moving
-30% FEWER result chars — 84k vs 120k) and pays for it in round-trips: 24 Read
-calls vs 5, 19 repeat reads vs 0, ~1.8× wall time. Median cost is 1.30× but the
-cheapest pivot-ON run beat the priciest pivot-OFF one, so **do not cite a cost
-multiple** — at N=3 cost is a wash and latency is the real price.
+So the pivot **delivers on its stated purpose** — ends 24.5% smaller while
+moving ~35% fewer result chars — and pays in round-trips: 4.6× the Read calls,
+17-19 repeat reads vs 0, **2× wall time**. Latency is the headline cost, and it
+is the cleanest result in the table.
 
-Answers were equivalent in substance (all five questions, same files, same
-functions and line numbers where spot-checked), but pivot-OFF cited file:line
-2-3× more often every rep (43/53/17 vs 14/16/11) — consistent, unexplained,
-and the one quality signal that favors the full body.
+**On cost, state the caveat with the number.** Ranges still overlap at N=6 and
+p=0.026 does **not** survive Bonferroni over the five metrics tested (α=0.01).
+What supports it instead is reproducibility: 1.30× / 1.30× / 1.31× across two
+independent runs and the pool. Cite it as "~1.3×, marginal", never as a clean
+finding. Note also that pivot-OFF end context is essentially deterministic
+(63,057-63,058 across all six), so any spread in that column is the pivot's.
+
+Answers were equivalent in substance in both runs — all five questions, same
+files, same functions and line numbers where spot-checked.
+
+**A "quality signal" from run 1 did not reproduce; this is why the second run
+mattered.** Run 1 had pivot-OFF citing file:line 2-3× more often in every rep
+(43/53/17 vs 14/16/11) and it was written down here as consistent and
+unexplained. Run 2 came back 23/48/7 vs 25/47/13 — no gap at all. Pooled, the
+medians still differ (33 vs 15) but the ranges interleave completely and
+p=0.310. It was noise. Three reps agreeing inside ONE run is not
+reproducibility; only an independent re-run tells you that.
 
 **Two earlier numbers from this same bench were wrong; do not resurrect them.**
 A first pass reported 2.01× (dedup kept the first `output_tokens` per message
