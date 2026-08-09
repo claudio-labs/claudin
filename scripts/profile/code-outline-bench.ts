@@ -86,7 +86,7 @@ function measure(relPath: string): Row | null {
 
   const lines = source.split('\n')
   const outlineText = renderOutline(entries, relPath, lines.length, {
-    overCap: true,
+    reason: 'overcap',
   })
   const outline = tokensOf(outlineText, 'txt')
 

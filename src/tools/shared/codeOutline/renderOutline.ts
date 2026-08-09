@@ -33,10 +33,17 @@ function estimateTokens(text: string): number {
  * `overcap` is the ONLY value allowed to claim a cap was hit: it is reached
  * exclusively from the `catch` around readFileInRange/validateContentTokens,
  * so a real FileTooLargeError or MaxFileReadTokenExceededError has already
- * been thrown. `pivot` withholds the body by policy (the file merely crossed
- * the auto-outline threshold) and `explicit` is the caller asking for
- * `view: 'outline'`. Neither of those exceeded anything, and saying they did
- * told the model the body was unreachable when a plain re-read returns it.
+ * been thrown. Nothing enforces that but convention, so keep it that way.
+ *
+ * `pivot` withholds the body by policy (the file merely crossed the
+ * auto-outline threshold). `explicit` is the neutral lead — the caller asked
+ * for `view: 'outline'`, or, at the clip-pin sticky-outline site, no lead
+ * about size or caps would be true either.
+ *
+ * Neither of those exceeded anything, and saying they did told the model the
+ * body was out of reach when `view: 'full'`, `offset/limit` or `symbol`
+ * returns it. (A *plain* re-read pivots again — the trigger is deterministic
+ * — so the cap wording was wrong about the reason, not about the repeat.)
  */
 export type OutlineReason = 'explicit' | 'overcap' | 'pivot'
 

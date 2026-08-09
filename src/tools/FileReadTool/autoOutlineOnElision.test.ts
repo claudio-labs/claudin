@@ -149,7 +149,11 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
     // case below returns that same body in full, so "exceeds the read cap"
     // was telling the model the content was unreachable when it never was.
     expect(rendered.content).not.toContain('exceeds the read cap')
-    expect(rendered.content).toContain('is large')
+    // Assert the LEAD on the pre-footer content: AUTO_OUTLINE_PIVOT_FOOTER
+    // itself contains "File is large", so the same check against `rendered`
+    // passes with the header's pivot branch deleted entirely.
+    expect(data.file.content).toContain('is large')
+    expect(data.file.content).not.toContain('exceeds the read cap')
     expect(rendered.content.endsWith(AUTO_OUTLINE_PIVOT_FOOTER)).toBe(true)
   })
 
