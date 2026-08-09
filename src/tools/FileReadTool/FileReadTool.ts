@@ -102,12 +102,14 @@ import {
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import { BASH_TOOL_NAME } from '../BashTool/toolName.js'
+import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
 import { getDefaultFileReadingLimits } from './limits.js'
 import {
   DESCRIPTION,
   FILE_READ_TOOL_NAME,
   FILE_UNCHANGED_STUB,
   LINE_FORMAT_INSTRUCTION,
+  MAX_LINES_TO_READ,
   OFFSET_INSTRUCTION_DEFAULT,
   OFFSET_INSTRUCTION_TARGETED,
   renderPromptTemplate,
@@ -298,6 +300,12 @@ const outputSchema = lazySchema(() => {
           .describe('Number of lines in the returned content'),
         startLine: z.number().describe('The starting line number'),
         totalLines: z.number().describe('Total number of lines in the file'),
+        overCapWindow: z
+          .boolean()
+          .optional()
+          .describe(
+            'True when this window is what a Read that blew the byte or token cap served instead of erroring. Triggers a footer in the tool_result, since the text rendering carries no other sign that the body was cut short.',
+          ),
       }),
     }),
     z.object({
@@ -1349,6 +1357,13 @@ export const FileReadTool = buildTool({
           content =
             memoryFileFreshnessPrefix(data) +
             formatFileLines(data.file) +
+            (data.file.overCapWindow
+              ? renderOverCapWindowFooter(
+                  data.file.startLine,
+                  data.file.numLines,
+                  data.file.totalLines,
+                )
+              : '') +
             (shouldIncludeFileReadMitigation()
               ? CYBER_RISK_MITIGATION_REMINDER
               : '') +
@@ -1399,6 +1414,44 @@ function formatFileLines(file: {
  */
 export const AUTO_OUTLINE_PIVOT_FOOTER =
   "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>"
+
+/**
+ * Footer for the over-cap head window. The text rendering of a Read result
+ * prints line numbers and nothing else, so a window served silently is
+ * indistinguishable from a complete file — without this the model would
+ * believe it had read the whole thing. This is correctness, not decoration.
+ */
+export function renderOverCapWindowFooter(
+  startLine: number,
+  numLines: number,
+  totalLines: number,
+): string {
+  const lastLine = startLine + numLines - 1
+  return `\n\n<system-reminder>File exceeds the read cap; served lines ${startLine}-${lastLine} of ${totalLines}. Continue with offset=${lastLine + 1}, or use ${GREP_TOOL_NAME} to jump straight to what you need.</system-reminder>`
+}
+
+/**
+ * Thrown when the file blew the cap AND no single line fits the head budget —
+ * a minified bundle, a one-line JSON dump. The cap errors tell the model to
+ * "use offset and limit", which for a file with one line is advice that
+ * cannot work; this says so and names the tool that can.
+ */
+export class UnwindowableFileError extends Error {
+  constructor() {
+    super(
+      `File exceeds the read cap and has no line short enough to serve — it is minified or single-line, so offset and limit cannot page it. Use ${GREP_TOOL_NAME} to search it instead.`,
+    )
+    this.name = 'UnwindowableFileError'
+  }
+}
+
+/**
+ * Byte budget for the over-cap head window, derived from the token cap.
+ * Three bytes per token is deliberately below the usual ~4 so the first
+ * attempt normally clears validateContentTokens: under-shooting costs a few
+ * withheld lines, over-shooting costs a whole extra read.
+ */
+const OVER_CAP_HEAD_BYTES_PER_TOKEN = 3
 
 /**
  * Body size at which a vanilla full-file Read pivots to an outline. ~10 KB is
@@ -1638,6 +1691,68 @@ async function validateContentTokens(
   if (effectiveCount > effectiveMaxTokens) {
     throw new MaxFileReadTokenExceededError(effectiveCount, effectiveMaxTokens)
   }
+}
+
+/**
+ * Head window for a read that blew the byte or token cap and has no outline
+ * to fall back on — a non-code file, or a code file whose scan came back
+ * empty. Bounded by BYTES rather than lines on purpose: a minified JSON is a
+ * single line, so a line limit would hand back the whole file and blow the
+ * cap a second time.
+ *
+ * Sizing uses the LOCAL estimate only, never countTokensWithAPI: this runs on
+ * the failure path of a read that already cost a full pass over the file, and
+ * a network round-trip to decide how much of a log to show is not a trade
+ * worth making. One retry at half the budget covers content the estimator
+ * under-counts (dense CJK, base64); a second miss returns 'unavailable' so
+ * the caller rethrows the original cap error rather than looping toward an
+ * empty window.
+ *
+ * `readFileInRange` truncates on whole lines only — it never clips mid-line —
+ * so a file whose first line alone busts the budget comes back empty. That is
+ * 'unwindowable', and it is an error rather than a window because there is no
+ * honest partial answer to give: every byte the model could receive would be
+ * an arbitrary prefix of one line.
+ */
+async function readOverCapHead(
+  resolvedFilePath: string,
+  lineOffset: number,
+  ext: string,
+  maxSizeBytes: number,
+  maxTokens: number,
+  signal: AbortSignal,
+): Promise<ReadFileRangeResult | 'unwindowable' | 'unavailable'> {
+  // Both caps bind. Deriving the budget from maxTokens alone would let a
+  // caller's byte cap be ignored entirely — a 40-byte limit would hand back
+  // a 75 KB window, which is the cap not existing.
+  let budget = Math.min(maxSizeBytes, maxTokens * OVER_CAP_HEAD_BYTES_PER_TOKEN)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await readFileInRange(
+        resolvedFilePath,
+        lineOffset,
+        MAX_LINES_TO_READ,
+        budget,
+        signal,
+        { truncateOnByteLimit: true },
+      )
+      if (result.lineCount === 0) {
+        return result.totalLines > 0 ? 'unwindowable' : 'unavailable'
+      }
+      const estimate = roughTokenCountEstimationForFileType(result.content, ext)
+      if (estimate && estimate > maxTokens) {
+        budget = Math.floor(budget / 2)
+        continue
+      }
+      return result
+    } catch (e) {
+      // An abort is the user cancelling, not a failed fallback. scanFile and
+      // renderClipPinHeadSlice rethrow for the same reason.
+      if (isAbortError(e)) throw e
+      return 'unavailable'
+    }
+  }
+  return 'unavailable'
 }
 
 type ImageResult = {
@@ -2125,6 +2240,7 @@ async function callInner(
   // offset is normalized to >= 1 in call() before reaching here.
   const lineOffset = offset - 1
   let readResult: ReadFileRangeResult
+  let overCapWindow = false
   try {
     readResult = await readFileInRange(
       resolvedFilePath,
@@ -2156,7 +2272,35 @@ async function callInner(
         )
       }
     }
-    throw e
+    // Over-cap head window: everything the outline arm above cannot serve —
+    // a non-code file, or a code file whose scan came back empty — used to
+    // dead-end here with "use offset and limit", which is an instruction
+    // where a partial answer would do. prompt.ts promised the outline
+    // unconditionally, so this arm is also what makes that promise true.
+    // `view: 'full'` keeps erroring on purpose: the caller asked for the
+    // whole body, and the honest answer to "all of it" when it does not fit
+    // is no, not a window they never asked for.
+    if (
+      symbol === undefined &&
+      view === undefined &&
+      (e instanceof FileTooLargeError ||
+        e instanceof MaxFileReadTokenExceededError)
+    ) {
+      const head = await readOverCapHead(
+        resolvedFilePath,
+        lineOffset,
+        ext,
+        maxSizeBytes,
+        maxTokens,
+        signal,
+      )
+      if (head === 'unwindowable') throw new UnwindowableFileError()
+      if (head === 'unavailable') throw e
+      readResult = head
+      overCapWindow = true
+    } else {
+      throw e
+    }
   }
 
   const { content, lineCount, totalLines, totalBytes, readBytes, mtimeMs } =
@@ -2179,11 +2323,18 @@ async function callInner(
   // a long single-function file still returns its body. The scan reuses the
   // in-memory `content` (a full read, since offset===1 && limit===undefined)
   // to avoid a redundant disk read.
+  //
+  // `!overCapWindow` keeps an over-cap window out of here. Its `content` is
+  // the head of the file, not the file, so a scan of it would describe the
+  // window while looking exactly like an outline of the whole thing — and
+  // the outline arm in the catch above already had its chance on the real
+  // body and declined.
   if (
     autoOutlineOnElisionEnabled() &&
     outlineLang &&
     symbol === undefined &&
     view === undefined &&
+    !overCapWindow &&
     offset === 1 &&
     limit === undefined
   ) {
@@ -2238,6 +2389,7 @@ async function callInner(
       numLines: lineCount,
       startLine: offset,
       totalLines,
+      ...(overCapWindow && { overCapWindow }),
     },
   }
   if (isAutoMemFile(fullFilePath)) {

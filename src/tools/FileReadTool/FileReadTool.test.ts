@@ -40,6 +40,7 @@ import {
   MaxFileReadTokenExceededError,
   STAND_DOWN_STRIKES,
   STICKY_REPLAY_BUDGET,
+  UnwindowableFileError,
   scanFile,
 } from './FileReadTool.js'
 
@@ -109,7 +110,7 @@ function setContextMessages(ctx: ToolUseContext, messages: unknown[]): void {
 type ReadInput = {
   offset?: number
   limit?: number
-  view?: 'outline'
+  view?: 'outline' | 'full'
   symbol?: string
 }
 
@@ -152,36 +153,54 @@ describe('FileReadTool — baseline regression', () => {
     expect(data.file.totalLines).toBe(20)
   })
 
-  test('throws when the file exceeds the byte cap', async () => {
+  test('a single-line file over the byte cap throws UnwindowableFileError', async () => {
+    // One 4 KB line against a 1 KB budget: no whole line fits, so there is no
+    // honest window to serve and "use offset and limit" would be advice that
+    // cannot work. The error names Grep instead.
     const big = 'x'.repeat(4096) + '\n'
     const p = writeFixture('toobig-bytes.txt', big)
     const ctx = makeContext({
       fileReadingLimits: { maxSizeBytes: 1024, maxTokens: 25000 },
     })
 
-    await expect(read(p, {}, ctx)).rejects.toThrow(
-      /exceeds maximum allowed size/i,
+    await expect(read(p, {}, ctx)).rejects.toBeInstanceOf(
+      UnwindowableFileError,
     )
+    await expect(
+      read(
+        p,
+        {},
+        makeContext({
+          fileReadingLimits: { maxSizeBytes: 1024, maxTokens: 25000 },
+        }),
+      ),
+    ).rejects.toThrow(/no line short enough[\s\S]*Grep/)
   })
 
-  test('throws MaxFileReadTokenExceededError when a non-code file exceeds the token cap', async () => {
-    // ~2 KB of text. With maxTokens=200 the estimate exceeds the cap.
-    // A non-code extension (.txt) has no outline language, so the over-cap
-    // path still throws — code files now degrade to an outline instead
+  test('a non-code file over the token cap serves a window, not the error', async () => {
+    // ~2 KB of text. With maxTokens=200 the whole-file read raises
+    // MaxFileReadTokenExceededError — that part is unchanged, and it is what
+    // the strictly-shorter window below proves happened. A non-code extension
+    // (.txt) has no outline language, so instead of dead-ending the read now
+    // falls back to a head window; code files still degrade to an outline
     // (covered in the Smart Code Navigation suite below).
-    // validateContentTokens calls countTokensWithAPI, which the VCR layer
-    // records under fixtures/token-count-*.json (keyed by this exact body).
-    // The fixture is committed; do not edit TOKEN_CAP_BODY without re-recording
-    // via VCR_RECORD=1.
+    // The full-file pass calls countTokensWithAPI, which the VCR layer records
+    // under fixtures/token-count-*.json (keyed by this exact body). The
+    // fixture is committed; do not edit TOKEN_CAP_BODY without re-recording
+    // via VCR_RECORD=1. The fallback itself is estimate-only and makes no API
+    // call, so it needs no fixture of its own.
     const body = TOKEN_CAP_BODY
     const p = writeFixture('toobig-tokens.txt', body)
     const ctx = makeContext({
       fileReadingLimits: { maxSizeBytes: 10 * 1024 * 1024, maxTokens: 200 },
     })
 
-    await expect(read(p, {}, ctx)).rejects.toBeInstanceOf(
-      MaxFileReadTokenExceededError,
-    )
+    const { data } = await read(p, {}, ctx)
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.overCapWindow).toBe(true)
+    expect(data.file.totalLines).toBe(80)
+    expect(data.file.numLines).toBeLessThan(80)
+    expect(data.file.numLines).toBeGreaterThan(0)
   })
 
   test('dedups a repeated read of the same range when the file is unchanged', async () => {
@@ -289,14 +308,17 @@ describe('FileReadTool — Smart Code Navigation', () => {
     expect(data.file.symbolCount).toBe(4)
   })
 
-  test('a non-code file over the byte cap still throws (degrade preserved)', async () => {
+  test('a non-code file whose every line busts the byte cap throws instead of windowing', async () => {
+    // Same body as the outline case above, but as .txt so there is no outline
+    // language. A 40-byte budget is shorter than the first line, so no window
+    // is servable — the unwindowable arm, not the head-window arm.
     const p = writeFixture('overcap.txt', SAMPLE_TS)
     const ctx = makeContext({
       fileReadingLimits: { maxSizeBytes: 40, maxTokens: 25000 },
     })
 
-    await expect(read(p, {}, ctx)).rejects.toThrow(
-      /exceeds maximum allowed size/i,
+    await expect(read(p, {}, ctx)).rejects.toBeInstanceOf(
+      UnwindowableFileError,
     )
   })
 
@@ -1939,5 +1961,128 @@ describe('FileReadTool — clip pin (forced on)', () => {
     expect(message).toContain('Stop re-reading this range')
     // The redirect and nothing else — no line-numbered JSON in front of it.
     expect(message.startsWith('<system-reminder>')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Over-cap head window — a file with no outline language that busts the byte
+// or token cap serves its first window instead of dead-ending on an error.
+// ---------------------------------------------------------------------------
+
+describe('FileReadTool — over-cap head window', () => {
+  let savedDisableReminders: string | undefined
+
+  beforeAll(() => {
+    savedDisableReminders = process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
+    process.env.CLAUDIN_DISABLE_TOOL_REMINDERS = '1'
+  })
+
+  afterAll(() => {
+    if (savedDisableReminders === undefined) {
+      delete process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
+    } else {
+      process.env.CLAUDIN_DISABLE_TOOL_REMINDERS = savedDisableReminders
+    }
+  })
+
+  // 500 short lines, ~6 KB — well past the 1 KB budget the tests below set,
+  // and every line is far shorter than it, so a window IS servable.
+  const LOG_BODY =
+    Array.from({ length: 500 }, (_, i) => `log line ${i + 1}`).join('\n') + '\n'
+
+  const CAPPED = {
+    fileReadingLimits: { maxSizeBytes: 1024, maxTokens: 25000 },
+  } as const
+
+  function mapToText(data: Awaited<ReturnType<typeof read>>['data']): string {
+    const block = FileReadTool.mapToolResultToToolResultBlockParam(
+      data,
+      'toolu_test',
+    )
+    if (typeof block.content !== 'string') {
+      throw new Error('expected string tool_result content')
+    }
+    return block.content
+  }
+
+  test('a .log over the byte cap serves a head window instead of throwing', async () => {
+    const p = writeFixture('overcap-window.log', LOG_BODY)
+    const { data } = await read(p, {}, makeContext(CAPPED))
+
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.overCapWindow).toBe(true)
+    expect(data.file.startLine).toBe(1)
+    expect(data.file.totalLines).toBe(500)
+    expect(data.file.numLines).toBeGreaterThan(0)
+    expect(data.file.numLines).toBeLessThan(500)
+    expect(data.file.content.startsWith('log line 1\n')).toBe(true)
+  })
+
+  test('the window carries a footer naming what was withheld', async () => {
+    const p = writeFixture('overcap-footer.log', LOG_BODY)
+    const { data } = await read(p, {}, makeContext(CAPPED))
+    if (data.type !== 'text') throw new Error('expected text')
+
+    const rendered = mapToText(data)
+    const lastLine = data.file.numLines
+    expect(rendered).toContain('exceeds the read cap')
+    expect(rendered).toContain(`served lines 1-${lastLine} of 500`)
+    expect(rendered).toContain(`offset=${lastLine + 1}`)
+    expect(rendered).toContain('Grep')
+  })
+
+  test("the window starts at the caller's offset, not at line 1", async () => {
+    const p = writeFixture('overcap-offset.log', LOG_BODY)
+    const { data } = await read(p, { offset: 200 }, makeContext(CAPPED))
+
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.overCapWindow).toBe(true)
+    expect(data.file.startLine).toBe(200)
+    expect(data.file.content.startsWith('log line 200\n')).toBe(true)
+  })
+
+  test("view:'full' still errors — an explicit ask for the whole body is not windowed", async () => {
+    const p = writeFixture('overcap-full.log', LOG_BODY)
+
+    await expect(
+      read(p, { view: 'full' }, makeContext(CAPPED)),
+    ).rejects.toThrow(/exceeds maximum allowed size/i)
+  })
+
+  test('a plain read that fits the cap is untouched — no flag, no footer', async () => {
+    const p = writeFixture('undercap.log', 'one\ntwo\nthree\n')
+    const { data } = await read(p, {}, makeContext(CAPPED))
+
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.overCapWindow).toBeUndefined()
+    expect(mapToText(data)).not.toContain('exceeds the read cap')
+  })
+
+  test('a .json window is halved when the first budget still estimates over the token cap', async () => {
+    // bytesPerTokenForFileType() rates json at 2 bytes/token against the 3
+    // the budget assumes, so the first window estimates at 1.5x maxTokens and
+    // the retry halves it. Driven by the BYTE cap so the whole test stays
+    // offline — the token cap would call countTokensWithAPI and want a VCR
+    // fixture of its own.
+    const rows = Array.from(
+      { length: 100 },
+      (_, i) => `  {"id": ${i}, "name": "row ${i}"}`,
+    )
+    const p = writeFixture('overcap-halve.json', `[\n${rows.join(',\n')}\n]\n`)
+    const { data } = await read(
+      p,
+      {},
+      makeContext({
+        fileReadingLimits: { maxSizeBytes: 2000, maxTokens: 200 },
+      }),
+    )
+
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.overCapWindow).toBe(true)
+    expect(data.file.content.length).toBeGreaterThan(0)
+    // Un-halved the budget is min(2000, 200*3) = 600 bytes. The halved window
+    // must fit 200 tokens at json's 2 bytes/token, i.e. 400 bytes or less.
+    expect(Buffer.byteLength(data.file.content)).toBeLessThanOrEqual(400)
   })
 })

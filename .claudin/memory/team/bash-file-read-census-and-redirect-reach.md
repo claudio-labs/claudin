@@ -69,11 +69,30 @@ a **Grep** head, not just a Read one — `| head -N` → `head_limit`,
 `--help`) and rg's `--no-heading`. Replay over the recorded gap corpus:
 **26 → 141** of 2,804.
 
-**Still deliberately out**, with the volume that justifies it: compound commands
-(67.8% of the gap — a partial redirect would omit real work), `ls` (Read's own
+**Compound commands are CLOSED — measured 2026-08-09, do not reopen.** They are
+67.8% of the gap and the standing objection was that a partial redirect omits
+real work of the command. The obvious escape is "redirect only when EVERY
+segment maps, so nothing is omitted". Replaying `analyzeCommandForRedirect`
+segment by segment over the 2,159 compounds in the corpus: **2 of them (0.1%)
+have all segments mapping**; 514 (23.8%) map some. The blocking verbs in that
+partial bucket are `echo` 1,086, `grep` 340 (a form still out of range), `cd`
+285, `ls` 88, `git` 44 — shell work with no tool equivalent. The rule that
+would answer the objection buys two commands. Nothing left here.
+
+**Also deliberately out**, with the volume that justifies it: `ls` (Read's own
 prompt tells the model to use it), `tail -N` (31 single uses, no Read spelling
 without a line count), `wc`/`awk`/`| sort`. `cd <dir> && <one read>` is only 20
 occurrences — not worth path-rebasing for.
+
+**Read's own escapes, measured and mostly closed** (see the degraded-result
+numbers above): the only path where `Read` refused to read something it could
+have served was an over-cap file with no outline language (`.log`, `.csv`,
+minified JSON) — `callInner`'s catch degraded to an outline for code files and
+threw for everything else, while `prompt.ts` promised the outline
+unconditionally. Fixed 2026-08-09: it now serves a byte-bounded head window
+with a footer, and a file whose lines are all longer than the budget throws
+`UnwindowableFileError` naming `Grep` instead of the old "use offset and limit",
+which for a one-line file is advice that cannot work.
 
 Corpus method: transcripts at `~/.claudin/projects/**/*.jsonl`; the replay needs
 `bun test` (bunfig's stub aliases), a plain `bun` run dies on
