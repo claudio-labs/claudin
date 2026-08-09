@@ -172,6 +172,68 @@ describe('pipeline fusion', () => {
   })
 })
 
+// The single most common shape the shell was still being used for, measured
+// over the local transcripts: `grep … | head -N` and its `| sed -n A,Bp`
+// sibling. A Grep head used to sink the whole pipeline for want of a line
+// window; `head_limit`/`offset` are that window.
+describe('search pipelines fold into the Grep call', () => {
+  test('| head -N becomes head_limit', () => {
+    expect(calls(`grep -n foo ${FILE_A} | head -n 20`)).toEqual([
+      {
+        tool: 'Grep',
+        pattern: 'foo',
+        path: FILE_A,
+        glob: undefined,
+        output_mode: 'content',
+        caseInsensitive: undefined,
+        context: undefined,
+        walksTree: undefined,
+        head_limit: 20,
+      },
+    ])
+  })
+
+  test("| sed -n 'A,Bp' becomes offset + head_limit, and offset is 0-indexed", () => {
+    // Grep's offset SKIPS n entries, so line 10 of the output is offset 9 —
+    // unlike Read's own offset, which is the 1-indexed line number.
+    expect(calls(`grep -rn foo src | sed -n '10,20p'`)[0]).toMatchObject({
+      tool: 'Grep',
+      offset: 9,
+      head_limit: 11,
+    })
+  })
+
+  test('a tree walk keeps its .gitignore warning through the fold', () => {
+    expect(calls('grep -rn foo src | head -20')[0]).toMatchObject({
+      walksTree: true,
+      head_limit: 20,
+    })
+  })
+
+  test('--include and -i survive the fold', () => {
+    expect(
+      calls('grep -rin foo src --include=*.ts --include=*.tsx | head -n 30')[0],
+    ).toMatchObject({
+      glob: '*.{ts,tsx}',
+      caseInsensitive: true,
+      head_limit: 30,
+    })
+  })
+
+  test('count mode folds too', () => {
+    expect(calls('rg --no-heading -c foo src | head -10')[0]).toMatchObject({
+      output_mode: 'count',
+      head_limit: 10,
+    })
+  })
+
+  test('an unfolded Grep carries neither field', () => {
+    const [call] = calls('grep -rn foo src')
+    expect(call).not.toHaveProperty('offset')
+    expect(call).not.toHaveProperty('head_limit')
+  })
+})
+
 describe('searches → Grep', () => {
   test('recursive grep with a path and includes', () => {
     expect(calls('grep -rn "foo" src --include=*.ts')).toEqual([
@@ -206,6 +268,32 @@ describe('searches → Grep', () => {
     expect(calls('grep -rin foo src -C 3')[0]).toMatchObject({
       caseInsensitive: true,
       context: { flag: '-C', lines: 3 },
+    })
+  })
+
+  test('-h is accepted on a single file — the prefix it suppresses is redundant there', () => {
+    // Grep always prints `file:line:`. With one file that is noise the model
+    // can ignore; over a tree it is the answer to a question it asked NOT to
+    // be answered, so those forms stand down (see "stands down").
+    expect(calls(`grep -hc foo ${FILE_A}`)[0]).toMatchObject({
+      tool: 'Grep',
+      path: FILE_A,
+      output_mode: 'count',
+    })
+    // Clustered with -E, the shape the transcripts actually carry.
+    expect(calls(`grep -hEc "foo|bar" ${FILE_A}`)[0]).toMatchObject({
+      output_mode: 'count',
+      pattern: 'foo|bar',
+    })
+  })
+
+  test('rg --no-heading is a no-op for the mapping', () => {
+    // Without it rg groups matches under a filename header; with it (and by
+    // default into a pipe) it prints the file:line: form Grep returns anyway.
+    expect(calls('rg --no-heading -n foo src')[0]).toMatchObject({
+      tool: 'Grep',
+      pattern: 'foo',
+      path: 'src',
     })
   })
 
@@ -356,17 +444,29 @@ describe('stands down', () => {
     // shell genuinely wins.
     [`cat package.json | jq '.scripts'`, 'post-processing with jq'],
     [`cat ${FILE_A} | wc -l`, 'counting, not reading'],
+    // `sort` is not a selector, so the pipeline stands down even though the
+    // head maps and `| head -n 5` alone would now fold in (see the Grep-window
+    // tests). This is the isolating fixture for "one bad segment sinks it".
     [`grep -rn foo src | sort | uniq -c`, 'aggregation'],
-    // A Grep head has no line window a selector could narrow, so folding one in
-    // would silently drop it. Unlike the `| sort` case above, `head -n 5` IS a
-    // valid selector, which is what makes this the isolating fixture.
-    ['grep -rn foo src | head -n 5', 'a Grep has no line window to narrow'],
     // Output goes to a file, not into context.
     [`cat ${FILE_A} > /tmp/out`, 'redirected to a file'],
     [`grep -rn foo src >> /tmp/out`, 'appended to a file'],
     // The shell runs one branch; suggesting both invents a read.
     [`cat ${FILE_A} || cat ${FILE_B}`, 'only the first branch would have run'],
     // Flags with no tool spelling.
+    // -h asked for output WITHOUT filenames; over a tree or with no path at
+    // all the suggested Grep would answer with exactly the prefixes it
+    // suppressed, on many files.
+    ['grep -rhn foo src', '-h over a directory'],
+    ['grep -rh foo', '-h with no path at all'],
+    // ripgrep gives -h to --help, so the short form must never map there.
+    // A single FILE on purpose: over a directory the -h target guard would
+    // absorb the rejection and the row would pass with this arm deleted.
+    [`rg -hn foo ${FILE_A}`, "rg's -h is --help, not --no-filename"],
+    [`rg --no-filename foo src`, '--no-filename over a directory'],
+    // --no-heading is a ripgrep flag; grep would have failed on it, so mapping
+    // it would redirect a command that never ran.
+    [`grep --no-heading -n foo ${FILE_A}`, 'not a grep flag'],
     [`grep -v foo ${FILE_A}`, 'inverted match'],
     [`grep -o foo ${FILE_A}`, 'only-matching'],
     [`grep -P "\\d+" ${FILE_A}`, 'perl regex'],
@@ -550,6 +650,17 @@ describe('renderToolRedirect', () => {
     expect(message).toContain('Grep(pattern: "foo", path: "src", glob: "*.ts"')
     expect(message).toContain('parallel tool_use blocks')
     expect(message).toContain('re-send this exact Bash command')
+  })
+
+  test('the folded window reaches the message', () => {
+    // Without this the model is told to call Grep and left to guess the trim
+    // it had spelled out in the shell.
+    expect(renderToolRedirect(analyze('grep -rn foo src | head -20')!)).toContain(
+      'head_limit: 20',
+    )
+    expect(
+      renderToolRedirect(analyze(`grep -rn foo src | sed -n '10,20p'`)!),
+    ).toContain('offset: 9, head_limit: 11')
   })
 
   test('a single call does not ask for parallel blocks', () => {
