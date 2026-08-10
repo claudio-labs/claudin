@@ -2955,8 +2955,8 @@ export function REPL({
                   is flexShrink={0} outside the ScrollBox — it never moves.
                   Non-immediate local-jsx (/diff, /status, /theme, ~40 others)
                   stays in scrollable: the main loop is paused so no jiggle,
-                  and their tall content (DiffDetailView renders up to 400
-                  lines with no internal scroll) needs the outer ScrollBox. */}
+                  and any with tall content that isn't windowed to a fixed
+                  height needs the outer ScrollBox. */}
           {toolJSX?.isLocalJSXCommand && toolJSX.isImmediate && !toolJsxCentered && <Box flexDirection="column" width="100%">
             {toolJSX.jsx}
           </Box>}

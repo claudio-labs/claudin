@@ -44,6 +44,7 @@ import {
   moveLineStart,
   moveRight,
   moveUp,
+  movePage,
   openAbove,
   openBelow,
   parseExCommand,
@@ -370,6 +371,21 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       return
     }
     const row = allRows[selectedIndex]
+    // Paging. ctrl+d/ctrl+u are the advertised keys because they reach here in
+    // every render mode; PgUp/PgDn only do inline, since in fullscreen the
+    // REPL's Scroll-context handlers consume them first. Both are checked
+    // before the plain-letter chain so ctrl+d can't hit the `d` delete prompt.
+    const last = Math.max(0, allRows.length - 1)
+    if (key.pageDown || (key.ctrl && input === 'd')) {
+      const step = key.ctrl ? Math.max(1, Math.floor(listMaxVisible / 2)) : listMaxVisible
+      setSelectedIndex(i => Math.min(last, i + step))
+      return
+    }
+    if (key.pageUp || (key.ctrl && input === 'u')) {
+      const step = key.ctrl ? Math.max(1, Math.floor(listMaxVisible / 2)) : listMaxVisible
+      setSelectedIndex(i => Math.max(0, i - step))
+      return
+    }
     if (input === 'g') {
       if (pendingOpRef.current === 'g') {
         pendingOpRef.current = null
@@ -559,6 +575,16 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     }
     if (key.ctrl && input === 'r') {
       if (editable) apply(redo)
+      return
+    }
+    // Paging moves the cursor; FilePane's viewport follows it. Checked before
+    // the switch so ctrl+d isn't taken as the `dd` chord's first stroke.
+    if (key.pageDown || key.pageUp || (key.ctrl && (input === 'd' || input === 'u'))) {
+      const step = key.ctrl
+        ? Math.max(1, Math.floor(contentHeight / 2))
+        : contentHeight
+      const down = key.pageDown || input === 'd'
+      apply(e => movePage(e, down ? step : -step))
       return
     }
     switch (input) {
@@ -762,8 +788,8 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     if (editor?.message) return editor.message
     if (treeMessage) return treeMessage
     if (focus === 'editor')
-      return 'NORMAL · i insert · / find · @ chat · :w save · :q quit · esc tree'
-    return 'j/k move · l/enter open · a new · d del · r ren · / find · @ chat · q close'
+      return 'NORMAL · i insert · ^d/^u page · / find · @ chat · :w save · :q quit · esc tree'
+    return 'j/k move · ^d/^u page · l/enter open · a new · d del · r ren · / find · @ chat · q close'
   })()
 
   const editorTitle = open
