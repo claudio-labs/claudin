@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { execFileSync } from 'node:child_process'
 import {
   acceptsGitCommand,
   isReadOnlyGitBatch,
@@ -62,6 +63,107 @@ describe('accept / refuse', () => {
       "git commit -m 'fix: a; b'",
     ]) {
       expect(acceptsGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  test('accepts prose punctuation inside a quoted message', () => {
+    // Nothing here is ambiguous: bash builds exactly one argument out of each
+    // message, and the fidelity test below pins that. These were refused only
+    // because the Bash permission path's balance heuristic counted quotes and
+    // brackets in the message TEXT, so an English apostrophe was enough to
+    // send a commit to Bash.
+    for (const cmd of [
+      `git commit -m "fix: it's fine"`,
+      `git commit -m "fix: guard renderBody( against an empty outline"`,
+      `git commit -m "fix: drop the stray ] the parser left behind"`,
+      `git commit -m "fix: suppress the \\"Generated with Claude Code\\" footer"`,
+      `gh pr create --title t --body "Each arm's own spread dwarfs the delta."`,
+    ]) {
+      const parsed = parseGitCommand(cmd)
+      expect(parsed.ok ? '' : `${cmd} → ${parsed.ok ? '' : parsed.reason}`).toBe('')
+    }
+  })
+
+  test('the resolved tokens are the argv bash itself would build', () => {
+    // The classification below only means something if these tokens are the
+    // words git receives. Ask bash instead of trusting shell-quote: swap the
+    // binary for a printf that dumps its argv NUL-separated.
+    for (const command of [
+      `git commit -m "fix: it's fine"`,
+      `git commit -m "feat: subject\n\nBody with a ; and a | in it."`,
+      `git commit -m "fix: suppress the \\"Generated with Claude Code\\" footer"`,
+      `git commit -m 'costs $50 and runs \`date\`'`,
+      'git stash push -m "wip -p thing"',
+      'git branch --list "-D x"',
+      `gh pr create --title t --body '## Summary\n- fixes \`foo()\`'`,
+    ]) {
+      const parsed = parseGitCommand(command)
+      expect(parsed.ok).toBe(true)
+      if (!parsed.ok) continue
+      const probe = command.replace(/^(git|gh) /, 'printf "%s\\0" ')
+      const argv = execFileSync('bash', ['-c', probe], { encoding: 'utf8' })
+        .split('\0')
+        .slice(0, -1)
+      expect(parsed.args).toEqual(argv)
+    }
+  })
+
+  test('known divergence: shell-quote keeps the backslash of an escaped backtick', () => {
+    // Inside "…" bash turns \` into a literal backtick and drops the
+    // backslash; shell-quote keeps both characters. Pinned rather than fixed:
+    // the difference lives inside an argument VALUE, never in a flag position,
+    // and execution passes the raw string to bash (`run.ts`), so what git
+    // receives is bash's answer either way.
+    const command = 'git commit -m "fix: guard \\`renderBody()\\`"'
+    const parsed = parseGitCommand(command)
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.args[2]).toContain('\\`')
+    const argv = execFileSync(
+      'bash',
+      ['-c', command.replace(/^git /, 'printf "%s\\0" ')],
+      { encoding: 'utf8' },
+    )
+      .split('\0')
+      .slice(0, -1)
+    expect(argv[2]).toBe('fix: guard `renderBody()`')
+  })
+
+  test('a message quoted the way the commit protocol prescribes always survives', () => {
+    // `getBashGitInstructionsBody` tells the model: '…' when the message holds
+    // a backtick or a `$`; otherwise "…" with a backslash before every `"` and
+    // `\`, plus the backtick and `$` when an apostrophe rules '…' out. This is
+    // that rule, applied to the shapes real commit bodies actually take. Both
+    // halves matter — the grammar must accept it, and bash must rebuild the
+    // message byte-for-byte, since accepting a command that reaches git
+    // mangled is worse than refusing it.
+    const encode = (message: string): string => {
+      const expands = /[`$]/.test(message)
+      if (expands && !message.includes("'")) return `git commit -m '${message}'`
+      const escapes = expands ? /([\\"`$])/g : /([\\"])/g
+      return `git commit -m "${message.replace(escapes, '\\$1')}"`
+    }
+
+    for (const message of [
+      "fix: each arm's own spread dwarfs the delta",
+      'fix: guard `renderBody()` against an empty outline',
+      'fix: suppress the "Generated with Claude Code" footer',
+      "fix: `scanDockerfile` — a comment inside a `\\`-continuation keeps it open",
+      'fix: costs $50, and it\'s `date` that reports it',
+      'feat: subject line\n\nA body paragraph; with an operator | in it.\n\n- a bullet\n- another',
+      'docs: close the #123 issue and the (#456) one',
+    ]) {
+      const command = encode(message)
+      const parsed = parseGitCommand(command)
+      expect(parsed.ok ? '' : `${message} → ${parsed.ok ? '' : parsed.reason}`).toBe('')
+      const argv = execFileSync(
+        'bash',
+        ['-c', command.replace(/^git /, 'printf "%s\\0" ')],
+        { encoding: 'utf8' },
+      )
+        .split('\0')
+        .slice(0, -1)
+      expect(argv).toEqual(['commit', '-m', message])
     }
   })
 

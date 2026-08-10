@@ -27,7 +27,6 @@
  */
 
 import {
-  hasMalformedTokens,
   hasShellQuoteSingleQuoteBug,
   tryParseShellCommand,
 } from '../../utils/bash/shellQuote.js'
@@ -145,6 +144,24 @@ function scanShellHazards(command: string): string | null {
  * `git branch --list "-D x"` safe only by the accident of the quote character
  * gluing itself onto the token.
  *
+ * Deliberately NOT guarded by `hasMalformedTokens`. That guard belongs to the
+ * Bash permission path, where an unquoted `{"a":"b;evil"}` can hide a second
+ * command from a permission check, and it detects that by asking whether each
+ * resolved token has balanced quotes, braces, parens and brackets. Every shape
+ * it defends against here — an unquoted operator, an unterminated quote — is
+ * already refused above by `scanShellHazards`, with bash's own semantics
+ * rather than by counting characters. What was left of it was a balance test
+ * running over the *prose* of a commit message: the apostrophe in "each arm's
+ * own", a `renderBody(` mid-sentence, a stray `]`, a quoted phrase. Replaying
+ * this repo's last 100 commit messages through the grammar, that heuristic
+ * alone refused 21 of them — every one of which shell-quote had tokenized
+ * identically to what bash passes to git.
+ *
+ * Nor is it the permission gate: `checkGitBatchPermission` hands every element
+ * to `bashToolHasPermission`, which runs its own copy over its own parse. What
+ * these tokens decide is read-only classification and the interactive refusals,
+ * both of which fail closed.
+ *
  * @returns null when the command cannot be tokenized confidently, in which case
  * the caller refuses and the command falls back to Bash.
  */
@@ -155,7 +172,6 @@ function resolveArgs(command: string): string[] | null {
 
   const parsed = tryParseShellCommand(command)
   if (!parsed.success) return null
-  if (hasMalformedTokens(command, parsed.tokens)) return null
 
   const tokens: string[] = []
   for (const entry of parsed.tokens) {

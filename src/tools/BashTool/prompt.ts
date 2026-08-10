@@ -109,7 +109,7 @@ Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution
 <example>
 ${GIT_TOOL_NAME}({commands: ["git add file-one.ts file-two.ts", "git commit -m \\"Commit subject here.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
 </example>
-- Quote that argument with '…' instead of "…" when the message contains a backtick or a \`$\`, which bash would otherwise expand before git saw it. If it contains BOTH a backtick and an apostrophe, neither quote works — that one message goes through ${BASH_TOOL_NAME} with a \`<<'EOF'\` HEREDOC.
+- Quote that argument with '…' instead of "…" when the message contains a backtick or a \`$\`, which bash would otherwise expand before git saw it — inside single quotes both are literal. Inside "…", put a backslash before every \`"\` and \`\\\` the message itself contains, and before each backtick and \`$\` too when an apostrophe rules single quotes out. Escaping always works, so no commit message needs ${BASH_TOOL_NAME}.
 
 # Creating pull requests
 Use gh for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases — via the ${GIT_TOOL_NAME} tool, which runs gh as well as git. If given a Github URL use gh to get the information needed.
@@ -127,7 +127,7 @@ IMPORTANT: When the user asks you to create a pull request, follow these steps c
 3. Run the following, in this order:
    - Create new branch if needed
    - Push to remote with -u flag if needed
-   - Create PR using gh pr create with the format below, through ${GIT_TOOL_NAME}. A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal.
+   - Create PR using gh pr create with the format below, through ${GIT_TOOL_NAME}. A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal. If the body also holds an apostrophe, use "…" instead and backslash-escape each backtick, \`$\`, \`"\` and \`\\\` in it.
 <example>
 ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullet points>\\n\\n## Test plan\\n[Bulleted markdown checklist of TODOs for testing the pull request...]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
 </example>

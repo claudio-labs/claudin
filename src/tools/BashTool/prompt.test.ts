@@ -137,8 +137,28 @@ describe('getBashGitInstructionsBody', () => {
     const body = getBashGitInstructionsBody()
     expect(body).not.toContain(`git commit -m "$(cat <<'EOF'`)
     expect(body).not.toContain(`needs a shell — send that one through the ${BASH_TOOL_NAME} tool`)
-    // The one case neither quote can express is still named.
-    expect(body).toContain('BOTH a backtick and an apostrophe')
+    // A message holding a backtick AND an apostrophe used to be routed to a
+    // HEREDOC because neither quote character could express it. Backslash
+    // escaping inside "…" can, so the protocol must teach that instead of
+    // naming an exception — otherwise the model reaches for Bash again.
+    expect(body).not.toContain('HEREDOC')
+    expect(body).toContain('backslash')
+  })
+
+  it('names every character that has to be escaped inside "…"', () => {
+    // Dropping one of these from the bullet is silent: the message is accepted
+    // and reaches git mangled. `\` is the one that looks droppable and is not —
+    // a body describing a `\`-continuation ends the escape the model added for
+    // the backtick right after it.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    const bullet = body
+      .split('\n')
+      .find(line => line.includes('put a backslash before'))
+    expect(bullet).toBeDefined()
+    for (const char of ['`"`', '`\\`', 'backtick', '`$`']) {
+      expect(bullet).toContain(char)
+    }
   })
 })
 
