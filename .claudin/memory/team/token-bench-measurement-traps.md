@@ -49,6 +49,22 @@ looks. In the same run three other metrics (turns, end context, wall time)
 separated with no overlap at all — so report per-metric separation, never one
 headline multiple.
 
+**Counting that an outline appeared does not prove WHICH text was served.** The
+wording arm's guard checked `pivots > 0` and tool escapes, which both pass when
+a stale `dist/` puts the *identical* footer in both arms — the run then reads as
+a clean null and nothing in the numbers gives it away. This nearly went
+unnoticed once: a `grep -c` for the new header returned 0 on every chunk and
+looked like proof the dev bundle was stale, when it was ripgrep omitting an
+over-long minified line; a direct `Read` of that line showed the fix present.
+Assert the served text per arm (`servedFullHint`, added 2026-08-09) and abort on
+rep 1, before paying for the reps. Corollary for the tooling: on a minified
+bundle prefer a ranged `Read` over `grep -c`, whose long-line omission is silent.
+
+**A null is only publishable if the arms were verifiably different.** Both the
+2026-08-08 and 2026-08-09 wording runs produced nulls; only the second is worth
+citing, because only it proved the arms served different text. Before recording
+"no effect", show the manipulation landed.
+
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a
 direct check. The errors did not push in a consistent direction, so "it is
