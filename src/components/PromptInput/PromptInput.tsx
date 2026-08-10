@@ -6,6 +6,8 @@ import { Activity, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { useNotifications } from 'src/context/notifications.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/hooks/useIdeAtMentioned.js';
+import { useSessionDiffStat } from 'src/hooks/useSessionDiffStat.js';
+import { useGitDiffStat } from 'src/hooks/useGitDiffStat.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { type AppState, useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
 import type { FooterItem } from 'src/state/AppStateStore.js';
@@ -66,6 +68,7 @@ import { env } from '../../utils/env.js';
 import { errorMessage } from '../../utils/errors.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
 import { getFastModeUnavailableReason, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled, isFastModeSupportedByModel } from '../../utils/fastMode.js';
+import { buildDiffStatSegment } from '../../utils/format-branch.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import type { PromptInputHelpers } from '../../utils/handlePromptSubmit.js';
 import { extractDraggedFilePaths } from '../../utils/dragDropPaths.js';
@@ -2132,6 +2135,10 @@ function PromptInput({
   // client's effort, not the connected agent's.
   const [effortThemeName] = useTheme();
   const effort = briefOwnsGap ? undefined : getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
+  // Diff readout on the prompt's top rule: this session's churn (free), plus
+  // the git totals it can't see (work committed, work done before the session).
+  const sessionDiff = useSessionDiffStat();
+  const gitDiff = useGitDiffStat();
   useBuddyNotification();
   const companionSpeaking = isBuddyEnabled() ?
   useAppState(s => s.companionReaction !== undefined) : false;
@@ -2420,10 +2427,21 @@ function PromptInput({
   // from the `!`. undefined keeps the default dim rule and no label.
   const modeBorderColor: keyof Theme | undefined = mode === 'bash' ? 'bashBorder' : undefined;
   const modeRuleLabel = mode === 'bash' ? '[ bash mode ]' : undefined;
-  // `──[ bash mode ]───…`, clamped to one row: every glyph here is single-width,
-  // so the slice is a width clamp, and a rule that wrapped would advance the
-  // terminal by a row Ink did not measure.
-  const modeRuleLine = modeRuleLabel ? `──${modeRuleLabel}${'─'.repeat(Math.max(0, columns - 2 - stringWidth(modeRuleLabel)))}`.slice(0, Math.max(0, columns)) : undefined;
+  // `──[ bash mode ]───[ +254 -30 ■■■■  HEAD +12 -3  main +1240 -300 ]──`: the
+  // mode label leads the rule, the diff-stat closes it. Widths are summed to
+  // exactly `columns` rather than sliced — the diff-stat carries ANSI, and a
+  // rule that wrapped would advance the terminal by a row Ink did not measure.
+  const ruleLead = modeRuleLabel ? `──${modeRuleLabel}` : '';
+  const ruleLeadWidth = modeRuleLabel ? 2 + stringWidth(modeRuleLabel) : 0;
+  // Built here rather than in a memo above because the budget needs `columns`:
+  // the segment drops its own git groups to fit, and the mode label always
+  // wins the space. The 4 reserves a readable run of rule between the two.
+  const ruleDiffStat = buildDiffStatSegment({
+    session: sessionDiff,
+    uncommitted: gitDiff.uncommitted ? { added: gitDiff.uncommitted.linesAdded, removed: gitDiff.uncommitted.linesRemoved } : null,
+    branch: gitDiff.branch && gitDiff.branchBase ? { added: gitDiff.branch.linesAdded, removed: gitDiff.branch.linesRemoved, base: gitDiff.branchBase } : null
+  }, getTheme(effortThemeName), columns - ruleLeadWidth - 2 - 4) ?? undefined;
+  const ruleFill = Math.max(0, columns - ruleLeadWidth - (ruleDiffStat ? ruleDiffStat.width + 2 : 0));
   if (isExternalEditorActive) {
     return <>{historyPickerEl}<Box flexDirection="row" alignItems="center" justifyContent="center" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%">
         <Text dimColor italic>
@@ -2438,7 +2456,13 @@ function PromptInput({
           <Text dimColor>Waiting for permission…</Text>
         </Box>}
       <PromptInputStashNotice hasStash={stashedPrompt !== undefined} />
-      {modeBorderColor && modeRuleLine ? <Text color={modeBorderColor}>{modeRuleLine}</Text> : <Box width="100%" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} borderDimColor />}
+      {modeRuleLabel || ruleDiffStat ? <Text>
+          <Text color={modeBorderColor} dimColor={!modeBorderColor}>{ruleLead}{'─'.repeat(ruleFill)}</Text>
+          {ruleDiffStat ? <>
+              {ruleDiffStat.text}
+              <Text color={modeBorderColor} dimColor={!modeBorderColor}>{'──'}</Text>
+            </> : null}
+        </Text> : <Box width="100%" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} borderDimColor />}
 
       {swarmBanner ? <>
           <Text color={swarmBanner.bgColor}>

@@ -9,6 +9,7 @@ import {
   findGitRoot,
   getDefaultBranch,
   getGitDir,
+  getHead,
   getIsGit,
   gitExe,
 } from './git.js'
@@ -454,6 +455,107 @@ export function parseShortstat(stdout: string): GitDiffStats | null {
 }
 
 const SINGLE_FILE_DIFF_TIMEOUT_MS = 3000
+
+/** Short leash: this runs on a footer poll, so a slow repo must not pile up. */
+const SHORTSTAT_TIMEOUT_MS = 2000
+
+export type DiffStatSummary = {
+  /**
+   * Working tree + index vs HEAD. Tracked files only — `git diff` cannot see
+   * an untracked file, so a brand-new file counts zero here until it is added.
+   */
+  uncommitted: GitDiffStats | null
+  /**
+   * Merge-base with the default branch → working tree, i.e. everything this
+   * branch carries over its base, committed and not. Null while HEAD sits on
+   * the base branch, where merge-base IS HEAD and this would only repeat
+   * `uncommitted`; the two are mutually exclusive, never both set.
+   */
+  branch: GitDiffStats | null
+  /** Display label for the branch comparison's base (e.g. `main`). */
+  branchBase: string | null
+}
+
+const EMPTY_DIFF_STAT_SUMMARY: DiffStatSummary = {
+  uncommitted: null,
+  branch: null,
+  branchBase: null,
+}
+
+/** Which single `git diff` the readout needs, and what to label it. */
+export type DiffStatScope =
+  | { kind: 'branch'; against: string; base: string }
+  | { kind: 'uncommitted' }
+
+/**
+ * Pick the one comparison worth running, given HEAD and its merge-base with
+ * the default branch. Split out from the plumbing because it is the only real
+ * decision here and it has three collapsing cases: merge-base failed (detached
+ * HEAD, shallow clone, no such base), merge-base IS HEAD (sitting on the base
+ * branch), or a branch that has actually diverged. Only the last is worth
+ * diffing against anything but HEAD — in the others `diff <mergeBase>` and
+ * `diff HEAD` are the same command spelled differently.
+ *
+ * Compares SHAs rather than the resulting line counts: `+8 -1` measured from
+ * two different refs can coincide, and collapsing on that would silently
+ * relabel a real branch total as merely uncommitted.
+ */
+export function chooseDiffStatScope(
+  head: string,
+  mergeBase: string | null,
+  base: string,
+): DiffStatScope {
+  if (!mergeBase || !head || mergeBase === head) return { kind: 'uncommitted' }
+  return { kind: 'branch', against: mergeBase, base }
+}
+
+/**
+ * One `--shortstat` probe for the prompt's diff readout, plus the merge-base
+ * lookup that decides which one to take. `--shortstat` is O(1) in memory — git
+ * totals without materializing the diff — and measures in single milliseconds
+ * warm, which is what makes it affordable on a poll.
+ *
+ * Fails open: every git failure degrades to reporting less, never to throwing
+ * on the render path.
+ */
+export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
+  if (!(await getIsGit())) return EMPTY_DIFF_STAT_SUMMARY
+  const gitRoot = findGitRoot(getCwd())
+  if (!gitRoot) return EMPTY_DIFF_STAT_SUMMARY
+
+  // Same base resolution as the /diff reviewer (getDiffRef), so the footer and
+  // the reviewer never disagree about what "the branch" means.
+  const base = process.env.CLAUDE_CODE_BASE_REF || (await getDefaultBranch())
+  const [head, mergeBase] = await Promise.all([
+    getHead(),
+    runGit(
+      ['--no-optional-locks', 'merge-base', 'HEAD', base],
+      gitRoot,
+      SHORTSTAT_TIMEOUT_MS,
+    ),
+  ])
+  const scope = chooseDiffStatScope(
+    head.trim(),
+    mergeBase.code === 0 ? mergeBase.stdout.trim() : null,
+    base,
+  )
+
+  const diff = await runGit(
+    [
+      '--no-optional-locks',
+      'diff',
+      '--shortstat',
+      scope.kind === 'branch' ? scope.against : 'HEAD',
+    ],
+    gitRoot,
+    SHORTSTAT_TIMEOUT_MS,
+  )
+  const stats = diff.code === 0 ? parseShortstat(diff.stdout) : null
+  if (!stats) return EMPTY_DIFF_STAT_SUMMARY
+  return scope.kind === 'branch'
+    ? { uncommitted: null, branch: stats, branchBase: scope.base }
+    : { uncommitted: stats, branch: null, branchBase: null }
+}
 
 export type ToolUseDiff = {
   filename: string
