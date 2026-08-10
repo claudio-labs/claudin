@@ -97,6 +97,19 @@ body full of backticks needs). Arguments are then resolved through shell-quote,
 so a flag inside a message is an argument rather than a flag —
 `git stash push -m "wip -p x"` used to be refused as patch mode.
 
+The message TEXT is never inspected past that scan. `hasMalformedTokens` — the
+Bash permission path's guard against an unquoted `{"a":"b;evil"}` hiding a
+second command — is deliberately NOT called from `resolveArgs`: everything it
+defends against is already refused by the scan, and what was left of it was its
+balance test running over prose. An apostrophe in "each arm's own", a
+`renderBody(` mid-sentence or a stray `]` counted as unbalanced and sent the
+commit to Bash; over this repo's last 100 commit messages it alone refused 21,
+every one of which shell-quote had tokenized exactly as bash does. With it gone
+and the protocol's quoting rule (`'…'` for a backtick or `$`, otherwise `"…"`
+with `"` and `\` backslash-escaped — and the backtick and `$` too when an
+apostrophe rules `'…'` out), all 100 are accepted and reach git byte-for-byte,
+so no commit or PR body needs a Bash HEREDOC.
+
 What comes back is budgeted. A unified diff at or above 6 KB, or touching 6+
 files, loses its hunks for a stat table naming the command that fetches one
 file's hunks back; below that each file gets 60 lines before the remainder is
