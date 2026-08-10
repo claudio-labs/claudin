@@ -201,6 +201,131 @@ export function buildEffortPill(label: string, bg: string, theme: Theme): string
   return text(` ${label} `) + cap(SEP)
 }
 
+export interface DiffStatSegment {
+  /** ANSI-styled segment, ready to drop into a rule. */
+  text: string
+  /** Rendered cell width of `text` — callers size the rule fill with this. */
+  width: number
+}
+
+export interface DiffCount {
+  added: number
+  removed: number
+}
+
+export interface DiffStatInput {
+  /** This session's write-tool churn. Leads the segment and carries the bar. */
+  session: DiffCount
+  /** Working tree vs HEAD, labelled `HEAD`. */
+  uncommitted?: DiffCount | null
+  /** Branch vs its base, labelled with that base's name (e.g. `main`). */
+  branch?: (DiffCount & { base: string }) | null
+}
+
+/** Cells in the GitHub-style add/remove proportion bar. */
+const DIFF_BAR_CELLS = 4
+// U+25A0 rather than a full block: the block fills its whole cell, so four of
+// them fuse into one chunky rectangle. The small square leaves the cell's own
+// padding around it, which reads as four separate cells.
+const BAR_CELL = '■'
+
+/**
+ * GitHub-style proportion bar: the added share in green, the rest in red, over
+ * a fixed four cells. Deliberately not forcing a minimum cell per side — that
+ * would draw a 157/6 split as a quarter deletions; the `-6` next to the bar is
+ * what carries a small side. Nerd-Font-gated like the Powerline pills, so
+ * plain terminals get the numbers only.
+ */
+function buildDiffBar(
+  added: number,
+  removed: number,
+  addedChalk: ChalkInstance,
+  removedChalk: ChalkInstance,
+): string {
+  if (!hasNerdFontGlyphs()) return ''
+  const total = added + removed
+  if (total <= 0) return ''
+  const green = Math.round((added / total) * DIFF_BAR_CELLS)
+  return addedChalk(BAR_CELL.repeat(green)) + removedChalk(BAR_CELL.repeat(DIFF_BAR_CELLS - green))
+}
+
+/**
+ * Diff-stat segment for the prompt's top rule, up to three groups wide:
+ *
+ *   `[ +254 -30 ■■■■  HEAD +12 -3  main +1240 -300 ]`
+ *
+ * The lead group is the session's own churn (the only one available outside a
+ * git repo); the labelled ones name the ref they are measured against, which
+ * is cheaper to read than an icon and cannot render as tofu.
+ *
+ * Bracketed rather than Powerline-capped because it shares that rule with the
+ * `[ bash mode ]` label and has to read as the same kind of thing.
+ *
+ * `maxWidth` trims from the right — the git groups go before the session one —
+ * and returns null once even the lead group would not fit, so a narrow
+ * terminal keeps a plain border rather than a wrapped rule. Also null when
+ * nothing has been edited yet.
+ */
+export function buildDiffStatSegment(
+  input: DiffStatInput,
+  theme: Theme,
+  maxWidth = Number.POSITIVE_INFINITY,
+): DiffStatSegment | null {
+  const addedChalk = applyColor(chalk, theme.success, 'fg')
+  const removedChalk = applyColor(chalk, theme.error, 'fg')
+  const mutedChalk = applyColor(chalk, theme.inactive, 'fg')
+
+  const counts = (count: DiffCount, ref?: string): { text: string; width: number } | null => {
+    if (count.added <= 0 && count.removed <= 0) return null
+    const parts: string[] = []
+    let width = 0
+    if (ref) {
+      parts.push(mutedChalk(ref))
+      width += ref.length
+    }
+    if (count.added > 0) {
+      const label = `+${count.added}`
+      parts.push(addedChalk(label))
+      width += label.length
+    }
+    if (count.removed > 0) {
+      const label = `-${count.removed}`
+      parts.push(removedChalk(label))
+      width += label.length
+    }
+    return { text: parts.join(' '), width: width + parts.length - 1 }
+  }
+
+  const groups: Array<{ text: string; width: number }> = []
+  const session = counts(input.session)
+  if (session) {
+    const bar = buildDiffBar(input.session.added, input.session.removed, addedChalk, removedChalk)
+    groups.push(
+      bar
+        ? { text: `${session.text} ${bar}`, width: session.width + 1 + DIFF_BAR_CELLS }
+        : session,
+    )
+  }
+  const uncommitted = input.uncommitted ? counts(input.uncommitted, 'HEAD') : null
+  if (uncommitted) groups.push(uncommitted)
+  const branch = input.branch ? counts(input.branch, input.branch.base) : null
+  if (branch) groups.push(branch)
+  if (groups.length === 0) return null
+
+  // `[` + space + groups (double-space joins) + space + `]`
+  const measure = (n: number): number =>
+    groups.slice(0, n).reduce((sum, g) => sum + g.width, 0) + (n - 1) * 2 + 4
+  let shown = groups.length
+  while (shown > 1 && measure(shown) > maxWidth) shown--
+  if (measure(shown) > maxWidth) return null
+
+  const body = groups
+    .slice(0, shown)
+    .map(g => g.text)
+    .join('  ')
+  return { text: `${mutedChalk('[')} ${body} ${mutedChalk(']')}`, width: measure(shown) }
+}
+
 /**
  * Standalone branch Powerline pill: `[◄ ⎇ branch (↑N ↓M) ►]`. Caps on both
  * sides so it can be placed independently of the cwd pill (e.g. on the

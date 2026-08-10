@@ -455,6 +455,98 @@ export function parseShortstat(stdout: string): GitDiffStats | null {
 
 const SINGLE_FILE_DIFF_TIMEOUT_MS = 3000
 
+/** Short leash: this runs on a footer poll, so a slow repo must not pile up. */
+const SHORTSTAT_TIMEOUT_MS = 2000
+
+export type DiffStatSummary = {
+  /**
+   * Working tree + index vs HEAD. Tracked files only — `git diff` cannot see
+   * an untracked file, so a brand-new file counts zero here until it is added.
+   */
+  uncommitted: GitDiffStats | null
+  /**
+   * Merge-base with the default branch → working tree, i.e. everything this
+   * branch carries over its base, committed and not. Null while HEAD sits on
+   * the base branch, where it would only repeat `uncommitted`.
+   */
+  branch: GitDiffStats | null
+  /** Display label for the branch comparison's base (e.g. `main`). */
+  branchBase: string | null
+}
+
+const EMPTY_DIFF_STAT_SUMMARY: DiffStatSummary = {
+  uncommitted: null,
+  branch: null,
+  branchBase: null,
+}
+
+function sameStats(a: GitDiffStats | null, b: GitDiffStats | null): boolean {
+  if (!a || !b) return a === b
+  return a.linesAdded === b.linesAdded && a.linesRemoved === b.linesRemoved
+}
+
+/**
+ * Decide what the two probes are worth showing, given the base they were taken
+ * against. Split out from the git plumbing so the one rule with a real choice
+ * in it is testable: on the base branch, merge-base IS HEAD, so `fromBase`
+ * merely repeats `uncommitted` and is dropped rather than shown twice.
+ */
+export function resolveDiffStatSummary(
+  uncommitted: GitDiffStats | null,
+  fromBase: GitDiffStats | null,
+  base: string | null,
+): DiffStatSummary {
+  if (!base || !fromBase || sameStats(fromBase, uncommitted)) {
+    return { uncommitted, branch: null, branchBase: null }
+  }
+  return { uncommitted, branch: fromBase, branchBase: base }
+}
+
+/**
+ * Two `--shortstat` probes for the prompt's diff readout: what is uncommitted,
+ * and what the whole branch adds over its base. Both are O(1) in memory — git
+ * computes the totals without materializing the diff — and measure in single
+ * milliseconds warm, which is what makes them affordable on a poll.
+ *
+ * Fails open to nulls: a detached HEAD, a shallow clone or a missing base
+ * branch makes merge-base fail, and the branch half is simply not shown.
+ */
+export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
+  if (!(await getIsGit())) return EMPTY_DIFF_STAT_SUMMARY
+  const gitRoot = findGitRoot(getCwd())
+  if (!gitRoot) return EMPTY_DIFF_STAT_SUMMARY
+
+  const head = await runGit(
+    ['--no-optional-locks', 'diff', '--shortstat', 'HEAD'],
+    gitRoot,
+    SHORTSTAT_TIMEOUT_MS,
+  )
+  const uncommitted = head.code === 0 ? parseShortstat(head.stdout) : null
+
+  // Same base resolution as the /diff reviewer (getDiffRef), so the footer and
+  // the reviewer never disagree about what "the branch" means.
+  const base = process.env.CLAUDE_CODE_BASE_REF || (await getDefaultBranch())
+  const mergeBase = await runGit(
+    ['--no-optional-locks', 'merge-base', 'HEAD', base],
+    gitRoot,
+    SHORTSTAT_TIMEOUT_MS,
+  )
+  if (mergeBase.code !== 0 || !mergeBase.stdout.trim()) {
+    return resolveDiffStatSummary(uncommitted, null, null)
+  }
+
+  const fromBase = await runGit(
+    ['--no-optional-locks', 'diff', '--shortstat', mergeBase.stdout.trim()],
+    gitRoot,
+    SHORTSTAT_TIMEOUT_MS,
+  )
+  return resolveDiffStatSummary(
+    uncommitted,
+    fromBase.code === 0 ? parseShortstat(fromBase.stdout) : null,
+    base,
+  )
+}
+
 export type ToolUseDiff = {
   filename: string
   status: 'modified' | 'added'
