@@ -180,6 +180,14 @@ export function gotoBottom(state: EditorState): EditorState {
   return s
 }
 
+/**
+ * Move the cursor `delta` rows (PgUp/PgDn, ctrl+d/ctrl+u). The view follows
+ * the cursor, so this is what scrolls the pane; clamps at both ends.
+ */
+export function movePage(state: EditorState, delta: number): EditorState {
+  return gotoLine(state, state.cursor.row + 1 + delta)
+}
+
 const WORD_CHAR = /[\p{L}\p{N}_]/u
 
 export function wordForward(state: EditorState): EditorState {

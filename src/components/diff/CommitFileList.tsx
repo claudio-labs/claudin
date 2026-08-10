@@ -6,14 +6,24 @@ import { getDiffGlyphs } from './glyphs.js'
 type Props = {
   /** Files changed in the selected commit; `null` while loading. */
   files: CommitFile[] | null
+  /** Viewport height in rows. */
+  maxVisible: number
+  /** First visible row (clamped here defensively). */
+  scrollOffset: number
 }
 
 /**
  * Read-only list of files changed in the selected commit. Presentational — the
  * debounced fetch lives in `useCommitFiles` so the dialog can also derive the
- * commit-wide add/remove totals for the pane border.
+ * commit-wide add/remove totals for the pane border. Windowed to a fixed
+ * height (the caller owns the scroll offset) so a wide commit neither grows
+ * the dialog inline nor gets silently clipped by the split pane's overflow.
  */
-export function CommitFileList({ files }: Props): React.ReactNode {
+export function CommitFileList({
+  files,
+  maxVisible,
+  scrollOffset,
+}: Props): React.ReactNode {
   const glyphs = useMemo(getDiffGlyphs, [])
 
   if (files === null) {
@@ -23,9 +33,16 @@ export function CommitFileList({ files }: Props): React.ReactNode {
     return <Text dimColor>No files</Text>
   }
 
+  const start = Math.max(
+    0,
+    Math.min(scrollOffset, Math.max(0, files.length - maxVisible)),
+  )
+  const end = Math.min(files.length, start + maxVisible)
+
   return (
     <Box flexDirection="column">
-      {files.map(file => {
+      {start > 0 && <Text dimColor>{` ↑ ${start} more`}</Text>}
+      {files.slice(start, end).map(file => {
         const icon = glyphs.fileIcon(file.path)
         return (
           <Box key={file.path} flexDirection="row">
@@ -49,6 +66,9 @@ export function CommitFileList({ files }: Props): React.ReactNode {
           </Box>
         )
       })}
+      {end < files.length && (
+        <Text dimColor>{` ↓ ${files.length - end} more`}</Text>
+      )}
     </Box>
   )
 }

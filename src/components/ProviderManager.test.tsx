@@ -376,24 +376,57 @@ async function waitForFrameOutput(
 }
 
 // A Select renders its focused row as "❯ <n>. <label>" (figures.pointer, which
-// degrades to ">" where unicode is unavailable). Waiting for the pointer to
-// land is what makes a keyboard-driven pick deterministic: confirming with
-// Enter after a fixed sleep can otherwise select the previously focused row on
-// a loaded CI runner, and that picks a valid-looking wrong value instead of
-// failing loudly.
-async function waitForFocusedRow(
-  getOutput: () => string,
-  label: string,
-): Promise<void> {
-  await waitForFrameOutput(getOutput, frame =>
-    frame.split('\n').some(line => {
+// degrades to ">" where unicode is unavailable). Reading the pointer is what
+// makes a keyboard-driven pick deterministic: confirming with Enter after a
+// fixed sleep can otherwise select the previously focused row on a loaded CI
+// runner, and that picks a valid-looking wrong value instead of failing loudly.
+function isRowFocused(getOutput: () => string, label: string): boolean {
+  return stripAnsi(extractLastFrame(getOutput()))
+    .split('\n')
+    .some(line => {
       const trimmed = line.trimStart()
       return (
         line.includes(label) &&
         (trimmed.startsWith('❯') || trimmed.startsWith('>'))
       )
-    }),
-  )
+    })
+}
+
+// Ink registers a Select's key listener in a PASSIVE effect (`useInput`'s
+// `useEffect` in src/ink/hooks/use-input.ts), which React flushes only after
+// the frame that first paints that Select has already been written to stdout.
+// A navigation key written the instant the test sees that frame is therefore
+// dispatched to no listener at all — the app drains stdin, nothing buffers it —
+// and the focus never moves, which is how a single blind `write('j')` timed out
+// on a loaded CI runner. Press one key at a time and re-press while the pointer
+// has not reached the target: a key that WAS delivered re-renders far inside
+// the retry window, so this steps row by row and cannot overshoot.
+async function pressUntilFocused(
+  stdin: { write: (data: string) => void },
+  getOutput: () => string,
+  key: string,
+  label: string,
+  options?: { presses?: number; perPressMs?: number },
+): Promise<void> {
+  const presses = options?.presses ?? 8
+  const perPressMs = options?.perPressMs ?? 500
+
+  for (let press = 0; press < presses; press++) {
+    if (isRowFocused(getOutput, label)) {
+      return
+    }
+
+    stdin.write(key)
+    const deadline = Date.now() + perPressMs
+    while (Date.now() < deadline) {
+      await Bun.sleep(10)
+      if (isRowFocused(getOutput, label)) {
+        return
+      }
+    }
+  }
+
+  throw new Error(`Timed out waiting for the "${label}" row to take focus`)
 }
 
 async function mountProviderManager(
@@ -982,12 +1015,12 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
   )
 
   // Menu: Add(0), Set active Global(1), Set active Project(2), Edit(3), ...
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
+  await pressUntilFocused(
+    mounted.stdin,
+    mounted.getOutput,
+    'j',
+    'Edit provider',
+  )
   mounted.stdin.write('\r')
 
   await waitForFrameOutput(
@@ -1024,8 +1057,12 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
   // rendered, that it is ordered (gpt-5.4 before gpt-5.4-mini), and that the
   // current model was the initial focus — none of which a "just accept the
   // pre-focused value" test would catch.
-  mounted.stdin.write('j')
-  await waitForFocusedRow(mounted.getOutput, 'gpt-5.4-mini')
+  await pressUntilFocused(
+    mounted.stdin,
+    mounted.getOutput,
+    'j',
+    'gpt-5.4-mini',
+  )
   mounted.stdin.write('\r')
   await waitForCondition(() => updateProviderProfile.mock.calls.length > 0)
 
