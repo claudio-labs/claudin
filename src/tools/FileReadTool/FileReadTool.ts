@@ -1399,9 +1399,27 @@ function formatFileLines(file: {
  * — kept as a single declarative line so it survives any downstream text
  * normalisation and shows up identically in transcripts. Exported for tests
  * and for the optional UI badge that mirrors the same wording.
+ *
+ * It advertises `view='full'` because that is the one-round-trip way back to
+ * the body, and measurement said the model never found it: across eight
+ * headless A/B runs (~200 Reads) `view='full'` was used once. What it did
+ * instead was rebuild the file in slices — ~19 repeat Reads per run, walking
+ * contiguous ranges with almost no overlap. The tool description already
+ * mentions `view='full'` (see prompt.ts), but this footer arrives at the
+ * moment of the decision and the local instruction is the one that wins.
+ *
+ * The dropped `view='outline'` suggestion was dead advice: renderOutline's
+ * pivot path and an explicit `view='outline'` both go through the same
+ * renderBody() under the same OUTLINE_MAX_TOKENS cap, so "map further" handed
+ * back a byte-identical table to the one just served.
+ *
+ * Only the pivot is allowed to say this. The over-cap outline is reached from
+ * a catch that also requires `view === undefined`, so there `view='full'`
+ * rethrows the FileTooLargeError instead of returning a body — see the
+ * over-cap branch below and its regression test.
  */
 export const AUTO_OUTLINE_PIVOT_FOOTER =
-  "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>"
+  "\n\n<system-reminder>File is large; returned outline instead of full body. Pass view='full' to load the whole body in one call, or offset/limit/symbol for a specific range.</system-reminder>"
 
 /**
  * Body size at which a vanilla full-file Read pivots to an outline. ~10 KB is

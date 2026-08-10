@@ -176,6 +176,53 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
     expect(data.file.autoPivot).toBeUndefined()
   })
 
+  test("the pivot footer offers view='full', and the header does not", async () => {
+    // view='full' is the one-round-trip way back to the body, and measurement
+    // said the model never found it: across eight headless A/B runs it was
+    // used once in ~200 Reads, while the pivot arm rebuilt each file in ~19
+    // repeat slice Reads. The footer named every option except that one.
+    const p = writeFixture('big-full-hint.ts', BIG_TS)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBe(true)
+
+    // Split header from footer, the same way the lead assertion above has to.
+    // Checking `rendered` alone would still pass if the hint were moved into
+    // renderOutline's shared header — where it is a lie for the over-cap arm.
+    expect(data.file.content).not.toContain("view='full'")
+
+    const rendered = FileReadTool.mapToolResultToToolResultBlockParam(
+      data,
+      'tool_use_id_test',
+    )
+    if (typeof rendered.content !== 'string')
+      throw new Error('expected string content')
+    expect(rendered.content).toContain("view='full'")
+    // The suggestion this replaced was a no-op: the pivot and an explicit
+    // view='outline' both render through renderBody() under the same token
+    // cap, so "use view='outline' to map further" returned the same table.
+    expect(rendered.content).not.toContain("view='outline'")
+  })
+
+  test("the over-cap outline never offers view='full', which would rethrow", async () => {
+    // The over-cap outline comes from a catch arm that also requires
+    // view === undefined, so view='full' does not reach a body there — it
+    // rethrows FileTooLargeError. This is why the hint lives in the pivot's
+    // own footer and not in the header the two arms share.
+    const p = writeFixture('big-overcap-hint.ts', BIG_TS)
+    const ctx = makeContext({ maxSizeBytes: 1024, maxTokens: 25_000 })
+    const { data } = await read(p, {}, ctx)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBeUndefined()
+    expect(data.file.content).not.toContain("view='full'")
+
+    await expect(read(p, { view: 'full' }, ctx)).rejects.toThrow()
+  })
+
   test("explicit view='outline' keeps the neutral header and no footer", async () => {
     // Guards the third makeOutlineData call site. Mutation testing found it
     // unguarded: flipping its reason to 'pivot' passed every other test, and
@@ -247,7 +294,7 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
 
   test('footer text is stable (exact-match)', () => {
     expect(AUTO_OUTLINE_PIVOT_FOOTER).toBe(
-      "\n\n<system-reminder>File is large; returned outline instead of full body. Use view='outline' explicitly to map further, or pass offset/limit/symbol to load a specific range.</system-reminder>",
+      "\n\n<system-reminder>File is large; returned outline instead of full body. Pass view='full' to load the whole body in one call, or offset/limit/symbol for a specific range.</system-reminder>",
     )
   })
 

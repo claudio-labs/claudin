@@ -40,6 +40,25 @@ now goes straight to RunTests, and forcing Bash yields the refusal, then runs
 on the re-send. **Any behavior change of this kind should be verified that way**
 — a source-text wiring test cannot tell you the model actually complied.
 
+Third instance, and the cleanest of the three (2026-08-09, PR #69): the pivot
+footer never named `view='full'`, so the obvious hypothesis was that the model
+sliced files because it did not know the escape existed at that point. Adding
+`Pass view='full' to load the whole body in one call` to the footer moved
+adoption from 1/4 (baseline, no hint) to **1/6**. Thirty pivots served the
+explicit instruction; the model used it once. Cost, cache and context all landed
+inside the noise floor. Naming an option does not create adoption — that is now
+measured three times, and "the model doesn't know X exists" should be treated as
+a hypothesis to falsify rather than a diagnosis.
+
+What the run did explain is *why*, and it reframes the target. The model uses
+the outline correctly at first (symbol reads, turns 2-3) and only then degrades
+into `offset/limit` slicing (turns 4-7, six to nine reads of one file). The
+footer is seen **only at turn 1** — slice reads return a body and carry no
+footer — so the instruction is three to six turns stale by the time the decision
+it targets happens. Placement, not vocabulary. Untested: the A/B varied presence,
+not timing. See [[token-bench-measurement-traps]] for the guard that made this
+negative result trustworthy.
+
 Caveat worth carrying: when you split a refusal by cause, verify each branch's
 **remedy** against the code rather than assuming a distinct cause implies a
 distinct fix. The first version of this split told the clip-stuck branch that
