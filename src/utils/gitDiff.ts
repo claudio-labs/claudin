@@ -9,6 +9,7 @@ import {
   findGitRoot,
   getDefaultBranch,
   getGitDir,
+  getHead,
   getIsGit,
   gitExe,
 } from './git.js'
@@ -467,7 +468,8 @@ export type DiffStatSummary = {
   /**
    * Merge-base with the default branch → working tree, i.e. everything this
    * branch carries over its base, committed and not. Null while HEAD sits on
-   * the base branch, where it would only repeat `uncommitted`.
+   * the base branch, where merge-base IS HEAD and this would only repeat
+   * `uncommitted`; the two are mutually exclusive, never both set.
    */
   branch: GitDiffStats | null
   /** Display label for the branch comparison's base (e.g. `main`). */
@@ -480,71 +482,79 @@ const EMPTY_DIFF_STAT_SUMMARY: DiffStatSummary = {
   branchBase: null,
 }
 
-function sameStats(a: GitDiffStats | null, b: GitDiffStats | null): boolean {
-  if (!a || !b) return a === b
-  return a.linesAdded === b.linesAdded && a.linesRemoved === b.linesRemoved
-}
+/** Which single `git diff` the readout needs, and what to label it. */
+export type DiffStatScope =
+  | { kind: 'branch'; against: string; base: string }
+  | { kind: 'uncommitted' }
 
 /**
- * Decide what the two probes are worth showing, given the base they were taken
- * against. Split out from the git plumbing so the one rule with a real choice
- * in it is testable: on the base branch, merge-base IS HEAD, so `fromBase`
- * merely repeats `uncommitted` and is dropped rather than shown twice.
- */
-export function resolveDiffStatSummary(
-  uncommitted: GitDiffStats | null,
-  fromBase: GitDiffStats | null,
-  base: string | null,
-): DiffStatSummary {
-  if (!base || !fromBase || sameStats(fromBase, uncommitted)) {
-    return { uncommitted, branch: null, branchBase: null }
-  }
-  return { uncommitted, branch: fromBase, branchBase: base }
-}
-
-/**
- * Two `--shortstat` probes for the prompt's diff readout: what is uncommitted,
- * and what the whole branch adds over its base. Both are O(1) in memory — git
- * computes the totals without materializing the diff — and measure in single
- * milliseconds warm, which is what makes them affordable on a poll.
+ * Pick the one comparison worth running, given HEAD and its merge-base with
+ * the default branch. Split out from the plumbing because it is the only real
+ * decision here and it has three collapsing cases: merge-base failed (detached
+ * HEAD, shallow clone, no such base), merge-base IS HEAD (sitting on the base
+ * branch), or a branch that has actually diverged. Only the last is worth
+ * diffing against anything but HEAD — in the others `diff <mergeBase>` and
+ * `diff HEAD` are the same command spelled differently.
  *
- * Fails open to nulls: a detached HEAD, a shallow clone or a missing base
- * branch makes merge-base fail, and the branch half is simply not shown.
+ * Compares SHAs rather than the resulting line counts: `+8 -1` measured from
+ * two different refs can coincide, and collapsing on that would silently
+ * relabel a real branch total as merely uncommitted.
+ */
+export function chooseDiffStatScope(
+  head: string,
+  mergeBase: string | null,
+  base: string,
+): DiffStatScope {
+  if (!mergeBase || !head || mergeBase === head) return { kind: 'uncommitted' }
+  return { kind: 'branch', against: mergeBase, base }
+}
+
+/**
+ * One `--shortstat` probe for the prompt's diff readout, plus the merge-base
+ * lookup that decides which one to take. `--shortstat` is O(1) in memory — git
+ * totals without materializing the diff — and measures in single milliseconds
+ * warm, which is what makes it affordable on a poll.
+ *
+ * Fails open: every git failure degrades to reporting less, never to throwing
+ * on the render path.
  */
 export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
   if (!(await getIsGit())) return EMPTY_DIFF_STAT_SUMMARY
   const gitRoot = findGitRoot(getCwd())
   if (!gitRoot) return EMPTY_DIFF_STAT_SUMMARY
 
-  const head = await runGit(
-    ['--no-optional-locks', 'diff', '--shortstat', 'HEAD'],
-    gitRoot,
-    SHORTSTAT_TIMEOUT_MS,
-  )
-  const uncommitted = head.code === 0 ? parseShortstat(head.stdout) : null
-
   // Same base resolution as the /diff reviewer (getDiffRef), so the footer and
   // the reviewer never disagree about what "the branch" means.
   const base = process.env.CLAUDE_CODE_BASE_REF || (await getDefaultBranch())
-  const mergeBase = await runGit(
-    ['--no-optional-locks', 'merge-base', 'HEAD', base],
-    gitRoot,
-    SHORTSTAT_TIMEOUT_MS,
-  )
-  if (mergeBase.code !== 0 || !mergeBase.stdout.trim()) {
-    return resolveDiffStatSummary(uncommitted, null, null)
-  }
-
-  const fromBase = await runGit(
-    ['--no-optional-locks', 'diff', '--shortstat', mergeBase.stdout.trim()],
-    gitRoot,
-    SHORTSTAT_TIMEOUT_MS,
-  )
-  return resolveDiffStatSummary(
-    uncommitted,
-    fromBase.code === 0 ? parseShortstat(fromBase.stdout) : null,
+  const [head, mergeBase] = await Promise.all([
+    getHead(),
+    runGit(
+      ['--no-optional-locks', 'merge-base', 'HEAD', base],
+      gitRoot,
+      SHORTSTAT_TIMEOUT_MS,
+    ),
+  ])
+  const scope = chooseDiffStatScope(
+    head.trim(),
+    mergeBase.code === 0 ? mergeBase.stdout.trim() : null,
     base,
   )
+
+  const diff = await runGit(
+    [
+      '--no-optional-locks',
+      'diff',
+      '--shortstat',
+      scope.kind === 'branch' ? scope.against : 'HEAD',
+    ],
+    gitRoot,
+    SHORTSTAT_TIMEOUT_MS,
+  )
+  const stats = diff.code === 0 ? parseShortstat(diff.stdout) : null
+  if (!stats) return EMPTY_DIFF_STAT_SUMMARY
+  return scope.kind === 'branch'
+    ? { uncommitted: null, branch: stats, branchBase: scope.base }
+    : { uncommitted: stats, branch: null, branchBase: null }
 }
 
 export type ToolUseDiff = {

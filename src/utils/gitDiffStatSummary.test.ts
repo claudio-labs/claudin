@@ -1,52 +1,38 @@
 import { describe, expect, test } from 'bun:test'
-import { type GitDiffStats, resolveDiffStatSummary } from './gitDiff.js'
+import { chooseDiffStatScope } from './gitDiff.js'
 
-const stats = (linesAdded: number, linesRemoved: number, filesCount = 1): GitDiffStats => ({
-  filesCount,
-  linesAdded,
-  linesRemoved,
-})
+const HEAD = '1111111111111111111111111111111111111111'
+const BASE = '2222222222222222222222222222222222222222'
 
-describe('resolveDiffStatSummary', () => {
-  test('keeps the branch group when the branch carries commits of its own', () => {
-    const summary = resolveDiffStatSummary(stats(12, 3), stats(1240, 300), 'main')
-    expect(summary.branch).toEqual(stats(1240, 300))
-    expect(summary.branchBase).toBe('main')
+describe('chooseDiffStatScope', () => {
+  test('diffs against the merge-base when the branch has diverged', () => {
+    expect(chooseDiffStatScope(HEAD, BASE, 'main')).toEqual({
+      kind: 'branch',
+      against: BASE,
+      base: 'main',
+    })
   })
 
-  test('drops the branch group on the base branch, where it repeats uncommitted', () => {
-    // merge-base(HEAD, main) === HEAD there, so the second probe measures the
-    // same working tree and would render the identical numbers twice.
-    const summary = resolveDiffStatSummary(stats(97, 5, 2), stats(97, 5, 2), 'main')
-    expect(summary.uncommitted).toEqual(stats(97, 5, 2))
-    expect(summary.branch).toBeNull()
-    expect(summary.branchBase).toBeNull()
+  test('falls back to HEAD when merge-base IS HEAD', () => {
+    // Sitting on the base branch: `diff <mergeBase>` and `diff HEAD` are then
+    // the same command, so the second probe buys nothing and the readout would
+    // claim a branch total that is really just the working tree.
+    expect(chooseDiffStatScope(HEAD, HEAD, 'main')).toEqual({ kind: 'uncommitted' })
   })
 
-  test('drops the branch group on a clean base branch', () => {
-    // Both probes come back empty, which parseShortstat reports as null.
-    const summary = resolveDiffStatSummary(null, null, 'main')
-    expect(summary).toEqual({ uncommitted: null, branch: null, branchBase: null })
+  test('falls back to HEAD when merge-base could not be resolved', () => {
+    // Detached HEAD, shallow clone, or no such base branch.
+    expect(chooseDiffStatScope(HEAD, null, 'main')).toEqual({ kind: 'uncommitted' })
   })
 
-  test('keeps the branch group when the tree is clean but the branch is ahead', () => {
-    const summary = resolveDiffStatSummary(null, stats(40, 2), 'main')
-    expect(summary.branch).toEqual(stats(40, 2))
-    expect(summary.branchBase).toBe('main')
+  test('falls back to HEAD when the head sha is unavailable', () => {
+    // An unborn branch reports no HEAD; without it the equality test below
+    // cannot run, and guessing `branch` would mislabel the numbers.
+    expect(chooseDiffStatScope('', BASE, 'main')).toEqual({ kind: 'uncommitted' })
   })
 
-  test('drops the branch group when merge-base could not be resolved', () => {
-    // Detached HEAD / shallow clone: the caller passes a null base and the
-    // uncommitted half must still survive.
-    const summary = resolveDiffStatSummary(stats(12, 3), null, null)
-    expect(summary.uncommitted).toEqual(stats(12, 3))
-    expect(summary.branch).toBeNull()
-  })
-
-  test('compares lines, not file counts', () => {
-    // Same lines reached through a different file count is still the same work
-    // seen twice — git reports `filesCount` differently for a rename.
-    const summary = resolveDiffStatSummary(stats(10, 4, 1), stats(10, 4, 2), 'main')
-    expect(summary.branch).toBeNull()
+  test('carries the base name through for the label', () => {
+    const scope = chooseDiffStatScope(HEAD, BASE, 'origin/release-2')
+    expect(scope).toEqual({ kind: 'branch', against: BASE, base: 'origin/release-2' })
   })
 })

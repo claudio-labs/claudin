@@ -214,7 +214,7 @@ export interface DiffCount {
 }
 
 export interface DiffStatInput {
-  /** This session's write-tool churn. Leads the segment and carries the bar. */
+  /** This session's write-tool churn. Last resort — used outside a git repo. */
   session: DiffCount
   /** Working tree vs HEAD, labelled `HEAD`. */
   uncommitted?: DiffCount | null
@@ -250,21 +250,27 @@ function buildDiffBar(
 }
 
 /**
- * Diff-stat segment for the prompt's top rule, up to three groups wide:
+ * Diff-stat segment for the prompt's top rule:
  *
- *   `[ +254 -30 ■■■■  HEAD +12 -3  main +1240 -300 ]`
+ *   `[ main +552 -5 ■■■■ ]`
  *
- * The lead group is the session's own churn (the only one available outside a
- * git repo); the labelled ones name the ref they are measured against, which
- * is cheaper to read than an icon and cannot render as tofu.
+ * One number, not three. The three available scopes nest — the session's churn
+ * is part of what is uncommitted, which is part of what the branch carries —
+ * so showing them side by side spent three times the width restating the same
+ * work at different zoom levels. The widest scope that applies wins, and the
+ * bar closes the segment describing the numbers actually shown.
+ *
+ * Priority: branch over its base, else working tree vs HEAD, else the session.
+ * The label names the ref the numbers are measured against, which is cheaper
+ * to read than an icon and cannot render as tofu; the session has no label
+ * because there is no ref to name.
  *
  * Bracketed rather than Powerline-capped because it shares that rule with the
  * `[ bash mode ]` label and has to read as the same kind of thing.
  *
- * `maxWidth` trims from the right — the git groups go before the session one —
- * and returns null once even the lead group would not fit, so a narrow
- * terminal keeps a plain border rather than a wrapped rule. Also null when
- * nothing has been edited yet.
+ * Returns null when the segment would not fit `maxWidth`, so a narrow terminal
+ * keeps a plain border rather than a wrapped rule, and when the chosen scope
+ * has nothing to report.
  */
 export function buildDiffStatSegment(
   input: DiffStatInput,
@@ -275,55 +281,44 @@ export function buildDiffStatSegment(
   const removedChalk = applyColor(chalk, theme.error, 'fg')
   const mutedChalk = applyColor(chalk, theme.inactive, 'fg')
 
-  const counts = (count: DiffCount, ref?: string): { text: string; width: number } | null => {
-    if (count.added <= 0 && count.removed <= 0) return null
-    const parts: string[] = []
-    let width = 0
-    if (ref) {
-      parts.push(mutedChalk(ref))
-      width += ref.length
-    }
-    if (count.added > 0) {
-      const label = `+${count.added}`
-      parts.push(addedChalk(label))
-      width += label.length
-    }
-    if (count.removed > 0) {
-      const label = `-${count.removed}`
-      parts.push(removedChalk(label))
-      width += label.length
-    }
-    return { text: parts.join(' '), width: width + parts.length - 1 }
+  const branch = input.branch
+  const chosen: { count: DiffCount; ref?: string } = branch
+    ? { count: branch, ref: branch.base }
+    : input.uncommitted
+      ? { count: input.uncommitted, ref: 'HEAD' }
+      : { count: input.session }
+  const { count, ref } = chosen
+  // No fall-through to a narrower scope: a clean tree on the base branch is
+  // nothing to report, and reviving the session counter there would show
+  // numbers git has already absorbed into a commit.
+  if (count.added <= 0 && count.removed <= 0) return null
+
+  const parts: string[] = []
+  let width = 0
+  if (ref) {
+    parts.push(mutedChalk(ref))
+    width += ref.length
+  }
+  if (count.added > 0) {
+    const label = `+${count.added}`
+    parts.push(addedChalk(label))
+    width += label.length
+  }
+  if (count.removed > 0) {
+    const label = `-${count.removed}`
+    parts.push(removedChalk(label))
+    width += label.length
+  }
+  const bar = buildDiffBar(count.added, count.removed, addedChalk, removedChalk)
+  if (bar) {
+    parts.push(bar)
+    width += DIFF_BAR_CELLS
   }
 
-  const groups: Array<{ text: string; width: number }> = []
-  const session = counts(input.session)
-  if (session) {
-    const bar = buildDiffBar(input.session.added, input.session.removed, addedChalk, removedChalk)
-    groups.push(
-      bar
-        ? { text: `${session.text} ${bar}`, width: session.width + 1 + DIFF_BAR_CELLS }
-        : session,
-    )
-  }
-  const uncommitted = input.uncommitted ? counts(input.uncommitted, 'HEAD') : null
-  if (uncommitted) groups.push(uncommitted)
-  const branch = input.branch ? counts(input.branch, input.branch.base) : null
-  if (branch) groups.push(branch)
-  if (groups.length === 0) return null
-
-  // `[` + space + groups (double-space joins) + space + `]`
-  const measure = (n: number): number =>
-    groups.slice(0, n).reduce((sum, g) => sum + g.width, 0) + (n - 1) * 2 + 4
-  let shown = groups.length
-  while (shown > 1 && measure(shown) > maxWidth) shown--
-  if (measure(shown) > maxWidth) return null
-
-  const body = groups
-    .slice(0, shown)
-    .map(g => g.text)
-    .join('  ')
-  return { text: `${mutedChalk('[')} ${body} ${mutedChalk(']')}`, width: measure(shown) }
+  // `[` + space + parts (single-space joins) + space + `]`
+  const total = width + parts.length - 1 + 4
+  if (total > maxWidth) return null
+  return { text: `${mutedChalk('[')} ${parts.join(' ')} ${mutedChalk(']')}`, width: total }
 }
 
 /**
