@@ -331,12 +331,19 @@ type ArmResult = {
   pivots: number
   repeatReads: number
   /**
-   * PRE-REGISTERED primary metric for --compare=wording. The old header claims
-   * the body is out of reach; the new one does not. Neither footer advertises
-   * view='full', so a difference here comes from the header alone.
+   * PRE-REGISTERED primary metric for --compare=wording. Measured at 0 across
+   * eight runs while the footer named every option except this one; the dev
+   * arm's footer now advertises it and the released arm's still does not.
    */
   viewFullCalls: number
   askedForBody: boolean
+  /**
+   * Whether the outline the model actually received advertised `view='full'`.
+   * The pivot count says an outline was served, not WHICH text — a stale build
+   * would put the same footer in both arms and the run would read as a clean
+   * null. This is the arm's identity, checked before spending the reps.
+   */
+  servedFullHint: boolean
   /** Ordered reads, grouped into the assistant turn that emitted them. */
   readSeq: { turn: number; file: string; kind: string }[]
   escapeToolCalls: number
@@ -468,6 +475,7 @@ function runArm(
     repeatReads: repeats,
     viewFullCalls: viewFull.length,
     askedForBody: viewFull.length > 0,
+    servedFullHint: pivots.some(c => c.result.includes("view='full'")),
     readSeq,
     escapeToolCalls: escapes,
     toolMix,
@@ -593,6 +601,20 @@ function main(): void {
         if (r.escapeToolCalls > 0) {
           throw new Error(`${r.label}: ${r.escapeToolCalls} call(s) outside "${ALLOWED_TOOLS}" — toolset gate not honored`)
         }
+      }
+      // Identity check on the served text, not just on "an outline appeared".
+      // A stale dist/ or a release binary newer than assumed would put the same
+      // footer in both arms; the run would then read as a clean null and there
+      // is nothing in the numbers that would give it away afterwards.
+      if (A[0] && A[0].servedFullHint) {
+        throw new Error(
+          `${A[0].label}: served a footer advertising view='full' — the release arm is not the pre-change text`,
+        )
+      }
+      if (B[0] && !B[0].servedFullHint) {
+        throw new Error(
+          `${B[0].label}: footer never advertised view='full' — run \`bun run build\` first, dist/ is stale`,
+        )
       }
     }
   }
