@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.1.11 — 2026-08-11
+
+### ✨ Features
+
+- feat(git-tool): run gh watch commands with a live elapsed clock (#74) (b8b75c1)
+- feat(prompt): show session and git diff totals on the input top rule (#71) (457b8c2)
+- feat(bash): fold a trailing head/sed into the Grep the redirect suggests (#66) (d7308e6)
+
+### 🐛 Bug Fixes
+
+- fix(runtests): stop refusing the raw-output escalation after a RunTests run (#75) (c1b349c)
+- fix(tui): make /diff and /explorer scrollable outside fullscreen (#72) (121c02e)
+- fix(git-tool): stop refusing a commit message for the punctuation in its prose (#70) (aae42b2)
+- fix(read): point the auto-outline pivot footer at view='full' instead of a no-op (#69) (9b2ee92)
+- fix(read): stop the auto-outline pivot from claiming a read cap it never hit (#68) (71893cd)
+
+### 📦 Dependencies
+
+- chore(deps): bump the production-dependencies group with 3 updates (#73) (6e36a7c)
+
+### 📚 Documentation
+
+- docs(memory): record the 2026-08-10 dependabot audit (0d38198)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.10 — 2026-08-08
 
 ### ✨ Features
