@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { execFileSync } from 'node:child_process'
 import {
   acceptsGitCommand,
+  ghCommandPair,
   isReadOnlyGitBatch,
   isReadOnlyGitCommand,
+  isWatchGitCommand,
   parseGitCommand,
 } from './grammar.js'
 
@@ -466,6 +468,40 @@ describe('read-only classification (fail-closed)', () => {
     expect(isReadOnlyGitBatch(['git status', 'git diff'])).toBe(true)
     expect(isReadOnlyGitBatch(['git status', 'git commit -m x'])).toBe(false)
     expect(isReadOnlyGitBatch([])).toBe(false)
+  })
+})
+
+describe('watch classification', () => {
+  test('the two `gh` forms that poll, and nothing else', () => {
+    expect(isWatchGitCommand('gh run watch 31442753617')).toBe(true)
+    expect(isWatchGitCommand('gh run watch --compact')).toBe(true)
+    expect(isWatchGitCommand('gh pr checks --watch')).toBe(true)
+    expect(isWatchGitCommand('gh pr checks 72 --watch --fail-fast')).toBe(true)
+
+    // Same commands without the flag, and the neighbours that never poll.
+    expect(isWatchGitCommand('gh pr checks 72')).toBe(false)
+    expect(isWatchGitCommand('gh run view 31442753617')).toBe(false)
+    expect(isWatchGitCommand('gh run rerun 31442753617')).toBe(false)
+    expect(isWatchGitCommand('git status')).toBe(false)
+    // Fail-closed: a refused command is not a watch either.
+    expect(isWatchGitCommand('gh pr checks --watch | tail -5')).toBe(false)
+  })
+
+  test('`gh run watch` is read-only, so plan mode admits it', () => {
+    // It only polls the API. Before this it classified as a mutation and was
+    // barred from plan mode while `gh pr checks --watch` — the same operation
+    // through a different command — was allowed.
+    expect(isReadOnlyGitCommand('gh run watch 31442753617')).toBe(true)
+    expect(isReadOnlyGitCommand('gh pr checks 72 --watch')).toBe(true)
+  })
+})
+
+describe('ghCommandPair', () => {
+  test('resolves the family and action, or declines', () => {
+    expect(ghCommandPair('gh pr checks 72 --watch')).toBe('pr checks')
+    expect(ghCommandPair('gh run watch 1')).toBe('run watch')
+    expect(ghCommandPair('git status')).toBeNull()
+    expect(ghCommandPair('gh status')).toBeNull()
   })
 })
 

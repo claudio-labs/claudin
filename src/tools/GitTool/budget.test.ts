@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
+import {
+  PR_CHECKS_POLL,
+  PR_CHECKS_WATCH,
+  RUN_WATCH,
+} from './__fixtures__/watchPolls.js'
 import { NO_WIN_RATIO, summarizeGitOutput } from './budget.js'
 import {
   DIFF_PIVOT_CHARS,
@@ -303,5 +308,41 @@ describe('git status rendering', () => {
   test('declines long-form status output', () => {
     const raw = 'On branch main\nnothing to commit, working tree clean'
     expect(renderStatusShort(raw)).toBeNull()
+  })
+})
+
+describe('watch routing', () => {
+  test('a stack of `gh pr checks --watch` refreshes collapses to the last', () => {
+    const collapsed = summarizeGitOutput('gh pr checks 72 --watch', PR_CHECKS_WATCH)
+    expect(collapsed).not.toBe(PR_CHECKS_WATCH)
+    expect(collapsed).toContain('earlier refreshes omitted')
+    expect(collapsed).toContain(PR_CHECKS_POLL)
+    expect(collapsed.length).toBeLessThanOrEqual(PR_CHECKS_WATCH.length * NO_WIN_RATIO)
+  })
+
+  test('`gh run watch` gets the same treatment', () => {
+    expect(summarizeGitOutput('gh run watch 31442753617', RUN_WATCH)).toContain(
+      'earlier refreshes omitted',
+    )
+  })
+
+  test('a single `gh pr checks` pass is left alone', () => {
+    // No `--watch` needed to route here, and nothing to collapse when there is
+    // only one refresh.
+    expect(summarizeGitOutput('gh pr checks 72', PR_CHECKS_POLL)).toBe(PR_CHECKS_POLL)
+  })
+
+  test('a `gh run view` log is NOT routed to the watch collapser', () => {
+    // The collapser cannot tell a log from a one-check watch by shape — a log
+    // has the same job name on every line — so the routing is the guard. If
+    // this ever returns one line, `rendererFor` has been widened wrongly.
+    const log = Array.from(
+      { length: 5 },
+      (_, i) =>
+        `smoke-and-tests\tRun tests\t2026-07-24T21:19:5${i}.2638189Z line number ${i}`,
+    ).join('\n')
+    const rendered = summarizeGitOutput('gh run view 1 --log', log)
+    expect(rendered).toContain('line number 0')
+    expect(rendered).toContain('line number 4')
   })
 })

@@ -495,6 +495,10 @@ const READ_ONLY_GH_COMMANDS: ReadonlySet<string> = new Set([
   'repo view',
   'run list',
   'run view',
+  // Polls the runs API until the run finishes and prints what it sees. It
+  // writes nothing, so it belongs here despite taking minutes; without this
+  // line it classified as a mutation and was barred from plan mode.
+  'run watch',
   'secret list',
   'variable list',
   'workflow list',
@@ -529,6 +533,23 @@ function classifyGh(args: readonly string[]): boolean {
   const sub = args[1]
   if (sub === undefined) return false
   return READ_ONLY_GH_COMMANDS.has(`${family} ${sub}`)
+}
+
+/**
+ * The two `gh` forms that poll until CI finishes: `gh run watch` and
+ * `gh pr checks --watch`. There are no others — no `git` command watches, and
+ * `gh run rerun`/`gh workflow run` return immediately.
+ *
+ * They are singled out because they invert two of this tool's defaults: the
+ * 2-minute ceiling would kill nearly every one of them, and the answer is the
+ * LAST thing they print rather than the first.
+ */
+function classifyWatch(binary: GitBinary, args: readonly string[]): boolean {
+  if (binary !== 'gh') return false
+  const family = args[0]
+  if (family === 'run') return args[1] === 'watch'
+  if (family === 'pr' && args[1] === 'checks') return hasAnyFlag(args, ['--watch'])
+  return false
 }
 
 /**
@@ -635,6 +656,8 @@ export type GitCommandAccepted = {
   /** Tokens after the binary, with quoting resolved: `-m "a b"` is one token. */
   args: readonly string[]
   readOnly: boolean
+  /** `gh run watch` / `gh pr checks --watch` — polls until CI finishes. */
+  watch: boolean
 }
 
 export type ParsedGitCommand = GitCommandAccepted | GitCommandRefusal
@@ -693,6 +716,7 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
     binary: typedBinary,
     args,
     readOnly: classifyReadOnly(typedBinary, args),
+    watch: classifyWatch(typedBinary, args),
   }
 }
 
@@ -704,6 +728,29 @@ export function acceptsGitCommand(raw: string): boolean {
 export function isReadOnlyGitCommand(raw: string): boolean {
   const parsed = parseGitCommand(raw)
   return parsed.ok && parsed.readOnly
+}
+
+/** Fail-closed the other way: an unparsed command is not treated as a watch. */
+export function isWatchGitCommand(raw: string): boolean {
+  const parsed = parseGitCommand(raw)
+  return parsed.ok && parsed.watch
+}
+
+/**
+ * The `<family> <action>` pair a `gh` command resolves to — `pr checks`,
+ * `run view` — or `null` for anything else, `git` included.
+ *
+ * Exported for the same reason as `gitSubcommandOf`: a caller that needs to
+ * recognise one `gh` shape should ask the tokenizer that already resolved the
+ * quoting, not re-split the string and hope.
+ */
+export function ghCommandPair(raw: string): string | null {
+  const parsed = parseGitCommand(raw)
+  if (!parsed.ok || parsed.binary !== 'gh') return null
+  const family = parsed.args[0]
+  const action = parsed.args[1]
+  if (family === undefined || action === undefined) return null
+  return `${family} ${action}`
 }
 
 /**

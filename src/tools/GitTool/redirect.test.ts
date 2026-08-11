@@ -46,6 +46,25 @@ describe('isRedirectableGitCommand', () => {
     }
   })
 
+  it('redirects the watch shapes, which the tool runs on different terms', () => {
+    // Not a renderer this time: a 10-minute ceiling instead of Bash's 2, a live
+    // clock, and a result collapsed to the final refresh.
+    for (const cmd of [
+      'gh run watch 31442753617',
+      'gh run watch 31442753617 --compact',
+      'gh pr checks 72 --watch',
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  it('leaves a watch with an explicit interval alone', () => {
+    // `-i` is in the opt-out set because it means `--interactive` everywhere
+    // else, and a missed redirect costs nothing. Pinned so the day someone
+    // narrows that flag, this reads as a deliberate consequence.
+    expect(isRedirectableGitCommand('gh run watch 1 -i 5')).toBe(false)
+  })
+
   it('leaves the gh reads the tool hands back unchanged in Bash', () => {
     // A refusal costs a round-trip. Spending one on output the tool does not
     // reduce buys nothing — batching alone did not survive the A/B.

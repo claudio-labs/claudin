@@ -1,16 +1,23 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from '../../Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { isReadOnlyGitBatch, parseGitCommand } from './grammar.js'
 import { checkGitBatchPermission } from './permissions.js'
 import { DESCRIPTION, GIT_TOOL_NAME } from './prompt.js'
-import { batchFailed, formatGitBatchResult, runGitBatch } from './run.js'
-import type { GitBatchResult } from './types.js'
+import {
+  batchFailed,
+  DEFAULT_TIMEOUT_MS,
+  formatGitBatchResult,
+  runGitBatch,
+  WATCH_DEFAULT_TIMEOUT_MS,
+} from './run.js'
+import type { GitBatchResult, GitProgress } from './types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
+  renderToolUseProgressMessage,
   userFacingName,
 } from './UI.js'
 
@@ -48,8 +55,16 @@ import {
  *  - `errors.ts`   — one-line diagnosis prepended to a failure's raw text.
  */
 
-const DEFAULT_TIMEOUT_MS = 120_000
-const MAX_TIMEOUT_MS = 600_000
+/**
+ * Ceiling for an explicit `timeout`, matching the Build tool's. It is 30
+ * minutes rather than 10 because of the watch commands: a CI run that takes
+ * longer than the 10-minute default is ordinary, and the alternative is the
+ * model re-running the watch three times to cover it.
+ */
+const MAX_TIMEOUT_MS = 1_800_000
+
+/** Each progress message needs its own id; the renderer keeps only the last. */
+let progressCounter = 0
 
 /**
  * Batch cap, mirroring Bash's `MAX_SUBCOMMANDS_FOR_SECURITY_CHECK`. Every
@@ -73,7 +88,9 @@ const inputSchema = lazySchema(() =>
       .positive()
       .max(MAX_TIMEOUT_MS)
       .optional()
-      .describe(`Timeout in ms per command (default ${DEFAULT_TIMEOUT_MS}).`),
+      .describe(
+        `Timeout in ms per command (default ${DEFAULT_TIMEOUT_MS}, or ${WATCH_DEFAULT_TIMEOUT_MS} for a watch).`,
+      ),
     full: z
       .boolean()
       .optional()
@@ -93,6 +110,13 @@ const outputSchema = lazySchema(() =>
         exitCode: z.number(),
         output: z.string(),
         interrupted: z.boolean(),
+        stall: z
+          .object({
+            reason: z.enum(['ceiling', 'idle', 'pending']),
+            ranMs: z.number(),
+            silentMs: z.number(),
+          })
+          .optional(),
       }),
     ),
     notRun: z.array(z.string()),
@@ -152,16 +176,31 @@ export const GitTool = buildTool({
   },
   renderToolUseMessage,
   renderToolUseErrorMessage,
+  renderToolUseProgressMessage,
   renderToolResultMessage,
-  async call(input: Input, context) {
+  async call(
+    input: Input,
+    context,
+    _canUseTool,
+    _parentMessage,
+    onProgress?: ToolCallProgress<GitProgress>,
+  ) {
     const result = await runGitBatch({
       commands: input.commands,
       abortSignal: context.abortController.signal,
-      timeoutMs: input.timeout ?? DEFAULT_TIMEOUT_MS,
+      // Left undefined on purpose: the default depends on the command, because
+      // a watch needs minutes and everything else does not.
+      timeoutMs: input.timeout,
       full: input.full,
       // Rule 1 of the delta lane: without this id it cannot tell whether the
       // body it would elide is still visible to the model, and it declines.
       toolUseId: context.toolUseId,
+      // Purely a TUI signal: every `progress` message is dropped before the
+      // request is serialized (`utils/messages/normalize.ts:965`), so this
+      // cannot add a token to what the model reads.
+      onProgress: onProgress
+        ? data => onProgress({ toolUseID: `git-progress-${progressCounter++}`, data })
+        : undefined,
     })
     return { data: result }
   },
@@ -173,4 +212,4 @@ export const GitTool = buildTool({
       is_error: batchFailed(output),
     }
   },
-} satisfies ToolDef<InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output, GitProgress>)
