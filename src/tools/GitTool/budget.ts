@@ -22,6 +22,7 @@ import { logError } from '../../utils/log.js'
 import { renderDiff } from './parsers/diff.js'
 import { renderIssueView, renderRunLog } from './parsers/gh.js'
 import { renderStatusShort } from './parsers/status.js'
+import { renderWatchPolls } from './parsers/watch.js'
 
 /** Ship a summary only when it saves at least this much. */
 export const NO_WIN_RATIO = 0.7
@@ -92,6 +93,14 @@ function rendererFor(command: string): Renderer | null {
     // `run view` is pinned for symmetry, not for a bug: `renderRunLog` already
     // declines anything without a timestamp, so `gh run list` was safe.
     if (family === 'run' && action === 'view') return renderRunLog
+    // The two watch shapes. This pin is load-bearing rather than symmetric:
+    // `renderWatchPolls` collapses evenly repeated blocks, and a run LOG looks
+    // like that too (same job prefix on every line), so routing it anything
+    // else would silently cut a log down to its last line.
+    if (family === 'run' && action === 'watch') return renderWatchPolls
+    // `--watch` is not required here: a plain `gh pr checks` prints one block,
+    // which the renderer declines, and the model is free to re-run it in a loop.
+    if (family === 'pr' && action === 'checks') return renderWatchPolls
     if (family === 'pr' && action === 'diff') return renderDiff
     if ((family === 'pr' || family === 'issue') && action === 'view') {
       return renderIssueView

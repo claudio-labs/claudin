@@ -26,6 +26,13 @@
 /** Show at most this many conflicted paths before collapsing the rest. */
 const MAX_LISTED_PATHS = 10
 
+/**
+ * SIGTERM, which is how `run.ts` stops a command that reached its ceiling. It
+ * arrives here only for a NON-watch command — a watch that runs out of time is
+ * a stall, not a failure, and never enters the error lane.
+ */
+const SIGTERM_EXIT = 143
+
 // --- repository / invocation state -----------------------------------------
 
 const NOT_A_REPO_RE = /^fatal: not a git repository/m
@@ -212,9 +219,14 @@ export function diagnoseGitFailure(
 /** Exported for the tests, which assert the sentence rather than the fold. */
 export function diagnose(
   command: string,
-  _exitCode: number,
+  exitCode: number,
   output: string,
 ): string | null {
+  // First, because it explains an otherwise inexplicable result: git printed
+  // nothing wrong, it simply never finished.
+  if (exitCode === SIGTERM_EXIT) {
+    return 'The command was still running when the timeout stopped it, so anything below is partial. Pass a larger `timeout` if it legitimately takes that long.'
+  }
   if (isGh(command)) return diagnoseGh(output)
 
   // Repository-level failures first: they explain every later symptom.

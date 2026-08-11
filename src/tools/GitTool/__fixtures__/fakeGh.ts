@@ -26,6 +26,15 @@ export type FakeGhRule = {
   stderr?: string
   /** Defaults to 0. */
   exitCode?: number
+  /**
+   * Stay alive this long after writing, then exit. What makes a fake `gh`
+   * usable for the watch lane: a command that outlives its ceiling, or that
+   * goes quiet long enough for the idle watchdog, cannot be expressed by
+   * stdout and an exit code alone.
+   */
+  holdMs?: number
+  /** Write `stdout` this many times (default 1) — a stack of refreshes. */
+  repeat?: number
 }
 
 export type FakeGh = {
@@ -127,10 +136,17 @@ const FAKE_GH_SOURCE: readonly string[] = [
   '  r.regex ? new RegExp(r.match).test(joined) : joined.includes(r.match),',
   ')',
   'const rule = matched || manifest.fallback || {}',
-  'if (rule.stdout) writeSync(1, rule.stdout)',
+  "const repeat = typeof rule.repeat === 'number' ? rule.repeat : 1",
+  'for (let i = 0; i < repeat; i++) {',
+  '  if (rule.stdout) writeSync(1, rule.stdout)',
+  '}',
   'if (rule.stderr) writeSync(2, rule.stderr)',
   "if (!matched && !rule.stderr) writeSync(2, 'fake gh: no rule matched: ' + joined + '\\n')",
-  "process.exit(typeof rule.exitCode === 'number' ? rule.exitCode : 0)",
+  "const code = typeof rule.exitCode === 'number' ? rule.exitCode : 0",
+  '// The timer keeps the event loop alive, so the process is still there to be',
+  '// SIGTERMed — which is the case under test.',
+  "if (typeof rule.holdMs === 'number') setTimeout(() => process.exit(code), rule.holdMs)",
+  'else process.exit(code)',
 ]
 
 const installed: FakeGh[] = []

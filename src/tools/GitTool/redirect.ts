@@ -74,6 +74,11 @@ export const stripOutputTrimTail = createOutputTrimTailStripper()
  *    line exists. `gh run` is 202k chars of the recorded corpus, third behind
  *    `git diff` and `git status`, and the model reaches for it with a
  *    `| tail -60` glued on precisely because the raw log is unreadable.
+ *  - `gh run watch` — the tool gives it a 10-minute ceiling instead of Bash's
+ *    2 minutes, a live clock, and a result collapsed to the final refresh
+ *    instead of every refresh stacked. (A watch with an explicit `-i` interval
+ *    does NOT redirect: `-i` is in the opt-out set below because it means
+ *    `--interactive` everywhere else. A missed redirect costs nothing.)
  *  - `gh pr diff` — a unified diff, so it gets the diff budget AND the delta
  *    lane on a re-read, exactly like `git diff`.
  *  - `gh pr view` / `gh issue view` — the body budget.
@@ -85,7 +90,7 @@ export const stripOutputTrimTail = createOutputTrimTailStripper()
  * checks` predate this rule and stay for continuity.
  */
 const REDIRECTABLE_RE =
-  /^(?:git\s+(?:diff|log|status|show|blame)|gh\s+(?:pr\s+(?:view|list|checks|diff)|issue\s+view|run\s+view))\b/
+  /^(?:git\s+(?:diff|log|status|show|blame)|gh\s+(?:pr\s+(?:view|list|checks|diff)|issue\s+view|run\s+(?:view|watch)))\b/
 
 /**
  * Flags that mean the model wants something this tool is not.

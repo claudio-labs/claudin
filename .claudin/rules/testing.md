@@ -119,6 +119,23 @@ bun test scripts/no-telemetry-growthbook-stub.test.ts  # no phone-home
 bun test scripts/pr-intent-scan.test.ts                # PR security scan
 ```
 
+### A fake binary on PATH needs `CLAUDE_ENV_FILE`, not `process.env.PATH`
+
+Setting `process.env.PATH` does NOT put a stand-in `gh`/`git` in front of the
+real one for anything that goes through `exec()`. The bash provider writes an
+environment snapshot on the process's FIRST `exec()` and every later command
+runs `source <snapshot> && …`, re-exporting the PATH captured at that moment —
+which under `bun test` usually belongs to a different test file. The lever that
+works is `CLAUDE_ENV_FILE` pointing at a script that prepends the directory,
+plus `invalidateSessionEnvCache()`; `installFakeGh` in
+`src/tools/GitTool/__fixtures__/fakeGh.ts` is the worked example.
+
+The failure mode is what makes this worth a rule: the test does not error, it
+silently runs the REAL binary. A `gh pr checks 1 --watch` written for a fake
+answered with this repository's actual PR #1 and the suite stayed green in
+isolation (where the file did happen to create the shell first) while failing
+in a full run.
+
 ## Mocking — Boundary Only
 
 ```typescript
