@@ -89,6 +89,42 @@ export function createOutputTrimTailStripper(
 /** Exported so the memo tests derive their fixtures from the real bound. */
 export const MEMO_LIMIT = 100
 
+export type BoundedKeySet = {
+  /** Adds the key, returning true only when it was NOT already present. */
+  add(key: string): boolean
+  /** Removes the key, returning true only when it was present. */
+  delete(key: string): boolean
+  clear(): void
+}
+
+/**
+ * Insertion-ordered key set with a hard size bound.
+ *
+ * Past the limit the OLDEST entry is evicted — a Set iterates in insertion
+ * order — so it cannot grow for the life of the process. A key that is already
+ * present is NOT re-added, so re-seeing it does not refresh its position.
+ */
+export function createBoundedKeySet(limit: number = MEMO_LIMIT): BoundedKeySet {
+  const keys = new Set<string>()
+  return {
+    add(key: string): boolean {
+      if (keys.has(key)) return false
+      if (keys.size >= limit) {
+        const oldest = keys.values().next().value
+        if (oldest !== undefined) keys.delete(oldest)
+      }
+      keys.add(key)
+      return true
+    },
+    delete(key: string): boolean {
+      return keys.delete(key)
+    },
+    clear(): void {
+      keys.clear()
+    },
+  }
+}
+
 export type OneShotMemo = {
   /**
    * True the FIRST time a command is seen, false afterwards — i.e. refuse now,
@@ -112,17 +148,10 @@ export type OneShotMemo = {
  * PROCESS-WIDE and shared by both entrypoints.
  */
 export function createOneShotMemo(limit: number = MEMO_LIMIT): OneShotMemo {
-  const refusedCommands = new Set<string>()
+  const refusedCommands = createBoundedKeySet(limit)
   return {
     shouldRefuse(command: string): boolean {
-      const key = command.trim()
-      if (refusedCommands.has(key)) return false
-      if (refusedCommands.size >= limit) {
-        const oldest = refusedCommands.values().next().value
-        if (oldest !== undefined) refusedCommands.delete(oldest)
-      }
-      refusedCommands.add(key)
-      return true
+      return refusedCommands.add(command.trim())
     },
     reset(): void {
       refusedCommands.clear()

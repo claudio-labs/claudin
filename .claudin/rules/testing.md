@@ -21,7 +21,11 @@ returns a failures-first summary (per failure: name, `file:line`, source
 excerpt) instead of raw runner output, so a failure lands with its location and
 no follow-up Read. BashTool refuses a bare test command once and points there;
 re-send the identical command when you genuinely need the raw output (print
-debugging, a crash trace). The invocations below are the underlying commands —
+debugging, a crash trace). Once RunTests has actually run a suite, the next Bash
+call on that same suite is **not** refused at all — that escalation is the case
+the refusal text itself blesses, so it costs no round-trip. The pass is spent on
+use and re-armed by the next RunTests run, so a habitual `bun test` later in the
+session is still redirected. The invocations below are the underlying commands —
 pass one as RunTests' `command` when auto-detection picks the wrong suite.
 
 Type-check through the **Typecheck tool**, for the same reason and with a bigger

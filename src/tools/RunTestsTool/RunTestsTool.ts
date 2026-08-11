@@ -7,6 +7,7 @@ import { lazySchema } from '../../utils/lazySchema.js'
 import { formatTestResult } from './budget.js'
 import { detectFrameworkFromCommand, detectTestRunner } from './detect.js'
 import { DESCRIPTION, RUN_TESTS_TOOL_NAME } from './prompt.js'
+import { noteRunTestsExecution } from './redirect.js'
 import { runTests } from './run.js'
 import type { Framework, TestProgress, TestResult } from './types.js'
 import {
@@ -286,6 +287,9 @@ export const RunTestsTool = buildTool({
     }
 
     const { command, framework } = resolved
+
+    // Arms one Bash escalation on this suite — see noteRunTestsExecution.
+    noteRunTestsExecution(command)
 
     const result = await runTests({
       command,
