@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import {
   isRedirectableTestCommand,
   MEMO_LIMIT,
+  noteRunTestsExecution,
   renderRunTestsRedirect,
   resetRunTestsRedirectMemoForTesting,
   shouldRedirectToRunTests,
@@ -156,6 +157,58 @@ describe('shouldRedirectToRunTests — one-shot escape hatch', () => {
   })
 })
 
+describe('noteRunTestsExecution — the escalation after a RunTests run', () => {
+  beforeEach(() => resetRunTestsRedirectMemoForTesting())
+
+  test('the observed case: RunTests ran the suite, the raw-output follow-up is not refused', () => {
+    noteRunTestsExecution('bun test src/tools/GitTool')
+    expect(
+      shouldRedirectToRunTests(
+        'bun test src/tools/GitTool 2>&1 | grep -A 12 "watch that runs out of time" | head -40',
+      ),
+    ).toBe(false)
+  })
+
+  test('the pass is one-shot — a second escalation on the same suite is refused again', () => {
+    noteRunTestsExecution('bun test src/tools/GitTool')
+    expect(shouldRedirectToRunTests('bun test src/tools/GitTool | tail -40')).toBe(false)
+    // A differently shaped Bash call on the same suite has no pass left, so the
+    // redirect is back: one RunTests run buys one escalation, not a session-long
+    // whitelist for the project's main suite.
+    expect(shouldRedirectToRunTests('bun test src/tools/GitTool | head -20')).toBe(true)
+  })
+
+  test('a granted command is not refused later as if it were a first attempt', () => {
+    noteRunTestsExecution('bun test')
+    expect(shouldRedirectToRunTests('bun test')).toBe(false)
+    expect(shouldRedirectToRunTests('bun test')).toBe(false)
+  })
+
+  test('the next RunTests run re-arms the pass', () => {
+    noteRunTestsExecution('pytest tests/unit')
+    expect(shouldRedirectToRunTests('pytest tests/unit | tail -30')).toBe(false)
+    expect(shouldRedirectToRunTests('pytest tests/unit | head -30')).toBe(true)
+    noteRunTestsExecution('pytest tests/unit')
+    expect(shouldRedirectToRunTests('pytest tests/unit | tail -10')).toBe(false)
+  })
+
+  test('the pass covers that suite only', () => {
+    noteRunTestsExecution('bun test src/tools/GitTool')
+    expect(shouldRedirectToRunTests('bun test src/tools/RunTestsTool')).toBe(true)
+    expect(shouldRedirectToRunTests('bun test')).toBe(true)
+  })
+
+  test('a command Bash would never redirect is not recorded, so it cannot evict a live pass', () => {
+    // `bun run test:<scope>` is a scoped script the redirect stands down on: no
+    // Bash call can ever match it, so recording one would only push a real
+    // entry out of the bounded set. Observable exactly there — without the
+    // guard these MEMO_LIMIT entries evict the pass armed first.
+    noteRunTestsExecution('bun test src/first.test.ts')
+    for (let i = 0; i < MEMO_LIMIT; i++) noteRunTestsExecution(`bun run test:scope${i}`)
+    expect(shouldRedirectToRunTests('bun test src/first.test.ts | tail -20')).toBe(false)
+  })
+})
+
 describe('renderRunTestsRedirect', () => {
   test('names the tool, the exact command, and the escape hatch', () => {
     const msg = renderRunTestsRedirect('pytest tests/unit')
@@ -228,5 +281,15 @@ describe('BashTool wiring', () => {
   test('never for a backgrounded run, and honors the killswitch', () => {
     expect(src).toContain('CLAUDIN_DISABLE_RUNTESTS_REDIRECT')
     expect(src).toContain('!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_RUNTESTS_REDIRECT)')
+  })
+})
+
+describe('RunTestsTool wiring', () => {
+  const src = readFileSync(new URL('./RunTestsTool.ts', import.meta.url), 'utf8')
+
+  test('call() arms the escalation with the command it resolved', () => {
+    // Without this the pass is never armed and every test above still passes,
+    // because they call noteRunTestsExecution themselves.
+    expect(src).toContain('noteRunTestsExecution(command)')
   })
 })

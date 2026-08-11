@@ -2,6 +2,7 @@ import { detectFrameworkFromCommand } from './detect.js'
 import { RUN_TESTS_TOOL_NAME } from './prompt.js'
 import type { Framework } from './types.js'
 import {
+  createBoundedKeySet,
   createOneShotMemo,
   createOutputTrimTailStripper,
   hasShellComposition,
@@ -98,6 +99,39 @@ export function isRedirectableTestCommand(command: string): boolean {
 const memo = createOneShotMemo(MEMO_LIMIT)
 
 /**
+ * Suites RunTests has ALREADY run in this process, keyed by the command it
+ * resolved.
+ *
+ * The refusal exists to teach that RunTests is there; once it has run a suite
+ * that lesson has landed, and a Bash call on that same suite is the escalation
+ * the refusal text itself calls legitimate ("if you specifically need raw
+ * runner output"). Charging it a round-trip refuses the one case the message
+ * already blessed — which is exactly what happened after a RunTests run
+ * reported failures and the follow-up `bun test <path> 2>&1 | grep …` was
+ * blocked before running unchanged on the re-send.
+ *
+ * The pass is CONSUMED on use, and re-armed by the next RunTests run of that
+ * suite. Leaving it standing would whitelist the project's main suite in Bash
+ * for the rest of the session after a single RunTests call, which is the
+ * redirect's whole point undone.
+ */
+const runByRunTests = createBoundedKeySet(MEMO_LIMIT)
+
+/**
+ * Records the command RunTests is about to run, arming ONE Bash escalation on
+ * that same suite. Called from `RunTestsTool`'s `call()` — before the run, so
+ * that a crashed or timed-out run (the strongest reason to want raw output) is
+ * covered too.
+ *
+ * Commands Bash would never redirect anyway are not recorded: they could not
+ * match, and would only evict live entries.
+ */
+export function noteRunTestsExecution(command: string): void {
+  const core = stripOutputTrimTail(command.trim())
+  if (isRedirectableTestCommand(core)) runByRunTests.add(core)
+}
+
+/**
  * Stateful gate. Records the command as refused, so the SECOND identical call
  * runs — that is the escape hatch the message promises.
  *
@@ -110,11 +144,18 @@ const memo = createOneShotMemo(MEMO_LIMIT)
  */
 export function shouldRedirectToRunTests(command: string): boolean {
   if (!isRedirectableTestCommand(command)) return false
+  if (runByRunTests.delete(stripOutputTrimTail(command.trim()))) {
+    // Spend the memo entry as well: this exact command has had its pass, so a
+    // later identical call must not be refused as if it were a first attempt.
+    memo.shouldRefuse(command)
+    return false
+  }
   return memo.shouldRefuse(command)
 }
 
 export function resetRunTestsRedirectMemoForTesting(): void {
   memo.reset()
+  runByRunTests.clear()
 }
 
 export function renderRunTestsRedirect(command: string): string {
