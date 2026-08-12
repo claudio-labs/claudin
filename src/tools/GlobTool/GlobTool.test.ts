@@ -1,12 +1,24 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs'
+import {
+  mkdtempSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+  mkdirSync,
+} from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { basename, join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
 import { GlobTool } from './GlobTool.js'
 
 let workDir: string
+// Files whose mtimes run oldest → newest in the opposite order of their names,
+// so a ranking regression cannot be masked by an alphabetical sort.
+let orderedDir: string
+// 105 files: enough to prove the 100-path cap and the second page behind it.
+let manyDir: string
+const MANY_COUNT = 105
 
 beforeAll(() => {
   workDir = mkdtempSync(join(tmpdir(), 'globtool-'))
@@ -15,10 +27,29 @@ beforeAll(() => {
   writeFileSync(join(workDir, 'c.js'), '')
   mkdirSync(join(workDir, 'nested'))
   writeFileSync(join(workDir, 'nested', 'd.ts'), '')
+
+  orderedDir = mkdtempSync(join(tmpdir(), 'globtool-order-'))
+  ;['a.ts', 'b.ts', 'c.ts'].forEach((name, i) => {
+    const file = join(orderedDir, name)
+    writeFileSync(file, '')
+    const seconds = 1_000_000 + i * 10
+    utimesSync(file, seconds, seconds)
+  })
+
+  manyDir = mkdtempSync(join(tmpdir(), 'globtool-many-'))
+  for (let i = 1; i <= MANY_COUNT; i++) {
+    const name = `f${String(i).padStart(3, '0')}.txt`
+    const file = join(manyDir, name)
+    writeFileSync(file, '')
+    const seconds = 1_000_000 + i * 10
+    utimesSync(file, seconds, seconds)
+  }
 })
 
 afterAll(() => {
   rmSync(workDir, { recursive: true, force: true })
+  rmSync(orderedDir, { recursive: true, force: true })
+  rmSync(manyDir, { recursive: true, force: true })
 })
 
 function makeCtx(): ToolUseContext {
@@ -36,7 +67,6 @@ function makeCtx(): ToolUseContext {
     }),
     setAppState: () => {},
     options: {},
-    globLimits: { maxResults: 100 },
   } as unknown as ToolUseContext
 }
 
@@ -59,6 +89,24 @@ describe('GlobTool', () => {
     expect(GlobTool.inputSchema.safeParse({ pattern: '**/*.ts' }).success).toBe(
       true,
     )
+  })
+
+  test('input schema accepts an offset', () => {
+    expect(
+      GlobTool.inputSchema.safeParse({ pattern: '**/*.ts', offset: 100 })
+        .success,
+    ).toBe(true)
+  })
+
+  test('validateInput rejects a negative offset', async () => {
+    const result = await GlobTool.validateInput?.({
+      pattern: '**/*',
+      offset: -1,
+    } as never)
+    expect(result?.result).toBe(false)
+    if (result && result.result === false) {
+      expect(result.errorCode).toBe(3)
+    }
   })
 
   test('toAutoClassifierInput returns the pattern', () => {
@@ -112,6 +160,47 @@ describe('GlobTool', () => {
     expect(data.truncated).toBe(false)
   })
 
+  test('call() ranks results most-recently-modified first', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.ts', path: orderedDir } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.map(f => basename(f))).toEqual([
+      'c.ts',
+      'b.ts',
+      'a.ts',
+    ])
+  })
+
+  test('call() caps the page at 100 paths and reports the next offset', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.txt', path: manyDir } as never,
+      makeCtx(),
+    )
+    expect(data.numFiles).toBe(100)
+    expect(data.truncated).toBe(true)
+    expect(data.nextOffset).toBe(100)
+    // The cap has to drop the OLDEST matches, not the newest.
+    expect(basename(data.filenames[0]!)).toBe(`f${String(MANY_COUNT)}.txt`)
+    expect(data.filenames.some(f => basename(f) === 'f001.txt')).toBe(false)
+  })
+
+  test('call() with the reported offset returns the remaining page', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.txt', path: manyDir, offset: 100 } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.map(f => basename(f))).toEqual([
+      'f005.txt',
+      'f004.txt',
+      'f003.txt',
+      'f002.txt',
+      'f001.txt',
+    ])
+    expect(data.truncated).toBe(false)
+    expect(data.nextOffset).toBeUndefined()
+  })
+
   test('mapToolResultToToolResultBlockParam renders empty + truncated cases', () => {
     const map = GlobTool.mapToolResultToToolResultBlockParam
     const empty = map?.(
@@ -131,6 +220,23 @@ describe('GlobTool', () => {
     )
     expect(truncated?.content).toContain('a.ts')
     expect(truncated?.content).toContain('truncated')
+  })
+
+  test('the truncation notice hands back the offset to page with', () => {
+    const content = GlobTool.mapToolResultToToolResultBlockParam?.(
+      {
+        durationMs: 1,
+        numFiles: 1,
+        filenames: ['a.ts'],
+        truncated: true,
+        nextOffset: 100,
+      },
+      'u',
+    )?.content as string
+
+    expect(content).toContain('offset=100')
+    // summarizeGlobOutput tells the notice apart from a path by this prefix.
+    expect(content.split('\n').at(-1)).toMatch(/^\(Results are truncated/)
   })
 
   test('extractSearchText joins filenames with newlines', () => {

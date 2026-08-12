@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { basename, join } from 'path'
 
 import type { ToolUseContext } from '../../Tool.js'
 import { getCwdState, setCwdState } from '../../bootstrap/state.js'
@@ -18,9 +18,6 @@ import { GrepTool, RG_LINE_RE, relativizeRgLine } from './GrepTool.js'
 // Navigation feature (output_mode: 'symbols'); the feature cases were added
 // alongside that mode.
 // ---------------------------------------------------------------------------
-
-// GrepTool sorts deterministically by filename when NODE_ENV === 'test'.
-process.env.NODE_ENV = 'test'
 
 let dir: string
 
@@ -157,6 +154,66 @@ describe('GrepTool — baseline regression', () => {
 
     expect(data.filenames.length).toBe(2)
     expect(data.appliedLimit).toBe(2)
+  })
+})
+
+describe('GrepTool — files_with_matches ranking', () => {
+  let rankDir: string
+
+  // The newest file sorts LAST alphabetically, so a filename sort produces the
+  // exact inverse of the expected order — a ranking that silently falls back to
+  // the tiebreaker cannot pass these by accident.
+  beforeAll(() => {
+    rankDir = mkdtempSync(join(tmpdir(), 'grep-ranking-'))
+    ;['alpha.ts', 'mike.ts', 'zulu.ts'].forEach((name, i) => {
+      const file = join(rankDir, name)
+      writeFileSync(file, 'const needle = 1\n')
+      const seconds = 1_000_000 + i * 10
+      utimesSync(file, seconds, seconds)
+    })
+  })
+
+  afterAll(() => {
+    rmSync(rankDir, { recursive: true, force: true })
+  })
+
+  async function rank(input: Record<string, unknown> = {}): Promise<string[]> {
+    const { data } = await GrepTool.call(
+      { pattern: 'needle', path: rankDir, ...input } as never,
+      makeContext(),
+    )
+    return (data as GrepData).filenames.map(f => basename(f))
+  }
+
+  test('lists the most recently modified match first', async () => {
+    expect(await rank()).toEqual(['zulu.ts', 'mike.ts', 'alpha.ts'])
+  })
+
+  test('head_limit keeps the most recently modified matches', async () => {
+    expect(await rank({ head_limit: 2 })).toEqual(['zulu.ts', 'mike.ts'])
+  })
+
+  test('offset pages down the same ranking', async () => {
+    expect(await rank({ head_limit: 2, offset: 1 })).toEqual([
+      'mike.ts',
+      'alpha.ts',
+    ])
+  })
+})
+
+describe('GrepTool — context flags', () => {
+  test('context wins over its -C alias', async () => {
+    const data = await grep({
+      output_mode: 'content',
+      '-n': true,
+      glob: '*.ts',
+      context: 0,
+      '-C': 5,
+    })
+
+    // With -C 5 the neighbor line would be in the output; context: 0 wins.
+    expect(data.content).toContain('needle')
+    expect(data.content).not.toContain('function other')
   })
 })
 

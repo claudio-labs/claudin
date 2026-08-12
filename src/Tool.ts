@@ -280,9 +280,6 @@ export type ToolUseContext = {
     maxTokens?: number
     maxSizeBytes?: number
   }
-  globLimits?: {
-    maxResults?: number
-  }
   toolDecisions?: Map<
     string,
     {
