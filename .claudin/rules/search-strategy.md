@@ -77,7 +77,11 @@ READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|chec
 identical command runs it (`src/tools/GitTool/redirect.ts`,
 `CLAUDIN_DISABLE_GIT_REDIRECT=1`). A trailing `| head -50`-style trim is stripped
 before that decision, so a piped read still redirects; mutations are never
-refused, since a dialog in front of a `git push` buys nothing. The `gh` side is
+refused, since a dialog in front of a `git push` buys nothing. What counts as
+ONE command there is the grammar's own `acceptsGitCommand` (the quoting scan
+described below), not a ban on punctuation — so `git log --format='%h %s%n%b'`
+and `gh run view … --jq '…'` redirect, their `|` being inside quotes, while an
+operator outside quotes stays in Bash. The `gh` side is
 deliberately narrower than what the tool ACCEPTS (24 read-only command pairs,
 `grammar.ts`): only the shapes with a renderer behind them are refused, because
 a refusal costs a round-trip and the tool hands a table like `gh run list` back

@@ -50,9 +50,13 @@ const WHITESPACE_RE = /\s+/
  * inside quotes.
  *
  * NOT `hasShellComposition` from `src/tools/shared/redirect.ts`: that regex
- * also treats `'` and `"` as composition. That is right for a *redirect* (a
- * quoted command should stay in Bash) but would make `git commit -m "…"` —
- * the single most important mutating command — impossible to express here.
+ * also treats `'` and `"` as composition, which would make `git commit -m "…"`
+ * — the single most important mutating command — impossible to express here.
+ * The Bash → Git redirect used to reuse that regex and paid for it: every
+ * `git log --format='…'` and `gh run view --jq '…'` stayed in Bash because of
+ * a `|` the shell would never have read as an operator. It now asks
+ * `acceptsGitCommand` instead, so what Bash refuses and what this tool accepts
+ * are the same set by construction.
  */
 const UNQUOTED_OPERATORS: ReadonlySet<string> = new Set([
   ';',
