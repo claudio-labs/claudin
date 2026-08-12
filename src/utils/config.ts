@@ -739,6 +739,12 @@ export type GlobalConfig = {
   // behavior. undefined → true (default on).
   repeatedFailureHintEnabled?: boolean
 
+  // Collapse file writes — folds Write/Edit/apply_patch/Rename into the same
+  // collapsed row as reads/searches ("edited 3 files  +42 −7"), with the diffs
+  // behind Ctrl+O. Off restores a full diff block per write.
+  // undefined → true (default on).
+  collapseFileWritesEnabled?: boolean
+
   // Workflows run in background — when on, a Workflow tool call the model leaves
   // unspecified defaults to background (returns a runId immediately + notifies on
   // completion) instead of blocking the turn, and the /workflows dialog runs its

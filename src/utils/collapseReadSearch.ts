@@ -1,10 +1,15 @@
 import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
+import type { StructuredPatchHunk } from 'diff'
+import { isAbsolute } from 'path'
 import { findToolByName, type Tools } from '../Tool.js'
+import { parsePatch } from '../tools/ApplyPatchTool/patchFormat.js'
+import { APPLY_PATCH_TOOL_NAME } from '../tools/ApplyPatchTool/prompt.js'
 import { extractBashCommentLabel } from '../tools/BashTool/commentLabel.js'
 import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
+import { RENAME_TOOL_NAME } from '../tools/RenameTool/prompt.js'
 import { REPL_TOOL_NAME } from '../tools/REPLTool/constants.js'
 import { getReplPrimitiveTools } from '../tools/REPLTool/primitiveTools.js'
 import {
@@ -20,7 +25,12 @@ import type {
   RenderableMessage,
   StopHookInfo,
   SystemStopHookSummaryMessage,
+  WriteFileStat,
+  WriteKind,
 } from '../types/message.js'
+import { getGlobalConfig } from './config.js'
+import { logForDebugging } from './debug.js'
+import { countAddDel } from './diffStat.js'
 import { getDisplayPath } from './file.js'
 import { isFullscreenEnvEnabled } from './fullscreen.js'
 import {
@@ -29,6 +39,7 @@ import {
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from './memoryFileDetection.js'
+import { expandPath } from './path.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemOps = feature('TEAMMEM')
@@ -62,6 +73,8 @@ export type SearchOrReadResult = {
   mcpServerName?: string
   /** Bash command that is NOT a search/read (under fullscreen mode) */
   isBash?: boolean
+  /** True for Write/Edit/apply_patch/Rename outside the memory dir */
+  isWrite: boolean
 }
 
 /**
@@ -114,6 +127,126 @@ function isMemoryWriteOrEdit(toolName: string, toolInput: unknown): boolean {
   return filePath !== undefined && isAutoManagedMemoryFile(filePath)
 }
 
+/** A file a write tool is about to touch, known from its input alone. */
+type WriteTarget = { path: string; kind: WriteKind }
+
+/** `/config` → "Collapse file writes". undefined ⇒ on. */
+function isWriteCollapseEnabled(): boolean {
+  return getGlobalConfig().collapseFileWritesEnabled !== false
+}
+
+// Re-parsing the envelope on every transcript re-render would cost O(patch) per
+// frame. The tool_use input object is stable across renders, so key the parse
+// on it — an unparsable envelope caches its empty result too.
+const APPLY_PATCH_TARGETS = new WeakMap<object, WriteTarget[]>()
+
+/**
+ * A path we can name before the result arrives. Only an absolute one: a
+ * relative path is resolved against the cwd at EXECUTION time, and this runs at
+ * render time — after a `cd` it would invent a second path for the same file
+ * and the group would list (and count) it twice. The result carries the real
+ * absolute path a moment later.
+ */
+function stableAbsolutePath(path: string): string | null {
+  // Test the RAW path: expandPath resolves a relative one against getCwd(), so
+  // asking it first would hand back an absolute path and hide the problem.
+  // `~` is fine — home does not move mid-session.
+  if (!isAbsolute(path) && !path.startsWith('~')) {
+    return null
+  }
+  const expanded = expandPath(path)
+  return isAbsolute(expanded) ? expanded : null
+}
+
+/** null ⇒ no envelope yet (still streaming), so nothing to collapse on. */
+function getApplyPatchTargets(toolInput: unknown): WriteTarget[] | null {
+  if (typeof toolInput !== 'object' || toolInput === null) {
+    return null
+  }
+  const cached = APPLY_PATCH_TARGETS.get(toolInput)
+  if (cached) {
+    return cached
+  }
+  const { patchText } = toolInput as { patchText?: string }
+  if (typeof patchText !== 'string') {
+    // Don't cache: the input object is rebuilt when the streamed JSON finally
+    // parses, but caching an empty list against a half-built one is a trap.
+    return null
+  }
+  const targets: WriteTarget[] = []
+  try {
+    for (const hunk of parsePatch(patchText).hunks) {
+      // Mirror applyPatch's own resolveHunkPath, so a hunk path lines up with
+      // the absPath its result reports instead of listing twice. `movePath`
+      // lives on the update member alone, hence the narrowing per branch.
+      const target: { raw: string; kind: WriteKind } =
+        hunk.type === 'add'
+          ? { raw: hunk.path, kind: 'A' }
+          : hunk.type === 'delete'
+            ? { raw: hunk.path, kind: 'D' }
+            : hunk.movePath
+              ? { raw: hunk.movePath, kind: 'R' }
+              : { raw: hunk.path, kind: 'M' }
+      const path = stableAbsolutePath(target.raw)
+      if (path) {
+        targets.push({ path, kind: target.kind })
+      }
+    }
+  } catch (e) {
+    // Display-only fallback: the file list still arrives with the result, and
+    // a patch the parser rejects is exactly the one whose result carries the
+    // error. Never block the render on it.
+    logForDebugging(
+      `collapseReadSearch: apply_patch parse failed: ${e instanceof Error ? e.message : String(e)}`,
+    )
+  }
+  APPLY_PATCH_TARGETS.set(toolInput, targets)
+  return targets
+}
+
+/**
+ * Files a write tool use will touch, read from its INPUT — the result may not
+ * have arrived yet.
+ *
+ * Three states, and the difference matters: `null` = not a collapsible write,
+ * so the message keeps its own block — that covers `Rename` in preview mode
+ * (it writes nothing) and a write whose input is still streaming, which would
+ * otherwise be absorbed into a group that cannot name it and so would vanish
+ * from the transcript until its JSON finished parsing. An empty array =
+ * collapsible, files not knowable yet (Rename apply lists them only in its
+ * result); a non-empty one = the files, for the rows shown while it runs.
+ */
+function getWriteTargets(
+  toolName: string,
+  toolInput: unknown,
+): WriteTarget[] | null {
+  switch (toolName) {
+    case FILE_WRITE_TOOL_NAME:
+    case FILE_EDIT_TOOL_NAME: {
+      const filePath = getFilePathFromToolInput(toolInput)
+      if (!filePath) {
+        return null
+      }
+      const path = stableAbsolutePath(filePath)
+      // A Write that creates the file only reveals that in its result, which
+      // upgrades the kind to 'A' when it lands.
+      return path ? [{ path, kind: 'M' }] : []
+    }
+    case APPLY_PATCH_TOOL_NAME:
+      return getApplyPatchTargets(toolInput)
+    case RENAME_TOOL_NAME: {
+      const mode = (toolInput as { mode?: string } | undefined)?.mode
+      if (mode === 'preview') {
+        return null
+      }
+      // The input carries the symbol, not the files — they arrive with the result.
+      return []
+    }
+    default:
+      return null
+  }
+}
+
 // ~5 lines × ~60 cols. Generous static cap — the renderer lets Ink wrap.
 const MAX_HINT_CHARS = 300
 
@@ -158,6 +291,7 @@ export function getToolSearchOrReadInfo(
       isREPL: true,
       isMemoryWrite: false,
       isAbsorbedSilently: true,
+      isWrite: false,
     }
   }
 
@@ -171,6 +305,7 @@ export function getToolSearchOrReadInfo(
       isREPL: false,
       isMemoryWrite: true,
       isAbsorbedSilently: false,
+      isWrite: false,
     }
   }
 
@@ -189,6 +324,23 @@ export function getToolSearchOrReadInfo(
       isREPL: false,
       isMemoryWrite: false,
       isAbsorbedSilently: true,
+      isWrite: false,
+    }
+  }
+
+  // Writes outside the memory dir. Checked after the memory arm so a memory
+  // write keeps saying "Wrote 1 memory", and before the search/read fallback
+  // because none of these tools implements isSearchOrReadCommand.
+  if (isWriteCollapseEnabled() && getWriteTargets(toolName, toolInput)) {
+    return {
+      isCollapsible: true,
+      isSearch: false,
+      isRead: false,
+      isList: false,
+      isREPL: false,
+      isMemoryWrite: false,
+      isAbsorbedSilently: false,
+      isWrite: true,
     }
   }
 
@@ -208,6 +360,7 @@ export function getToolSearchOrReadInfo(
       isREPL: false,
       isMemoryWrite: false,
       isAbsorbedSilently: false,
+      isWrite: false,
     }
   }
   // The tool's isSearchOrReadCommand method handles its own input validation via safeParse,
@@ -230,6 +383,7 @@ export function getToolSearchOrReadInfo(
     isREPL: false,
     isMemoryWrite: false,
     isAbsorbedSilently: false,
+    isWrite: false,
     ...(tool.isMcp && { mcpServerName: tool.mcpInfo?.serverName }),
     isBash: isFullscreenEnvEnabled()
       ? !isCollapsible && toolName === BASH_TOOL_NAME
@@ -253,6 +407,7 @@ export function getSearchOrReadFromContent(
   isAbsorbedSilently: boolean
   mcpServerName?: string
   isBash?: boolean
+  isWrite: boolean
 } | null {
   if (content?.type === 'tool_use' && content.name) {
     const info = getToolSearchOrReadInfo(content.name, content.input, tools)
@@ -266,6 +421,7 @@ export function getSearchOrReadFromContent(
         isAbsorbedSilently: info.isAbsorbedSilently,
         mcpServerName: info.mcpServerName,
         isBash: info.isBash,
+        isWrite: info.isWrite,
       }
     }
   }
@@ -301,6 +457,7 @@ function getCollapsibleToolInfo(
   isAbsorbedSilently: boolean
   mcpServerName?: string
   isBash?: boolean
+  isWrite: boolean
 } | null {
   if (msg.type === 'assistant') {
     const content = msg.message.content[0]
@@ -468,6 +625,49 @@ function getToolUseIdsFromMessage(msg: RenderableMessage): string[] {
 }
 
 /**
+ * tool_use_ids whose result came back as an error. A failed write must not be
+ * folded away: the collapsed group's verbose view only renders a result when
+ * it resolved without error, so the failure — including a denied permission,
+ * which arrives the same way — would be invisible even under Ctrl+O.
+ */
+function collectErroredToolUseIds(messages: RenderableMessage[]): Set<string> {
+  const ids = new Set<string>()
+  function scan(msg: RenderableMessage): void {
+    if (msg.type !== 'user') return
+    for (const content of msg.message.content) {
+      const block = content as { type: string; tool_use_id?: string; is_error?: boolean }
+      if (block.type === 'tool_result' && block.is_error && block.tool_use_id) {
+        ids.add(block.tool_use_id)
+      }
+    }
+  }
+  for (const msg of messages) {
+    scan(msg)
+    if (msg.type === 'grouped_tool_use') {
+      for (const resultMsg of msg.results) {
+        scan(resultMsg)
+      }
+    }
+  }
+  return ids
+}
+
+/** A write whose result errored — breaks the group instead of joining it. */
+function isErroredWriteToolUse(
+  msg: RenderableMessage,
+  tools: Tools,
+  erroredToolUseIds: Set<string>,
+): boolean {
+  if (erroredToolUseIds.size === 0) {
+    return false
+  }
+  if (!getCollapsibleToolInfo(msg, tools)?.isWrite) {
+    return false
+  }
+  return getToolUseIdsFromMessage(msg).some(id => erroredToolUseIds.has(id))
+}
+
+/**
  * Get all tool use IDs from a collapsed read/search group.
  */
 export function getToolUseIdsFromCollapsedGroup(
@@ -548,6 +748,196 @@ function getFilePathsFromReadMessage(msg: RenderableMessage): string[] {
 }
 
 /**
+ * Every write target in a message. Handles `grouped_tool_use`, which is how N
+ * Edits from one assistant turn arrive (FileEditTool sets renderGroupedToolUse)
+ * — reading only the first input would lose the other files.
+ */
+function getWriteTargetsFromMessage(
+  msg: RenderableMessage,
+  toolName: string,
+): WriteTarget[] {
+  const targets: WriteTarget[] = []
+  const messages =
+    msg.type === 'grouped_tool_use'
+      ? msg.messages
+      : msg.type === 'assistant'
+        ? [msg]
+        : []
+  for (const m of messages) {
+    const content = m.message.content[0]
+    if (content?.type !== 'tool_use') continue
+    for (const target of getWriteTargets(toolName, content.input) ?? []) {
+      targets.push(target)
+    }
+  }
+  return targets
+}
+
+// Delete beats create beats rename beats modify: a file created and then edited
+// in the same group is still a creation, and one deleted after that is a delete.
+const WRITE_KIND_RANK: Record<WriteKind, number> = { M: 0, R: 1, A: 2, D: 3 }
+
+/**
+ * Record one file touched by a write. Called twice per file: once from the
+ * tool_use (path only, so the row shows up while the write runs) and once from
+ * the result (which carries the line counts). Repeated edits of the same file
+ * accumulate — the collapse is recomputed from scratch on every render, so this
+ * never double-counts across frames.
+ */
+function recordWriteFile(
+  group: GroupAccumulator,
+  path: string,
+  kind: WriteKind,
+  stats?: { additions: number; deletions: number },
+): void {
+  const existing = group.writeFiles.get(path)
+  if (!existing) {
+    group.writeFiles.set(path, {
+      kind,
+      additions: stats?.additions ?? 0,
+      deletions: stats?.deletions ?? 0,
+    })
+    return
+  }
+  if (WRITE_KIND_RANK[kind] > WRITE_KIND_RANK[existing.kind]) {
+    existing.kind = kind
+  }
+  if (stats) {
+    existing.additions += stats.additions
+    existing.deletions += stats.deletions
+  }
+}
+
+/**
+ * Pull the per-file line counts out of a write tool's result. Each tool reports
+ * them differently: Edit/Write carry a `structuredPatch`, apply_patch and
+ * Rename already ship `additions`/`deletions` per file.
+ */
+function applyWriteResult(
+  group: GroupAccumulator,
+  toolName: string,
+  result: unknown,
+): void {
+  if (!result || typeof result !== 'object') return
+  switch (toolName) {
+    case FILE_EDIT_TOOL_NAME: {
+      const out = result as {
+        filePath?: string
+        structuredPatch?: StructuredPatchHunk[]
+      }
+      if (out.filePath) {
+        recordWriteFile(
+          group,
+          out.filePath,
+          'M',
+          countAddDel(out.structuredPatch ?? []),
+        )
+      }
+      break
+    }
+    case FILE_WRITE_TOOL_NAME: {
+      const out = result as {
+        type?: string
+        filePath?: string
+        content?: string
+        structuredPatch?: StructuredPatchHunk[]
+      }
+      if (!out.filePath) break
+      const hunks = out.structuredPatch ?? []
+      // A create has no patch (FileWriteTool returns `structuredPatch: []`) —
+      // every line of the new file is an addition. Strip the trailing newline
+      // first: `'a\nb\n'.split('\n')` ends in an empty string, which would
+      // count a line that isn't there.
+      const stats =
+        hunks.length === 0 && out.type === 'create'
+          ? {
+              additions: out.content
+                ? out.content.replace(/\n$/, '').split('\n').length
+                : 0,
+              deletions: 0,
+            }
+          : countAddDel(hunks)
+      recordWriteFile(
+        group,
+        out.filePath,
+        out.type === 'create' ? 'A' : 'M',
+        stats,
+      )
+      break
+    }
+    case APPLY_PATCH_TOOL_NAME: {
+      const out = result as {
+        files?: {
+          absPath?: string
+          movePath?: string
+          type?: string
+          additions?: number
+          deletions?: number
+        }[]
+      }
+      for (const file of out.files ?? []) {
+        const path = file.movePath ?? file.absPath
+        if (!path) continue
+        const kind: WriteKind =
+          file.type === 'add'
+            ? 'A'
+            : file.type === 'delete'
+              ? 'D'
+              : file.type === 'move'
+                ? 'R'
+                : 'M'
+        recordWriteFile(group, path, kind, {
+          additions: file.additions ?? 0,
+          deletions: file.deletions ?? 0,
+        })
+      }
+      break
+    }
+    case RENAME_TOOL_NAME: {
+      const out = result as {
+        type?: string
+        files?: { absPath?: string; additions?: number; deletions?: number }[]
+      }
+      // A preview never reaches here (it isn't collapsible), but the union also
+      // covers it — only an apply has files on disk.
+      if (out.type !== 'apply') break
+      for (const file of out.files ?? []) {
+        if (!file.absPath) continue
+        // 'M', not 'R': the tool renames a symbol, so every file it touches is
+        // modified in place. 'R' is for a file that changed path, which only
+        // apply_patch's `Move to:` produces.
+        recordWriteFile(group, file.absPath, 'M', {
+          additions: file.additions ?? 0,
+          deletions: file.deletions ?? 0,
+        })
+      }
+      break
+    }
+    default:
+      break
+  }
+}
+
+/**
+ * Apply every write result carried by a tool_result message to the group.
+ * Mirrors scanBashResultForGitOps: the id → tool name map is what tells us how
+ * to read `toolUseResult`.
+ */
+function applyWriteResultsFromMessage(
+  msg: CollapsibleMessage,
+  group: GroupAccumulator,
+): void {
+  if (msg.type !== 'user') return
+  for (const content of msg.message.content) {
+    if (content.type !== 'tool_result') continue
+    const toolName = group.writeToolNames.get(content.tool_use_id)
+    if (toolName) {
+      applyWriteResult(group, toolName, msg.toolUseResult)
+    }
+  }
+}
+
+/**
  * Scan a bash tool result for commit SHAs and PR URLs and push them into the
  * group accumulator. Called only for results whose tool_use_id was recorded
  * in bashCommands (non-search/read bash).
@@ -604,6 +994,12 @@ type GroupAccumulator = {
   mcpServerNames?: Set<string>
   // Bash commands that aren't search/read (tracked separately for "Ran N bash commands")
   bashCount?: number
+  // Files written by Write/Edit/apply_patch/Rename, in first-touch order (Map
+  // preserves insertion order, which is what the ⎿ list renders).
+  writeFiles: Map<string, { kind: WriteKind; additions: number; deletions: number }>
+  // Write tool_use_id → tool name, so the tool_result can be read with the
+  // right shape (mirrors bashCommands).
+  writeToolNames: Map<string, string>
   // Bash tool_use_id → command string, so tool results can be scanned for
   // commit SHAs / PR URLs (surfaced as "committed abc123, created PR #42")
   bashCommands?: Map<string, string>
@@ -638,6 +1034,8 @@ function createEmptyGroup(): GroupAccumulator {
     hookTotalMs: 0,
     hookCount: 0,
     hookInfos: [],
+    writeFiles: new Map(),
+    writeToolNames: new Map(),
   }
   if (feature('TEAMMEM')) {
     group.teamMemorySearchCount = 0
@@ -748,6 +1146,12 @@ function createCollapsedGroup(
   if (group.relevantMemories && group.relevantMemories.length > 0) {
     result.relevantMemories = group.relevantMemories
   }
+  if (group.writeFiles.size > 0) {
+    result.writeFileStats = [...group.writeFiles].map(([path, stat]) => ({
+      path,
+      ...stat,
+    }))
+  }
   return result
 }
 
@@ -764,6 +1168,7 @@ export function collapseReadSearchGroups(
   tools: Tools,
 ): RenderableMessage[] {
   const result: RenderableMessage[] = []
+  const erroredToolUseIds = collectErroredToolUseIds(messages)
   let currentGroup = createEmptyGroup()
   let deferredSkippable: RenderableMessage[] = []
 
@@ -780,7 +1185,12 @@ export function collapseReadSearchGroups(
   }
 
   for (const msg of messages) {
-    if (isCollapsibleToolUse(msg, tools)) {
+    if (isErroredWriteToolUse(msg, tools, erroredToolUseIds)) {
+      // Its result lands on the next message, which no longer matches any id in
+      // the group and therefore breaks it too — error and diff stay together.
+      flushGroup()
+      result.push(msg)
+    } else if (isCollapsibleToolUse(msg, tools)) {
       // This is a collapsible tool use - type predicate narrows to CollapsibleMessage
       const toolInfo = getCollapsibleToolInfo(msg, tools)!
 
@@ -800,6 +1210,22 @@ export function collapseReadSearchGroups(
         // Snip/ToolSearch absorbed silently — no count, no summary text.
         // Hidden from the default view but still shown in verbose mode
         // (Ctrl+O) via the groupMessages iteration in CollapsedReadSearchContent.
+      } else if (toolInfo.isWrite) {
+        // Files come from the input so the row appears while the write runs;
+        // the line counts arrive with the result.
+        for (const target of getWriteTargetsFromMessage(msg, toolInfo.name)) {
+          recordWriteFile(currentGroup, target.path, target.kind)
+        }
+        for (const id of getToolUseIdsFromMessage(msg)) {
+          currentGroup.writeToolNames.set(id, toolInfo.name)
+        }
+        if (msg.type === 'grouped_tool_use') {
+          // applyGrouping consumed the user messages that held these results,
+          // so they never reach the tool_result branch below.
+          for (const resultMsg of msg.results) {
+            applyWriteResult(currentGroup, toolInfo.name, resultMsg.toolUseResult)
+          }
+        }
       } else if (toolInfo.mcpServerName) {
         // MCP search/read — counted separately so the summary says
         // "Queried slack N times" instead of "Read N files".
@@ -894,6 +1320,9 @@ export function collapseReadSearchGroups(
       if (isFullscreenEnvEnabled() && currentGroup.bashCommands?.size) {
         scanBashResultForGitOps(msg, currentGroup)
       }
+      if (currentGroup.writeToolNames.size > 0) {
+        applyWriteResultsFromMessage(msg, currentGroup)
+      }
     } else if (currentGroup.messages.length > 0 && isPreToolHookSummary(msg)) {
       // Absorb PreToolUse hook summaries into the group instead of deferring
       currentGroup.hookCount += msg.hookCount
@@ -972,6 +1401,7 @@ export function getSearchReadSummaryText(
     teamMemoryWriteCount?: number
   },
   listCount: number = 0,
+  writeCount: number = 0,
 ): string {
   const parts: string[] = []
 
@@ -1017,6 +1447,21 @@ export function getSearchReadSummaryText(
     if (feature('TEAMMEM') && teamMemOps) {
       teamMemOps.appendTeamMemorySummaryParts(memoryCounts, isActive, parts)
     }
+  }
+
+  if (writeCount > 0) {
+    // Leads the tool parts for the same reason it does in the collapsed badge:
+    // what the agent changed outranks what it looked at.
+    const writeVerb = isActive
+      ? parts.length === 0
+        ? 'Editing'
+        : 'editing'
+      : parts.length === 0
+        ? 'Edited'
+        : 'edited'
+    parts.push(
+      `${writeVerb} ${writeCount} ${writeCount === 1 ? 'file' : 'files'}`,
+    )
   }
 
   if (searchCount > 0) {
@@ -1066,6 +1511,36 @@ export function getSearchReadSummaryText(
 }
 
 /**
+ * How many FILES a run of write tool uses touched — not how many calls it made.
+ * A sub-agent's progress line and the collapsed badge describe the same work, so
+ * they have to agree: two Edits of one file are one file, and one apply_patch
+ * over five files is five. A write whose files are not knowable from its input
+ * (Rename lists them only in its result) counts as one, because it did touch
+ * something and reporting zero would erase it from the line.
+ *
+ * Unlike the badge, this cannot drop a write whose result came back an error:
+ * the progress streams it feeds carry tool_uses, and one call site counts before
+ * any result exists.
+ */
+export function countWriteFiles(
+  writes: readonly { toolName: string; input: unknown }[],
+): number {
+  const paths = new Set<string>()
+  let unknown = 0
+  for (const { toolName, input } of writes) {
+    const targets = getWriteTargets(toolName, input)
+    if (targets && targets.length > 0) {
+      for (const target of targets) {
+        paths.add(target.path)
+      }
+    } else {
+      unknown++
+    }
+  }
+  return paths.size + unknown
+}
+
+/**
  * Summarize a list of recent tool activities into a compact description.
  * Rolls up trailing consecutive search/read operations using pre-computed
  * isSearch/isRead classifications from recording time. Falls back to the
@@ -1073,30 +1548,50 @@ export function getSearchReadSummaryText(
  */
 export function summarizeRecentActivities(
   activities: readonly {
+    toolName?: string
+    input?: unknown
     activityDescription?: string
     isSearch?: boolean
     isRead?: boolean
+    isWrite?: boolean
   }[],
 ): string | undefined {
   if (activities.length === 0) {
     return undefined
   }
-  // Count trailing search/read activities from the end of the list
+  // Count trailing search/read/write activities from the end of the list
   let searchCount = 0
   let readCount = 0
+  let writeUses = 0
+  const writes: { toolName: string; input: unknown }[] = []
   for (let i = activities.length - 1; i >= 0; i--) {
     const activity = activities[i]!
     if (activity.isSearch) {
       searchCount++
     } else if (activity.isRead) {
       readCount++
+    } else if (activity.isWrite) {
+      writeUses++
+      if (activity.toolName) {
+        writes.push({ toolName: activity.toolName, input: activity.input })
+      }
     } else {
       break
     }
   }
-  const collapsibleCount = searchCount + readCount
+  // The gate counts tool USES, so one apply_patch over five files does not
+  // start summarizing on its own — but the text it produces counts files.
+  const collapsibleCount = searchCount + readCount + writeUses
   if (collapsibleCount >= 2) {
-    return getSearchReadSummaryText(searchCount, readCount, true)
+    return getSearchReadSummaryText(
+      searchCount,
+      readCount,
+      true,
+      0,
+      undefined,
+      0,
+      countWriteFiles(writes),
+    )
   }
   // Fall back to most recent activity with a description (some tools like
   // SendMessage don't implement getActivityDescription, so search backward)

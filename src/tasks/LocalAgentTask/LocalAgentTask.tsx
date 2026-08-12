@@ -29,6 +29,8 @@ export type ToolActivity = {
   isSearch?: boolean;
   /** Pre-computed: true if this is a read operation (Read, cat, etc.) */
   isRead?: boolean;
+  /** Pre-computed: true if this is a write (Write, Edit, apply_patch, Rename) */
+  isWrite?: boolean;
 };
 export type AgentProgress = {
   toolUseCount: number;
@@ -88,7 +90,8 @@ export function updateProgressFromMessage(tracker: ProgressTracker, message: Mes
           input,
           activityDescription: resolveActivityDescription?.(content.name, input),
           isSearch: classification?.isSearch,
-          isRead: classification?.isRead
+          isRead: classification?.isRead,
+          isWrite: classification?.isWrite
         });
       }
     }

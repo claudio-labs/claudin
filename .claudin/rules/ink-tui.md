@@ -183,3 +183,37 @@ the right one.
   whereas a numeric `FORCE_COLOR` is an explicit user request that chalk now
   honors literally. Overriding it would make the env var unable to select 16-color
   output at all.
+
+## 10. One logical line = one `<Text>`; siblings in a row Box become columns
+
+- A `<Box flexDirection="row">` lays each `<Text>` child out as its own flex
+  item with its own width, and wrapping happens **inside** that item. Splitting a
+  status line into sibling `<Text>`s to escape a parent style therefore does not
+  produce one flowing line — it produces columns that wrap independently. Splitting
+  the collapsed-group badge in `CollapsedReadSearchContent.tsx` to keep its `+42 −7`
+  out of a `dimColor` wrapper rendered as
+  `… read 3  +42 − (ctrl+o to` / `files                    expand)` — the tail of
+  each column continuing on the next row.
+- The escape was unnecessary: `dimColor` on a parent `<Text>` **composes with** a
+  child's `color` instead of replacing it. This fork does not wrap ANSI strings —
+  `squash-text-nodes.ts:24-26` merges a style *object* per segment
+  (`{...inheritedStyles, ...node.textStyles}`), so a child's `color` wins on the
+  `color` key while the parent's `dim` survives untouched. Nesting
+  `<Text color="diffAddedWord">` inside a dim parent reads as dim green, which is
+  what a finished row should look like anyway. Keep the line in one `<Text>` and
+  let the nesting do the styling.
+- **A `<Box>` with no `flexDirection` is a row** (`Box.tsx:103`), so this bites
+  without a `flexDirection="row"` anywhere in sight. The same file hit it twice:
+  once on the badge, and once on the per-file `⎿` rows, where an inner
+  `<Box flexGrow={1}>` held the path in one `<Text>` and `+28 −4` in another.
+- Only a width that forces a wrap can tell the two shapes apart, and a test at the
+  default 80 columns often cannot: the split `⎿` row rendered **identically** at 80
+  and 34 columns, and only started eating the path at 26 (`M /repo/one.t  +28 −4`).
+  Sweep two or three widths — `renderToString(node, columns)`
+  (`src/utils/staticRender.tsx`) takes one.
+- This is invisible to a code review and to a unit test that only asserts
+  `toContain`, because the words are all still present — just interleaved across
+  rows. Assert **contiguity and order** of the fragments over the
+  whitespace-flattened output (`expectInOrder` in
+  `CollapsedReadSearchContent.test.tsx`): a bare `toContain('+28')` passes on the
+  mangled render, `'M /repo/one.ts'` does not.

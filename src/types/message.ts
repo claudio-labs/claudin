@@ -405,7 +405,21 @@ export type GroupedToolUseMessage = {
 }
 
 /**
- * A run of read/search operations folded into a single summary row.
+ * How a collapsed write touched a file, in the same vocabulary
+ * `summarizeApplyPatch` uses: Added, Modified, Deleted, Renamed.
+ */
+export type WriteKind = 'A' | 'M' | 'D' | 'R'
+
+/** One file touched by a write inside a collapsed group. */
+export type WriteFileStat = {
+  path: string
+  kind: WriteKind
+  additions: number
+  deletions: number
+}
+
+/**
+ * A run of read/search/write operations folded into a single summary row.
  * Built by `createCollapsedGroup` in `src/utils/collapseReadSearch.ts`; the
  * optional fields are the ones that function only sets conditionally.
  */
@@ -440,6 +454,11 @@ export type CollapsedReadSearchGroup = {
   hookCount?: number
   hookInfos?: StopHookInfo[]
   relevantMemories?: { path: string; content: string; mtimeMs: number }[]
+  /**
+   * Files written by Write/Edit/apply_patch/Rename absorbed into this group,
+   * in the order they were first touched. Only set when the group has writes.
+   */
+  writeFileStats?: WriteFileStat[]
 }
 
 /** What a collapsed read/search group may absorb. */

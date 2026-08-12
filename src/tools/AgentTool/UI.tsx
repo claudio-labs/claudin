@@ -20,7 +20,7 @@ import type { Message, ProgressMessage } from '../../types/message.js';
 import type { AgentToolProgress } from '../../types/tools.js';
 import { count } from '../../utils/array.js';
 import { getGlobalConfig } from '../../utils/config.js';
-import { getSearchOrReadFromContent, getSearchReadSummaryText, summarizeRecentActivities } from '../../utils/collapseReadSearch.js';
+import { countWriteFiles, getSearchOrReadFromContent, getSearchReadSummaryText, summarizeRecentActivities } from '../../utils/collapseReadSearch.js';
 import { formatDuration, formatNumber, truncateToWidth } from '../../utils/format.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { useRampedNumber } from '../../hooks/useRampedNumber.js';
@@ -85,6 +85,7 @@ function getSearchOrReadInfo(progressMessage: ProgressMessage<Progress>, tools: 
   isSearch: boolean;
   isRead: boolean;
   isREPL: boolean;
+  isWrite: boolean;
 } | null {
   if (!hasProgressMessage(progressMessage.data)) {
     return null;
@@ -835,27 +836,45 @@ export function extractLastToolInfo(progressMessages: ProgressMessage<Progress>[
   // Count trailing consecutive search/read operations from the end
   let searchCount = 0;
   let readCount = 0;
+  let writeUses = 0;
+  // Writes are counted by FILE, not by call, so this line agrees with the
+  // collapsed badge the main thread shows for the same work (see
+  // countWriteFiles). The tool_use holding the paths is in toolUseByID.
+  const writes: {
+    toolName: string;
+    input: unknown;
+  }[] = [];
   for (let i = progressMessages.length - 1; i >= 0; i--) {
     const msg = progressMessages[i]!;
     if (!hasProgressMessage(msg.data)) {
       continue;
     }
     const info = getSearchOrReadInfo(msg, tools, toolUseByID);
-    if (info && (info.isSearch || info.isRead)) {
+    if (info && (info.isSearch || info.isRead || info.isWrite)) {
       // Only count tool_result messages to avoid double counting
       if (msg.data.message.type === 'user') {
         if (info.isSearch) {
           searchCount++;
         } else if (info.isRead) {
           readCount++;
+        } else if (info.isWrite) {
+          writeUses++;
+          const content = msg.data.message.message.content[0];
+          const toolUse = content?.type === 'tool_result' ? toolUseByID.get(content.tool_use_id) : undefined;
+          if (toolUse) {
+            writes.push({
+              toolName: toolUse.name,
+              input: toolUse.input
+            });
+          }
         }
       }
     } else {
       break;
     }
   }
-  if (searchCount + readCount >= 2) {
-    return getSearchReadSummaryText(searchCount, readCount, true);
+  if (searchCount + readCount + writeUses >= 2) {
+    return getSearchReadSummaryText(searchCount, readCount, true, 0, undefined, 0, countWriteFiles(writes));
   }
 
   // Find the last tool_result message

@@ -7,6 +7,7 @@ import { Ansi, Box, Text, useTheme } from '../../ink.js';
 import { findToolByName, type Tools } from '../../Tool.js';
 import { getReplPrimitiveTools } from '../../tools/REPLTool/primitiveTools.js';
 import type { CollapsedReadSearchGroup, NormalizedAssistantMessage } from '../../types/message.js';
+import type { WriteFileStat } from '../../types/message.js';
 import { uniq } from '../../utils/array.js';
 import { getToolUseIdsFromCollapsedGroup } from '../../utils/collapseReadSearch.js';
 import { getDisplayPath } from '../../utils/file.js';
@@ -28,6 +29,9 @@ const teamMemCollapsed = feature('TEAMMEM') ? require('./teamMemCollapsed.js') a
 // (bash commands, file reads, search patterns) are actually readable instead
 // of flickering past in a single frame.
 const MIN_HINT_DISPLAY_MS = 700;
+// A collapsed group that touched more files than this lists the first few and
+// counts the rest — past ~8 rows the badge stops being a summary.
+const MAX_WRITE_ROWS = 8;
 type Props = {
   message: CollapsedReadSearchGroup;
   inProgressToolUseIDs: Set<string>;
@@ -94,7 +98,10 @@ function VerboseToolUse(t0) {
       const resultMsg = lookups.toolResultByToolUseID.get(content.id);
       const rawToolResult = resultMsg?.type === "user" ? resultMsg.toolUseResult : undefined;
       const parsedOutput = tool.outputSchema?.safeParse(rawToolResult);
-      const toolResult = parsedOutput?.success ? parsedOutput.data : undefined;
+      // Mirrors UserToolSuccessMessage: a tool with no outputSchema (apply_patch,
+      // Rename) still renders its result — only a FAILED parse is dropped. Without
+      // this, those two render nothing at all inside a collapsed group.
+      const toolResult = parsedOutput ? parsedOutput.success ? parsedOutput.data : undefined : rawToolResult;
       const parsedInput = tool.inputSchema.safeParse(content.input);
       const input = parsedInput.success ? parsedInput.data : undefined;
       const userFacingName = tool.userFacingName(input);
@@ -174,6 +181,33 @@ export function CollapsedReadSearchContent({
   const maxListCountRef = useRef(0);
   const maxMcpCountRef = useRef(0);
   const maxBashCountRef = useRef(0);
+  // Same reason as the counters above: the group is rebuilt from scratch on
+  // every render and can briefly lose entries during streaming. Keep the widest
+  // list seen, so a row never disappears mid-write — but ONLY to cover a frame
+  // that lost the writes entirely, and only while the group runs. A shorter
+  // non-empty list is trusted, because a write can also leave a group FOR GOOD:
+  // one whose result errors is pulled out to render its own failed block, and a
+  // ref that never shrinks would keep counting it as edited for the rest of the
+  // group's life. A finished group is stable, so its own list is the truth.
+  const writeStatsRef = useRef<WriteFileStat[]>([]);
+  const incomingWriteStats = message.writeFileStats ?? [];
+  if (incomingWriteStats.length > 0) {
+    writeStatsRef.current = incomingWriteStats;
+  }
+  const writeStats = isActiveGroup && incomingWriteStats.length === 0 ? writeStatsRef.current : incomingWriteStats;
+  const writeCounts = {
+    A: 0,
+    M: 0,
+    D: 0,
+    R: 0
+  };
+  let writeAdditions = 0;
+  let writeDeletions = 0;
+  for (const stat of writeStats) {
+    writeCounts[stat.kind]++;
+    writeAdditions += stat.additions;
+    writeDeletions += stat.deletions;
+  }
   maxReadCountRef.current = Math.max(maxReadCountRef.current, rawReadCount);
   maxSearchCountRef.current = Math.max(maxSearchCountRef.current, rawSearchCount);
   maxListCountRef.current = Math.max(maxListCountRef.current, rawListCount);
@@ -188,7 +222,7 @@ export function CollapsedReadSearchContent({
   // needed — it's 0 until results arrive, then only grows).
   const gitOpBashCount = message.gitOpBashCount ?? 0;
   const bashCount = isFullscreenEnvEnabled() ? Math.max(0, maxBashCountRef.current - gitOpBashCount) : 0;
-  const hasNonMemoryOps = searchCount > 0 || readCount > 0 || listCount > 0 || replCount > 0 || mcpCallCount > 0 || bashCount > 0 || gitOpBashCount > 0;
+  const hasNonMemoryOps = searchCount > 0 || readCount > 0 || listCount > 0 || replCount > 0 || mcpCallCount > 0 || bashCount > 0 || gitOpBashCount > 0 || writeStats.length > 0;
   const readPaths = message.readFilePaths;
   const searchArgs = message.searchArgs;
   let incomingHint = message.latestDisplayHint;
@@ -341,6 +375,16 @@ export function CollapsedReadSearchContent({
       pushPart(`pr-${pr.action}-${pr.number}`, verbs[pr.action], pr.url ? <PrBadge number={pr.number} url={pr.url} bold /> : <Text bold>PR #{pr.number}</Text>);
     }
   }
+  // Writes come next: like the git ops above, they're the outcome of the group,
+  // not the lookups that led to it. One verb per kind, so a group that creates
+  // and deletes doesn't flatten into "edited".
+  const writeVerbs = [['A', writeCounts.A, isActiveGroup ? 'creating' : 'created'], ['M', writeCounts.M, isActiveGroup ? 'editing' : 'edited'], ['D', writeCounts.D, isActiveGroup ? 'deleting' : 'deleted'], ['R', writeCounts.R, isActiveGroup ? 'renaming' : 'renamed']] as const;
+  for (const [kind, count, verb] of writeVerbs) {
+    if (count === 0) continue;
+    pushPart(`write-${kind}`, verb, <>
+          <Text bold>{count}</Text> {count === 1 ? 'file' : 'files'}
+        </>);
+  }
   if (searchCount > 0) {
     const isFirst_0 = nonMemParts.length === 0;
     const searchVerb = isActiveGroup ? isFirst_0 ? 'Searching for' : 'searching for' : isFirst_0 ? 'Searched for' : 'searched for';
@@ -444,6 +488,10 @@ export function CollapsedReadSearchContent({
         {memoryWriteCount === 1 ? 'memory' : 'memories'}
       </Text>);
   }
+  // The visible write rows and the column the +/− numbers line up in.
+  const shownWriteStats = writeStats.slice(0, MAX_WRITE_ROWS);
+  const writePathWidth = shownWriteStats.reduce((max, stat) => Math.max(max, getDisplayPath(stat.path).length), 0);
+  const hasWriteTotals = writeAdditions > 0 || writeDeletions > 0;
   return <Box flexDirection="column" marginTop={1} backgroundColor={bg}>
       <Box flexDirection="row">
         {isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
@@ -456,7 +504,16 @@ export function CollapsedReadSearchContent({
           hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
         }) : null}
           {slowestShellSeconds !== undefined && <ShellGroupElapsedTime elapsedTimeSeconds={slowestShellSeconds} />}
-          {isActiveGroup && <Text key="ellipsis">…</Text>} <CtrlOToExpand />
+          {isActiveGroup && <Text key="ellipsis">…</Text>}
+          {/* Kept inside this Text, not as a sibling: a row Box gives each Text
+              its own column, which wraps the badge into two mangled halves. The
+              parent's dim rides on top of these colors instead of replacing
+              them, so a finished group reads as dim green/red. */}
+          {hasWriteTotals && <Text key="write-totals">
+              {'  '}
+              <Text color="diffAddedWord">+{writeAdditions}</Text>{' '}
+              <Text color="diffRemovedWord">−{writeDeletions}</Text>
+            </Text>} <CtrlOToExpand />
         </Text>
       </Box>
       {isActiveGroup && displayedHint !== undefined &&
@@ -474,6 +531,29 @@ export function CollapsedReadSearchContent({
               </Text>)}
           </Box>
         </Box>}
+      {/* Per-file rows only while the group runs — a finished group is one line. */}
+      {isActiveGroup && shownWriteStats.map(stat => <Box key={`write-${stat.path}`} flexDirection="row">
+          <Box width={5} flexShrink={0}>
+            <Text dimColor>{'  ⎿  '}</Text>
+          </Box>
+          <Box flexDirection="column" flexGrow={1}>
+            {/* One Text, not two: siblings here are columns that wrap
+                independently, which splits a long row in half — the same trap
+                the badge above hit (rules/ink-tui.md §10). */}
+            <Text dimColor>
+              {stat.kind} {getDisplayPath(stat.path).padEnd(writePathWidth)}
+              {(stat.additions > 0 || stat.deletions > 0) && <Text>
+                  {'  '}
+                  <Text color="diffAddedWord">+{stat.additions}</Text>{' '}
+                  <Text color="diffRemovedWord">−{stat.deletions}</Text>
+                </Text>}
+            </Text>
+          </Box>
+        </Box>)}
+      {isActiveGroup && writeStats.length > MAX_WRITE_ROWS && <Text dimColor>
+          {'  ⎿  '}… and {writeStats.length - MAX_WRITE_ROWS} more{' '}
+          {writeStats.length - MAX_WRITE_ROWS === 1 ? 'file' : 'files'}
+        </Text>}
       {message.hookTotalMs !== undefined && message.hookTotalMs > 0 && <Text dimColor>
           {'  ⎿  '}Ran {message.hookCount} PreToolUse{' '}
           {message.hookCount === 1 ? 'hook' : 'hooks'} (

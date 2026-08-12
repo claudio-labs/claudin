@@ -69,6 +69,12 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
     description: 'Collapse subagent progress to a single line on the main thread',
     appStateKey: 'collapseSubagentProgress',
   },
+  collapseFileWritesEnabled: {
+    source: 'global',
+    type: 'boolean',
+    description:
+      'Fold Write/Edit/apply_patch/Rename into the collapsed read/search row (diffs stay behind ctrl+o)',
+  },
   summarizeSubagentResult: {
     source: 'global',
     type: 'boolean',
