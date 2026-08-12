@@ -1,12 +1,17 @@
 /**
  * Reads the `featureFlags` map out of `scripts/build.ts`.
  *
- * `build.ts` stays the single source of truth: the two build-invariant guards
- * (feature-flags-source-guard, lazy-component-stub-guard) already read it as
- * text, and so does the test preload when it is asked for the shipped flag set.
- * Importing build.ts instead is not an option — its module body reads
- * package.json, reads the IDE extension manifest, and warns about missing
- * classifier prompts.
+ * `build.ts` stays the single source of truth, and the three readers of that
+ * map go through here: the two build-invariant guards
+ * (feature-flags-source-guard, lazy-component-stub-guard) and
+ * scripts/profile/dump-system-prompt.ts, which names the flags a source-side
+ * render reads as false. Importing build.ts instead is not an option — its
+ * module body reads package.json, reads the IDE extension manifest, and warns
+ * about missing classifier prompts.
+ *
+ * Not a reader, deliberately: src/stubs/test-preload.ts. Its
+ * `mock.module('bun:bundle', …)` is inert (Bun resolves that specifier
+ * natively), so handing it the real map would change nothing.
  */
 import { readFileSync } from 'fs'
 import { join } from 'path'

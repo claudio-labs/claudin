@@ -1,12 +1,18 @@
 #!/usr/bin/env bun
 // Dump claudin's system prompt as plain text, for diffing against Claude Code's.
-// No network.
 //
 //   # source-side, every feature() folded OFF (see the warning below)
 //   bun --preload ./src/stubs/test-preload.ts scripts/profile/dump-system-prompt.ts
 //
 //   # the prompt the built binary actually sends — needs `bun run build` first
 //   bun scripts/profile/dump-system-prompt.ts --flags=ship [--model=claude-opus-5]
+//
+// Both modes print TWO prompts: the main-session one (getSystemPrompt) and the
+// sub-agent one (enhanceSystemPromptWithEnvDetails). They share almost nothing
+// — the sub-agent `Notes:` block and its env section are assembled on a
+// different path — so a parity pass that reads only the first reports
+// sub-agent steering as missing. That is the same trap as the flag-off dump
+// below, one layer down.
 //
 // Why two modes: `feature()` cannot be overridden at runtime. Bun ≥1.3.9
 // resolves `bun:bundle` natively before any plugin or `mock.module` sees it —
@@ -18,14 +24,19 @@
 // The default mode is therefore missing WORK_CONTRACT, ANTI_NARRATION,
 // TOOL_BATCHING_NUDGE, LEAN_TOOL_PROMPTS and every other shipped flag — roughly
 // 800 tokens of steering. A parity pass that reads it as ground truth reports
-// shipped sections as missing; that has already happened once
-// (docs/tech/prompt-parity-vs-claude-code.md §0). The header line names the mode
-// so a dump can never be quoted without its provenance.
+// shipped sections as missing; that has already happened once, on the parity
+// pass against Claude Code that this mode was added for. The header line names
+// the mode so a dump can never be quoted without its provenance.
 //
 // One difference between the modes beyond the flags: the source mode renders
 // with the full tool registry (`getAllBaseTools()`), the bundle's
 // `--dump-system-prompt` fast path renders with an empty one. Tool-dependent
 // sections (MCP instructions) differ accordingly.
+//
+// Network: the source mode makes none. `--flags=ship` runs the real CLI, which
+// fires two Grove prefetch GETs before the fast path when the active profile is
+// on the anthropic transport (src/entrypoints/cli.tsx) — nothing is sent, but
+// it is not an offline command.
 
 import { existsSync, statSync } from 'fs'
 import { join } from 'path'
@@ -37,41 +48,77 @@ const MODEL_ARG_PREFIX = '--model='
 const REPO_ROOT = join(import.meta.dir, '..', '..')
 const BUNDLE = join(REPO_ROOT, 'dist/cli.mjs')
 
+// Everything whose edit changes a rendered prompt. Not just prompts.ts: the
+// context blocks, the AGENTS.md/rules loader, every per-tool prompt and the
+// sub-agent notices all land in one of the two dumps below.
+const PROMPT_SOURCE_GLOBS = [
+  'scripts/build.ts',
+  'src/constants/**/*.ts',
+  'src/context.ts',
+  'src/utils/claudemd.ts',
+  'src/tools/*/prompt.ts',
+  'src/tools/AgentTool/forkSubagent.ts',
+]
+
 const args = process.argv.slice(2)
 const wantsShipFlags = args.includes('--flags=ship')
 const modelArg = args.find(a => a.startsWith(MODEL_ARG_PREFIX))?.slice(MODEL_ARG_PREFIX.length)
 
-function dumpFromBundle(): number {
-  if (!existsSync(BUNDLE)) {
-    console.error(`--flags=ship needs the bundle: ${BUNDLE} does not exist. Run \`bun run build\`.`)
-    return 1
+function stalePromptSources(builtAt: number): string[] {
+  const stale: string[] = []
+  for (const pattern of PROMPT_SOURCE_GLOBS) {
+    for (const rel of new Bun.Glob(pattern).scanSync({ cwd: REPO_ROOT, onlyFiles: true })) {
+      if (statSync(join(REPO_ROOT, rel)).mtimeMs > builtAt) stale.push(rel)
+    }
   }
-  // A dump older than the prompt source is the same trap in a new shape.
-  const builtAt = statSync(BUNDLE).mtimeMs
-  const sources = ['src/constants/prompts.ts', 'scripts/build.ts'].map(p => join(REPO_ROOT, p))
-  const stale = sources.filter(p => existsSync(p) && statSync(p).mtimeMs > builtAt)
-  if (stale.length > 0) {
-    console.error(`warning: dist/cli.mjs predates ${stale.join(', ')} — run \`bun run build\` for a current dump.`)
-  }
+  return stale.sort()
+}
 
-  console.log(
-    `# flags=ship source=dist/cli.mjs built=${new Date(builtAt).toISOString()} model=${modelArg ?? '<session default>'} tools=none`,
-  )
+function spawnBundleDump(extraArgs: string[]): number {
   const { exitCode } = Bun.spawnSync({
     cmd: [
       'node',
       BUNDLE,
       '--dump-system-prompt',
       ...(modelArg !== undefined ? ['--model', modelArg] : []),
+      ...extraArgs,
     ],
     stdio: ['inherit', 'inherit', 'inherit'],
   })
   return exitCode ?? 1
 }
 
+function dumpFromBundle(): number {
+  if (!existsSync(BUNDLE)) {
+    console.error(`--flags=ship needs the bundle: ${BUNDLE} does not exist. Run \`bun run build\`.`)
+    return 1
+  }
+  // A dump older than the prompt source is the same trap in a new shape. This
+  // is an mtime comparison, so a branch switch or a fresh checkout rewrites
+  // mtimes and reports staleness that is not real — it over-warns on purpose.
+  const builtAt = statSync(BUNDLE).mtimeMs
+  const stale = stalePromptSources(builtAt)
+  if (stale.length > 0) {
+    const shown = stale.slice(0, 5).join(', ')
+    const rest = stale.length > 5 ? ` (+${stale.length - 5} more)` : ''
+    console.error(
+      `warning: dist/cli.mjs predates ${shown}${rest} — run \`bun run build\` for a current dump (mtime-based, so a branch switch false-positives).`,
+    )
+  }
+
+  const provenance = `source=dist/cli.mjs built=${new Date(builtAt).toISOString()} model=${modelArg ?? '<session default>'} tools=none`
+  console.log(`# flags=ship prompt=main ${provenance}`)
+  const mainExit = spawnBundleDump([])
+  if (mainExit !== 0) return mainExit
+
+  console.log(`\n# flags=ship prompt=subagent ${provenance}`)
+  return spawnBundleDump(['--subagent'])
+}
+
 async function dumpFromSource(): Promise<void> {
   const { getAllBaseTools } = await import('../../src/tools.js')
-  const { getSystemPrompt } = await import('../../src/constants/prompts.js')
+  const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
+    await import('../../src/constants/prompts.js')
   const { enableConfigs } = await import('../../src/utils/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'
@@ -83,7 +130,15 @@ async function dumpFromSource(): Promise<void> {
   console.log(`# flags=off source=src model=${model} tools=all`)
   console.log(`# MISSING vs the shipped build (${foldedOff.length} flags read false here): ${foldedOff.join(', ')}`)
 
-  const blocks = await getSystemPrompt(getAllBaseTools(), model)
+  printBlocks('MAIN', await getSystemPrompt(getAllBaseTools(), model))
+  printBlocks(
+    'SUBAGENT',
+    await enhanceSystemPromptWithEnvDetails([DEFAULT_AGENT_PROMPT], model),
+  )
+}
+
+function printBlocks(label: string, blocks: string[]): void {
+  console.log(`\n╔══ ${label} PROMPT ${'═'.repeat(40)}`)
   blocks.forEach((b, i) => {
     console.log(`\n┌── BLOCK ${i} ${'─'.repeat(50)}`)
     console.log(b)

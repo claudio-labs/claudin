@@ -280,6 +280,9 @@ async function main(): Promise<void> {
 
   // Fast-path for --dump-system-prompt: output the rendered system prompt and exit.
   // Used by prompt sensitivity evals to extract the system prompt at a specific commit.
+  // `--subagent` renders what an Agent-tool child gets instead (the main prompt
+  // never contains it — that block is assembled by
+  // enhanceSystemPromptWithEnvDetails, not getSystemPrompt).
   // Ant-only: eliminated from external builds via feature flag.
   if (feature('DUMP_SYSTEM_PROMPT') && args[0] === '--dump-system-prompt') {
     profileCheckpoint('cli_dump_system_prompt_path');
@@ -293,9 +296,11 @@ async function main(): Promise<void> {
     const modelIdx = args.indexOf('--model');
     const model = modelIdx !== -1 && args[modelIdx + 1] || getMainLoopModel();
     const {
-      getSystemPrompt
+      getSystemPrompt,
+      enhanceSystemPromptWithEnvDetails,
+      DEFAULT_AGENT_PROMPT
     } = await import('../constants/prompts.js');
-    const prompt = await getSystemPrompt([], model);
+    const prompt = args.includes('--subagent') ? await enhanceSystemPromptWithEnvDetails([DEFAULT_AGENT_PROMPT], model) : await getSystemPrompt([], model);
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.log(prompt.join('\n'));
     return;

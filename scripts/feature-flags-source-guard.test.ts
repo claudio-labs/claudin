@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'fs'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { expect, test } from 'bun:test'
+import { loadShippedFeatureFlags } from './parseFeatureFlags'
 
 // Regression guard for #856. Several build feature flags require source files
 // that are not mirrored into the open build. When such a flag is set to `true`
@@ -12,7 +13,6 @@ import { expect, test } from 'bun:test'
 // This test fails fast at test-time if someone re-enables one of these flags
 // without first mirroring the corresponding source file.
 
-const BUILD_SCRIPT = join(import.meta.dir, 'build.ts')
 const REPO_ROOT = join(import.meta.dir, '..')
 
 type FlagGuard = {
@@ -25,11 +25,12 @@ const FLAG_REQUIRES_SOURCE: FlagGuard[] = [
 ]
 
 test('build feature flags are not enabled without their source files', () => {
-  const buildScript = readFileSync(BUILD_SCRIPT, 'utf-8')
+  // Parsed, not regex-matched against the whole file: a `FLAG: true` in a
+  // comment or in some other object literal is not a shipped flag.
+  const flags = loadShippedFeatureFlags()
 
   for (const { flag, source } of FLAG_REQUIRES_SOURCE) {
-    const enabledRe = new RegExp(`^\\s*${flag}\\s*:\\s*true\\b`, 'm')
-    const isEnabled = enabledRe.test(buildScript)
+    const isEnabled = flags[flag] === true
     const sourceExists = existsSync(join(REPO_ROOT, source))
 
     if (isEnabled && !sourceExists) {
@@ -39,9 +40,12 @@ test('build feature flags are not enabled without their source files', () => {
           `Either mirror the source file or set ${flag}: false.`,
       )
     }
-
-    // When the source IS present, the flag can be either true or false; either
-    // is fine. We only care about the "enabled but missing" combination.
-    expect(true).toBe(true)
   }
+
+  // When the source IS present, the flag can be either true or false; either is
+  // fine — we only care about the "enabled but missing" combination. What does
+  // need asserting is that the loop above ran at all: an empty table (or a
+  // parser that returned {}) would make this suite pass while checking nothing.
+  expect(FLAG_REQUIRES_SOURCE.length).toBeGreaterThan(0)
+  expect(Object.keys(flags).length).toBeGreaterThan(20)
 })

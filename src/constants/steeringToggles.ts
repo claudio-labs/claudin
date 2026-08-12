@@ -39,3 +39,18 @@ export function isWorkContractEnabled(): boolean {
 export function isAntiNarrationEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_ANTI_NARRATION)
 }
+
+/**
+ * The four sub-agent-only notes in `SUBAGENT_NOTES_BULLETS` (where a report
+ * goes, who can authorize the agent, tool-result provenance, summarization) —
+ * ~270 tokens on EVERY sub-agent request, which is what earns them a
+ * killswitch. `CLAUDIN_SUBAGENT_NOTES=0` subtracts them.
+ *
+ * No `feature()` twin, unlike the two above: there is no build flag gating this
+ * text, so the env var is the whole gate and the strings are always compiled
+ * in. The sub-agent prompt is assembled per spawn and is not part of the
+ * `cacheScope:'global'` prefix, so flipping this does not fragment it.
+ */
+export function isSubagentNotesEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_NOTES)
+}

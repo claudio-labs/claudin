@@ -12,6 +12,10 @@ import type {
 } from '../../types/message.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { createUserMessage } from '../../utils/messages.js'
+import {
+  WORKTREE_STASH_WARNING,
+  WORKTREE_WRITE_SCOPE_NOTE,
+} from '../../constants/worktreeSafety.js'
 import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
 
 /**
@@ -204,13 +208,28 @@ ${FORK_DIRECTIVE_PREFIX}${directive}`
 }
 
 /**
- * Notice injected into fork children running in an isolated worktree.
+ * Notice injected into FORK children running in an isolated worktree.
  * Tells the child to translate paths from the inherited context, re-read
- * potentially stale files, and that its changes are isolated.
+ * potentially stale files, and what isolation does and does not cover.
+ * A named sub-agent has no inherited context to translate — it gets
+ * `buildAgentWorktreeNotice` instead.
  */
 export function buildWorktreeNotice(
   parentCwd: string,
   worktreeCwd: string,
 ): string {
-  return `You've inherited the conversation context above from a parent agent working in ${parentCwd}. You are operating in an isolated git worktree at ${worktreeCwd} — same repository, same relative file structure, separate working copy. Paths in the inherited context refer to the parent's working directory; translate them to your worktree root. Re-read files before editing if the parent may have modified them since they appear in the context. Your changes stay in this worktree and will not affect the parent's files.`
+  return `You've inherited the conversation context above from a parent agent working in ${parentCwd}. You are operating in an isolated git worktree at ${worktreeCwd} — same repository, same relative file structure, separate working copy. Paths in the inherited context refer to the parent's working directory; translate them to your worktree root. Re-read files before editing if the parent may have modified them since they appear in the context. ${WORKTREE_WRITE_SCOPE_NOTE} ${WORKTREE_STASH_WARNING}`
+}
+
+/**
+ * Notice injected into NAMED sub-agents running in an isolated worktree.
+ *
+ * Same isolation facts minus the context translation, which only a fork needs.
+ * Before this existed, an `isolation:"worktree"` agent that was not a fork got
+ * no worktree guidance at all: the env block a sub-agent renders
+ * (`computeEnvInfo`) has no worktree branch, and the main session's worktree
+ * lines hang off a process-global that only EnterWorktree sets.
+ */
+export function buildAgentWorktreeNotice(worktreeCwd: string): string {
+  return `You are operating in an isolated git worktree at ${worktreeCwd} — same repository as the parent, same relative file structure, separate working copy. Run all commands from this directory. ${WORKTREE_WRITE_SCOPE_NOTE} ${WORKTREE_STASH_WARNING}`
 }
