@@ -23,11 +23,17 @@ Each file section starts with exactly one header:
 *** Delete File: <path>  Remove an existing file. Nothing follows the header.
 *** Update File: <path>  Patch an existing file in place. May be followed by an optional "*** Move to: <new path>" line to rename the file as part of the update.
 
-Inside an Update section, changes are grouped into hunks. Each hunk begins with a "@@" line that names enough surrounding context (e.g. a function signature) to locate it, followed by the change lines:
+Inside an Update section, changes are grouped into hunks. Each hunk begins with a "@@" line, followed by the change lines:
   - a leading space (" ") marks an unchanged context line, present to anchor the hunk
   - a leading "-" marks a removed line
   - a leading "+" marks an added line
 A hunk may end with "*** End of File" to anchor it to the end of the file.
+
+The "@@" line is a one-line search cursor, not a unified-diff header:
+  - a bare "@@" is valid, and is the right default whenever the hunk's own context lines already locate it uniquely
+  - to point somewhere, copy ONE line from the file verbatim and whole — "@@ export function greet(name: string): string {", not a fragment like "@@ function greet(" — it is matched against an entire line
+  - the hunk body starts at the line AFTER it, so do not restate the anchored line as the hunk's first context line
+  - the cursor only moves forward: each "@@" must sit at or after the previous hunk's, so do not repeat one function signature across several hunks — give each its own nearby anchor, or a bare "@@"
 
 Example:
 

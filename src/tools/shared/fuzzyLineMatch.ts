@@ -114,3 +114,55 @@ export function seekSequence(
 
   return -1
 }
+
+// Indices at or after `startIndex` whose line CONTAINS `needle` (both trimmed).
+// Used only to rescue an `@@` anchor a model truncated to a fragment of the real
+// line — that anchor is a search cursor, so a looser match costs little, but the
+// caller must require a UNIQUE hit before trusting it.
+export function findContaining(
+  lines: string[],
+  needle: string,
+  startIndex: number,
+): number[] {
+  const found: number[] = []
+  const trimmed = needle.trim()
+  if (trimmed === '') return found
+  for (let i = Math.max(0, startIndex); i < lines.length; i++) {
+    if (lines[i].trim().includes(trimmed)) found.push(i)
+  }
+  return found
+}
+
+export interface PartialMatch {
+  /** Start index in `lines` of the longest matching prefix. */
+  index: number
+  /** How many leading `pattern` lines matched there (always >= 1). */
+  matched: number
+}
+
+// Where the longest PREFIX of `pattern` matches, under the loosest comparator in
+// the ladder. Diagnostic only: it turns "your block was not found" into "your
+// line N is where it stopped matching, and here is what the file has there".
+// Returns null when not even the first line matches anywhere.
+export function bestPartialMatch(
+  lines: string[],
+  pattern: string[],
+  startIndex: number,
+): PartialMatch | null {
+  if (pattern.length === 0) return null
+  let best: PartialMatch | null = null
+  for (let i = Math.max(0, startIndex); i < lines.length; i++) {
+    let matched = 0
+    while (
+      matched < pattern.length &&
+      i + matched < lines.length &&
+      normalizeUnicodeMatch(lines[i + matched], pattern[matched])
+    ) {
+      matched++
+    }
+    if (matched > 0 && (best === null || matched > best.matched)) {
+      best = { index: i, matched }
+    }
+  }
+  return best
+}

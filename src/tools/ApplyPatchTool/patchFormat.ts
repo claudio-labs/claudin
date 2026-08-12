@@ -9,7 +9,13 @@
 //   - No `maybeParseApplyPatch` (Bash-invocation detection) — out of scope.
 // The parse + fuzzy-match behavior is otherwise identical to the source.
 
-import { seekSequence } from 'src/tools/shared/fuzzyLineMatch.js'
+import {
+  bestPartialMatch,
+  findAllMatches,
+  findContaining,
+  ignoreSurroundingWs,
+  seekSequence,
+} from 'src/tools/shared/fuzzyLineMatch.js'
 
 export type Hunk =
   | { type: 'add'; path: string; contents: string }
@@ -423,6 +429,81 @@ function rebuildSegment(
   return segment
 }
 
+const MAX_ERROR_LINE_CHARS = 200
+
+function excerpt(line: string): string {
+  return line.length > MAX_ERROR_LINE_CHARS
+    ? `${line.slice(0, MAX_ERROR_LINE_CHARS)}\u2026`
+    : line
+}
+
+/**
+ * Explains a failed old-lines search by naming the point where the model's block
+ * stopped agreeing with the file. The previous message echoed the block back,
+ * which tells the model only what it already sent — the recovery observed in
+ * practice was a blind re-send. The divergence point, plus the file's actual
+ * line there, is what makes it a one-shot fix: a dropped intervening line is by
+ * far the most common cause.
+ */
+function describeLineMismatch(
+  originalLines: string[],
+  pattern: string[],
+  searchStart: number,
+  filePath: string,
+): string {
+  const head = `Failed to find expected lines in ${filePath}`
+  const best = bestPartialMatch(originalLines, pattern, searchStart)
+  if (!best) {
+    return (
+      `${head}: none of the ${pattern.length} line(s) below appear at or after line ` +
+      `${searchStart + 1}. Read the file again and copy the context verbatim — a block ` +
+      `that matches nowhere usually means it was written from memory, or aimed at the ` +
+      `wrong file.\n${pattern.map(excerpt).join('\n')}`
+    )
+  }
+  const divergedAt = best.index + best.matched
+  const fileLine = originalLines[divergedAt]
+  return (
+    `${head}: line(s) 1-${best.matched} of your hunk match starting at line ` +
+    `${best.index + 1}, then line ${best.matched + 1} diverges.\n` +
+    `  your line ${best.matched + 1}: ${excerpt(pattern[best.matched])}\n` +
+    (fileLine === undefined
+      ? '  the file ends there\n'
+      : `  file line ${divergedAt + 1}: ${excerpt(fileLine)}\n`) +
+    'Re-read that region and copy every line in between — a dropped intervening ' +
+    'line is the usual cause.'
+  )
+}
+
+/**
+ * Explains an `@@` anchor that never resolved. The out-of-order case is worth
+ * separating: naming one function signature as the anchor of several hunks is a
+ * natural reading of the format, and the cursor only moves forward, so the
+ * second hunk's anchor is "missing" only in the sense of being behind it.
+ */
+function describeContextMismatch(
+  originalLines: string[],
+  anchor: string,
+  searchStart: number,
+  filePath: string,
+): string {
+  const head = `Failed to find context '${anchor}' in ${filePath}`
+  const earlier = searchStart > 0 ? seekSequence(originalLines, [anchor], 0) : -1
+  if (earlier !== -1 && earlier < searchStart) {
+    return (
+      `${head}: it matches line ${earlier + 1}, which is before the previous hunk — the ` +
+      `search resumes at line ${searchStart + 1}. Hunks apply top-to-bottom, so each '@@' ` +
+      `must sit at or after the one before it. Give this hunk its own nearby anchor, or a ` +
+      `bare '@@'.`
+    )
+  }
+  return (
+    `${head}: no line matches it at or after line ${searchStart + 1}. '@@' is matched ` +
+    `against a WHOLE line — copy one verbatim from the file, or write a bare '@@' and let ` +
+    `the hunk's own context lines locate it.`
+  )
+}
+
 function computeReplacements(
   originalLines: string[],
   filePath: string,
@@ -432,27 +513,50 @@ function computeReplacements(
   let lineIndex = 0
 
   for (const chunk of chunks) {
+    // The `@@` line is a one-line search CURSOR, not a unified-diff header: the
+    // hunk's own old lines still have to match wherever it lands. Every rescue
+    // below therefore only WIDENS where the search may start — none of them
+    // relocates an edit that the anchor had already placed.
+    let anchorIdx = -1
     if (chunk.changeContext) {
-      const contextIdx = seekSequence(
-        originalLines,
-        [chunk.changeContext],
-        lineIndex,
-      )
-      if (contextIdx === -1) {
-        throw new Error(
-          `Failed to find context '${chunk.changeContext}' in ${filePath}`,
+      anchorIdx = seekSequence(originalLines, [chunk.changeContext], lineIndex)
+      if (anchorIdx === -1) {
+        // The anchor was truncated to a fragment of the real line
+        // (`@@ function foo(` for `export function foo(x: T): R {`). Accept it
+        // only when exactly one line contains the fragment — with several
+        // candidates there is no way to tell which was meant.
+        const containing = findContaining(
+          originalLines,
+          chunk.changeContext,
+          lineIndex,
         )
+        if (containing.length === 1) anchorIdx = containing[0]
       }
-      lineIndex = contextIdx + 1
     }
+
+    const searchStart = anchorIdx === -1 ? lineIndex : anchorIdx + 1
+    if (anchorIdx !== -1) lineIndex = searchStart
 
     // Pure insertion (no removed lines). With an explicit `@@` anchor, insert
     // right after the anchored line (lineIndex now points just past it).
     // Without an anchor, append at EOF (before any trailing blank line).
     // Previously the anchor was ignored and every pure insertion landed at EOF.
+    // An anchor that did NOT resolve is fatal here: there are no old lines to
+    // fall back on, so appending at EOF would report success for an edit that
+    // landed nowhere near the target.
     if (chunk.oldLines.length === 0) {
+      if (chunk.changeContext && anchorIdx === -1) {
+        throw new Error(
+          describeContextMismatch(
+            originalLines,
+            chunk.changeContext,
+            lineIndex,
+            filePath,
+          ),
+        )
+      }
       const insertionIdx = chunk.changeContext
-        ? lineIndex
+        ? searchStart
         : originalLines.length > 0 &&
             originalLines[originalLines.length - 1] === ''
           ? originalLines.length - 1
@@ -466,7 +570,7 @@ function computeReplacements(
     let found = seekSequence(
       originalLines,
       pattern,
-      lineIndex,
+      searchStart,
       chunk.isEndOfFile,
     )
 
@@ -476,20 +580,63 @@ function computeReplacements(
       if (newSlice.length > 0 && newSlice[newSlice.length - 1] === '') {
         newSlice = newSlice.slice(0, -1)
       }
-      found = seekSequence(originalLines, pattern, lineIndex, chunk.isEndOfFile)
+      found = seekSequence(originalLines, pattern, searchStart, chunk.isEndOfFile)
     }
 
-    if (found !== -1) {
-      const segment = chunk.ops
-        ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
-        : newSlice
-      replacements.push([found, pattern.length, segment])
-      lineIndex = found + pattern.length
-    } else {
+    // The anchor restated as the hunk's first line — `@@ foo` followed by ` foo`,
+    // the habit unified diff teaches. `searchStart` sits one line PAST the
+    // anchor, so that shape demands the anchored line twice in a row. Retrying
+    // from the anchor itself adds exactly one candidate start, and it can only
+    // match when the hunk's first line IS the anchored line.
+    if (found === -1 && anchorIdx !== -1) {
+      found = seekSequence(originalLines, pattern, anchorIdx, chunk.isEndOfFile)
+    }
+
+    if (found === -1) {
       throw new Error(
-        `Failed to find expected lines in ${filePath}:\n${chunk.oldLines.join('\n')}`,
+        chunk.changeContext && anchorIdx === -1
+          ? describeContextMismatch(
+              originalLines,
+              chunk.changeContext,
+              lineIndex,
+              filePath,
+            )
+          : describeLineMismatch(
+              originalLines,
+              pattern,
+              anchorIdx === -1 ? searchStart : anchorIdx,
+              filePath,
+            ),
       )
     }
+
+    // The anchor never resolved, so this match was located WITHOUT it. Accept it
+    // only when it is the sole candidate: an anchor nobody can find cannot have
+    // been disambiguating anything, but silently picking one of several regions
+    // would be a wrong edit reported as success.
+    if (chunk.changeContext && anchorIdx === -1) {
+      const candidates = findAllMatches(
+        originalLines,
+        pattern,
+        ignoreSurroundingWs,
+      )
+      if (candidates.filter(i => i >= lineIndex).length > 1) {
+        throw new Error(
+          describeContextMismatch(
+            originalLines,
+            chunk.changeContext,
+            lineIndex,
+            filePath,
+          ),
+        )
+      }
+    }
+
+    const segment = chunk.ops
+      ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
+      : newSlice
+    replacements.push([found, pattern.length, segment])
+    lineIndex = found + pattern.length
   }
 
   replacements.sort((a, b) => a[0] - b[0])
