@@ -394,12 +394,38 @@ describe('deriveNewContentsFromChunks', () => {
     expect(out).toBe('alpha\n\nBETA\n')
   })
 
-  test('throws when the @@ context cannot be located', () => {
+  test('an unresolvable @@ falls back to an unambiguous block match', () => {
+    // The anchor is only a search cursor. When it matches nothing, the hunk's own
+    // lines still locate the edit — which is exactly what the model gets by
+    // deleting the anchor and re-sending, so do it without the round trip.
+    const out = deriveNewContentsFromChunks(
+      'f',
+      [chunk({ changeContext: 'ghost', oldLines: ['a'], newLines: ['b'] })],
+      'a\n',
+    )
+    expect(out).toBe('b\n')
+  })
+
+  test('an unresolvable @@ still throws when the block is ambiguous', () => {
+    // The fallback above must not silently pick one of several candidate regions:
+    // that is a wrong edit reported as success.
     expect(() =>
       deriveNewContentsFromChunks(
         'f',
         [chunk({ changeContext: 'ghost', oldLines: ['a'], newLines: ['b'] })],
-        'a\n',
+        'a\nx\na\n',
+      ),
+    ).toThrow("Failed to find context 'ghost'")
+  })
+
+  test('an unresolvable @@ on a pure insertion throws instead of appending at EOF', () => {
+    // No old lines means nothing to fall back on, so a bad anchor must be fatal
+    // rather than dropping the insertion at the end of the file.
+    expect(() =>
+      deriveNewContentsFromChunks(
+        'f',
+        [chunk({ changeContext: 'ghost', oldLines: [], newLines: ['x'] })],
+        'a\nb\n',
       ),
     ).toThrow("Failed to find context 'ghost'")
   })
@@ -473,5 +499,77 @@ describe('deriveNewContentsFromChunks', () => {
         original,
       ),
     ).toThrow('Overlapping edits in f')
+  })
+
+  test('tolerates the @@ anchor restated as the first context line', () => {
+    // `@@ foo` followed by ` foo` is the habit unified diff teaches. The search
+    // resumes one line PAST the anchor, so this used to demand the line twice.
+    const original = 'def f():\n  return 1\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.py\n@@ def f():\n def f():\n-  return 1\n+  return 2',
+      original,
+    )
+    expect(out).toBe('def f():\n  return 2\n')
+  })
+
+  test('tolerates the @@ anchor restated as the first removed line', () => {
+    const original = 'def f():\n  return 1\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.py\n@@ def f():\n-def f():\n+def g():',
+      original,
+    )
+    expect(out).toBe('def g():\n  return 1\n')
+  })
+
+  test('tolerates two hunks that repeat one function signature as their anchor', () => {
+    // The cursor only moves forward, so the second hunk's anchor sits behind it.
+    // Its own lines are unambiguous, so the edit still lands.
+    const original = 'def f(a):\n  x = 1\n  return x\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.py\n@@ def f(a):\n-  x = 1\n+  x = 2\n@@ def f(a):\n-  return x\n+  return x * 2',
+      original,
+    )
+    expect(out).toBe('def f(a):\n  x = 2\n  return x * 2\n')
+  })
+
+  test('rescues a @@ anchor truncated to a unique fragment of the real line', () => {
+    const original = 'export function g(x: number): number {\n  return x\n}\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.ts\n@@ function g(\n-  return x\n+  return x + 1',
+      original,
+    )
+    expect(out).toBe('export function g(x: number): number {\n  return x + 1\n}\n')
+  })
+
+  test('does not rescue a fragment anchor that matches several lines', () => {
+    // Two candidate lines contain the fragment, so it cannot be resolved; the
+    // block itself is ambiguous too, so the whole hunk is refused.
+    const original = 'function g(a) {}\nfunction g(b) {}\nreturn 1\nreturn 1\n'
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.ts\n@@ function g(\n-return 1\n+return 2',
+        original,
+      ),
+    ).toThrow("Failed to find context 'function g('")
+  })
+
+  test('names the divergence point when a block stops matching', () => {
+    // The hunk drops the middle line. The message must say where it stopped
+    // agreeing and what the file actually has there, not echo the block back.
+    const original = 'import a\nimport b\nimport c\n'
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.py\n@@\n import a\n-import c\n+import C',
+        original,
+      ),
+    ).toThrow(
+      /line\(s\) 1-1 of your hunk match starting at line 1[\s\S]*file line 2: import b/,
+    )
+  })
+
+  test('says so when a block matches nowhere at all', () => {
+    expect(() =>
+      deriveFromPatch('*** Update File: f.py\n@@\n-nope\n+x', 'a\nb\n'),
+    ).toThrow('none of the 1 line(s) below appear at or after line 1')
   })
 })
