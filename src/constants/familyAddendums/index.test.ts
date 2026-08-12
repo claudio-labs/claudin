@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ANTHROPIC_ADDENDUM } from './anthropic.js'
+import { getAnthropicAddendum } from './anthropic.js'
 import { CODEX_ADDENDUM } from './codex.js'
 import { DEFAULT_ADDENDUM } from './default.js'
 import { GEMINI_ADDENDUM } from './gemini.js'
@@ -111,7 +111,7 @@ describe('addendum contents', () => {
     // tests we expect null here. Production builds set the flag to true
     // via scripts/build.ts and the resolved string is exercised by the
     // dedicated test below.
-    { name: 'anthropic', value: ANTHROPIC_ADDENDUM, expectString: false },
+    { name: 'anthropic', value: getAnthropicAddendum(), expectString: false },
     { name: 'default', value: DEFAULT_ADDENDUM, expectString: false },
     { name: 'openai-reasoning', value: OPENAI_REASONING_ADDENDUM, expectString: true },
     { name: 'gemini', value: GEMINI_ADDENDUM, expectString: true },
