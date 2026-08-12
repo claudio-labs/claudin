@@ -3,6 +3,8 @@ paths:
   - "scripts/build.ts"
   - "scripts/no-telemetry-plugin.ts"
   - "scripts/feature-flags-source-guard.test.ts"
+  - "src/constants/prompts.ts"
+  - "scripts/profile/dump-system-prompt.ts"
 ---
 # Build System — Claudin Development Rules
 
@@ -60,6 +62,20 @@ Enabled flags drive real code paths in the open build: `COORDINATOR_MODE`,
 When in doubt whether a feature is alive, check the flag in `build.ts` before
 chasing dead code. **New Anthropic-internal features go behind `feature('FLAG')`
 — never gate build-time features with runtime env vars.**
+
+### A source-side render reads every flag as `false`
+
+`feature()` cannot be resolved outside the build. Bun resolves `bun:bundle`
+natively before any mock or plugin, so `mock.module('bun:bundle', …)` in
+`src/stubs/test-preload.ts` is **inert** — under `bun run` and `bun test` all 50
+flags read `false`, including the 34 that ship `true`. Anything rendered from
+source is therefore the flag-off shape, not what the binary sends. The worked
+example is the system prompt: a source dump is missing ~800 tokens of steering
+(`WORK_CONTRACT`, `ANTI_NARRATION`, `LEAN_TOOL_PROMPTS`, …) and a parity pass has
+already reported shipped sections as missing because of it. To see the real
+thing, ask the built bundle: `bun scripts/profile/dump-system-prompt.ts
+--flags=ship` (after `bun run build`). Same trap for any other flag-gated
+construct you render in a script or a test.
 
 ## Rules
 

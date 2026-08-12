@@ -85,7 +85,7 @@ future regressions can be diagnosed without re-deriving the toolkit:
 
 | Script                       | Use case |
 | ---------------------------- | -------- |
-| `dump-system-prompt.ts`      | Dump the full system prompt + tool schemas sent on a fresh session — useful for diffing what the wire actually carries |
+| `dump-system-prompt.ts`      | Dump the main-session **and** sub-agent system prompts as plain text, for diffing against Claude Code's. The default mode renders from source with every `feature()` folded **off** (~800 tokens of shipped steering missing); `--flags=ship` shells out to the built `dist/cli.mjs` for what the binary actually sends. Every dump carries a provenance header — never quote one without it |
 | `prefix-anatomy.ts`          | Break down the request prefix into system / tools / messages with token estimates per segment |
 | `eager-tools.ts`             | Estimate which tools could be lazy-loaded to shrink the static prefix |
 | `subagent-cost-bench.ts`     | Per-turn token + $ accounting for a fan-out of sub-agents, to validate fork-vs-fresh cost claims |

@@ -52,7 +52,7 @@ import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extra
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from './constants.js';
 import { allowsImplicitAutoBackground } from './autoBackground.js';
-import { buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from './forkSubagent.js';
+import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from './forkSubagent.js';
 import type { AgentDefinition } from './loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from './loadAgentsDir.js';
 import { getPrompt } from './prompt.js';
@@ -605,10 +605,15 @@ export const AgentTool = buildTool({
 
     // Fork + worktree: inject a notice telling the child to translate paths
     // and re-read potentially stale files. Appended after the fork directive
-    // so it appears as the most recent guidance the child sees.
-    if (isForkPath && worktreeInfo) {
+    // so it appears as the most recent guidance the child sees. A NAMED agent
+    // in a worktree gets the shorter notice — it has no inherited context to
+    // translate, but it does need the isolation scope and the shared-stash
+    // warning, which no other part of its prompt carries.
+    if (worktreeInfo) {
       promptMessages.push(createUserMessage({
-        content: buildWorktreeNotice(getCwd(), worktreeInfo.worktreePath)
+        content: isForkPath
+          ? buildWorktreeNotice(getCwd(), worktreeInfo.worktreePath)
+          : buildAgentWorktreeNotice(worktreeInfo.worktreePath)
       }));
     }
     // Propagate the parent's plan slug so nested AgentTool calls (A → B → C)

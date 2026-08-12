@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { dirname, join, resolve } from 'path'
 import { describe, expect, test } from 'bun:test'
+import { loadShippedFeatureFlags } from './parseFeatureFlags'
 
 // Companion to feature-flags-source-guard.test.ts, for the variant of that bug
 // that takes the whole TUI down instead of throwing in one code path.
@@ -20,24 +21,11 @@ import { describe, expect, test } from 'bun:test'
 
 const REPO_ROOT = resolve(import.meta.dir, '..')
 const SRC_DIR = join(REPO_ROOT, 'src')
-const BUILD_SCRIPT = join(import.meta.dir, 'build.ts')
 
 type SourceFile = { path: string; code: string }
 type Risk = { path: string; line: number; spec: string; name: string }
 
 const REQUIRE_RE = /require\(\s*['"](\.\.?\/[^'"]+\.js)['"]\s*\)/g
-
-/** Mirrors the `featureFlags` map the build folds `feature()` calls against. */
-export function parseFeatureFlags(buildScript: string): Record<string, boolean> {
-  const body = /const featureFlags[^{]*\{([\s\S]*?)\n\}/.exec(buildScript)
-  if (!body) throw new Error('could not find featureFlags in scripts/build.ts')
-  const flags: Record<string, boolean> = {}
-  for (const line of body[1]!.split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*:\s*(true|false)\b/.exec(line)
-    if (m) flags[m[1]!] = m[2] === 'true'
-  }
-  return flags
-}
 
 /**
  * Is the `require()` at `index` reachable in the shipped bundle? Undeclared
@@ -230,7 +218,7 @@ describe('findUnguardedStubComponentRenders', () => {
 })
 
 test('no live require() renders a component from a missing (stubbed) module', () => {
-  const flags = parseFeatureFlags(readFileSync(BUILD_SCRIPT, 'utf-8'))
+  const flags = loadShippedFeatureFlags()
   const risks = findUnguardedStubComponentRenders(
     collectTsxFiles(SRC_DIR),
     flags,
