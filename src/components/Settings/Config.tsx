@@ -422,6 +422,24 @@ export function Config({
       });
     }
   }, {
+    id: 'collapseFileWritesEnabled',
+    label: 'Collapse file writes',
+    value: globalConfig.collapseFileWritesEnabled !== false,
+    type: 'boolean' as const,
+    onChange(collapseFileWritesEnabled: boolean) {
+      saveGlobalConfig(current => ({
+        ...current,
+        collapseFileWritesEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        collapseFileWritesEnabled
+      });
+      logEvent('claudin_collapse_file_writes_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        enabled: collapseFileWritesEnabled
+      });
+    }
+  }, {
     id: 'workflowsDefaultBackground',
     label: 'Workflows run in background',
     value: globalConfig.workflowsDefaultBackground === true,
@@ -1379,6 +1397,9 @@ export function Config({
     }
     if (globalConfig.repeatedFailureHintEnabled !== initialConfig.current.repeatedFailureHintEnabled) {
       formattedChanges.push(`${globalConfig.repeatedFailureHintEnabled !== false ? 'Enabled' : 'Disabled'} repeated-failure hint`);
+    }
+    if (globalConfig.collapseFileWritesEnabled !== initialConfig.current.collapseFileWritesEnabled) {
+      formattedChanges.push(`${globalConfig.collapseFileWritesEnabled !== false ? 'Enabled' : 'Disabled'} collapse file writes`);
     }
     if (globalConfig.respectGitignore !== initialConfig.current.respectGitignore) {
       formattedChanges.push(`${globalConfig.respectGitignore ? 'Enabled' : 'Disabled'} respect .gitignore in file picker`);

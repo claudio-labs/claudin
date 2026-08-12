@@ -65,6 +65,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
       'defaultView',
       'verbose',
       'showTurnDuration',
+      'collapseFileWritesEnabled',
       'showCacheStats',
       'spinnerTipsEnabled',
       'prefersReducedMotion',

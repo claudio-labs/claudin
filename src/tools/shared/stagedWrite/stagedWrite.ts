@@ -26,6 +26,7 @@ import { notifyVscodeFileUpdated } from '../../../services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from '../../../services/teamMemorySync/teamMemSecretGuard.js'
 import { logForDebugging } from '../../../utils/debug.js'
 import { countLinesChanged, getPatchFromContents } from '../../../utils/diff.js'
+import { countAddDel } from '../../../utils/diffStat.js'
 import { AbortError, isENOENT } from '../../../utils/errors.js'
 import { getFileModificationTime, writeTextContent } from '../../../utils/file.js'
 import {
@@ -100,20 +101,10 @@ export function readFileForStaging(absPath: string): FileForStaging {
   }
 }
 
-export function countAddDel(hunks: StructuredPatchHunk[]): {
-  additions: number
-  deletions: number
-} {
-  let additions = 0
-  let deletions = 0
-  for (const hunk of hunks) {
-    for (const line of hunk.lines) {
-      if (line.startsWith('+')) additions++
-      else if (line.startsWith('-')) deletions++
-    }
-  }
-  return { additions, deletions }
-}
+// Re-exported so apply_patch/Rename keep importing it from here; the body moved
+// to utils/diffStat.js so the TUI collapse path can count without pulling this
+// module's LSP/MCP/team-memory graph in.
+export { countAddDel }
 
 /**
  * Stages a whole-content rewrite of an existing file. For callers that compute
