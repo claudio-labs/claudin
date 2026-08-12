@@ -1,0 +1,837 @@
+{
+  "model": "claude-sonnet-5",
+  "reps": 4,
+  "tools": "Bash,Read,Write,Edit,Glob",
+  "sizes": {
+    "bash": [
+      3081,
+      1826
+    ],
+    "edit": [
+      1097,
+      894
+    ],
+    "write": [
+      620,
+      423
+    ]
+  },
+  "A": [
+    {
+      "label": "A verbose",
+      "exitCode": 0,
+      "wallMs": 45969.211116,
+      "input": 11172,
+      "output": 1828,
+      "cacheRead": 70440,
+      "cacheCreation": 14088,
+      "endContext": 17665,
+      "costUsd": 0.134898,
+      "turns": 6,
+      "toolCalls": 11,
+      "writeCalls": 0,
+      "editCalls": 2,
+      "bashCalls": 7,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 1,
+      "unquotedSpace": 0,
+      "bashErrors": 0,
+      "lsProbes": 1,
+      "maxParallel": 5,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Read": 2,
+        "Bash": 7,
+        "Edit": 2
+      },
+      "calls": [
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-FAIxuG/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-FAIxuG/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls /tmp/lean-prompts-ab-FAIxuG; echo ---; cat /tmp/lean-prompts-ab-FAIxuG/package.json 2>/dev/null; echo ---; ls \"/tmp/lean-prompts-ab-FAIxuG/sample data\" 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-FAIxuG/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-FAIxuG/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-FAIxuG/build/meta && node -e \"\nconst pkg = require('/tmp/lean-prompts-ab-FAIxuG/package.json');\nconst fs = require('fs');\nconst info = { name: pkg.name, version: pkg.version, generatedBy: 'bench' };\nfs.writeFileSync('/tmp/lean-prompts-ab-FAIxuG/build/meta/build-info.jso",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf 'reviewed\\n' >> \"/tmp/lean-prompts-ab-FAIxuG/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-FAIxuG/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 0",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "cat /tmp/claude-1000/-tmp-lean-prompts-ab-FAIxuG/d18f2e23-79af-4e5e-86de-edeb73d16370/tasks/bucllvhe0.output 2>/dev/null; echo \"---exit check---\"",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-FAIxuG/d18f2e23-79af-4e5e-86de-edeb73d16370.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "A verbose",
+      "exitCode": 0,
+      "wallMs": 30088.540922999993,
+      "input": 11583,
+      "output": 1908,
+      "cacheRead": 103935,
+      "cacheCreation": 8809,
+      "endContext": 17162,
+      "costUsd": 0.12758325,
+      "turns": 8,
+      "toolCalls": 11,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 6,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 1,
+      "unquotedSpace": 0,
+      "bashErrors": 1,
+      "lsProbes": 1,
+      "maxParallel": 3,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Read": 2,
+        "Bash": 6,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-Iqi5wp/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-Iqi5wp/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "cat /tmp/lean-prompts-ab-Iqi5wp/package.json 2>/dev/null; echo \"---\"; ls /tmp/lean-prompts-ab-Iqi5wp; echo \"---\"; ls \"/tmp/lean-prompts-ab-Iqi5wp/sample data\" 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-Iqi5wp/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-Iqi5wp/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p \"/tmp/lean-prompts-ab-Iqi5wp/build/meta\"",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-Iqi5wp/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf 'reviewed\\n' >> \"/tmp/lean-prompts-ab-Iqi5wp/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-Iqi5wp/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5",
+          "isError": true
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-Iqi5wp/3dca902c-bfd4-410c-9bad-6debcc7ad5a1.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "A verbose",
+      "exitCode": 0,
+      "wallMs": 48556.74213999999,
+      "input": 19226,
+      "output": 2880,
+      "cacheRead": 117948,
+      "cacheCreation": 8799,
+      "endContext": 17797,
+      "costUsd": 0.16925864999999998,
+      "turns": 9,
+      "toolCalls": 14,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 9,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 1,
+      "unquotedSpace": 1,
+      "bashErrors": 1,
+      "lsProbes": 2,
+      "maxParallel": 4,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Read": 2,
+        "Bash": 9,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-ieTDko/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-ieTDko/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls /tmp/lean-prompts-ab-ieTDko; cat /tmp/lean-prompts-ab-ieTDko/package.json 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-ieTDko/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-ieTDko/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-ieTDko/build/meta\nnode --version\ngit --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls /tmp/lean-prompts-ab-ieTDko/\"sample data\"; printf '\\n' >> /tmp/lean-prompts-ab-ieTDko/\"sample data\"/notes.txt 2>/dev/null; true",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "cat -A \"/tmp/lean-prompts-ab-ieTDko/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf '%s\\n' \"$(cat \"sample data/notes.txt\" | sed -e '${/^$/d}')\" > /tmp/notes_fixed.txt && diff \"sample data/notes.txt\" /tmp/notes_fixed.txt; cat -A /tmp/notes_fixed.txt",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "cp /tmp/notes_fixed.txt \"sample data/notes.txt\" && printf 'reviewed\\n' >> \"sample data/notes.txt\" && cat -A \"sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-ieTDko/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5; cat /tmp/claude-1000/-tmp-lean-prompts-ab-ieTDko/aa9d67bb-6436-40b2-8d24-3303db6d47b1/tasks/bv85s779v.output",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "true",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-ieTDko/aa9d67bb-6436-40b2-8d24-3303db6d47b1.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "A verbose",
+      "exitCode": 0,
+      "wallMs": 30720.678744000004,
+      "input": 11676,
+      "output": 1774,
+      "cacheRead": 89812,
+      "cacheCreation": 8804,
+      "endContext": 17379,
+      "costUsd": 0.1215966,
+      "turns": 7,
+      "toolCalls": 13,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 8,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 1,
+      "unquotedSpace": 0,
+      "bashErrors": 1,
+      "lsProbes": 3,
+      "maxParallel": 4,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Bash": 8,
+        "Read": 2,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Bash",
+          "detail": "ls -la /tmp/lean-prompts-ab-RzyUlN && echo --- && cat /tmp/lean-prompts-ab-RzyUlN/package.json 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-RzyUlN/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-RzyUlN/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls -la \"/tmp/lean-prompts-ab-RzyUlN/sample data\"",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-RzyUlN/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-RzyUlN/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-RzyUlN/build/meta && ls /tmp/lean-prompts-ab-RzyUlN/build/meta",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-RzyUlN/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "echo \"reviewed\" >> \"/tmp/lean-prompts-ab-RzyUlN/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-RzyUlN/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5 && cat /tmp/claude-1000/-tmp-lean-prompts-ab-RzyUlN/69a9e877-8978-40e5-867b-1cd6945e6ca1/tasks/bky1a6hxh.output",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "git -C /tmp/lean-prompts-ab-RzyUlN status 2>&1 | head -1; true",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-RzyUlN/69a9e877-8978-40e5-867b-1cd6945e6ca1.jsonl",
+      "stderr": ""
+    }
+  ],
+  "B": [
+    {
+      "label": "B lean",
+      "exitCode": 0,
+      "wallMs": 29359.044231,
+      "input": 12413,
+      "output": 1990,
+      "cacheRead": 80880,
+      "cacheCreation": 13480,
+      "endContext": 16519,
+      "costUsd": 0.141903,
+      "turns": 7,
+      "toolCalls": 13,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 8,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 2,
+      "unquotedSpace": 0,
+      "bashErrors": 1,
+      "lsProbes": 2,
+      "maxParallel": 3,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Bash": 8,
+        "Read": 2,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Bash",
+          "detail": "ls -la /tmp/lean-prompts-ab-oU1k4G && echo --- && cat /tmp/lean-prompts-ab-oU1k4G/package.json 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-oU1k4G/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-oU1k4G/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-oU1k4G/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-oU1k4G/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-oU1k4G/build/meta",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-oU1k4G/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls \"/tmp/lean-prompts-ab-oU1k4G/sample data/\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf 'reviewed\\n' >> \"/tmp/lean-prompts-ab-oU1k4G/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-oU1k4G/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 1.5",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-oU1k4G/d8edbca2-5df0-4cd9-99a5-e3d717f6aea0.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "B lean",
+      "exitCode": 0,
+      "wallMs": 36905.278599,
+      "input": 22713,
+      "output": 1951,
+      "cacheRead": 152901,
+      "cacheCreation": 8799,
+      "endContext": 16678,
+      "costUsd": 0.17627055,
+      "turns": 12,
+      "toolCalls": 13,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 7,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 2,
+      "unquotedSpace": 0,
+      "bashErrors": 1,
+      "lsProbes": 1,
+      "maxParallel": 3,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Bash": 7,
+        "Read": 3,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Bash",
+          "detail": "ls -la /tmp/lean-prompts-ab-lArdfV && echo --- && find /tmp/lean-prompts-ab-lArdfV -maxdepth 3 -not -path '*/node_modules/*'",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/package.json",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-lArdfV/build/meta",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-lArdfV/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf 'reviewed\\n' >> \"/tmp/lean-prompts-ab-lArdfV/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-lArdfV/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 1.5",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-lArdfV/d0b53a2b-c708-4490-9e73-53546f2a3cd9.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "B lean",
+      "exitCode": 0,
+      "wallMs": 35153.736413000006,
+      "input": 15990,
+      "output": 1994,
+      "cacheRead": 112476,
+      "cacheCreation": 8799,
+      "endContext": 17077,
+      "costUsd": 0.14461905,
+      "turns": 9,
+      "toolCalls": 13,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 6,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 2,
+      "unquotedSpace": 0,
+      "bashErrors": 1,
+      "lsProbes": 1,
+      "maxParallel": 3,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Read": 3,
+        "Glob": 1,
+        "Bash": 6,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Glob",
+          "detail": "package.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls \"/tmp/lean-prompts-ab-MElBUG\"; ls \"/tmp/lean-prompts-ab-MElBUG/sample data\" 2>/dev/null || echo \"no sample data dir\"",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/package.json",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p \"/tmp/lean-prompts-ab-MElBUG/build/meta\"",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-MElBUG/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "echo \"reviewed\" >> \"/tmp/lean-prompts-ab-MElBUG/sample data/notes.txt\" && node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 1",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-MElBUG/3e3b440f-72c3-472a-ad3e-b155fa81b09b.jsonl",
+      "stderr": ""
+    },
+    {
+      "label": "B lean",
+      "exitCode": 0,
+      "wallMs": 34095.226704,
+      "input": 21417,
+      "output": 2314,
+      "cacheRead": 125996,
+      "cacheCreation": 8804,
+      "endContext": 17254,
+      "costUsd": 0.16977479999999998,
+      "turns": 10,
+      "toolCalls": 14,
+      "writeCalls": 1,
+      "editCalls": 2,
+      "bashCalls": 8,
+      "mdFiles": 0,
+      "strayFiles": 0,
+      "emojiWrites": 0,
+      "sleepCmds": 2,
+      "unquotedSpace": 0,
+      "bashErrors": 3,
+      "lsProbes": 2,
+      "maxParallel": 3,
+      "schemaErrors": 0,
+      "model": "claude-sonnet-5",
+      "sawSentinel": true,
+      "strayPaths": [],
+      "toolMix": {
+        "Read": 3,
+        "Bash": 8,
+        "Edit": 2,
+        "Write": 1
+      },
+      "calls": [
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-PBXfsX/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/lean-prompts-ab-PBXfsX/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "cat /tmp/lean-prompts-ab-PBXfsX/package.json 2>/dev/null; ls /tmp/lean-prompts-ab-PBXfsX",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-PBXfsX/src/greet.ts",
+          "isError": false
+        },
+        {
+          "name": "Edit",
+          "detail": "/tmp/lean-prompts-ab-PBXfsX/src/format.ts",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "mkdir -p /tmp/lean-prompts-ab-PBXfsX/build/meta && node --version && git --version",
+          "isError": false
+        },
+        {
+          "name": "Write",
+          "detail": "/tmp/lean-prompts-ab-PBXfsX/build/meta/build-info.json",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "ls \"/tmp/lean-prompts-ab-PBXfsX/sample data/\" 2>/dev/null; cat \"/tmp/lean-prompts-ab-PBXfsX/sample data/notes.txt\" 2>/dev/null",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "printf '%s\\n' reviewed >> \"/tmp/lean-prompts-ab-PBXfsX/sample data/notes.txt\" && cat \"/tmp/lean-prompts-ab-PBXfsX/sample data/notes.txt\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "node -e \"setTimeout(() => console.log('ready'), 4000)\"",
+          "isError": false
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 5",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "sleep 2",
+          "isError": true
+        },
+        {
+          "name": "Bash",
+          "detail": "cat \"/tmp/claude-1000/-tmp-lean-prompts-ab-PBXfsX/43ef670f-abc0-4bc9-8f3a-c5798ac9129f/tasks/b0g1ugr6q.output\"",
+          "isError": true
+        },
+        {
+          "name": "Read",
+          "detail": "/tmp/claude-1000/-tmp-lean-prompts-ab-PBXfsX/43ef670f-abc0-4bc9-8f3a-c5798ac9129f/tasks/b0g1ugr6q.output",
+          "isError": false
+        }
+      ],
+      "transcript": "/home/viudes/.claudin/projects/-tmp-lean-prompts-ab-PBXfsX/43ef670f-abc0-4bc9-8f3a-c5798ac9129f.jsonl",
+      "stderr": ""
+    }
+  ]
+}
