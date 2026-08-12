@@ -1,5 +1,13 @@
 import { mock } from 'bun:test'
 
+// INERT, kept for documentation. Bun ≥1.3.9 resolves `bun:bundle` natively
+// before `mock.module` (or a bundler plugin) can intercept it — the same
+// resolution order that forced scripts/build.ts to rewrite `feature()` calls in
+// the source text instead of shimming the module. Tests see every flag as false
+// because that is Bun's own runtime default, not because of this mock, and
+// returning `true` from here changes nothing (verified 2026-08-12 while adding
+// `--flags=ship` to scripts/profile/dump-system-prompt.ts, which therefore
+// dumps from the built bundle rather than from here).
 mock.module('bun:bundle', () => {
   return { feature: (_flag: string) => false }
 })

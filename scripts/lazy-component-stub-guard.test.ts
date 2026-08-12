@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { dirname, join, resolve } from 'path'
 import { describe, expect, test } from 'bun:test'
+import { parseFeatureFlags } from './parseFeatureFlags'
 
 // Companion to feature-flags-source-guard.test.ts, for the variant of that bug
 // that takes the whole TUI down instead of throwing in one code path.
@@ -28,16 +29,7 @@ type Risk = { path: string; line: number; spec: string; name: string }
 const REQUIRE_RE = /require\(\s*['"](\.\.?\/[^'"]+\.js)['"]\s*\)/g
 
 /** Mirrors the `featureFlags` map the build folds `feature()` calls against. */
-export function parseFeatureFlags(buildScript: string): Record<string, boolean> {
-  const body = /const featureFlags[^{]*\{([\s\S]*?)\n\}/.exec(buildScript)
-  if (!body) throw new Error('could not find featureFlags in scripts/build.ts')
-  const flags: Record<string, boolean> = {}
-  for (const line of body[1]!.split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*:\s*(true|false)\b/.exec(line)
-    if (m) flags[m[1]!] = m[2] === 'true'
-  }
-  return flags
-}
+export { parseFeatureFlags }
 
 /**
  * Is the `require()` at `index` reachable in the shipped bundle? Undeclared
