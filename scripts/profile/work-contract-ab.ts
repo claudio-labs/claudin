@@ -1065,7 +1065,6 @@ function main(): void {
   for (const arm of [...A, ...B]) {
     const bad: string[] = []
     if (arm.exitCode !== 0) bad.push(`exit=${arm.exitCode}`)
-    if (!arm.sawSentinel) bad.push('sentinel missing (run did not finish the tasks)')
     if (arm.model && !arm.model.includes('sonnet-5')) bad.push(`WRONG MODEL: ${arm.model}`)
     if (bad.length > 0) {
       console.log(`\n!! ${arm.label} is NOT clean: ${bad.join(', ')}`)
@@ -1073,6 +1072,28 @@ function main(): void {
         console.log(arm.stderr.split('\n').slice(0, 15).map(l => `   | ${l}`).join('\n'))
       }
     }
+  }
+
+  // A missing sentinel is NOT a validity failure, and lumping it in with
+  // exit!=0 told the reader to discard a run that had in fact measured
+  // something. The arm that stops before the closing instruction while its
+  // deliverables are on disk did the work and handed the task back — that is
+  // behavior, and burying it under "NOT clean" loses the only thing a run of
+  // this size is likely to catch. Reported separately, and deliberately NOT
+  // promoted into the pre-registered table: adding a counter because it is
+  // the one that moved is the exact move pre-registration exists to stop.
+  for (const arm of [...A, ...B]) {
+    if (arm.sawSentinel) continue
+    const delivered = arm.missingKeys.length === 0
+    console.log(
+      `\n·  ${arm.label} never printed the sentinel — ` +
+        (delivered
+          ? 'every gradeable deliverable is on disk, so it finished the work and\n' +
+            '   stopped before the closing instruction. Read its finalText: handing the task\n' +
+            '   back is an OBSERVATION here, not a pre-registered counter.'
+          : `deliverables missing (${arm.missingKeys.join(', ')}). Could be a timeout\n` +
+            '   or a harness fault rather than behavior — check stderr before reading it.'),
+    )
   }
 
   reportSizes(sizes)
