@@ -1,9 +1,9 @@
 import {
   createOneShotMemo,
   createOutputTrimTailStripper,
-  hasShellComposition,
   MEMO_LIMIT,
 } from '../shared/redirect.js'
+import { acceptsGitCommand } from './grammar.js'
 import { GIT_TOOL_NAME } from './prompt.js'
 
 export { MEMO_LIMIT }
@@ -26,7 +26,15 @@ export { MEMO_LIMIT }
  *
  *  - Single command only. `git add -A && git commit` is two operations and one
  *    list element cannot express it, so composition stays in Bash. (The Git
- *    tool's answer to a burst is the `commands` LIST, not `&&`.)
+ *    tool's answer to a burst is the `commands` LIST, not `&&`.) "One command"
+ *    is decided by `acceptsGitCommand` — bash's own quoting rules — and NOT by
+ *    the sibling redirects' `hasShellComposition`, which counts any quote as
+ *    composition. That regex cost this lane 37 of the recorded reads (2.1% of
+ *    every git/gh Bash call, 49k chars): `git log --format='%h %s%n%b'` and
+ *    `gh run view … --jq '…'` have a `|` or a `;` INSIDE quotes, where bash
+ *    passes it to git verbatim and the tool runs it unchanged. Asking the
+ *    grammar also makes the deadlock invariant hold by construction — Bash
+ *    cannot refuse a command the tool would refuse too.
  *  - The subcommand must be what the command STARTS with, so
  *    `grep -rn "git diff" src` is not read as a diff. Global options opt out
  *    too: `git -C /elsewhere diff` and `git --no-pager log` do not match, which
@@ -110,9 +118,10 @@ const OPT_OUT_FLAG_RE = /\s(?:-i|--interactive|--web|--help|-h)(?:[\s=]|$)/
 export function isRedirectableGitCommand(command: string): boolean {
   const cmd = stripOutputTrimTail(command.trim())
   if (!cmd) return false
-  if (hasShellComposition(cmd)) return false
   if (OPT_OUT_FLAG_RE.test(cmd)) return false
-  return REDIRECTABLE_RE.test(cmd)
+  if (!REDIRECTABLE_RE.test(cmd)) return false
+  // Last, and only for the handful of shapes above: this tokenizes the command.
+  return acceptsGitCommand(cmd)
 }
 
 /**

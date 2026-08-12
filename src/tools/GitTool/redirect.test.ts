@@ -136,6 +136,68 @@ describe('isRedirectableGitCommand', () => {
   })
 })
 
+describe('quoted arguments', () => {
+  it('redirects a read whose operators are inside quotes', () => {
+    // The gap `hasShellComposition` left: a `|` or `;` inside quotes is not
+    // composition, bash hands it to git verbatim, and the tool runs the
+    // command unchanged. All recorded shapes.
+    for (const cmd of [
+      "git log -3 --format='%an|%s%n%b%n---'",
+      "git log main..HEAD --format='=== %h %s%n%b'",
+      "git log --pretty=format:'%h %s' -20",
+      'git log -3 --format="%s"',
+      'git log --since="2 weeks ago"',
+      "git show --stat --format='' HEAD",
+      "git diff -- 'src/**/*.ts'",
+      "gh pr view 36 --json body,title -q '.title + \"---\" + .body'",
+      "gh run view 30938431610 --json status,conclusion --jq '.status'",
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(true)
+    }
+  })
+
+  it('still keeps an operator OUTSIDE quotes in Bash', () => {
+    // The quote-awareness must not become a blanket pass: these compose.
+    for (const cmd of [
+      "git log --format='%h %s' > /tmp/log.txt",
+      "git log --format='%h' -3; git status",
+      "git diff --stat && git log --format='%s' -1",
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(false)
+    }
+  })
+
+  it('keeps anything the shell would rewrite in Bash', () => {
+    // The tool runs the command without a shell, so an expansion it would not
+    // perform must not be redirected — `$` and a backtick are only literal
+    // inside single quotes.
+    for (const cmd of [
+      'git log --grep="$USER" -5',
+      'git show $(git rev-parse HEAD)',
+      'git log --format="`date`" -1',
+      "git log --format='%h",
+    ]) {
+      expect(isRedirectableGitCommand(cmd)).toBe(false)
+    }
+  })
+
+  it('redirects a quoted read through its trim tail', () => {
+    expect(
+      isRedirectableGitCommand("git log -3 --format='--- %s%n%b' | head -30"),
+    ).toBe(true)
+    expect(
+      stripOutputTrimTail("git log -3 --format='--- %s%n%b' | head -30"),
+    ).toBe("git log -3 --format='--- %s%n%b'")
+  })
+
+  it('does not strip a filter name that lives inside a quoted argument', () => {
+    // `| tail -5` here is part of the pattern, not a trim tail.
+    const cmd = "git log --grep='fix | tail -5' -3"
+    expect(stripOutputTrimTail(cmd)).toBe(cmd)
+    expect(isRedirectableGitCommand(cmd)).toBe(true)
+  })
+})
+
 describe('output-trim tails', () => {
   it('redirects through a trim tail — the bulk of the real surface', () => {
     // Measured over 760 recorded sessions: 64 of 162 `git diff` calls, 67 of
@@ -288,6 +350,13 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git status --porcelain | head; echo "---"; sed -n \'255,270p\' src/x.ts',
   'git status --short && git checkout -b feat/x && git branch --show-current',
   'git status --short --branch && git log --oneline -3 && git stash list | head -5',
+  // Quoted arguments — operators the shell never acts on.
+  "git log -3 --format='%an|%s%n%b%n---'",
+  "git log -20 --format='%h %s%n%b---' main..HEAD | head -200",
+  "git log --oneline -S\"strict: true\" -- src/services/api/codexShim.ts | tail -5",
+  "git show --stat --format='%b' eaabb20 | head -20",
+  "gh pr view 51 --json comments,reviews --jq '.comments[] | .body' 2>&1 | head -50",
+  "gh run view 31442130244 --json status,conclusion,jobs --jq '.status'",
   // Mutations, which stay in Bash by design.
   'git add -A && git commit -q -m "x"',
   'git push -u origin feat/git-tool',
