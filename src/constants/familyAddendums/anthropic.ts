@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { isAntiNarrationEnabled } from '../steeringToggles.js'
 
 // Anthropic family addendum.
 //
@@ -36,13 +37,6 @@ export const ANTHROPIC_ANTI_NARRATION_ADDENDUM =
 export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
   `When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.`
 
-const antiNarrationPart = feature('ANTI_NARRATION')
-  ? ANTHROPIC_ANTI_NARRATION_ADDENDUM
-  : null
-const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')
-  ? ANTHROPIC_BATCHED_EDITS_ADDENDUM
-  : null
-
 /**
  * Exported so the composition is testable: under the test preload every
  * feature flag is false, so `ANTHROPIC_ADDENDUM` is always null there and the
@@ -55,7 +49,21 @@ export function composeAnthropicAddendum(
   return kept.length > 0 ? kept.join('\n\n') : null
 }
 
-export const ANTHROPIC_ADDENDUM: string | null = composeAnthropicAddendum([
-  antiNarrationPart,
-  batchedEditsPart,
-])
+/**
+ * Resolved per call rather than at module eval so the `CLAUDIN_ANTI_NARRATION`
+ * killswitch is readable by tests (a module-level const would freeze the env
+ * as it stood at import time). The two clauses stay on separate gates: the
+ * narration half rides ANTI_NARRATION and its env twin, the batching half
+ * rides TOOL_BATCHING_NUDGE alone, so an A/B on one does not move the other.
+ */
+export function getAnthropicAddendum(): string | null {
+  const antiNarrationPart = feature('ANTI_NARRATION')
+    ? isAntiNarrationEnabled()
+      ? ANTHROPIC_ANTI_NARRATION_ADDENDUM
+      : null
+    : null
+  const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')
+    ? ANTHROPIC_BATCHED_EDITS_ADDENDUM
+    : null
+  return composeAnthropicAddendum([antiNarrationPart, batchedEditsPart])
+}

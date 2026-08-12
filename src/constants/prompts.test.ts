@@ -8,6 +8,7 @@ import {
   PRONOUNS_SECTION,
   TOOL_BATCHING_HARNESS_BULLET,
   VERBOSITY_STEERING_SECTION,
+  buildWorkContractSections,
   buildHarnessItems,
   getHarnessSection,
   isVerbositySteeringEnabled,
@@ -131,6 +132,19 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM', () => {
       "const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')",
     )
     expect(src).toContain("const antiNarrationPart = feature('ANTI_NARRATION')")
+    // The runtime killswitch must sit on the narration clause ONLY. If it
+    // ever wrapped the batching clause too, `CLAUDIN_ANTI_NARRATION=0` would
+    // silently subtract a second section and the A/B would attribute the
+    // batching text's effect to narration.
+    const narrationClause = src.slice(
+      src.indexOf("const antiNarrationPart = feature('ANTI_NARRATION')"),
+      src.indexOf("const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')"),
+    )
+    expect(narrationClause).toContain('isAntiNarrationEnabled()')
+    const batchingClause = src.slice(
+      src.indexOf("const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')"),
+    )
+    expect(batchingClause).not.toContain('isAntiNarrationEnabled()')
   })
 })
 
@@ -323,5 +337,52 @@ describe('work contract sections (WORK_CONTRACT)', () => {
     for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
       expect(CORRECTIONS_SECTION).not.toContain(bullet)
     }
+  })
+})
+
+describe('buildWorkContractSections', () => {
+  // The pure seam over the flag-gated call site: the test preload stubs
+  // feature() to false, so this is the only way to see the flag-on shape
+  // without asserting on source text.
+  test('on: emits the three sections in prompt order', () => {
+    expect(buildWorkContractSections(true)).toEqual([
+      DELIVERING_WORK_SECTION,
+      ACT_ON_WHAT_YOU_KNOW_SECTION,
+      CORRECTIONS_SECTION,
+    ])
+  })
+
+  test('off: emits nothing (spreads away, no null to filter)', () => {
+    expect(buildWorkContractSections(false)).toEqual([])
+  })
+})
+
+describe('steering killswitch wiring', () => {
+  // These two lines are where the A/B killswitches actually take effect. A
+  // revert to the old `? true : false` shape would leave both env vars inert
+  // while every other test here still passed — and the bench would report a
+  // null result that means "the flag never moved", not "the text does not
+  // matter". Source-asserted because `feature()` folds to a literal at build
+  // time and to `false` under the preload, so neither branch is reachable
+  // from a test.
+  const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
+
+  test('anti-narration harness gate consults the env resolver', () => {
+    expect(src).toContain(
+      "feature('ANTI_NARRATION') ? isAntiNarrationEnabled() : false",
+    )
+  })
+
+  test('work-contract gate consults the env resolver', () => {
+    expect(src).toContain(
+      "feature('WORK_CONTRACT') ? isWorkContractEnabled() : false",
+    )
+  })
+
+  test('both gates keep feature() directly in the ternary condition', () => {
+    // scripts/build.ts only folds `feature('X')` when it sits directly in an
+    // if/ternary condition; an `&&` form throws under `bun test` and folds to
+    // a literal in the build, so only a test can catch it.
+    expect(src).not.toMatch(/feature\('(ANTI_NARRATION|WORK_CONTRACT)'\)\s*&&/)
   })
 })

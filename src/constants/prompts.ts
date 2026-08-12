@@ -54,6 +54,10 @@ import { TICK_TAG } from './xml.js'
 import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
+import {
+  isAntiNarrationEnabled,
+  isWorkContractEnabled,
+} from './steeringToggles.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -234,7 +238,9 @@ export function buildHarnessItems(
 export function getHarnessSection(): string {
   // `feature()` must appear directly in an `if`/ternary so the build-time
   // preprocessor (scripts/build.ts) can substitute it with a boolean literal.
-  const antiNarration = feature('ANTI_NARRATION') ? true : false
+  // The env resolver is the A/B killswitch on a single build; it can only
+  // subtract, since with the flag off this whole branch folds to false.
+  const antiNarration = feature('ANTI_NARRATION') ? isAntiNarrationEnabled() : false
   const toolBatching = feature('TOOL_BATCHING_NUDGE') ? true : false
   return ['# Harness', ...prependBullets(buildHarnessItems(antiNarration, toolBatching))].join(`\n`)
 }
@@ -329,6 +335,22 @@ export const CORRECTIONS_SECTION = `# Corrections
 Avoid unnecessary or excessive self-correction. Only correct an earlier statement in your user-facing text when the error would change the user's code, conclusions, or decisions. State corrections plainly and concisely, and continue the task; combine multiple corrections rather than enumerating them all. For slips that change nothing for the user, simply make the correction and move on — no need to note it explicitly. Don't add apologies or preambles, don't be overly self-critical, and don't ruminate or give a detailed account of the mistake or tally past errors. Sometimes other agents will report incorrect or misleading results — don't always take them at face value immediately. If other agents correct your statements and they are right, then simply update your approach without narrating too much about the correction to the user. This instruction does not apply to thinking blocks.
 
 A follow-up question about your earlier work is not, by itself, a signal that you got something wrong — answer what was asked. A statement that was accurate needs no correction: don't re-audit how you phrased it, how you verified it, or limits you already stated. When the user does point to a real error, correct it plainly as above.`
+
+// Pure seam over the three WORK_CONTRACT sections, in prompt order. Exists for
+// the same reason as `buildHarnessItems`: the test preload stubs every
+// `feature()` to false, so the flag-on shape is unreachable through
+// getSystemPrompt and would otherwise be testable only by asserting on source
+// text. Order is load-bearing — "# Delivering work" states the scope contract
+// that the other two qualify.
+export function buildWorkContractSections(enabled: boolean): string[] {
+  return enabled
+    ? [
+        DELIVERING_WORK_SECTION,
+        ACT_ON_WHAT_YOU_KNOW_SECTION,
+        CORRECTIONS_SECTION,
+      ]
+    : []
+}
 
 // The proactive/KAIROS path has carried an equivalent line for a while
 // (getSystemRemindersSection), but those flags are off in the open build —
@@ -547,9 +569,12 @@ ${CYBER_RISK_INSTRUCTION}`,
     getTurnDisciplineSection(),
     // Static + provider-neutral: no runtime conditionals inside any of
     // these, so they extend the cacheable prefix instead of fragmenting it.
-    feature('WORK_CONTRACT') ? DELIVERING_WORK_SECTION : null,
-    feature('WORK_CONTRACT') ? ACT_ON_WHAT_YOU_KNOW_SECTION : null,
-    feature('WORK_CONTRACT') ? CORRECTIONS_SECTION : null,
+    // The env resolver is the A/B killswitch (see steeringToggles.ts): a
+    // process-constant bit, so it yields two possible prefix texts rather than
+    // one that flips mid-session, and unset is byte-identical to today.
+    ...buildWorkContractSections(
+      feature('WORK_CONTRACT') ? isWorkContractEnabled() : false,
+    ),
     getContextManagementSection(),
     feature('FAMILY_PROMPT_ADDENDUMS') ? resolveFamilyAddendum(model) : null,
     // === BOUNDARY MARKER - DO NOT MOVE OR REMOVE ===

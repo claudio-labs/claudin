@@ -4,7 +4,7 @@ import {
   isMoonshotCompatibleBaseUrl,
 } from '../../services/api/openaiShim/providerModes.js'
 import { getAPIProvider, type APIProvider } from '../../utils/model/providers.js'
-import { ANTHROPIC_ADDENDUM } from './anthropic.js'
+import { getAnthropicAddendum } from './anthropic.js'
 import { CODEX_ADDENDUM } from './codex.js'
 import { DEFAULT_ADDENDUM } from './default.js'
 import { GEMINI_ADDENDUM } from './gemini.js'
@@ -21,14 +21,19 @@ export type ModelFamily =
   | 'codex'
   | 'default'
 
-const ADDENDUMS: Record<ModelFamily, string | null> = {
-  anthropic: ANTHROPIC_ADDENDUM,
-  'openai-reasoning': OPENAI_REASONING_ADDENDUM,
-  gemini: GEMINI_ADDENDUM,
-  kimi: KIMI_ADDENDUM,
-  glm: GLM_ADDENDUM,
-  codex: CODEX_ADDENDUM,
-  default: DEFAULT_ADDENDUM,
+// Thunks, not strings: the anthropic entry has to be resolved per call so the
+// CLAUDIN_ANTI_NARRATION killswitch is not frozen at module-eval time. The
+// other six are constant, but they are wrapped too so the shape is uniform —
+// a reader should not have to know which one is lazy. The Record still lists
+// every ModelFamily, keeping the exhaustiveness guard.
+const ADDENDUMS: Record<ModelFamily, () => string | null> = {
+  anthropic: getAnthropicAddendum,
+  'openai-reasoning': () => OPENAI_REASONING_ADDENDUM,
+  gemini: () => GEMINI_ADDENDUM,
+  kimi: () => KIMI_ADDENDUM,
+  glm: () => GLM_ADDENDUM,
+  codex: () => CODEX_ADDENDUM,
+  default: () => DEFAULT_ADDENDUM,
 }
 
 const OPENAI_REASONING_MODEL_RE = /^(gpt-5|o1|o3|o4)/i
@@ -78,7 +83,7 @@ export function getFamilyAddendum(model: string): string | null {
   const provider = getAPIProvider()
   const baseUrl = tryGetActiveProvider()?.baseUrl
   const family = getModelFamily(provider, model, baseUrl)
-  return ADDENDUMS[family]
+  return ADDENDUMS[family]()
 }
 
 export function getFamilyForLogging(model: string): ModelFamily {
