@@ -36,6 +36,18 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 30s tool-result cache keys on the input alone, so flipping that env mid-session
 does not re-answer a search it already served.
 
+`Glob` returns at most **100 paths per call**, ranked most-recently-modified
+first (`--sortr=modified` in `src/utils/glob.ts`), so what the cap drops is the
+files nobody has touched. That ranking is the same one Grep's
+`files_with_matches` mode applies, and it is load-bearing twice over: the
+summarizer trims the result again to the first 50 paths
+(`GLOB_MAX_PATHS` in `src/utils/toolResultSummarizer.ts`), so on a wide pattern
+the model sees the 50 newest matches and nothing else. A truncated result names
+the `offset` to pass for the next page — that is the way to reach the rest,
+narrowing the pattern being the other. Ordering is by mtime, not relevance: a
+freshly checked-out `node_modules` still outranks `src/` when the pattern
+reaches it, so scope with `path` rather than paging.
+
 `Build` is the artifact-producing sibling of `Typecheck` — same
 detect/parse/budget/redirect family, different job. It runs the project's build
 (cargo, gradle, maven, sbt, msbuild, cmake/make/ninja, swift, zig, mix, rebar3,

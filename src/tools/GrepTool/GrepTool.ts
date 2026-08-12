@@ -3,7 +3,6 @@ import type { ValidationResult } from '../../Tool.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { isENOENT } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   suggestPathUnderCwd,
@@ -71,7 +70,9 @@ const inputSchema = lazySchema(() =>
     '-A': semanticNumber(z.number().optional()).describe(
       'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.',
     ),
-    '-C': semanticNumber(z.number().optional()).describe('Alias for context.'),
+    '-C': semanticNumber(z.number().optional()).describe(
+      'Alias for context; when both are given, context wins. Requires output_mode: "content", ignored otherwise.',
+    ),
     context: semanticNumber(z.number().optional()).describe(
       'Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise.',
     ),
@@ -650,13 +651,10 @@ export const GrepTool = buildTool({
         ] as const
       })
       .sort((a, b) => {
-        if (process.env.NODE_ENV === 'test') {
-          // In tests, we always want to sort by filename, so that results are deterministic
-          return a[0].localeCompare(b[0])
-        }
         const timeComparison = b[1] - a[1]
         if (timeComparison === 0) {
-          // Sort by filename as a tiebreaker
+          // Filename tiebreaker — this is what keeps the order deterministic
+          // for files written in the same millisecond (tests included).
           return a[0].localeCompare(b[0])
         }
         return timeComparison

@@ -91,7 +91,11 @@ export async function glob(
   // Use ripgrep for better memory performance
   // --files: list files instead of searching content
   // --glob: filter by pattern
-  // --sort=modified: sort by modification time (oldest first)
+  // --sortr=modified: sort by modification time, NEWEST first. The caller caps
+  //   the list (GlobTool keeps the first 100), so the cap has to keep the files
+  //   most likely to matter — the same ranking GrepTool's files_with_matches
+  //   mode applies. Plain --sort=modified is ascending, which made a truncated
+  //   result the 100 LEAST recently modified matches.
   // --no-ignore: don't respect .gitignore (default true, set CLAUDE_CODE_GLOB_NO_IGNORE=false to respect .gitignore)
   // --hidden: include hidden files (default true, set CLAUDE_CODE_GLOB_HIDDEN=false to exclude)
   // Note: use || instead of ?? to treat empty string as unset (defaulting to true)
@@ -101,7 +105,7 @@ export async function glob(
     '--files',
     '--glob',
     searchPattern,
-    '--sort=modified',
+    '--sortr=modified',
     ...(noIgnore ? ['--no-ignore'] : []),
     ...(hidden ? ['--hidden'] : []),
   ]

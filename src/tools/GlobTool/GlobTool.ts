@@ -14,6 +14,7 @@ import { expandPath, toRelativePath } from '../../utils/path.js'
 import { checkReadPermissionForTool } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
+import { semanticNumber } from '../../utils/semanticNumber.js'
 import { DESCRIPTION, GLOB_TOOL_NAME } from './prompt.js'
 import {
   getToolUseSummary,
@@ -32,9 +33,16 @@ const inputSchema = lazySchema(() =>
       .describe(
         'The directory to search in. If not specified, the current working directory will be used. IMPORTANT: Omit this field to use the default directory. DO NOT enter "undefined" or "null" - simply omit it for the default behavior. Must be a valid directory path if provided.',
       ),
+    offset: semanticNumber(z.number().optional()).describe(
+      'Skip the first N matching files before applying the 100-file cap. Pass the offset a truncated result reports to page through the rest. Defaults to 0.',
+    ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
+
+// Cap on how many paths one call returns. Pagination through `offset` is the
+// escape hatch — the model is told the next offset whenever this cap bites.
+const DEFAULT_GLOB_LIMIT = 100
 
 const outputSchema = lazySchema(() =>
   z.object({
@@ -47,7 +55,13 @@ const outputSchema = lazySchema(() =>
       .describe('Array of file paths that match the pattern'),
     truncated: z
       .boolean()
-      .describe('Whether results were truncated (limited to 100 files)'),
+      .describe('Whether results were truncated (limited to 100 files per call)'),
+    nextOffset: z
+      .number()
+      .optional()
+      .describe(
+        'Offset to pass on the next call to page past a truncated result',
+      ),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -91,7 +105,15 @@ export const GlobTool = buildTool({
   async preparePermissionMatcher({ pattern }) {
     return rulePattern => matchWildcardPattern(rulePattern, pattern)
   },
-  async validateInput({ path }): Promise<ValidationResult> {
+  async validateInput({ path, offset }): Promise<ValidationResult> {
+    if (offset !== undefined && (offset < 0 || !Number.isFinite(offset))) {
+      return {
+        result: false,
+        message: `offset must be a non-negative number, got: ${offset}`,
+        errorCode: 3,
+      }
+    }
+
     // If path is provided, validate that it exists and is a directory
     if (path) {
       const fs = getFsImplementation()
@@ -151,14 +173,14 @@ export const GlobTool = buildTool({
   extractSearchText({ filenames }) {
     return filenames.join('\n')
   },
-  async call(input, { abortController, getAppState, globLimits }) {
+  async call(input, { abortController, getAppState }) {
     const start = Date.now()
     const appState = getAppState()
-    const limit = globLimits?.maxResults ?? 100
+    const offset = input.offset ?? 0
     const { files, truncated } = await glob(
       input.pattern,
       GlobTool.getPath(input),
-      { limit, offset: 0 },
+      { limit: DEFAULT_GLOB_LIMIT, offset },
       abortController.signal,
       appState.toolPermissionContext,
     )
@@ -169,6 +191,7 @@ export const GlobTool = buildTool({
       durationMs: Date.now() - start,
       numFiles: filenames.length,
       truncated,
+      ...(truncated && { nextOffset: offset + filenames.length }),
     }
     return {
       data: output,
@@ -182,16 +205,18 @@ export const GlobTool = buildTool({
         content: 'No files found',
       }
     }
+    // Keep the "(Results are truncated" prefix: summarizeGlobOutput matches on
+    // it to tell the notice apart from a path.
+    const truncationNote =
+      output.nextOffset !== undefined
+        ? `(Results are truncated. Pass offset=${output.nextOffset} for the next page, or use a more specific path or pattern.)`
+        : '(Results are truncated. Consider using a more specific path or pattern.)'
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
       content: [
         ...output.filenames,
-        ...(output.truncated
-          ? [
-              '(Results are truncated. Consider using a more specific path or pattern.)',
-            ]
-          : []),
+        ...(output.truncated ? [truncationNote] : []),
       ].join('\n'),
     }
   },
