@@ -1,6 +1,6 @@
 # Read Outline (folded file views)
 
-Claudin's `Read` tool can return a large code file as a **structural skeleton** — every function/class signature with its line range — and then expand a single symbol by name. Instead of choosing between "pay ~25k tokens for the whole file" and "guess `offset`/`limit` blindly", the model navigates big files the way a human does in an IDE: fold everything, open the one function that matters.
+Claudin's `Read` tool can return a large code file as a **structural skeleton** — every function, class and object-literal member signature with its line range — and then expand a single symbol by name. Instead of choosing between "pay ~25k tokens for the whole file" and "guess `offset`/`limit` blindly", the model navigates big files the way a human does in an IDE: fold everything, open the one function that matters.
 
 **On by default. No configuration required.**
 
