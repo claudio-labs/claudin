@@ -85,6 +85,25 @@ function envelope(body: string): string {
   return `*** Begin Patch\n${body}\n*** End Patch`
 }
 
+/** A range Read: the model only saw lines [offset, offset + limit - 1]. */
+function markRange(absPath: string, offset: number, limit: number): void {
+  const lines = readFileSync(absPath, 'utf8').split('\n')
+  ctx.readFileState.set(absPath, {
+    content: lines.slice(offset - 1, offset - 1 + limit).join('\n'),
+    timestamp: getFileModificationTime(absPath),
+    offset,
+    limit,
+  })
+}
+
+/** Ten numbered lines, so a range read can miss the patched one. */
+function writeNumbered(absPath: string): void {
+  writeFileSync(
+    absPath,
+    Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join('\n') + '\n',
+  )
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'applypatch-'))
   ctx = makeContext()
@@ -540,6 +559,132 @@ describe('validateApplyPatchInput', () => {
     )
     expect(r.result).toBe(false)
     if (!r.result) expect(r.message).toContain('invalid path')
+    cleanup()
+  })
+})
+
+// The coverage lane (readBeforeEditMessages.ts): an entry proves the model saw
+// the FILE, which is not the same as having seen the lines being changed. The
+// hole this closes was measured, not imagined — a 3-file refusal was answered
+// with three 5-to-8-line range Reads and the identical patch then applied.
+describe('validateApplyPatchInput — read coverage', () => {
+  test('a range read authorizes a patch INSIDE the range', () => {
+    const p = join(dir, 'inside.txt')
+    writeNumbered(p)
+    markRange(p, 1, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
+      ctx,
+    )
+    expect(r).toEqual({ result: true })
+    cleanup()
+  })
+
+  test('a range read does NOT authorize a patch outside it', () => {
+    const p = join(dir, 'outside.txt')
+    writeNumbered(p)
+    markRange(p, 1, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('only read in part')
+      expect(r.message).toContain('lines 1-3')
+      // The old wording was the whole problem: the file WAS read, and telling
+      // the model otherwise is what bought the ritual 8-line re-read.
+      expect(r.message).not.toContain('has not been read yet')
+    }
+    cleanup()
+  })
+
+  test('context lines count as seen, not just removed ones', () => {
+    // The chunk's old side is context + removals; a patch anchored on context
+    // the model never saw is just as blind as one removing it.
+    const p = join(dir, 'ctx.txt')
+    writeNumbered(p)
+    markRange(p, 1, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n line7\n-line8\n+LINE8`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    cleanup()
+  })
+
+  test('a full read still authorizes a patch anywhere in the file', () => {
+    const p = join(dir, 'full.txt')
+    writeNumbered(p)
+    markRead(p)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
+      ctx,
+    )
+    expect(r).toEqual({ result: true })
+    cleanup()
+  })
+
+  test('Delete File needs the whole file, not a range', () => {
+    const p = join(dir, 'del.txt')
+    writeNumbered(p)
+    markRange(p, 1, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Delete File: ${p}`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) expect(r.message).toContain('replaces the whole file')
+    cleanup()
+  })
+
+  test('Delete File after a full read is allowed', () => {
+    const p = join(dir, 'del-ok.txt')
+    writeNumbered(p)
+    markRead(p)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Delete File: ${p}`) },
+      ctx,
+    )
+    expect(r).toEqual({ result: true })
+    cleanup()
+  })
+
+  test('coverage failures count toward the batched-read instruction', () => {
+    const a = join(dir, 'cov-a.txt')
+    const b = join(dir, 'cov-b.txt')
+    writeNumbered(a)
+    writeNumbered(b)
+    markRange(a, 1, 3)
+    markRange(b, 1, 3)
+    const r = validateApplyPatchInput(
+      {
+        patchText: envelope(
+          `*** Update File: ${a}\n@@\n-line8\n+LINE8\n` +
+            `*** Update File: ${b}\n@@\n-line9\n+LINE9`,
+        ),
+      },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) expect(r.message).toContain('do them all in ONE message')
+    cleanup()
+  })
+
+  test('CLAUDIN_DISABLE_READ_COVERAGE_GATE=1 restores the old behavior', () => {
+    const p = join(dir, 'killswitch.txt')
+    writeNumbered(p)
+    markRange(p, 1, 3)
+    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
+    try {
+      const r = validateApplyPatchInput(
+        { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
+        ctx,
+      )
+      expect(r).toEqual({ result: true })
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
+    }
     cleanup()
   })
 })

@@ -115,6 +115,24 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     optimization must require `!isPartialView` too. NotebookEdit and the
     attachment path each checked only presence, which the sticky marker turned
     into a blind-notebook-edit path and a suppressed `@`-mention.
+  - **Presence is not coverage** (2026-08-12). The gate answers "has the model
+    seen this file", never "has it seen the lines it is changing": a range Read
+    and a `symbol=` Read both write an entry with NO `isPartialView`
+    (`FileReadTool.ts:2268`, `:1886`), so eight lines of a 2,200-line file used
+    to authorize a patch anywhere in it — measured, in session `9825fb93`, as
+    three token-sized re-Reads that lifted a refusal and changed nothing else.
+    The second lane in `shared/readBeforeEditMessages.ts` closes it:
+    `seenRegionCovers` requires a line-scoped write (an `apply_patch` Update
+    chunk's `oldLines`, Edit's `old_string`) to sit inside the bytes the entry
+    carries, and `needsWholeFileRead` requires a whole-file entry for a write
+    that replaces the file (`Delete File`, `FileWriteTool`). Matching is
+    line-anchored and per-line trimmed — never stricter than the callers' own
+    fuzzy matchers, or it refuses writes that would have applied. Killswitch
+    `CLAUDIN_DISABLE_READ_COVERAGE_GATE=1`. Do NOT "simplify" this into marking
+    range reads `isPartialView`: a symbol read IS a range read, and
+    `makeUnfoldData` (`FileReadTool.ts:1868-1873`) keeps those editable on
+    purpose — that is the outline → symbol → edit flow the auto-outline pivot
+    exists to enable. NotebookEdit stays out: it addresses cells, not lines.
   - The obligation above belongs to consumers that read presence as **"the
     model has seen these bytes"** — not to every `readFileState` caller.
     `attachments/memory.ts:94,258,469` gate on `has()` and look like the same
