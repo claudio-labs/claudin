@@ -49,6 +49,7 @@ Run `bun run profile` for the unified summary.
 | `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
 | `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/profile/cache-ab-bench.ts` |
 | `agent-bg-token-bench.ts` | End-to-end token + $ cost of the SAME sub-agent workload (orchestrator spawns N agents, each reads M files), claudin vs. claude-code | `bun scripts/profile/agent-bg-token-bench.ts` |
+| `cli-search-edit-ab.ts` | Per-turn context, tokens, cache and $ for one search→edit→build task (find 5 call sites across 10 .js files, rewrite them, get the build green), claudin vs. claude-code — **graded**, so a cheap arm that skipped work is not a win | `bun scripts/profile/cli-search-edit-ab.ts` |
 | `run-all.ts`            | All six back-to-back with a unified summary + verdict                  | `bun run profile`           |
 
 ### Comparing agents across CLIs (`agent-bg-token-bench.ts`)
@@ -75,6 +76,34 @@ number it prints:
   split, so the list-price estimate infers it from the parent's last `usage` block
   and is only a cross-check. **Trust `cost reported by the CLI`**, which knows the
   real TTL per request.
+
+### Grading the work, not just the tokens (`cli-search-edit-ab.ts`)
+
+`agent-bg-token-bench.ts` compares two CLIs on a workload whose *output* nobody
+checks — fine there, because reading N files has no wrong answer. A
+search→edit→build task does, and the cheapest way to finish it is to do less of
+it, so this bench grades every run before believing its numbers:
+
+```bash
+bun scripts/profile/cli-search-edit-ab.ts --dry-run                 # 1st: is the fixture an oracle?
+bun scripts/profile/cli-search-edit-ab.ts --reps=3 --json
+```
+
+The workspace is 10 plain-ESM `.js` files under `/tmp` with five call sites of
+one function — one of them reached through an **aliased import**, so a grep for
+`formatCurrency(` misses it — plus three decoys (a lookalike identifier, a
+comment, a string event name) that a blind global replace destroys. Because the
+call sites are ESM *named* imports, a missed one fails `bun build` with "No
+matching export": the bundler, not the harness, is the oracle. `--dry-run`
+proves that end of it (pristine builds, a missed site goes red, a blind
+`s///g` stays green but trips the decoys) before any model token is spent.
+
+Read the output in this order: **task passed** first, then the token table. A
+delta between arms that did not both pass is comparing different amounts of
+work. Arm order alternates per rep so the cold prompt cache does not land on
+the same arm every time, and at `--reps>=3` the summary prints the cost
+**ranges** — overlapping ranges mean there is no cost claim to make, however
+clean the median looks.
 
 ### Investigation-only scripts
 

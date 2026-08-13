@@ -1,0 +1,675 @@
+[
+  {
+    "label": "claudin",
+    "bin": "/home/viudes/projects/claudin/bin/claudin",
+    "rep": 1,
+    "exitCode": 0,
+    "wallMs": 38304.746585,
+    "input": 9615,
+    "output": 3558,
+    "cacheRead": 176432,
+    "cacheCreation": 16293,
+    "firstContext": 30285,
+    "peakContext": 37319,
+    "endContext": 37319,
+    "costUsd": 0.23290260000000002,
+    "numTurns": 17,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.19624335,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 2,
+        "out": 113,
+        "cR": 18538,
+        "cW": 11745
+      },
+      {
+        "in": 204,
+        "out": 324,
+        "cR": 30283,
+        "cW": 0
+      },
+      {
+        "in": 1933,
+        "out": 984,
+        "cR": 30283,
+        "cW": 0
+      },
+      {
+        "in": 2899,
+        "out": 1701,
+        "cR": 30283,
+        "cW": 1931
+      },
+      {
+        "in": 2089,
+        "out": 168,
+        "cR": 32214,
+        "cW": 2617
+      },
+      {
+        "in": 2488,
+        "out": 268,
+        "cR": 34831,
+        "cW": 0
+      }
+    ],
+    "usageMergedFromTranscript": false,
+    "toolCalls": 16,
+    "searchCalls": 3,
+    "toolMix": {
+      "Bash": 1,
+      "Read": 11,
+      "Grep": 2,
+      "apply_patch": 1,
+      "Build": 1
+    },
+    "allResultChars": 8524,
+    "searchResultChars": 1804,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [
+        "src/lib/strings.js",
+        "src/ui/label.js"
+      ],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claudin/projects/-tmp-cli-search-edit-ab-g0XN15/deb982d5-7c87-437e-b403-cc5c934f3012.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "claude",
+    "bin": "claude",
+    "rep": 1,
+    "exitCode": 0,
+    "wallMs": 58334.171802,
+    "input": 3952,
+    "output": 4188,
+    "cacheRead": 1545106,
+    "cacheCreation": 20396,
+    "firstContext": 70485,
+    "peakContext": 77952,
+    "endContext": 77952,
+    "costUsd": 0.6614478,
+    "numTurns": 21,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.6146928,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 3622,
+        "out": 120,
+        "cR": 57554,
+        "cW": 9309
+      },
+      {
+        "in": 2,
+        "out": 178,
+        "cR": 66863,
+        "cW": 3829
+      },
+      {
+        "in": 2,
+        "out": 498,
+        "cR": 70692,
+        "cW": 1344
+      },
+      {
+        "in": 2,
+        "out": 254,
+        "cR": 72036,
+        "cW": 672
+      },
+      {
+        "in": 2,
+        "out": 88,
+        "cR": 72708,
+        "cW": 341
+      },
+      {
+        "in": 2,
+        "out": 267,
+        "cR": 73049,
+        "cW": 176
+      },
+      {
+        "in": 2,
+        "out": 79,
+        "cR": 73225,
+        "cW": 355
+      },
+      {
+        "in": 2,
+        "out": 327,
+        "cR": 73580,
+        "cW": 194
+      },
+      {
+        "in": 2,
+        "out": 79,
+        "cR": 73774,
+        "cW": 391
+      },
+      {
+        "in": 147,
+        "out": 316,
+        "cR": 74165,
+        "cW": 184
+      },
+      {
+        "in": 2,
+        "out": 79,
+        "cR": 74349,
+        "cW": 525
+      },
+      {
+        "in": 2,
+        "out": 359,
+        "cR": 74874,
+        "cW": 204
+      },
+      {
+        "in": 2,
+        "out": 80,
+        "cR": 75078,
+        "cW": 423
+      },
+      {
+        "in": 2,
+        "out": 316,
+        "cR": 75501,
+        "cW": 183
+      },
+      {
+        "in": 2,
+        "out": 142,
+        "cR": 75684,
+        "cW": 381
+      },
+      {
+        "in": 2,
+        "out": 482,
+        "cR": 76065,
+        "cW": 377
+      },
+      {
+        "in": 2,
+        "out": 79,
+        "cR": 76442,
+        "cW": 569
+      },
+      {
+        "in": 2,
+        "out": 233,
+        "cR": 77011,
+        "cW": 229
+      },
+      {
+        "in": 2,
+        "out": 60,
+        "cR": 77240,
+        "cW": 297
+      },
+      {
+        "in": 147,
+        "out": 55,
+        "cR": 77537,
+        "cW": 142
+      },
+      {
+        "in": 2,
+        "out": 97,
+        "cR": 77679,
+        "cW": 271
+      }
+    ],
+    "usageMergedFromTranscript": true,
+    "toolCalls": 20,
+    "searchCalls": 2,
+    "toolMix": {
+      "Bash": 5,
+      "Read": 7,
+      "Edit": 8
+    },
+    "allResultChars": 6733,
+    "searchResultChars": 724,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [
+        "src/lib/strings.js",
+        "src/ui/label.js"
+      ],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claude/projects/-tmp-cli-search-edit-ab-IbXWuo/193cca4c-acbf-46a6-a14f-992115fdc9d5.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "claude",
+    "bin": "claude",
+    "rep": 2,
+    "exitCode": 0,
+    "wallMs": 44336.14578200001,
+    "input": 3791,
+    "output": 3493,
+    "cacheRead": 939598,
+    "cacheCreation": 18762,
+    "firstContext": 70483,
+    "peakContext": 76318,
+    "endContext": 76318,
+    "costUsd": 0.45908340000000003,
+    "numTurns": 13,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.4160049,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 3622,
+        "out": 118,
+        "cR": 57554,
+        "cW": 9307
+      },
+      {
+        "in": 2,
+        "out": 163,
+        "cR": 66861,
+        "cW": 3828
+      },
+      {
+        "in": 2,
+        "out": 726,
+        "cR": 70689,
+        "cW": 1649
+      },
+      {
+        "in": 2,
+        "out": 291,
+        "cR": 72338,
+        "cW": 812
+      },
+      {
+        "in": 2,
+        "out": 358,
+        "cR": 73150,
+        "cW": 379
+      },
+      {
+        "in": 2,
+        "out": 315,
+        "cR": 73529,
+        "cW": 421
+      },
+      {
+        "in": 2,
+        "out": 326,
+        "cR": 73950,
+        "cW": 378
+      },
+      {
+        "in": 2,
+        "out": 290,
+        "cR": 74328,
+        "cW": 389
+      },
+      {
+        "in": 2,
+        "out": 289,
+        "cR": 74717,
+        "cW": 353
+      },
+      {
+        "in": 147,
+        "out": 191,
+        "cR": 75070,
+        "cW": 376
+      },
+      {
+        "in": 2,
+        "out": 113,
+        "cR": 75446,
+        "cW": 398
+      },
+      {
+        "in": 2,
+        "out": 147,
+        "cR": 75844,
+        "cW": 278
+      },
+      {
+        "in": 2,
+        "out": 166,
+        "cR": 76122,
+        "cW": 194
+      }
+    ],
+    "usageMergedFromTranscript": true,
+    "toolCalls": 12,
+    "searchCalls": 2,
+    "toolMix": {
+      "Bash": 4,
+      "Edit": 8
+    },
+    "allResultChars": 5373,
+    "searchResultChars": 550,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [
+        "src/lib/strings.js",
+        "src/ui/label.js"
+      ],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claude/projects/-tmp-cli-search-edit-ab-yORsBg/ed96b5e7-1c5a-4051-a9db-b94334459131.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "claudin",
+    "bin": "/home/viudes/projects/claudin/bin/claudin",
+    "rep": 2,
+    "exitCode": 0,
+    "wallMs": 42118.790178999974,
+    "input": 11777,
+    "output": 4323,
+    "cacheRead": 178462,
+    "cacheCreation": 15486,
+    "firstContext": 30285,
+    "peakContext": 37227,
+    "endContext": 37227,
+    "costUsd": 0.2466306,
+    "numTurns": 16,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.2117871,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 2,
+        "out": 118,
+        "cR": 18538,
+        "cW": 11745
+      },
+      {
+        "in": 210,
+        "out": 817,
+        "cR": 30283,
+        "cW": 0
+      },
+      {
+        "in": 2716,
+        "out": 2564,
+        "cR": 30283,
+        "cW": 1027
+      },
+      {
+        "in": 2671,
+        "out": 254,
+        "cR": 31310,
+        "cW": 2714
+      },
+      {
+        "in": 2975,
+        "out": 177,
+        "cR": 34024,
+        "cW": 0
+      },
+      {
+        "in": 3203,
+        "out": 393,
+        "cR": 34024,
+        "cW": 0
+      }
+    ],
+    "usageMergedFromTranscript": false,
+    "toolCalls": 15,
+    "searchCalls": 2,
+    "toolMix": {
+      "Bash": 2,
+      "Read": 11,
+      "apply_patch": 1,
+      "Grep": 1
+    },
+    "allResultChars": 7152,
+    "searchResultChars": 316,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [
+        "src/lib/strings.js",
+        "src/ui/label.js"
+      ],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claudin/projects/-tmp-cli-search-edit-ab-3xaATd/eb085461-6fe7-4c3a-b244-17ad6a25c52e.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "claudin",
+    "bin": "/home/viudes/projects/claudin/bin/claudin",
+    "rep": 3,
+    "exitCode": 0,
+    "wallMs": 36745.883703,
+    "input": 10085,
+    "output": 3575,
+    "cacheRead": 212588,
+    "cacheCreation": 16941,
+    "firstContext": 30290,
+    "peakContext": 37213,
+    "endContext": 37213,
+    "costUsd": 0.2493024,
+    "numTurns": 17,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.21118515,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 2,
+        "out": 120,
+        "cR": 18538,
+        "cW": 11750
+      },
+      {
+        "in": 210,
+        "out": 327,
+        "cR": 30288,
+        "cW": 0
+      },
+      {
+        "in": 1942,
+        "out": 1338,
+        "cR": 30288,
+        "cW": 0
+      },
+      {
+        "in": 3253,
+        "out": 1339,
+        "cR": 30288,
+        "cW": 1940
+      },
+      {
+        "in": 1447,
+        "out": 30,
+        "cR": 32228,
+        "cW": 3251
+      },
+      {
+        "in": 1497,
+        "out": 144,
+        "cR": 35479,
+        "cW": 0
+      },
+      {
+        "in": 1734,
+        "out": 277,
+        "cR": 35479,
+        "cW": 0
+      }
+    ],
+    "usageMergedFromTranscript": false,
+    "toolCalls": 16,
+    "searchCalls": 3,
+    "toolMix": {
+      "Bash": 1,
+      "Read": 11,
+      "Grep": 2,
+      "apply_patch": 1,
+      "Build": 1
+    },
+    "allResultChars": 8374,
+    "searchResultChars": 1654,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [
+        "src/lib/strings.js",
+        "src/ui/label.js"
+      ],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claudin/projects/-tmp-cli-search-edit-ab-e9mrx4/30315351-8019-4cd0-82e5-42735c38e00f.jsonl",
+    "stderr": ""
+  },
+  {
+    "label": "claude",
+    "bin": "claude",
+    "rep": 3,
+    "exitCode": 0,
+    "wallMs": 42461.02209100002,
+    "input": 3789,
+    "output": 3128,
+    "cacheRead": 861429,
+    "cacheCreation": 18350,
+    "firstContext": 70485,
+    "peakContext": 75906,
+    "endContext": 75906,
+    "costUsd": 0.42767969999999994,
+    "numTurns": 12,
+    "model": "claude-sonnet-5",
+    "estCostUsd": 0.38552820000000004,
+    "sawSentinel": true,
+    "timeline": [
+      {
+        "in": 3622,
+        "out": 119,
+        "cR": 57554,
+        "cW": 9309
+      },
+      {
+        "in": 2,
+        "out": 180,
+        "cR": 66863,
+        "cW": 3828
+      },
+      {
+        "in": 2,
+        "out": 506,
+        "cR": 70691,
+        "cW": 1573
+      },
+      {
+        "in": 2,
+        "out": 273,
+        "cR": 72264,
+        "cW": 609
+      },
+      {
+        "in": 2,
+        "out": 301,
+        "cR": 72873,
+        "cW": 360
+      },
+      {
+        "in": 2,
+        "out": 359,
+        "cR": 73233,
+        "cW": 390
+      },
+      {
+        "in": 2,
+        "out": 316,
+        "cR": 73623,
+        "cW": 423
+      },
+      {
+        "in": 2,
+        "out": 327,
+        "cR": 74046,
+        "cW": 380
+      },
+      {
+        "in": 147,
+        "out": 291,
+        "cR": 74426,
+        "cW": 391
+      },
+      {
+        "in": 2,
+        "out": 170,
+        "cR": 74817,
+        "cW": 500
+      },
+      {
+        "in": 2,
+        "out": 136,
+        "cR": 75317,
+        "cW": 405
+      },
+      {
+        "in": 2,
+        "out": 150,
+        "cR": 75722,
+        "cW": 182
+      }
+    ],
+    "usageMergedFromTranscript": true,
+    "toolCalls": 11,
+    "searchCalls": 2,
+    "toolMix": {
+      "Bash": 4,
+      "Read": 1,
+      "Edit": 6
+    },
+    "allResultChars": 5196,
+    "searchResultChars": 724,
+    "verdict": {
+      "buildOk": true,
+      "buildErr": "",
+      "sitesDone": 5,
+      "sitesMissed": [],
+      "aliasLeft": false,
+      "decoysBroken": [],
+      "decoysEdited": [],
+      "ok": true
+    },
+    "workspace": "(removed)",
+    "transcript": "/home/viudes/.claude/projects/-tmp-cli-search-edit-ab-iyCZHu/2ad44705-932e-47d9-aeb4-cdd4b76f06f2.jsonl",
+    "stderr": ""
+  }
+]
