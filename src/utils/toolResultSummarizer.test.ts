@@ -783,6 +783,25 @@ test('glob: pathological — all lines are truncation notice → passthrough (ba
   expect(out).toBe(block)
 })
 
+test('glob: the INCOMPLETE notice is metadata, not a path', () => {
+  // The notice survives the 50-path cap and is not counted as a path: it is
+  // the line saying the listing is a prefix, so losing it to the cap would
+  // turn a partial walk back into an answer that reads as complete.
+  const paths = Array.from(
+    { length: 60 },
+    (_, i) => `src/${'deeply/nested/feature/module/'.repeat(7)}component${i}/index.tsx`,
+  )
+  const notice =
+    '(INCOMPLETE: ripgrep was stopped before it finished walking the tree. Any paths above are real but they are not all of them — search a narrower path.)'
+  const out = maybeSummarizeToolResult(
+    makeBlock([...paths, notice].join('\n')),
+    'Glob',
+  )
+  const body = asString(out)
+  expect(body).toContain('Glob summary: 60 paths found')
+  expect(body).toContain('INCOMPLETE:')
+})
+
 test('glob: snapshot — marker shape and strategy attribute', () => {
   const content = Array.from(
     { length: 120 },

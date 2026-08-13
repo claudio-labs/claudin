@@ -1311,10 +1311,13 @@ const GLOB_MAX_PATHS = 50
 function summarizeGlobOutput(text: string): StrategyResult | null {
   const allLines = text.split('\n').filter(l => l.length > 0)
 
-  // Separate the truncation notice from actual paths — it's metadata, not a path.
-  const TRUNC_RE = /^\(Results are truncated/i
-  const truncationNotices = allLines.filter(l => TRUNC_RE.test(l))
-  const pathLines = allLines.filter(l => !TRUNC_RE.test(l))
+  // Separate Glob's own notices from actual paths — they are metadata. Both
+  // have to be here: counting a notice as a path inflates the total, and the
+  // 50-path cap can then drop the INCOMPLETE line, which is the one saying the
+  // listing is a prefix rather than the whole answer.
+  const NOTICE_RE = /^\((?:Results are truncated|INCOMPLETE:)/i
+  const notices = allLines.filter(l => NOTICE_RE.test(l))
+  const pathLines = allLines.filter(l => !NOTICE_RE.test(l))
 
   // No paths means Glob returned nothing useful — pass through.
   if (pathLines.length === 0) return null
@@ -1336,7 +1339,7 @@ function summarizeGlobOutput(text: string): StrategyResult | null {
     parts.push(`<omitted paths="${omitted}"/>`)
   }
 
-  for (const notice of truncationNotices) parts.push(notice)
+  for (const notice of notices) parts.push(notice)
 
   return { body: parts.join('\n'), strategy: 'glob-top-n' }
 }

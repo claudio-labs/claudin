@@ -81,6 +81,8 @@ type GrepData = {
   autoPivot?: boolean
   totalMatchLines?: number
   totalMatchFiles?: number
+  ignoredOnly?: boolean
+  incomplete?: 'timeout' | 'buffer'
 }
 
 async function grep(
@@ -643,5 +645,424 @@ describe('GrepTool relativizeRgLine', () => {
     const content = (data as GrepData).content ?? ''
     expect(content).toContain('toolResultSummarizer.ts-')
     expect(content).not.toContain(root)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// "Found nothing" vs "never looked": the four ways a search used to come back
+// empty without saying why.
+// ---------------------------------------------------------------------------
+
+describe('GrepTool — blind spots', () => {
+  let blindDir: string
+
+  beforeAll(() => {
+    blindDir = mkdtempSync(join(tmpdir(), 'grep-blind-'))
+    mkdirSync(join(blindDir, 'hidden_from_vcs'), { recursive: true })
+    // `.ignore` rather than `.gitignore` so the fixture needs no git repo:
+    // ripgrep honors both, and the single `--no-ignore` flag under test turns
+    // off both at once, so this exercises the identical code path.
+    writeFileSync(join(blindDir, '.ignore'), 'hidden_from_vcs/\n')
+    writeFileSync(
+      join(blindDir, 'hidden_from_vcs', 'generated.ts'),
+      'export const ZQBURIED = 1\n',
+    )
+    // A second buried symbol, searched by exactly one test below. The
+    // tool-result cache keys on the input alone (wrapCallWithCache in
+    // src/Tool.ts), so a test that re-runs an earlier test's search replays
+    // that result and proves nothing about its own subject.
+    writeFileSync(
+      join(blindDir, 'hidden_from_vcs', 'other.ts'),
+      'export const ZQSECONDHIDDEN = 9\n',
+    )
+    writeFileSync(join(blindDir, 'tracked.ts'), 'export const ZQTRACKED = 2\n')
+    writeFileSync(join(blindDir, 'shouty.ts'), 'const ZQSHOUT = 3\n')
+    // UTF-16LE without a BOM: ripgrep's default sniffing only recognizes a BOM,
+    // so this reads as binary and is skipped unless `encoding` says otherwise.
+    writeFileSync(
+      join(blindDir, 'wide.txt'),
+      Buffer.from('ZQWIDE = 4\n', 'utf16le'),
+    )
+    writeFileSync(
+      join(blindDir, 'blob.dat'),
+      Buffer.from([0x00, 0x01, ...Buffer.from('ZQBINARY'), 0x00]),
+    )
+  })
+
+  afterAll(() => {
+    rmSync(blindDir, { recursive: true, force: true })
+  })
+
+  async function blindGrep(input: Record<string, unknown>): Promise<GrepData> {
+    const { data } = await GrepTool.call(
+      { path: blindDir, ...input } as never,
+      makeContext(),
+    )
+    return data as GrepData
+  }
+
+  test('a match that exists only in ignored files is found and labelled', async () => {
+    const data = await blindGrep({ pattern: 'ZQBURIED' })
+
+    expect(data.numFiles).toBe(1)
+    expect(data.filenames[0]).toContain('generated.ts')
+    // Without this the result is indistinguishable from an ordinary hit in a
+    // tracked file, which is the whole point of running the second pass.
+    expect(data.ignoredOnly).toBe(true)
+  })
+
+  test('a match in a tracked file does not trigger the ignored pass', async () => {
+    const data = await blindGrep({ pattern: 'ZQTRACKED' })
+
+    expect(data.numFiles).toBe(1)
+    expect(data.ignoredOnly).toBeUndefined()
+  })
+
+  test('a pattern absent everywhere still reports nothing found', async () => {
+    const data = await blindGrep({ pattern: 'ZQABSENTEVERYWHERE' })
+
+    expect(data.numFiles).toBe(0)
+    expect(data.ignoredOnly).toBeUndefined()
+  })
+
+  test('no_ignore searches ignored files on the first pass, unlabelled', async () => {
+    const data = await blindGrep({ pattern: 'ZQBURIED', no_ignore: true })
+
+    expect(data.numFiles).toBe(1)
+    // Nothing to disclose: the caller asked for those files.
+    expect(data.ignoredOnly).toBeUndefined()
+  })
+
+  test('CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK restores the silent miss', async () => {
+    const previous = process.env.CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK
+    process.env.CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK = '1'
+    try {
+      const data = await blindGrep({ pattern: 'ZQSECONDHIDDEN' })
+      expect(data.numFiles).toBe(0)
+    } finally {
+      if (previous === undefined) {
+        delete process.env.CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK
+      } else {
+        process.env.CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK = previous
+      }
+    }
+  })
+
+  test('a lowercase pattern matches an uppercase symbol (smart-case)', async () => {
+    const data = await blindGrep({ pattern: 'zqshout' })
+
+    expect(data.numFiles).toBe(1)
+    expect(data.filenames[0]).toContain('shouty.ts')
+  })
+
+  test('an uppercase pattern stays case-sensitive (smart-case)', async () => {
+    // The other half of smart-case: adding an uppercase letter must NOT widen
+    // the search, or the mode would just be -i under another name.
+    const data = await blindGrep({ pattern: 'ZQShout' })
+
+    expect(data.numFiles).toBe(0)
+  })
+
+  test('-i false forces case-sensitive matching', async () => {
+    // What this pins is the three-way split: an explicit false must not fall
+    // through to smart-case. It does NOT pin the --case-sensitive flag itself
+    // — dropping that flag lands on ripgrep's own default and this still
+    // passes, which is a no-op, not a guard.
+    const data = await blindGrep({ pattern: 'zqshout', '-i': false })
+
+    expect(data.numFiles).toBe(0)
+  })
+
+  test('-i true forces case-insensitive matching', async () => {
+    const data = await blindGrep({ pattern: 'zqshout', '-i': true })
+
+    expect(data.numFiles).toBe(1)
+  })
+
+  test('encoding reaches UTF-16 text that is otherwise skipped as binary', async () => {
+    const without = await blindGrep({ pattern: 'ZQWIDE' })
+    expect(without.numFiles).toBe(0)
+
+    const withEncoding = await blindGrep({
+      pattern: 'ZQWIDE',
+      encoding: 'utf-16le',
+    })
+    expect(withEncoding.numFiles).toBe(1)
+    expect(withEncoding.filenames[0]).toContain('wide.txt')
+  })
+
+  test('binary searches inside a binary file', async () => {
+    const without = await blindGrep({ pattern: 'ZQBINARY' })
+    expect(without.numFiles).toBe(0)
+
+    const withBinary = await blindGrep({ pattern: 'ZQBINARY', binary: true })
+    expect(withBinary.numFiles).toBe(1)
+    expect(withBinary.filenames[0]).toContain('blob.dat')
+  })
+
+  test('an invalid regex is an error, not "no matches"', async () => {
+    // The failure this replaces was silent: ripgrep exits 2 on a regex it
+    // cannot parse, which used to resolve to an empty result set.
+    await expect(blindGrep({ pattern: '[a-' })).rejects.toThrow(
+      /regex parse error/,
+    )
+  })
+
+  test('an unknown encoding label is an error, not "no matches"', async () => {
+    await expect(
+      blindGrep({ pattern: 'ZQWIDE', encoding: 'utf16' }),
+    ).rejects.toThrow(/unknown encoding/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// outputSchema gates what the result renderer sees: a z.object strips any key
+// it does not declare, so a field the renderer reads but the schema omits
+// arrives as undefined, silently and only in the TUI. A formatter test cannot
+// see that, which is why these parse the full result shape instead.
+// ---------------------------------------------------------------------------
+
+describe('GrepTool — outputSchema declares the search notes', () => {
+  test('ignoredOnly survives a parse', () => {
+    const parsed = GrepTool.outputSchema.parse({
+      mode: 'files_with_matches',
+      numFiles: 1,
+      filenames: ['generated.ts'],
+      ignoredOnly: true,
+    })
+
+    expect(parsed.ignoredOnly).toBe(true)
+  })
+
+  test('incomplete survives a parse in both of its forms', () => {
+    for (const reason of ['timeout', 'buffer'] as const) {
+      const parsed = GrepTool.outputSchema.parse({
+        mode: 'content',
+        numFiles: 0,
+        filenames: [],
+        content: 'a.ts:1:hit',
+        incomplete: reason,
+      })
+      expect(parsed.incomplete).toBe(reason)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The rendered result — what the model actually reads.
+// ---------------------------------------------------------------------------
+
+describe('GrepTool — search notes reach the tool result', () => {
+  function render(output: Record<string, unknown>): string {
+    const block = GrepTool.mapToolResultToToolResultBlockParam!(
+      output as never,
+      'tool-use-1',
+    )
+    return typeof block.content === 'string' ? block.content : ''
+  }
+
+  test('the ignored-files note states the measured count, not a possibility', () => {
+    const text = render({
+      mode: 'files_with_matches',
+      numFiles: 2,
+      filenames: ['dist/a.js', 'dist/b.js'],
+      ignoredOnly: true,
+    })
+
+    expect(text).toContain('No matches in tracked files')
+    expect(text).toContain('The 2 files below')
+    expect(text).toContain('no_ignore: true')
+    expect(text).toContain('dist/a.js')
+  })
+
+  test('the incomplete note names the cause and the way out', () => {
+    const text = render({
+      mode: 'content',
+      numFiles: 0,
+      filenames: [],
+      content: 'a.ts:1:hit',
+      numLines: 1,
+      incomplete: 'timeout',
+    })
+
+    expect(text).toContain('INCOMPLETE')
+    expect(text).toContain('not all of them')
+    expect(text).toContain('a.ts:1:hit')
+  })
+
+  test('a plain result carries neither note', () => {
+    const text = render({
+      mode: 'files_with_matches',
+      numFiles: 1,
+      filenames: ['src/a.ts'],
+    })
+
+    expect(text).not.toContain('INCOMPLETE')
+    expect(text).not.toContain('no_ignore')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// symbols mode over a non-UTF-8 file. Finding the match was only half the
+// answer: the scan that maps a match to its enclosing function opens the file
+// itself, so without the search's own encoding it read mojibake and reported
+// "(matched outside any symbol)" for a file full of them.
+// ---------------------------------------------------------------------------
+
+describe('GrepTool — symbols mode respects encoding', () => {
+  let encDir: string
+  let widePath: string
+
+  const SOURCE = `export function wideHelper(id: string) {
+  return 'ZQENCODED' + id
+}
+
+export class WideFactory {
+  buildWidget() {
+    return 'ZQENCODED'
+  }
+}
+`
+
+  beforeAll(() => {
+    encDir = mkdtempSync(join(tmpdir(), 'grep-encoding-'))
+    widePath = join(encDir, 'wide.ts')
+    // UTF-16LE with no BOM: ripgrep needs --encoding to match it at all, and
+    // the symbol scan needs the same label to parse it.
+    writeFileSync(widePath, Buffer.from(SOURCE, 'utf16le'))
+    // A UTF-8 sibling holding the same symbols, to prove the assertions below
+    // are about the decode and not about the parser.
+    writeFileSync(join(encDir, 'plain.ts'), SOURCE)
+  })
+
+  afterAll(() => {
+    rmSync(encDir, { recursive: true, force: true })
+  })
+
+  async function encGrep(input: Record<string, unknown>): Promise<GrepData> {
+    const { data } = await GrepTool.call(
+      { path: encDir, ...input } as never,
+      makeContext(),
+    )
+    return data as GrepData
+  }
+
+  test('the UTF-8 sibling maps to symbols (control)', async () => {
+    const data = await encGrep({
+      pattern: 'ZQENCODED',
+      output_mode: 'symbols',
+      glob: 'plain.ts',
+    })
+
+    expect(data.numMatches).toBe(2)
+    expect(data.content).toContain('wideHelper')
+    expect(data.content).toContain('buildWidget')
+  })
+
+  test('the UTF-16 file maps to the same symbols when encoding is given', async () => {
+    const data = await encGrep({
+      pattern: 'ZQENCODED',
+      output_mode: 'symbols',
+      glob: 'wide.ts',
+      encoding: 'utf-16le',
+    })
+
+    expect(data.numFiles).toBe(1)
+    expect(data.numMatches).toBe(2)
+    expect(data.content).toContain('wideHelper')
+    expect(data.content).toContain('buildWidget')
+    // The exact string the bug produced.
+    expect(data.content).not.toContain('matched outside any symbol')
+  })
+
+  test('content mode returns decoded lines, which is what feeds the pivot', async () => {
+    const data = await encGrep({
+      pattern: 'ZQENCODED',
+      output_mode: 'content',
+      glob: 'wide.ts',
+      encoding: 'utf-16le',
+    })
+
+    expect(data.content).toContain('ZQENCODED')
+    expect(data.content).not.toContain('\u0000')
+  })
+
+  test('without the label the file is not even matched', async () => {
+    const data = await encGrep({
+      pattern: 'ZQENCODED',
+      output_mode: 'symbols',
+      glob: 'wide.ts',
+    })
+
+    expect(data.numFiles).toBe(0)
+  })
+
+  test('an unknown label is refused before any scanning', async () => {
+    await expect(
+      encGrep({
+        pattern: 'ZQENCODED',
+        output_mode: 'symbols',
+        glob: 'wide.ts',
+        encoding: 'utf16',
+      }),
+    ).rejects.toThrow(/unknown encoding/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The auto-pivot builds the same symbol map from content-mode lines, so it is
+// a second call site that has to carry the label. A corpus wide enough to trip
+// the pivot is the only way to reach it — asserting on content mode instead
+// leaves that call site uncovered.
+// ---------------------------------------------------------------------------
+
+describe('GrepTool — auto-pivot respects encoding', () => {
+  let pivotDir: string
+  let previousForce: string | undefined
+
+  beforeAll(() => {
+    pivotDir = mkdtempSync(join(tmpdir(), 'grep-pivot-enc-'))
+    // 6 files clears GREP_PIVOT_MIN_FILES (5); 12 matches each clears
+    // GREP_PIVOT_THRESHOLD_MATCH_LINES (60) at 72.
+    for (let f = 0; f < 6; f++) {
+      const body = Array.from(
+        { length: 12 },
+        (_, i) => `  const v${i} = 'ZQPIVOT' + ${i}`,
+      ).join('\n')
+      const src = `export function pivotFn${f}() {\n${body}\n}\n`
+      writeFileSync(join(pivotDir, `mod${f}.ts`), Buffer.from(src, 'utf16le'))
+    }
+    previousForce = process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT
+    process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT = '1'
+  })
+
+  afterAll(() => {
+    if (previousForce === undefined) {
+      delete process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT
+    } else {
+      process.env.CLAUDIN_FORCE_GREP_AUTO_PIVOT = previousForce
+    }
+    rmSync(pivotDir, { recursive: true, force: true })
+  })
+
+  test('a content search over UTF-16 files pivots to a decoded symbol map', async () => {
+    const { data } = await GrepTool.call(
+      {
+        pattern: 'ZQPIVOT',
+        path: pivotDir,
+        output_mode: 'content',
+        encoding: 'utf-16le',
+      } as never,
+      makeContext(),
+    )
+    const d = data as GrepData
+
+    // Confirm the pivot actually fired — without it the assertions below would
+    // be about content mode and the pivot call site would stay untested.
+    expect(d.autoPivot).toBe(true)
+    expect(d.mode).toBe('symbols')
+    expect(d.numFiles).toBe(6)
+    expect(d.content).toContain('pivotFn0')
+    expect(d.content).not.toContain('matched outside any symbol')
   })
 })

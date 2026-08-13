@@ -2,6 +2,7 @@ import { readFile, stat } from 'fs/promises'
 
 import { logError } from '../../utils/log.js'
 import { toRelativePath } from '../../utils/path.js'
+import { createTextDecoder, encodingOverride } from '../../utils/textEncoding.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,
@@ -30,9 +31,15 @@ export type SymbolsResult = {
  * Lives outside GrepTool.ts so the replay bench can build a map without
  * importing the tool — GrepTool ↔ GlobTool/UI is a module cycle, and pulling
  * the tool in from a script hits it before the tool is initialised.
+ *
+ * `encoding` is the same label the search ran under. Without it a match found
+ * in a Shift-JIS or UTF-16 file maps to no symbol at all: the scan would read
+ * the bytes as UTF-8, get mojibake, and report "(matched outside any symbol)"
+ * for a file that is full of them.
  */
 export async function buildSymbolsOutput(
   rgLines: string[],
+  encoding?: string,
 ): Promise<SymbolsResult> {
   // Group matched line numbers by absolute file path.
   const byFile = new Map<string, Set<number>>()
@@ -53,6 +60,12 @@ export async function buildSymbolsOutput(
   const blocks: string[] = []
   let numMatches = 0
   const filenames: string[] = []
+  // Built once rather than per file, and before the loop so an unusable label
+  // fails the call instead of silently degrading all 50 files to "could not
+  // scan". The search itself already rejected unknown labels, so reaching this
+  // with a bad one means the two label spaces disagreed.
+  const decodeAs = encodingOverride(encoding)
+  const decoder = decodeAs ? createTextDecoder(decodeAs) : null
 
   for (const absPath of files) {
     const rel = toRelativePath(absPath)
@@ -75,7 +88,9 @@ export async function buildSymbolsOutput(
         blocks.push(`${rel}\n  (matched, file too large to scan)`)
         continue
       }
-      const source = await readFile(absPath, 'utf8')
+      const source = decoder
+        ? decoder.decode(await readFile(absPath))
+        : await readFile(absPath, 'utf8')
       entries = scanSymbols(source, lang)
     } catch (e) {
       logError(e)
