@@ -6,7 +6,7 @@ export { FILE_WRITE_TOOL_NAME } from './constants.js'
 export const DESCRIPTION = 'Write a file to the local filesystem.'
 
 function getPreReadInstruction(): string {
-  return `\n- If this is an existing file, you MUST use the ${FILE_READ_TOOL_NAME} tool first to read the file's contents. This tool will fail if you did not read the file first.`
+  return `\n- If this is an existing file, you MUST use the ${FILE_READ_TOOL_NAME} tool first to read the file's contents — all of them, since a Write replaces the whole file. It fails if you did not read the file, or only read a range of it.`
 }
 
 export function getWriteToolDescription(): string {

@@ -60,6 +60,8 @@ import {
 } from './constants.js'
 import {
   satisfiesReadGate,
+  seenRegionCovers,
+  unseenRegionMessage,
   writeFamilyReadGateError,
 } from '../shared/readBeforeEditMessages.js'
 import { getEditToolDescription } from './prompt.js'
@@ -321,6 +323,17 @@ export const FileEditTool = buildTool({
     }
 
     const file = fileContent
+
+    // Read-coverage: the entry proves the model saw the file, not that it saw
+    // the lines it is replacing (readBeforeEditMessages.ts, coverage lane).
+    if (!seenRegionCovers(readTimestamp, old_string.split('\n'))) {
+      return {
+        result: false,
+        behavior: 'ask',
+        message: unseenRegionMessage('File', 'editing it', readTimestamp),
+        errorCode: 11,
+      }
+    }
 
     // Use findActualString to handle quote normalization, then fall back to a
     // whitespace-tolerant line match (indentation/trailing-whitespace drift).

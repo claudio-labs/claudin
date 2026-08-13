@@ -52,7 +52,7 @@ Rules:
 - Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one apply_patch call per file — it is atomic and cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
 - Typical flow for a multi-file change: map the targets with Grep/Glob, Read every one of them in ONE message (parallel Read calls), then send ONE patch. Reading them one at a time is what turns a single patch into N patches.
 - The patch is all-or-nothing, so before you send it: Read every file you Update or Delete, give each file exactly ONE section, and anchor each hunk on lines you copied from the file (not remembered) — a single unread file, duplicate section, or mismatched context rejects the entire batch. When a call is rejected it lists every problem it found at once; fix them all before resubmitting rather than one at a time.
-- You MUST read a file (with the Read tool) before you Update or Delete it. Add does not require a prior read.
+- You MUST read a file (with the Read tool) before you Update or Delete it, and the read must COVER what you change: a hunk anchored on lines outside the range you read is refused, and a Delete needs the whole file. A range read is fine when it contains the hunk; otherwise read the whole file (view='full'). Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - The patch is atomic: if any hunk fails to apply, no files are written.
 - For new lines, always prefix them with "+", including when creating a file.

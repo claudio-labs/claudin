@@ -18,9 +18,13 @@ import { expandPath } from '../../utils/path.js'
 import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import {
+  needsWholeFileRead,
   readGateMessage,
   readGateReasonFor,
   satisfiesReadGate,
+  seenRegionCovers,
+  unseenRegionMessage,
+  wholeFileRequiredMessage,
 } from '../shared/readBeforeEditMessages.js'
 import {
   BATCH_CONFIRM_THRESHOLD,
@@ -179,6 +183,29 @@ export function validateApplyPatchInput(
       note(
         `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`,
         3,
+      )
+      readRemedyFailures++
+      continue
+    }
+
+    // Seeing the file is not seeing the lines being changed — see the
+    // coverage lane in readBeforeEditMessages.ts.
+    if (hunk.type === 'delete') {
+      if (needsWholeFileRead(readTimestamp)) {
+        note(
+          `apply_patch: ${wholeFileRequiredMessage(rel, 'Deleting it', readTimestamp)}`,
+          4,
+        )
+        readRemedyFailures++
+      }
+      continue
+    }
+    if (
+      hunk.chunks.some(chunk => !seenRegionCovers(readTimestamp, chunk.oldLines))
+    ) {
+      note(
+        `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`,
+        4,
       )
       readRemedyFailures++
       continue

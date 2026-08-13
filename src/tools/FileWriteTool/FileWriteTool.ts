@@ -46,7 +46,9 @@ import type { PermissionDecision } from '../../utils/permissions/PermissionResul
 import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from '../FileEditTool/constants.js'
 import {
+  needsWholeFileRead,
   satisfiesReadGate,
+  wholeFileRequiredMessage,
   writeFamilyReadGateError,
 } from '../shared/readBeforeEditMessages.js'
 import { gitDiffSchema, hunkSchema } from '../FileEditTool/types.js'
@@ -225,6 +227,17 @@ export const FileWriteTool = buildTool({
         message:
           'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
         errorCode: 3,
+      }
+    }
+
+    // A Write replaces the file wholesale, so a range Read is not enough to
+    // authorize it — the unread remainder would be silently dropped. See the
+    // coverage lane in readBeforeEditMessages.ts.
+    if (needsWholeFileRead(readTimestamp)) {
+      return {
+        result: false,
+        message: wholeFileRequiredMessage('File', 'Writing to it', readTimestamp),
+        errorCode: 4,
       }
     }
 
