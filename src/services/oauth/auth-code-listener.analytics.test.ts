@@ -1,5 +1,16 @@
 import { expect, mock, test } from 'bun:test'
 
+/**
+ * `mock.module` swaps the analytics module registry-wide, for every module in
+ * the process — not just the one under test. A fire-and-forget `logEvent` that
+ * another test file started earlier (memdir's `readdir` callback is the one
+ * that has landed here) therefore resolves inside this file's window and joins
+ * the array, which turned an unrelated change in suite timing into a failure
+ * of these three tests. Recording only what the listener itself emits keeps
+ * the assertions about this unit, including the one that asserts silence.
+ */
+const isListenerEvent = (name: string): boolean => name.startsWith('tengu_oauth')
+
 test('custom error responses log the error redirect analytics event', async () => {
   const events: Array<{
     name: string
@@ -11,7 +22,7 @@ test('custom error responses log the error redirect analytics event', async () =
       name: string,
       metadata: Record<string, boolean | number | undefined>,
     ) => {
-      events.push({ name, metadata })
+      if (isListenerEvent(name)) events.push({ name, metadata })
     },
     stripProtoFields: <T,>(m: T) => m,
   }))
@@ -64,7 +75,7 @@ test('custom handlers that do not end the response are closed automatically and 
       name: string,
       metadata: Record<string, boolean | number | undefined>,
     ) => {
-      events.push({ name, metadata })
+      if (isListenerEvent(name)) events.push({ name, metadata })
     },
     stripProtoFields: <T,>(m: T) => m,
   }))
@@ -123,7 +134,7 @@ test('custom handlers that throw are logged, converted to a fallback response, a
       name: string,
       metadata: Record<string, boolean | number | undefined>,
     ) => {
-      events.push({ name, metadata })
+      if (isListenerEvent(name)) events.push({ name, metadata })
     },
     stripProtoFields: <T,>(m: T) => m,
   }))

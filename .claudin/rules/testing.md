@@ -175,6 +175,16 @@ when A executes first, regardless of `--max-concurrency=1`.
   re-evaluates it → duplicate instances, so restore fully.
 - Bisecting a leak: halve the file list with the victim run last; some leaks are
   2-file (a loader + a re-eval trigger).
+- **A mocked `logEvent` collects the whole process, not your unit.** Asserting
+  `toEqual([...])` over everything the analytics mock captured passes only while
+  no other module happens to log inside that window — and several log
+  fire-and-forget from a promise the file that started them never awaited
+  (`logMemoryDirCounts` in `src/memdir/memdir.ts` is the one that has bitten:
+  its `readdir` callback lands in whichever file is running when it resolves).
+  Nothing about the victim file has to change for it to start failing; adding
+  tests anywhere upstream is enough to move the timing. Select the events you
+  are asserting on by name (`events.filter(e => e.name.startsWith('tengu_oauth'))`),
+  which keeps "logged nothing" meaningful instead of merely lucky.
 
 ### Ink/React components are unimportable under `bun test`
 
