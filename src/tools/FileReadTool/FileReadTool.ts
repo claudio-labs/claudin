@@ -103,6 +103,7 @@ import {
   type SymbolEntry,
 } from '../shared/codeOutline/scanSymbols.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
+import { assertKnownEncoding } from '../../utils/textEncoding.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import { BASH_TOOL_NAME } from '../BashTool/toolName.js'
 import { getDefaultFileReadingLimits } from './limits.js'
@@ -274,6 +275,12 @@ const inputSchema = lazySchema(() =>
       .optional()
       .describe(
         "Expand exactly one symbol by name: returns just that function/class/type body with its real line numbers. Use after an outline to read one part of a large file. Takes precedence over offset/limit and view.",
+      ),
+    encoding: z
+      .string()
+      .optional()
+      .describe(
+        'Decode the file with this Encoding Standard label (e.g. "utf-16le", "shift_jis", "windows-1252") instead of UTF-8. Only needed for a file that is not UTF-8 and carries no BOM — those read as mojibake or as binary otherwise. Same label space as Grep\'s `encoding`, so a match Grep found with one is readable here with the same one.',
       ),
   }),
 )
@@ -630,12 +637,17 @@ export const FileReadTool = buildTool({
     }
   },
   async call(
-    { file_path, offset = 1, limit = undefined, pages, view, symbol },
+    { file_path, offset = 1, limit = undefined, pages, view, symbol, encoding },
     context,
     _canUseTool?,
     parentMessage?,
   ) {
     const { readFileState, fileReadingLimits } = context
+
+    // Reject an unusable label here, before any filesystem work and before the
+    // dedup arms below decide anything — a bad encoding is a bad request, not
+    // a file that failed to read.
+    if (encoding !== undefined) assertKnownEncoding(encoding)
 
     // offset is 1-indexed but the schema accepts 0 (nonnegative). Both read
     // from the first line, so normalize early — otherwise startLine: 0 would
@@ -756,6 +768,7 @@ export const FileReadTool = buildTool({
       stickyOutline !== undefined &&
       view === undefined &&
       symbol === undefined &&
+      encoding === undefined &&
       existingState.offset === offset &&
       existingState.limit === limit &&
       stickyOutline.epoch === getStandDownEpoch()
@@ -821,7 +834,12 @@ export const FileReadTool = buildTool({
       !existingState.isPartialView &&
       existingState.offset !== undefined &&
       view === undefined &&
-      symbol === undefined
+      symbol === undefined &&
+      // An encoding override asks for different characters out of the same
+      // bytes, so a stub built from the UTF-8 read answers a question that was
+      // not asked. Excluding it here also keeps the whole clip-pin arm below
+      // (its outline scan, its head slice) on the UTF-8 path it assumes.
+      encoding === undefined
     ) {
       const rangeMatch =
         existingState.offset === offset && existingState.limit === limit
@@ -1173,6 +1191,7 @@ export const FileReadTool = buildTool({
         pages,
         view,
         symbol,
+        encoding,
         maxSizeBytes,
         maxTokens,
         readFileState,
@@ -1249,6 +1268,7 @@ export const FileReadTool = buildTool({
               pages,
               view,
               symbol,
+              encoding,
               maxSizeBytes,
               maxTokens,
               readFileState,
@@ -1718,6 +1738,9 @@ type ScannedFile = {
 type ScanFileOptions = {
   preloaded?: { source: string; mtimeMs: number; truncated?: boolean }
   maxBytes?: number
+  /** Encoding Standard label to decode with, when the file is not UTF-8.
+   *  Without it the scan reads mojibake and finds no symbols at all. */
+  encoding?: string
 }
 
 /**
@@ -1749,7 +1772,7 @@ export async function scanFile(
         undefined,
         options.maxBytes ?? SCAN_MAX_BYTES,
         signal,
-        { truncateOnByteLimit: true },
+        { truncateOnByteLimit: true, encoding: options.encoding },
       )
       source = res.content
       mtimeMs = res.mtimeMs
@@ -1891,6 +1914,7 @@ async function callInner(
   pages: string | undefined,
   view: 'outline' | 'full' | undefined,
   symbol: string | undefined,
+  encoding: string | undefined,
   maxSizeBytes: number,
   maxTokens: number,
   readFileState: ToolUseContext['readFileState'],
@@ -2105,7 +2129,9 @@ async function callInner(
   const signal = context.abortController.signal
 
   if (outlineLang && symbol !== undefined) {
-    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+    const scanned = await scanFile(resolvedFilePath, outlineLang, signal, {
+      encoding,
+    })
     if (scanned) {
       const entry = findSymbolEntry(scanned.entries, symbol)
       if (!entry) {
@@ -2128,7 +2154,9 @@ async function callInner(
   }
 
   if (outlineLang && view === 'outline') {
-    const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+    const scanned = await scanFile(resolvedFilePath, outlineLang, signal, {
+      encoding,
+    })
     if (scanned) {
       return makeOutlineData(
         scanned,
@@ -2152,6 +2180,7 @@ async function callInner(
       limit,
       limit === undefined ? maxSizeBytes : undefined,
       signal,
+      { encoding },
     )
     await validateContentTokens(readResult.content, ext, maxTokens)
   } catch (e) {
@@ -2165,7 +2194,9 @@ async function callInner(
       (e instanceof FileTooLargeError ||
         e instanceof MaxFileReadTokenExceededError)
     ) {
-      const scanned = await scanFile(resolvedFilePath, outlineLang, signal)
+      const scanned = await scanFile(resolvedFilePath, outlineLang, signal, {
+        encoding,
+      })
       if (scanned) {
         return makeOutlineData(
           scanned,

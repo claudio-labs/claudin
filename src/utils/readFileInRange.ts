@@ -28,6 +28,12 @@
 //
 // Both paths strip UTF-8 BOM and \r (CRLF → LF).
 //
+// options.encoding overrides the default UTF-8 decode with any Encoding
+// Standard label (see utils/textEncoding.ts). It changes only HOW bytes become
+// characters: both paths then run the same line logic, and byte accounting
+// stays in raw file bytes rather than in the re-encoded string, so maxBytes
+// keeps meaning what it meant.
+//
 // mtime comes from fstat/stat on the already-open fd — no extra open().
 //
 // maxBytes behavior depends on options.truncateOnByteLimit:
@@ -40,6 +46,7 @@
 import { createReadStream, fstat } from 'fs'
 import { stat as fsStat, readFile } from 'fs/promises'
 import { formatFileSize } from './format.js'
+import { createTextDecoder, encodingOverride } from './textEncoding.js'
 
 const FAST_PATH_MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
@@ -76,10 +83,11 @@ export async function readFileInRange(
   maxLines?: number,
   maxBytes?: number,
   signal?: AbortSignal,
-  options?: { truncateOnByteLimit?: boolean },
+  options?: { truncateOnByteLimit?: boolean; encoding?: string },
 ): Promise<ReadFileRangeResult> {
   signal?.throwIfAborted()
   const truncateOnByteLimit = options?.truncateOnByteLimit ?? false
+  const decodeAs = encodingOverride(options?.encoding)
 
   // stat to decide the code path and guard against OOM.
   // For regular files under 10 MB: readFile + in-memory split (fast).
@@ -101,13 +109,18 @@ export async function readFileInRange(
       throw new FileTooLargeError(stats.size, maxBytes)
     }
 
-    const text = await readFile(filePath, { encoding: 'utf8', signal })
+    // The default path reads straight to a string; only an override pays for
+    // the intermediate Buffer.
+    const text = decodeAs
+      ? createTextDecoder(decodeAs).decode(await readFile(filePath, { signal }))
+      : await readFile(filePath, { encoding: 'utf8', signal })
     return readFileInRangeFast(
       text,
       stats.mtimeMs,
       offset,
       maxLines,
       truncateOnByteLimit ? maxBytes : undefined,
+      decodeAs ? stats.size : undefined,
     )
   }
 
@@ -118,6 +131,7 @@ export async function readFileInRange(
     maxBytes,
     truncateOnByteLimit,
     signal,
+    decodeAs,
   )
 }
 
@@ -131,6 +145,9 @@ function readFileInRangeFast(
   offset: number,
   maxLines: number | undefined,
   truncateAtBytes: number | undefined,
+  // Raw file size, passed only when a decode override makes the string's own
+  // UTF-8 length a different number from the bytes on disk.
+  rawTotalBytes?: number,
 ): ReadFileRangeResult {
   const endLine = maxLines !== undefined ? offset + maxLines : Infinity
 
@@ -190,7 +207,7 @@ function readFileInRangeFast(
     content,
     lineCount: selectedLines.length,
     totalLines: lineIndex,
-    totalBytes: Buffer.byteLength(text, 'utf8'),
+    totalBytes: rawTotalBytes ?? Buffer.byteLength(text, 'utf8'),
     readBytes: Buffer.byteLength(content, 'utf8'),
     mtimeMs,
     ...(truncatedByBytes ? { truncatedByBytes: true } : {}),
@@ -219,6 +236,10 @@ type StreamState = {
    *  has no final unterminated line (mirrors the fast path's cat -n
    *  semantics: no phantom empty line after a trailing newline). */
   lastCharWasNewline: boolean
+  /** Non-null when chunks arrive as Buffers to be decoded here rather than by
+   *  the stream. Streaming-mode decode, so a multi-byte character split across
+   *  a chunk boundary is held rather than mangled. */
+  decoder: TextDecoder | null
   resolveMtime: (ms: number) => void
   mtimeReady: Promise<number>
 }
@@ -229,7 +250,20 @@ function streamOnOpen(this: StreamState, fd: number): void {
   })
 }
 
-function streamOnData(this: StreamState, chunk: string): void {
+function streamOnData(this: StreamState, raw: string | Buffer): void {
+  // Raw byte count has to come from the buffer, not from the decoded string:
+  // for a UTF-16 source the two differ by about 2x, and totalBytesRead is what
+  // maxBytes and totalBytes are reported in.
+  let chunk: string
+  let rawBytes: number
+  if (this.decoder) {
+    rawBytes = (raw as Buffer).length
+    chunk = this.decoder.decode(raw as Buffer, { stream: true })
+  } else {
+    chunk = raw as string
+    rawBytes = Buffer.byteLength(chunk)
+  }
+
   if (this.isFirstChunk) {
     this.isFirstChunk = false
     if (chunk.charCodeAt(0) === 0xfeff) {
@@ -241,7 +275,7 @@ function streamOnData(this: StreamState, chunk: string): void {
     this.lastCharWasNewline = chunk.endsWith('\n')
   }
 
-  this.totalBytesRead += Buffer.byteLength(chunk)
+  this.totalBytesRead += rawBytes
   if (
     !this.truncateOnByteLimit &&
     this.maxBytes !== undefined &&
@@ -316,6 +350,17 @@ function streamOnData(this: StreamState, chunk: string): void {
 }
 
 function streamOnEnd(this: StreamState): void {
+  // Flush any incomplete trailing sequence the streaming decode was holding.
+  // It can only produce characters, never consume any, so it belongs on the
+  // end of the last partial line.
+  if (this.decoder) {
+    const tail = this.decoder.decode()
+    if (tail.length > 0) {
+      this.partial += tail
+      this.lastCharWasNewline = tail.endsWith('\n')
+    }
+  }
+
   // A final unterminated line only exists when the stream had content that
   // didn't end in '\n' — mirrors the fast path (cat -n semantics): a
   // trailing newline doesn't open a phantom empty last line, and an empty
@@ -366,11 +411,16 @@ function readFileInRangeStreaming(
   maxBytes: number | undefined,
   truncateOnByteLimit: boolean,
   signal?: AbortSignal,
+  decodeAs?: string | null,
 ): Promise<ReadFileRangeResult> {
   return new Promise((resolve, reject) => {
+    // A decoder means the stream must hand us Buffers, so the encoding option
+    // is dropped rather than set — createReadStream only speaks BufferEncoding
+    // and would reject the labels this exists to support.
+    const decoder = decodeAs ? createTextDecoder(decodeAs) : null
     const state: StreamState = {
       stream: createReadStream(filePath, {
-        encoding: 'utf8',
+        ...(decoder ? undefined : { encoding: 'utf8' as const }),
         highWaterMark: 512 * 1024,
         ...(signal ? { signal } : undefined),
       }),
@@ -387,6 +437,7 @@ function readFileInRangeStreaming(
       partial: '',
       isFirstChunk: true,
       lastCharWasNewline: false,
+      decoder,
       resolveMtime: () => {},
       mtimeReady: null as unknown as Promise<number>,
     }

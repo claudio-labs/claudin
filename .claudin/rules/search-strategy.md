@@ -48,6 +48,58 @@ narrowing the pattern being the other. Ordering is by mtime, not relevance: a
 freshly checked-out `node_modules` still outranks `src/` when the pattern
 reaches it, so scope with `path` rather than paging.
 
+## What a search does NOT cover
+
+The two tools disagree about `.gitignore`, on purpose, and the asymmetry is the
+thing to hold in your head. `Glob` passes `--no-ignore` (`src/utils/glob.ts`),
+so it lists ignored paths and walks `node_modules/`. `Grep` does not, so a
+pattern living only in `dist/`, in generated code or in a vendored tree is
+outside the files it reads.
+
+What keeps that from being a silent miss is that a Grep returning **zero**
+results runs a second pass with `--no-ignore` before answering. If that pass
+finds something, those are the results you get, headed by the count and the
+fact that they came from excluded files. So "No matches found" from Grep means
+no matches anywhere, and a labelled result means the only copies are outside
+version control. `no_ignore: true` searches them from the start (one pass, no
+label); `CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK=1` removes the second pass and
+with it that guarantee. The retry costs a full extra walk, so it deliberately
+fires only on the empty result.
+
+Three more things a search does not reach by default, each with a way in:
+
+- **Case.** Matching is ripgrep smart-case: an all-lowercase pattern matches any
+  case, a pattern carrying an uppercase letter does not. `-i: true` and
+  `-i: false` force it either way — `-i: false` is no longer inert.
+- **Binary files.** Skipped entirely; `binary: true` (`rg -a`) searches them as
+  text, which is how you find a string inside a `.dat` or a compiled artifact.
+- **Non-UTF-8 text.** Only a BOM is sniffed, so a UTF-16 file without one reads
+  as binary and is skipped. `encoding: "utf-16le"` (or any Encoding Standard
+  label — `shift_jis`, `windows-1252`, `euc-jp`, `gbk`) decodes it, and the
+  same label is what `Read` and the symbol map take (see below).
+
+`encoding` carries all the way through, which is the part worth remembering:
+finding a match in a Shift-JIS file is half an answer if the follow-up cannot
+open it. One label reaches three places — the search itself (ripgrep's
+`--encoding`), the symbol map (`buildSymbolsOutput` decodes each file it scans,
+so `output_mode: "symbols"` over UTF-16 returns real signatures instead of
+"(matched outside any symbol)"), and `Read(file_path, encoding: …)`, which
+covers a full read, a range, `view: "outline"` and `symbol:` alike. All three
+share `src/utils/textEncoding.ts`, so an unknown label is refused the same way
+everywhere rather than degrading into mojibake. Note the map still prints a
+*signature* while `Read`'s `symbol` matches on a *name*, so the round trip
+means reading `makeWidget` out of `export function makeWidget(id: string)`.
+
+Finally, an empty result is no longer overloaded. ripgrep exits 2 both when it
+refuses an invocation and when it fails to read a path, and `ripGrep()` used to
+resolve both to `[]` — so an **invalid regex answered "No matches found"**.
+`ripGrepWithStatus()` (`src/utils/ripgrep.ts`) separates them: a refusal is
+re-thrown carrying ripgrep's own message, an unreadable directory still returns
+results, and a run cut short by the 20s timeout or the 20 MB buffer comes back
+labelled INCOMPLETE instead of passing as a finished search. Grep and Glob both
+report that label; the other four `ripGrep()` callers keep the lines-only
+signature.
+
 `Build` is the artifact-producing sibling of `Typecheck` — same
 detect/parse/budget/redirect family, different job. It runs the project's build
 (cargo, gradle, maven, sbt, msbuild, cmake/make/ninja, swift, zig, mix, rebar3,
