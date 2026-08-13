@@ -226,6 +226,82 @@ describe('scanSymbols — TypeScript', () => {
     // Only the top-level `outer` — inner/local/LocalClass are body noise.
     expect(syms.map(s => s.name)).toEqual(['outer'])
   })
+
+  test('object-literal members are emitted as methods of their const', () => {
+    const src = [
+      'export const Tool = buildTool({',
+      "  name: 'grep',",
+      '  async description() {',
+      "    return 'd'",
+      '  },',
+      '  get inputSchema(): Schema {',
+      '    return schema()',
+      '  },',
+      '  validate: async ({ path }) => {',
+      '    return path',
+      '  },',
+      '})',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual([
+      'Tool',
+      'description',
+      'inputSchema',
+      'validate',
+    ])
+    expect(syms[1]).toMatchObject({ kind: 'method', depth: 1 })
+  })
+
+  test('data properties of an object literal are not symbols', () => {
+    const src = [
+      'export const config = {',
+      '  timeout: 30_000,',
+      "  name: 'x',",
+      '  nested: { deep: true },',
+      '  handler: () => run(),',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    // `handler` matches the member regex but has an expression body, so the
+    // requiresBody gate drops it — same as any other property.
+    expect(syms.map(s => s.name)).toEqual(['config'])
+  })
+
+  test('a function nested inside an object-literal method stays body noise', () => {
+    const src = [
+      'export const Tool = {',
+      '  call() {',
+      '    function helper() {',
+      '      return 1',
+      '    }',
+      '    return helper()',
+      '  },',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Tool', 'call'])
+  })
+
+  test('a member of a nested object literal is kept, at its own depth', () => {
+    const src = [
+      'export const handlers = {',
+      '  fs: {',
+      '    read() {',
+      '      return 1',
+      '    },',
+      '  },',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    // TS sets strictMethodDepth: false, so a member deeper than one level
+    // inside its container still resolves to it.
+    expect(syms.map(s => s.name)).toEqual(['handlers', 'read'])
+    expect(syms[1]).toMatchObject({ kind: 'method', depth: 2 })
+  })
 })
 
 describe('scanSymbols — masking edge cases', () => {

@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 //
 // Produces a flat, ordered table of the top-level symbols in a source file
-// (plus class methods) without an AST. It powers the Smart Code Navigation
+// (plus class and object-literal members) without an AST. It powers the
+// Smart Code Navigation
 // "outline" and "unfold" views: outline renders every signature, unfold
 // slices one symbol's body — both off the SAME table, so their boundaries
 // always agree.
@@ -253,6 +254,12 @@ const RE_METHOD =
   /^(?:(?:public|private|protected|static|readonly|abstract|async|override|get|set)\s+)*\*?\s*(\#?[A-Za-z_$][\w$]*)\s*[(<]/
 const RE_METHOD_ARROW =
   /^(?:(?:public|private|protected|static|readonly)\s+)*([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]+)?=>/
+// An object-literal member written as `key: () => {…}` or `key: function () {…}`.
+// Requires an arrow or the `function` keyword so a data property (`name: 'x'`)
+// and a type annotation never match; the `requiresBody` gate in scanCLike then
+// drops any survivor without a block, which is what keeps `key: () => expr` out.
+const RE_METHOD_COLON =
+  /^([A-Za-z_$][\w$]*)\s*:\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*(?::\s*[^=]+?)?=>|[A-Za-z_$][\w$]*\s*=>)/
 
 const RE_GO_FUNC =
   /^func\s+(?:\([^)]*\)\s*)?([A-Za-z_][\w]*)/
@@ -1615,8 +1622,8 @@ function trimSignature(raw: string): string {
 
 function detectTsJs(trimmed: string, depth: number): CLikeDetection | null {
   // Only top-level declarations belong in an outline. A function, class,
-  // type, etc. nested inside another body is noise; class methods are
-  // handled separately below via the depth >= 1 branch.
+  // type, etc. nested inside another body is noise; members of a class or an
+  // object literal are handled separately below via the depth >= 1 branch.
   let m: RegExpExecArray | null
   if (depth === 0) {
     m = RE_CLASS.exec(trimmed)
@@ -1633,8 +1640,10 @@ function detectTsJs(trimmed: string, depth: number): CLikeDetection | null {
     if (m) return { name: m[1]!, kind: 'const', requiresBody: false }
   }
 
-  // Methods are only meaningful one level inside a container.
+  // Methods are only meaningful inside a container (see TS_METHOD_CONTAINERS).
   if (depth >= 1) {
+    m = RE_METHOD_COLON.exec(trimmed)
+    if (m) return { name: m[1]!, kind: 'method', requiresBody: true }
     m = RE_METHOD.exec(trimmed)
     if (m && !isControlKeyword(m[1]!)) {
       return { name: m[1]!, kind: 'method', requiresBody: true }
@@ -1879,7 +1888,12 @@ function isControlKeyword(name: string): boolean {
 }
 
 const NO_KINDS: ReadonlySet<SymbolKind> = new Set()
-const TS_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set(['class'])
+// `const` is a container because the dominant declaration shape in this repo —
+// and in most TS written against a builder API — is an object literal bound to
+// a top-level const (`export const XTool = buildTool({ call() {…} })`). Gating
+// methods on `class` alone discarded every member of those, which is the whole
+// public surface of a tool: 51 files here exposed only their binding.
+const TS_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set(['class', 'const'])
 const JAVA_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
   'class',
   'interface',
@@ -2209,7 +2223,7 @@ function scanCLike(source: string, spec: CLikeSpec): SymbolEntry[] {
   }
 
   // A method is only kept when its nearest enclosing symbol is a container
-  // kind for this language (TS: class; Java: class/interface/enum/record;
+  // kind for this language (TS: class/const; Java: class/interface/enum/record;
   // Rust: impl/trait; …). strictMethodDepth additionally pins the method to
   // exactly one brace level inside that container.
   const kept = resolved.filter(s => {

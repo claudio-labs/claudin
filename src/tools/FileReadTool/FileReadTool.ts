@@ -268,7 +268,7 @@ const inputSchema = lazySchema(() =>
       .enum(['outline', 'full'])
       .optional()
       .describe(
-        "Set to 'outline' to read only the structural skeleton of a code file — every function/class signature with its line range — instead of the full contents. Set to 'full' to force a full-body read even on large files that would otherwise auto-pivot to an outline. Cheap way to navigate a large file before expanding one part.",
+        "Set to 'outline' to read only the structural skeleton of a code file — every function, class and object-literal member signature with its line range — instead of the full contents. Set to 'full' to force a full-body read even on large files that would otherwise auto-pivot to an outline. Cheap way to navigate a large file before expanding one part.",
       ),
     symbol: z
       .string()
