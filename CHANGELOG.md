@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1.12 — 2026-08-13
+
+### ✨ Features
+
+- feat(read-gate): a range read no longer authorizes a write outside it (#86) (853dcf9)
+- feat(search+read): honest empty results, and one encoding label that reaches all three tools (#84) (736048a)
+- feat(prompt): sub-agent authority/report guards + a prompt dump that matches the build (#81) (2bdc1c8)
+- feat(tui): fold file writes into the collapsed read/search group (#79) (73b9d0e)
+- feat(prompt): runtime killswitches for the work-contract and anti-narration steering, plus the A/B that measures them (#77) (3c1e05d)
+
+### 🐛 Bug Fixes
+
+- fix(outline): emit object-literal members, not just class methods (#85) (88369f5)
+- fix(glob): rank matches newest-first and page past the 100-path cap (#82) (7396ff0)
+- fix(apply-patch): treat @​@​ as a search cursor, and say where a hunk diverges (#80) (9fdfb66)
+- fix(git-tool): redirect git reads whose operators live inside quotes (#78) (92d2437)
+
+### 🧪 Tests
+
+- test(profile): a graded claudin-vs-claude A/B on one search-edit-build task (#83) (a3acb20)
+- test(profile): A/B the lean tool-prompt tier that #82 deferred (#76) (0724ed5)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.11 — 2026-08-11
 
 ### ✨ Features
