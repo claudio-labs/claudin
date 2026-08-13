@@ -60,6 +60,19 @@ Assert the served text per arm (`servedFullHint`, added 2026-08-09) and abort on
 rep 1, before paying for the reps. Corollary for the tooling: on a minified
 bundle prefer a ranged `Read` over `grep -c`, whose long-line omission is silent.
 
+**In a cross-CLI bench, the stream can under-report ONE arm's output.** Measured
+2026-08-12 building `scripts/profile/cli-search-edit-ab.ts` (claudindev vs
+claude, same task): summing max-per-`message.id` over `--output-format
+stream-json` gave claude **242** output tokens against its own transcript's
+**4,333** — 17.9x — while `input`, `cache_read` and `cache_creation` matched to
+the token, and claudin's stream and transcript agreed exactly on the same run.
+claude's stream flushes an early usage snapshot; the final one only reaches
+`~/.claude/projects/<slug>/<sid>.jsonl`. So the usual "fall back to the
+transcript when the stream is empty" guard fires for neither arm and the
+undercount survives. MERGE the two sources by message id, max per field, and
+print which arm needed the merge. A cross-CLI bench must never assume the two
+CLIs flush usage at the same point.
+
 **A null is only publishable if the arms were verifiably different.** Both the
 2026-08-08 and 2026-08-09 wording runs produced nulls; only the second is worth
 citing, because only it proved the arms served different text. Before recording
