@@ -62,6 +62,12 @@ const outputSchema = lazySchema(() =>
       .describe(
         'Offset to pass on the next call to page past a truncated result',
       ),
+    incomplete: z
+      .enum(['timeout', 'buffer'])
+      .optional()
+      .describe(
+        'Set when ripgrep stopped before finishing the walk, so the listing is a prefix of what matches rather than all of it. Distinct from `truncated`, which is this tool capping a complete listing.',
+      ),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -177,7 +183,7 @@ export const GlobTool = buildTool({
     const start = Date.now()
     const appState = getAppState()
     const offset = input.offset ?? 0
-    const { files, truncated } = await glob(
+    const { files, truncated, incomplete } = await glob(
       input.pattern,
       GlobTool.getPath(input),
       { limit: DEFAULT_GLOB_LIMIT, offset },
@@ -192,17 +198,32 @@ export const GlobTool = buildTool({
       numFiles: filenames.length,
       truncated,
       ...(truncated && { nextOffset: offset + filenames.length }),
+      // An aborted walk is the caller's own cancellation and its result is
+      // discarded, so it is not reported as incompleteness.
+      ...((incomplete === 'timeout' || incomplete === 'buffer') && {
+        incomplete,
+      }),
     }
     return {
       data: output,
     }
   },
   mapToolResultToToolResultBlockParam(output, toolUseID) {
+    // Reported even with zero paths: a walk that never finished has not
+    // established that nothing matches.
+    const incompleteNote =
+      output.incomplete === 'timeout'
+        ? '(INCOMPLETE: ripgrep was stopped before it finished walking the tree. Any paths above are real but they are not all of them — search a narrower path.)'
+        : output.incomplete === 'buffer'
+          ? '(INCOMPLETE: the walk produced more output than could be buffered. Any paths above are real but they are not all of them — search a narrower path.)'
+          : undefined
     if (output.filenames.length === 0) {
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: 'No files found',
+        content: incompleteNote
+          ? `No files found\n${incompleteNote}`
+          : 'No files found',
       }
     }
     // Keep the "(Results are truncated" prefix: summarizeGlobOutput matches on
@@ -217,6 +238,7 @@ export const GlobTool = buildTool({
       content: [
         ...output.filenames,
         ...(output.truncated ? [truncationNote] : []),
+        ...(incompleteNote ? [incompleteNote] : []),
       ].join('\n'),
     }
   },

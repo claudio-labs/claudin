@@ -6,6 +6,7 @@ import { createRequire } from 'module'
 import { homedir } from 'os'
 import * as path from 'path'
 import { logEvent } from 'src/services/analytics/index.js'
+import { StringDecoder } from 'string_decoder'
 import { fileURLToPath } from 'url'
 import { isInBundledMode } from './bundledMode.js'
 import { logForDebugging } from './debug.js'
@@ -221,6 +222,110 @@ function isEagainError(stderr: string): boolean {
 }
 
 /**
+ * ripgrep prints an OS-level failure it hit while walking (an unreadable
+ * directory, a broken mount) as `rg: <path>: <reason> (os error <n>)` and still
+ * exits 2, even though the search itself ran to completion. A usage error — an
+ * unrecognized flag, an unknown --encoding label, an invalid regex — aborts
+ * before any file is opened and never carries that marker.
+ *
+ * So the marker, not the message text, is the discriminator: its presence means
+ * ripgrep got as far as touching the filesystem. Matching on the message shape
+ * instead would be wrong — every one of these starts with `rg: `:
+ *   rg: unrecognized flag --bogus
+ *   rg: error parsing flag --encoding: ... unknown encoding: utf16
+ *   rg: regex parse error: ...
+ *   rg: /some/dir: Permission denied (os error 13)
+ */
+const OS_ERROR_MARKER_RE = /\(os error \d+\)/
+
+/**
+ * Why a search returned fewer results than the filesystem holds.
+ * `null` means the search ran to completion.
+ */
+export type RipgrepIncompleteReason = 'timeout' | 'buffer' | 'aborted' | null
+
+export type RipgrepResult = {
+  lines: string[]
+  /** Set when the result is a prefix of the real one — see the type above. */
+  incomplete: RipgrepIncompleteReason
+  /**
+   * ripgrep refused the invocation (bad flag, bad regex, unknown encoding).
+   * Holds ripgrep's own stderr; callers should surface it rather than treating
+   * an empty `lines` as "no matches".
+   */
+  usageError: string | null
+}
+
+/**
+ * Read a failed ripgrep run: was it cut short, or refused outright?
+ *
+ * Pure so it can be tested against the exact code/signal/stderr combinations
+ * ripgrep produces, none of which are reproducible on demand from a real run.
+ */
+export function classifyRipgrepFailure({
+  code,
+  signal,
+  stdout,
+  stderr,
+}: {
+  code: string | number | undefined
+  signal: string | undefined
+  stdout: string
+  stderr: string
+}): { incomplete: RipgrepIncompleteReason; usageError: string | null } {
+  const isAborted = code === 'ABORT_ERR'
+  if (isAborted) return { incomplete: 'aborted', usageError: null }
+  if (signal === 'SIGTERM' || signal === 'SIGKILL') {
+    return { incomplete: 'timeout', usageError: null }
+  }
+  if (code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+    return { incomplete: 'buffer', usageError: null }
+  }
+  if (
+    code === 2 &&
+    stdout.trim().length === 0 &&
+    stderr.trim().length > 0 &&
+    !OS_ERROR_MARKER_RE.test(stderr)
+  ) {
+    return { incomplete: null, usageError: stderr.trim() }
+  }
+  return { incomplete: null, usageError: null }
+}
+
+/**
+ * Accumulate a child process's output as text, capped, without corrupting it.
+ *
+ * The cap and the decoder have to live together: slicing decoded text at a
+ * character boundary is safe, slicing raw bytes is not. Extracted so the
+ * chunk-boundary behavior is testable — the spawn path that uses it only runs
+ * under the compiled binary, which no unit test can reach.
+ */
+export function createRipgrepOutputBuffer(maxSize = MAX_BUFFER_SIZE): {
+  write: (chunk: Buffer) => void
+  end: () => string
+} {
+  const decoder = new StringDecoder('utf8')
+  let text = ''
+  let truncated = false
+  return {
+    write(chunk: Buffer): void {
+      if (truncated) return
+      text += decoder.write(chunk)
+      if (text.length > maxSize) {
+        text = text.slice(0, maxSize)
+        truncated = true
+      }
+    },
+    end(): string {
+      // A truncated stream keeps its truncated length: whatever the decoder is
+      // still holding sits past the cap either way.
+      if (!truncated) text += decoder.end()
+      return text
+    },
+  }
+}
+
+/**
  * Custom error class for ripgrep timeouts.
  * This allows callers to distinguish between "no matches" and "timed out".
  */
@@ -316,30 +421,24 @@ function ripGrepRaw(
       windowsHide: true,
     })
 
+    // Node hands us arbitrary byte slices, so accumulating `data.toString()`
+    // per chunk corrupts any multi-byte UTF-8 character that straddles two of
+    // them — a real hazard here, where one search can emit megabytes of source
+    // text. The buffer decodes across the boundary. (The execFile path below
+    // already got this right; only this spawn path, which is what the compiled
+    // binary runs, did not.)
+    const stdoutBuffer = createRipgrepOutputBuffer()
+    const stderrBuffer = createRipgrepOutputBuffer()
     let stdout = ''
     let stderr = ''
-    let stdoutTruncated = false
-    let stderrTruncated = false
 
-    child.stdout?.on('data', (data: Buffer) => {
-      if (!stdoutTruncated) {
-        stdout += data.toString()
-        if (stdout.length > MAX_BUFFER_SIZE) {
-          stdout = stdout.slice(0, MAX_BUFFER_SIZE)
-          stdoutTruncated = true
-        }
-      }
-    })
+    child.stdout?.on('data', (data: Buffer) => stdoutBuffer.write(data))
+    child.stderr?.on('data', (data: Buffer) => stderrBuffer.write(data))
 
-    child.stderr?.on('data', (data: Buffer) => {
-      if (!stderrTruncated) {
-        stderr += data.toString()
-        if (stderr.length > MAX_BUFFER_SIZE) {
-          stderr = stderr.slice(0, MAX_BUFFER_SIZE)
-          stderrTruncated = true
-        }
-      }
-    })
+    const flushDecoders = (): void => {
+      stdout = stdoutBuffer.end()
+      stderr = stderrBuffer.end()
+    }
 
     // Set up timeout with SIGKILL escalation.
     // SIGTERM alone may not kill ripgrep if it's blocked in uninterruptible I/O
@@ -364,6 +463,7 @@ function ripGrepRaw(
       settled = true
       clearTimeout(timeoutId)
       clearTimeout(killTimeoutId)
+      flushDecoders()
       if (code === 0 || code === 1) {
         // 0 = matches found, 1 = no matches (both are success)
         callback(null, stdout, stderr)
@@ -382,6 +482,7 @@ function ripGrepRaw(
       settled = true
       clearTimeout(timeoutId)
       clearTimeout(killTimeoutId)
+      flushDecoders()
       const error: ExecFileException = err
       callback(error, stdout, stderr)
     })
@@ -525,11 +626,18 @@ export async function ripGrepStream(
   })
 }
 
-export async function ripGrep(
+/**
+ * Run ripgrep and report not just the lines but WHY they are the lines: whether
+ * the search finished, and whether ripgrep refused the invocation outright.
+ *
+ * Prefer this over `ripGrep` anywhere the result is shown to a user or a model,
+ * where "no matches" and "I never looked" must not read the same.
+ */
+export async function ripGrepWithStatus(
   args: string[],
   target: string,
   abortSignal: AbortSignal,
-): Promise<string[]> {
+): Promise<RipgrepResult> {
   await codesignRipgrepIfNecessary()
 
   // Test ripgrep on first use and cache the result (fire and forget)
@@ -537,7 +645,7 @@ export async function ripGrep(
     logError(error)
   })
 
-  return new Promise((resolve, reject) => {
+  return new Promise<RipgrepResult>((resolve, reject) => {
     const handleResult = (
       error: ExecFileException | null,
       stdout: string,
@@ -546,19 +654,17 @@ export async function ripGrep(
     ): void => {
       // Success case
       if (!error) {
-        resolve(
-          stdout
-            .trim()
-            .split('\n')
-            .map(line => line.replace(/\r$/, ''))
-            .filter(Boolean),
-        )
+        resolve({
+          lines: splitRipgrepLines(stdout),
+          incomplete: null,
+          usageError: null,
+        })
         return
       }
 
       // Exit code 1 is normal "no matches"
       if (error.code === 1) {
-        resolve([])
+        resolve({ lines: [], incomplete: null, usageError: null })
         return
       }
 
@@ -597,22 +703,20 @@ export async function ripGrep(
 
       // For all other errors, try to return partial results if available
       const hasOutput = stdout && stdout.trim().length > 0
-      const isTimeout =
-        error.signal === 'SIGTERM' ||
-        error.signal === 'SIGKILL' ||
-        error.code === 'ABORT_ERR'
-      const isBufferOverflow =
-        error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
+      const { incomplete, usageError } = classifyRipgrepFailure({
+        code: error.code,
+        signal: error.signal,
+        stdout,
+        stderr,
+      })
+      // A cut-short run and an aborted one share the same hazard: the last line
+      // ripgrep managed to write may be half a line.
+      const wasCutShort = incomplete !== null
 
       let lines: string[] = []
       if (hasOutput) {
-        lines = stdout
-          .trim()
-          .split('\n')
-          .map(line => line.replace(/\r$/, ''))
-          .filter(Boolean)
-        // Drop last line for timeouts and buffer overflow - it may be incomplete
-        if (lines.length > 0 && (isTimeout || isBufferOverflow)) {
+        lines = splitRipgrepLines(stdout)
+        if (lines.length > 0 && wasCutShort) {
           lines = lines.slice(0, -1)
         }
       }
@@ -621,7 +725,9 @@ export async function ripGrep(
         `rg error (signal=${error.signal}, code=${error.code}, stderr: ${stderr}), ${lines.length} results`,
       )
 
-      // code 2 = ripgrep usage error (already handled); ABORT_ERR = caller
+      // code 2 = ripgrep rejected the invocation or hit a path it could not
+      // read — reported below through `usageError` rather than as a thrown
+      // error, so it needs no second copy in the error log. ABORT_ERR = caller
       // explicitly aborted (not an error, just a cancellation — interactive
       // callers may abort on every keystroke-after-debounce).
       if (error.code !== 2 && error.code !== 'ABORT_ERR') {
@@ -630,7 +736,10 @@ export async function ripGrep(
 
       // If we timed out with no results, throw an error so Claude knows the search
       // didn't complete rather than thinking there were no matches
-      if (isTimeout && lines.length === 0) {
+      if (
+        (incomplete === 'timeout' || incomplete === 'aborted') &&
+        lines.length === 0
+      ) {
         reject(
           new RipgrepTimeoutError(
             `Ripgrep search timed out after ${getPlatform() === 'wsl' ? 60 : 20} seconds. The search may have matched files but did not complete in time. Try searching a more specific path or pattern.`,
@@ -640,13 +749,40 @@ export async function ripGrep(
         return
       }
 
-      resolve(lines)
+      // A refused invocation ran no search at all. Reporting that as an empty
+      // line list is what made an invalid regex read as "no matches".
+      resolve({ lines, incomplete, usageError })
     }
 
     ripGrepRaw(args, target, abortSignal, (error, stdout, stderr) => {
       handleResult(error, stdout, stderr, false)
     })
   })
+}
+
+/**
+ * Lines as callers want them: no trailing blank, no CR from a CRLF file.
+ */
+function splitRipgrepLines(stdout: string): string[] {
+  return stdout
+    .trim()
+    .split('\n')
+    .map(line => line.replace(/\r$/, ''))
+    .filter(Boolean)
+}
+
+/**
+ * Lines only. Callers that render results to a user or a model should use
+ * `ripGrepWithStatus` instead — this signature cannot distinguish "no matches"
+ * from a search that was cut short or refused.
+ */
+export async function ripGrep(
+  args: string[],
+  target: string,
+  abortSignal: AbortSignal,
+): Promise<string[]> {
+  const { lines } = await ripGrepWithStatus(args, target, abortSignal)
+  return lines
 }
 
 /**

@@ -15,5 +15,8 @@ export function getDescription(): string {
   - Pattern syntax: Uses ripgrep (not grep) - literal braces need escaping (use \`interface\\{\\}\` to find \`interface{}\` in Go code)
   - Multiline matching: By default patterns match within single lines only. For cross-line patterns like \`struct \\{[\\s\\S]*?field\`, use \`multiline: true\`
   - Broad "content" searches (matches spread across many files) come back as the "symbols" map instead of the matching lines; pass \`head_limit\` explicitly, or narrow with \`path\`/\`glob\`, to get the lines.
+  - Case: a lowercase pattern matches any case, a pattern containing an uppercase letter is matched case-sensitively (ripgrep smart-case). Pass \`-i: true\` to force insensitive, \`-i: false\` to force sensitive.
+  - Files excluded by \`.gitignore\` are not searched. When a search finds nothing they are searched automatically and reported separately, so "no matches" means no matches anywhere; pass \`no_ignore: true\` to include them from the start.
+  - Binary files and text that is not UTF-8 are skipped. Pass \`binary: true\` to search binary files as text, or \`encoding\` (e.g. "utf-16le", "shift_jis", "windows-1252") for a known non-UTF-8 encoding.
 `
 }

@@ -19,7 +19,7 @@ import {
 import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
 import { getGlobExclusionsForPluginCache } from '../../utils/plugins/orphanedPluginFilter.js'
-import { ripGrep } from '../../utils/ripgrep.js'
+import { ripGrepWithStatus } from '../../utils/ripgrep.js'
 import { semanticBoolean } from '../../utils/semanticBoolean.js'
 import { semanticNumber } from '../../utils/semanticNumber.js'
 import { plural } from '../../utils/stringUtils.js'
@@ -80,8 +80,20 @@ const inputSchema = lazySchema(() =>
       'Show line numbers in output (rg -n). Requires output_mode: "content", ignored otherwise. Defaults to true.',
     ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
-      'Case insensitive search (rg -i)',
+      'Force case-insensitive (true) or case-sensitive (false) matching. When omitted, ripgrep smart-case applies: a lowercase pattern matches any case, a pattern containing an uppercase letter does not.',
     ),
+    no_ignore: semanticBoolean(z.boolean().optional()).describe(
+      'Also search files excluded by .gitignore/.ignore (rg --no-ignore). Off by default; a search that finds nothing retries with this automatically and says so.',
+    ),
+    binary: semanticBoolean(z.boolean().optional()).describe(
+      'Search binary files as if they were text (rg -a). Off by default, so matches inside binaries are invisible without it.',
+    ),
+    encoding: z
+      .string()
+      .optional()
+      .describe(
+        'Force a text encoding (rg --encoding), e.g. "utf-16le", "utf-16be", "shift_jis", "windows-1252", "euc-jp", "gbk". Default is UTF-8 with BOM sniffing, so UTF-16 without a BOM is otherwise skipped as binary.',
+      ),
     type: z
       .string()
       .optional()
@@ -117,6 +129,31 @@ const VCS_DIRECTORIES_TO_EXCLUDE = [
 // 250 is generous enough for exploratory searches while preventing context bloat.
 // Pass head_limit=0 explicitly for unlimited.
 const DEFAULT_HEAD_LIMIT = 250
+
+/**
+ * The retry that searches .gitignore'd files after a search comes back empty.
+ * On by default; `CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK=1` turns it off for a
+ * session, at the cost of putting "found nothing" and "did not look there"
+ * back under the same answer.
+ */
+function grepIgnoredFallbackEnabled(): boolean {
+  return process.env.CLAUDIN_DISABLE_GREP_IGNORED_FALLBACK !== '1'
+}
+
+/**
+ * Header for a result that only exists outside version control. Names the count
+ * it actually measured rather than raising the possibility of one — a hint the
+ * tool cannot back with a number is the kind that measured zero adoption.
+ */
+function formatIgnoredOnlyNote(count: number, unit: string): string {
+  return `No matches in tracked files. The ${count} ${plural(count, unit)} below ${count === 1 ? 'is' : 'are'} in files excluded by .gitignore, searched only because the first pass found nothing. Pass no_ignore: true to include them from the start.`
+}
+
+function formatIncompleteNote(reason: 'timeout' | 'buffer'): string {
+  return reason === 'timeout'
+    ? 'INCOMPLETE: ripgrep was stopped before it finished walking the tree. The matches above are real but they are not all of them — narrow the search with path, glob or type.'
+    : 'INCOMPLETE: the search produced more output than could be buffered. The matches above are real but they are not all of them — narrow the search with path, glob or type, or use head_limit.'
+}
 
 function applyHeadLimit<T>(
   items: T[],
@@ -172,6 +209,12 @@ const outputSchema = lazySchema(() =>
     autoPivot: z.boolean().optional(),
     totalMatchLines: z.number().optional(), // Match lines the search produced
     totalMatchFiles: z.number().optional(), // Files those lines came from
+    // Set when the tracked files held nothing and the matches below came from
+    // the .gitignore'd retry. Without it the result reads as an ordinary hit.
+    ignoredOnly: z.boolean().optional(),
+    // Set when ripgrep was cut short, so the results are a prefix of the real
+    // ones rather than all of them.
+    incomplete: z.enum(['timeout', 'buffer']).optional(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -285,9 +328,21 @@ export const GrepTool = buildTool({
       autoPivot,
       totalMatchLines,
       totalMatchFiles,
+      ignoredOnly,
+      incomplete,
     },
     toolUseID,
   ) {
+    // The two search-level notes bracket whatever the mode renders: why these
+    // results exist at all, and whether they are all of them.
+    const withNotes = (body: string, ignoredCount: number, unit: string) => {
+      const parts: string[] = []
+      if (ignoredOnly) parts.push(formatIgnoredOnlyNote(ignoredCount, unit))
+      parts.push(body)
+      if (incomplete) parts.push(formatIncompleteNote(incomplete))
+      return parts.join('\n\n')
+    }
+
     if (mode === 'content') {
       const limitInfo = formatLimitInfo(appliedLimit, appliedOffset)
       const resultContent = content || 'No matches found'
@@ -297,7 +352,7 @@ export const GrepTool = buildTool({
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: finalContent,
+        content: withNotes(finalContent, _numLines ?? 0, 'match'),
       }
     }
 
@@ -310,7 +365,7 @@ export const GrepTool = buildTool({
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: rawContent + summary,
+        content: withNotes(rawContent + summary, matches, 'occurrence'),
       }
     }
 
@@ -335,9 +390,13 @@ export const GrepTool = buildTool({
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: autoPivot
-          ? `${header}\n\n${content}${GREP_AUTO_PIVOT_FOOTER}`
-          : `${header}\n\n${content}`,
+        content: withNotes(
+          autoPivot
+            ? `${header}\n\n${content}${GREP_AUTO_PIVOT_FOOTER}`
+            : `${header}\n\n${content}`,
+          matches,
+          'symbol',
+        ),
       }
     }
 
@@ -355,7 +414,7 @@ export const GrepTool = buildTool({
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: result,
+      content: withNotes(result, numFiles, 'file'),
     }
   },
   async call(
@@ -370,7 +429,10 @@ export const GrepTool = buildTool({
       '-C': context_c,
       context,
       '-n': show_line_numbers = true,
-      '-i': case_insensitive = false,
+      '-i': case_insensitive,
+      no_ignore = false,
+      binary = false,
+      encoding,
       head_limit,
       offset = 0,
       multiline = false,
@@ -379,6 +441,13 @@ export const GrepTool = buildTool({
   ) {
     const absolutePath = path ? expandPath(path) : getCwd()
     const args = ['--hidden']
+
+    // Off by default: including .gitignore'd files means walking node_modules
+    // and build output on every search. The zero-result fallback below is what
+    // keeps that from turning into a silent miss.
+    if (no_ignore) {
+      args.push('--no-ignore')
+    }
 
     // Exclude VCS directories to avoid noise from version control metadata
     for (const dir of VCS_DIRECTORIES_TO_EXCLUDE) {
@@ -394,8 +463,27 @@ export const GrepTool = buildTool({
     }
 
     // Add optional flags
-    if (case_insensitive) {
+    // Smart-case unless the caller decided: a lowercase pattern matches any
+    // case, a pattern carrying an uppercase letter stays sensitive. Plain
+    // case-sensitive matching (ripgrep's own default) makes a search for
+    // `zqprobe` miss `ZQPROBE`, which reads as "not there".
+    if (case_insensitive === true) {
       args.push('-i')
+    } else if (case_insensitive === false) {
+      args.push('--case-sensitive')
+    } else {
+      args.push('--smart-case')
+    }
+
+    if (binary) {
+      args.push('--text')
+    }
+
+    // Passed through unvalidated on purpose: ripgrep accepts every label in the
+    // Encoding Standard and owns that list. A bad one comes back as a usage
+    // error rather than as zero matches (see ripGrepWithStatus).
+    if (encoding) {
+      args.push('--encoding', encoding)
     }
 
     // Add output mode flags
@@ -500,7 +588,55 @@ export const GrepTool = buildTool({
     // We don't use AbortController for timeout to avoid interrupting the agent loop
     // If ripgrep times out, it throws RipgrepTimeoutError which propagates up
     // so Claude knows the search didn't complete (rather than thinking there were no matches)
-    const results = await ripGrep(args, absolutePath, abortController.signal)
+    const search = await ripGrepWithStatus(
+      args,
+      absolutePath,
+      abortController.signal,
+    )
+
+    // ripgrep refused the invocation — a bad regex, an unknown --encoding
+    // label, an unrecognized flag. It searched nothing, so an empty result here
+    // would read as "no matches" and send the caller looking in the wrong place.
+    if (search.usageError) {
+      throw new Error(
+        `ripgrep rejected this search, so nothing was searched:\n${search.usageError}`,
+      )
+    }
+
+    let results = search.lines
+    let incomplete = search.incomplete
+
+    // Nothing in the tracked files. Before reporting that, look in the files
+    // .gitignore hides — build output, generated code, vendored trees — because
+    // "no matches" and "I did not look there" are not the same answer.
+    let ignoredOnly = false
+    if (
+      results.length === 0 &&
+      !no_ignore &&
+      incomplete === null &&
+      grepIgnoredFallbackEnabled()
+    ) {
+      const fallback = await ripGrepWithStatus(
+        [...args, '--no-ignore'],
+        absolutePath,
+        abortController.signal,
+      )
+      if (fallback.lines.length > 0) {
+        results = fallback.lines
+        incomplete = fallback.incomplete
+        ignoredOnly = true
+      }
+    }
+
+    // Both describe the search rather than the output mode, so every return
+    // path below carries them. An aborted search is the caller's own doing and
+    // its result is discarded, so it is not reported as incompleteness.
+    const searchNotes = {
+      ...(ignoredOnly && { ignoredOnly: true }),
+      ...((incomplete === 'timeout' || incomplete === 'buffer') && {
+        incomplete,
+      }),
+    }
 
     if (output_mode === 'content') {
       // For content mode, results are the actual content lines
@@ -534,7 +670,7 @@ export const GrepTool = buildTool({
             lineNumbers: show_line_numbers,
           })
         ) {
-          const symbols = await buildSymbolsOutput(limitedResults)
+          const symbols = await buildSymbolsOutput(limitedResults, encoding)
           if (pivotWins(symbols.content.length, contentText.length)) {
             const total = measureGrepShape(results, 0)
             return {
@@ -548,6 +684,7 @@ export const GrepTool = buildTool({
                 totalMatchLines: total.matchLines,
                 totalMatchFiles: total.files,
                 ...(appliedLimit !== undefined && { appliedLimit }),
+                ...searchNotes,
               },
             }
           }
@@ -562,6 +699,7 @@ export const GrepTool = buildTool({
         numLines: finalLines.length,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),
+        ...searchNotes,
       }
       return { data: output }
     }
@@ -574,7 +712,7 @@ export const GrepTool = buildTool({
         head_limit,
         offset,
       )
-      const symbols = await buildSymbolsOutput(limitedResults)
+      const symbols = await buildSymbolsOutput(limitedResults, encoding)
       const output = {
         mode: 'symbols' as const,
         numFiles: symbols.numFiles,
@@ -583,6 +721,7 @@ export const GrepTool = buildTool({
         numMatches: symbols.numMatches,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),
+        ...searchNotes,
       }
       return { data: output }
     }
@@ -631,6 +770,7 @@ export const GrepTool = buildTool({
         numMatches: totalMatches,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),
+        ...searchNotes,
       }
       return { data: output }
     }
@@ -677,6 +817,7 @@ export const GrepTool = buildTool({
       numFiles: relativeMatches.length,
       ...(appliedLimit !== undefined && { appliedLimit }),
       ...(offset > 0 && { appliedOffset: offset }),
+      ...searchNotes,
     }
 
     return {

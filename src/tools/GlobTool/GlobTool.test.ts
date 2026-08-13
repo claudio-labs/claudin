@@ -239,6 +239,45 @@ describe('GlobTool', () => {
     expect(content.split('\n').at(-1)).toMatch(/^\(Results are truncated/)
   })
 
+  test('an unfinished walk is reported, with or without paths', () => {
+    const map = GlobTool.mapToolResultToToolResultBlockParam
+
+    // Zero paths is exactly where it matters most: a walk that was cut short
+    // never established that nothing matches.
+    const empty = map?.(
+      {
+        durationMs: 1,
+        numFiles: 0,
+        filenames: [],
+        truncated: false,
+        incomplete: 'timeout',
+      },
+      'u',
+    )?.content as string
+    expect(empty).toContain('No files found')
+    expect(empty).toContain('INCOMPLETE')
+
+    const buffered = map?.(
+      {
+        durationMs: 1,
+        numFiles: 1,
+        filenames: ['a.ts'],
+        truncated: false,
+        incomplete: 'buffer',
+      },
+      'u',
+    )?.content as string
+    expect(buffered).toContain('a.ts')
+    expect(buffered).toContain('more output than could be buffered')
+
+    // A finished walk says nothing, so the note cannot become background noise.
+    const complete = map?.(
+      { durationMs: 1, numFiles: 1, filenames: ['a.ts'], truncated: false },
+      'u',
+    )?.content as string
+    expect(complete).not.toContain('INCOMPLETE')
+  })
+
   test('extractSearchText joins filenames with newlines', () => {
     expect(
       GlobTool.extractSearchText?.({
