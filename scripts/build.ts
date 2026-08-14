@@ -513,6 +513,10 @@ export const SeverityNumber = {};
         const srcDir = pathMod.resolve(__dirname, '..', 'src')
         const missingModules = new Set<string>()
         const missingModuleExports = new Map<string, Set<string>>()
+        // Specifier → the source files that referenced it. Only paths found by
+        // scanning src/ land here, never the known-missing npm packages below:
+        // those are a deliberate list, while these merely failed to resolve.
+        const missingImportSites = new Map<string, Set<string>>()
 
         // Known missing external packages
         for (const pkg of [
@@ -527,10 +531,18 @@ export const SeverityNumber = {};
 
         // Scan source to find imports that can't resolve
         function scanForMissingImports() {
-          function checkAndRegister(specifier: string, fileDir: string, namedPart: string) {
+          function checkAndRegister(specifier: string, fileDir: string, namedPart: string, file: string) {
                 const names = namedPart.split(',')
                   .map((s: string) => s.trim().replace(/^type\s+/, ''))
                   .filter((s: string) => s && !s.startsWith('type '))
+
+                const registerMissing = (spec: string) => {
+                  missingModules.add(spec)
+                  if (!missingImportSites.has(spec)) missingImportSites.set(spec, new Set())
+                  missingImportSites
+                    .get(spec)!
+                    .add(pathMod.relative(pathMod.resolve(__dirname, '..'), file))
+                }
 
                 // Check src/tasks/ non-relative imports
                 if (specifier.startsWith('src/tasks/')) {
@@ -542,7 +554,7 @@ export const SeverityNumber = {};
                     pathMod.join(resolved, 'index.ts'), pathMod.join(resolved, 'index.tsx'),
                   ]
                   if (!candidates.some((c: string) => fs.existsSync(c))) {
-                    missingModules.add(specifier)
+                    registerMissing(specifier)
                   }
                 }
                 // Check relative .js imports
@@ -551,7 +563,7 @@ export const SeverityNumber = {};
                   const tsVariant = resolved.replace(/\.js$/, '.ts')
                   const tsxVariant = resolved.replace(/\.js$/, '.tsx')
                   if (!fs.existsSync(resolved) && !fs.existsSync(tsVariant) && !fs.existsSync(tsxVariant)) {
-                    missingModules.add(specifier)
+                    registerMissing(specifier)
                   }
                 }
 
@@ -580,24 +592,75 @@ export const SeverityNumber = {};
 
               // Collect static imports: import { X } from '...'
               for (const m of code.matchAll(/import\s+(?:\{([^}]*)\}|(\w+))?\s*(?:,\s*\{([^}]*)\})?\s*from\s+['"](.*?)['"]/g)) {
-                checkAndRegister(m[4], fileDir, m[1] || m[3] || '')
+                checkAndRegister(m[4], fileDir, m[1] || m[3] || '', full)
               }
 
               // Collect dynamic requires: require('...') — these are used
               // behind feature() gates and become live when flags are enabled.
               for (const m of code.matchAll(/require\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g)) {
-                checkAndRegister(m[1], fileDir, '')
+                checkAndRegister(m[1], fileDir, '', full)
               }
 
               // Collect dynamic imports: import('...')
               for (const m of code.matchAll(/import\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g)) {
-                checkAndRegister(m[1], fileDir, '')
+                checkAndRegister(m[1], fileDir, '', full)
               }
             }
           }
           walk(srcDir)
         }
         scanForMissingImports()
+
+        // A specifier that fails to resolve is stubbed to `() => null` below —
+        // silently, so a dead import ships as a runtime no-op instead of a build
+        // error. That is deliberate for the subsystems this fork never received,
+        // and a trap for everything else, so the set is pinned:
+        //
+        //   CLAUDIN_STRICT_IMPORTS=1        fail on any specifier not baselined
+        //   CLAUDIN_STRICT_IMPORTS=capture  re-record scripts/missing-imports-baseline.json
+        //
+        // Unset, the build only prints the count. Run the strict form after any
+        // change that moves files, which is exactly when a path goes stale.
+        function enforceMissingImportBaseline() {
+          const baselinePath = pathMod.resolve(__dirname, 'missing-imports-baseline.json')
+          const found: string[] = [...missingImportSites.keys()].sort()
+          const mode = process.env.CLAUDIN_STRICT_IMPORTS
+
+          if (mode === 'capture') {
+            fs.writeFileSync(baselinePath, `${JSON.stringify(found, null, 2)}\n`)
+            console.log(`📌 missing-import baseline captured: ${found.length} specifiers`)
+            return
+          }
+
+          const baseline: string[] = fs.existsSync(baselinePath)
+            ? JSON.parse(fs.readFileSync(baselinePath, 'utf-8'))
+            : []
+          const known = new Set(baseline)
+          const added = found.filter((s: string) => !known.has(s))
+          const gone = baseline.filter((s: string) => !missingImportSites.has(s))
+
+          console.log(
+            `🔗 ${found.length} unresolved import(s) stubbed to noop` +
+              (added.length ? `, ${added.length} NOT in the baseline` : '') +
+              (gone.length ? `, ${gone.length} baselined no longer present` : ''),
+          )
+
+          if (mode === '1' && added.length > 0) {
+            console.error('\n❌ unresolved imports that are not in the baseline:')
+            for (const spec of added) {
+              console.error(`   ${spec}`)
+              for (const site of [...missingImportSites.get(spec)!].sort()) {
+                console.error(`     ← ${site}`)
+              }
+            }
+            console.error(
+              '\nEach one builds green and returns null at runtime. Fix the path, or\n' +
+                're-record with CLAUDIN_STRICT_IMPORTS=capture bun run build.\n',
+            )
+            throw new Error(`${added.length} unresolved import(s) not in the baseline`)
+          }
+        }
+        enforceMissingImportBaseline()
 
         // Register exact-match resolvers for each missing module
         for (const mod of missingModules) {

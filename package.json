@@ -23,6 +23,8 @@
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
+    "build:strict": "CLAUDIN_STRICT_IMPORTS=1 bun run scripts/build.ts",
+    "build:strict:baseline": "CLAUDIN_STRICT_IMPORTS=capture bun run scripts/build.ts",
     "postinstall": "node scripts/postinstall-warmup.mjs",
     "setup": "bun install && bun run build && bun link",
     "link": "bun link",
