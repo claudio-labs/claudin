@@ -396,7 +396,7 @@ describe('validateApplyPatchInput', () => {
       // This assertion used to be inverted. A review proved the old advice —
       // "just read it again, the next Read re-arms the body" — is wrong: the
       // sticky marker replays the SAME outline for STICKY_REPLAY_BUDGET reads,
-      // and its guard at FileReadTool.ts:763 requires `view === undefined`, so
+      // and its guard at FileReadTool.ts:456 requires `view === undefined`, so
       // view='full' is precisely what escapes the replay.
       expect(r.message).toContain("view='full'")
       expect(r.message).toContain('can replay the outline')
