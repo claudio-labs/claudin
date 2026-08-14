@@ -37,23 +37,27 @@ const calls: string[] = []
 // the same worker and corrupted their transcript-path / project-totals logic.
 const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all(
   [
-    '../../../utils/conversationRecovery.js',
-    '../../../utils/sessionStart.js',
-    '../../../utils/hooks.js',
-    '../../../utils/plans.js',
-    '../../../utils/sessionRestore.js',
-    '../../../utils/concurrentSessions.js',
-    '../../../utils/fileHistory.js',
-    '../../../utils/sessionStorage.js',
-    '../../../tasks/RemoteAgentTask/RemoteAgentTask.js',
-    '../../../utils/worktree.js',
-    '../../../bootstrap/state.js',
-    '../../../cost-tracker.js',
-    '../../../utils/asciicast.js',
-    '../../../utils/toolResultStorage.js',
-    '../../../services/analytics/index.js',
-    '../../../utils/messages.js',
-    '../../../types/ids.js',
+    // Aliased, and it has to stay that way: these are consumed by a dynamic
+    // `import(spec)` over the array, so no codemod that scans call sites can
+    // see them and the build's missing-import scan cannot either. A stale entry
+    // here fails at runtime as "Cannot find module", between tests.
+    'src/services/session/conversationRecovery.js',
+    'src/services/session/sessionStart.js',
+    'src/services/lifecycleHooks/hooks.js',
+    'src/utils/plans.js',
+    'src/services/session/sessionRestore.js',
+    'src/services/session/concurrentSessions.js',
+    'src/utils/fs/fileHistory.js',
+    'src/services/session/sessionStorage.js',
+    'src/tasks/RemoteAgentTask/RemoteAgentTask.js',
+    'src/services/git/worktree.js',
+    'src/bootstrap/state.js',
+    'src/cost-tracker.js',
+    'src/utils/asciicast.js',
+    'src/services/tools/toolResultStorage.js',
+    'src/services/analytics/index.js',
+    'src/services/messages/messages.js',
+    'src/types/ids.js',
   ].map(
     async spec =>
       [spec, { ...(await import(spec)) }] as [string, Record<string, unknown>],

@@ -290,7 +290,7 @@ describe('latch call sites pass the subagent scan context', () => {
     readFileSync(join(import.meta.dir, relPath), 'utf-8')
 
   test('attachments injector derives subagent from the pipeline callSite', () => {
-    const src = sourceAt('./attachments/injections.ts')
+    const src = sourceAt('../services/attachments/injections.ts')
     expect(src).toContain(
       'maybeLatchLegacyDeferredAnnouncement(messages ?? [], {',
     )

@@ -23,7 +23,7 @@ async function importFreshInstallCommand() {
 }
 
 async function importFreshInstaller() {
-  return import(`./nativeInstaller/installer.ts?ts=${Date.now()}-${Math.random()}`)
+  return import(`src/services/install/installer.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
 test('install command displays ~/.local/bin/claudin on non-Windows', async () => {

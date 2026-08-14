@@ -47,7 +47,7 @@ describe('MCP tool result sanitization', () => {
 // ---------------------------------------------------------------------------
 describe('Sandbox settings trust boundary', () => {
   test('getSandboxEnabledSetting does not use getInitialSettings', async () => {
-    const content = await file('utils/sandbox/sandbox-adapter.ts').text()
+    const content = await file('services/sandbox/sandbox-adapter.ts').text()
     // Extract the getSandboxEnabledSetting function body
     const fnMatch = content.match(
       /function getSandboxEnabledSetting\(\)[^{]*\{([\s\S]*?)\n\}/,
@@ -69,7 +69,7 @@ describe('Sandbox settings trust boundary', () => {
 // ---------------------------------------------------------------------------
 describe('Plugin git operations disable hooks', () => {
   test('gitClone includes core.hooksPath=/dev/null', async () => {
-    const content = await file('utils/plugins/marketplaceManager.ts').text()
+    const content = await file('services/plugins/marketplaceManager.ts').text()
     // The clone args must disable hooks
     const cloneSection = content.slice(
       content.indexOf('export async function gitClone('),
@@ -79,7 +79,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitPull includes core.hooksPath=/dev/null', async () => {
-    const content = await file('utils/plugins/marketplaceManager.ts').text()
+    const content = await file('services/plugins/marketplaceManager.ts').text()
     const pullSection = content.slice(
       content.indexOf('export async function gitPull('),
       content.indexOf('export async function gitPull(') + 2000,
@@ -88,7 +88,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitSubmoduleUpdate includes core.hooksPath=/dev/null', async () => {
-    const content = await file('utils/plugins/marketplaceManager.ts').text()
+    const content = await file('services/plugins/marketplaceManager.ts').text()
     const subSection = content.slice(
       content.indexOf('async function gitSubmoduleUpdate('),
       content.indexOf('async function gitSubmoduleUpdate(') + 1000,
@@ -102,7 +102,7 @@ describe('Plugin git operations disable hooks', () => {
 // ---------------------------------------------------------------------------
 describe('SAFE_ENV_VARS excludes credentials', () => {
   test('ANTHROPIC_FOUNDRY_API_KEY is not in SAFE_ENV_VARS', async () => {
-    const content = await file('utils/managedEnvConstants.ts').text()
+    const content = await file('services/config/managedEnvConstants.ts').text()
     // Extract the SAFE_ENV_VARS set definition
     const safeStart = content.indexOf('export const SAFE_ENV_VARS')
     const safeEnd = content.indexOf('])', safeStart)
@@ -120,7 +120,7 @@ describe('WebFetch SSRF guard', () => {
     // Matched on the module, not the specifier form, so a path normalization
     // does not read as an SSRF regression.
     expect(content).toContain('import { ssrfGuardedLookup } from')
-    expect(content).toContain('utils/hooks/ssrfGuard.js')
+    expect(content).toContain('services/lifecycleHooks/ssrfGuard.js')
     // The axios.get call in getWithPermittedRedirects must include lookup
     const fnSection = content.slice(
       content.indexOf('export async function getWithPermittedRedirects('),
@@ -158,7 +158,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('file-based permission functions are marked deprecated', async () => {
     const content = await file(
-      'utils/swarm/permissionSync.ts',
+      'coordinator/swarm/permissionSync.ts',
     ).text()
     // All file-based functions must have @deprecated JSDoc
     const deprecatedFns = [
@@ -182,7 +182,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('mailbox-based functions are NOT deprecated', async () => {
     const content = await file(
-      'utils/swarm/permissionSync.ts',
+      'coordinator/swarm/permissionSync.ts',
     ).text()
     // These are the active path — must not be deprecated
     const activeFns = [

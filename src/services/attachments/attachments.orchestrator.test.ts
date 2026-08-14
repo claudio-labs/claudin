@@ -90,6 +90,12 @@ describe('getAttachments — subagent context-omission gates', () => {
   // CLAUDE.md/rules/memory/gitStatus content isn't re-injected into agents
   // that deliberately stripped it (Explore, Plan, WebResearcher).
   beforeEach(() => {
+    // Same env hygiene as the block above. Either of these turns getAttachments
+    // into an early return, and both are process-global — a sibling file that
+    // restores CLAUDE_CODE_SIMPLE by assigning an undefined variable leaves the
+    // literal string "undefined" behind, which is truthy.
+    delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+    delete process.env.CLAUDE_CODE_SIMPLE
     mock.module('src/context.js', () => ({
       ...realContext,
       getUserContext: async () => ({ claudeMd: HERMETIC_CLAUDE_MD }),

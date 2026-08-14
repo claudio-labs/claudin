@@ -636,7 +636,7 @@ describe('GrepTool relativizeRgLine', () => {
     const { data } = await GrepTool.call(
       {
         pattern: 'GREP_MAX_FILES',
-        path: `${root}/src/utils`,
+        path: `${root}/src/services/tools`,
         output_mode: 'content',
         '-C': 1,
       } as never,
