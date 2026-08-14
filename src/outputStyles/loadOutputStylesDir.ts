@@ -7,8 +7,8 @@ import { logError } from 'src/utils/log.js'
 import {
   extractDescriptionFromMarkdown,
   loadMarkdownFilesForSubdir,
-} from 'src/utils/markdownConfigLoader.js'
-import { clearPluginOutputStyleCache } from 'src/utils/plugins/loadPluginOutputStyles.js'
+} from 'src/services/instructions/markdownConfigLoader.js'
+import { clearPluginOutputStyleCache } from 'src/services/plugins/loadPluginOutputStyles.js'
 
 /**
  * Loads markdown files from .claudin/output-styles directories throughout the project

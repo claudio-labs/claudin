@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-const realSettingsUserSettings = { ...(await import('src/utils/settings/settings.js')) }
+const realSettingsUserSettings = { ...(await import('src/services/settings/settings.js')) }
 
 const mockGetInitialSettings = mock(() => ({}))
 
@@ -30,12 +30,12 @@ const SETTINGS_MOCK_FACTORY = () => ({
 })
 
 // Install mock at module level so Bun registers it before any test runs.
-mock.module('src/utils/settings/settings.js', SETTINGS_MOCK_FACTORY)
+mock.module('src/services/settings/settings.js', SETTINGS_MOCK_FACTORY)
 
 async function freshModule() {
   // Re-install the mock with our spy before each fresh import, ensuring that
   // any prior file's afterAll that replaced settings.js doesn't affect us.
-  mock.module('src/utils/settings/settings.js', SETTINGS_MOCK_FACTORY)
+  mock.module('src/services/settings/settings.js', SETTINGS_MOCK_FACTORY)
   return import(`./userSettings.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
@@ -45,7 +45,7 @@ afterEach(() => {
 
 beforeEach(() => {
   // Ensure our spy is active even if a previous test file replaced settings.js.
-  mock.module('src/utils/settings/settings.js', SETTINGS_MOCK_FACTORY)
+  mock.module('src/services/settings/settings.js', SETTINGS_MOCK_FACTORY)
 })
 
 describe('isLspGloballyEnabled', () => {
@@ -84,5 +84,5 @@ describe('isLspGloballyEnabled', () => {
 // Restore module mocks so leaks don't bleed into subsequent test files.
 // ---------------------------------------------------------------------------
 afterAll(() => {
-  mock.module('src/utils/settings/settings.js', () => realSettingsUserSettings)
+  mock.module('src/services/settings/settings.js', () => realSettingsUserSettings)
 })

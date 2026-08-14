@@ -8,9 +8,9 @@
 import { chmodSync, mkdirSync, realpathSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join, relative, sep } from 'path'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { addFileGlobRuleToGitignore } from 'src/utils/git/gitignore.js'
+import { addFileGlobRuleToGitignore } from 'src/services/git/gitignore.js'
 import { logError } from 'src/utils/log.js'
 
 const WORKFLOWS_DIRNAME = 'workflows'

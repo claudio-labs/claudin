@@ -5,13 +5,13 @@ import type { BetaMessageParam as MessageParam } from '@anthropic-ai/sdk/resourc
 import type { CountTokensCommandInput } from '@aws-sdk/client-bedrock-runtime'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { VERTEX_COUNT_TOKENS_ALLOWED_BETAS } from 'src/constants/betas.js'
-import type { Attachment } from 'src/utils/attachments.js'
-import { getModelBetas } from 'src/utils/betas.js'
-import { estimateImageTokens } from 'src/utils/imageTokenEstimator.js'
+import type { Attachment } from 'src/services/attachments/attachments.js'
+import { getModelBetas } from 'src/services/api/betas.js'
+import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'
 import { getVertexRegionForModel, isEnvTruthy } from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './api/activeProvider.js'
 import { logError } from 'src/utils/log.js'
-import { normalizeAttachmentForAPI } from 'src/utils/messages.js'
+import { normalizeAttachmentForAPI } from 'src/services/messages/messages.js'
 import {
   createBedrockRuntimeClient,
   getInferenceProfileBackingModel,
@@ -24,7 +24,7 @@ import {
   normalizeModelStringForAPI,
 } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { isToolReferenceBlock } from 'src/utils/toolSearch.js'
+import { isToolReferenceBlock } from 'src/services/tools/toolSearch.js'
 import { getAnthropicClient } from './api/client.js'
 import { getCachedAnthropicClient } from './api/clientCache.js'
 import { withTokenCountVCR } from './vcr.js'

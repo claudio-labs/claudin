@@ -8,7 +8,7 @@ import {
 // call it, auth.js is fully loaded. Previously used require() for the same
 // deferral, but require() hits a CJS cache that diverges from the ESM
 // namespace after mock.module() (daemon/auth.test.ts), breaking spyOn.
-import * as authModule from 'src/utils/auth.js'
+import * as authModule from 'src/services/auth/auth.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { lt } from 'src/utils/semver.js'
 

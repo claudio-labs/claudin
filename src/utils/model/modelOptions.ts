@@ -5,7 +5,7 @@ import {
   isClaudeAISubscriber,
   isMaxSubscriber,
   isTeamPremiumSubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { getModelStrings } from './modelStrings.js'
 import {
   COST_TIER_3_15,
@@ -13,8 +13,8 @@ import {
   COST_HAIKU_35,
   COST_HAIKU_45,
   formatModelPricing,
-} from 'src/utils/modelCost.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+} from 'src/services/api/modelCost.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { checkOpus1mAccess, checkSonnet1mAccess } from './check1mAccess.js'
 import { getAPIProvider } from './providers.js'
 import { isModelAllowed } from './modelAllowlist.js'
@@ -33,14 +33,14 @@ import {
   renderDefaultModelSetting,
   type ModelSetting,
 } from './model.js'
-import { has1mContext } from 'src/utils/context.js'
+import { has1mContext } from 'src/services/context/context.js'
 import { getFilteredCodexCatalog } from './codexModelCatalog.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import {
   getActiveOpenAIModelOptionsCache,
   getActiveProviderProfile,
   getProfileModelOptions,
-} from 'src/utils/providerProfiles.js'
+} from 'src/services/api/providerProfiles.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'
 import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from './minimaxModels.js'

@@ -2,12 +2,12 @@ import { logEvent } from 'src/services/analytics/index.js'
 import {
   getCurrentProjectConfig,
   saveCurrentProjectConfig,
-} from 'src/utils/config.js'
+} from 'src/services/config/config.js'
 import { logError } from 'src/utils/log.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * Migration: Move MCP server approval fields from project config to local settings

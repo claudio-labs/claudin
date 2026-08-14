@@ -8,7 +8,7 @@ import {
   type InlineImageProtocol,
 } from 'src/ink/terminal.js'
 import { getImageProcessor } from 'src/tools/FileReadTool/imageProcessor.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { logError } from 'src/utils/log.js'
 import {
   deleteKittyImage,

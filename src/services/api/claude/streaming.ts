@@ -33,13 +33,13 @@ import type {
   StreamEvent,
   SystemAPIErrorMessage,
 } from "src/types/message.js";
-import { logAPIPrefix, toolToAPISchema } from "src/utils/api.js";
+import { logAPIPrefix, toolToAPISchema } from "src/services/api/api.js";
 import {
   getBedrockExtraBodyParamsBetas,
   getMergedBetas,
-} from "src/utils/betas.js";
-import { getGlobalConfig } from "src/utils/config.js";
-import { getSonnet1mExpTreatmentEnabled } from "src/utils/context.js";
+} from "src/services/api/betas.js";
+import { getGlobalConfig } from "src/services/config/config.js";
+import { getSonnet1mExpTreatmentEnabled } from "src/services/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/utils/envUtils.js";
 import {
@@ -47,7 +47,7 @@ import {
   isSdkApiError,
   isSdkApiUserAbortError,
 } from "src/utils/errors.js";
-import { computeFingerprintFromMessages } from "src/utils/fingerprint.js";
+import { computeFingerprintFromMessages } from "src/utils/data/fingerprint.js";
 import { captureAPIRequest } from "src/utils/log.js";
 import {
   createAssistantAPIErrorMessage,
@@ -60,13 +60,13 @@ import {
   stripOldThinkingBlocks,
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
-} from "src/utils/messages.js";
+} from "src/services/messages/messages.js";
 import { isNonCustomOpusModel } from "src/utils/model/model.js";
 import {
   asSystemPrompt,
   type SystemPrompt,
 } from "src/utils/systemPromptType.js";
-import { tokenCountFromLastAPIResponse } from "src/utils/tokens.js";
+import { tokenCountFromLastAPIResponse } from "src/services/context/tokens.js";
 import { getDynamicConfig_BLOCKS_ON_INIT } from "src/services/analytics/growthbook.js";
 import {
   currentLimits,
@@ -83,7 +83,7 @@ import { getCacheProfile } from "src/services/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
-  ? (require("src/utils/permissions/autoModeState.js") as typeof import("src/utils/permissions/autoModeState.js"))
+  ? (require("src/services/permissions/autoModeState.js") as typeof import("src/services/permissions/autoModeState.js"))
   : null;
 
 import { feature } from "bun:bundle";
@@ -122,15 +122,15 @@ import {
   isValidAdvisorModel,
   modelSupportsAdvisor,
 } from "src/utils/advisor.js";
-import { getAgentContext } from "src/utils/agentContext.js";
-import { isClaudeAISubscriber } from "src/utils/auth.js";
+import { getAgentContext } from "src/coordinator/agentContext.js";
+import { isClaudeAISubscriber } from "src/services/auth/auth.js";
 import { createCombinedAbortSignal } from "src/utils/combinedAbortSignal.js";
 import {
   getToolSearchBetaHeader,
   modelSupportsStructuredOutputs,
   shouldIncludeFirstPartyOnlyBetas,
   shouldUseGlobalCacheScope,
-} from "src/utils/betas.js";
+} from "src/services/api/betas.js";
 import { logForDebugging } from "src/utils/debug.js";
 import { logForDiagnosticsNoPII } from "src/utils/diagLogs.js";
 import {
@@ -140,7 +140,7 @@ import {
   isFastModeSupportedByModel,
 } from "src/utils/fastMode.js";
 import { headlessProfilerCheckpoint } from "src/utils/headlessProfiler.js";
-import { calculateUSDCost } from "src/utils/modelCost.js";
+import { calculateUSDCost } from "src/services/api/modelCost.js";
 import { endQueryProfile, queryCheckpoint } from "src/utils/queryProfiler.js";
 import {
   isAdaptiveThinkingEnabled,
@@ -148,13 +148,13 @@ import {
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
   type ThinkingConfig,
-} from "src/utils/thinking.js";
+} from "src/services/context/thinking.js";
 import {
   extractDiscoveredToolNames,
   isDeferredToolsDeltaActive,
   isToolSearchEnabled,
   maybeLatchLegacyDeferredAnnouncement,
-} from "src/utils/toolSearch.js";
+} from "src/services/tools/toolSearch.js";
 import { API_MAX_MEDIA_PER_REQUEST } from "src/constants/apiLimits.js";
 import { ADVISOR_BETA_HEADER } from "src/constants/betas.js";
 import {
@@ -162,7 +162,7 @@ import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
 } from "src/tools/ToolSearchTool/prompt.js";
-import { count } from "src/utils/array.js";
+import { count } from "src/utils/data/array.js";
 import { getInferenceProfileBackingModel } from "src/utils/model/bedrock.js";
 import {
   normalizeModelStringForAPI,
@@ -171,13 +171,13 @@ import {
 import {
   startSessionActivity,
   stopSessionActivity,
-} from "src/utils/sessionActivity.js";
+} from "src/services/session/sessionActivity.js";
 import { jsonStringify } from "src/utils/slowOperations.js";
 import {
   isBetaTracingEnabled,
   type LLMRequestNewContext,
   startLLMRequestSpan,
-} from "src/utils/telemetry/sessionTracing.js";
+} from "src/services/telemetry/sessionTracing.js";
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

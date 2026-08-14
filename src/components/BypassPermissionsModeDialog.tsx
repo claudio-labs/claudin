@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { Box, Link, Newline, Text } from 'src/ink.js';
-import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
-import { updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {

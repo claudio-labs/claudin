@@ -4,7 +4,7 @@
  * A Bun-compiled standalone binary can't resolve @vscode/ripgrep from
  * node_modules at runtime, so each per-platform package ships `rg` next to the
  * executable at vendor/ripgrep/<arch>-<platform>/rg[.exe] — the layout
- * src/utils/ripgrep.ts probes via dirname(process.execPath).
+ * src/utils/fs/ripgrep.ts probes via dirname(process.execPath).
  *
  * In the native release matrix this usually runs on each platform's own runner,
  * so the host's freshly-installed @vscode/ripgrep already holds the correct-
@@ -15,7 +15,7 @@
  * wrong arch, so we fetch the target's @vscode/ripgrep-<platform>-<arch> tarball
  * via `npm pack` (pinned to the version @vscode/ripgrep already resolves) and
  * vendor that rg instead. The vendored dir key + rg name always follow the
- * TARGET, matching what src/utils/ripgrep.ts probes at runtime.
+ * TARGET, matching what src/utils/fs/ripgrep.ts probes at runtime.
  *
  * Usage: bun run scripts/vendor-ripgrep.ts            # host platform
  *        CLAUDIN_COMPILE_TARGET=bun-linux-x64 bun run scripts/vendor-ripgrep.ts
@@ -44,7 +44,7 @@ const compilePlatform = target
   : `${process.platform}-${process.arch}`
 
 // Resolve the TARGET's Node platform + arch (not the host's). The runtime probe
-// in src/utils/ripgrep.ts looks under vendor/ripgrep/<arch>-<platform>/, so both
+// in src/utils/fs/ripgrep.ts looks under vendor/ripgrep/<arch>-<platform>/, so both
 // the dir key and the rg name must follow the target when cross-compiling.
 function parseTarget(t: string): { platform: string; arch: string } {
   const body = t.replace(/^bun-/, '').replace(/-musl$/, '') // "<os>-<arch>"

@@ -17,11 +17,11 @@ import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/promp
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js';
 import { openBrowser } from 'src/utils/browser.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { formatDuration, truncateToWidth } from 'src/utils/format.js';
-import { toInternalMessages } from 'src/utils/messages/mappers.js';
-import { EMPTY_LOOKUPS, normalizeMessages } from 'src/utils/messages.js';
-import { plural } from 'src/utils/stringUtils.js';
-import { teleportResumeCodeSession } from 'src/utils/teleport.js';
+import { formatDuration, truncateToWidth } from 'src/utils/text/format.js';
+import { toInternalMessages } from 'src/services/messages/mappers.js';
+import { EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import { teleportResumeCodeSession } from 'src/components/teleport.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';

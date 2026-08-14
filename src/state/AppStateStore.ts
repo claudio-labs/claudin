@@ -1,5 +1,5 @@
 import type { Notification } from 'src/context/notifications.js'
-import type { TodoList } from 'src/utils/todo/types.js'
+import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { BridgePermissionCallbacks } from 'src/bridge/bridgePermissionCallbacks.js'
 import type { Command } from 'src/commands.js'
 import type { ChannelPermissionCallbacks } from 'src/services/mcp/channelPermissions.js'
@@ -25,18 +25,18 @@ import type { DeepImmutable } from 'src/types/utils.js'
 import {
   type AttributionState,
   createEmptyAttributionState,
-} from 'src/utils/commitAttribution.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+} from 'src/services/git/commitAttribution.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import type { EffortValue } from 'src/utils/effort.js'
-import type { FileHistoryState } from 'src/utils/fileHistory.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
-import type { SessionHooksState } from 'src/utils/hooks/sessionHooks.js'
+import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { SessionHooksState } from 'src/services/lifecycleHooks/sessionHooks.js'
 import type { ModelSetting } from 'src/utils/model/model.js'
-import type { DenialTrackingState } from 'src/utils/permissions/denialTracking.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
-import type { SettingsJson } from 'src/utils/settings/types.js'
-import { shouldEnableThinkingByDefault } from 'src/utils/thinking.js'
+import type { DenialTrackingState } from 'src/services/permissions/denialTracking.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
+import type { SettingsJson } from 'src/services/settings/types.js'
+import { shouldEnableThinkingByDefault } from 'src/services/context/thinking.js'
 import type { Store } from './store.js'
 
 export type CompletionBoundary =
@@ -503,7 +503,7 @@ export function getDefaultAppState(): AppState {
   // Use lazy require to avoid circular dependency with teammate.ts
   /* eslint-disable @typescript-eslint/no-require-imports */
   const teammateUtils =
-    require('src/utils/teammate.js') as typeof import('src/utils/teammate.js')
+    require('src/coordinator/teammate.js') as typeof import('src/coordinator/teammate.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
   const initialMode: PermissionMode =
     teammateUtils.isTeammate() && teammateUtils.isPlanModeRequired()

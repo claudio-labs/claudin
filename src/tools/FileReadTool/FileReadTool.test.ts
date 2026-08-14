@@ -11,11 +11,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { READ_FILE_STATE_CACHE_SIZE } from 'src/utils/fileStateCache.js'
+import { READ_FILE_STATE_CACHE_SIZE } from 'src/utils/fs/fileStateCache.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   buildClipStub,
   buildClipStubWithHead,

@@ -7,7 +7,7 @@ import {
 } from 'src/commands.js'
 import { onGrowthBookRefresh } from 'src/services/analytics/growthbook.js'
 import { logError } from 'src/utils/log.js'
-import { skillChangeDetector } from 'src/utils/skills/skillChangeDetector.js'
+import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 
 /**
  * Keep the commands list fresh across two triggers:

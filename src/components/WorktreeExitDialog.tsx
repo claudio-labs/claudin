@@ -3,11 +3,11 @@ import type { CommandResultDisplay } from 'src/commands.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { Box, Text } from 'src/ink.js';
-import { execFileNoThrow } from 'src/utils/execFileNoThrow.js';
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
 import { getPlansDirectory } from 'src/utils/plans.js';
 import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js';
-import { setCwd } from 'src/utils/Shell.js';
-import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/utils/worktree.js';
+import { setCwd } from 'src/utils/proc/Shell.js';
+import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/services/git/worktree.js';
 import { Select } from './CustomSelect/select.js';
 import { Dialog } from './design-system/Dialog.js';
 import { Spinner } from './Spinner.js';
@@ -18,7 +18,7 @@ import { Spinner } from './Spinner.js';
 function recordWorktreeExit(): void {
   /* eslint-disable @typescript-eslint/no-require-imports */
   ;
-  (require('src/utils/sessionStorage.js') as typeof import('src/utils/sessionStorage.js')).saveWorktreeState(null);
+  (require('src/services/session/sessionStorage.js') as typeof import('src/services/session/sessionStorage.js')).saveWorktreeState(null);
   /* eslint-enable @typescript-eslint/no-require-imports */
   // Every dialog exit path has already process.chdir()'d back to originalCwd by
   // the time this runs, so relative-path read-cache keys (Read/Glob/Grep/LSP)

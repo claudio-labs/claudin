@@ -11,9 +11,9 @@ import { launchRepl } from 'src/replLauncher.js';
 import { logError } from 'src/utils/log.js';
 import { errorMessage } from 'src/utils/errors.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { loadConversationForResume } from 'src/utils/conversationRecovery.js';
-import { processResumedConversation } from 'src/utils/sessionRestore.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
+import { processResumedConversation } from 'src/services/session/sessionRestore.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
 import { maybeActivateBrief, maybeActivateProactive } from 'src/main/lifecycle.js';
 
 export type ContinueBranchDeps = {

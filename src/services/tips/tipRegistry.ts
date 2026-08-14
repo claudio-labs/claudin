@@ -1,26 +1,26 @@
 import chalk from 'chalk'
 import { logForDebugging } from 'src/utils/debug.js'
-import { fileHistoryEnabled } from 'src/utils/fileHistory.js'
+import { fileHistoryEnabled } from 'src/utils/fs/fileHistory.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 import { shouldOfferTerminalSetup } from 'src/commands/terminalSetup/terminalSetup.js'
 import { color } from 'src/components/design-system/color.js'
 import { shouldShowOverageCreditUpsell } from 'src/components/LogoV2/OverageCreditUpsell.js'
 import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
-import { is1PApiCustomer } from 'src/utils/auth.js'
-import { countConcurrentSessions } from 'src/utils/concurrentSessions.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { is1PApiCustomer } from 'src/services/auth/auth.js'
+import { countConcurrentSessions } from 'src/services/session/concurrentSessions.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import {
   getEffortEnvOverride,
   getInitialEffortSetting,
   modelSupportsEffort,
 } from 'src/utils/effort.js'
 import { env } from 'src/utils/env.js'
-import { cacheKeys } from 'src/utils/fileStateCache.js'
-import { getIsGit, getWorktreeCount } from 'src/utils/git.js'
+import { cacheKeys } from 'src/utils/fs/fileStateCache.js'
+import { getIsGit, getWorktreeCount } from 'src/services/git/git.js'
 import {
   detectRunningIDEsCached,
   getSortedIdeLockfiles,
@@ -29,19 +29,19 @@ import {
   isSupportedVSCodeTerminal,
   isVSCodeInstalled,
   isWindsurfInstalled,
-} from 'src/utils/ide.js'
+} from 'src/services/ide/ide.js'
 import {
   getMainLoopModel,
   getUserSpecifiedModelSetting,
 } from 'src/utils/model/model.js'
-import { getPlatform } from 'src/utils/platform.js'
-import { isPluginInstalled } from 'src/utils/plugins/installedPluginsManager.js'
-import { loadKnownMarketplacesConfigSafe } from 'src/utils/plugins/marketplaceManager.js'
-import { OFFICIAL_MARKETPLACE_NAME } from 'src/utils/plugins/officialMarketplace.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
+import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
+import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js'
 import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   formatGrantAmount,

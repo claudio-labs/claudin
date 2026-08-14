@@ -16,9 +16,9 @@ import {
   hasProfileScope,
   isClaudeAISubscriber,
   saveApiKey,
-} from 'src/utils/auth.js'
-import type { AccountInfo } from 'src/utils/config.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import type { AccountInfo } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getOauthProfileFromOauthToken } from './getOauthProfile.js'
 import type {

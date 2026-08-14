@@ -4,12 +4,12 @@ import {
   getOauthAccountInfo,
   getSubscriptionType,
   isClaudeAISubscriber,
-} from 'src/utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
-import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
-import { getOAuthHeaders, prepareApiRequest } from 'src/utils/teleport/api.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { getOAuthHeaders, prepareApiRequest } from 'src/services/teleport/api.js'
 import type {
   ReferralCampaign,
   ReferralEligibilityResponse,

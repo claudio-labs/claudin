@@ -182,7 +182,7 @@ async function main(): Promise<void> {
 
   // --- #2 ContentReplacementState (direct manipulation) -------------------
   try {
-    const mod = await import('../../src/utils/toolResultStorage.js')
+    const mod = await import('../../src/services/tools/toolResultStorage.js')
     const state = mod.createContentReplacementState()
     results.push(
       await measure(
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 
   // --- #5 fileReadCache ----------------------------------------------------
   try {
-    const mod = await import('../../src/utils/fileReadCache.js')
+    const mod = await import('../../src/utils/fs/fileReadCache.js')
     const cache = mod.fileReadCache
     results.push({
       name: '#5 fileReadCache (observed)',
@@ -299,7 +299,7 @@ async function main(): Promise<void> {
 
   // --- #9 agentTranscriptSubdirs -----------------------------------------
   try {
-    const mod = await import('../../src/utils/sessionStorage.js')
+    const mod = await import('../../src/services/session/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       results.push({
         name: '#9 agentTranscriptSubdirs (observed)',
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
 
   // --- #10 sentBashGitInstructions ---------------------------------------
   try {
-    const mod = await import('../../src/utils/attachments.js')
+    const mod = await import('../../src/services/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       results.push({
         name: '#10 sentBashGitInstructions (observed)',

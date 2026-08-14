@@ -2,12 +2,12 @@ import type { UUID } from 'crypto'
 import { useEffect, useRef } from 'react'
 import { useAppState } from 'src/state/AppState.js'
 import type { Message } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
   cleanMessagesForLogging,
   isChainParticipant,
   recordTranscript,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 
 /**
  * Hook that logs messages to the transcript

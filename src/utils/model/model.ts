@@ -1,35 +1,35 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { getMainLoopModelOverride } from 'src/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getCurrentProjectConfig } from 'src/utils/config.js'
-import { getActiveProviderProfile } from 'src/utils/providerProfiles.js'
+import { getCurrentProjectConfig } from 'src/services/config/config.js'
+import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
   isMaxSubscriber,
   isProSubscriber,
   isTeamPremiumSubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import {
   has1mContext,
   is1mContextDisabled,
   modelSupports1M,
-} from 'src/utils/context.js'
+} from 'src/services/context/context.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getPrimaryModel } from 'src/utils/providerModels.js'
+import { getPrimaryModel } from 'src/services/api/providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
 import {
   formatModelPricing,
   getOpus46CostTier,
   getOpus5CostTier,
-} from 'src/utils/modelCost.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
+} from 'src/services/api/modelCost.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getAPIProvider } from './providers.js'
 import { LIGHTNING_BOLT } from 'src/constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
-import { capitalize } from 'src/utils/stringUtils.js'
+import { capitalize } from 'src/utils/text/stringUtils.js'
 import { COPILOT_DISPLAY_NAMES } from './copilotModels.js'
 
 export type ModelShortName = string
@@ -103,7 +103,7 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
  * `<model>[1m]` case for them in getPublicModelDisplayName).
  *
  * Keep this list in sync with the native-1M branch in
- * getContextWindowForModel (src/utils/context.ts).
+ * getContextWindowForModel (src/services/context/context.ts).
  */
 export function isNative1mModel(model: ModelName): boolean {
   const canonical = getCanonicalName(model)

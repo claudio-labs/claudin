@@ -3,7 +3,7 @@ import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/promp
 import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants.js'
 import { EXIT_PLAN_MODE_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
-import { getIsGit } from 'src/utils/git.js'
+import { getIsGit } from 'src/services/git/git.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 const MIN_AGENTS = 5

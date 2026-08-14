@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 import type { Message } from 'src/types/message.js'
-import { createAssistantMessage, createUserMessage } from 'src/utils/messages.js'
+import { createAssistantMessage, createUserMessage } from 'src/services/messages/messages.js'
 
 // We test the exported collectCompactableToolIds behavior indirectly via
 // the public microcompactMessages + time-based path. But first we need to

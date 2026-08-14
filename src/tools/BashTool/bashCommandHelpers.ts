@@ -2,16 +2,16 @@ import type { z } from 'zod/v4'
 import {
   isUnsafeCompoundCommand_DEPRECATED,
   splitCommand_DEPRECATED,
-} from 'src/utils/bash/commands.js'
+} from 'src/services/bash/commands.js'
 import {
   buildParsedCommandFromRoot,
   type IParsedCommand,
   ParsedCommand,
-} from 'src/utils/bash/ParsedCommand.js'
-import { type Node, PARSE_ABORTED } from 'src/utils/bash/parser.js'
-import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
-import { createPermissionRequestMessage } from 'src/utils/permissions/permissions.js'
+} from 'src/services/bash/ParsedCommand.js'
+import { type Node, PARSE_ABORTED } from 'src/services/bash/parser.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import { createPermissionRequestMessage } from 'src/services/permissions/permissions.js'
 import { BashTool } from './BashTool.js'
 import { bashCommandIsSafeAsync_DEPRECATED } from './bashSecurity.js'
 

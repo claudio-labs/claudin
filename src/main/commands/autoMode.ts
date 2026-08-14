@@ -5,7 +5,7 @@
 
 import type { Command } from '@commander-js/extra-typings'
 import { feature } from 'bun:bundle'
-import { getAutoModeEnabledStateIfCached } from 'src/utils/permissions/permissionSetup.js'
+import { getAutoModeEnabledStateIfCached } from 'src/services/permissions/permissionSetup.js'
 
 export function registerAutoModeCommand(program: Command): void {
   if (feature('TRANSCRIPT_CLASSIFIER')) {

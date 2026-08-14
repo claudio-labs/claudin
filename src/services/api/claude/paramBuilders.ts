@@ -15,17 +15,17 @@ import {
 } from "src/constants/betas.js";
 import type { QuerySource } from "src/constants/querySource.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/services/analytics/growthbook.js";
-import { type CacheScope, splitSysPromptPrefix } from "src/utils/api.js";
-import { shouldIncludeFirstPartyOnlyBetas } from "src/utils/betas.js";
+import { type CacheScope, splitSysPromptPrefix } from "src/services/api/api.js";
+import { shouldIncludeFirstPartyOnlyBetas } from "src/services/api/betas.js";
 import {
   CAPPED_DEFAULT_MAX_TOKENS,
   getModelMaxOutputTokens,
-} from "src/utils/context.js";
+} from "src/services/context/context.js";
 import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/utils/effort.js";
 import { isEnvTruthy } from "src/utils/envUtils.js";
 import { validateBoundedIntEnvVar } from "src/utils/envValidation.js";
 import { errorMessage } from "src/utils/errors.js";
-import { safeParseJSON } from "src/utils/json.js";
+import { safeParseJSON } from "src/utils/data/json.js";
 import { logForDebugging } from "src/utils/debug.js";
 import {
   getDefaultOpusModel,

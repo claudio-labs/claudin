@@ -1,4 +1,4 @@
-import { saveGlobalConfig } from 'src/utils/config.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
 
 /**
  * Migrate the `replBridgeEnabled` config key to `remoteControlAtStartup`.

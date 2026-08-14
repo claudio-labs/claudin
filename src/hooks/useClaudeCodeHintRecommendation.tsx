@@ -14,8 +14,8 @@ import { useNotifications } from 'src/context/notifications.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED, logEvent } from 'src/services/analytics/index.js';
 import { clearPendingHint, getPendingHintSnapshot, markShownThisSession, subscribeToPendingHint } from 'src/utils/claudeCodeHints.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { disableHintRecommendations, markHintPluginShown, type PluginHintRecommendation, resolvePluginHint } from 'src/utils/plugins/hintRecommendation.js';
-import { installPluginFromMarketplace } from 'src/utils/plugins/pluginInstallationHelpers.js';
+import { disableHintRecommendations, markHintPluginShown, type PluginHintRecommendation, resolvePluginHint } from 'src/services/plugins/hintRecommendation.js';
+import { installPluginFromMarketplace } from 'src/services/plugins/pluginInstallationHelpers.js';
 import { installPluginAndNotify, usePluginRecommendationBase } from './usePluginRecommendationBase.js';
 type UseClaudeCodeHintRecommendationResult = {
   recommendation: PluginHintRecommendation | null;

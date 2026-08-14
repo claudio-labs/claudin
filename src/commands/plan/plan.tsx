@@ -5,12 +5,12 @@ import type { LocalJSXCommandContext } from 'src/commands.js';
 import { Box, Text } from 'src/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getExternalEditor } from 'src/utils/editor.js';
-import { toIDEDisplayName } from 'src/utils/ide.js';
-import { applyPermissionUpdate } from 'src/utils/permissions/PermissionUpdate.js';
-import { prepareContextForPlanMode } from 'src/utils/permissions/permissionSetup.js';
+import { toIDEDisplayName } from 'src/services/ide/ide.js';
+import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
+import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js';
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js';
 import { editFileInEditor } from 'src/utils/promptEditor.js';
-import { renderToString } from 'src/utils/staticRender.js';
+import { renderToString } from 'src/components/staticRender.js';
 function PlanDisplay(t0: {
   planContent: string;
   planPath: string;

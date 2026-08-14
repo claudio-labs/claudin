@@ -3,7 +3,7 @@
 // `UnifiedInstalledItem[]` accumulators in `ManagePlugins.tsx`, and the fields
 // read by `UnifiedInstalledCell.tsx`.
 import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
-import type { PersistablePluginScope } from 'src/utils/plugins/pluginIdentifier.js'
+import type { PersistablePluginScope } from 'src/services/plugins/pluginIdentifier.js'
 import type { ConfigScope, MCPServerConnection } from 'src/services/mcp/types.js'
 
 /** Scope a plugin row is grouped under in the installed list. */

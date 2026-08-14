@@ -6,7 +6,7 @@ import { Box, Text } from 'src/ink.js';
 import { useKeybindings } from 'src/keybindings/useKeybinding.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { NormalizedUserMessage, RenderableMessage } from 'src/types/message.js';
-import { isEmptyMessageText, SYNTHETIC_MESSAGES } from 'src/utils/messages.js';
+import { isEmptyMessageText, SYNTHETIC_MESSAGES } from 'src/services/messages/messages.js';
 const NAVIGABLE_TYPES = ['user', 'assistant', 'grouped_tool_use', 'collapsed_read_search', 'system', 'attachment'] as const;
 export type NavigableType = (typeof NAVIGABLE_TYPES)[number];
 export type NavigableOf<T extends NavigableType> = Extract<RenderableMessage, {

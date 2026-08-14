@@ -7,7 +7,7 @@ import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
-import { SHELL_TOOL_NAMES } from 'src/utils/shell/shellToolUtils.js'
+import { SHELL_TOOL_NAMES } from 'src/services/shell/shellToolUtils.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 

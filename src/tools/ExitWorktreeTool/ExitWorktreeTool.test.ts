@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { restoreWorktreeSession } from 'src/utils/worktree.js'
+import { restoreWorktreeSession } from 'src/services/git/worktree.js'
 import { ExitWorktreeTool } from './ExitWorktreeTool.js'
 
 const attachedSession = {

@@ -22,9 +22,9 @@ import {
 } from 'src/services/voiceStreamSTT.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { toError } from 'src/utils/errors.js'
-import { getSystemLocaleLanguage } from 'src/utils/intl.js'
+import { getSystemLocaleLanguage } from 'src/utils/text/intl.js'
 import { logError } from 'src/utils/log.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { sleep } from 'src/utils/sleep.js'
 
 // ─── Language normalization ─────────────────────────────────────────────

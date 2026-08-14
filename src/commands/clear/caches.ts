@@ -24,14 +24,14 @@ import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.j
 import { resetAllLSPDiagnosticState } from 'src/services/lsp/LSPDiagnosticRegistry.js'
 import { clearTrackedMagicDocs } from 'src/services/MagicDocs/magicDocs.js'
 import { clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
-import { resetSentSkillNames } from 'src/utils/attachments.js'
-import { clearCommandPrefixCaches } from 'src/utils/bash/commands.js'
-import { resetGetMemoryFilesCache } from 'src/utils/claudemd.js'
-import { clearRepositoryCaches } from 'src/utils/detectRepository.js'
-import { clearResolveGitDirCache } from 'src/utils/git/gitFilesystem.js'
-import { fileReadCache } from 'src/utils/fileReadCache.js'
+import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
+import { clearCommandPrefixCaches } from 'src/services/bash/commands.js'
+import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
+import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
+import { clearResolveGitDirCache } from 'src/services/git/gitFilesystem.js'
+import { fileReadCache } from 'src/utils/fs/fileReadCache.js'
 import { clearStoredImagePaths } from 'src/utils/imageStore.js'
-import { clearSessionEnvVars } from 'src/utils/sessionEnvVars.js'
+import { clearSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
 
 /**
  * Clear all session-related caches.

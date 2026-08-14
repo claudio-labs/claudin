@@ -3,7 +3,7 @@ import {
   isShiftEnterKeyBindingInstalled,
 } from 'src/commands/terminalSetup/terminalSetup.js'
 import type { Key } from 'src/ink.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { env } from 'src/utils/env.js'
 /**
  * Helper function to check if vim mode is currently enabled

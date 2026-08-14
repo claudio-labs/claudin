@@ -1,6 +1,6 @@
 import type { Command } from 'src/commands.js'
-import { getAttributionTexts } from 'src/utils/attribution.js'
-import { executeShellCommandsInPrompt } from 'src/utils/promptShellExecution.js'
+import { getAttributionTexts } from 'src/services/git/attribution.js'
+import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
 
 const ALLOWED_TOOLS = [
   'Bash(git add:*)',

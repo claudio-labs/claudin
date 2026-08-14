@@ -1,10 +1,10 @@
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
 import {
   getActiveProviderProfile,
   getProfileModelOptions,
-} from 'src/utils/providerProfiles.js'
+} from 'src/services/api/providerProfiles.js'
 
 /**
  * Returns the set of model IDs available on the active provider profile,

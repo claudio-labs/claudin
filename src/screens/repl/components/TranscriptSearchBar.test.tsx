@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as React from 'react'
 import { useRef } from 'react'
-import { renderToString } from 'src/utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 import type { JumpHandle } from 'src/components/VirtualMessageList.js'
 import { TranscriptSearchBar } from './TranscriptSearchBar.js'
 

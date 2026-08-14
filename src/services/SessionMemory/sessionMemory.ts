@@ -17,28 +17,28 @@ import {
   type Output as FileReadToolOutput,
 } from 'src/tools/FileReadTool/FileReadTool.js'
 import type { Message } from 'src/types/message.js'
-import { count } from 'src/utils/array.js'
+import { count } from 'src/utils/data/array.js'
 import {
   createCacheSafeParams,
   createSubagentContext,
   runForkedAgent,
-} from 'src/utils/forkedAgent.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+} from 'src/coordinator/forkedAgent.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
   type REPLHookContext,
   registerPostSamplingHook,
-} from 'src/utils/hooks/postSamplingHooks.js'
+} from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import {
   getSessionMemoryDir,
   getSessionMemoryPath,
-} from 'src/utils/permissions/filesystem.js'
+} from 'src/services/permissions/filesystem.js'
 import { sequential } from 'src/utils/sequential.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { getTokenUsage, tokenCountWithEstimation } from 'src/utils/tokens.js'
+import { getTokenUsage, tokenCountWithEstimation } from 'src/services/context/tokens.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { isAutoCompactEnabled } from 'src/services/compact/autoCompact.js'
 import {

@@ -5,8 +5,8 @@ import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { createRoot } from 'src/ink.js'
 import { AppStateProvider } from 'src/state/AppState.js'
-import { getCliHighlightPromise } from 'src/utils/cliHighlight.js'
-import { renderToString } from 'src/utils/staticRender.js'
+import { getCliHighlightPromise } from 'src/utils/text/cliHighlight.js'
+import { renderToString } from 'src/components/staticRender.js'
 import { Markdown, StreamingMarkdown } from './Markdown.js'
 import {
   __TEST_ONLY_getTokenCacheSize,

@@ -4,8 +4,8 @@ import * as React from 'react';
 import { useMemo } from 'react';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { Box, NoSelect, Text } from 'src/ink.js';
-import { intersperse } from 'src/utils/array.js';
-import { getPatchForDisplay } from 'src/utils/diff.js';
+import { intersperse } from 'src/utils/data/array.js';
+import { getPatchForDisplay } from 'src/services/git/diff.js';
 import { HighlightedCode } from 'src/components/HighlightedCode.js';
 import { StructuredDiff } from 'src/components/StructuredDiff.js';
 type Props = {

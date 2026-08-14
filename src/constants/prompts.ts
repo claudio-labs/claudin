@@ -1,12 +1,12 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { type as osType, version as osVersion, release as osRelease } from 'os'
 import { env } from 'src/utils/env.js'
-import { getIsGit } from 'src/utils/git.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getIsGit } from 'src/services/git/git.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import { getCurrentWorktreeSession } from 'src/utils/worktree.js'
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { getSessionStartDate } from './common.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { Tools } from 'src/Tool.js'
 import type { Command } from 'src/types/command.js'
@@ -29,7 +29,7 @@ import type {
 } from 'src/services/mcp/types.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
+import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import {
   EXPLORE_AGENT,
@@ -39,10 +39,10 @@ import { areExplorePlanAgentsEnabled } from 'src/tools/AgentTool/builtInAgents.j
 import {
   isScratchpadEnabled,
   getScratchpadDir,
-} from 'src/utils/permissions/filesystem.js'
+} from 'src/services/permissions/filesystem.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
-import { shouldUseGlobalCacheScope } from 'src/utils/betas.js'
+import { shouldUseGlobalCacheScope } from 'src/services/api/betas.js'
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import {
   systemPromptSection,
@@ -53,7 +53,7 @@ import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TICK_TAG } from './xml.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { loadMemoryPrompt } from 'src/memdir/memdir.js'
-import { isMcpInstructionsDeltaEnabled } from 'src/utils/mcpInstructionsDelta.js'
+import { isMcpInstructionsDeltaEnabled } from 'src/services/mcp/mcpInstructionsDelta.js'
 import {
   isAntiNarrationEnabled,
   isSubagentNotesEnabled,
@@ -102,7 +102,7 @@ export const CLAUDE_CODE_DOCS_MAP_URL =
  * Everything AFTER contains user/session-specific content and should not be cached.
  *
  * WARNING: Do not remove or reorder this marker without updating cache logic in:
- * - src/utils/api.ts (splitSysPromptPrefix)
+ * - src/services/api/api.ts (splitSysPromptPrefix)
  * - src/services/api/claude/paramBuilders.ts (buildSystemPromptBlocks)
  */
 export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =

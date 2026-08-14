@@ -3,7 +3,7 @@ import { chmod, open, rename, stat, unlink } from 'fs/promises'
 import mapValues from 'lodash-es/mapValues.js'
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join, parse } from 'path'
-import { getPlatform } from 'src/utils/platform.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
 import type { PluginError } from 'src/types/plugin.js'
 import { getPluginErrorMessage } from 'src/types/plugin.js'
 import {
@@ -11,29 +11,29 @@ import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
-} from 'src/utils/config.js'
-import { getCwd } from 'src/utils/cwd.js'
+} from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getErrnoCode } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
-import { safeParseJSON } from 'src/utils/json.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { safeParseJSON } from 'src/utils/data/json.js'
 import { logError } from 'src/utils/log.js'
-import { getPluginMcpServers } from 'src/utils/plugins/mcpPluginIntegration.js'
-import { loadAllPluginsCacheOnly } from 'src/utils/plugins/pluginLoader.js'
-import { isSettingSourceEnabled } from 'src/utils/settings/constants.js'
-import { getManagedFilePath } from 'src/utils/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/utils/settings/pluginOnlyPolicy.js'
+import { getPluginMcpServers } from 'src/services/plugins/mcpPluginIntegration.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
+import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
+import { getManagedFilePath } from 'src/services/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 import {
   isMcpServerCommandEntry,
   isMcpServerNameEntry,
   isMcpServerUrlEntry,
   type SettingsJson,
-} from 'src/utils/settings/types.js'
-import type { ValidationError } from 'src/utils/settings/validation.js'
+} from 'src/services/settings/types.js'
+import type { ValidationError } from 'src/services/settings/validation.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -635,7 +635,7 @@ export async function addMcpConfig(
 
   if (feature('CHICAGO_MCP')) {
     const { isComputerUseMCPServer } = await import(
-      'src/utils/computerUse/common.js'
+      'src/services/computerUse/common.js'
     )
     if (isComputerUseMCPServer(name)) {
       throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
@@ -1506,7 +1506,7 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(
 /* eslint-disable @typescript-eslint/no-require-imports */
 const DEFAULT_DISABLED_BUILTIN = feature('CHICAGO_MCP')
   ? (
-      require('src/utils/computerUse/common.js') as typeof import('src/utils/computerUse/common.js')
+      require('src/services/computerUse/common.js') as typeof import('src/services/computerUse/common.js')
     ).COMPUTER_USE_MCP_SERVER_NAME
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */

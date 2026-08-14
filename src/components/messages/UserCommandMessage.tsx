@@ -4,7 +4,7 @@ import figures from 'figures';
 import * as React from 'react';
 import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js';
 import { Box, Text } from 'src/ink.js';
-import { extractTag } from 'src/utils/messages.js';
+import { extractTag } from 'src/services/messages/messages.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import { appendFileSync } from 'fs';
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { gracefulShutdown, gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
+import { gracefulShutdown, gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
 import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from './bootstrap/state.js';
 import type { Command } from './commands.js';
 import { createStatsStore, type StatsStore } from './context/stats.js';
@@ -18,21 +18,21 @@ import { isQualifiedForGrove } from './services/api/grove.js';
 import { handleMcpjsonServerApprovals } from './services/mcpServerApproval.js';
 import { AppStateProvider } from './state/AppState.js';
 import { onChangeAppState } from './state/onChangeAppState.js';
-import { normalizeApiKeyForConfig } from './utils/authPortable.js';
-import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from './utils/claudemd.js';
-import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from './utils/config.js';
-import { shouldShowMigrationBanner } from './utils/claudinMigration.js';
-import { updateDeepLinkTerminalPreference } from './utils/deepLink/terminalPreference.js';
+import { normalizeApiKeyForConfig } from 'src/services/auth/authPortable.js';
+import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/services/instructions/claudemd.js';
+import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { shouldShowMigrationBanner } from 'src/services/config/claudinMigration.js';
+import { updateDeepLinkTerminalPreference } from 'src/services/deepLink/terminalPreference.js';
 import { isEnvTruthy, isRunningOnHomespace } from './utils/envUtils.js';
 import { type FpsMetrics, FpsTracker } from './utils/fpsTracker.js';
-import { updateGithubRepoPathMapping } from './utils/githubRepoPathMapping.js';
-import { applyConfigEnvironmentVariables } from './utils/managedEnv.js';
+import { updateGithubRepoPathMapping } from 'src/services/git/githubRepoPathMapping.js';
+import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
 import { usesAnthropicAccountFlow } from './utils/model/providers.js';
-import type { PermissionMode } from './utils/permissions/PermissionMode.js';
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from './utils/renderOptions.js';
 import { applyRenderCadence } from './utils/renderCadence.js';
-import { getSettingsWithAllErrors } from './utils/settings/allErrors.js';
-import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from './utils/settings/settings.js';
+import { getSettingsWithAllErrors } from 'src/services/settings/allErrors.js';
+import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from 'src/services/settings/settings.js';
 import { profileCheckpoint } from './utils/startupProfiler.js';
 export function completeOnboarding(): void {
   saveGlobalConfig(current => ({
@@ -299,7 +299,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         isChannelsEnabled
       }, {
         getClaudeAIOAuthTokens
-      }] = await Promise.all([import('./services/mcp/channelAllowlist.js'), import('./utils/auth.js')]);
+      }] = await Promise.all([import('./services/mcp/channelAllowlist.js'), import('src/services/auth/auth.js')]);
       // Skip the dialog when channels are blocked (tengu_harbor off or no
       // OAuth) — accepting then immediately seeing "not available" in
       // ChannelsNotice is worse than no dialog. Append entries anyway so

@@ -6,7 +6,7 @@ import { useKeybindings } from 'src/keybindings/useKeybinding.js'
 import {
   normalizeFullWidthDigits,
   normalizeFullWidthSpace,
-} from 'src/utils/stringUtils.js'
+} from 'src/utils/text/stringUtils.js'
 import type { OptionWithDescription } from './select.js'
 import type { SelectState } from './use-select-state.js'
 

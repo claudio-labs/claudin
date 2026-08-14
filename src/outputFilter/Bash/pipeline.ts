@@ -3,7 +3,7 @@ import { isEnvTruthy } from "src/utils/envUtils.js";
 import {
   collapseDigitTemplates,
   collapseIdenticalRuns,
-} from "src/utils/toolResultSummarizer.js";
+} from "src/services/tools/toolResultSummarizer.js";
 import type { RewriteContext } from "src/outputFilter/types.js";
 import type { FilterSpec, PipelineResult } from "./types.js";
 

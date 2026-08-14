@@ -15,13 +15,13 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { getAPIMetadata } from 'src/services/api/claude.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
-import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
-import { computeFingerprint } from './fingerprint.js'
+import { getModelBetas, modelSupportsStructuredOutputs } from 'src/services/api/betas.js'
+import { computeFingerprint } from 'src/utils/data/fingerprint.js'
 import {
   modelRejectsSamplingParams,
   normalizeModelStringForAPI,
 } from './model/model.js'
-import { modelRequiresAdaptiveThinking } from './thinking.js'
+import { modelRequiresAdaptiveThinking } from 'src/services/context/thinking.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam

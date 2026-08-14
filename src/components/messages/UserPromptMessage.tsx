@@ -7,7 +7,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/grow
 import { type AppState, useAppState } from 'src/state/AppState.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { logError } from 'src/utils/log.js';
-import { countCharInString } from 'src/utils/stringUtils.js';
+import { countCharInString } from 'src/utils/text/stringUtils.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
 import { HighlightedThinkingText } from './HighlightedThinkingText.js';
 type Props = {

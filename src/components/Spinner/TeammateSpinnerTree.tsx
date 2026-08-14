@@ -5,7 +5,7 @@ import { Box, Text, type TextProps } from 'src/ink.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { getRunningTeammatesSorted } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { formatNumber } from 'src/utils/format.js';
+import { formatNumber } from 'src/utils/text/format.js';
 import { TeammateSpinnerLine } from './TeammateSpinnerLine.js';
 import { TEAMMATE_SELECT_HINT } from './teammateSelectHint.js';
 type Props = {

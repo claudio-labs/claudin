@@ -6,9 +6,9 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { checkForReleaseNotes } from 'src/utils/releaseNotes.js'
-import { setCwd } from 'src/utils/Shell.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { checkForReleaseNotes } from 'src/services/install/releaseNotes.js'
+import { setCwd } from 'src/utils/proc/Shell.js'
 import { initSinks } from 'src/utils/sinks.js'
 import {
   getIsNonInteractiveSession,
@@ -21,37 +21,37 @@ import {
 import { getCommands } from './commands.js'
 import { initSessionMemory } from './services/SessionMemory/sessionMemory.js'
 import { asSessionId } from './types/ids.js'
-import { isAgentSwarmsEnabled } from './utils/agentSwarmsEnabled.js'
-import { checkAndRestoreTerminalBackup } from './utils/appleTerminalBackup.js'
-import { prefetchApiKeyFromApiKeyHelperIfSafe } from './utils/auth.js'
-import { clearMemoryFileCaches } from './utils/claudemd.js'
-import { getCurrentProjectConfig, getGlobalConfig } from './utils/config.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { checkAndRestoreTerminalBackup } from 'src/services/ide/appleTerminalBackup.js'
+import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/services/auth/auth.js'
+import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { getCurrentProjectConfig, getGlobalConfig } from 'src/services/config/config.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { env } from './utils/env.js'
 import { envDynamic } from './utils/envDynamic.js'
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { errorMessage } from './utils/errors.js'
-import { findCanonicalGitRoot, findGitRoot, getIsGit } from './utils/git.js'
-import { initializeFileChangedWatcher } from './utils/hooks/fileChangedWatcher.js'
+import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/services/git/git.js'
+import { initializeFileChangedWatcher } from 'src/services/lifecycleHooks/fileChangedWatcher.js'
 import {
   captureHooksConfigSnapshot,
   updateHooksConfigSnapshot,
-} from './utils/hooks/hooksConfigSnapshot.js'
-import { hasWorktreeCreateHook } from './utils/hooks.js'
-import { checkAndRestoreITerm2Backup } from './utils/iTermBackup.js'
+} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+import { hasWorktreeCreateHook } from 'src/services/lifecycleHooks/hooks.js'
+import { checkAndRestoreITerm2Backup } from 'src/services/ide/iTermBackup.js'
 import { logError } from './utils/log.js'
 import { getRecentActivity } from './utils/logoV2Utils.js'
-import { lockCurrentVersion } from './utils/nativeInstaller/index.js'
-import type { PermissionMode } from './utils/permissions/PermissionMode.js'
+import { lockCurrentVersion } from 'src/services/install/index.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getPlanSlug } from './utils/plans.js'
-import { saveWorktreeState } from './utils/sessionStorage.js'
+import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
 import { profileCheckpoint } from './utils/startupProfiler.js'
 import {
   createTmuxSessionForWorktree,
   createWorktreeForSession,
   generateTmuxSessionName,
   worktreeBranchName,
-} from './utils/worktree.js'
+} from 'src/services/git/worktree.js'
 
 export async function setup(
   cwd: string,
@@ -104,7 +104,7 @@ export async function setup(
   // Teammate snapshot — SIMPLE-only gate (no escape hatch, swarm not used in bare)
   if (!isBareMode() && isAgentSwarmsEnabled()) {
     const { captureTeammateModeSnapshot } = await import(
-      './utils/swarm/backends/teammateModeSnapshot.js'
+      'src/coordinator/swarm/backends/teammateModeSnapshot.js'
     )
     captureTeammateModeSnapshot()
   }
@@ -321,7 +321,7 @@ export async function setup(
   if (!skipPluginPrefetch) {
     void getCommands(getProjectRoot())
   }
-  void import('./utils/plugins/loadPluginHooks.js').then(m => {
+  void import('src/services/plugins/loadPluginHooks.js').then(m => {
     if (!skipPluginPrefetch) {
       void m.loadPluginHooks() // Pre-load plugin hooks (consumed by processSessionStartHooks before render)
       m.setupPluginHookHotReload() // Set up hot reload for plugin hooks when settings change
@@ -346,7 +346,7 @@ export async function setup(
         )
       })
     }
-    void import('./utils/sessionFileAccessHooks.js').then(m =>
+    void import('src/services/session/sessionFileAccessHooks.js').then(m =>
       m.registerSessionFileAccessHooks(),
     ) // Register session file access analytics hooks
     if (feature('TEAMMEM')) {

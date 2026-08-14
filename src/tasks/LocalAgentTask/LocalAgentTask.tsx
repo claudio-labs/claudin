@@ -13,12 +13,12 @@ import { asAgentId } from 'src/types/ids.js';
 import type { Message } from 'src/types/message.js';
 import { createAbortController, createChildAbortController } from 'src/utils/abortController.js';
 import { registerCleanup } from 'src/utils/cleanupRegistry.js';
-import { getToolSearchOrReadInfo } from 'src/utils/collapseReadSearch.js';
+import { getToolSearchOrReadInfo } from 'src/services/tools/collapseReadSearch.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
-import { getAgentTranscriptPath } from 'src/utils/sessionStorage.js';
-import { evictTaskOutput, getTaskOutputPath, initTaskOutputAsSymlink } from 'src/utils/task/diskOutput.js';
-import { PANEL_GRACE_MS, registerTask, updateTaskState } from 'src/utils/task/framework.js';
-import { emitTaskProgress } from 'src/utils/task/sdkProgress.js';
+import { getAgentTranscriptPath } from 'src/services/session/sessionStorage.js';
+import { evictTaskOutput, getTaskOutputPath, initTaskOutputAsSymlink } from 'src/tasks/diskOutput.js';
+import { PANEL_GRACE_MS, registerTask, updateTaskState } from 'src/tasks/framework.js';
+import { emitTaskProgress } from 'src/tasks/sdkProgress.js';
 import type { TaskState } from 'src/tasks/types.js';
 export type ToolActivity = {
   toolName: string;

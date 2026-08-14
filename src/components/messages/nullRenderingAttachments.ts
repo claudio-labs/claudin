@@ -1,4 +1,4 @@
-import type { Attachment } from 'src/utils/attachments.js'
+import type { Attachment } from 'src/services/attachments/attachments.js'
 import type { Message, NormalizedMessage } from 'src/types/message.js'
 
 /**

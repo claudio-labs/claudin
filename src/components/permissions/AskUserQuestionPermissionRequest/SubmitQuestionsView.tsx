@@ -3,7 +3,7 @@ import figures from 'figures';
 import React from 'react';
 import { Box, Text } from 'src/ink.js';
 import type { Question } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js';
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Divider } from 'src/components/design-system/Divider.js';
 import { PermissionRequestTitle } from 'src/components/permissions/PermissionRequestTitle.js';

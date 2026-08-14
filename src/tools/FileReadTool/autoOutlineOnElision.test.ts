@@ -14,7 +14,7 @@ import type { ToolUseContext } from 'src/Tool.js'
 import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   AUTO_OUTLINE_PIVOT_FOOTER,
   FileReadTool,

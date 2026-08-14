@@ -42,18 +42,18 @@ import type {
   SystemMessage,
 } from 'src/types/message.js'
 import { createAbortController } from 'src/utils/abortController.js'
-import { count, uniq } from 'src/utils/array.js'
+import { count, uniq } from 'src/utils/data/array.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import {
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/utils/forkedAgent.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+} from 'src/coordinator/forkedAgent.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import {
   createMemorySavedMessage,
   createUserMessage,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'

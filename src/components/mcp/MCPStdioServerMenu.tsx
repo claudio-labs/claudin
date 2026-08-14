@@ -8,7 +8,7 @@ import { useMcpReconnect, useMcpToggleEnabled } from 'src/services/mcp/MCPConnec
 import { describeMcpConfigFilePath, filterMcpPromptsByServer } from 'src/services/mcp/utils.js';
 import { type AppState, useAppState } from 'src/state/AppState.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { capitalize } from 'src/utils/stringUtils.js';
+import { capitalize } from 'src/utils/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';

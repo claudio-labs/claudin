@@ -13,11 +13,11 @@ import { getFirstWordPrefix, getSimpleCommandPrefix } from 'src/tools/BashTool/b
 import { getDestructiveCommandWarning } from 'src/tools/BashTool/destructiveCommandWarning.js';
 import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
-import { getCompoundCommandPrefixesStatic } from 'src/utils/bash/prefix.js';
-import { createPromptRuleContent, generateGenericDescription, getBashPromptAllowDescriptions, isClassifierPermissionsEnabled } from 'src/utils/permissions/bashClassifier.js';
-import { extractRules } from 'src/utils/permissions/PermissionUpdate.js';
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js';
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
+import { getCompoundCommandPrefixesStatic } from 'src/services/bash/prefix.js';
+import { createPromptRuleContent, generateGenericDescription, getBashPromptAllowDescriptions, isClassifierPermissionsEnabled } from 'src/services/permissions/bashClassifier.js';
+import { extractRules } from 'src/services/permissions/PermissionUpdate.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { ShimmerChar } from 'src/components/Spinner/ShimmerChar.js';
 import { useShimmerAnimation } from 'src/components/Spinner/useShimmerAnimation.js';

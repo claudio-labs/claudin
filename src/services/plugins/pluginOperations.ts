@@ -16,36 +16,36 @@ import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { isBuiltinPluginId } from 'src/plugins/builtinPlugins.js'
 import type { LoadedPlugin, PluginManifest } from 'src/types/plugin.js'
 import { isENOENT, toError } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
 import {
   clearAllCaches,
   markPluginVersionOrphaned,
-} from 'src/utils/plugins/cacheUtils.js'
+} from 'src/services/plugins/cacheUtils.js'
 import {
   findReverseDependents,
   formatReverseDependentsSuffix,
-} from 'src/utils/plugins/dependencyResolver.js'
+} from 'src/services/plugins/dependencyResolver.js'
 import {
   loadInstalledPluginsFromDisk,
   loadInstalledPluginsV2,
   removePluginInstallation,
   updateInstallationPathOnDisk,
-} from 'src/utils/plugins/installedPluginsManager.js'
+} from 'src/services/plugins/installedPluginsManager.js'
 import {
   getMarketplace,
   getPluginById,
   loadKnownMarketplacesConfig,
-} from 'src/utils/plugins/marketplaceManager.js'
-import { deletePluginDataDir } from 'src/utils/plugins/pluginDirectories.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { deletePluginDataDir } from 'src/services/plugins/pluginDirectories.js'
 import {
   parsePluginIdentifier,
   scopeToSettingSource,
-} from 'src/utils/plugins/pluginIdentifier.js'
+} from 'src/services/plugins/pluginIdentifier.js'
 import {
   formatResolutionError,
   installResolvedPlugin,
-} from 'src/utils/plugins/pluginInstallationHelpers.js'
+} from 'src/services/plugins/pluginInstallationHelpers.js'
 import {
   cachePlugin,
   copyPluginToVersionedCache,
@@ -53,20 +53,20 @@ import {
   getVersionedZipCachePath,
   loadAllPlugins,
   loadPluginManifest,
-} from 'src/utils/plugins/pluginLoader.js'
-import { deletePluginOptions } from 'src/utils/plugins/pluginOptionsStorage.js'
-import { isPluginBlockedByPolicy } from 'src/utils/plugins/pluginPolicy.js'
-import { getPluginEditableScopes } from 'src/utils/plugins/pluginStartupCheck.js'
-import { calculatePluginVersion } from 'src/utils/plugins/pluginVersioning.js'
+} from 'src/services/plugins/pluginLoader.js'
+import { deletePluginOptions } from 'src/services/plugins/pluginOptionsStorage.js'
+import { isPluginBlockedByPolicy } from 'src/services/plugins/pluginPolicy.js'
+import { getPluginEditableScopes } from 'src/services/plugins/pluginStartupCheck.js'
+import { calculatePluginVersion } from 'src/services/plugins/pluginVersioning.js'
 import type {
   PluginMarketplaceEntry,
   PluginScope,
-} from 'src/utils/plugins/schemas.js'
+} from 'src/services/plugins/schemas.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/utils/settings/settings.js'
-import { plural } from 'src/utils/stringUtils.js'
+} from 'src/services/settings/settings.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 
 /** Valid installable scopes (excludes 'managed' which can only be installed from managed-settings.json) */
 export const VALID_INSTALLABLE_SCOPES = ['user', 'project', 'local'] as const
@@ -510,7 +510,7 @@ export async function uninstallPluginOp(
   }
   newEnabledPlugins[pluginId] = undefined
   updateSettingsForSource(settingSource, {
-    // The zod schema (src/utils/settings/types.ts) types enabledPlugins'
+    // The zod schema (src/services/settings/types.ts) types enabledPlugins'
     // values as `boolean | string[]` — it doesn't model the `undefined`
     // deletion sentinel this function's own doc comment above describes
     // (mergeWith-detected key removal), so this boundary needs a cast.

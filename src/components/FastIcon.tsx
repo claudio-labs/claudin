@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import chalk from 'chalk';
 import { LIGHTNING_BOLT } from 'src/constants/figures.js';
 import { Text } from 'src/ink.js';
-import { getGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig } from 'src/services/config/config.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
 import { color } from './design-system/color.js';
 type Props = {

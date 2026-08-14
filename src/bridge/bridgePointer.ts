@@ -3,12 +3,12 @@ import { dirname, join } from 'path'
 import { z } from 'zod/v4'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isENOENT } from 'src/utils/errors.js'
-import { getWorktreePathsPortable } from 'src/utils/getWorktreePathsPortable.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { getWorktreePathsPortable } from 'src/services/git/getWorktreePathsPortable.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   getProjectsDir,
   sanitizePath,
-} from 'src/utils/sessionStoragePortable.js'
+} from 'src/services/session/sessionStoragePortable.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 /**

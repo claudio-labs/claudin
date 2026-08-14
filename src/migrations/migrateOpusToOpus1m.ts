@@ -9,7 +9,7 @@ import {
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * Migrate users with 'opus' pinned in their settings to 'opus[1m]' when they

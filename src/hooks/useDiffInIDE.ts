@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto'
 import { basename } from 'path'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { logEvent } from 'src/services/analytics/index.js'
-import { readFileSync } from 'src/utils/fileRead.js'
-import { expandPath } from 'src/utils/path.js'
+import { readFileSync } from 'src/utils/fs/fileRead.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import type { PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
 import type {
   MCPServerConnection,
@@ -16,18 +16,18 @@ import {
   getEditsForPatch,
   getPatchForEdits,
 } from 'src/tools/FileEditTool/utils.js'
-import { getGlobalConfig } from 'src/utils/config.js'
-import { getPatchFromContents } from 'src/utils/diff.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getPatchFromContents } from 'src/services/git/diff.js'
 import { isENOENT } from 'src/utils/errors.js'
 import {
   callIdeRpc,
   getConnectedIdeClient,
   getConnectedIdeName,
   hasAccessToIDEExtensionDiffFeature,
-} from 'src/utils/ide.js'
-import { WindowsToWSLConverter } from 'src/utils/idePathConversion.js'
+} from 'src/services/ide/ide.js'
+import { WindowsToWSLConverter } from 'src/services/ide/idePathConversion.js'
 import { logError } from 'src/utils/log.js'
-import { getPlatform } from 'src/utils/platform.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
 
 type Props = {
   onChange(

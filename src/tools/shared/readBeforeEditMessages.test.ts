@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { describe, expect, test } from 'bun:test'
-import type { FileState } from 'src/utils/fileStateCache.js'
+import type { FileState } from 'src/utils/fs/fileStateCache.js'
 import {
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,

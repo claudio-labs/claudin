@@ -1,25 +1,25 @@
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import type { AppState } from 'src/state/AppState.js'
 import type { Message } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
-import { count } from 'src/utils/array.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { count } from 'src/utils/data/array.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
 import { toError } from 'src/utils/errors.js'
 import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/utils/forkedAgent.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+} from 'src/coordinator/forkedAgent.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
 import {
   createUserMessage,
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/utils/messages.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
-import { isTeammate } from 'src/utils/teammate.js'
+} from 'src/services/messages/messages.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
+import { isTeammate } from 'src/coordinator/teammate.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

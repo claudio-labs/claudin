@@ -9,7 +9,7 @@ import * as React from 'react';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Box, Text } from 'src/ink.js';
-import type { PluginMarketplaceEntry } from 'src/utils/plugins/schemas.js';
+import type { PluginMarketplaceEntry } from 'src/services/plugins/schemas.js';
 
 /**
  * Represents a plugin available for installation from a marketplace

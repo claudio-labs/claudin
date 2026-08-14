@@ -25,7 +25,7 @@
 import { useCallback, useEffect } from 'react';
 import { feature } from 'bun:bundle';
 import { sendNotification } from 'src/services/notifier.js';
-import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from 'src/utils/swarm/leaderPermissionBridge.js';
+import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from 'src/coordinator/swarm/leaderPermissionBridge.js';
 import { type ResumeEntrypoint } from 'src/commands.js';
 import { type ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 import type { PromptRequest, PromptResponse } from 'src/types/hooks.js';
@@ -34,25 +34,25 @@ import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/context.js';
 import useCanUseTool from 'src/hooks/useCanUseTool.js';
 import type { ToolPermissionContext, Tool } from 'src/Tool.js';
-import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { Message as MessageType } from 'src/types/message.js';
 import { mergeClients } from 'src/hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
-import { mergeAndFilterTools } from 'src/utils/toolPool.js';
+import { mergeAndFilterTools } from 'src/services/tools/toolPool.js';
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { type IDESelection } from 'src/hooks/useIdeSelection.js';
 import { assembleToolPool } from 'src/tools.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
-import type { ProcessUserInputContext } from 'src/utils/processUserInput/processUserInput.js';
+import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import type { LogOption } from 'src/types/logs.js';
-import { type FileHistoryState } from 'src/utils/fileHistory.js';
-import { type AttributionState } from 'src/utils/commitAttribution.js';
-import { type IDEExtensionInstallationStatus, type IdeType } from 'src/utils/ide.js';
+import { type FileHistoryState } from 'src/utils/fs/fileHistory.js';
+import { type AttributionState } from 'src/services/git/commitAttribution.js';
+import { type IDEExtensionInstallationStatus, type IdeType } from 'src/services/ide/ide.js';
 import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
 import { startBackgroundSession } from 'src/tasks/LocalMainSessionTask.js';
 import type { Theme } from 'src/utils/theme.js';
-import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/utils/attachments.js';
+import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/services/attachments/attachments.js';
 
 export interface UseToolUseContextDeps {
   // --- static-ish session inputs
@@ -79,10 +79,10 @@ export interface UseToolUseContextDeps {
   store: ReturnType<typeof import('src/state/AppState.js').useAppStateStore>;
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
-  readFileState: React.RefObject<ReturnType<typeof import('src/utils/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
+  readFileState: React.RefObject<ReturnType<typeof import('src/utils/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
   discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
-  contentReplacementStateRef: { current: ReturnType<typeof import('src/utils/toolResultStorage.js').provisionContentReplacementState> };
+  contentReplacementStateRef: { current: ReturnType<typeof import('src/services/tools/toolResultStorage.js').provisionContentReplacementState> };
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
   resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;

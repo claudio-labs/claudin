@@ -26,20 +26,20 @@ import {
   modelRejectsSamplingParams,
   parseUserSpecifiedModel,
 } from './model.js'
-import { getModelMaxOutputTokens, modelSupports1M } from 'src/utils/context.js'
+import { getModelMaxOutputTokens, modelSupports1M } from 'src/services/context/context.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
-} from 'src/utils/thinking.js'
+} from 'src/services/context/thinking.js'
 import {
   getAvailableEffortLevels,
   modelSupportsEffort,
   modelSupportsMaxEffort,
   modelSupportsXhighEffort,
 } from 'src/utils/effort.js'
-import { COST_TIER_5_25, MODEL_COSTS } from 'src/utils/modelCost.js'
+import { COST_TIER_5_25, MODEL_COSTS } from 'src/services/api/modelCost.js'
 import { CLAUDE_OPUS_5_CONFIG } from './configs.js'
 
 // Opus 5 shares Fable 5 / Sonnet 5's request-shaping profile (adaptive thinking

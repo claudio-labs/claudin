@@ -55,7 +55,7 @@ const PROMPT_SOURCE_GLOBS = [
   'scripts/build.ts',
   'src/constants/**/*.ts',
   'src/context.ts',
-  'src/utils/claudemd.ts',
+  'src/services/instructions/claudemd.ts',
   'src/tools/*/prompt.ts',
   'src/tools/AgentTool/forkSubagent.ts',
 ]
@@ -119,7 +119,7 @@ async function dumpFromSource(): Promise<void> {
   const { getAllBaseTools } = await import('../../src/tools.js')
   const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
     await import('../../src/constants/prompts.js')
-  const { enableConfigs } = await import('../../src/utils/config.js')
+  const { enableConfigs } = await import('../../src/services/config/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'
   const model = modelArg ?? 'claude-sonnet-4-6'

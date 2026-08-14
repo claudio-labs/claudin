@@ -5,11 +5,11 @@
 
 import os from 'os'
 
-import { readLatestVersion } from 'src/utils/latestVersionCache.js'
+import { readLatestVersion } from 'src/services/install/latestVersionCache.js'
 import { gt } from 'src/utils/semver.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from 'src/services/api/providerConfig.js'
-import { getLocalOpenAICompatibleProviderLabel } from 'src/utils/providerDiscovery.js'
+import { getLocalOpenAICompatibleProviderLabel } from 'src/services/api/providerDiscovery.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from 'src/utils/effort.js'
 import { effortLevelToSymbol } from './EffortIndicator.js'

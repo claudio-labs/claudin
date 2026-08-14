@@ -27,14 +27,14 @@ import { randomUUID } from 'crypto';
 import type {
   SandboxAskCallback,
   NetworkHostPattern,
-} from 'src/utils/sandbox/sandbox-adapter.js';
+} from 'src/services/sandbox/sandbox-adapter.js';
 import {
   isSwarmWorker,
   generateSandboxRequestId,
   sendSandboxPermissionRequestViaMailbox,
-} from 'src/utils/swarm/permissionSync.js';
+} from 'src/coordinator/swarm/permissionSync.js';
 import { registerSandboxPermissionCallback } from 'src/hooks/useSwarmPermissionPoller.js';
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/cli/structuredIO.js';
 import { useAppStateStore } from 'src/state/AppState.js';
 import type { SetAppState } from 'src/utils/messageQueueManager.js';

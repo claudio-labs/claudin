@@ -4,7 +4,7 @@ description: How the prompt-input PR/MR status pill resolves host → CLI, and t
 type: project
 ---
 
-The footer PR pill (`src/utils/ghPrStatus.ts` → `usePrStatus` → `buildPrPill`)
+The footer PR pill (`src/services/git/ghPrStatus.ts` → `usePrStatus` → `buildPrPill`)
 now works for GitHub (`gh`), GitLab (`glab`), and Gitea/Forgejo (`tea`), not just
 GitHub. Shipped on branch `feat/pr-status-gitlab-gitea` (off main, 2026-06-15).
 
@@ -50,7 +50,7 @@ wrapper. `PrStatus` gained a `label: 'PR' | 'MR'` field threaded through
   non-zero, fails open). A future `'bitbucket'` value slots into the dispatch.
 
 Config label relabeled "Show PR/MR status footer". Tests:
-`src/utils/ghPrStatus.test.ts` (pure-function units) + `ghPrStatus.integration.test.ts`
+`src/services/git/ghPrStatus.test.ts` (pure-function units) + `ghPrStatus.integration.test.ts`
 (boundary-mocked dispatch/detection; reuse the `setup({git,hosts,exec})` +
 `importFresh()` + `calls[]` harness). Live-verified 2026-06-16: pill `[ PR #81 ]`
 auto-detects on the then-origin Gitea host `git.viudescloud.uk` with `tea` logged in and

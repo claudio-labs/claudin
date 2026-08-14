@@ -2,7 +2,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { saveGlobalConfig } from 'src/utils/config.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
 import {
   CODE_REVIEW_PLUGIN_WORKFLOW_CONTENT,
   PR_BODY,
@@ -10,7 +10,7 @@ import {
   WORKFLOW_CONTENT,
 } from 'src/constants/github-app.js'
 import { openBrowser } from 'src/utils/browser.js'
-import { execFileNoThrow } from 'src/utils/execFileNoThrow.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { logError } from 'src/utils/log.js'
 import type { Workflow } from './types.js'
 

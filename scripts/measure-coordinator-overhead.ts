@@ -55,7 +55,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 import { getCoordinatorSystemPrompt } from '../src/coordinator/coordinatorMode.js'
 import { ASYNC_AGENT_ALLOWED_TOOLS } from '../src/constants/tools.js'
 import { AGENT_TOOL_NAME } from '../src/tools/AgentTool/constants.js'

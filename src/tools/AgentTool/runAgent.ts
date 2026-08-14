@@ -39,21 +39,21 @@ import type {
   ToolUseSummaryMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
 import { AbortError } from 'src/utils/errors.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   createSubagentContext,
-} from 'src/utils/forkedAgent.js'
-import { registerFrontmatterHooks } from 'src/utils/hooks/registerFrontmatterHooks.js'
-import { clearSessionHooks } from 'src/utils/hooks/sessionHooks.js'
-import { executeSubagentStartHooks } from 'src/utils/hooks.js'
-import { createUserMessage } from 'src/utils/messages.js'
+} from 'src/coordinator/forkedAgent.js'
+import { registerFrontmatterHooks } from 'src/services/lifecycleHooks/registerFrontmatterHooks.js'
+import { clearSessionHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
+import { executeSubagentStartHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import { getAgentModel } from 'src/utils/model/agent.js'
 import {
   clearAgentPlanSlug,
@@ -69,11 +69,11 @@ import {
   recordSidechainTranscript,
   setAgentTranscriptSubdir,
   writeAgentMetadata,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import {
   isRestrictedToPluginOnly,
   isSourceAdminTrusted,
-} from 'src/utils/settings/pluginOnlyPolicy.js'
+} from 'src/services/settings/pluginOnlyPolicy.js'
 import {
   asSystemPrompt,
   type SystemPrompt,
@@ -82,9 +82,9 @@ import {
   isPerfettoTracingEnabled,
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
-} from 'src/utils/telemetry/perfettoTracing.js'
-import type { ContentReplacementState } from 'src/utils/toolResultStorage.js'
-import { createAgentId } from 'src/utils/uuid.js'
+} from 'src/services/telemetry/perfettoTracing.js'
+import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
+import { createAgentId } from 'src/utils/data/uuid.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
@@ -673,7 +673,7 @@ export async function* runAgent({
 
     // Load all skill contents concurrently and add to initial messages
     const { formatSkillLoadingMetadata } = await import(
-      'src/utils/processUserInput/processSlashCommand.js'
+      'src/services/input/processSlashCommand.js'
     )
     const loaded = await Promise.all(
       validSkills.map(async ({ skillName, skill }) => ({

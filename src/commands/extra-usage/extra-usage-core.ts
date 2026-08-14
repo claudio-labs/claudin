@@ -5,10 +5,10 @@ import {
 } from 'src/services/api/adminRequests.js'
 import { invalidateOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js'
 import { type ExtraUsage, fetchUtilization } from 'src/services/api/usage.js'
-import { getSubscriptionType } from 'src/utils/auth.js'
-import { hasClaudeAiBillingAccess } from 'src/utils/billing.js'
+import { getSubscriptionType } from 'src/services/auth/auth.js'
+import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js'
 import { openBrowser } from 'src/utils/browser.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logError } from 'src/utils/log.js'
 
 type ExtraUsageResult =

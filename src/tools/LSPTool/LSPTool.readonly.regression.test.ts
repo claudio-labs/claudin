@@ -67,11 +67,23 @@ mock.module('src/services/lsp/manager.js', () => ({
   _resetLspManagerForTesting: () => {},
 }))
 
-mock.module('src/utils/execFileNoThrow.js', () => ({
+// Keeps this file from shelling out. Snapshot the real module BEFORE stubbing
+// and put it back in afterAll: mock.module is process-global and mock.restore()
+// does not revert it, so an unrestored stub here answers every other file's
+// exec for the rest of the run — it was returning `{code: 1}` with no `error`
+// to src/utils/proc/execFileNoThrow.test.ts, whose assertions are about the
+// real validation messages.
+const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+
+mock.module('src/utils/proc/execFileNoThrow.js', () => ({
   execFileNoThrow: async () => ({ code: 1, stdout: '', stderr: '' }),
   execFileNoThrowWithCwd: async () => ({ code: 1, stdout: '', stderr: '' }),
   execSyncWithDefaults_DEPRECATED: () => ({ code: 0, stdout: '', stderr: '' }),
 }))
+
+afterAll(() => {
+  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+})
 
 const { LSPTool } = await import('./LSPTool.js')
 

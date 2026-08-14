@@ -13,17 +13,17 @@ import type { VimMode, PromptInputMode } from 'src/types/textInputTypes.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import { isVimModeEnabled } from './utils.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/utils/permissions/PermissionMode.js';
+import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/services/permissions/PermissionMode.js';
 import { BackgroundTaskStatus } from 'src/components/tasks/BackgroundTaskStatus.js';
 import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/components/tasks/footerTaskGeometry.js';
 import { isPanelAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask } from 'src/tasks/types.js';
-import { count } from 'src/utils/array.js';
+import { count } from 'src/utils/data/array.js';
 import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
 import { resolveFooterTreeRow } from 'src/components/tasks/footerSelection.js';
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { TeamStatus } from 'src/components/teams/TeamStatus.js';
-import { isInProcessEnabled } from 'src/utils/swarm/backends/registry.js';
+import { isInProcessEnabled } from 'src/coordinator/swarm/backends/registry.js';
 import { type AppState, useAppState, useAppStateStore } from 'src/state/AppState.js';
 
 /** One entry of AppState.teamContext.teammates. */
@@ -37,15 +37,15 @@ import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShort
 import { Byline } from 'src/components/design-system/Byline.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useTasksV2 } from 'src/hooks/useTasksV2.js';
-import { formatDuration } from 'src/utils/format.js';
+import { formatDuration } from 'src/utils/text/format.js';
 import { VoiceWarmupHint } from './VoiceIndicator.js';
 import { useVoiceEnabled } from 'src/hooks/useVoiceEnabled.js';
 import { type VoiceState, useVoiceState } from 'src/context/voice.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { isXtermJs } from 'src/ink/terminal.js';
 import { useHasSelection, useSelection } from 'src/ink/hooks/use-selection.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
-import { getPlatform } from 'src/utils/platform.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
 import { PrBadge } from 'src/components/PrBadge.js';
 
 // Dead code elimination: conditional import for proactive mode

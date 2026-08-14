@@ -4,7 +4,7 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useTheme } from 'src/ink.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import type { buildMessageLookups } from 'src/utils/messages.js';
+import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRejectedMessage.js';
 type Props = {
   input: {

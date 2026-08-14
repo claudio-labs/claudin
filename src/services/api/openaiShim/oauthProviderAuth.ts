@@ -21,14 +21,14 @@ import { logForDebugging } from 'src/utils/debug.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
-} from 'src/utils/kimiCredentials.js'
-import { getKimiDeviceHeaders } from 'src/utils/kimiDeviceHeaders.js'
-import { getKimiUserAgent } from 'src/utils/kimiUserAgent.js'
+} from 'src/services/api/kimiCredentials.js'
+import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
+import { getKimiUserAgent } from 'src/services/api/kimiUserAgent.js'
 import {
   readXaiCredentialsAsync,
   refreshXaiAccessTokenIfNeeded,
-} from 'src/utils/xaiCredentials.js'
-import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
+} from 'src/services/api/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
 import { isKimiCodeBaseUrl, isXaiOAuthBaseUrl } from 'src/services/api/providerConfig.js'
 

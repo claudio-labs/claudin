@@ -18,7 +18,7 @@
  src/services/api/codexShim.ts  |  2 ++
  src/services/api/openaiShim.ts |  3 +++
  src/services/api/withRetry.ts  | 19 +++++++++++++++++--
- src/utils/userAgent.ts         | 11 +++++++++++
+ src/services/api/userAgent.ts         | 11 +++++++++++
  5 files changed, 44 insertions(+), 6 deletions(-)
 ```
 

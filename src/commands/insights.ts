@@ -19,18 +19,18 @@ import type { LogOption } from 'src/types/logs.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { extractTextContent } from 'src/utils/messages.js'
+import { extractTextContent } from 'src/services/messages/messages.js'
 import { getDefaultOpusModel } from 'src/utils/model/model.js'
 import {
   getProjectsDir,
   getSessionFilesWithMtime,
   getSessionIdFromLog,
   loadAllLogsFromSessionFile,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { countCharInString } from 'src/utils/stringUtils.js'
+import { countCharInString } from 'src/utils/text/stringUtils.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { escapeXmlAttr as escapeHtml } from 'src/utils/xml.js'
+import { escapeXmlAttr as escapeHtml } from 'src/utils/data/xml.js'
 
 // Model for facet extraction and summarization (Opus - best quality)
 function getAnalysisModel(): string {

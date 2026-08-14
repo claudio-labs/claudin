@@ -4,32 +4,32 @@ import { logEvent } from 'src/services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { formatAgentId } from 'src/utils/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { formatAgentId } from 'src/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   getDefaultMainLoopModel,
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getResolvedTeammateMode } from 'src/utils/swarm/backends/registry.js'
-import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js'
-import type { TeamFile } from 'src/utils/swarm/teamHelpers.js'
+import { getResolvedTeammateMode } from 'src/coordinator/swarm/backends/registry.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
+import type { TeamFile } from 'src/coordinator/swarm/teamHelpers.js'
 import {
   getTeamFilePath,
   readTeamFile,
   registerTeamForSessionCleanup,
   sanitizeName,
   writeTeamFileAsync,
-} from 'src/utils/swarm/teamHelpers.js'
-import { assignTeammateColor } from 'src/utils/swarm/teammateLayoutManager.js'
+} from 'src/coordinator/swarm/teamHelpers.js'
+import { assignTeammateColor } from 'src/coordinator/swarm/teammateLayoutManager.js'
 import {
   ensureTasksDir,
   resetTaskList,
   setLeaderTeamName,
-} from 'src/utils/tasks.js'
-import { generateWordSlug } from 'src/utils/words.js'
+} from 'src/tasks/tasks.js'
+import { generateWordSlug } from 'src/utils/text/words.js'
 import { TEAM_CREATE_TOOL_NAME } from './constants.js'
 import { getPrompt } from './prompt.js'
 import { renderToolUseMessage } from './UI.js'

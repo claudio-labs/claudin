@@ -3,7 +3,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/grow
 import {
   getClaudeAIOAuthTokens,
   isAnthropicAuthEnabled,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 
 /**
  * Kill-switch check for voice mode. Returns true unless the

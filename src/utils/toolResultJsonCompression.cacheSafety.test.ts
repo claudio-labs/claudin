@@ -15,7 +15,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 
 const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
 const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
-const realConfig = { ...(await import('./config.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
 
 // Guard 2 of maybeSummarizeToolResult reads
 // getGlobalConfig().toolResultSummarizerEnabled (default true). The test-config
@@ -32,8 +32,8 @@ const forceSummarizerOn = () => ({
     toolResultSummarizerEnabled: true,
   }),
 })
-mock.module('./config.js', forceSummarizerOn)
-mock.module('src/utils/config.js', forceSummarizerOn)
+mock.module('src/services/config/config.js', forceSummarizerOn)
+mock.module('src/services/config/config.js', forceSummarizerOn)
 
 mock.module('src/services/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
@@ -56,14 +56,14 @@ mock.module('src/services/analytics/index.js', () => ({
 }))
 
 const { maybeSummarizeToolResult, isSummarizedContent, TOOL_RESULT_SUMMARY_TAG } =
-  await import('./toolResultSummarizer.js')
-const { injectEnvelopeAttr } = await import('./toolResultStorage.js')
+  await import('src/services/tools/toolResultSummarizer.js')
+const { injectEnvelopeAttr } = await import('src/services/tools/toolResultStorage.js')
 
 afterAll(() => {
   mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('./config.js', () => realConfig)
-  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/services/config/config.js', () => realConfig)
 })
 
 beforeEach(() => {

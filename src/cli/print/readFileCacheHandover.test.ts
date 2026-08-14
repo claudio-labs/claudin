@@ -3,7 +3,7 @@ import {
   createFileStateCacheWithSizeLimit,
   mergeFileStateCaches,
   type FileState,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   _resetAllClippedIdsForTesting,
   isPinRegistered,

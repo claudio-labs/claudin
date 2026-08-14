@@ -20,9 +20,9 @@ import { loadPolicyLimits } from 'src/services/policyLimits/index.js';
 import { loadRemoteManagedSettings } from 'src/services/remoteManagedSettings/index.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { clearPluginCache } from 'src/utils/plugins/pluginLoader.js';
-import { ensureKeychainPrefetchCompleted } from 'src/utils/secureStorage/keychainPrefetch.js';
-import { ensureMdmSettingsLoaded } from 'src/utils/settings/mdm/settings.js';
+import { clearPluginCache } from 'src/services/plugins/pluginLoader.js';
+import { ensureKeychainPrefetchCompleted } from 'src/services/secureStorage/keychainPrefetch.js';
+import { ensureMdmSettingsLoaded } from 'src/services/settings/mdm/settings.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 
 import { runMigrations } from './lifecycle.js';
@@ -75,7 +75,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // (one-shot, idempotent), then rescue CLAUDE_CODE_USE_* envs into
     // /provider when no active profile is set.
     try {
-      const { runClaudinStartupMigrations } = require('src/utils/claudinStartupMigrations.js') as typeof import('src/utils/claudinStartupMigrations.js');
+      const { runClaudinStartupMigrations } = require('src/services/config/claudinStartupMigrations.js') as typeof import('src/services/config/claudinStartupMigrations.js');
       runClaudinStartupMigrations();
     } catch (e) {
       // Migrations are best-effort; never block startup on them.

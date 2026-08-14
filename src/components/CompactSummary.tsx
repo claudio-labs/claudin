@@ -4,7 +4,7 @@ import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { Box, Text } from 'src/ink.js';
 import type { Screen } from 'src/screens/REPL.js';
 import type { NormalizedUserMessage } from 'src/types/message.js';
-import { getUserMessageText } from 'src/utils/messages.js';
+import { getUserMessageText } from 'src/services/messages/messages.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { MessageResponse } from './MessageResponse.js';
 type Props = {

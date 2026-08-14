@@ -11,9 +11,9 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, getFastModeModel, getFastModeRuntimeState, getFastModeUnavailableReason, isFastModeEnabled, isFastModeSupportedByModel, prefetchFastModeStatus } from 'src/utils/fastMode.js';
-import { formatDuration } from 'src/utils/format.js';
-import { formatModelPricing, getOpus46CostTier } from 'src/utils/modelCost.js';
-import { updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { formatDuration } from 'src/utils/text/format.js';
+import { formatModelPricing, getOpus46CostTier } from 'src/services/api/modelCost.js';
+import { updateSettingsForSource } from 'src/services/settings/settings.js';
 function applyFastMode(enable: boolean, setAppState: (f: (prev: AppState) => AppState) => void): void {
   clearFastModeCooldown();
   updateSettingsForSource('userSettings', {

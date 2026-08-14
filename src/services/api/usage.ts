@@ -4,9 +4,9 @@ import {
   getClaudeAIOAuthTokens,
   hasProfileScope,
   isClaudeAISubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { getAuthHeaders } from 'src/utils/http.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { isOAuthTokenExpired } from 'src/services/oauth/client.js'
 
 export type RateLimit = {

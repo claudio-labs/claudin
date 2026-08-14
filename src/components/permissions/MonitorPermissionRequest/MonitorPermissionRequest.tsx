@@ -2,7 +2,7 @@ import React from 'react'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { Box, Text } from 'src/ink.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
-import { shouldShowAlwaysAllowOptions } from 'src/utils/permissions/permissionsLoader.js'
+import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js'
 import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js'
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js'
 import {

@@ -24,10 +24,10 @@ import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import type { Message as MessageType } from 'src/types/message.js'
 
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
-import { deserializeMessages } from 'src/utils/conversationRecovery.js'
-import { createSystemMessage } from 'src/utils/messages.js'
-import { processSessionStartHooks } from 'src/utils/sessionStart.js'
-import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/utils/hooks.js'
+import { deserializeMessages } from 'src/services/session/conversationRecovery.js'
+import { createSystemMessage } from 'src/services/messages/messages.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/services/lifecycleHooks/hooks.js'
 import { copyPlanForFork, copyPlanForResume } from 'src/utils/plans.js'
 import {
   computeStandaloneAgentContext,
@@ -35,18 +35,18 @@ import {
   restoreAgentFromSession,
   restoreSessionStateFromLog,
   restoreWorktreeForResume,
-} from 'src/utils/sessionRestore.js'
-import { updateSessionName } from 'src/utils/concurrentSessions.js'
-import { copyFileHistoryForResume } from 'src/utils/fileHistory.js'
+} from 'src/services/session/sessionRestore.js'
+import { updateSessionName } from 'src/services/session/concurrentSessions.js'
+import { copyFileHistoryForResume } from 'src/utils/fs/fileHistory.js'
 import {
   adoptResumedSessionFile,
   clearSessionMetadata,
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveWorktreeState,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { restoreRemoteAgentTasks } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { getCurrentWorktreeSession } from 'src/utils/worktree.js'
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import {
   getOriginalCwd,
   setCostStateForRestore,
@@ -61,7 +61,7 @@ import {
   applyToolResultReplacementsToMessages,
   reconstructContentReplacementState,
   type ContentReplacementState,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 
 export type ContentReplacementStateRef = {
   current: ContentReplacementState | undefined
@@ -307,7 +307,7 @@ export async function resumeSession(
       /* eslint-disable @typescript-eslint/no-require-imports */
       const {
         saveMode,
-      } = require('src/utils/sessionStorage.js')
+      } = require('src/services/session/sessionStorage.js')
       const {
         isCoordinatorMode,
       } = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js')

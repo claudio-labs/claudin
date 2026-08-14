@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { Box, Link, Text } from 'src/ink.js';
-import { updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 

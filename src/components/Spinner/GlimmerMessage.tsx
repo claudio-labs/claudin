@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { stringWidth } from 'src/ink/stringWidth.js';
 import { Text, useTheme } from 'src/ink.js';
-import { getGraphemeSegmenter } from 'src/utils/intl.js';
+import { getGraphemeSegmenter } from 'src/utils/text/intl.js';
 import { getTheme, type Theme } from 'src/utils/theme.js';
 import type { SpinnerMode } from './types.js';
 import { interpolateColor, parseRGB, resolveStallColor, toRGBColor } from './utils.js';

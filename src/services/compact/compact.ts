@@ -40,26 +40,26 @@ import {
   getAgentListingDeltaAttachment,
   getDeferredToolsDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
-} from 'src/utils/attachments.js'
-import { getMemoryPath } from 'src/utils/config.js'
-import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/utils/context.js'
+} from 'src/services/attachments/attachments.js'
+import { getMemoryPath } from 'src/services/config/config.js'
+import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/services/context/context.js'
 import {
   analyzeContext,
   tokenStatsToStatsigMetrics,
-} from 'src/utils/contextAnalysis.js'
+} from 'src/services/context/contextAnalysis.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { hasExactErrorMessage } from 'src/utils/errors.js'
-import { cacheToObject } from 'src/utils/fileStateCache.js'
+import { cacheToObject } from 'src/utils/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   runForkedAgent,
-} from 'src/utils/forkedAgent.js'
+} from 'src/coordinator/forkedAgent.js'
 import {
   executePostCompactHooks,
   executePreCompactHooks,
-} from 'src/utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import { logError } from 'src/utils/log.js'
-import { MEMORY_TYPE_VALUES } from 'src/utils/memory/types.js'
+import { MEMORY_TYPE_VALUES } from 'src/memdir/types.js'
 import {
   createCompactBoundaryMessage,
   createUserMessage,
@@ -68,33 +68,33 @@ import {
   getMessagesAfterCompactBoundary,
   isCompactBoundaryMessage,
   normalizeMessagesForAPI,
-} from 'src/utils/messages.js'
-import { expandPath } from 'src/utils/path.js'
+} from 'src/services/messages/messages.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js'
-import { getProjectInstructionFilePaths } from 'src/utils/projectInstructions.js'
+import { getProjectInstructionFilePaths } from 'src/services/instructions/projectInstructions.js'
 import {
   isSessionActivityTrackingActive,
   sendSessionActivitySignal,
-} from 'src/utils/sessionActivity.js'
-import { processSessionStartHooks } from 'src/utils/sessionStart.js'
+} from 'src/services/session/sessionActivity.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   getTranscriptPath,
   reAppendSessionMetadata,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { getTaskOutputPath } from 'src/utils/task/diskOutput.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 import {
   getTokenUsage,
   tokenCountFromLastAPIResponse,
   tokenCountWithEstimation,
-} from 'src/utils/tokens.js'
+} from 'src/services/context/tokens.js'
 import {
   extractDiscoveredToolNames,
   isToolSearchEnabled,
-} from 'src/utils/toolSearch.js'
+} from 'src/services/tools/toolSearch.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

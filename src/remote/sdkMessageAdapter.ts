@@ -16,8 +16,8 @@ import type {
 } from 'src/types/message.js'
 import type { UUID } from 'crypto'
 import { logForDebugging } from 'src/utils/debug.js'
-import { fromSDKCompactMetadata } from 'src/utils/messages/mappers.js'
-import { createUserMessage } from 'src/utils/messages.js'
+import { fromSDKCompactMetadata } from 'src/services/messages/mappers.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 
 /**
  * Converts SDKMessage from CCR to REPL Message types.

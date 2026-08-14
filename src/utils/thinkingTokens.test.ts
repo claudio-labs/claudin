@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { extractThinkingTokens } from './tokens.js'
+import { extractThinkingTokens } from 'src/services/context/tokens.js'
 
 describe('extractThinkingTokens', () => {
   it('extracts thinking and output separately', () => {

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { Box, Text } from 'src/ink.js'
-import type { GitLogRow } from 'src/utils/gitLog.js'
+import type { GitLogRow } from 'src/services/git/gitLog.js'
 import { entityColor } from './entityColor.js'
 
 /** Split a decoration name into a display label + whether it's a tag. */

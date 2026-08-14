@@ -74,11 +74,11 @@ const ALLOWED_TOOLS = 'Read,Glob'
 
 /** Real files, all 20-22 KB and > 250 lines: both pivot triggers fire in A. */
 const FIXTURES = [
-  'src/utils/modelCost.ts',
+  'src/services/api/modelCost.ts',
   'src/tools/BashTool/sedValidation.ts',
-  'src/utils/hooks/events.ts',
+  'src/services/lifecycleHooks/events.ts',
   'src/services/mcp/doctor.ts',
-  'src/utils/sessionRestore.ts',
+  'src/services/session/sessionRestore.ts',
 ]
 
 /**

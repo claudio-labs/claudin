@@ -2,13 +2,13 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 // Spread into plain objects so afterAll restores the original bindings rather
 // than the live ESM namespace (which mock.module mutates after the fact).
-const realConfig = { ...(await import('src/utils/config.js')) }
-const realProviderProfiles = { ...(await import('src/utils/providerProfiles.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
+const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 const realActiveProvider = {
   ...(await import('src/services/api/activeProvider.js')),
 }
 const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
-const realSettings = { ...(await import('src/utils/settings/settings.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
 const realAllowlist = { ...(await import('./modelAllowlist.js')) }
 
 type MockProjectConfig = {
@@ -24,11 +24,11 @@ let profileModel: string | undefined
 let settingsModel: string | undefined
 
 function installMocks(): void {
-  mock.module('src/utils/config.js', () => ({
+  mock.module('src/services/config/config.js', () => ({
     ...realConfig,
     getCurrentProjectConfig: () => projectConfig,
   }))
-  mock.module('src/utils/providerProfiles.js', () => ({
+  mock.module('src/services/api/providerProfiles.js', () => ({
     ...realProviderProfiles,
     // The leak guard reads only `.id` off the effective profile.
     getActiveProviderProfile: () =>
@@ -43,7 +43,7 @@ function installMocks(): void {
     ...realBootstrapState,
     getMainLoopModelOverride: () => undefined,
   }))
-  mock.module('src/utils/settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({ model: settingsModel }),
   }))
@@ -66,11 +66,11 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  mock.module('src/utils/config.js', () => realConfig)
-  mock.module('src/utils/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
   mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
   mock.module('src/bootstrap/state.js', () => realBootstrapState)
-  mock.module('src/utils/settings/settings.js', () => realSettings)
+  mock.module('src/services/settings/settings.js', () => realSettings)
   mock.module('./modelAllowlist.js', () => realAllowlist)
 })
 

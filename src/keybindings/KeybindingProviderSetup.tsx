@@ -14,9 +14,9 @@ import type { InputEvent } from 'src/ink/events/input-event.js';
 // other handlers process them - this is required for chord sequence support
 // eslint-disable-next-line custom-rules/prefer-use-keybindings
 import { type Key, useInput } from 'src/ink.js';
-import { count } from 'src/utils/array.js';
+import { count } from 'src/utils/data/array.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { KeybindingProvider } from './KeybindingContext.js';
 import { initializeKeybindingWatcher, type KeybindingsLoadResult, loadKeybindingsSyncWithWarnings, subscribeToKeybindingChanges } from './loadUserBindings.js';
 import { resolveKeyWithChordState } from './resolver.js';

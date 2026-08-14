@@ -29,25 +29,25 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
-} from 'src/utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { stripDisplayTagsAllowEmpty } from 'src/utils/displayTags.js'
+import { stripDisplayTagsAllowEmpty } from 'src/utils/text/displayTags.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { getBranch, getRemoteUrl } from 'src/utils/git.js'
-import { toSDKMessages } from 'src/utils/messages/mappers.js'
+import { getBranch, getRemoteUrl } from 'src/services/git/git.js'
+import { toSDKMessages } from 'src/services/messages/mappers.js'
 import {
   getContentText,
   getMessagesAfterCompactBoundary,
   isSyntheticMessage,
-} from 'src/utils/messages.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
-import { getCurrentSessionTitle } from 'src/utils/sessionStorage.js'
+} from 'src/services/messages/messages.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js'
 import {
   extractConversationText,
   generateSessionTitle,
-} from 'src/utils/sessionTitle.js'
-import { generateShortWordSlug } from 'src/utils/words.js'
+} from 'src/services/session/sessionTitle.js'
+import { generateShortWordSlug } from 'src/utils/text/words.js'
 import {
   getBridgeAccessToken,
   getBridgeBaseUrl,

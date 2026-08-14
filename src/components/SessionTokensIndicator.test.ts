@@ -65,10 +65,13 @@ mock.module('src/services/api/cacheMetrics.js', () => ({
   resolveCacheProvider: () => cacheProviderResolution,
 }));
 
-mock.module('src/utils/model/providers.js', () => ({
-  getAPIProvider: () => 'anthropic',
-  isGithubNativeAnthropicMode: () => false,
-}));
+// This file used to pin providers.js to getAPIProvider: () => 'anthropic' here,
+// at module scope. It never needed it — resolveCacheProvider above is the only
+// seam these tests read — and it is the earliest registration for that
+// specifier in the whole run, which under Bun means it OWNED it: five other
+// files (withRetry, apiPreconnect, officialRegistry, domainCheck,
+// conversationRecovery) got 'anthropic', a value that is not even in the
+// APIProvider union, no matter what they mocked afterwards.
 
 mock.module('src/ink.js', () => ({
   Box: () => null,

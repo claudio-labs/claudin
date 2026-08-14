@@ -18,32 +18,32 @@ import {
 } from 'src/skills/loadSkillsDir.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { countLinesChanged, getPatchForDisplay } from 'src/utils/diff.js'
+import { countLinesChanged, getPatchForDisplay } from 'src/services/git/diff.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/file.js'
+import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
-import { readFileSyncWithMetadata } from 'src/utils/fileRead.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
   fetchSingleFileGitDiff,
   type ToolUseDiff,
-} from 'src/utils/gitDiff.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+} from 'src/services/git/gitDiff.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/path.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import {
   checkWritePermissionForTool,
   matchingRuleForInput,
-} from 'src/utils/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/utils/permissions/shellRuleMatching.js'
+} from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 import {
   needsWholeFileRead,

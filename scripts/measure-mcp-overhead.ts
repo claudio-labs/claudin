@@ -46,7 +46,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 
@@ -170,7 +170,7 @@ function renderMcpInstructionsBlock(
 
 /**
  * Mirror the wire shape of `mcp_instructions_delta` on first announcement
- * (see `src/utils/messages.ts` rendering). The attachment carries
+ * (see `src/services/messages/messages.ts` rendering). The attachment carries
  * `addedNames` + `addedBlocks`; on initial turn `addedBlocks` is the same
  * content as the system-prompt block, but it lives in the conversation
  * tail instead of the cacheable system prompt.

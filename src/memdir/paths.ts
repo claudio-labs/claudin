@@ -12,14 +12,14 @@ import {
   isEnvDefinedFalsy,
   isEnvTruthy,
 } from 'src/utils/envUtils.js'
-import { findCanonicalGitRoot } from 'src/utils/git.js'
+import { findCanonicalGitRoot } from 'src/services/git/git.js'
 import { logError } from 'src/utils/log.js'
-import { sanitizePath } from 'src/utils/path.js'
+import { sanitizePath } from 'src/utils/fs/path.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/utils/settings/settings.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+} from 'src/services/settings/settings.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { migrateGlobalMemoryIfNeeded } from './memoryMigration.js'
 
 /**

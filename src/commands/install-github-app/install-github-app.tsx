@@ -7,11 +7,11 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKey
 import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import { Box } from 'src/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { getAnthropicApiKey, isAnthropicAuthEnabled } from 'src/utils/auth.js';
+import { getAnthropicApiKey, isAnthropicAuthEnabled } from 'src/services/auth/auth.js';
 import { openBrowser } from 'src/utils/browser.js';
-import { execFileNoThrow } from 'src/utils/execFileNoThrow.js';
-import { getGithubRepo } from 'src/utils/git.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
+import { getGithubRepo } from 'src/services/git/git.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { ApiKeyStep } from './ApiKeyStep.js';
 import { CheckExistingSecretStep } from './CheckExistingSecretStep.js';
 import { CheckGitHubStep } from './CheckGitHubStep.js';

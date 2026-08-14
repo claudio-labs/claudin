@@ -13,16 +13,16 @@ import { Box, Text } from 'src/ink.js';
 import { enablePluginOp } from 'src/services/plugins/pluginOperations.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { isENOENT, toError } from 'src/utils/errors.js';
-import { execFileNoThrow } from 'src/utils/execFileNoThrow.js';
-import { pathExists } from 'src/utils/file.js';
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
+import { pathExists } from 'src/utils/fs/file.js';
 import { logError } from 'src/utils/log.js';
-import { getPlatform } from 'src/utils/platform.js';
-import { clearAllCaches } from 'src/utils/plugins/cacheUtils.js';
-import { isPluginInstalled } from 'src/utils/plugins/installedPluginsManager.js';
-import { addMarketplaceSource, clearMarketplacesCache, loadKnownMarketplacesConfig, refreshMarketplace } from 'src/utils/plugins/marketplaceManager.js';
-import { OFFICIAL_MARKETPLACE_NAME } from 'src/utils/plugins/officialMarketplace.js';
-import { loadAllPlugins } from 'src/utils/plugins/pluginLoader.js';
-import { installSelectedPlugins } from 'src/utils/plugins/pluginStartupCheck.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
+import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js';
+import { addMarketplaceSource, clearMarketplacesCache, loadKnownMarketplacesConfig, refreshMarketplace } from 'src/services/plugins/marketplaceManager.js';
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js';
+import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
+import { installSelectedPlugins } from 'src/services/plugins/pluginStartupCheck.js';
 
 const OFFICIAL_MARKETPLACE_REPO = 'anthropics/claude-plugins-official';
 function getMarketplaceName(): string {

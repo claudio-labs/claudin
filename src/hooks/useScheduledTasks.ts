@@ -7,12 +7,12 @@ import {
 } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import type { Message } from 'src/types/message.js'
-import { getCronJitterConfig } from 'src/utils/cronJitterConfig.js'
-import { createCronScheduler } from 'src/utils/cronScheduler.js'
-import { removeCronTasks } from 'src/utils/cronTasks.js'
+import { getCronJitterConfig } from 'src/tasks/cronJitterConfig.js'
+import { createCronScheduler } from 'src/tasks/cronScheduler.js'
+import { removeCronTasks } from 'src/tasks/cronTasks.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
-import { createScheduledTaskFireMessage } from 'src/utils/messages.js'
+import { createScheduledTaskFireMessage } from 'src/services/messages/messages.js'
 
 type Props = {
   isLoading: boolean

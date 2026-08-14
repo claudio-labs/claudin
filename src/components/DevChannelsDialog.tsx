@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ChannelEntry } from 'src/bootstrap/state.js';
 import { Box, Text } from 'src/ink.js';
-import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {

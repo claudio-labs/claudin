@@ -17,7 +17,7 @@ import { runResumeBranch } from './resume.js';
 import type { Root } from 'src/ink.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 import type { StatsStore } from 'src/context/stats.js';
-import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from 'src/main/action/parseOptions.js';
 

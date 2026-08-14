@@ -11,12 +11,12 @@ import { CLAUDE_AI_INFERENCE_SCOPE } from 'src/constants/oauth.js'
 import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
-import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 
 import {
   resetSyncCache as resetLeafCache,

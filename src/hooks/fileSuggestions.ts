@@ -4,7 +4,7 @@ import * as path from 'path'
 import {
   CLAUDE_CONFIG_DIRECTORIES,
   loadMarkdownFilesForSubdir,
-} from 'src/utils/markdownConfigLoader.js'
+} from 'src/services/instructions/markdownConfigLoader.js'
 import type { SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js'
 import {
   CHUNK_MS,
@@ -13,21 +13,21 @@ import {
 } from 'src/native-ts/file-index/index.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
-import { getGlobalConfig } from 'src/utils/config.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
-import { findGitRoot, gitExe } from 'src/utils/git.js'
+import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { findGitRoot, gitExe } from 'src/services/git/git.js'
 import {
   createBaseHookInput,
   executeFileSuggestionCommand,
-} from 'src/utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/path.js'
-import { ripGrep } from 'src/utils/ripgrep.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { expandPath } from 'src/utils/fs/path.js'
+import { ripGrep } from 'src/utils/fs/ripgrep.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { createSignal } from 'src/utils/signal.js'
 
 // Lazily constructed singleton

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
 import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js';
 import { Box, Text } from 'src/ink.js';
-import { extractTag } from 'src/utils/messages.js';
+import { extractTag } from 'src/services/messages/messages.js';
 import { Markdown } from 'src/components/Markdown.js';
 import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';

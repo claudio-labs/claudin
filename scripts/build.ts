@@ -92,14 +92,14 @@ function checkAutoModeClassifierPrompts(): void {
   const promptDir = join(
     __dirname,
     '..',
-    'src/utils/permissions/yolo-classifier-prompts',
+    'src/services/permissions/yolo-classifier-prompts',
   )
   const required = ['auto_mode_system_prompt.txt', 'permissions_external.txt']
   const missing = required.filter(f => !existsSync(join(promptDir, f)))
   if (missing.length === 0) return
   console.warn(
     '\n[build] auto-mode classifier prompts missing:\n' +
-      missing.map(f => '  - src/utils/permissions/yolo-classifier-prompts/' + f).join('\n') +
+      missing.map(f => '  - src/services/permissions/yolo-classifier-prompts/' + f).join('\n') +
       '\nAuto-mode will fall back to auto-allow at runtime ' +
       '(see isClassifierBundled() in yoloClassifier.ts).\n' +
       'Set TRANSCRIPT_CLASSIFIER:false above to silence, or add the files.\n',
@@ -718,7 +718,7 @@ ${exports}
     // image paste + resizing silently no-op in the standalone binary.
     'sharp',
     // Prebuilt ripgrep binary — resolved from node_modules at runtime
-    // (src/utils/ripgrep.ts). Externalised so Bun never inlines the package
+    // (src/utils/fs/ripgrep.ts). Externalised so Bun never inlines the package
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
     // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and

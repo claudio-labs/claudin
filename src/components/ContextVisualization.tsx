@@ -2,12 +2,12 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
-import type { ContextData } from 'src/utils/analyzeContext.js';
-import { generateContextSuggestions } from 'src/utils/contextSuggestions.js';
-import { getDisplayPath } from 'src/utils/file.js';
-import { formatTokens } from 'src/utils/format.js';
-import { getSourceDisplayName, type SettingSource } from 'src/utils/settings/constants.js';
-import { plural } from 'src/utils/stringUtils.js';
+import type { ContextData } from 'src/services/context/analyzeContext.js';
+import { generateContextSuggestions } from 'src/services/context/contextSuggestions.js';
+import { getDisplayPath } from 'src/utils/fs/file.js';
+import { formatTokens } from 'src/utils/text/format.js';
+import { getSourceDisplayName, type SettingSource } from 'src/services/settings/constants.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { ContextSuggestions } from './ContextSuggestions.js';
 
 // The element types behind ContextData's collections are not exported from

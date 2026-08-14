@@ -7,7 +7,7 @@ import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
 import { backgroundAll, hasForegroundTasks } from 'src/tasks/LocalShellTask/LocalShellTask.js';
-import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/utils/env.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';

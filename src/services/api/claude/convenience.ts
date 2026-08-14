@@ -1,7 +1,7 @@
 import type { BetaJSONOutputFormat } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import { createUserMessage } from 'src/utils/messages.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'
 import { withVCR } from 'src/services/vcr.js'

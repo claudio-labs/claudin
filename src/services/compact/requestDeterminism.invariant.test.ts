@@ -67,9 +67,9 @@ const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
 const {
   createContentReplacementState,
   enforceToolResultBudget,
-} = await import('src/utils/toolResultStorage.js')
+} = await import('src/services/tools/toolResultStorage.js')
 const { createAssistantMessage, createUserMessage } = await import(
-  'src/utils/messages.js'
+  'src/services/messages/messages.js'
 )
 const { resolveUpdatedTools } = await import(
   'src/services/mcp/useManageMCPConnections.js'

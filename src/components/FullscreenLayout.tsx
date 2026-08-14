@@ -11,7 +11,7 @@ import { Box, Text } from 'src/ink.js';
 import type { Message } from 'src/types/message.js';
 import { openBrowser, openPath } from 'src/utils/browser.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { isNullRenderingAttachment } from './messages/nullRenderingAttachments.js';
 import PromptInputFooterSuggestions from './PromptInput/PromptInputFooterSuggestions.js';
 import type { StickyPrompt } from './VirtualMessageList.js';

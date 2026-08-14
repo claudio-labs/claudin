@@ -15,9 +15,9 @@ import type {
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
 import type { TreeRow } from 'src/components/diff/fileTree.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { writeFileSyncAndFlush, writeTextContent } from 'src/utils/file.js'
-import { readFileSyncWithMetadata } from 'src/utils/fileRead.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { writeFileSyncAndFlush, writeTextContent } from 'src/utils/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
 import { logError } from 'src/utils/log.js'
 import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'

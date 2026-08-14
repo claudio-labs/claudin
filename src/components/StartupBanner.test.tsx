@@ -5,7 +5,7 @@ import stripAnsi from 'strip-ansi'
 
 import { createRoot } from 'src/ink.js'
 import { AppStateProvider } from 'src/state/AppState.js'
-import { renderToString } from 'src/utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
 // banner reads from globalThis.MACRO at runtime. Mirror what other tests do.
@@ -217,10 +217,10 @@ describe('<StartupBanner />', () => {
     // mounting the banner actually subscribes. If a future refactor
     // deletes the useEffect or the import, subscribeCalls stays 0 and
     // this test fails — unlike a string-equality "contract" check.
-    const realCache = { ...(await import('src/utils/latestVersionCache.js')) }
+    const realCache = { ...(await import('src/services/install/latestVersionCache.js')) }
     let subscribeCalls = 0
     let unsubscribeCalls = 0
-    mock.module('src/utils/latestVersionCache.js', () => ({
+    mock.module('src/services/install/latestVersionCache.js', () => ({
       ...realCache,
       subscribeLatestVersion: (_listener: unknown) => {
         subscribeCalls += 1
@@ -246,7 +246,7 @@ describe('<StartupBanner />', () => {
       // Restore by re-asserting the real shape. mock.restore() would also
       // dispose the activeProvider top-level mock (registered outside any
       // describe block) and break sibling tests in this file.
-      mock.module('src/utils/latestVersionCache.js', () => realCache)
+      mock.module('src/services/install/latestVersionCache.js', () => realCache)
     }
   })
 
@@ -258,11 +258,11 @@ describe('<StartupBanner />', () => {
     // again on the fresh mount) passed the assertion even when the
     // subscribe-listener body was deleted. Persistent root → mount once →
     // captured() → wait for re-render → assert.
-    const realCache = { ...(await import('src/utils/latestVersionCache.js')) }
+    const realCache = { ...(await import('src/services/install/latestVersionCache.js')) }
     const realScreen = { ...(await import('./StartupScreen.js')) }
     let captured: (() => void) | null = null
     let resolveReturn: { latest: string } | undefined
-    mock.module('src/utils/latestVersionCache.js', () => ({
+    mock.module('src/services/install/latestVersionCache.js', () => ({
       ...realCache,
       subscribeLatestVersion: (listener: () => void) => {
         captured = listener
@@ -352,7 +352,7 @@ describe('<StartupBanner />', () => {
       root.unmount()
       stdout.end()
       await Bun.sleep(0)
-      mock.module('src/utils/latestVersionCache.js', () => realCache)
+      mock.module('src/services/install/latestVersionCache.js', () => realCache)
       mock.module('./StartupScreen.js', () => realScreen)
     }
   })

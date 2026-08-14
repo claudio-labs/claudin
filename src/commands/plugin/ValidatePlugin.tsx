@@ -5,8 +5,8 @@ import { useEffect } from 'react';
 import { Box, Text } from 'src/ink.js';
 import { errorMessage } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
-import { validateManifest } from 'src/utils/plugins/validatePlugin.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { validateManifest } from 'src/services/plugins/validatePlugin.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 type Props = {
   onComplete: (result?: string) => void;
   path?: string;

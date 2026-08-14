@@ -22,21 +22,21 @@ import type {
 } from 'src/types/permissions.js'
 import { setClassifierApproval } from 'src/utils/classifierApprovals.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { executePermissionRequestHooks } from 'src/utils/hooks.js'
+import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   REJECT_MESSAGE,
   REJECT_MESSAGE_WITH_REASON_PREFIX,
   SUBAGENT_REJECT_MESSAGE,
   SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX,
   withMemoryCorrectionHint,
-} from 'src/utils/messages.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
+} from 'src/services/messages/messages.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import {
   applyPermissionUpdates,
   persistPermissionUpdates,
   supportsPersistence,
-} from 'src/utils/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   logPermissionDecision,
   type PermissionDecisionArgs,

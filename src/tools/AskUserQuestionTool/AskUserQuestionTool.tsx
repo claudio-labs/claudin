@@ -4,12 +4,12 @@ import * as React from 'react';
 import { getAllowedChannels, getQuestionPreviewFormat } from 'src/bootstrap/state.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { getModeColor } from 'src/utils/permissions/PermissionMode.js';
+import { getModeColor } from 'src/services/permissions/PermissionMode.js';
 import { z } from 'zod/v4';
 import { Box, Text } from 'src/ink.js';
 import type { Tool } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
-import { lazySchema } from 'src/utils/lazySchema.js';
+import { lazySchema } from 'src/utils/data/lazySchema.js';
 import { ASK_USER_QUESTION_TOOL_CHIP_WIDTH, ASK_USER_QUESTION_TOOL_NAME, ASK_USER_QUESTION_TOOL_PROMPT, DESCRIPTION, PREVIEW_FEATURE_PROMPT } from './prompt.js';
 const questionOptionSchema = lazySchema(() => z.object({
   label: z.string().describe('Display text the user selects (1-5 words).'),

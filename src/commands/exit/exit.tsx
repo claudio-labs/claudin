@@ -4,9 +4,9 @@ import sample from 'lodash-es/sample.js';
 import * as React from 'react';
 import { ExitFlow } from 'src/components/ExitFlow.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { isBgSession } from 'src/utils/concurrentSessions.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
-import { getCurrentWorktreeSession } from 'src/utils/worktree.js';
+import { isBgSession } from 'src/services/session/concurrentSessions.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
 const GOODBYE_MESSAGES = ['Goodbye!', 'See ya!', 'Bye!', 'Catch you later!'];
 function getRandomGoodbyeMessage(): string {
   return sample(GOODBYE_MESSAGES) ?? 'Goodbye!';

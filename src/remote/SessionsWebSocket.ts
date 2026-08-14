@@ -10,8 +10,8 @@ import type {
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getWebSocketTLSOptions } from 'src/utils/mtls.js'
-import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/utils/proxy.js'
+import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
+import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 const RECONNECT_DELAY_MS = 2000

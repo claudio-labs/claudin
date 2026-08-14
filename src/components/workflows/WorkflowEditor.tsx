@@ -9,11 +9,11 @@ import instances from 'src/ink/instances.js'
 import { stringWidth } from 'src/ink/stringWidth.js'
 import TextInput from 'src/components/TextInput.js'
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logError } from 'src/utils/log.js'
 import { editFileInEditor } from 'src/utils/promptEditor.js'
 import { getTheme, themeColorToAnsi } from 'src/utils/theme.js'
-import { truncateToWidth } from 'src/utils/truncate.js'
+import { truncateToWidth } from 'src/utils/text/truncate.js'
 import {
   parseWorkflow,
   validateWorkflowAgents,

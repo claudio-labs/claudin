@@ -5,8 +5,8 @@ import { Box, Text } from 'src/ink.js';
 import type { Step } from 'src/projectOnboardingState.js';
 import { formatCreditAmount, getCachedReferrerReward } from 'src/services/api/referral.js';
 import type { LogOption } from 'src/types/logs.js';
-import { getCwd } from 'src/utils/cwd.js';
-import { formatRelativeTimeAgo } from 'src/utils/format.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { formatRelativeTimeAgo } from 'src/utils/text/format.js';
 import type { FeedConfig, FeedLine } from './Feed.js';
 export function createRecentActivityFeed(activities: LogOption[]): FeedConfig {
   const lines: FeedLine[] = activities.map(log => {

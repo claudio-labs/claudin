@@ -9,13 +9,13 @@ import {
   createCompactBoundaryMessage,
   createUserMessage,
   isCompactBoundaryMessage,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { getSessionMemoryPath } from 'src/utils/permissions/filesystem.js'
-import { processSessionStartHooks } from 'src/utils/sessionStart.js'
-import { getTranscriptPath } from 'src/utils/sessionStorage.js'
-import { tokenCountFromLastAPIResponse } from 'src/utils/tokens.js'
-import { extractDiscoveredToolNames } from 'src/utils/toolSearch.js'
+import { getSessionMemoryPath } from 'src/services/permissions/filesystem.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
+import { tokenCountFromLastAPIResponse } from 'src/services/context/tokens.js'
+import { extractDiscoveredToolNames } from 'src/services/tools/toolSearch.js'
 import {
   getDynamicConfig_BLOCKS_ON_INIT,
   getFeatureValue_CACHED_MAY_BE_STALE,

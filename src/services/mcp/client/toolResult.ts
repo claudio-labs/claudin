@@ -16,19 +16,19 @@ import {
   getFormatDescription,
   getLargeOutputInstructions,
   persistBinaryContent,
-} from 'src/utils/mcpOutputStorage.js'
+} from 'src/services/mcp/mcpOutputStorage.js'
 import {
   getContentSizeEstimate,
   type MCPToolResult,
   mcpContentNeedsTruncation,
   truncateMcpContentIfNeeded,
-} from 'src/utils/mcpValidation.js'
-import { recursivelySanitizeUnicode } from 'src/utils/sanitization.js'
+} from 'src/services/mcp/mcpValidation.js'
+import { recursivelySanitizeUnicode } from 'src/utils/data/sanitization.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   isPersistError,
   persistToolResult,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

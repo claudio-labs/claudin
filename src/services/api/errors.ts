@@ -15,11 +15,11 @@ import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
   isClaudeAISubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import {
   createAssistantAPIErrorMessage,
   NO_RESPONSE_REQUESTED,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import {
   isSdkApiConnectionError,
   isSdkApiConnectionTimeoutError,
@@ -35,7 +35,7 @@ import {
 } from 'src/constants/apiLimits.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
-import { formatFileSize } from 'src/utils/format.js'
+import { formatFileSize } from 'src/utils/text/format.js'
 import { ImageResizeError } from 'src/utils/imageResizer.js'
 import { ImageSizeError } from 'src/utils/imageValidation.js'
 import {

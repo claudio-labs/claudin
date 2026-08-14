@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import type { ValidationError } from 'src/utils/settings/validation.js'
+import type { ValidationError } from 'src/services/settings/validation.js'
 
 import {
   buildEmptyDoctorReport,

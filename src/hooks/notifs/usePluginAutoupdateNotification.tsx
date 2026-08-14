@@ -5,7 +5,7 @@ import { getIsRemoteMode } from 'src/bootstrap/state.js';
 import { useNotifications } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { onPluginsAutoUpdated } from 'src/utils/plugins/pluginAutoupdate.js';
+import { onPluginsAutoUpdated } from 'src/services/plugins/pluginAutoupdate.js';
 
 /**
  * Hook that displays a notification when plugins have been auto-updated.

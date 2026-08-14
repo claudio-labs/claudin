@@ -13,7 +13,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 2. XDG Base Directory fallback
 - **Issue:** usuários Linux pedem `$XDG_CONFIG_HOME/claudin` em vez de `~/.claudin`.
-- **Estado:** helpers XDG **já existem** em `src/utils/xdg.ts` mas não são consumidos.
+- **Estado:** helpers XDG **já existem** em `src/utils/fs/xdg.ts` mas não são consumidos.
 - **Falta:** plugar em `resolveClaudinConfigHomeDir` (`src/utils/envUtils.ts:5-28`).
 - **Esforço:** ~10 linhas.
 
@@ -25,7 +25,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 4. Per-model context window override
 - **Issue:** openclaude #478 — usuários querem forçar context window menor (rate-limit) ou maior (modelos novos não detectados).
-- **Estado:** `ProviderProfileExtras` em `src/utils/config.ts:208-228` não tem os campos.
+- **Estado:** `ProviderProfileExtras` em `src/services/config/config.ts:208-228` não tem os campos.
 - **Falta:** adicionar `contextWindow` / `maxOutputTokens` em `ProviderProfileExtras`, consumir em `withRetry.ts` e `context.ts`.
 - **Esforço:** ~50 linhas.
 
@@ -81,7 +81,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 13. Multi-account profile switching
 - **Issue:** usuários querem N "perfis de usuário" (cada um com histórico, MCP, credenciais separados), não só N providers.
-- **Estado:** `src/utils/config.ts:624-627` e `providerProfiles.ts` só fazem multi-provider; histórico/MCP/credenciais são globais.
+- **Estado:** `src/services/config/config.ts:624-627` e `providerProfiles.ts` só fazem multi-provider; histórico/MCP/credenciais são globais.
 - **Falta:** namespacing de `~/.claudin/projects/`, `.credentials.json`, MCP config por profile.
 - **Esforço:** alto — refactor de paths em ~15-20 arquivos.
 - **Workaround:** `CLAUDIN_CONFIG_DIR` env var por shell (já funciona).
@@ -92,7 +92,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 - **Esforço:** alto, ROI questionável (demanda real?).
 
 ### 15. VS 2026 (full Visual Studio) extension
-- **Estado:** `src/utils/ide.ts` só suporta vscode + jetbrains.
+- **Estado:** `src/services/ide/ide.ts` só suporta vscode + jetbrains.
 - **Falta:** VSIX novo com modelo de extensão diferente de VS Code; `ideKind: 'visualstudio'` em toda a stack.
 - **Esforço:** alto, nicho (.NET / game dev).
 

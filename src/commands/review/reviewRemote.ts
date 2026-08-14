@@ -24,11 +24,11 @@ import {
   getRemoteTaskSessionUrl,
   registerRemoteAgentTask,
 } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/utils/auth.js'
-import { detectCurrentRepositoryWithHost } from 'src/utils/detectRepository.js'
-import { execFileNoThrow } from 'src/utils/execFileNoThrow.js'
-import { getDefaultBranch, gitExe } from 'src/utils/git.js'
-import { teleportToRemote } from 'src/utils/teleport.js'
+import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js'
+import { detectCurrentRepositoryWithHost } from 'src/services/git/detectRepository.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { getDefaultBranch, gitExe } from 'src/services/git/git.js'
+import { teleportToRemote } from 'src/components/teleport.js'
 
 // One-time session flag: once the user confirms overage billing via the
 // dialog, all subsequent /ultrareview invocations in this session proceed

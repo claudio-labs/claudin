@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import type { TeleportRemoteResponse } from 'src/utils/conversationRecovery.js';
-import type { CodeSession } from 'src/utils/teleport/api.js';
+import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
+import type { CodeSession } from 'src/services/teleport/api.js';
 import { type TeleportSource, useTeleportResume } from 'src/hooks/useTeleportResume.js';
 import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';

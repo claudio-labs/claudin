@@ -3,7 +3,7 @@ import type {
   BetaWebSearchTool20250305,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
@@ -16,9 +16,9 @@ import {
   resolveProviderRequest,
 } from 'src/services/api/providerConfig.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logError } from 'src/utils/log.js'
-import { createUserMessage } from 'src/utils/messages.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'

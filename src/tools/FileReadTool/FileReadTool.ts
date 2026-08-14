@@ -28,7 +28,7 @@ import {
 } from 'src/skills/loadSkillsDir.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
 import { getErrnoCode, isAbortError, isENOENT } from 'src/utils/errors.js'
 import {
@@ -37,10 +37,10 @@ import {
   findSimilarFile,
   getFileModificationTimeAsync,
   suggestPathUnderCwd,
-} from 'src/utils/file.js'
+} from 'src/utils/fs/file.js'
 import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
-import { formatFileSize } from 'src/utils/format.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { formatFileSize } from 'src/utils/text/format.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
   compressImageBufferWithTokenLimit,
   createImageMetadataText,
@@ -49,33 +49,33 @@ import {
   ImageResizeError,
   maybeResizeAndDownsampleImageBuffer,
 } from 'src/utils/imageResizer.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logError } from 'src/utils/log.js'
-import { isAutoMemFile } from 'src/utils/memoryFileDetection.js'
-import { createUserMessage } from 'src/utils/messages.js'
+import { isAutoMemFile } from 'src/memdir/memoryFileDetection.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import { getCanonicalName, getMainLoopModel } from 'src/utils/model/model.js'
 import {
   mapNotebookCellsToToolResult,
   readNotebook,
-} from 'src/utils/notebook.js'
-import { expandPath } from 'src/utils/path.js'
-import { extractPDFPages, getPDFPageCount, readPDF } from 'src/utils/pdf.js'
+} from 'src/utils/fs/notebook.js'
+import { expandPath } from 'src/utils/fs/path.js'
+import { extractPDFPages, getPDFPageCount, readPDF } from 'src/utils/fs/pdf.js'
 import {
   isPDFExtension,
   isPDFSupported,
   parsePDFPageRange,
-} from 'src/utils/pdfUtils.js'
+} from 'src/utils/fs/pdfUtils.js'
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
-} from 'src/utils/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/utils/permissions/shellRuleMatching.js'
+} from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
 import {
   FileTooLargeError,
   type ReadFileRangeResult,
   readFileInRange,
-} from 'src/utils/readFileInRange.js'
+} from 'src/utils/fs/readFileInRange.js'
 import {
   detectSerialReadPattern,
   markFiredAndCheck,
@@ -102,8 +102,8 @@ import {
   type OutlineLang,
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { semanticNumber } from 'src/utils/semanticNumber.js'
-import { assertKnownEncoding } from 'src/utils/textEncoding.js'
+import { semanticNumber } from 'src/utils/data/semanticNumber.js'
+import { assertKnownEncoding } from 'src/utils/fs/textEncoding.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { getDefaultFileReadingLimits } from './limits.js'

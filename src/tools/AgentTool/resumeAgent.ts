@@ -7,8 +7,8 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { registerAsyncAgent } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import { assembleToolPool } from 'src/tools.js'
 import { asAgentId } from 'src/types/ids.js'
-import { runWithAgentContext } from 'src/utils/agentContext.js'
-import { runWithCwdOverride } from 'src/utils/cwd.js'
+import { runWithAgentContext } from 'src/coordinator/agentContext.js'
+import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
 import { getAgentPlanSlug } from 'src/services/planDossier.js'
 import { getPlan, getPlanSlug } from 'src/utils/plans.js'
 import { logForDebugging } from 'src/utils/debug.js'
@@ -17,18 +17,18 @@ import {
   filterOrphanedThinkingOnlyMessages,
   filterUnresolvedToolUses,
   filterWhitespaceOnlyAssistantMessages,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { getAgentModel } from 'src/utils/model/agent.js'
 import { getQuerySourceForAgent } from 'src/utils/promptCategory.js'
 import {
   getAgentTranscript,
   readAgentMetadata,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
-import { getTaskOutputPath } from 'src/utils/task/diskOutput.js'
-import { getParentSessionId } from 'src/utils/teammate.js'
-import { reconstructForSubagentResume } from 'src/utils/toolResultStorage.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
+import { getParentSessionId } from 'src/coordinator/teammate.js'
+import { reconstructForSubagentResume } from 'src/services/tools/toolResultStorage.js'
 import { runAsyncAgentLifecycle } from './agentToolUtils.js'
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
 import { FORK_AGENT, isForkSubagentEnabled } from './forkSubagent.js'

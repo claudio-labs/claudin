@@ -1,5 +1,5 @@
 import { readdir } from 'fs/promises'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 // claudeApiContent.js bundles 247KB of .md strings. Lazy-load inside

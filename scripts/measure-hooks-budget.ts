@@ -44,8 +44,8 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
-import { wrapInSystemReminder } from '../src/utils/messages.js'
+import { enableConfigs } from '../src/services/config/config.js'
+import { wrapInSystemReminder } from '../src/services/messages/messages.js'
 
 type Profile = 'small' | 'typical' | 'large'
 

@@ -3,11 +3,11 @@
   "reps": 3,
   "depth": "shallow",
   "fixtures": [
-    "src/utils/modelCost.ts",
+    "src/services/api/modelCost.ts",
     "src/tools/BashTool/sedValidation.ts",
-    "src/utils/hooks/events.ts",
+    "src/services/lifecycleHooks/events.ts",
     "src/services/mcp/doctor.ts",
-    "src/utils/sessionRestore.ts"
+    "src/services/session/sessionRestore.ts"
   ],
   "A": [
     {

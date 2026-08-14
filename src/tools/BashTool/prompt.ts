@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
 import { prependBullets } from 'src/constants/prompts.js'
 import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
-import { getAttributionTexts } from 'src/utils/attribution.js'
-import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
+import { getAttributionTexts } from 'src/services/git/attribution.js'
+import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
-import { shouldIncludeGitInstructions } from 'src/utils/gitSettings.js'
-import { getClaudeTempDir } from 'src/utils/permissions/filesystem.js'
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
+import { shouldIncludeGitInstructions } from 'src/services/config/gitSettings.js'
+import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   getDefaultBashTimeoutMs,

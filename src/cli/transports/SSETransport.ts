@@ -3,10 +3,10 @@ import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { getSessionIngressAuthHeaders } from 'src/utils/sessionIngressAuth.js'
+import { getSessionIngressAuthHeaders } from 'src/services/session/sessionIngressAuth.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 // Transport.js is a missing-module stub (src/cli/transports/Transport.d.ts)
 // whose only names are `default`/AxiosError/StdoutMessage/URL — mirrors
 // remoteIO.ts's import, which is the file the stub was actually generated

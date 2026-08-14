@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import chalk from 'chalk';
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import type { SettingSource } from 'src/utils/settings/constants.js';
+import type { SettingSource } from 'src/services/settings/constants.js';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { useMergedTools } from 'src/hooks/useMergedTools.js';
@@ -14,7 +14,7 @@ import { type ResolvedAgent, resolveAgentOverrides } from 'src/tools/AgentTool/a
 import { type AgentDefinition, clearAgentDefinitionsCache, getActiveAgentsFromList, getAgentDefinitionsWithOverrides } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { builtInOverrideKey } from 'src/tools/AgentTool/builtInModelOverrides.js';
 import { writeProjectAgentOverride } from 'src/tools/AgentTool/projectAgentOverrides.js';
-import { saveGlobalConfig } from 'src/utils/config.js';
+import { saveGlobalConfig } from 'src/services/config/config.js';
 import { toError } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
 import { Select } from 'src/components/CustomSelect/select.js';
@@ -25,7 +25,7 @@ import { AgentNavigationFooter } from './AgentNavigationFooter.js';
 import { AgentsList } from './AgentsList.js';
 import { ModelSelector } from './ModelSelector.js';
 import { deleteAgentFromFile } from './agentFileUtils.js';
-import { getCwd } from 'src/utils/cwd.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 import { CreateAgentWizard } from './new-agent-creation/CreateAgentWizard.js';
 import type { ModeState } from './types.js';
 type Props = {

@@ -3,8 +3,8 @@ import { logError } from 'src/utils/log.js'
 import { callIdeRpc } from 'src/services/mcp/client.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import { ClaudeError } from 'src/utils/errors.js'
-import { normalizePathForComparison, pathsEqual } from 'src/utils/file.js'
-import { getConnectedIdeClient } from 'src/utils/ide.js'
+import { normalizePathForComparison, pathsEqual } from 'src/utils/fs/file.js'
+import { getConnectedIdeClient } from 'src/services/ide/ide.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 
 class DiagnosticsTrackingError extends ClaudeError {}

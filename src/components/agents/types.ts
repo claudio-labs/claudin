@@ -1,4 +1,4 @@
-import type { SettingSource } from 'src/utils/settings/constants.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 export const AGENT_PATHS = {

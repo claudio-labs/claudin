@@ -3,7 +3,7 @@ import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/state/AppState.js'
 import { buildChildMessage } from 'src/tools/AgentTool/forkSubagent.js'
-import { renderToString } from 'src/utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 import {
   extractForkDirective,
   UserForkBoilerplateMessage,

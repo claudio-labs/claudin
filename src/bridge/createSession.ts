@@ -52,12 +52,12 @@ export async function createBridgeSession({
   getAccessToken?: () => string | undefined
   permissionMode?: string
 }): Promise<string | null> {
-  const { getClaudeAIOAuthTokens } = await import('src/utils/auth.js')
+  const { getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js')
   const { getOrganizationUUID } = await import('src/services/oauth/client.js')
   const { getOauthConfig } = await import('src/constants/oauth.js')
-  const { getOAuthHeaders } = await import('src/utils/teleport/api.js')
-  const { parseGitHubRepository } = await import('src/utils/detectRepository.js')
-  const { getDefaultBranch } = await import('src/utils/git.js')
+  const { getOAuthHeaders } = await import('src/services/teleport/api.js')
+  const { parseGitHubRepository } = await import('src/services/git/detectRepository.js')
+  const { getDefaultBranch } = await import('src/services/git/git.js')
   const { getMainLoopModel } = await import('src/utils/model/model.js')
   const { default: axios } = await import('axios')
 
@@ -79,7 +79,7 @@ export async function createBridgeSession({
   let gitOutcome: GitOutcome | null = null
 
   if (gitRepoUrl) {
-    const { parseGitRemote } = await import('src/utils/detectRepository.js')
+    const { parseGitRemote } = await import('src/services/git/detectRepository.js')
     const parsed = parseGitRemote(gitRepoUrl)
     if (parsed) {
       const { host, owner, name } = parsed
@@ -191,10 +191,10 @@ export async function getBridgeSession(
   sessionId: string,
   opts?: { baseUrl?: string; getAccessToken?: () => string | undefined },
 ): Promise<{ environment_id?: string; title?: string } | null> {
-  const { getClaudeAIOAuthTokens } = await import('src/utils/auth.js')
+  const { getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js')
   const { getOrganizationUUID } = await import('src/services/oauth/client.js')
   const { getOauthConfig } = await import('src/constants/oauth.js')
-  const { getOAuthHeaders } = await import('src/utils/teleport/api.js')
+  const { getOAuthHeaders } = await import('src/services/teleport/api.js')
   const { default: axios } = await import('axios')
 
   const accessToken =
@@ -282,10 +282,10 @@ export async function archiveBridgeSession(
     timeoutMs?: number
   },
 ): Promise<void> {
-  const { getClaudeAIOAuthTokens } = await import('src/utils/auth.js')
+  const { getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js')
   const { getOrganizationUUID } = await import('src/services/oauth/client.js')
   const { getOauthConfig } = await import('src/constants/oauth.js')
-  const { getOAuthHeaders } = await import('src/utils/teleport/api.js')
+  const { getOAuthHeaders } = await import('src/services/teleport/api.js')
   const { default: axios } = await import('axios')
 
   const accessToken =
@@ -343,10 +343,10 @@ export async function updateBridgeSessionTitle(
   title: string,
   opts?: { baseUrl?: string; getAccessToken?: () => string | undefined },
 ): Promise<void> {
-  const { getClaudeAIOAuthTokens } = await import('src/utils/auth.js')
+  const { getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js')
   const { getOrganizationUUID } = await import('src/services/oauth/client.js')
   const { getOauthConfig } = await import('src/constants/oauth.js')
-  const { getOAuthHeaders } = await import('src/utils/teleport/api.js')
+  const { getOAuthHeaders } = await import('src/services/teleport/api.js')
   const { default: axios } = await import('axios')
 
   const accessToken =

@@ -7,7 +7,7 @@ import { c as _c } from "react-compiler-runtime";
  */
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
-import { hookSourceDescriptionDisplayString, type IndividualHookConfig } from 'src/utils/hooks/hooksSettings.js';
+import { hookSourceDescriptionDisplayString, type IndividualHookConfig } from 'src/services/lifecycleHooks/hooksSettings.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 type Props = {
   selectedHook: IndividualHookConfig;

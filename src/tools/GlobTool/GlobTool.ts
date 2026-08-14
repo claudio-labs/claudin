@@ -1,20 +1,20 @@
 import { z } from 'zod/v4'
 import type { ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { isENOENT } from 'src/utils/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   suggestPathUnderCwd,
-} from 'src/utils/file.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
-import { glob } from 'src/utils/glob.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { expandPath, toRelativePath } from 'src/utils/path.js'
-import { checkReadPermissionForTool } from 'src/utils/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/utils/permissions/shellRuleMatching.js'
-import { semanticNumber } from 'src/utils/semanticNumber.js'
+} from 'src/utils/fs/file.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { glob } from 'src/utils/fs/glob.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { expandPath, toRelativePath } from 'src/utils/fs/path.js'
+import { checkReadPermissionForTool } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
+import { semanticNumber } from 'src/utils/data/semanticNumber.js'
 import { DESCRIPTION, GLOB_TOOL_NAME } from './prompt.js'
 import {
   getToolUseSummary,

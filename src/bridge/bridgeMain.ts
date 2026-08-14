@@ -11,15 +11,15 @@ import {
   logEvent,
   logEventAsync,
 } from 'src/services/analytics/index.js'
-import { isInBundledMode } from 'src/utils/bundledMode.js'
+import { isInBundledMode } from 'src/services/install/bundledMode.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isEnvTruthy, isInProtectedNamespace } from 'src/utils/envUtils.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { truncateToWidth } from 'src/utils/format.js'
+import { truncateToWidth } from 'src/utils/text/format.js'
 import { logError } from 'src/utils/log.js'
 import { sleep } from 'src/utils/sleep.js'
-import { createAgentWorktree, removeAgentWorktree } from 'src/utils/worktree.js'
+import { createAgentWorktree, removeAgentWorktree } from 'src/services/git/worktree.js'
 import {
   BridgeFatalError,
   createBridgeApiClient,
@@ -2022,7 +2022,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // The bridge fast-path bypasses init.ts, so we must enable config reading
   // before any code that transitively calls getGlobalConfig()
   const { enableConfigs, checkHasTrustDialogAccepted } = await import(
-    'src/utils/config.js'
+    'src/services/config/config.js'
   )
   enableConfigs()
 
@@ -2078,7 +2078,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
 
   // Resolve auth
   const { clearOAuthTokenCache, checkAndRefreshOAuthTokenIfNeeded } =
-    await import('src/utils/auth.js')
+    await import('src/services/auth/auth.js')
   const { getBridgeAccessToken, getBridgeBaseUrl } = await import(
     './bridgeConfig.js'
   )
@@ -2097,7 +2097,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
     saveGlobalConfig,
     getCurrentProjectConfig,
     saveCurrentProjectConfig,
-  } = await import('src/utils/config.js')
+  } = await import('src/services/config/config.js')
   if (!getGlobalConfig().remoteDialogSeen) {
     const readline = await import('readline')
     const rl = readline.createInterface({
@@ -2184,12 +2184,12 @@ export async function bridgeMain(args: string[]): Promise<void> {
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    'src/utils/git.js'
+    'src/services/git/git.js'
   )
 
   // Precheck worktree availability for the first-run dialog and the `w`
   // toggle. Unconditional so we know upfront whether worktree is an option.
-  const { hasWorktreeCreateHook } = await import('src/utils/hooks.js')
+  const { hasWorktreeCreateHook } = await import('src/services/lifecycleHooks/hooks.js')
   const worktreeAvailable = hasWorktreeCreateHook() || findGitRoot(dir) !== null
 
   // Load saved per-project spawn-mode preference. Gated by multiSessionEnabled
@@ -2322,7 +2322,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   const machineName = hostname()
   const bridgeId = randomUUID()
 
-  const { handleOAuth401Error } = await import('src/utils/auth.js')
+  const { handleOAuth401Error } = await import('src/services/auth/auth.js')
   const api = createBridgeApiClient({
     baseUrl,
     getAccessToken: getBridgeAccessToken,
@@ -2571,7 +2571,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   })
 
   const logger = createBridgeLogger({ verbose })
-  const { parseGitHubRepository } = await import('src/utils/detectRepository.js')
+  const { parseGitHubRepository } = await import('src/services/git/detectRepository.js')
   const ownerRepo = gitRepoUrl ? parseGitHubRepository(gitRepoUrl) : null
   // Use the repo name from the parsed owner/repo, or fall back to the dir basename
   const repoName = ownerRepo ? ownerRepo.split('/').pop()! : basename(dir)
@@ -2802,7 +2802,7 @@ export async function runBridgeHeadless(
   setCwdState(dir)
 
   const { enableConfigs, checkHasTrustDialogAccepted } = await import(
-    'src/utils/config.js'
+    'src/services/config/config.js'
   )
   enableConfigs()
   const { initSinks } = await import('src/utils/sinks.js')
@@ -2834,9 +2834,9 @@ export async function runBridgeHeadless(
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    'src/utils/git.js'
+    'src/services/git/git.js'
   )
-  const { hasWorktreeCreateHook } = await import('src/utils/hooks.js')
+  const { hasWorktreeCreateHook } = await import('src/services/lifecycleHooks/hooks.js')
 
   if (opts.spawnMode === 'worktree') {
     const worktreeAvailable =

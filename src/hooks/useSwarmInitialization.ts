@@ -11,11 +11,11 @@ import { useEffect } from 'react'
 import { getSessionId } from 'src/bootstrap/state.js'
 import type { AppState } from 'src/state/AppState.js'
 import type { Message } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
-import { initializeTeammateContextFromSession } from 'src/utils/swarm/reconnection.js'
-import { readTeamFile } from 'src/utils/swarm/teamHelpers.js'
-import { initializeTeammateHooks } from 'src/utils/swarm/teammateInit.js'
-import { getDynamicTeamContext } from 'src/utils/teammate.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { initializeTeammateContextFromSession } from 'src/coordinator/swarm/reconnection.js'
+import { readTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
+import { initializeTeammateHooks } from 'src/coordinator/swarm/teammateInit.js'
+import { getDynamicTeamContext } from 'src/coordinator/teammate.js'
 
 type SetAppState = (f: (prevState: AppState) => AppState) => void
 

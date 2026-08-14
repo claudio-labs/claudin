@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useMemo } from 'react';
 import { Box, Text, useTheme } from 'src/ink.js';
 import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
-import { shouldShowAlwaysAllowOptions } from 'src/utils/permissions/permissionsLoader.js';
+import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';

@@ -13,7 +13,7 @@ source changes**. Validated with `bun install`, `bun run build`,
 
 - **marked 18.0.7 → 18.0.9** — 18.0.8 fixes a *custom checkbox renderer*
   returning `false`; we have no renderer extension. Our only `marked.use()` is
-  in `src/utils/markdown.ts:41`, a **tokenizer** override (`del()` → `undefined`
+  in `src/utils/text/markdown.ts:41`, a **tokenizer** override (`del()` → `undefined`
   to kill strikethrough so `~100` stays literal). 18.0.9's three parser fixes
   (unmatched `**` run before emphasis, blockquote continuation nesting, pedantic
   `**foo:**`) can change rendered output at the edges. Re-verified live on
@@ -23,7 +23,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   knobs `maxConcurrentStreams`, `initialWindowSize`, `connectionWindowSize` and
   `pingInterval` are now **`@deprecated` in favor of `h2Options.*`**
   (`h2Options.settings.initialWindowSize` for the window one). `allowH2` itself
-  is **not** deprecated. `src/utils/proxy.ts` (`ProviderPoolConfig`, ~line 297)
+  is **not** deprecated. `src/services/api/proxy.ts` (`ProviderPoolConfig`, ~line 297)
   only passes `allowH2`/`connections`/`keepAliveTimeout`/`pipelining`, and
   `scripts/profile/undici-pool-bench.ts` only `allowH2` — so nothing to change
   today. **Apply when tuning h2:** put any new stream/window/ping knob under
@@ -34,7 +34,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   a permessage-deflate offer whose `client_max_window_bits` is below the
   configured `clientMaxWindowBits`. Inert here: nothing in the repo sets
   `perMessageDeflate`/`*MaxWindowBits`, and our ws use is client-side
-  (`src/services/voiceStreamSTT.ts`, `src/utils/mcpWebSocketTransport.ts`,
+  (`src/services/voiceStreamSTT.ts`, `src/services/mcp/mcpWebSocketTransport.ts`,
   `src/cli/transports/WebSocketTransport.ts`) plus the VS Code extension's
   `WebSocketServer` on ws defaults (deflate off by default server-side).
 

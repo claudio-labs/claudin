@@ -21,16 +21,16 @@ import {
   getClaudeAIOAuthTokens,
   hasProfileScope,
   isClaudeAISubscriber,
-} from 'src/utils/auth.js'
-import { checkHasTrustDialogAccepted } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import { checkHasTrustDialogAccepted } from 'src/services/config/config.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { errorMessage, isFsInaccessible, toError } from 'src/utils/errors.js'
 import { getAuthHeaders } from 'src/utils/http.js'
-import { readJSONLFile } from 'src/utils/json.js'
+import { readJSONLFile } from 'src/utils/data/json.js'
 import { logError } from 'src/utils/log.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { isOAuthTokenExpired } from 'src/services/oauth/client.js'
 import { stripProtoFields } from './index.js'
 import { type EventMetadata, to1PEventFormat } from './metadata.js'

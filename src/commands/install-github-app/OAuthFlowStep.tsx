@@ -8,7 +8,7 @@ import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import { setClipboard } from 'src/ink/termio/osc.js';
 import { Box, Link, Text } from 'src/ink.js';
 import { OAuthService } from 'src/services/oauth/index.js';
-import { saveOAuthTokensIfNeeded } from 'src/utils/auth.js';
+import { saveOAuthTokensIfNeeded } from 'src/services/auth/auth.js';
 import { logError } from 'src/utils/log.js';
 interface OAuthFlowStepProps {
   onSuccess: (token: string) => void;

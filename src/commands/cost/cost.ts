@@ -1,7 +1,7 @@
 import { formatTotalCost } from 'src/cost-tracker.js'
 import { currentLimits } from 'src/services/claudeAiLimits.js'
 import type { LocalCommandCall } from 'src/types/command.js'
-import { isClaudeAISubscriber } from 'src/utils/auth.js'
+import { isClaudeAISubscriber } from 'src/services/auth/auth.js'
 
 export const call: LocalCommandCall = async () => {
   if (isClaudeAISubscriber()) {

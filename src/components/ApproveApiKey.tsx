@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import { Text } from 'src/ink.js';
-import { saveGlobalConfig } from 'src/utils/config.js';
+import { saveGlobalConfig } from 'src/services/config/config.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {

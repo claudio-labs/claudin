@@ -16,11 +16,11 @@ import { Box, Text } from 'src/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
 import { createAbortController } from 'src/utils/abortController.js';
-import { saveGlobalConfig } from 'src/utils/config.js';
+import { saveGlobalConfig } from 'src/services/config/config.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { type CacheSafeParams, getLastCacheSafeParams } from 'src/utils/forkedAgent.js';
-import { getMessagesAfterCompactBoundary } from 'src/utils/messages.js';
-import type { ProcessUserInputContext } from 'src/utils/processUserInput/processUserInput.js';
+import { type CacheSafeParams, getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js';
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';
+import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import { runSideQuestion } from 'src/utils/sideQuestion.js';
 import { asSystemPrompt } from 'src/utils/systemPromptType.js';
 type BtwComponentProps = {

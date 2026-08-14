@@ -1,10 +1,10 @@
 import { mkdir, open } from 'fs/promises'
 import { join } from 'path'
 import { getSessionId } from 'src/bootstrap/state.js'
-import type { PastedContent } from './config.js'
+import type { PastedContent } from 'src/services/config/config.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
-import { getFsImplementation } from './fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 
 const IMAGE_STORE_DIR = 'image-cache'
 const MAX_STORED_IMAGE_PATHS = 200

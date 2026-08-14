@@ -25,7 +25,7 @@ import {
 } from 'src/bootstrap/state.js'
 import type { Tool } from 'src/Tool.js'
 import type { Props as REPLProps } from 'src/screens/REPL.js'
-import type { ThinkingConfig } from 'src/utils/thinking.js'
+import type { ThinkingConfig } from 'src/services/context/thinking.js'
 
 // --- mock factories ------------------------------------------------------
 
@@ -264,7 +264,7 @@ export function setupReplMocks(): void {
   // notifier.platform.test.ts, which imports the real ./notifier.js as its SUT.
 
   // Session start hooks — runs user-defined commands.
-  mock.module('src/utils/sessionStart.js', () => ({
+  mock.module('src/services/session/sessionStart.js', () => ({
     processSessionStartHooks: async () => [],
   }))
   mock.module('../utils/sessionStart.js', () => ({
@@ -272,7 +272,7 @@ export function setupReplMocks(): void {
   }))
 
   // Plugin startup checks — disk I/O.
-  mock.module('src/utils/plugins/performStartupChecks.js', () => ({
+  mock.module('src/services/plugins/performStartupChecks.js', () => ({
     performStartupChecks: async () => undefined,
   }))
 

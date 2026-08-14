@@ -1,1 +1,1 @@
-export { sanitizeSchemaForOpenAICompat } from 'src/utils/schemaSanitizer.js'
+export { sanitizeSchemaForOpenAICompat } from 'src/utils/data/schemaSanitizer.js'

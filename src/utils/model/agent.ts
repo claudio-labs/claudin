@@ -1,5 +1,5 @@
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
-import { capitalize } from 'src/utils/stringUtils.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import { capitalize } from 'src/utils/text/stringUtils.js'
 import { logError } from 'src/utils/log.js'
 import { MODEL_ALIASES, type ModelAlias } from './aliases.js'
 import { getModelOptions } from './modelOptions.js'

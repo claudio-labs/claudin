@@ -15,30 +15,30 @@ import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.
 import type { SpeculationAcceptMessage } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
 import { createChildAbortController } from 'src/utils/abortController.js'
-import { count } from 'src/utils/array.js'
+import { count } from 'src/utils/data/array.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import {
   type FileStateCache,
   mergeReplacingLiveCache,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/utils/forkedAgent.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+} from 'src/coordinator/forkedAgent.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import { logError } from 'src/utils/log.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import {
   createUserMessage,
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
-} from 'src/utils/messages.js'
-import { getClaudeTempDir } from 'src/utils/permissions/filesystem.js'
+} from 'src/services/messages/messages.js'
+import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
 import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
-import { getTranscriptPath } from 'src/utils/sessionStorage.js'
+import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

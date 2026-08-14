@@ -19,7 +19,7 @@ import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
 import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
 import type { AssistantMessage } from 'src/types/message.js';
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js';
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js';
 import { AskUserQuestionPermissionRequest } from './AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.js';
 import { BashPermissionRequest } from './BashPermissionRequest/BashPermissionRequest.js';
 import { EnterPlanModePermissionRequest } from './EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.js';
@@ -44,7 +44,7 @@ const MonitorPermissionRequest = feature('MONITOR_TOOL') ? (require('./MonitorPe
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 /* eslint-enable @typescript-eslint/no-require-imports */
 import type { z } from 'zod/v4';
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
 import type { WorkerBadgeProps } from './WorkerBadge.js';
 function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionRequestProps> {
   switch (tool) {

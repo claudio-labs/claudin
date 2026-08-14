@@ -12,11 +12,11 @@ import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
 import { launchRepl } from 'src/replLauncher.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
-import { createSystemMessage } from 'src/utils/messages.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { createSystemMessage } from 'src/services/messages/messages.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 import type { StatsStore } from 'src/context/stats.js';
-import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
 
 export type SshRemoteBranchDeps = {

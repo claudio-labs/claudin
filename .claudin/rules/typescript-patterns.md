@@ -168,7 +168,7 @@ function isErrorLine(line: string): boolean {
 
 ```typescript
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getPrimaryModel, getSmallFastModel } from 'src/utils/providerModels.js'
+import { getPrimaryModel, getSmallFastModel } from 'src/services/api/providerModels.js'
 
 // ✅ Correct — respects user's active provider
 const provider = tryGetActiveProvider()

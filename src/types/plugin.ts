@@ -5,8 +5,8 @@ import type {
   CommandMetadata,
   PluginAuthor,
   PluginManifest,
-} from 'src/utils/plugins/schemas.js'
-import type { HooksSettings } from 'src/utils/settings/types.js'
+} from 'src/services/plugins/schemas.js'
+import type { HooksSettings } from 'src/services/settings/types.js'
 
 export type { PluginAuthor, PluginManifest, CommandMetadata }
 

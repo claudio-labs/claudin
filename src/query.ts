@@ -43,7 +43,7 @@ import {
   isPromptTooLongMessage,
 } from './services/api/errors.js'
 import { logAntError, logForDebugging } from './utils/debug.js'
-import { claimsAgentLaunch } from './utils/phantomLaunchGuard.js'
+import { claimsAgentLaunch } from 'src/utils/proc/phantomLaunchGuard.js'
 import {
   isStructurallyIncomplete,
   signalsCompletion,
@@ -58,21 +58,21 @@ import {
   createAssistantAPIErrorMessage,
   getMessagesAfterCompactBoundary,
   createToolUseSummaryMessage,
-} from './utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { generateToolUseSummary } from './services/toolUseSummary/toolUseSummaryGenerator.js'
-import { prependUserContext, appendSystemContext } from './utils/api.js'
+import { prependUserContext, appendSystemContext } from 'src/services/api/api.js'
 import {
   createAttachmentMessage,
   filterDuplicateMemoryAttachments,
   getAttachmentMessages,
   startRelevantMemoryPrefetch,
-} from './utils/attachments.js'
+} from 'src/services/attachments/attachments.js'
 import {
   awaitLateDiagnosticsForTurn,
   clearArmedFiles,
 } from './services/lsp/diagnosticsForToolResult.js'
 import { markDiagnosticsAsDelivered } from './services/lsp/LSPDiagnosticRegistry.js'
-import { getGlobalConfig } from './utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (require('./services/skillSearch/prefetch.js') as typeof import('./services/skillSearch/prefetch.js'))
@@ -99,18 +99,18 @@ import {
   doesMostRecentAssistantMessageExceed200k,
   finalContextTokensFromLastResponse,
   tokenCountWithEstimation,
-} from './utils/tokens.js'
-import { ESCALATED_MAX_TOKENS } from './utils/context.js'
+} from 'src/services/context/tokens.js'
+import { ESCALATED_MAX_TOKENS } from 'src/services/context/context.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from './services/analytics/growthbook.js'
 import { SLEEP_TOOL_NAME } from './tools/SleepTool/prompt.js'
-import { executePostSamplingHooks } from './utils/hooks/postSamplingHooks.js'
-import { executeStopFailureHooks } from './utils/hooks.js'
+import { executePostSamplingHooks } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import { executeStopFailureHooks } from 'src/services/lifecycleHooks/hooks.js'
 import type { QuerySource } from './constants/querySource.js'
 import { StreamingToolExecutor } from './services/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from './utils/queryProfiler.js'
 import { runTools } from './services/tools/toolOrchestration.js'
-import { applyToolResultBudget } from './utils/toolResultStorage.js'
-import { recordContentReplacement } from './utils/sessionStorage.js'
+import { applyToolResultBudget } from 'src/services/tools/toolResultStorage.js'
+import { recordContentReplacement } from 'src/services/session/sessionStorage.js'
 import { handleStopHooks } from './query/stopHooks.js'
 import { buildQueryConfig } from './query/config.js'
 import { productionDeps, type QueryDeps } from './query/deps.js'
@@ -122,7 +122,7 @@ import {
   incrementBudgetContinuationCount,
 } from './bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
-import { count } from './utils/array.js'
+import { count } from 'src/utils/data/array.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
@@ -276,7 +276,7 @@ async function* queryLoop(
     feature('MULTI_TURN_CONTEXT') &&
     getGlobalConfig().knowledgeGraphEnabled
   ) {
-    const { startNewTurn } = await import('./utils/multiTurnContext.js')
+    const { startNewTurn } = await import('src/services/context/multiTurnContext.js')
     startNewTurn()
   }
 
@@ -412,7 +412,7 @@ async function* queryLoop(
       getGlobalConfig().knowledgeGraphEnabled &&
       messagesForQuery.length > 0
     ) {
-      const { updateArcPhase } = await import('./utils/conversationArc.js')
+      const { updateArcPhase } = await import('src/services/context/conversationArc.js')
       updateArcPhase([messagesForQuery[messagesForQuery.length - 1]])
     }
 
@@ -1102,7 +1102,7 @@ async function* queryLoop(
       if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
         try {
           const { cleanupComputerUseAfterTurn } = await import(
-            './utils/computerUse/cleanup.js'
+            'src/services/computerUse/cleanup.js'
           )
           await cleanupComputerUseAfterTurn(toolUseContext)
         } catch {
@@ -1627,7 +1627,7 @@ async function* queryLoop(
       const lastTurnAssistantMessage = assistantMessages.at(-1)
       if (lastTurnAssistantMessage) {
         const { addMessageToTurn, addToolCallToTurn } = await import(
-          './utils/multiTurnContext.js'
+          'src/services/context/multiTurnContext.js'
         )
         addMessageToTurn(lastTurnAssistantMessage)
         for (const toolUse of toolUseBlocks) {
@@ -1646,7 +1646,7 @@ async function* queryLoop(
       feature('CONVERSATION_ARC') &&
       getGlobalConfig().knowledgeGraphEnabled
     ) {
-      const { updateArcPhase } = await import('./utils/conversationArc.js')
+      const { updateArcPhase } = await import('src/services/context/conversationArc.js')
       updateArcPhase(assistantMessages)
     }
 
@@ -1731,7 +1731,7 @@ async function* queryLoop(
       if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
         try {
           const { cleanupComputerUseAfterTurn } = await import(
-            './utils/computerUse/cleanup.js'
+            'src/services/computerUse/cleanup.js'
           )
           await cleanupComputerUseAfterTurn(toolUseContext)
         } catch {

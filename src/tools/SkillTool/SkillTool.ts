@@ -26,13 +26,13 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
-import { getRuleByContentsForTool } from 'src/utils/permissions/permissions.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
-} from 'src/utils/plugins/pluginIdentifier.js'
-import { buildPluginCommandTelemetryFields } from 'src/utils/telemetry/pluginTelemetry.js'
+} from 'src/services/plugins/pluginIdentifier.js'
+import { buildPluginCommandTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
   addInvokedSkill,
@@ -46,19 +46,19 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getAgentContext } from 'src/utils/agentContext.js'
+import { getAgentContext } from 'src/coordinator/agentContext.js'
 import { errorMessage } from 'src/utils/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
-} from 'src/utils/forkedAgent.js'
+} from 'src/coordinator/forkedAgent.js'
 import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { createUserMessage, normalizeMessages } from 'src/utils/messages.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
 import { resolveSkillModelOverride } from 'src/utils/model/model.js'
-import { recordSkillUsage } from 'src/utils/suggestions/skillUsageTracking.js'
-import { createAgentId } from 'src/utils/uuid.js'
+import { recordSkillUsage } from 'src/services/suggestions/skillUsageTracking.js'
+import { createAgentId } from 'src/utils/data/uuid.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import {
   getToolUseIDFromParentMessage,
@@ -620,7 +620,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Process the skill with optional args
     const { processPromptSlashCommand } = await import(
-      'src/utils/processUserInput/processSlashCommand.js'
+      'src/services/input/processSlashCommand.js'
     )
     const processedCommand = await processPromptSlashCommand(
       commandName,

@@ -50,7 +50,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 
 // Hard cap inside formatDiagnosticsSummary. We don't import the constant
 // because it's not exported — we mirror its value here so the bench can

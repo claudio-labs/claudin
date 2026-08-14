@@ -3,11 +3,11 @@ import { stat } from 'fs/promises'
 import { dirname, resolve } from 'path'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { getErrnoCode } from 'src/utils/errors.js'
-import { expandPath } from 'src/utils/path.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import {
   allWorkingDirectories,
   pathInWorkingPath,
-} from 'src/utils/permissions/filesystem.js'
+} from 'src/services/permissions/filesystem.js'
 
 export type AddDirectoryResult =
   | {

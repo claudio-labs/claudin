@@ -5,7 +5,7 @@ import {
   type CodexOAuthTokens,
 } from 'src/services/api/codexOAuth.js'
 import { openBrowser } from 'src/utils/browser.js'
-import { saveCodexCredentials } from 'src/utils/codexCredentials.js'
+import { saveCodexCredentials } from 'src/services/api/codexCredentials.js'
 import { isBareMode } from 'src/utils/envUtils.js'
 
 export type CodexOAuthFlowStatus =

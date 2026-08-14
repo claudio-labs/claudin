@@ -9,9 +9,9 @@ import { createHash } from 'crypto'
 import type { StructuredPatchHunk } from 'diff'
 
 import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { checkBatchWritePermission } from 'src/utils/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,

@@ -2,8 +2,8 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runWithCwdOverride } from 'src/utils/cwd.js'
-import { invalidateSessionEnvCache } from 'src/utils/sessionEnvironment.js'
+import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
 import {
   cleanupAllFakeGh,
   GH_NOT_AUTHENTICATED,
@@ -113,7 +113,7 @@ type Ran = {
  * Drive the real executor with `pwd()` pointing at `cwd`.
  *
  * `exec()` resolves the working directory from `pwd()`
- * (`src/utils/Shell.ts:221`), never from an argument, so this override is the
+ * (`src/utils/proc/Shell.ts:221`), never from an argument, so this override is the
  * ONLY supported way to aim the tool at a fixture — and it is the same
  * mechanism a worktree-isolated sub-agent uses.
  */

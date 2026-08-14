@@ -12,7 +12,7 @@
  */
 
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { getClaudeAIOAuthTokens } from 'src/utils/auth.js'
+import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
 
 /** Dev override: CLAUDE_BRIDGE_OAUTH_TOKEN, else undefined. */
 export function getBridgeTokenOverride(): string | undefined {

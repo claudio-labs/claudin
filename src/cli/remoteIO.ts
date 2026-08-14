@@ -9,18 +9,18 @@ import { isDebugMode, logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
 import { logError } from 'src/utils/log.js'
-import { writeToStdout } from 'src/utils/process.js'
-import { getSessionIngressAuthToken } from 'src/utils/sessionIngressAuth.js'
+import { writeToStdout } from 'src/utils/proc/process.js'
+import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import {
   setSessionMetadataChangedListener,
   setSessionStateChangedListener,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import {
   setInternalEventReader,
   setInternalEventWriter,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { ndjsonSafeStringify } from './ndjsonSafeStringify.js'
 import { StructuredIO } from './structuredIO.js'
 import { CCRClient, CCRInitError } from './transports/ccrClient.js'

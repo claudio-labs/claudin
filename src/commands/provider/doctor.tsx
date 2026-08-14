@@ -7,27 +7,27 @@ import {
 import {
   readXaiCredentialsAsync,
   refreshXaiAccessTokenIfNeeded,
-} from 'src/utils/xaiCredentials.js'
-import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
+} from 'src/services/api/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
-} from 'src/utils/kimiCredentials.js'
-import { getKimiUserAgent } from 'src/utils/kimiUserAgent.js'
-import { getKimiDeviceHeaders } from 'src/utils/kimiDeviceHeaders.js'
-import { getCurrentProjectConfig } from 'src/utils/config.js'
-import { modelSupportsAutoMode } from 'src/utils/betas.js'
+} from 'src/services/api/kimiCredentials.js'
+import { getKimiUserAgent } from 'src/services/api/kimiUserAgent.js'
+import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
+import { getCurrentProjectConfig } from 'src/services/config/config.js'
+import { modelSupportsAutoMode } from 'src/services/api/betas.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getClassifierProbeKey,
   probeClassifierCapability,
-} from 'src/utils/permissions/classifierProbe.js'
-import { parseModelList } from 'src/utils/providerModels.js'
+} from 'src/services/permissions/classifierProbe.js'
+import { parseModelList } from 'src/services/api/providerModels.js'
 import {
   type OllamaGenerationReadiness,
   probeOllamaGenerationReadiness,
-} from 'src/utils/providerDiscovery.js'
-import { resolveGeminiCredential } from 'src/utils/geminiAuth.js'
+} from 'src/services/api/providerDiscovery.js'
+import { resolveGeminiCredential } from 'src/services/api/geminiAuth.js'
 import {
   getActiveProviderProfile,
   getGlobalActiveProviderProfileId,
@@ -35,7 +35,7 @@ import {
   getProviderProfiles,
   getRawProjectActiveProviderProfileId,
   hasProjectProviderProfileOverride,
-} from 'src/utils/providerProfiles.js'
+} from 'src/services/api/providerProfiles.js'
 import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 
 type CheckResult = {

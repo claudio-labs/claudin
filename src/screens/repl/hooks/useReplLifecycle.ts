@@ -32,7 +32,7 @@ import { useEffect } from 'react';
 import type { TabStatusKind } from 'src/ink/hooks/use-tab-status.js';
 import { feature } from 'bun:bundle';
 import { startPreventSleep, stopPreventSleep } from 'src/services/preventSleep.js';
-import { updateSessionActivity } from 'src/utils/concurrentSessions.js';
+import { updateSessionActivity } from 'src/services/session/concurrentSessions.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 
 export interface UseReplLifecycleDeps {

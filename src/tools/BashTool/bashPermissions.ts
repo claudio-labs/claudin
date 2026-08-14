@@ -7,7 +7,7 @@ import {
 } from 'src/services/analytics/index.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import type { PendingClassifierCheck } from 'src/types/permissions.js'
-import { count } from 'src/utils/array.js'
+import { count } from 'src/utils/data/array.js'
 import {
   checkSemantics,
   nodeTypeId,
@@ -15,45 +15,45 @@ import {
   parseForSecurityFromAst,
   type Redirect,
   type SimpleCommand,
-} from 'src/utils/bash/ast.js'
+} from 'src/services/bash/ast.js'
 import {
   type CommandPrefixResult,
   extractOutputRedirections,
   getCommandSubcommandPrefix,
   splitCommand_DEPRECATED,
-} from 'src/utils/bash/commands.js'
-import { parseCommandRaw } from 'src/utils/bash/parser.js'
-import { tryParseShellCommand } from 'src/utils/bash/shellQuote.js'
-import { getCwd } from 'src/utils/cwd.js'
+} from 'src/services/bash/commands.js'
+import { parseCommandRaw } from 'src/services/bash/parser.js'
+import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { AbortError, isSdkApiUserAbortError } from 'src/utils/errors.js'
 import type {
   ClassifierBehavior,
   ClassifierResult,
-} from 'src/utils/permissions/bashClassifier.js'
+} from 'src/services/permissions/bashClassifier.js'
 import {
   classifyBashCommand,
   getBashPromptAllowDescriptions,
   getBashPromptAskDescriptions,
   getBashPromptDenyDescriptions,
   isClassifierPermissionsEnabled,
-} from 'src/utils/permissions/bashClassifier.js'
+} from 'src/services/permissions/bashClassifier.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from 'src/utils/permissions/PermissionResult.js'
+} from 'src/services/permissions/PermissionResult.js'
 import type {
   PermissionRule,
   PermissionRuleValue,
-} from 'src/utils/permissions/PermissionRule.js'
-import { extractRules } from 'src/utils/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
-import { permissionRuleValueToString } from 'src/utils/permissions/permissionRuleParser.js'
+} from 'src/services/permissions/PermissionRule.js'
+import { extractRules } from 'src/services/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForTool,
-} from 'src/utils/permissions/permissions.js'
+} from 'src/services/permissions/permissions.js'
 import {
   parsePermissionRule,
   type ShellPermissionRule,
@@ -61,11 +61,11 @@ import {
   permissionRuleExtractPrefix as sharedPermissionRuleExtractPrefix,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
   suggestionForPrefix as sharedSuggestionForPrefix,
-} from 'src/utils/permissions/shellRuleMatching.js'
-import { getPlatform } from 'src/utils/platform.js'
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
+} from 'src/services/permissions/shellRuleMatching.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { windowsPathToPosixPath } from 'src/utils/windowsPaths.js'
+import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
 import { BashTool } from './BashTool.js'
 import { checkCommandOperatorPermissions } from './bashCommandHelpers.js'
 import {
@@ -168,7 +168,7 @@ export function getSimpleCommandPrefix(command: string): string | null {
 // `env` is NOT in SAFE_WRAPPER_PATTERNS, so `env bash -c "evil"` survives
 // stripSafeWrappers unchanged and hits the startsWith("env ") check at
 // the prefix-rule matcher. Shell list mirrors DANGEROUS_SHELL_PREFIXES in
-// src/utils/shell/prefix.ts which guarded the old Haiku extractor.
+// src/services/shell/prefix.ts which guarded the old Haiku extractor.
 const BARE_SHELL_PREFIXES = new Set([
   'sh',
   'bash',
@@ -2505,7 +2505,7 @@ export function isNormalizedGitCommand(command: string): boolean {
  * Also matches pushd/popd — they change cwd just like cd, so
  *   pushd /tmp/bare-repo && git status
  * must trigger the same cd+git guard. Mirrors PowerShell's
- * DIRECTORY_CHANGE_ALIASES (src/utils/powershell/parser.ts).
+ * DIRECTORY_CHANGE_ALIASES (src/services/shell/powershell/parser.ts).
  */
 export function isNormalizedCdCommand(command: string): boolean {
   const stripped = stripSafeWrappers(command)

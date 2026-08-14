@@ -4,7 +4,7 @@
 
 ## Contexto
 
-`src/utils/proxy.ts:207-245` cria `EnvHttpProxyAgent` sem ajustar `connections`, `keepAliveTimeout`, `pipelining` ou `allowH2`. undici 8 ligou HTTP/2 por padrão. O item 11.5 do roadmap pedia bench antes/depois para decidir se vale tunar o dispatcher por provider.
+`src/services/api/proxy.ts:207-245` cria `EnvHttpProxyAgent` sem ajustar `connections`, `keepAliveTimeout`, `pipelining` ou `allowH2`. undici 8 ligou HTTP/2 por padrão. O item 11.5 do roadmap pedia bench antes/depois para decidir se vale tunar o dispatcher por provider.
 
 Resposta curta: **vale para workloads paralelos** (sub-agentes, ferramentas concorrentes, MCP); **não muda nada para single-stream sequencial**.
 
@@ -54,7 +54,7 @@ Sem regressões cruzadas entre origens h1 e h2 com a mesma config.
 4. **`keepAliveTimeout` é irrelevante neste bench** (cenário não exercita idle > 4s). Vale para sessões longas reais (REPL parado entre turns) — bench atual não mede isso.
 5. **`connections=64`** não bate `connections=16` em nenhum cenário. Memória adicional sem ganho.
 
-## Recomendação para `src/utils/proxy.ts`
+## Recomendação para `src/services/api/proxy.ts`
 
 Aplicar tuning padrão **só em dispatchers per-provider**, não no global (manter `EnvHttpProxyAgent` global intacto para o ecossistema MCP/Firecrawl):
 
@@ -73,7 +73,7 @@ Override per-provider apenas para providers comprovadamente h1-only com fallback
 ## Quando rerunar o bench
 
 - Upgrade do undici (qualquer minor)
-- Mudança em `src/utils/proxy.ts:getProxyAgent()` ou em `keepAliveDisabled`
+- Mudança em `src/services/api/proxy.ts:getProxyAgent()` ou em `keepAliveDisabled`
 - Adição de provider novo com latência ou padrão de uso atípico
 
 ```bash
@@ -101,4 +101,4 @@ node --experimental-strip-types scripts/profile/undici-pool-bench.ts --quick
 - `scripts/profile/undici-pool-bench.test.ts` — sanity dos hooks de diagnostic channel
 - `scripts/profile/baselines/undici-pool.json` — baseline 2026-05-16 (commit pinado)
 - `scripts/profile/__fixtures__/undici-tls/` — cert+key self-signed
-- `src/utils/proxy.ts` — alvo da mudança (não modificado ainda; aguarda decisão)
+- `src/services/api/proxy.ts` — alvo da mudança (não modificado ainda; aguarda decisão)

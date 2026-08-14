@@ -8,19 +8,19 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { formatDuration } from 'src/utils/format.js'
+import { formatDuration } from 'src/utils/text/format.js'
 import {
   buildGoalDirective,
   clearActiveGoal,
   GOAL_MAX_CONDITION_LENGTH,
   getGoalTokenCount,
   setActiveGoal,
-} from 'src/utils/goal/goal.js'
+} from 'src/services/goal/goal.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
-} from 'src/utils/hooks/hooksConfigSnapshot.js'
-import { shouldSkipHookDueToTrust } from 'src/utils/hooks/shared.js'
+} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+import { shouldSkipHookDueToTrust } from 'src/services/lifecycleHooks/shared.js'
 
 const USAGE = [
   'No active goal.',

@@ -1,6 +1,6 @@
 import { sep } from 'path'
 import { getProjectRoot } from 'src/bootstrap/state.js'
-import { findCanonicalGitRoot } from 'src/utils/git.js'
+import { findCanonicalGitRoot } from 'src/services/git/git.js'
 import {
   buildSearchingPastContextSection,
   DIRS_EXIST_GUIDANCE,

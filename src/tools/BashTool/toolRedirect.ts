@@ -3,9 +3,9 @@ import { isAbsolute, resolve } from 'path'
 import {
   walkCommandSegments,
   type CommandSegment,
-} from 'src/utils/bash/segments.js'
-import { tryParseShellCommand } from 'src/utils/bash/shellQuote.js'
-import { expandTilde } from 'src/utils/permissions/pathValidation.js'
+} from 'src/services/bash/segments.js'
+import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { expandTilde } from 'src/services/permissions/pathValidation.js'
 import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from 'src/tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'

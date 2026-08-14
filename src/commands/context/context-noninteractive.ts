@@ -7,11 +7,11 @@ import type { Message } from 'src/types/message.js'
 import {
   analyzeContextUsage,
   type ContextData,
-} from 'src/utils/analyzeContext.js'
-import { formatTokens } from 'src/utils/format.js'
-import { getMessagesAfterCompactBoundary } from 'src/utils/messages.js'
-import { getSourceDisplayName } from 'src/utils/settings/constants.js'
-import { plural } from 'src/utils/stringUtils.js'
+} from 'src/services/context/analyzeContext.js'
+import { formatTokens } from 'src/utils/text/format.js'
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
+import { getSourceDisplayName } from 'src/services/settings/constants.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 
 /**
  * Shared data-collection path for `/context` (slash command) and the SDK

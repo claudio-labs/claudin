@@ -32,22 +32,22 @@ import {
   removeApiKey,
   saveOAuthTokensIfNeeded,
   validateForceLoginOrg,
-} from 'src/utils/auth.js'
-import { clearBetasCaches } from 'src/utils/betas.js'
-import { saveGlobalConfig } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import { clearBetasCaches } from 'src/services/api/betas.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getSecureStorage } from 'src/utils/secureStorage/index.js'
-import { clearToolSchemaCache } from 'src/utils/toolSchemaCache.js'
+import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { clearToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
 import { resetUserCache } from 'src/utils/user.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   buildAccountProperties,
   buildAPIProviderProperties,
-} from 'src/utils/status.js'
+} from 'src/components/status.js'
 
 export async function performLogout({
   clearOnboarding = false,
@@ -55,7 +55,7 @@ export async function performLogout({
   clearOnboarding?: boolean
 }): Promise<void> {
   // Flush telemetry BEFORE clearing credentials to prevent org data leakage
-  const { flushTelemetry } = await import('src/utils/telemetry/instrumentation.js')
+  const { flushTelemetry } = await import('src/services/telemetry/instrumentation.js')
   await flushTelemetry()
   await removeApiKey()
 

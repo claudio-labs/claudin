@@ -1,14 +1,14 @@
 import { mkdir, open, unlink } from 'fs/promises'
 import { join } from 'path'
-import type { SettingSource } from 'src/utils/settings/constants.js'
-import { getManagedFilePath } from 'src/utils/settings/managedPath.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import { getManagedFilePath } from 'src/services/settings/managedPath.js'
 import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js'
 import {
   type AgentDefinition,
   isBuiltInAgent,
   isPluginAgent,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import type { EffortValue } from 'src/utils/effort.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { getErrnoCode } from 'src/utils/errors.js'

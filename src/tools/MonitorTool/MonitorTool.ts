@@ -3,15 +3,15 @@ import React from 'react'
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { spawnShellTask } from 'src/tasks/LocalShellTask/LocalShellTask.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { exec } from 'src/utils/Shell.js'
-import { getTaskOutputPath } from 'src/utils/task/diskOutput.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { exec } from 'src/utils/proc/Shell.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 import {
   bashToolHasPermission,
   matchWildcardPattern,
   permissionRuleExtractPrefix,
 } from 'src/tools/BashTool/bashPermissions.js'
-import { parseForSecurity } from 'src/utils/bash/ast.js'
+import { parseForSecurity } from 'src/services/bash/ast.js'
 import { MONITOR_TOOL_NAME } from './toolName.js'
 
 const MONITOR_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes

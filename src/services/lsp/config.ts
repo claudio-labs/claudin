@@ -2,8 +2,8 @@ import type { PluginError } from 'src/types/plugin.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage, toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getPluginLspServers } from 'src/utils/plugins/lspPluginIntegration.js'
-import { loadAllPluginsCacheOnly } from 'src/utils/plugins/pluginLoader.js'
+import { getPluginLspServers } from 'src/services/plugins/lspPluginIntegration.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import type { ScopedLspServerConfig } from './types.js'
 
 /**

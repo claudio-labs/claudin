@@ -7,7 +7,7 @@ import {
 } from 'src/services/api/kimiOAuth.js'
 import { openBrowser } from 'src/utils/browser.js'
 import { isBareMode } from 'src/utils/envUtils.js'
-import { saveKimiCredentials } from 'src/utils/kimiCredentials.js'
+import { saveKimiCredentials } from 'src/services/api/kimiCredentials.js'
 
 export type KimiOAuthFlowStatus =
   | { state: 'starting' }

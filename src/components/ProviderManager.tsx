@@ -9,15 +9,15 @@ import { Box, Text } from 'src/ink.js'
 import { useKeybinding } from 'src/keybindings/useKeybinding.js'
 import { useSetAppState } from 'src/state/AppState.js'
 import { suppressNextMainLoopModelPersist } from 'src/state/onChangeAppState.js'
-import type { ProviderProfile } from 'src/utils/config.js'
+import type { ProviderProfile } from 'src/services/config/config.js'
 import {
   clearCodexCredentials,
   readCodexCredentialsAsync,
-} from 'src/utils/codexCredentials.js'
+} from 'src/services/api/codexCredentials.js'
 import { isBareMode } from 'src/utils/envUtils.js'
-import { getPrimaryModel, parseModelList } from 'src/utils/providerModels.js'
+import { getPrimaryModel, parseModelList } from 'src/services/api/providerModels.js'
 import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
-import { deleteProfileFile } from 'src/utils/providerProfile.js'
+import { deleteProfileFile } from 'src/services/api/providerProfile.js'
 import {
   addProviderProfile,
   deleteProviderProfile,
@@ -32,8 +32,8 @@ import {
   type ProviderPreset,
   type ProviderProfileInput,
   updateProviderProfile,
-} from 'src/utils/providerProfiles.js'
-import { clearGithubModelsToken } from 'src/utils/githubModelsCredentials.js'
+} from 'src/services/api/providerProfiles.js'
+import { clearGithubModelsToken } from 'src/services/api/githubModelsCredentials.js'
 import {
   buildDiscoveredModelOptions,
   listOpenAICompatibleModels,
@@ -41,11 +41,11 @@ import {
   probeOllamaGenerationReadiness,
   type AtomicChatReadiness,
   type OllamaGenerationReadiness,
-} from 'src/utils/providerDiscovery.js'
+} from 'src/services/api/providerDiscovery.js'
 import {
   rankOllamaModels,
   recommendOllamaModel,
-} from 'src/utils/providerRecommendation.js'
+} from 'src/services/api/providerRecommendation.js'
 import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 import {
   type OptionWithDescription,
@@ -60,18 +60,18 @@ import { useKimiOAuthFlow } from './useKimiOAuthFlow.js'
 import {
   clearXaiCredentials,
   readXaiCredentials,
-} from 'src/utils/xaiCredentials.js'
+} from 'src/services/api/xaiCredentials.js'
 import {
   clearKimiCredentials,
   readKimiCredentials,
-} from 'src/utils/kimiCredentials.js'
+} from 'src/services/api/kimiCredentials.js'
 import { KIMI_CODE_MODEL_LIST } from 'src/services/api/kimiOAuthShared.js'
 import {
   formatMigrationReport,
   legacyClaudeDirExists,
   migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
-} from 'src/utils/claudinMigration.js'
+} from 'src/services/config/claudinMigration.js'
 
 export type ProviderManagerResult = {
   action: 'saved' | 'cancelled' | 'activated'

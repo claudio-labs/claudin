@@ -17,7 +17,7 @@
  *
  * In-progress state (rule 4 of the plan) is read out of the command's own
  * output, not from the filesystem. `isInTransientGitState`
- * (`src/utils/gitDiff.ts:379`) answers a related question but is async and
+ * (`src/services/git/gitDiff.ts:379`) answers a related question but is async and
  * returns a bare boolean, and this function is synchronous and receives no cwd
  * — so the two cannot share an implementation. Git's own text is also strictly
  * more informative: it names WHICH operation is unfinished.

@@ -13,13 +13,13 @@ import {
   clearMarketplacesCache,
   getDeclaredMarketplaces,
   loadKnownMarketplacesConfig,
-} from 'src/utils/plugins/marketplaceManager.js'
-import { clearPluginCache } from 'src/utils/plugins/pluginLoader.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { clearPluginCache } from 'src/services/plugins/pluginLoader.js'
 import {
   diffMarketplaces,
   reconcileMarketplaces,
-} from 'src/utils/plugins/reconciler.js'
-import { refreshActivePlugins } from 'src/utils/plugins/refresh.js'
+} from 'src/services/plugins/reconciler.js'
+import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
 import { logEvent } from 'src/services/analytics/index.js'
 
 type SetAppState = (f: (prevState: AppState) => AppState) => void

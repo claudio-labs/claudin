@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/services/analytics/growthbook.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   DEFAULT_POLL_CONFIG,
   type PollIntervalConfig,

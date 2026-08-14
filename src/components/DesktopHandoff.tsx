@@ -4,10 +4,10 @@ import type { CommandResultDisplay } from 'src/commands.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw input for "any key" dismiss and y/n prompt
 import { Box, Text, useInput } from 'src/ink.js';
 import { openBrowser } from 'src/utils/browser.js';
-import { getDesktopInstallStatus, openCurrentSessionInDesktop } from 'src/utils/desktopDeepLink.js';
+import { getDesktopInstallStatus, openCurrentSessionInDesktop } from 'src/services/ide/desktopDeepLink.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
-import { flushSessionStorage } from 'src/utils/sessionStorage.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { flushSessionStorage } from 'src/services/session/sessionStorage.js';
 import { LoadingState } from './design-system/LoadingState.js';
 const DESKTOP_DOCS_URL = 'https://clau.de/desktop';
 export function getDownloadUrl(): string {

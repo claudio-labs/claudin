@@ -8,10 +8,10 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isBinaryContentType,
   persistBinaryContent,
-} from 'src/utils/mcpOutputStorage.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+} from 'src/services/mcp/mcpOutputStorage.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { ssrfGuardedLookup } from 'src/utils/hooks/ssrfGuard.js'
+import { ssrfGuardedLookup } from 'src/services/lifecycleHooks/ssrfGuard.js'
 import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
 import { isPreapprovedHost } from './preapproved.js'
 import { makeSecondaryModelPrompt } from './prompt.js'

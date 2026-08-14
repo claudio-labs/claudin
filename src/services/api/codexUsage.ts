@@ -1,7 +1,7 @@
 import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
-} from 'src/utils/codexCredentials.js'
+} from 'src/services/api/codexCredentials.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isBareMode } from 'src/utils/envUtils.js'
 import {

@@ -1,8 +1,8 @@
 import { logEvent } from 'src/services/analytics/index.js'
-import { isProSubscriber } from 'src/utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { isProSubscriber } from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 
 export function resetProToOpusDefault(): void {
   const config = getGlobalConfig()

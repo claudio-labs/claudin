@@ -9,20 +9,20 @@ import type {
   PermissionDecisionReason,
   PermissionResult,
 } from 'src/types/permissions.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { isCurrentDirectoryBareGitRepo } from 'src/utils/git.js'
-import type { PermissionRule } from 'src/utils/permissions/PermissionRule.js'
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { isCurrentDirectoryBareGitRepo } from 'src/services/git/git.js'
+import type { PermissionRule } from 'src/services/permissions/PermissionRule.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForToolName,
-} from 'src/utils/permissions/permissions.js'
+} from 'src/services/permissions/permissions.js'
 import {
   matchWildcardPattern,
   parsePermissionRule,
   type ShellPermissionRule,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
-} from 'src/utils/permissions/shellRuleMatching.js'
+} from 'src/services/permissions/shellRuleMatching.js'
 import {
   classifyCommandName,
   deriveSecurityFlags,
@@ -33,8 +33,8 @@ import {
   PS_TOKENIZER_DASH_CHARS,
   parsePowerShellCommand,
   stripModulePrefix,
-} from 'src/utils/powershell/parser.js'
-import { containsVulnerableUncPath } from 'src/utils/shell/readOnlyCommandValidation.js'
+} from 'src/services/shell/powershell/parser.js'
+import { containsVulnerableUncPath } from 'src/services/shell/readOnlyCommandValidation.js'
 import { isDotGitPathPS, isGitInternalPathPS } from './gitSafety.js'
 import {
   checkPermissionMode,

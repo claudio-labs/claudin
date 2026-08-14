@@ -1,6 +1,6 @@
 import figures from 'figures';
 import * as React from 'react';
-import type { SettingSource } from 'src/utils/settings/constants.js';
+import type { SettingSource } from 'src/services/settings/constants.js';
 import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/ink.js';
 import type { ResolvedAgent } from 'src/tools/AgentTool/agentDisplay.js';
@@ -11,7 +11,7 @@ import {
   resolveAgentModelDisplay,
 } from 'src/tools/AgentTool/agentDisplay.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { count } from 'src/utils/array.js';
+import { count } from 'src/utils/data/array.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { Divider } from 'src/components/design-system/Divider.js';
 import { getAgentSourceDisplayName } from './utils.js';

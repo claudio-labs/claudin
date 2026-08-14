@@ -22,9 +22,9 @@ type AnyAsyncFn = (...args: any[]) => Promise<any>
 // on first import, so a partial mock here would leak missing-export errors
 // into every later test file that pulls pluginLoader transitively (e.g.
 // tools.lsp-gate, diagnosticsForToolResult).
-const realPluginLoader = await import('src/utils/plugins/pluginLoader.js')
+const realPluginLoader = await import('src/services/plugins/pluginLoader.js')
 const mockLoadPlugins = mock<AnyAsyncFn>(async () => ({ enabled: [] }))
-mock.module('src/utils/plugins/pluginLoader.js', () => ({
+mock.module('src/services/plugins/pluginLoader.js', () => ({
   ...realPluginLoader,
   loadAllPluginsCacheOnly: mockLoadPlugins,
 }))
@@ -65,7 +65,7 @@ mock.module('src/utils/errors.js', () => ({
   classifyAxiosError: (_e: unknown) => ({ type: 'unknown' }),
 }))
 // Prevent deep plugin integration chain from loading
-mock.module('src/utils/plugins/lspPluginIntegration.js', () => ({
+mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
   getPluginLspServers: mock(async () => ({})),
   addPluginScopeToLspServers: mock((s: unknown) => s),
 }))
@@ -97,7 +97,7 @@ describe('getAllLspServers — plugin-only', () => {
         enabled: true,
       }],
     }))
-    mock.module('src/utils/plugins/lspPluginIntegration.js', () => ({
+    mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
       getPluginLspServers: async () => ({
         'my-server': makeServer('plugin-cmd', 'test-plugin'),
       }),

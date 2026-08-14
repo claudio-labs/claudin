@@ -49,12 +49,12 @@ mock.module('./manager.js', () => ({
 }))
 
 // Capture real settings module before mocking so afterAll can restore it.
-const realSettingsDiag = { ...(await import('src/utils/settings/settings.js')) }
+const realSettingsDiag = { ...(await import('src/services/settings/settings.js')) }
 
 const mockGetInitialSettings = mock(
   () => ({}) as { lsp?: { diagnosticsTimeoutMs?: number } },
 )
-mock.module('src/utils/settings/settings.js', () => ({
+mock.module('src/services/settings/settings.js', () => ({
   getInitialSettings: mockGetInitialSettings,
   updateSettingsForSource: async () => {},
   setSetting: async () => {},
@@ -477,5 +477,5 @@ afterAll(() => {
     waitForInitialization: async () => {},
     _resetLspManagerForTesting: () => {},
   }))
-  mock.module('src/utils/settings/settings.js', () => realSettingsDiag)
+  mock.module('src/services/settings/settings.js', () => realSettingsDiag)
 })

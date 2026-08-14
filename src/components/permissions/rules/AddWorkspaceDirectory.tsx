@@ -10,7 +10,7 @@ import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
-import { getDirectoryCompletions } from 'src/utils/suggestions/directoryCompletion.js';
+import { getDirectoryCompletions } from 'src/services/suggestions/directoryCompletion.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Byline } from 'src/components/design-system/Byline.js';

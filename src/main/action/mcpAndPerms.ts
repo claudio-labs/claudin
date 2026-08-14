@@ -28,23 +28,23 @@ import {
 } from 'src/services/mcp/config.js';
 import type { McpServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { type ChannelEntry, setAllowedChannels, setUserMsgOptIn } from 'src/bootstrap/state.js';
-import { assertMinVersion } from 'src/utils/autoUpdater.js';
+import { assertMinVersion } from 'src/services/install/autoUpdater.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { isBareMode } from 'src/utils/envUtils.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { safeParseJSON } from 'src/utils/json.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
 import {
   initializeToolPermissionContext,
   initialPermissionModeFromCLI,
   isDefaultPermissionModeAuto,
   parseToolListFromCLI,
   stripDangerousPermissionsForAutoMode,
-} from 'src/utils/permissions/permissionSetup.js';
-import { getPlatform } from 'src/utils/platform.js';
-import { writeToStderr } from 'src/utils/process.js';
+} from 'src/services/permissions/permissionSetup.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { writeToStderr } from 'src/utils/proc/process.js';
 import { setSessionBypassPermissionsMode } from 'src/bootstrap/state.js';
-import { plural } from 'src/utils/stringUtils.js';
-import type { ValidationError } from 'src/utils/settings/validation.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import type { ValidationError } from 'src/services/settings/validation.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from './parseOptions.js';
 
@@ -200,7 +200,7 @@ export async function runMcpAndPerms(
       const nonSdkConfigNames = Object.entries(allConfigs).filter(([, config]) => config.type !== 'sdk').map(([name]) => name);
       let reservedNameError: string | null = null;
       if (feature('CHICAGO_MCP')) {
-        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/utils/computerUse/common.js');
+        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/services/computerUse/common.js');
         if (nonSdkConfigNames.some(isComputerUseMCPServer)) {
           reservedNameError = `Invalid MCP configuration: "${COMPUTER_USE_MCP_SERVER_NAME}" is a reserved MCP name.`;
         }
@@ -247,9 +247,9 @@ export async function runMcpAndPerms(
   // chicago MCP: guarded Computer Use.
   if (feature('CHICAGO_MCP') && getPlatform() === 'macos' && !isNonInteractiveSession) {
     try {
-      const { getChicagoEnabled } = await import('src/utils/computerUse/gates.js');
+      const { getChicagoEnabled } = await import('src/services/computerUse/gates.js');
       if (getChicagoEnabled()) {
-        const { setupComputerUseMCP } = await import('src/utils/computerUse/setup.js');
+        const { setupComputerUseMCP } = await import('src/services/computerUse/setup.js');
         const { mcpConfig: cuMcpConfig, allowedTools: cuTools } = setupComputerUseMCP();
         dynamicMcpConfig = {
           ...dynamicMcpConfig,

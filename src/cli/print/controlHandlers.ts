@@ -26,8 +26,8 @@ import {
   fileHistoryCanRestore,
   fileHistoryEnabled,
   fileHistoryGetDiffStats,
-} from 'src/utils/fileHistory.js'
-import { parsePluginIdentifier } from 'src/utils/plugins/pluginIdentifier.js'
+} from 'src/utils/fs/fileHistory.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logMCPDebug } from 'src/utils/log.js'
 import {
@@ -40,7 +40,7 @@ import {
   getAutoModeUnavailableReason,
   isBypassPermissionsModeDisabled,
   transitionPermissionMode,
-} from 'src/utils/permissions/permissionSetup.js'
+} from 'src/services/permissions/permissionSetup.js'
 import { enqueue } from 'src/utils/messageQueueManager.js'
 
 export async function handleRewindFiles(

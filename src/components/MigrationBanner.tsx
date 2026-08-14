@@ -6,7 +6,7 @@ import {
   markMigrationSkipped,
   migrateLegacyClaudeDir,
   type MigrationReport,
-} from 'src/utils/claudinMigration.js'
+} from 'src/services/config/claudinMigration.js'
 import { Select } from './CustomSelect/index.js'
 
 type Phase =

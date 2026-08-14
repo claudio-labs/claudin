@@ -3,7 +3,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resetGlobalConfigForTests } from './config.js'
+import { resetGlobalConfigForTests } from 'src/services/config/config.js'
 
 const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
 const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
@@ -36,9 +36,9 @@ mock.module('src/services/analytics/index.js', () => ({
 }))
 
 const { maybeSummarizeToolResult, isSummarizedContent } = await import(
-  './toolResultSummarizer.js'
+  'src/services/tools/toolResultSummarizer.js'
 )
-const { processPreMappedToolResultBlock } = await import('./toolResultStorage.js')
+const { processPreMappedToolResultBlock } = await import('src/services/tools/toolResultStorage.js')
 const { AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
 
 const ENV_KEYS = [

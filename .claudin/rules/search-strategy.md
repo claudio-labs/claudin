@@ -18,7 +18,7 @@ Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 
 A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
 model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
-(`summarizeGrepOutput` in `src/utils/toolResultSummarizer.ts`). So asking for
+(`summarizeGrepOutput` in `src/services/tools/toolResultSummarizer.ts`). So asking for
 `-C 30` on a wide search does not buy 30 lines of context — scope the search
 instead, or re-run against the one file you care about. Between ~3 KB and ~6 KB
 the same regrouping applies, but only when it costs no match line: a result
@@ -37,11 +37,11 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 does not re-answer a search it already served.
 
 `Glob` returns at most **100 paths per call**, ranked most-recently-modified
-first (`--sortr=modified` in `src/utils/glob.ts`), so what the cap drops is the
+first (`--sortr=modified` in `src/utils/fs/glob.ts`), so what the cap drops is the
 files nobody has touched. That ranking is the same one Grep's
 `files_with_matches` mode applies, and it is load-bearing twice over: the
 summarizer trims the result again to the first 50 paths
-(`GLOB_MAX_PATHS` in `src/utils/toolResultSummarizer.ts`), so on a wide pattern
+(`GLOB_MAX_PATHS` in `src/services/tools/toolResultSummarizer.ts`), so on a wide pattern
 the model sees the 50 newest matches and nothing else. A truncated result names
 the `offset` to pass for the next page — that is the way to reach the rest,
 narrowing the pattern being the other. Ordering is by mtime, not relevance: a
@@ -51,7 +51,7 @@ reaches it, so scope with `path` rather than paging.
 ## What a search does NOT cover
 
 The two tools disagree about `.gitignore`, on purpose, and the asymmetry is the
-thing to hold in your head. `Glob` passes `--no-ignore` (`src/utils/glob.ts`),
+thing to hold in your head. `Glob` passes `--no-ignore` (`src/utils/fs/glob.ts`),
 so it lists ignored paths and walks `node_modules/`. `Grep` does not, so a
 pattern living only in `dist/`, in generated code or in a vendored tree is
 outside the files it reads.
@@ -85,7 +85,7 @@ open it. One label reaches three places — the search itself (ripgrep's
 so `output_mode: "symbols"` over UTF-16 returns real signatures instead of
 "(matched outside any symbol)"), and `Read(file_path, encoding: …)`, which
 covers a full read, a range, `view: "outline"` and `symbol:` alike. All three
-share `src/utils/textEncoding.ts`, so an unknown label is refused the same way
+share `src/utils/fs/textEncoding.ts`, so an unknown label is refused the same way
 everywhere rather than degrading into mojibake. Note the map still prints a
 *signature* while `Read`'s `symbol` matches on a *name*, so the round trip
 means reading `makeWidget` out of `export function makeWidget(id: string)`.
@@ -93,7 +93,7 @@ means reading `makeWidget` out of `export function makeWidget(id: string)`.
 Finally, an empty result is no longer overloaded. ripgrep exits 2 both when it
 refuses an invocation and when it fails to read a path, and `ripGrep()` used to
 resolve both to `[]` — so an **invalid regex answered "No matches found"**.
-`ripGrepWithStatus()` (`src/utils/ripgrep.ts`) separates them: a refusal is
+`ripGrepWithStatus()` (`src/utils/fs/ripgrep.ts`) separates them: a refusal is
 re-thrown carrying ripgrep's own message, an unreadable directory still returns
 results, and a run cut short by the 20s timeout or the 20 MB buffer comes back
 labelled INCOMPLETE instead of passing as a finished search. Grep and Glob both
@@ -372,7 +372,7 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 ### Debugging provider issues
 
 1. Start at `src/services/api/activeProvider.ts` → `tryGetActiveProvider()`
-2. Check `src/utils/config.ts` → `getGlobalConfig()` for stored profile
+2. Check `src/services/config/config.ts` → `getGlobalConfig()` for stored profile
 3. Check `src/services/api/providerConfig.ts` for preset definitions
 4. Run `/provider doctor` from inside the REPL after `bun run dev`
 
@@ -381,7 +381,7 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 1. Find tool dir: `src/tools/<ToolName>/`
 2. Look at `execute()` in the entry file `<ToolName>Tool.ts(x)` (tools don't use `index.ts`)
 3. Check `src/tools/shared/` for shared helpers
-4. Check `src/utils/toolResultStorage.ts` for large output persistence
+4. Check `src/services/tools/toolResultStorage.ts` for large output persistence
 
 ### Build issues (feature() preprocessing)
 
@@ -393,7 +393,7 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 ### Configuration issues
 
 1. Config file: `~/.claudin/settings.json`
-2. `src/utils/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
+2. `src/services/config/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
 3. Config dir override: `CLAUDIN_CONFIG_DIR` env var
 4. V8 cache: `~/.claudin/v8cache/` — delete to force cold-start if caching issues
 

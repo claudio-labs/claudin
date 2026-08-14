@@ -16,8 +16,8 @@
  */
 
 import { z } from 'zod/v4'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { parsePluginIdentifier } from 'src/utils/plugins/pluginIdentifier.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 
 export type ChannelAllowlistEntry = {

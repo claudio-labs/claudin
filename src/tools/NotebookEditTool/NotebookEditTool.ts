@@ -3,19 +3,19 @@ import { extname, isAbsolute, resolve } from 'path'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef, type ToolUseContext } from 'src/Tool.js'
 import type { NotebookCell, NotebookContent } from 'src/types/notebook.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/file.js'
-import { readFileSyncWithMetadata } from 'src/utils/fileRead.js'
-import { safeParseJSON } from 'src/utils/json.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { parseCellId } from 'src/utils/notebook.js'
-import { checkWritePermissionForTool } from 'src/utils/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
+import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
+import { safeParseJSON } from 'src/utils/data/json.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { parseCellId } from 'src/utils/fs/notebook.js'
+import { checkWritePermissionForTool } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import {
   satisfiesReadGate,

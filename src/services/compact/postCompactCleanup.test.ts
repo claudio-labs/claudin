@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach } from 'bun:test'
-import { createUserMessage } from 'src/utils/messages.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   pruneStaleClippedIds,
   addClippedIds,
@@ -15,7 +15,7 @@ import { runPostCompactCleanup } from './postCompactCleanup.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import {
   resetPromptCacheBreakDetection,
   _getSourceCountForTesting,

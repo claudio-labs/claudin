@@ -14,7 +14,7 @@ import { type AppState, useAppState } from 'src/state/AppState.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import type { Message } from 'src/types/message.js';
 import type { PromptInputMode, VimMode } from 'src/types/textInputTypes.js';
-import type { AutoUpdaterResult } from 'src/utils/autoUpdater.js';
+import type { AutoUpdaterResult } from 'src/services/install/autoUpdater.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { CoordinatorTaskPanel, useCoordinatorTaskCount } from 'src/components/CoordinatorAgentStatus.js';
 import { GoalStatusIndicator } from 'src/components/GoalStatusIndicator.js';

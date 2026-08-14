@@ -19,7 +19,7 @@ import { refreshGrowthBookAfterAuthChange } from 'src/services/analytics/growthb
 import { refreshPolicyLimits } from 'src/services/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from 'src/services/remoteManagedSettings/index.js';
 import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { validateForceLoginOrg } from 'src/utils/auth.js';
+import { validateForceLoginOrg } from 'src/services/auth/auth.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { resetUserCache } from 'src/utils/user.js';
 import type { Root } from 'src/ink.js';
@@ -171,7 +171,7 @@ export async function runTrustAndOnboarding(
   // the user through provider selection twice when they intentionally
   // skipped during Onboarding.
   try {
-    const { getActiveProviderProfile, getProviderProfiles } = await import('src/utils/providerProfiles.js');
+    const { getActiveProviderProfile, getProviderProfiles } = await import('src/services/api/providerProfiles.js');
     const hasProfiles = getProviderProfiles().length > 0 || Boolean(getActiveProviderProfile());
     if (!hasProfiles && !onboardingShown) {
       const { showSetupDialog } = await import('src/interactiveHelpers.js');

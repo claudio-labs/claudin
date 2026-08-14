@@ -19,7 +19,7 @@
  * it has no delta scanner at all. Its raw `nested_memory` attachment
  * is emitted once per session by `memoryFilesToAttachments`, and that
  * one-copy-per-session invariant is owned by
- * `src/utils/attachments/memory.dedup.test.ts`.
+ * `src/services/attachments/memory.dedup.test.ts`.
  *
  * We measure with `stableStringify` — the exact same serializer the
  * openaiShim / codexShim use on the request body, so the numbers
@@ -33,10 +33,10 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
-import { appendSystemContext, prependUserContext } from './api.js'
-import { getClaudeMdDelta } from './claudeMdDelta.js'
-import { getGitStatusDelta } from './gitStatusDelta.js'
-import { stableStringify } from './stableStringify.js'
+import { appendSystemContext, prependUserContext } from 'src/services/api/api.js'
+import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
+import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
+import { stableStringify } from 'src/utils/data/stableStringify.js'
 import {
   getTodoReminderDelta,
   type TodoSnapshotItem,
@@ -100,7 +100,7 @@ function repeat(n: number): string {
 }
 
 // --- Attachment shape factories --------------------------------------------
-// These mirror the wrappers in src/utils/attachments.ts so the scanners
+// These mirror the wrappers in src/services/attachments/attachments.ts so the scanners
 // can reconstruct prior state from the transcript.
 
 function claudeMdDeltaMsg(
@@ -595,7 +595,7 @@ describe('static-dedup integration: production injection functions', () => {
   // scanner standing in for them; nested memory has none. Its content
   // reaches the model solely through the raw `nested_memory`
   // attachment (deduped per session by `memoryFilesToAttachments` —
-  // see src/utils/attachments/memory.dedup.test.ts), so adding a
+  // see src/services/attachments/memory.dedup.test.ts), so adding a
   // NESTED_MEMORY_CONTEXT_KEY to the strip list here would drop
   // content with nothing re-emitting it.
   test('filterStaticDedupKeys does NOT strip memory or non-dedup keys', () => {

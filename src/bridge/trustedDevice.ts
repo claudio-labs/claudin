@@ -8,8 +8,8 @@ import {
 } from 'src/services/analytics/growthbook.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
-import { getSecureStorage } from 'src/utils/secureStorage/index.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 
 /**
@@ -120,7 +120,7 @@ export async function enrollTrustedDevice(): Promise<void> {
     // of getTrustedDeviceToken() don't need this; only /login does.
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { getClaudeAIOAuthTokens } =
-      require('src/utils/auth.js') as typeof import('src/utils/auth.js')
+      require('src/services/auth/auth.js') as typeof import('src/services/auth/auth.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     const accessToken = getClaudeAIOAuthTokens()?.accessToken
     if (!accessToken) {

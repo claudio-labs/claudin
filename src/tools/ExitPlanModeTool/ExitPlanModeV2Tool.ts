@@ -20,14 +20,14 @@ import {
   type ToolDef,
   toolMatchesName,
 } from 'src/Tool.js'
-import { formatAgentId, generateRequestId } from 'src/utils/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { formatAgentId, generateRequestId } from 'src/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import {
   findInProcessTeammateTaskId,
   setAwaitingPlanApproval,
-} from 'src/utils/inProcessTeammateHelpers.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+} from 'src/coordinator/inProcessTeammateHelpers.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logError } from 'src/utils/log.js'
 import {
   getPlan,
@@ -35,15 +35,15 @@ import {
   getPlanSlug,
   persistFileSnapshotIfRemote,
 } from 'src/utils/plans.js'
-import { seedTasksFromPlan } from 'src/utils/planTasks.js'
+import { seedTasksFromPlan } from 'src/tasks/planTasks.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   getAgentName,
   getTeamName,
   isPlanModeRequired,
   isTeammate,
-} from 'src/utils/teammate.js'
-import { writeToMailbox } from 'src/utils/teammateMailbox.js'
+} from 'src/coordinator/teammate.js'
+import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
@@ -57,10 +57,10 @@ import {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/utils/permissions/autoModeState.js') as typeof import('src/utils/permissions/autoModeState.js'))
+  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
   : null
 const permissionSetupModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/utils/permissions/permissionSetup.js') as typeof import('src/utils/permissions/permissionSetup.js'))
+  ? (require('src/services/permissions/permissionSetup.js') as typeof import('src/services/permissions/permissionSetup.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

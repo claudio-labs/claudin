@@ -33,7 +33,7 @@ mock.module('src/services/analytics/growthbook.js', () => ({
 
 import type { Message } from 'src/types/message.js'
 const { createAssistantMessage, createUserMessage } = await import(
-  'src/utils/messages.js'
+  'src/services/messages/messages.js'
 )
 
 // Force the 'retain' cache profile BEFORE anything reads it: it is the

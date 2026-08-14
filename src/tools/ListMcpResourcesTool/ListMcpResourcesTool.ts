@@ -5,7 +5,7 @@ import {
 } from 'src/services/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logMCPError } from 'src/utils/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isOutputLineTruncated } from 'src/utils/terminal.js'

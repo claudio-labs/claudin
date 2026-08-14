@@ -33,9 +33,9 @@ import { feature } from 'bun:bundle';
 import { randomUUID, type UUID } from 'crypto';
 import type { ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { Message as MessageType, UserMessage } from 'src/types/message.js';
-import type { PastedContent } from 'src/utils/config.js';
+import type { PastedContent } from 'src/services/config/config.js';
 import type { MessageActionCaps } from 'src/components/messageActions.js';
-import type { FileHistoryState } from 'src/utils/fileHistory.js';
+import type { FileHistoryState } from 'src/utils/fs/fileHistory.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import type { SetAppState } from 'src/utils/messageQueueManager.js';
 import type { useNotifications } from 'src/context/notifications.js';
@@ -43,9 +43,9 @@ import {
   selectableUserMessagesFilter,
   messagesAfterAreOnlySynthetic,
 } from 'src/components/MessageSelector.js';
-import { textForResubmit } from 'src/utils/messages.js';
+import { textForResubmit } from 'src/services/messages/messages.js';
 import { resetMicrocompactState } from 'src/services/compact/microCompact.js';
-import { fileHistoryHasAnyChanges } from 'src/utils/fileHistory.js';
+import { fileHistoryHasAnyChanges } from 'src/utils/fs/fileHistory.js';
 import { setClipboard } from 'src/ink/termio/osc.js';
 import { logEvent } from 'src/services/analytics/index.js';
 

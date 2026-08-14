@@ -21,21 +21,21 @@ import { APIError } from '@anthropic-ai/sdk'
 import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
-} from 'src/utils/codexCredentials.js'
+} from 'src/services/api/codexCredentials.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
-import { resolveGeminiCredential } from 'src/utils/geminiAuth.js'
-import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/utils/geminiCredentials.js'
-import { hydrateGithubModelsTokenFromSecureStorage } from 'src/utils/githubModelsCredentials.js'
+import { resolveGeminiCredential } from 'src/services/api/geminiAuth.js'
+import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/services/api/geminiCredentials.js'
+import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   modelUsesKimiEffort,
   resolveAppliedEffort,
   type EffortValue,
 } from 'src/utils/effort.js'
-import { redactSecretValueForDisplay } from 'src/utils/providerProfile.js'
-import { logApiCallEnd, logApiCallStart } from 'src/utils/requestLogging.js'
-import { stableStringify } from 'src/utils/stableStringify.js'
+import { redactSecretValueForDisplay } from 'src/services/api/providerProfile.js'
+import { logApiCallEnd, logApiCallStart } from 'src/services/api/requestLogging.js'
+import { stableStringify } from 'src/utils/data/stableStringify.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForContent,
@@ -70,7 +70,7 @@ import {
 import { resolveOAuthProviderAuth } from './oauthProviderAuth.js'
 import { stripThinkTags } from 'src/services/api/thinkTagSanitizer.js'
 import { normalizeToolArguments } from 'src/services/api/toolArgumentNormalization.js'
-import { getClaudinUserAgent } from 'src/utils/userAgent.js'
+import { getClaudinUserAgent } from 'src/services/api/userAgent.js'
 import { buildCopilotDynamicHeaders } from 'src/services/api/copilotHeaders.js'
 import {
   COPILOT_HEADERS,

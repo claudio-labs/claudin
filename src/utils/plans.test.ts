@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, sep } from 'path'
-import { runWithCwdOverride } from './cwd.js'
+import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
 
 // getPlansDirectory() reads settings via ./settings/settings.js and reports
 // gitignore additions via ./git/gitignore.js. Both are mocked at the module
@@ -10,13 +10,13 @@ import { runWithCwdOverride } from './cwd.js'
 // touching the real ~/.claudin/settings.json, and gitignore because the real
 // implementation appends to the developer's actual ~/.config/git/ignore.
 // Everything else (mkdirSync/realpathSync/chmodSync, symlinks, cwd) is real.
-const realSettings = { ...(await import('./settings/settings.js')) }
-const realGitignore = { ...(await import('./git/gitignore.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realGitignore = { ...(await import('src/services/git/gitignore.js')) }
 const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
 
 afterAll(() => {
-  mock.module('./settings/settings.js', () => realSettings)
-  mock.module('./git/gitignore.js', () => realGitignore)
+  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/services/git/gitignore.js', () => realGitignore)
   if (originalConfigDirEnv === undefined) {
     delete process.env.CLAUDIN_CONFIG_DIR
   } else {
@@ -28,16 +28,16 @@ let gitignoreCalls: Array<{ filename: string; cwd: string }> = []
 
 /**
  * Re-imports plans.js with a cache-busting query so its top-level
- * `import { getInitialSettings } from './settings/settings.js'` binding
+ * `import { getInitialSettings } from 'src/services/settings/settings.js'` binding
  * picks up whatever we've just mocked (mirrors utils/effort.xhighDefault.test.ts).
  */
 async function importFreshPlansModule(options: { plansDirectory?: string } = {}) {
   gitignoreCalls = []
-  mock.module('./settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({ plansDirectory: options.plansDirectory }),
   }))
-  mock.module('./git/gitignore.js', () => ({
+  mock.module('src/services/git/gitignore.js', () => ({
     ...realGitignore,
     addFileGlobRuleToGitignore: async (filename: string, cwd: string) => {
       gitignoreCalls.push({ filename, cwd })

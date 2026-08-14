@@ -10,12 +10,12 @@ import {
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
 import { env } from 'src/utils/env.js'
-import { generateSuggestions } from 'src/utils/permissions/filesystem.js'
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
+import { generateSuggestions } from 'src/services/permissions/filesystem.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   type CompletionType,
   logUnaryEvent,
-} from 'src/utils/unaryLogging.js'
+} from 'src/services/api/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import type {
   FileOperationType,

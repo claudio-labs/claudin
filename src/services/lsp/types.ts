@@ -1,5 +1,5 @@
 // LSP server configuration types shared across the lsp service layer.
-// Inferred from LspServerConfigSchema in src/utils/plugins/schemas.ts
+// Inferred from LspServerConfigSchema in src/services/plugins/schemas.ts
 
 export type LspServerConfig = {
   command: string

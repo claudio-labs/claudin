@@ -30,15 +30,32 @@ import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurpo
 import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 
-// This file only ever exercises the firstParty environment, which is what
-// getAPIProvider() already returns with no provider profile configured. It used
-// to pin providers.js to 'firstParty' defensively, but Bun keys mock.module by
-// specifier and the FIRST file to claim one owns it for the whole run — the pin
-// could never defend against a leak, it only made this file the aggressor.
+// Provider isolation — and why this file no longer pins one.
+//
+// The Claude-family recommendation + "Fast mode" env lines are gated on
+// getAPIProvider() === 'firstParty', so this file used to mock.module
+// 'src/utils/model/providers.js' to 'firstParty' before every test, on the
+// theory that doing so would win over whatever leaked from a file that ran
+// earlier.
+//
+// It does not win. Bun keys mock.module by SPECIFIER for the whole run, and the
+// first file to register a factory for a specifier owns it — a later
+// mock.module on the same specifier from another file is ignored, even by a
+// consumer re-imported with a cache-busting query string. So the pin could
+// never defend against a leak; all it did was make this file the aggressor,
+// forcing 'firstParty' onto every other file reaching providers.js (measured:
+// it took out 4 assertions in src/services/api/withRetry.test.ts as soon as
+// both sides resolved to the same specifier).
+//
+// With no provider profile configured, getAPIProvider() returns 'firstParty' on
+// its own, which is exactly the environment these tests want.
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 
 afterEach(() => {
-  process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
+  // `process.env.X = undefined` stores the STRING "undefined", which is truthy —
+  // it would leave simple mode on for every file that runs after this one.
+  if (originalSimpleEnv === undefined) delete process.env.CLAUDE_CODE_SIMPLE
+  else process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
   clearSystemPromptSections()
 })
 

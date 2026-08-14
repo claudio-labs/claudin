@@ -10,17 +10,17 @@ import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShort
 import { Box, Text, useInput } from 'src/ink.js';
 import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js';
 import type { LoadedPlugin } from 'src/types/plugin.js';
-import { count } from 'src/utils/array.js';
-import { shouldSkipPluginAutoupdate } from 'src/utils/config.js';
+import { count } from 'src/utils/data/array.js';
+import { shouldSkipPluginAutoupdate } from 'src/services/config/config.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { clearAllCaches } from 'src/utils/plugins/cacheUtils.js';
-import { createPluginId, formatMarketplaceLoadingErrors, getMarketplaceSourceDisplay, loadMarketplacesWithGracefulDegradation } from 'src/utils/plugins/marketplaceHelpers.js';
-import { loadKnownMarketplacesConfig, refreshMarketplace, removeMarketplaceSource, setMarketplaceAutoUpdate } from 'src/utils/plugins/marketplaceManager.js';
-import { updatePluginsForMarketplaces } from 'src/utils/plugins/pluginAutoupdate.js';
-import { loadAllPlugins } from 'src/utils/plugins/pluginLoader.js';
-import { isMarketplaceAutoUpdate } from 'src/utils/plugins/schemas.js';
-import { getSettingsForSource, updateSettingsForSource } from 'src/utils/settings/settings.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
+import { createPluginId, formatMarketplaceLoadingErrors, getMarketplaceSourceDisplay, loadMarketplacesWithGracefulDegradation } from 'src/services/plugins/marketplaceHelpers.js';
+import { loadKnownMarketplacesConfig, refreshMarketplace, removeMarketplaceSource, setMarketplaceAutoUpdate } from 'src/services/plugins/marketplaceManager.js';
+import { updatePluginsForMarketplaces } from 'src/services/plugins/pluginAutoupdate.js';
+import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
+import { isMarketplaceAutoUpdate } from 'src/services/plugins/schemas.js';
+import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import type { ViewState } from './types.js';
 type Props = {
   setViewState: (state: ViewState) => void;

@@ -164,7 +164,7 @@ Worse, Bun pre-applies every `mock.module()` specifier override for the WHOLE
 when A executes first, regardless of `--max-concurrency=1`.
 
 - **Don't** write a test asserting on the REAL exports of a module any sibling file
-  `mock.module`s (`src/utils/config.js` is the known case — mocked by
+  `mock.module`s (`src/services/config/config.js` is the known case — mocked by
   `startupUpdateCheck.test.ts`). Extract the logic under test into a module nobody
   mocks (e.g. `privacyLevel.ts`) and test that.
 - **Canonical teardown when you must mock a module:** snapshot the reals BEFORE
@@ -298,7 +298,7 @@ in `ignore` by hand, and the external CLI tools the code shells out to
 ## Verifying attachments/system-reminders at runtime
 
 **Do not grep the session `.jsonl` to check whether an attachment fired.** For
-non-`ant` users `isLoggableMessage` (`src/utils/sessionStorage/pure/logging.ts`)
+non-`ant` users `isLoggableMessage` (`src/services/session/pure/logging.ts`)
 drops **every** attachment from the transcript except `hook_additional_context`
 and `deferred_tools_delta`. A `todo_reminder_delta`, a memory delta, a plan-mode
 attachment — none of them are written. Absence in the log is not evidence the
@@ -307,9 +307,9 @@ negative (it did, while verifying the task reminder on 2026-07-26).
 
 The observation channel that works is a temporary `appendFileSync` to `/tmp`,
 at BOTH ends: the producer (`getTaskReminderAttachments` and friends in
-`src/utils/attachments/lifecycle.ts`) to see the gate decisions and turn
+`src/services/attachments/lifecycle.ts`) to see the gate decisions and turn
 counters, and the renderer (`normalizeAttachmentForAPI` in
-`src/utils/messages/attachments.ts`) to capture the literal text the model
+`src/services/messages/attachments.ts`) to capture the literal text the model
 receives. Log the bail reason per branch, not just the success case — that is
 what tells you *which* gate closed. `logEvent` is useless here: telemetry is
 stubbed out at build time in this fork.

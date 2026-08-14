@@ -11,8 +11,8 @@ import { useRegisterOverlay } from 'src/context/overlayContext.js';
 import { Box, Text, useInput } from 'src/ink.js';
 import { useKeybindings } from 'src/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
-import { type GlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
-import { getBranch } from 'src/utils/git.js';
+import { type GlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getBranch } from 'src/services/git/git.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {
   onDone: () => void;

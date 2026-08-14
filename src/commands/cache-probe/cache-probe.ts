@@ -3,7 +3,7 @@ import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { resolveProviderRequest } from 'src/services/api/providerConfig.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { hydrateGithubModelsTokenFromSecureStorage } from 'src/utils/githubModelsCredentials.js'
+import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 
 const COPILOT_HEADERS: Record<string, string> = {

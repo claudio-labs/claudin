@@ -6,8 +6,8 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { shouldUseSessionMemoryCompaction } from 'src/services/compact/sessionMemoryCompact.js';
 import type { Message } from 'src/types/message.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { isCompactBoundaryMessage } from 'src/utils/messages.js';
-import { logOTelEvent } from 'src/utils/telemetry/events.js';
+import { isCompactBoundaryMessage } from 'src/services/messages/messages.js';
+import { logOTelEvent } from 'src/services/telemetry/events.js';
 import { useSurveyState } from './useSurveyState.js';
 import type { FeedbackSurveyResponse } from './utils.js';
 const HIDE_THANKS_AFTER_MS = 3000;

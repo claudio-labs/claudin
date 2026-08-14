@@ -18,8 +18,8 @@
 
 import { createServer, type Socket as NodeSocket } from 'node:net'
 import { logForDebugging } from 'src/utils/debug.js'
-import { getWebSocketTLSOptions } from 'src/utils/mtls.js'
-import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/utils/proxy.js'
+import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
+import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
 
 // The CCR container runs behind an egress gateway — direct outbound is
 // blocked, so the WS upgrade must go through the same HTTP CONNECT proxy

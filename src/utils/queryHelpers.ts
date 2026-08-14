@@ -21,20 +21,20 @@ import type { OrphanedPermission } from 'src/types/textInputTypes.js'
 import { logForDebugging } from './debug.js'
 import { isEnvTruthy } from './envUtils.js'
 import { isFsInaccessible } from './errors.js'
-import { getFileModificationTime, stripLineNumberPrefix } from './file.js'
-import { readFileSyncWithMetadata } from './fileRead.js'
+import { getFileModificationTime, stripLineNumberPrefix } from 'src/utils/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
 import {
   createFileStateCacheWithSizeLimit,
   type FileStateCache,
-} from './fileStateCache.js'
-import { isNotEmptyMessage, normalizeMessages } from './messages.js'
-import { expandPath } from './path.js'
+} from 'src/utils/fs/fileStateCache.js'
+import { isNotEmptyMessage, normalizeMessages } from 'src/services/messages/messages.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import type {
   inputSchema as permissionToolInputSchema,
   outputSchema as permissionToolOutputSchema,
-} from './permissions/PermissionPromptToolResultSchema.js'
-import type { ProcessUserInputContext } from './processUserInput/processUserInput.js'
-import { recordTranscript } from './sessionStorage.js'
+} from 'src/services/permissions/PermissionPromptToolResultSchema.js'
+import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js'
+import { recordTranscript } from 'src/services/session/sessionStorage.js'
 
 export type PermissionPromptTool = Tool<
   ReturnType<typeof permissionToolInputSchema>,

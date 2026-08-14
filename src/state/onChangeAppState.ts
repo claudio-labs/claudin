@@ -3,25 +3,25 @@ import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
   clearGcpCredentialsCache,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
-} from 'src/utils/config.js'
+} from 'src/services/config/config.js'
 import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { applyConfigEnvironmentVariables } from 'src/utils/managedEnv.js'
-import { getActiveProviderProfile } from 'src/utils/providerProfiles.js'
+import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js'
+import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
-} from 'src/utils/permissions/PermissionMode.js'
+} from 'src/services/permissions/PermissionMode.js'
 import {
   notifyPermissionModeChanged,
   notifySessionMetadataChanged,
   type SessionExternalMetadata,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import type { AppState } from './AppStateStore.js'
 
 // One-shot flag: when set, the next `mainLoopModel` diff handled by

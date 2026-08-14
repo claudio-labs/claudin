@@ -1,8 +1,8 @@
 import { readFile, stat } from 'fs/promises'
 
 import { logError } from 'src/utils/log.js'
-import { toRelativePath } from 'src/utils/path.js'
-import { createTextDecoder, encodingOverride } from 'src/utils/textEncoding.js'
+import { toRelativePath } from 'src/utils/fs/path.js'
+import { createTextDecoder, encodingOverride } from 'src/utils/fs/textEncoding.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,

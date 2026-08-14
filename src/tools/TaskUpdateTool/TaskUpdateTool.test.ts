@@ -11,7 +11,7 @@ import {
   isTodoV2Enabled,
   listTasks,
   resetTaskList,
-} from 'src/utils/tasks.js'
+} from 'src/tasks/tasks.js'
 import { TaskUpdateTool } from './TaskUpdateTool.js'
 
 let configDir: string

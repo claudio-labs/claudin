@@ -21,16 +21,16 @@ import { logForDebugging } from 'src/utils/debug.js'
 import type { EffortLevel } from 'src/utils/effort.js'
 import { logError } from 'src/utils/log.js'
 import { getAPIProviderForStatsig } from 'src/utils/model/providers.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { logOTelEvent } from 'src/utils/telemetry/events.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 import {
   endLLMRequestSpan,
   isBetaTracingEnabled,
   type Span,
-} from 'src/utils/telemetry/sessionTracing.js'
+} from 'src/services/telemetry/sessionTracing.js'
 import type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
-import { consumeInvokingRequestId } from 'src/utils/agentContext.js'
+import { consumeInvokingRequestId } from 'src/coordinator/agentContext.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

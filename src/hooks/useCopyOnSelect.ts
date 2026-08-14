@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTheme } from 'src/components/design-system/ThemeProvider.js'
 import type { useSelection } from 'src/ink/hooks/use-selection.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { getTheme } from 'src/utils/theme.js'
 
 type Selection = ReturnType<typeof useSelection>

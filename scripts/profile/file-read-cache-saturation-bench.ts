@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // File-read cache saturation bench.
 //
-// fileReadCache (src/utils/fileReadCache.ts) caps at 1000 entries × 256 KB
+// fileReadCache (src/utils/fs/fileReadCache.ts) caps at 1000 entries × 256 KB
 // each → theoretical max ≈ 256 MB. This is the largest bounded cache in
 // the codebase. The long-session bench reads 5 files/turn from a pool of
 // 5000, never holding more than 1000 simultaneously — but we never measure
@@ -111,7 +111,7 @@ Options:
     writeFileSync(join(dir, `f_${i}.txt`), lines.join(''))
   }
 
-  const { fileReadCache } = await import('../../src/utils/fileReadCache.js')
+  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
   fileReadCache.clear()
 
   gc()

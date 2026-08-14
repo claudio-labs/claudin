@@ -11,19 +11,19 @@ import {
 } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import { isMainSessionTask } from 'src/tasks/LocalMainSessionTask.js'
 import { toAgentId } from 'src/types/ids.js'
-import { generateRequestId } from 'src/utils/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { generateRequestId } from 'src/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { truncate } from 'src/utils/format.js'
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { truncate } from 'src/utils/text/format.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { parseAddress } from 'src/utils/peerAddress.js'
-import { semanticBoolean } from 'src/utils/semanticBoolean.js'
+import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import type { BackendType } from 'src/utils/swarm/backends/types.js'
-import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js'
-import { readTeamFileAsync } from 'src/utils/swarm/teamHelpers.js'
+import type { BackendType } from 'src/coordinator/swarm/backends/types.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
+import { readTeamFileAsync } from 'src/coordinator/swarm/teamHelpers.js'
 import {
   getAgentId,
   getAgentName,
@@ -31,13 +31,13 @@ import {
   getTeamName,
   isTeamLead,
   isTeammate,
-} from 'src/utils/teammate.js'
+} from 'src/coordinator/teammate.js'
 import {
   createShutdownApprovedMessage,
   createShutdownRejectedMessage,
   createShutdownRequestMessage,
   writeToMailbox,
-} from 'src/utils/teammateMailbox.js'
+} from 'src/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
 import { SEND_MESSAGE_TOOL_NAME } from './constants.js'
 import { DESCRIPTION, getPrompt } from './prompt.js'

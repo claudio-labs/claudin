@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { isMcpInstructionsDeltaEnabled } from '../src/utils/mcpInstructionsDelta.js'
+import { isMcpInstructionsDeltaEnabled } from '../src/services/mcp/mcpInstructionsDelta.js'
 import { measureMcpOverhead } from './measure-mcp-overhead.ts'
 
 describe('measureMcpOverhead', () => {
@@ -64,7 +64,7 @@ describe('measureMcpOverhead', () => {
     // emits per turn. The bench reports both sizes side-by-side as a
     // measurement convenience, but the live code path picks one — see
     // src/constants/prompts.ts:421-454 (gate via isMcpInstructionsDeltaEnabled)
-    // and src/utils/attachments.ts:1649. If this gate flips off, every audit
+    // and src/services/attachments/attachments.ts:1649. If this gate flips off, every audit
     // would double-count overhead — fail loudly so future refactors notice.
     expect(typeof isMcpInstructionsDeltaEnabled()).toBe('boolean')
     // Default ships TRUE — when this changes, revisit getMcpInstructionsSection.

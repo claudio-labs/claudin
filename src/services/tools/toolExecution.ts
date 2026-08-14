@@ -59,8 +59,8 @@ import type {
   ProgressMessage,
   StopHookInfo,
 } from 'src/types/message.js'
-import { count } from 'src/utils/array.js'
-import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { count } from 'src/utils/data/array.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import {
   AbortError,
@@ -70,9 +70,9 @@ import {
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/utils/errors.js'
-import { executePermissionDeniedHooks } from 'src/utils/hooks.js'
+import { executePermissionDeniedHooks } from 'src/services/lifecycleHooks/hooks.js'
 import { logError } from 'src/utils/log.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   detectSerialEditStreak,
@@ -91,20 +91,20 @@ import {
   createToolResultStopMessage,
   createUserMessage,
   withMemoryCorrectionHint,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from 'src/utils/permissions/PermissionResult.js'
+} from 'src/services/permissions/PermissionResult.js'
 import {
   startSessionActivity,
   stopSessionActivity,
-} from 'src/utils/sessionActivity.js'
+} from 'src/services/session/sessionActivity.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { Stream } from 'src/utils/stream.js'
-import { stripPlaceholderOptionalFields } from 'src/utils/toolInputPlaceholders.js'
+import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
 import { transportSendsStrictToolSchemas } from 'src/services/api/providerConfig.js'
-import { logOTelEvent } from 'src/utils/telemetry/events.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 import {
   addToolContentEvent,
   endToolBlockedOnUserSpan,
@@ -114,20 +114,20 @@ import {
   startToolBlockedOnUserSpan,
   startToolExecutionSpan,
   startToolSpan,
-} from 'src/utils/telemetry/sessionTracing.js'
+} from 'src/services/telemetry/sessionTracing.js'
 import {
   formatError,
   formatZodValidationError,
-} from 'src/utils/toolErrors.js'
+} from 'src/services/tools/toolErrors.js'
 import {
   processPreMappedToolResultBlock,
   processToolResultBlock,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import {
   extractDiscoveredToolNames,
   isToolSearchEnabledOptimistic,
   isToolSearchToolAvailable,
-} from 'src/utils/toolSearch.js'
+} from 'src/services/tools/toolSearch.js'
 import {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

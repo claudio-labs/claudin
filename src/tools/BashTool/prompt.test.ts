@@ -2,7 +2,7 @@
 // extracted body builder, and the simple-prompt rendering.
 //
 // Note on `ANTHROPIC_API_KEY` stubbing in the body tests: `getBashGitInstructionsBody()`
-// calls `getAttributionTexts()` (src/utils/attribution.ts), which routes
+// calls `getAttributionTexts()` (src/services/git/attribution.ts), which routes
 // through model resolution and demands an API key even for these
 // read-only string assertions. The stub is load-bearing — without it the
 // tests blow up at import-resolution time.

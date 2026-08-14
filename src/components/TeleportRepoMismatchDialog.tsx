@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useState } from 'react';
 import { Box, Text } from 'src/ink.js';
-import { getDisplayPath } from 'src/utils/file.js';
-import { removePathFromRepo, validateRepoAtPath } from 'src/utils/githubRepoPathMapping.js';
+import { getDisplayPath } from 'src/utils/fs/file.js';
+import { removePathFromRepo, validateRepoAtPath } from 'src/services/git/githubRepoPathMapping.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 import { Spinner } from './Spinner.js';

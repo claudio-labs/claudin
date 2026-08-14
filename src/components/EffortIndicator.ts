@@ -14,7 +14,7 @@ import {
   isAdaptiveEffort,
   modelSupportsEffort,
 } from 'src/utils/effort.js'
-import { buildEffortPill } from 'src/utils/format-branch.js'
+import { buildEffortPill } from 'src/services/git/format-branch.js'
 import type { Theme } from 'src/utils/theme.js'
 
 

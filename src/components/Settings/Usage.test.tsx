@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { renderToString } from 'src/utils/staticRender.js'
-import { recordBytesSaved, resetBytesSaved } from 'src/utils/tokensSaved.js'
+import { renderToString } from 'src/components/staticRender.js'
+import { recordBytesSaved, resetBytesSaved } from 'src/services/context/tokensSaved.js'
 
 type ModelUsageRecord = {
   inputTokens: number

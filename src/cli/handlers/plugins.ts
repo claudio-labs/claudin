@@ -24,16 +24,16 @@ import {
 import { getPluginErrorMessage } from 'src/types/plugin.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { clearAllCaches } from 'src/utils/plugins/cacheUtils.js'
-import { getInstallCounts } from 'src/utils/plugins/installCounts.js'
+import { clearAllCaches } from 'src/services/plugins/cacheUtils.js'
+import { getInstallCounts } from 'src/services/plugins/installCounts.js'
 import {
   isPluginInstalled,
   loadInstalledPluginsV2,
-} from 'src/utils/plugins/installedPluginsManager.js'
+} from 'src/services/plugins/installedPluginsManager.js'
 import {
   createPluginId,
   loadMarketplacesWithGracefulDegradation,
-} from 'src/utils/plugins/marketplaceHelpers.js'
+} from 'src/services/plugins/marketplaceHelpers.js'
 import {
   addMarketplaceSource,
   loadKnownMarketplacesConfig,
@@ -41,22 +41,22 @@ import {
   refreshMarketplace,
   removeMarketplaceSource,
   saveMarketplaceToSettings,
-} from 'src/utils/plugins/marketplaceManager.js'
-import { loadPluginMcpServers } from 'src/utils/plugins/mcpPluginIntegration.js'
-import { parseMarketplaceInput } from 'src/utils/plugins/parseMarketplaceInput.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { loadPluginMcpServers } from 'src/services/plugins/mcpPluginIntegration.js'
+import { parseMarketplaceInput } from 'src/services/plugins/parseMarketplaceInput.js'
 import {
   parsePluginIdentifier,
   scopeToSettingSource,
-} from 'src/utils/plugins/pluginIdentifier.js'
-import { loadAllPlugins } from 'src/utils/plugins/pluginLoader.js'
-import type { PluginSource } from 'src/utils/plugins/schemas.js'
+} from 'src/services/plugins/pluginIdentifier.js'
+import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js'
+import type { PluginSource } from 'src/services/plugins/schemas.js'
 import {
   type ValidationResult,
   validateManifest,
   validatePluginContents,
-} from 'src/utils/plugins/validatePlugin.js'
+} from 'src/services/plugins/validatePlugin.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { plural } from 'src/utils/stringUtils.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 import { cliError, cliOk } from 'src/cli/exit.js'
 
 // Re-export for main.tsx to reference in option definitions
@@ -164,7 +164,7 @@ export async function pluginListHandler(options: {
 
   const installedData = loadInstalledPluginsV2()
   const { getPluginEditableScopes } = await import(
-    'src/utils/plugins/pluginStartupCheck.js'
+    'src/services/plugins/pluginStartupCheck.js'
   )
   const enabledPlugins = getPluginEditableScopes()
 

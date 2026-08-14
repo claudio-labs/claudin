@@ -5,7 +5,7 @@
 import { z } from 'zod/v4';
 import type { Tool } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
-import { lazySchema } from 'src/utils/lazySchema.js';
+import { lazySchema } from 'src/utils/data/lazySchema.js';
 const NAME = 'TestingPermission';
 const inputSchema = lazySchema(() => z.strictObject({}));
 type InputSchema = ReturnType<typeof inputSchema>;

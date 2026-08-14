@@ -3,11 +3,11 @@ import { getUserContext } from 'src/context.js'
 import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
-import { prependUserContext } from 'src/utils/api.js'
+import { prependUserContext } from 'src/services/api/api.js'
 import {
   createUserMessage,
   normalizeMessagesForAPI,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import type { ModelName } from 'src/utils/model/model.js'
 import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import {

@@ -35,7 +35,7 @@
  * correctness fixes and stay on.
  */
 
-import type { Attachment } from 'src/utils/attachments/types.js'
+import type { Attachment } from 'src/services/attachments/types.js'
 import type { Message } from 'src/types/message.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import {
@@ -43,11 +43,11 @@ import {
   isTodoV2Enabled,
   listTasks,
   type Task,
-} from 'src/utils/tasks.js'
+} from 'src/tasks/tasks.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
-import { isTeammate } from 'src/utils/teammate.js'
+import { isTeammate } from 'src/coordinator/teammate.js'
 
 /**
  * How much work a turn has to do before an untouched list counts as neglect.

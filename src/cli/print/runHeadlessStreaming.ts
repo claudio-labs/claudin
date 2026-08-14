@@ -33,7 +33,7 @@ import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import type { TurnInterruptionState } from 'src/utils/conversationRecovery.js'
+import type { TurnInterruptionState } from 'src/services/session/conversationRecovery.js'
 import type {
   MCPServerConnection,
   McpSdkServerConfig,
@@ -46,27 +46,27 @@ import type {
 import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
 import { enqueue, subscribeToCommandQueue, getCommandsByMaxPriority } from 'src/utils/messageQueueManager.js'
 import {
   getSessionState,
   setPermissionModeChangedListener,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import {
   gracefulShutdown,
-} from 'src/utils/gracefulShutdown.js'
+} from 'src/utils/proc/gracefulShutdown.js'
 import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { createIdleTimeoutManager } from 'src/utils/idleTimeout.js'
-import { AwsAuthStatusManager } from 'src/utils/awsAuthStatusManager.js'
+import { AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js'
 import {
   statusListeners,
   type ClaudeAILimits,
 } from 'src/services/claudeAiLimits.js'
-import { toSDKRateLimitInfo } from 'src/utils/messages/mappers.js'
-import { createModelSwitchBreadcrumbs } from 'src/utils/messages.js'
+import { toSDKRateLimitInfo } from 'src/services/messages/mappers.js'
+import { createModelSwitchBreadcrumbs } from 'src/services/messages/messages.js'
 import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/constants/xml.js'
 import { getModelOptions } from 'src/utils/model/modelOptions.js'
 import {
@@ -79,14 +79,14 @@ import {
   modelSupportsMaxEffort,
   EFFORT_LEVELS,
 } from 'src/utils/effort.js'
-import { modelSupportsAdaptiveThinking } from 'src/utils/thinking.js'
-import { modelSupportsAutoMode } from 'src/utils/betas.js'
+import { modelSupportsAdaptiveThinking } from 'src/services/context/thinking.js'
+import { modelSupportsAutoMode } from 'src/services/api/betas.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { skillChangeDetector } from 'src/utils/skills/skillChangeDetector.js'
+import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 import { getCommands, clearCommandsCache } from 'src/commands.js'
 import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
-import { getRunningTasks } from 'src/utils/task/framework.js'
+import { getRunningTasks } from 'src/tasks/framework.js'
 import { isBackgroundTask } from 'src/tasks/types.js'
 import { removeInterruptedMessage } from 'src/cli/print/messageOps.js'
 import { handleOrphanedPermissionResponse } from 'src/cli/print/orphanPermission.js'
@@ -112,8 +112,8 @@ import type {
 
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const cronSchedulerModule = require('src/utils/cronScheduler.js') as typeof import('src/utils/cronScheduler.js')
-const cronJitterConfigModule = require('src/utils/cronJitterConfig.js') as typeof import('src/utils/cronJitterConfig.js')
+const cronSchedulerModule = require('src/tasks/cronScheduler.js') as typeof import('src/tasks/cronScheduler.js')
+const cronJitterConfigModule = require('src/tasks/cronJitterConfig.js') as typeof import('src/tasks/cronJitterConfig.js')
 const cronGate = require('src/tools/ScheduleCronTool/prompt.js') as typeof import('src/tools/ScheduleCronTool/prompt.js')
 /* eslint-enable @typescript-eslint/no-require-imports */
 

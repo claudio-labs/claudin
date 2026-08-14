@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'bun:test'
 import {
   _resetH1OnlyForTesting,
   isProviderH1Only,
-} from 'src/utils/proxy.js'
+} from 'src/services/api/proxy.js'
 import { isH2FailureError, withH2Fallback } from './h2Fallback.js'
 
 beforeEach(() => {

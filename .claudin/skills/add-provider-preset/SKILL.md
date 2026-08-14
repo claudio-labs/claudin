@@ -14,14 +14,14 @@ Two paths depending on auth. Confirm which the vendor uses first (API key/token
 The common case. `provider: 'openai'`, `requiresApiKey: true`. Recurring touch-set
 (zai 980aabd7, cloudflare c6b2d20a, opencode-zen 4a4e619):
 
-1. **`src/utils/providerProfiles.ts`** — add the key to the `ProviderPreset` union
+1. **`src/services/api/providerProfiles.ts`** — add the key to the `ProviderPreset` union
    AND a `getProviderPresetDefaults` switch case. ⚠️ The switch `default` falls
    through to `ollama`, so a union member with **no case silently becomes Ollama**
    (no compile error). This fn reads NO env — defaults are deterministic.
 2. **`src/components/ProviderManager.tsx`** — add a `{ value, label, description }`
    menu entry; the value flows straight into `getProviderPresetDefaults(preset)`,
    no extra wiring.
-3. **`src/utils/providerProfiles.test.ts`** — mirror the `opencode-zen` defaults test.
+3. **`src/services/api/providerProfiles.test.ts`** — mirror the `opencode-zen` defaults test.
 4. **`src/components/ProviderManager.test.tsx`** — add the preset to **`PRESET_ORDER`**.
    ⚠️ This is a TEST-ONLY ordering registry (not a source constant), so the menu
    wiring is NOT self-contained — omit it and the ProviderManager test fails.
@@ -64,18 +64,18 @@ Recurring touch-set (rename `<vendor>` per provider):
 - **Flow:** `src/services/api/<vendor>OAuth.ts` (+`.test.ts`) and a
   `<vendor>OAuthShared.ts` for shared consts.
 - **Credentials:** `src/utils/<vendor>Credentials.ts` (+`.test.ts`) AND register the
-  key in `src/utils/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
+  key in `src/services/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
 - **Wire:** inject the auth header in `src/services/api/openaiShim/messagesClient.ts`;
   handle 401/refresh in `src/services/api/withRetry.ts`.
 - **Schema:** `src/services/api/providerConfig.ts` (+`providerConfig.test.ts`) — profile
   + credential schema.
 - **UI:** `src/components/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
   `<XxxOAuthSetup>` clone in `ProviderManager.tsx`; `src/commands/provider/doctor.tsx`
-  (doctor check); `src/utils/config.ts`; `README.md`.
+  (doctor check); `src/services/config/config.ts`; `README.md`.
 - **Models (if the provider exposes a catalog):** a catalog like
   `src/utils/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
   `src/utils/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic
-  discovery lives in `src/utils/providerDiscovery.ts`.
+  discovery lives in `src/services/api/providerDiscovery.ts`.
 
 Backlog of OAuth providers opencode ships that Claudin lacks (re-verify against the
 sibling repo `../opencode/packages/opencode/src/plugin/` — this

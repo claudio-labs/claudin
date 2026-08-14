@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { join } from 'path'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from './paths.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -18,11 +18,11 @@ import {
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
+import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { formatFileSize } from 'src/utils/format.js'
-import { getProjectDir } from 'src/utils/sessionStorage.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { formatFileSize } from 'src/utils/text/format.js'
+import { getProjectDir } from 'src/services/session/sessionStorage.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,

@@ -2,9 +2,9 @@ import type { Command } from 'src/commands.js'
 import {
   getAttributionTexts,
   getEnhancedPRAttribution,
-} from 'src/utils/attribution.js'
-import { getDefaultBranch } from 'src/utils/git.js'
-import { executeShellCommandsInPrompt } from 'src/utils/promptShellExecution.js'
+} from 'src/services/git/attribution.js'
+import { getDefaultBranch } from 'src/services/git/git.js'
+import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
 
 const ALLOWED_TOOLS = [
   'Bash(git checkout --branch:*)',

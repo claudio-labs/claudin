@@ -1,10 +1,10 @@
 import { logEvent } from 'src/services/analytics/index.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logError } from 'src/utils/log.js'
 import {
   hasSkipDangerousModePermissionPrompt,
   updateSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * Migration: Move bypassPermissionsModeAccepted from global config to settings.json

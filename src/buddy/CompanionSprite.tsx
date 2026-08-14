@@ -6,7 +6,7 @@ import { stringWidth } from 'src/ink/stringWidth.js';
 import { Box, Text } from 'src/ink.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
-import { getGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig } from 'src/services/config/config.js';
 import { isFullscreenActive } from 'src/utils/fullscreen.js';
 import type { Theme } from 'src/utils/theme.js';
 import { getCompanion } from './companion.js';

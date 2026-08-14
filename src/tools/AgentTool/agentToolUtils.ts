@@ -37,25 +37,25 @@ import {
 } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import { asAgentId } from 'src/types/ids.js'
 import type { Message as MessageType } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isInProtectedNamespace } from 'src/utils/envUtils.js'
 import { AbortError, errorMessage } from 'src/utils/errors.js'
-import type { CacheSafeParams } from 'src/utils/forkedAgent.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/utils/messages.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
-import { permissionRuleValueFromString } from 'src/utils/permissions/permissionRuleParser.js'
+} from 'src/services/messages/messages.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
 import {
   buildTranscriptForClassifier,
   classifyYoloAction,
-} from 'src/utils/permissions/yoloClassifier.js'
-import { emitTaskProgress as emitTaskProgressEvent } from 'src/utils/task/sdkProgress.js'
-import { isInProcessTeammate } from 'src/utils/teammateContext.js'
-import { getTokenCountFromUsage } from 'src/utils/tokens.js'
+} from 'src/services/permissions/yoloClassifier.js'
+import { emitTaskProgress as emitTaskProgressEvent } from 'src/tasks/sdkProgress.js'
+import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
+import { getTokenCountFromUsage } from 'src/services/context/tokens.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from './constants.js'
 import type { AgentDefinition } from './loadAgentsDir.js'

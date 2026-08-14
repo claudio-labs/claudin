@@ -18,8 +18,8 @@ import { findToolByName } from 'src/Tool.js'
 import type { Message as MessageType } from 'src/types/message.js'
 import type { PermissionAskDecision } from 'src/types/permissions.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
-import type { RemoteMessageContent } from 'src/utils/teleport/api.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import type { RemoteMessageContent } from 'src/services/teleport/api.js'
 
 type UseDirectConnectResult = {
   isRemoteMode: boolean

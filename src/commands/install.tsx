@@ -9,8 +9,8 @@ import { Box, render, Text } from 'src/ink.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { env } from 'src/utils/env.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/utils/nativeInstaller/index.js';
-import { getInitialSettings, updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/services/install/index.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
 interface InstallProps {
   onDone: (result: string, options?: {
     display?: CommandResultDisplay;

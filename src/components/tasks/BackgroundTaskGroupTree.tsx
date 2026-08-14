@@ -5,7 +5,7 @@ import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { truncate } from 'src/utils/format.js';
+import { truncate } from 'src/utils/text/format.js';
 import { footerTreeBaseIndex } from './footerTaskGeometry.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can

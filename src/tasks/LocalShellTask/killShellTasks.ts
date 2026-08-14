@@ -7,8 +7,8 @@ import type { AgentId } from 'src/types/ids.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
 import { dequeueAllMatching } from 'src/utils/messageQueueManager.js'
-import { evictTaskOutput } from 'src/utils/task/diskOutput.js'
-import { updateTaskState } from 'src/utils/task/framework.js'
+import { evictTaskOutput } from 'src/tasks/diskOutput.js'
+import { updateTaskState } from 'src/tasks/framework.js'
 import { isLocalShellTask, type LocalShellTaskState } from './guards.js'
 
 type SetAppStateFn = (updater: (prev: AppState) => AppState) => void

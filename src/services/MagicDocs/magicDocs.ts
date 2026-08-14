@@ -15,12 +15,12 @@ import {
   type Output as FileReadToolOutput,
 } from 'src/tools/FileReadTool/FileReadTool.js'
 import { isFsInaccessible } from 'src/utils/errors.js'
-import { cloneFileStateCache } from 'src/utils/fileStateCache.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+import { cloneFileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { sequential } from 'src/utils/sequential.js'
 import { buildMagicDocsUpdatePrompt } from './prompts.js'
 

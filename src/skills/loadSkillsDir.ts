@@ -44,8 +44,8 @@ import {
   parseShellFrontmatter,
   splitPathInFrontmatter,
 } from 'src/utils/frontmatterParser.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
-import { isPathGitignored } from 'src/utils/git/gitignore.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { isPathGitignored } from 'src/services/git/gitignore.js'
 import { logError } from 'src/utils/log.js'
 import {
   extractDescriptionFromMarkdown,
@@ -53,14 +53,14 @@ import {
   loadMarkdownFilesForSubdir,
   type MarkdownFile,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/utils/markdownConfigLoader.js'
+} from 'src/services/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { executeShellCommandsInPrompt } from 'src/utils/promptShellExecution.js'
-import type { SettingSource } from 'src/utils/settings/constants.js'
-import { isSettingSourceEnabled } from 'src/utils/settings/constants.js'
-import { getManagedFilePath } from 'src/utils/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/utils/settings/pluginOnlyPolicy.js'
-import { HooksSchema, type HooksSettings } from 'src/utils/settings/types.js'
+import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
+import { getManagedFilePath } from 'src/services/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
+import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
 import { createSignal } from 'src/utils/signal.js'
 import { registerMCPSkillBuilders } from './mcpSkillBuilders.js'
 

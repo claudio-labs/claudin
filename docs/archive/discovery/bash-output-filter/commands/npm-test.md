@@ -150,7 +150,7 @@ Se output contém `RUN  v\d+\.\d+\.\d+`, é vitest → aplicar filter vitest. Et
 
 ## Open questions
 
-- [ ] **Capturar amostras reais.** Pode rodar `bun test src/utils/format.test.ts` no claudin rapidamente.
+- [ ] **Capturar amostras reais.** Pode rodar `bun test src/utils/text/format.test.ts` no claudin rapidamente.
 - [ ] Vale a pena ter filter próprio? Ou só adicionar ao match-pattern do filter principal de cada framework (`vitest.md` cobre `^(vitest|npx\s+vitest|bun\s+test)\b` mas se npm executa vitest como `> vitest run`, o wrapper `npm test` não casa esse pattern)?
 - [ ] **Encadeamento de filters** — feature crítica? Adiar pra v2?
 

@@ -45,9 +45,9 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
-import type { Attachment } from '../src/utils/attachments.js'
-import { normalizeAttachmentForAPI } from '../src/utils/messages.js'
+import { enableConfigs } from '../src/services/config/config.js'
+import type { Attachment } from '../src/services/attachments/attachments.js'
+import { normalizeAttachmentForAPI } from '../src/services/messages/messages.js'
 
 const LOREM =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'

@@ -11,8 +11,8 @@ import ScrollBox, { type ScrollBoxHandle } from 'src/ink/components/ScrollBox.js
 import { microcompactMessages } from 'src/services/compact/microCompact.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
-import { analyzeContextUsage, type ContextData } from 'src/utils/analyzeContext.js';
-import { getMessagesAfterCompactBoundary } from 'src/utils/messages.js';
+import { analyzeContextUsage, type ContextData } from 'src/services/context/analyzeContext.js';
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';
 
 // Rows reserved for the panel's own footer + the REPL chrome below it, so the
 // scroll viewport never runs past the bottom of the terminal.

@@ -4,7 +4,7 @@ import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/state/AppState.js'
 import { wrapStdoutWithMarkers } from 'src/outputFilter/Bash/markers.js'
 import type { PipelineResult, PreExecPlan } from 'src/outputFilter/Bash/types.js'
-import { renderToString } from 'src/utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 import BashToolResultMessage from './BashToolResultMessage.js'
 
 function render(stdout: string): Promise<string> {

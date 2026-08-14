@@ -10,7 +10,7 @@ import {
 
 import type { AppState } from './AppStateStore.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
-import type { ProjectConfig } from 'src/utils/config.js'
+import type { ProjectConfig } from 'src/services/config/config.js'
 
 // These tests verify two contracts of the `mainLoopModel` diff handler:
 //  1. `/model` is ALWAYS project-scoped — a write persists to
@@ -21,14 +21,14 @@ import type { ProjectConfig } from 'src/utils/config.js'
 //     provider-switch consequence flows.
 // They exercise `onChangeAppState` directly with mocked persistence boundaries.
 
-const realConfig = { ...(await import('src/utils/config.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
 const realProviderProfiles = {
-  ...(await import('src/utils/providerProfiles.js')),
+  ...(await import('src/services/api/providerProfiles.js')),
 }
-const realSettings = { ...(await import('src/utils/settings/settings.js')) }
-const realSessionState = { ...(await import('src/utils/sessionState.js')) }
-const realAuth = { ...(await import('src/utils/auth.js')) }
-const realManagedEnv = { ...(await import('src/utils/managedEnv.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realSessionState = { ...(await import('src/services/session/sessionState.js')) }
+const realAuth = { ...(await import('src/services/auth/auth.js')) }
+const realManagedEnv = { ...(await import('src/services/config/managedEnv.js')) }
 const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
 
 let activeProfileId: string | undefined
@@ -39,7 +39,7 @@ let updateSettingsForSourceCalls: number
 let setMainLoopModelOverrideCalls: Array<unknown>
 
 function installMocks(): void {
-  mock.module('src/utils/config.js', () => ({
+  mock.module('src/services/config/config.js', () => ({
     ...realConfig,
     getGlobalConfig: () => ({}),
     saveGlobalConfig: () => {},
@@ -49,29 +49,29 @@ function installMocks(): void {
       savedProjectConfigs.push(updater({} as ProjectConfig))
     },
   }))
-  mock.module('src/utils/providerProfiles.js', () => ({
+  mock.module('src/services/api/providerProfiles.js', () => ({
     ...realProviderProfiles,
     getActiveProviderProfile: () =>
       activeProfileId ? { id: activeProfileId } : undefined,
   }))
-  mock.module('src/utils/settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     ...realSettings,
     updateSettingsForSource: () => {
       updateSettingsForSourceCalls += 1
     },
   }))
-  mock.module('src/utils/sessionState.js', () => ({
+  mock.module('src/services/session/sessionState.js', () => ({
     ...realSessionState,
     notifySessionMetadataChanged: () => {},
     notifyPermissionModeChanged: () => {},
   }))
-  mock.module('src/utils/auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     ...realAuth,
     clearApiKeyHelperCache: () => {},
     clearAwsCredentialsCache: () => {},
     clearGcpCredentialsCache: () => {},
   }))
-  mock.module('src/utils/managedEnv.js', () => ({
+  mock.module('src/services/config/managedEnv.js', () => ({
     ...realManagedEnv,
     applyConfigEnvironmentVariables: () => {},
   }))
@@ -116,12 +116,12 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/config.js', () => realConfig)
-  mock.module('src/utils/providerProfiles.js', () => realProviderProfiles)
-  mock.module('src/utils/settings/settings.js', () => realSettings)
-  mock.module('src/utils/sessionState.js', () => realSessionState)
-  mock.module('src/utils/auth.js', () => realAuth)
-  mock.module('src/utils/managedEnv.js', () => realManagedEnv)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/services/session/sessionState.js', () => realSessionState)
+  mock.module('src/services/auth/auth.js', () => realAuth)
+  mock.module('src/services/config/managedEnv.js', () => realManagedEnv)
   mock.module('src/bootstrap/state.js', () => realBootstrapState)
 })
 

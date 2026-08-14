@@ -12,9 +12,9 @@ import { errorMessage } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
-import { updateTaskState } from 'src/utils/task/framework.js';
-import { archiveRemoteSession, teleportToRemote } from 'src/utils/teleport.js';
-import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/utils/ultraplan/ccrSession.js';
+import { updateTaskState } from 'src/tasks/framework.js';
+import { archiveRemoteSession, teleportToRemote } from 'src/components/teleport.js';
+import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/services/ultraplan/ccrSession.js';
 
 // TODO(prod-hardening): OAuth token may go stale over the 30min poll;
 // consider refresh.
@@ -42,7 +42,7 @@ function getUltraplanModel(): string {
 //
 // Bundler inlines .txt as a string; the test runner wraps it as {default}.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const _rawPrompt = require('src/utils/ultraplan/prompt.txt');
+const _rawPrompt = require('src/services/ultraplan/prompt.txt');
 /* eslint-enable @typescript-eslint/no-require-imports */
 const DEFAULT_INSTRUCTIONS: string = (typeof _rawPrompt === 'string' ? _rawPrompt : _rawPrompt.default).trimEnd();
 

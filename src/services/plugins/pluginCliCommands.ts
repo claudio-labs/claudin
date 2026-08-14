@@ -8,16 +8,16 @@
  */
 import figures from 'figures'
 import { errorMessage } from 'src/utils/errors.js'
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
 import { logError } from 'src/utils/log.js'
-import { getManagedPluginNames } from 'src/utils/plugins/managedPlugins.js'
-import { parsePluginIdentifier } from 'src/utils/plugins/pluginIdentifier.js'
-import type { PluginScope } from 'src/utils/plugins/schemas.js'
-import { writeToStdout } from 'src/utils/process.js'
+import { getManagedPluginNames } from 'src/services/plugins/managedPlugins.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
+import type { PluginScope } from 'src/services/plugins/schemas.js'
+import { writeToStdout } from 'src/utils/proc/process.js'
 import {
   buildPluginTelemetryFields,
   classifyPluginCommandError,
-} from 'src/utils/telemetry/pluginTelemetry.js'
+} from 'src/services/telemetry/pluginTelemetry.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Text } from 'src/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { checkCachedPassesEligibility, formatCreditAmount, getCachedReferrerReward, getCachedRemainingPasses } from 'src/services/api/referral.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 function resetIfPassesRefreshed(): void {
   const remaining = getCachedRemainingPasses();
   if (remaining == null || remaining <= 0) return;

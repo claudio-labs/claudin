@@ -10,20 +10,20 @@ import {
   type AgentColorName,
   getAgentColor,
 } from 'src/tools/AgentTool/agentColorManager.js'
-import { getStandaloneAgentName } from 'src/utils/standaloneAgent.js'
-import { isInsideTmux } from 'src/utils/swarm/backends/detection.js'
+import { getStandaloneAgentName } from 'src/coordinator/standaloneAgent.js'
+import { isInsideTmux } from 'src/coordinator/swarm/backends/detection.js'
 import {
   getCachedDetectionResult,
   isInProcessEnabled,
-} from 'src/utils/swarm/backends/registry.js'
-import { getSwarmSocketName } from 'src/utils/swarm/constants.js'
+} from 'src/coordinator/swarm/backends/registry.js'
+import { getSwarmSocketName } from 'src/coordinator/swarm/constants.js'
 import {
   getAgentName,
   getTeammateColor,
   getTeamName,
   isTeammate,
-} from 'src/utils/teammate.js'
-import { isInProcessTeammate } from 'src/utils/teammateContext.js'
+} from 'src/coordinator/teammate.js'
+import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
 import type { Theme } from 'src/utils/theme.js'
 
 type SwarmBannerInfo = {

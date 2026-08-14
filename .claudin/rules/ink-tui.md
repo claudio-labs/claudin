@@ -210,7 +210,7 @@ the right one.
   default 80 columns often cannot: the split `⎿` row rendered **identically** at 80
   and 34 columns, and only started eating the path at 26 (`M /repo/one.t  +28 −4`).
   Sweep two or three widths — `renderToString(node, columns)`
-  (`src/utils/staticRender.tsx`) takes one.
+  (`src/components/staticRender.tsx`) takes one.
 - This is invisible to a code review and to a unit test that only asserts
   `toContain`, because the words are all still present — just interleaved across
   rows. Assert **contiguity and order** of the fragments over the

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchGitLog, type GitLogRow } from 'src/utils/gitLog.js'
+import { fetchGitLog, type GitLogRow } from 'src/services/git/gitLog.js'
 
 const PAGE = 50
 

@@ -7,7 +7,7 @@ type: project
 Two related proposals were measured and settled on 2026-08-07: porting
 openclaude's aider-style `repoMap`, and generating a `search-strategy.md` from
 session history. **Both rejected as content generators.** What shipped instead
-is rule *upkeep* — see `src/utils/rulesLint.ts`, `/doctor`, `/refresh-rules`.
+is rule *upkeep* — see `src/services/instructions/rulesLint.ts`, `/doctor`, `/refresh-rules`.
 
 **Why:** measured over 503 local transcripts (257 with main-thread tool calls,
 21.4M tool_result chars):

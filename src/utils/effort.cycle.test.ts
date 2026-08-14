@@ -1,15 +1,15 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
-const realSettings = { ...(await import('./settings/settings.js')) }
-const realAuth = { ...(await import('./auth.js')) }
-const realThinking = { ...(await import('./thinking.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realAuth = { ...(await import('src/services/auth/auth.js')) }
+const realThinking = { ...(await import('src/services/context/thinking.js')) }
 const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realProviders = { ...(await import('./model/providers.js')) }
 
 afterAll(() => {
-  mock.module('./settings/settings.js', () => realSettings)
-  mock.module('./auth.js', () => realAuth)
-  mock.module('./thinking.js', () => realThinking)
+  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/services/auth/auth.js', () => realAuth)
+  mock.module('src/services/context/thinking.js', () => realThinking)
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('./model/providers.js', () => realProviders)
 })
@@ -22,15 +22,15 @@ afterEach(() => {
 async function importFreshEffortModule(options: {
   provider?: string
 } = {}) {
-  mock.module('./settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     getInitialSettings: () => ({}),
   }))
-  mock.module('./auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     isProSubscriber: () => false,
     isMaxSubscriber: () => false,
     isTeamSubscriber: () => false,
   }))
-  mock.module('./thinking.js', () => ({
+  mock.module('src/services/context/thinking.js', () => ({
     isUltrathinkEnabled: () => false,
   }))
   mock.module('src/services/analytics/growthbook.js', () => ({

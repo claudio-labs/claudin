@@ -11,7 +11,7 @@ import { createRoot, Text } from 'src/ink.js'
 // cost-tracker.projectTotals's switchSession→getSessionId round-trip).
 const realBootstrapStateForApiKey = { ...(await import('src/bootstrap/state.js')) }
 const realClaudeForApiKey = { ...(await import('src/services/api/claude.js')) }
-const realAuthForApiKey = { ...(await import('src/utils/auth.js')) }
+const realAuthForApiKey = { ...(await import('src/services/auth/auth.js')) }
 
 type AuthState = {
   anthropicAuthEnabled: boolean
@@ -68,7 +68,7 @@ afterEach(() => {
   mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
   mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
   mock.module('src/services/api/claude.js', () => realClaudeForApiKey)
-  mock.module('src/utils/auth.js', () => realAuthForApiKey)
+  mock.module('src/services/auth/auth.js', () => realAuthForApiKey)
 })
 
 test('useApiKeyVerification resets stale missing status when the session switches to a third-party provider', async () => {
@@ -78,7 +78,7 @@ test('useApiKeyVerification resets stale missing status when the session switche
   }
   const seenStatuses: string[] = []
 
-  mock.module('src/utils/auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     getAnthropicApiKeyWithSource: () => ({
       key: authState.key,
       source: authState.source,

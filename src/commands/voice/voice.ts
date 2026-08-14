@@ -2,13 +2,13 @@ import { normalizeLanguageForSTT } from 'src/hooks/useVoice.js'
 import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import type { LocalCommandCall } from 'src/types/command.js'
-import { isAnthropicAuthEnabled } from 'src/utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
-import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'
+import { isAnthropicAuthEnabled } from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 import { isVoiceModeEnabled } from 'src/voice/voiceModeEnabled.js'
 
 const LANG_HINT_MAX_SHOWS = 2

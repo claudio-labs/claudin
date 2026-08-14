@@ -7,8 +7,8 @@ import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js
 import { getDestructiveCommandWarning } from 'src/tools/PowerShellTool/destructiveCommandWarning.js';
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { isAllowlistedCommand } from 'src/tools/PowerShellTool/readOnlyValidation.js';
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js';
-import { getCompoundCommandPrefixesStatic } from 'src/utils/powershell/staticPrefix.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { getCompoundCommandPrefixesStatic } from 'src/services/shell/powershell/staticPrefix.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDecisionDebugInfo } from 'src/components/permissions/PermissionDecisionDebugInfo.js';

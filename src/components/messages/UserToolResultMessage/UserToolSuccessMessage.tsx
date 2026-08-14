@@ -7,7 +7,7 @@ import { type AppState, useAppState } from 'src/state/AppState.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/types/message.js';
 import { deleteClassifierApproval, getClassifierApproval, getYoloClassifierApproval } from 'src/utils/classifierApprovals.js';
-import { extractTag, type buildMessageLookups } from 'src/utils/messages.js';
+import { extractTag, type buildMessageLookups } from 'src/services/messages/messages.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { HookProgressMessage } from 'src/components/messages/HookProgressMessage.js';
 type Props = {

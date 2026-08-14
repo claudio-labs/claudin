@@ -4,18 +4,18 @@ import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js
 import { getUserContext } from 'src/context.js'
 import type { Message } from 'src/types/message.js'
 import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js'
-import { resetSentBashGitInstructions } from 'src/utils/attachments.js'
+import { resetSentBashGitInstructions } from 'src/services/attachments/attachments.js'
 import { clearClassifierApprovals } from 'src/utils/classifierApprovals.js'
-import { resetGetMemoryFilesCache } from 'src/utils/claudemd.js'
+import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
 import { clearAllSessions } from 'src/services/api/sessionIngress.js'
 import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
-import { clearSessionMessagesCache } from 'src/utils/sessionStorage.js'
-import { clearBetaTracingState } from 'src/utils/telemetry/betaSessionTracing.js'
+import { clearSessionMessagesCache } from 'src/services/session/sessionStorage.js'
+import { clearBetaTracingState } from 'src/services/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from './microCompact.js'
 import {
   bumpStandDownEpoch,

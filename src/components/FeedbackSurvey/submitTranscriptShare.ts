@@ -1,17 +1,17 @@
 import axios from 'axios'
 import { readFile, stat } from 'fs/promises'
 import type { Message } from 'src/types/message.js'
-import { checkAndRefreshOAuthTokenIfNeeded } from 'src/utils/auth.js'
+import { checkAndRefreshOAuthTokenIfNeeded } from 'src/services/auth/auth.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { getAuthHeaders, getUserAgent } from 'src/utils/http.js'
-import { normalizeMessagesForAPI } from 'src/utils/messages.js'
+import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
 import {
   extractAgentIdsFromMessages,
   getTranscriptPath,
   loadSubagentTranscripts,
   MAX_TRANSCRIPT_READ_BYTES,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { redactSensitiveInfo } from 'src/components/Feedback.js'
 

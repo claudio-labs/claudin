@@ -3,7 +3,7 @@ import partition from 'lodash-es/partition.js';
 import React, { useCallback } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { Box, Text } from 'src/ink.js';
-import { getInitialSettings, updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { SelectMulti } from './CustomSelect/SelectMulti.js';
 import { Byline } from './design-system/Byline.js';

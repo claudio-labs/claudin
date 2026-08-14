@@ -197,13 +197,13 @@ async function main(): Promise<void> {
 
   // Enable configs first so we can read settings
   {
-    const { enableConfigs } = await import('src/utils/config.js')
+    const { enableConfigs } = await import('src/services/config/config.js')
     enableConfigs()
   }
 
   // Apply settings.env from user settings
   {
-    const { applySafeConfigEnvironmentVariables } = await import('src/utils/managedEnv.js')
+    const { applySafeConfigEnvironmentVariables } = await import('src/services/config/managedEnv.js')
     applySafeConfigEnvironmentVariables()
   }
 
@@ -212,7 +212,7 @@ async function main(): Promise<void> {
   // Never awaited — must not gate boot on npm view latency. Self-swallows all
   // errors (see runStartupUpdateCheck).
   void (async () => {
-    const { runStartupUpdateCheck } = await import('src/utils/startupUpdateCheck.js')
+    const { runStartupUpdateCheck } = await import('src/services/install/startupUpdateCheck.js')
     await runStartupUpdateCheck(args)
   })()
 
@@ -235,13 +235,13 @@ async function main(): Promise<void> {
     const {
       hydrateGithubModelsTokenFromSecureStorage,
       refreshGithubModelsTokenIfNeeded,
-    } = await import('src/utils/githubModelsCredentials.js')
+    } = await import('src/services/api/githubModelsCredentials.js')
     await refreshGithubModelsTokenIfNeeded()
     hydrateGithubModelsTokenFromSecureStorage()
   }
 
   const { validateProviderEnvForStartupOrExit } = await import(
-    'src/utils/providerValidation.js'
+    'src/services/api/providerValidation.js'
   )
   await validateProviderEnvForStartupOrExit()
 
@@ -288,7 +288,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_dump_system_prompt_path');
     const {
       enableConfigs
-    } = await import('src/utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       getMainLoopModel
@@ -309,7 +309,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_computer_use_mcp_path');
     const {
       runComputerUseMcpServer
-    } = await import('src/utils/computerUse/mcpServer.js');
+    } = await import('src/services/computerUse/mcpServer.js');
     await runComputerUseMcpServer();
     return;
   }
@@ -335,7 +335,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_bridge_path');
     const {
       enableConfigs
-    } = await import('src/utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       getBridgeDisabledReason,
@@ -349,7 +349,7 @@ async function main(): Promise<void> {
     } = await import('src/bridge/bridgeMain.js');
     const {
       exitWithError
-    } = await import('src/utils/process.js');
+    } = await import('src/utils/proc/process.js');
 
     // Auth check must come before the GrowthBook gate check — without auth,
     // GrowthBook has no user context and would return a stale/default false.
@@ -357,7 +357,7 @@ async function main(): Promise<void> {
     // (not the stale disk cache), but init still needs auth headers to work.
     const {
       getClaudeAIOAuthTokens
-    } = await import('src/utils/auth.js');
+    } = await import('src/services/auth/auth.js');
     if (!getClaudeAIOAuthTokens()?.accessToken) {
       exitWithError(BRIDGE_LOGIN_ERROR);
     }
@@ -388,7 +388,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_daemon_path');
     const {
       enableConfigs
-    } = await import('src/utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       initSinks
@@ -408,7 +408,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_bg_path');
     const {
       enableConfigs
-    } = await import('src/utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const bg = await import('../cli/bg.js');
     switch (args[0]) {
@@ -472,15 +472,15 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_tmux_worktree_fast_path');
     const {
       enableConfigs
-    } = await import('src/utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       isWorktreeModeEnabled
-    } = await import('src/utils/worktreeModeEnabled.js');
+    } = await import('src/services/git/worktreeModeEnabled.js');
     if (isWorktreeModeEnabled()) {
       const {
         execIntoTmuxWorktree
-      } = await import('src/utils/worktree.js');
+      } = await import('src/services/git/worktree.js');
       const result = await execIntoTmuxWorktree(args);
       if (result.handled) {
         return;
@@ -489,7 +489,7 @@ async function main(): Promise<void> {
       if (result.error) {
         const {
           exitWithError
-        } = await import('src/utils/process.js');
+        } = await import('src/utils/proc/process.js');
         exitWithError(result.error);
       }
     }

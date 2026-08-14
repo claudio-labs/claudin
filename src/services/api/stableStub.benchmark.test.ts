@@ -26,7 +26,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bu
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
 }
-import { stableStringify } from 'src/utils/stableStringify.js'
+import { stableStringify } from 'src/utils/data/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch
@@ -41,8 +41,8 @@ const originalEnv = {
 // Disable autocompact so the pipeline stays predictable. Spread into a plain
 // object so afterAll restores the original bindings, not the live ESM
 // namespace (which mock.module mutates in place).
-const realConfig = { ...(await import('src/utils/config.js')) }
-mock.module('src/utils/config.js', () => ({
+const realConfig = { ...(await import('src/services/config/config.js')) }
+mock.module('src/services/config/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => ({ autoCompactEnabled: false }),
 }))
@@ -279,7 +279,7 @@ afterAll(() => {
     else process.env[k] = v
   }
   globalThis.fetch = originalFetch
-  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('src/services/config/config.js', () => realConfig)
   mock.module('src/services/compact/autoCompact.js', () => realAutoCompact)
 })
 

@@ -19,35 +19,35 @@ import { logForDebugging } from 'src/utils/debug.js'
 import {
   findInProcessTeammateTaskId,
   handlePlanApprovalResponse,
-} from 'src/utils/inProcessTeammateHelpers.js'
-import { createAssistantMessage } from 'src/utils/messages.js'
+} from 'src/coordinator/inProcessTeammateHelpers.js'
+import { createAssistantMessage } from 'src/services/messages/messages.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
-} from 'src/utils/permissions/PermissionMode.js'
-import { applyPermissionUpdate } from 'src/utils/permissions/PermissionUpdate.js'
+} from 'src/services/permissions/PermissionMode.js'
+import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { isInsideTmux } from 'src/utils/swarm/backends/detection.js'
+import { isInsideTmux } from 'src/coordinator/swarm/backends/detection.js'
 import {
   ensureBackendsRegistered,
   getBackendByType,
-} from 'src/utils/swarm/backends/registry.js'
-import type { PaneBackendType } from 'src/utils/swarm/backends/types.js'
-import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js'
-import { getLeaderToolUseConfirmQueue } from 'src/utils/swarm/leaderPermissionBridge.js'
-import { sendPermissionResponseViaMailbox } from 'src/utils/swarm/permissionSync.js'
+} from 'src/coordinator/swarm/backends/registry.js'
+import type { PaneBackendType } from 'src/coordinator/swarm/backends/types.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
+import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js'
+import { sendPermissionResponseViaMailbox } from 'src/coordinator/swarm/permissionSync.js'
 import {
   removeTeammateFromTeamFile,
   setMemberMode,
-} from 'src/utils/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from 'src/utils/tasks.js'
+} from 'src/coordinator/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/tasks/tasks.js'
 import {
   getAgentName,
   isPlanModeRequired,
   isTeamLead,
   isTeammate,
-} from 'src/utils/teammate.js'
-import { isInProcessTeammate } from 'src/utils/teammateContext.js'
+} from 'src/coordinator/teammate.js'
+import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
 import {
   isModeSetRequest,
   isPermissionRequest,
@@ -63,7 +63,7 @@ import {
   readUnreadMessages,
   type TeammateMessage,
   writeToMailbox,
-} from 'src/utils/teammateMailbox.js'
+} from 'src/coordinator/teammateMailbox.js'
 import {
   hasPermissionCallback,
   hasSandboxPermissionCallback,

@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
 import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { isReadOnlyGitBatch, parseGitCommand } from './grammar.js'
 import { checkGitBatchPermission } from './permissions.js'
 import { DESCRIPTION, GIT_TOOL_NAME } from './prompt.js'

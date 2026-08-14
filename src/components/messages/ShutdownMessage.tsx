@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
-import { isShutdownApproved, isShutdownRejected, isShutdownRequest, type ShutdownRejectedMessage, type ShutdownRequestMessage } from 'src/utils/teammateMailbox.js';
+import { isShutdownApproved, isShutdownRejected, isShutdownRequest, type ShutdownRejectedMessage, type ShutdownRequestMessage } from 'src/coordinator/teammateMailbox.js';
 type ShutdownRequestProps = {
   request: ShutdownRequestMessage;
 };

@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import { useEffect } from 'react';
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
-import { getGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig } from 'src/services/config/config.js';
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js';
-import type { DetectedIDEInfo } from 'src/utils/ide.js';
-import { type IDEExtensionInstallationStatus, type IdeType, initializeIdeIntegration, isSupportedTerminal } from 'src/utils/ide.js';
+import type { DetectedIDEInfo } from 'src/services/ide/ide.js';
+import { type IDEExtensionInstallationStatus, type IdeType, initializeIdeIntegration, isSupportedTerminal } from 'src/services/ide/ide.js';
 type UseIDEIntegrationProps = {
   autoConnectIdeFlag?: boolean;
   ideToInstallExtension: IdeType | null;

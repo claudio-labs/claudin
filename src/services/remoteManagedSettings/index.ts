@@ -20,18 +20,18 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { classifyAxiosError, getErrnoCode } from 'src/utils/errors.js'
-import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'
+import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
 import {
   type SettingsJson,
   SettingsSchema,
-} from 'src/utils/settings/types.js'
+} from 'src/services/settings/types.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'
 import {
   checkManagedSettingsSecurity,

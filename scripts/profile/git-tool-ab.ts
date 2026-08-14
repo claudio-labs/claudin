@@ -63,8 +63,8 @@ const ALLOWED_TOOLS = 'Bash(git:*),Git,Read,Edit,Write,Grep,Glob'
 const FIXTURE_FILES = [
   'src/utils/errors.ts',
   'src/utils/log.ts',
-  'src/utils/cwd.ts',
-  'src/utils/path.ts',
+  'src/utils/fs/cwd.ts',
+  'src/utils/fs/path.ts',
   'src/utils/envUtils.ts',
 ] as const
 

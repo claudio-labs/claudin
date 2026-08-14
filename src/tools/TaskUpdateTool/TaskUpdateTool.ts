@@ -1,11 +1,11 @@
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
   executeTaskCompletedHooks,
   getTaskCompletedHookMessage,
-} from 'src/utils/hooks.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+} from 'src/services/lifecycleHooks/hooks.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   blockTask,
   deleteTask,
@@ -16,14 +16,14 @@ import {
   type TaskStatus,
   TaskStatusSchema,
   updateTask,
-} from 'src/utils/tasks.js'
+} from 'src/tasks/tasks.js'
 import {
   getAgentId,
   getAgentName,
   getTeammateColor,
   getTeamName,
-} from 'src/utils/teammate.js'
-import { writeToMailbox } from 'src/utils/teammateMailbox.js'
+} from 'src/coordinator/teammate.js'
+import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
 import { TASK_UPDATE_TOOL_NAME } from './constants.js'
 import { DESCRIPTION, PROMPT } from './prompt.js'
 

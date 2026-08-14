@@ -5,8 +5,8 @@ import {
   dedupeCanonicalRoots,
   findNestedGitRoots,
   getBranch,
-} from 'src/utils/git.js'
-import { fetchGitDiff, fetchGitDiffHunks } from 'src/utils/gitDiff.js'
+} from 'src/services/git/git.js'
+import { fetchGitDiff, fetchGitDiffHunks } from 'src/services/git/gitDiff.js'
 import { gitDiffResultToFiles } from './useDiffData.js'
 
 export type WorkspaceDiff = {

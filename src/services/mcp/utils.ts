@@ -5,13 +5,13 @@ import type { Command } from 'src/commands.js'
 import type { AgentMcpServerInfo } from 'src/components/mcp/types.js'
 import type { Tool } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { getGlobalClaudeFile } from 'src/utils/env.js'
-import { isSettingSourceEnabled } from 'src/utils/settings/constants.js'
+import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
 import {
   getInitialSettings,
   hasSkipDangerousModePermissionPrompt,
-} from 'src/utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getEnterpriseMcpFilePath, getMcpConfigByName } from './config.js'
 import { mcpInfoFromString } from './mcpStringUtils.js'

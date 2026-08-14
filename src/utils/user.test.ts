@@ -6,10 +6,10 @@ const originalEnv = { ...process.env }
 // cross-file leaks of missing exports. Spread into snapshots so afterAll
 // restores see the original bindings, not a later mock factory's exports.
 const realEnvUtilsForUserTest = { ...(await import('./envUtils.js')) }
-const realConfigForUserTest = { ...(await import('./config.js')) }
-const realAuthForUserTest = { ...(await import('./auth.js')) }
+const realConfigForUserTest = { ...(await import('src/services/config/config.js')) }
+const realAuthForUserTest = { ...(await import('src/services/auth/auth.js')) }
 const realBootstrapStateForUserTest = { ...(await import('src/bootstrap/state.js')) }
-const realCwdForUserTest = { ...(await import('./cwd.js')) }
+const realCwdForUserTest = { ...(await import('src/utils/fs/cwd.js')) }
 const realEnvForUserTest = { ...(await import('./env.js')) }
 
 async function importFreshUserModule() {
@@ -24,7 +24,7 @@ function installCommonMocks(options?: {
     getSessionId: () => 'session-test',
   }))
 
-  mock.module('./auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     getOauthAccountInfo: () =>
       options?.oauthEmail
         ? {
@@ -37,13 +37,13 @@ function installCommonMocks(options?: {
     getSubscriptionType: () => null,
   }))
 
-  mock.module('./config.js', () => ({
+  mock.module('src/services/config/config.js', () => ({
     ...realConfigForUserTest,
     getGlobalConfig: () => ({}),
     getOrCreateUserID: () => 'device-test',
   }))
 
-  mock.module('./cwd.js', () => ({
+  mock.module('src/utils/fs/cwd.js', () => ({
     getCwd: () => 'C:\\repo',
   }))
 
@@ -76,11 +76,11 @@ afterEach(() => {
 // `mock.module` is process-global and `mock.restore()` does not undo it, so
 // without this every later test file inherits this file's stubs.
 afterAll(() => {
-  mock.module('./config.js', () => realConfigForUserTest)
+  mock.module('src/services/config/config.js', () => realConfigForUserTest)
   mock.module('./envUtils.js', () => realEnvUtilsForUserTest)
-  mock.module('./auth.js', () => realAuthForUserTest)
+  mock.module('src/services/auth/auth.js', () => realAuthForUserTest)
   mock.module('src/bootstrap/state.js', () => realBootstrapStateForUserTest)
-  mock.module('./cwd.js', () => realCwdForUserTest)
+  mock.module('src/utils/fs/cwd.js', () => realCwdForUserTest)
   mock.module('./env.js', () => realEnvForUserTest)
 })
 

@@ -4,7 +4,7 @@ import {
 } from 'src/bootstrap/state.js'
 import { logError } from 'src/utils/log.js'
 import { sequential } from 'src/utils/sequential.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { findFirstMatch, getBedrockInferenceProfiles } from './bedrock.js'
 import {
   ALL_MODEL_CONFIGS,

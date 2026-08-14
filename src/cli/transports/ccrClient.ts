@@ -8,21 +8,21 @@ import { decodeJwtExpiry } from 'src/bridge/jwtUtils.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
-import { createAxiosInstance } from 'src/utils/proxy.js'
+import { createAxiosInstance } from 'src/services/api/proxy.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
-} from 'src/utils/sessionActivity.js'
+} from 'src/services/session/sessionActivity.js'
 import {
   getSessionIngressAuthHeaders,
   getSessionIngressAuthToken,
-} from 'src/utils/sessionIngressAuth.js'
+} from 'src/services/session/sessionIngressAuth.js'
 import type {
   RequiresActionDetails,
   SessionState,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import { sleep } from 'src/utils/sleep.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import {
   RetryableError,
   SerialBatchEventUploader,

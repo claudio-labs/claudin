@@ -3,17 +3,17 @@ import { logEvent } from 'src/services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import {
   cleanupTeamDirectories,
   readTeamFile,
   unregisterTeamForSessionCleanup,
-} from 'src/utils/swarm/teamHelpers.js'
-import { clearTeammateColors } from 'src/utils/swarm/teammateLayoutManager.js'
-import { clearLeaderTeamName } from 'src/utils/tasks.js'
+} from 'src/coordinator/swarm/teamHelpers.js'
+import { clearTeammateColors } from 'src/coordinator/swarm/teammateLayoutManager.js'
+import { clearLeaderTeamName } from 'src/tasks/tasks.js'
 import { TEAM_DELETE_TOOL_NAME } from './constants.js'
 import { getPrompt } from './prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from './UI.js'

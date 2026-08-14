@@ -18,26 +18,26 @@ import { getSessionId, getIsNonInteractiveSession, setKairosActive } from 'src/b
 import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/services/api/filesApi.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
-import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/utils/config.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/services/config/config.js';
 import { seedEarlyInput } from 'src/utils/earlyInput.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { errorMessage, getErrnoCode } from 'src/utils/errors.js';
-import { setAllHookEventsEnabled } from 'src/utils/hooks/hookEvents.js';
-import { getPlatform } from 'src/utils/platform.js';
-import { getSessionIngressAuthToken } from 'src/utils/sessionIngressAuth.js';
-import { sessionIdExists } from 'src/utils/sessionStorage.js';
-import { validateUuid } from 'src/utils/uuid.js';
-import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from 'src/utils/worktree.js';
-import { isWorktreeModeEnabled } from 'src/utils/worktreeModeEnabled.js';
+import { setAllHookEventsEnabled } from 'src/services/lifecycleHooks/hookEvents.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js';
+import { sessionIdExists } from 'src/services/session/sessionStorage.js';
+import { validateUuid } from 'src/utils/data/uuid.js';
+import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from 'src/services/git/worktree.js';
+import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js';
 import { extractTeammateOptions } from 'src/main/helpers.js';
 import type { BootContext } from 'src/main/bootContext.js';
 
 /** Lazy-require accessors for teammate utils (circular-dep workarounds in main.tsx). */
 export type TeammateAccessors = {
-  getTeammateUtils: () => typeof import('src/utils/teammate.js');
-  getTeammatePromptAddendum: () => typeof import('src/utils/swarm/teammatePromptAddendum.js');
-  getTeammateModeSnapshot: () => typeof import('src/utils/swarm/backends/teammateModeSnapshot.js');
+  getTeammateUtils: () => typeof import('src/coordinator/teammate.js');
+  getTeammatePromptAddendum: () => typeof import('src/coordinator/swarm/teammatePromptAddendum.js');
+  getTeammateModeSnapshot: () => typeof import('src/coordinator/swarm/backends/teammateModeSnapshot.js');
 };
 
 /**

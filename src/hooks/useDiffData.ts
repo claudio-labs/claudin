@@ -5,7 +5,7 @@ import {
   fetchGitDiffHunks,
   type GitDiffResult,
   type GitDiffStats,
-} from 'src/utils/gitDiff.js'
+} from 'src/services/git/gitDiff.js'
 
 const MAX_LINES_PER_FILE = 400
 

@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import type { SettingSource } from 'src/utils/settings/constants.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
 import { z } from 'zod/v4'
 import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import {
@@ -21,22 +21,22 @@ import {
 } from 'src/utils/effort.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { parsePositiveIntFromFrontmatter } from 'src/utils/frontmatterParser.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logError } from 'src/utils/log.js'
 import {
   loadMarkdownFilesForSubdir,
   parseAgentToolsFromFrontmatter,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/utils/markdownConfigLoader.js'
+} from 'src/services/instructions/markdownConfigLoader.js'
 import {
   PERMISSION_MODES,
   type PermissionMode,
-} from 'src/utils/permissions/PermissionMode.js'
+} from 'src/services/permissions/PermissionMode.js'
 import {
   clearPluginAgentCache,
   loadPluginAgents,
-} from 'src/utils/plugins/loadPluginAgents.js'
-import { HooksSchema, type HooksSettings } from 'src/utils/settings/types.js'
+} from 'src/services/plugins/loadPluginAgents.js'
+import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'

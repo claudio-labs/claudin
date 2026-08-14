@@ -3,10 +3,10 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { type APIError, APIUserAbortError } from '@anthropic-ai/sdk'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/types/message.js'
-import { isAwsCredentialsProviderError } from 'src/utils/aws.js'
+import { isAwsCredentialsProviderError } from 'src/services/api/aws.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
-import { createSystemAPIErrorMessage } from 'src/utils/messages.js'
+import { createSystemAPIErrorMessage } from 'src/services/messages/messages.js'
 import { getAPIProvider, getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import {
   clearApiKeyHelperCache,
@@ -16,12 +16,12 @@ import {
   handleOAuth401Error,
   isClaudeAISubscriber,
   isEnterpriseSubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import { invalidateClientCache } from './clientCache.js'
-import { refreshGithubModelsTokenIfNeeded } from 'src/utils/githubModelsCredentials.js'
-import { refreshCodexAccessTokenIfNeeded } from 'src/utils/codexCredentials.js'
+import { refreshGithubModelsTokenIfNeeded } from 'src/services/api/githubModelsCredentials.js'
+import { refreshCodexAccessTokenIfNeeded } from 'src/services/api/codexCredentials.js'
 import { forceRefreshOAuthWebTokenOn401 } from './openaiShim/oauthProviderAuth.js'
 import {
   errorMessage,
@@ -38,9 +38,9 @@ import {
 } from 'src/utils/fastMode.js'
 import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
-import { disableKeepAlive } from 'src/utils/proxy.js'
+import { disableKeepAlive } from 'src/services/api/proxy.js'
 import { sleep } from 'src/utils/sleep.js'
-import type { ThinkingConfig } from 'src/utils/thinking.js'
+import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

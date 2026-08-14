@@ -6,7 +6,7 @@ import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js';
 import { Ansi, Box, Text, type TextProps } from 'src/ink.js';
 import { toInkColor } from 'src/utils/ink.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
-import { isShutdownApproved } from 'src/utils/teammateMailbox.js';
+import { isShutdownApproved } from 'src/coordinator/teammateMailbox.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { tryRenderPlanApprovalMessage } from './PlanApprovalMessage.js';
 import { tryRenderShutdownMessage } from './ShutdownMessage.js';

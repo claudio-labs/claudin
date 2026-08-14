@@ -9,8 +9,8 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/ink/stringWidth.js';
 import { Box, Text } from 'src/ink.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
-import { summarizeRecentActivities } from 'src/utils/collapseReadSearch.js';
-import { formatDuration, formatNumber, truncateToWidth } from 'src/utils/format.js';
+import { summarizeRecentActivities } from 'src/services/tools/collapseReadSearch.js';
+import { formatDuration, formatNumber, truncateToWidth } from 'src/utils/text/format.js';
 import { toInkColor } from 'src/utils/ink.js';
 import { TEAMMATE_SELECT_HINT } from './teammateSelectHint.js';
 type Props = {

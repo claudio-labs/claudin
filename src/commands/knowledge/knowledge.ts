@@ -1,6 +1,6 @@
 import type { LocalCommandCall } from 'src/types/command.js';
-import { getArcSummary, resetArc, getArcStats, getArc } from 'src/utils/conversationArc.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getArcSummary, resetArc, getArcStats, getArc } from 'src/services/context/conversationArc.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import chalk from 'chalk';
 
 export const call: LocalCommandCall = async (args, _context) => {

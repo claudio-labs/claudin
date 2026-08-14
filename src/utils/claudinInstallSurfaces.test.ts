@@ -6,7 +6,7 @@ import { join } from 'path'
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
 const realEnvUtils = { ...(await import('./envUtils.js')) }
-const realExecFileNoThrowInstall = { ...(await import('./execFileNoThrow.js')) }
+const realExecFileNoThrowInstall = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
 // Plain snapshot of the real fs/promises taken BEFORE any mock.module runs.
 // `fsPromises` above is a live namespace view — once the rm stub is installed
 // it reflects the mock (fsPromises.rm === the no-op), so restoring with the
@@ -65,7 +65,7 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
     },
   }))
 
-  mock.module('./execFileNoThrow.js', () => ({
+  mock.module('src/utils/proc/execFileNoThrow.js', () => ({
     execFileNoThrowWithCwd: async () => ({
       code: 1,
       stderr: 'npm ERR! code E404',
@@ -95,8 +95,8 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
 afterAll(() => {
   mock.module('./envUtils.js', () => realEnvUtils)
   mock.module('src/utils/envUtils.js', () => realEnvUtils)
-  mock.module('./execFileNoThrow.js', () => realExecFileNoThrowInstall)
-  mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
   // The `rm` stub above (records paths instead of deleting) is process-global
   // and mock.restore() does not revert mock.module(); left installed it turns
   // rm() into a no-op for every sibling file, e.g. unlinkSessionSpillDir's

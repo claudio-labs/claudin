@@ -1,6 +1,6 @@
 import { getOriginalCwd } from 'src/bootstrap/state.js'
-import { lintRuleFiles, relativeFindingPath } from 'src/utils/rulesLint.js'
-import { getProjectDir } from 'src/utils/sessionStorage/pure/paths.js'
+import { lintRuleFiles, relativeFindingPath } from 'src/services/instructions/rulesLint.js'
+import { getProjectDir } from 'src/services/session/pure/paths.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
@@ -9,7 +9,7 @@ import { registerBundledSkill } from 'src/skills/bundledSkills.js'
  * runtime.
  *
  * Two halves, deliberately weighted differently:
- *  - the mechanical findings are computed here (src/utils/rulesLint.ts) and
+ *  - the mechanical findings are computed here (src/services/instructions/rulesLint.ts) and
  *    embedded in the prompt, so the model starts from facts rather than
  *    re-deriving them;
  *  - the semantic half — a rule that names the wrong thing, which no

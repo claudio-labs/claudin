@@ -4,9 +4,9 @@ import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
 import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
-import { getTeammateColor } from 'src/utils/teammate.js';
+import { getTeammateColor } from 'src/coordinator/teammate.js';
 import type { Theme } from 'src/utils/theme.js';
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 type Props = {
   mode: PromptInputMode;
   isLoading: boolean;

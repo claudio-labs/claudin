@@ -24,7 +24,7 @@ import { join } from 'path'
 import {
   maybeSummarizeToolResult,
   summarizeGrepOutput,
-} from '../../src/utils/toolResultSummarizer.js'
+} from '../../src/services/tools/toolResultSummarizer.js'
 import { GREP_TOOL_NAME } from '../../src/tools/GrepTool/prompt.js'
 import { relativizeRgLine } from '../../src/tools/GrepTool/relativize.js'
 import { buildSymbolsOutput } from '../../src/tools/GrepTool/symbolsOutput.js'
@@ -33,7 +33,7 @@ import {
   pivotWins,
   shouldAutoPivot,
 } from '../../src/tools/GrepTool/autoPivot.js'
-import { getCwd } from '../../src/utils/cwd.js'
+import { getCwd } from '../../src/utils/fs/cwd.js'
 
 type Sample = { input: Record<string, unknown>; text: string }
 

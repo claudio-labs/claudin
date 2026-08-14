@@ -11,8 +11,8 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 // (getCurrentProjectConfig / providerProfiles / state) into every later test file
 // (e.g. modelOptions.dualcontext). See CLAUDE.md mock.module rules.
 const realState = { ...(await import('src/bootstrap/state.js')) }
-const realProfiles = { ...(await import('src/utils/providerProfiles.js')) }
-const realConfig = { ...(await import('src/utils/config.js')) }
+const realProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
 const realAllowlist = { ...(await import('./modelAllowlist.js')) }
 
 const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
@@ -24,11 +24,11 @@ async function importWithProjectModel(activeModelForProject: string | undefined)
     ...realState,
     getMainLoopModelOverride: () => undefined, // no session/CLI override → read project config
   }))
-  mock.module('src/utils/providerProfiles.js', () => ({
+  mock.module('src/services/api/providerProfiles.js', () => ({
     ...realProfiles,
     getActiveProviderProfile: () => undefined, // effective id undefined → matches undefined pin
   }))
-  mock.module('src/utils/config.js', () => ({
+  mock.module('src/services/config/config.js', () => ({
     ...realConfig,
     getCurrentProjectConfig: () => ({ activeModelForProject }),
   }))
@@ -49,8 +49,8 @@ afterEach(() => {
   // Re-install the real modules — mock.restore() leaves mock.module() overrides
   // in place, which would otherwise leak into later test files.
   mock.module('src/bootstrap/state.js', () => realState)
-  mock.module('src/utils/providerProfiles.js', () => realProfiles)
-  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('src/services/api/providerProfiles.js', () => realProfiles)
+  mock.module('src/services/config/config.js', () => realConfig)
   mock.module('./modelAllowlist.js', () => realAllowlist)
   if (origDisable1m === undefined) delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
   else process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m
@@ -77,7 +77,7 @@ test('surrounding whitespace is trimmed but the [1m] suffix survives', async () 
 })
 
 test('a resolved [1m] model maps to a 1M window; the plain flavor stays 200k', async () => {
-  const { getContextWindowForModel } = await import('src/utils/context.js')
+  const { getContextWindowForModel } = await import('src/services/context/context.js')
   expect(getContextWindowForModel('claude-opus-4-8[1m]')).toBe(1_000_000)
   expect(getContextWindowForModel('claude-opus-4-7[1m]')).toBe(1_000_000)
   expect(getContextWindowForModel('claude-sonnet-4-6[1m]')).toBe(1_000_000)

@@ -3,7 +3,7 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import type { LocalCommandCall } from 'src/types/command.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 
 export const call: LocalCommandCall = async () => {
   const config = getGlobalConfig()

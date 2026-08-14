@@ -12,11 +12,11 @@ import { createRemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
 import { launchRepl } from 'src/replLauncher.js';
 import { type AppState } from 'src/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
-import { createSystemMessage } from 'src/utils/messages.js';
-import { prepareApiRequest } from 'src/utils/teleport/api.js';
-import type { ThinkingConfig } from 'src/utils/thinking.js';
+import { createSystemMessage } from 'src/services/messages/messages.js';
+import { prepareApiRequest } from 'src/services/teleport/api.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { StatsStore } from 'src/context/stats.js';
 
@@ -80,7 +80,7 @@ export async function runAssistantChatBranch(deps: AssistantChatBranchDeps): Pro
 
   // Auth — call prepareApiRequest() once for orgUUID, but use a
   // getAccessToken closure for the token so reconnects get fresh tokens.
-  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('src/utils/auth.js');
+  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js');
   await checkAndRefreshOAuthTokenIfNeeded();
   let apiCreds;
   try {

@@ -28,29 +28,29 @@ import {
   resetCostState,
   saveCurrentSessionCosts,
 } from 'src/cost-tracker.js'
-import { createEmptyAttributionState } from 'src/utils/commitAttribution.js'
-import type { FileStateCache } from 'src/utils/fileStateCache.js'
+import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js'
+import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
 import {
   executeSessionEndHooks,
   getSessionEndHookTimeoutMs,
-} from 'src/utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import { logError } from 'src/utils/log.js'
 import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
 import { clearAllPlanSlugs } from 'src/utils/plans.js'
-import { setCwd } from 'src/utils/Shell.js'
-import { processSessionStartHooks } from 'src/utils/sessionStart.js'
+import { setCwd } from 'src/utils/proc/Shell.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   clearSessionMetadata,
   getAgentTranscriptPath,
   resetSessionFilePointer,
   saveWorktreeState,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
-} from 'src/utils/task/diskOutput.js'
-import { unlinkSessionSpillDir } from 'src/utils/toolResultStorage.js'
-import { getCurrentWorktreeSession } from 'src/utils/worktree.js'
+} from 'src/tasks/diskOutput.js'
+import { unlinkSessionSpillDir } from 'src/services/tools/toolResultStorage.js'
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { clearSessionCaches } from './caches.js'
 
 export async function clearConversation({
@@ -266,7 +266,7 @@ export async function clearConversation({
   // and (if applicable) the same worktree directory.
   if (feature('COORDINATOR_MODE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { saveMode } = require('src/utils/sessionStorage.js')
+    const { saveMode } = require('src/services/session/sessionStorage.js')
     const {
       isCoordinatorMode,
     } = require('src/coordinator/coordinatorMode.js')

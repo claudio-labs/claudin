@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useMemo } from 'react';
 import { type Command, formatDescriptionWithSource } from 'src/commands.js';
 import { Box, Text } from 'src/ink.js';
-import { truncate } from 'src/utils/format.js';
+import { truncate } from 'src/utils/text/format.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
 type Props = {

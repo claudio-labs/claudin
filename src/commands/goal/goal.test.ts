@@ -5,8 +5,8 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { GOAL_MAX_CONDITION_LENGTH } from 'src/utils/goal/goal.js'
-import type { SessionStore } from 'src/utils/hooks/sessionHooks.js'
+import { GOAL_MAX_CONDITION_LENGTH } from 'src/services/goal/goal.js'
+import type { SessionStore } from 'src/services/lifecycleHooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +
 // workspace trust). In a full-suite run, earlier test files can leave those
@@ -14,15 +14,15 @@ import type { SessionStore } from 'src/utils/hooks/sessionHooks.js'
 // bail with a policy message. Pin the gates to their permissive defaults so
 // this file is deterministic regardless of run order.
 const realHooksConfigSnapshot = await import(
-  'src/utils/hooks/hooksConfigSnapshot.js'
+  'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 )
-mock.module('src/utils/hooks/hooksConfigSnapshot.js', () => ({
+mock.module('src/services/lifecycleHooks/hooksConfigSnapshot.js', () => ({
   ...realHooksConfigSnapshot,
   shouldDisableAllHooksIncludingManaged: () => false,
   shouldAllowManagedHooksOnly: () => false,
 }))
-const realHooksShared = await import('src/utils/hooks/shared.js')
-mock.module('src/utils/hooks/shared.js', () => ({
+const realHooksShared = await import('src/services/lifecycleHooks/shared.js')
+mock.module('src/services/lifecycleHooks/shared.js', () => ({
   ...realHooksShared,
   shouldSkipHookDueToTrust: () => false,
 }))
@@ -34,10 +34,10 @@ const { call, parseGoalArgs } = await import('./goal.js')
 // without this every later test file would inherit this file's stubs.
 afterAll(() => {
   mock.module(
-    'src/utils/hooks/hooksConfigSnapshot.js',
+    'src/services/lifecycleHooks/hooksConfigSnapshot.js',
     () => realHooksConfigSnapshot,
   )
-  mock.module('src/utils/hooks/shared.js', () => realHooksShared)
+  mock.module('src/services/lifecycleHooks/shared.js', () => realHooksShared)
 })
 
 describe('parseGoalArgs', () => {

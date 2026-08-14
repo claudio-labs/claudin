@@ -26,20 +26,20 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { classifyAxiosError } from 'src/utils/errors.js'
-import { safeParseJSON } from 'src/utils/json.js'
+import { safeParseJSON } from 'src/utils/data/json.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
-import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'
 import {
   type PolicyLimitsFetchResult,

@@ -17,7 +17,7 @@ import {
 } from 'src/services/analytics/index.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
-import { getFsImplementation } from './fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { formatMs, formatTimelineLine, getPerformance } from './profilerBase.js'
 import { writeFileSync_DEPRECATED } from './slowOperations.js'
 

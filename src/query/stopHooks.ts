@@ -16,10 +16,10 @@ import type {
   TombstoneMessage,
   ToolUseSummaryMessage,
 } from 'src/types/message.js'
-import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   executeStopHooks,
   executeTaskCompletedHooks,
@@ -27,16 +27,16 @@ import {
   getStopHookMessage,
   getTaskCompletedHookMessage,
   getTeammateIdleHookMessage,
-} from 'src/utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import {
   createStopHookSummaryMessage,
   createSystemMessage,
   createUserInterruptionMessage,
   createUserMessage,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
-import { getTaskListId, listTasks } from 'src/utils/tasks.js'
-import { getAgentName, getTeamName, isTeammate } from 'src/utils/teammate.js'
+import { getTaskListId, listTasks } from 'src/tasks/tasks.js'
+import { getAgentName, getTeamName, isTeammate } from 'src/coordinator/teammate.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
@@ -53,14 +53,14 @@ import { getSessionId } from 'src/bootstrap/state.js'
 import {
   handleGoalBlockingError,
   shouldWarnGoalCheckIncomplete,
-} from 'src/utils/goal/goal.js'
+} from 'src/services/goal/goal.js'
 import { executeAutoDream } from 'src/services/autoDream/autoDream.js'
 import { executePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,
-} from 'src/utils/forkedAgent.js'
+} from 'src/coordinator/forkedAgent.js'
 
 type StopHookResult = {
   blockingErrors: Message[]
@@ -169,7 +169,7 @@ export async function* handleStopHooks(
   if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
     try {
       const { cleanupComputerUseAfterTurn } = await import(
-        'src/utils/computerUse/cleanup.js'
+        'src/services/computerUse/cleanup.js'
       )
       await cleanupComputerUseAfterTurn(toolUseContext)
     } catch {

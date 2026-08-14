@@ -9,13 +9,13 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { getMessagesAfterCompactBoundary } from 'src/utils/messages.js'
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
 import {
   getTranscriptPath,
   saveAgentName,
   saveCustomTitle,
-} from 'src/utils/sessionStorage.js'
-import { isTeammate } from 'src/utils/teammate.js'
+} from 'src/services/session/sessionStorage.js'
+import { isTeammate } from 'src/coordinator/teammate.js'
 import { generateSessionName } from './generateSessionName.js'
 
 export async function call(

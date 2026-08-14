@@ -1,9 +1,9 @@
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
-import { extractOutputRedirections } from 'src/utils/bash/commands.js';
-import { isClassifierPermissionsEnabled } from 'src/utils/permissions/bashClassifier.js';
-import type { PermissionDecisionReason } from 'src/utils/permissions/PermissionResult.js';
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js';
-import { shouldShowAlwaysAllowOptions } from 'src/utils/permissions/permissionsLoader.js';
+import { extractOutputRedirections } from 'src/services/bash/commands.js';
+import { isClassifierPermissionsEnabled } from 'src/services/permissions/bashClassifier.js';
+import type { PermissionDecisionReason } from 'src/services/permissions/PermissionResult.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 import { generateShellSuggestionsLabel } from 'src/components/permissions/shellPermissionHelpers.js';
 export type BashToolUseOption = 'yes' | 'yes-apply-suggestions' | 'yes-prefix-edited' | 'yes-classifier-reviewed' | 'no';

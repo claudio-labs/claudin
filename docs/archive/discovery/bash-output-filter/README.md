@@ -7,7 +7,7 @@
 
 Trazer para o claudin a ideia central do [rtk (Rust Token Killer)](https://github.com/rtk-ai/rtk): filtrar a saída de comandos shell **antes** de enviá-la ao modelo, usando regras específicas por comando, para economizar tokens.
 
-Hoje o claudin tem um `toolResultSummarizer` (`src/utils/toolResultSummarizer.ts`) que comprime saídas grandes — mas é **reativo por threshold** e **agnóstico ao comando**. A proposta é adicionar um filtro **proativo** e **command-aware** que rode antes do summarizer.
+Hoje o claudin tem um `toolResultSummarizer` (`src/services/tools/toolResultSummarizer.ts`) que comprime saídas grandes — mas é **reativo por threshold** e **agnóstico ao comando**. A proposta é adicionar um filtro **proativo** e **command-aware** que rode antes do summarizer.
 
 ## Por que vale o discovery (e não cair direto no código)
 
@@ -102,6 +102,6 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 - Projeto rtk: `/home/dev/projects/rtk/` (clone local)
 - rtk pipeline declarativo: `src/core/toml_filter.rs`
 - rtk trust system: `src/hooks/trust.rs`
-- claudin summarizer: `src/utils/toolResultSummarizer.ts`
-- claudin chokepoint: `src/utils/toolResultStorage.ts:225` (`processToolResultBlock`)
+- claudin summarizer: `src/services/tools/toolResultSummarizer.ts`
+- claudin chokepoint: `src/services/tools/toolResultStorage.ts:225` (`processToolResultBlock`)
 - claudin Bash mapeamento: `src/tools/BashTool/BashTool.tsx:563`

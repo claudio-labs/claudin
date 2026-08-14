@@ -7,7 +7,7 @@ import { Text } from 'src/ink.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { plural } from 'src/utils/stringUtils.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 type InstallationStatus = AppState['plugins']['installationStatus'];
 export function usePluginInstallationStatus() {
   const $ = _c(20);

@@ -14,9 +14,9 @@ import { renderAndRun, showSetupDialog } from './interactiveHelpers.js';
 import { KeybindingSetup } from './keybindings/KeybindingProviderSetup.js';
 import type { AppState } from './state/AppStateStore.js';
 import type { AgentMemoryScope } from './tools/AgentTool/agentMemory.js';
-import type { TeleportRemoteResponse } from './utils/conversationRecovery.js';
+import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
 import type { FpsMetrics } from './utils/fpsTracker.js';
-import type { ValidationError } from './utils/settings/validation.js';
+import type { ValidationError } from 'src/services/settings/validation.js';
 
 // Type-only access to ResumeConversation's Props via the module type.
 // No runtime cost - erased at compile time.

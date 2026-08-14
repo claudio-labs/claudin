@@ -13,9 +13,9 @@ import {
   type Tools,
 } from 'src/Tool.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { escapeRegExp } from 'src/utils/stringUtils.js'
-import { isToolSearchEnabledOptimistic } from 'src/utils/toolSearch.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { escapeRegExp } from 'src/utils/text/stringUtils.js'
+import { isToolSearchEnabledOptimistic } from 'src/services/tools/toolSearch.js'
 import { getPrompt, isDeferredTool, TOOL_SEARCH_TOOL_NAME } from './prompt.js'
 
 export const inputSchema = lazySchema(() =>

@@ -5,20 +5,20 @@ import type { SDKAssistantMessage, SDKMessage } from 'src/entrypoints/agentSdkTy
 import type { SetAppState, Task, TaskContext, TaskStateBase } from 'src/Task.js';
 import { createTaskStateBase, generateTaskId } from 'src/Task.js';
 import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js';
-import { type BackgroundRemoteSessionPrecondition, checkBackgroundRemoteSessionEligibility } from 'src/utils/background/remote/remoteSession.js';
+import { type BackgroundRemoteSessionPrecondition, checkBackgroundRemoteSessionEligibility } from 'src/services/background/remote/remoteSession.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { logError } from 'src/utils/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
-import { extractTag, extractTextContent } from 'src/utils/messages.js';
+import { extractTag, extractTextContent } from 'src/services/messages/messages.js';
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js';
-import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/utils/sessionStorage.js';
+import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/services/session/sessionStorage.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
-import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from 'src/utils/task/diskOutput.js';
-import { registerTask, updateTaskState } from 'src/utils/task/framework.js';
-import { fetchSession } from 'src/utils/teleport/api.js';
-import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/utils/teleport.js';
-import type { TodoList } from 'src/utils/todo/types.js';
-import type { UltraplanPhase } from 'src/utils/ultraplan/ccrSession.js';
+import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from 'src/tasks/diskOutput.js';
+import { registerTask, updateTaskState } from 'src/tasks/framework.js';
+import { fetchSession } from 'src/services/teleport/api.js';
+import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/components/teleport.js';
+import type { TodoList } from 'src/tools/TodoWriteTool/types.js';
+import type { UltraplanPhase } from 'src/services/ultraplan/ccrSession.js';
 export type RemoteAgentTaskState = TaskStateBase & {
   type: 'remote_agent';
   remoteTaskType: RemoteTaskType;
@@ -802,7 +802,7 @@ function startRemoteSessionPolling(taskId: string, context: TaskContext): () => 
  * RemoteAgentTask - Handles remote Claude.ai session execution.
  *
  * Replaces the BackgroundRemoteSession implementation from:
- * - src/utils/background/remote/remoteSession.ts
+ * - src/services/background/remote/remoteSession.ts
  * - src/components/tasks/BackgroundTaskStatus.tsx (polling logic)
  */
 export const RemoteAgentTask: Task = {

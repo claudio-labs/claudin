@@ -12,12 +12,12 @@ import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js'
 import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { PluginError } from 'src/types/plugin.js';
 import { errorMessage } from 'src/utils/errors.js';
-import { clearAllCaches } from 'src/utils/plugins/cacheUtils.js';
-import { loadMarketplacesWithGracefulDegradation } from 'src/utils/plugins/marketplaceHelpers.js';
-import { loadKnownMarketplacesConfig, removeMarketplaceSource } from 'src/utils/plugins/marketplaceManager.js';
-import { getPluginEditableScopes } from 'src/utils/plugins/pluginStartupCheck.js';
-import type { EditableSettingSource } from 'src/utils/settings/constants.js';
-import { getSettingsForSource, updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
+import { loadMarketplacesWithGracefulDegradation } from 'src/services/plugins/marketplaceHelpers.js';
+import { loadKnownMarketplacesConfig, removeMarketplaceSource } from 'src/services/plugins/marketplaceManager.js';
+import { getPluginEditableScopes } from 'src/services/plugins/pluginStartupCheck.js';
+import type { EditableSettingSource } from 'src/services/settings/constants.js';
+import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
 import { AddMarketplace } from './AddMarketplace.js';
 import { BrowseMarketplace } from './BrowseMarketplace.js';
 import { DiscoverPlugins } from './DiscoverPlugins.js';

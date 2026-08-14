@@ -1,5 +1,5 @@
 import { toJSONSchema } from 'zod/v4'
-import { SettingsSchema } from 'src/utils/settings/types.js'
+import { SettingsSchema } from 'src/services/settings/types.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 

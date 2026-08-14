@@ -12,8 +12,8 @@ import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
 import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
-import type { ExecResult } from 'src/utils/ShellCommand.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,

@@ -11,4 +11,4 @@
 // identical type; until then this stays derived, so a schema change reaches SDK
 // consumers automatically.
 
-export type { SettingsJson as Settings } from 'src/utils/settings/types.js'
+export type { SettingsJson as Settings } from 'src/services/settings/types.js'

@@ -4,19 +4,19 @@ import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js
 import { logEvent } from 'src/services/analytics/index.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { clearMemoryFileCaches } from 'src/utils/claudemd.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { findCanonicalGitRoot } from 'src/utils/git.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { getPlanSlug, getPlansDirectory } from 'src/utils/plans.js'
-import { setCwd } from 'src/utils/Shell.js'
-import { saveWorktreeState } from 'src/utils/sessionStorage.js'
+import { setCwd } from 'src/utils/proc/Shell.js'
+import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
 import {
   attachExistingWorktree,
   createWorktreeForSession,
   getCurrentWorktreeSession,
   validateWorktreeSlug,
-} from 'src/utils/worktree.js'
+} from 'src/services/git/worktree.js'
 import { ENTER_WORKTREE_TOOL_NAME } from './constants.js'
 import { getEnterWorktreeToolPrompt } from './prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from './UI.js'

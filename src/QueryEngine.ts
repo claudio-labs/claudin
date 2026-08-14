@@ -48,9 +48,9 @@ import { SYNTHETIC_OUTPUT_TOOL_NAME } from './tools/SyntheticOutputTool/Syntheti
 import type { Message } from './types/message.js'
 import type { OrphanedPermission } from './types/textInputTypes.js'
 import { createAbortController } from './utils/abortController.js'
-import type { AttributionState } from './utils/commitAttribution.js'
-import { getGlobalConfig } from './utils/config.js'
-import { getCwd } from './utils/cwd.js'
+import type { AttributionState } from 'src/services/git/commitAttribution.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { logForDebugging } from './utils/debug.js'
 import { getFastModeState } from './utils/fastMode.js'
@@ -58,37 +58,37 @@ import {
   type FileHistoryState,
   fileHistoryEnabled,
   fileHistoryMakeSnapshot,
-} from './utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import {
   cloneFileStateCache,
   type FileStateCache,
-} from './utils/fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import { headlessProfilerCheckpoint } from './utils/headlessProfiler.js'
-import { registerStructuredOutputEnforcement } from './utils/hooks/hookHelpers.js'
+import { registerStructuredOutputEnforcement } from 'src/services/lifecycleHooks/hookHelpers.js'
 import { getInMemoryErrors } from './utils/log.js'
-import { countToolCalls, SYNTHETIC_MESSAGES } from './utils/messages.js'
+import { countToolCalls, SYNTHETIC_MESSAGES } from 'src/services/messages/messages.js'
 import {
   getMainLoopModel,
   parseUserSpecifiedModel,
 } from './utils/model/model.js'
-import { loadAllPluginsCacheOnly } from './utils/plugins/pluginLoader.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import {
   type ProcessUserInputContext,
   processUserInput,
-} from './utils/processUserInput/processUserInput.js'
+} from 'src/services/input/processUserInput.js'
 import { fetchSystemPromptParts } from './utils/queryContext.js'
-import { setCwd } from './utils/Shell.js'
+import { setCwd } from 'src/utils/proc/Shell.js'
 import {
   flushSessionStorage,
   recordTranscript,
   removeTranscriptMessage,
-} from './utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { asSystemPrompt } from './utils/systemPromptType.js'
 import { resolveThemeSetting } from './utils/systemTheme.js'
 import {
   shouldEnableThinkingByDefault,
   type ThinkingConfig,
-} from './utils/thinking.js'
+} from 'src/services/context/thinking.js'
 
 // Lazy: MessageSelector.tsx pulls React/ink; only needed for message filtering at query time
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -99,15 +99,15 @@ const messageSelector =
 import {
   localCommandOutputToSDKAssistantMessage,
   toSDKCompactMetadata,
-} from './utils/messages/mappers.js'
+} from 'src/services/messages/mappers.js'
 import {
   buildSystemInitMessage,
   sdkCompatToolName,
-} from './utils/messages/systemInit.js'
+} from 'src/services/messages/systemInit.js'
 import {
   getScratchpadDir,
   isScratchpadEnabled,
-} from './utils/permissions/filesystem.js'
+} from 'src/services/permissions/filesystem.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   handleOrphanedPermission,

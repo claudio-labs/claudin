@@ -5,12 +5,12 @@ import * as React from 'react';
 import { Suspense, use, useMemo } from 'react';
 import { Box, NoSelect, Text } from 'src/ink.js';
 import type { NotebookCell, NotebookCellType, NotebookContent } from 'src/types/notebook.js';
-import { intersperse } from 'src/utils/array.js';
-import { getCwd } from 'src/utils/cwd.js';
-import { getPatchForDisplay } from 'src/utils/diff.js';
-import { getFsImplementation } from 'src/utils/fsOperations.js';
-import { safeParseJSON } from 'src/utils/json.js';
-import { parseCellId } from 'src/utils/notebook.js';
+import { intersperse } from 'src/utils/data/array.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { getPatchForDisplay } from 'src/services/git/diff.js';
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
+import { parseCellId } from 'src/utils/fs/notebook.js';
 import { HighlightedCode } from 'src/components/HighlightedCode.js';
 import { StructuredDiff } from 'src/components/StructuredDiff.js';
 type Props = {

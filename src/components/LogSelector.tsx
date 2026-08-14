@@ -13,11 +13,11 @@ import { Box, type Key, Text, useInput, useTerminalFocus, useTheme } from 'src/i
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { LogOption, SerializedMessage } from 'src/types/logs.js';
-import { formatLogMetadata, truncateToWidth } from 'src/utils/format.js';
-import { getWorktreePaths } from 'src/utils/getWorktreePaths.js';
-import { getBranch } from 'src/utils/git.js';
+import { formatLogMetadata, truncateToWidth } from 'src/utils/text/format.js';
+import { getWorktreePaths } from 'src/services/git/getWorktreePaths.js';
+import { getBranch } from 'src/services/git/git.js';
 import { getLogDisplayTitle } from 'src/utils/log.js';
-import { getFirstMeaningfulUserMessageTextContent, getSessionIdFromLog, isCustomTitleEnabled, saveCustomTitle } from 'src/utils/sessionStorage.js';
+import { getFirstMeaningfulUserMessageTextContent, getSessionIdFromLog, isCustomTitleEnabled, saveCustomTitle } from 'src/services/session/sessionStorage.js';
 import { getTheme } from 'src/utils/theme.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { Select } from './CustomSelect/select.js';

@@ -1,5 +1,5 @@
 import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js'
-import { count } from 'src/utils/array.js'
+import { count } from 'src/utils/data/array.js'
 import type { BackgroundTaskState } from './types.js'
 
 /**

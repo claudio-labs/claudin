@@ -8,9 +8,9 @@ import {
 import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { semanticBoolean } from 'src/utils/semanticBoolean.js'
-import { getTeammateContext } from 'src/utils/teammateContext.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
+import { getTeammateContext } from 'src/coordinator/teammateContext.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import {
   clampWakeupDelaySeconds,

@@ -9,7 +9,7 @@ import { QueuedMessageProvider } from 'src/context/QueuedMessageContext.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import type { QueuedCommand } from 'src/types/textInputTypes.js';
 import { isQueuedCommandEditable, isQueuedCommandVisible } from 'src/utils/messageQueueManager.js';
-import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/utils/messages.js';
+import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
 import { Message } from 'src/components/Message.js';
 const EMPTY_SET = new Set<string>();

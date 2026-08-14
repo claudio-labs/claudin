@@ -4,7 +4,7 @@ import { getAdditionalModelOptionsCacheScope } from 'src/services/api/providerCo
 import { logForDebugging } from 'src/utils/debug.js'
 import type { ModelOption } from './modelOptions.js'
 import { getAPIProvider } from './providers.js'
-import { setActiveOpenAIModelOptionsCache } from 'src/utils/providerProfiles.js'
+import { setActiveOpenAIModelOptionsCache } from 'src/services/api/providerProfiles.js'
 
 const DISCOVERY_TIMEOUT_MS = 5000
 

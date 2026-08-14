@@ -19,11 +19,11 @@ import {
   getBranch,
   getFileStatus,
   resolveWorkspaceRoots,
-} from 'src/utils/git.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { readFileSafe } from 'src/utils/file.js'
+} from 'src/services/git/git.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { readFileSafe } from 'src/utils/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
-import { buildAddedFileHunks } from 'src/utils/gitDiff.js'
+import { buildAddedFileHunks } from 'src/services/git/gitDiff.js'
 import { Dialog } from 'src/components/design-system/Dialog.js'
 import { buildDiffRenderModel } from './collapse.js'
 import { CommitFileList } from './CommitFileList.js'

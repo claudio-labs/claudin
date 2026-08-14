@@ -16,14 +16,14 @@ import { Text } from 'src/ink.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
 import type { Message } from 'src/types/message.js';
-import { getCwd } from 'src/utils/cwd.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { errorMessage } from 'src/utils/errors.js';
 import { enqueue } from 'src/utils/messageQueueManager.js';
-import { buildSystemInitMessage } from 'src/utils/messages/systemInit.js';
-import { createBridgeStatusMessage, createSystemMessage } from 'src/utils/messages.js';
-import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from 'src/utils/permissions/permissionSetup.js';
-import { getLeaderToolUseConfirmQueue } from 'src/utils/swarm/leaderPermissionBridge.js';
+import { buildSystemInitMessage } from 'src/services/messages/systemInit.js';
+import { createBridgeStatusMessage, createSystemMessage } from 'src/services/messages/messages.js';
+import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from 'src/services/permissions/permissionSetup.js';
+import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js';
 
 /** How long after a failure before replBridgeEnabled is auto-cleared (stops retries). */
 export const BRIDGE_FAILURE_DISMISS_MS = 10_000;

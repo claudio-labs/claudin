@@ -18,12 +18,12 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   isAnthropicAuthEnabled,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getUserAgent } from 'src/utils/http.js'
 import { logError } from 'src/utils/log.js'
-import { getWebSocketTLSOptions } from 'src/utils/mtls.js'
-import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/utils/proxy.js'
+import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
+import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 const KEEPALIVE_MSG = '{"type":"KeepAlive"}'

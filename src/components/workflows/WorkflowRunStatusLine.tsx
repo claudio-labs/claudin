@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Text } from 'src/ink.js'
-import { formatTokens, truncate } from 'src/utils/format.js'
+import { formatTokens, truncate } from 'src/utils/text/format.js'
 import { useElapsedTime } from 'src/hooks/useElapsedTime.js'
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
 import { logError } from 'src/utils/log.js'

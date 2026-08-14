@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import type { Message, ProgressMessage } from 'src/types/message.js';
-import { extractTag } from 'src/utils/messages.js';
+import { extractTag } from 'src/services/messages/messages.js';
 import type { ThemeName } from 'src/utils/theme.js';
 import type { z } from 'zod/v4';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
@@ -11,7 +11,7 @@ import { MessageResponse } from 'src/components/MessageResponse.js';
 import { NotebookEditToolUseRejectedMessage } from 'src/components/NotebookEditToolUseRejectedMessage.js';
 import { Box, Text } from 'src/ink.js';
 import type { Tools } from 'src/Tool.js';
-import { getDisplayPath } from 'src/utils/file.js';
+import { getDisplayPath } from 'src/utils/fs/file.js';
 import type { inputSchema, Output } from './NotebookEditTool.js';
 export function getToolUseSummary(input: Partial<z.infer<ReturnType<typeof inputSchema>>> | undefined): string | null {
   if (!input?.notebook_path) {

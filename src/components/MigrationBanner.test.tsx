@@ -11,7 +11,7 @@ import { AppStateProvider } from 'src/state/AppState.js'
 // mock so afterAll can restore it cleanly. Bun's mock.module is process-global
 // and shape-locked — without restore, this file's mocks leak into every later
 // test that imports the same specifier (CLAUDE.md mock.module pitfalls).
-const realMigration = { ...(await import('src/utils/claudinMigration.js')) }
+const realMigration = { ...(await import('src/services/config/claudinMigration.js')) }
 
 const markMigrationSkippedSpy = mock(() => {})
 const migrateLegacyClaudeDirSpy = mock(async () => ({
@@ -33,7 +33,7 @@ const migrateLegacyClaudeDirSpy = mock(async () => ({
   migratedAt: '2026-04-29T00:00:00Z',
 }))
 
-mock.module('src/utils/claudinMigration.js', () => ({
+mock.module('src/services/config/claudinMigration.js', () => ({
   ...realMigration,
   markMigrationSkipped: markMigrationSkippedSpy,
   migrateLegacyClaudeDir: migrateLegacyClaudeDirSpy,
@@ -41,7 +41,7 @@ mock.module('src/utils/claudinMigration.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/utils/claudinMigration.js', () => realMigration)
+  mock.module('src/services/config/claudinMigration.js', () => realMigration)
 })
 
 const SYNC_START = '\x1B[?2026h'

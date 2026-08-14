@@ -13,11 +13,11 @@ import type { Color } from 'src/ink/styles.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow stats navigation
 import { Ansi, Box, type Key, Text, useInput } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { getGlobalConfig } from 'src/utils/config.js';
-import { formatDuration, formatNumber } from 'src/utils/format.js';
+import { getGlobalConfig } from 'src/services/config/config.js';
+import { formatDuration, formatNumber } from 'src/utils/text/format.js';
 import { generateHeatmap } from 'src/utils/heatmap.js';
 import { renderModelName } from 'src/utils/model/model.js';
-import { copyAnsiToClipboard } from 'src/utils/screenshotClipboard.js';
+import { copyAnsiToClipboard } from 'src/services/ide/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from 'src/utils/stats.js';
 import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';

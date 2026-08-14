@@ -1,6 +1,6 @@
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
-import { renderToString } from 'src/utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 
 describe('PromptInputQueuedCommands', () => {
   beforeEach(() => {

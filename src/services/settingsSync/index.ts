@@ -23,21 +23,21 @@ import {
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from 'src/utils/auth.js'
-import { clearMemoryFileCaches } from 'src/utils/claudemd.js'
-import { getMemoryPath } from 'src/utils/config.js'
+} from 'src/services/auth/auth.js'
+import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { getMemoryPath } from 'src/services/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { classifyAxiosError } from 'src/utils/errors.js'
-import { getRepoRemoteHash } from 'src/utils/git.js'
+import { getRepoRemoteHash } from 'src/services/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
-import { markInternalWrite } from 'src/utils/settings/internalWrites.js'
-import { getSettingsFilePathForSource } from 'src/utils/settings/settings.js'
-import { resetSettingsCache } from 'src/utils/settings/settingsCache.js'
+import { markInternalWrite } from 'src/services/settings/internalWrites.js'
+import { getSettingsFilePathForSource } from 'src/services/settings/settings.js'
+import { resetSettingsCache } from 'src/services/settings/settingsCache.js'
 import { sleep } from 'src/utils/sleep.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'

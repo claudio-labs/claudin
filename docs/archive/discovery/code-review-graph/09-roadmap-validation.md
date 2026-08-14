@@ -167,7 +167,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 Provável: tabela de risk score injeta 200-400 tokens, mas como são 3 arquivos pequenos a LLM já lia todos. **Valor agregado próximo de zero.** Pior: tempo do review aumenta 5-15s (LSP queries). Casa com o cenário CRG do `02 §9`: graph_tokens > naive_tokens em PRs pequenos.
 
 ### 4.2 `/wiki` no próprio Claudin (200+ TS files)
-Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/utils/path.ts`, `src/utils/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudin/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
+Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/utils/fs/path.ts`, `src/utils/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudin/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
 
 ### 4.3 Repo polyglot Rust+TS
 Eixo 1: `rust-analyzer` cold-start lento (`builtinServers.ts:461-609` lista mas warmup é caro) → nudge LSP-first faz primeira query Rust travar. Eixo 2: risk score só usa LSP no que tem server rodando — se Rust LSP não estiver up, o subgraph Rust fica com risk=0 falso (sem callers detectados). Eixo 3: regex import scanner só pega TS (regra `import` JS); módulos Rust ficam fora ou geram placeholders. Eixo 4: cache funciona em ambas, neutro. **Gains são TS-heavy.**

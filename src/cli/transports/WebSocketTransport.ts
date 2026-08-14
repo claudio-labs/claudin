@@ -1,19 +1,19 @@
 import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import type WsWebSocket from 'ws'
 import { logEvent } from 'src/services/analytics/index.js'
-import { CircularBuffer } from 'src/utils/CircularBuffer.js'
+import { CircularBuffer } from 'src/utils/data/CircularBuffer.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getWebSocketTLSOptions } from 'src/utils/mtls.js'
+import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
 import {
   getWebSocketProxyAgent,
   getWebSocketProxyUrl,
-} from 'src/utils/proxy.js'
+} from 'src/services/api/proxy.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
-} from 'src/utils/sessionActivity.js'
+} from 'src/services/session/sessionActivity.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { Transport } from './Transport.js'
 
@@ -196,7 +196,7 @@ export class WebSocketTransport implements Transport {
   // Stored as class-property arrow functions so they can be removed in
   // doDisconnect(). Without removal, each reconnect orphans the old WS
   // object + its 5 closures until GC, which accumulates under network
-  // instability. Mirrors the pattern in src/utils/mcpWebSocketTransport.ts.
+  // instability. Mirrors the pattern in src/services/mcp/mcpWebSocketTransport.ts.
 
   private onBunOpen = () => {
     this.handleOpenEvent()
@@ -355,7 +355,7 @@ export class WebSocketTransport implements Transport {
    * Remove all listeners attached in connect() for the given WebSocket.
    * Without this, each reconnect orphans the old WS object + its closures
    * until GC — these accumulate under network instability. Mirrors the
-   * pattern in src/utils/mcpWebSocketTransport.ts.
+   * pattern in src/services/mcp/mcpWebSocketTransport.ts.
    */
   private removeWsListeners(ws: WebSocketLike): void {
     if (this.isBunWs) {

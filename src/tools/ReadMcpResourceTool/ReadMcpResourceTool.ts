@@ -5,11 +5,11 @@ import {
 import { z } from 'zod/v4'
 import { ensureConnectedClient } from 'src/services/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   getBinaryBlobSavedMessage,
   persistBinaryContent,
-} from 'src/utils/mcpOutputStorage.js'
+} from 'src/services/mcp/mcpOutputStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isOutputLineTruncated } from 'src/utils/terminal.js'
 import { DESCRIPTION, PROMPT } from './prompt.js'

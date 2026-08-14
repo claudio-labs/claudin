@@ -9,9 +9,9 @@ import {
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import { getCodeEditToolDecisionCounter } from 'src/bootstrap/state.js'
 import type { Tool as ToolType, ToolUseContext } from 'src/Tool.js'
-import { getLanguageName } from 'src/utils/cliHighlight.js'
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
-import { logOTelEvent } from 'src/utils/telemetry/events.js'
+import { getLanguageName } from 'src/utils/text/cliHighlight.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 import type {
   PermissionApprovalSource,
   PermissionRejectionSource,

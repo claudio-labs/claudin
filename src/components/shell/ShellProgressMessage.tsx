@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import stripAnsi from 'strip-ansi';
 import { Box, Text } from 'src/ink.js';
-import { formatFileSize } from 'src/utils/format.js';
+import { formatFileSize } from 'src/utils/text/format.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
 import { ShellElapsedTime } from './ShellElapsedTime.js';

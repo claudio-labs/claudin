@@ -3,9 +3,9 @@ import React from 'react';
 import { envDynamic } from 'src/utils/envDynamic.js';
 import { Box, Text } from 'src/ink.js';
 import { useKeybindings } from 'src/keybindings/useKeybinding.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/utils/env.js';
-import { getTerminalIdeType, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from 'src/utils/ide.js';
+import { getTerminalIdeType, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from 'src/services/ide/ide.js';
 import { Dialog } from './design-system/Dialog.js';
 interface Props {
   onDone: () => void;

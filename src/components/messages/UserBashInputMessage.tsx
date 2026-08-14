@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
-import { extractTag } from 'src/utils/messages.js';
+import { extractTag } from 'src/services/messages/messages.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

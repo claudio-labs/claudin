@@ -33,7 +33,7 @@
 
 import * as React from 'react'
 import { feature } from 'bun:bundle'
-import { saveGlobalConfig } from 'src/utils/config.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { logError } from 'src/utils/log.js'
 import { CostThresholdDialog } from 'src/components/CostThresholdDialog.js'
@@ -41,11 +41,11 @@ import { IdleReturnDialog } from 'src/components/IdleReturnDialog.js'
 import { ElicitationDialog } from 'src/components/mcp/ElicitationDialog.js'
 import { PromptDialog } from 'src/components/hooks/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/components/permissions/WorkerPendingPermission.js'
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
-import { applyPermissionUpdate, persistPermissionUpdate } from 'src/utils/permissions/PermissionUpdate.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import {
   sendSandboxPermissionResponseViaMailbox,
-} from 'src/utils/swarm/permissionSync.js'
+} from 'src/coordinator/swarm/permissionSync.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 
 export type REPLDialogsDeps = {

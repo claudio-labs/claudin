@@ -29,7 +29,7 @@ import {
   sameSessionId,
 } from './workSecret.js'
 import { toCompatSessionId, toInfraSessionId } from './sessionIdCompat.js'
-import { updateSessionBridgeId } from 'src/utils/concurrentSessions.js'
+import { updateSessionBridgeId } from 'src/services/session/concurrentSessions.js'
 import { getTrustedDeviceToken } from './trustedDevice.js'
 import { HybridTransport } from 'src/cli/transports/HybridTransport.js'
 import {
@@ -37,7 +37,7 @@ import {
   createV1ReplTransport,
   createV2ReplTransport,
 } from './replBridgeTransport.js'
-import { updateSessionIngressAuthToken } from 'src/utils/sessionIngressAuth.js'
+import { updateSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import { isEnvTruthy, isInProtectedNamespace } from 'src/utils/envUtils.js'
 import { validateBridgeId } from './bridgeApi.js'
 import {
@@ -47,7 +47,7 @@ import {
 } from './debugUtils.js'
 import type { Message } from 'src/types/message.js'
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
-import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import type {
   SDKControlRequest,
   SDKControlResponse,

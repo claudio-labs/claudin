@@ -25,19 +25,19 @@ import { getLspServerManager } from 'src/services/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { countLinesChanged, getPatchFromContents } from 'src/utils/diff.js'
-import { countAddDel } from 'src/utils/diffStat.js'
+import { countLinesChanged, getPatchFromContents } from 'src/services/git/diff.js'
+import { countAddDel } from 'src/services/git/diffStat.js'
 import { AbortError, isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/file.js'
+import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import {
   type LineEndingType,
   readFileSyncWithMetadata,
-} from 'src/utils/fileRead.js'
-import { getFsImplementation } from 'src/utils/fsOperations.js'
+} from 'src/utils/fs/fileRead.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 

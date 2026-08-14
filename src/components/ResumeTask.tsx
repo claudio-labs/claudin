@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/utils/teleport/api.js';
+import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/services/teleport/api.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow list navigation
 import { Box, Text, useInput } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { detectCurrentRepository } from 'src/utils/detectRepository.js';
-import { formatRelativeTime } from 'src/utils/format.js';
+import { detectCurrentRepository } from 'src/services/git/detectRepository.js';
+import { formatRelativeTime } from 'src/utils/text/format.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { Select } from './CustomSelect/index.js';
 import { Byline } from './design-system/Byline.js';

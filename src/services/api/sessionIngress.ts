@@ -7,10 +7,10 @@ import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { logError } from 'src/utils/log.js'
 import { sequential } from 'src/utils/sequential.js'
-import { getSessionIngressAuthToken } from 'src/utils/sessionIngressAuth.js'
+import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getOAuthHeaders } from 'src/utils/teleport/api.js'
+import { getOAuthHeaders } from 'src/services/teleport/api.js'
 
 interface SessionIngressError {
   error?: {

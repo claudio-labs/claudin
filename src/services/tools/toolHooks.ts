@@ -13,23 +13,23 @@ import type {
   ProgressMessage,
 } from 'src/types/message.js'
 import type { PermissionDecision } from 'src/types/permissions.js'
-import { createAttachmentMessage } from 'src/utils/attachments.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import {
   executePostToolHooks,
   executePostToolUseFailureHooks,
   executePreToolHooks,
   getPreToolHookBlockingMessage,
-} from 'src/utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import { logError } from 'src/utils/log.js'
 import {
   getRuleBehaviorDescription,
   type PermissionDecisionReason,
   type PermissionResult,
-} from 'src/utils/permissions/PermissionResult.js'
-import { checkRuleBasedPermissions } from 'src/utils/permissions/permissions.js'
-import { formatError } from 'src/utils/toolErrors.js'
+} from 'src/services/permissions/PermissionResult.js'
+import { checkRuleBasedPermissions } from 'src/services/permissions/permissions.js'
+import { formatError } from 'src/services/tools/toolErrors.js'
 import { getAutoFixConfig } from 'src/services/autoFix/autoFixConfig.js'
 import { shouldRunAutoFix, buildAutoFixContext } from 'src/services/autoFix/autoFixHook.js'
 import { runAutoFixCheck } from 'src/services/autoFix/autoFixRunner.js'

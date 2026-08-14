@@ -16,10 +16,10 @@ import { createHash } from 'crypto'
 import { statSync } from 'fs'
 import { relative } from 'path'
 
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { AbortError, isENOENT } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { ripGrep } from 'src/utils/ripgrep.js'
+import { ripGrep } from 'src/utils/fs/ripgrep.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,

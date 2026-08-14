@@ -21,7 +21,7 @@ re-audit them.
   it would fail silently if the wording ever changes.
 - **axios 1.18.1 → 1.19.0** — the interceptor change (a synchronous throw in a
   request interceptor now blocks dispatch) is inert here: both of our request
-  interceptors, in `src/utils/proxy.ts`, only mutate `config` and return it. The
+  interceptors, in `src/services/api/proxy.ts`, only mutate `config` and return it. The
   `NO_PROXY` canonicalization change is also inert because we set
   `axios.defaults.proxy = false` and do our own bypass via `shouldBypassProxy`
   plus undici's `EnvHttpProxyAgent`. Its new nested dep did break the local

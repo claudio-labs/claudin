@@ -1,10 +1,10 @@
 import { spawnSync } from 'child_process'
 import { getIsInteractive } from 'src/bootstrap/state.js'
 import { shouldUseMainScreenRewrite } from 'src/ink/terminal.js'
-import { getGlobalConfig } from './config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from './debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'
-import { execFileNoThrow } from './execFileNoThrow.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 
 let loggedTmuxCcDisable = false
 let checkedTmuxMouseHint = false

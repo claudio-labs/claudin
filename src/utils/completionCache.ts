@@ -8,7 +8,7 @@ import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'
-import { execFileNoThrow } from './execFileNoThrow.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { logError } from './log.js'
 import type { ThemeName } from './theme.js'
 

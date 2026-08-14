@@ -15,24 +15,24 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js';
 import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js';
-import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
-import { calculateContextPercentages, getContextWindowForModel } from 'src/utils/context.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { calculateContextPercentages, getContextWindowForModel } from 'src/services/context/context.js';
 import { getExternalEditor } from 'src/utils/editor.js';
-import { getDisplayPath } from 'src/utils/file.js';
-import { toIDEDisplayName } from 'src/utils/ide.js';
+import { getDisplayPath } from 'src/utils/fs/file.js';
+import { toIDEDisplayName } from 'src/services/ide/ide.js';
 import { logError } from 'src/utils/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
-import { createUserMessage } from 'src/utils/messages.js';
+import { createUserMessage } from 'src/services/messages/messages.js';
 import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/utils/model/model.js';
-import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX } from 'src/utils/permissions/bashClassifier.js';
-import { type PermissionMode, toExternalPermissionMode } from 'src/utils/permissions/PermissionMode.js';
-import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js';
-import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermissionsForAutoMode } from 'src/utils/permissions/permissionSetup.js';
+import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX } from 'src/services/permissions/bashClassifier.js';
+import { type PermissionMode, toExternalPermissionMode } from 'src/services/permissions/PermissionMode.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermissionsForAutoMode } from 'src/services/permissions/permissionSetup.js';
 import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js';
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js';
 import { editFileInEditor, editPromptInEditor } from 'src/utils/promptEditor.js';
-import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/utils/sessionStorage.js';
-import { getInitialSettings } from 'src/utils/settings/settings.js';
+import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/services/session/sessionStorage.js';
+import { getInitialSettings } from 'src/services/settings/settings.js';
 import { type OptionWithDescription, Select } from 'src/components/CustomSelect/index.js';
 import { Markdown } from 'src/components/Markdown.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
@@ -40,10 +40,10 @@ import type { PermissionRequestProps } from 'src/components/permissions/Permissi
 import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/utils/permissions/autoModeState.js') as typeof import('src/utils/permissions/autoModeState.js') : null;
+const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js') : null;
 import type { Base64ImageSource, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 /* eslint-enable @typescript-eslint/no-require-imports */
-import type { PastedContent } from 'src/utils/config.js';
+import type { PastedContent } from 'src/services/config/config.js';
 import type { ImageDimensions } from 'src/utils/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from 'src/utils/imageResizer.js';
 import { cacheImagePath, storeImage } from 'src/utils/imageStore.js';

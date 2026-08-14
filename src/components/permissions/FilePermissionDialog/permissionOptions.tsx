@@ -5,8 +5,8 @@ import { Text } from 'src/ink.js';
 import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
-import { expandPath, getDirectoryForPath } from 'src/utils/path.js';
-import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/utils/permissions/filesystem.js';
+import { expandPath, getDirectoryForPath } from 'src/utils/fs/path.js';
+import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 /**
  * Check if a path is within the project's .claudin/ folder.

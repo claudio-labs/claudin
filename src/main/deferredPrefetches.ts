@@ -13,14 +13,14 @@ import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import {
   prefetchAwsCredentialsAndBedRockInfoIfSafe,
   prefetchGcpCredentialsIfSafe,
-} from 'src/utils/auth.js';
-import { countFilesRoundedRg } from 'src/utils/ripgrep.js';
-import { getCwd } from 'src/utils/cwd.js';
+} from 'src/services/auth/auth.js';
+import { countFilesRoundedRg } from 'src/utils/fs/ripgrep.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
 import { prefetchOfficialMcpUrls } from 'src/services/mcp/officialRegistry.js';
 import { refreshModelCapabilities } from 'src/utils/model/modelCapabilities.js';
-import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js';
-import { skillChangeDetector } from 'src/utils/skills/skillChangeDetector.js';
+import { settingsChangeDetector } from 'src/services/settings/changeDetector.js';
+import { skillChangeDetector } from 'src/skills/skillChangeDetector.js';
 import { prefetchSystemContextIfSafe } from './lifecycle.js';
 
 /**

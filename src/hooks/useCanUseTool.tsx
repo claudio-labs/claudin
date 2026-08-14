@@ -15,9 +15,9 @@ import { clearClassifierChecking, setClassifierApproval, setYoloClassifierApprov
 import { logForDebugging } from 'src/utils/debug.js';
 import { AbortError, isSdkApiUserAbortError } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
-import type { ClassifierResult } from 'src/utils/permissions/bashClassifier.js';
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js';
-import { hasPermissionsToUseTool } from 'src/utils/permissions/permissions.js';
+import type { ClassifierResult } from 'src/services/permissions/bashClassifier.js';
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js';
+import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
 import { handleCoordinatorPermission } from './toolPermission/handlers/coordinatorHandler.js';
 import { handleInteractivePermission } from './toolPermission/handlers/interactiveHandler.js';

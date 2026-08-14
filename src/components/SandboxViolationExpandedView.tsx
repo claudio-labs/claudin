@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Box, Text } from 'src/ink.js';
-import type { SandboxViolationEvent } from 'src/utils/sandbox/sandbox-adapter.js';
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
+import type { SandboxViolationEvent } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
 
 /**
  * Format a timestamp as "h:mm:ssa" (e.g., "1:30:45pm").
@@ -16,7 +16,7 @@ function formatTime(date: Date): string {
   const ampm = date.getHours() < 12 ? 'am' : 'pm';
   return `${h}:${m}:${s}${ampm}`;
 }
-import { getPlatform } from 'src/utils/platform.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
 export function SandboxViolationExpandedView() {
   const $ = _c(15);
   let t0: SandboxViolationEvent[];

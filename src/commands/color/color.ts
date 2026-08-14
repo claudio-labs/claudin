@@ -12,8 +12,8 @@ import type {
 import {
   getTranscriptPath,
   saveAgentColor,
-} from 'src/utils/sessionStorage.js'
-import { isTeammate } from 'src/utils/teammate.js'
+} from 'src/services/session/sessionStorage.js'
+import { isTeammate } from 'src/coordinator/teammate.js'
 
 const RESET_ALIASES = ['default', 'reset', 'none', 'gray', 'grey'] as const
 

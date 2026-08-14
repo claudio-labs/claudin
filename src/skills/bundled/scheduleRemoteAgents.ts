@@ -4,20 +4,20 @@ import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'
-import { getClaudeAIOAuthTokens } from 'src/utils/auth.js'
-import { checkRepoForRemoteAccess } from 'src/utils/background/remote/preconditions.js'
+import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
+import { checkRepoForRemoteAccess } from 'src/services/background/remote/preconditions.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import {
   detectCurrentRepositoryWithHost,
   parseGitRemote,
-} from 'src/utils/detectRepository.js'
-import { getRemoteUrl } from 'src/utils/git.js'
+} from 'src/services/git/detectRepository.js'
+import { getRemoteUrl } from 'src/services/git/git.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   createDefaultCloudEnvironment,
   type EnvironmentResource,
   fetchEnvironments,
-} from 'src/utils/teleport/environments.js'
+} from 'src/services/teleport/environments.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 // Base58 alphabet (Bitcoin-style) used by the tagged ID system

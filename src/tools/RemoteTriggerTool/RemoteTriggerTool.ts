@@ -9,8 +9,8 @@ import { buildTool, type ToolDef } from 'src/Tool.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from 'src/utils/auth.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+} from 'src/services/auth/auth.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { DESCRIPTION, PROMPT, REMOTE_TRIGGER_TOOL_NAME } from './prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from './UI.js'

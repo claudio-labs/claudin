@@ -16,7 +16,7 @@
 ```
 [fix/user-agent-openai-shim a3f8c9d] fix(api): use claudin branding in User-Agent
  7 files changed, 30 insertions(+), 4 deletions(-)
- create mode 100644 src/utils/userAgent.ts
+ create mode 100644 src/services/api/userAgent.ts
 ```
 
 ### Amostra 2 — commit com hooks (típico, ~400-2KB+)

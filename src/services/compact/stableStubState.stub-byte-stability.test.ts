@@ -32,12 +32,12 @@ import {
   createContentReplacementState,
   enforceToolResultBudget,
   type ContentReplacementState,
-} from 'src/utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import { _resetCacheProfileForTesting } from 'src/services/cache/cacheProfile.js'
 import {
   createAssistantMessage,
   createUserMessage,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import type { Message } from 'src/types/message.js'
 
 const TOOL_USE_ID = 'toolu_s3_byte_stability'

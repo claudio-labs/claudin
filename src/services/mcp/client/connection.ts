@@ -17,7 +17,7 @@ import {
   errorMessage,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/utils/errors.js'
-import { maybeNotifyIDEConnected } from 'src/utils/ide.js'
+import { maybeNotifyIDEConnected } from 'src/services/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/utils/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { sleep } from 'src/utils/sleep.js'

@@ -33,7 +33,7 @@ import { createAbortController } from 'src/utils/abortController.js'
 import {
   runWithAgentContext,
   type SubagentContext,
-} from 'src/utils/agentContext.js'
+} from 'src/coordinator/agentContext.js'
 import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
@@ -42,13 +42,13 @@ import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 import {
   getAgentTranscriptPath,
   recordSidechainTranscript,
-} from 'src/utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import {
   evictTaskOutput,
   getTaskOutputPath,
   initTaskOutputAsSymlink,
-} from 'src/utils/task/diskOutput.js'
-import { registerTask, updateTaskState } from 'src/utils/task/framework.js'
+} from 'src/tasks/diskOutput.js'
+import { registerTask, updateTaskState } from 'src/tasks/framework.js'
 import type { LocalAgentTaskState } from './LocalAgentTask/LocalAgentTask.js'
 
 // Main session tasks use LocalAgentTaskState with agentType='main-session'

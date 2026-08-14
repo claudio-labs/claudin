@@ -5,7 +5,7 @@ import { isSdkApiUserAbortError } from 'src/utils/errors.js'
 import {
   createUserMessage,
   getAssistantMessageText,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { queryModelWithoutStreaming } from './api/claude.js'

@@ -6,7 +6,7 @@
 
 import type { ModelOption } from './modelOptions.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getOllamaApiBaseUrl } from 'src/utils/providerDiscovery.js'
+import { getOllamaApiBaseUrl } from 'src/services/api/providerDiscovery.js'
 
 let cachedOllamaOptions: ModelOption[] | null = null
 let fetchPromise: Promise<ModelOption[]> | null = null

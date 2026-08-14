@@ -4,7 +4,7 @@
  * re-emitting the full list every time the nag fires.
  *
  * WHY: `getTodoReminderAttachments` / `getTaskReminderAttachments`
- * (src/utils/attachments.ts) re-render the full todo list into a
+ * (src/services/attachments/attachments.ts) re-render the full todo list into a
  * `<system-reminder>` every time the reminder fires — even when the
  * list hasn't changed since the previous reminder. On a long session
  * with dozens of todos this adds up. The delta lets the reminder text
@@ -13,9 +13,9 @@
  * reminder and on actual drift.
  *
  * Mirrors the pattern of:
- *   - `src/utils/mcpInstructionsDelta.ts`
- *   - `src/utils/toolSearch.ts` (`getDeferredToolsDelta`)
- *   - `src/utils/attachments.ts` (`getAgentListingDeltaAttachment`)
+ *   - `src/services/mcp/mcpInstructionsDelta.ts`
+ *   - `src/services/tools/toolSearch.ts` (`getDeferredToolsDelta`)
+ *   - `src/services/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
  *
  * Identity key is the rendered todo content (todo list) or task
  * subject/id (v2 task system). Status drift on an existing item is

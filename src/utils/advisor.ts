@@ -1,8 +1,8 @@
 import type { BetaUsage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { shouldIncludeFirstPartyOnlyBetas } from './betas.js'
+import { shouldIncludeFirstPartyOnlyBetas } from 'src/services/api/betas.js'
 import { isEnvTruthy } from './envUtils.js'
-import { getInitialSettings } from './settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 
 // The SDK does not yet have types for advisor blocks.
 // TODO(hackyon): Migrate to the real anthropic SDK types when this feature ships publicly

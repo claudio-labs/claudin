@@ -7,13 +7,13 @@ import type { LocalShellSpawnInput, SetAppState, Task, TaskContext, TaskHandle }
 import { createTaskStateBase } from 'src/Task.js';
 import type { AgentId } from 'src/types/ids.js';
 import { registerCleanup } from 'src/utils/cleanupRegistry.js';
-import { tailFile } from 'src/utils/fsOperations.js';
+import { tailFile } from 'src/utils/fs/fsOperations.js';
 import { logError } from 'src/utils/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
-import type { ShellCommand } from 'src/utils/ShellCommand.js';
-import { evictTaskOutput, getTaskOutputPath } from 'src/utils/task/diskOutput.js';
-import { registerTask, updateTaskState } from 'src/utils/task/framework.js';
-import { escapeXml } from 'src/utils/xml.js';
+import type { ShellCommand } from 'src/utils/proc/ShellCommand.js';
+import { evictTaskOutput, getTaskOutputPath } from 'src/tasks/diskOutput.js';
+import { registerTask, updateTaskState } from 'src/tasks/framework.js';
+import { escapeXml } from 'src/utils/data/xml.js';
 import { backgroundAgentTask, isLocalAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isMainSessionTask } from 'src/tasks/LocalMainSessionTask.js';
 import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from './guards.js';

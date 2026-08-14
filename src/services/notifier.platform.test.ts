@@ -8,16 +8,16 @@ import {
   test,
 } from 'bun:test'
 import type { TerminalNotification } from 'src/ink/useTerminalNotification.js'
-import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/utils/config.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
 
 // Capture the real modules before mocking so afterAll can restore them.
 // Otherwise the partial hooks.js / execFileNoThrow.js / which.js / env.js /
 // log.js stubs leak into later test files in the same Bun worker (e.g. the
 // hooks public-surface characterization test sees the stripped hooks surface).
-const realExecFileNoThrow = { ...(await import('src/utils/execFileNoThrow.js')) }
-const realWhich = { ...(await import('src/utils/which.js')) }
+const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+const realWhich = { ...(await import('src/utils/proc/which.js')) }
 const realEnv = { ...(await import('src/utils/env.js')) }
-const realHooks = { ...(await import('src/utils/hooks.js')) }
+const realHooks = { ...(await import('src/services/lifecycleHooks/hooks.js')) }
 const realAnalyticsIndex = { ...(await import('./analytics/index.js')) }
 const realLog = { ...(await import('src/utils/log.js')) }
 
@@ -33,7 +33,7 @@ const execFileNoThrowImpl = mock<
   ) => Promise<{ code: number; stdout: string; stderr: string; error?: string }>
 >(async () => ({ code: 0, stdout: '', stderr: '' }))
 
-mock.module('src/utils/execFileNoThrow.js', () => ({
+mock.module('src/utils/proc/execFileNoThrow.js', () => ({
   execFileNoThrow: async (cmd: string, args: string[]) => {
     execCalls.push({ cmd, args })
     return execFileNoThrowImpl(cmd, args)
@@ -48,7 +48,7 @@ mock.module('src/utils/execFileNoThrow.js', () => ({
 const whichImpl = mock<(name: string) => Promise<string | null>>(
   async name => `/usr/bin/${name}`,
 )
-mock.module('src/utils/which.js', () => ({
+mock.module('src/utils/proc/which.js', () => ({
   which: (name: string) => whichImpl(name),
   whichSync: () => null,
 }))
@@ -80,7 +80,7 @@ mock.module('src/utils/env.js', () => ({
   ],
 }))
 
-mock.module('src/utils/hooks.js', () => ({
+mock.module('src/services/lifecycleHooks/hooks.js', () => ({
   executeNotificationHooks: async () => {},
   // Stub all exports that modules in the same Bun worker might need.
   executeWorktreeRemoveHook: async () => {},
@@ -153,14 +153,14 @@ afterEach(() => {
 
 afterAll(() => {
   resetGlobalConfigForTests()
-  mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrow)
-  mock.module('src/utils/execFileNoThrow.js', () => realExecFileNoThrow)
-  mock.module('src/utils/which.js', () => realWhich)
-  mock.module('src/utils/which.js', () => realWhich)
+  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/utils/proc/which.js', () => realWhich)
+  mock.module('src/utils/proc/which.js', () => realWhich)
   mock.module('src/utils/env.js', () => realEnv)
   mock.module('src/utils/env.js', () => realEnv)
-  mock.module('src/utils/hooks.js', () => realHooks)
-  mock.module('src/utils/hooks.js', () => realHooks)
+  mock.module('src/services/lifecycleHooks/hooks.js', () => realHooks)
+  mock.module('src/services/lifecycleHooks/hooks.js', () => realHooks)
   mock.module('./analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/utils/log.js', () => realLog)

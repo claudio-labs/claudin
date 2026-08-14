@@ -60,21 +60,21 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
   ),
 )
 
-mock.module('src/utils/conversationRecovery.js', () => ({
+mock.module('src/services/session/conversationRecovery.js', () => ({
   deserializeMessages: mock((m: unknown[]) => {
     calls.push('deserializeMessages')
     return [...m]
   }),
 }))
 
-mock.module('src/utils/sessionStart.js', () => ({
+mock.module('src/services/session/sessionStart.js', () => ({
   processSessionStartHooks: mock(async () => {
     calls.push('processSessionStartHooks')
     return []
   }),
 }))
 
-mock.module('src/utils/hooks.js', () => ({
+mock.module('src/services/lifecycleHooks/hooks.js', () => ({
   executeSessionEndHooks: mock(async () => {
     calls.push('executeSessionEndHooks')
   }),
@@ -90,7 +90,7 @@ mock.module('src/utils/plans.js', () => ({
   }),
 }))
 
-mock.module('src/utils/sessionRestore.js', () => ({
+mock.module('src/services/session/sessionRestore.js', () => ({
   restoreSessionStateFromLog: mock(() => {
     calls.push('restoreSessionStateFromLog')
   }),
@@ -107,20 +107,20 @@ mock.module('src/utils/sessionRestore.js', () => ({
   }),
 }))
 
-mock.module('src/utils/concurrentSessions.js', () => ({
+mock.module('src/services/session/concurrentSessions.js', () => ({
   updateSessionName: mock(async () => {
     calls.push('updateSessionName')
   }),
   updateSessionActivity: () => {},
 }))
 
-mock.module('src/utils/fileHistory.js', () => ({
+mock.module('src/utils/fs/fileHistory.js', () => ({
   copyFileHistoryForResume: mock(() => {
     calls.push('copyFileHistoryForResume')
   }),
 }))
 
-mock.module('src/utils/sessionStorage.js', () => ({
+mock.module('src/services/session/sessionStorage.js', () => ({
   adoptResumedSessionFile: mock(() => {
     calls.push('adoptResumedSessionFile')
   }),
@@ -144,7 +144,7 @@ mock.module('src/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
   }),
 }))
 
-mock.module('src/utils/worktree.js', () => ({
+mock.module('src/services/git/worktree.js', () => ({
   getCurrentWorktreeSession: () => null,
 }))
 
@@ -177,7 +177,7 @@ mock.module('src/utils/asciicast.js', () => ({
   }),
 }))
 
-mock.module('src/utils/toolResultStorage.js', () => ({
+mock.module('src/services/tools/toolResultStorage.js', () => ({
   applyToolResultReplacementsToMessages: (m: unknown) => m,
   reconstructContentReplacementState: mock((m: unknown) => {
     calls.push('reconstructContentReplacementState')
@@ -192,7 +192,7 @@ mock.module('src/services/analytics/index.js', () => ({
   }),
 }))
 
-mock.module('src/utils/messages.js', () => ({
+mock.module('src/services/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
 

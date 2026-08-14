@@ -3,8 +3,8 @@ import { relative } from 'path';
 import React from 'react';
 import { Box, Text } from 'src/ink.js';
 import { DiagnosticTrackingService } from 'src/services/diagnosticTracking.js';
-import type { Attachment } from 'src/utils/attachments.js';
-import { getCwd } from 'src/utils/cwd.js';
+import type { Attachment } from 'src/services/attachments/attachments.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 import { CtrlOToExpand } from './CtrlOToExpand.js';
 import { MessageResponse } from './MessageResponse.js';
 type DiagnosticsAttachment = Extract<Attachment, {

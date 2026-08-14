@@ -57,7 +57,7 @@ const {
   isDeferredToolsDeltaActive,
   isDeferredToolsDeltaEnabled,
   maybeLatchLegacyDeferredAnnouncement,
-} = await import('./toolSearch.js')
+} = await import('src/services/tools/toolSearch.js')
 const { clearBetaHeaderLatches } = await import('src/bootstrap/state.js')
 
 type LooseMessage = {
@@ -211,7 +211,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
   // and every warm resume of a delta session latches legacy → prepend onto
   // a prepend-less warm cache → the exact break A2 fixes.
   test('persistence premise: deferred_tools_delta attachments are loggable for external users', async () => {
-    const { isLoggableMessage } = await import('./sessionStorage.js')
+    const { isLoggableMessage } = await import('src/services/session/sessionStorage.js')
     expect(
       isLoggableMessage({
         type: 'attachment',
@@ -324,7 +324,7 @@ describe('latch call sites pass the subagent scan context', () => {
 describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
   test('legacy-resume history: injector returns no attachment and leaves the session latched', async () => {
     const { getDeferredToolsDeltaAttachment } = await import(
-      './attachments/injections.js'
+      'src/services/attachments/injections.js'
     )
     // Real session epoch (no override path through the injector) — build a
     // resume point 10min before process start: earlier than any epoch this

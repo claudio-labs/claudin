@@ -6,7 +6,7 @@ import { FOOTER_TEMPORARY_STATUS_TIMEOUT } from 'src/components/PromptInput/Noti
 import { getHistory } from 'src/history.js';
 import { Text } from 'src/ink.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
-import type { HistoryEntry, PastedContent } from 'src/utils/config.js';
+import type { HistoryEntry, PastedContent } from 'src/services/config/config.js';
 export type HistoryMode = PromptInputMode;
 
 // Load history entries in chunks to reduce disk reads on rapid keypresses

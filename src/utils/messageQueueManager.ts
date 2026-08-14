@@ -13,10 +13,10 @@ import type {
   QueuedCommand,
   QueuePriority,
 } from 'src/types/textInputTypes.js'
-import type { PastedContent } from './config.js'
-import { extractTextContent } from './messages.js'
-import { objectGroupBy } from './objectGroupBy.js'
-import { recordQueueOperation } from './sessionStorage.js'
+import type { PastedContent } from 'src/services/config/config.js'
+import { extractTextContent } from 'src/services/messages/messages.js'
+import { objectGroupBy } from 'src/utils/data/objectGroupBy.js'
+import { recordQueueOperation } from 'src/services/session/sessionStorage.js'
 import { createSignal } from './signal.js'
 
 export type SetAppState = (f: (prev: AppState) => AppState) => void

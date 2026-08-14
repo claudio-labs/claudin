@@ -12,7 +12,7 @@ import {
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { validateModel } from 'src/utils/model/validateModel.js'
-import { updateSettingsForSource } from 'src/utils/settings/settings.js'
+import { updateSettingsForSource } from 'src/services/settings/settings.js'
 
 const call: LocalCommandCall = async (args, context) => {
   const arg = args.trim().toLowerCase()

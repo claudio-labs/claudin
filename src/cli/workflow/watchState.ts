@@ -7,7 +7,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { isENOENT } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 

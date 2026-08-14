@@ -10,11 +10,11 @@ import { profileCheckpoint, profileReport } from './utils/startupProfiler.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 profileCheckpoint('main_tsx_entry');
-import { startMdmRawRead } from './utils/settings/mdm/rawRead.js';
+import { startMdmRawRead } from 'src/services/settings/mdm/rawRead.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 startMdmRawRead();
-import { startKeychainPrefetch } from './utils/secureStorage/keychainPrefetch.js';
+import { startKeychainPrefetch } from 'src/services/secureStorage/keychainPrefetch.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 startKeychainPrefetch();
@@ -42,14 +42,14 @@ const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
 const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
   (await import('./entrypoints/init.js')).init;
 import { stopCapturingEarlyInput } from './utils/earlyInput.js';
-import { applyConfigEnvironmentVariables } from './utils/managedEnv.js';
+import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
 import { installLifecycleHandlers } from './main/lifecycleHandlers.js';
 
 // Lazy require to avoid circular dependency: teammate.ts -> AppState.tsx -> ... -> main.tsx
 /* eslint-disable @typescript-eslint/no-require-imports */
-const getTeammateUtils = () => require('./utils/teammate.js') as typeof import('./utils/teammate.js');
-const getTeammatePromptAddendum = () => require('./utils/swarm/teammatePromptAddendum.js') as typeof import('./utils/swarm/teammatePromptAddendum.js');
-const getTeammateModeSnapshot = () => require('./utils/swarm/backends/teammateModeSnapshot.js') as typeof import('./utils/swarm/backends/teammateModeSnapshot.js');
+const getTeammateUtils = () => require('src/coordinator/teammate.js') as typeof import('src/coordinator/teammate.js');
+const getTeammatePromptAddendum = () => require('src/coordinator/swarm/teammatePromptAddendum.js') as typeof import('src/coordinator/swarm/teammatePromptAddendum.js');
+const getTeammateModeSnapshot = () => require('src/coordinator/swarm/backends/teammateModeSnapshot.js') as typeof import('src/coordinator/swarm/backends/teammateModeSnapshot.js');
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for COORDINATOR_MODE
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -73,7 +73,7 @@ import { isBareMode, isEnvTruthy } from './utils/envUtils.js';
 import type { FpsMetrics } from './utils/fpsTracker.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
-import { getCwd } from 'src/utils/cwd.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 
 // Action-handler-only imports: these are needed after commander parse and action
 // dispatch, not during module evaluation. Lazy-loading them defers their
@@ -82,22 +82,22 @@ import { getCwd } from 'src/utils/cwd.js';
 const getCreateSyntheticOutputTool = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
 const getIsSyntheticOutputToolEnabled = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
 const getJsonParse = () => require('./utils/slowOperations.js').jsonParse as typeof import('./utils/slowOperations.js').jsonParse
-const getCreateSystemMessage = () => require('./utils/messages.js').createSystemMessage as typeof import('./utils/messages.js').createSystemMessage
-const getBuildDeepLinkBanner = () => require('./utils/deepLink/banner.js').buildDeepLinkBanner as typeof import('./utils/deepLink/banner.js').buildDeepLinkBanner
-const getPermissionModes = () => require('./utils/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('./utils/permissions/PermissionMode.js').PERMISSION_MODES
+const getCreateSystemMessage = () => require('src/services/messages/messages.js').createSystemMessage as typeof import('src/services/messages/messages.js').createSystemMessage
+const getBuildDeepLinkBanner = () => require('src/services/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/services/deepLink/banner.js').buildDeepLinkBanner
+const getPermissionModes = () => require('src/services/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/services/permissions/PermissionMode.js').PERMISSION_MODES
 const getLogEvent = () => require('src/services/analytics/index.js').logEvent as typeof import('src/services/analytics/index.js').logEvent
 type AnalyticsMetadata = import('src/services/analytics/index.js').AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-const getInitializeVersionedPlugins = () => require('./utils/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('./utils/plugins/installedPluginsManager.js').initializeVersionedPlugins
-const getCleanupOrphanedPluginVersionsInBackground = () => require('./utils/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('./utils/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
-const getGlobExclusionsForPluginCacheFn = () => require('./utils/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('./utils/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
-const getProcessSessionStartHooks = () => require('./utils/sessionStart.js').processSessionStartHooks as typeof import('./utils/sessionStart.js').processSessionStartHooks
-const getProcessSetupHooks = () => require('./utils/sessionStart.js').processSetupHooks as typeof import('./utils/sessionStart.js').processSetupHooks
-const getSaveMode = () => require('./utils/sessionStorage.js').saveMode as typeof import('./utils/sessionStorage.js').saveMode
-const getGracefulShutdownSync = () => require('src/utils/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/utils/gracefulShutdown.js').gracefulShutdownSync
+const getInitializeVersionedPlugins = () => require('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins
+const getCleanupOrphanedPluginVersionsInBackground = () => require('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
+const getGlobExclusionsForPluginCacheFn = () => require('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
+const getProcessSessionStartHooks = () => require('src/services/session/sessionStart.js').processSessionStartHooks as typeof import('src/services/session/sessionStart.js').processSessionStartHooks
+const getProcessSetupHooks = () => require('src/services/session/sessionStart.js').processSetupHooks as typeof import('src/services/session/sessionStart.js').processSetupHooks
+const getSaveMode = () => require('src/services/session/sessionStorage.js').saveMode as typeof import('src/services/session/sessionStorage.js').saveMode
+const getGracefulShutdownSync = () => require('src/utils/proc/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/utils/proc/gracefulShutdown.js').gracefulShutdownSync
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('./utils/permissions/autoModeState.js') as typeof import('./utils/permissions/autoModeState.js') : null;
+const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js') : null;
 
 // TeleportRepoMismatchDialog, TeleportResumeWrapper dynamically imported at call sites
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -417,7 +417,7 @@ async function run(): Promise<CommanderCommand> {
     if (feature('COORDINATOR_MODE') && isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)) {
       const {
         applyCoordinatorToolFilter
-      } = await import('./utils/toolPool.js');
+      } = await import('src/services/tools/toolPool.js');
       tools = applyCoordinatorToolFilter(tools);
     }
     profileCheckpoint('action_tools_loaded');

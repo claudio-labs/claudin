@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Box, Text } from 'src/ink.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
-import { applyPermissionUpdate } from 'src/utils/permissions/PermissionUpdate.js';
+import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 type Props = {
   directoryPath: string;

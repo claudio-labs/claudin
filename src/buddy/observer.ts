@@ -1,6 +1,6 @@
 import type { Message } from 'src/types/message.js'
-import { getGlobalConfig } from 'src/utils/config.js'
-import { getUserMessageText } from 'src/utils/messages.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getUserMessageText } from 'src/services/messages/messages.js'
 import { getCompanion } from './companion.js'
 
 const DIRECT_REPLIES = [

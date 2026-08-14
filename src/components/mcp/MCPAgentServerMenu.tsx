@@ -4,7 +4,7 @@ import type { CommandResultDisplay } from 'src/commands.js';
 import { Box, color, Link, Text, useTheme } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { AuthenticationCancelledError, performMCPOAuthFlow } from 'src/services/mcp/auth.js';
-import { capitalize } from 'src/utils/stringUtils.js';
+import { capitalize } from 'src/utils/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';

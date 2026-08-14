@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 import { mock } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
-import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/utils/config.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
 
 const realProvidersModule = await import('./providers.js')
 

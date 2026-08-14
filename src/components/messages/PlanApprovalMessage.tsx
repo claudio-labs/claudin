@@ -3,7 +3,7 @@ import * as React from 'react';
 import { Markdown } from 'src/components/Markdown.js';
 import { Box, Text } from 'src/ink.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
-import { type IdleNotificationMessage, isIdleNotification, isPlanApprovalRequest, isPlanApprovalResponse, type PlanApprovalRequestMessage, type PlanApprovalResponseMessage } from 'src/utils/teammateMailbox.js';
+import { type IdleNotificationMessage, isIdleNotification, isPlanApprovalRequest, isPlanApprovalResponse, type PlanApprovalRequestMessage, type PlanApprovalResponseMessage } from 'src/coordinator/teammateMailbox.js';
 import { getShutdownMessageSummary } from './ShutdownMessage.js';
 import { getTaskAssignmentSummary } from './TaskAssignmentMessage.js';
 type PlanApprovalRequestProps = {

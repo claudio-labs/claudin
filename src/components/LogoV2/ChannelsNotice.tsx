@@ -12,9 +12,9 @@ import { Box, Text } from 'src/ink.js';
 import { isChannelsEnabled } from 'src/services/mcp/channelAllowlist.js';
 import { getEffectiveChannelAllowlist } from 'src/services/mcp/channelNotification.js';
 import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
-import { getClaudeAIOAuthTokens, getSubscriptionType } from 'src/utils/auth.js';
-import { loadInstalledPluginsV2 } from 'src/utils/plugins/installedPluginsManager.js';
-import { getSettingsForSource } from 'src/utils/settings/settings.js';
+import { getClaudeAIOAuthTokens, getSubscriptionType } from 'src/services/auth/auth.js';
+import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js';
+import { getSettingsForSource } from 'src/services/settings/settings.js';
 export function ChannelsNotice() {
   const $ = _c(32);
   const [t0] = useState(_temp);

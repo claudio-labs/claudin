@@ -31,7 +31,7 @@ import {
   enqueue,
   hasCommandsInQueue,
 } from 'src/utils/messageQueueManager.js'
-import { notifySessionMetadataChanged } from 'src/utils/sessionState.js'
+import { notifySessionMetadataChanged } from 'src/services/session/sessionState.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { collectContextData } from 'src/commands/context/context-noninteractive.js'
@@ -44,11 +44,11 @@ import {
   setSdkAgentProgressSummariesEnabled,
   getSessionId,
 } from 'src/bootstrap/state.js'
-import { toInternalMessages } from 'src/utils/messages/mappers.js'
+import { toInternalMessages } from 'src/services/messages/mappers.js'
 import { resolveAndPrepend } from 'src/bridge/inboundAttachments.js'
-import { doesMessageExistInSession } from 'src/utils/sessionStorage.js'
-import { recordAttributionSnapshot } from 'src/utils/sessionStorage.js'
-import { incrementPromptCount } from 'src/utils/commitAttribution.js'
+import { doesMessageExistInSession } from 'src/services/session/sessionStorage.js'
+import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js'
+import { incrementPromptCount } from 'src/services/git/commitAttribution.js'
 import { stopTask } from 'src/tasks/stopTask.js'
 import type { SDKUserMessageReplay } from 'src/entrypoints/agentSdkTypes.js'
 import {

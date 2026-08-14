@@ -18,14 +18,14 @@ import type { Tools, ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { Message } from 'src/types/message.js'
 import { createAbortController } from './abortController.js'
-import type { FileStateCache } from './fileStateCache.js'
-import type { CacheSafeParams } from './forkedAgent.js'
+import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
 import { getMainLoopModel } from './model/model.js'
 import { asSystemPrompt } from './systemPromptType.js'
 import {
   shouldEnableThinkingByDefault,
   type ThinkingConfig,
-} from './thinking.js'
+} from 'src/services/context/thinking.js'
 
 /**
  * Fetch the three context pieces that form the API cache-key prefix:

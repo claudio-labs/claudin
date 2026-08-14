@@ -20,22 +20,22 @@ import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import { asSessionId } from 'src/types/ids.js';
 import type { LogOption } from 'src/types/logs.js';
 import type { Message as MessageType } from 'src/types/message.js';
-import { count } from 'src/utils/array.js';
-import { loadConversationForResume } from 'src/utils/conversationRecovery.js';
+import { count } from 'src/utils/data/array.js';
+import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
 import { errorMessage, TeleportOperationError, toError } from 'src/utils/errors.js';
-import { getBranch } from 'src/utils/git.js';
-import { getWorktreePaths } from 'src/utils/getWorktreePaths.js';
-import { filterExistingPaths, getKnownPathsForRepo } from 'src/utils/githubRepoPathMapping.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import { getBranch } from 'src/services/git/git.js';
+import { getWorktreePaths } from 'src/services/git/getWorktreePaths.js';
+import { filterExistingPaths, getKnownPathsForRepo } from 'src/services/git/githubRepoPathMapping.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { logError } from 'src/utils/log.js';
-import { createSystemMessage, createUserMessage } from 'src/utils/messages.js';
-import { type ProcessedResume, processResumedConversation } from 'src/utils/sessionRestore.js';
-import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/utils/sessionStorage.js';
-import { setCwd } from 'src/utils/Shell.js';
-import { fetchSession, prepareApiRequest } from 'src/utils/teleport/api.js';
-import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from 'src/utils/teleport.js';
-import { validateUuid } from 'src/utils/uuid.js';
+import { createSystemMessage, createUserMessage } from 'src/services/messages/messages.js';
+import { type ProcessedResume, processResumedConversation } from 'src/services/session/sessionRestore.js';
+import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
+import { setCwd } from 'src/utils/proc/Shell.js';
+import { fetchSession, prepareApiRequest } from 'src/services/teleport/api.js';
+import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from 'src/components/teleport.js';
+import { validateUuid } from 'src/utils/data/uuid.js';
 import { isPolicyAllowed, waitForPolicyLimitsToLoad } from 'src/services/policyLimits/index.js';
 import { maybeActivateBrief, maybeActivateProactive } from 'src/main/lifecycle.js';
 import type { BootContext } from 'src/main/bootContext.js';
@@ -160,7 +160,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       return await exitWithError(root, `Error: ${errorMessage(error) || 'Failed to authenticate'}`, () => gracefulShutdown(1));
     }
 
-    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/utils/auth.js');
+    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/services/auth/auth.js');
     const getAccessTokenForRemote = (): string => getTokensForRemote()?.accessToken ?? apiCreds.accessToken;
     const remoteSessionConfig = createRemoteSessionConfig(createdSession.id, getAccessTokenForRemote, apiCreds.orgUUID, hasInitialPrompt);
 

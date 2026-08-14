@@ -6,8 +6,8 @@ import { logEvent } from 'src/services/analytics/index.js'
 import type { ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { plural } from 'src/utils/stringUtils.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 import { resolveAttachments, validateAttachmentPaths } from './attachments.js'
 import {
   BRIEF_TOOL_NAME,

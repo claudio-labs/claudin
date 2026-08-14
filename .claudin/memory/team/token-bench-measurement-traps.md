@@ -14,7 +14,7 @@ through *deny* rules (`getTools` → `filterToolsByDenyRules`, src/tools.ts:383)
 Measured on one prompt: **40 tools visible** under `--allowedTools Read,Glob`,
 with Grep, Bash and Agent present and callable, versus **exactly 2** under
 `--tools Read,Glob --strict-mcp-config`. `--tools` inverts the list into deny
-rules (src/utils/permissions/permissionSetup.ts:866-876), which is what actually
+rules (src/services/permissions/permissionSetup.ts:866-876), which is what actually
 deletes them; `--strict-mcp-config` is needed alongside because `--tools` leaves
 MCP tools untouched. The first run of the pivot bench had arm A reach for Grep
 twice while arm B never did — that arm never exercised the tool under test.

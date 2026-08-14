@@ -2,11 +2,11 @@ import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
 import { renderModelName } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
-import type { ProviderProfile } from 'src/utils/config.js'
+import type { ProviderProfile } from 'src/services/config/config.js'
 import { readSnapshot } from './ProviderModelIndicator.js'
 
 const realModel = { ...(await import('src/utils/model/model.js')) }
-const realProfiles = { ...(await import('src/utils/providerProfiles.js')) }
+const realProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 
 function setActiveModel(name: string): void {
   mock.module('src/utils/model/model.js', () => ({
@@ -16,7 +16,7 @@ function setActiveModel(name: string): void {
 }
 
 function setProfile(profile: Partial<ProviderProfile> | undefined): void {
-  mock.module('src/utils/providerProfiles.js', () => ({
+  mock.module('src/services/api/providerProfiles.js', () => ({
     ...realProfiles,
     getActiveProviderProfile: () => profile,
   }))
@@ -24,12 +24,12 @@ function setProfile(profile: Partial<ProviderProfile> | undefined): void {
 
 afterEach(() => {
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/utils/providerProfiles.js', () => realProfiles)
+  mock.module('src/services/api/providerProfiles.js', () => realProfiles)
 })
 
 afterAll(() => {
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/utils/providerProfiles.js', () => realProfiles)
+  mock.module('src/services/api/providerProfiles.js', () => realProfiles)
 })
 
 describe('ProviderModelIndicator readSnapshot', () => {

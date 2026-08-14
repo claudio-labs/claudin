@@ -23,11 +23,11 @@ import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScop
 import type { ConfigScope, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/services/mcp/utils.js';
 import { AppStateProvider } from 'src/state/AppState.js';
-import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/utils/config.js';
+import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/services/config/config.js';
 import { isFsInaccessible } from 'src/utils/errors.js';
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
-import { safeParseJSON } from 'src/utils/json.js';
-import { getPlatform } from 'src/utils/platform.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
 import { cliError, cliOk } from 'src/cli/exit.js';
 
 function formatDoctorReport(report: McpDoctorReport): string {
@@ -425,7 +425,7 @@ export async function mcpAddFromDesktopHandler(options: {
     });
     const {
       readClaudeDesktopMcpServers
-    } = await import('src/utils/claudeDesktop.js');
+    } = await import('src/services/ide/claudeDesktop.js');
     const servers = await readClaudeDesktopMcpServers();
     if (Object.keys(servers).length === 0) {
       cliOk('No MCP servers found in Claude Desktop configuration or configuration file does not exist.');

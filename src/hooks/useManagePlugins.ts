@@ -10,19 +10,19 @@ import {
   subscribePluginCommands,
 } from 'src/state/pluginCommandsStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { count } from 'src/utils/array.js'
+import { count } from 'src/utils/data/array.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { loadPluginAgents } from 'src/utils/plugins/loadPluginAgents.js'
-import { getPluginCommands } from 'src/utils/plugins/loadPluginCommands.js'
-import { loadPluginHooks } from 'src/utils/plugins/loadPluginHooks.js'
-import { loadPluginLspServers } from 'src/utils/plugins/lspPluginIntegration.js'
-import { loadPluginMcpServers } from 'src/utils/plugins/mcpPluginIntegration.js'
-import { detectAndUninstallDelistedPlugins } from 'src/utils/plugins/pluginBlocklist.js'
-import { getFlaggedPlugins } from 'src/utils/plugins/pluginFlagging.js'
-import { loadAllPlugins } from 'src/utils/plugins/pluginLoader.js'
+import { loadPluginAgents } from 'src/services/plugins/loadPluginAgents.js'
+import { getPluginCommands } from 'src/services/plugins/loadPluginCommands.js'
+import { loadPluginHooks } from 'src/services/plugins/loadPluginHooks.js'
+import { loadPluginLspServers } from 'src/services/plugins/lspPluginIntegration.js'
+import { loadPluginMcpServers } from 'src/services/plugins/mcpPluginIntegration.js'
+import { detectAndUninstallDelistedPlugins } from 'src/services/plugins/pluginBlocklist.js'
+import { getFlaggedPlugins } from 'src/services/plugins/pluginFlagging.js'
+import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js'
 
 /**
  * Hook to manage plugin state and synchronize with AppState.

@@ -137,7 +137,7 @@ JSONL persistido fica compacto; runtime vê dados completos.
 
 ### O que existe
 
-`src/utils/toolResultStorage.ts:171 persistToolResult()` — única função de
+`src/services/tools/toolResultStorage.ts:171 persistToolResult()` — única função de
 persistência de tool result no projeto.
 
 Comportamento concreto:
@@ -448,15 +448,15 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
 
 ### claudin
 
-- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:118` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:118` —
   layout atual de tool-results.
-- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:146` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:146` —
   `unlinkSessionSpillDir` (deletado no `/clear`).
-- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:171` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:171` —
   `persistToolResult`.
-- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:223` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:223` —
   formato `<persisted-output>` que o modelo vê.
-- `/home/dev/projects/claudin/src/utils/toolResultStorage.ts:308–369` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:308–369` —
   trigger por threshold.
 - `/home/dev/projects/claudin/src/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.

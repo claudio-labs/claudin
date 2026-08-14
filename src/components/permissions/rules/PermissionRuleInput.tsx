@@ -9,8 +9,8 @@ import { Box, Newline, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
-import type { PermissionBehavior, PermissionRuleValue } from 'src/utils/permissions/PermissionRule.js';
-import { permissionRuleValueFromString, permissionRuleValueToString } from 'src/utils/permissions/permissionRuleParser.js';
+import type { PermissionBehavior, PermissionRuleValue } from 'src/services/permissions/PermissionRule.js';
+import { permissionRuleValueFromString, permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js';
 export type PermissionRuleInputProps = {
   onCancel: () => void;
   onSubmit: (ruleValue: PermissionRuleValue, ruleBehavior: PermissionBehavior) => void;

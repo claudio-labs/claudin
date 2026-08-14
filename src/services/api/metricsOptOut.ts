@@ -1,13 +1,13 @@
 import axios from 'axios'
-import { hasProfileScope, isClaudeAISubscriber } from 'src/utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { hasProfileScope, isClaudeAISubscriber } from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { getAuthHeaders, withOAuth401Retry } from 'src/utils/http.js'
 import { logError } from 'src/utils/log.js'
-import { memoizeWithTTLAsync } from 'src/utils/memoize.js'
-import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
-import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { memoizeWithTTLAsync } from 'src/utils/data/memoize.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 
 type MetricsEnabledResponse = {
   metrics_logging_enabled: boolean

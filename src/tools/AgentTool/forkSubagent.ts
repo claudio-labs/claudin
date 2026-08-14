@@ -11,7 +11,7 @@ import type {
   Message as MessageType,
 } from 'src/types/message.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { createUserMessage } from 'src/utils/messages.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
@@ -164,7 +164,7 @@ export function buildForkedMessages(
   // TODO(smoosh): this text sibling creates a [tool_result, text] pattern on the wire
   // (renders as </function_results>\n\nHuman:<text>). One-off per-child construction,
   // not a repeated teacher, so low-priority. If we ever care, use smooshIntoToolResult
-  // from src/utils/messages.ts to fold the directive into the last tool_result.content.
+  // from src/services/messages/messages.ts to fold the directive into the last tool_result.content.
   const toolResultMessage = createUserMessage({
     content: [
       ...toolResultBlocks,
