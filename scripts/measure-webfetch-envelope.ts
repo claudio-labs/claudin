@@ -53,7 +53,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 import { MAX_MARKDOWN_LENGTH } from '../src/tools/WebFetchTool/utils.js'
 
 type Profile = 'small' | 'typical' | 'large'

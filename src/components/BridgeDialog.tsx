@@ -3,16 +3,16 @@ import { basename } from 'path';
 import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { getOriginalCwd } from '../bootstrap/state.js';
-import { buildActiveFooterText, buildIdleFooterText, FAILED_FOOTER_TEXT, getBridgeStatus } from '../bridge/bridgeStatusUtil.js';
-import { BRIDGE_FAILED_INDICATOR, BRIDGE_READY_INDICATOR } from '../constants/figures.js';
-import { useRegisterOverlay } from '../context/overlayContext.js';
+import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { buildActiveFooterText, buildIdleFooterText, FAILED_FOOTER_TEXT, getBridgeStatus } from 'src/bridge/bridgeStatusUtil.js';
+import { BRIDGE_FAILED_INDICATOR, BRIDGE_READY_INDICATOR } from 'src/constants/figures.js';
+import { useRegisterOverlay } from 'src/context/overlayContext.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw 'd' key for disconnect, not a configurable keybinding action
-import { Box, Text, useInput } from '../ink.js';
-import { useKeybindings } from '../keybindings/useKeybinding.js';
-import { type AppState, useAppState, useSetAppState } from '../state/AppState.js';
-import { type GlobalConfig, saveGlobalConfig } from '../utils/config.js';
-import { getBranch } from '../utils/git.js';
+import { Box, Text, useInput } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import { type GlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getBranch } from 'src/services/git/git.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {
   onDone: () => void;

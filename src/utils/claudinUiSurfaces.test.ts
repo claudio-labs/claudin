@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'path'
 
-import { optionForPermissionSaveDestination } from '../components/permissions/rules/AddPermissionRules.tsx'
-import { isClaudeSettingsPath } from './permissions/filesystem.ts'
-import { getValidationTip } from './settings/validationTips.ts'
+import { optionForPermissionSaveDestination } from 'src/components/permissions/rules/AddPermissionRules.tsx'
+import { isClaudeSettingsPath } from 'src/services/permissions/filesystem.ts'
+import { getValidationTip } from 'src/services/settings/validationTips.ts'
 
 describe('Claudin settings path surfaces', () => {
   test('isClaudeSettingsPath recognizes project .claudin settings files', () => {

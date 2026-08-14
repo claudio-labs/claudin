@@ -1,10 +1,10 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from '../../Tool.js'
-import { cronToHuman } from '../../utils/cron.js'
-import { listAllCronTasks } from '../../utils/cronTasks.js'
-import { truncate } from '../../utils/format.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { getTeammateContext } from '../../utils/teammateContext.js'
+import { buildTool, type ToolDef } from 'src/Tool.js'
+import { cronToHuman } from 'src/tasks/cron.js'
+import { listAllCronTasks } from 'src/tasks/cronTasks.js'
+import { truncate } from 'src/utils/text/format.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { getTeammateContext } from 'src/coordinator/teammateContext.js'
 import {
   buildCronListPrompt,
   CRON_LIST_DESCRIPTION,

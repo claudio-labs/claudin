@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { DOMElement } from '../dom.js'
+import type { DOMElement } from 'src/ink/dom.js'
 
 export type CursorDeclaration = {
   /** Display column (terminal cell width) within the declared node */

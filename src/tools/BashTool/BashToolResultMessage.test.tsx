@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
-import { AppStateProvider } from '../../state/AppState.js'
-import { wrapStdoutWithMarkers } from '../../outputFilter/Bash/markers.js'
-import type { PipelineResult, PreExecPlan } from '../../outputFilter/Bash/types.js'
-import { renderToString } from '../../utils/staticRender.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { wrapStdoutWithMarkers } from 'src/outputFilter/Bash/markers.js'
+import type { PipelineResult, PreExecPlan } from 'src/outputFilter/Bash/types.js'
+import { renderToString } from 'src/components/staticRender.js'
 import BashToolResultMessage from './BashToolResultMessage.js'
 
 function render(stdout: string): Promise<string> {

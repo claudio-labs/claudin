@@ -3,15 +3,15 @@ import { PassThrough } from 'node:stream'
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot } from '../ink.js'
-import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
-import { AppStateProvider } from '../state/AppState.js'
+import { createRoot } from 'src/ink.js'
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
+import { AppStateProvider } from 'src/state/AppState.js'
 
 // Capture the real claudinMigration module before installing the partial
 // mock so afterAll can restore it cleanly. Bun's mock.module is process-global
 // and shape-locked — without restore, this file's mocks leak into every later
 // test that imports the same specifier (CLAUDE.md mock.module pitfalls).
-const realMigration = { ...(await import('../utils/claudinMigration.js')) }
+const realMigration = { ...(await import('src/services/config/claudinMigration.js')) }
 
 const markMigrationSkippedSpy = mock(() => {})
 const migrateLegacyClaudeDirSpy = mock(async () => ({
@@ -33,7 +33,7 @@ const migrateLegacyClaudeDirSpy = mock(async () => ({
   migratedAt: '2026-04-29T00:00:00Z',
 }))
 
-mock.module('../utils/claudinMigration.js', () => ({
+mock.module('src/services/config/claudinMigration.js', () => ({
   ...realMigration,
   markMigrationSkipped: markMigrationSkippedSpy,
   migrateLegacyClaudeDir: migrateLegacyClaudeDirSpy,
@@ -41,7 +41,7 @@ mock.module('../utils/claudinMigration.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('../utils/claudinMigration.js', () => realMigration)
+  mock.module('src/services/config/claudinMigration.js', () => realMigration)
 })
 
 const SYNC_START = '\x1B[?2026h'

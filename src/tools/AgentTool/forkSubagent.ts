@@ -4,18 +4,18 @@ import { randomUUID } from 'crypto'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
-} from '../../constants/xml.js'
-import { isCoordinatorMode } from '../../coordinator/coordinatorMode.js'
+} from 'src/constants/xml.js'
+import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js'
 import type {
   AssistantMessage,
   Message as MessageType,
-} from '../../types/message.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { createUserMessage } from '../../utils/messages.js'
+} from 'src/types/message.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
-} from '../../constants/worktreeSafety.js'
+} from 'src/constants/worktreeSafety.js'
 import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
 
 /**
@@ -164,7 +164,7 @@ export function buildForkedMessages(
   // TODO(smoosh): this text sibling creates a [tool_result, text] pattern on the wire
   // (renders as </function_results>\n\nHuman:<text>). One-off per-child construction,
   // not a repeated teacher, so low-priority. If we ever care, use smooshIntoToolResult
-  // from src/utils/messages.ts to fold the directive into the last tool_result.content.
+  // from src/services/messages/messages.ts to fold the directive into the last tool_result.content.
   const toolResultMessage = createUserMessage({
     content: [
       ...toolResultBlocks,

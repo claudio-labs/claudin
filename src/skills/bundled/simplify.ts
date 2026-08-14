@@ -1,5 +1,5 @@
-import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
-import { registerBundledSkill } from '../bundledSkills.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
  * `/simplify` — quality-only cleanup of the changed code.

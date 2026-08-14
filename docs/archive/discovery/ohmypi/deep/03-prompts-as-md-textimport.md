@@ -75,7 +75,7 @@ build.onLoad({ filter: /.*/, namespace: 'text-stub' }, (args) => {
 Já em uso por:
 - `src/skills/bundled/verifyContent.ts` (3 imports `.md` — incluindo `SKILL.md` + exemplos).
 - `src/skills/bundled/claudeApiContent.ts` (~25 imports `.md` da árvore `claude-api/`).
-- Runtime txt: `src/utils/permissions/yolo-classifier-prompts/{auto_mode_system_prompt,permissions_external}.txt` é lido com `readFileSync` no test mas inlinado no bundle.
+- Runtime txt: `src/services/permissions/yolo-classifier-prompts/{auto_mode_system_prompt,permissions_external}.txt` é lido com `readFileSync` no test mas inlinado no bundle.
 
 Conclusão: o caminho omp-style **já funciona hoje** no Claudin. Não precisa mudar o build.
 

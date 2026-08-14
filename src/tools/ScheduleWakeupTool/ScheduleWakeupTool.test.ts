@@ -8,14 +8,14 @@ import {
   regenerateSessionId,
   setScheduledTasksEnabled,
   switchSession,
-} from '../../bootstrap/state.js'
-import type { SessionId } from '../../types/ids.js'
-import { takeDueSessionWakeup } from '../../utils/cronScheduler.js'
-import { resetLoopSentinelState } from '../../utils/loopSentinels.js'
+} from 'src/bootstrap/state.js'
+import type { SessionId } from 'src/types/ids.js'
+import { takeDueSessionWakeup } from 'src/tasks/cronScheduler.js'
+import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
 import {
   createTeammateContext,
   runWithTeammateContext,
-} from '../../utils/teammateContext.js'
+} from 'src/coordinator/teammateContext.js'
 import {
   clampWakeupDelaySeconds,
   WAKEUP_MAX_DELAY_SECONDS,

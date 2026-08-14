@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
 import { logEvent } from 'src/services/analytics/index.js'
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
-import { logError } from '../utils/log.js'
-import { getAutoModeEnabledState } from '../utils/permissions/permissionSetup.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { logError } from 'src/utils/log.js'
+import { getAutoModeEnabledState } from 'src/services/permissions/permissionSetup.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * One-shot migration: clear skipAutoPermissionPrompt for users who accepted

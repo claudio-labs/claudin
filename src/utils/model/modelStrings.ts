@@ -2,9 +2,9 @@ import {
   getModelStrings as getModelStringsState,
   setModelStrings as setModelStringsState,
 } from 'src/bootstrap/state.js'
-import { logError } from '../log.js'
-import { sequential } from '../sequential.js'
-import { getInitialSettings } from '../settings/settings.js'
+import { logError } from 'src/utils/log.js'
+import { sequential } from 'src/utils/sequential.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { findFirstMatch, getBedrockInferenceProfiles } from './bedrock.js'
 import {
   ALL_MODEL_CONFIGS,

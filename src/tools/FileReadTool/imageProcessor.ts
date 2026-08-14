@@ -2,8 +2,8 @@ import type { Buffer } from 'buffer'
 import { existsSync, readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
 import { dirname, join } from 'path'
-import { isInBundledMode } from '../../utils/bundledMode.js'
-import { logError } from '../../utils/log.js'
+import { isInBundledMode } from 'src/services/install/bundledMode.js'
+import { logError } from 'src/utils/log.js'
 
 export type SharpInstance = {
   metadata(): Promise<{ width: number; height: number; format: string }>
@@ -50,7 +50,7 @@ let vendoredSharp: SharpFunction | null | undefined
  * (scripts/vendor-sharp.ts), mirrored beside the executable at install time
  * (install.cjs). Probe it via dirname(process.execPath) — realpath-resolved
  * first, because the npm global bin is a symlink into node_modules and its
- * dirname has no vendor/ (same reasoning as src/utils/ripgrep.ts). Returns null
+ * dirname has no vendor/ (same reasoning as src/utils/fs/ripgrep.ts). Returns null
  * in dev / the Node bundle, where this path doesn't exist and the normal import
  * already succeeded.
  */

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import { logForDebugging } from '../../utils/debug.js'
-import { logError } from '../../utils/log.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
 import {
   defaultResolveOverrideDeps,
   resolveModelOverride,

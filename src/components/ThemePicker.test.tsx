@@ -4,9 +4,9 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot, Text, useTheme } from '../ink.js'
-import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
-import { AppStateProvider } from '../state/AppState.js'
+import { createRoot, Text, useTheme } from 'src/ink.js'
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
+import { AppStateProvider } from 'src/state/AppState.js'
 import { ThemeProvider } from './design-system/ThemeProvider.js'
 
 const realStructuredDiff = { ...(await import('./StructuredDiff.js')) }

@@ -9,8 +9,8 @@ import {
   detectBuildFor,
   detectBuildSystemFromCommand,
 } from './detect.js'
-import { detectTestRunner } from '../RunTestsTool/detect.js'
-import { detectChecker } from '../TypecheckTool/detect.js'
+import { detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
+import { detectChecker } from 'src/tools/TypecheckTool/detect.js'
 import type { BuildSystem } from './types.js'
 
 function project(files: Record<string, string>): string {

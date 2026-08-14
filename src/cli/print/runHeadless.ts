@@ -17,9 +17,9 @@
 import { feature } from 'bun:bundle'
 import { downloadUserSettings } from 'src/services/settingsSync/index.js'
 import type { Command } from 'src/commands.js'
-import { createStreamlinedTransformer } from 'src/utils/streamlinedTransform.js'
+import { createStreamlinedTransformer } from 'src/services/tools/streamlinedTransform.js'
 import { installStreamJsonStdoutGuard } from 'src/utils/streamJsonStdoutGuard.js'
-import type { ThinkingConfig } from 'src/utils/thinking.js'
+import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import { filterToolsByDenyRules } from 'src/tools.js'
 import { toolMatchesName, type Tools } from 'src/Tool.js'
 import {
@@ -29,15 +29,15 @@ import {
 import {
   notifySessionStateChanged,
   type RequiresActionDetails,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import {
   writeToStdout,
   registerProcessOutputErrorHandlers,
-} from 'src/utils/process.js'
+} from 'src/utils/proc/process.js'
 import type { McpSdkServerConfig } from 'src/services/mcp/types.js'
-import { validateUuid } from 'src/utils/uuid.js'
-import { registerHookEventHandler } from 'src/utils/hooks/hookEvents.js'
-import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js'
+import { validateUuid } from 'src/utils/data/uuid.js'
+import { registerHookEventHandler } from 'src/services/lifecycleHooks/hookEvents.js'
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
 import type { SDKStatus, SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import { getIsRemoteMode, getSessionId } from 'src/bootstrap/state.js'
@@ -46,12 +46,12 @@ import {
   processSessionStartHooks,
   processSetupHooks,
   takeInitialUserMessage,
-} from 'src/utils/sessionStart.js'
-import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'
-import { applySettingsChange } from 'src/utils/settings/applySettingsChange.js'
+} from 'src/services/session/sessionStart.js'
+import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
+import { applySettingsChange } from 'src/services/settings/applySettingsChange.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
-import { restoreAgentFromSession } from 'src/utils/sessionRestore.js'
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
+import { restoreAgentFromSession } from 'src/services/session/sessionRestore.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import {
   headlessProfilerStartTurn,
   headlessProfilerCheckpoint,
@@ -61,16 +61,16 @@ import {
   isQualifiedForGrove,
   checkGroveForNonInteractive,
 } from 'src/services/api/grove.js'
-import { saveAgentSetting } from 'src/utils/sessionStorage.js'
+import { saveAgentSetting } from 'src/services/session/sessionStorage.js'
 import { getMainThreadAgentType } from 'src/bootstrap/state.js'
 import type { AppState } from 'src/state/AppStateStore.js'
 import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { initializeGrowthBook } from '../../services/analytics/growthbook.js'
-import { errorMessage } from '../../utils/errors.js'
-import { isExtractModeActive } from '../../memdir/paths.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { initializeGrowthBook } from 'src/services/analytics/growthbook.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { isExtractModeActive } from 'src/memdir/paths.js'
 import { getCanUseToolFn } from 'src/cli/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/cli/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/cli/print/sessionLoad.js'
@@ -81,10 +81,10 @@ import { runHeadlessStreaming } from 'src/cli/print/runHeadlessStreaming.js'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('../../coordinator/coordinatorMode.js') as typeof import('../../coordinator/coordinatorMode.js'))
+  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
   : null
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('../../services/extractMemories/extractMemories.js') as typeof import('../../services/extractMemories/extractMemories.js'))
+  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

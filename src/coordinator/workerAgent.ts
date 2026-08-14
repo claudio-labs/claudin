@@ -1,7 +1,7 @@
-import type { BuiltInAgentDefinition } from '../tools/AgentTool/loadAgentsDir.js'
-import { EXPLORE_AGENT } from '../tools/AgentTool/built-in/exploreAgent.js'
-import { GENERAL_PURPOSE_AGENT } from '../tools/AgentTool/built-in/generalPurposeAgent.js'
-import { PLAN_AGENT } from '../tools/AgentTool/built-in/planAgent.js'
+import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
+import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 
 // The coordinator system prompt instructs the model to spawn workers with
 // subagent_type: "worker". This agent definition matches that type so

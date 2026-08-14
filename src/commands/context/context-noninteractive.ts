@@ -1,17 +1,17 @@
 import { feature } from 'bun:bundle'
-import { microcompactMessages } from '../../services/compact/microCompact.js'
-import type { AppState } from '../../state/AppStateStore.js'
-import type { Tools, ToolUseContext } from '../../Tool.js'
-import type { AgentDefinitionsResult } from '../../tools/AgentTool/loadAgentsDir.js'
-import type { Message } from '../../types/message.js'
+import { microcompactMessages } from 'src/services/compact/microCompact.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import type { Tools, ToolUseContext } from 'src/Tool.js'
+import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
+import type { Message } from 'src/types/message.js'
 import {
   analyzeContextUsage,
   type ContextData,
-} from '../../utils/analyzeContext.js'
-import { formatTokens } from '../../utils/format.js'
-import { getMessagesAfterCompactBoundary } from '../../utils/messages.js'
-import { getSourceDisplayName } from '../../utils/settings/constants.js'
-import { plural } from '../../utils/stringUtils.js'
+} from 'src/services/context/analyzeContext.js'
+import { formatTokens } from 'src/utils/text/format.js'
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
+import { getSourceDisplayName } from 'src/services/settings/constants.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 
 /**
  * Shared data-collection path for `/context` (slash command) and the SDK
@@ -110,7 +110,7 @@ function formatContextAsMarkdownTable(data: ContextData): string {
   if (feature('CONTEXT_COLLAPSE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { getStats, isContextCollapseEnabled } =
-      require('../../services/contextCollapse/index.js') as typeof import('../../services/contextCollapse/index.js')
+      require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isContextCollapseEnabled()) {
       const s = getStats()

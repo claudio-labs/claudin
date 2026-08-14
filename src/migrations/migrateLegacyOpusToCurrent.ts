@@ -1,14 +1,14 @@
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { saveGlobalConfig } from '../utils/config.js'
-import { isLegacyModelRemapEnabled } from '../utils/model/model.js'
-import { getAPIProvider } from '../utils/model/providers.js'
+} from 'src/services/analytics/index.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
+import { isLegacyModelRemapEnabled } from 'src/utils/model/model.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * Migrate first-party users off explicit Opus 4.0/4.1 model strings.

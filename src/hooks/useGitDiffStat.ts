@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getCwd } from '../utils/cwd.js'
-import { type DiffStatSummary, fetchDiffStatSummary } from '../utils/gitDiff.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { type DiffStatSummary, fetchDiffStatSummary } from 'src/services/git/gitDiff.js'
 
 /**
  * Slower than the cwd/branch poll (2s): this one spawns git, and the numbers

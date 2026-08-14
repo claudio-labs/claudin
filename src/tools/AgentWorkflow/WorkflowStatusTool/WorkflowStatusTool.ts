@@ -1,9 +1,9 @@
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { WORKFLOW_STATUS_TOOL_NAME } from '../constants.js'
-import { readRun } from '../runStore.js'
-import type { RunStatus } from '../types.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { WORKFLOW_STATUS_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
+import { readRun } from 'src/tools/AgentWorkflow/runStore.js'
+import type { RunStatus } from 'src/tools/AgentWorkflow/types.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

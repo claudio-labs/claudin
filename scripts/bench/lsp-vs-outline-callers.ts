@@ -42,7 +42,7 @@ const PROMPTS = [
   },
   {
     id: 'refactor-impact',
-    text: 'Quero adicionar um parametro opcional `signal?: AbortSignal` a `getSmallFastModel` (ja existente em src/utils/providerModels.ts). Sem editar nenhum arquivo, liste cada call site cross-file (arquivo:linha) que precisaria ser atualizado se o parametro fosse obrigatorio, com 1 linha de contexto descrevendo o que aquele site faz. Para cada um, diga se ele teria acesso natural a um AbortSignal ou nao.',
+    text: 'Quero adicionar um parametro opcional `signal?: AbortSignal` a `getSmallFastModel` (ja existente em src/services/api/providerModels.ts). Sem editar nenhum arquivo, liste cada call site cross-file (arquivo:linha) que precisaria ser atualizado se o parametro fosse obrigatorio, com 1 linha de contexto descrevendo o que aquele site faz. Para cada um, diga se ele teria acesso natural a um AbortSignal ou nao.',
   },
 ]
 

@@ -2,28 +2,28 @@ import { execa } from 'execa'
 import { readFile, realpath } from 'fs/promises'
 import { homedir } from 'os'
 import { delimiter, join, posix, win32 } from 'path'
-import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from './sourceTreeDetect.js'
+import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from 'src/utils/fs/sourceTreeDetect.js'
 import {
   checkGlobalInstallPermissions,
   getBunGlobalPackageDir,
-} from './autoUpdater.js'
-import { getLauncherPath, isInBundledMode } from './bundledMode.js'
+} from 'src/services/install/autoUpdater.js'
+import { getLauncherPath, isInBundledMode } from 'src/services/install/bundledMode.js'
 import {
   formatAutoUpdaterDisabledReason,
   getAutoUpdaterDisabledReason,
   getGlobalConfig,
   type InstallMethod,
-} from './config.js'
-import { getCwd } from './cwd.js'
+} from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
-import { execFileNoThrow } from './execFileNoThrow.js'
-import { getFsImplementation } from './fsOperations.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
   getDetectedLocalInstallDir,
   getShellType,
   isRunningFromLocalInstallation,
   localInstallationExists,
-} from './localInstaller.js'
+} from 'src/services/install/localInstaller.js'
 import {
   detectApk,
   detectAsdf,
@@ -34,23 +34,23 @@ import {
   detectRpm,
   detectWinget,
   getPackageManager,
-} from './nativeInstaller/packageManagers.js'
-import { getPlatform } from './platform.js'
+} from 'src/services/install/packageManagers.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
 import {
   ensureRipgrepTested,
   getRipgrepInstallHint,
   getRipgrepStatus,
-} from './ripgrep.js'
-import { SandboxManager } from './sandbox/sandbox-adapter.js'
-import { getManagedFilePath } from './settings/managedPath.js'
-import { CUSTOMIZATION_SURFACES } from './settings/types.js'
+} from 'src/utils/fs/ripgrep.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { getManagedFilePath } from 'src/services/settings/managedPath.js'
+import { CUSTOMIZATION_SURFACES } from 'src/services/settings/types.js'
 import {
   findClaudeAlias,
   findValidClaudeAlias,
   getShellConfigPaths,
-} from './shellConfig.js'
+} from 'src/utils/proc/shellConfig.js'
 import { jsonParse } from './slowOperations.js'
-import { which } from './which.js'
+import { which } from 'src/utils/proc/which.js'
 
 function getCliBinaryName(): string {
   return MACRO.PACKAGE_URL === '@anthropic-ai/claude-code'

@@ -2,7 +2,7 @@ import memoize from 'lodash-es/memoize.js'
 import {
   getCurrentProjectConfig,
   saveCurrentProjectConfig,
-} from './utils/config.js'
+} from 'src/services/config/config.js'
 export {
   getSteps,
   isProjectOnboardingComplete,

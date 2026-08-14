@@ -3,11 +3,11 @@
  * These are separate from the main sessionMemory.ts to avoid importing runAgent.
  */
 
-import { isFsInaccessible } from '../../utils/errors.js'
-import { getFsImplementation } from '../../utils/fsOperations.js'
-import { getSessionMemoryPath } from '../../utils/permissions/filesystem.js'
-import { sleep } from '../../utils/sleep.js'
-import { logEvent } from '../analytics/index.js'
+import { isFsInaccessible } from 'src/utils/errors.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getSessionMemoryPath } from 'src/services/permissions/filesystem.js'
+import { sleep } from 'src/utils/sleep.js'
+import { logEvent } from 'src/services/analytics/index.js'
 
 const EXTRACTION_WAIT_TIMEOUT_MS = 15000
 const EXTRACTION_STALE_THRESHOLD_MS = 60000 // 1 minute

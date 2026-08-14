@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { KeyboardShortcutHint } from '../../components/design-system/KeyboardShortcutHint.js';
-import { Spinner } from '../../components/Spinner.js';
-import TextInput from '../../components/TextInput.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
-import { setClipboard } from '../../ink/termio/osc.js';
-import { Box, Link, Text } from '../../ink.js';
-import { OAuthService } from '../../services/oauth/index.js';
-import { saveOAuthTokensIfNeeded } from '../../utils/auth.js';
-import { logError } from '../../utils/log.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/components/Spinner.js';
+import TextInput from 'src/components/TextInput.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
+import { setClipboard } from 'src/ink/termio/osc.js';
+import { Box, Link, Text } from 'src/ink.js';
+import { OAuthService } from 'src/services/oauth/index.js';
+import { saveOAuthTokensIfNeeded } from 'src/services/auth/auth.js';
+import { logError } from 'src/utils/log.js';
 interface OAuthFlowStepProps {
   onSuccess: (token: string) => void;
   onCancel: () => void;

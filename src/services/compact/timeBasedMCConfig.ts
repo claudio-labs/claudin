@@ -1,5 +1,5 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
-import { getCacheProfile } from '../cache/cacheProfile.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 
 /**
  * GrowthBook config for time-based microcompact.

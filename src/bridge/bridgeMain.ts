@@ -2,24 +2,24 @@ import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import { hostname, tmpdir } from 'os'
 import { basename, join, resolve } from 'path'
-import { getRemoteSessionUrl } from '../constants/product.js'
-import { shutdownDatadog } from '../services/analytics/datadog.js'
-import { shutdown1PEventLogging } from '../services/analytics/firstPartyEventLogger.js'
-import { checkGate_CACHED_OR_BLOCKING } from '../services/analytics/growthbook.js'
+import { getRemoteSessionUrl } from 'src/constants/product.js'
+import { shutdownDatadog } from 'src/services/analytics/datadog.js'
+import { shutdown1PEventLogging } from 'src/services/analytics/firstPartyEventLogger.js'
+import { checkGate_CACHED_OR_BLOCKING } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
   logEventAsync,
-} from '../services/analytics/index.js'
-import { isInBundledMode } from '../utils/bundledMode.js'
-import { logForDebugging } from '../utils/debug.js'
-import { logForDiagnosticsNoPII } from '../utils/diagLogs.js'
-import { isEnvTruthy, isInProtectedNamespace } from '../utils/envUtils.js'
-import { errorMessage } from '../utils/errors.js'
-import { truncateToWidth } from '../utils/format.js'
-import { logError } from '../utils/log.js'
-import { sleep } from '../utils/sleep.js'
-import { createAgentWorktree, removeAgentWorktree } from '../utils/worktree.js'
+} from 'src/services/analytics/index.js'
+import { isInBundledMode } from 'src/services/install/bundledMode.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { isEnvTruthy, isInProtectedNamespace } from 'src/utils/envUtils.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { truncateToWidth } from 'src/utils/text/format.js'
+import { logError } from 'src/utils/log.js'
+import { sleep } from 'src/utils/sleep.js'
+import { createAgentWorktree, removeAgentWorktree } from 'src/services/git/worktree.js'
 import {
   BridgeFatalError,
   createBridgeApiClient,
@@ -1873,7 +1873,7 @@ export function parseArgs(args: string[]): ParsedArgs {
 async function printHelp(): Promise<void> {
   // Use EXTERNAL_PERMISSION_MODES for help text — internal modes (bubble)
   // are internal-only and auto is feature-gated; they're still accepted by validation.
-  const { EXTERNAL_PERMISSION_MODES } = await import('../types/permissions.js')
+  const { EXTERNAL_PERMISSION_MODES } = await import('src/types/permissions.js')
   const modes = EXTERNAL_PERMISSION_MODES.join(', ')
   const showServer = await isMultiSessionSpawnEnabled()
   const serverOptions = showServer
@@ -2005,7 +2005,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // Validate permission mode early so the user gets an error before
   // the bridge starts polling for work.
   if (permissionMode !== undefined) {
-    const { PERMISSION_MODES } = await import('../types/permissions.js')
+    const { PERMISSION_MODES } = await import('src/types/permissions.js')
     const valid: readonly string[] = PERMISSION_MODES
     if (!valid.includes(permissionMode)) {
       // biome-ignore lint/suspicious/noConsole: intentional error output
@@ -2022,13 +2022,13 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // The bridge fast-path bypasses init.ts, so we must enable config reading
   // before any code that transitively calls getGlobalConfig()
   const { enableConfigs, checkHasTrustDialogAccepted } = await import(
-    '../utils/config.js'
+    'src/services/config/config.js'
   )
   enableConfigs()
 
   // Initialize analytics and error reporting sinks. The bridge bypasses the
   // setup() init flow, so we call initSinks() directly to attach sinks here.
-  const { initSinks } = await import('../utils/sinks.js')
+  const { initSinks } = await import('src/utils/sinks.js')
   initSinks()
 
   // Gate-aware validation: --spawn / --capacity / --create-session-in-dir require
@@ -2061,7 +2061,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
 
   // Set the bootstrap CWD so that trust checks, project config lookups, and
   // git utilities (getBranch, getRemoteUrl) resolve against the correct path.
-  const { setOriginalCwd, setCwdState } = await import('../bootstrap/state.js')
+  const { setOriginalCwd, setCwdState } = await import('src/bootstrap/state.js')
   setOriginalCwd(dir)
   setCwdState(dir)
 
@@ -2078,7 +2078,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
 
   // Resolve auth
   const { clearOAuthTokenCache, checkAndRefreshOAuthTokenIfNeeded } =
-    await import('../utils/auth.js')
+    await import('src/services/auth/auth.js')
   const { getBridgeAccessToken, getBridgeBaseUrl } = await import(
     './bridgeConfig.js'
   )
@@ -2097,7 +2097,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
     saveGlobalConfig,
     getCurrentProjectConfig,
     saveCurrentProjectConfig,
-  } = await import('../utils/config.js')
+  } = await import('src/services/config/config.js')
   if (!getGlobalConfig().remoteDialogSeen) {
     const readline = await import('readline')
     const rl = readline.createInterface({
@@ -2184,12 +2184,12 @@ export async function bridgeMain(args: string[]): Promise<void> {
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    '../utils/git.js'
+    'src/services/git/git.js'
   )
 
   // Precheck worktree availability for the first-run dialog and the `w`
   // toggle. Unconditional so we know upfront whether worktree is an option.
-  const { hasWorktreeCreateHook } = await import('../utils/hooks.js')
+  const { hasWorktreeCreateHook } = await import('src/services/lifecycleHooks/hooks.js')
   const worktreeAvailable = hasWorktreeCreateHook() || findGitRoot(dir) !== null
 
   // Load saved per-project spawn-mode preference. Gated by multiSessionEnabled
@@ -2322,7 +2322,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   const machineName = hostname()
   const bridgeId = randomUUID()
 
-  const { handleOAuth401Error } = await import('../utils/auth.js')
+  const { handleOAuth401Error } = await import('src/services/auth/auth.js')
   const api = createBridgeApiClient({
     baseUrl,
     getAccessToken: getBridgeAccessToken,
@@ -2571,7 +2571,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   })
 
   const logger = createBridgeLogger({ verbose })
-  const { parseGitHubRepository } = await import('../utils/detectRepository.js')
+  const { parseGitHubRepository } = await import('src/services/git/detectRepository.js')
   const ownerRepo = gitRepoUrl ? parseGitHubRepository(gitRepoUrl) : null
   // Use the repo name from the parsed owner/repo, or fall back to the dir basename
   const repoName = ownerRepo ? ownerRepo.split('/').pop()! : basename(dir)
@@ -2797,15 +2797,15 @@ export async function runBridgeHeadless(
   // (getBranch/getRemoteUrl) — which read from bootstrap CWD state set
   // below — resolve against the right repo.
   process.chdir(dir)
-  const { setOriginalCwd, setCwdState } = await import('../bootstrap/state.js')
+  const { setOriginalCwd, setCwdState } = await import('src/bootstrap/state.js')
   setOriginalCwd(dir)
   setCwdState(dir)
 
   const { enableConfigs, checkHasTrustDialogAccepted } = await import(
-    '../utils/config.js'
+    'src/services/config/config.js'
   )
   enableConfigs()
-  const { initSinks } = await import('../utils/sinks.js')
+  const { initSinks } = await import('src/utils/sinks.js')
   initSinks()
 
   if (!checkHasTrustDialogAccepted()) {
@@ -2834,9 +2834,9 @@ export async function runBridgeHeadless(
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    '../utils/git.js'
+    'src/services/git/git.js'
   )
-  const { hasWorktreeCreateHook } = await import('../utils/hooks.js')
+  const { hasWorktreeCreateHook } = await import('src/services/lifecycleHooks/hooks.js')
 
   if (opts.spawnMode === 'worktree') {
     const worktreeAvailable =

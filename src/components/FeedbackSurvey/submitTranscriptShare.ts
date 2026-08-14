@@ -1,19 +1,19 @@
 import axios from 'axios'
 import { readFile, stat } from 'fs/promises'
-import type { Message } from '../../types/message.js'
-import { checkAndRefreshOAuthTokenIfNeeded } from '../../utils/auth.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
-import { getAuthHeaders, getUserAgent } from '../../utils/http.js'
-import { normalizeMessagesForAPI } from '../../utils/messages.js'
+import type { Message } from 'src/types/message.js'
+import { checkAndRefreshOAuthTokenIfNeeded } from 'src/services/auth/auth.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { getAuthHeaders, getUserAgent } from 'src/utils/http.js'
+import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
 import {
   extractAgentIdsFromMessages,
   getTranscriptPath,
   loadSubagentTranscripts,
   MAX_TRANSCRIPT_READ_BYTES,
-} from '../../utils/sessionStorage.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { redactSensitiveInfo } from '../Feedback.js'
+} from 'src/services/session/sessionStorage.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { redactSensitiveInfo } from 'src/components/Feedback.js'
 
 type TranscriptShareResult = {
   success: boolean

@@ -1,12 +1,12 @@
 import { basename } from 'path'
 import { useCallback, useEffect, useState } from 'react'
-import type { RepoGroup } from '../components/diff/types.js'
+import type { RepoGroup } from 'src/components/diff/types.js'
 import {
   dedupeCanonicalRoots,
   findNestedGitRoots,
   getBranch,
-} from '../utils/git.js'
-import { fetchGitDiff, fetchGitDiffHunks } from '../utils/gitDiff.js'
+} from 'src/services/git/git.js'
+import { fetchGitDiff, fetchGitDiffHunks } from 'src/services/git/gitDiff.js'
 import { gitDiffResultToFiles } from './useDiffData.js'
 
 export type WorkspaceDiff = {

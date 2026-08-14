@@ -1,12 +1,12 @@
 import figures from 'figures'
 import { memo, type ReactNode } from 'react'
-import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { stringWidth } from '../../ink/stringWidth.js'
-import { Box, Text } from '../../ink.js'
-import { getFileTypeIcon } from '../../utils/fileIcons.js'
-import { truncatePathMiddle, truncateToWidth } from '../../utils/format.js'
-import { hasNerdFontGlyphs } from '../../utils/terminalFont.js'
-import type { Theme } from '../../utils/theme.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import { Box, Text } from 'src/ink.js'
+import { getFileTypeIcon } from 'src/utils/fileIcons.js'
+import { truncatePathMiddle, truncateToWidth } from 'src/utils/text/format.js'
+import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'
+import type { Theme } from 'src/utils/theme.js'
 
 export type SuggestionItem = {
   id: string

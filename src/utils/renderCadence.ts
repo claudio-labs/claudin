@@ -1,6 +1,6 @@
-import { FRAME_INTERVAL_MS, setFrameIntervalMs } from '../ink/constants.js'
-import { getXtversionName, hasCursorUpViewportYankBug } from '../ink/terminal.js'
-import { getGlobalConfig } from './config.js'
+import { FRAME_INTERVAL_MS, setFrameIntervalMs } from 'src/ink/constants.js'
+import { getXtversionName, hasCursorUpViewportYankBug } from 'src/ink/terminal.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 
 /**
  * Render cadence resolution: how fast the TUI clock ticks and the renderer

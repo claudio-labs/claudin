@@ -1,8 +1,8 @@
-import type { Command } from '../../commands.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { isPolicyAllowed } from '../../services/policyLimits/index.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { isEssentialTrafficOnly } from '../../utils/privacyLevel.js'
+import type { Command } from 'src/commands.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 
 const feedback = {
   aliases: ['bug'],

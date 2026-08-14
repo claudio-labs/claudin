@@ -2,21 +2,21 @@ import { feature } from 'bun:bundle'
 import { readFile } from 'node:fs/promises'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { Box, Text } from '../ink.js'
+import { Box, Text } from 'src/ink.js'
 import {
   getInlineImageProtocol,
   type InlineImageProtocol,
-} from '../ink/terminal.js'
-import { getImageProcessor } from '../tools/FileReadTool/imageProcessor.js'
-import { getGlobalConfig } from '../utils/config.js'
-import { logError } from '../utils/log.js'
+} from 'src/ink/terminal.js'
+import { getImageProcessor } from 'src/tools/FileReadTool/imageProcessor.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { logError } from 'src/utils/log.js'
 import {
   deleteKittyImage,
   MAX_CELLS as MAX_PLACEHOLDER_CELLS,
   nextImageId,
   placeholderLines,
   transmitKittyImage,
-} from '../utils/kittyImageProtocol.js'
+} from 'src/utils/kittyImageProtocol.js'
 
 type Props = {
   /** Absolute path to the image file on disk. */

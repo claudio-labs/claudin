@@ -1,13 +1,13 @@
 import { join, normalize, sep } from 'path'
-import { getProjectRoot } from '../../bootstrap/state.js'
+import { getProjectRoot } from 'src/bootstrap/state.js'
 import {
   buildMemoryPrompt,
   ensureMemoryDirExists,
-} from '../../memdir/memdir.js'
-import { getMemoryBaseDir } from '../../memdir/paths.js'
-import { getCwd } from '../../utils/cwd.js'
-import { findCanonicalGitRoot } from '../../utils/git.js'
-import { sanitizePath } from '../../utils/path.js'
+} from 'src/memdir/memdir.js'
+import { getMemoryBaseDir } from 'src/memdir/paths.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { sanitizePath } from 'src/utils/fs/path.js'
 
 // Persistent agent memory scope: 'user' (~/.claudin/agent-memory/), 'project' (.claudin/agent-memory/), or 'local' (.claudin/agent-memory-local/)
 export type AgentMemoryScope = 'user' | 'project' | 'local'

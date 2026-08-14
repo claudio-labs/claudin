@@ -20,7 +20,7 @@ any cwd-sensitive memo.
    **every** `.md`.
    **CORRECTION 2026-08-07 (re-verified):** it does NOT run every user turn in
    the open build. The per-turn caller
-   `startRelevantMemoryPrefetch` (`src/utils/attachments/memory.ts:344-353`,
+   `startRelevantMemoryPrefetch` (`src/services/attachments/memory.ts:344-353`,
    from `query.ts:342`) returns `undefined` before touching the filesystem
    unless the GrowthBook flag **`tengu_moth_copse`** is true — and that key is
    absent from `_openBuildDefaults` in `scripts/no-telemetry-plugin.ts:52-58`,
@@ -53,7 +53,7 @@ any cwd-sensitive memo.
    design choice. `runWorkflowHeadless.ts:103/159` has the same gap (harmless —
    process start).
 4. **`getMemoryFiles`' memo key is `forceIncludeExternal` only, no cwd** —
-   `src/utils/claudemd.ts:761`. Safe today only because six call sites clear it by
+   `src/services/instructions/claudemd.ts:761`. Safe today only because six call sites clear it by
    hand. `markdownConfigLoader.ts:429` shows the right shape (`${subdir}:${cwd}`).
 
 Verified as already correct, do not "fix": `getChangedFiles`

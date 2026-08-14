@@ -15,11 +15,11 @@ import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
   isClaudeAISubscriber,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import {
   createAssistantAPIErrorMessage,
   NO_RESPONSE_REQUESTED,
-} from 'src/utils/messages.js'
+} from 'src/services/messages/messages.js'
 import {
   isSdkApiConnectionError,
   isSdkApiConnectionTimeoutError,
@@ -28,26 +28,26 @@ import {
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import {
   API_PDF_MAX_PAGES,
   PDF_TARGET_RAW_SIZE,
-} from '../../constants/apiLimits.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+} from 'src/constants/apiLimits.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
-import { formatFileSize } from '../../utils/format.js'
-import { ImageResizeError } from '../../utils/imageResizer.js'
-import { ImageSizeError } from '../../utils/imageValidation.js'
+import { formatFileSize } from 'src/utils/text/format.js'
+import { ImageResizeError } from 'src/utils/imageResizer.js'
+import { ImageSizeError } from 'src/utils/imageValidation.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   type ClaudeAILimits,
   getRateLimitErrorMessage,
   type OverageDisabledReason,
-} from '../claudeAiLimits.js'
-import { shouldProcessRateLimits } from '../rateLimitMocking.js' // Used for /mock-limits command
+} from 'src/services/claudeAiLimits.js'
+import { shouldProcessRateLimits } from 'src/services/rateLimitMocking.js' // Used for /mock-limits command
 import { extractConnectionErrorDetails, formatAPIError } from './errorUtils.js'
 import {
   extractOpenAICategoryMarker,

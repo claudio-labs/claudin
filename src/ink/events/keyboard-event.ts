@@ -1,4 +1,4 @@
-import type { ParsedKey } from '../parse-keypress.js'
+import type { ParsedKey } from 'src/ink/parse-keypress.js'
 import { TerminalEvent } from './terminal-event.js'
 
 /**

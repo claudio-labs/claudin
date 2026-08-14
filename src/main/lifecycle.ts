@@ -3,41 +3,41 @@
 // arrives via parameter or direct import. Side-effect ordering preserved.
 
 import { feature } from 'bun:bundle';
-import { profileCheckpoint } from '../utils/startupProfiler.js';
-import { getSystemContext } from '../context.js';
+import { profileCheckpoint } from 'src/utils/startupProfiler.js';
+import { getSystemContext } from 'src/context.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { isAnalyticsDisabled } from 'src/services/analytics/config.js';
-import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from '../utils/config.js';
-import { getContextWindowForModel } from '../utils/context.js';
-import { logForDiagnosticsNoPII } from '../utils/diagLogs.js';
-import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from '../utils/envUtils.js';
-import { getIsGit, getWorktreeCount } from '../utils/git.js';
-import { getGhAuthStatus } from '../utils/github/ghAuthStatus.js';
-import { logError } from '../utils/log.js';
-import { getDefaultMainLoopModel, parseUserSpecifiedModel } from '../utils/model/model.js';
-import { getManagedPluginNames } from '../utils/plugins/managedPlugins.js';
-import { getPluginSeedDirs } from '../utils/plugins/pluginDirectories.js';
-import { loadAllPluginsCacheOnly } from '../utils/plugins/pluginLoader.js';
-import { migrateAutoUpdatesToSettings } from '../migrations/migrateAutoUpdatesToSettings.js';
-import { migrateBypassPermissionsAcceptedToSettings } from '../migrations/migrateBypassPermissionsAcceptedToSettings.js';
-import { migrateEnableAllProjectMcpServersToSettings } from '../migrations/migrateEnableAllProjectMcpServersToSettings.js';
-import { migrateFennecToOpus } from '../migrations/migrateFennecToOpus.js';
-import { migrateLegacyOpusToCurrent } from '../migrations/migrateLegacyOpusToCurrent.js';
-import { migrateOpusToOpus1m } from '../migrations/migrateOpusToOpus1m.js';
-import { migrateReplBridgeEnabledToRemoteControlAtStartup } from '../migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.js';
-import { migrateSonnet1mToSonnet45 } from '../migrations/migrateSonnet1mToSonnet45.js';
-import { migrateSonnet45ToSonnet46 } from '../migrations/migrateSonnet45ToSonnet46.js';
-import { resetAutoModeOptInForDefaultOffer } from '../migrations/resetAutoModeOptInForDefaultOffer.js';
-import { resetProToOpusDefault } from '../migrations/resetProToOpusDefault.js';
-import { migrateChangelogFromConfig } from '../utils/releaseNotes.js';
-import { SandboxManager } from '../utils/sandbox/sandbox-adapter.js';
-import { getInitialMainLoopModel, getIsNonInteractiveSession, getSdkBetas, setUserMsgOptIn } from '../bootstrap/state.js';
-import { getCwd } from 'src/utils/cwd.js';
+import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/services/config/config.js';
+import { getContextWindowForModel } from 'src/services/context/context.js';
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js';
+import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from 'src/utils/envUtils.js';
+import { getIsGit, getWorktreeCount } from 'src/services/git/git.js';
+import { getGhAuthStatus } from 'src/services/github/ghAuthStatus.js';
+import { logError } from 'src/utils/log.js';
+import { getDefaultMainLoopModel, parseUserSpecifiedModel } from 'src/utils/model/model.js';
+import { getManagedPluginNames } from 'src/services/plugins/managedPlugins.js';
+import { getPluginSeedDirs } from 'src/services/plugins/pluginDirectories.js';
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js';
+import { migrateAutoUpdatesToSettings } from 'src/migrations/migrateAutoUpdatesToSettings.js';
+import { migrateBypassPermissionsAcceptedToSettings } from 'src/migrations/migrateBypassPermissionsAcceptedToSettings.js';
+import { migrateEnableAllProjectMcpServersToSettings } from 'src/migrations/migrateEnableAllProjectMcpServersToSettings.js';
+import { migrateFennecToOpus } from 'src/migrations/migrateFennecToOpus.js';
+import { migrateLegacyOpusToCurrent } from 'src/migrations/migrateLegacyOpusToCurrent.js';
+import { migrateOpusToOpus1m } from 'src/migrations/migrateOpusToOpus1m.js';
+import { migrateReplBridgeEnabledToRemoteControlAtStartup } from 'src/migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.js';
+import { migrateSonnet1mToSonnet45 } from 'src/migrations/migrateSonnet1mToSonnet45.js';
+import { migrateSonnet45ToSonnet46 } from 'src/migrations/migrateSonnet45ToSonnet46.js';
+import { resetAutoModeOptInForDefaultOffer } from 'src/migrations/resetAutoModeOptInForDefaultOffer.js';
+import { resetProToOpusDefault } from 'src/migrations/resetProToOpusDefault.js';
+import { migrateChangelogFromConfig } from 'src/services/install/releaseNotes.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { getInitialMainLoopModel, getIsNonInteractiveSession, getSdkBetas, setUserMsgOptIn } from 'src/bootstrap/state.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
 import { eagerParseCliFlag } from 'src/utils/cliArgs.js';
-import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from '../utils/settings/settings.js';
-import { logSkillsLoaded } from '../utils/telemetry/skillLoadedEvent.js';
-import { logPluginLoadErrors, logPluginsEnabledForSession } from '../utils/telemetry/pluginTelemetry.js';
-import type { ThinkingConfig } from '../utils/thinking.js';
+import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from 'src/services/settings/settings.js';
+import { logSkillsLoaded } from 'src/services/telemetry/skillLoadedEvent.js';
+import { logPluginLoadErrors, logPluginsEnabledForSession } from 'src/services/telemetry/pluginTelemetry.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from './helpers.js';
 
 /**
@@ -339,7 +339,7 @@ export function maybeActivateBrief(options: unknown): void {
   // Conditional require: static import would leak the tool name string
   // into external builds via BriefTool.ts → prompt.ts.
   /* eslint-disable @typescript-eslint/no-require-imports */
-  const { isBriefEntitled } = require('../tools/BriefTool/BriefTool.js') as typeof import('../tools/BriefTool/BriefTool.js');
+  const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
   /* eslint-enable @typescript-eslint/no-require-imports */
   const entitled = isBriefEntitled();
   if (entitled) {

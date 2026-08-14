@@ -13,8 +13,8 @@
  * Reads `CLAUDIN_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
  */
 
-import { isEnvTruthy } from '../../../utils/envUtils.js'
-import { sanitizeSchemaForOpenAICompat } from '../../../utils/schemaSanitizer.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { sanitizeSchemaForOpenAICompat } from 'src/utils/data/schemaSanitizer.js'
 import { isGeminiMode } from './providerModes.js'
 import type { OpenAITool } from './types.js'
 
@@ -82,7 +82,7 @@ function normalizeSchemaForOpenAI(
  * The tool wrapper objects ({ name, description, input_schema }) handed to
  * convertTools are rebuilt per request, but the `input_schema` object comes
  * from toolToAPISchema's session-stable schema cache (which itself sits on
- * zodToJsonSchema's identity cache — src/utils/zodToJsonSchema.ts), so it is
+ * zodToJsonSchema's identity cache — src/utils/data/zodToJsonSchema.ts), so it is
  * the same reference on every request of a session. Strict mode and the
  * name/description can in principle differ for the same schema object, so the
  * entry stores them and is only reused on an exact match — a mismatch simply

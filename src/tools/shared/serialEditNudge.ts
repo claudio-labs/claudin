@@ -15,9 +15,9 @@
  *    the streak stands.
  */
 
-import { APPLY_PATCH_TOOL_NAME } from '../ApplyPatchTool/prompt.js'
-import { FILE_EDIT_TOOL_NAME } from '../FileEditTool/constants.js'
-import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/constants.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 
 /** Consecutive single-file edit turns needed before the reminder is appended. */
 export const SERIAL_EDIT_THRESHOLD = 3

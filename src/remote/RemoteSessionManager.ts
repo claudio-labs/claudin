@@ -1,16 +1,16 @@
-import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
+import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import type {
   SDKControlCancelRequest,
   SDKControlPermissionRequest,
   SDKControlRequest,
   SDKControlResponse,
-} from '../entrypoints/sdk/controlTypes.js'
-import { logForDebugging } from '../utils/debug.js'
-import { logError } from '../utils/log.js'
+} from 'src/entrypoints/sdk/controlTypes.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
 import {
   type RemoteMessageContent,
   sendEventToRemoteSession,
-} from '../utils/teleport/api.js'
+} from 'src/services/teleport/api.js'
 import {
   SessionsWebSocket,
   type SessionsWebSocketCallbacks,

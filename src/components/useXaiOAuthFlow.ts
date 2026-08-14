@@ -4,9 +4,9 @@ import {
   XaiOAuthService,
   type XaiDeviceCodeResponse,
   type XaiOAuthTokens,
-} from '../services/api/xaiOAuth.js'
-import { isBareMode } from '../utils/envUtils.js'
-import { saveXaiCredentials } from '../utils/xaiCredentials.js'
+} from 'src/services/api/xaiOAuth.js'
+import { isBareMode } from 'src/utils/envUtils.js'
+import { saveXaiCredentials } from 'src/services/api/xaiCredentials.js'
 
 export type XaiOAuthFlowStatus =
   | { state: 'starting' }

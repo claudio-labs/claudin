@@ -1,16 +1,16 @@
 import { mkdir, writeFile } from 'fs/promises';
 import * as React from 'react';
-import type { CommandResultDisplay } from '../../commands.js';
-import { Dialog } from '../../components/design-system/Dialog.js';
-import { MemoryFileSelector } from '../../components/memory/MemoryFileSelector.js';
-import { getRelativeMemoryPath } from '../../components/memory/MemoryUpdateNotification.js';
-import { Box, Link, Text } from '../../ink.js';
-import type { LocalJSXCommandCall } from '../../types/command.js';
-import { clearMemoryFileCaches, getMemoryFiles } from '../../utils/claudemd.js';
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js';
-import { getErrnoCode } from '../../utils/errors.js';
-import { logError } from '../../utils/log.js';
-import { editFileInEditor } from '../../utils/promptEditor.js';
+import type { CommandResultDisplay } from 'src/commands.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { MemoryFileSelector } from 'src/components/memory/MemoryFileSelector.js';
+import { getRelativeMemoryPath } from 'src/components/memory/MemoryUpdateNotification.js';
+import { Box, Link, Text } from 'src/ink.js';
+import type { LocalJSXCommandCall } from 'src/types/command.js';
+import { clearMemoryFileCaches, getMemoryFiles } from 'src/services/instructions/claudemd.js';
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
+import { getErrnoCode } from 'src/utils/errors.js';
+import { logError } from 'src/utils/log.js';
+import { editFileInEditor } from 'src/utils/promptEditor.js';
 import { parseMemorySubcommand, runMemoryTidy } from './tidy.js';
 function MemoryCommand({
   onDone

@@ -42,14 +42,14 @@ import { resolve } from 'node:path'
 const TEN_FILES = [
   'src/utils/errors.ts',
   'src/utils/log.ts',
-  'src/utils/path.ts',
+  'src/utils/fs/path.ts',
   'src/utils/envUtils.ts',
-  'src/utils/Shell.ts',
-  'src/utils/config.ts',
+  'src/utils/proc/Shell.ts',
+  'src/services/config/config.ts',
   'src/bootstrap/state.ts',
   'src/Tool.ts',
   'src/utils/model/model.ts',
-  'src/utils/providerModels.ts',
+  'src/services/api/providerModels.ts',
 ]
 
 const SENTINEL = 'BENCH_AGENT_REPORT'

@@ -63,7 +63,7 @@
 //
 // The system prompt is NOT observable from `--output-format stream-json`: the
 // `init` event carries tools, model, betas and slash commands, but no prompt
-// text (src/utils/messages/systemInit.ts). So the in-run prompt shape is
+// text (src/services/messages/systemInit.ts). So the in-run prompt shape is
 // asserted INDIRECTLY, at startup, against the same bundle the arms will run:
 //
 //   1. the current build generation's chunks must contain the literal

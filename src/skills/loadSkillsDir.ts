@@ -12,29 +12,29 @@ import {
 import {
   getAdditionalDirectoriesForClaudeMd,
   getSessionId,
-} from '../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
-import type { Command, PromptCommand } from '../types/command.js'
+} from 'src/services/analytics/index.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import type { Command, PromptCommand } from 'src/types/command.js'
 import {
   parseArgumentNames,
   substituteArguments,
-} from '../utils/argumentSubstitution.js'
-import { logForDebugging } from '../utils/debug.js'
+} from 'src/utils/argumentSubstitution.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   EFFORT_LEVELS,
   type EffortValue,
   parseEffortValue,
-} from '../utils/effort.js'
+} from 'src/utils/effort.js'
 import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
-} from '../utils/envUtils.js'
-import { isENOENT, isFsInaccessible } from '../utils/errors.js'
+} from 'src/utils/envUtils.js'
+import { isENOENT, isFsInaccessible } from 'src/utils/errors.js'
 import {
   coerceDescriptionToString,
   type FrontmatterData,
@@ -43,25 +43,25 @@ import {
   parseFrontmatter,
   parseShellFrontmatter,
   splitPathInFrontmatter,
-} from '../utils/frontmatterParser.js'
-import { getFsImplementation } from '../utils/fsOperations.js'
-import { isPathGitignored } from '../utils/git/gitignore.js'
-import { logError } from '../utils/log.js'
+} from 'src/utils/frontmatterParser.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { isPathGitignored } from 'src/services/git/gitignore.js'
+import { logError } from 'src/utils/log.js'
 import {
   extractDescriptionFromMarkdown,
   getProjectDirsUpToHome,
   loadMarkdownFilesForSubdir,
   type MarkdownFile,
   parseSlashCommandToolsFromFrontmatter,
-} from '../utils/markdownConfigLoader.js'
-import { parseUserSpecifiedModel } from '../utils/model/model.js'
-import { executeShellCommandsInPrompt } from '../utils/promptShellExecution.js'
-import type { SettingSource } from '../utils/settings/constants.js'
-import { isSettingSourceEnabled } from '../utils/settings/constants.js'
-import { getManagedFilePath } from '../utils/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from '../utils/settings/pluginOnlyPolicy.js'
-import { HooksSchema, type HooksSettings } from '../utils/settings/types.js'
-import { createSignal } from '../utils/signal.js'
+} from 'src/services/instructions/markdownConfigLoader.js'
+import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
+import { getManagedFilePath } from 'src/services/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
+import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
+import { createSignal } from 'src/utils/signal.js'
 import { registerMCPSkillBuilders } from './mcpSkillBuilders.js'
 
 export type LoadedFrom =

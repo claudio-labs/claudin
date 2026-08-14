@@ -11,7 +11,7 @@
 // keep the list grouped by family for readability; no specs currently
 // overlap after `matchCommandReject` is applied.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 import { bundleInstall } from './pkg.js'
 import { pytest, rspec, goTest } from './tests.js'

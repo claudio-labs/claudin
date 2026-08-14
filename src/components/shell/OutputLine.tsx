@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMemo } from 'react';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { Ansi, Text } from '../../ink.js';
-import { createHyperlink } from '../../utils/hyperlink.js';
-import { jsonParse, jsonStringify } from '../../utils/slowOperations.js';
-import { renderTruncatedContent } from '../../utils/terminal.js';
-import { MessageResponse } from '../MessageResponse.js';
-import { InVirtualListContext } from '../messageActions.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { Ansi, Text } from 'src/ink.js';
+import { createHyperlink } from 'src/utils/text/hyperlink.js';
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
+import { renderTruncatedContent } from 'src/utils/terminal.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
+import { InVirtualListContext } from 'src/components/messageActions.js';
 import { useExpandShellOutput } from './ExpandShellOutputContext.js';
 export function tryFormatJson(line: string): string {
   try {

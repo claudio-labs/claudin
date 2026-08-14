@@ -27,17 +27,17 @@ import { randomUUID } from 'crypto';
 import type {
   SandboxAskCallback,
   NetworkHostPattern,
-} from '../../../utils/sandbox/sandbox-adapter.js';
+} from 'src/services/sandbox/sandbox-adapter.js';
 import {
   isSwarmWorker,
   generateSandboxRequestId,
   sendSandboxPermissionRequestViaMailbox,
-} from '../../../utils/swarm/permissionSync.js';
-import { registerSandboxPermissionCallback } from '../../../hooks/useSwarmPermissionPoller.js';
-import { isAgentSwarmsEnabled } from '../../../utils/agentSwarmsEnabled.js';
+} from 'src/coordinator/swarm/permissionSync.js';
+import { registerSandboxPermissionCallback } from 'src/hooks/useSwarmPermissionPoller.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/cli/structuredIO.js';
-import { useAppStateStore } from '../../../state/AppState.js';
-import type { SetAppState } from '../../../utils/messageQueueManager.js';
+import { useAppStateStore } from 'src/state/AppState.js';
+import type { SetAppState } from 'src/utils/messageQueueManager.js';
 
 export interface SandboxPermissionRequest {
   hostPattern: NetworkHostPattern;

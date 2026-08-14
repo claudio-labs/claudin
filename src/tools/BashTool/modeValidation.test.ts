@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { getEmptyToolPermissionContext } from '../../Tool.js'
+import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import { checkPermissionMode } from './modeValidation.js'
 
 const acceptEditsContext = {

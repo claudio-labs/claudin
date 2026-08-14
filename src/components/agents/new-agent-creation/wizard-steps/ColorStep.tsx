@@ -1,15 +1,15 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
-import { Box } from '../../../../ink.js';
-import { useKeybinding } from '../../../../keybindings/useKeybinding.js';
-import type { AgentColorName } from '../../../../tools/AgentTool/agentColorManager.js';
-import { ConfigurableShortcutHint } from '../../../ConfigurableShortcutHint.js';
-import { Byline } from '../../../design-system/Byline.js';
-import { KeyboardShortcutHint } from '../../../design-system/KeyboardShortcutHint.js';
-import { useWizard } from '../../../wizard/index.js';
-import { WizardDialogLayout } from '../../../wizard/WizardDialogLayout.js';
-import { ColorPicker } from '../../ColorPicker.js';
-import type { AgentWizardData } from '../types.js';
+import { Box } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { useWizard } from 'src/components/wizard/index.js';
+import { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js';
+import { ColorPicker } from 'src/components/agents/ColorPicker.js';
+import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
 export function ColorStep() {
   const $ = _c(14);
   const {

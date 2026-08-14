@@ -3,18 +3,18 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resetGlobalConfigForTests } from './config.js'
+import { resetGlobalConfigForTests } from 'src/services/config/config.js'
 
-const realAnalyticsMetadata = { ...(await import('../services/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
 
 afterAll(() => {
-  mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
-mock.module('../services/analytics/metadata.js', () => ({
+mock.module('src/services/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
     name.startsWith('mcp__') ? 'mcp_tool' : name,
   isToolDetailsLoggingEnabled: () => false,
@@ -29,17 +29,17 @@ mock.module('../services/analytics/metadata.js', () => ({
   to1PEventFormat: () => ({}),
 }))
 
-mock.module('../services/analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: () => {},
   logEventAsync: () => Promise.resolve(),
   stripProtoFields: <T,>(m: T) => m,
 }))
 
 const { maybeSummarizeToolResult, isSummarizedContent } = await import(
-  './toolResultSummarizer.js'
+  'src/services/tools/toolResultSummarizer.js'
 )
-const { processPreMappedToolResultBlock } = await import('./toolResultStorage.js')
-const { AGENT_TOOL_NAME } = await import('../tools/AgentTool/constants.js')
+const { processPreMappedToolResultBlock } = await import('src/services/tools/toolResultStorage.js')
+const { AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
 
 const ENV_KEYS = [
   'CLAUDIN_CODE_OUTLINE',

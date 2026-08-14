@@ -12,13 +12,13 @@ A tabela do rtk (README) cita **60-90% de redução** nos comandos cobertos. Mes
 
 ## Estado atual do claudin
 
-### `toolResultSummarizer` (`src/utils/toolResultSummarizer.ts`)
+### `toolResultSummarizer` (`src/services/tools/toolResultSummarizer.ts`)
 
 - **Reativo por threshold**: Bash=8KB, Grep=6KB, Read=10KB, WebFetch=12KB, Glob=3KB, Agent=8KB, MCP=8KB.
 - **Agnóstico ao comando**: só decide pelo `toolName`. Não sabe se foi `git status` ou `cat huge.log`.
 - **Per-tool strategies**: bash usa janela de erros + colapso de runs idênticos + colapso por dígitos (`summarizeBashOutput` linha 393). Grep agrupa matches. WebFetch faz strip de HTML. Read/Agent/MCP fazem head+tail.
 - **Wrap em marker**: `<tool-result-summary tool="..." original="..." kept="..." strategy="...">`.
-- **Plugado em**: `src/utils/toolResultStorage.ts:225` (`processToolResultBlock`) — chokepoint provider-agnóstico, todo `tool_result` passa por ali.
+- **Plugado em**: `src/services/tools/toolResultStorage.ts:225` (`processToolResultBlock`) — chokepoint provider-agnóstico, todo `tool_result` passa por ali.
 
 ### Lacunas identificadas
 
@@ -110,10 +110,10 @@ unless = "(?i)\\b(error|warning|deprecated)\\b"
 
 | Peça | Onde | Pra que serve |
 |---|---|---|
-| Parser de comando bash | `src/utils/bash/commands.ts:265` (`splitCommand_DEPRECATED`) | Decompor `cd foo && git status -s` em verbos individuais |
+| Parser de comando bash | `src/services/bash/commands.ts:265` (`splitCommand_DEPRECATED`) | Decompor `cd foo && git status -s` em verbos individuais |
 | `strip-ansi` | `package.json` (já dep) | Remover ANSI escapes |
 | `commandSemantics.ts` | `src/tools/BashTool/commandSemantics.ts:31-77` | Mapa "exit≠0 não é necessariamente erro" (grep/rg/find/diff/test) |
-| Chokepoint de tool result | `src/utils/toolResultStorage.ts:225` | Local provider-agnóstico onde plugar |
+| Chokepoint de tool result | `src/services/tools/toolResultStorage.ts:225` | Local provider-agnóstico onde plugar |
 | Marker convention | `<tool-result-summary>` em `toolResultSummarizer.ts:28` | Padrão pro modelo entender que houve compactação |
 | MCP approval dialog | `src/services/mcpServerApproval.tsx` | Análogo direto do trust do rtk |
 

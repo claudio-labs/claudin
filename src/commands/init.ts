@@ -1,5 +1,5 @@
-import type { Command } from '../commands.js'
-import { maybeMarkProjectOnboardingComplete } from '../projectOnboardingState.js'
+import type { Command } from 'src/commands.js'
+import { maybeMarkProjectOnboardingComplete } from 'src/projectOnboardingState.js'
 
 const INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, subagents, skills, hooks, and guardrails) for this repo. The root project instruction file is loaded into every Claude Code session, so it must be concise — only include what Claude would get wrong without it.
 
@@ -264,7 +264,7 @@ Check the environment and ask about each gap you find (use AskUserQuestion):
 
      If you would write to \`.claudin/settings.json\` (project scope): check whether \`.claudin/\` or \`.claudin/settings.json\` is matched by \`.gitignore\`. If ignored, do NOT prompt to commit the file. If not ignored, mention to the user that this file is intended to be committed (team-shared rules).
 
-  3. **Persist the rules.** Use \`addPermissionRulesToSettings({ ruleValues, ruleBehavior }, source)\` from \`src/utils/permissions/permissionsLoader.ts\` (it deduplicates and preserves existing entries). \`ruleBehavior\` is \`'ask'\` or \`'deny'\`; \`source\` is \`'projectSettings'\` or \`'userSettings'\`. Construct each \`ruleValue\` as \`{ toolName: 'Bash', ruleContent: '<command>:*' }\` (or omit \`ruleContent\` for the whole tool).
+  3. **Persist the rules.** Use \`addPermissionRulesToSettings({ ruleValues, ruleBehavior }, source)\` from \`src/services/permissions/permissionsLoader.ts\` (it deduplicates and preserves existing entries). \`ruleBehavior\` is \`'ask'\` or \`'deny'\`; \`source\` is \`'projectSettings'\` or \`'userSettings'\`. Construct each \`ruleValue\` as \`{ toolName: 'Bash', ruleContent: '<command>:*' }\` (or omit \`ruleContent\` for the whole tool).
 
      **Managed-settings fallback**: if \`addPermissionRulesToSettings\` returns \`false\` (e.g., \`shouldAllowManagedPermissionRulesOnly()\` blocked the write, or the source is read-only), tell the user that settings are managed and print the proposed rules as a copy-paste block they can hand to their admin. Do not fail the whole \`/init\`.
 

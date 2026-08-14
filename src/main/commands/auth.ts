@@ -21,7 +21,7 @@ export function registerAuthCommands(program: Command): void {
   }) => {
     const {
       authLogin
-    } = await import('../../cli/handlers/auth.js')
+    } = await import('src/cli/handlers/auth.js')
     await authLogin({
       email,
       sso,
@@ -35,13 +35,13 @@ export function registerAuthCommands(program: Command): void {
   }) => {
     const {
       authStatus
-    } = await import('../../cli/handlers/auth.js')
+    } = await import('src/cli/handlers/auth.js')
     await authStatus(opts)
   })
   auth.command('logout').description('Log out from your Anthropic account').action(async () => {
     const {
       authLogout
-    } = await import('../../cli/handlers/auth.js')
+    } = await import('src/cli/handlers/auth.js')
     await authLogout()
   })
 }

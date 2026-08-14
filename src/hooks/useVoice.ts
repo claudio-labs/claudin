@@ -7,25 +7,25 @@
 // endpoint (conversation_engine) for STT.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSetVoiceState } from '../context/voice.js'
-import { useTerminalFocus } from '../ink/hooks/use-terminal-focus.js'
+import { useSetVoiceState } from 'src/context/voice.js'
+import { useTerminalFocus } from 'src/ink/hooks/use-terminal-focus.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { getVoiceKeyterms } from '../services/voiceKeyterms.js'
+} from 'src/services/analytics/index.js'
+import { getVoiceKeyterms } from 'src/services/voiceKeyterms.js'
 import {
   connectVoiceStream,
   type FinalizeSource,
   isVoiceStreamAvailable,
   type VoiceStreamConnection,
-} from '../services/voiceStreamSTT.js'
-import { logForDebugging } from '../utils/debug.js'
-import { toError } from '../utils/errors.js'
-import { getSystemLocaleLanguage } from '../utils/intl.js'
-import { logError } from '../utils/log.js'
-import { getInitialSettings } from '../utils/settings/settings.js'
-import { sleep } from '../utils/sleep.js'
+} from 'src/services/voiceStreamSTT.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { toError } from 'src/utils/errors.js'
+import { getSystemLocaleLanguage } from 'src/utils/text/intl.js'
+import { logError } from 'src/utils/log.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
+import { sleep } from 'src/utils/sleep.js'
 
 // ─── Language normalization ─────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ export function normalizeLanguageForSTT(language: string | undefined): {
 // audio-capture-napi dependency) until voice input is actually activated.
 // On macOS, loading the native audio module can trigger a TCC microphone
 // permission prompt — we must avoid that until voice input is actually enabled.
-type VoiceModule = typeof import('../services/voice.js')
+type VoiceModule = typeof import('src/services/voice.js')
 let voiceModule: VoiceModule | null = null
 
 type VoiceState = 'idle' | 'recording' | 'processing'
@@ -529,7 +529,7 @@ export function useVoice({
   // dlopen still blocks. The first voice keypress pays the dlopen cost instead.
   useEffect(() => {
     if (enabled && !voiceModule) {
-      void import('../services/voice.js').then(mod => {
+      void import('src/services/voice.js').then(mod => {
         voiceModule = mod
       })
     }
@@ -610,7 +610,7 @@ export function useVoice({
       } else {
         // Voice module is loading (async import resolves from cache as a
         // microtask). Wait for it before starting the recording session.
-        void import('../services/voice.js').then(mod => {
+        void import('src/services/voice.js').then(mod => {
           voiceModule = mod
           beginFocusRecording()
         })

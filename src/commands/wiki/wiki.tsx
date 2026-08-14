@@ -1,13 +1,13 @@
 import React from 'react'
-import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from '../../constants/xml.js'
-import { ingestLocalWikiSource } from '../../services/wiki/ingest.js'
-import { initializeWiki } from '../../services/wiki/init.js'
-import { getWikiStatus } from '../../services/wiki/status.js'
+import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
+import { ingestLocalWikiSource } from 'src/services/wiki/ingest.js'
+import { initializeWiki } from 'src/services/wiki/init.js'
+import { getWikiStatus } from 'src/services/wiki/status.js'
 import type {
   LocalJSXCommandCall,
   LocalJSXCommandOnDone,
-} from '../../types/command.js'
-import { getCwd } from '../../utils/cwd.js'
+} from 'src/types/command.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 
 function renderHelp(): string {
   return `Usage: /wiki [init|status|ingest <path>]

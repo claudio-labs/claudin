@@ -215,9 +215,9 @@ Os dois passaram:
 ```
 O arquivo com mais mudanças no intervalo `HEAD~15..HEAD` é:
 
-**`src/utils/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
+**`src/services/api/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
 
-**Por quê:** é o maior bloco de mudança porque foi uma expansão grande da suíte de testes das credenciais do GitHub Models (provider GitHub Copilot/Models). Acompanha de perto o refactor de `src/utils/githubModelsCredentials.ts` (109 linhas) — ou seja, mudaram a lógica de credenciais e reescreveram/ampliaram bastante a cobertura de teste correspondente, que naturalmente cresce mais em LoC do que o código fonte que ela cobre.
+**Por quê:** é o maior bloco de mudança porque foi uma expansão grande da suíte de testes das credenciais do GitHub Models (provider GitHub Copilot/Models). Acompanha de perto o refactor de `src/services/api/githubModelsCredentials.ts` (109 linhas) — ou seja, mudaram a lógica de credenciais e reescreveram/ampliaram bastante a cobertura de teste correspondente, que naturalmente cresce mais em LoC do que o código fonte que ela cobre.
 
 Se você considerar só **código de produção** (ignorando testes e os `.md` de resultados de bench), o líder seria **`src/services/api/clientCache.ts`** (168 linhas) — um arquivo novo de cache de clients de API.
 ```
@@ -227,7 +227,7 @@ Se você considerar só **código de produção** (ignorando testes e os `.md` d
 ```
 O arquivo com mais mudanças foi:
 
-**`src/utils/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
+**`src/services/api/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
 
 Por quê: é o arquivo de testes do `githubModelsCredentials.ts` (que também mudou bastante, ~109 linhas). O grosso das mudanças nesse intervalo de 15 commits foi em torno de **credenciais do GitHub Models** e do **client cache** (`clientCache.ts` + `.test.ts`, ~338 linhas somadas), além de novos testes de modelo (dual-context, labels, persistência). Como é praxe testes serem mais verbosos que a implementação que cobrem, o `.test.ts` acabou concentrando o maior número de linhas tocadas.
 ```

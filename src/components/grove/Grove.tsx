@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { type ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, type Key, Link, Text, useInput } from '../../ink.js';
-import { type AccountSettings, calculateShouldShowGrove, type GroveConfig, getGroveNoticeConfig, getGroveSettings, markGroveNoticeViewed, updateGroveSettings } from '../../services/api/grove.js';
-import { Select } from '../CustomSelect/index.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
+import { type ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, type Key, Link, Text, useInput } from 'src/ink.js';
+import { type AccountSettings, calculateShouldShowGrove, type GroveConfig, getGroveNoticeConfig, getGroveSettings, markGroveNoticeViewed, updateGroveSettings } from 'src/services/api/grove.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 export type GroveDecision = 'accept_opt_in' | 'accept_opt_out' | 'defer' | 'escape' | 'skip_rendering';
 type Props = {
   showIfAlreadyViewed: boolean;

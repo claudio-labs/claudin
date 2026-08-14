@@ -3,24 +3,24 @@ import { isEqual, memoize } from 'lodash-es'
 import {
   getIsNonInteractiveSession,
   getSessionTrustAccepted,
-} from '../../bootstrap/state.js'
-import { getGrowthBookClientKey } from '../../constants/keys.js'
-import { tryGetActiveProvider } from '../api/activeProvider.js'
+} from 'src/bootstrap/state.js'
+import { getGrowthBookClientKey } from 'src/constants/keys.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   checkHasTrustDialogAccepted,
   getGlobalConfig,
   saveGlobalConfig,
-} from '../../utils/config.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { toError } from '../../utils/errors.js'
-import { getAuthHeaders } from '../../utils/http.js'
-import { logError } from '../../utils/log.js'
-import { createSignal } from '../../utils/signal.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
+} from 'src/services/config/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { toError } from 'src/utils/errors.js'
+import { getAuthHeaders } from 'src/utils/http.js'
+import { logError } from 'src/utils/log.js'
+import { createSignal } from 'src/utils/signal.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type GitHubActionsMetadata,
   getUserForGrowthBook,
-} from '../../utils/user.js'
+} from 'src/utils/user.js'
 import {
   is1PEventLoggingEnabled,
   logGrowthBookExperimentTo1P,
@@ -329,7 +329,7 @@ function isGrowthBookEnabled(): boolean {
  * apiKeyHelper auth, which means isAnthropicAuthEnabled() returns false and
  * organizationUUID/accountUUID/email are all absent from GrowthBook
  * attributes. Without this, there's no stable attribute to target them on
- * — only per-device IDs. See src/utils/auth.ts isAnthropicAuthEnabled().
+ * — only per-device IDs. See src/services/auth/auth.ts isAnthropicAuthEnabled().
  *
  * Returns undefined for unset/default (api.anthropic.com) so the attribute
  * is absent for direct-API users. Hostname only — no path/query/creds.

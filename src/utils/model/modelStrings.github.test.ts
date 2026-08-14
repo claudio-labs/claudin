@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 
-import { resetModelStringsForTestingOnly } from '../../bootstrap/state.js'
+import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
 import { parseUserSpecifiedModel } from './model.js'
 import { getModelStrings } from './modelStrings.js'
 

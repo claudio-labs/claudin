@@ -8,7 +8,7 @@
 // predicates and the nudge string.
 // Message is defined in types/message.js; query.ts only imports it (does not
 // re-export it), so import from the real source.
-import type { Message } from '../../types/message.js'
+import type { Message } from 'src/types/message.js'
 
 export function snipCompact() {
   return null

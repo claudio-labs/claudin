@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useState } from 'react';
-import { Text } from '../../ink.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { formatGrantAmount, getCachedOverageCreditGrant, refreshOverageCreditGrantCache } from '../../services/api/overageCreditGrant.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
-import { truncate } from '../../utils/format.js';
+import { Text } from 'src/ink.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { formatGrantAmount, getCachedOverageCreditGrant, refreshOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { truncate } from 'src/utils/text/format.js';
 import type { FeedConfig } from './Feed.js';
 const MAX_IMPRESSIONS = 3;
 

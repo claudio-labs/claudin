@@ -1,14 +1,14 @@
 import React from 'react';
-import { getIsInteractive } from '../../bootstrap/state.js';
-import { ManagedSettingsSecurityDialog } from '../../components/ManagedSettingsSecurityDialog/ManagedSettingsSecurityDialog.js';
-import { extractDangerousSettings, hasDangerousSettings, hasDangerousSettingsChanged } from '../../components/ManagedSettingsSecurityDialog/utils.js';
-import { render } from '../../ink.js';
-import { KeybindingSetup } from '../../keybindings/KeybindingProviderSetup.js';
-import { AppStateProvider } from '../../state/AppState.js';
-import { gracefulShutdownSync } from '../../utils/gracefulShutdown.js';
-import { getBaseRenderOptions } from '../../utils/renderOptions.js';
-import type { SettingsJson } from '../../utils/settings/types.js';
-import { logEvent } from '../analytics/index.js';
+import { getIsInteractive } from 'src/bootstrap/state.js';
+import { ManagedSettingsSecurityDialog } from 'src/components/ManagedSettingsSecurityDialog/ManagedSettingsSecurityDialog.js';
+import { extractDangerousSettings, hasDangerousSettings, hasDangerousSettingsChanged } from 'src/components/ManagedSettingsSecurityDialog/utils.js';
+import { render } from 'src/ink.js';
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import { AppStateProvider } from 'src/state/AppState.js';
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
+import type { SettingsJson } from 'src/services/settings/types.js';
+import { logEvent } from 'src/services/analytics/index.js';
 export type SecurityCheckResult = 'approved' | 'rejected' | 'no_check_needed';
 
 /**

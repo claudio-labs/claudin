@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
-import { Box, Text, type TextProps } from '../../ink.js';
-import { useAppState } from '../../state/AppState.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import { getRunningTeammatesSorted } from '../../tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { formatNumber } from '../../utils/format.js';
+import { Box, Text, type TextProps } from 'src/ink.js';
+import { useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { getRunningTeammatesSorted } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
+import { formatNumber } from 'src/utils/text/format.js';
 import { TeammateSpinnerLine } from './TeammateSpinnerLine.js';
 import { TEAMMATE_SELECT_HINT } from './teammateSelectHint.js';
 type Props = {

@@ -23,7 +23,7 @@
 | **Drop `Promise.race` 200ms timeout** | Não interrompe sync regex backtracking — era teatro (review §"Misalignments #5") |
 | **Drop `verb: string` field** | Linear scan de 20 filtros é sub-microsegundo; hash hashmap optimization deferida pra v2 |
 | **Drop 4 arquivos** (safety/analytics/debug/parse) | Cada <30 LoC, single-digit callers — inline (review §"Over-engineering #2-6") |
-| **Reusar `escapeXmlAttr`** de `src/utils/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
+| **Reusar `escapeXmlAttr`** de `src/utils/data/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
 | **Reusar `collapseIdenticalRuns`/`collapseDigitTemplates`** de `toolResultSummarizer.ts` | Saves ~80 LoC duplicação (review §"Over-engineering #3") |
 | **Tests colocados** ao invés de `__tests__/` | Viola `.claudin/rules/testing.md` (review §"Misalignments #7") |
 | **Config keys flat** (`bashOutputFilterEnabled`) | Match `toolResultSummarizerEnabled` precedent (review §"Missed conventions #4") |

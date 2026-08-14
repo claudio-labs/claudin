@@ -46,8 +46,8 @@ describe('open-build default for tengu_glacier_2xr', () => {
 // ── Legacy-session compatibility latch ──────────────────────────────────
 // Force the runtime flag ON (the real growthbook module resolves false
 // under bun test — the open-build stub only exists in the bundle).
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
-mock.module('../services/analytics/growthbook.js', () => ({
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
+mock.module('src/services/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (key: string, def: unknown) =>
     key === 'tengu_glacier_2xr' ? true : def,
@@ -57,8 +57,8 @@ const {
   isDeferredToolsDeltaActive,
   isDeferredToolsDeltaEnabled,
   maybeLatchLegacyDeferredAnnouncement,
-} = await import('./toolSearch.js')
-const { clearBetaHeaderLatches } = await import('../bootstrap/state.js')
+} = await import('src/services/tools/toolSearch.js')
+const { clearBetaHeaderLatches } = await import('src/bootstrap/state.js')
 
 type LooseMessage = {
   type: string
@@ -211,7 +211,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
   // and every warm resume of a delta session latches legacy → prepend onto
   // a prepend-less warm cache → the exact break A2 fixes.
   test('persistence premise: deferred_tools_delta attachments are loggable for external users', async () => {
-    const { isLoggableMessage } = await import('./sessionStorage.js')
+    const { isLoggableMessage } = await import('src/services/session/sessionStorage.js')
     expect(
       isLoggableMessage({
         type: 'attachment',
@@ -237,7 +237,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
 describe('session switch (in-REPL /resume, /branch)', () => {
   test('releases a carried-over latch — the incoming conversation re-evaluates', async () => {
     const { getSessionId, switchSession } = await import(
-      '../bootstrap/state.js'
+      'src/bootstrap/state.js'
     )
     const { randomUUID } = await import('node:crypto')
     const originalSession = getSessionId()
@@ -253,7 +253,7 @@ describe('session switch (in-REPL /resume, /branch)', () => {
 
   test('advances the epoch: a history written AFTER process start still latches on in-process resume', async () => {
     const { getSessionEpochMs, getSessionId, switchSession } = await import(
-      '../bootstrap/state.js'
+      'src/bootstrap/state.js'
     )
     const { randomUUID } = await import('node:crypto')
     const originalSession = getSessionId()
@@ -290,7 +290,7 @@ describe('latch call sites pass the subagent scan context', () => {
     readFileSync(join(import.meta.dir, relPath), 'utf-8')
 
   test('attachments injector derives subagent from the pipeline callSite', () => {
-    const src = sourceAt('./attachments/injections.ts')
+    const src = sourceAt('../services/attachments/injections.ts')
     expect(src).toContain(
       'maybeLatchLegacyDeferredAnnouncement(messages ?? [], {',
     )
@@ -324,7 +324,7 @@ describe('latch call sites pass the subagent scan context', () => {
 describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
   test('legacy-resume history: injector returns no attachment and leaves the session latched', async () => {
     const { getDeferredToolsDeltaAttachment } = await import(
-      './attachments/injections.js'
+      'src/services/attachments/injections.js'
     )
     // Real session epoch (no override path through the injector) — build a
     // resume point 10min before process start: earlier than any epoch this
@@ -351,6 +351,6 @@ describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
 })
 
 afterAll(() => {
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   clearBetaHeaderLatches()
 })

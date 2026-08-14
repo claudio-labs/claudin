@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { DiffFile } from '../../hooks/useDiffData.js'
-import type { RepoGroup } from '../diff/types.js'
+import type { DiffFile } from 'src/hooks/useDiffData.js'
+import type { RepoGroup } from 'src/components/diff/types.js'
 import {
   buildChangedRows,
   buildExplorerGroup,

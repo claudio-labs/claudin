@@ -3,21 +3,21 @@ import { feature } from 'bun:bundle';
 import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { getBridgeAccessToken } from '../../bridge/bridgeConfig.js';
-import { checkBridgeMinVersion, getBridgeDisabledReason, isEnvLessBridgeEnabled } from '../../bridge/bridgeEnabled.js';
-import { checkEnvLessBridgeMinVersion } from '../../bridge/envLessBridgeConfig.js';
-import { BRIDGE_LOGIN_INSTRUCTION, REMOTE_CONTROL_DISCONNECTED_MSG } from '../../bridge/types.js';
-import { Dialog } from '../../components/design-system/Dialog.js';
-import { ListItem } from '../../components/design-system/ListItem.js';
-import { shouldShowRemoteCallout } from '../../components/RemoteCallout.js';
-import { useRegisterOverlay } from '../../context/overlayContext.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { type AppState, useAppState, useSetAppState } from '../../state/AppState.js';
-import type { ToolUseContext } from '../../Tool.js';
-import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js';
-import { logForDebugging } from '../../utils/debug.js';
+import { getBridgeAccessToken } from 'src/bridge/bridgeConfig.js';
+import { checkBridgeMinVersion, getBridgeDisabledReason, isEnvLessBridgeEnabled } from 'src/bridge/bridgeEnabled.js';
+import { checkEnvLessBridgeMinVersion } from 'src/bridge/envLessBridgeConfig.js';
+import { BRIDGE_LOGIN_INSTRUCTION, REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/bridge/types.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { ListItem } from 'src/components/design-system/ListItem.js';
+import { shouldShowRemoteCallout } from 'src/components/RemoteCallout.js';
+import { useRegisterOverlay } from 'src/context/overlayContext.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { ToolUseContext } from 'src/Tool.js';
+import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js';
+import { logForDebugging } from 'src/utils/debug.js';
 type Props = {
   onDone: LocalJSXCommandOnDone;
   name?: string;
@@ -468,7 +468,7 @@ async function checkBridgePrerequisites(): Promise<string | null> {
   const {
     waitForPolicyLimitsToLoad,
     isPolicyAllowed
-  } = await import('../../services/policyLimits/index.js');
+  } = await import('src/services/policyLimits/index.js');
   await waitForPolicyLimitsToLoad();
   if (!isPolicyAllowed('allow_remote_control')) {
     return "Remote Control is disabled by your organization's policy.";

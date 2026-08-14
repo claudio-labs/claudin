@@ -5,7 +5,7 @@ import {
   EFFORT_MAX,
   EFFORT_MEDIUM,
   EFFORT_XHIGH,
-} from '../constants/figures.js'
+} from 'src/constants/figures.js'
 import {
   type AdaptiveEffort,
   type EffortLevel,
@@ -13,9 +13,9 @@ import {
   getDisplayedEffortLabel,
   isAdaptiveEffort,
   modelSupportsEffort,
-} from '../utils/effort.js'
-import { buildEffortPill } from '../utils/format-branch.js'
-import type { Theme } from '../utils/theme.js'
+} from 'src/utils/effort.js'
+import { buildEffortPill } from 'src/services/git/format-branch.js'
+import type { Theme } from 'src/utils/theme.js'
 
 
 /**

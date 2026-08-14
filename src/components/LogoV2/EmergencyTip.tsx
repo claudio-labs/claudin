@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useMemo } from 'react';
 import { Box, Text } from 'src/ink.js';
 import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 const CONFIG_NAME = 'tengu-top-of-feed-tip';
 export function EmergencyTip(): React.ReactNode {
   const tip = useMemo(getTipOfFeed, []);

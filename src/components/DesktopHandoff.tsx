@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useState } from 'react';
-import type { CommandResultDisplay } from '../commands.js';
+import type { CommandResultDisplay } from 'src/commands.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw input for "any key" dismiss and y/n prompt
-import { Box, Text, useInput } from '../ink.js';
-import { openBrowser } from '../utils/browser.js';
-import { getDesktopInstallStatus, openCurrentSessionInDesktop } from '../utils/desktopDeepLink.js';
-import { errorMessage } from '../utils/errors.js';
-import { gracefulShutdown } from '../utils/gracefulShutdown.js';
-import { flushSessionStorage } from '../utils/sessionStorage.js';
+import { Box, Text, useInput } from 'src/ink.js';
+import { openBrowser } from 'src/utils/browser.js';
+import { getDesktopInstallStatus, openCurrentSessionInDesktop } from 'src/services/ide/desktopDeepLink.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { flushSessionStorage } from 'src/services/session/sessionStorage.js';
 import { LoadingState } from './design-system/LoadingState.js';
 const DESKTOP_DOCS_URL = 'https://clau.de/desktop';
 export function getDownloadUrl(): string {

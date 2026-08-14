@@ -14,12 +14,12 @@
 
 import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { uniq } from 'src/utils/array.js'
+import { uniq } from 'src/utils/data/array.js'
 import { cwd } from 'process'
 import { downloadUserSettings } from 'src/services/settingsSync/index.js'
 import { waitForRemoteManagedSettingsToLoad } from 'src/services/remoteManagedSettings/index.js'
 import { assembleToolPool } from 'src/tools.js'
-import { mergeAndFilterTools } from 'src/utils/toolPool.js'
+import { mergeAndFilterTools } from 'src/services/tools/toolPool.js'
 import { toolMatchesName, type Tools } from 'src/Tool.js'
 import {
   logEvent,
@@ -44,7 +44,7 @@ import {
   runElicitationHooks,
   runElicitationResultHooks,
 } from 'src/services/mcp/elicitationHandler.js'
-import { executeNotificationHooks } from 'src/utils/hooks.js'
+import { executeNotificationHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   ElicitRequestSchema,
   ElicitationCompleteNotificationSchema,
@@ -59,11 +59,11 @@ import {
 } from 'src/bootstrap/state.js'
 import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { randomUUID } from 'crypto'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { getCommands } from '../../commands.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { installPluginsForHeadless } from '../../utils/plugins/headlessPluginInstall.js'
-import { refreshActivePlugins } from '../../utils/plugins/refresh.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getCommands } from 'src/commands.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { installPluginsForHeadless } from 'src/services/plugins/headlessPluginInstall.js'
+import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
 import { handleMcpSetServers } from 'src/cli/print/mcpReconcile.js'
 import type {
   HeadlessStreamingContext,

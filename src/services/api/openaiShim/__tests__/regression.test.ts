@@ -20,31 +20,31 @@
 
 import { describe, expect, test } from 'bun:test'
 
-import { filterAnthropicHeaders, formatRetryAfterHint } from '../headers.js'
-import { makeMessageId } from '../helpers.js'
+import { filterAnthropicHeaders, formatRetryAfterHint } from 'src/services/api/openaiShim/headers.js'
+import { makeMessageId } from 'src/services/api/openaiShim/helpers.js'
 import {
   convertContentBlocks,
   convertMessages,
   convertSystemPrompt,
   convertToolResultContent,
-} from '../messageConverter.js'
+} from 'src/services/api/openaiShim/messageConverter.js'
 import {
   hasGeminiApiHost,
   isDeepSeekBaseUrl,
   isGlmCompatibleBaseUrl,
   isMoonshotCompatibleBaseUrl,
   normalizeDeepSeekReasoningEffort,
-} from '../providerModes.js'
+} from 'src/services/api/openaiShim/providerModes.js'
 import {
   convertChunkUsage,
   OpenAIShimStream,
   repairPossiblyTruncatedObjectJson,
-} from '../streamParser.js'
-import { convertTools } from '../toolConverter.js'
+} from 'src/services/api/openaiShim/streamParser.js'
+import { convertTools } from 'src/services/api/openaiShim/toolConverter.js'
 import {
   redactUrlForDiagnostics,
   shouldRedactUrlQueryParam,
-} from '../urlRedaction.js'
+} from 'src/services/api/openaiShim/urlRedaction.js'
 
 describe('convertSystemPrompt', () => {
   test('empty/nullish → empty string', () => {

@@ -1,4 +1,4 @@
-import type { Key } from '../ink.js'
+import type { Key } from 'src/ink.js'
 import type { ParsedBinding, ParsedKeystroke } from './types.js'
 
 /**

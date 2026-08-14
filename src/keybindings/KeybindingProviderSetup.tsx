@@ -8,15 +8,15 @@ import { c as _c } from "react-compiler-runtime";
  * support when the file changes.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNotifications } from '../context/notifications.js';
-import type { InputEvent } from '../ink/events/input-event.js';
+import { useNotifications } from 'src/context/notifications.js';
+import type { InputEvent } from 'src/ink/events/input-event.js';
 // ChordInterceptor intentionally uses useInput to intercept all keystrokes before
 // other handlers process them - this is required for chord sequence support
 // eslint-disable-next-line custom-rules/prefer-use-keybindings
-import { type Key, useInput } from '../ink.js';
-import { count } from '../utils/array.js';
-import { logForDebugging } from '../utils/debug.js';
-import { plural } from '../utils/stringUtils.js';
+import { type Key, useInput } from 'src/ink.js';
+import { count } from 'src/utils/data/array.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { KeybindingProvider } from './KeybindingContext.js';
 import { initializeKeybindingWatcher, type KeybindingsLoadResult, loadKeybindingsSyncWithWarnings, subscribeToKeybindingChanges } from './loadUserBindings.js';
 import { resolveKeyWithChordState } from './resolver.js';

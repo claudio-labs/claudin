@@ -33,20 +33,20 @@ import {
   setInitJsonSchema,
 } from 'src/bootstrap/state.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
   getAllOutputStyles,
 } from 'src/constants/outputStyles.js'
-import { getCwd } from 'src/utils/cwd.js'
-import { getAccountInformation } from 'src/utils/auth.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { getAccountInformation } from 'src/services/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isFastModeAvailable,
   isFastModeEnabled,
   getFastModeState,
 } from 'src/utils/fastMode.js'
-import { AwsAuthStatusManager } from 'src/utils/awsAuthStatusManager.js'
+import { AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js'
 
 export async function handleInitializeRequest(
   request: SDKControlInitializeRequest,

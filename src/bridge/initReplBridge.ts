@@ -15,39 +15,39 @@
 
 import { feature } from 'bun:bundle'
 import { hostname } from 'os'
-import { getOriginalCwd, getSessionId } from '../bootstrap/state.js'
-import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
-import type { SDKControlResponse } from '../entrypoints/sdk/controlTypes.js'
-import { getFeatureValue_CACHED_WITH_REFRESH } from '../services/analytics/growthbook.js'
-import { getOrganizationUUID } from '../services/oauth/client.js'
+import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
+import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
+import type { SDKControlResponse } from 'src/entrypoints/sdk/controlTypes.js'
+import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/services/analytics/growthbook.js'
+import { getOrganizationUUID } from 'src/services/oauth/client.js'
 import {
   isPolicyAllowed,
   waitForPolicyLimitsToLoad,
-} from '../services/policyLimits/index.js'
-import type { Message } from '../types/message.js'
+} from 'src/services/policyLimits/index.js'
+import type { Message } from 'src/types/message.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
-} from '../utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
-import { logForDebugging } from '../utils/debug.js'
-import { stripDisplayTagsAllowEmpty } from '../utils/displayTags.js'
-import { errorMessage } from '../utils/errors.js'
-import { getBranch, getRemoteUrl } from '../utils/git.js'
-import { toSDKMessages } from '../utils/messages/mappers.js'
+} from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { stripDisplayTagsAllowEmpty } from 'src/utils/text/displayTags.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { getBranch, getRemoteUrl } from 'src/services/git/git.js'
+import { toSDKMessages } from 'src/services/messages/mappers.js'
 import {
   getContentText,
   getMessagesAfterCompactBoundary,
   isSyntheticMessage,
-} from '../utils/messages.js'
-import type { PermissionMode } from '../utils/permissions/PermissionMode.js'
-import { getCurrentSessionTitle } from '../utils/sessionStorage.js'
+} from 'src/services/messages/messages.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js'
 import {
   extractConversationText,
   generateSessionTitle,
-} from '../utils/sessionTitle.js'
-import { generateShortWordSlug } from '../utils/words.js'
+} from 'src/services/session/sessionTitle.js'
+import { generateShortWordSlug } from 'src/utils/text/words.js'
 import {
   getBridgeAccessToken,
   getBridgeBaseUrl,

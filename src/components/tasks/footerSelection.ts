@@ -16,8 +16,8 @@
 // useCoordinatorTaskCount returns for the agent portion — so tree rows sit
 // immediately after agents with no gap.
 
-import type { AppState } from '../../state/AppStateStore.js'
-import { isBackgroundTask, type TaskState } from '../../tasks/types.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import { isBackgroundTask, type TaskState } from 'src/tasks/types.js'
 import { buildFooterTaskRows, type FooterTaskRow } from './BackgroundTaskGroupTree.js'
 import { footerTreeBaseIndex } from './footerTaskGeometry.js'
 

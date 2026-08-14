@@ -84,16 +84,16 @@ Uso pelo coding-agent (`packages/coding-agent/src/task/worktree.ts`):
   4. `process.chdir` + `setCwd` + `setOriginalCwd`;
   5. limpa caches dependentes de CWD: `clearSystemPromptSections`,
      `clearMemoryFileCaches`, `getPlansDirectory.cache.clear` (`:98-102`).
-- `src/utils/worktree.ts:744-820` `createWorktreeForSession`:
+- `src/services/git/worktree.ts:744-820` `createWorktreeForSession`:
   - `:757-770` — se `hasWorktreeCreateHook()`, chama o hook configurado pelo
     usuário e adota o resultado (`hookBased: true`). Esse é o gancho de
     extensibilidade já existente.
   - `:771-810` — caminho default: `getOrCreateWorktree(gitRoot, slug)`
     (interno, faz `git worktree add` + setup) + `performPostCreationSetup`,
     com medição em `creationDurationMs`.
-- Hook surface: `src/utils/hooks/events.ts:578-631` define
+- Hook surface: `src/services/lifecycleHooks/events.ts:578-631` define
   `hasWorktreeCreateHook()`/`executeWorktreeCreateHook()`. O `WorktreeCreate`
-  já é tratado de forma especial no executor (`src/utils/hooks/executors.ts:244-378`)
+  já é tratado de forma especial no executor (`src/services/lifecycleHooks/executors.ts:244-378`)
   porque o `output` é interpretado como caminho do worktree.
 
 Medição rápida no próprio repo (cache quente, btrfs):
@@ -308,7 +308,7 @@ Critério de "vale a pena enviar":
 - `/home/dev/projects/oh-my-pi/packages/coding-agent/src/task/worktree.ts:238-350`
 - `/home/dev/projects/claudin/src/tools/EnterWorktreeTool/EnterWorktreeTool.ts:77-127`
 - `/home/dev/projects/claudin/src/tools/ExitWorktreeTool/ExitWorktreeTool.ts:1-50,281-329`
-- `/home/dev/projects/claudin/src/utils/worktree.ts:744-820,1052,1172`
-- `/home/dev/projects/claudin/src/utils/hooks/events.ts:578-631`
-- `/home/dev/projects/claudin/src/utils/hooks/executors.ts:244-378`
+- `/home/dev/projects/claudin/src/services/git/worktree.ts:744-820,1052,1172`
+- `/home/dev/projects/claudin/src/services/lifecycleHooks/events.ts:578-631`
+- `/home/dev/projects/claudin/src/services/lifecycleHooks/executors.ts:244-378`
 - `clonefile(2)` (man), `ioctl_ficlone(2)` (man), `cp(1)` `--reflink`.

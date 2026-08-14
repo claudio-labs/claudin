@@ -45,7 +45,7 @@ import {
 import {
   _resetDeferCacheMarkerForTesting,
   addCacheBreakpoints,
-} from '../api/claude/paramBuilders.js'
+} from 'src/services/api/claude/paramBuilders.js'
 
 type Block = Record<string, unknown>
 // API-message shape (type + .message wrapper) — accepted both by

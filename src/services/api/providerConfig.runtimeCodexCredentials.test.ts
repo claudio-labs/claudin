@@ -5,10 +5,10 @@ import { join } from 'node:path'
 
 import { resolveRuntimeCodexCredentials } from './providerConfig.js'
 
-const realCodexCredentials = { ...(await import('../../utils/codexCredentials.js')) }
+const realCodexCredentials = { ...(await import('src/services/api/codexCredentials.js')) }
 
 afterAll(() => {
-  mock.module('../../utils/codexCredentials.js', () => realCodexCredentials)
+  mock.module('src/services/api/codexCredentials.js', () => realCodexCredentials)
 })
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -81,7 +81,7 @@ test('runtime credential resolution preserves an explicit auth.json path even wh
 test('runtime credential resolution avoids sync secure-storage reads when async credentials are provided', async () => {
   let syncReadCalled = false
 
-  mock.module('../../utils/codexCredentials.js', () => ({
+  mock.module('src/services/api/codexCredentials.js', () => ({
     isCodexRefreshFailureCoolingDown: () => false,
     readCodexCredentials: () => {
       syncReadCalled = true

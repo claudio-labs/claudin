@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import { Box, Text } from '../ink.js';
-import type { ContextData } from '../utils/analyzeContext.js';
-import { generateContextSuggestions } from '../utils/contextSuggestions.js';
-import { getDisplayPath } from '../utils/file.js';
-import { formatTokens } from '../utils/format.js';
-import { getSourceDisplayName, type SettingSource } from '../utils/settings/constants.js';
-import { plural } from '../utils/stringUtils.js';
+import { Box, Text } from 'src/ink.js';
+import type { ContextData } from 'src/services/context/analyzeContext.js';
+import { generateContextSuggestions } from 'src/services/context/contextSuggestions.js';
+import { getDisplayPath } from 'src/utils/fs/file.js';
+import { formatTokens } from 'src/utils/text/format.js';
+import { getSourceDisplayName, type SettingSource } from 'src/services/settings/constants.js';
+import { plural } from 'src/utils/text/stringUtils.js';
 import { ContextSuggestions } from './ContextSuggestions.js';
 
 // The element types behind ContextData's collections are not exported from
@@ -74,7 +74,7 @@ function CollapseStatus() {
         const {
           getStats,
           isContextCollapseEnabled
-        } = require("../services/contextCollapse/index.js") as typeof import('../services/contextCollapse/index.js');
+        } = require("src/services/contextCollapse/index.js") as typeof import('src/services/contextCollapse/index.js');
         if (!isContextCollapseEnabled()) {
           t1 = null;
           break bb0;

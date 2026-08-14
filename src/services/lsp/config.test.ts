@@ -22,9 +22,9 @@ type AnyAsyncFn = (...args: any[]) => Promise<any>
 // on first import, so a partial mock here would leak missing-export errors
 // into every later test file that pulls pluginLoader transitively (e.g.
 // tools.lsp-gate, diagnosticsForToolResult).
-const realPluginLoader = await import('../../utils/plugins/pluginLoader.js')
+const realPluginLoader = await import('src/services/plugins/pluginLoader.js')
 const mockLoadPlugins = mock<AnyAsyncFn>(async () => ({ enabled: [] }))
-mock.module('../../utils/plugins/pluginLoader.js', () => ({
+mock.module('src/services/plugins/pluginLoader.js', () => ({
   ...realPluginLoader,
   loadAllPluginsCacheOnly: mockLoadPlugins,
 }))
@@ -33,11 +33,11 @@ mock.module('../../utils/plugins/pluginLoader.js', () => ({
 // returns a live namespace that mock.module() rewrites in place, so restoring to
 // the namespace would re-apply the stub (e.g. a stripped errors.js missing
 // isENOENT, which broke GlobTool/FileReadTool in later files).
-const realLogConfig = { ...(await import('../../utils/log.js')) }
-mock.module('../../utils/log.js', () => ({ ...realLogConfig, logError: mock(() => {}) }))
-const realDebugConfigTest = { ...(await import('../../utils/debug.js')) }
-mock.module('../../utils/debug.js', () => ({ ...realDebugConfigTest, logForDebugging: mock(() => {}), logAntError: mock(() => {}) }))
-const realErrorsConfigTest = { ...(await import('../../utils/errors.js')) }
+const realLogConfig = { ...(await import('src/utils/log.js')) }
+mock.module('src/utils/log.js', () => ({ ...realLogConfig, logError: mock(() => {}) }))
+const realDebugConfigTest = { ...(await import('src/utils/debug.js')) }
+mock.module('src/utils/debug.js', () => ({ ...realDebugConfigTest, logForDebugging: mock(() => {}), logAntError: mock(() => {}) }))
+const realErrorsConfigTest = { ...(await import('src/utils/errors.js')) }
 class _ClaudeError extends Error {}
 class _MalformedCommandError extends Error {}
 class _AbortError extends Error {}
@@ -45,7 +45,7 @@ class _ConfigParseError extends Error {}
 class _ShellError extends Error {}
 class _TeleportOperationError extends Error {}
 class _TelemetrySafeError extends Error {}
-mock.module('../../utils/errors.js', () => ({
+mock.module('src/utils/errors.js', () => ({
   ClaudeError: _ClaudeError,
   MalformedCommandError: _MalformedCommandError,
   AbortError: _AbortError,
@@ -65,7 +65,7 @@ mock.module('../../utils/errors.js', () => ({
   classifyAxiosError: (_e: unknown) => ({ type: 'unknown' }),
 }))
 // Prevent deep plugin integration chain from loading
-mock.module('../../utils/plugins/lspPluginIntegration.js', () => ({
+mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
   getPluginLspServers: mock(async () => ({})),
   addPluginScopeToLspServers: mock((s: unknown) => s),
 }))
@@ -97,7 +97,7 @@ describe('getAllLspServers — plugin-only', () => {
         enabled: true,
       }],
     }))
-    mock.module('../../utils/plugins/lspPluginIntegration.js', () => ({
+    mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
       getPluginLspServers: async () => ({
         'my-server': makeServer('plugin-cmd', 'test-plugin'),
       }),
@@ -127,10 +127,10 @@ describe('getAllLspServers — plugin-only', () => {
 // them here with our own incomplete stub regresses things further.
 // ---------------------------------------------------------------------------
 afterAll(() => {
-  mock.module('../../utils/debug.js', () => realDebugConfigTest)
   mock.module('src/utils/debug.js', () => realDebugConfigTest)
-  mock.module('../../utils/errors.js', () => realErrorsConfigTest)
+  mock.module('src/utils/debug.js', () => realDebugConfigTest)
   mock.module('src/utils/errors.js', () => realErrorsConfigTest)
-  mock.module('../../utils/log.js', () => realLogConfig)
+  mock.module('src/utils/errors.js', () => realErrorsConfigTest)
+  mock.module('src/utils/log.js', () => realLogConfig)
   mock.module('src/utils/log.js', () => realLogConfig)
 })

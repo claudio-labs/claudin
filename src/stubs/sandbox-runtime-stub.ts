@@ -13,7 +13,7 @@ export class SandboxManager {
     return { exitCode: 0, stdout: '', stderr: '' }
   }
 
-  // Static API used by src/utils/sandbox/sandbox-adapter.ts. Defaults make
+  // Static API used by src/services/sandbox/sandbox-adapter.ts. Defaults make
   // isSandboxingEnabled() return false in the open build/test environment.
   static isSupportedPlatform(): boolean {
     return false

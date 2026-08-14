@@ -1,4 +1,4 @@
-import { registerBundledSkill } from '../bundledSkills.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
  * `/create` — guide the model through creating (or refining) Claudin

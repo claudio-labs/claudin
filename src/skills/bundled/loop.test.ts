@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 
-import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
+import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import { registerLoopSkill } from './loop.js'
 
 afterEach(() => {

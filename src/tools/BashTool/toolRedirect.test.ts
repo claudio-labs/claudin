@@ -14,8 +14,8 @@ import {
 // Real files, because the analyzer refuses any path that is not a regular file
 // on disk — a fixture-free existence gate is the point, not an inconvenience.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const FILE_A = 'src/utils/bash/segments.ts'
-const FILE_B = 'src/utils/bash/commands.ts'
+const FILE_A = 'src/services/bash/segments.ts'
+const FILE_B = 'src/services/bash/commands.ts'
 
 function analyze(command: string) {
   return analyzeCommandForRedirect(command, REPO_ROOT)

@@ -13,31 +13,31 @@ import chalk from 'chalk';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { feature } from 'bun:bundle';
-import { getOauthConfig } from '../../constants/oauth.js';
-import { getSessionId, getIsNonInteractiveSession, setKairosActive } from '../../bootstrap/state.js';
-import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from '../../services/api/filesApi.js';
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
-import { checkHasTrustDialogAccepted, getGlobalConfig } from '../../utils/config.js';
-import { seedEarlyInput } from '../../utils/earlyInput.js';
-import { isEnvTruthy } from '../../utils/envUtils.js';
-import { errorMessage, getErrnoCode } from '../../utils/errors.js';
-import { setAllHookEventsEnabled } from '../../utils/hooks/hookEvents.js';
-import { getPlatform } from '../../utils/platform.js';
-import { getSessionIngressAuthToken } from '../../utils/sessionIngressAuth.js';
-import { sessionIdExists } from '../../utils/sessionStorage.js';
-import { validateUuid } from '../../utils/uuid.js';
-import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from '../../utils/worktree.js';
-import { isWorktreeModeEnabled } from '../../utils/worktreeModeEnabled.js';
-import { extractTeammateOptions } from '../helpers.js';
-import type { BootContext } from '../bootContext.js';
+import { getOauthConfig } from 'src/constants/oauth.js';
+import { getSessionId, getIsNonInteractiveSession, setKairosActive } from 'src/bootstrap/state.js';
+import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/services/api/filesApi.js';
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/services/config/config.js';
+import { seedEarlyInput } from 'src/utils/earlyInput.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { errorMessage, getErrnoCode } from 'src/utils/errors.js';
+import { setAllHookEventsEnabled } from 'src/services/lifecycleHooks/hookEvents.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js';
+import { sessionIdExists } from 'src/services/session/sessionStorage.js';
+import { validateUuid } from 'src/utils/data/uuid.js';
+import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from 'src/services/git/worktree.js';
+import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js';
+import { extractTeammateOptions } from 'src/main/helpers.js';
+import type { BootContext } from 'src/main/bootContext.js';
 
 /** Lazy-require accessors for teammate utils (circular-dep workarounds in main.tsx). */
 export type TeammateAccessors = {
-  getTeammateUtils: () => typeof import('../../utils/teammate.js');
-  getTeammatePromptAddendum: () => typeof import('../../utils/swarm/teammatePromptAddendum.js');
-  getTeammateModeSnapshot: () => typeof import('../../utils/swarm/backends/teammateModeSnapshot.js');
+  getTeammateUtils: () => typeof import('src/coordinator/teammate.js');
+  getTeammatePromptAddendum: () => typeof import('src/coordinator/swarm/teammatePromptAddendum.js');
+  getTeammateModeSnapshot: () => typeof import('src/coordinator/swarm/backends/teammateModeSnapshot.js');
 };
 
 /**

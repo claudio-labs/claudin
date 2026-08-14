@@ -9,7 +9,7 @@ import {
   isClaudeAISubscriber,
   refreshAndGetAwsCredentials,
   refreshGcpCredentialsIfNeeded,
-} from 'src/utils/auth.js'
+} from 'src/services/auth/auth.js'
 import { getUserAgent } from 'src/utils/http.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import {
@@ -17,19 +17,19 @@ import {
   isFirstPartyAnthropicBaseUrl,
   isGithubNativeAnthropicMode,
 } from 'src/utils/model/providers.js'
-import { getProxyFetchOptions } from 'src/utils/proxy.js'
+import { getProxyFetchOptions } from 'src/services/api/proxy.js'
 import { withH2Fallback } from './h2Fallback.js'
 import { pickFetch } from './pickFetch.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
-} from '../../bootstrap/state.js'
-import { isDebugToStdErr, logForDebugging } from '../../utils/debug.js'
+} from 'src/bootstrap/state.js'
+import { isDebugToStdErr, logForDebugging } from 'src/utils/debug.js'
 import {
   getAWSRegion,
   getVertexRegionForModel,
   isEnvTruthy,
-} from '../../utils/envUtils.js'
+} from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 
 const importRuntimeModule = new Function(

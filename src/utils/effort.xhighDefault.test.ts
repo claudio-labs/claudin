@@ -1,16 +1,16 @@
 import { afterAll, expect, mock, test } from 'bun:test'
 
-const realSettings = { ...(await import('./settings/settings.js')) }
-const realAuth = { ...(await import('./auth.js')) }
-const realThinking = { ...(await import('./thinking.js')) }
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realAuth = { ...(await import('src/services/auth/auth.js')) }
+const realThinking = { ...(await import('src/services/context/thinking.js')) }
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realProviders = { ...(await import('./model/providers.js')) }
 
 afterAll(() => {
-  mock.module('./settings/settings.js', () => realSettings)
-  mock.module('./auth.js', () => realAuth)
-  mock.module('./thinking.js', () => realThinking)
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/services/auth/auth.js', () => realAuth)
+  mock.module('src/services/context/thinking.js', () => realThinking)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('./model/providers.js', () => realProviders)
 })
 
@@ -23,20 +23,20 @@ async function importFreshEffortModule(options: {
   ultrathink?: boolean
   provider?: string
 }) {
-  mock.module('./settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     getInitialSettings: () => ({
       codingLoopXhighDefault: options.codingLoopXhighDefault,
     }),
   }))
-  mock.module('./auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     isProSubscriber: () => options.isPro ?? false,
     isMaxSubscriber: () => options.isMax ?? false,
     isTeamSubscriber: () => options.isTeam ?? false,
   }))
-  mock.module('./thinking.js', () => ({
+  mock.module('src/services/context/thinking.js', () => ({
     isUltrathinkEnabled: () => options.ultrathink ?? false,
   }))
-  mock.module('../services/analytics/growthbook.js', () => ({
+  mock.module('src/services/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => ({
       enabled: options.greyStep2Enabled ?? false,
     }),

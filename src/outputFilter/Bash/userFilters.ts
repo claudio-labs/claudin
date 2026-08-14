@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getGlobalConfig } from "src/utils/config.js";
+import { getGlobalConfig } from "src/services/config/config.js";
 import { getClaudinConfigHomeDir } from "src/utils/envUtils.js";
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";

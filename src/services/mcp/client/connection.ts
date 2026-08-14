@@ -8,29 +8,29 @@ import {
   ListRootsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import memoize from 'lodash-es/memoize.js'
-import { getOriginalCwd } from '../../../bootstrap/state.js'
-import { PRODUCT_URL } from '../../../constants/product.js'
-import { type Tool } from '../../../Tool.js'
-import { registerCleanup } from '../../../utils/cleanupRegistry.js'
-import { logForDebugging } from '../../../utils/debug.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { PRODUCT_URL } from 'src/constants/product.js'
+import { type Tool } from 'src/Tool.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   errorMessage,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../../../utils/errors.js'
-import { maybeNotifyIDEConnected } from '../../../utils/ide.js'
-import { logMCPDebug, logMCPError } from '../../../utils/log.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
-import { sleep } from '../../../utils/sleep.js'
+} from 'src/utils/errors.js'
+import { maybeNotifyIDEConnected } from 'src/services/ide/ide.js'
+import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { sleep } from 'src/utils/sleep.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../analytics/index.js'
+} from 'src/services/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
-} from '../types.js'
-import { getLoggingSafeMcpBaseUrl } from '../utils.js'
+} from 'src/services/mcp/types.js'
+import { getLoggingSafeMcpBaseUrl } from 'src/services/mcp/utils.js'
 import { setMcpAuthCacheEntry } from './authCache.js'
 import { isMcpSessionExpiredError } from './errors.js'
 import { getConnectionTimeoutMs } from './fetch.js'

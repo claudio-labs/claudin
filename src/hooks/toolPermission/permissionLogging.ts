@@ -7,11 +7,11 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
-import { getCodeEditToolDecisionCounter } from '../../bootstrap/state.js'
-import type { Tool as ToolType, ToolUseContext } from '../../Tool.js'
-import { getLanguageName } from '../../utils/cliHighlight.js'
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js'
-import { logOTelEvent } from '../../utils/telemetry/events.js'
+import { getCodeEditToolDecisionCounter } from 'src/bootstrap/state.js'
+import type { Tool as ToolType, ToolUseContext } from 'src/Tool.js'
+import { getLanguageName } from 'src/utils/text/cliHighlight.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 import type {
   PermissionApprovalSource,
   PermissionRejectionSource,

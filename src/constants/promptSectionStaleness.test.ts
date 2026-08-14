@@ -11,11 +11,11 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
   NATIVE_PACKAGE_URL: undefined,
 }
 
-import type { ProviderProfile } from '../utils/config.js'
+import type { ProviderProfile } from 'src/services/config/config.js'
 
 // Capture the real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
-const realProviders = { ...(await import('../utils/model/providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 const state: { activeProfile: ProviderProfile | undefined } = {
   activeProfile: undefined,
@@ -31,7 +31,7 @@ const state: { activeProfile: ProviderProfile | undefined } = {
 // tests exercise). Re-assert before each test to win the last-install-wins
 // race, independent of whatever ran before this file.
 const pinFromState = (): void => {
-  mock.module('../utils/model/providers.js', () => ({
+  mock.module('src/utils/model/providers.js', () => ({
     ...realProviders,
     getAPIProvider: () =>
       state.activeProfile ? state.activeProfile.provider : 'firstParty',
@@ -45,12 +45,12 @@ const { clearSystemPromptSections } = await import('./systemPromptSections.js')
 // longer feeds provider resolution here; the in-test invalidateActiveProviderCache()
 // calls are kept as harmless no-ops and just need a live binding.
 const { invalidateActiveProviderCache } = await import(
-  '../services/api/activeProvider.js'
+  'src/services/api/activeProvider.js'
 )
 const { applyPermissionUpdate } = await import(
-  '../utils/permissions/PermissionUpdate.js'
+  'src/services/permissions/PermissionUpdate.js'
 )
-const { getEmptyToolPermissionContext } = await import('../Tool.js')
+const { getEmptyToolPermissionContext } = await import('src/Tool.js')
 
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 delete process.env.CLAUDE_CODE_SIMPLE
@@ -67,7 +67,7 @@ afterEach(() => {
 
 afterAll(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
-  mock.module('../utils/model/providers.js', () => realProviders)
+  mock.module('src/utils/model/providers.js', () => realProviders)
   clearSystemPromptSections()
 })
 

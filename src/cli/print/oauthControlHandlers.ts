@@ -17,10 +17,10 @@
 
 import { logEvent } from 'src/services/analytics/index.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
+import { errorMessage } from 'src/utils/errors.js'
 import { OAuthService } from 'src/services/oauth/index.js'
 import { installOAuthTokens } from 'src/cli/handlers/auth.js'
-import { getAccountInformation } from 'src/utils/auth.js'
+import { getAccountInformation } from 'src/services/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import type {
   HeadlessStreamingContext,

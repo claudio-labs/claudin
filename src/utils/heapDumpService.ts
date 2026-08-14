@@ -13,12 +13,12 @@ import {
   getHeapStatistics,
   type HeapSpaceInfo,
 } from 'v8'
-import { getSessionId } from '../bootstrap/state.js'
-import { logEvent } from '../services/analytics/index.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { logEvent } from 'src/services/analytics/index.js'
 import { logForDebugging } from './debug.js'
 import { toError } from './errors.js'
-import { getDesktopPath } from './file.js'
-import { getFsImplementation } from './fsOperations.js'
+import { getDesktopPath } from 'src/utils/fs/file.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from './log.js'
 import { jsonStringify } from './slowOperations.js'
 

@@ -15,9 +15,9 @@ import chalk from 'chalk';
 import { resolve } from 'path';
 import mapValues from 'lodash-es/mapValues.js';
 import { feature } from 'bun:bundle';
-import { setAdditionalDirectoriesForClaudeMd } from '../../bootstrap/state.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { fetchClaudeAIMcpConfigsIfEligible } from '../../services/mcp/claudeai.js';
+import { setAdditionalDirectoriesForClaudeMd } from 'src/bootstrap/state.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { fetchClaudeAIMcpConfigsIfEligible } from 'src/services/mcp/claudeai.js';
 import {
   areMcpConfigsAllowedWithEnterpriseMcpConfig,
   doesEnterpriseMcpConfigExist,
@@ -25,27 +25,27 @@ import {
   getClaudeCodeMcpConfigs,
   parseMcpConfig,
   parseMcpConfigFromFilePath,
-} from '../../services/mcp/config.js';
-import type { McpServerConfig, ScopedMcpServerConfig } from '../../services/mcp/types.js';
-import { type ChannelEntry, setAllowedChannels, setUserMsgOptIn } from '../../bootstrap/state.js';
-import { assertMinVersion } from '../../utils/autoUpdater.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { isBareMode } from '../../utils/envUtils.js';
-import { errorMessage } from '../../utils/errors.js';
-import { safeParseJSON } from '../../utils/json.js';
+} from 'src/services/mcp/config.js';
+import type { McpServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { type ChannelEntry, setAllowedChannels, setUserMsgOptIn } from 'src/bootstrap/state.js';
+import { assertMinVersion } from 'src/services/install/autoUpdater.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { isBareMode } from 'src/utils/envUtils.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
 import {
   initializeToolPermissionContext,
   initialPermissionModeFromCLI,
   isDefaultPermissionModeAuto,
   parseToolListFromCLI,
   stripDangerousPermissionsForAutoMode,
-} from '../../utils/permissions/permissionSetup.js';
-import { getPlatform } from '../../utils/platform.js';
-import { writeToStderr } from '../../utils/process.js';
-import { setSessionBypassPermissionsMode } from '../../bootstrap/state.js';
-import { plural } from '../../utils/stringUtils.js';
-import type { ValidationError } from '../../utils/settings/validation.js';
-import type { BootContext } from '../bootContext.js';
+} from 'src/services/permissions/permissionSetup.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { writeToStderr } from 'src/utils/proc/process.js';
+import { setSessionBypassPermissionsMode } from 'src/bootstrap/state.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import type { ValidationError } from 'src/services/settings/validation.js';
+import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from './parseOptions.js';
 
 /**
@@ -200,7 +200,7 @@ export async function runMcpAndPerms(
       const nonSdkConfigNames = Object.entries(allConfigs).filter(([, config]) => config.type !== 'sdk').map(([name]) => name);
       let reservedNameError: string | null = null;
       if (feature('CHICAGO_MCP')) {
-        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/utils/computerUse/common.js');
+        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/services/computerUse/common.js');
         if (nonSdkConfigNames.some(isComputerUseMCPServer)) {
           reservedNameError = `Invalid MCP configuration: "${COMPUTER_USE_MCP_SERVER_NAME}" is a reserved MCP name.`;
         }
@@ -247,9 +247,9 @@ export async function runMcpAndPerms(
   // chicago MCP: guarded Computer Use.
   if (feature('CHICAGO_MCP') && getPlatform() === 'macos' && !isNonInteractiveSession) {
     try {
-      const { getChicagoEnabled } = await import('src/utils/computerUse/gates.js');
+      const { getChicagoEnabled } = await import('src/services/computerUse/gates.js');
       if (getChicagoEnabled()) {
-        const { setupComputerUseMCP } = await import('src/utils/computerUse/setup.js');
+        const { setupComputerUseMCP } = await import('src/services/computerUse/setup.js');
         const { mcpConfig: cuMcpConfig, allowedTools: cuTools } = setupComputerUseMCP();
         dynamicMcpConfig = {
           ...dynamicMcpConfig,
@@ -332,8 +332,8 @@ export async function runMcpAndPerms(
   // SDK opt-in for SendUserMessage via --tools.
   if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && baseTools.length > 0) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { BRIEF_TOOL_NAME, LEGACY_BRIEF_TOOL_NAME } = require('../../tools/BriefTool/prompt.js') as typeof import('../../tools/BriefTool/prompt.js');
-    const { isBriefEntitled } = require('../../tools/BriefTool/BriefTool.js') as typeof import('../../tools/BriefTool/BriefTool.js');
+    const { BRIEF_TOOL_NAME, LEGACY_BRIEF_TOOL_NAME } = require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js');
+    const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
     /* eslint-enable @typescript-eslint/no-require-imports */
     const parsedTools = parseToolListFromCLI(baseTools);
     if ((parsedTools.includes(BRIEF_TOOL_NAME) || parsedTools.includes(LEGACY_BRIEF_TOOL_NAME)) && isBriefEntitled()) {

@@ -3,8 +3,8 @@ import {
   FOLDER_ICON,
   FOLDER_OPEN_ICON,
   getFileTypeIcon,
-} from '../../utils/fileIcons.js'
-import { hasNerdFontGlyphs } from '../../utils/terminalFont.js'
+} from 'src/utils/fileIcons.js'
+import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'
 
 // nf-fa-square — solid square swatch tinted per-repo on group headers.
 const REPO_SQUARE = '\uf0c8'

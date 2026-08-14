@@ -16,52 +16,52 @@
 // No helper performs profileCheckpoint(...).
 
 import { feature } from 'bun:bundle';
-import { addToHistory } from '../../history.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { getSubscriptionType } from '../../utils/auth.js';
-import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { isBareMode } from '../../utils/envUtils.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
-import { checkQuotaStatus } from '../../services/claudeAiLimits.js';
-import { fetchBootstrapData } from '../../services/api/bootstrap.js';
-import { prefetchPassesEligibility } from '../../services/api/referral.js';
-import { isLspGloballyEnabled } from '../../services/lsp/userSettings.js';
-import { initializeLspServerManager } from '../../services/lsp/manager.js';
-import { prefetchAllMcpResources } from '../../services/mcp/client.js';
-import type { McpSdkServerConfig, ScopedMcpServerConfig } from '../../services/mcp/types.js';
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js';
-import { isAdvisorEnabled } from '../../utils/advisor.js';
-import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
-import { logError } from '../../utils/log.js';
-import { logContextMetrics } from '../../utils/api.js';
-import { uniq } from '../../utils/array.js';
-import { getUserMsgOptIn } from '../../bootstrap/state.js';
-import { countConcurrentSessions, registerSession, updateSessionName } from '../../utils/concurrentSessions.js';
-import { registerCleanup } from '../../utils/cleanupRegistry.js';
-import { createEmptyAttributionState } from '../../utils/commitAttribution.js';
-import { logForDiagnosticsNoPII } from '../../utils/diagLogs.js';
-import { getModelDeprecationWarning } from '../../utils/model/deprecation.js';
-import { getInitialEffortSetting, parseEffortValue } from '../../utils/effort.js';
-import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatusFromCache } from '../../utils/fastMode.js';
-import { gracefulShutdownSync } from '../../utils/gracefulShutdown.js';
-import { isInBundledMode } from '../../utils/bundledMode.js';
-import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from '../lifecycle.js';
-import { createUserMessage } from '../../utils/messages.js';
-import { processSessionStartHooks } from '../../utils/sessionStart.js';
-import { prefetchCopilotModelCatalog } from '../../utils/model/copilotModelCatalog.js';
-import { prefetchOllamaModels } from '../../utils/model/ollamaModels.js';
-import { prefetchOpenAICompatibleModels } from '../../utils/model/openaiModelDiscovery.js';
-import { getInitialSettings, getSettingsWithErrors } from '../../utils/settings/settings.js';
-import { plural } from '../../utils/stringUtils.js';
-import { computeInitialTeamContext } from '../../utils/swarm/reconnection.js';
-import { shouldEnablePromptSuggestion } from '../../services/PromptSuggestion/promptSuggestion.js';
-import { shouldEnableThinkingByDefault, type ThinkingConfig } from '../../utils/thinking.js';
-import { launchInvalidSettingsDialog } from '../../dialogLaunchers.js';
-import { type AppState, IDLE_SPECULATION_STATE } from '../../state/AppStateStore.js';
-import type { Root } from '../../ink.js';
-import type { InternalPermissionMode } from '../../types/permissions.js';
-import type { BootContext } from '../bootContext.js';
+import { addToHistory } from 'src/history.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { getSubscriptionType } from 'src/services/auth/auth.js';
+import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { isBareMode } from 'src/utils/envUtils.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { checkQuotaStatus } from 'src/services/claudeAiLimits.js';
+import { fetchBootstrapData } from 'src/services/api/bootstrap.js';
+import { prefetchPassesEligibility } from 'src/services/api/referral.js';
+import { isLspGloballyEnabled } from 'src/services/lsp/userSettings.js';
+import { initializeLspServerManager } from 'src/services/lsp/manager.js';
+import { prefetchAllMcpResources } from 'src/services/mcp/client.js';
+import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
+import { isAdvisorEnabled } from 'src/utils/advisor.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { logError } from 'src/utils/log.js';
+import { logContextMetrics } from 'src/services/api/api.js';
+import { uniq } from 'src/utils/data/array.js';
+import { getUserMsgOptIn } from 'src/bootstrap/state.js';
+import { countConcurrentSessions, registerSession, updateSessionName } from 'src/services/session/concurrentSessions.js';
+import { registerCleanup } from 'src/utils/cleanupRegistry.js';
+import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js';
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js';
+import { getModelDeprecationWarning } from 'src/utils/model/deprecation.js';
+import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';
+import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatusFromCache } from 'src/utils/fastMode.js';
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { isInBundledMode } from 'src/services/install/bundledMode.js';
+import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from 'src/main/lifecycle.js';
+import { createUserMessage } from 'src/services/messages/messages.js';
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
+import { prefetchCopilotModelCatalog } from 'src/utils/model/copilotModelCatalog.js';
+import { prefetchOllamaModels } from 'src/utils/model/ollamaModels.js';
+import { prefetchOpenAICompatibleModels } from 'src/utils/model/openaiModelDiscovery.js';
+import { getInitialSettings, getSettingsWithErrors } from 'src/services/settings/settings.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import { computeInitialTeamContext } from 'src/coordinator/swarm/reconnection.js';
+import { shouldEnablePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js';
+import { shouldEnableThinkingByDefault, type ThinkingConfig } from 'src/services/context/thinking.js';
+import { launchInvalidSettingsDialog } from 'src/dialogLaunchers.js';
+import { type AppState, IDLE_SPECULATION_STATE } from 'src/state/AppStateStore.js';
+import type { Root } from 'src/ink.js';
+import type { InternalPermissionMode } from 'src/types/permissions.js';
+import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from './parseOptions.js';
 import uniqBy from 'lodash-es/uniqBy.js';
 
@@ -172,7 +172,7 @@ export async function runPostHeadlessGuards(
   }
   if (!isNonInteractiveSession) {
     // Pre-fetch example commands (runs git log, no API call)
-    const { refreshExampleCommands } = await import('../../utils/exampleCommands.js');
+    const { refreshExampleCommands } = await import('src/utils/exampleCommands.js');
     void refreshExampleCommands();
   }
 
@@ -545,7 +545,7 @@ export function runInteractiveStartupBlock(
   let ccrMirrorEnabled = false;
   if (feature('CCR_MIRROR') && !fullRemoteControl) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { isCcrMirrorEnabled } = require('../../bridge/bridgeEnabled.js') as typeof import('../../bridge/bridgeEnabled.js');
+    const { isCcrMirrorEnabled } = require('src/bridge/bridgeEnabled.js') as typeof import('src/bridge/bridgeEnabled.js');
     /* eslint-enable @typescript-eslint/no-require-imports */
     ccrMirrorEnabled = isCcrMirrorEnabled();
   }

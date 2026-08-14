@@ -10,7 +10,7 @@ in lockstep as each feature lands.
 
 As of 2026-06-18 it covers (recent additions this session):
 - **Multi-repo / nested-repo discovery** for monorepos of independent repos: `findNestedGitRoots`
-  in `src/utils/git.ts` (bounded async scan — depth ≤3, ≤1500 dirs, skips node_modules/dot-dirs,
+  in `src/services/git/git.ts` (bounded async scan — depth ≤3, ≤1500 dirs, skips node_modules/dot-dirs,
   fail-open), wired through `useWorkspaceDiff(roots, scanBases)`; `noRepo` now means "scan settled
   with zero groups", not "no explicit root".
 - **Per-repo group headers**: colored Nerd-Font square swatch (`entityColorByIndex`, siblings

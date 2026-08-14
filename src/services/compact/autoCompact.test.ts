@@ -7,7 +7,7 @@ import {
   WARNING_THRESHOLD_BUFFER_TOKENS,
   ERROR_THRESHOLD_BUFFER_TOKENS,
 } from './autoCompact.ts'
-import { getContextWindowForModel } from '../../utils/context.ts'
+import { getContextWindowForModel } from 'src/services/context/context.ts'
 
 describe('getEffectiveContextWindowSize', () => {
   test('returns positive value for known models with large context windows', () => {

@@ -21,14 +21,14 @@
  */
 
 import { getAllBaseTools } from '../src/tools.js'
-import { toolToAPISchema } from '../src/utils/api.js'
+import { toolToAPISchema } from '../src/services/api/api.js'
 import { roughTokenCountEstimation } from '../src/services/tokenEstimation.js'
 import { getEmptyToolPermissionContext } from '../src/Tool.js'
 import type { Tool } from '../src/Tool.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 import { convertTools } from '../src/services/api/openaiShim.js'
 import { convertToolsToResponsesTools } from '../src/services/api/codexShim.js'
-import { clearToolSchemaCache } from '../src/utils/toolSchemaCache.js'
+import { clearToolSchemaCache } from '../src/services/tools/toolSchemaCache.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 const ALL_ENGINES: readonly Engine[] = ['anthropic', 'openai', 'codex'] as const

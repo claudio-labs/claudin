@@ -8,7 +8,7 @@
 //     `src/schemas/hooks.ts`, which is also what `HooksSettings` is built from
 //     — the settings snapshot the only consumer stubs out.
 //
-// Its one consumer is `src/utils/hooks/matching.characterization.test.ts`.
+// Its one consumer is `src/services/lifecycleHooks/matching.characterization.test.ts`.
 
 export type { HookEvent, HookInput } from 'src/entrypoints/agentSdkTypes.js'
 export type { HookMatcher } from 'src/schemas/hooks.js'

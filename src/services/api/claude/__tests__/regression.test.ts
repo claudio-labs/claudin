@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import * as barrel from '../../claude.js'
+import * as barrel from 'src/services/api/claude.js'
 
 // Smoke regression: verify every re-exported symbol in the public barrel
 // resolves to the expected runtime kind. Catches typos in the barrel and

@@ -18,7 +18,7 @@
  * stream suppress a `<tool_call>` opener split across SSE deltas.
  */
 
-import { stripThinkTags } from '../thinkTagSanitizer.js'
+import { stripThinkTags } from 'src/services/api/thinkTagSanitizer.js'
 
 export interface ParsedTextToolCall {
   id: string

@@ -4,7 +4,7 @@ description: sanitizeProvider collapses most OpenAI-compat tags to 'openai' but 
 type: project
 ---
 
-`ProviderProfile['provider']` (src/utils/providerProfiles.ts) is a wide union,
+`ProviderProfile['provider']` (src/services/api/providerProfiles.ts) is a wide union,
 but `sanitizeProvider()` collapses it: only `anthropic`, `mistral`, `gemini`,
 `bedrock`, `vertex`, `foundry` survive as-is — every other OpenAI-compat preset
 (deepseek, groq, openrouter, lmstudio, together, custom, …) is stored as

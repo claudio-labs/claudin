@@ -1,15 +1,15 @@
 import type { z } from 'zod/v4'
-import { getOriginalCwd } from '../../bootstrap/state.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
 import {
   extractOutputRedirections,
   splitCommand_DEPRECATED,
-} from '../../utils/bash/commands.js'
-import { tryParseShellCommand } from '../../utils/bash/shellQuote.js'
-import { getCwd } from '../../utils/cwd.js'
-import { isCurrentDirectoryBareGitRepo } from '../../utils/git.js'
-import type { PermissionResult } from '../../utils/permissions/PermissionResult.js'
-import { getPlatform } from '../../utils/platform.js'
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js'
+} from 'src/services/bash/commands.js'
+import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { isCurrentDirectoryBareGitRepo } from 'src/services/git/git.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import {
   containsVulnerableUncPath,
   DOCKER_READ_ONLY_COMMANDS,
@@ -19,7 +19,7 @@ import {
   PYRIGHT_READ_ONLY_COMMANDS,
   RIPGREP_READ_ONLY_COMMANDS,
   validateFlags,
-} from '../../utils/shell/readOnlyCommandValidation.js'
+} from 'src/services/shell/readOnlyCommandValidation.js'
 import type { BashTool } from './BashTool.js'
 import { isNormalizedGitCommand } from './bashPermissions.js'
 import { bashCommandIsSafe_DEPRECATED } from './bashSecurity.js'

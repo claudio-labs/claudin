@@ -7,8 +7,8 @@ import {
   mock,
   test,
 } from 'bun:test'
-import * as configMod from './config.js'
-import * as terminalMod from '../ink/terminal.js'
+import * as configMod from 'src/services/config/config.js'
+import * as terminalMod from 'src/ink/terminal.js'
 
 // Snapshot the real exports BEFORE mock.module() runs. `import * as` namespaces
 // are live: Bun rewrites configMod.getGlobalConfig to the stub once the mock is
@@ -23,11 +23,11 @@ const realTerminal = { ...terminalMod }
 let mockRewrite = false
 let mockConfig: { flickerFreeMode?: boolean } = {}
 
-mock.module('./config.js', () => ({
+mock.module('src/services/config/config.js', () => ({
   ...configMod,
   getGlobalConfig: () => mockConfig as ReturnType<typeof configMod.getGlobalConfig>,
 }))
-mock.module('../ink/terminal.js', () => ({
+mock.module('src/ink/terminal.js', () => ({
   ...terminalMod,
   shouldUseMainScreenRewrite: () => mockRewrite,
 }))
@@ -61,9 +61,9 @@ afterEach(() => {
 // files in the same run — otherwise getGlobalConfig() loses every other flag
 // (e.g. toolResultSummarizerEnabled) for the rest of the process.
 afterAll(() => {
-  mock.module('./config.js', () => realConfig)
-  mock.module('src/utils/config.js', () => realConfig)
-  mock.module('../ink/terminal.js', () => realTerminal)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/ink/terminal.js', () => realTerminal)
   mock.module('src/ink/terminal.js', () => realTerminal)
 })
 

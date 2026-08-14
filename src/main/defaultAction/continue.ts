@@ -2,19 +2,19 @@
 // and launches the REPL with it. Extracted from src/main.tsx (ROADMAP 11g
 // Fase 5b). Pure code-motion: signatures match the original closure variables.
 
-import type { Root } from '../../ink.js';
-import type { StatsStore } from '../../context/stats.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
-import { exitWithError, renderAndRun } from '../../interactiveHelpers.js';
-import { launchRepl } from '../../replLauncher.js';
-import { logError } from '../../utils/log.js';
-import { errorMessage } from '../../utils/errors.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { loadConversationForResume } from '../../utils/conversationRecovery.js';
-import { processResumedConversation } from '../../utils/sessionRestore.js';
-import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
-import { maybeActivateBrief, maybeActivateProactive } from '../lifecycle.js';
+import type { Root } from 'src/ink.js';
+import type { StatsStore } from 'src/context/stats.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import { launchRepl } from 'src/replLauncher.js';
+import { logError } from 'src/utils/log.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
+import { processResumedConversation } from 'src/services/session/sessionRestore.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { maybeActivateBrief, maybeActivateProactive } from 'src/main/lifecycle.js';
 
 export type ContinueBranchDeps = {
   root: Root;
@@ -34,7 +34,7 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
   try {
     const resumeStart = performance.now();
 
-    const { clearSessionCaches } = await import('../../commands/clear/caches.js');
+    const { clearSessionCaches } = await import('src/commands/clear/caches.js');
     clearSessionCaches();
     const result = await loadConversationForResume(undefined /* sessionId */, undefined /* sourceFile */);
     if (!result) {

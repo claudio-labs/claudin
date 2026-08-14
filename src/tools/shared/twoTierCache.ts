@@ -1,5 +1,5 @@
 import { LRUCache } from 'lru-cache'
-import { logError } from '../../utils/log.js'
+import { logError } from 'src/utils/log.js'
 
 // Two-tier TTL cache with in-flight coalescing, observability counters,
 // and stale-while-revalidate. Extracted from WebFetchTool to be shared

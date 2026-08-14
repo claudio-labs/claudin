@@ -1,10 +1,10 @@
 import axios from 'axios'
-import { getOauthConfig } from '../../constants/oauth.js'
-import { getOauthAccountInfo } from '../../utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
-import { logError } from '../../utils/log.js'
-import { isEssentialTrafficOnly } from '../../utils/privacyLevel.js'
-import { getOAuthHeaders, prepareApiRequest } from '../../utils/teleport/api.js'
+import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthAccountInfo } from 'src/services/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { logError } from 'src/utils/log.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { getOAuthHeaders, prepareApiRequest } from 'src/services/teleport/api.js'
 
 export type OverageCreditGrantInfo = {
   available: boolean

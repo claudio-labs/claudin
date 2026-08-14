@@ -1,25 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ToolUseConfirm } from '../components/permissions/PermissionRequest.js'
-import type { RemotePermissionResponse } from '../remote/RemoteSessionManager.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { RemotePermissionResponse } from 'src/remote/RemoteSessionManager.js'
 import {
   createSyntheticAssistantMessage,
   createToolStub,
-} from '../remote/remotePermissionBridge.js'
+} from 'src/remote/remotePermissionBridge.js'
 import {
   convertSDKMessage,
   isSessionEndMessage,
-} from '../remote/sdkMessageAdapter.js'
+} from 'src/remote/sdkMessageAdapter.js'
 import {
   type DirectConnectConfig,
   DirectConnectSessionManager,
-} from '../server/directConnectManager.js'
-import type { Tool } from '../Tool.js'
-import { findToolByName } from '../Tool.js'
-import type { Message as MessageType } from '../types/message.js'
-import type { PermissionAskDecision } from '../types/permissions.js'
-import { logForDebugging } from '../utils/debug.js'
-import { gracefulShutdown } from '../utils/gracefulShutdown.js'
-import type { RemoteMessageContent } from '../utils/teleport/api.js'
+} from 'src/server/directConnectManager.js'
+import type { Tool } from 'src/Tool.js'
+import { findToolByName } from 'src/Tool.js'
+import type { Message as MessageType } from 'src/types/message.js'
+import type { PermissionAskDecision } from 'src/types/permissions.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import type { RemoteMessageContent } from 'src/services/teleport/api.js'
 
 type UseDirectConnectResult = {
   isRemoteMode: boolean

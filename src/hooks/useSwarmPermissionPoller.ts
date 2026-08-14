@@ -10,11 +10,11 @@
  * could forge approval files. The mailbox path is the sole active channel.
  */
 
-import { logForDebugging } from '../utils/debug.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   type PermissionUpdate,
   permissionUpdateSchema,
-} from '../utils/permissions/PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdateSchema.js'
 
 /**
  * Validate permissionUpdates from external sources (mailbox IPC).

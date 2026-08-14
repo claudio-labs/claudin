@@ -7,28 +7,28 @@ import { stat } from 'fs/promises';
 import pMap from 'p-map';
 import { cwd } from 'process';
 import React from 'react';
-import { MCPServerDesktopImportDialog } from '../../components/MCPServerDesktopImportDialog.js';
-import { render } from '../../ink.js';
-import { KeybindingSetup } from '../../keybindings/KeybindingProviderSetup.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
+import { MCPServerDesktopImportDialog } from 'src/components/MCPServerDesktopImportDialog.js';
+import { render } from 'src/ink.js';
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import {
   clearMcpClientConfig,
   clearServerTokensFromSecureStorage,
   readClientSecret,
   saveMcpClientSecret,
-} from '../../services/mcp/auth.js'
-import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from '../../services/mcp/doctor.js';
-import { connectToServer, getMcpServerConnectionBatchSize } from '../../services/mcp/client.js';
-import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from '../../services/mcp/config.js';
-import type { ConfigScope, ScopedMcpServerConfig } from '../../services/mcp/types.js';
-import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from '../../services/mcp/utils.js';
-import { AppStateProvider } from '../../state/AppState.js';
-import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from '../../utils/config.js';
-import { isFsInaccessible } from '../../utils/errors.js';
-import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
-import { safeParseJSON } from '../../utils/json.js';
-import { getPlatform } from '../../utils/platform.js';
-import { cliError, cliOk } from '../exit.js';
+} from 'src/services/mcp/auth.js'
+import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from 'src/services/mcp/doctor.js';
+import { connectToServer, getMcpServerConnectionBatchSize } from 'src/services/mcp/client.js';
+import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/services/mcp/config.js';
+import type { ConfigScope, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/services/mcp/utils.js';
+import { AppStateProvider } from 'src/state/AppState.js';
+import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/services/config/config.js';
+import { isFsInaccessible } from 'src/utils/errors.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { cliError, cliOk } from 'src/cli/exit.js';
 
 function formatDoctorReport(report: McpDoctorReport): string {
   const lines: string[] = []
@@ -161,11 +161,11 @@ export async function mcpServeHandler({
   try {
     const {
       setup
-    } = await import('../../setup.js');
+    } = await import('src/setup.js');
     await setup(providedCwd, 'default', false, false, undefined, false);
     const {
       startMCPServer
-    } = await import('../../entrypoints/mcp.js');
+    } = await import('src/entrypoints/mcp.js');
     await startMCPServer(providedCwd, debug ?? false, verbose ?? false);
   } catch (error) {
     cliError(`Error: Failed to start MCP server: ${error}`);
@@ -425,7 +425,7 @@ export async function mcpAddFromDesktopHandler(options: {
     });
     const {
       readClaudeDesktopMcpServers
-    } = await import('../../utils/claudeDesktop.js');
+    } = await import('src/services/ide/claudeDesktop.js');
     const servers = await readClaudeDesktopMcpServers();
     if (Object.keys(servers).length === 0) {
       cliOk('No MCP servers found in Claude Desktop configuration or configuration file does not exist.');

@@ -2,10 +2,10 @@
 // (packages/opencode/src/patch/index.ts), de-Effected for Claudin's Node
 // runtime. Differences from the source, on purpose:
 //   - BOM-free: callers read/write through Claudin's encoding+lineEnding utils
-//     (src/utils/fileRead.ts / writeTextContent), so this module operates on
+//     (src/utils/fs/fileRead.ts / writeTextContent), so this module operates on
 //     plain LF-normalized text and never touches a BOM.
 //   - No `generateUnifiedDiff` (opencode's is a naive placeholder and unused
-//     for display) — the tool computes diffs via src/utils/diff.ts.
+//     for display) — the tool computes diffs via src/services/git/diff.ts.
 //   - No `maybeParseApplyPatch` (Bash-invocation detection) — out of scope.
 // The parse + fuzzy-match behavior is otherwise identical to the source.
 

@@ -1,12 +1,12 @@
 import type { Token, Tokens } from 'marked';
 import React from 'react';
 import stripAnsi from 'strip-ansi';
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
-import { stringWidth } from '../ink/stringWidth.js';
-import { wrapAnsi } from '../ink/wrapAnsi.js';
-import { Ansi, useTheme } from '../ink.js';
-import type { CliHighlight } from '../utils/cliHighlight.js';
-import { formatToken, padAligned } from '../utils/markdown.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { wrapAnsi } from 'src/ink/wrapAnsi.js';
+import { Ansi, useTheme } from 'src/ink.js';
+import type { CliHighlight } from 'src/utils/text/cliHighlight.js';
+import { formatToken, padAligned } from 'src/utils/text/markdown.js';
 
 /** Accounts for parent indentation (e.g. message dot prefix) and terminal
  *  resize races. Without enough margin the table overflows its layout box

@@ -17,15 +17,15 @@
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from '../../utils/config.js'
-import type { ExecResult } from '../../utils/ShellCommand.js'
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
+import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
 import {
   applyBashOutputFilter,
   type BashToolInput,
   planBashFilterForExecution,
   shouldFilterOutput,
 } from './BashTool.js'
-import { getBytesSaved, resetBytesSaved } from '../../utils/tokensSaved.js'
+import { getBytesSaved, resetBytesSaved } from 'src/services/context/tokensSaved.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures

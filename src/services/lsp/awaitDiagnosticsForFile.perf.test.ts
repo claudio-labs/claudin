@@ -6,7 +6,7 @@
  *  - Timeout path falls inside [timeoutMs, timeoutMs + jitter].
  */
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import type { DiagnosticFile } from '../diagnosticTracking.js'
+import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
 import {
   _resetFileWaitersForTesting,
   awaitDiagnosticsForFile,

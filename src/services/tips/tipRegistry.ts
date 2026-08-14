@@ -1,26 +1,26 @@
 import chalk from 'chalk'
 import { logForDebugging } from 'src/utils/debug.js'
-import { fileHistoryEnabled } from 'src/utils/fileHistory.js'
+import { fileHistoryEnabled } from 'src/utils/fs/fileHistory.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/utils/settings/settings.js'
-import { shouldOfferTerminalSetup } from '../../commands/terminalSetup/terminalSetup.js'
-import { color } from '../../components/design-system/color.js'
-import { shouldShowOverageCreditUpsell } from '../../components/LogoV2/OverageCreditUpsell.js'
-import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js'
-import { isKairosCronEnabled } from '../../tools/ScheduleCronTool/prompt.js'
-import { is1PApiCustomer } from '../../utils/auth.js'
-import { countConcurrentSessions } from '../../utils/concurrentSessions.js'
-import { getGlobalConfig } from '../../utils/config.js'
+} from 'src/services/settings/settings.js'
+import { shouldOfferTerminalSetup } from 'src/commands/terminalSetup/terminalSetup.js'
+import { color } from 'src/components/design-system/color.js'
+import { shouldShowOverageCreditUpsell } from 'src/components/LogoV2/OverageCreditUpsell.js'
+import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
+import { is1PApiCustomer } from 'src/services/auth/auth.js'
+import { countConcurrentSessions } from 'src/services/session/concurrentSessions.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import {
   getEffortEnvOverride,
   getInitialEffortSetting,
   modelSupportsEffort,
-} from '../../utils/effort.js'
-import { env } from '../../utils/env.js'
-import { cacheKeys } from '../../utils/fileStateCache.js'
-import { getIsGit, getWorktreeCount } from '../../utils/git.js'
+} from 'src/utils/effort.js'
+import { env } from 'src/utils/env.js'
+import { cacheKeys } from 'src/utils/fs/fileStateCache.js'
+import { getIsGit, getWorktreeCount } from 'src/services/git/git.js'
 import {
   detectRunningIDEsCached,
   getSortedIdeLockfiles,
@@ -29,29 +29,29 @@ import {
   isSupportedVSCodeTerminal,
   isVSCodeInstalled,
   isWindsurfInstalled,
-} from '../../utils/ide.js'
+} from 'src/services/ide/ide.js'
 import {
   getMainLoopModel,
   getUserSpecifiedModelSetting,
-} from '../../utils/model/model.js'
-import { getPlatform } from '../../utils/platform.js'
-import { isPluginInstalled } from '../../utils/plugins/installedPluginsManager.js'
-import { loadKnownMarketplacesConfigSafe } from '../../utils/plugins/marketplaceManager.js'
-import { OFFICIAL_MARKETPLACE_NAME } from '../../utils/plugins/officialMarketplace.js'
+} from 'src/utils/model/model.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
+import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
+import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js'
 import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,
-} from '../../utils/sessionStorage.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
+} from 'src/services/session/sessionStorage.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   formatGrantAmount,
   getCachedOverageCreditGrant,
-} from '../api/overageCreditGrant.js'
+} from 'src/services/api/overageCreditGrant.js'
 import {
   checkCachedPassesEligibility,
   formatCreditAmount,
   getCachedReferrerReward,
-} from '../api/referral.js'
+} from 'src/services/api/referral.js'
 import { getSessionsSinceLastShown } from './tipHistory.js'
 import type { Tip, TipContext } from './types.js'
 

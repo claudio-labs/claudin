@@ -1,4 +1,4 @@
-import { getMainLoopModel } from '../utils/model/model.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import { getFamilyForLogging, type ModelFamily } from './familyAddendums/index.js'
 
 // Tool-prompt verbosity tier by model family. Capable families follow the

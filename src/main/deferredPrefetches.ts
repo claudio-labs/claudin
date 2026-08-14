@@ -5,22 +5,22 @@
 // (main → interactiveHelpers → main). Hoisting the function here breaks the
 // cycle: both callers now import from this leaf module.
 
-import { isBareMode, isEnvTruthy } from '../utils/envUtils.js';
-import { initUser } from '../utils/user.js';
-import { getUserContext } from '../context.js';
-import { getRelevantTips } from '../services/tips/tipRegistry.js';
-import { tryGetActiveProvider } from '../services/api/activeProvider.js';
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js';
+import { initUser } from 'src/utils/user.js';
+import { getUserContext } from 'src/context.js';
+import { getRelevantTips } from 'src/services/tips/tipRegistry.js';
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import {
   prefetchAwsCredentialsAndBedRockInfoIfSafe,
   prefetchGcpCredentialsIfSafe,
-} from '../utils/auth.js';
-import { countFilesRoundedRg } from '../utils/ripgrep.js';
-import { getCwd } from '../utils/cwd.js';
-import { initializeAnalyticsGates } from '../services/analytics/sink.js';
-import { prefetchOfficialMcpUrls } from '../services/mcp/officialRegistry.js';
-import { refreshModelCapabilities } from '../utils/model/modelCapabilities.js';
-import { settingsChangeDetector } from '../utils/settings/changeDetector.js';
-import { skillChangeDetector } from '../utils/skills/skillChangeDetector.js';
+} from 'src/services/auth/auth.js';
+import { countFilesRoundedRg } from 'src/utils/fs/ripgrep.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
+import { prefetchOfficialMcpUrls } from 'src/services/mcp/officialRegistry.js';
+import { refreshModelCapabilities } from 'src/utils/model/modelCapabilities.js';
+import { settingsChangeDetector } from 'src/services/settings/changeDetector.js';
+import { skillChangeDetector } from 'src/skills/skillChangeDetector.js';
 import { prefetchSystemContextIfSafe } from './lifecycle.js';
 
 /**

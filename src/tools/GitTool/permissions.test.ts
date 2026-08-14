@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from 'bun:test'
-import { getEmptyToolPermissionContext } from '../../Tool.js'
-import type { ToolPermissionContext, ToolUseContext } from '../../Tool.js'
+import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import { checkGitBatchPermission } from './permissions.js'
 
 beforeAll(() => {

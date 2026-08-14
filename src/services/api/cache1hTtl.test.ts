@@ -33,7 +33,7 @@ async function importFresh() {
   }))
   // Use the unstamped state module so we share the singleton STATE that
   // claude.ts uses internally. Reset the latch manually.
-  const state = await import('../../bootstrap/state.js')
+  const state = await import('src/bootstrap/state.js')
   state.setLargeSystemPromptDetected(null)
   const claude = await import('./claude.js')
   return { claude, state }
@@ -141,7 +141,7 @@ describe('getCacheControl — 1h TTL gating', () => {
     setProvider('firstParty')
     const { claude } = await importFresh()
     const { FORK_SUBAGENT_TYPE } = await import(
-      '../../tools/AgentTool/forkSubagent.js'
+      'src/tools/AgentTool/forkSubagent.js'
     )
     expect(
       claude.getCacheControl({

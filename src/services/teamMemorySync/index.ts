@@ -33,30 +33,30 @@ import {
   CLAUDE_AI_PROFILE_SCOPE,
   getOauthConfig,
   OAUTH_BETA_HEADER,
-} from '../../constants/oauth.js'
+} from 'src/constants/oauth.js'
 import {
   getTeamMemPath,
   PathTraversalError,
   validateTeamMemKey,
-} from '../../memdir/teamMemPaths.js'
-import { count } from '../../utils/array.js'
+} from 'src/memdir/teamMemPaths.js'
+import { count } from 'src/utils/data/array.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from '../../utils/auth.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { classifyAxiosError } from '../../utils/errors.js'
-import { getGithubRepo } from '../../utils/git.js'
+} from 'src/services/auth/auth.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { classifyAxiosError } from 'src/utils/errors.js'
+import { getGithubRepo } from 'src/services/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from '../../utils/model/providers.js'
-import { sleep } from '../../utils/sleep.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from '../../utils/userAgent.js'
-import { logEvent } from '../analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../analytics/metadata.js'
-import { getRetryDelay } from '../api/withRetry.js'
+} from 'src/utils/model/providers.js'
+import { sleep } from 'src/utils/sleep.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { getRetryDelay } from 'src/services/api/withRetry.js'
 import { scanForSecrets } from './secretScanner.js'
 import {
   type SkippedSecretFile,
@@ -850,7 +850,7 @@ export async function pullTeamMemory(
 
   const filesWritten = await writeRemoteEntriesToLocal(entries)
   if (filesWritten > 0) {
-    const { clearMemoryFileCaches } = await import('../../utils/claudemd.js')
+    const { clearMemoryFileCaches } = await import('src/services/instructions/claudemd.js')
     clearMemoryFileCaches()
   }
   logForDebugging(`team-memory-sync: pulled ${filesWritten} files`, {

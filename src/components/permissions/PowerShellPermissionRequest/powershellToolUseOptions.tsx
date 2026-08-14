@@ -1,8 +1,8 @@
-import { POWERSHELL_TOOL_NAME } from '../../../tools/PowerShellTool/toolName.js';
-import type { PermissionUpdate } from '../../../utils/permissions/PermissionUpdateSchema.js';
-import { shouldShowAlwaysAllowOptions } from '../../../utils/permissions/permissionsLoader.js';
-import type { OptionWithDescription } from '../../CustomSelect/select.js';
-import { generateShellSuggestionsLabel } from '../shellPermissionHelpers.js';
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import { generateShellSuggestionsLabel } from 'src/components/permissions/shellPermissionHelpers.js';
 export type PowerShellToolUseOption = 'yes' | 'yes-apply-suggestions' | 'yes-prefix-edited' | 'no';
 export function powershellToolUseOptions({
   suggestions = [],

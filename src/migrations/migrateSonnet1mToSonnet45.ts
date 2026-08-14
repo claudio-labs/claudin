@@ -1,13 +1,13 @@
 import {
   getMainLoopModelOverride,
   setMainLoopModelOverride,
-} from '../bootstrap/state.js'
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
-import { getAPIProvider } from '../utils/model/providers.js'
+} from 'src/bootstrap/state.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../utils/settings/settings.js'
+} from 'src/services/settings/settings.js'
 
 /**
  * Migrate users who had "sonnet[1m]" saved to the explicit "sonnet-4-5-20250929[1m]".

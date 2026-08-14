@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { join } from 'path'
-import { getFsImplementation } from '../utils/fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from './paths.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -8,21 +8,21 @@ const teamMemPaths = feature('TEAMMEM')
   ? (require('./teamMemPaths.js') as typeof import('./teamMemPaths.js'))
   : null
 
-import { getKairosActive, getOriginalCwd } from '../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+import { getKairosActive, getOriginalCwd } from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { GREP_TOOL_NAME } from '../tools/GrepTool/prompt.js'
-import { isReplModeEnabled } from '../tools/REPLTool/constants.js'
-import { logForDebugging } from '../utils/debug.js'
-import { hasEmbeddedSearchTools } from '../utils/embeddedTools.js'
-import { isEnvTruthy } from '../utils/envUtils.js'
-import { formatFileSize } from '../utils/format.js'
-import { getProjectDir } from '../utils/sessionStorage.js'
-import { getInitialSettings } from '../utils/settings/settings.js'
+} from 'src/services/analytics/index.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { formatFileSize } from 'src/utils/text/format.js'
+import { getProjectDir } from 'src/services/session/sessionStorage.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,

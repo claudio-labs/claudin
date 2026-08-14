@@ -4,10 +4,10 @@ import { z } from 'zod/v4'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
-} from '../services/mcp/types.js'
-import { asMcpSchema } from '../services/mcp/zodCompat.js'
-import { getConnectedIdeClient } from '../utils/ide.js'
-import { lazySchema } from '../utils/lazySchema.js'
+} from 'src/services/mcp/types.js'
+import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
+import { getConnectedIdeClient } from 'src/services/ide/ide.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 export type IDEAtMentioned = {
   filePath: string
   lineStart?: number

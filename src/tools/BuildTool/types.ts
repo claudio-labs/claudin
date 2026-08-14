@@ -1,4 +1,4 @@
-import type { RawDiagnostic } from '../shared/diagnostics/types.js'
+import type { RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * Normalized, toolchain-agnostic build model. One shape here is what lets the

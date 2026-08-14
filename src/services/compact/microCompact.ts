@@ -1,35 +1,35 @@
 import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import type { QuerySource } from '../../constants/querySource.js'
-import type { ToolUseContext } from '../../Tool.js'
-import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
-import { GLOB_TOOL_NAME } from '../../tools/GlobTool/prompt.js'
-import { GREP_TOOL_NAME } from '../../tools/GrepTool/prompt.js'
-import { WEB_FETCH_TOOL_NAME } from '../../tools/WebFetchTool/prompt.js'
-import { WEB_SEARCH_TOOL_NAME } from '../../tools/WebSearchTool/prompt.js'
-import type { Message } from '../../types/message.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
-import { SHELL_TOOL_NAMES } from '../../utils/shell/shellToolUtils.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { getMainLoopModel } from '../../utils/model/model.js'
-import { logEvent } from '../analytics/index.js'
-import { notifyCacheDeletion } from '../api/promptCacheBreakDetection.js'
-import { roughTokenCountEstimation } from '../tokenEstimation.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
+import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
+import type { Message } from 'src/types/message.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'
+import { SHELL_TOOL_NAMES } from 'src/services/shell/shellToolUtils.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import { notifyCacheDeletion } from 'src/services/api/promptCacheBreakDetection.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
 import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from './autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
 } from './compactWarningState.js'
-import { tryGetActiveProvider } from '../api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   addClippedIds,
   getClippedIds,
   resetClippedIds,
 } from './stableStubState.js'
-import { getCacheProfile } from '../cache/cacheProfile.js'
+import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 import {
   getTimeBasedMCConfig,
   type TimeBasedMCConfig,

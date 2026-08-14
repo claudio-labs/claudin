@@ -16,12 +16,12 @@
  * Disable with `CLAUDIN_DISABLE_GIT_DELTA=1`.
  */
 import { createHash } from 'crypto'
-import { getSessionId } from '../../bootstrap/state.js'
-import { getClippedIds } from '../../services/compact/stableStubState.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { logError } from '../../utils/log.js'
-import { getAgentId } from '../../utils/teammate.js'
-import { detectGitOperation } from '../shared/gitOperationTracking.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { getClippedIds } from 'src/services/compact/stableStubState.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logError } from 'src/utils/log.js'
+import { getAgentId } from 'src/coordinator/teammate.js'
+import { detectGitOperation } from 'src/tools/shared/gitOperationTracking.js'
 import { gitSubcommandOf } from './grammar.js'
 
 /**

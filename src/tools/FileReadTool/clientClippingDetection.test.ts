@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildClipStub,
   buildClipStubWithHead,
-} from '../../services/compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import { userWithToolResult } from './__test-helpers__/contextManagementFixtures.js'
 import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
 

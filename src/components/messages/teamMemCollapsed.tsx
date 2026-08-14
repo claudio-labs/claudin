@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Text } from '../../ink.js';
-import type { CollapsedReadSearchGroup } from '../../types/message.js';
+import { Text } from 'src/ink.js';
+import type { CollapsedReadSearchGroup } from 'src/types/message.js';
 
 /**
  * Plain function (not a React component) so the React Compiler won't

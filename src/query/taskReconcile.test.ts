@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { Message } from '../types/message.js'
-import type { Task } from '../utils/tasks.js'
+import type { Message } from 'src/types/message.js'
+import type { Task } from 'src/tasks/tasks.js'
 import {
   buildTaskReconcileReminder,
   shouldReconcileTasks,

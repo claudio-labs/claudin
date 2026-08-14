@@ -4,7 +4,7 @@ import {
   PR_CHECKS_WATCH,
   RUN_WATCH,
   RUN_WATCH_POLL,
-} from '../__fixtures__/watchPolls.js'
+} from 'src/tools/GitTool/__fixtures__/watchPolls.js'
 import { renderRunLog } from './gh.js'
 import { renderWatchPolls } from './watch.js'
 

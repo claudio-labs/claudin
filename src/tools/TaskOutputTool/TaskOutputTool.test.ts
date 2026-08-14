@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import { TaskOutputTool } from './TaskOutputTool.js'
 
 function makeCtx(appState: Record<string, unknown>): ToolUseContext {

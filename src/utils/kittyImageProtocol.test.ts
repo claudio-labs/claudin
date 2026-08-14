@@ -128,7 +128,7 @@ describe('kittyImageProtocol', () => {
   })
 
   test('cell widths match expectation via stringWidth', async () => {
-    const { stringWidth } = await import('../ink/stringWidth.js')
+    const { stringWidth } = await import('src/ink/stringWidth.js')
     const lines = placeholderLines(42, 1, 10)
     expect(stringWidth(lines[0]!)).toBe(10)
   })

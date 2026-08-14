@@ -52,24 +52,24 @@ import {
   BoundedUUIDSet,
 } from './bridgeMessaging.js'
 import { logBridgeSkip } from './debugUtils.js'
-import { logForDebugging } from '../utils/debug.js'
-import { logForDiagnosticsNoPII } from '../utils/diagLogs.js'
-import { isInProtectedNamespace } from '../utils/envUtils.js'
-import { errorMessage } from '../utils/errors.js'
-import { sleep } from '../utils/sleep.js'
-import { registerCleanup } from '../utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { isInProtectedNamespace } from 'src/utils/envUtils.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { sleep } from 'src/utils/sleep.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import type { ReplBridgeHandle, BridgeState } from './replBridge.js'
-import type { Message } from '../types/message.js'
-import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
+import type { Message } from 'src/types/message.js'
+import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import type {
   SDKControlRequest,
   SDKControlResponse,
-} from '../entrypoints/sdk/controlTypes.js'
-import type { PermissionMode } from '../utils/permissions/PermissionMode.js'
+} from 'src/entrypoints/sdk/controlTypes.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 
 const ANTHROPIC_VERSION = '2023-06-01'
 

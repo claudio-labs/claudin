@@ -7,9 +7,9 @@
 // and `ContextVisualization`/`TokenWarning` read the whole `CollapseStats`
 // shape. Declaring the contract here is what keeps those files honest — if the
 // real subsystem ever lands, a mismatch is a compile error rather than a crash.
-import type { QuerySource } from '../../constants/querySource.js'
-import type { AssistantMessage, Message } from '../../types/message.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { ToolUseContext } from 'src/Tool.js'
 
 /** Counters behind the "Context strategy: collapse (…)" legend line. */
 export type CollapseHealth = {

@@ -9,14 +9,14 @@ import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { isSdkApiUserAbortError } from 'src/utils/errors.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
-import type { ThinkingConfig } from 'src/utils/thinking.js'
+import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../analytics/index.js'
-import { getAnthropicClient } from '../client.js'
-import { getCachedAnthropicClient } from '../clientCache.js'
-import { type RetryContext, withRetry } from '../withRetry.js'
+} from 'src/services/analytics/index.js'
+import { getAnthropicClient } from 'src/services/api/client.js'
+import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
+import { type RetryContext, withRetry } from 'src/services/api/withRetry.js'
 import {
   MAX_NON_STREAMING_TOKENS,
   adjustParamsForNonStreaming,

@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import { basename } from 'path';
 import * as React from 'react';
-import { useIdeConnectionStatus } from '../hooks/useIdeConnectionStatus.js';
-import type { IDESelection } from '../hooks/useIdeSelection.js';
-import { Text } from '../ink.js';
-import type { MCPServerConnection } from '../services/mcp/types.js';
+import { useIdeConnectionStatus } from 'src/hooks/useIdeConnectionStatus.js';
+import type { IDESelection } from 'src/hooks/useIdeSelection.js';
+import { Text } from 'src/ink.js';
+import type { MCPServerConnection } from 'src/services/mcp/types.js';
 type IdeStatusIndicatorProps = {
   ideSelection: IDESelection | undefined;
   mcpClients?: MCPServerConnection[];

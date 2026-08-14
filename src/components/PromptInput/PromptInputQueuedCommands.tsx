@@ -4,14 +4,14 @@ import { useMemo } from 'react';
 import { Box, Text } from 'src/ink.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppState.js';
-import { STATUS_TAG, SUMMARY_TAG, TASK_NOTIFICATION_TAG } from '../../constants/xml.js';
-import { QueuedMessageProvider } from '../../context/QueuedMessageContext.js';
-import { useCommandQueue } from '../../hooks/useCommandQueue.js';
-import type { QueuedCommand } from '../../types/textInputTypes.js';
-import { isQueuedCommandEditable, isQueuedCommandVisible } from '../../utils/messageQueueManager.js';
-import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from '../../utils/messages.js';
-import { jsonParse } from '../../utils/slowOperations.js';
-import { Message } from '../Message.js';
+import { STATUS_TAG, SUMMARY_TAG, TASK_NOTIFICATION_TAG } from 'src/constants/xml.js';
+import { QueuedMessageProvider } from 'src/context/QueuedMessageContext.js';
+import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
+import type { QueuedCommand } from 'src/types/textInputTypes.js';
+import { isQueuedCommandEditable, isQueuedCommandVisible } from 'src/utils/messageQueueManager.js';
+import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
+import { jsonParse } from 'src/utils/slowOperations.js';
+import { Message } from 'src/components/Message.js';
 const EMPTY_SET = new Set<string>();
 
 /**

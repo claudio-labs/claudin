@@ -5,38 +5,38 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
 import type { AppState } from 'src/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from '../../bootstrap/state.js';
-import { TOOL_SUMMARY_MAX_LENGTH } from '../../constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from '../../Tool.js';
-import { buildTool, type ToolDef } from '../../Tool.js';
-import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from '../../tasks/LocalShellTask/LocalShellTask.js';
-import type { AgentId } from '../../types/ids.js';
-import type { AssistantMessage } from '../../types/message.js';
-import { extractClaudeCodeHints } from '../../utils/claudeCodeHints.js';
-import { isEnvTruthy } from '../../utils/envUtils.js';
-import { errorMessage as getErrorMessage, ShellError } from '../../utils/errors.js';
-import { truncate } from '../../utils/format.js';
-import { lazySchema } from '../../utils/lazySchema.js';
-import { logError } from '../../utils/log.js';
-import type { PermissionResult } from '../../utils/permissions/PermissionResult.js';
-import { getPlatform } from '../../utils/platform.js';
-import { maybeRecordPluginHint } from '../../utils/plugins/hintRecommendation.js';
-import { exec } from '../../utils/Shell.js';
-import type { ExecResult } from '../../utils/ShellCommand.js';
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js';
-import { semanticBoolean } from '../../utils/semanticBoolean.js';
-import { semanticNumber } from '../../utils/semanticNumber.js';
-import { getCachedPowerShellPath } from '../../utils/shell/powershellDetection.js';
-import { EndTruncatingAccumulator } from '../../utils/stringUtils.js';
-import { TaskOutput } from '../../utils/task/TaskOutput.js';
-import { isOutputLineTruncated } from '../../utils/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from '../../utils/toolResultStorage.js';
-import { shouldUseSandbox } from '../BashTool/shouldUseSandbox.js';
-import { BackgroundHint } from '../BashTool/UI.js';
-import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from '../BashTool/utils.js';
-import { trackGitOperations } from '../shared/gitOperationTracking.js';
-import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from '../shellToolResultMappers.js';
+import { getKairosActive } from 'src/bootstrap/state.js';
+import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/Tool.js';
+import { buildTool, type ToolDef } from 'src/Tool.js';
+import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/tasks/LocalShellTask/LocalShellTask.js';
+import type { AgentId } from 'src/types/ids.js';
+import type { AssistantMessage } from 'src/types/message.js';
+import { extractClaudeCodeHints } from 'src/utils/claudeCodeHints.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { errorMessage as getErrorMessage, ShellError } from 'src/utils/errors.js';
+import { truncate } from 'src/utils/text/format.js';
+import { lazySchema } from 'src/utils/data/lazySchema.js';
+import { logError } from 'src/utils/log.js';
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js';
+import { getPlatform } from 'src/utils/proc/platform.js';
+import { maybeRecordPluginHint } from 'src/services/plugins/hintRecommendation.js';
+import { exec } from 'src/utils/proc/Shell.js';
+import type { ExecResult } from 'src/utils/proc/ShellCommand.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { semanticBoolean } from 'src/utils/data/semanticBoolean.js';
+import { semanticNumber } from 'src/utils/data/semanticNumber.js';
+import { getCachedPowerShellPath } from 'src/services/shell/powershellDetection.js';
+import { EndTruncatingAccumulator } from 'src/utils/text/stringUtils.js';
+import { TaskOutput } from 'src/tasks/TaskOutput.js';
+import { isOutputLineTruncated } from 'src/utils/terminal.js';
+import { ensureToolResultsDir, getToolResultPath } from 'src/services/tools/toolResultStorage.js';
+import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
+import { BackgroundHint } from 'src/tools/BashTool/UI.js';
+import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
+import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
+import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from './commandSemantics.js';
 import { powershellToolHasPermission } from './powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from './prompt.js';
@@ -192,7 +192,7 @@ export function detectBlockedSleepPattern(command: string): string | null {
   // `&`/`&&`/`||` (pwsh 7+), and newline (PS's primary separator). This is
   // intentionally shallow — sleep inside script blocks, subshells, or later
   // pipeline stages is fine. Matches BashTool's splitCommandWithOperators
-  // intent (src/utils/bash/commands.ts) without a full PS parser.
+  // intent (src/services/bash/commands.ts) without a full PS parser.
   const first = command.trim().split(/[;|&\r\n]/)[0]?.trim() ?? '';
   // Match: Start-Sleep N, Start-Sleep -Seconds N, Start-Sleep -s N, sleep N
   // (case-insensitive; -Seconds can be abbreviated to -s per PS convention)
@@ -264,8 +264,8 @@ const outputSchema = lazySchema(() => z.object({
 }));
 type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;
-import type { PowerShellProgress } from '../../types/tools.js';
-export type { PowerShellProgress } from '../../types/tools.js';
+import type { PowerShellProgress } from 'src/types/tools.js';
+export type { PowerShellProgress } from 'src/types/tools.js';
 const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'Invoke-WebRequest', 'build', 'test', 'serve', 'watch', 'dev'] as const;
 function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
   const trimmed = command.trim();

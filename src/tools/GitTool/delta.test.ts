@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   addClippedIds,
   resetClippedIds,
-} from '../../services/compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import {
   MAX_CONSECUTIVE_DELTAS,
   _getRememberedCountForTesting,

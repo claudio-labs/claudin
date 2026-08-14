@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
-import { readSourceExcerpt } from '../shared/sourceExcerpt.js'
+import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
 import type { TestFailure } from './types.js'
 
 /**

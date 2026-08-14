@@ -15,53 +15,53 @@ import { dirname } from 'path'
 import type { UUID } from 'crypto'
 import type { MutableRefObject } from 'react'
 
-import { asSessionId } from '../../../types/ids.js'
-import { type ResumeEntrypoint } from '../../../commands.js'
-import type { LogOption } from '../../../types/logs.js'
-import type { AgentDefinition, AgentDefinitionsResult } from '../../../tools/AgentTool/loadAgentsDir.js'
-import type { AppStateStore } from '../../../state/AppStateStore.js'
-import type { SetAppState } from '../../../utils/messageQueueManager.js'
-import type { Message as MessageType } from '../../../types/message.js'
+import { asSessionId } from 'src/types/ids.js'
+import { type ResumeEntrypoint } from 'src/commands.js'
+import type { LogOption } from 'src/types/logs.js'
+import type { AgentDefinition, AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
+import type { AppStateStore } from 'src/state/AppStateStore.js'
+import type { SetAppState } from 'src/utils/messageQueueManager.js'
+import type { Message as MessageType } from 'src/types/message.js'
 
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../../services/analytics/index.js'
-import { deserializeMessages } from '../../../utils/conversationRecovery.js'
-import { createSystemMessage } from '../../../utils/messages.js'
-import { processSessionStartHooks } from '../../../utils/sessionStart.js'
-import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from '../../../utils/hooks.js'
-import { copyPlanForFork, copyPlanForResume } from '../../../utils/plans.js'
+import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
+import { deserializeMessages } from 'src/services/session/conversationRecovery.js'
+import { createSystemMessage } from 'src/services/messages/messages.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/services/lifecycleHooks/hooks.js'
+import { copyPlanForFork, copyPlanForResume } from 'src/utils/plans.js'
 import {
   computeStandaloneAgentContext,
   exitRestoredWorktree,
   restoreAgentFromSession,
   restoreSessionStateFromLog,
   restoreWorktreeForResume,
-} from '../../../utils/sessionRestore.js'
-import { updateSessionName } from '../../../utils/concurrentSessions.js'
-import { copyFileHistoryForResume } from '../../../utils/fileHistory.js'
+} from 'src/services/session/sessionRestore.js'
+import { updateSessionName } from 'src/services/session/concurrentSessions.js'
+import { copyFileHistoryForResume } from 'src/utils/fs/fileHistory.js'
 import {
   adoptResumedSessionFile,
   clearSessionMetadata,
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveWorktreeState,
-} from '../../../utils/sessionStorage.js'
-import { restoreRemoteAgentTasks } from '../../../tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { getCurrentWorktreeSession } from '../../../utils/worktree.js'
+} from 'src/services/session/sessionStorage.js'
+import { restoreRemoteAgentTasks } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import {
   getOriginalCwd,
   setCostStateForRestore,
   switchSession,
-} from '../../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   getStoredSessionCosts,
   resetCostState,
   saveCurrentSessionCosts,
-} from '../../../cost-tracker.js'
+} from 'src/cost-tracker.js'
 import {
   applyToolResultReplacementsToMessages,
   reconstructContentReplacementState,
   type ContentReplacementState,
-} from '../../../utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 
 export type ContentReplacementStateRef = {
   current: ContentReplacementState | undefined
@@ -153,7 +153,7 @@ export async function resumeSession(
     // Match coordinator/normal mode to the resumed session
     if (feature('COORDINATOR_MODE')) {
       /* eslint-disable @typescript-eslint/no-require-imports */
-      const coordinatorModule = require('../../../coordinator/coordinatorMode.js') as typeof import('../../../coordinator/coordinatorMode.js')
+      const coordinatorModule = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js')
       /* eslint-enable @typescript-eslint/no-require-imports */
       const warning = coordinatorModule.matchSessionMode(log.mode)
       if (warning) {
@@ -163,7 +163,7 @@ export async function resumeSession(
         const {
           getAgentDefinitionsWithOverrides,
           getActiveAgentsFromList,
-        } = require('../../../tools/AgentTool/loadAgentsDir.js') as typeof import('../../../tools/AgentTool/loadAgentsDir.js')
+        } = require('src/tools/AgentTool/loadAgentsDir.js') as typeof import('src/tools/AgentTool/loadAgentsDir.js')
         /* eslint-enable @typescript-eslint/no-require-imports */
         getAgentDefinitionsWithOverrides.cache.clear?.()
         const freshAgentDefs = await getAgentDefinitionsWithOverrides(getOriginalCwd())
@@ -258,7 +258,7 @@ export async function resumeSession(
     // Rename asciicast recording to match the resumed session ID
     const {
       renameRecordingForSession,
-    } = await import('../../../utils/asciicast.js')
+    } = await import('src/utils/asciicast.js')
     await renameRecordingForSession()
     await resetSessionFilePointer()
 
@@ -307,10 +307,10 @@ export async function resumeSession(
       /* eslint-disable @typescript-eslint/no-require-imports */
       const {
         saveMode,
-      } = require('../../../utils/sessionStorage.js')
+      } = require('src/services/session/sessionStorage.js')
       const {
         isCoordinatorMode,
-      } = require('../../../coordinator/coordinatorMode.js') as typeof import('../../../coordinator/coordinatorMode.js')
+      } = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js')
       /* eslint-enable @typescript-eslint/no-require-imports */
       saveMode(isCoordinatorMode() ? 'coordinator' : 'normal')
     }

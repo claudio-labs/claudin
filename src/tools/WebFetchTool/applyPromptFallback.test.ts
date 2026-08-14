@@ -8,8 +8,8 @@ const haikuMock = mock()
 
 beforeEach(async () => {
   haikuMock.mockReset()
-  const actual = await import('../../services/api/claude.js')
-  mock.module('../../services/api/claude.js', () => ({
+  const actual = await import('src/services/api/claude.js')
+  mock.module('src/services/api/claude.js', () => ({
     ...actual,
     queryHaiku: haikuMock,
   }))

@@ -2,34 +2,34 @@ import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
 import { logForDebugging } from 'src/utils/debug.js'
-import { getAllowedChannels } from '../../../bootstrap/state.js'
-import type { BridgePermissionCallbacks } from '../../../bridge/bridgePermissionCallbacks.js'
-import { getTerminalFocused } from '../../../ink/terminal-focus-state.js'
+import { getAllowedChannels } from 'src/bootstrap/state.js'
+import type { BridgePermissionCallbacks } from 'src/bridge/bridgePermissionCallbacks.js'
+import { getTerminalFocused } from 'src/ink/terminal-focus-state.js'
 import {
   CHANNEL_PERMISSION_REQUEST_METHOD,
   type ChannelPermissionRequestParams,
   findChannelEntry,
-} from '../../../services/mcp/channelNotification.js'
-import type { ChannelPermissionCallbacks } from '../../../services/mcp/channelPermissions.js'
+} from 'src/services/mcp/channelNotification.js'
+import type { ChannelPermissionCallbacks } from 'src/services/mcp/channelPermissions.js'
 import {
   filterPermissionRelayClients,
   shortRequestId,
   truncateForPreview,
-} from '../../../services/mcp/channelPermissions.js'
-import { executeAsyncClassifierCheck } from '../../../tools/BashTool/bashPermissions.js'
-import { BASH_TOOL_NAME } from '../../../tools/BashTool/toolName.js'
+} from 'src/services/mcp/channelPermissions.js'
+import { executeAsyncClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   clearClassifierChecking,
   setClassifierApproval,
   setClassifierChecking,
   setYoloClassifierApproval,
-} from '../../../utils/classifierApprovals.js'
-import { errorMessage } from '../../../utils/errors.js'
-import type { PermissionDecision } from '../../../utils/permissions/PermissionResult.js'
-import type { PermissionUpdate } from '../../../utils/permissions/PermissionUpdateSchema.js'
-import { hasPermissionsToUseTool } from '../../../utils/permissions/permissions.js'
-import type { PermissionContext } from '../PermissionContext.js'
-import { createResolveOnce } from '../PermissionContext.js'
+} from 'src/utils/classifierApprovals.js'
+import { errorMessage } from 'src/utils/errors.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+import type { PermissionContext } from 'src/hooks/toolPermission/PermissionContext.js'
+import { createResolveOnce } from 'src/hooks/toolPermission/PermissionContext.js'
 
 type InteractivePermissionParams = {
   ctx: PermissionContext

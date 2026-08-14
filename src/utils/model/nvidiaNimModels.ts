@@ -4,7 +4,7 @@
  */
 
 import type { ModelOption } from './modelOptions.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { getAPIProvider } from './providers.js'
 
 export function isNvidiaNimProvider(): boolean {

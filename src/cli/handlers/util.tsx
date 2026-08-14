@@ -7,23 +7,23 @@ import { c as _c } from "react-compiler-runtime";
 
 import { cwd } from 'process';
 import React from 'react';
-import { WelcomeV2 } from '../../components/LogoV2/WelcomeV2.js';
-import { useManagePlugins } from '../../hooks/useManagePlugins.js';
-import type { Root } from '../../ink.js';
-import { Box, Text } from '../../ink.js';
-import { KeybindingSetup } from '../../keybindings/KeybindingProviderSetup.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { MCPConnectionManager } from '../../services/mcp/MCPConnectionManager.js';
-import { AppStateProvider } from '../../state/AppState.js';
-import { onChangeAppState } from '../../state/onChangeAppState.js';
-import { isAnthropicAuthEnabled } from '../../utils/auth.js';
-import type { CommandResultDisplay } from '../../types/command.js';
+import { WelcomeV2 } from 'src/components/LogoV2/WelcomeV2.js';
+import { useManagePlugins } from 'src/hooks/useManagePlugins.js';
+import type { Root } from 'src/ink.js';
+import { Box, Text } from 'src/ink.js';
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { MCPConnectionManager } from 'src/services/mcp/MCPConnectionManager.js';
+import { AppStateProvider } from 'src/state/AppState.js';
+import { onChangeAppState } from 'src/state/onChangeAppState.js';
+import { isAnthropicAuthEnabled } from 'src/services/auth/auth.js';
+import type { CommandResultDisplay } from 'src/types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {
   logEvent('tengu_setup_token_command', {});
   const showAuthWarning = !isAnthropicAuthEnabled();
   const {
     ConsoleOAuthFlow
-  } = await import('../../components/ConsoleOAuthFlow.js');
+  } = await import('src/components/ConsoleOAuthFlow.js');
   await new Promise<void>(resolve => {
     root.render(<AppStateProvider onChangeAppState={onChangeAppState}>
         <KeybindingSetup>
@@ -51,7 +51,7 @@ export async function setupTokenHandler(root: Root): Promise<void> {
 }
 
 // DoctorWithPlugins wrapper + doctor handler
-const DoctorLazy = React.lazy(() => import('../../screens/Doctor.js').then(m => ({
+const DoctorLazy = React.lazy(() => import('src/screens/Doctor.js').then(m => ({
   default: m.Doctor
 })));
 type DoctorWithPluginsProps = {
@@ -98,11 +98,11 @@ export async function installHandler(target: string | undefined, options: {
 }): Promise<void> {
   const {
     setup
-  } = await import('../../setup.js');
+  } = await import('src/setup.js');
   await setup(cwd(), 'default', false, false, undefined, false);
   const {
     install
-  } = await import('../../commands/install.js');
+  } = await import('src/commands/install.js');
   await new Promise<void>(resolve => {
     const args: string[] = [];
     if (target) args.push(target);

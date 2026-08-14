@@ -17,11 +17,11 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import {
   _conversionCacheStatsForTesting,
   convertMessages,
-} from '../messageConverter.js'
+} from 'src/services/api/openaiShim/messageConverter.js'
 import {
   _toolConversionCacheStatsForTesting,
   convertTools,
-} from '../toolConverter.js'
+} from 'src/services/api/openaiShim/toolConverter.js'
 
 // ---------------------------------------------------------------------------
 // Shared "session" objects — stable identities across simulated turns, the

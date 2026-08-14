@@ -21,26 +21,26 @@
  * stream loop and its tool-argument finalization path.
  */
 
-import { logForDebugging } from '../../../utils/debug.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   createStreamState,
   processStreamChunk,
   getStreamStats,
-} from '../../../utils/streamingOptimizer.js'
-import { buildAnthropicUsageFromRawUsage } from '../cacheMetrics.js'
+} from 'src/utils/streamingOptimizer.js'
+import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
 import type {
   AnthropicStreamEvent,
   AnthropicUsage,
-} from '../codexShim.js'
-import { createThinkTagFilter } from '../thinkTagSanitizer.js'
+} from 'src/services/api/codexShim.js'
+import { createThinkTagFilter } from 'src/services/api/thinkTagSanitizer.js'
 import {
   hasToolFieldMapping,
   normalizeToolArguments,
-} from '../toolArgumentNormalization.js'
+} from 'src/services/api/toolArgumentNormalization.js'
 import {
   getBytesPerTokenForModel,
-} from '../../tokenEstimation.js'
-import { isEnvTruthy } from '../../../utils/envUtils.js'
+} from 'src/services/tokenEstimation.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { makeMessageId } from './helpers.js'
 import { extractReasoningDelta } from './reasoningNormalizer.js'
 import type { OpenAIStreamChunk } from './types.js'

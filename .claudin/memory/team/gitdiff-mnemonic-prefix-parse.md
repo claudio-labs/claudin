@@ -4,7 +4,7 @@ description: git diff.mnemonicPrefix emits c/ w/ (not a/ b/) and broke the /diff
 type: project
 ---
 
-`parseGitDiff` (src/utils/gitDiff.ts) extracts the file path from the `diff --git <src> <dst>` header. Users with `diff.mnemonicPrefix=true` in their git config get `c/path w/path` (commit/working), not the default `a/path b/path`; `diff.noprefix=true` drops prefixes entirely.
+`parseGitDiff` (src/services/git/gitDiff.ts) extracts the file path from the `diff --git <src> <dst>` header. Users with `diff.mnemonicPrefix=true` in their git config get `c/path w/path` (commit/working), not the default `a/path b/path`; `diff.noprefix=true` drops prefixes entirely.
 
 **Why:** the original header regex `^a\/(.+?) b\/(.+)$` returned null for `c/…w/…`, so EVERY tracked file produced zero hunks → `gitDiffResultToFiles` flagged all of them `isLargeFile` (its rule is `!fileHunks`) and the `/diff` reviewer showed "Large file" for every modified file. Reported 2026-06-18 from a live `claudindev` session.
 

@@ -1,10 +1,10 @@
 import * as React from 'react';
-import type { LocalJSXCommandContext } from '../../commands.js';
-import { getOauthProfileFromOauthToken } from '../../services/oauth/getOauthProfile.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { getClaudeAIOAuthTokens, isClaudeAISubscriber } from '../../utils/auth.js';
-import { openBrowser } from '../../utils/browser.js';
-import { logError } from '../../utils/log.js';
+import type { LocalJSXCommandContext } from 'src/commands.js';
+import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import { getClaudeAIOAuthTokens, isClaudeAISubscriber } from 'src/services/auth/auth.js';
+import { openBrowser } from 'src/utils/browser.js';
+import { logError } from 'src/utils/log.js';
 import Login from '../login/login.js';
 export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXCommandContext): Promise<React.ReactNode | null> {
   try {

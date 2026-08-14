@@ -1,13 +1,13 @@
 import { execa } from 'execa'
 import memoize from 'lodash-es/memoize.js'
-import { getSessionId } from '../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   getOauthAccountInfo,
   getRateLimitTier,
   getSubscriptionType,
-} from './auth.js'
-import { getGlobalConfig, getOrCreateUserID } from './config.js'
-import { getCwd } from './cwd.js'
+} from 'src/services/auth/auth.js'
+import { getGlobalConfig, getOrCreateUserID } from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { type env, getHostPlatformForAnalytics } from './env.js'
 import { isEnvTruthy } from './envUtils.js'
 

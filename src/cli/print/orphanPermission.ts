@@ -5,7 +5,7 @@ import type { SDKControlResponse } from 'src/entrypoints/sdk/controlTypes.js'
 import type { AppState } from 'src/state/AppStateStore.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { enqueue } from 'src/utils/messageQueueManager.js'
-import { findUnresolvedToolUse } from 'src/utils/sessionStorage.js'
+import { findUnresolvedToolUse } from 'src/services/session/sessionStorage.js'
 
 /**
  * Handles unexpected permission responses by looking up the unresolved tool

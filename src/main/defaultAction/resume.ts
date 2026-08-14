@@ -4,45 +4,45 @@
 // (ROADMAP 11g Fase 5b).
 
 import chalk from 'chalk';
-import { getRemoteSessionUrl } from '../../constants/product.js';
-import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from '../../bootstrap/state.js';
-import { filterCommandsForRemoteMode } from '../../commands.js';
-import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from '../../dialogLaunchers.js';
-import type { Root } from '../../ink.js';
-import { exitWithError, renderAndRun } from '../../interactiveHelpers.js';
-import { createRemoteSessionConfig } from '../../remote/RemoteSessionManager.js';
-import { launchRepl } from '../../replLauncher.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
-import { logEvent } from '../../services/analytics/index.js';
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/index.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import type { AgentColorName } from '../../tools/AgentTool/agentColorManager.js';
-import { asSessionId } from '../../types/ids.js';
-import type { LogOption } from '../../types/logs.js';
-import type { Message as MessageType } from '../../types/message.js';
-import { count } from '../../utils/array.js';
-import { loadConversationForResume } from '../../utils/conversationRecovery.js';
-import { errorMessage, TeleportOperationError, toError } from '../../utils/errors.js';
-import { getBranch } from '../../utils/git.js';
-import { getWorktreePaths } from '../../utils/getWorktreePaths.js';
-import { filterExistingPaths, getKnownPathsForRepo } from '../../utils/githubRepoPathMapping.js';
-import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { logError } from '../../utils/log.js';
-import { createSystemMessage, createUserMessage } from '../../utils/messages.js';
-import { type ProcessedResume, processResumedConversation } from '../../utils/sessionRestore.js';
-import { getSessionIdFromLog, searchSessionsByCustomTitle } from '../../utils/sessionStorage.js';
-import { setCwd } from '../../utils/Shell.js';
-import { fetchSession, prepareApiRequest } from '../../utils/teleport/api.js';
-import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from '../../utils/teleport.js';
-import { validateUuid } from '../../utils/uuid.js';
-import { isPolicyAllowed, waitForPolicyLimitsToLoad } from '../../services/policyLimits/index.js';
-import { maybeActivateBrief, maybeActivateProactive } from '../lifecycle.js';
-import type { BootContext } from '../bootContext.js';
-import type { Props as REPLProps } from '../../screens/REPL.js';
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import type { StatsStore } from '../../context/stats.js';
+import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from 'src/bootstrap/state.js';
+import { filterCommandsForRemoteMode } from 'src/commands.js';
+import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/dialogLaunchers.js';
+import type { Root } from 'src/ink.js';
+import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import { createRemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
+import { launchRepl } from 'src/replLauncher.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
+import { asSessionId } from 'src/types/ids.js';
+import type { LogOption } from 'src/types/logs.js';
+import type { Message as MessageType } from 'src/types/message.js';
+import { count } from 'src/utils/data/array.js';
+import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
+import { errorMessage, TeleportOperationError, toError } from 'src/utils/errors.js';
+import { getBranch } from 'src/services/git/git.js';
+import { getWorktreePaths } from 'src/services/git/getWorktreePaths.js';
+import { filterExistingPaths, getKnownPathsForRepo } from 'src/services/git/githubRepoPathMapping.js';
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { logError } from 'src/utils/log.js';
+import { createSystemMessage, createUserMessage } from 'src/services/messages/messages.js';
+import { type ProcessedResume, processResumedConversation } from 'src/services/session/sessionRestore.js';
+import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
+import { setCwd } from 'src/utils/proc/Shell.js';
+import { fetchSession, prepareApiRequest } from 'src/services/teleport/api.js';
+import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from 'src/components/teleport.js';
+import { validateUuid } from 'src/utils/data/uuid.js';
+import { isPolicyAllowed, waitForPolicyLimitsToLoad } from 'src/services/policyLimits/index.js';
+import { maybeActivateBrief, maybeActivateProactive } from 'src/main/lifecycle.js';
+import type { BootContext } from 'src/main/bootContext.js';
+import type { Props as REPLProps } from 'src/screens/REPL.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { StatsStore } from 'src/context/stats.js';
 
 export type ResumeBranchDeps = {
   root: Root;
@@ -78,7 +78,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     getFpsMetrics, stats, initialState,
   } = deps;
 
-  const { clearSessionCaches } = await import('../../commands/clear/caches.js');
+  const { clearSessionCaches } = await import('src/commands/clear/caches.js');
   clearSessionCaches();
   let messages: MessageType[] | null = null;
   let processedResume: ProcessedResume | undefined = undefined;
@@ -160,7 +160,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       return await exitWithError(root, `Error: ${errorMessage(error) || 'Failed to authenticate'}`, () => gracefulShutdown(1));
     }
 
-    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('../../utils/auth.js');
+    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/services/auth/auth.js');
     const getAccessTokenForRemote = (): string => getTokensForRemote()?.accessToken ?? apiCreds.accessToken;
     const remoteSessionConfig = createRemoteSessionConfig(createdSession.id, getAccessTokenForRemote, apiCreds.orgUUID, hasInitialPrompt);
 
@@ -237,7 +237,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
         }
         await validateGitState();
 
-        const { teleportWithProgress } = await import('../../components/TeleportProgress.js');
+        const { teleportWithProgress } = await import('src/components/TeleportProgress.js');
         const result = await teleportWithProgress(root, teleport);
         setTeleportedSessionInfo({ sessionId: teleport });
         messages = result.messages;

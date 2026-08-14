@@ -162,7 +162,7 @@ describe('removeInterruptedMessage', () => {
 describe('handleOrphanedPermissionResponse', () => {
   test('dedupe guard: second call for same toolUseID returns false', async () => {
     // Boundary mock: prevent findUnresolvedToolUse from doing real work
-    mock.module('src/utils/sessionStorage.js', () => ({
+    mock.module('src/services/session/sessionStorage.js', () => ({
       findUnresolvedToolUse: async (_id: string) => ({
         message: { id: 'asst-1' },
       }),

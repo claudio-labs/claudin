@@ -1,25 +1,25 @@
 import { homedir } from 'os'
 import { isAbsolute, resolve } from 'path'
 import type { z } from 'zod/v4'
-import type { ToolPermissionContext } from '../../Tool.js'
-import type { Redirect, SimpleCommand } from '../../utils/bash/ast.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
+import type { Redirect, SimpleCommand } from 'src/services/bash/ast.js'
 import {
   extractOutputRedirections,
   splitCommand_DEPRECATED,
-} from '../../utils/bash/commands.js'
-import { tryParseShellCommand } from '../../utils/bash/shellQuote.js'
-import { getDirectoryForPath } from '../../utils/path.js'
-import { allWorkingDirectories } from '../../utils/permissions/filesystem.js'
-import type { PermissionResult } from '../../utils/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from '../../utils/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from '../../utils/permissions/PermissionUpdateSchema.js'
+} from 'src/services/bash/commands.js'
+import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { getDirectoryForPath } from 'src/utils/fs/path.js'
+import { allWorkingDirectories } from 'src/services/permissions/filesystem.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import { createReadRuleSuggestion } from 'src/services/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   expandTilde,
   type FileOperationType,
   formatDirectoryList,
   isDangerousRemovalPath,
   validatePath,
-} from '../../utils/permissions/pathValidation.js'
+} from 'src/services/permissions/pathValidation.js'
 import type { BashTool } from './BashTool.js'
 import { stripSafeWrappers } from './bashPermissions.js'
 import { sedCommandIsAllowedByAllowlist } from './sedValidation.js'
@@ -1164,7 +1164,7 @@ function astRedirectsToOutputRedirections(redirects: Redirect[]): {
 //
 // KEEP IN SYNC with:
 //   - SAFE_WRAPPER_PATTERNS in bashPermissions.ts (text-based stripSafeWrappers)
-//   - the wrapper-stripping loop in checkSemantics (src/utils/bash/ast.ts ~1860)
+//   - the wrapper-stripping loop in checkSemantics (src/services/bash/ast.ts ~1860)
 // If you add a wrapper in either, add it here too. Asymmetry means
 // checkSemantics exposes the wrapped command to semantic checks but path
 // validation sees the wrapper name → passthrough → wrapped paths never

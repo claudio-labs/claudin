@@ -7,7 +7,7 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // --- curl ------------------------------------------------------------------
 // Only applies when -v / --verbose is active. Passthrough for -s (silent) and

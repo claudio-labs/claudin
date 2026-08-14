@@ -2,13 +2,13 @@
 import { MODEL_ALIASES } from './aliases.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { getAPIProvider } from './providers.js'
-import { sideQuery } from '../sideQuery.js'
+import { sideQuery } from 'src/utils/sideQuery.js'
 import {
   isSdkApiConnectionError,
   isSdkApiError,
   isSdkAuthenticationError,
   isSdkNotFoundError,
-} from '../errors.js'
+} from 'src/utils/errors.js'
 import { getModelStrings } from './modelStrings.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'

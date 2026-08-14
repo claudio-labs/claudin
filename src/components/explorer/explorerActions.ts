@@ -5,7 +5,7 @@
  */
 
 import { dirname, relative, resolve, sep } from 'path'
-import type { TreeRow } from '../diff/fileTree.js'
+import type { TreeRow } from 'src/components/diff/fileTree.js'
 
 /** A dir row's key is `${root}\u0000${relDir}` (see fileTree.ts flattenDir). */
 const NUL = '\u0000'

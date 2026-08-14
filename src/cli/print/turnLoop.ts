@@ -28,19 +28,19 @@ import {
   peek,
 } from 'src/utils/messageQueueManager.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
-import { notifySessionStateChanged } from 'src/utils/sessionState.js'
+import { notifySessionStateChanged } from 'src/services/session/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/utils/log.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { mergeFileStateCaches } from 'src/utils/fileStateCache.js'
+import { mergeFileStateCaches } from 'src/utils/fs/fileStateCache.js'
 import { installLiveReadFileCache } from './readFileCacheHandover.js'
-import { executeFilePersistence } from 'src/utils/filePersistence/filePersistence.js'
-import { finalizePendingAsyncHooks } from 'src/utils/hooks/AsyncHookRegistry.js'
+import { executeFilePersistence } from 'src/services/filePersistence/filePersistence.js'
+import { finalizePendingAsyncHooks } from 'src/services/lifecycleHooks/AsyncHookRegistry.js'
 import {
   gracefulShutdownSync,
   isShuttingDown,
-} from 'src/utils/gracefulShutdown.js'
+} from 'src/utils/proc/gracefulShutdown.js'
 import type {
   SDKUserMessageReplay,
 } from 'src/entrypoints/agentSdkTypes.js'
@@ -51,7 +51,7 @@ import {
   logSuggestionOutcome,
   logSuggestionSuppressed,
 } from 'src/services/PromptSuggestion/promptSuggestion.js'
-import { getLastCacheSafeParams } from 'src/utils/forkedAgent.js'
+import { getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js'
 import { getInitJsonSchema, getSessionId } from 'src/bootstrap/state.js'
 import {
   headlessProfilerStartTurn,
@@ -67,20 +67,20 @@ import {
   hasActiveInProcessTeammates,
   hasWorkingInProcessTeammates,
   waitForTeammatesToBecomeIdle,
-} from '../../utils/teammate.js'
+} from 'src/coordinator/teammate.js'
 import {
   readUnreadMessages,
   markMessagesAsRead,
   isShutdownApproved,
-} from '../../utils/teammateMailbox.js'
-import { removeTeammateFromTeamFile } from '../../utils/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from '../../utils/tasks.js'
-import { getRunningTasks } from '../../utils/task/framework.js'
-import { isBackgroundTask } from '../../tasks/types.js'
-import { drainSdkEvents } from '../../utils/sdkEventQueue.js'
-import { errorMessage, toError } from '../../utils/errors.js'
-import { sleep } from '../../utils/sleep.js'
-import { isEnvDefinedFalsy } from '../../utils/envUtils.js'
+} from 'src/coordinator/teammateMailbox.js'
+import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/tasks/tasks.js'
+import { getRunningTasks } from 'src/tasks/framework.js'
+import { isBackgroundTask } from 'src/tasks/types.js'
+import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
+import { errorMessage, toError } from 'src/utils/errors.js'
+import { sleep } from 'src/utils/sleep.js'
+import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import { reregisterChannelHandlerAfterReconnect } from 'src/cli/print/controlHandlers.js'
 import { canBatchWith, joinPromptValues } from 'src/cli/print/promptBatching.js'
 import { proactiveModule } from 'src/cli/print/headlessOptionalModules.js'
@@ -172,7 +172,7 @@ export async function runTurnLoop(
     // `-p` under this env var HUNG rather than failing. An alias cannot rot the same
     // way when a file changes depth, which is why the repo rule forbids `../../`.
     const { setupPluginHookHotReload } = await import(
-      'src/utils/plugins/loadPluginHooks.js'
+      'src/services/plugins/loadPluginHooks.js'
     )
     setupPluginHookHotReload()
   }

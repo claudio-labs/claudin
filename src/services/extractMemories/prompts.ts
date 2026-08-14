@@ -15,13 +15,13 @@ import {
   TYPES_SECTION_COMBINED,
   TYPES_SECTION_INDIVIDUAL,
   WHAT_NOT_TO_SAVE_SECTION,
-} from '../../memdir/memoryTypes.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
-import { GLOB_TOOL_NAME } from '../../tools/GlobTool/prompt.js'
-import { GREP_TOOL_NAME } from '../../tools/GrepTool/prompt.js'
+} from 'src/memdir/memoryTypes.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 
 /**
  * Shared opener for both extract-prompt variants.

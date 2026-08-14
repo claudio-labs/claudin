@@ -1,18 +1,18 @@
 import React, { type ReactNode, useCallback, useRef, useState } from 'react';
-import { useMainLoopModel } from '../../../../hooks/useMainLoopModel.js';
-import { Box, Text } from '../../../../ink.js';
-import { useKeybinding } from '../../../../keybindings/useKeybinding.js';
-import { createAbortController } from '../../../../utils/abortController.js';
-import { isSdkApiUserAbortError } from '../../../../utils/errors.js';
-import { editPromptInEditor } from '../../../../utils/promptEditor.js';
-import { ConfigurableShortcutHint } from '../../../ConfigurableShortcutHint.js';
-import { Byline } from '../../../design-system/Byline.js';
-import { Spinner } from '../../../Spinner.js';
-import TextInput from '../../../TextInput.js';
-import { useWizard } from '../../../wizard/index.js';
-import { WizardDialogLayout } from '../../../wizard/WizardDialogLayout.js';
-import { generateAgent } from '../../generateAgent.js';
-import type { AgentWizardData } from '../types.js';
+import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { createAbortController } from 'src/utils/abortController.js';
+import { isSdkApiUserAbortError } from 'src/utils/errors.js';
+import { editPromptInEditor } from 'src/utils/promptEditor.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Spinner } from 'src/components/Spinner.js';
+import TextInput from 'src/components/TextInput.js';
+import { useWizard } from 'src/components/wizard/index.js';
+import { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js';
+import { generateAgent } from 'src/components/agents/generateAgent.js';
+import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
 export function GenerateStep(): ReactNode {
   const {
     updateWizardData,

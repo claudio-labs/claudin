@@ -1,5 +1,5 @@
-import { extractFileLine } from '../stackTrace.js'
-import type { ParseInput, TestFailure, TestResult } from '../types.js'
+import { extractFileLine } from 'src/tools/RunTestsTool/stackTrace.js'
+import type { ParseInput, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Parser for `dart test --reporter=json` / `flutter test --machine` — the same

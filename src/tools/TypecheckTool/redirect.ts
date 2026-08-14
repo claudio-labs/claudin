@@ -5,7 +5,7 @@ import {
   DEFAULT_OUTPUT_TRIM_FILTERS,
   hasShellComposition,
   MEMO_LIMIT,
-} from '../shared/redirect.js'
+} from 'src/tools/shared/redirect.js'
 
 export { MEMO_LIMIT }
 

@@ -4,13 +4,13 @@ import { join } from 'node:path';
 import React, { useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { StatusIcon } from '../components/design-system/StatusIcon.js';
-import { Box, render, Text } from '../ink.js';
-import { logForDebugging } from '../utils/debug.js';
-import { env } from '../utils/env.js';
-import { errorMessage } from '../utils/errors.js';
-import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from '../utils/nativeInstaller/index.js';
-import { getInitialSettings, updateSettingsForSource } from '../utils/settings/settings.js';
+import { StatusIcon } from 'src/components/design-system/StatusIcon.js';
+import { Box, render, Text } from 'src/ink.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { env } from 'src/utils/env.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/services/install/index.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
 interface InstallProps {
   onDone: (result: string, options?: {
     display?: CommandResultDisplay;

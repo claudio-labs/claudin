@@ -1,5 +1,5 @@
-import { extractFileLine } from '../stackTrace.js'
-import type { Framework, TestFailure, TestResult } from '../types.js'
+import { extractFileLine } from 'src/tools/RunTestsTool/stackTrace.js'
+import type { Framework, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Lightweight JUnit-XML parser — the universal target. Deliberately regex-based

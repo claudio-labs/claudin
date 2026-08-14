@@ -1,9 +1,9 @@
-import { AuthCodeListener } from '../oauth/auth-code-listener.js'
+import { AuthCodeListener } from 'src/services/oauth/auth-code-listener.js'
 import {
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
-} from '../oauth/crypto.js'
+} from 'src/services/oauth/crypto.js'
 import {
   asTrimmedString,
   CODEX_OAUTH_ISSUER,

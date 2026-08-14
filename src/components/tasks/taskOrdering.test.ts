@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Task } from '../../utils/tasks.js'
+import type { Task } from 'src/tasks/tasks.js'
 import { orderTasksForDisplay } from './taskOrdering.js'
 
 function task(

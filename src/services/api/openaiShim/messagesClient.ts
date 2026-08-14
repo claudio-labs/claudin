@@ -21,28 +21,28 @@ import { APIError } from '@anthropic-ai/sdk'
 import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
-} from '../../../utils/codexCredentials.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { isBareMode, isEnvTruthy } from '../../../utils/envUtils.js'
-import { resolveGeminiCredential } from '../../../utils/geminiAuth.js'
-import { hydrateGeminiAccessTokenFromSecureStorage } from '../../../utils/geminiCredentials.js'
-import { hydrateGithubModelsTokenFromSecureStorage } from '../../../utils/githubModelsCredentials.js'
-import { getAPIProvider } from '../../../utils/model/providers.js'
+} from 'src/services/api/codexCredentials.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { resolveGeminiCredential } from 'src/services/api/geminiAuth.js'
+import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/services/api/geminiCredentials.js'
+import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   modelUsesKimiEffort,
   resolveAppliedEffort,
   type EffortValue,
-} from '../../../utils/effort.js'
-import { redactSecretValueForDisplay } from '../../../utils/providerProfile.js'
-import { logApiCallEnd, logApiCallStart } from '../../../utils/requestLogging.js'
-import { stableStringify } from '../../../utils/stableStringify.js'
+} from 'src/utils/effort.js'
+import { redactSecretValueForDisplay } from 'src/services/api/providerProfile.js'
+import { logApiCallEnd, logApiCallStart } from 'src/services/api/requestLogging.js'
+import { stableStringify } from 'src/utils/data/stableStringify.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForContent,
-} from '../../tokenEstimation.js'
-import { applyStableStubs } from '../../compact/stableStubState.js'
-import { tryGetActiveProvider } from '../activeProvider.js'
-import { buildAnthropicUsageFromRawUsage } from '../cacheMetrics.js'
+} from 'src/services/tokenEstimation.js'
+import { applyStableStubs } from 'src/services/compact/stableStubState.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
 import {
   codexStreamToAnthropic,
   collectCodexCompletedResponse,
@@ -51,13 +51,13 @@ import {
   convertToolsToResponsesTools,
   performCodexRequest,
   type ShimCreateParams,
-} from '../codexShim.js'
-import { fetchWithProxyRetry } from '../fetchWithProxyRetry.js'
+} from 'src/services/api/codexShim.js'
+import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
 import {
   buildOpenAICompatibilityErrorMessage,
   classifyOpenAIHttpFailure,
   classifyOpenAINetworkFailure,
-} from '../openaiErrorClassification.js'
+} from 'src/services/api/openaiErrorClassification.js'
 import {
   getGithubEndpointType,
   getLocalProviderRetryBaseUrls,
@@ -66,12 +66,12 @@ import {
   resolveRuntimeCodexCredentials,
   shouldAttemptLocalToollessRetry,
   type ReasoningEffort,
-} from '../providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 import { resolveOAuthProviderAuth } from './oauthProviderAuth.js'
-import { stripThinkTags } from '../thinkTagSanitizer.js'
-import { normalizeToolArguments } from '../toolArgumentNormalization.js'
-import { getClaudinUserAgent } from '../../../utils/userAgent.js'
-import { buildCopilotDynamicHeaders } from '../copilotHeaders.js'
+import { stripThinkTags } from 'src/services/api/thinkTagSanitizer.js'
+import { normalizeToolArguments } from 'src/services/api/toolArgumentNormalization.js'
+import { getClaudinUserAgent } from 'src/services/api/userAgent.js'
+import { buildCopilotDynamicHeaders } from 'src/services/api/copilotHeaders.js'
 import {
   COPILOT_HEADERS,
   GITHUB_429_BASE_DELAY_SEC,
@@ -92,7 +92,7 @@ import {
 } from './providerModes.js'
 import { extractReasoningMessage } from './reasoningNormalizer.js'
 import { openaiStreamToAnthropic, OpenAIShimStream } from './streamParser.js'
-import { getSessionId } from '../../../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 
 // api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
 // prompt_cache_retention; everything else gets the params withheld.

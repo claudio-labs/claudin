@@ -1,10 +1,10 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getTaskOutputPath } from '../utils/task/diskOutput.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 import {
   buildLargeToolResultMessage,
   generatePreview,
   PREVIEW_SIZE_BYTES,
-} from '../utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import { buildImageToolResult } from './BashTool/utils.js'
 
 /**

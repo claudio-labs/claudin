@@ -1,4 +1,4 @@
-import { getBudgetContinuationMessage } from '../utils/tokenBudget.js'
+import { getBudgetContinuationMessage } from 'src/services/context/tokenBudget.js'
 
 const COMPLETION_THRESHOLD = 0.9
 const DIMINISHING_THRESHOLD = 500

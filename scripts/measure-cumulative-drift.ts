@@ -47,7 +47,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/utils/config.js'
+import { enableConfigs } from '../src/services/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 import { computeSimpleEnvInfo, getSystemPrompt } from '../src/constants/prompts.js'
 import { loadMemoryPrompt } from '../src/memdir/memdir.js'

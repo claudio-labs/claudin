@@ -12,18 +12,18 @@ import { markPostCompaction } from 'src/bootstrap/state.js'
 import {
   getInvokedSkillsForAgent,
   getOriginalCwd,
-} from '../../bootstrap/state.js'
-import type { QuerySource } from '../../constants/querySource.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
-import type { Tool, ToolUseContext } from '../../Tool.js'
-import type { LocalAgentTaskState } from '../../tasks/LocalAgentTask/LocalAgentTask.js'
-import { FileReadTool } from '../../tools/FileReadTool/FileReadTool.js'
+} from 'src/bootstrap/state.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import {
   FILE_READ_TOOL_NAME,
   FILE_UNCHANGED_STUB,
-} from '../../tools/FileReadTool/prompt.js'
-import { ToolSearchTool } from '../../tools/ToolSearchTool/ToolSearchTool.js'
-import type { AgentId } from '../../types/ids.js'
+} from 'src/tools/FileReadTool/prompt.js'
+import { ToolSearchTool } from 'src/tools/ToolSearchTool/ToolSearchTool.js'
+import type { AgentId } from 'src/types/ids.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -33,33 +33,33 @@ import type {
   SystemCompactBoundaryMessage,
   SystemMessage,
   UserMessage,
-} from '../../types/message.js'
+} from 'src/types/message.js'
 import {
   createAttachmentMessage,
   generateFileAttachment,
   getAgentListingDeltaAttachment,
   getDeferredToolsDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
-} from '../../utils/attachments.js'
-import { getMemoryPath } from '../../utils/config.js'
-import { COMPACT_MAX_OUTPUT_TOKENS } from '../../utils/context.js'
+} from 'src/services/attachments/attachments.js'
+import { getMemoryPath } from 'src/services/config/config.js'
+import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/services/context/context.js'
 import {
   analyzeContext,
   tokenStatsToStatsigMetrics,
-} from '../../utils/contextAnalysis.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { hasExactErrorMessage } from '../../utils/errors.js'
-import { cacheToObject } from '../../utils/fileStateCache.js'
+} from 'src/services/context/contextAnalysis.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { hasExactErrorMessage } from 'src/utils/errors.js'
+import { cacheToObject } from 'src/utils/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   runForkedAgent,
-} from '../../utils/forkedAgent.js'
+} from 'src/coordinator/forkedAgent.js'
 import {
   executePostCompactHooks,
   executePreCompactHooks,
-} from '../../utils/hooks.js'
-import { logError } from '../../utils/log.js'
-import { MEMORY_TYPE_VALUES } from '../../utils/memory/types.js'
+} from 'src/services/lifecycleHooks/hooks.js'
+import { logError } from 'src/utils/log.js'
+import { MEMORY_TYPE_VALUES } from 'src/memdir/types.js'
 import {
   createCompactBoundaryMessage,
   createUserMessage,
@@ -68,53 +68,53 @@ import {
   getMessagesAfterCompactBoundary,
   isCompactBoundaryMessage,
   normalizeMessagesForAPI,
-} from '../../utils/messages.js'
-import { expandPath } from '../../utils/path.js'
-import { getPlan, getPlanFilePath } from '../../utils/plans.js'
-import { getProjectInstructionFilePaths } from '../../utils/projectInstructions.js'
+} from 'src/services/messages/messages.js'
+import { expandPath } from 'src/utils/fs/path.js'
+import { getPlan, getPlanFilePath } from 'src/utils/plans.js'
+import { getProjectInstructionFilePaths } from 'src/services/instructions/projectInstructions.js'
 import {
   isSessionActivityTrackingActive,
   sendSessionActivitySignal,
-} from '../../utils/sessionActivity.js'
-import { processSessionStartHooks } from '../../utils/sessionStart.js'
+} from 'src/services/session/sessionActivity.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   getTranscriptPath,
   reAppendSessionMetadata,
-} from '../../utils/sessionStorage.js'
-import { sleep } from '../../utils/sleep.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
+} from 'src/services/session/sessionStorage.js'
+import { sleep } from 'src/utils/sleep.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { asSystemPrompt } from '../../utils/systemPromptType.js'
-import { getTaskOutputPath } from '../../utils/task/diskOutput.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 import {
   getTokenUsage,
   tokenCountFromLastAPIResponse,
   tokenCountWithEstimation,
-} from '../../utils/tokens.js'
+} from 'src/services/context/tokens.js'
 import {
   extractDiscoveredToolNames,
   isToolSearchEnabled,
-} from '../../utils/toolSearch.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
+} from 'src/services/tools/toolSearch.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,
-} from '../api/claude.js'
+} from 'src/services/api/claude.js'
 import {
   getPromptTooLongTokenGap,
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   startsWithApiErrorPrefix,
-} from '../api/errors.js'
-import { notifyCompaction } from '../api/promptCacheBreakDetection.js'
-import { getRetryDelay } from '../api/withRetry.js'
+} from 'src/services/api/errors.js'
+import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
+import { getRetryDelay } from 'src/services/api/withRetry.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForMessages,
-} from '../tokenEstimation.js'
+} from 'src/services/tokenEstimation.js'
 import { groupMessagesByApiRound } from './grouping.js'
 import {
   getCompactPrompt,

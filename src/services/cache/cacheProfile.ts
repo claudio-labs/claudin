@@ -25,7 +25,7 @@
  *     DeepSeek → retain; everything else → aggressive)
  */
 
-import { tryGetActiveProvider } from '../api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 
 export type CacheProfileName = 'aggressive' | 'retain'
 

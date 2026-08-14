@@ -22,7 +22,7 @@ export function registerRemoteControlCommand(program: Command): void {
       // If somehow reached, delegate to bridgeMain.
       const {
         bridgeMain
-      } = await import('../../bridge/bridgeMain.js')
+      } = await import('src/bridge/bridgeMain.js')
       await bridgeMain(process.argv.slice(3))
     })
   }

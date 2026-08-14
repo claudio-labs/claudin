@@ -23,7 +23,7 @@ transcript, so nothing is ever "removed".
 loads (58,717 B ≈ 14.7k tokens for the five rules that fired here). Before adding
 any "delta" producer beside a raw one, verify the raw lane actually announces a
 hash the delta can compare against — otherwise the delta is a duplicate, not a
-diff. `src/utils/attachments/memory.dedup.test.ts` pins exactly-once through the
+diff. `src/services/attachments/memory.dedup.test.ts` pins exactly-once through the
 real producer and renderer; both of its guards were mutation-checked.
 Related: [[per-turn-fs-scan-audit]] (a different memory lane — the relevant-memory
 prefetch, gated off in the open build), [[dev-tooling-token-roadmap]].

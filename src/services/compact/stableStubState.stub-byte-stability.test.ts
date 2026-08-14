@@ -32,13 +32,13 @@ import {
   createContentReplacementState,
   enforceToolResultBudget,
   type ContentReplacementState,
-} from '../../utils/toolResultStorage.js'
-import { _resetCacheProfileForTesting } from '../cache/cacheProfile.js'
+} from 'src/services/tools/toolResultStorage.js'
+import { _resetCacheProfileForTesting } from 'src/services/cache/cacheProfile.js'
 import {
   createAssistantMessage,
   createUserMessage,
-} from '../../utils/messages.js'
-import type { Message } from '../../types/message.js'
+} from 'src/services/messages/messages.js'
+import type { Message } from 'src/types/message.js'
 
 const TOOL_USE_ID = 'toolu_s3_byte_stability'
 const TOOL_NAME = 'Bash'

@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import BashToolResultMessage from '../../tools/BashTool/BashToolResultMessage.js';
-import { extractTag } from '../../utils/messages.js';
+import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js';
+import { extractTag } from 'src/services/messages/messages.js';
 export function UserBashOutputMessage(t0: {
   content: string;
   verbose: boolean;

@@ -5,20 +5,20 @@ import isPlainObject from 'lodash-es/isPlainObject.js'
 import mapValues from 'lodash-es/mapValues.js'
 import { dirname, join } from 'path'
 import { addToTotalSessionCost } from 'src/cost-tracker.js'
-import { calculateUSDCost } from 'src/utils/modelCost.js'
+import { calculateUSDCost } from 'src/services/api/modelCost.js'
 import type {
   AssistantMessage,
   Message,
   StreamEvent,
   SystemAPIErrorMessage,
   UserMessage,
-} from '../types/message.js'
-import { getCwd } from '../utils/cwd.js'
-import { env } from '../utils/env.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from '../utils/envUtils.js'
-import { getErrnoCode } from '../utils/errors.js'
-import { normalizeMessagesForAPI } from '../utils/messages.js'
-import { jsonParse, jsonStringify } from '../utils/slowOperations.js'
+} from 'src/types/message.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { env } from 'src/utils/env.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getErrnoCode } from 'src/utils/errors.js'
+import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 function shouldUseVCR(): boolean {
   if (process.env.NODE_ENV === 'test') {

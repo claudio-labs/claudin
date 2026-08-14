@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-import type { Message } from '../../types/message.js'
-import { createAssistantMessage, createUserMessage } from '../../utils/messages.js'
+import type { Message } from 'src/types/message.js'
+import { createAssistantMessage, createUserMessage } from 'src/services/messages/messages.js'
 
 // We test the exported collectCompactableToolIds behavior indirectly via
 // the public microcompactMessages + time-based path. But first we need to
@@ -135,14 +135,14 @@ const mockSizeState = {
 }
 
 const realAutoCompact = { ...(await import('./autoCompact.js')) }
-const realModel = { ...(await import('../../utils/model/model.js')) }
+const realModel = { ...(await import('src/utils/model/model.js')) }
 
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => mockSizeState.effectiveWindow,
 }))
 
-mock.module('../../utils/model/model.js', () => ({
+mock.module('src/utils/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
@@ -259,5 +259,5 @@ describe('size-driven stable-stub trigger', () => {
 
 afterAll(() => {
   mock.module('./autoCompact.js', () => realAutoCompact)
-  mock.module('../../utils/model/model.js', () => realModel)
+  mock.module('src/utils/model/model.js', () => realModel)
 })

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import { EnterPlanModeTool } from './EnterPlanModeTool.js'
 
 type AppState = {

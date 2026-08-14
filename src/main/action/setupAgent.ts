@@ -15,30 +15,30 @@
 
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
-import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType, setUserMsgOptIn } from '../../bootstrap/state.js';
-import { getCommands } from '../../commands.js';
-import { getSystemContext, getUserContext } from '../../context.js';
-import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from '../../tools/AgentTool/loadAgentsDir.js';
-import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from '../../utils/advisor.js';
-import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { getCwd } from '../../utils/cwd.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { isEnvTruthy } from '../../utils/envUtils.js';
-import { safeParseJSON } from '../../utils/json.js';
-import { logError } from '../../utils/log.js';
-import { applyConfigEnvironmentVariables } from '../../utils/managedEnv.js';
-import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from '../../utils/model/model.js';
-import { ensureModelStringsInitialized } from '../../utils/model/modelStrings.js';
-import { getIsNonInteractiveSession, getUserMsgOptIn } from '../../bootstrap/state.js';
-import { cacheSessionTitle, saveAgentSetting } from '../../utils/sessionStorage.js';
-import { getInitialSettings } from '../../utils/settings/settings.js';
-import { validateUuid } from '../../utils/uuid.js';
-import { initBuiltinPlugins } from '../../plugins/bundled/index.js';
-import { initBundledSkills } from '../../skills/bundled/index.js';
-import { maybeActivateBrief } from '../lifecycle.js';
-import type { InternalPermissionMode } from '../../types/permissions.js';
-import type { BootContext } from '../bootContext.js';
+import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType, setUserMsgOptIn } from 'src/bootstrap/state.js';
+import { getCommands } from 'src/commands.js';
+import { getSystemContext, getUserContext } from 'src/context.js';
+import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/utils/advisor.js';
+import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { safeParseJSON } from 'src/utils/data/json.js';
+import { logError } from 'src/utils/log.js';
+import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
+import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from 'src/utils/model/model.js';
+import { ensureModelStringsInitialized } from 'src/utils/model/modelStrings.js';
+import { getIsNonInteractiveSession, getUserMsgOptIn } from 'src/bootstrap/state.js';
+import { cacheSessionTitle, saveAgentSetting } from 'src/services/session/sessionStorage.js';
+import { getInitialSettings } from 'src/services/settings/settings.js';
+import { validateUuid } from 'src/utils/data/uuid.js';
+import { initBuiltinPlugins } from 'src/plugins/bundled/index.js';
+import { initBundledSkills } from 'src/skills/bundled/index.js';
+import { maybeActivateBrief } from 'src/main/lifecycle.js';
+import type { InternalPermissionMode } from 'src/types/permissions.js';
+import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from './parseOptions.js';
 
 /**
@@ -77,7 +77,7 @@ export async function runActionSetup(input: RunActionSetupInput): Promise<RunAct
   const { options, ctx, permissionMode, allowDangerouslySkipPermissions, sessionId } = input;
   logForDebugging('[STARTUP] Running setup()...');
   const setupStart = Date.now();
-  const { setup } = await import('../../setup.js');
+  const { setup } = await import('src/setup.js');
   const messagingSocketPath = feature('UDS_INBOX') ? (options as { messagingSocketPath?: string }).messagingSocketPath : undefined;
   const preSetupCwd = getCwd();
   if (process.env.CLAUDE_CODE_ENTRYPOINT !== 'local-agent') {
@@ -365,7 +365,7 @@ export async function runActionAgentSetup(
   // defaultView: 'chat' is a persisted opt-in.
   if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && !getIsNonInteractiveSession() && !getUserMsgOptIn() && getInitialSettings().defaultView === 'chat') {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { isBriefEntitled } = require('../../tools/BriefTool/BriefTool.js') as typeof import('../../tools/BriefTool/BriefTool.js');
+    const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isBriefEntitled()) {
       setUserMsgOptIn(true);
@@ -379,7 +379,7 @@ export async function runActionAgentSetup(
   ) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const briefVisibility = feature('KAIROS') || feature('KAIROS_BRIEF')
-      ? (require('../../tools/BriefTool/BriefTool.js') as typeof import('../../tools/BriefTool/BriefTool.js')).isBriefEnabled()
+      ? (require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js')).isBriefEnabled()
         ? 'Call SendUserMessage at checkpoints to mark where things stand.'
         : 'The user will see any text you output.'
       : 'The user will see any text you output.';

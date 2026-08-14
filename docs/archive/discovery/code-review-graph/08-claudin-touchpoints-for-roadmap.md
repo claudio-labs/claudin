@@ -105,11 +105,11 @@ no set" entra sem mudança de assinatura.
   inlines. Processado por `executeShellCommandsInPrompt` em `:215`.
   Padrão alternativo a copiar para o `/review` se quisermos `git diff`
   pré-executado.
-- `src/utils/gitDiff.ts:114-135` — `fetchGitDiffHunks()` já existe e
+- `src/services/git/gitDiff.ts:114-135` — `fetchGitDiffHunks()` já existe e
   retorna hunks parseados (!).
-- `src/utils/gitDiff.ts:200-298` — `parseGitDiff(...)`.
-- `src/utils/gitDiff.ts:148-189` — `parseGitNumstat(stdout)`.
-- `src/utils/gitDiff.ts:405-441` — `fetchSingleFileGitDiff(...)` retorna
+- `src/services/git/gitDiff.ts:200-298` — `parseGitDiff(...)`.
+- `src/services/git/gitDiff.ts:148-189` — `parseGitNumstat(stdout)`.
+- `src/services/git/gitDiff.ts:405-441` — `fetchSingleFileGitDiff(...)` retorna
   `ToolUseDiff` (definido `:386-395`).
 
 ### 2. APIs/types to extend
@@ -128,13 +128,13 @@ re-parse o caminho limpo é expor uma versão estruturada:
   registry) pode-se chamar diretamente `sendRequest<T>` do
   `LSPServerManager` (`src/services/lsp/LSPServerManager.ts:27` /
   `:265-274`) — bypassa permission gate e formato textual.
-- `GitDiffResult` (`src/utils/gitDiff.ts:29-33`) e
+- `GitDiffResult` (`src/services/git/gitDiff.ts:29-33`) e
   `PerFileStats` (`:22-27`) já existem e devem ser mantidos; um wrapper
   que cruze isso com `findReferences` produzirá `RiskScoreEntry[]`.
 
 ### 3. Existing helpers to reuse
 
-- `fetchGitDiffHunks()` — `src/utils/gitDiff.ts:114-135` (NÃO é só
+- `fetchGitDiffHunks()` — `src/services/git/gitDiff.ts:114-135` (NÃO é só
   numstat; retorna hunks).
 - `parseGitDiff` — `:200-298`. Hunk parser pronto.
 - `parseRawDiffToToolUseDiff` — `:448-481`.
@@ -158,7 +158,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 - Não há teste para `/review` (`src/commands/review*.test.ts` não
   existe). Criar `src/commands/review.test.ts` do zero, mirroring
   `init.test.ts`.
-- `src/utils/gitDiff.ts` tem testes? `Grep` mostra suíte ausente para
+- `src/services/git/gitDiff.ts` tem testes? `Grep` mostra suíte ausente para
   esse arquivo no momento desta pesquisa — pode ser oportunidade.
 - `src/tools/LSPTool/LSPTool.readonly.regression.test.ts` — padrão de
   smoke test que sobe o LSP de verdade; pesado, evitar em tests do
@@ -299,7 +299,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   branch `invalidateCacheForWrite` (`toolExecution.ts:1768/1777`); são
   do `twoTierCache` ou do file-history. Reusar mesmo padrão.
 - Content hash: NÃO existe helper centralizado em `src/utils/` para
-  hash de arquivo. Há `sha256` espalhado (`src/utils/sessionStorage/`,
+  hash de arquivo. Há `sha256` espalhado (`src/services/session/`,
   vários sites). Para LSP cache vale `Bun.hash` (instantâneo) ou
   `crypto.createHash('sha1')` em conteúdo já-em-memória — content é
   lido no `LSPServerManager` quando notifica `textDocument/didChange`

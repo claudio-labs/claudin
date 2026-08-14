@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
 import React from 'react';
-import { stringWidth } from '../ink/stringWidth.js';
-import { Box, Text } from '../ink.js';
-import type { NormalizedMessage } from '../types/message.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { Box, Text } from 'src/ink.js';
+import type { NormalizedMessage } from 'src/types/message.js';
 type Props = {
   message: NormalizedMessage;
   isTranscriptMode: boolean;

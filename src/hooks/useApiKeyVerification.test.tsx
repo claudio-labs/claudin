@@ -2,16 +2,16 @@ import { PassThrough } from 'node:stream'
 
 import { afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
-import { createRoot, Text } from '../ink.js'
+import { createRoot, Text } from 'src/ink.js'
 
 // Capture real modules before the per-test mock.module() calls. mock.restore()
 // (afterEach) only resets mock()/spyOn spies — it does NOT revert mock.module().
 // The bootstrap/state.js stub here exposes only getIsNonInteractiveSession, so
 // without restoring it later files lose switchSession/getSessionId (e.g.
 // cost-tracker.projectTotals's switchSession→getSessionId round-trip).
-const realBootstrapStateForApiKey = { ...(await import('../bootstrap/state.js')) }
-const realClaudeForApiKey = { ...(await import('../services/api/claude.js')) }
-const realAuthForApiKey = { ...(await import('../utils/auth.js')) }
+const realBootstrapStateForApiKey = { ...(await import('src/bootstrap/state.js')) }
+const realClaudeForApiKey = { ...(await import('src/services/api/claude.js')) }
+const realAuthForApiKey = { ...(await import('src/services/auth/auth.js')) }
 
 type AuthState = {
   anthropicAuthEnabled: boolean
@@ -65,10 +65,10 @@ async function waitForCondition(
 afterEach(() => {
   mock.restore()
   // mock.restore() does not revert mock.module(); re-install the real modules.
-  mock.module('../bootstrap/state.js', () => realBootstrapStateForApiKey)
   mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
-  mock.module('../services/api/claude.js', () => realClaudeForApiKey)
-  mock.module('../utils/auth.js', () => realAuthForApiKey)
+  mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
+  mock.module('src/services/api/claude.js', () => realClaudeForApiKey)
+  mock.module('src/services/auth/auth.js', () => realAuthForApiKey)
 })
 
 test('useApiKeyVerification resets stale missing status when the session switches to a third-party provider', async () => {
@@ -78,7 +78,7 @@ test('useApiKeyVerification resets stale missing status when the session switche
   }
   const seenStatuses: string[] = []
 
-  mock.module('../utils/auth.js', () => ({
+  mock.module('src/services/auth/auth.js', () => ({
     getAnthropicApiKeyWithSource: () => ({
       key: authState.key,
       source: authState.source,
@@ -88,11 +88,11 @@ test('useApiKeyVerification resets stale missing status when the session switche
     isClaudeAISubscriber: () => authState.claudeSubscriber,
   }))
 
-  mock.module('../bootstrap/state.js', () => ({
+  mock.module('src/bootstrap/state.js', () => ({
     getIsNonInteractiveSession: () => false,
   }))
 
-  mock.module('../services/api/claude.js', () => ({
+  mock.module('src/services/api/claude.js', () => ({
     verifyApiKey: async () => true,
   }))
 

@@ -1,19 +1,19 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo, useState } from 'react';
-import type { CommandResultDisplay, LocalJSXCommandContext } from '../../commands.js';
-import { type OptionWithDescription, Select } from '../../components/CustomSelect/select.js';
-import { Dialog } from '../../components/design-system/Dialog.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { useClaudeAiLimits } from '../../services/claudeAiLimitsHook.js';
-import type { ToolUseContext } from '../../Tool.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from '../../utils/auth.js';
-import { hasClaudeAiBillingAccess } from '../../utils/billing.js';
-import { call as extraUsageCall } from '../extra-usage/extra-usage.js';
-import { extraUsage } from '../extra-usage/index.js';
-import upgrade from '../upgrade/index.js';
-import { call as upgradeCall } from '../upgrade/upgrade.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
+import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
+import type { ToolUseContext } from 'src/Tool.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from 'src/services/auth/auth.js';
+import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js';
+import { call as extraUsageCall } from 'src/commands/extra-usage/extra-usage.js';
+import { extraUsage } from 'src/commands/extra-usage/index.js';
+import upgrade from 'src/commands/upgrade/index.js';
+import { call as upgradeCall } from 'src/commands/upgrade/upgrade.js';
 type RateLimitOptionsMenuOptionType = 'upgrade' | 'extra-usage' | 'cancel';
 type RateLimitOptionsMenuProps = {
   onDone: (result?: string, options?: {

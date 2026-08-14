@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
-import { Box, Text } from '../../ink.js'
-import type { CommitFile } from '../../utils/gitLog.js'
+import { Box, Text } from 'src/ink.js'
+import type { CommitFile } from 'src/services/git/gitLog.js'
 import { getDiffGlyphs } from './glyphs.js'
 
 type Props = {

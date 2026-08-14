@@ -28,7 +28,7 @@ Your branch is up to date with 'origin/feature/bash-output-filter'.
 
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
-        modified:   src/utils/toolResultSummarizer.ts
+        modified:   src/services/tools/toolResultSummarizer.ts
 
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
@@ -108,7 +108,7 @@ Saída esperada da Amostra 2 com esse filtro:
 On branch feature/bash-output-filter
 Your branch is up to date with 'origin/feature/bash-output-filter'.
 [STAGED]
-  M src/utils/toolResultSummarizer.ts
+  M src/services/tools/toolResultSummarizer.ts
 [MODIFIED]
   M src/tools/BashTool/BashTool.tsx
   M docs/archive/discovery/bash-output-filter/README.md
@@ -125,7 +125,7 @@ Mais agressivo: substituir o comando do user por `git status --porcelain --branc
 
 ```
 ## main...origin/main
-M  src/utils/toolResultSummarizer.ts
+M  src/services/tools/toolResultSummarizer.ts
  M src/tools/BashTool/BashTool.tsx
 ?? docs/archive/discovery/bash-output-filter/commands/
 ```

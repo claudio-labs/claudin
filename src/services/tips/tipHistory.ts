@@ -1,4 +1,4 @@
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 
 export function recordTipShown(tipId: string): void {
   const numStartups = getGlobalConfig().numStartups

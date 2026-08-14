@@ -14,9 +14,9 @@ import { c as _c } from "react-compiler-runtime";
  * so no manual cleanup or state management is needed.
  */
 import { useContext, useEffect, useLayoutEffect } from 'react';
-import instances from '../ink/instances.js';
-import { AppStoreContext, useAppState } from '../state/AppState.js';
-import type { AppState } from '../state/AppStateStore.js';
+import instances from 'src/ink/instances.js';
+import { AppStoreContext, useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
 
 // Non-modal overlays that shouldn't disable TextInput focus
 const NON_MODAL_OVERLAYS = new Set(['autocomplete']);

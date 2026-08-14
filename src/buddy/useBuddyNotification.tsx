@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect } from 'react';
-import { useNotifications } from '../context/notifications.js';
-import { Text } from '../ink.js';
-import { getGlobalConfig } from '../utils/config.js';
-import { getRainbowColor } from '../utils/thinking.js';
+import { useNotifications } from 'src/context/notifications.js';
+import { Text } from 'src/ink.js';
+import { getGlobalConfig } from 'src/services/config/config.js';
+import { getRainbowColor } from 'src/services/context/thinking.js';
 import { isBuddyEnabled } from './feature.js';
 
 // Local date, not UTC — 24h rolling wave across timezones. Sustained Twitter

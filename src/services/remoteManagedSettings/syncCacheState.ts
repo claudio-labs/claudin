@@ -22,12 +22,12 @@
  */
 
 import { join } from 'path'
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { readFileSync } from '../../utils/fileRead.js'
-import { stripBOM } from '../../utils/jsonRead.js'
-import { resetSettingsCache } from '../../utils/settings/settingsCache.js'
-import type { SettingsJson } from '../../utils/settings/types.js'
-import { jsonParse } from '../../utils/slowOperations.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { readFileSync } from 'src/utils/fs/fileRead.js'
+import { stripBOM } from 'src/utils/data/jsonRead.js'
+import { resetSettingsCache } from 'src/services/settings/settingsCache.js'
+import type { SettingsJson } from 'src/services/settings/types.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 
 const SETTINGS_FILENAME = 'remote-settings.json'
 

@@ -8,22 +8,22 @@
 import { feature } from 'bun:bundle';
 import type { Command as CommanderCommand } from '@commander-js/extra-typings';
 
-import { setInlinePlugins } from '../bootstrap/state.js';
+import { setInlinePlugins } from 'src/bootstrap/state.js';
 // init.ts is the heaviest module in the bundle (undici + growthbook + OAuth
 // populate + mTLS + scratchpad/swarm bootstrap). Loading it statically here
 // pulled it into the main chunk and made `--help` evaluate the whole graph.
 // Defer it — the preAction hook only fires for *executing* commands, so the
 // dynamic import cost is paid exactly when it would have been anyway.
-const getInit = async (): Promise<typeof import('../entrypoints/init.js').init> =>
-  (await import('../entrypoints/init.js')).init;
-import { loadPolicyLimits } from '../services/policyLimits/index.js';
-import { loadRemoteManagedSettings } from '../services/remoteManagedSettings/index.js';
-import { logForDebugging } from '../utils/debug.js';
-import { isEnvTruthy } from '../utils/envUtils.js';
-import { clearPluginCache } from '../utils/plugins/pluginLoader.js';
-import { ensureKeychainPrefetchCompleted } from '../utils/secureStorage/keychainPrefetch.js';
-import { ensureMdmSettingsLoaded } from '../utils/settings/mdm/settings.js';
-import { profileCheckpoint } from '../utils/startupProfiler.js';
+const getInit = async (): Promise<typeof import('src/entrypoints/init.js').init> =>
+  (await import('src/entrypoints/init.js')).init;
+import { loadPolicyLimits } from 'src/services/policyLimits/index.js';
+import { loadRemoteManagedSettings } from 'src/services/remoteManagedSettings/index.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { clearPluginCache } from 'src/services/plugins/pluginLoader.js';
+import { ensureKeychainPrefetchCompleted } from 'src/services/secureStorage/keychainPrefetch.js';
+import { ensureMdmSettingsLoaded } from 'src/services/settings/mdm/settings.js';
+import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 
 import { runMigrations } from './lifecycle.js';
 
@@ -51,7 +51,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // a sink attaches. setup() attaches sinks for the default command, but
     // subcommands (doctor, mcp, plugin, auth) never call setup() and would
     // silently drop events on process.exit(). Both inits are idempotent.
-    const { initSinks } = await import('../utils/sinks.js');
+    const { initSinks } = await import('src/utils/sinks.js');
     initSinks();
     profileCheckpoint('preAction_after_sinks');
 
@@ -75,7 +75,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // (one-shot, idempotent), then rescue CLAUDE_CODE_USE_* envs into
     // /provider when no active profile is set.
     try {
-      const { runClaudinStartupMigrations } = require('../utils/claudinStartupMigrations.js') as typeof import('../utils/claudinStartupMigrations.js');
+      const { runClaudinStartupMigrations } = require('src/services/config/claudinStartupMigrations.js') as typeof import('src/services/config/claudinStartupMigrations.js');
       runClaudinStartupMigrations();
     } catch (e) {
       // Migrations are best-effort; never block startup on them.
@@ -94,7 +94,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // Load settings sync (non-blocking, fail-open)
     // CLI: uploads local settings to remote (CCR download is handled by print.ts)
     if (feature('UPLOAD_USER_SETTINGS')) {
-      void import('../services/settingsSync/index.js').then(m => m.uploadUserSettingsInBackground());
+      void import('src/services/settingsSync/index.js').then(m => m.uploadUserSettingsInBackground());
     }
     profileCheckpoint('preAction_after_settings_sync');
   });

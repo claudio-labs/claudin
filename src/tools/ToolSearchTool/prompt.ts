@@ -2,17 +2,17 @@ import { feature } from 'bun:bundle'
 import {
   getDeferredDeltaLegacySession,
   isReplBridgeActive,
-} from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import type { Tool } from '../../Tool.js'
-import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
+} from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import type { Tool } from 'src/Tool.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 // Dead code elimination: Brief tool name only needed when KAIROS or KAIROS_BRIEF is on
 /* eslint-disable @typescript-eslint/no-require-imports */
 const BRIEF_TOOL_NAME: string | null =
   feature('KAIROS') || feature('KAIROS_BRIEF')
     ? (
-        require('../BriefTool/prompt.js') as typeof import('../BriefTool/prompt.js')
+        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
       ).BRIEF_TOOL_NAME
     : null
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
@@ -82,9 +82,9 @@ export function isDeferredTool(tool: Tool): boolean {
   // Lazy require: static import of forkSubagent → coordinatorMode creates a cycle
   // through constants/tools.ts at module init.
   if (feature('FORK_SUBAGENT') && tool.name === AGENT_TOOL_NAME) {
-    type ForkMod = typeof import('../AgentTool/forkSubagent.js')
+    type ForkMod = typeof import('src/tools/AgentTool/forkSubagent.js')
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const m = require('../AgentTool/forkSubagent.js') as ForkMod
+    const m = require('src/tools/AgentTool/forkSubagent.js') as ForkMod
     if (m.isForkSubagentEnabled()) return false
   }
 

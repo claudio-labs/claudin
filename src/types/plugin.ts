@@ -1,12 +1,12 @@
-import type { LspServerConfig } from '../services/lsp/types.js'
-import type { McpServerConfig } from '../services/mcp/types.js'
-import type { BundledSkillDefinition } from '../skills/bundledSkills.js'
+import type { LspServerConfig } from 'src/services/lsp/types.js'
+import type { McpServerConfig } from 'src/services/mcp/types.js'
+import type { BundledSkillDefinition } from 'src/skills/bundledSkills.js'
 import type {
   CommandMetadata,
   PluginAuthor,
   PluginManifest,
-} from '../utils/plugins/schemas.js'
-import type { HooksSettings } from '../utils/settings/types.js'
+} from 'src/services/plugins/schemas.js'
+import type { HooksSettings } from 'src/services/settings/types.js'
 
 export type { PluginAuthor, PluginManifest, CommandMetadata }
 

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { FRAME_INTERVAL_MS } from '../ink/constants.js'
+import { FRAME_INTERVAL_MS } from 'src/ink/constants.js'
 
 /**
  * External store for the live streaming-text preview.

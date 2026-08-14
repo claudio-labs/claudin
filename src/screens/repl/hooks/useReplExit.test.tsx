@@ -40,12 +40,12 @@ beforeAll(() => {
       return { status: 0 }
     },
   }))
-  mock.module('src/utils/concurrentSessions.js', () => ({
+  mock.module('src/services/session/concurrentSessions.js', () => ({
     isBgSession: () => mocks.isBgSessionResult,
     updateSessionName: () => {},
     updateSessionActivity: () => {},
   }))
-  mock.module('src/utils/worktree.js', () => ({
+  mock.module('src/services/git/worktree.js', () => ({
     getCurrentWorktreeSession: () => mocks.currentWorktreeSession,
   }))
   mock.module('src/components/ExitFlow.js', () => ({
@@ -70,7 +70,7 @@ afterAll(() => {
 
 // Import AFTER mocks are installed.
 const { useReplExit } = await import('./useReplExit.js')
-const { render } = await import('../../../ink.js')
+const { render } = await import('src/ink.js')
 
 type HookResult = ReturnType<typeof useReplExit>
 

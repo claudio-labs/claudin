@@ -13,24 +13,24 @@ import {
   type Transport,
 } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
-import { getSessionId } from '../../../bootstrap/state.js'
-import { getOauthConfig } from '../../../constants/oauth.js'
-import { getClaudeAIOAuthTokens } from '../../../utils/auth.js'
-import { getMCPUserAgent } from '../../../utils/http.js'
-import { logMCPDebug } from '../../../utils/log.js'
-import { WebSocketTransport } from '../../../utils/mcpWebSocketTransport.js'
-import { getWebSocketTLSOptions } from '../../../utils/mtls.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { getOauthConfig } from 'src/constants/oauth.js'
+import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
+import { getMCPUserAgent } from 'src/utils/http.js'
+import { logMCPDebug } from 'src/utils/log.js'
+import { WebSocketTransport } from 'src/services/mcp/mcpWebSocketTransport.js'
+import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
 import {
   getProxyFetchOptions,
   getWebSocketProxyAgent,
   getWebSocketProxyUrl,
-} from '../../../utils/proxy.js'
-import { getSessionIngressAuthToken } from '../../../utils/sessionIngressAuth.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
-import { subprocessEnv } from '../../../utils/subprocessEnv.js'
-import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from '../auth.js'
-import { getMcpServerHeaders } from '../headersHelper.js'
-import type { ScopedMcpServerConfig } from '../types.js'
+} from 'src/services/api/proxy.js'
+import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { subprocessEnv } from 'src/utils/proc/subprocessEnv.js'
+import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from 'src/services/mcp/auth.js'
+import { getMcpServerHeaders } from 'src/services/mcp/headersHelper.js'
+import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'
 import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
@@ -42,12 +42,12 @@ import {
 // (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
 // GrowthBook tengu_malort_pedway (see gates.ts).
 export const computerUseWrapper = feature('CHICAGO_MCP')
-  ? (): typeof import('../../../utils/computerUse/wrapper.js') =>
-    require('../../../utils/computerUse/wrapper.js')
+  ? (): typeof import('src/services/computerUse/wrapper.js') =>
+    require('src/services/computerUse/wrapper.js')
   : undefined
 export const isComputerUseMCPServer = feature('CHICAGO_MCP')
   ? (
-    require('../../../utils/computerUse/common.js') as typeof import('../../../utils/computerUse/common.js')
+    require('src/services/computerUse/common.js') as typeof import('src/services/computerUse/common.js')
   ).isComputerUseMCPServer
   : undefined
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -394,10 +394,10 @@ export async function createTransport(
     // Chrome above. The package's CallTool handler is a stub; real
     // dispatch goes through wrapper.tsx's .call() override.
     const { createComputerUseMcpServerForCli } = await import(
-      '../../../utils/computerUse/mcpServer.js'
+      'src/services/computerUse/mcpServer.js'
     )
     const { createLinkedTransportPair } = await import(
-      '../InProcessTransport.js'
+      'src/services/mcp/InProcessTransport.js'
     )
     const inProcess = await createComputerUseMcpServerForCli()
     inProcessServer = inProcess

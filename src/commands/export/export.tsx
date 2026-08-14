@@ -1,12 +1,12 @@
 import { join } from 'path';
 import React from 'react';
-import { ExportDialog } from '../../components/ExportDialog.js';
-import type { ToolUseContext } from '../../Tool.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import type { Message } from '../../types/message.js';
-import { getCwd } from '../../utils/cwd.js';
-import { renderMessagesToPlainText } from '../../utils/exportRenderer.js';
-import { writeFileSync_DEPRECATED } from '../../utils/slowOperations.js';
+import { ExportDialog } from 'src/components/ExportDialog.js';
+import type { ToolUseContext } from 'src/Tool.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { Message } from 'src/types/message.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { renderMessagesToPlainText } from 'src/components/exportRenderer.js';
+import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
 function formatTimestamp(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

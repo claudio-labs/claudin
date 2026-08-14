@@ -294,7 +294,7 @@ async function exerciseFileReadCache(cycles: number): Promise<CacheResult> {
     writeFileSync(join(dir, `f_${i}.txt`), `content ${i}`)
   }
 
-  const { fileReadCache } = await import('../../src/utils/fileReadCache.js')
+  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
 
   const result = await measure(
     'fileReadCache',
@@ -399,7 +399,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
   }
   // We don't know what FileReadCache singleton exists; mocks may have been
   // installed by other exercisers but fileReadCache.ts is imported fresh.
-  const { fileReadCache } = await import('../../src/utils/fileReadCache.js')
+  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
 
   // Reset all caches so snapshots start clean.
   __TEST_ONLY_resetTokenCache()
@@ -565,7 +565,7 @@ async function main(): Promise<void> {
   }
 
   // Order matters: exerciseFileReadCache uses real fs and must run before
-  // any exerciser that mock.module's '../../src/utils/fsOperations.js'.
+  // any exerciser that mock.module's '../../src/utils/fs/fsOperations.js'.
   // Bun's mock.module is process-global and not unwound between awaits.
   // Mixed-session runs LAST because it relies on mocks installed by the
   // isolated exercisers above.

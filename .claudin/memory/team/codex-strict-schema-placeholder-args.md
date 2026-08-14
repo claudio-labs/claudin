@@ -22,7 +22,7 @@ required. Four other files looped the same way in that one session.
   originally-optional property so the model has a legal way to decline it
   (`type: [t,'null']`; for an enum, `null` joins BOTH the type union and the
   value list), and `stripPlaceholderOptionalFields`
-  (`src/utils/toolInputPlaceholders.ts`) turns the resulting `""`/`null` back
+  (`src/services/tools/toolInputPlaceholders.ts`) turns the resulting `""`/`null` back
   into an absent key.
 - **The two halves must walk the same depth.** `enforceStrictSchema` recurses
   into nested objects, array `items` and combinators, so it widens optionals at

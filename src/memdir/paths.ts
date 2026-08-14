@@ -5,21 +5,21 @@ import { isAbsolute, join, normalize, sep } from 'path'
 import {
   getIsNonInteractiveSession,
   getProjectRoot,
-} from '../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+} from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   getClaudinConfigHomeDir,
   isEnvDefinedFalsy,
   isEnvTruthy,
-} from '../utils/envUtils.js'
-import { findCanonicalGitRoot } from '../utils/git.js'
-import { logError } from '../utils/log.js'
-import { sanitizePath } from '../utils/path.js'
+} from 'src/utils/envUtils.js'
+import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { logError } from 'src/utils/log.js'
+import { sanitizePath } from 'src/utils/fs/path.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from '../utils/settings/settings.js'
-import { getFsImplementation } from '../utils/fsOperations.js'
+} from 'src/services/settings/settings.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { migrateGlobalMemoryIfNeeded } from './memoryMigration.js'
 
 /**

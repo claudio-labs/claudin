@@ -72,14 +72,14 @@ Varredura de `packages/coding-agent/src/session/` omp além do CAS blob store j�
 
 | Feature | Inserir em | Mudança |
 |---|---|---|
-| **Compaction entry tipada** | `src/services/compact/compact.ts` + `src/utils/sessionStorage/pure/typeGuards.ts` | Schema-add. Nova variante de message no JSONL |
-| **Terminal breadcrumb** | Novo `src/utils/sessionStorage/breadcrumb.ts` + hook em `src/commands/resume/resume.tsx` | Aditivo ~50 LOC |
-| **Draft persistence** | Novo `src/utils/sessionStorage/persistence/draft.ts`, hook em Ctrl+C/shutdown, leitura em `useResumeSession*` | Aditivo, sidecar `draft.txt` |
-| **`titleSource: user`** | `src/utils/sessionStorage/persistence/metadata.ts` — 1 campo + 1 guard em quem escreve auto | Trivial |
-| Sync hot-path writer | `src/utils/sessionStorage/persistence/project.ts` — write sync + fsync diferido no último turn | Médio risco — snapshot testing obrigatório |
+| **Compaction entry tipada** | `src/services/compact/compact.ts` + `src/services/session/pure/typeGuards.ts` | Schema-add. Nova variante de message no JSONL |
+| **Terminal breadcrumb** | Novo `src/services/session/breadcrumb.ts` + hook em `src/commands/resume/resume.tsx` | Aditivo ~50 LOC |
+| **Draft persistence** | Novo `src/services/session/persistence/draft.ts`, hook em Ctrl+C/shutdown, leitura em `useResumeSession*` | Aditivo, sidecar `draft.txt` |
+| **`titleSource: user`** | `src/services/session/persistence/metadata.ts` — 1 campo + 1 guard em quem escreve auto | Trivial |
+| Sync hot-path writer | `src/services/session/persistence/project.ts` — write sync + fsync diferido no último turn | Médio risco — snapshot testing obrigatório |
 | Tree / parentEntryId | Schema-change em todo SessionEntry | **Adiar.** Migration + UI nova sem driver |
-| SQLite + FTS substring | Novo `src/utils/sessionStorage/indexing/historyDb.ts`, ler em `transcriptSearch.ts` + lista `/resume` | Médio. Dep `bun:sqlite` disponível. Coexiste com `liteMetadata` |
-| Subagent artifact dir | Verificar `src/utils/sessionStorage/resume/subagents.ts:1-189` | Diagnóstico, talvez 0 mudança |
+| SQLite + FTS substring | Novo `src/services/session/indexing/historyDb.ts`, ler em `transcriptSearch.ts` + lista `/resume` | Médio. Dep `bun:sqlite` disponível. Coexiste com `liteMetadata` |
+| Subagent artifact dir | Verificar `src/services/session/resume/subagents.ts:1-189` | Diagnóstico, talvez 0 mudança |
 | ArtifactManager seq IDs | — | Skip. UUID atual já é correto |
 | `moveTo` | Comando novo `/move` ~80 LOC | Nicho, baixa prio |
 

@@ -12,7 +12,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
   NATIVE_PACKAGE_URL: undefined,
 }
 
-import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
+import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
 import { registerRefreshRulesSkill } from './refreshRules.js'
 import { registerRunSkill } from './run.js'

@@ -155,7 +155,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #5 fileReadCache
   try {
-    const mod = await import('../../src/utils/fileReadCache.js')
+    const mod = await import('../../src/utils/fs/fileReadCache.js')
     out['fileReadCache.size'] = mod.fileReadCache.size
   } catch {}
 
@@ -183,7 +183,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #9 agentTranscriptSubdirs
   try {
-    const mod = await import('../../src/utils/sessionStorage.js')
+    const mod = await import('../../src/services/session/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       out['sessionStorage.agentTranscriptSubdirs'] =
         mod.__TEST_ONLY_getAgentTranscriptSubdirsSize()
@@ -192,7 +192,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #10 sentBashGitInstructions
   try {
-    const mod = await import('../../src/utils/attachments.js')
+    const mod = await import('../../src/services/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       out['attachments.sentBashGitInstructions'] =
         mod.__TEST_ONLY_getBashGitInstructionsSize()
@@ -321,7 +321,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/utils/log.js')
   })
   await stage('02 utils/config', async () => {
-    await import('../../src/utils/config.js')
+    await import('../../src/services/config/config.js')
   })
   await stage('03 services/api/providerConfig', async () => {
     await import('../../src/services/api/providerConfig.js')
@@ -356,7 +356,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/services/compact/stableStubState.js')
   })
   await stage('13 utils/toolResultStorage', async () => {
-    await import('../../src/utils/toolResultStorage.js')
+    await import('../../src/services/tools/toolResultStorage.js')
   })
   await stage('14 QueryEngine', async () => {
     await import('../../src/QueryEngine.js')
@@ -369,7 +369,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
   await stage('16 new QueryEngine()', async () => {
     const [{ QueryEngine }, fileStateCacheMod] = await Promise.all([
       import('../../src/QueryEngine.js'),
-      import('../../src/utils/fileStateCache.js'),
+      import('../../src/utils/fs/fileStateCache.js'),
     ])
     const {
       createFileStateCacheWithSizeLimit,
@@ -418,7 +418,7 @@ async function runBench(args: Args): Promise<{
   const {
     createFileStateCacheWithSizeLimit,
     READ_FILE_STATE_CACHE_SIZE,
-  } = await import('../../src/utils/fileStateCache.js')
+  } = await import('../../src/utils/fs/fileStateCache.js')
 
   // --- Phase 2: construct config with fake deps ---
   const script = buildScript(args.mode, args.turns, args.toolOutputKb)

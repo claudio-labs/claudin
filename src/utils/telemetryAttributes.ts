@@ -1,10 +1,10 @@
 import type { Attributes } from 'src/vendor/otel.js'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { getOauthAccountInfo } from './auth.js'
-import { getOrCreateUserID } from './config.js'
+import { getOauthAccountInfo } from 'src/services/auth/auth.js'
+import { getOrCreateUserID } from 'src/services/config/config.js'
 import { envDynamic } from './envDynamic.js'
 import { isEnvTruthy } from './envUtils.js'
-import { toTaggedId } from './taggedId.js'
+import { toTaggedId } from 'src/utils/data/taggedId.js'
 
 // Default configuration for metrics cardinality
 const METRICS_CARDINALITY_DEFAULTS = {

@@ -4,10 +4,10 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // Synthesize a profile from the legacy CLAUDE_CODE_USE_*/OPENAI_* envs the
 // existing test sets up. Spread + restore in afterAll to avoid mock-leaks
 // into later test files (Bun's discovery is process-global).
-const realActiveProvider = { ...(await import('../../services/api/activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
-mock.module('../../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => {
     const env = process.env
@@ -24,11 +24,11 @@ mock.module('../../services/api/activeProvider.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('../../services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
 })
 
-const { getAdditionalModelOptionsCacheScope } = await import('../../services/api/providerConfig.js')
-const { getAPIProvider } = await import('../../utils/model/providers.js')
+const { getAdditionalModelOptionsCacheScope } = await import('src/services/api/providerConfig.js')
+const { getAPIProvider } = await import('src/utils/model/providers.js')
 void getAPIProvider
 
 const originalEnv = {
@@ -78,7 +78,7 @@ test('opens the model picker without awaiting local model discovery refresh', as
       }),
   )
 
-  mock.module('../../utils/model/openaiModelDiscovery.js', () => ({
+  mock.module('src/utils/model/openaiModelDiscovery.js', () => ({
     discoverOpenAICompatibleModelOptions,
   }))
 

@@ -1,10 +1,10 @@
 import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
-import { applyStableStubs } from '../compact/stableStubState.js'
+import { applyStableStubs } from 'src/services/compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
-import { stableStringify } from '../../utils/stableStringify.js'
-import { getSessionId } from '../../bootstrap/state.js'
+import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,
@@ -404,7 +404,7 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
  * `required`. Without it the model has no legal way to skip an argument and
  * invents a placeholder instead (`pages: ""`, `limit: 2000`,
  * `view: "full"`), which downstream tools then honor as a real value.
- * stripPlaceholderOptionalFields (src/utils/toolInputPlaceholders.ts) turns
+ * stripPlaceholderOptionalFields (src/services/tools/toolInputPlaceholders.ts) turns
  * the resulting `null` back into an absent key.
  *
  * An `enum` needs `null` in BOTH the type union and the value list, or the
@@ -632,7 +632,7 @@ export async function performCodexRequest(options: {
       method: 'POST',
       headers,
       // WHY: byte-identity required for implicit prefix caching on
-      // OpenAI Responses API. See src/utils/stableStringify.ts.
+      // OpenAI Responses API. See src/utils/data/stableStringify.ts.
       body: stableStringify(body),
       signal: options.signal,
     },

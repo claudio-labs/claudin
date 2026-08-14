@@ -224,9 +224,9 @@ Nenhum erro em nenhum dos dois.
 ```
 O arquivo com mais mudanças foi:
 
-**`src/utils/githubModelsCredentials.test.ts`** — ~345 linhas alteradas (a maior do intervalo).
+**`src/services/api/githubModelsCredentials.test.ts`** — ~345 linhas alteradas (a maior do intervalo).
 
-Por quê: é um arquivo de testes que recebeu uma grande leva de casos novos cobrindo o fluxo de credenciais do GitHub Models. Faz par com `src/utils/githubModelsCredentials.ts` (~109 linhas), que foi reescrito/ampliado nesse mesmo intervalo — ou seja, a mudança de comportamento no módulo de credenciais veio acompanhada de uma suíte de testes bem maior que o próprio código, o que inflou a contagem de linhas do `.test.ts`.
+Por quê: é um arquivo de testes que recebeu uma grande leva de casos novos cobrindo o fluxo de credenciais do GitHub Models. Faz par com `src/services/api/githubModelsCredentials.ts` (~109 linhas), que foi reescrito/ampliado nesse mesmo intervalo — ou seja, a mudança de comportamento no módulo de credenciais veio acompanhada de uma suíte de testes bem maior que o próprio código, o que inflou a contagem de linhas do `.test.ts`.
 
 Logo atrás vieram `src/services/api/clientCache.test.ts` (~170) e `clientCache.ts` (~168), outro par código+teste novo.
 ```
@@ -236,8 +236,8 @@ Logo atrás vieram `src/services/api/clientCache.test.ts` (~170) e `clientCache.
 ```
 O arquivo com mais mudanças foi:
 
-**`src/utils/githubModelsCredentials.test.ts`** (345 linhas alteradas)
+**`src/services/api/githubModelsCredentials.test.ts`** (345 linhas alteradas)
 
-Por quê: é o arquivo de testes das credenciais do GitHub Models. O grande volume de mudança acompanha a refatoração do código-fonte correspondente (`src/utils/githubModelsCredentials.ts`, +109), ou seja, foram adicionados/atualizados muitos casos de teste para cobrir o novo comportamento da lógica de credenciais — testes normalmente crescem mais em linhas que o código que cobrem.
+Por quê: é o arquivo de testes das credenciais do GitHub Models. O grande volume de mudança acompanha a refatoração do código-fonte correspondente (`src/services/api/githubModelsCredentials.ts`, +109), ou seja, foram adicionados/atualizados muitos casos de teste para cobrir o novo comportamento da lógica de credenciais — testes normalmente crescem mais em linhas que o código que cobrem.
 ```
 

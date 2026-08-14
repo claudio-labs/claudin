@@ -5,19 +5,19 @@ import {
   getIsNonInteractiveSession,
   getKairosActive,
   preferThirdPartyAuthentication,
-} from '../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   getAnthropicApiKey,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
   hasProfileScope,
-} from './auth.js'
-import { isInBundledMode } from './bundledMode.js'
-import { getGlobalConfig, saveGlobalConfig } from './config.js'
+} from 'src/services/auth/auth.js'
+import { isInBundledMode } from 'src/services/install/bundledMode.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from './debug.js'
 import { isEnvTruthy } from './envUtils.js'
 import {
@@ -29,12 +29,12 @@ import {
   parseUserSpecifiedModel,
 } from './model/model.js'
 import { getAPIProvider } from './model/providers.js'
-import { isEssentialTrafficOnly } from './privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from './settings/settings.js'
+} from 'src/services/settings/settings.js'
 import { createSignal } from './signal.js'
 
 export function isFastModeEnabled(): boolean {

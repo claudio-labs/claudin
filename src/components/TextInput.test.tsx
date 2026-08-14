@@ -4,9 +4,9 @@ import { expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot } from '../ink.js'
-import { AppStateProvider } from '../state/AppState.js'
-import { maskTextWithVisibleEdges } from '../utils/Cursor.js'
+import { createRoot } from 'src/ink.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { maskTextWithVisibleEdges } from 'src/utils/Cursor.js'
 import TextInput from './TextInput.js'
 import VimTextInput from './VimTextInput.js'
 

@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { getIsRemoteMode } from '../../bootstrap/state.js'
+import { getIsRemoteMode } from 'src/bootstrap/state.js'
 import {
   type Notification,
   useNotifications,
-} from '../../context/notifications.js'
-import { useAppState } from '../../state/AppState.js'
-import { isInProcessTeammateTask } from '../../tasks/InProcessTeammateTask/types.js'
+} from 'src/context/notifications.js'
+import { useAppState } from 'src/state/AppState.js'
+import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
 
 function parseCount(notif: Notification): number {
   if (!('text' in notif)) {

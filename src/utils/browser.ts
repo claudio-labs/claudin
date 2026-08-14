@@ -1,9 +1,9 @@
 import { promises as fs } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { execFileNoThrow } from './execFileNoThrow.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { logForDebugging } from './debug.js'
-import { getGlobalConfig } from './config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 
 function validateUrl(url: string): void {
   let parsedUrl: URL

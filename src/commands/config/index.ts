@@ -1,4 +1,4 @@
-import type { Command } from '../../commands.js'
+import type { Command } from 'src/commands.js'
 
 const config = {
   aliases: ['settings'],

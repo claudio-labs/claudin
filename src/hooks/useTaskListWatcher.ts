@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from 'fs'
 import { useEffect, useRef } from 'react'
-import { logForDebugging } from '../utils/debug.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   claimTask,
   DEFAULT_TASKS_MODE_TASK_LIST_ID,
@@ -9,7 +9,7 @@ import {
   listTasks,
   type Task,
   updateTask,
-} from '../utils/tasks.js'
+} from 'src/tasks/tasks.js'
 
 const DEBOUNCE_MS = 1000
 

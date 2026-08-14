@@ -24,12 +24,12 @@
  */
 
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getSessionId, onSessionSwitch } from '../../bootstrap/state.js'
-import { getAgentId } from '../../utils/teammate.js'
-import { setPinReleaseHandler } from '../../utils/fileStateCache.js'
-import { estimateImageTokens } from '../../utils/imageTokenEstimator.js'
-import { roughTokenCountEstimation } from '../tokenEstimation.js'
-import { getCacheProfile } from '../cache/cacheProfile.js'
+import { getSessionId, onSessionSwitch } from 'src/bootstrap/state.js'
+import { getAgentId } from 'src/coordinator/teammate.js'
+import { setPinReleaseHandler } from 'src/utils/fs/fileStateCache.js'
+import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 
 /** Minimum token count for a tool_result to be immediately stubbed on display. */
 const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000

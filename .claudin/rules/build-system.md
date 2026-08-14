@@ -47,6 +47,33 @@ not source.
 5. **Path alias.** `tsconfig.json` maps `src/*` → `./src/*`. Both `src/...` and
    relative imports work; prefer the `src/...` form.
 
+### A declaration-only module has to stay a relative import
+
+89 files under `src/` are a `.d.ts` with no `.ts`/`.tsx` beside them — 85 of them
+added by #87 to retire the fork's `TS2307`. They declare modules this fork never
+received, and they resolve **for tsc and for nothing else**.
+
+The pre-scan in #3 is what keeps the build green over them, and it fires on
+exactly one shape: `scripts/build.ts:561` registers a module as missing when the
+specifier both ends in `.js` and starts with `./` or `../`, testing for a
+`.ts`/`.tsx` sibling that a `.d.ts` does not provide. So the relative form is
+stubbed to a noop and the bundle builds. The `src/…` alias form is never scanned
+at all — Bun's resolver reaches it directly and the build dies with
+`Could not resolve`.
+
+Item 5 above therefore has one exception, and it is the opposite of what a
+mechanical alias pass will do: **an import of a declaration-only module keeps its
+`../` and stays relative.** Aliasing one trades a green build for a hard resolver
+failure. Moving the importing file without re-deriving that `../` is worse than
+it looks — the specifier silently stops naming the declaration and becomes a real
+`TS2307`, a class that is invisible on any base where the target did not resolve
+before the move either (742 of them in PR #88, from a single directory move).
+
+`bun run build:strict` pins the set: `scripts/missing-imports-baseline.json`
+records the 105 specifiers this fork legitimately stubs, and the build fails on
+any new one, naming the file that referenced it. It is what tells a deliberate
+stub apart from an import that broke.
+
 ## Feature Flags
 
 Build-time flags live in `featureFlags` in `scripts/build.ts`. Most

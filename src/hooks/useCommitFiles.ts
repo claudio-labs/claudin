@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { type CommitFile, fetchCommitFiles } from '../utils/gitLog.js'
+import { type CommitFile, fetchCommitFiles } from 'src/services/git/gitLog.js'
 
 const DEBOUNCE_MS = 150
 

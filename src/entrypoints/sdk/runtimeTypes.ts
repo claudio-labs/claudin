@@ -355,7 +355,7 @@ export type SDKSession = {
  * Re-exported rather than redeclared: `utils/listSessionsImpl.ts` owns the real
  * definition and `listSessionsImpl()` is typed against it.
  */
-export type { ListSessionsOptions } from '../../utils/listSessionsImpl.js'
+export type { ListSessionsOptions } from 'src/services/session/listSessionsImpl.js'
 
 /** Options for `getSessionInfo()`. Its docstring documents exactly `{ dir? }`. */
 export type GetSessionInfoOptions = {

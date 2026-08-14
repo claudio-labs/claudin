@@ -21,7 +21,7 @@ async function main() {
   const { getAllBaseTools } = await import('../../src/tools.js')
   const { getSystemPrompt } = await import('../../src/constants/prompts.js')
   const { roughTokenCountEstimation } = await import('../../src/services/tokenEstimation.js')
-  const { enableConfigs } = await import('../../src/utils/config.js')
+  const { enableConfigs } = await import('../../src/services/config/config.js')
   const { measureToolSchemas } = await import('../measure-tool-schemas.ts')
   const tk = (s: string) => roughTokenCountEstimation(s)
 

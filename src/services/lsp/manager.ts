@@ -1,8 +1,8 @@
-import { logForDebugging } from '../../utils/debug.js'
-import { isBareMode } from '../../utils/envUtils.js'
-import { errorMessage } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
-import { notifyRuntimeStateChange } from '../../bootstrap/state.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isBareMode } from 'src/utils/envUtils.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { notifyRuntimeStateChange } from 'src/bootstrap/state.js'
 import {
   createLSPServerManager,
   type LSPServerManager,

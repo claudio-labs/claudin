@@ -9,14 +9,14 @@ import {
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { getEmptyToolPermissionContext, type ToolUseContext } from '../../Tool.js'
-import { FileStateCache } from '../../utils/fileStateCache.js'
-import { getFileModificationTime } from '../../utils/file.js'
+import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/Tool.js'
+import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { getFileModificationTime } from 'src/utils/fs/file.js'
 import {
   getFsImplementation,
   setFsImplementation,
   setOriginalFsImplementation,
-} from '../../utils/fsOperations.js'
+} from 'src/utils/fs/fsOperations.js'
 import {
   applyPatchCacheInvalidationPaths,
   runApplyPatch,

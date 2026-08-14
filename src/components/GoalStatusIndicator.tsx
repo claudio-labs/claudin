@@ -6,15 +6,15 @@
  * /goal clear hint. Renders nothing when no goal is active.
  */
 import * as React from 'react'
-import { useTerminalSize } from '../hooks/useTerminalSize.js'
-import { Box, Text } from '../ink.js'
-import { stringWidth } from '../ink/stringWidth.js'
-import { useAppState } from '../state/AppState.js'
-import type { AppState } from '../state/AppStateStore.js'
-import type { Message } from '../types/message.js'
-import { formatDuration } from '../utils/format.js'
-import { getGoalTokenCount } from '../utils/goal/goal.js'
-import { truncateToWidth } from '../utils/truncate.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/ink.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import { useAppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import type { Message } from 'src/types/message.js'
+import { formatDuration } from 'src/utils/text/format.js'
+import { getGoalTokenCount } from 'src/services/goal/goal.js'
+import { truncateToWidth } from 'src/utils/text/truncate.js'
 
 // Collapse newlines/runs of whitespace so a multi-line condition stays on one
 // footer row instead of breaking the layout.

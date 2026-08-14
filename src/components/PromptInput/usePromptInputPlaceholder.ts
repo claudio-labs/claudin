@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js'
-import { getGlobalConfig } from 'src/utils/config.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
 import { getExampleCommandPool } from 'src/utils/exampleCommands.js'
 import { isQueuedCommandEditable } from 'src/utils/messageQueueManager.js'
 

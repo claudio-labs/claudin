@@ -1,22 +1,22 @@
 import { feature } from 'bun:bundle'
 import { getHeapStatistics } from 'v8'
 import { markPostCompaction } from 'src/bootstrap/state.js'
-import { getSdkBetas } from '../../bootstrap/state.js'
-import type { QuerySource } from '../../constants/querySource.js'
-import type { ToolUseContext } from '../../Tool.js'
-import type { Message } from '../../types/message.js'
-import { getGlobalConfig } from '../../utils/config.js'
-import { getContextWindowForModel } from '../../utils/context.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { hasExactErrorMessage } from '../../utils/errors.js'
-import type { CacheSafeParams } from '../../utils/forkedAgent.js'
-import { logError } from '../../utils/log.js'
-import { tokenCountWithEstimation } from '../../utils/tokens.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
-import { getMaxOutputTokensForModel } from '../api/claude.js'
-import { notifyCompaction } from '../api/promptCacheBreakDetection.js'
-import { setLastSummarizedMessageId } from '../SessionMemory/sessionMemoryUtils.js'
+import { getSdkBetas } from 'src/bootstrap/state.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { Message } from 'src/types/message.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getContextWindowForModel } from 'src/services/context/context.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { hasExactErrorMessage } from 'src/utils/errors.js'
+import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import { logError } from 'src/utils/log.js'
+import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getMaxOutputTokensForModel } from 'src/services/api/claude.js'
+import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
+import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMemoryUtils.js'
 import {
   buildPostCompactMessages,
   type CompactionResult,
@@ -276,7 +276,7 @@ export async function shouldAutoCompact(
   if (feature('CONTEXT_COLLAPSE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { isContextCollapseEnabled } =
-      require('../contextCollapse/index.js') as typeof import('../contextCollapse/index.js')
+      require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isContextCollapseEnabled()) {
       return false

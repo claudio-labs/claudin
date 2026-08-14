@@ -26,19 +26,19 @@ function setTotals(next: {
   cacheCreated = next.cacheCreated ?? 0;
 }
 
-const realCostTracker = { ...(await import('../cost-tracker.js')) };
-const realCacheStatsTracker = { ...(await import('../services/api/cacheStatsTracker.js')) };
-const realActiveProvider = { ...(await import('../services/api/activeProvider.js')) };
-const realCacheMetrics = { ...(await import('../services/api/cacheMetrics.js')) };
-const realProviders = { ...(await import('../utils/model/providers.js')) };
-const realInk = { ...(await import('../ink.js')) };
+const realCostTracker = { ...(await import('src/cost-tracker.js')) };
+const realCacheStatsTracker = { ...(await import('src/services/api/cacheStatsTracker.js')) };
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) };
+const realCacheMetrics = { ...(await import('src/services/api/cacheMetrics.js')) };
+const realProviders = { ...(await import('src/utils/model/providers.js')) };
+const realInk = { ...(await import('src/ink.js')) };
 
-mock.module('../cost-tracker.js', () => ({
+mock.module('src/cost-tracker.js', () => ({
   getTotalInputTokens: () => totalInput,
   getTotalOutputTokens: () => totalOutput,
 }));
 
-mock.module('../services/api/cacheStatsTracker.js', () => ({
+mock.module('src/services/api/cacheStatsTracker.js', () => ({
   getSessionCacheMetrics: () => ({
     read: cacheRead,
     created: cacheCreated,
@@ -53,7 +53,7 @@ let profile: { id: string; model: string; baseUrl: string } | undefined;
 function setProfile(next: typeof profile) {
   profile = next;
 }
-mock.module('../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   tryGetActiveProvider: () => profile,
 }));
 
@@ -61,16 +61,19 @@ let cacheProviderResolution = 'anthropic';
 function setCacheProvider(name: string) {
   cacheProviderResolution = name;
 }
-mock.module('../services/api/cacheMetrics.js', () => ({
+mock.module('src/services/api/cacheMetrics.js', () => ({
   resolveCacheProvider: () => cacheProviderResolution,
 }));
 
-mock.module('../utils/model/providers.js', () => ({
-  getAPIProvider: () => 'anthropic',
-  isGithubNativeAnthropicMode: () => false,
-}));
+// This file used to pin providers.js to getAPIProvider: () => 'anthropic' here,
+// at module scope. It never needed it — resolveCacheProvider above is the only
+// seam these tests read — and it is the earliest registration for that
+// specifier in the whole run, which under Bun means it OWNED it: five other
+// files (withRetry, apiPreconnect, officialRegistry, domainCheck,
+// conversationRecovery) got 'anthropic', a value that is not even in the
+// APIProvider union, no matter what they mocked afterwards.
 
-mock.module('../ink.js', () => ({
+mock.module('src/ink.js', () => ({
   Box: () => null,
   Text: () => null,
 }));
@@ -156,16 +159,16 @@ describe('readSnapshot — supportsCache layout flag', () => {
 });
 
 afterAll(() => {
-  mock.module('../cost-tracker.js', () => realCostTracker);
   mock.module('src/cost-tracker.js', () => realCostTracker);
-  mock.module('../services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
+  mock.module('src/cost-tracker.js', () => realCostTracker);
   mock.module('src/services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
-  mock.module('../services/api/activeProvider.js', () => realActiveProvider);
+  mock.module('src/services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
   mock.module('src/services/api/activeProvider.js', () => realActiveProvider);
-  mock.module('../services/api/cacheMetrics.js', () => realCacheMetrics);
+  mock.module('src/services/api/activeProvider.js', () => realActiveProvider);
   mock.module('src/services/api/cacheMetrics.js', () => realCacheMetrics);
-  mock.module('../utils/model/providers.js', () => realProviders);
+  mock.module('src/services/api/cacheMetrics.js', () => realCacheMetrics);
   mock.module('src/utils/model/providers.js', () => realProviders);
-  mock.module('../ink.js', () => realInk);
+  mock.module('src/utils/model/providers.js', () => realProviders);
+  mock.module('src/ink.js', () => realInk);
   mock.module('src/ink.js', () => realInk);
 });

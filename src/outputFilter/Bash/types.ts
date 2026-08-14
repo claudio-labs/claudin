@@ -1,4 +1,4 @@
-import type { MatchOutputRule, ReplaceRule, RewriteContext } from "../types.js";
+import type { MatchOutputRule, ReplaceRule, RewriteContext } from "src/outputFilter/types.js";
 
 export interface FilterSpec {
   name: string;

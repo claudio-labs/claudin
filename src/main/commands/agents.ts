@@ -8,7 +8,7 @@ export function registerAgentsCommand(program: Command): void {
   program.command('agents').description('List configured agents').option('--setting-sources <sources>', 'Comma-separated list of setting sources to load (user, project, local).').action(async () => {
     const {
       agentsHandler
-    } = await import('../../cli/handlers/agents.js')
+    } = await import('src/cli/handlers/agents.js')
     await agentsHandler()
     process.exit(0)
   })

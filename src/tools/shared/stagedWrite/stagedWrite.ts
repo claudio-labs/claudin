@@ -14,32 +14,32 @@ import type { UUID } from 'crypto'
 import { dirname } from 'path'
 import type { StructuredPatchHunk } from 'diff'
 
-import type { ToolUseContext } from '../../../Tool.js'
-import { diagnosticTracker } from '../../../services/diagnosticTracking.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
-} from '../../../services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from '../../../services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from '../../../services/lsp/manager.js'
-import { notifyVscodeFileUpdated } from '../../../services/mcp/vscodeSdkMcp.js'
-import { checkTeamMemSecrets } from '../../../services/teamMemorySync/teamMemSecretGuard.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { countLinesChanged, getPatchFromContents } from '../../../utils/diff.js'
-import { countAddDel } from '../../../utils/diffStat.js'
-import { AbortError, isENOENT } from '../../../utils/errors.js'
-import { getFileModificationTime, writeTextContent } from '../../../utils/file.js'
+} from 'src/services/lsp/diagnosticsForToolResult.js'
+import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/services/lsp/manager.js'
+import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
+import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { countLinesChanged, getPatchFromContents } from 'src/services/git/diff.js'
+import { countAddDel } from 'src/services/git/diffStat.js'
+import { AbortError, isENOENT } from 'src/utils/errors.js'
+import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from '../../../utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import {
   type LineEndingType,
   readFileSyncWithMetadata,
-} from '../../../utils/fileRead.js'
-import { getFsImplementation } from '../../../utils/fsOperations.js'
-import { logError } from '../../../utils/log.js'
-import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from '../../FileEditTool/constants.js'
+} from 'src/utils/fs/fileRead.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logError } from 'src/utils/log.js'
+import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 
 // A batch touching this many files prompts once even under acceptEdits — a
 // large multi-file write is qualitatively different from a single edit.

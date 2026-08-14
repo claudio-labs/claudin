@@ -5,24 +5,24 @@ import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/state/AppStateStore.js'
 import type {
   SessionExternalMetadata,
-} from 'src/utils/sessionState.js'
+} from 'src/services/session/sessionState.js'
 import {
   loadConversationForResume,
   type TurnInterruptionState,
-} from 'src/utils/conversationRecovery.js'
+} from 'src/services/session/conversationRecovery.js'
 import { externalMetadataToAppState } from 'src/state/onChangeAppState.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { logError } from 'src/utils/log.js'
 import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
-import { parseSessionIdentifier } from 'src/utils/sessionUrl.js'
+import { parseSessionIdentifier } from 'src/services/session/sessionUrl.js'
 import {
   hydrateRemoteSession,
   hydrateFromCCRv2InternalEvents,
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveMode,
-} from 'src/utils/sessionStorage.js'
-import { restoreSessionStateFromLog } from 'src/utils/sessionRestore.js'
+} from 'src/services/session/sessionStorage.js'
+import { restoreSessionStateFromLog } from 'src/services/session/sessionRestore.js'
 import {
   getSessionId,
   setMainLoopModelOverride,
@@ -30,16 +30,16 @@ import {
   isSessionPersistenceDisabled,
 } from 'src/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
-import { processSessionStartHooks } from 'src/utils/sessionStart.js'
-import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('../../coordinator/coordinatorMode.js') as typeof import('../../coordinator/coordinatorMode.js'))
+  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 
@@ -115,7 +115,7 @@ export async function loadInitialMessages(
               getActiveAgentsFromList,
             } =
               // eslint-disable-next-line @typescript-eslint/no-require-imports
-              require('../../tools/AgentTool/loadAgentsDir.js') as typeof import('../../tools/AgentTool/loadAgentsDir.js')
+              require('src/tools/AgentTool/loadAgentsDir.js') as typeof import('src/tools/AgentTool/loadAgentsDir.js')
             getAgentDefinitionsWithOverrides.cache.clear?.()
             const freshAgentDefs = await getAgentDefinitionsWithOverrides(
               getCwd(),
@@ -195,7 +195,7 @@ export async function loadInitialMessages(
         processMessagesForTeleportResume,
         teleportResumeCodeSession,
         validateGitState,
-      } = await import('src/utils/teleport.js')
+      } = await import('src/components/teleport.js')
       await validateGitState()
       const teleportResult = await teleportResumeCodeSession(options.teleport)
       const { branchError } = await checkOutTeleportedSessionBranch(
@@ -317,7 +317,7 @@ export async function loadInitialMessages(
           // Refresh agent definitions to reflect the mode switch
           const { getAgentDefinitionsWithOverrides, getActiveAgentsFromList } =
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            require('../../tools/AgentTool/loadAgentsDir.js') as typeof import('../../tools/AgentTool/loadAgentsDir.js')
+            require('src/tools/AgentTool/loadAgentsDir.js') as typeof import('src/tools/AgentTool/loadAgentsDir.js')
           getAgentDefinitionsWithOverrides.cache.clear?.()
           const freshAgentDefs = await getAgentDefinitionsWithOverrides(
             getCwd(),

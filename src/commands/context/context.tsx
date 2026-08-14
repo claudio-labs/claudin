@@ -1,18 +1,18 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import type { LocalJSXCommandContext } from '../../commands.js';
-import { Box, Text, useInput } from '../../ink.js';
-import { ContextVisualization } from '../../components/ContextVisualization.js';
-import { DOWN_ARROW, UP_ARROW } from '../../constants/figures.js';
-import { useModalOrTerminalSize } from '../../context/modalContext.js';
-import { useExitOnCtrlCDWithKeybindings } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import ScrollBox, { type ScrollBoxHandle } from '../../ink/components/ScrollBox.js';
-import { microcompactMessages } from '../../services/compact/microCompact.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import type { Message } from '../../types/message.js';
-import { analyzeContextUsage, type ContextData } from '../../utils/analyzeContext.js';
-import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
+import type { LocalJSXCommandContext } from 'src/commands.js';
+import { Box, Text, useInput } from 'src/ink.js';
+import { ContextVisualization } from 'src/components/ContextVisualization.js';
+import { DOWN_ARROW, UP_ARROW } from 'src/constants/figures.js';
+import { useModalOrTerminalSize } from 'src/context/modalContext.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import ScrollBox, { type ScrollBoxHandle } from 'src/ink/components/ScrollBox.js';
+import { microcompactMessages } from 'src/services/compact/microCompact.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { Message } from 'src/types/message.js';
+import { analyzeContextUsage, type ContextData } from 'src/services/context/analyzeContext.js';
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';
 
 // Rows reserved for the panel's own footer + the REPL chrome below it, so the
 // scroll viewport never runs past the bottom of the terminal.

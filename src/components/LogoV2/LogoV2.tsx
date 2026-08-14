@@ -1,23 +1,23 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import * as React from 'react';
-import { Box, Text, color } from '../../ink.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { stringWidth } from '../../ink/stringWidth.js';
-import { getLayoutMode, calculateLayoutDimensions, calculateOptimalLeftWidth, formatWelcomeMessage, truncatePath, getRecentActivitySync, getRecentReleaseNotesSync, getLogoDisplayData } from '../../utils/logoV2Utils.js';
-import { truncate } from '../../utils/format.js';
+import { Box, Text, color } from 'src/ink.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { getLayoutMode, calculateLayoutDimensions, calculateOptimalLeftWidth, formatWelcomeMessage, truncatePath, getRecentActivitySync, getRecentReleaseNotesSync, getLogoDisplayData } from 'src/utils/logoV2Utils.js';
+import { truncate } from 'src/utils/text/format.js';
 import { Clawd } from './Clawd.js';
 import { FeedColumn } from './FeedColumn.js';
 import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from './feedConfigs.js';
-import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
-import { getInitialSettings } from 'src/utils/settings/settings.js';
+import { getInitialSettings } from 'src/services/settings/settings.js';
 import { isDebugMode, isDebugToStdErr, getDebugLogPath } from 'src/utils/debug.js';
 import { useEffect, useState } from 'react';
-import { getSteps, shouldShowProjectOnboarding, incrementProjectOnboardingSeenCount } from '../../projectOnboardingState.js';
+import { getSteps, shouldShowProjectOnboarding, incrementProjectOnboardingSeenCount } from 'src/projectOnboardingState.js';
 import { CondensedLogo } from './CondensedLogo.js';
-import { OffscreenFreeze } from '../OffscreenFreeze.js';
-import { checkForReleaseNotesSync } from '../../utils/releaseNotes.js';
+import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import { checkForReleaseNotesSync } from 'src/services/install/releaseNotes.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { EmergencyTip } from './EmergencyTip.js';
 import { VoiceModeNotice } from './VoiceModeNotice.js';
@@ -32,16 +32,16 @@ import { feature } from 'bun:bundle';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('./ChannelsNotice.js') as typeof import('./ChannelsNotice.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
 import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from './GuestPassesUpsell.js';
 import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from './OverageCreditUpsell.js';
-import { plural } from '../../utils/stringUtils.js';
-import { useAppState } from '../../state/AppState.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import { getEffortSuffix } from '../../utils/effort.js';
-import { getAPIProvider } from '../../utils/model/providers.js';
-import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
-import { renderModelSetting } from '../../utils/model/model.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import { useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { getEffortSuffix } from 'src/utils/effort.js';
+import { getAPIProvider } from 'src/utils/model/providers.js';
+import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
+import { renderModelSetting } from 'src/utils/model/model.js';
 const LEFT_PANEL_MAX_WIDTH = 50;
 export function LogoV2() {
   const $ = _c(94);

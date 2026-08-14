@@ -35,7 +35,7 @@ export function registerWorkflowCommand(program: Command): void {
         },
       ) => {
         const { runWorkflowHeadless } = await import(
-          '../../cli/workflow/runWorkflowHeadless.js'
+          'src/cli/workflow/runWorkflowHeadless.js'
         )
         process.exitCode = await runWorkflowHeadless({
           workflow: name,
@@ -80,7 +80,7 @@ export function registerWorkflowCommand(program: Command): void {
         match?: string
         base?: string
       }) => {
-        const { runWatchLoop } = await import('../../cli/workflow/watchLoop.js')
+        const { runWatchLoop } = await import('src/cli/workflow/watchLoop.js')
         await runWatchLoop({
           label: opts.label,
           workflow: opts.workflow,

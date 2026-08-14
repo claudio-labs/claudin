@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { TaskState } from '../../tasks/types.js';
+import type { TaskState } from 'src/tasks/types.js';
 import {
   countVisibleAgentTasks,
   footerTreeBaseIndex,

@@ -1,20 +1,20 @@
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import { getGlobalConfig, isConfigReadingAllowed } from 'src/utils/config.js'
-import { getCwd } from 'src/utils/cwd.js'
+import { getGlobalConfig, isConfigReadingAllowed } from 'src/services/config/config.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logError } from 'src/utils/log.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
-import { getKnownAgentTypes } from '../agentTypes.js'
-import { WORKFLOW_RUN_TOOL_NAME } from '../constants.js'
+import { getKnownAgentTypes } from 'src/tools/AgentWorkflow/agentTypes.js'
+import { WORKFLOW_RUN_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
 import {
   loadWorkflowDef,
   loadWorkflowDefs,
   validateWorkflowAgents,
   validateWorkflowStructure,
-} from '../loadWorkflows.js'
-import type { RunStatus } from '../types.js'
+} from 'src/tools/AgentWorkflow/loadWorkflows.js'
+import type { RunStatus } from 'src/tools/AgentWorkflow/types.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -112,7 +112,7 @@ export const WorkflowTool = buildTool({
     // registry's eval graph (tools.ts eagerly loads the workflow tools), which
     // reorders module init and trips AgentTool's eager buildTool over an
     // uninitialized schema. The engine is only needed once a run actually fires.
-    const { runWorkflow } = await import('../engine.js')
+    const { runWorkflow } = await import('src/tools/AgentWorkflow/engine.js')
 
     // The model's explicit choice wins; when it omits the param, fall back to the
     // persisted default (`/config` → "Workflows run in background"). Never detach

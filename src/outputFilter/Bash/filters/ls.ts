@@ -6,7 +6,7 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // Matches `ls -l` / `ls -la` / `ls -al` / `ls -lah` etc. We don't want to
 // touch plain `ls` (no long-format output) or `ls -1` (already compact).

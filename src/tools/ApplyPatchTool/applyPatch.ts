@@ -8,15 +8,15 @@
 import type { UUID } from 'crypto'
 import { extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
-import type { ToolUseContext, ValidationResult } from '../../Tool.js'
-import { checkTeamMemSecrets } from '../../services/teamMemorySync/teamMemSecretGuard.js'
-import { getCwd } from '../../utils/cwd.js'
-import { getPatchFromContents } from '../../utils/diff.js'
-import { getFileModificationTime } from '../../utils/file.js'
-import { getFsImplementation } from '../../utils/fsOperations.js'
-import { expandPath } from '../../utils/path.js'
-import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
+import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
+import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { getPatchFromContents } from 'src/services/git/diff.js'
+import { getFileModificationTime } from 'src/utils/fs/file.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { expandPath } from 'src/utils/fs/path.js'
+import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import {
   needsWholeFileRead,
   readGateMessage,
@@ -25,7 +25,7 @@ import {
   seenRegionCovers,
   unseenRegionMessage,
   wholeFileRequiredMessage,
-} from '../shared/readBeforeEditMessages.js'
+} from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,
@@ -34,7 +34,7 @@ import {
   readFileForStaging,
   type StagedChange,
   type StagedChangeType,
-} from '../shared/stagedWrite/stagedWrite.js'
+} from 'src/tools/shared/stagedWrite/stagedWrite.js'
 import {
   deriveNewContentsFromChunks,
   type Hunk,

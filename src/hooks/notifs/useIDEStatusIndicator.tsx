@@ -4,12 +4,12 @@ import type { Notification } from 'src/context/notifications.js';
 import { useNotifications } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
-import type { GlobalConfig } from 'src/utils/config.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
-import { detectIDEs, type IDEExtensionInstallationStatus, isJetBrainsIde, isSupportedTerminal } from 'src/utils/ide.js';
-import { getIsRemoteMode } from '../../bootstrap/state.js';
-import { useIdeConnectionStatus } from '../useIdeConnectionStatus.js';
-import type { IDESelection } from '../useIdeSelection.js';
+import type { GlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { detectIDEs, type IDEExtensionInstallationStatus, isJetBrainsIde, isSupportedTerminal } from 'src/services/ide/ide.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import { useIdeConnectionStatus } from 'src/hooks/useIdeConnectionStatus.js';
+import type { IDESelection } from 'src/hooks/useIdeSelection.js';
 const MAX_IDE_HINT_SHOW_COUNT = 5;
 type Props = {
   ideInstallationStatus: IDEExtensionInstallationStatus | null;

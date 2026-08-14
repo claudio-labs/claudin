@@ -6,11 +6,11 @@
  * while keeping the side question response separate from main conversation.
  */
 
-import { formatAPIError } from '../services/api/errorUtils.js'
-import type { NonNullableUsage } from '../services/api/logging.js'
-import type { Message, SystemAPIErrorMessage } from '../types/message.js'
-import { type CacheSafeParams, runForkedAgent } from './forkedAgent.js'
-import { createUserMessage, extractTextContent } from './messages.js'
+import { formatAPIError } from 'src/services/api/errorUtils.js'
+import type { NonNullableUsage } from 'src/services/api/logging.js'
+import type { Message, SystemAPIErrorMessage } from 'src/types/message.js'
+import { type CacheSafeParams, runForkedAgent } from 'src/coordinator/forkedAgent.js'
+import { createUserMessage, extractTextContent } from 'src/services/messages/messages.js'
 
 // Pattern to detect "/btw" at start of input (case-insensitive, word boundary)
 const BTW_PATTERN = /^\/btw\b/gi

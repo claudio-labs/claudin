@@ -4,9 +4,9 @@ import {
   BRIDGE_FAILED_INDICATOR,
   BRIDGE_READY_INDICATOR,
   BRIDGE_SPINNER_FRAMES,
-} from '../constants/figures.js'
-import { stringWidth } from '../ink/stringWidth.js'
-import { logForDebugging } from '../utils/debug.js'
+} from 'src/constants/figures.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   buildActiveFooterText,
   buildBridgeConnectUrl,

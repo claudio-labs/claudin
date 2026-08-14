@@ -6,32 +6,32 @@ import { feature } from 'bun:bundle'
 import {
   clearInvokedSkills,
   setLastEmittedDate,
-} from '../../bootstrap/state.js'
-import { clearCommandsCache } from '../../commands.js'
-import { getSessionStartDate } from '../../constants/common.js'
+} from 'src/bootstrap/state.js'
+import { clearCommandsCache } from 'src/commands.js'
+import { getSessionStartDate } from 'src/constants/common.js'
 import {
   getGitStatus,
   getSystemContext,
   getUserContext,
   setSystemPromptInjection,
-} from '../../context.js'
-import { clearFileSuggestionCaches } from '../../hooks/fileSuggestions.js'
-import { clearAllPendingCallbacks } from '../../hooks/useSwarmPermissionPoller.js'
-import { clearAllDumpState } from '../../services/api/dumpPrompts.js'
-import { resetPromptCacheBreakDetection } from '../../services/api/promptCacheBreakDetection.js'
-import { clearAllSessions } from '../../services/api/sessionIngress.js'
-import { runPostCompactCleanup } from '../../services/compact/postCompactCleanup.js'
-import { resetAllLSPDiagnosticState } from '../../services/lsp/LSPDiagnosticRegistry.js'
-import { clearTrackedMagicDocs } from '../../services/MagicDocs/magicDocs.js'
-import { clearDynamicSkills } from '../../skills/loadSkillsDir.js'
-import { resetSentSkillNames } from '../../utils/attachments.js'
-import { clearCommandPrefixCaches } from '../../utils/bash/commands.js'
-import { resetGetMemoryFilesCache } from '../../utils/claudemd.js'
-import { clearRepositoryCaches } from '../../utils/detectRepository.js'
-import { clearResolveGitDirCache } from '../../utils/git/gitFilesystem.js'
-import { fileReadCache } from '../../utils/fileReadCache.js'
-import { clearStoredImagePaths } from '../../utils/imageStore.js'
-import { clearSessionEnvVars } from '../../utils/sessionEnvVars.js'
+} from 'src/context.js'
+import { clearFileSuggestionCaches } from 'src/hooks/fileSuggestions.js'
+import { clearAllPendingCallbacks } from 'src/hooks/useSwarmPermissionPoller.js'
+import { clearAllDumpState } from 'src/services/api/dumpPrompts.js'
+import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
+import { clearAllSessions } from 'src/services/api/sessionIngress.js'
+import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
+import { resetAllLSPDiagnosticState } from 'src/services/lsp/LSPDiagnosticRegistry.js'
+import { clearTrackedMagicDocs } from 'src/services/MagicDocs/magicDocs.js'
+import { clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
+import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
+import { clearCommandPrefixCaches } from 'src/services/bash/commands.js'
+import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
+import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
+import { clearResolveGitDirCache } from 'src/services/git/gitFilesystem.js'
+import { fileReadCache } from 'src/utils/fs/fileReadCache.js'
+import { clearStoredImagePaths } from 'src/utils/imageStore.js'
+import { clearSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
 
 /**
  * Clear all session-related caches.
@@ -124,19 +124,19 @@ export function clearSessionCaches(
   // Clear session environment variables
   clearSessionEnvVars()
   // Clear WebFetch URL cache (up to 50MB of cached page content)
-  void import('../../tools/WebFetchTool/utils.js').then(
+  void import('src/tools/WebFetchTool/utils.js').then(
     ({ clearWebFetchCache }) => clearWebFetchCache(),
   )
   // Clear ToolSearch description cache (full tool prompts, ~500KB for 50 MCP tools)
-  void import('../../tools/ToolSearchTool/ToolSearchTool.js').then(
+  void import('src/tools/ToolSearchTool/ToolSearchTool.js').then(
     ({ clearToolSearchDescriptionCache }) => clearToolSearchDescriptionCache(),
   )
   // Clear agent definitions cache (accumulates per-cwd via EnterWorktreeTool)
-  void import('../../tools/AgentTool/loadAgentsDir.js').then(
+  void import('src/tools/AgentTool/loadAgentsDir.js').then(
     ({ clearAgentDefinitionsCache }) => clearAgentDefinitionsCache(),
   )
   // Clear SkillTool prompt cache (accumulates per project root)
-  void import('../../tools/SkillTool/prompt.js').then(({ clearPromptCache }) =>
+  void import('src/tools/SkillTool/prompt.js').then(({ clearPromptCache }) =>
     clearPromptCache(),
   )
 }

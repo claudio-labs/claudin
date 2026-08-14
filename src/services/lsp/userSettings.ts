@@ -1,4 +1,4 @@
-import { getInitialSettings } from '../../utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 
 /**
  * Master toggle for the LSP subsystem. Default: true (enabled).

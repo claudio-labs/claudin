@@ -4,9 +4,9 @@
 
 import { Buffer } from 'buffer'
 import { unlink, writeFile } from 'node:fs/promises'
-import { env } from '../../utils/env.js'
-import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
-import { generateTempFilePath } from '../../utils/tempfile.js'
+import { env } from 'src/utils/env.js'
+import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { generateTempFilePath } from 'src/utils/fs/tempfile.js'
 import { BEL, ESC, ESC_TYPE, SEP } from './ansi.js'
 import type { Action, Color, TabStatusAction } from './types.js'
 

@@ -1,4 +1,4 @@
-import { toRelativePath } from '../../utils/path.js'
+import { toRelativePath } from 'src/utils/fs/path.js'
 
 // Splits a ripgrep content line into path + line number. The path is matched
 // non-greedily so the first `:<digits>:` wins — this keeps Windows drive

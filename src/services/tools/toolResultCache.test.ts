@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import {
   applyPatchCacheInvalidationPaths,
   resolveApplyPatchPaths,
-} from '../../tools/ApplyPatchTool/applyPatch.js'
+} from 'src/tools/ApplyPatchTool/applyPatch.js'
 import {
   CACHE_WHITELIST,
   __resetForTests,

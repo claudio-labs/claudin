@@ -6,7 +6,7 @@ import {
   fetchStashDiff,
   fetchStashFiles,
   type StashEntry,
-} from '../utils/gitLog.js'
+} from 'src/services/git/gitLog.js'
 
 export type StashDetail = {
   files: CommitFile[]

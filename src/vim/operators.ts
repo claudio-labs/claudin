@@ -4,9 +4,9 @@
  * Pure functions for executing vim operators (delete, change, yank, etc.)
  */
 
-import { Cursor } from '../utils/Cursor.js'
-import { firstGrapheme, lastGrapheme } from '../utils/intl.js'
-import { countCharInString } from '../utils/stringUtils.js'
+import { Cursor } from 'src/utils/Cursor.js'
+import { firstGrapheme, lastGrapheme } from 'src/utils/text/intl.js'
+import { countCharInString } from 'src/utils/text/stringUtils.js'
 import {
   isInclusiveMotion,
   isLinewiseMotion,

@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test'
 
 import { readFileSync } from 'node:fs'
 
-import type { ToolUseContext } from '../../Tool.js'
-import { SkillTool } from '../../tools/SkillTool/SkillTool.js'
-import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from '../../utils/messages/constants.js'
-import { saveGlobalConfig } from '../../utils/config.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/services/messages/constants.js'
+import { saveGlobalConfig } from 'src/services/config/config.js'
 import {
   getSchemaValidationErrorOverride,
   getSchemaValidationToolUseResult,
@@ -350,7 +350,7 @@ describe('serial-edit nudge wiring', () => {
 
 // ---------------------------------------------------------------------------
 // Wiring: strict-schema placeholder stripping. The behavior itself is covered
-// by src/utils/toolInputPlaceholders.test.ts; what no unit test can see is the
+// by src/services/tools/toolInputPlaceholders.test.ts; what no unit test can see is the
 // call being detached here, which would put `pages: ""` back in front of
 // validateInput on every Codex turn. Pinned statically for the same reason as
 // the two blocks above.

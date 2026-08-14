@@ -6,13 +6,13 @@
 import {
   checkIsClaudeNativeProvider,
   getDefaultSubagentModel,
-} from '../../utils/model/agent.js'
-import { isModelAllowed } from '../../utils/model/modelAllowlist.js'
-import { logError } from '../../utils/log.js'
+} from 'src/utils/model/agent.js'
+import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
+import { logError } from 'src/utils/log.js'
 import {
   getSourceDisplayName,
   type SettingSource,
-} from '../../utils/settings/constants.js'
+} from 'src/services/settings/constants.js'
 import {
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,

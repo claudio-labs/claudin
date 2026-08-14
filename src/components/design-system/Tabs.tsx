@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useIsInsideModal, useModalScrollRef } from '../../context/modalContext.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import ScrollBox from '../../ink/components/ScrollBox.js';
-import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
-import { stringWidth } from '../../ink/stringWidth.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import type { Theme } from '../../utils/theme.js';
+import { useIsInsideModal, useModalScrollRef } from 'src/context/modalContext.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import ScrollBox from 'src/ink/components/ScrollBox.js';
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import type { Theme } from 'src/utils/theme.js';
 type TabsProps = {
   children: Array<React.ReactElement<TabProps>>;
   title?: string;

@@ -26,44 +26,44 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
-import { getRuleByContentsForTool } from 'src/utils/permissions/permissions.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
-} from 'src/utils/plugins/pluginIdentifier.js'
-import { buildPluginCommandTelemetryFields } from 'src/utils/telemetry/pluginTelemetry.js'
+} from 'src/services/plugins/pluginIdentifier.js'
+import { buildPluginCommandTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
   addInvokedSkill,
   clearInvokedSkillsForAgent,
   getSessionId,
-} from '../../bootstrap/state.js'
-import { COMMAND_MESSAGE_TAG } from '../../constants/xml.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+} from 'src/bootstrap/state.js'
+import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from '../../services/analytics/index.js'
-import { getAgentContext } from '../../utils/agentContext.js'
-import { errorMessage } from '../../utils/errors.js'
+} from 'src/services/analytics/index.js'
+import { getAgentContext } from 'src/coordinator/agentContext.js'
+import { errorMessage } from 'src/utils/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
-} from '../../utils/forkedAgent.js'
-import { parseFrontmatter } from '../../utils/frontmatterParser.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { createUserMessage, normalizeMessages } from '../../utils/messages.js'
-import type { ModelAlias } from '../../utils/model/aliases.js'
-import { resolveSkillModelOverride } from '../../utils/model/model.js'
-import { recordSkillUsage } from '../../utils/suggestions/skillUsageTracking.js'
-import { createAgentId } from '../../utils/uuid.js'
-import { runAgent } from '../AgentTool/runAgent.js'
+} from 'src/coordinator/forkedAgent.js'
+import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
+import type { ModelAlias } from 'src/utils/model/aliases.js'
+import { resolveSkillModelOverride } from 'src/utils/model/model.js'
+import { recordSkillUsage } from 'src/services/suggestions/skillUsageTracking.js'
+import { createAgentId } from 'src/utils/data/uuid.js'
+import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import {
   getToolUseIDFromParentMessage,
   tagMessagesWithToolUseID,
-} from '../utils.js'
+} from 'src/tools/utils.js'
 import { SKILL_TOOL_NAME } from './constants.js'
 import { getPrompt } from './prompt.js'
 import {
@@ -94,9 +94,9 @@ async function getAllCommands(context: ToolUseContext): Promise<Command[]> {
 }
 
 // Re-export Progress from centralized types to break import cycles
-export type { SkillToolProgress as Progress } from '../../types/tools.js'
+export type { SkillToolProgress as Progress } from 'src/types/tools.js'
 
-import type { SkillToolProgress as Progress } from '../../types/tools.js'
+import type { SkillToolProgress as Progress } from 'src/types/tools.js'
 
 // Conditional require for remote skill modules — static imports here would
 // pull in akiBackend.ts (via remoteSkillLoader → akiBackend), which has
@@ -620,7 +620,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Process the skill with optional args
     const { processPromptSlashCommand } = await import(
-      'src/utils/processUserInput/processSlashCommand.js'
+      'src/services/input/processSlashCommand.js'
     )
     const processedCommand = await processPromptSlashCommand(
       commandName,

@@ -156,8 +156,8 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool',
     current: [
       'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',      'src/utils/messages/attachments.ts',
-      'src/utils/messages/planMode.ts',
+      'src/components/permissions/PermissionRequest.tsx',      'src/services/messages/attachments.ts',
+      'src/services/messages/planMode.ts',
     ],
     goal: ['src/tools.ts'],
   },

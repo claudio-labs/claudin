@@ -1,11 +1,11 @@
 import React, { type PropsWithChildren, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import type { Except } from 'type-fest';
-import { markScrollActivity } from '../../bootstrap/state.js';
-import type { DOMElement } from '../dom.js';
-import { markDirty, scheduleRenderFrom } from '../dom.js';
-import { markCommitStart } from '../reconciler.js';
-import type { Styles } from '../styles.js';
-import '../global.d.ts';
+import { markScrollActivity } from 'src/bootstrap/state.js';
+import type { DOMElement } from 'src/ink/dom.js';
+import { markDirty, scheduleRenderFrom } from 'src/ink/dom.js';
+import { markCommitStart } from 'src/ink/reconciler.js';
+import type { Styles } from 'src/ink/styles.js';
+import 'src/ink/global.d.ts';
 import Box from './Box.js';
 
 // 'ink-box' is a real host element recognized by the renderer (src/ink/dom.ts,

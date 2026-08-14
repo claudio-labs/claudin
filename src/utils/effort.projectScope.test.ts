@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 // Spread into plain objects so the teardown restores the original bindings
 // rather than the live ESM namespace (which mock.module mutates after the fact).
-const realConfig = { ...(await import('./config.js')) }
-const realSettings = { ...(await import('./settings/settings.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
+const realSettings = { ...(await import('src/services/settings/settings.js')) }
 
 type MockProjectConfig = {
   activeEffortForProject?: string
@@ -15,7 +15,7 @@ let saveCount = 0
 let saveThrows = false
 
 function installMocks(): void {
-  mock.module('./config.js', () => ({
+  mock.module('src/services/config/config.js', () => ({
     ...realConfig,
     getCurrentProjectConfig: () => projectConfig,
     saveCurrentProjectConfig: (
@@ -28,7 +28,7 @@ function installMocks(): void {
       projectConfig = updater(projectConfig)
     },
   }))
-  mock.module('./settings/settings.js', () => ({
+  mock.module('src/services/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({ effortLevel: globalEffort }),
     getSettingsForSource: (source: string) =>
@@ -49,8 +49,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  mock.module('./config.js', () => realConfig)
-  mock.module('./settings/settings.js', () => realSettings)
+  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/services/settings/settings.js', () => realSettings)
 })
 
 afterAll(() => {

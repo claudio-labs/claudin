@@ -3,25 +3,25 @@ import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js
 import {
   getLastApiCompletionTimestamp,
   setLastApiCompletionTimestamp,
-} from '../bootstrap/state.js'
-import { STRUCTURED_OUTPUTS_BETA_HEADER } from '../constants/betas.js'
-import type { QuerySource } from '../constants/querySource.js'
+} from 'src/bootstrap/state.js'
+import { STRUCTURED_OUTPUTS_BETA_HEADER } from 'src/constants/betas.js'
+import type { QuerySource } from 'src/constants/querySource.js'
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
-} from '../constants/system.js'
-import { logEvent } from '../services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../services/analytics/metadata.js'
-import { getAPIMetadata } from '../services/api/claude.js'
-import { getAnthropicClient } from '../services/api/client.js'
-import { getCachedAnthropicClient } from '../services/api/clientCache.js'
-import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
-import { computeFingerprint } from './fingerprint.js'
+} from 'src/constants/system.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { getAPIMetadata } from 'src/services/api/claude.js'
+import { getAnthropicClient } from 'src/services/api/client.js'
+import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
+import { getModelBetas, modelSupportsStructuredOutputs } from 'src/services/api/betas.js'
+import { computeFingerprint } from 'src/utils/data/fingerprint.js'
 import {
   modelRejectsSamplingParams,
   normalizeModelStringForAPI,
 } from './model/model.js'
-import { modelRequiresAdaptiveThinking } from './thinking.js'
+import { modelRequiresAdaptiveThinking } from 'src/services/context/thinking.js'
 
 type MessageParam = Anthropic.MessageParam
 type TextBlockParam = Anthropic.TextBlockParam

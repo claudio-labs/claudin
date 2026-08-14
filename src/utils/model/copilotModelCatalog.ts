@@ -10,11 +10,11 @@
  * fails or hasn't completed yet, so nothing regresses offline.
  */
 
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { COPILOT_HEADERS } from '../../services/api/openaiShim/constants.js'
-import { getGithubEndpointType } from '../../services/api/providerConfig.js'
-import { onGlobalConfigChange } from '../config.js'
-import { logForDebugging } from '../debug.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { COPILOT_HEADERS } from 'src/services/api/openaiShim/constants.js'
+import { getGithubEndpointType } from 'src/services/api/providerConfig.js'
+import { onGlobalConfigChange } from 'src/services/config/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   COPILOT_MODELS,
   getAllCopilotModels,

@@ -1,7 +1,7 @@
 import figures from 'figures'
 import { describe, expect, it, test } from 'bun:test'
-import { EXTENSION_ICONS } from '../../utils/fileIcons.js'
-import { renderToString } from '../../utils/staticRender.js'
+import { EXTENSION_ICONS } from 'src/utils/fileIcons.js'
+import { renderToString } from 'src/components/staticRender.js'
 import {
   getIcon,
   isPathCompletionItem,

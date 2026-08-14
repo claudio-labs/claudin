@@ -22,20 +22,20 @@ import type { MonitorMcpTaskState } from 'src/tasks/MonitorMcpTask/MonitorMcpTas
 import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/tasks/types.js';
 import type { DeepImmutable } from 'src/types/utils.js';
-import { intersperse } from 'src/utils/array.js';
-import { TEAM_LEAD_NAME } from 'src/utils/swarm/constants.js';
-import { stopUltraplan } from '../../commands/ultraplan.js';
-import type { CommandResultDisplay } from '../../commands.js';
-import { useRegisterOverlay } from '../../context/overlayContext.js';
-import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import { useShortcutDisplay } from '../../keybindings/useShortcutDisplay.js';
-import { count } from '../../utils/array.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
+import { intersperse } from 'src/utils/data/array.js';
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js';
+import { stopUltraplan } from 'src/commands/ultraplan.js';
+import type { CommandResultDisplay } from 'src/commands.js';
+import { useRegisterOverlay } from 'src/context/overlayContext.js';
+import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { count } from 'src/utils/data/array.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { AsyncAgentDetailDialog } from './AsyncAgentDetailDialog.js';
 import { BackgroundTask as BackgroundTaskComponent } from './BackgroundTask.js';
 import { DreamDetailDialog } from './DreamDetailDialog.js';
@@ -119,7 +119,7 @@ const retryWorkflowAgent = workflowTaskModule?.retryWorkflowAgent ?? null;
 // Relative path, not `src/...` path-mapping — Bun's DCE can statically
 // resolve + eliminate `./` requires, but path-mapped strings stay opaque
 // and survive as dead literals in the bundle. Matches tasks.ts pattern.
-const monitorMcpModule = feature('MONITOR_TOOL') ? require('../../tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('../../tasks/MonitorMcpTask/MonitorMcpTask.js') : null;
+const monitorMcpModule = feature('MONITOR_TOOL') ? require('src/tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('src/tasks/MonitorMcpTask/MonitorMcpTask.js') : null;
 const killMonitorMcp = monitorMcpModule?.killMonitorMcp ?? null;
 const MonitorMcpDetailDialog = feature('MONITOR_TOOL') ? (require('./MonitorMcpDetailDialog.js') as typeof import('./MonitorMcpDetailDialog.js')).MonitorMcpDetailDialog : null;
 /* eslint-enable @typescript-eslint/no-require-imports */

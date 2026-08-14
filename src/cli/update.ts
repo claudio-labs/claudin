@@ -5,28 +5,28 @@ import {
   type InstallStatus,
   installGlobalPackage,
   repairBunGlobalBinary,
-} from 'src/utils/autoUpdater.js'
+} from 'src/services/install/autoUpdater.js'
 import { regenerateCompletionCache } from 'src/utils/completionCache.js'
 import {
   getGlobalConfig,
   type InstallMethod,
   saveGlobalConfig,
-} from 'src/utils/config.js'
+} from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getDoctorDiagnostic } from 'src/utils/doctorDiagnostic.js'
-import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
 import {
   installOrUpdateClaudePackage,
   localInstallationExists,
-} from 'src/utils/localInstaller.js'
+} from 'src/services/install/localInstaller.js'
 import {
   installLatest as installLatestNative,
   removeInstalledSymlink,
-} from 'src/utils/nativeInstaller/index.js'
-import { getPackageManager } from 'src/utils/nativeInstaller/packageManagers.js'
-import { writeToStdout } from 'src/utils/process.js'
+} from 'src/services/install/index.js'
+import { getPackageManager } from 'src/services/install/packageManagers.js'
+import { writeToStdout } from 'src/utils/proc/process.js'
 import { gte } from 'src/utils/semver.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 
 export async function update() {
   logEvent('tengu_update_check', {})

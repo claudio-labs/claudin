@@ -7,17 +7,17 @@ import type {
   SDKStatusMessage,
   SDKSystemMessage,
   SDKToolProgressMessage,
-} from '../entrypoints/agentSdkTypes.js'
+} from 'src/entrypoints/agentSdkTypes.js'
 import type {
   AssistantMessage,
   Message,
   StreamEvent,
   SystemMessage,
-} from '../types/message.js'
+} from 'src/types/message.js'
 import type { UUID } from 'crypto'
-import { logForDebugging } from '../utils/debug.js'
-import { fromSDKCompactMetadata } from '../utils/messages/mappers.js'
-import { createUserMessage } from '../utils/messages.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { fromSDKCompactMetadata } from 'src/services/messages/mappers.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 
 /**
  * Converts SDKMessage from CCR to REPL Message types.

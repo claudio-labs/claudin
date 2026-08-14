@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text } from '../../ink.js';
-import { getAgentName, getTeammateColor, getTeamName } from '../../utils/teammate.js';
-import { Spinner } from '../Spinner.js';
+import { Box, Text } from 'src/ink.js';
+import { getAgentName, getTeammateColor, getTeamName } from 'src/coordinator/teammate.js';
+import { Spinner } from 'src/components/Spinner.js';
 import { WorkerBadge } from './WorkerBadge.js';
 type Props = {
   toolName: string;

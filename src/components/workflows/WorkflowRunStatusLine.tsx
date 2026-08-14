@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Box, Text } from '../../ink.js'
-import { formatTokens, truncate } from '../../utils/format.js'
-import { useElapsedTime } from '../../hooks/useElapsedTime.js'
-import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { logError } from '../../utils/log.js'
-import { listRuns } from '../../tools/AgentWorkflow/runStore.js'
-import type { RunState } from '../../tools/AgentWorkflow/types.js'
+import { Box, Text } from 'src/ink.js'
+import { formatTokens, truncate } from 'src/utils/text/format.js'
+import { useElapsedTime } from 'src/hooks/useElapsedTime.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { logError } from 'src/utils/log.js'
+import { listRuns } from 'src/tools/AgentWorkflow/runStore.js'
+import type { RunState } from 'src/tools/AgentWorkflow/types.js'
 
 // Keep the footer compact: show at most a few live runs, then a "+N more" line.
 const MAX_ROWS = 3

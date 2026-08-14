@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach } from 'bun:test'
-import { createUserMessage } from '../../utils/messages.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   pruneStaleClippedIds,
   addClippedIds,
@@ -15,15 +15,15 @@ import { runPostCompactCleanup } from './postCompactCleanup.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,
-} from '../../utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import {
   resetPromptCacheBreakDetection,
   _getSourceCountForTesting,
-} from '../../services/api/promptCacheBreakDetection.js'
+} from 'src/services/api/promptCacheBreakDetection.js'
 import {
   clearAllSessions,
   _getSessionCountForTesting,
-} from '../../services/api/sessionIngress.js'
+} from 'src/services/api/sessionIngress.js'
 
 // Helper: build a user message containing a tool_result
 function makeToolResultMessage(id: string, content: string) {

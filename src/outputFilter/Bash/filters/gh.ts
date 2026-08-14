@@ -7,8 +7,8 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { RewriteContext } from '../../types.js'
-import type { FilterSpec } from '../types.js'
+import type { RewriteContext } from 'src/outputFilter/types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // Prefix-replace on ctx.command (not args.join) so quoted flag values keep
 // their internal whitespace verbatim — the rewritten command is executed.

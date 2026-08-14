@@ -1,4 +1,4 @@
-import type { Framework, TestFailure, TestResult } from '../types.js'
+import type { Framework, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * TAP (Test Anything Protocol) parser — the second universal fallback. Handles

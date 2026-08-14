@@ -1,19 +1,19 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback } from 'react';
-import { Select } from '../../../components/CustomSelect/select.js';
-import { Box, Text } from '../../../ink.js';
-import type { ToolPermissionContext } from '../../../Tool.js';
-import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from '../../../utils/permissions/PermissionRule.js';
-import { applyPermissionUpdate, persistPermissionUpdate } from '../../../utils/permissions/PermissionUpdate.js';
-import { permissionRuleValueToString } from '../../../utils/permissions/permissionRuleParser.js';
-import { detectUnreachableRules, type UnreachableRule } from '../../../utils/permissions/shadowedRuleDetection.js';
-import { SandboxManager } from '../../../utils/sandbox/sandbox-adapter.js';
-import { type EditableSettingSource, SOURCES } from '../../../utils/settings/constants.js';
-import { getRelativeSettingsFilePathForSource } from '../../../utils/settings/settings.js';
-import { plural } from '../../../utils/stringUtils.js';
-import type { OptionWithDescription } from '../../CustomSelect/select.js';
-import { Dialog } from '../../design-system/Dialog.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { Box, Text } from 'src/ink.js';
+import type { ToolPermissionContext } from 'src/Tool.js';
+import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from 'src/services/permissions/PermissionRule.js';
+import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
+import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js';
+import { detectUnreachableRules, type UnreachableRule } from 'src/services/permissions/shadowedRuleDetection.js';
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { type EditableSettingSource, SOURCES } from 'src/services/settings/constants.js';
+import { getRelativeSettingsFilePathForSource } from 'src/services/settings/settings.js';
+import { plural } from 'src/utils/text/stringUtils.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 import { PermissionRuleDescription } from './PermissionRuleDescription.js';
 export function optionForPermissionSaveDestination(saveDestination: EditableSettingSource): OptionWithDescription {
   switch (saveDestination) {

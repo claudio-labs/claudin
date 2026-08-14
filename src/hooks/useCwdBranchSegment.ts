@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import { useEffect, useState } from 'react'
-import { useTheme } from '../components/design-system/ThemeProvider.js'
-import { getCwd } from '../utils/cwd.js'
+import { useTheme } from 'src/components/design-system/ThemeProvider.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import {
   buildBranchBorderSegment,
   buildBranchPill,
@@ -9,10 +9,10 @@ import {
   buildPrPill,
   resolveBranchBg,
   resolvePrBg,
-} from '../utils/format-branch.js'
-import { type PrReviewState } from '../utils/ghPrStatus.js'
-import { getAheadBehind, getBranch } from '../utils/git.js'
-import { getTheme } from '../utils/theme.js'
+} from 'src/services/git/format-branch.js'
+import { type PrReviewState } from 'src/services/git/ghPrStatus.js'
+import { getAheadBehind, getBranch } from 'src/services/git/git.js'
+import { getTheme } from 'src/utils/theme.js'
 import { usePrStatus } from './usePrStatus.js'
 
 export interface UseCwdBranchSegmentOptions {

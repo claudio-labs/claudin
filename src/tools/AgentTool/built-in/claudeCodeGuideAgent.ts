@@ -5,14 +5,14 @@ import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
-import { isUsing3PServices } from 'src/utils/auth.js'
-import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
-import { getInitialSettings } from 'src/utils/settings/settings.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
+import { isUsing3PServices } from 'src/services/auth/auth.js'
+import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import type {
   AgentDefinition,
   BuiltInAgentDefinition,
-} from '../loadAgentsDir.js'
+} from 'src/tools/AgentTool/loadAgentsDir.js'
 
 const CLAUDE_CODE_DOCS_MAP_URL =
   'https://code.claude.com/docs/en/claude_code_docs_map.md'

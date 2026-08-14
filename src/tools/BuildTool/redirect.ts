@@ -3,7 +3,7 @@ import {
   createOutputTrimTailStripper,
   hasShellComposition,
   MEMO_LIMIT,
-} from '../shared/redirect.js'
+} from 'src/tools/shared/redirect.js'
 import { BUILD_TOOL_NAME } from './prompt.js'
 
 export { MEMO_LIMIT }

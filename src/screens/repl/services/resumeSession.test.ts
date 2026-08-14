@@ -24,7 +24,7 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import type { UUID } from 'crypto'
 
 import type { ResumeSessionDeps } from './resumeSession.js'
-import type { LogOption } from '../../../types/logs.js'
+import type { LogOption } from 'src/types/logs.js'
 
 // --- module mocks (must be installed before importing the SUT) -----------
 
@@ -37,51 +37,55 @@ const calls: string[] = []
 // the same worker and corrupted their transcript-path / project-totals logic.
 const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all(
   [
-    '../../../utils/conversationRecovery.js',
-    '../../../utils/sessionStart.js',
-    '../../../utils/hooks.js',
-    '../../../utils/plans.js',
-    '../../../utils/sessionRestore.js',
-    '../../../utils/concurrentSessions.js',
-    '../../../utils/fileHistory.js',
-    '../../../utils/sessionStorage.js',
-    '../../../tasks/RemoteAgentTask/RemoteAgentTask.js',
-    '../../../utils/worktree.js',
-    '../../../bootstrap/state.js',
-    '../../../cost-tracker.js',
-    '../../../utils/asciicast.js',
-    '../../../utils/toolResultStorage.js',
-    '../../../services/analytics/index.js',
-    '../../../utils/messages.js',
-    '../../../types/ids.js',
+    // Aliased, and it has to stay that way: these are consumed by a dynamic
+    // `import(spec)` over the array, so no codemod that scans call sites can
+    // see them and the build's missing-import scan cannot either. A stale entry
+    // here fails at runtime as "Cannot find module", between tests.
+    'src/services/session/conversationRecovery.js',
+    'src/services/session/sessionStart.js',
+    'src/services/lifecycleHooks/hooks.js',
+    'src/utils/plans.js',
+    'src/services/session/sessionRestore.js',
+    'src/services/session/concurrentSessions.js',
+    'src/utils/fs/fileHistory.js',
+    'src/services/session/sessionStorage.js',
+    'src/tasks/RemoteAgentTask/RemoteAgentTask.js',
+    'src/services/git/worktree.js',
+    'src/bootstrap/state.js',
+    'src/cost-tracker.js',
+    'src/utils/asciicast.js',
+    'src/services/tools/toolResultStorage.js',
+    'src/services/analytics/index.js',
+    'src/services/messages/messages.js',
+    'src/types/ids.js',
   ].map(
     async spec =>
       [spec, { ...(await import(spec)) }] as [string, Record<string, unknown>],
   ),
 )
 
-mock.module('../../../utils/conversationRecovery.js', () => ({
+mock.module('src/services/session/conversationRecovery.js', () => ({
   deserializeMessages: mock((m: unknown[]) => {
     calls.push('deserializeMessages')
     return [...m]
   }),
 }))
 
-mock.module('../../../utils/sessionStart.js', () => ({
+mock.module('src/services/session/sessionStart.js', () => ({
   processSessionStartHooks: mock(async () => {
     calls.push('processSessionStartHooks')
     return []
   }),
 }))
 
-mock.module('../../../utils/hooks.js', () => ({
+mock.module('src/services/lifecycleHooks/hooks.js', () => ({
   executeSessionEndHooks: mock(async () => {
     calls.push('executeSessionEndHooks')
   }),
   getSessionEndHookTimeoutMs: () => 100,
 }))
 
-mock.module('../../../utils/plans.js', () => ({
+mock.module('src/utils/plans.js', () => ({
   copyPlanForFork: mock(() => {
     calls.push('copyPlanForFork')
   }),
@@ -90,7 +94,7 @@ mock.module('../../../utils/plans.js', () => ({
   }),
 }))
 
-mock.module('../../../utils/sessionRestore.js', () => ({
+mock.module('src/services/session/sessionRestore.js', () => ({
   restoreSessionStateFromLog: mock(() => {
     calls.push('restoreSessionStateFromLog')
   }),
@@ -107,20 +111,20 @@ mock.module('../../../utils/sessionRestore.js', () => ({
   }),
 }))
 
-mock.module('../../../utils/concurrentSessions.js', () => ({
+mock.module('src/services/session/concurrentSessions.js', () => ({
   updateSessionName: mock(async () => {
     calls.push('updateSessionName')
   }),
   updateSessionActivity: () => {},
 }))
 
-mock.module('../../../utils/fileHistory.js', () => ({
+mock.module('src/utils/fs/fileHistory.js', () => ({
   copyFileHistoryForResume: mock(() => {
     calls.push('copyFileHistoryForResume')
   }),
 }))
 
-mock.module('../../../utils/sessionStorage.js', () => ({
+mock.module('src/services/session/sessionStorage.js', () => ({
   adoptResumedSessionFile: mock(() => {
     calls.push('adoptResumedSessionFile')
   }),
@@ -138,17 +142,17 @@ mock.module('../../../utils/sessionStorage.js', () => ({
   }),
 }))
 
-mock.module('../../../tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
+mock.module('src/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
   restoreRemoteAgentTasks: mock(async () => {
     calls.push('restoreRemoteAgentTasks')
   }),
 }))
 
-mock.module('../../../utils/worktree.js', () => ({
+mock.module('src/services/git/worktree.js', () => ({
   getCurrentWorktreeSession: () => null,
 }))
 
-mock.module('../../../bootstrap/state.js', () => ({
+mock.module('src/bootstrap/state.js', () => ({
   getOriginalCwd: () => '/tmp/test',
   setCostStateForRestore: mock(() => {
     calls.push('setCostStateForRestore')
@@ -158,7 +162,7 @@ mock.module('../../../bootstrap/state.js', () => ({
   }),
 }))
 
-mock.module('../../../cost-tracker.js', () => ({
+mock.module('src/cost-tracker.js', () => ({
   getStoredSessionCosts: mock(() => {
     calls.push('getStoredSessionCosts')
     return null
@@ -171,13 +175,13 @@ mock.module('../../../cost-tracker.js', () => ({
   }),
 }))
 
-mock.module('../../../utils/asciicast.js', () => ({
+mock.module('src/utils/asciicast.js', () => ({
   renameRecordingForSession: mock(async () => {
     calls.push('renameRecordingForSession')
   }),
 }))
 
-mock.module('../../../utils/toolResultStorage.js', () => ({
+mock.module('src/services/tools/toolResultStorage.js', () => ({
   applyToolResultReplacementsToMessages: (m: unknown) => m,
   reconstructContentReplacementState: mock((m: unknown) => {
     calls.push('reconstructContentReplacementState')
@@ -186,17 +190,17 @@ mock.module('../../../utils/toolResultStorage.js', () => ({
   provisionContentReplacementState: () => undefined,
 }))
 
-mock.module('../../../services/analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: mock((evt: string, payload: Record<string, unknown>) => {
     calls.push(`logEvent:${evt}:${payload.success}`)
   }),
 }))
 
-mock.module('../../../utils/messages.js', () => ({
+mock.module('src/services/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
 
-mock.module('../../../types/ids.js', () => ({
+mock.module('src/types/ids.js', () => ({
   asSessionId: (id: unknown) => id,
   asAgentId: (id: unknown) => id,
 }))

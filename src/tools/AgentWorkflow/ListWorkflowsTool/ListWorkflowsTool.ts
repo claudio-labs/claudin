@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/lazySchema.js'
-import { LIST_WORKFLOWS_TOOL_NAME } from '../constants.js'
-import { loadWorkflowDefs } from '../loadWorkflows.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { LIST_WORKFLOWS_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
+import { loadWorkflowDefs } from 'src/tools/AgentWorkflow/loadWorkflows.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>

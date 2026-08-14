@@ -18,37 +18,37 @@ import {
   TASK_ID_TAG,
   TASK_NOTIFICATION_TAG,
   TOOL_USE_ID_TAG,
-} from '../constants/xml.js'
-import { type QueryParams, query } from '../query.js'
-import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
-import type { SetAppState } from '../Task.js'
-import { createTaskStateBase } from '../Task.js'
+} from 'src/constants/xml.js'
+import { type QueryParams, query } from 'src/query.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import type { SetAppState } from 'src/Task.js'
+import { createTaskStateBase } from 'src/Task.js'
 import type {
   AgentDefinition,
   CustomAgentDefinition,
-} from '../tools/AgentTool/loadAgentsDir.js'
-import { asAgentId } from '../types/ids.js'
-import type { Message } from '../types/message.js'
-import { createAbortController } from '../utils/abortController.js'
+} from 'src/tools/AgentTool/loadAgentsDir.js'
+import { asAgentId } from 'src/types/ids.js'
+import type { Message } from 'src/types/message.js'
+import { createAbortController } from 'src/utils/abortController.js'
 import {
   runWithAgentContext,
   type SubagentContext,
-} from '../utils/agentContext.js'
-import { registerCleanup } from '../utils/cleanupRegistry.js'
-import { logForDebugging } from '../utils/debug.js'
-import { logError } from '../utils/log.js'
-import { enqueuePendingNotification } from '../utils/messageQueueManager.js'
-import { emitTaskTerminatedSdk } from '../utils/sdkEventQueue.js'
+} from 'src/coordinator/agentContext.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
+import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
+import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 import {
   getAgentTranscriptPath,
   recordSidechainTranscript,
-} from '../utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import {
   evictTaskOutput,
   getTaskOutputPath,
   initTaskOutputAsSymlink,
-} from '../utils/task/diskOutput.js'
-import { registerTask, updateTaskState } from '../utils/task/framework.js'
+} from 'src/tasks/diskOutput.js'
+import { registerTask, updateTaskState } from 'src/tasks/framework.js'
 import type { LocalAgentTaskState } from './LocalAgentTask/LocalAgentTask.js'
 
 // Main session tasks use LocalAgentTaskState with agentType='main-session'

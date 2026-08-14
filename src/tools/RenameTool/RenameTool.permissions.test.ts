@@ -3,10 +3,10 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
-import { getEmptyToolPermissionContext, type ToolUseContext } from '../../Tool.js'
-import { runWithCwdOverride } from '../../utils/cwd.js'
-import { FileStateCache } from '../../utils/fileStateCache.js'
-import { setOriginalFsImplementation } from '../../utils/fsOperations.js'
+import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/Tool.js'
+import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { setOriginalFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
   checkRenamePermissions,
   type RenameInput,

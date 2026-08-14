@@ -13,7 +13,7 @@
  */
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 
 // Swappable manager handle. It lives on globalThis rather than a module-scope
 // `let` because bun's mock.module factory does not observe later reassignments
@@ -43,7 +43,7 @@ const noServerManager = {
   sendRequest: async () => undefined,
 }
 
-mock.module('../../services/lsp/manager.js', () => ({
+mock.module('src/services/lsp/manager.js', () => ({
   isLspConnected: () => getManager() !== undefined,
   getLspServerManager: () => getManager(),
   reinitializeLspServerManager: () => {},

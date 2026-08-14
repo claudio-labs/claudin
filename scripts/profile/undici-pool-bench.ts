@@ -5,7 +5,7 @@
 // keepAliveTimeout, pipelining) on request latency against two local mock
 // servers: one h2-capable (ALPN h2 + http/1.1) and one h1-only (forces
 // fallback if the client attempts h2). The goal is to decide empirically
-// whether tuning src/utils/proxy.ts:getProxyAgent() is worth shipping.
+// whether tuning src/services/api/proxy.ts:getProxyAgent() is worth shipping.
 //
 // Scenarios:
 //   sequential-burst  — 50 sequential requests against one origin (typical turn)

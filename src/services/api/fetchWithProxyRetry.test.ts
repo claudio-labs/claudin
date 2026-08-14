@@ -4,7 +4,7 @@ import {
   _resetH1OnlyForTesting,
   _resetKeepAliveForTesting,
   isProviderH1Only,
-} from '../../utils/proxy.js'
+} from 'src/services/api/proxy.js'
 import {
   fetchWithProxyRetry,
   isRetryableFetchError,

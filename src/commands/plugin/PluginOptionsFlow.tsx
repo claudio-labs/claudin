@@ -8,12 +8,12 @@
  */
 
 import * as React from 'react';
-import type { LoadedPlugin } from '../../types/plugin.js';
-import { errorMessage } from '../../utils/errors.js';
-import { loadMcpServerUserConfig, saveMcpServerUserConfig } from '../../utils/plugins/mcpbHandler.js';
-import { getUnconfiguredChannels, type UnconfiguredChannel } from '../../utils/plugins/mcpPluginIntegration.js';
-import { loadAllPlugins } from '../../utils/plugins/pluginLoader.js';
-import { getUnconfiguredOptions, loadPluginOptions, type PluginOptionSchema, type PluginOptionValues, savePluginOptions } from '../../utils/plugins/pluginOptionsStorage.js';
+import type { LoadedPlugin } from 'src/types/plugin.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { loadMcpServerUserConfig, saveMcpServerUserConfig } from 'src/services/plugins/mcpbHandler.js';
+import { getUnconfiguredChannels, type UnconfiguredChannel } from 'src/services/plugins/mcpPluginIntegration.js';
+import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
+import { getUnconfiguredOptions, loadPluginOptions, type PluginOptionSchema, type PluginOptionValues, savePluginOptions } from 'src/services/plugins/pluginOptionsStorage.js';
 import { PluginOptionsDialog } from './PluginOptionsDialog.js';
 
 /**

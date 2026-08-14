@@ -1,11 +1,11 @@
 import type * as React from 'react'
 import { pathToFileURL } from 'node:url'
-import Link from '../../ink/components/Link.js'
-import { supportsHyperlinks } from '../../ink/supports-hyperlinks.js'
-import { Box, Text } from '../../ink.js'
-import { getStoredImagePath } from '../../utils/imageStore.js'
-import { InlineImage } from '../InlineImage.js'
-import { MessageResponse } from '../MessageResponse.js'
+import Link from 'src/ink/components/Link.js'
+import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
+import { Box, Text } from 'src/ink.js'
+import { getStoredImagePath } from 'src/utils/imageStore.js'
+import { InlineImage } from 'src/components/InlineImage.js'
+import { MessageResponse } from 'src/components/MessageResponse.js'
 
 type Props = {
   imageId?: number

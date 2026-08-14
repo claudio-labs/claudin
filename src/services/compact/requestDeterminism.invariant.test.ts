@@ -26,9 +26,9 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 // flags loads — flag reads must fall through to cache-profile defaults
 // regardless of what earlier test files left in the module registry.
 const realGrowthbook = {
-  ...(await import('../analytics/growthbook.js')),
+  ...(await import('src/services/analytics/growthbook.js')),
 }
-mock.module('../analytics/growthbook.js', () => ({
+mock.module('src/services/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
 }))
@@ -36,16 +36,16 @@ mock.module('../analytics/growthbook.js', () => ({
 // Pin the retain profile (time-based trigger enabled) before anything
 // memoizes it, same scaffolding as microCompact.timebased-flipback.test.ts.
 process.env.CLAUDIN_CACHE_PROFILE = 'retain'
-const { _resetCacheProfileForTesting } = await import('../cache/cacheProfile.js')
+const { _resetCacheProfileForTesting } = await import('src/services/cache/cacheProfile.js')
 _resetCacheProfileForTesting()
 
 const realAutoCompact = { ...(await import('./autoCompact.js')) }
-const realModel = { ...(await import('../../utils/model/model.js')) }
+const realModel = { ...(await import('src/utils/model/model.js')) }
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => 1_000_000,
 }))
-mock.module('../../utils/model/model.js', () => ({
+mock.module('src/utils/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
@@ -62,24 +62,24 @@ const {
   MAX_DISPLAY_MESSAGES,
 } = await import('./stableStubState.js')
 const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
-  '../api/claude/paramBuilders.js'
+  'src/services/api/claude/paramBuilders.js'
 )
 const {
   createContentReplacementState,
   enforceToolResultBudget,
-} = await import('../../utils/toolResultStorage.js')
+} = await import('src/services/tools/toolResultStorage.js')
 const { createAssistantMessage, createUserMessage } = await import(
-  '../../utils/messages.js'
+  'src/services/messages/messages.js'
 )
 const { resolveUpdatedTools } = await import(
-  '../mcp/useManageMCPConnections.js'
+  'src/services/mcp/useManageMCPConnections.js'
 )
 const { clearBetaHeaderLatches, isLspDeferLatched, latchLspDefer } =
-  await import('../../bootstrap/state.js')
+  await import('src/bootstrap/state.js')
 
-import type { Message } from '../../types/message.js'
-import type { Tool } from '../../Tool.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { Message } from 'src/types/message.js'
+import type { Tool } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 
 const MAIN_THREAD = 'repl_main_thread' as never
 
@@ -247,6 +247,6 @@ afterAll(() => {
   _resetCacheProfileForTesting()
   _resetDeferCacheMarkerForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
-  mock.module('../../utils/model/model.js', () => realModel)
-  mock.module('../analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
 })

@@ -26,7 +26,7 @@
 // following that advice means outline → refusal, three times over — the exact
 // give-up-and-edit-one-file-at-a-time loop these messages exist to prevent.
 
-import type { FileState } from '../../utils/fileStateCache.js'
+import type { FileState } from 'src/utils/fs/fileStateCache.js'
 
 export type ReadGateReason = 'never-read' | 'partial-view' | 'clipped'
 

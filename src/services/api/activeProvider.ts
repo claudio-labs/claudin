@@ -8,10 +8,10 @@
  * `saveGlobalConfig` runs.
  */
 
-import { getGlobalConfig, onGlobalConfigChange } from '../../utils/config.js'
-import type { ProviderProfile, ProviderProfileExtras } from '../../utils/config.js'
-import { getActiveProviderProfile } from '../../utils/providerProfiles.js'
-import { getPrimaryModel } from '../../utils/providerModels.js'
+import { getGlobalConfig, onGlobalConfigChange } from 'src/services/config/config.js'
+import type { ProviderProfile, ProviderProfileExtras } from 'src/services/config/config.js'
+import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
+import { getPrimaryModel } from 'src/services/api/providerModels.js'
 import { isOpenAICodexShortcut } from './providerConfig.js'
 
 export type Transport =

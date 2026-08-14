@@ -3,18 +3,18 @@ import {
   CRON_DELETE_TOOL_NAME,
   DEFAULT_MAX_AGE_DAYS,
   isKairosCronEnabled,
-} from '../../tools/ScheduleCronTool/prompt.js'
+} from 'src/tools/ScheduleCronTool/prompt.js'
 import {
   SCHEDULE_WAKEUP_TOOL_NAME,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
-} from '../../tools/ScheduleWakeupTool/prompt.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
 import {
   AUTONOMOUS_LOOP_DYNAMIC_SENTINEL,
   AUTONOMOUS_LOOP_SENTINEL,
   MAINTENANCE_PROMPT,
-} from '../../utils/loopSentinels.js'
-import { registerBundledSkill } from '../bundledSkills.js'
+} from 'src/utils/loopSentinels.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 type LoopMode =
   | 'dynamic-prompt'

@@ -29,29 +29,29 @@ import {
   type Output as PermissionToolOutput,
   permissionPromptToolResultToPermissionDecision,
   outputSchema as permissionToolOutputSchema,
-} from 'src/utils/permissions/PermissionPromptToolResultSchema.js'
+} from 'src/services/permissions/PermissionPromptToolResultSchema.js'
 import type {
   PermissionDecision,
   PermissionDecisionReason,
-} from 'src/utils/permissions/PermissionResult.js'
-import { hasPermissionsToUseTool } from 'src/utils/permissions/permissions.js'
-import { writeToStdout } from 'src/utils/process.js'
+} from 'src/services/permissions/PermissionResult.js'
+import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+import { writeToStdout } from 'src/utils/proc/process.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { z } from 'zod/v4'
-import { notifyCommandLifecycle } from '../utils/commandLifecycle.js'
-import { normalizeControlMessageKeys } from '../utils/controlMessageCompat.js'
-import { executePermissionRequestHooks } from '../utils/hooks.js'
+import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
+import { normalizeControlMessageKeys } from 'src/utils/controlMessageCompat.js'
+import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   applyPermissionUpdates,
   persistPermissionUpdates,
-} from '../utils/permissions/PermissionUpdate.js'
+} from 'src/services/permissions/PermissionUpdate.js'
 import {
   notifySessionStateChanged,
   type RequiresActionDetails,
   type SessionExternalMetadata,
-} from '../utils/sessionState.js'
-import { jsonParse } from '../utils/slowOperations.js'
-import { Stream } from '../utils/stream.js'
+} from 'src/services/session/sessionState.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
+import { Stream } from 'src/utils/stream.js'
 import { ndjsonSafeStringify } from './ndjsonSafeStringify.js'
 
 /**

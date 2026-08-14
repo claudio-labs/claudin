@@ -30,12 +30,11 @@ pass one as RunTests' `command` when auto-detection picks the wrong suite.
 
 Type-check through the **Typecheck tool**, for the same reason and with a bigger
 payoff here: it reports only the diagnostics missing from the project's recorded
-baseline, which in this repo is the difference between a handful of lines and
-several thousand. `bun run typecheck` in Bash is refused once and points there;
+baseline. `bun run typecheck` in Bash is refused once and points there;
 re-send it when you genuinely need raw compiler output.
 
 ```bash
-bun test                                   # full suite (~198 files)
+bun test                                   # full suite (608 files, ~9000 tests)
 bun test src/path/to/file.test.ts          # single file
 bun run test:coverage                      # lcov + heatmap at coverage/index.html
 bun run test:provider                      # focused: api/* + utils/context
@@ -46,6 +45,32 @@ bun run test:provider
 # Always run before any PR touching build system, telemetry, or network:
 bun run verify:privacy
 ```
+
+### The suite is the only gate that reads a path inside a string
+
+A module path is rewritten by a codemod — and checked by tsc, and by the build's
+pre-scan — only where a parser can recognise it as one: `from '…'`, `import('…')`,
+`require('…')`, `mock.module('…')`. Tests name modules from plenty of other
+places, and every one of those is invisible to all three gates:
+
+- a repo-relative string handed to Bun's `file()`, e.g. `file('utils/sandbox/…')`
+- a plain string ARRAY of specifiers, imported later in a loop
+- `join(import.meta.dir, '…')` to read a source file and assert on its text
+- a directory path passed to the tool under test
+- a template literal building a cache-busting dynamic import (`?t=${Date.now()}`),
+  which an alias codemod skips on purpose — a computed specifier cannot be
+  rewritten safely without reading it
+
+Eight files in `src/` do one of these (found by PR #88, which moved 708 files).
+Each stayed green under tsc and under `bun run build:strict` while naming a path
+that no longer existed; the only thing that reports it is the assertion that
+depends on it running.
+
+> **`bun test` exiting 1 with `0 fail` is a real failure, not a glitch.** A module
+> that cannot be loaded is reported as `# Unhandled error between tests`, with the
+> file name on the line above it and outside the pass/fail counts — so the summary
+> reads `8922 pass / 0 fail` and the suite still exits non-zero. Read the tail of
+> the output, not only the counts.
 
 ## Test File Structure
 
@@ -164,7 +189,7 @@ Worse, Bun pre-applies every `mock.module()` specifier override for the WHOLE
 when A executes first, regardless of `--max-concurrency=1`.
 
 - **Don't** write a test asserting on the REAL exports of a module any sibling file
-  `mock.module`s (`src/utils/config.js` is the known case — mocked by
+  `mock.module`s (`src/services/config/config.js` is the known case — mocked by
   `startupUpdateCheck.test.ts`). Extract the logic under test into a module nobody
   mocks (e.g. `privacyLevel.ts`) and test that.
 - **Canonical teardown when you must mock a module:** snapshot the reals BEFORE
@@ -298,7 +323,7 @@ in `ignore` by hand, and the external CLI tools the code shells out to
 ## Verifying attachments/system-reminders at runtime
 
 **Do not grep the session `.jsonl` to check whether an attachment fired.** For
-non-`ant` users `isLoggableMessage` (`src/utils/sessionStorage/pure/logging.ts`)
+non-`ant` users `isLoggableMessage` (`src/services/session/pure/logging.ts`)
 drops **every** attachment from the transcript except `hook_additional_context`
 and `deferred_tools_delta`. A `todo_reminder_delta`, a memory delta, a plan-mode
 attachment — none of them are written. Absence in the log is not evidence the
@@ -307,9 +332,9 @@ negative (it did, while verifying the task reminder on 2026-07-26).
 
 The observation channel that works is a temporary `appendFileSync` to `/tmp`,
 at BOTH ends: the producer (`getTaskReminderAttachments` and friends in
-`src/utils/attachments/lifecycle.ts`) to see the gate decisions and turn
+`src/services/attachments/lifecycle.ts`) to see the gate decisions and turn
 counters, and the renderer (`normalizeAttachmentForAPI` in
-`src/utils/messages/attachments.ts`) to capture the literal text the model
+`src/services/messages/attachments.ts`) to capture the literal text the model
 receives. Log the bail reason per branch, not just the success case — that is
 what tells you *which* gate closed. `logEvent` is useless here: telemetry is
 stubbed out at build time in this fork.
@@ -344,8 +369,11 @@ timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
 2026-07 main; keep it in mind if they resurface.)
 
 **Typecheck baseline:** `main` carries thousands of pre-existing `error TS`
-(4617 on 2026-07-18, 4624 on 2026-08-03 — it drifts upward). Don't hand-compare
-that count against a remembered number: call the **Typecheck** tool, which
+**Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
+retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module
+— see [build-system.md](build-system.md) for the import trap that creates. The
+backlog used to be thousands deep (4624 on 2026-08-03), so treat any remembered
+count as stale, and don't hand-compare: call the **Typecheck** tool, which
 records the backlog for a commit whenever it runs on a clean tree and afterwards
 reports only what is new. The pass condition is **zero new**; the absolute total
 is noise. A `⚠ … provenance unknown` result means no baseline exists for the
@@ -363,5 +391,5 @@ confirm a cited diagnostic with the tool (`path:` filters the report) first.
 - [ ] If touching `src/services/api/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated
-- [ ] Typecheck tool reports **zero new** diagnostics (the absolute count is
-      irrelevant — the backlog is thousands deep)
+- [ ] Typecheck tool reports **zero new** diagnostics (the baseline is empty
+      since #87, so anything it reports is yours)

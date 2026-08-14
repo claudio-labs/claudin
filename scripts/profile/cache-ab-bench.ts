@@ -60,53 +60,53 @@ const TWELVE_FILES = [
   'src/commands.ts',
   'src/Tool.ts',
   // medium
-  'src/utils/messages.ts',
-  'src/utils/config.ts',
+  'src/services/messages/messages.ts',
+  'src/services/config/config.ts',
   'src/services/api/withRetry.ts',
   'src/services/api/errors.ts',
   'src/services/mcp/client.ts',
   'src/utils/model/model.ts',
-  'src/utils/providerModels.ts',
+  'src/services/api/providerModels.ts',
   'src/context.ts',
   'src/query.ts',
   'src/utils/errors.ts',
   'src/utils/log.ts',
-  'src/utils/path.ts',
+  'src/utils/fs/path.ts',
   'src/utils/envUtils.ts',
-  'src/utils/Shell.ts',
+  'src/utils/proc/Shell.ts',
   'src/bootstrap/state.ts',
   // small (constants / tiny utils)
   'src/constants/messages.ts',
   'src/constants/keys.ts',
   'src/ink/constants.ts',
   'src/utils/protectedNamespace.ts',
-  'src/utils/array.ts',
+  'src/utils/data/array.ts',
   'src/utils/withResolvers.ts',
-  'src/utils/lazySchema.ts',
-  'src/utils/yaml.ts',
+  'src/utils/data/lazySchema.ts',
+  'src/utils/data/yaml.ts',
   'src/services/compact/snipCompact.ts',
-  'src/utils/objectGroupBy.ts',
+  'src/utils/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
   'src/services/api/openaiShim.ts',
   'src/services/api/codexShim.ts',
   'src/screens/REPL.tsx',
   'src/services/api/claude/streaming.ts',
   'src/services/api/claude/paramBuilders.ts',
-  'src/utils/messages/normalize.ts',
+  'src/services/messages/normalize.ts',
   'src/services/compact/stableStubState.ts',
   'src/services/compact/microCompact.ts',
   'src/services/cache/cacheProfile.ts',
   'src/cost-tracker.ts',
-  'src/utils/modelCost.ts',
+  'src/services/api/modelCost.ts',
   'src/utils/model/modelAllowlist.ts',
   'src/services/api/promptCacheBreakDetection.ts',
   'src/services/compact/autoCompact.ts',
-  'src/utils/api.ts',
-  'src/utils/betas.ts',
+  'src/services/api/api.ts',
+  'src/services/api/betas.ts',
   'src/services/api/activeProvider.ts',
-  'src/utils/thinking.ts',
+  'src/services/context/thinking.ts',
   'src/utils/debug.ts',
-  'src/utils/json.ts',
+  'src/utils/data/json.ts',
 ]
 
 // Revisit set for --revisits=N: files re-read a second time AFTER the full
@@ -117,12 +117,12 @@ const TWELVE_FILES = [
 const REVISIT_FILES = [
   'src/services/api/client.ts',      // large
   'src/QueryEngine.ts',              // large
-  'src/utils/messages.ts',           // medium
-  'src/utils/config.ts',             // medium
+  'src/services/messages/messages.ts',           // medium
+  'src/services/config/config.ts',             // medium
   'src/services/api/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
   'src/constants/keys.ts',           // small
-  'src/utils/array.ts',              // small
+  'src/utils/data/array.ts',              // small
 ]
 
 const SENTINEL = 'BENCH_DONE'

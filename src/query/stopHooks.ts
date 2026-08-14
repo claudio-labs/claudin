@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
-import { getShortcutDisplay } from '../keybindings/shortcutFormat.js'
-import { isExtractModeActive } from '../memdir/paths.js'
+import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { isExtractModeActive } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import type { ToolUseContext } from '../Tool.js'
-import type { HookProgress } from '../types/hooks.js'
+} from 'src/services/analytics/index.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { HookProgress } from 'src/types/hooks.js'
 import type {
   AssistantMessage,
   Message,
@@ -15,11 +15,11 @@ import type {
   StreamEvent,
   TombstoneMessage,
   ToolUseSummaryMessage,
-} from '../types/message.js'
-import { createAttachmentMessage } from '../utils/attachments.js'
-import { logForDebugging } from '../utils/debug.js'
-import { errorMessage } from '../utils/errors.js'
-import type { REPLHookContext } from '../utils/hooks/postSamplingHooks.js'
+} from 'src/types/message.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   executeStopHooks,
   executeTaskCompletedHooks,
@@ -27,20 +27,20 @@ import {
   getStopHookMessage,
   getTaskCompletedHookMessage,
   getTeammateIdleHookMessage,
-} from '../utils/hooks.js'
+} from 'src/services/lifecycleHooks/hooks.js'
 import {
   createStopHookSummaryMessage,
   createSystemMessage,
   createUserInterruptionMessage,
   createUserMessage,
-} from '../utils/messages.js'
-import type { SystemPrompt } from '../utils/systemPromptType.js'
-import { getTaskListId, listTasks } from '../utils/tasks.js'
-import { getAgentName, getTeamName, isTeammate } from '../utils/teammate.js'
+} from 'src/services/messages/messages.js'
+import type { SystemPrompt } from 'src/utils/systemPromptType.js'
+import { getTaskListId, listTasks } from 'src/tasks/tasks.js'
+import { getAgentName, getTeamName, isTeammate } from 'src/coordinator/teammate.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('../services/extractMemories/extractMemories.js') as typeof import('../services/extractMemories/extractMemories.js'))
+  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
   : null
 const jobClassifierModule = feature('TEMPLATES')
   ? (require('../jobs/classifier.js') as typeof import('../jobs/classifier.js'))
@@ -48,19 +48,19 @@ const jobClassifierModule = feature('TEMPLATES')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-import type { QuerySource } from '../constants/querySource.js'
-import { getSessionId } from '../bootstrap/state.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   handleGoalBlockingError,
   shouldWarnGoalCheckIncomplete,
-} from '../utils/goal/goal.js'
-import { executeAutoDream } from '../services/autoDream/autoDream.js'
-import { executePromptSuggestion } from '../services/PromptSuggestion/promptSuggestion.js'
-import { isBareMode, isEnvDefinedFalsy } from '../utils/envUtils.js'
+} from 'src/services/goal/goal.js'
+import { executeAutoDream } from 'src/services/autoDream/autoDream.js'
+import { executePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js'
+import { isBareMode, isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,
-} from '../utils/forkedAgent.js'
+} from 'src/coordinator/forkedAgent.js'
 
 type StopHookResult = {
   blockingErrors: Message[]
@@ -169,7 +169,7 @@ export async function* handleStopHooks(
   if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
     try {
       const { cleanupComputerUseAfterTurn } = await import(
-        '../utils/computerUse/cleanup.js'
+        'src/services/computerUse/cleanup.js'
       )
       await cleanupComputerUseAfterTurn(toolUseContext)
     } catch {

@@ -5,7 +5,7 @@
 
 import type { Command } from '@commander-js/extra-typings'
 import { feature } from 'bun:bundle'
-import { getAutoModeEnabledStateIfCached } from '../../utils/permissions/permissionSetup.js'
+import { getAutoModeEnabledStateIfCached } from 'src/services/permissions/permissionSetup.js'
 
 export function registerAutoModeCommand(program: Command): void {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
@@ -16,21 +16,21 @@ export function registerAutoModeCommand(program: Command): void {
       autoModeCmd.command('defaults').description('Print the default auto mode environment, allow, and deny rules as JSON').action(async () => {
         const {
           autoModeDefaultsHandler
-        } = await import('../../cli/handlers/autoMode.js')
+        } = await import('src/cli/handlers/autoMode.js')
         autoModeDefaultsHandler()
         process.exit(0)
       })
       autoModeCmd.command('config').description('Print the effective auto mode config as JSON: your settings where set, defaults otherwise').action(async () => {
         const {
           autoModeConfigHandler
-        } = await import('../../cli/handlers/autoMode.js')
+        } = await import('src/cli/handlers/autoMode.js')
         autoModeConfigHandler()
         process.exit(0)
       })
       autoModeCmd.command('critique').description('Get AI feedback on your custom auto mode rules').option('--model <model>', 'Override which model is used').action(async options => {
         const {
           autoModeCritiqueHandler
-        } = await import('../../cli/handlers/autoMode.js')
+        } = await import('src/cli/handlers/autoMode.js')
         await autoModeCritiqueHandler(options)
         process.exit()
       })

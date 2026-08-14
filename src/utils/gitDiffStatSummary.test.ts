@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { chooseDiffStatScope } from './gitDiff.js'
+import { chooseDiffStatScope } from 'src/services/git/gitDiff.js'
 
 const HEAD = '1111111111111111111111111111111111111111'
 const BASE = '2222222222222222222222222222222222222222'

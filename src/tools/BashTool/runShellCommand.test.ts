@@ -6,14 +6,14 @@
 // (isBackgroundTask filters out isBackgrounded:false).
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import type { AppState } from '../../state/AppStateStore.js'
-import { getDefaultAppState } from '../../state/AppStateStore.js'
-import { isLocalShellTask } from '../../tasks/LocalShellTask/guards.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { resetCommandQueue } from '../../utils/messageQueueManager.js'
-import { drainSdkEvents } from '../../utils/sdkEventQueue.js'
-import type { ExecResult } from '../../utils/ShellCommand.js'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import { getDefaultAppState } from 'src/state/AppStateStore.js'
+import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
+import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
+import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,

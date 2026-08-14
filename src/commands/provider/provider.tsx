@@ -1,9 +1,9 @@
-import type { LocalJSXCommandCall } from '../../types/command.js'
-import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from '../../constants/xml.js'
+import type { LocalJSXCommandCall } from 'src/types/command.js'
+import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
 import {
   ProviderManager,
   type ProviderManagerResult,
-} from '../../components/ProviderManager.js'
+} from 'src/components/ProviderManager.js'
 import { runProviderDoctor } from './doctor.js'
 import { runProviderMigrate } from './migrate.js'
 

@@ -10,7 +10,7 @@ Model: claude-opus-4-8.
 
 **Edit files** (copied to scratch dir; real files untouched):
 - `src/bridge/bridgeEnabled.ts` (12K)
-- `src/utils/betas.ts` (16K)
+- `src/services/api/betas.ts` (16K)
 
 ## claudiodev
 

@@ -9,12 +9,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { AttachmentMessage } from 'src/types/message.js'
 
-const realDiagnosticsWrite = { ...(await import('../../services/lsp/diagnosticsForToolResult.js')) }
+const realDiagnosticsWrite = { ...(await import('src/services/lsp/diagnosticsForToolResult.js')) }
 
 const mockBuildPostEdit = mock(
   async (_path: string) => [] as AttachmentMessage[],
 )
-mock.module('../../services/lsp/diagnosticsForToolResult.js', () => ({
+mock.module('src/services/lsp/diagnosticsForToolResult.js', () => ({
   buildPostEditDiagnosticsMessages: mockBuildPostEdit,
 }))
 
@@ -28,7 +28,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('../../services/lsp/diagnosticsForToolResult.js', () => realDiagnosticsWrite)
+  mock.module('src/services/lsp/diagnosticsForToolResult.js', () => realDiagnosticsWrite)
 })
 
 // Mirror of the production return shape at FileWriteTool.ts (both create + update branches).
@@ -37,7 +37,7 @@ async function returnWithDiagnostics(
   data: unknown,
 ): Promise<{ data: unknown; newMessages?: AttachmentMessage[] }> {
   const { buildPostEditDiagnosticsMessages } = await import(
-    '../../services/lsp/diagnosticsForToolResult.js'
+    'src/services/lsp/diagnosticsForToolResult.js'
   )
   const diagnosticMessages =
     await buildPostEditDiagnosticsMessages(absoluteFilePath)
@@ -114,7 +114,7 @@ describe('FileWriteTool — per-edit diagnostic injection wiring contract', () =
 
     // Helper imported.
     expect(src).toContain('buildPostEditDiagnosticsMessages')
-    expect(src).toContain("from '../../services/lsp/diagnosticsForToolResult.js'")
+    expect(src).toContain("from 'src/services/lsp/diagnosticsForToolResult.js'")
     // Helper invoked once before the create/update branches.
     expect(src).toContain('await buildPostEditDiagnosticsMessages(fullFilePath)')
     expect(src).toContain('armFileForLateDiagnostics(fullFilePath, agentId)')

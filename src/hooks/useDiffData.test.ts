@@ -1,6 +1,6 @@
 import type { StructuredPatchHunk } from 'diff'
 import { describe, expect, test } from 'bun:test'
-import type { GitDiffResult, PerFileStats } from '../utils/gitDiff.js'
+import type { GitDiffResult, PerFileStats } from 'src/services/git/gitDiff.js'
 import { gitDiffResultToFiles } from './useDiffData.js'
 
 // Minimal hunk just to mark "this file has parsed diff content".

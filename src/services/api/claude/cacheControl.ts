@@ -1,5 +1,5 @@
 import type { QuerySource } from "src/constants/querySource.js";
-import type { CacheScope } from "src/utils/api.js";
+import type { CacheScope } from "src/services/api/api.js";
 import { isEnvTruthy } from "src/utils/envUtils.js";
 import { getAPIProvider } from "src/utils/model/providers.js";
 

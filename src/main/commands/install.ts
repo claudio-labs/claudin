@@ -10,7 +10,7 @@ export function registerInstallCommand(program: Command): void {
   }) => {
     const {
       installHandler
-    } = await import('../../cli/handlers/util.js')
+    } = await import('src/cli/handlers/util.js')
     await installHandler(target, options)
   })
 }

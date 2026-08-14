@@ -1,10 +1,10 @@
-import { logForDebugging } from '../../utils/debug.js'
-import { toError } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
-import { getInitialSettings } from '../../utils/settings/settings.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import type { AttachmentMessage } from 'src/types/message.js'
-import { createAttachmentMessage } from '../../utils/attachments.js'
-import type { DiagnosticFile } from '../diagnosticTracking.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
 import {
   awaitDiagnosticsForFile,
   filterUndeliveredDiagnostics,

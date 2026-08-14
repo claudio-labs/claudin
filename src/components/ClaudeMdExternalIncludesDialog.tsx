@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { Box, Link, Text } from '../ink.js';
-import type { ExternalClaudeMdInclude } from '../utils/claudemd.js';
-import { saveCurrentProjectConfig } from '../utils/config.js';
+import { Box, Link, Text } from 'src/ink.js';
+import type { ExternalClaudeMdInclude } from 'src/services/instructions/claudemd.js';
+import { saveCurrentProjectConfig } from 'src/services/config/config.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {

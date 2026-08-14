@@ -3,36 +3,36 @@ import { feature } from 'bun:bundle';
 import { dirname } from 'path';
 import React from 'react';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { getOriginalCwd, switchSession } from '../bootstrap/state.js';
-import type { Command } from '../commands.js';
-import { LogSelector } from '../components/LogSelector.js';
-import { Spinner } from '../components/Spinner.js';
-import { restoreCostStateForSession } from '../cost-tracker.js';
-import { setClipboard } from '../ink/termio/osc.js';
-import { Box, Text } from '../ink.js';
-import { useKeybinding } from '../keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../services/analytics/index.js';
-import type { MCPServerConnection, ScopedMcpServerConfig } from '../services/mcp/types.js';
-import { useAppState, useSetAppState } from '../state/AppState.js';
-import type { Tool } from '../Tool.js';
-import type { AgentColorName } from '../tools/AgentTool/agentColorManager.js';
-import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js';
-import { asSessionId } from '../types/ids.js';
-import type { LogOption } from '../types/logs.js';
-import type { Message } from '../types/message.js';
-import { agenticSessionSearch } from '../utils/agenticSessionSearch.js';
-import { renameRecordingForSession } from '../utils/asciicast.js';
-import { updateSessionName } from '../utils/concurrentSessions.js';
-import { loadConversationForResume } from '../utils/conversationRecovery.js';
-import { checkCrossProjectResume } from '../utils/crossProjectResume.js';
-import { errorMessage } from '../utils/errors.js';
-import type { FileHistorySnapshot } from '../utils/fileHistory.js';
-import { logError } from '../utils/log.js';
-import { createSystemMessage } from '../utils/messages.js';
-import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktreeForResume } from '../utils/sessionRestore.js';
-import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from '../utils/sessionStorage.js';
-import type { ThinkingConfig } from '../utils/thinking.js';
-import type { ContentReplacementRecord } from '../utils/toolResultStorage.js';
+import { getOriginalCwd, switchSession } from 'src/bootstrap/state.js';
+import type { Command } from 'src/commands.js';
+import { LogSelector } from 'src/components/LogSelector.js';
+import { Spinner } from 'src/components/Spinner.js';
+import { restoreCostStateForSession } from 'src/cost-tracker.js';
+import { setClipboard } from 'src/ink/termio/osc.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { Tool } from 'src/Tool.js';
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { asSessionId } from 'src/types/ids.js';
+import type { LogOption } from 'src/types/logs.js';
+import type { Message } from 'src/types/message.js';
+import { agenticSessionSearch } from 'src/services/session/agenticSessionSearch.js';
+import { renameRecordingForSession } from 'src/utils/asciicast.js';
+import { updateSessionName } from 'src/services/session/concurrentSessions.js';
+import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
+import { checkCrossProjectResume } from 'src/services/session/crossProjectResume.js';
+import { errorMessage } from 'src/utils/errors.js';
+import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js';
+import { logError } from 'src/utils/log.js';
+import { createSystemMessage } from 'src/services/messages/messages.js';
+import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktreeForResume } from 'src/services/session/sessionRestore.js';
+import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/services/session/sessionStorage.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js';
 import { REPL } from './REPL.js';
 function parsePrIdentifier(value: string): number | null {
   const directNumber = parseInt(value, 10);
@@ -197,7 +197,7 @@ export function ResumeConversation({
       }
       if (feature('COORDINATOR_MODE')) {
         /* eslint-disable @typescript-eslint/no-require-imports */
-        const coordinatorModule = require('../coordinator/coordinatorMode.js') as typeof import('../coordinator/coordinatorMode.js');
+        const coordinatorModule = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js');
         /* eslint-enable @typescript-eslint/no-require-imports */
         const warning = coordinatorModule.matchSessionMode(result_3.mode);
         if (warning) {
@@ -205,7 +205,7 @@ export function ResumeConversation({
           const {
             getAgentDefinitionsWithOverrides,
             getActiveAgentsFromList
-          } = require('../tools/AgentTool/loadAgentsDir.js') as typeof import('../tools/AgentTool/loadAgentsDir.js');
+          } = require('src/tools/AgentTool/loadAgentsDir.js') as typeof import('src/tools/AgentTool/loadAgentsDir.js');
           /* eslint-enable @typescript-eslint/no-require-imports */
           getAgentDefinitionsWithOverrides.cache.clear?.();
           const freshAgentDefs = await getAgentDefinitionsWithOverrides(getOriginalCwd());
@@ -239,10 +239,10 @@ export function ResumeConversation({
         /* eslint-disable @typescript-eslint/no-require-imports */
         const {
           saveMode
-        } = require('../utils/sessionStorage.js');
+        } = require('src/services/session/sessionStorage.js');
         const {
           isCoordinatorMode
-        } = require('../coordinator/coordinatorMode.js') as typeof import('../coordinator/coordinatorMode.js');
+        } = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js');
         /* eslint-enable @typescript-eslint/no-require-imports */
         saveMode(isCoordinatorMode() ? 'coordinator' : 'normal');
       }

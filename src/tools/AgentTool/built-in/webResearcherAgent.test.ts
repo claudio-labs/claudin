@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
-import { ONE_SHOT_BUILTIN_AGENT_TYPES } from '../constants.js'
+import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
 import {
   WEB_RESEARCHER_AGENT,
   WEB_RESEARCHER_AGENT_TYPE,

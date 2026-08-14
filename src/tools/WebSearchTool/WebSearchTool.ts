@@ -3,25 +3,25 @@ import type {
   BetaWebSearchTool20250305,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 
 import { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { queryModelWithStreaming } from '../../services/api/claude.js'
-import { collectCodexCompletedResponse } from '../../services/api/codexShim.js'
-import { fetchWithProxyRetry } from '../../services/api/fetchWithProxyRetry.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { queryModelWithStreaming } from 'src/services/api/claude.js'
+import { collectCodexCompletedResponse } from 'src/services/api/codexShim.js'
+import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
 import {
   resolveCodexApiCredentials,
   resolveProviderRequest,
-} from '../../services/api/providerConfig.js'
-import { buildTool, type ToolDef } from '../../Tool.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { logError } from '../../utils/log.js'
-import { createUserMessage } from '../../utils/messages.js'
-import { getMainLoopModel, getSmallFastModel } from '../../utils/model/model.js'
-import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
-import { asSystemPrompt } from '../../utils/systemPromptType.js'
+} from 'src/services/api/providerConfig.js'
+import { buildTool, type ToolDef } from 'src/Tool.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { logError } from 'src/utils/log.js'
+import { createUserMessage } from 'src/services/messages/messages.js'
+import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from './prompt.js'
 import {
   getToolUseSummary,
@@ -36,7 +36,7 @@ import {
   getAvailableProviders,
   type ProviderOutput,
 } from './providers/index.js'
-import { createTwoTierCache } from '../shared/twoTierCache.js'
+import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -85,9 +85,9 @@ type OutputSchema = ReturnType<typeof outputSchema>
 export type Output = z.infer<OutputSchema>
 
 // Re-export WebSearchProgress from centralized types to break import cycles
-export type { WebSearchProgress } from '../../types/tools.js'
+export type { WebSearchProgress } from 'src/types/tools.js'
 
-import type { WebSearchProgress } from '../../types/tools.js'
+import type { WebSearchProgress } from 'src/types/tools.js'
 
 // ---------------------------------------------------------------------------
 // Shared formatting: ProviderOutput → Output

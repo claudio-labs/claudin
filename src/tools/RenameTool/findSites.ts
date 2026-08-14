@@ -16,10 +16,10 @@ import { createHash } from 'crypto'
 import { statSync } from 'fs'
 import { relative } from 'path'
 
-import { getCwd } from '../../utils/cwd.js'
-import { AbortError, isENOENT } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
-import { ripGrep } from '../../utils/ripgrep.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { AbortError, isENOENT } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { ripGrep } from 'src/utils/fs/ripgrep.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,
@@ -28,8 +28,8 @@ import {
   SCAN_MAX_BYTES,
   scanSymbols,
   type SymbolEntry,
-} from '../shared/codeOutline/scanSymbols.js'
-import { readFileForStaging } from '../shared/stagedWrite/stagedWrite.js'
+} from 'src/tools/shared/codeOutline/scanSymbols.js'
+import { readFileForStaging } from 'src/tools/shared/stagedWrite/stagedWrite.js'
 
 /** Directories whose contents are never source under review. */
 const VCS_DIRECTORIES_TO_EXCLUDE = ['.git', '.hg', '.svn']

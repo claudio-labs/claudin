@@ -16,7 +16,7 @@ is under 2% of the binary. The 22 MB figure only applies if you embed ~20 gramma
 eagerly, which we would not.
 
 **The real blocker is synchronicity.** `summarizeCodeOutline`
-(`src/utils/toolResultSummarizer.ts:499-527`) calls `scanSymbols` **inline and
+(`src/services/tools/toolResultSummarizer.ts:499-527`) calls `scanSymbols` **inline and
 synchronously**, and it is reached from `maybeSummarizeToolResult` → `toolResultStorage.ts:267,285`
 — i.e. on **every tool result**, not just file tools. web-tree-sitter's `Parser.init()`
 and `Language.load()` are async. A swap means either making that whole path async or
@@ -29,7 +29,7 @@ pre-warming a synchronous singleton at startup. Decide that before anything else
 wild is **Web Workers**, not WASM — opentui/opencode's tree-sitter silently degraded
 under brew install because `--compile` does not auto-bundle worker entrypoints
 (opentui#807). Parse on the main thread and that class of bug disappears. The
-vendor-beside-`execPath` pattern already exists and is proven (`src/utils/ripgrep.ts:109-120`,
+vendor-beside-`execPath` pattern already exists and is proven (`src/utils/fs/ripgrep.ts:109-120`,
 `scripts/vendor-sharp.ts`, gated in `scripts/assemble-packages.ts:103-137`).
 
 **Upstream tags.scm already fixes our exact blind spot.** Both tree-sitter-javascript's

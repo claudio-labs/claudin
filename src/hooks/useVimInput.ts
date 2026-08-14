@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react'
-import type { Key } from '../ink.js'
-import type { VimInputState, VimMode } from '../types/textInputTypes.js'
-import { Cursor } from '../utils/Cursor.js'
-import { lastGrapheme } from '../utils/intl.js'
+import type { Key } from 'src/ink.js'
+import type { VimInputState, VimMode } from 'src/types/textInputTypes.js'
+import { Cursor } from 'src/utils/Cursor.js'
+import { lastGrapheme } from 'src/utils/text/intl.js'
 import {
   executeIndent,
   executeJoin,
@@ -14,15 +14,15 @@ import {
   executeToggleCase,
   executeX,
   type OperatorContext,
-} from '../vim/operators.js'
-import { type TransitionContext, transition } from '../vim/transitions.js'
+} from 'src/vim/operators.js'
+import { type TransitionContext, transition } from 'src/vim/transitions.js'
 import {
   createInitialPersistentState,
   createInitialVimState,
   type PersistentState,
   type RecordedChange,
   type VimState,
-} from '../vim/types.js'
+} from 'src/vim/types.js'
 import { type UseTextInputProps, useTextInput } from './useTextInput.js'
 
 type UseVimInputProps = Omit<UseTextInputProps, 'inputFilter'> & {

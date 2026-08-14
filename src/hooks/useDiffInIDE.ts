@@ -2,32 +2,32 @@ import { randomUUID } from 'crypto'
 import { basename } from 'path'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { logEvent } from 'src/services/analytics/index.js'
-import { readFileSync } from 'src/utils/fileRead.js'
-import { expandPath } from 'src/utils/path.js'
-import type { PermissionOption } from '../components/permissions/FilePermissionDialog/permissionOptions.js'
+import { readFileSync } from 'src/utils/fs/fileRead.js'
+import { expandPath } from 'src/utils/fs/path.js'
+import type { PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
 import type {
   MCPServerConnection,
   McpSSEIDEServerConfig,
   McpWebSocketIDEServerConfig,
-} from '../services/mcp/types.js'
-import type { ToolUseContext } from '../Tool.js'
-import type { FileEdit } from '../tools/FileEditTool/types.js'
+} from 'src/services/mcp/types.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { FileEdit } from 'src/tools/FileEditTool/types.js'
 import {
   getEditsForPatch,
   getPatchForEdits,
-} from '../tools/FileEditTool/utils.js'
-import { getGlobalConfig } from '../utils/config.js'
-import { getPatchFromContents } from '../utils/diff.js'
-import { isENOENT } from '../utils/errors.js'
+} from 'src/tools/FileEditTool/utils.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { getPatchFromContents } from 'src/services/git/diff.js'
+import { isENOENT } from 'src/utils/errors.js'
 import {
   callIdeRpc,
   getConnectedIdeClient,
   getConnectedIdeName,
   hasAccessToIDEExtensionDiffFeature,
-} from '../utils/ide.js'
-import { WindowsToWSLConverter } from '../utils/idePathConversion.js'
-import { logError } from '../utils/log.js'
-import { getPlatform } from '../utils/platform.js'
+} from 'src/services/ide/ide.js'
+import { WindowsToWSLConverter } from 'src/services/ide/idePathConversion.js'
+import { logError } from 'src/utils/log.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
 
 type Props = {
   onChange(

@@ -46,7 +46,7 @@
  *   bun scripts/profile/codex-strict-probe.ts --model gpt-5.4 --only v2 --reps 5
  *
  * Credentials are read straight from the config dir rather than through
- * src/utils/codexCredentials.js: importing that module pulls in the analytics
+ * src/services/api/codexCredentials.js: importing that module pulls in the analytics
  * chain, which only resolves under the build's stub aliases. The token is used
  * for the Authorization header and is never printed.
  */

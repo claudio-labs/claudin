@@ -26,19 +26,19 @@ import {
   firstPartyNameToCanonical,
   getMarketingNameForModel,
 } from './model.js'
-import { modelSupports1M } from '../context.js'
+import { modelSupports1M } from 'src/services/context/context.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
-} from '../thinking.js'
+} from 'src/services/context/thinking.js'
 import {
   getAvailableEffortLevels,
   modelSupportsEffort,
   modelSupportsMaxEffort,
   modelSupportsXhighEffort,
-} from '../effort.js'
-import { COST_TIER_3_15, MODEL_COSTS } from '../modelCost.js'
+} from 'src/utils/effort.js'
+import { COST_TIER_3_15, MODEL_COSTS } from 'src/services/api/modelCost.js'
 import { CLAUDE_SONNET_5_CONFIG } from './configs.js'
 
 // Sonnet 5 shares Fable 5's request-shaping profile (adaptive thinking always on,

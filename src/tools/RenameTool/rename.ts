@@ -8,10 +8,10 @@ import { createHash } from 'crypto'
 
 import type { StructuredPatchHunk } from 'diff'
 
-import type { ToolUseContext, ValidationResult } from '../../Tool.js'
-import { getCwd } from '../../utils/cwd.js'
-import { checkBatchWritePermission } from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
+import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,
@@ -19,7 +19,7 @@ import {
   readFileForStaging,
   type StagedChange,
   stageContentReplacement,
-} from '../shared/stagedWrite/stagedWrite.js'
+} from 'src/tools/shared/stagedWrite/stagedWrite.js'
 import { findSites, isValidIdentifier, type RenameSite } from './findSites.js'
 import { RENAME_TOOL_NAME } from './prompt.js'
 import { renderPreview } from './renderPreview.js'

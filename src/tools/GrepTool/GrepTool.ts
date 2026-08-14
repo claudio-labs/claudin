@@ -1,28 +1,28 @@
 import { z } from 'zod/v4'
-import type { ValidationResult } from '../../Tool.js'
-import { buildTool, type ToolDef } from '../../Tool.js'
-import { getCwd } from '../../utils/cwd.js'
-import { isENOENT } from '../../utils/errors.js'
+import type { ValidationResult } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/Tool.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { isENOENT } from 'src/utils/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   suggestPathUnderCwd,
-} from '../../utils/file.js'
-import { getFsImplementation } from '../../utils/fsOperations.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { expandPath, toRelativePath } from '../../utils/path.js'
+} from 'src/utils/fs/file.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { expandPath, toRelativePath } from 'src/utils/fs/path.js'
 import { relativizeRgLine, RG_LINE_RE } from './relativize.js'
 import {
   checkReadPermissionForTool,
   getFileReadIgnorePatterns,
   normalizePatternsToPath,
-} from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
-import { matchWildcardPattern } from '../../utils/permissions/shellRuleMatching.js'
-import { getGlobExclusionsForPluginCache } from '../../utils/plugins/orphanedPluginFilter.js'
-import { ripGrepWithStatus } from '../../utils/ripgrep.js'
-import { semanticBoolean } from '../../utils/semanticBoolean.js'
-import { semanticNumber } from '../../utils/semanticNumber.js'
-import { plural } from '../../utils/stringUtils.js'
+} from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
+import { getGlobExclusionsForPluginCache } from 'src/services/plugins/orphanedPluginFilter.js'
+import { ripGrepWithStatus } from 'src/utils/fs/ripgrep.js'
+import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
+import { semanticNumber } from 'src/utils/data/semanticNumber.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 import { buildSymbolsOutput } from './symbolsOutput.js'
 import { GREP_TOOL_NAME, getDescription } from './prompt.js'
 import {

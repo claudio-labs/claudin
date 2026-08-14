@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ReactNode } from 'react';
 import React from 'react';
-import type { Color, Styles, TextStyles } from '../styles.js';
+import type { Color, Styles, TextStyles } from 'src/ink/styles.js';
 
 // 'ink-text' is a real host element recognized by the renderer. tsconfig
 // uses jsx:"react-jsx" (automatic runtime), which resolves the JSX namespace

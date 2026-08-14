@@ -1,9 +1,9 @@
 import { basename, sep } from 'path';
 import React, { type ReactNode } from 'react';
-import { getOriginalCwd } from '../../bootstrap/state.js';
-import { Text } from '../../ink.js';
-import type { PermissionUpdate } from '../../utils/permissions/PermissionUpdateSchema.js';
-import { permissionRuleExtractPrefix } from '../../utils/permissions/shellRuleMatching.js';
+import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { Text } from 'src/ink.js';
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
+import { permissionRuleExtractPrefix } from 'src/services/permissions/shellRuleMatching.js';
 function commandListDisplay(commands: string[]): ReactNode {
   switch (commands.length) {
     case 0:

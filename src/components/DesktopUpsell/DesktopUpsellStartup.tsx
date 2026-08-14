@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Box, Text } from '../../ink.js';
-import { getDynamicConfig_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
-import { Select } from '../CustomSelect/select.js';
-import { DesktopHandoff } from '../DesktopHandoff.js';
-import { PermissionDialog } from '../permissions/PermissionDialog.js';
-import type { GlobalConfig } from '../../utils/config.js';
+import { Box, Text } from 'src/ink.js';
+import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { DesktopHandoff } from 'src/components/DesktopHandoff.js';
+import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import type { GlobalConfig } from 'src/services/config/config.js';
 type DesktopUpsellConfig = {
   enable_shortcut_tip: boolean;
   enable_startup_dialog: boolean;

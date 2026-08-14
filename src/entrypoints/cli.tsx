@@ -190,20 +190,20 @@ async function main(): Promise<void> {
   // return before reaching that await, so we attach a no-op catch to avoid
   // PromiseRejection warnings if the orphaned import ever rejects.
   // (Phase A of cold-start plan.)
-  const mainImportPromise = import('../main.js')
+  const mainImportPromise = import('src/main.js')
   mainImportPromise.catch(() => {
     /* fast-path exited before main was needed; swallow */
   })
 
   // Enable configs first so we can read settings
   {
-    const { enableConfigs } = await import('../utils/config.js')
+    const { enableConfigs } = await import('src/services/config/config.js')
     enableConfigs()
   }
 
   // Apply settings.env from user settings
   {
-    const { applySafeConfigEnvironmentVariables } = await import('../utils/managedEnv.js')
+    const { applySafeConfigEnvironmentVariables } = await import('src/services/config/managedEnv.js')
     applySafeConfigEnvironmentVariables()
   }
 
@@ -212,7 +212,7 @@ async function main(): Promise<void> {
   // Never awaited — must not gate boot on npm view latency. Self-swallows all
   // errors (see runStartupUpdateCheck).
   void (async () => {
-    const { runStartupUpdateCheck } = await import('../utils/startupUpdateCheck.js')
+    const { runStartupUpdateCheck } = await import('src/services/install/startupUpdateCheck.js')
     await runStartupUpdateCheck(args)
   })()
 
@@ -220,7 +220,7 @@ async function main(): Promise<void> {
   // refresh below, the Grove prefetch, and the clear-on-start logic further
   // down. enableConfigs() already ran above, so profile reads are safe here.
   const { tryGetActiveProvider } = await import(
-    '../services/api/activeProvider.js'
+    'src/services/api/activeProvider.js'
   )
   const activeProvider = tryGetActiveProvider()
 
@@ -235,13 +235,13 @@ async function main(): Promise<void> {
     const {
       hydrateGithubModelsTokenFromSecureStorage,
       refreshGithubModelsTokenIfNeeded,
-    } = await import('../utils/githubModelsCredentials.js')
+    } = await import('src/services/api/githubModelsCredentials.js')
     await refreshGithubModelsTokenIfNeeded()
     hydrateGithubModelsTokenFromSecureStorage()
   }
 
   const { validateProviderEnvForStartupOrExit } = await import(
-    '../utils/providerValidation.js'
+    'src/services/api/providerValidation.js'
   )
   await validateProviderEnvForStartupOrExit()
 
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
   // are already swallowed inside each memoized fn.
   if (activeProvider && activeProvider.transport === 'anthropic') {
     void (async () => {
-      const grove = await import('../services/api/grove.js')
+      const grove = await import('src/services/api/grove.js')
       void grove.getGroveSettings()
       void grove.getGroveNoticeConfig()
     })()
@@ -268,14 +268,14 @@ async function main(): Promise<void> {
     process.stdout.isTTY &&
     process.env.CLAUDIN_CLEAR_ON_START === '1'
   ) {
-    const { clearTerminal } = await import('../ink/clearTerminal.js')
+    const { clearTerminal } = await import('src/ink/clearTerminal.js')
     process.stdout.write(clearTerminal)
   }
 
   // For all other paths, load the startup profiler
   const {
     profileCheckpoint
-  } = await import('../utils/startupProfiler.js');
+  } = await import('src/utils/startupProfiler.js');
   profileCheckpoint('cli_entry');
 
   // Fast-path for --dump-system-prompt: output the rendered system prompt and exit.
@@ -288,18 +288,18 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_dump_system_prompt_path');
     const {
       enableConfigs
-    } = await import('../utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       getMainLoopModel
-    } = await import('../utils/model/model.js');
+    } = await import('src/utils/model/model.js');
     const modelIdx = args.indexOf('--model');
     const model = modelIdx !== -1 && args[modelIdx + 1] || getMainLoopModel();
     const {
       getSystemPrompt,
       enhanceSystemPromptWithEnvDetails,
       DEFAULT_AGENT_PROMPT
-    } = await import('../constants/prompts.js');
+    } = await import('src/constants/prompts.js');
     const prompt = args.includes('--subagent') ? await enhanceSystemPromptWithEnvDetails([DEFAULT_AGENT_PROMPT], model) : await getSystemPrompt([], model);
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.log(prompt.join('\n'));
@@ -309,7 +309,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_computer_use_mcp_path');
     const {
       runComputerUseMcpServer
-    } = await import('../utils/computerUse/mcpServer.js');
+    } = await import('src/services/computerUse/mcpServer.js');
     await runComputerUseMcpServer();
     return;
   }
@@ -335,21 +335,21 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_bridge_path');
     const {
       enableConfigs
-    } = await import('../utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       getBridgeDisabledReason,
       checkBridgeMinVersion
-    } = await import('../bridge/bridgeEnabled.js');
+    } = await import('src/bridge/bridgeEnabled.js');
     const {
       BRIDGE_LOGIN_ERROR
-    } = await import('../bridge/types.js');
+    } = await import('src/bridge/types.js');
     const {
       bridgeMain
-    } = await import('../bridge/bridgeMain.js');
+    } = await import('src/bridge/bridgeMain.js');
     const {
       exitWithError
-    } = await import('../utils/process.js');
+    } = await import('src/utils/proc/process.js');
 
     // Auth check must come before the GrowthBook gate check — without auth,
     // GrowthBook has no user context and would return a stale/default false.
@@ -357,7 +357,7 @@ async function main(): Promise<void> {
     // (not the stale disk cache), but init still needs auth headers to work.
     const {
       getClaudeAIOAuthTokens
-    } = await import('../utils/auth.js');
+    } = await import('src/services/auth/auth.js');
     if (!getClaudeAIOAuthTokens()?.accessToken) {
       exitWithError(BRIDGE_LOGIN_ERROR);
     }
@@ -374,7 +374,7 @@ async function main(): Promise<void> {
     const {
       waitForPolicyLimitsToLoad,
       isPolicyAllowed
-    } = await import('../services/policyLimits/index.js');
+    } = await import('src/services/policyLimits/index.js');
     await waitForPolicyLimitsToLoad();
     if (!isPolicyAllowed('allow_remote_control')) {
       exitWithError("Error: Remote Control is disabled by your organization's policy.");
@@ -388,11 +388,11 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_daemon_path');
     const {
       enableConfigs
-    } = await import('../utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       initSinks
-    } = await import('../utils/sinks.js');
+    } = await import('src/utils/sinks.js');
     initSinks();
     const {
       daemonMain
@@ -408,7 +408,7 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_bg_path');
     const {
       enableConfigs
-    } = await import('../utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const bg = await import('../cli/bg.js');
     switch (args[0]) {
@@ -472,15 +472,15 @@ async function main(): Promise<void> {
     profileCheckpoint('cli_tmux_worktree_fast_path');
     const {
       enableConfigs
-    } = await import('../utils/config.js');
+    } = await import('src/services/config/config.js');
     enableConfigs();
     const {
       isWorktreeModeEnabled
-    } = await import('../utils/worktreeModeEnabled.js');
+    } = await import('src/services/git/worktreeModeEnabled.js');
     if (isWorktreeModeEnabled()) {
       const {
         execIntoTmuxWorktree
-      } = await import('../utils/worktree.js');
+      } = await import('src/services/git/worktree.js');
       const result = await execIntoTmuxWorktree(args);
       if (result.handled) {
         return;
@@ -489,7 +489,7 @@ async function main(): Promise<void> {
       if (result.error) {
         const {
           exitWithError
-        } = await import('../utils/process.js');
+        } = await import('src/utils/proc/process.js');
         exitWithError(result.error);
       }
     }
@@ -510,7 +510,7 @@ async function main(): Promise<void> {
   if (process.env.CLAUDIN_DISABLE_EARLY_INPUT !== '1') {
     const {
       startCapturingEarlyInput
-    } = await import('../utils/earlyInput.js');
+    } = await import('src/utils/earlyInput.js');
     startCapturingEarlyInput();
   }
   profileCheckpoint('cli_before_main_import');

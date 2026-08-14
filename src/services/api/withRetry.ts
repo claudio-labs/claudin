@@ -3,10 +3,10 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { type APIError, APIUserAbortError } from '@anthropic-ai/sdk'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/types/message.js'
-import { isAwsCredentialsProviderError } from 'src/utils/aws.js'
+import { isAwsCredentialsProviderError } from 'src/services/api/aws.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
-import { createSystemAPIErrorMessage } from 'src/utils/messages.js'
+import { createSystemAPIErrorMessage } from 'src/services/messages/messages.js'
 import { getAPIProvider, getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import {
   clearApiKeyHelperCache,
@@ -16,18 +16,18 @@ import {
   handleOAuth401Error,
   isClaudeAISubscriber,
   isEnterpriseSubscriber,
-} from '../../utils/auth.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+} from 'src/services/auth/auth.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import { invalidateClientCache } from './clientCache.js'
-import { refreshGithubModelsTokenIfNeeded } from '../../utils/githubModelsCredentials.js'
-import { refreshCodexAccessTokenIfNeeded } from '../../utils/codexCredentials.js'
+import { refreshGithubModelsTokenIfNeeded } from 'src/services/api/githubModelsCredentials.js'
+import { refreshCodexAccessTokenIfNeeded } from 'src/services/api/codexCredentials.js'
 import { forceRefreshOAuthWebTokenOn401 } from './openaiShim/oauthProviderAuth.js'
 import {
   errorMessage,
   isSdkApiConnectionError,
   isSdkApiError,
-} from '../../utils/errors.js'
+} from 'src/utils/errors.js'
 import {
   type CooldownReason,
   handleFastModeOverageRejection,
@@ -35,18 +35,18 @@ import {
   isFastModeCooldown,
   isFastModeEnabled,
   triggerFastModeCooldown,
-} from '../../utils/fastMode.js'
+} from 'src/utils/fastMode.js'
 import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
-import { isNonCustomOpusModel } from '../../utils/model/model.js'
-import { disableKeepAlive } from '../../utils/proxy.js'
-import { sleep } from '../../utils/sleep.js'
-import type { ThinkingConfig } from '../../utils/thinking.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
+import { isNonCustomOpusModel } from 'src/utils/model/model.js'
+import { disableKeepAlive } from 'src/services/api/proxy.js'
+import { sleep } from 'src/utils/sleep.js'
+import type { ThinkingConfig } from 'src/services/context/thinking.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
-import { isMockRateLimitError } from '../rateLimitMocking.js'
+} from 'src/services/analytics/index.js'
+import { isMockRateLimitError } from 'src/services/rateLimitMocking.js'
 import { REPEATED_529_ERROR_MESSAGE } from './errors.js'
 import { extractConnectionErrorDetails } from './errorUtils.js'
 

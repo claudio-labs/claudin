@@ -3,24 +3,24 @@ import { extname, isAbsolute, resolve } from 'path'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fileHistory.js'
+} from 'src/utils/fs/fileHistory.js'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef, type ToolUseContext } from '../../Tool.js'
-import type { NotebookCell, NotebookContent } from '../../types/notebook.js'
-import { getCwd } from '../../utils/cwd.js'
-import { isENOENT } from '../../utils/errors.js'
-import { getFileModificationTime, writeTextContent } from '../../utils/file.js'
-import { readFileSyncWithMetadata } from '../../utils/fileRead.js'
-import { safeParseJSON } from '../../utils/json.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { parseCellId } from '../../utils/notebook.js'
-import { checkWritePermissionForTool } from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
-import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
+import { buildTool, type ToolDef, type ToolUseContext } from 'src/Tool.js'
+import type { NotebookCell, NotebookContent } from 'src/types/notebook.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { isENOENT } from 'src/utils/errors.js'
+import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
+import { safeParseJSON } from 'src/utils/data/json.js'
+import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { parseCellId } from 'src/utils/fs/notebook.js'
+import { checkWritePermissionForTool } from 'src/services/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import {
   satisfiesReadGate,
   writeFamilyReadGateError,
-} from '../shared/readBeforeEditMessages.js'
+} from 'src/tools/shared/readBeforeEditMessages.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from './constants.js'
 import { DESCRIPTION, PROMPT } from './prompt.js'
 import {

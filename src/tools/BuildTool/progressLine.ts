@@ -1,5 +1,5 @@
 import type { BuildSystem } from './types.js'
-import { lastNonEmptyLine, tidyLabel } from '../shared/progressTail.js'
+import { lastNonEmptyLine, tidyLabel } from 'src/tools/shared/progressTail.js'
 
 // Re-exported because `run.ts` takes both the label and the stall report's
 // `lastLine` from this module.

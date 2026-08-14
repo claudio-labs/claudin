@@ -1,7 +1,7 @@
 import type { StructuredPatchHunk } from 'diff'
 import { basename } from 'path'
-import type { DiffFile } from '../../hooks/useDiffData.js'
-import { plural } from '../../utils/stringUtils.js'
+import type { DiffFile } from 'src/hooks/useDiffData.js'
+import { plural } from 'src/utils/text/stringUtils.js'
 import type { RepoGroup } from './types.js'
 
 /**

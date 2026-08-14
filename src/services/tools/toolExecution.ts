@@ -22,46 +22,46 @@ import {
   addToToolDuration,
   getCodeEditToolDecisionCounter,
   getStatsStore,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   buildCodeEditToolAttributes,
   isCodeEditingTool,
-} from '../../hooks/toolPermission/permissionLogging.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+} from 'src/hooks/toolPermission/permissionLogging.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import {
   findToolByName,
   type Tool,
   type ToolProgress,
   type ToolProgressData,
   type ToolUseContext,
-} from '../../Tool.js'
-import type { BashToolInput } from '../../tools/BashTool/BashTool.js'
-import { startSpeculativeClassifierCheck } from '../../tools/BashTool/bashPermissions.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from '../../tools/NotebookEditTool/constants.js'
-import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
-import { SKILL_TOOL_NAME } from '../../tools/SkillTool/constants.js'
+} from 'src/Tool.js'
+import type { BashToolInput } from 'src/tools/BashTool/BashTool.js'
+import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from './cacheInvalidation.js'
-import { parseGitCommitId } from '../../tools/shared/gitOperationTracking.js'
+import { parseGitCommitId } from 'src/tools/shared/gitOperationTracking.js'
 import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
-} from '../../tools/ToolSearchTool/prompt.js'
-import { getAllBaseTools } from '../../tools.js'
-import type { HookProgress } from '../../types/hooks.js'
+} from 'src/tools/ToolSearchTool/prompt.js'
+import { getAllBaseTools } from 'src/tools.js'
+import type { HookProgress } from 'src/types/hooks.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   ProgressMessage,
   StopHookInfo,
-} from '../../types/message.js'
-import { count } from '../../utils/array.js'
-import { createAttachmentMessage } from '../../utils/attachments.js'
-import { logForDebugging } from '../../utils/debug.js'
+} from 'src/types/message.js'
+import { count } from 'src/utils/data/array.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   AbortError,
   errorMessage,
@@ -69,21 +69,21 @@ import {
   isAbortError,
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../../utils/errors.js'
-import { executePermissionDeniedHooks } from '../../utils/hooks.js'
-import { logError } from '../../utils/log.js'
-import { getGlobalConfig } from '../../utils/config.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+} from 'src/utils/errors.js'
+import { executePermissionDeniedHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { logError } from 'src/utils/log.js'
+import { getGlobalConfig } from 'src/services/config/config.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   detectSerialEditStreak,
   EDIT_TOOL_NAMES,
   renderSerialEditNudge,
   SERIAL_EDIT_THRESHOLD,
-} from '../../tools/shared/serialEditNudge.js'
+} from 'src/tools/shared/serialEditNudge.js'
 import {
   countIdenticalFailures,
   REPEATED_ERROR_THRESHOLD,
-} from '../extractMemories/loopDetector.js'
+} from 'src/services/extractMemories/loopDetector.js'
 import {
   CANCEL_MESSAGE,
   createProgressMessage,
@@ -91,20 +91,20 @@ import {
   createToolResultStopMessage,
   createUserMessage,
   withMemoryCorrectionHint,
-} from '../../utils/messages.js'
+} from 'src/services/messages/messages.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from '../../utils/permissions/PermissionResult.js'
+} from 'src/services/permissions/PermissionResult.js'
 import {
   startSessionActivity,
   stopSessionActivity,
-} from '../../utils/sessionActivity.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { Stream } from '../../utils/stream.js'
-import { stripPlaceholderOptionalFields } from '../../utils/toolInputPlaceholders.js'
-import { transportSendsStrictToolSchemas } from '../api/providerConfig.js'
-import { logOTelEvent } from '../../utils/telemetry/events.js'
+} from 'src/services/session/sessionActivity.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { Stream } from 'src/utils/stream.js'
+import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
+import { transportSendsStrictToolSchemas } from 'src/services/api/providerConfig.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 import {
   addToolContentEvent,
   endToolBlockedOnUserSpan,
@@ -114,32 +114,32 @@ import {
   startToolBlockedOnUserSpan,
   startToolExecutionSpan,
   startToolSpan,
-} from '../../utils/telemetry/sessionTracing.js'
+} from 'src/services/telemetry/sessionTracing.js'
 import {
   formatError,
   formatZodValidationError,
-} from '../../utils/toolErrors.js'
+} from 'src/services/tools/toolErrors.js'
 import {
   processPreMappedToolResultBlock,
   processToolResultBlock,
-} from '../../utils/toolResultStorage.js'
+} from 'src/services/tools/toolResultStorage.js'
 import {
   extractDiscoveredToolNames,
   isToolSearchEnabledOptimistic,
   isToolSearchToolAvailable,
-} from '../../utils/toolSearch.js'
+} from 'src/services/tools/toolSearch.js'
 import {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../mcp/client.js'
-import { mcpInfoFromString } from '../mcp/mcpStringUtils.js'
-import { normalizeNameForMCP } from '../mcp/normalization.js'
-import type { MCPServerConnection } from '../mcp/types.js'
+} from 'src/services/mcp/client.js'
+import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import {
   getLoggingSafeMcpBaseUrl,
   getMcpServerScopeFromToolName,
   isMcpTool,
-} from '../mcp/utils.js'
+} from 'src/services/mcp/utils.js'
 import {
   resolveHookPermissionDecision,
   runPostToolUseFailureHooks,

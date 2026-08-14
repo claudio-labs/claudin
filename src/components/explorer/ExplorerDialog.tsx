@@ -1,30 +1,30 @@
 import { existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'fs'
 import { basename, dirname, resolve } from 'path'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useRegisterOverlay } from '../../context/overlayContext.js'
+import { useRegisterOverlay } from 'src/context/overlayContext.js'
 import {
   clearFileSuggestionCaches,
   getProjectFilePaths,
-} from '../../hooks/fileSuggestions.js'
-import type { DiffFile } from '../../hooks/useDiffData.js'
-import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { useWorkspaceDiff } from '../../hooks/useWorkspaceDiff.js'
-import { Box, Text, useInput, useTheme } from '../../ink.js'
+} from 'src/hooks/fileSuggestions.js'
+import type { DiffFile } from 'src/hooks/useDiffData.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { useWorkspaceDiff } from 'src/hooks/useWorkspaceDiff.js'
+import { Box, Text, useInput, useTheme } from 'src/ink.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from '../../types/command.js'
-import type { TreeRow } from '../diff/fileTree.js'
-import { getCwd } from '../../utils/cwd.js'
-import { writeFileSyncAndFlush, writeTextContent } from '../../utils/file.js'
-import { readFileSyncWithMetadata } from '../../utils/fileRead.js'
-import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js'
-import { logError } from '../../utils/log.js'
-import { hasNerdFontGlyphs } from '../../utils/terminalFont.js'
-import type { Theme } from '../../utils/theme.js'
-import { Dialog } from '../design-system/Dialog.js'
-import { DiffFileList, INLINE_LIST_WIDTH } from '../diff/DiffFileList.js'
-import { expectEditorHighlighter } from '../StructuredDiff/colorDiff.js'
+} from 'src/types/command.js'
+import type { TreeRow } from 'src/components/diff/fileTree.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
+import { writeFileSyncAndFlush, writeTextContent } from 'src/utils/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
+import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
+import { logError } from 'src/utils/log.js'
+import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'
+import type { Theme } from 'src/utils/theme.js'
+import { Dialog } from 'src/components/design-system/Dialog.js'
+import { DiffFileList, INLINE_LIST_WIDTH } from 'src/components/diff/DiffFileList.js'
+import { expectEditorHighlighter } from 'src/components/StructuredDiff/colorDiff.js'
 import {
   backspace,
   createEditorState,

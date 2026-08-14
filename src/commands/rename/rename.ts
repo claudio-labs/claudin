@@ -1,21 +1,21 @@
 import type { UUID } from 'crypto'
-import { getSessionId } from '../../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   getBridgeBaseUrlOverride,
   getBridgeTokenOverride,
-} from '../../bridge/bridgeConfig.js'
-import type { ToolUseContext } from '../../Tool.js'
+} from 'src/bridge/bridgeConfig.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from '../../types/command.js'
-import { getMessagesAfterCompactBoundary } from '../../utils/messages.js'
+} from 'src/types/command.js'
+import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
 import {
   getTranscriptPath,
   saveAgentName,
   saveCustomTitle,
-} from '../../utils/sessionStorage.js'
-import { isTeammate } from '../../utils/teammate.js'
+} from 'src/services/session/sessionStorage.js'
+import { isTeammate } from 'src/coordinator/teammate.js'
 import { generateSessionName } from './generateSessionName.js'
 
 export async function call(
@@ -63,7 +63,7 @@ export async function call(
   const bridgeSessionId = appState.replBridgeSessionId
   if (bridgeSessionId) {
     const tokenOverride = getBridgeTokenOverride()
-    void import('../../bridge/createSession.js').then(
+    void import('src/bridge/createSession.js').then(
       ({ updateBridgeSessionTitle }) =>
         updateBridgeSessionTitle(bridgeSessionId, newName, {
           baseUrl: getBridgeBaseUrlOverride(),

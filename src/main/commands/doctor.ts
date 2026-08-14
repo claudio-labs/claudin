@@ -2,7 +2,7 @@
 // Pure relocation — behavior identical. See main.tsx for the original site.
 
 import type { Command } from '@commander-js/extra-typings'
-import { getBaseRenderOptions } from '../../utils/renderOptions.js'
+import { getBaseRenderOptions } from 'src/utils/renderOptions.js'
 
 export function registerDoctorCommand(program: Command): void {
   // Doctor command - check installation health
@@ -11,7 +11,7 @@ export function registerDoctorCommand(program: Command): void {
       doctorHandler
     }, {
       createRoot
-    }] = await Promise.all([import('../../cli/handlers/util.js'), import('../../ink.js')])
+    }] = await Promise.all([import('src/cli/handlers/util.js'), import('src/ink.js')])
     const root = await createRoot(getBaseRenderOptions(false))
     await doctorHandler(root)
   })

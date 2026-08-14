@@ -5,8 +5,8 @@
 
 import figures from 'figures'
 import * as React from 'react'
-import { Box, Text } from '../../../ink.js'
-import { useShortcutDisplay } from '../../../keybindings/useShortcutDisplay.js'
+import { Box, Text } from 'src/ink.js'
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js'
 
 export type TranscriptSearchBadge = {
   current: number

@@ -1,33 +1,33 @@
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   isKimiCodeBaseUrl,
   isXaiOAuthBaseUrl,
   resolveProviderRequest,
-} from '../../services/api/providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 import {
   readXaiCredentialsAsync,
   refreshXaiAccessTokenIfNeeded,
-} from '../../utils/xaiCredentials.js'
-import { getXaiUserAgent } from '../../utils/xaiUserAgent.js'
+} from 'src/services/api/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
-} from '../../utils/kimiCredentials.js'
-import { getKimiUserAgent } from '../../utils/kimiUserAgent.js'
-import { getKimiDeviceHeaders } from '../../utils/kimiDeviceHeaders.js'
-import { getCurrentProjectConfig } from '../../utils/config.js'
-import { modelSupportsAutoMode } from '../../utils/betas.js'
-import { getMainLoopModel } from '../../utils/model/model.js'
+} from 'src/services/api/kimiCredentials.js'
+import { getKimiUserAgent } from 'src/services/api/kimiUserAgent.js'
+import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
+import { getCurrentProjectConfig } from 'src/services/config/config.js'
+import { modelSupportsAutoMode } from 'src/services/api/betas.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getClassifierProbeKey,
   probeClassifierCapability,
-} from '../../utils/permissions/classifierProbe.js'
-import { parseModelList } from '../../utils/providerModels.js'
+} from 'src/services/permissions/classifierProbe.js'
+import { parseModelList } from 'src/services/api/providerModels.js'
 import {
   type OllamaGenerationReadiness,
   probeOllamaGenerationReadiness,
-} from '../../utils/providerDiscovery.js'
-import { resolveGeminiCredential } from '../../utils/geminiAuth.js'
+} from 'src/services/api/providerDiscovery.js'
+import { resolveGeminiCredential } from 'src/services/api/geminiAuth.js'
 import {
   getActiveProviderProfile,
   getGlobalActiveProviderProfileId,
@@ -35,8 +35,8 @@ import {
   getProviderProfiles,
   getRawProjectActiveProviderProfileId,
   hasProjectProviderProfileOverride,
-} from '../../utils/providerProfiles.js'
-import { redactUrlForDisplay } from '../../utils/urlRedaction.js'
+} from 'src/services/api/providerProfiles.js'
+import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 
 type CheckResult = {
   ok: boolean

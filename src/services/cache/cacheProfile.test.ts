@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { getTimeBasedMCConfig } from '../compact/timeBasedMCConfig.js'
+import { getTimeBasedMCConfig } from 'src/services/compact/timeBasedMCConfig.js'
 import {
   AGGRESSIVE_PROFILE,
   RETAIN_PROFILE,

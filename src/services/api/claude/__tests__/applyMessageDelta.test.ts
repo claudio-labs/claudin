@@ -3,7 +3,7 @@ import type {
   BetaContextManagementResponse,
   BetaUsage,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { applyMessageDeltaToLastMessage } from '../streaming.js'
+import { applyMessageDeltaToLastMessage } from 'src/services/api/claude/streaming.js'
 
 // Derive the message type from the function under test instead of importing
 // src/types/message.js (tsc can't resolve that module in this fork).

@@ -1,29 +1,29 @@
 import { feature } from 'bun:bundle';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { setMainLoopModelOverride } from '../bootstrap/state.js';
-import { type BridgePermissionCallbacks, type BridgePermissionResponse, isBridgePermissionResponse } from '../bridge/bridgePermissionCallbacks.js';
-import { buildBridgeConnectUrl } from '../bridge/bridgeStatusUtil.js';
-import { extractInboundMessageFields } from '../bridge/inboundMessages.js';
-import type { BridgeState, ReplBridgeHandle } from '../bridge/replBridge.js';
-import { setReplBridgeHandle } from '../bridge/replBridgeHandle.js';
-import type { Command } from '../commands.js';
-import { getSlashCommandToolSkills, isBridgeSafeCommand } from '../commands.js';
-import { getRemoteSessionUrl } from '../constants/product.js';
-import { useNotifications } from '../context/notifications.js';
-import type { PermissionMode, SDKMessage } from '../entrypoints/agentSdkTypes.js';
-import type { SDKControlResponse } from '../entrypoints/sdk/controlTypes.js';
-import { Text } from '../ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js';
-import { useAppState, useAppStateStore, useSetAppState } from '../state/AppState.js';
-import type { Message } from '../types/message.js';
-import { getCwd } from '../utils/cwd.js';
-import { logForDebugging } from '../utils/debug.js';
-import { errorMessage } from '../utils/errors.js';
-import { enqueue } from '../utils/messageQueueManager.js';
-import { buildSystemInitMessage } from '../utils/messages/systemInit.js';
-import { createBridgeStatusMessage, createSystemMessage } from '../utils/messages.js';
-import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from '../utils/permissions/permissionSetup.js';
-import { getLeaderToolUseConfirmQueue } from '../utils/swarm/leaderPermissionBridge.js';
+import { setMainLoopModelOverride } from 'src/bootstrap/state.js';
+import { type BridgePermissionCallbacks, type BridgePermissionResponse, isBridgePermissionResponse } from 'src/bridge/bridgePermissionCallbacks.js';
+import { buildBridgeConnectUrl } from 'src/bridge/bridgeStatusUtil.js';
+import { extractInboundMessageFields } from 'src/bridge/inboundMessages.js';
+import type { BridgeState, ReplBridgeHandle } from 'src/bridge/replBridge.js';
+import { setReplBridgeHandle } from 'src/bridge/replBridgeHandle.js';
+import type { Command } from 'src/commands.js';
+import { getSlashCommandToolSkills, isBridgeSafeCommand } from 'src/commands.js';
+import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { useNotifications } from 'src/context/notifications.js';
+import type { PermissionMode, SDKMessage } from 'src/entrypoints/agentSdkTypes.js';
+import type { SDKControlResponse } from 'src/entrypoints/sdk/controlTypes.js';
+import { Text } from 'src/ink.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
+import type { Message } from 'src/types/message.js';
+import { getCwd } from 'src/utils/fs/cwd.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { errorMessage } from 'src/utils/errors.js';
+import { enqueue } from 'src/utils/messageQueueManager.js';
+import { buildSystemInitMessage } from 'src/services/messages/systemInit.js';
+import { createBridgeStatusMessage, createSystemMessage } from 'src/services/messages/messages.js';
+import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from 'src/services/permissions/permissionSetup.js';
+import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js';
 
 /** How long after a failure before replBridgeEnabled is auto-cleared (stops retries). */
 export const BRIDGE_FAILURE_DISMISS_MS = 10_000;
@@ -147,10 +147,10 @@ export function useReplBridge(messages: Message[], setMessages: (action: React.S
           // Dynamic import so the module is tree-shaken in external builds
           const {
             initReplBridge
-          } = await import('../bridge/initReplBridge.js');
+          } = await import('src/bridge/initReplBridge.js');
           const {
             shouldShowAppUpgradeMessage
-          } = await import('../bridge/envLessBridgeConfig.js');
+          } = await import('src/bridge/envLessBridgeConfig.js');
 
           // Assistant mode: perpetual bridge session — claude.ai shows one
           // continuous conversation across CLI restarts instead of a new
@@ -188,7 +188,7 @@ export function useReplBridge(messages: Message[], setMessages: (action: React.S
               // Dynamic import keeps the bridge code out of non-BRIDGE_MODE builds.
               const {
                 resolveAndPrepend
-              } = await import('../bridge/inboundAttachments.js');
+              } = await import('src/bridge/inboundAttachments.js');
               let sanitized = fields.content;
               if (feature('KAIROS_GITHUB_WEBHOOKS')) {
                 /* eslint-disable @typescript-eslint/no-require-imports */

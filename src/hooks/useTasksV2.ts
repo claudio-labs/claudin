@@ -1,8 +1,8 @@
 import { type FSWatcher, watch } from 'fs'
 import { useEffect, useSyncExternalStore } from 'react'
-import { useAppState, useSetAppState } from '../state/AppState.js'
-import { createSignal } from '../utils/signal.js'
-import type { Task } from '../utils/tasks.js'
+import { useAppState, useSetAppState } from 'src/state/AppState.js'
+import { createSignal } from 'src/utils/signal.js'
+import type { Task } from 'src/tasks/tasks.js'
 import {
   archiveCompletedTasks,
   getTaskListId,
@@ -10,8 +10,8 @@ import {
   isTodoV2Enabled,
   listTasks,
   onTasksUpdated,
-} from '../utils/tasks.js'
-import { isTeamLead } from '../utils/teammate.js'
+} from 'src/tasks/tasks.js'
+import { isTeamLead } from 'src/coordinator/teammate.js'
 
 const HIDE_DELAY_MS = 5000
 const DEBOUNCE_MS = 50

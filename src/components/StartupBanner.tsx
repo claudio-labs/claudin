@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Box, RawAnsi } from '../ink.js'
-import { useMainLoopModel } from '../hooks/useMainLoopModel.js'
-import { eagerParseCliFlag } from '../utils/cliArgs.js'
-import { subscribeLatestVersion } from '../utils/latestVersionCache.js'
+import { Box, RawAnsi } from 'src/ink.js'
+import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js'
+import { eagerParseCliFlag } from 'src/utils/cliArgs.js'
+import { subscribeLatestVersion } from 'src/services/install/latestVersionCache.js'
 import {
   buildStartupBannerLines,
   resolveUpdateNotice,

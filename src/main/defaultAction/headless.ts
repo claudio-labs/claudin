@@ -6,34 +6,34 @@
 import { feature } from 'bun:bundle';
 import pickBy from 'lodash-es/pickBy.js';
 import uniqBy from 'lodash-es/uniqBy.js';
-import { setSdkBetas, setSessionPersistenceDisabled } from '../../bootstrap/state.js';
-import { initializeTelemetryAfterTrust } from '../../entrypoints/init.js';
-import { clearServerCache, getMcpToolsCommandsAndResources } from '../../services/mcp/client.js';
-import { dedupClaudeAiMcpServers, getMcpServerSignature } from '../../services/mcp/config.js';
-import type { McpSdkServerConfig, ScopedMcpServerConfig } from '../../services/mcp/types.js';
-import { excludeCommandsByServer, excludeResourcesByServer } from '../../services/mcp/utils.js';
-import { type AppState, getDefaultAppState } from '../../state/AppStateStore.js';
-import { onChangeAppState } from '../../state/onChangeAppState.js';
-import { createStore } from '../../state/store.js';
-import { isAdvisorEnabled } from '../../utils/advisor.js';
-import { validateForceLoginOrg } from '../../utils/auth.js';
-import { filterAllowedSdkBetas } from '../../utils/betas.js';
-import { logForDebugging, setHasFormattedOutput } from '../../utils/debug.js';
-import { getInitialEffortSetting, parseEffortValue } from '../../utils/effort.js';
-import { isBareMode } from '../../utils/envUtils.js';
-import { getInitialFastModeSetting, isFastModeEnabled } from '../../utils/fastMode.js';
-import { applyConfigEnvironmentVariables } from '../../utils/managedEnv.js';
-import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from '../../utils/permissions/permissionSetup.js';
-import { processSessionStartHooks } from '../../utils/sessionStart.js';
-import { profileCheckpoint } from '../../utils/startupProfiler.js';
-import type { ThinkingConfig } from '../../utils/thinking.js';
-import { startDeferredPrefetches } from '../deferredPrefetches.js';
+import { setSdkBetas, setSessionPersistenceDisabled } from 'src/bootstrap/state.js';
+import { initializeTelemetryAfterTrust } from 'src/entrypoints/init.js';
+import { clearServerCache, getMcpToolsCommandsAndResources } from 'src/services/mcp/client.js';
+import { dedupClaudeAiMcpServers, getMcpServerSignature } from 'src/services/mcp/config.js';
+import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { excludeCommandsByServer, excludeResourcesByServer } from 'src/services/mcp/utils.js';
+import { type AppState, getDefaultAppState } from 'src/state/AppStateStore.js';
+import { onChangeAppState } from 'src/state/onChangeAppState.js';
+import { createStore } from 'src/state/store.js';
+import { isAdvisorEnabled } from 'src/utils/advisor.js';
+import { validateForceLoginOrg } from 'src/services/auth/auth.js';
+import { filterAllowedSdkBetas } from 'src/services/api/betas.js';
+import { logForDebugging, setHasFormattedOutput } from 'src/utils/debug.js';
+import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';
+import { isBareMode } from 'src/utils/envUtils.js';
+import { getInitialFastModeSetting, isFastModeEnabled } from 'src/utils/fastMode.js';
+import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
+import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/services/permissions/permissionSetup.js';
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
+import { profileCheckpoint } from 'src/utils/startupProfiler.js';
+import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
 import { getMcpStartupTimeoutMs, raceConnectTimeout } from './mcpStartupWait.js';
-import { logSessionTelemetry } from '../lifecycle.js';
-import type { BootContext } from '../bootContext.js';
-import type { Command } from '../../types/command.js';
-import type { ToolPermissionContext, Tools } from '../../Tool.js';
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
+import { logSessionTelemetry } from 'src/main/lifecycle.js';
+import type { BootContext } from 'src/main/bootContext.js';
+import type { Command } from 'src/types/command.js';
+import type { ToolPermissionContext, Tools } from 'src/Tool.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 
 export type HeadlessBranchDeps = {
   ctx: BootContext;
@@ -332,13 +332,13 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // that scripted calls don't need — the next interactive session reconciles.
   if (!isBareMode()) {
     startDeferredPrefetches();
-    void import('../../utils/backgroundHousekeeping.js').then(m => m.startBackgroundHousekeeping());
+    void import('src/utils/backgroundHousekeeping.js').then(m => m.startBackgroundHousekeeping());
   }
   logSessionTelemetry();
   profileCheckpoint('before_print_import');
   const {
     runHeadless
-  } = await import('../../cli/print.js');
+  } = await import('src/cli/print.js');
   profileCheckpoint('after_print_import');
   void runHeadless(inputPrompt, () => headlessStore.getState(), headlessStore.setState, commandsHeadless, tools, sdkMcpConfigs, agentDefinitions.activeAgents, {
     continue: options.continue,

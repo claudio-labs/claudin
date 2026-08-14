@@ -2,18 +2,18 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import type { ResolvedProvider } from '../../services/api/activeProvider.js'
+import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
 
 // Capture real modules first so the mock spreads carry every export. Following
 // CLAUDE.md mock.module rules — never narrow the namespace shape and restore
 // at teardown so the mocks don't bleed into later test files. We snapshot the
 // genuine exports into plain objects so the restore in afterAll cannot pick
 // up our own overrides through live bindings.
-const realActiveProviderNS = { ...(await import('../../services/api/activeProvider.js')) }
-const realGeminiAuthNS = { ...(await import('../../utils/geminiAuth.js')) }
-const realProviderDiscoveryNS = { ...(await import('../../utils/providerDiscovery.js')) }
-const realModelNS = { ...(await import('../../utils/model/model.js')) }
-const realSideQueryNS = { ...(await import('../../utils/sideQuery.js')) }
+const realActiveProviderNS = { ...(await import('src/services/api/activeProvider.js')) }
+const realGeminiAuthNS = { ...(await import('src/services/api/geminiAuth.js')) }
+const realProviderDiscoveryNS = { ...(await import('src/services/api/providerDiscovery.js')) }
+const realModelNS = { ...(await import('src/utils/model/model.js')) }
+const realSideQueryNS = { ...(await import('src/utils/sideQuery.js')) }
 
 const realActiveProvider = { ...realActiveProviderNS }
 const realGeminiAuth = { ...realGeminiAuthNS }
@@ -71,12 +71,12 @@ const sideQueryMock = async () => ({
     : [{ type: 'text', text: 'ok' }],
 })
 
-mock.module('../../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProvider,
   tryGetActiveProvider: () => state.activeProvider,
 }))
 
-mock.module('../../utils/model/model.js', () => ({
+mock.module('src/utils/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => state.mainLoopModel,
 }))
@@ -88,7 +88,7 @@ mock.module('src/utils/model/model.js', () => ({
 // The doctor check probes via sideQuery; without a mock it would hit the real
 // API wrapper and fail on build-time MACROs under bun test. Mock both
 // specifier forms so the mock survives cross-file mock pre-application.
-mock.module('../../utils/sideQuery.js', () => ({
+mock.module('src/utils/sideQuery.js', () => ({
   ...realSideQuery,
   sideQuery: sideQueryMock,
 }))
@@ -97,7 +97,7 @@ mock.module('src/utils/sideQuery.js', () => ({
   sideQuery: sideQueryMock,
 }))
 
-mock.module('../../utils/geminiAuth.js', () => ({
+mock.module('src/services/api/geminiAuth.js', () => ({
   ...realGeminiAuth,
   resolveGeminiCredential: async () =>
     state.geminiKind === 'none'
@@ -107,7 +107,7 @@ mock.module('../../utils/geminiAuth.js', () => ({
         : { kind: state.geminiKind, credential: 'tok' },
 }))
 
-mock.module('../../utils/providerDiscovery.js', () => ({
+mock.module('src/services/api/providerDiscovery.js', () => ({
   ...realProviderDiscovery,
   probeOllamaGenerationReadiness: async () => ({
     state: state.ollamaState,
@@ -118,18 +118,18 @@ mock.module('../../utils/providerDiscovery.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('../../services/api/activeProvider.js', () => realActiveProvider)
-  mock.module('../../utils/geminiAuth.js', () => realGeminiAuth)
-  mock.module('../../utils/providerDiscovery.js', () => realProviderDiscovery)
-  mock.module('../../utils/model/model.js', () => realModel)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/services/api/geminiAuth.js', () => realGeminiAuth)
+  mock.module('src/services/api/providerDiscovery.js', () => realProviderDiscovery)
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('../../utils/sideQuery.js', () => realSideQuery)
+  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/utils/sideQuery.js', () => realSideQuery)
   mock.module('src/utils/sideQuery.js', () => realSideQuery)
 })
 
 const { runProviderDoctor } = await import('./doctor.js')
 const { __setClassifierProbeStoreDirForTests } = await import(
-  '../../utils/permissions/classifierProbeStore.js'
+  'src/services/permissions/classifierProbeStore.js'
 )
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -387,7 +387,7 @@ describe('runProviderDoctor — failure surfaces', () => {
 // feature('TRANSCRIPT_CLASSIFIER') is false under bun test (folded only at
 // build time), so modelSupportsAutoMode needs the test hatch to exercise the
 // real name-gate logic.
-const { __setAutoModeEnabledForTests } = await import('../../utils/betas.js')
+const { __setAutoModeEnabledForTests } = await import('src/services/api/betas.js')
 
 describe('runProviderDoctor — auto mode classifier probe', () => {
   beforeEach(() => {

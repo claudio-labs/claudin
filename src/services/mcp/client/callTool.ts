@@ -6,27 +6,27 @@ import {
   ErrorCode,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js'
-import type { AppState } from '../../../state/AppState.js'
-import type { AssistantMessage } from '../../../types/message.js'
-import { detectCodeIndexingFromMcpServerName } from '../../../utils/codeIndexing.js'
-import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../../utils/errors.js'
-import { logMCPDebug, logMCPError } from '../../../utils/log.js'
-import type { MCPToolResult } from '../../../utils/mcpValidation.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { AssistantMessage } from 'src/types/message.js'
+import { detectCodeIndexingFromMcpServerName } from 'src/utils/fs/codeIndexing.js'
+import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/utils/errors.js'
+import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import type { MCPToolResult } from 'src/services/mcp/mcpValidation.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../analytics/index.js'
-import type { MCPProgress } from '../../../tools/MCPTool/MCPTool.js'
+} from 'src/services/analytics/index.js'
+import type { MCPProgress } from 'src/tools/MCPTool/MCPTool.js'
 import {
   type ElicitationWaitingState,
   runElicitationHooks,
   runElicitationResultHooks,
-} from '../elicitationHandler.js'
+} from 'src/services/mcp/elicitationHandler.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
-} from '../types.js'
+} from 'src/services/mcp/types.js'
 import { clearServerCache } from './connection.js'
 import {
   isMcpSessionExpiredError,

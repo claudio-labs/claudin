@@ -11,26 +11,26 @@
 
 import { randomUUID } from 'crypto'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ToolUseConfirm } from '../components/permissions/PermissionRequest.js'
-import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
-import type { SDKControlPermissionRequest } from '../entrypoints/sdk/controlTypes.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
+import type { SDKControlPermissionRequest } from 'src/entrypoints/sdk/controlTypes.js'
 import {
   createSyntheticAssistantMessage,
   createToolStub,
-} from '../remote/remotePermissionBridge.js'
+} from 'src/remote/remotePermissionBridge.js'
 import {
   convertSDKMessage,
   isSessionEndMessage,
-} from '../remote/sdkMessageAdapter.js'
+} from 'src/remote/sdkMessageAdapter.js'
 import type { SSHSession } from '../ssh/createSSHSession.js'
 import type { SSHSessionManager } from '../ssh/SSHSessionManager.js'
-import type { Tool } from '../Tool.js'
-import { findToolByName } from '../Tool.js'
-import type { Message as MessageType } from '../types/message.js'
-import type { PermissionAskDecision } from '../types/permissions.js'
-import { logForDebugging } from '../utils/debug.js'
-import { gracefulShutdown } from '../utils/gracefulShutdown.js'
-import type { RemoteMessageContent } from '../utils/teleport/api.js'
+import type { Tool } from 'src/Tool.js'
+import { findToolByName } from 'src/Tool.js'
+import type { Message as MessageType } from 'src/types/message.js'
+import type { PermissionAskDecision } from 'src/types/permissions.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import type { RemoteMessageContent } from 'src/services/teleport/api.js'
 
 type UseSSHSessionResult = {
   isRemoteMode: boolean

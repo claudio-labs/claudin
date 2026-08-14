@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
-import { isAutoMemoryEnabled } from '../../../memdir/paths.js';
-import type { Tools } from '../../../Tool.js';
-import type { AgentDefinition } from '../../../tools/AgentTool/loadAgentsDir.js';
-import { WizardProvider } from '../../wizard/index.js';
-import type { WizardStepComponent } from '../../wizard/types.js';
+import { isAutoMemoryEnabled } from 'src/memdir/paths.js';
+import type { Tools } from 'src/Tool.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { WizardProvider } from 'src/components/wizard/index.js';
+import type { WizardStepComponent } from 'src/components/wizard/types.js';
 import type { AgentWizardData } from './types.js';
 import { ColorStep } from './wizard-steps/ColorStep.js';
 import { ConfirmStepWrapper } from './wizard-steps/ConfirmStepWrapper.js';

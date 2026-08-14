@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import * as React from 'react'
-import { renderToString } from '../../../utils/staticRender.js'
+import { renderToString } from 'src/components/staticRender.js'
 import { TranscriptModeFooter } from './TranscriptModeFooter.js'
 
 // `useShortcutDisplay` falls back to the third argument when no keybinding

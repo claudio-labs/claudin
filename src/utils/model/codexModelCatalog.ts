@@ -17,7 +17,7 @@
  * lives in CODEX_ALIAS_MODELS (src/services/api/providerConfig.ts) — a model
  * hidden from the picker still resolves if typed, exactly like opencode.
  */
-import type { ReasoningEffort } from '../../services/api/providerConfig.js'
+import type { ReasoningEffort } from 'src/services/api/providerConfig.js'
 
 export type CodexModelEntry = {
   id: string

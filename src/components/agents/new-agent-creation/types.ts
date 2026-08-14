@@ -1,11 +1,11 @@
 // Reconstructed from its use sites — the original module was not carried into
 // this fork. Shapes come from the `updateWizardData({...})` payloads in
 // `wizard-steps/*.tsx` and the reads in ConfirmStep/ConfirmStepWrapper.
-import type { SettingSource } from '../../../utils/settings/constants.js'
-import type { AgentColorName } from '../../../tools/AgentTool/agentColorManager.js'
-import type { AgentMemoryScope } from '../../../tools/AgentTool/agentMemory.js'
-import type { CustomAgentDefinition } from '../../../tools/AgentTool/loadAgentsDir.js'
-import type { generateAgent } from '../generateAgent.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
+import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js'
+import type { CustomAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import type { generateAgent } from 'src/components/agents/generateAgent.js'
 
 /** The agent object `generateAgent()` resolves to, without re-declaring it. */
 export type GeneratedAgentDraft = Awaited<ReturnType<typeof generateAgent>>

@@ -1,14 +1,14 @@
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useRegisterOverlay } from '../context/overlayContext.js';
-import { getTimestampedHistory, type TimestampedHistoryEntry } from '../history.js';
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
-import { stringWidth } from '../ink/stringWidth.js';
-import { wrapAnsi } from '../ink/wrapAnsi.js';
-import { Box, Text } from '../ink.js';
-import { logEvent } from '../services/analytics/index.js';
-import type { HistoryEntry } from '../utils/config.js';
-import { formatRelativeTimeAgo, truncateToWidth } from '../utils/format.js';
+import { useRegisterOverlay } from 'src/context/overlayContext.js';
+import { getTimestampedHistory, type TimestampedHistoryEntry } from 'src/history.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { wrapAnsi } from 'src/ink/wrapAnsi.js';
+import { Box, Text } from 'src/ink.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import type { HistoryEntry } from 'src/services/config/config.js';
+import { formatRelativeTimeAgo, truncateToWidth } from 'src/utils/text/format.js';
 import { FuzzyPicker } from './design-system/FuzzyPicker.js';
 type Props = {
   initialQuery?: string;

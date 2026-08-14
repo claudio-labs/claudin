@@ -10,15 +10,15 @@ import {
 
 import type { AgentDefinition } from './loadAgentsDir.js'
 
-const realAgentUtil = { ...(await import('../../utils/model/agent.js')) }
+const realAgentUtil = { ...(await import('src/utils/model/agent.js')) }
 const realResolver = { ...(await import('./agentModelResolver.js')) }
-const realAllowlist = { ...(await import('../../utils/model/modelAllowlist.js')) }
+const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
 let providerIsClaudeNative = true
 let availableModelIds: Set<string> | undefined
 let allowedAliases: Set<string> | null = null // null = no allowlist (all allowed)
 
-mock.module('../../utils/model/agent.js', () => ({
+mock.module('src/utils/model/agent.js', () => ({
   ...realAgentUtil,
   checkIsClaudeNativeProvider: () => providerIsClaudeNative,
 }))
@@ -28,7 +28,7 @@ mock.module('./agentModelResolver.js', () => ({
   getAvailableModelIdsForActiveProfile: () => availableModelIds,
 }))
 
-mock.module('../../utils/model/modelAllowlist.js', () => ({
+mock.module('src/utils/model/modelAllowlist.js', () => ({
   ...realAllowlist,
   isModelAllowed: (m: string) =>
     allowedAliases === null ? true : allowedAliases.has(m),
@@ -63,9 +63,9 @@ afterEach(() => {
 afterAll(() => {
   // Restore the real modules so the mocks don't leak into sibling test files
   // (bun's mock.module is process-global, not per-file).
-  mock.module('../../utils/model/agent.js', () => realAgentUtil)
+  mock.module('src/utils/model/agent.js', () => realAgentUtil)
   mock.module('./agentModelResolver.js', () => realResolver)
-  mock.module('../../utils/model/modelAllowlist.js', () => realAllowlist)
+  mock.module('src/utils/model/modelAllowlist.js', () => realAllowlist)
 })
 
 describe('resolveAgentModelDisplay', () => {

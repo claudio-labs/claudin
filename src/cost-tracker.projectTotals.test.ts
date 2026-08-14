@@ -9,7 +9,7 @@ import {
 import { getProjectTotals, resetCostState } from './cost-tracker.js'
 import { switchSession, getSessionId } from './bootstrap/state.js'
 import { asSessionId } from './types/ids.js'
-import { saveCurrentProjectConfig } from './utils/config.js'
+import { saveCurrentProjectConfig } from 'src/services/config/config.js'
 
 describe('getProjectTotals', () => {
   let nowSpy: ReturnType<typeof spyOn>

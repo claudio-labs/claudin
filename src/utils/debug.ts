@@ -11,8 +11,8 @@ import {
   shouldShowDebugMessage,
 } from './debugFilter.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
-import { getFsImplementation } from './fsOperations.js'
-import { writeToStderr } from './process.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { writeToStderr } from 'src/utils/proc/process.js'
 import { jsonStringify } from './slowOperations.js'
 
 export type DebugLogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error'

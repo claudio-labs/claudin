@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
-import { AppStateProvider } from '../../state/AppState.js'
-import { buildChildMessage } from '../../tools/AgentTool/forkSubagent.js'
-import { renderToString } from '../../utils/staticRender.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { buildChildMessage } from 'src/tools/AgentTool/forkSubagent.js'
+import { renderToString } from 'src/components/staticRender.js'
 import {
   extractForkDirective,
   UserForkBoilerplateMessage,

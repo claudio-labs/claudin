@@ -1,24 +1,24 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources';
-import { getRemoteSessionUrl } from '../../constants/product.js';
-import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from '../../constants/xml.js';
-import type { SDKAssistantMessage, SDKMessage } from '../../entrypoints/agentSdkTypes.js';
-import type { SetAppState, Task, TaskContext, TaskStateBase } from '../../Task.js';
-import { createTaskStateBase, generateTaskId } from '../../Task.js';
-import { TodoWriteTool } from '../../tools/TodoWriteTool/TodoWriteTool.js';
-import { type BackgroundRemoteSessionPrecondition, checkBackgroundRemoteSessionEligibility } from '../../utils/background/remote/remoteSession.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { logError } from '../../utils/log.js';
-import { enqueuePendingNotification } from '../../utils/messageQueueManager.js';
-import { extractTag, extractTextContent } from '../../utils/messages.js';
-import { emitTaskTerminatedSdk } from '../../utils/sdkEventQueue.js';
-import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from '../../utils/sessionStorage.js';
-import { jsonStringify } from '../../utils/slowOperations.js';
-import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from '../../utils/task/diskOutput.js';
-import { registerTask, updateTaskState } from '../../utils/task/framework.js';
-import { fetchSession } from '../../utils/teleport/api.js';
-import { archiveRemoteSession, pollRemoteSessionEvents } from '../../utils/teleport.js';
-import type { TodoList } from '../../utils/todo/types.js';
-import type { UltraplanPhase } from '../../utils/ultraplan/ccrSession.js';
+import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from 'src/constants/xml.js';
+import type { SDKAssistantMessage, SDKMessage } from 'src/entrypoints/agentSdkTypes.js';
+import type { SetAppState, Task, TaskContext, TaskStateBase } from 'src/Task.js';
+import { createTaskStateBase, generateTaskId } from 'src/Task.js';
+import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js';
+import { type BackgroundRemoteSessionPrecondition, checkBackgroundRemoteSessionEligibility } from 'src/services/background/remote/remoteSession.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { logError } from 'src/utils/log.js';
+import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
+import { extractTag, extractTextContent } from 'src/services/messages/messages.js';
+import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js';
+import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/services/session/sessionStorage.js';
+import { jsonStringify } from 'src/utils/slowOperations.js';
+import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from 'src/tasks/diskOutput.js';
+import { registerTask, updateTaskState } from 'src/tasks/framework.js';
+import { fetchSession } from 'src/services/teleport/api.js';
+import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/components/teleport.js';
+import type { TodoList } from 'src/tools/TodoWriteTool/types.js';
+import type { UltraplanPhase } from 'src/services/ultraplan/ccrSession.js';
 export type RemoteAgentTaskState = TaskStateBase & {
   type: 'remote_agent';
   remoteTaskType: RemoteTaskType;
@@ -802,7 +802,7 @@ function startRemoteSessionPolling(taskId: string, context: TaskContext): () => 
  * RemoteAgentTask - Handles remote Claude.ai session execution.
  *
  * Replaces the BackgroundRemoteSession implementation from:
- * - src/utils/background/remote/remoteSession.ts
+ * - src/services/background/remote/remoteSession.ts
  * - src/components/tasks/BackgroundTaskStatus.tsx (polling logic)
  */
 export const RemoteAgentTask: Task = {

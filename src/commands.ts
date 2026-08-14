@@ -172,9 +172,9 @@ import {
   clearPluginCommandCache,
   getPluginSkills,
   clearPluginSkillsCache,
-} from './utils/plugins/loadPluginCommands.js'
+} from 'src/services/plugins/loadPluginCommands.js'
 import memoize from 'lodash-es/memoize.js'
-import { isUsing3PServices, isClaudeAISubscriber } from './utils/auth.js'
+import { isUsing3PServices, isClaudeAISubscriber } from 'src/services/auth/auth.js'
 import { isFirstPartyAnthropicBaseUrl } from './utils/model/providers.js'
 import env from './commands/env/index.js'
 import exit from './commands/exit/index.js'
@@ -207,7 +207,7 @@ const usageReport: Command = {
 }
 import oauthRefresh from './commands/oauth-refresh/index.js'
 import debugToolCall from './commands/debug-tool-call/index.js'
-import { getSettingSourceName } from './utils/settings/constants.js'
+import { getSettingSourceName } from 'src/services/settings/constants.js'
 import {
   type Command,
   getCommandName,

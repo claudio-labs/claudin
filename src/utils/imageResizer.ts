@@ -7,17 +7,17 @@ import {
   IMAGE_MAX_HEIGHT,
   IMAGE_MAX_WIDTH,
   IMAGE_TARGET_RAW_SIZE,
-} from '../constants/apiLimits.js'
-import { logEvent } from '../services/analytics/index.js'
+} from 'src/constants/apiLimits.js'
+import { logEvent } from 'src/services/analytics/index.js'
 import {
   getImageProcessor,
   ImageProcessorUnavailableError,
   type SharpFunction,
   type SharpInstance,
-} from '../tools/FileReadTool/imageProcessor.js'
+} from 'src/tools/FileReadTool/imageProcessor.js'
 import { logForDebugging } from './debug.js'
 import { errorMessage } from './errors.js'
-import { formatFileSize } from './format.js'
+import { formatFileSize } from 'src/utils/text/format.js'
 import { logError } from './log.js'
 
 type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'

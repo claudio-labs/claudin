@@ -1,14 +1,14 @@
 import { execa } from 'execa';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Select } from '../../components/CustomSelect/index.js';
-import { Dialog } from '../../components/design-system/Dialog.js';
-import { LoadingState } from '../../components/design-system/LoadingState.js';
-import { Box, Text } from '../../ink.js';
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS as SafeString } from '../../services/analytics/index.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { openBrowser } from '../../utils/browser.js';
-import { getGhAuthStatus } from '../../utils/github/ghAuthStatus.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { LoadingState } from 'src/components/design-system/LoadingState.js';
+import { Box, Text } from 'src/ink.js';
+import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS as SafeString } from 'src/services/analytics/index.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import { openBrowser } from 'src/utils/browser.js';
+import { getGhAuthStatus } from 'src/services/github/ghAuthStatus.js';
 import { createDefaultEnvironment, getCodeWebUrl, type ImportTokenError, importGithubToken, isSignedIn, RedactedGithubToken } from './api.js';
 type CheckResult = {
   status: 'not_signed_in';

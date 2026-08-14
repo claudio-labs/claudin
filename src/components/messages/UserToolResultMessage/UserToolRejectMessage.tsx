@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { useTerminalSize } from '../../../hooks/useTerminalSize.js';
-import { useTheme } from '../../../ink.js';
-import { filterToolProgressMessages, type Tool, type Tools } from '../../../Tool.js';
-import type { ProgressMessage } from '../../../types/message.js';
-import type { buildMessageLookups } from '../../../utils/messages.js';
-import { FallbackToolUseRejectedMessage } from '../../FallbackToolUseRejectedMessage.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useTheme } from 'src/ink.js';
+import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';
+import type { ProgressMessage } from 'src/types/message.js';
+import type { buildMessageLookups } from 'src/services/messages/messages.js';
+import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRejectedMessage.js';
 type Props = {
   input: {
     [key: string]: unknown;

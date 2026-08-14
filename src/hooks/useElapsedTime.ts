@@ -1,5 +1,5 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
-import { formatDuration } from '../utils/format.js'
+import { formatDuration } from 'src/utils/text/format.js'
 
 /**
  * Hook that returns formatted elapsed time since startTime.

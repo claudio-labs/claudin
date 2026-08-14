@@ -3,13 +3,13 @@ import {
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
   type CacheStatsEntry,
-} from '../../services/api/cacheStatsTracker.js'
+} from 'src/services/api/cacheStatsTracker.js'
 import {
   formatCacheMetricsCompact,
   formatCacheMetricsFull,
   type CacheMetrics,
-} from '../../services/api/cacheMetrics.js'
-import type { LocalCommandCall } from '../../types/command.js'
+} from 'src/services/api/cacheMetrics.js'
+import type { LocalCommandCall } from 'src/types/command.js'
 
 // Cap the per-request breakdown to keep output readable. Users wanting
 // the full history can rely on CLAUDIN_LOG_TOKEN_USAGE=verbose for

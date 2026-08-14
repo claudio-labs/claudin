@@ -1,4 +1,4 @@
-import { registerBundledSkill } from '../bundledSkills.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 import { VERIFY_EXAMPLE_FILES } from './verifyRunExamples.js'
 
 /**

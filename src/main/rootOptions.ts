@@ -11,7 +11,7 @@
 import { feature } from 'bun:bundle';
 import { type Command as CommanderCommand, Option } from '@commander-js/extra-typings';
 
-import { canUserConfigureAdvisor } from '../utils/advisor.js';
+import { canUserConfigureAdvisor } from 'src/utils/advisor.js';
 
 /**
  * Register post-action root options on `program`. Returns the same `program`.

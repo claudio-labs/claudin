@@ -1,13 +1,13 @@
 import { basename, sep } from 'path';
 import { type ReactNode } from 'react';
-import { getOriginalCwd } from '../../../bootstrap/state.js';
-import { Text } from '../../../ink.js';
-import { getShortcutDisplay } from '../../../keybindings/shortcutFormat.js';
-import type { ToolPermissionContext } from '../../../Tool.js';
-import { getClaudinConfigHomeDir } from '../../../utils/envUtils.js';
-import { expandPath, getDirectoryForPath } from '../../../utils/path.js';
-import { normalizeCaseForComparison, pathInAllowedWorkingPath } from '../../../utils/permissions/filesystem.js';
-import type { OptionWithDescription } from '../../CustomSelect/select.js';
+import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { Text } from 'src/ink.js';
+import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js';
+import type { ToolPermissionContext } from 'src/Tool.js';
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
+import { expandPath, getDirectoryForPath } from 'src/utils/fs/path.js';
+import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 /**
  * Check if a path is within the project's .claudin/ folder.
  * This is used to determine whether to show the special ".claudin folder" permission option.

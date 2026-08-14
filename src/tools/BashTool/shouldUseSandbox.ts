@@ -1,7 +1,7 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { splitCommand_DEPRECATED } from '../../utils/bash/commands.js'
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js'
-import { getInitialSettings } from '../../utils/settings/settings.js'
+import { splitCommand_DEPRECATED } from 'src/services/bash/commands.js'
+import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   BINARY_HIJACK_VARS,
   bashPermissionRule,

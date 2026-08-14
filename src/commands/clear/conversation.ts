@@ -10,47 +10,47 @@ import {
   getOriginalCwd,
   getSessionId,
   regenerateSessionId,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import type { AppState } from '../../state/AppState.js'
-import { isInProcessTeammateTask } from '../../tasks/InProcessTeammateTask/types.js'
+} from 'src/services/analytics/index.js'
+import type { AppState } from 'src/state/AppState.js'
+import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
 import {
   isLocalAgentTask,
   type LocalAgentTaskState,
-} from '../../tasks/LocalAgentTask/LocalAgentTask.js'
-import { isLocalShellTask } from '../../tasks/LocalShellTask/guards.js'
-import { asAgentId } from '../../types/ids.js'
-import type { Message } from '../../types/message.js'
+} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
+import { asAgentId } from 'src/types/ids.js'
+import type { Message } from 'src/types/message.js'
 import {
   resetCostState,
   saveCurrentSessionCosts,
-} from '../../cost-tracker.js'
-import { createEmptyAttributionState } from '../../utils/commitAttribution.js'
-import type { FileStateCache } from '../../utils/fileStateCache.js'
+} from 'src/cost-tracker.js'
+import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js'
+import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
 import {
   executeSessionEndHooks,
   getSessionEndHookTimeoutMs,
-} from '../../utils/hooks.js'
-import { logError } from '../../utils/log.js'
-import { resetLoopSentinelState } from '../../utils/loopSentinels.js'
-import { clearAllPlanSlugs } from '../../utils/plans.js'
-import { setCwd } from '../../utils/Shell.js'
-import { processSessionStartHooks } from '../../utils/sessionStart.js'
+} from 'src/services/lifecycleHooks/hooks.js'
+import { logError } from 'src/utils/log.js'
+import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
+import { clearAllPlanSlugs } from 'src/utils/plans.js'
+import { setCwd } from 'src/utils/proc/Shell.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   clearSessionMetadata,
   getAgentTranscriptPath,
   resetSessionFilePointer,
   saveWorktreeState,
-} from '../../utils/sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
-} from '../../utils/task/diskOutput.js'
-import { unlinkSessionSpillDir } from '../../utils/toolResultStorage.js'
-import { getCurrentWorktreeSession } from '../../utils/worktree.js'
+} from 'src/tasks/diskOutput.js'
+import { unlinkSessionSpillDir } from 'src/services/tools/toolResultStorage.js'
+import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { clearSessionCaches } from './caches.js'
 
 export async function clearConversation({
@@ -266,10 +266,10 @@ export async function clearConversation({
   // and (if applicable) the same worktree directory.
   if (feature('COORDINATOR_MODE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { saveMode } = require('../../utils/sessionStorage.js')
+    const { saveMode } = require('src/services/session/sessionStorage.js')
     const {
       isCoordinatorMode,
-    } = require('../../coordinator/coordinatorMode.js')
+    } = require('src/coordinator/coordinatorMode.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     saveMode(isCoordinatorMode() ? 'coordinator' : 'normal')
   }

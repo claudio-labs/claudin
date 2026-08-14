@@ -14,7 +14,7 @@
  * because it's only consumed by DeepSeek-mode branches.
  */
 
-import { tryGetActiveProvider } from '../activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   DEEPSEEK_API_HOSTS,
   GEMINI_API_HOST,

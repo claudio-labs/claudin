@@ -20,7 +20,7 @@ import { c as _c } from "react-compiler-runtime";
  * their own writes — the setter contexts are stable.
  */
 import React, { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
-import type { SuggestionItem } from '../components/PromptInput/PromptInputFooterSuggestions.js';
+import type { SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js';
 export type PromptOverlayData = {
   suggestions: SuggestionItem[];
   selectedSuggestion: number;

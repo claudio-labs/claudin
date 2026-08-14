@@ -8,39 +8,39 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
-import type { Command } from '../../../commands.js'
+import type { Command } from 'src/commands.js'
 import {
   type Tool,
   type ToolCallProgress,
   toolMatchesName,
-} from '../../../Tool.js'
-import { ListMcpResourcesTool } from '../../../tools/ListMcpResourcesTool/ListMcpResourcesTool.js'
-import { type MCPProgress, MCPTool } from '../../../tools/MCPTool/MCPTool.js'
-import { classifyMcpToolForCollapse } from '../../../tools/MCPTool/classifyForCollapse.js'
-import { createMcpAuthTool } from '../../../tools/McpAuthTool/McpAuthTool.js'
-import { ReadMcpResourceTool } from '../../../tools/ReadMcpResourceTool/ReadMcpResourceTool.js'
-import { count } from '../../../utils/array.js'
-import { isEnvTruthy } from '../../../utils/envUtils.js'
+} from 'src/Tool.js'
+import { ListMcpResourcesTool } from 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool.js'
+import { type MCPProgress, MCPTool } from 'src/tools/MCPTool/MCPTool.js'
+import { classifyMcpToolForCollapse } from 'src/tools/MCPTool/classifyForCollapse.js'
+import { createMcpAuthTool } from 'src/tools/McpAuthTool/McpAuthTool.js'
+import { ReadMcpResourceTool } from 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool.js'
+import { count } from 'src/utils/data/array.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   errorMessage,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../../../utils/errors.js'
-import { logMCPDebug, logMCPError } from '../../../utils/log.js'
-import { memoizeWithLRU } from '../../../utils/memoize.js'
-import { recursivelySanitizeUnicode } from '../../../utils/sanitization.js'
-import { clearKeychainCache } from '../../../utils/secureStorage/macOsKeychainHelpers.js'
-import { sleep } from '../../../utils/sleep.js'
-import { logEvent } from '../../analytics/index.js'
-import { hasMcpDiscoveryButNoToken } from '../auth.js'
-import { markClaudeAiMcpConnected } from '../claudeai.js'
-import { getAllMcpConfigs, isMcpServerDisabled } from '../config.js'
-import { buildMcpToolName } from '../mcpStringUtils.js'
-import { normalizeNameForMCP } from '../normalization.js'
+} from 'src/utils/errors.js'
+import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import { memoizeWithLRU } from 'src/utils/data/memoize.js'
+import { recursivelySanitizeUnicode } from 'src/utils/data/sanitization.js'
+import { clearKeychainCache } from 'src/services/secureStorage/macOsKeychainHelpers.js'
+import { sleep } from 'src/utils/sleep.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import { hasMcpDiscoveryButNoToken } from 'src/services/mcp/auth.js'
+import { markClaudeAiMcpConnected } from 'src/services/mcp/claudeai.js'
+import { getAllMcpConfigs, isMcpServerDisabled } from 'src/services/mcp/config.js'
+import { buildMcpToolName } from 'src/services/mcp/mcpStringUtils.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
   ServerResource,
-} from '../types.js'
+} from 'src/services/mcp/types.js'
 import { isMcpAuthCached } from './authCache.js'
 // callTool.js and connection.js below form intentional ESM cycles with this
 // module: every cross-module symbol is dereferenced inside function bodies, not
