@@ -84,7 +84,7 @@ describe('readGateMessage', () => {
   test('clipped also names view=full', () => {
     // The remedy is NOT "just read it again": the sticky clip-pin marker
     // replays the same outline for STICKY_REPLAY_BUDGET reads
-    // (FileReadTool.ts:763 guards on `view === undefined`), so a plain re-Read
+    // (FileReadTool.ts:456 guards on `view === undefined`), so a plain re-Read
     // loops. An earlier version of this message advised exactly that.
     const m = readGateMessage('clipped', 'src/a.ts', 'patching it')
     expect(m).toContain("view='full'")
