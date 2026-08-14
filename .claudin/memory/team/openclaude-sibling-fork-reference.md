@@ -1,6 +1,6 @@
 ---
 name: openclaude is a sibling fork to mine for features
-description: openclaude (sibling Claude Code fork) lives at ../openclaude; feature-gap backlog vs claudin, re-audited 2026-08-07 (their v0.27.0 vs claudin v1.1.8)
+description: openclaude (sibling Claude Code fork) lives at ../openclaude; feature-gap backlog vs claudin plus the measured structural divergence (2026-08-14, their v0.28.0 vs claudin v1.1.12)
 type: reference
 ---
 
@@ -9,6 +9,35 @@ type: reference
 **Why:** Both forks evolve the same upstream independently; openclaude moves fast on providers + context-mgmt and often lands features claudin lacks.
 
 **How to apply:** Cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry).
+
+## Structural divergence measured 2026-08-14 (their v0.28.0 vs claudin v1.1.12)
+
+Hash-diff of the two `src/` trees (claudin 3366 files, openclaude 3125): only
+**209** files are byte-identical at the same path, and **283** claudin files have
+their exact bytes anywhere in their tree (74 of those only at a *different* path —
+claudin's `src/utils` → `src/services/*` reorg). Of the 1657 shared paths, 1448
+differ; normalizing away the import-path convention (**claudin `from 'src/…'`,
+openclaude `from '../…'` — this alone accounts for most of the 130 one-to-two-line
+diffs**) makes another 327 identical, so ~536/1657 = 32% of shared paths are
+effectively the same file. The rest: 219 differ by ≤4 lines, 336 by 21-100, 250 by
+100+. Most divergent shared files: `cli/print.ts` (5569), `main.tsx` (4518),
+`screens/REPL.tsx` (3688), `services/api/claude.ts` (3604), `services/mcp/client.ts`
+(3425), `components/ProviderManager.tsx` (3312).
+
+**How to apply:** do NOT expect a cherry-pick or `git apply` to work across the two
+trees — the import convention differs on nearly every file and 511 of the
+exclusive-path files are the same basename moved *and* edited. Port by reading and
+rewriting, which is what every audit above already assumed.
+
+Inventory delta at that date — tools: 52 shared, claudin-only `AgentWorkflow
+ApplyPatchTool BuildTool ConfigTool GitTool RenameTool ReportFindingsTool
+RunTestsTool ScheduleWakeupTool TypecheckTool`, openclaude-only `CtxInspectTool
+RepoMapTool SuggestBackgroundPRTool firecrawl`. Slash commands: 91 shared,
+claudin-only `explorer fork`, openclaude-only 22 incl. `lsp diagnostics replay
+repomap smartroute set-context-window request-size commit-message pr_comments
+update logout chrome mobile tag`. Top-level `src/` dirs: claudin-only `main
+moreright outputFilter stubs vendor`; openclaude-only `grpc i18n integrations proto
+test`.
 
 ## Re-audit 2026-08-07 (their v0.27.0)
 

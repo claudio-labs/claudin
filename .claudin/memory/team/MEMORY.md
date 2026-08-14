@@ -22,7 +22,7 @@
 - [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
 
 ## Roadmap & major features
-- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — lives ONLY in a deleted ROADMAP.md (`git show cbf3325d:ROADMAP.md`); 11b/11e done 2026-08-07, 11i/11j/11k open; two split-only traps
+- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — the ROADMAP-11 list is EXHAUSTED (11i/11j/11k done too); new top offenders measured by size×churn, led by scanSymbols.ts; two split-only traps
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
 - [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — orientation is 32% of tool-result chars but Glob is 0.3% of it; 59.5% of read paths are one-offs; no task→location signal. Read (D3) is the real target
@@ -91,7 +91,7 @@
 
 ## References (sibling repos, wire formats, archives)
 - [Public docs site claudiolabs.ai lives outside this repo](claudiolabs-docs-site.md) — no site/ dir tracked (README icon 404'd); URLs are extensionless; README links pages instead of duplicating features
-- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — re-audited 2026-08-07 (their v0.27.0); Tier-1: integrations/ registry, compressToolHistory, doomLoop block (repoMap now REJECTED) — plus claudin's DEAD smartModelRouting.ts as a free R1 win
+- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — Tier-1 gaps (integrations/ registry, compressToolHistory, doomLoop) + 2026-08-14 hash-diff: only 209/3366 files byte-identical, so cherry-picks never apply
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](code-review-graph-evaluated-rejected.md) — 284 MB db on claudin, TS parser blind to `export const` (445/495), impact answer = 203k tokens; their own bench shows the graph losing to reading the diff
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; apply_patch since shipped; open gaps: auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)
 - [Windsurf upstream reference repo](windsurf-upstream-reference.md) — sibling repo opencode-windsurf-auth holds the wire-format docs, proto field tags, OAuth flow Claudin's windsurf/ was ported from
