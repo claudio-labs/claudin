@@ -1,4 +1,4 @@
-import type { CommandSpec } from '../registry.js'
+import type { CommandSpec } from 'src/utils/bash/registry.js'
 
 const alias: CommandSpec = {
   name: 'alias',

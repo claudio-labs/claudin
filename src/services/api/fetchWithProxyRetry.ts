@@ -1,4 +1,4 @@
-import { disableKeepAlive, getProxyFetchOptions } from '../../utils/proxy.js'
+import { disableKeepAlive, getProxyFetchOptions } from 'src/utils/proxy.js'
 import { withH2Fallback } from './h2Fallback.js'
 import { pickFetch } from './pickFetch.js'
 

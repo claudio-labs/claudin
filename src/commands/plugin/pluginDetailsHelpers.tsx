@@ -6,10 +6,10 @@ import { c as _c } from "react-compiler-runtime";
  */
 
 import * as React from 'react';
-import { ConfigurableShortcutHint } from '../../components/ConfigurableShortcutHint.js';
-import { Byline } from '../../components/design-system/Byline.js';
-import { Box, Text } from '../../ink.js';
-import type { PluginMarketplaceEntry } from '../../utils/plugins/schemas.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Box, Text } from 'src/ink.js';
+import type { PluginMarketplaceEntry } from 'src/utils/plugins/schemas.js';
 
 /**
  * Represents a plugin available for installation from a marketplace

@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import { type AppState, useAppState } from 'src/state/AppState.js'
-import { useKeybindings } from '../../../keybindings/useKeybinding.js'
+import { useKeybindings } from 'src/keybindings/useKeybinding.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../../services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from '../../../services/analytics/metadata.js'
-import type { PermissionUpdate } from '../../../utils/permissions/PermissionUpdateSchema.js'
-import type { CompletionType } from '../../../utils/unaryLogging.js'
-import type { ToolUseConfirm } from '../PermissionRequest.js'
+} from 'src/services/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
+import type { CompletionType } from 'src/utils/unaryLogging.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import {
   type FileOperationType,
   getFilePermissionOptions,

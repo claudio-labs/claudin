@@ -8,7 +8,7 @@
  * key in the URL path or query and the shim logs that URL for debugging.
  */
 
-import { redactSecretValueForDisplay } from '../../../utils/providerProfile.js'
+import { redactSecretValueForDisplay } from 'src/utils/providerProfile.js'
 import { SENSITIVE_URL_QUERY_PARAM_NAMES } from './constants.js'
 import type { SecretValueSource } from './types.js'
 

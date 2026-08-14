@@ -1,5 +1,5 @@
 import { marked, type Token } from 'marked'
-import { hashContent } from '../utils/hash.js'
+import { hashContent } from 'src/utils/hash.js'
 
 // Module-level token cache — marked.lexer is the hot cost on virtual-scroll
 // remounts (~3ms per message). useMemo doesn't survive unmount→remount, so

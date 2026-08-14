@@ -30,7 +30,7 @@ afterAll(() => {
   mock.module('./providerProfiles.js', () => realProviderProfiles)
 })
 
-import { invalidateActiveProviderCache } from '../services/api/activeProvider.js'
+import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'
 
 invalidateActiveProviderCache()
 
@@ -42,7 +42,7 @@ afterEach(() => {
   invalidateActiveProviderCache()
 })
 
-import { getMaxOutputTokensForModel } from '../services/api/claude.js'
+import { getMaxOutputTokensForModel } from 'src/services/api/claude.js'
 import {
   getContextWindowForModel,
   getModelMaxOutputTokens,

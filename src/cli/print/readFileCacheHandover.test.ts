@@ -3,12 +3,12 @@ import {
   createFileStateCacheWithSizeLimit,
   mergeFileStateCaches,
   type FileState,
-} from '../../utils/fileStateCache.js'
+} from 'src/utils/fileStateCache.js'
 import {
   _resetAllClippedIdsForTesting,
   isPinRegistered,
   pinToolResult,
-} from '../../services/compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import { installLiveReadFileCache } from './readFileCacheHandover.js'
 
 /**

@@ -7,16 +7,16 @@
  * mirror alongside the leaf's state.
  */
 
-import { CLAUDE_AI_INFERENCE_SCOPE } from '../../constants/oauth.js'
+import { CLAUDE_AI_INFERENCE_SCOPE } from 'src/constants/oauth.js'
 import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from '../../utils/auth.js'
+} from 'src/utils/auth.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from '../../utils/model/providers.js'
-import { isEssentialTrafficOnly } from '../../utils/privacyLevel.js'
+} from 'src/utils/model/providers.js'
+import { isEssentialTrafficOnly } from 'src/utils/privacyLevel.js'
 
 import {
   resetSyncCache as resetLeafCache,

@@ -2,12 +2,12 @@ import { createHash } from 'crypto'
 import { statSync } from 'fs'
 import { join, resolve } from 'path'
 import { HOOK_EVENTS } from 'src/entrypoints/agentSdkTypes.js'
-import { getOriginalCwd } from '../bootstrap/state.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { isPolicyAllowed } from '../services/policyLimits/index.js'
+} from 'src/services/analytics/index.js'
+import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
 import { logForDebugging } from './debug.js'
 import { logForDiagnosticsNoPII } from './diagLogs.js'
 import { isEnvTruthy } from './envUtils.js'
@@ -1011,7 +1011,7 @@ export async function executeWarmRemoteCapacityAction(args: {
   // of touching remote APIs. This keeps the action side-effect free when the
   // session is local-only.
   try {
-    const { getReplBridgeHandle } = await import('../bridge/replBridgeHandle.js')
+    const { getReplBridgeHandle } = await import('src/bridge/replBridgeHandle.js')
     if (!getReplBridgeHandle()) {
       return {
         status: 'skipped',

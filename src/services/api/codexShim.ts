@@ -1,10 +1,10 @@
 import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
-import { applyStableStubs } from '../compact/stableStubState.js'
+import { applyStableStubs } from 'src/services/compact/stableStubState.js'
 import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
-import { stableStringify } from '../../utils/stableStringify.js'
-import { getSessionId } from '../../bootstrap/state.js'
+import { stableStringify } from 'src/utils/stableStringify.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,

@@ -7,8 +7,8 @@
 // read-only string assertions. The stub is load-bearing — without it the
 // tests blow up at import-resolution time.
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { parseGitCommand } from '../GitTool/grammar.js'
-import { GIT_TOOL_NAME } from '../GitTool/prompt.js'
+import { parseGitCommand } from 'src/tools/GitTool/grammar.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import {
   getBashGitInstructionsBody,
   getSimplePrompt,

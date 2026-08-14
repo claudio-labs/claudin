@@ -6,15 +6,15 @@ import type {
   SystemMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { logEvent } from '../../services/analytics/index.js'
-import type { PermissionMode } from '../../types/permissions.js'
-import { createUserMessage } from '../messages.js'
-import { logOTelEvent, redactIfDisabled } from '../telemetry/events.js'
-import { startInteractionSpan } from '../telemetry/sessionTracing.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { PermissionMode } from 'src/types/permissions.js'
+import { createUserMessage } from 'src/utils/messages.js'
+import { logOTelEvent, redactIfDisabled } from 'src/utils/telemetry/events.js'
+import { startInteractionSpan } from 'src/utils/telemetry/sessionTracing.js'
 import {
   matchesKeepGoingKeyword,
   matchesNegativeKeyword,
-} from '../userPromptKeywords.js'
+} from 'src/utils/userPromptKeywords.js'
 
 export function processTextPrompt(
   input: string | Array<ContentBlockParam>,

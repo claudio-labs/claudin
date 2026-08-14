@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { isSdkApiError } from '../../utils/errors.js'
+import { isSdkApiError } from 'src/utils/errors.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 import type {
   BetaStopReason,
@@ -29,13 +29,13 @@ import {
   isBetaTracingEnabled,
   type Span,
 } from 'src/utils/telemetry/sessionTracing.js'
-import type { NonNullableUsage } from '../../entrypoints/sdk/sdkUtilityTypes.js'
-import { consumeInvokingRequestId } from '../../utils/agentContext.js'
+import type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
+import { consumeInvokingRequestId } from 'src/utils/agentContext.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
-import { sanitizeToolNameForAnalytics } from '../analytics/metadata.js'
+} from 'src/services/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import { EMPTY_USAGE } from './emptyUsage.js'
 import { classifyAPIError } from './errors.js'
 import { extractConnectionErrorDetails } from './errorUtils.js'

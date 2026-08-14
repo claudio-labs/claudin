@@ -1,4 +1,4 @@
-import type { LogOption, SerializedMessage } from '../types/logs.js'
+import type { LogOption, SerializedMessage } from 'src/types/logs.js'
 import { count } from './array.js'
 import { logForDebugging } from './debug.js'
 import { getLogDisplayTitle, logError } from './log.js'

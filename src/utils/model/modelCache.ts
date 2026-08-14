@@ -8,8 +8,8 @@
 import { access, readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { getClaudinConfigHomeDir } from '../envUtils.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { getAPIProvider } from './providers.js'
 
 function getActiveBaseUrl(): string {

@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, useMemo, useSyncExternalStore } from 'react';
-import { getTerminalFocused, getTerminalFocusState, subscribeTerminalFocus, type TerminalFocusState } from '../terminal-focus-state.js';
+import { getTerminalFocused, getTerminalFocusState, subscribeTerminalFocus, type TerminalFocusState } from 'src/ink/terminal-focus-state.js';
 export type { TerminalFocusState };
 export type TerminalFocusContextProps = {
   readonly isTerminalFocused: boolean;

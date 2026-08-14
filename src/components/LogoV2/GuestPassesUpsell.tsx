@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import { useState } from 'react';
-import { Text } from '../../ink.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { checkCachedPassesEligibility, formatCreditAmount, getCachedReferrerReward, getCachedRemainingPasses } from '../../services/api/referral.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
+import { Text } from 'src/ink.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { checkCachedPassesEligibility, formatCreditAmount, getCachedReferrerReward, getCachedRemainingPasses } from 'src/services/api/referral.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
 function resetIfPassesRefreshed(): void {
   const remaining = getCachedRemainingPasses();
   if (remaining == null || remaining <= 0) return;

@@ -19,8 +19,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 
-import type { ToolUseContext } from '../../Tool.js'
-import { setCwdState } from '../../bootstrap/state.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { setCwdState } from 'src/bootstrap/state.js'
 
 // ---------------------------------------------------------------------------
 // Mock the LSP server manager + the execFile path used by gitignore filtering.
@@ -56,7 +56,7 @@ const fakeManager = {
   },
 }
 
-mock.module('../../services/lsp/manager.js', () => ({
+mock.module('src/services/lsp/manager.js', () => ({
   isLspConnected: () => true,
   getLspServerManager: () => fakeManager,
   reinitializeLspServerManager: () => {},
@@ -67,7 +67,7 @@ mock.module('../../services/lsp/manager.js', () => ({
   _resetLspManagerForTesting: () => {},
 }))
 
-mock.module('../../utils/execFileNoThrow.js', () => ({
+mock.module('src/utils/execFileNoThrow.js', () => ({
   execFileNoThrow: async () => ({ code: 1, stdout: '', stderr: '' }),
   execFileNoThrowWithCwd: async () => ({ code: 1, stdout: '', stderr: '' }),
   execSyncWithDefaults_DEPRECATED: () => ({ code: 0, stdout: '', stderr: '' }),

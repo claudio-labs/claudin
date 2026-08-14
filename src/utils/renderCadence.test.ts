@@ -7,7 +7,7 @@ import {
   mock,
   test,
 } from 'bun:test'
-import * as terminalMod from '../ink/terminal.js'
+import * as terminalMod from 'src/ink/terminal.js'
 import * as configMod from './config.js'
 
 // Snapshot the real exports BEFORE mock.module() runs. `import * as` namespaces
@@ -26,7 +26,7 @@ mock.module('./config.js', () => ({
   ...configMod,
   getGlobalConfig: () => mockConfig as ReturnType<typeof configMod.getGlobalConfig>,
 }))
-mock.module('../ink/terminal.js', () => ({
+mock.module('src/ink/terminal.js', () => ({
   ...terminalMod,
   hasCursorUpViewportYankBug: () => mockYankBug,
   getXtversionName: () => mockXtversion,
@@ -68,7 +68,7 @@ afterEach(() => {
 afterAll(() => {
   mock.module('./config.js', () => realConfig)
   mock.module('src/utils/config.js', () => realConfig)
-  mock.module('../ink/terminal.js', () => realTerminal)
+  mock.module('src/ink/terminal.js', () => realTerminal)
   mock.module('src/ink/terminal.js', () => realTerminal)
 })
 

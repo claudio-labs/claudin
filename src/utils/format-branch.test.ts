@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import chalk from 'chalk'
-import { stringWidth } from '../ink/stringWidth.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
 import { buildDiffStatSegment, type DiffStatInput } from './format-branch.js'
 import { getTheme } from './theme.js'
 

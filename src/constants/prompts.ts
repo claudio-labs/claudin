@@ -1,23 +1,23 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { type as osType, version as osVersion, release as osRelease } from 'os'
-import { env } from '../utils/env.js'
-import { getIsGit } from '../utils/git.js'
-import { getCwd } from '../utils/cwd.js'
-import { getIsNonInteractiveSession } from '../bootstrap/state.js'
-import { getCurrentWorktreeSession } from '../utils/worktree.js'
+import { env } from 'src/utils/env.js'
+import { getIsGit } from 'src/utils/git.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getCurrentWorktreeSession } from 'src/utils/worktree.js'
 import { getSessionStartDate } from './common.js'
-import { getInitialSettings } from '../utils/settings/settings.js'
-import { AGENT_TOOL_NAME } from '../tools/AgentTool/constants.js'
-import type { Tools } from '../Tool.js'
-import type { Command } from '../types/command.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import type { Tools } from 'src/Tool.js'
+import type { Command } from 'src/types/command.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   getCanonicalName,
   getMarketingNameForModel,
-} from '../utils/model/model.js'
-import { getAPIProvider } from '../utils/model/providers.js'
+} from 'src/utils/model/model.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import { getSkillToolCommands } from 'src/commands.js'
-import { SKILL_TOOL_NAME } from '../tools/SkillTool/constants.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from './outputStyles.js'
 import {
   getFamilyAddendum,
@@ -26,11 +26,11 @@ import {
 import type {
   MCPServerConnection,
   ConnectedMCPServer,
-} from '../services/mcp/types.js'
+} from 'src/services/mcp/types.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
-import { ASK_USER_QUESTION_TOOL_NAME } from '../tools/AskUserQuestionTool/prompt.js'
+import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import {
   EXPLORE_AGENT,
   EXPLORE_AGENT_MIN_QUERIES,
@@ -39,21 +39,21 @@ import { areExplorePlanAgentsEnabled } from 'src/tools/AgentTool/builtInAgents.j
 import {
   isScratchpadEnabled,
   getScratchpadDir,
-} from '../utils/permissions/filesystem.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from '../utils/envUtils.js'
+} from 'src/utils/permissions/filesystem.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
-import { shouldUseGlobalCacheScope } from '../utils/betas.js'
-import { isForkSubagentEnabled } from '../tools/AgentTool/forkSubagent.js'
+import { shouldUseGlobalCacheScope } from 'src/utils/betas.js'
+import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import {
   systemPromptSection,
   DANGEROUS_uncachedSystemPromptSection,
   resolveSystemPromptSections,
 } from './systemPromptSections.js'
-import { SLEEP_TOOL_NAME } from '../tools/SleepTool/prompt.js'
+import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TICK_TAG } from './xml.js'
-import { logForDebugging } from '../utils/debug.js'
-import { loadMemoryPrompt } from '../memdir/memdir.js'
-import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { loadMemoryPrompt } from 'src/memdir/memdir.js'
+import { isMcpInstructionsDeltaEnabled } from 'src/utils/mcpInstructionsDelta.js'
 import {
   isAntiNarrationEnabled,
   isSubagentNotesEnabled,
@@ -70,12 +70,12 @@ const proactiveModule =
 const BRIEF_PROACTIVE_SECTION: string | null =
   feature('KAIROS') || feature('KAIROS_BRIEF')
     ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
       ).BRIEF_PROACTIVE_SECTION
     : null
 const briefToolModule =
   feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (require('../tools/BriefTool/BriefTool.js') as typeof import('../tools/BriefTool/BriefTool.js'))
+    ? (require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js'))
     : null
 const DISCOVER_SKILLS_TOOL_NAME: string | null = feature(
   'EXPERIMENTAL_SKILL_SEARCH',

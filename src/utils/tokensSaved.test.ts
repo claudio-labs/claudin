@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { getGlobalConfig, saveGlobalConfig } from './config.js'
-import { getSessionId } from '../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   getBytesSaved,
   recordBytesSaved,
@@ -11,9 +11,9 @@ import {
   processPreMappedToolResultBlock,
   unlinkSessionSpillDir,
 } from './toolResultStorage.js'
-import { resetCostState } from '../cost-tracker.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
-import { AGENT_TOOL_NAME } from '../tools/AgentTool/constants.js'
+import { resetCostState } from 'src/cost-tracker.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 // ---------------------------------------------------------------------------
 // Unit — the accumulator itself

@@ -9,11 +9,11 @@
  */
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
-import { enableConfigs } from '../config.js'
+import { enableConfigs } from 'src/utils/config.js'
 
 let thrown: unknown = new Error('not configured')
 
-mock.module('../sideQuery.js', () => ({
+mock.module('src/utils/sideQuery.js', () => ({
   sideQuery: () => {
     throw thrown
   },

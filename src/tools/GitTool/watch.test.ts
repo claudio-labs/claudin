@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
-import { invalidateSessionEnvCache } from '../../utils/sessionEnvironment.js'
+import { invalidateSessionEnvCache } from 'src/utils/sessionEnvironment.js'
 import { cleanupAllFakeGh, type FakeGh, installFakeGh } from './__fixtures__/fakeGh.js'
 import { GitTool } from './GitTool.js'
 import { batchFailed, formatGitBatchResult, runGitBatch } from './run.js'

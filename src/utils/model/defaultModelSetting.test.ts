@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
-import { resetModelStringsForTestingOnly } from '../../bootstrap/state.js'
+import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
 
 // Regression: getDefaultMainLoopModelSetting() appends the Opus 1M-merge [1m]
 // suffix for first-party Max / Team-Premium subscribers. Now that the 1P Opus
@@ -14,8 +14,8 @@ import { resetModelStringsForTestingOnly } from '../../bootstrap/state.js'
 // exercise the REAL getDefaultMainLoopModelSetting + isOpus1mMergeEnabled.
 
 const realProviders = { ...(await import('./providers.js')) }
-const realAuth = { ...(await import('../auth.js')) }
-const realContext = { ...(await import('../context.js')) }
+const realAuth = { ...(await import('src/utils/auth.js')) }
+const realContext = { ...(await import('src/utils/context.js')) }
 
 async function importSetting(opts: {
   max: boolean
@@ -25,7 +25,7 @@ async function importSetting(opts: {
     ...realProviders,
     getAPIProvider: () => 'firstParty',
   }))
-  mock.module('../auth.js', () => ({
+  mock.module('src/utils/auth.js', () => ({
     ...realAuth,
     isMaxSubscriber: () => opts.max,
     isTeamPremiumSubscriber: () => opts.teamPremium,
@@ -34,7 +34,7 @@ async function importSetting(opts: {
     // Non-null subscription type so isOpus1mMergeEnabled doesn't fail closed.
     getSubscriptionType: () => 'max',
   }))
-  mock.module('../context.js', () => ({
+  mock.module('src/utils/context.js', () => ({
     ...realContext,
     is1mContextDisabled: () => false,
   }))
@@ -54,8 +54,8 @@ afterEach(() => {
 
 afterAll(() => {
   mock.module('./providers.js', () => realProviders)
-  mock.module('../auth.js', () => realAuth)
-  mock.module('../context.js', () => realContext)
+  mock.module('src/utils/auth.js', () => realAuth)
+  mock.module('src/utils/context.js', () => realContext)
 })
 
 test('Max subscriber default is native-1M Opus 5 with no [1m] suffix (merge enabled)', async () => {

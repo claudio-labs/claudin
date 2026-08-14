@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test'
 
 import { readFileSync } from 'node:fs'
 
-import type { ToolUseContext } from '../../Tool.js'
-import { SkillTool } from '../../tools/SkillTool/SkillTool.js'
-import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from '../../utils/messages/constants.js'
-import { saveGlobalConfig } from '../../utils/config.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/utils/messages/constants.js'
+import { saveGlobalConfig } from 'src/utils/config.js'
 import {
   getSchemaValidationErrorOverride,
   getSchemaValidationToolUseResult,

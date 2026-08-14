@@ -7,7 +7,7 @@
 // Extracted from src/screens/REPL.tsx (Etapa 1, ROADMAP 11e).
 
 import { useEffect, useState } from 'react'
-import { useTerminalFocus, useTerminalTitle } from '../../../ink.js'
+import { useTerminalFocus, useTerminalTitle } from 'src/ink.js'
 
 export const TITLE_ANIMATION_FRAMES = ['⠂', '⠐'] as const
 export const TITLE_STATIC_PREFIX = '✳'

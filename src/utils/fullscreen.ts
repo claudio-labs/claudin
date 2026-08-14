@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process'
-import { getIsInteractive } from '../bootstrap/state.js'
-import { shouldUseMainScreenRewrite } from '../ink/terminal.js'
+import { getIsInteractive } from 'src/bootstrap/state.js'
+import { shouldUseMainScreenRewrite } from 'src/ink/terminal.js'
 import { getGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js'

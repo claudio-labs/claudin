@@ -1,11 +1,11 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { getInitialMainLoopModel } from '../../bootstrap/state.js'
-import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from '../../services/api/providerConfig.js'
+import { getInitialMainLoopModel } from 'src/bootstrap/state.js'
+import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from 'src/services/api/providerConfig.js'
 import {
   isClaudeAISubscriber,
   isMaxSubscriber,
   isTeamPremiumSubscriber,
-} from '../auth.js'
+} from 'src/utils/auth.js'
 import { getModelStrings } from './modelStrings.js'
 import {
   COST_TIER_3_15,
@@ -13,8 +13,8 @@ import {
   COST_HAIKU_35,
   COST_HAIKU_45,
   formatModelPricing,
-} from '../modelCost.js'
-import { getInitialSettings } from '../settings/settings.js'
+} from 'src/utils/modelCost.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 import { checkOpus1mAccess, checkSonnet1mAccess } from './check1mAccess.js'
 import { getAPIProvider } from './providers.js'
 import { isModelAllowed } from './modelAllowlist.js'
@@ -33,14 +33,14 @@ import {
   renderDefaultModelSetting,
   type ModelSetting,
 } from './model.js'
-import { has1mContext } from '../context.js'
+import { has1mContext } from 'src/utils/context.js'
 import { getFilteredCodexCatalog } from './codexModelCatalog.js'
-import { getGlobalConfig } from '../config.js'
+import { getGlobalConfig } from 'src/utils/config.js'
 import {
   getActiveOpenAIModelOptionsCache,
   getActiveProviderProfile,
   getProfileModelOptions,
-} from '../providerProfiles.js'
+} from 'src/utils/providerProfiles.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'
 import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from './minimaxModels.js'

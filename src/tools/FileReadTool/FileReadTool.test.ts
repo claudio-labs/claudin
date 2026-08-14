@@ -10,12 +10,12 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from '../../Tool.js'
-import { READ_FILE_STATE_CACHE_SIZE } from '../../utils/fileStateCache.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { READ_FILE_STATE_CACHE_SIZE } from 'src/utils/fileStateCache.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
-} from '../../utils/fileStateCache.js'
+} from 'src/utils/fileStateCache.js'
 import {
   buildClipStub,
   buildClipStubWithHead,
@@ -25,11 +25,11 @@ import {
   bumpStandDownEpoch,
   isPinRegistered,
   pinToolResult,
-} from '../../services/compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import {
   getCached,
   invalidateAll,
-} from '../../services/tools/toolResultCache.js'
+} from 'src/services/tools/toolResultCache.js'
 import {
   assistantWithAppliedEdits,
   assistantWithClearing,

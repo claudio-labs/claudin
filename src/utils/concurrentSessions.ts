@@ -5,7 +5,7 @@ import {
   getOriginalCwd,
   getSessionId,
   onSessionSwitch,
-} from '../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import { registerCleanup } from './cleanupRegistry.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'

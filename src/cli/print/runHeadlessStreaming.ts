@@ -83,11 +83,11 @@ import { modelSupportsAdaptiveThinking } from 'src/utils/thinking.js'
 import { modelSupportsAutoMode } from 'src/utils/betas.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { skillChangeDetector } from '../../utils/skills/skillChangeDetector.js'
-import { getCommands, clearCommandsCache } from '../../commands.js'
-import { isBareMode, isEnvTruthy } from '../../utils/envUtils.js'
-import { getRunningTasks } from '../../utils/task/framework.js'
-import { isBackgroundTask } from '../../tasks/types.js'
+import { skillChangeDetector } from 'src/utils/skills/skillChangeDetector.js'
+import { getCommands, clearCommandsCache } from 'src/commands.js'
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getRunningTasks } from 'src/utils/task/framework.js'
+import { isBackgroundTask } from 'src/tasks/types.js'
 import { removeInterruptedMessage } from 'src/cli/print/messageOps.js'
 import { handleOrphanedPermissionResponse } from 'src/cli/print/orphanPermission.js'
 import { proactiveModule } from 'src/cli/print/headlessOptionalModules.js'
@@ -112,9 +112,9 @@ import type {
 
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const cronSchedulerModule = require('../../utils/cronScheduler.js') as typeof import('../../utils/cronScheduler.js')
-const cronJitterConfigModule = require('../../utils/cronJitterConfig.js') as typeof import('../../utils/cronJitterConfig.js')
-const cronGate = require('../../tools/ScheduleCronTool/prompt.js') as typeof import('../../tools/ScheduleCronTool/prompt.js')
+const cronSchedulerModule = require('src/utils/cronScheduler.js') as typeof import('src/utils/cronScheduler.js')
+const cronJitterConfigModule = require('src/utils/cronJitterConfig.js') as typeof import('src/utils/cronJitterConfig.js')
+const cronGate = require('src/tools/ScheduleCronTool/prompt.js') as typeof import('src/tools/ScheduleCronTool/prompt.js')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export function runHeadlessStreaming(

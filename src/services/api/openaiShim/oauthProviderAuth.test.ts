@@ -1,13 +1,13 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
-import type { ResolvedProvider } from '../activeProvider.js'
+import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
 import {
   invalidateKimiCredentialCache,
   saveKimiCredentials,
-} from '../../../utils/kimiCredentials.js'
-import { getKimiUserAgent } from '../../../utils/kimiUserAgent.js'
-import { saveXaiCredentials } from '../../../utils/xaiCredentials.js'
-import { getXaiUserAgent } from '../../../utils/xaiUserAgent.js'
+} from 'src/utils/kimiCredentials.js'
+import { getKimiUserAgent } from 'src/utils/kimiUserAgent.js'
+import { saveXaiCredentials } from 'src/utils/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
 import {
   forceRefreshOAuthWebTokenOn401,
   resolveOAuthProviderAuth,
@@ -20,7 +20,7 @@ import {
 // own an in-memory store, re-applied in beforeEach so no earlier file's mock
 // can shadow it, and restored in afterAll so we don't leak it onward.
 const realSecureStorage = {
-  ...(await import('../../../utils/secureStorage/index.js')),
+  ...(await import('src/utils/secureStorage/index.js')),
 }
 let storageState: Record<string, unknown> = {}
 
@@ -41,7 +41,7 @@ function mockSecureStorage() {
       },
     }),
   })
-  mock.module('../../../utils/secureStorage/index.js', factory)
+  mock.module('src/utils/secureStorage/index.js', factory)
   mock.module('src/utils/secureStorage/index.js', factory)
 }
 
@@ -68,7 +68,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('../../../utils/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/utils/secureStorage/index.js', () => realSecureStorage)
   mock.module('src/utils/secureStorage/index.js', () => realSecureStorage)
 })
 

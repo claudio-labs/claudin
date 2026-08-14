@@ -14,9 +14,9 @@ export type {
   ParseInput,
   ParsedDiagnostics,
   RawDiagnostic,
-} from '../shared/diagnostics/types.js'
+} from 'src/tools/shared/diagnostics/types.js'
 
-import type { RawDiagnostic } from '../shared/diagnostics/types.js'
+import type { RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /** The static checker we detected/ran, used to pick a flag plan + parser. */
 export type Checker =

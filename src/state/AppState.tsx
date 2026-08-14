@@ -1,20 +1,20 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import React, { useContext, useEffect, useState, useSyncExternalStore } from 'react';
-import { MailboxProvider } from '../context/mailbox.js';
-import { useEffectEventCompat } from '../hooks/useEffectEventCompat.js';
-import { useSettingsChange } from '../hooks/useSettingsChange.js';
-import { logForDebugging } from '../utils/debug.js';
-import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from '../utils/permissions/permissionSetup.js';
-import { applySettingsChange } from '../utils/settings/applySettingsChange.js';
-import type { SettingSource } from '../utils/settings/constants.js';
+import { MailboxProvider } from 'src/context/mailbox.js';
+import { useEffectEventCompat } from 'src/hooks/useEffectEventCompat.js';
+import { useSettingsChange } from 'src/hooks/useSettingsChange.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from 'src/utils/permissions/permissionSetup.js';
+import { applySettingsChange } from 'src/utils/settings/applySettingsChange.js';
+import type { SettingSource } from 'src/utils/settings/constants.js';
 import { createStore } from './store.js';
 
 // DCE: voice context is internal-only. External builds get a passthrough.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const VoiceProvider: (props: {
   children: React.ReactNode;
-}) => React.ReactNode = feature('VOICE_MODE') ? require('../context/voice.js').VoiceProvider : ({
+}) => React.ReactNode = feature('VOICE_MODE') ? require('src/context/voice.js').VoiceProvider : ({
   children
 }) => children;
 

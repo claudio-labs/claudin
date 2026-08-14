@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
-import { queryModelWithStreaming } from '../services/api/claude.js'
-import { autoCompactIfNeeded } from '../services/compact/autoCompact.js'
-import { microcompactMessages } from '../services/compact/microCompact.js'
+import { queryModelWithStreaming } from 'src/services/api/claude.js'
+import { autoCompactIfNeeded } from 'src/services/compact/autoCompact.js'
+import { microcompactMessages } from 'src/services/compact/microCompact.js'
 
 // -- deps
 

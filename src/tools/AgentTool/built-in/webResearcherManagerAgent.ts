@@ -1,7 +1,7 @@
-import { WEB_FETCH_TOOL_NAME } from '../../WebFetchTool/prompt.js'
-import { WEB_SEARCH_TOOL_NAME } from '../../WebSearchTool/prompt.js'
-import { AGENT_TOOL_NAME } from '../constants.js'
-import type { BuiltInAgentDefinition } from '../loadAgentsDir.js'
+import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
+import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { WEB_RESEARCHER_AGENT_TYPE } from './webResearcherAgent.js'
 
 export const WEB_RESEARCHER_MANAGER_AGENT_TYPE = 'WebResearcherManager'

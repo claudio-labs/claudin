@@ -207,7 +207,7 @@ describe('getPlansDirectory', () => {
     mkdirSync(subDir)
     const { getPlansDirectory } = await importFreshPlansModule()
     const { getCwdState, getOriginalCwd, setCwdState, setOriginalCwd } =
-      await import('../bootstrap/state.js')
+      await import('src/bootstrap/state.js')
     const previousCwd = getCwdState()
     const previousOriginalCwd = getOriginalCwd()
 

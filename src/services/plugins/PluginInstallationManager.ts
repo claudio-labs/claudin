@@ -5,22 +5,22 @@
  * from trusted sources (repository and user settings) without blocking startup.
  */
 
-import type { AppState } from '../../state/AppState.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { logForDiagnosticsNoPII } from '../../utils/diagLogs.js'
-import { logError } from '../../utils/log.js'
+import type { AppState } from 'src/state/AppState.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { logError } from 'src/utils/log.js'
 import {
   clearMarketplacesCache,
   getDeclaredMarketplaces,
   loadKnownMarketplacesConfig,
-} from '../../utils/plugins/marketplaceManager.js'
-import { clearPluginCache } from '../../utils/plugins/pluginLoader.js'
+} from 'src/utils/plugins/marketplaceManager.js'
+import { clearPluginCache } from 'src/utils/plugins/pluginLoader.js'
 import {
   diffMarketplaces,
   reconcileMarketplaces,
-} from '../../utils/plugins/reconciler.js'
-import { refreshActivePlugins } from '../../utils/plugins/refresh.js'
-import { logEvent } from '../analytics/index.js'
+} from 'src/utils/plugins/reconciler.js'
+import { refreshActivePlugins } from 'src/utils/plugins/refresh.js'
+import { logEvent } from 'src/services/analytics/index.js'
 
 type SetAppState = (f: (prevState: AppState) => AppState) => void
 

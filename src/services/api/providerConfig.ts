@@ -7,7 +7,7 @@ import {
   isCodexRefreshFailureCoolingDown,
   readCodexCredentials,
   type CodexCredentialBlob,
-} from '../../utils/codexCredentials.js'
+} from 'src/utils/codexCredentials.js'
 import {
   asTrimmedString,
   parseChatgptAccountId,

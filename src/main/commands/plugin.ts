@@ -7,7 +7,7 @@
 
 import type { Command } from '@commander-js/extra-typings'
 import { Option } from '@commander-js/extra-typings'
-import { VALID_INSTALLABLE_SCOPES, VALID_UPDATE_SCOPES } from '../../services/plugins/pluginCliCommands.js'
+import { VALID_INSTALLABLE_SCOPES, VALID_UPDATE_SCOPES } from 'src/services/plugins/pluginCliCommands.js'
 import { createSortedHelpConfig } from './_helpConfig.js'
 
 export function registerPluginCommands(program: Command): void {
@@ -27,7 +27,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginValidateHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginValidateHandler(manifestPath, options)
   })
 
@@ -39,7 +39,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginListHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginListHandler(options)
   })
 
@@ -52,7 +52,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       marketplaceAddHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await marketplaceAddHandler(source, options)
   })
   marketplaceCmd.command('list').description('List all configured marketplaces').option('--json', 'Output as JSON').addOption(coworkOption()).action(async (options: {
@@ -61,7 +61,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       marketplaceListHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await marketplaceListHandler(options)
   })
   marketplaceCmd.command('remove <name>').alias('rm').description('Remove a configured marketplace').addOption(coworkOption()).action(async (name: string, options: {
@@ -69,7 +69,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       marketplaceRemoveHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await marketplaceRemoveHandler(name, options)
   })
   marketplaceCmd.command('update [name]').description('Update marketplace(s) from their source - updates all if no name specified').addOption(coworkOption()).action(async (name: string | undefined, options: {
@@ -77,7 +77,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       marketplaceUpdateHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await marketplaceUpdateHandler(name, options)
   })
 
@@ -88,7 +88,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginInstallHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginInstallHandler(plugin, options)
   })
 
@@ -100,7 +100,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginUninstallHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginUninstallHandler(plugin, options)
   })
 
@@ -111,7 +111,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginEnableHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginEnableHandler(plugin, options)
   })
 
@@ -123,7 +123,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginDisableHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginDisableHandler(plugin, options)
   })
 
@@ -134,7 +134,7 @@ export function registerPluginCommands(program: Command): void {
   }) => {
     const {
       pluginUpdateHandler
-    } = await import('../../cli/handlers/plugins.js')
+    } = await import('src/cli/handlers/plugins.js')
     await pluginUpdateHandler(plugin, options)
   })
   // END internal-only

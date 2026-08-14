@@ -4,9 +4,9 @@ import { expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
-import { AppStateProvider } from '../state/AppState.js'
-import { createRoot } from '../ink.js'
-import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { createRoot } from 'src/ink.js'
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
 import { ConsoleOAuthFlow } from './ConsoleOAuthFlow.js'
 
 const SYNC_START = '\x1B[?2026h'

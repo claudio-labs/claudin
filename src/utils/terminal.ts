@@ -1,6 +1,6 @@
 import chalk from 'chalk'
-import { ctrlOToExpand } from '../components/CtrlOToExpand.js'
-import { stringWidth } from '../ink/stringWidth.js'
+import { ctrlOToExpand } from 'src/components/CtrlOToExpand.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
 import sliceAnsi from './sliceAnsi.js'
 
 // Text rendering utilities for terminal display

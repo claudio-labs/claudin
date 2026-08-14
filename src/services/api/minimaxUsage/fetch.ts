@@ -1,6 +1,6 @@
-import { tryGetActiveProvider } from '../activeProvider.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { getClaudinUserAgent } from '../../../utils/userAgent.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinUserAgent } from 'src/utils/userAgent.js'
 import {
   DEFAULT_MINIMAX_BASE_URL,
   DEFAULT_MINIMAX_UNAVAILABLE_MESSAGE,

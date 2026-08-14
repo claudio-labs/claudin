@@ -1,7 +1,7 @@
 import type React from 'react'
-import { WorkflowsMenuWithTabs } from '../../components/workflows/WorkflowsMenuWithTabs.js'
-import type { ToolUseContext } from '../../Tool.js'
-import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js'
+import { WorkflowsMenuWithTabs } from 'src/components/workflows/WorkflowsMenuWithTabs.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js'
 
 export async function call(
   onDone: LocalJSXCommandOnDone,

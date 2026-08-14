@@ -13,10 +13,10 @@
  * marketplace plugins (`{name}@{marketplace}`).
  */
 
-import type { Command } from '../commands.js'
-import type { BundledSkillDefinition } from '../skills/bundledSkills.js'
-import type { BuiltinPluginDefinition, LoadedPlugin } from '../types/plugin.js'
-import { getInitialSettings } from '../utils/settings/settings.js'
+import type { Command } from 'src/commands.js'
+import type { BundledSkillDefinition } from 'src/skills/bundledSkills.js'
+import type { BuiltinPluginDefinition, LoadedPlugin } from 'src/types/plugin.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 
 const BUILTIN_PLUGINS: Map<string, BuiltinPluginDefinition> = new Map()
 

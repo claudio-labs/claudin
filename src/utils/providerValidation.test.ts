@@ -25,7 +25,7 @@ afterAll(() => {
   mock.module('./providerProfiles.js', () => realProviderProfiles)
 })
 
-import { invalidateActiveProviderCache } from '../services/api/activeProvider.js'
+import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'
 import {
   getProviderValidationError,
   shouldExitForStartupProviderValidationError,

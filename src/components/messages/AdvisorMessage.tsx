@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React from 'react';
-import { Box, Text } from '../../ink.js';
-import type { AdvisorBlock } from '../../utils/advisor.js';
-import { renderModelName } from '../../utils/model/model.js';
-import { jsonStringify } from '../../utils/slowOperations.js';
-import { CtrlOToExpand } from '../CtrlOToExpand.js';
-import { MessageResponse } from '../MessageResponse.js';
-import { ToolUseLoader } from '../ToolUseLoader.js';
+import { Box, Text } from 'src/ink.js';
+import type { AdvisorBlock } from 'src/utils/advisor.js';
+import { renderModelName } from 'src/utils/model/model.js';
+import { jsonStringify } from 'src/utils/slowOperations.js';
+import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
+import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
 type Props = {
   block: AdvisorBlock;
   addMargin: boolean;

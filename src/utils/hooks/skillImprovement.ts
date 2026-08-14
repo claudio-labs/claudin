@@ -1,27 +1,27 @@
 import { feature } from 'bun:bundle'
-import { getInvokedSkillsForAgent } from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
+import { getInvokedSkillsForAgent } from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from '../../services/analytics/index.js'
-import { queryModelWithoutStreaming } from '../../services/api/claude.js'
-import { getEmptyToolPermissionContext } from '../../Tool.js'
-import type { Message } from '../../types/message.js'
-import { createAbortController } from '../abortController.js'
-import { count } from '../array.js'
-import { getCwd } from '../cwd.js'
-import { toError } from '../errors.js'
-import { logError } from '../log.js'
+} from 'src/services/analytics/index.js'
+import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
+import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import type { Message } from 'src/types/message.js'
+import { createAbortController } from 'src/utils/abortController.js'
+import { count } from 'src/utils/array.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
 import {
   createUserMessage,
   extractTag,
   extractTextContent,
-} from '../messages.js'
-import { getSmallFastModel } from '../model/model.js'
-import { jsonParse } from '../slowOperations.js'
-import { asSystemPrompt } from '../systemPromptType.js'
+} from 'src/utils/messages.js'
+import { getSmallFastModel } from 'src/utils/model/model.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import {
   type ApiQueryHookConfig,
   createApiQueryHook,

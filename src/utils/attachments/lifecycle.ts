@@ -5,19 +5,19 @@
 import {
   toolMatchesName,
   type ToolUseContext,
-} from '../../Tool.js'
+} from 'src/Tool.js'
 import {
   TODO_WRITE_TOOL_NAME,
-} from '../../tools/TodoWriteTool/constants.js'
-import { TASK_CREATE_TOOL_NAME } from '../../tools/TaskCreateTool/constants.js'
-import { TASK_UPDATE_TOOL_NAME } from '../../tools/TaskUpdateTool/constants.js'
+} from 'src/tools/TodoWriteTool/constants.js'
+import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
+import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import {
   type Task,
   listTasks,
   getTaskListId,
   isTodoV2Enabled,
-} from '../tasks.js'
-import { getPlanFilePath, getPlan } from '../plans.js'
+} from 'src/utils/tasks.js'
+import { getPlanFilePath, getPlan } from 'src/utils/plans.js'
 import {
   hasExitedPlanModeInSession,
   setHasExitedPlanMode,
@@ -27,31 +27,31 @@ import {
   setNeedsAutoModeExitAttachment,
   getSessionId,
   getSdkBetas,
-} from '../../bootstrap/state.js'
-import { isHumanTurn } from '../messagePredicates.js'
-import { isThinkingMessage } from '../messages.js'
-import { isEnvTruthy } from '../envUtils.js'
+} from 'src/bootstrap/state.js'
+import { isHumanTurn } from 'src/utils/messagePredicates.js'
+import { isThinkingMessage } from 'src/utils/messages.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
-import type { TodoList } from '../todo/types.js'
+import type { TodoList } from 'src/utils/todo/types.js'
 import {
   getTodoReminderDelta,
   type TodoSnapshotItem,
-} from '../todoReminderDelta.js'
-import { getContextWindowForModel } from '../context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
+} from 'src/utils/todoReminderDelta.js'
+import { getContextWindowForModel } from 'src/utils/context.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   getEffectiveContextWindowSize,
   isAutoCompactEnabled,
-} from '../../services/compact/autoCompact.js'
-import { tokenCountWithEstimation } from '../tokens.js'
+} from 'src/services/compact/autoCompact.js'
+import { tokenCountWithEstimation } from 'src/utils/tokens.js'
 import {
   generateTaskAttachments,
   applyTaskOffsetsAndEvictions,
-} from '../task/framework.js'
-import { getTaskOutputPath } from '../task/diskOutput.js'
-import type { LocalShellTaskState } from '../../tasks/LocalShellTask/guards.js'
-import type { LocalAgentTaskState } from '../../tasks/LocalAgentTask/LocalAgentTask.js'
+} from 'src/utils/task/framework.js'
+import { getTaskOutputPath } from 'src/utils/task/diskOutput.js'
+import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js'
+import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { Attachment } from './types.js'
 import {
   PLAN_MODE_ATTACHMENT_CONFIG,
@@ -65,11 +65,11 @@ import { hasToolResultContent } from './shared.js'
 const BRIEF_TOOL_NAME: string | null =
   feature('KAIROS') || feature('KAIROS_BRIEF')
     ? (
-        require('../../tools/BriefTool/prompt.js') as typeof import('../../tools/BriefTool/prompt.js')
+        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
       ).BRIEF_TOOL_NAME
     : null
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('../permissions/autoModeState.js') as typeof import('../permissions/autoModeState.js'))
+  ? (require('src/utils/permissions/autoModeState.js') as typeof import('src/utils/permissions/autoModeState.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

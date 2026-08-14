@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useMemo } from 'react';
-import { getIsRemoteMode } from '../../bootstrap/state.js';
-import { useNotifications } from '../../context/notifications.js';
-import { Text } from '../../ink.js';
-import { useAppState } from '../../state/AppState.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { plural } from '../../utils/stringUtils.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import { useNotifications } from 'src/context/notifications.js';
+import { Text } from 'src/ink.js';
+import { useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { plural } from 'src/utils/stringUtils.js';
 type InstallationStatus = AppState['plugins']['installationStatus'];
 export function usePluginInstallationStatus() {
   const $ = _c(20);

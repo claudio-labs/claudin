@@ -1,5 +1,5 @@
-import type { RGBColor as RGBColorString } from '../../ink/styles.js'
-import type { Theme } from '../../utils/theme.js'
+import type { RGBColor as RGBColorString } from 'src/ink/styles.js'
+import type { Theme } from 'src/utils/theme.js'
 
 /**
  * The spinner's working colour representation: 8 bits per channel, kept

@@ -12,8 +12,8 @@ import {
   getToolUseIDs,
   hasUnresolvedHooksFromLookup,
   normalizeMessages,
-} from '../messages.js'
-import { resetGlobalConfigForTests } from '../config.js'
+} from 'src/utils/messages.js'
+import { resetGlobalConfigForTests } from 'src/utils/config.js'
 
 afterAll(() => {
   resetGlobalConfigForTests()

@@ -1,15 +1,15 @@
-import { normalizeLanguageForSTT } from '../../hooks/useVoice.js'
-import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js'
-import { logEvent } from '../../services/analytics/index.js'
-import type { LocalCommandCall } from '../../types/command.js'
-import { isAnthropicAuthEnabled } from '../../utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
-import { settingsChangeDetector } from '../../utils/settings/changeDetector.js'
+import { normalizeLanguageForSTT } from 'src/hooks/useVoice.js'
+import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { LocalCommandCall } from 'src/types/command.js'
+import { isAnthropicAuthEnabled } from 'src/utils/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
-} from '../../utils/settings/settings.js'
-import { isVoiceModeEnabled } from '../../voice/voiceModeEnabled.js'
+} from 'src/utils/settings/settings.js'
+import { isVoiceModeEnabled } from 'src/voice/voiceModeEnabled.js'
 
 const LANG_HINT_MAX_SHOWS = 2
 
@@ -56,9 +56,9 @@ export const call: LocalCommandCall = async () => {
 
   // Toggle ON — run pre-flight checks first
   const { isVoiceStreamAvailable } = await import(
-    '../../services/voiceStreamSTT.js'
+    'src/services/voiceStreamSTT.js'
   )
-  const { checkRecordingAvailability } = await import('../../services/voice.js')
+  const { checkRecordingAvailability } = await import('src/services/voice.js')
 
   // Check recording availability (microphone access)
   const recording = await checkRecordingAvailability()
@@ -81,7 +81,7 @@ export const call: LocalCommandCall = async () => {
 
   // Check for recording tools
   const { checkVoiceDependencies, requestMicrophonePermission } = await import(
-    '../../services/voice.js'
+    'src/services/voice.js'
   )
   const deps = await checkVoiceDependencies()
   if (!deps.available) {

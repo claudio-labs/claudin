@@ -1,5 +1,5 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages/messages.mjs'
-import type { Tools } from '../Tool.js'
+import type { Tools } from 'src/Tool.js'
 import type {
   GroupedToolUseMessage,
   NormalizedAssistantMessage,
@@ -7,7 +7,7 @@ import type {
   NormalizedUserMessage,
   ProgressMessage,
   RenderableMessage,
-} from '../types/message.js'
+} from 'src/types/message.js'
 
 export type MessageWithoutProgress = Exclude<NormalizedMessage, ProgressMessage>
 

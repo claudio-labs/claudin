@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react'
-import { useRegisterOverlay } from '../../context/overlayContext.js'
-import type { InputEvent } from '../../ink/events/input-event.js'
+import { useRegisterOverlay } from 'src/context/overlayContext.js'
+import type { InputEvent } from 'src/ink/events/input-event.js'
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw space/arrow multiselect input
-import { useInput } from '../../ink.js'
+import { useInput } from 'src/ink.js'
 import {
   normalizeFullWidthDigits,
   normalizeFullWidthSpace,
-} from '../../utils/stringUtils.js'
+} from 'src/utils/stringUtils.js'
 import type { OptionWithDescription } from './select.js'
 import { optionsNavigateEqual } from './use-select-navigation.js'
 import { useSelectNavigation } from './use-select-navigation.js'

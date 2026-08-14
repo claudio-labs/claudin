@@ -27,7 +27,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, tes
 }
 import { convertAnthropicMessagesToResponsesInput } from './codexShim.js'
 import { createOpenAIShimClient } from './openaiShim.js'
-import { stableStringify } from '../../utils/stableStringify.js'
+import { stableStringify } from 'src/utils/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch
@@ -42,15 +42,15 @@ const originalEnv = {
 // Keep the shim path deterministic — no compression noise.
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
-const realConfig_staticDedup = { ...(await import('../../utils/config.js')) }
-mock.module('../../utils/config.js', () => ({
+const realConfig_staticDedup = { ...(await import('src/utils/config.js')) }
+mock.module('src/utils/config.js', () => ({
   ...realConfig_staticDedup,
   getGlobalConfig: () => ({
     autoCompactEnabled: false,
   }),
 }))
 
-mock.module('../compact/autoCompact.js', () => ({
+mock.module('src/services/compact/autoCompact.js', () => ({
   getEffectiveContextWindowSize: () => 200_000,
 }))
 
@@ -120,7 +120,7 @@ afterAll(() => {
   if (originalEnv.CLAUDIN_STATIC_DEDUP === undefined)
     delete process.env.CLAUDIN_STATIC_DEDUP
   else process.env.CLAUDIN_STATIC_DEDUP = originalEnv.CLAUDIN_STATIC_DEDUP
-  mock.module('../../utils/config.js', () => realConfig_staticDedup)
+  mock.module('src/utils/config.js', () => realConfig_staticDedup)
 })
 
 beforeEach(() => {

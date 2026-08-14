@@ -16,7 +16,7 @@ import { createOpenAIShimClient } from './openaiShim.js'
 import {
   addClippedIds,
   resetClippedIds,
-} from '../compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch
@@ -29,8 +29,8 @@ const originalEnv = {
 
 // Spread into a plain object so afterAll restores the original bindings,
 // not the live ESM namespace which mock.module mutates after the fact.
-const realConfig = { ...(await import('../../utils/config.js')) }
-mock.module('../../utils/config.js', () => ({
+const realConfig = { ...(await import('src/utils/config.js')) }
+mock.module('src/utils/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => ({
     autoCompactEnabled: false,
@@ -195,5 +195,5 @@ test('stub bytes are stable across two consecutive shim calls', async () => {
 })
 
 afterAll(() => {
-  mock.module('../../utils/config.js', () => realConfig)
+  mock.module('src/utils/config.js', () => realConfig)
 })

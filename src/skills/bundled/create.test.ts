@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
+import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import { registerCreateSkill } from './create.js'
 
 beforeEach(() => {

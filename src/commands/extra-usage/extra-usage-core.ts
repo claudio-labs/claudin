@@ -2,14 +2,14 @@ import {
   checkAdminRequestEligibility,
   createAdminRequest,
   getMyAdminRequests,
-} from '../../services/api/adminRequests.js'
-import { invalidateOverageCreditGrantCache } from '../../services/api/overageCreditGrant.js'
-import { type ExtraUsage, fetchUtilization } from '../../services/api/usage.js'
-import { getSubscriptionType } from '../../utils/auth.js'
-import { hasClaudeAiBillingAccess } from '../../utils/billing.js'
-import { openBrowser } from '../../utils/browser.js'
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
-import { logError } from '../../utils/log.js'
+} from 'src/services/api/adminRequests.js'
+import { invalidateOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js'
+import { type ExtraUsage, fetchUtilization } from 'src/services/api/usage.js'
+import { getSubscriptionType } from 'src/utils/auth.js'
+import { hasClaudeAiBillingAccess } from 'src/utils/billing.js'
+import { openBrowser } from 'src/utils/browser.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { logError } from 'src/utils/log.js'
 
 type ExtraUsageResult =
   | { type: 'message'; value: string }

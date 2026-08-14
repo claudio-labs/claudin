@@ -19,9 +19,9 @@ import type {
   HookEvent,
   HookInput,
   HookMatcher,
-} from '../../types/hookEvents.js'
+} from 'src/types/hookEvents.js'
 
-type Hooks = typeof import('../hooks.js')
+type Hooks = typeof import('src/utils/hooks.js')
 
 let hooks: Hooks
 let snapshotConfig: Partial<Record<HookEvent, HookMatcher[]>> = {}
@@ -38,7 +38,7 @@ beforeAll(async () => {
     updateHooksConfigSnapshot: () => {},
     resetHooksConfigSnapshot: () => {},
   }))
-  hooks = await import(`../hooks.js?matching-char=${Date.now()}`)
+  hooks = await import(`src/utils/hooks.js?matching-char=${Date.now()}`)
 })
 
 function cmdHook(command: string) {

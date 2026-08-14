@@ -1,12 +1,12 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import type { AppState } from '../../state/AppStateStore.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from '../../types/command.js'
-import { GOAL_MAX_CONDITION_LENGTH } from '../../utils/goal/goal.js'
-import type { SessionStore } from '../../utils/hooks/sessionHooks.js'
+} from 'src/types/command.js'
+import { GOAL_MAX_CONDITION_LENGTH } from 'src/utils/goal/goal.js'
+import type { SessionStore } from 'src/utils/hooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +
 // workspace trust). In a full-suite run, earlier test files can leave those
@@ -14,15 +14,15 @@ import type { SessionStore } from '../../utils/hooks/sessionHooks.js'
 // bail with a policy message. Pin the gates to their permissive defaults so
 // this file is deterministic regardless of run order.
 const realHooksConfigSnapshot = await import(
-  '../../utils/hooks/hooksConfigSnapshot.js'
+  'src/utils/hooks/hooksConfigSnapshot.js'
 )
-mock.module('../../utils/hooks/hooksConfigSnapshot.js', () => ({
+mock.module('src/utils/hooks/hooksConfigSnapshot.js', () => ({
   ...realHooksConfigSnapshot,
   shouldDisableAllHooksIncludingManaged: () => false,
   shouldAllowManagedHooksOnly: () => false,
 }))
-const realHooksShared = await import('../../utils/hooks/shared.js')
-mock.module('../../utils/hooks/shared.js', () => ({
+const realHooksShared = await import('src/utils/hooks/shared.js')
+mock.module('src/utils/hooks/shared.js', () => ({
   ...realHooksShared,
   shouldSkipHookDueToTrust: () => false,
 }))
@@ -34,10 +34,10 @@ const { call, parseGoalArgs } = await import('./goal.js')
 // without this every later test file would inherit this file's stubs.
 afterAll(() => {
   mock.module(
-    '../../utils/hooks/hooksConfigSnapshot.js',
+    'src/utils/hooks/hooksConfigSnapshot.js',
     () => realHooksConfigSnapshot,
   )
-  mock.module('../../utils/hooks/shared.js', () => realHooksShared)
+  mock.module('src/utils/hooks/shared.js', () => realHooksShared)
 })
 
 describe('parseGoalArgs', () => {

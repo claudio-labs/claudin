@@ -9,17 +9,17 @@
  * leaks no-ops into every later test that imports them.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { ToolUseContext } from '../Tool.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
   getPendingLSPDiagnosticCount,
-} from '../services/lsp/LSPDiagnosticRegistry.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
 
 const mockIsLspGloballyEnabled = mock(() => true)
-const realUserSettingsAttachGate = { ...(await import('../services/lsp/userSettings.js')) }
-mock.module('../services/lsp/userSettings.js', () => ({
+const realUserSettingsAttachGate = { ...(await import('src/services/lsp/userSettings.js')) }
+mock.module('src/services/lsp/userSettings.js', () => ({
   ...realUserSettingsAttachGate,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
 }))
@@ -42,7 +42,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('../services/lsp/userSettings.js', () => realUserSettingsAttachGate)
+  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsAttachGate)
   mock.module('src/services/lsp/userSettings.js', () => realUserSettingsAttachGate)
 })
 

@@ -35,19 +35,19 @@
  * correctness fixes and stay on.
  */
 
-import type { Attachment } from '../utils/attachments/types.js'
-import type { Message } from '../types/message.js'
-import type { ToolUseContext } from '../Tool.js'
+import type { Attachment } from 'src/utils/attachments/types.js'
+import type { Message } from 'src/types/message.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import {
   getTaskListId,
   isTodoV2Enabled,
   listTasks,
   type Task,
-} from '../utils/tasks.js'
-import { TASK_CREATE_TOOL_NAME } from '../tools/TaskCreateTool/constants.js'
-import { TASK_UPDATE_TOOL_NAME } from '../tools/TaskUpdateTool/constants.js'
-import { isBareMode, isEnvTruthy } from '../utils/envUtils.js'
-import { isTeammate } from '../utils/teammate.js'
+} from 'src/utils/tasks.js'
+import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
+import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isTeammate } from 'src/utils/teammate.js'
 
 /**
  * How much work a turn has to do before an untouched list counts as neglect.

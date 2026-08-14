@@ -23,31 +23,31 @@ import { writeFile } from 'fs/promises'
 import isEqual from 'lodash-es/isEqual.js'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { logForDebugging } from '../debug.js'
-import { isEnvTruthy } from '../envUtils.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   ConfigParseError,
   errorMessage,
   getErrnoCode,
   isENOENT,
   toError,
-} from '../errors.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from '../execFileNoThrow.js'
-import { getFsImplementation } from '../fsOperations.js'
-import { gitExe } from '../git.js'
-import { logError } from '../log.js'
+} from 'src/utils/errors.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/execFileNoThrow.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { gitExe } from 'src/utils/git.js'
+import { logError } from 'src/utils/log.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from '../settings/settings.js'
-import type { SettingsJson } from '../settings/types.js'
+} from 'src/utils/settings/settings.js'
+import type { SettingsJson } from 'src/utils/settings/types.js'
 import {
   jsonParse,
   jsonStringify,
   writeFileSync_DEPRECATED,
-} from '../slowOperations.js'
+} from 'src/utils/slowOperations.js'
 import {
   getAddDirEnabledPlugins,
   getAddDirExtraMarketplaces,

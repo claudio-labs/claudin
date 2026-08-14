@@ -14,28 +14,28 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import React from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { refreshGrowthBookAfterAuthChange } from '../../services/analytics/growthbook.js';
-import { refreshPolicyLimits } from '../../services/policyLimits/index.js';
-import { refreshRemoteManagedSettings } from '../../services/remoteManagedSettings/index.js';
-import { isCustomAgent } from '../../tools/AgentTool/loadAgentsDir.js';
-import { validateForceLoginOrg } from '../../utils/auth.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { resetUserCache } from '../../utils/user.js';
-import type { Root } from '../../ink.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import type { StatsStore } from '../../context/stats.js';
-import type { ChannelEntry } from '../../bootstrap/state.js';
-import type { InternalPermissionMode } from '../../types/permissions.js';
-import { launchSnapshotUpdateDialog } from '../../dialogLaunchers.js';
-import { exitWithError, getRenderContext, showSetupScreens } from '../../interactiveHelpers.js';
-import { profileCheckpoint } from '../../utils/startupProfiler.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { refreshGrowthBookAfterAuthChange } from 'src/services/analytics/growthbook.js';
+import { refreshPolicyLimits } from 'src/services/policyLimits/index.js';
+import { refreshRemoteManagedSettings } from 'src/services/remoteManagedSettings/index.js';
+import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { validateForceLoginOrg } from 'src/utils/auth.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { resetUserCache } from 'src/utils/user.js';
+import type { Root } from 'src/ink.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { StatsStore } from 'src/context/stats.js';
+import type { ChannelEntry } from 'src/bootstrap/state.js';
+import type { InternalPermissionMode } from 'src/types/permissions.js';
+import { launchSnapshotUpdateDialog } from 'src/dialogLaunchers.js';
+import { exitWithError, getRenderContext, showSetupScreens } from 'src/interactiveHelpers.js';
+import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 import type { AgentDefinitionsBundle } from './setupAgent.js';
 
 export type RunTrustAndOnboardingInput = {
   permissionMode: InternalPermissionMode;
   allowDangerouslySkipPermissions: boolean;
-  commands: Awaited<ReturnType<typeof import('../../commands.js').getCommands>>;
+  commands: Awaited<ReturnType<typeof import('src/commands.js').getCommands>>;
   devChannels: ChannelEntry[] | undefined;
   remoteControlOption: boolean | string | undefined;
   mainThreadAgentDefinition: AgentDefinitionsBundle['activeAgents'][number] | undefined;
@@ -79,7 +79,7 @@ export async function runTrustAndOnboarding(
   const getFpsMetrics = renderCtx.getFpsMetrics;
   const stats = renderCtx.stats;
   profileCheckpoint('trust_render_ctx_ready');
-  const { createRoot } = await import('../../ink.js');
+  const { createRoot } = await import('src/ink.js');
   profileCheckpoint('trust_ink_imported');
   const root = await createRoot(renderCtx.renderOptions);
   profileCheckpoint('trust_ink_root_created');
@@ -105,7 +105,7 @@ export async function runTrustAndOnboarding(
   // resolve the --remote-control / --rc entitlement gate.
   let remoteControl = false;
   if (feature('BRIDGE_MODE') && remoteControlOption !== undefined) {
-    const { getBridgeDisabledReason } = await import('../../bridge/bridgeEnabled.js');
+    const { getBridgeDisabledReason } = await import('src/bridge/bridgeEnabled.js');
     const disabledReason = await getBridgeDisabledReason();
     remoteControl = disabledReason === null;
     if (disabledReason) {
@@ -132,7 +132,7 @@ export async function runTrustAndOnboarding(
     if (choice === 'merge') {
       // SnapshotUpdateDialog is build-time stubbed in this fork; the real
       // module (upstream) exports buildMergePrompt, so we look it up dynamically.
-      const mod = (await import('../../components/agents/SnapshotUpdateDialog.js')) as {
+      const mod = (await import('src/components/agents/SnapshotUpdateDialog.js')) as {
         buildMergePrompt?: (agentType: string, memory: typeof agentDef.memory) => string;
       };
       const mergePrompt = mod.buildMergePrompt?.(agentDef.agentType, agentDef.memory) ?? '';
@@ -159,7 +159,7 @@ export async function runTrustAndOnboarding(
     // — enrollTrustedDevice() via checkGate_CACHED_OR_BLOCKING (awaits
     // the GrowthBook reinit above), clearTrustedDeviceToken() via the
     // sync cached check (acceptable since clear is idempotent).
-    void import('../../bridge/trustedDevice.js').then(m => {
+    void import('src/bridge/trustedDevice.js').then(m => {
       m.clearTrustedDeviceToken();
       return m.enrollTrustedDevice();
     });
@@ -171,11 +171,11 @@ export async function runTrustAndOnboarding(
   // the user through provider selection twice when they intentionally
   // skipped during Onboarding.
   try {
-    const { getActiveProviderProfile, getProviderProfiles } = await import('../../utils/providerProfiles.js');
+    const { getActiveProviderProfile, getProviderProfiles } = await import('src/utils/providerProfiles.js');
     const hasProfiles = getProviderProfiles().length > 0 || Boolean(getActiveProviderProfile());
     if (!hasProfiles && !onboardingShown) {
-      const { showSetupDialog } = await import('../../interactiveHelpers.js');
-      const { ProviderManager } = await import('../../components/ProviderManager.js');
+      const { showSetupDialog } = await import('src/interactiveHelpers.js');
+      const { ProviderManager } = await import('src/components/ProviderManager.js');
       await showSetupDialog<void>(root, done => (
         React.createElement(ProviderManager, {
           mode: 'first-run' as const,
@@ -192,9 +192,9 @@ export async function runTrustAndOnboarding(
   // banner itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so it
   // scrolls naturally into scrollback as content grows.
   try {
-    const { tryGetActiveProvider } = await import('../../services/api/activeProvider.js');
+    const { tryGetActiveProvider } = await import('src/services/api/activeProvider.js');
     if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIN_CLEAR_ON_START === '1') {
-      const { clearTerminal } = await import('../../ink/clearTerminal.js');
+      const { clearTerminal } = await import('src/ink/clearTerminal.js');
       process.stdout.write(clearTerminal);
     }
   } catch (e) {

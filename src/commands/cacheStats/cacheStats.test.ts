@@ -6,12 +6,12 @@
  * silently regress — these snapshot tests keep it honest.
  */
 import { beforeEach, describe, expect, test } from 'bun:test'
-import type { CacheMetrics } from '../../services/api/cacheMetrics.js'
+import type { CacheMetrics } from 'src/services/api/cacheMetrics.js'
 import {
   _setHistoryCapForTesting,
   recordRequest,
   resetSessionCacheStats,
-} from '../../services/api/cacheStatsTracker.js'
+} from 'src/services/api/cacheStatsTracker.js'
 import { call } from './cacheStats.js'
 
 function supported(partial: Partial<CacheMetrics>): CacheMetrics {

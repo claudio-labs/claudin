@@ -19,19 +19,19 @@ import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
 import { logError } from 'src/utils/log.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
+import { errorMessage } from 'src/utils/errors.js'
 import { expandPath } from 'src/utils/path.js'
 import {
   getCommandName,
   formatDescriptionWithSource,
 } from 'src/commands.js'
-import { getCommands } from '../../commands.js'
-import { loadAllPluginsCacheOnly } from '../../utils/plugins/pluginLoader.js'
-import { refreshActivePlugins } from '../../utils/plugins/refresh.js'
+import { getCommands } from 'src/commands.js'
+import { loadAllPluginsCacheOnly } from 'src/utils/plugins/pluginLoader.js'
+import { refreshActivePlugins } from 'src/utils/plugins/refresh.js'
 import { redownloadUserSettings } from 'src/services/settingsSync/index.js'
 import { settingsChangeDetector } from 'src/utils/settings/changeDetector.js'
 import { getSettingsWithSources } from 'src/utils/settings/settings.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   getFlagSettingsInline,
   setFlagSettingsInline,

@@ -15,28 +15,28 @@ import {
   getSessionId,
   getStatsStore,
   addToTurnHookDuration,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import { shouldAllowManagedHooksOnly } from './hooksConfigSnapshot.js'
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js'
-import { logOTelEvent } from '../telemetry/events.js'
+import { logOTelEvent } from 'src/utils/telemetry/events.js'
 import {
   startHookSpan,
   endHookSpan,
   isBetaTracingEnabled,
-} from '../telemetry/sessionTracing.js'
+} from 'src/utils/telemetry/sessionTracing.js'
 import {
   type HookCallback,
   type PromptRequest,
   type PromptResponse,
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from '../../types/hooks.js'
-import type { PermissionResult } from '../permissions/PermissionResult.js'
+} from 'src/types/hooks.js'
+import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
 import chalk from 'chalk'
-import { errorMessage } from '../errors.js'
+import { errorMessage } from 'src/utils/errors.js'
 import { getSessionHookCallback } from './sessionHooks.js'
 import {
   emitHookStarted,
@@ -48,19 +48,19 @@ import type {
   HookInput,
 } from 'src/entrypoints/agentSdkTypes.js'
 import { getHookDisplayText } from './hooksSettings.js'
-import { logForDebugging } from '../debug.js'
-import { logError } from '../log.js'
-import { createCombinedAbortSignal } from '../combinedAbortSignal.js'
-import { createAttachmentMessage } from '../attachments.js'
-import { all } from '../generators.js'
-import type { ToolUseContext } from '../../Tool.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
+import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
+import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { all } from 'src/utils/generators.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import { execPromptHook } from './execPromptHook.js'
-import type { Message } from '../../types/message.js'
+import type { Message } from 'src/types/message.js'
 import { execAgentHook } from './execAgentHook.js'
 import { execHttpHook } from './execHttpHook.js'
 import type { FunctionHook } from './sessionHooks.js'
-import { jsonStringify } from '../slowOperations.js'
-import { isEnvTruthy } from '../envUtils.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   shouldSkipHookDueToTrust,

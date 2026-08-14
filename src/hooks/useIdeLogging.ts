@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { logEvent } from 'src/services/analytics/index.js'
 import { z } from 'zod/v4'
-import type { MCPServerConnection } from '../services/mcp/types.js'
-import { asMcpSchema } from '../services/mcp/zodCompat.js'
-import { getConnectedIdeClient } from '../utils/ide.js'
-import { lazySchema } from '../utils/lazySchema.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
+import { getConnectedIdeClient } from 'src/utils/ide.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 
 const LogEventSchema = lazySchema(() =>
   z.object({

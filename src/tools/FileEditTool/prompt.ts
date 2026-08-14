@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
-import { isLeanToolPromptFamily } from '../../constants/toolPromptTier.js'
-import { isCompactLinePrefixEnabled } from '../../utils/file.js'
-import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
+import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
+import { isCompactLinePrefixEnabled } from 'src/utils/file.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
 function getPreReadInstruction(): string {
   return `\n- You must use your \`${FILE_READ_TOOL_NAME}\` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file. `

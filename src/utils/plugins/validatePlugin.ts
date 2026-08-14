@@ -2,10 +2,10 @@ import type { Dirent, Stats } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import * as path from 'path'
 import { z } from 'zod/v4'
-import { errorMessage, getErrnoCode, isENOENT } from '../errors.js'
-import { FRONTMATTER_REGEX } from '../frontmatterParser.js'
-import { jsonParse } from '../slowOperations.js'
-import { parseYaml } from '../yaml.js'
+import { errorMessage, getErrnoCode, isENOENT } from 'src/utils/errors.js'
+import { FRONTMATTER_REGEX } from 'src/utils/frontmatterParser.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
+import { parseYaml } from 'src/utils/yaml.js'
 import {
   PluginHooksSchema,
   PluginManifestSchema,

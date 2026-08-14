@@ -12,11 +12,11 @@ import type {
 import { extractRules } from 'src/utils/permissions/PermissionUpdate.js'
 import { permissionRuleValueToString } from 'src/utils/permissions/permissionRuleParser.js'
 import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
-import type { ToolUseConfirm } from '../../components/permissions/PermissionRequest.js'
-import { useSetAppState } from '../../state/AppState.js'
-import { env } from '../../utils/env.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { type CompletionType, logUnaryEvent } from '../../utils/unaryLogging.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import { useSetAppState } from 'src/state/AppState.js'
+import { env } from 'src/utils/env.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { type CompletionType, logUnaryEvent } from 'src/utils/unaryLogging.js'
 
 export type UnaryEvent = {
   completion_type: CompletionType

@@ -6,7 +6,7 @@ import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages.js'
 
 // Snapshot real modules before mocking so afterAll restores don't pick up our
 // own overrides through live bindings (testing.md cross-file mock leak rules).
-const realSideQueryNS = { ...(await import('../sideQuery.js')) }
+const realSideQueryNS = { ...(await import('src/utils/sideQuery.js')) }
 
 type SideQueryBehavior =
   | { kind: 'tool_use' }
@@ -58,7 +58,7 @@ const sideQueryMock = async (): Promise<BetaMessage> => {
 // Mock BOTH specifier forms (testing.md: Bun pre-applies module mocks for the
 // whole run; a sibling file importing the same module via the src/ alias would
 // otherwise bypass the mock).
-mock.module('../sideQuery.js', () => ({
+mock.module('src/utils/sideQuery.js', () => ({
   ...realSideQueryNS,
   sideQuery: sideQueryMock,
 }))
@@ -68,7 +68,7 @@ mock.module('src/utils/sideQuery.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('../sideQuery.js', () => realSideQueryNS)
+  mock.module('src/utils/sideQuery.js', () => realSideQueryNS)
   mock.module('src/utils/sideQuery.js', () => realSideQueryNS)
 })
 

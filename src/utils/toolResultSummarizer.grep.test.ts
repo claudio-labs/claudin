@@ -17,7 +17,7 @@ import {
   maybeSummarizeToolResult,
   summarizeGrepOutput,
 } from './toolResultSummarizer.js'
-import { GREP_TOOL_NAME } from '../tools/GrepTool/prompt.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 
 const FIXTURE_DIR = join(import.meta.dir, '__fixtures__', 'grepSamples')
 

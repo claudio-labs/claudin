@@ -1,20 +1,20 @@
-import type { ToolUseContext } from '../../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import {
   findTeammateTaskByAgentId,
   requestTeammateShutdown,
-} from '../../../tasks/InProcessTeammateTask/InProcessTeammateTask.js'
-import { parseAgentId } from '../../../utils/agentId.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
+} from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
+import { parseAgentId } from 'src/utils/agentId.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   createShutdownRequestMessage,
   writeToMailbox,
-} from '../../../utils/teammateMailbox.js'
-import { startInProcessTeammate } from '../inProcessRunner.js'
+} from 'src/utils/teammateMailbox.js'
+import { startInProcessTeammate } from 'src/utils/swarm/inProcessRunner.js'
 import {
   killInProcessTeammate,
   spawnInProcessTeammate,
-} from '../spawnInProcess.js'
+} from 'src/utils/swarm/spawnInProcess.js'
 import type {
   TeammateExecutor,
   TeammateMessage,

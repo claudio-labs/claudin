@@ -4,9 +4,9 @@ import { describe, expect, it } from 'bun:test'
 // agentToolUtils). Loading AgentTool first orders the graph so the schema is
 // initialized before the eager build runs.
 import './AgentTool.js'
-import type { Tool, Tools } from '../../Tool.js'
-import { WEB_FETCH_TOOL_NAME } from '../WebFetchTool/prompt.js'
-import { WEB_SEARCH_TOOL_NAME } from '../WebSearchTool/prompt.js'
+import type { Tool, Tools } from 'src/Tool.js'
+import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
+import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
@@ -15,7 +15,7 @@ import {
 import { WEB_RESEARCHER_AGENT_TYPE } from './built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from './built-in/webResearcherManagerAgent.js'
 import { AGENT_TOOL_NAME } from './constants.js'
-import { RUN_TESTS_TOOL_NAME } from '../RunTestsTool/prompt.js'
+import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 
 // Only `name` is read by filterToolsForAgent/resolveAgentTools.
 const tool = (name: string): Tool => ({ name }) as unknown as Tool

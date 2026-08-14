@@ -1,12 +1,12 @@
 import { relative } from 'path';
 import React from 'react';
-import { getCwdState } from '../../bootstrap/state.js';
-import { SandboxSettings } from '../../components/sandbox/SandboxSettings.js';
-import { color } from '../../ink.js';
-import { getPlatform } from '../../utils/platform.js';
-import { addToExcludedCommands, SandboxManager } from '../../utils/sandbox/sandbox-adapter.js';
-import { getInitialSettings, getSettingsFilePathForSource } from '../../utils/settings/settings.js';
-import type { ThemeName } from '../../utils/theme.js';
+import { getCwdState } from 'src/bootstrap/state.js';
+import { SandboxSettings } from 'src/components/sandbox/SandboxSettings.js';
+import { color } from 'src/ink.js';
+import { getPlatform } from 'src/utils/platform.js';
+import { addToExcludedCommands, SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
+import { getInitialSettings, getSettingsFilePathForSource } from 'src/utils/settings/settings.js';
+import type { ThemeName } from 'src/utils/theme.js';
 export async function call(onDone: (result?: string) => void, _context: unknown, args?: string): Promise<React.ReactNode | null> {
   const settings = getInitialSettings();
   const themeName: ThemeName = settings.theme as ThemeName || 'light';

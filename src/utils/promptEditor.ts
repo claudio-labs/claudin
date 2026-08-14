@@ -2,8 +2,8 @@ import {
   expandPastedTextRefs,
   formatPastedTextRef,
   getPastedTextRefNumLines,
-} from '../history.js'
-import instances from '../ink/instances.js'
+} from 'src/history.js'
+import instances from 'src/ink/instances.js'
 import type { PastedContent } from './config.js'
 import { classifyGuiEditor, getExternalEditor } from './editor.js'
 import { execSync_DEPRECATED } from './execSyncWrapper.js'

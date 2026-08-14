@@ -3,13 +3,13 @@ import { isAbsolute, resolve } from 'path'
 import {
   walkCommandSegments,
   type CommandSegment,
-} from '../../utils/bash/segments.js'
-import { tryParseShellCommand } from '../../utils/bash/shellQuote.js'
-import { expandTilde } from '../../utils/permissions/pathValidation.js'
-import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from '../FileReadTool/prompt.js'
-import { GLOB_TOOL_NAME } from '../GlobTool/prompt.js'
-import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
-import { createOneShotMemo, MEMO_LIMIT } from '../shared/redirect.js'
+} from 'src/utils/bash/segments.js'
+import { tryParseShellCommand } from 'src/utils/bash/shellQuote.js'
+import { expandTilde } from 'src/utils/permissions/pathValidation.js'
+import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from 'src/tools/FileReadTool/prompt.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { createOneShotMemo, MEMO_LIMIT } from 'src/tools/shared/redirect.js'
 import { PATH_EXTRACTORS } from './pathValidation.js'
 
 export { MEMO_LIMIT }

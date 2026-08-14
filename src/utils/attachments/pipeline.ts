@@ -7,10 +7,10 @@
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../../services/analytics/index.js'
-import type { ToolUseContext } from '../../Tool.js'
-import { createAbortController } from '../abortController.js'
-import type { IDESelection } from '../../hooks/useIdeSelection.js'
+} from 'src/services/analytics/index.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { createAbortController } from 'src/utils/abortController.js'
+import type { IDESelection } from 'src/hooks/useIdeSelection.js'
 import type {
   AttachmentMessage,
   Message,
@@ -25,18 +25,18 @@ import type {
   ImageBlockParam,
   Base64ImageSource,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
-import { maybeResizeAndDownsampleImageBlock } from '../imageResizer.js'
-import type { PastedContent } from '../config.js'
-import { drainPendingMessages } from '../../tasks/LocalAgentTask/LocalAgentTask.js'
-import type { QuerySource } from '../../constants/querySource.js'
-import { extractTextContent } from '../messages.js'
-import { isEnvTruthy } from '../envUtils.js'
+import { maybeResizeAndDownsampleImageBlock } from 'src/utils/imageResizer.js'
+import type { PastedContent } from 'src/utils/config.js'
+import { drainPendingMessages } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import { extractTextContent } from 'src/utils/messages.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
-import { isAgentSwarmsEnabled } from '../agentSwarmsEnabled.js'
-import { isBuddyEnabled } from '../../buddy/feature.js'
-import { getCompanionIntroAttachment } from '../../buddy/prompt.js'
-import { isTodoV2Enabled } from '../tasks.js'
-import { getTaskReconcileAttachments } from '../../query/taskReconcile.js'
+import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { isBuddyEnabled } from 'src/buddy/feature.js'
+import { getCompanionIntroAttachment } from 'src/buddy/prompt.js'
+import { isTodoV2Enabled } from 'src/utils/tasks.js'
+import { getTaskReconcileAttachments } from 'src/query/taskReconcile.js'
 import type { Attachment } from './types.js'
 import { maybe, createAttachmentMessage } from './shared.js'
 import {

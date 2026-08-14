@@ -5,23 +5,23 @@ import {
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
 } from 'src/constants/prompts.js'
 import { microcompactMessages } from 'src/services/compact/microCompact.js'
-import { getSdkBetas } from '../bootstrap/state.js'
-import { getCommandName } from '../commands.js'
-import { getSystemContext } from '../context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+import { getSdkBetas } from 'src/bootstrap/state.js'
+import { getCommandName } from 'src/commands.js'
+import { getSystemContext } from 'src/context.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   AUTOCOMPACT_BUFFER_TOKENS,
   getEffectiveContextWindowSize,
   isAutoCompactEnabled,
   MANUAL_COMPACT_BUFFER_TOKENS,
-} from '../services/compact/autoCompact.js'
+} from 'src/services/compact/autoCompact.js'
 import {
   countMessagesTokensWithAPI,
   countTokensViaHaikuFallback,
   roughTokenCountEstimation,
   roughTokenCountEstimationForCountRequest,
-} from '../services/tokenEstimation.js'
-import { estimateSkillFrontmatterTokens } from '../skills/loadSkillsDir.js'
+} from 'src/services/tokenEstimation.js'
+import { estimateSkillFrontmatterTokens } from 'src/skills/loadSkillsDir.js'
 import {
   findToolByName,
   type Tool,
@@ -29,16 +29,16 @@ import {
   type Tools,
   type ToolUseContext,
   toolMatchesName,
-} from '../Tool.js'
+} from 'src/Tool.js'
 import type {
   AgentDefinition,
   AgentDefinitionsResult,
-} from '../tools/AgentTool/loadAgentsDir.js'
-import { SKILL_TOOL_NAME } from '../tools/SkillTool/constants.js'
+} from 'src/tools/AgentTool/loadAgentsDir.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import {
   getLimitedSkillToolCommands,
   getSkillToolInfo as getSlashCommandInfo,
-} from '../tools/SkillTool/prompt.js'
+} from 'src/tools/SkillTool/prompt.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -46,7 +46,7 @@ import type {
   NormalizedAssistantMessage,
   NormalizedUserMessage,
   UserMessage,
-} from '../types/message.js'
+} from 'src/types/message.js'
 import { toolToAPISchema } from './api.js'
 import { filterInjectedMemoryFiles, getMemoryFiles } from './claudemd.js'
 import { getContextWindowForModel } from './context.js'
@@ -392,7 +392,7 @@ async function countBuiltInToolTokens(
 
   // Check if tool search is enabled
   const { isToolSearchEnabled } = await import('./toolSearch.js')
-  const { isDeferredTool } = await import('../tools/ToolSearchTool/prompt.js')
+  const { isDeferredTool } = await import('src/tools/ToolSearchTool/prompt.js')
   const isDeferred = await isToolSearchEnabled(
     model ?? '',
     tools,
@@ -655,7 +655,7 @@ export async function countMcpToolTokens(
   // Check if tool search is enabled - if so, MCP tools are deferred
   // isToolSearchEnabled handles threshold calculation internally for TstAuto mode
   const { isToolSearchEnabled } = await import('./toolSearch.js')
-  const { isDeferredTool } = await import('../tools/ToolSearchTool/prompt.js')
+  const { isDeferredTool } = await import('src/tools/ToolSearchTool/prompt.js')
 
   const isDeferred = await isToolSearchEnabled(
     model,
@@ -1103,7 +1103,7 @@ export async function analyzeContextUsage(
   if (feature('CONTEXT_COLLAPSE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { isContextCollapseEnabled } =
-      require('../services/contextCollapse/index.js') as typeof import('../services/contextCollapse/index.js')
+      require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isContextCollapseEnabled()) {
       skipReservedBuffer = true

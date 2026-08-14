@@ -6,22 +6,22 @@ import {
   handlePlanModeTransition,
   setHasExitedPlanMode,
   setNeedsAutoModeExitAttachment,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import type {
   ToolPermissionContext,
   ToolPermissionRulesBySource,
-} from '../../Tool.js'
-import { getCwd } from '../cwd.js'
-import { isEnvTruthy } from '../envUtils.js'
-import type { SettingSource } from '../settings/constants.js'
-import { SETTING_SOURCES } from '../settings/constants.js'
+} from 'src/Tool.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import type { SettingSource } from 'src/utils/settings/constants.js'
+import { SETTING_SOURCES } from 'src/utils/settings/constants.js'
 import {
   getInitialSettings,
   getSettingsFilePathForSource,
   getUseAutoModeDuringPlan,
   hasAllowBypassPermissionsMode,
   hasAutoModeOptIn,
-} from '../settings/settings.js'
+} from 'src/utils/settings/settings.js'
 import {
   type PermissionMode,
   permissionModeFromString,
@@ -44,25 +44,25 @@ import {
 import {
   addDirHelpMessage,
   validateDirectoryForWorkspace,
-} from '../../commands/add-dir/validation.js'
+} from 'src/commands/add-dir/validation.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
+} from 'src/services/analytics/index.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
-import { getToolsForDefaultPreset, parseToolPreset } from '../../tools.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
+import { getToolsForDefaultPreset, parseToolPreset } from 'src/tools.js'
 import {
   getFsImplementation,
   safeResolvePath,
-} from '../../utils/fsOperations.js'
-import { modelSupportsAutoMode } from '../betas.js'
-import { logForDebugging } from '../debug.js'
-import { gracefulShutdown } from '../gracefulShutdown.js'
-import { getMainLoopModel } from '../model/model.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+} from 'src/utils/fsOperations.js'
+import { modelSupportsAutoMode } from 'src/utils/betas.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { gracefulShutdown } from 'src/utils/gracefulShutdown.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getCachedClassifierProbe,
   getClassifierProbeKey,

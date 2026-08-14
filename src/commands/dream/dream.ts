@@ -1,14 +1,14 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { Command } from '../../commands.js'
-import { isAutoMemoryEnabled, getAutoMemPath } from '../../memdir/paths.js'
-import { getProjectDir } from '../../utils/sessionStorage.js'
-import { getOriginalCwd, getSessionId } from '../../bootstrap/state.js'
-import { buildConsolidationPrompt } from '../../services/autoDream/consolidationPrompt.js'
+import type { Command } from 'src/commands.js'
+import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memdir/paths.js'
+import { getProjectDir } from 'src/utils/sessionStorage.js'
+import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
+import { buildConsolidationPrompt } from 'src/services/autoDream/consolidationPrompt.js'
 import {
   readLastConsolidatedAt,
   listSessionsTouchedSince,
   recordConsolidation,
-} from '../../services/autoDream/consolidationLock.js'
+} from 'src/services/autoDream/consolidationLock.js'
 
 const command = {
   type: 'prompt',

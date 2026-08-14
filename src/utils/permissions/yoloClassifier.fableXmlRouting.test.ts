@@ -7,18 +7,18 @@
  * capture the request options and assert the routing + max_tokens headroom.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { enableConfigs } from '../config.js'
+import { enableConfigs } from 'src/utils/config.js'
 
 let mainLoopModel = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []
 
-const actualModel = await import('../model/model.js')
-mock.module('../model/model.js', () => ({
+const actualModel = await import('src/utils/model/model.js')
+mock.module('src/utils/model/model.js', () => ({
   ...actualModel,
   getMainLoopModel: () => mainLoopModel,
 }))
 
-mock.module('../sideQuery.js', () => ({
+mock.module('src/utils/sideQuery.js', () => ({
   sideQuery: (opts: Record<string, unknown>) => {
     capturedOpts.push(opts)
     // XML stage-1 allow verdict; the tool_use path treats this text-only

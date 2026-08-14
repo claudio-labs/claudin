@@ -1,8 +1,8 @@
 import type { Attributes } from 'src/vendor/otel.js'
 import { getEventLogger, getPromptId } from 'src/bootstrap/state.js'
-import { logForDebugging } from '../debug.js'
-import { isEnvTruthy } from '../envUtils.js'
-import { getTelemetryAttributes } from '../telemetryAttributes.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getTelemetryAttributes } from 'src/utils/telemetryAttributes.js'
 
 // Monotonically increasing counter for ordering events within a session
 let eventSequence = 0

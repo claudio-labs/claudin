@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
-import { ImageProcessorUnavailableError } from '../tools/FileReadTool/imageProcessor.js'
+import { ImageProcessorUnavailableError } from 'src/tools/FileReadTool/imageProcessor.js'
 
 // Build a minimal PNG whose IHDR declares the given pixel dimensions. Only the
 // bytes maybeResizeAndDownsampleImageBuffer's fallback inspects need to be
@@ -16,7 +16,7 @@ function fakePng(width: number, height: number, padTo = 64): Buffer {
 }
 
 function mockProcessorUnavailable(): void {
-  mock.module('../tools/FileReadTool/imageProcessor.js', () => ({
+  mock.module('src/tools/FileReadTool/imageProcessor.js', () => ({
     ImageProcessorUnavailableError,
     async getImageProcessor() {
       throw new ImageProcessorUnavailableError()
@@ -31,7 +31,7 @@ function mockProcessorUnavailable(): void {
 // input). This is NOT an ImageProcessorUnavailableError, so the fallback must
 // NOT relax the dimension guard.
 function mockProcessorThrowsGeneric(): void {
-  mock.module('../tools/FileReadTool/imageProcessor.js', () => ({
+  mock.module('src/tools/FileReadTool/imageProcessor.js', () => ({
     ImageProcessorUnavailableError,
     async getImageProcessor() {
       throw new Error('vips: unsupported image format')

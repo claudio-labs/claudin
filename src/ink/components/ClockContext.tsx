@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, useEffect, useState } from 'react';
-import { getFrameIntervalMs } from '../constants.js';
-import { useTerminalFocus } from '../hooks/use-terminal-focus.js';
+import { getFrameIntervalMs } from 'src/ink/constants.js';
+import { useTerminalFocus } from 'src/ink/hooks/use-terminal-focus.js';
 export type Clock = {
   subscribe: (onChange: () => void, keepAlive: boolean) => () => void;
   now: () => number;

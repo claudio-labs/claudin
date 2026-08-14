@@ -1,19 +1,19 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useState } from 'react';
-import type { CommandResultDisplay, LocalJSXCommandContext } from '../../commands.js';
-import { Dialog } from '../../components/design-system/Dialog.js';
-import { FastIcon, getFastIconString } from '../../components/FastIcon.js';
-import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Link, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { type AppState, useAppState, useSetAppState } from '../../state/AppState.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, getFastModeModel, getFastModeRuntimeState, getFastModeUnavailableReason, isFastModeEnabled, isFastModeSupportedByModel, prefetchFastModeStatus } from '../../utils/fastMode.js';
-import { formatDuration } from '../../utils/format.js';
-import { formatModelPricing, getOpus46CostTier } from '../../utils/modelCost.js';
-import { updateSettingsForSource } from '../../utils/settings/settings.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { FastIcon, getFastIconString } from 'src/components/FastIcon.js';
+import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Link, Text } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, getFastModeModel, getFastModeRuntimeState, getFastModeUnavailableReason, isFastModeEnabled, isFastModeSupportedByModel, prefetchFastModeStatus } from 'src/utils/fastMode.js';
+import { formatDuration } from 'src/utils/format.js';
+import { formatModelPricing, getOpus46CostTier } from 'src/utils/modelCost.js';
+import { updateSettingsForSource } from 'src/utils/settings/settings.js';
 function applyFastMode(enable: boolean, setAppState: (f: (prev: AppState) => AppState) => void): void {
   clearFastModeCooldown();
   updateSettingsForSource('userSettings', {

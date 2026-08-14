@@ -29,11 +29,11 @@
 // and violate hook order.
 
 import { useEffect } from 'react';
-import type { TabStatusKind } from '../../../ink/hooks/use-tab-status.js';
+import type { TabStatusKind } from 'src/ink/hooks/use-tab-status.js';
 import { feature } from 'bun:bundle';
-import { startPreventSleep, stopPreventSleep } from '../../../services/preventSleep.js';
-import { updateSessionActivity } from '../../../utils/concurrentSessions.js';
-import type { ToolUseConfirm } from '../../../components/permissions/PermissionRequest.js';
+import { startPreventSleep, stopPreventSleep } from 'src/services/preventSleep.js';
+import { updateSessionActivity } from 'src/utils/concurrentSessions.js';
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 
 export interface UseReplLifecycleDeps {
   // Boot signals — whether the agent is mid-turn and what kind of attention

@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { type ReactNode, useEffect, useRef, useState } from 'react';
-import { useDeclaredCursor } from '../../ink/hooks/use-declared-cursor.js';
-import { stringWidth } from '../../ink/stringWidth.js';
-import { Ansi, Box, Text } from '../../ink.js';
-import { count } from '../../utils/array.js';
-import type { PastedContent } from '../../utils/config.js';
-import type { ImageDimensions } from '../../utils/imageResizer.js';
+import { useDeclaredCursor } from 'src/ink/hooks/use-declared-cursor.js';
+import { stringWidth } from 'src/ink/stringWidth.js';
+import { Ansi, Box, Text } from 'src/ink.js';
+import { count } from 'src/utils/array.js';
+import type { PastedContent } from 'src/utils/config.js';
+import type { ImageDimensions } from 'src/utils/imageResizer.js';
 import { SelectInputOption } from './select-input-option.js';
 import { SelectOption } from './select-option.js';
 import { useSelectInput } from './use-select-input.js';

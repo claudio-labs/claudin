@@ -14,15 +14,15 @@ import { join } from 'path'
 import {
   getTeamMemPath,
   isTeamMemoryEnabled,
-} from '../../memdir/teamMemPaths.js'
-import { registerCleanup } from '../../utils/cleanupRegistry.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
-import { getGithubRepo } from '../../utils/git.js'
+} from 'src/memdir/teamMemPaths.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { getGithubRepo } from 'src/utils/git.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   createSyncState,
   isTeamMemorySyncAvailable,

@@ -1,23 +1,23 @@
 import figures from 'figures'
 import * as React from 'react'
-import { GithubDeviceFlowStep } from '../commands/provider/GithubDeviceFlowStep.js'
+import { GithubDeviceFlowStep } from 'src/commands/provider/GithubDeviceFlowStep.js'
 import {
   DEFAULT_CODEX_BASE_URL,
   DEFAULT_XAI_BASE_URL,
-} from '../services/api/providerConfig.js'
-import { Box, Text } from '../ink.js'
-import { useKeybinding } from '../keybindings/useKeybinding.js'
-import { useSetAppState } from '../state/AppState.js'
-import { suppressNextMainLoopModelPersist } from '../state/onChangeAppState.js'
-import type { ProviderProfile } from '../utils/config.js'
+} from 'src/services/api/providerConfig.js'
+import { Box, Text } from 'src/ink.js'
+import { useKeybinding } from 'src/keybindings/useKeybinding.js'
+import { useSetAppState } from 'src/state/AppState.js'
+import { suppressNextMainLoopModelPersist } from 'src/state/onChangeAppState.js'
+import type { ProviderProfile } from 'src/utils/config.js'
 import {
   clearCodexCredentials,
   readCodexCredentialsAsync,
-} from '../utils/codexCredentials.js'
-import { isBareMode } from '../utils/envUtils.js'
-import { getPrimaryModel, parseModelList } from '../utils/providerModels.js'
-import { getDefaultMainLoopModel } from '../utils/model/model.js'
-import { deleteProfileFile } from '../utils/providerProfile.js'
+} from 'src/utils/codexCredentials.js'
+import { isBareMode } from 'src/utils/envUtils.js'
+import { getPrimaryModel, parseModelList } from 'src/utils/providerModels.js'
+import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
+import { deleteProfileFile } from 'src/utils/providerProfile.js'
 import {
   addProviderProfile,
   deleteProviderProfile,
@@ -32,8 +32,8 @@ import {
   type ProviderPreset,
   type ProviderProfileInput,
   updateProviderProfile,
-} from '../utils/providerProfiles.js'
-import { clearGithubModelsToken } from '../utils/githubModelsCredentials.js'
+} from 'src/utils/providerProfiles.js'
+import { clearGithubModelsToken } from 'src/utils/githubModelsCredentials.js'
 import {
   buildDiscoveredModelOptions,
   listOpenAICompatibleModels,
@@ -41,12 +41,12 @@ import {
   probeOllamaGenerationReadiness,
   type AtomicChatReadiness,
   type OllamaGenerationReadiness,
-} from '../utils/providerDiscovery.js'
+} from 'src/utils/providerDiscovery.js'
 import {
   rankOllamaModels,
   recommendOllamaModel,
-} from '../utils/providerRecommendation.js'
-import { redactUrlForDisplay } from '../utils/urlRedaction.js'
+} from 'src/utils/providerRecommendation.js'
+import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 import {
   type OptionWithDescription,
   Select,
@@ -60,18 +60,18 @@ import { useKimiOAuthFlow } from './useKimiOAuthFlow.js'
 import {
   clearXaiCredentials,
   readXaiCredentials,
-} from '../utils/xaiCredentials.js'
+} from 'src/utils/xaiCredentials.js'
 import {
   clearKimiCredentials,
   readKimiCredentials,
-} from '../utils/kimiCredentials.js'
-import { KIMI_CODE_MODEL_LIST } from '../services/api/kimiOAuthShared.js'
+} from 'src/utils/kimiCredentials.js'
+import { KIMI_CODE_MODEL_LIST } from 'src/services/api/kimiOAuthShared.js'
 import {
   formatMigrationReport,
   legacyClaudeDirExists,
   migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
-} from '../utils/claudinMigration.js'
+} from 'src/utils/claudinMigration.js'
 
 export type ProviderManagerResult = {
   action: 'saved' | 'cancelled' | 'activated'

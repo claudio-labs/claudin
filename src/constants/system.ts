@@ -1,10 +1,10 @@
 // Critical system constants extracted to break circular dependencies
 
 import { feature } from 'bun:bundle'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
-import { logForDebugging } from '../utils/debug.js'
-import { isEnvDefinedFalsy } from '../utils/envUtils.js'
-import { getAPIProvider } from '../utils/model/providers.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 
 const DEFAULT_PREFIX =
   `You are Claudin, an open-source coding agent and CLI.`

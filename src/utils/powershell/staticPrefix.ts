@@ -12,9 +12,9 @@
  * edits it down if needed.
  */
 
-import { getCommandSpec } from '../bash/registry.js'
-import { buildPrefix, DEPTH_RULES } from '../shell/specPrefix.js'
-import { countCharInString } from '../stringUtils.js'
+import { getCommandSpec } from 'src/utils/bash/registry.js'
+import { buildPrefix, DEPTH_RULES } from 'src/utils/shell/specPrefix.js'
+import { countCharInString } from 'src/utils/stringUtils.js'
 import { NEVER_SUGGEST } from './dangerousCmdlets.js'
 import {
   getAllCommands,

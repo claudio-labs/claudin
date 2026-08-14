@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { renderToString } from '../../utils/staticRender.js'
-import { recordBytesSaved, resetBytesSaved } from '../../utils/tokensSaved.js'
+import { renderToString } from 'src/utils/staticRender.js'
+import { recordBytesSaved, resetBytesSaved } from 'src/utils/tokensSaved.js'
 
 type ModelUsageRecord = {
   inputTokens: number
@@ -38,9 +38,9 @@ let projectTotals: {
   modelUsage: {},
 }
 
-const realCostTracker = { ...(await import('../../cost-tracker.js')) }
+const realCostTracker = { ...(await import('src/cost-tracker.js')) }
 
-mock.module('../../cost-tracker.js', () => ({
+mock.module('src/cost-tracker.js', () => ({
   ...realCostTracker,
   getTotalCost: () => totalCost,
   getTotalAPIDuration: () => totalAPIDuration,

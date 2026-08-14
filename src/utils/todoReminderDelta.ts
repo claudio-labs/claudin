@@ -23,7 +23,7 @@
  * decides how to present it.
  */
 
-import { logEvent } from '../services/analytics/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
 
 /** A normalized todo/task snapshot item, provider-agnostic. */
 export type TodoSnapshotItem = {

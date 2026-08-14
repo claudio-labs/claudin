@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
-import { ClockContext } from '../components/ClockContext.js'
-import type { DOMElement } from '../dom.js'
+import { ClockContext } from 'src/ink/components/ClockContext.js'
+import type { DOMElement } from 'src/ink/dom.js'
 import { useTerminalViewport } from './use-terminal-viewport.js'
 
 /**

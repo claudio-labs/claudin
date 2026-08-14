@@ -41,8 +41,8 @@ import {
   isThinkingMessage,
   stripPromptXMLTags,
   wrapInSystemReminder,
-} from '../messages.js'
-import { resetGlobalConfigForTests } from '../config.js'
+} from 'src/utils/messages.js'
+import { resetGlobalConfigForTests } from 'src/utils/config.js'
 import { normalizeForSnapshot } from './__test-helpers__/snapshot.js'
 
 afterAll(() => {

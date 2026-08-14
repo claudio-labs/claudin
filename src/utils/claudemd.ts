@@ -45,10 +45,10 @@ import { logEvent } from 'src/services/analytics/index.js'
 import {
   getAdditionalDirectoriesForClaudeMd,
   getOriginalCwd,
-} from '../bootstrap/state.js'
-import { truncateEntrypointContent } from '../memdir/memdir.js'
-import { getAutoMemEntrypoint, isAutoMemoryEnabled } from '../memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+} from 'src/bootstrap/state.js'
+import { truncateEntrypointContent } from 'src/memdir/memdir.js'
+import { getAutoMemEntrypoint, isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -82,7 +82,7 @@ import { getInitialSettings } from './settings/settings.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('../memdir/teamMemPaths.js') as typeof import('../memdir/teamMemPaths.js'))
+  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

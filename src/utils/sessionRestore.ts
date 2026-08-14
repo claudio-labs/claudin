@@ -8,26 +8,26 @@ import {
   setMainThreadAgentType,
   setOriginalCwd,
   switchSession,
-} from '../bootstrap/state.js'
-import { clearSystemPromptSections } from '../constants/systemPromptSections.js'
-import { recomputeCostStateFromMessages, restoreCostStateForSession } from '../cost-tracker.js'
-import type { AppState } from '../state/AppState.js'
-import type { AgentColorName } from '../tools/AgentTool/agentColorManager.js'
+} from 'src/bootstrap/state.js'
+import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
+import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/cost-tracker.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
   type AgentDefinition,
   type AgentDefinitionsResult,
   getActiveAgentsFromList,
   getAgentDefinitionsWithOverrides,
-} from '../tools/AgentTool/loadAgentsDir.js'
-import { TODO_WRITE_TOOL_NAME } from '../tools/TodoWriteTool/constants.js'
-import { asSessionId } from '../types/ids.js'
+} from 'src/tools/AgentTool/loadAgentsDir.js'
+import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
+import { asSessionId } from 'src/types/ids.js'
 import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
   ContextCollapseSnapshotEntry,
   PersistedWorktreeSession,
-} from '../types/logs.js'
-import type { Message } from '../types/message.js'
+} from 'src/types/logs.js'
+import type { Message } from 'src/types/message.js'
 import { renameRecordingForSession } from './asciicast.js'
 import { clearMemoryFileCaches } from './claudemd.js'
 import {
@@ -43,7 +43,7 @@ import { fileHistoryRestoreStateFromLog } from './fileHistory.js'
 import { createSystemMessage } from './messages.js'
 import { parseUserSpecifiedModel } from './model/model.js'
 import { getPlansDirectory } from './plans.js'
-import { invalidateAll as invalidateToolResultCache } from '../services/tools/toolResultCache.js'
+import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js'
 import { setCwd } from './Shell.js'
 import {
   adoptResumedSessionFile,

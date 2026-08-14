@@ -1,15 +1,15 @@
 import { readFile, stat } from 'fs/promises'
 
-import { logError } from '../../utils/log.js'
-import { toRelativePath } from '../../utils/path.js'
-import { createTextDecoder, encodingOverride } from '../../utils/textEncoding.js'
+import { logError } from 'src/utils/log.js'
+import { toRelativePath } from 'src/utils/path.js'
+import { createTextDecoder, encodingOverride } from 'src/utils/textEncoding.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,
   SCAN_MAX_BYTES,
   scanSymbols,
   type SymbolEntry,
-} from '../shared/codeOutline/scanSymbols.js'
+} from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { RG_LINE_RE } from './relativize.js'
 
 // Cap on files scanned in 'symbols' mode — scanning is per-file work and a

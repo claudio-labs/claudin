@@ -12,7 +12,7 @@
  * `docs/tech/kimi-code/wire-format.md`.
  */
 
-import { getKimiDeviceHeaders } from '../../utils/kimiDeviceHeaders.js'
+import { getKimiDeviceHeaders } from 'src/utils/kimiDeviceHeaders.js'
 import {
   asTrimmedString,
   getKimiOAuthClientId,

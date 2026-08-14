@@ -9,30 +9,30 @@ import {
   getLastClassifierRequests,
   getSessionId,
   setLastClassifierRequests,
-} from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { logEvent } from '../../services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/metadata.js'
-import { getCacheControl } from '../../services/api/claude.js'
-import { parsePromptTooLongTokenCounts } from '../../services/api/errors.js'
-import { getDefaultMaxRetries } from '../../services/api/withRetry.js'
-import type { Tool, ToolPermissionContext, Tools } from '../../Tool.js'
-import type { Message } from '../../types/message.js'
+} from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { getCacheControl } from 'src/services/api/claude.js'
+import { parsePromptTooLongTokenCounts } from 'src/services/api/errors.js'
+import { getDefaultMaxRetries } from 'src/services/api/withRetry.js'
+import type { Tool, ToolPermissionContext, Tools } from 'src/Tool.js'
+import type { Message } from 'src/types/message.js'
 import type {
   ClassifierUsage,
   YoloClassifierResult,
-} from '../../types/permissions.js'
-import { isDebugMode, logForDebugging } from '../debug.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from '../envUtils.js'
-import { errorMessage, isSdkApiError } from '../errors.js'
-import { lazySchema } from '../lazySchema.js'
-import { extractTextContent } from '../messages.js'
-import { getMainLoopModel } from '../model/model.js'
-import { getAutoModeConfig } from '../settings/settings.js'
-import { sideQuery } from '../sideQuery.js'
-import { jsonStringify } from '../slowOperations.js'
-import { modelRequiresAdaptiveThinking } from '../thinking.js'
-import { tokenCountWithEstimation } from '../tokens.js'
+} from 'src/types/permissions.js'
+import { isDebugMode, logForDebugging } from 'src/utils/debug.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { errorMessage, isSdkApiError } from 'src/utils/errors.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { extractTextContent } from 'src/utils/messages.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getAutoModeConfig } from 'src/utils/settings/settings.js'
+import { sideQuery } from 'src/utils/sideQuery.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { modelRequiresAdaptiveThinking } from 'src/utils/thinking.js'
+import { tokenCountWithEstimation } from 'src/utils/tokens.js'
 import {
   getBashPromptAllowDescriptions,
   getBashPromptDenyDescriptions,

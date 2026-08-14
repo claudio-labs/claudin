@@ -11,26 +11,26 @@ import {
   getDeferredDeltaLegacySession,
   getSessionEpochMs,
   setDeferredDeltaLegacySession,
-} from '../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+} from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import type { Tool } from '../Tool.js'
+} from 'src/services/analytics/index.js'
+import type { Tool } from 'src/Tool.js'
 import {
   type ToolPermissionContext,
   type Tools,
   toolMatchesName,
-} from '../Tool.js'
-import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js'
+} from 'src/Tool.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   formatDeferredToolLine,
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
-} from '../tools/ToolSearchTool/prompt.js'
-import type { Message } from '../types/message.js'
+} from 'src/tools/ToolSearchTool/prompt.js'
+import type { Message } from 'src/types/message.js'
 import {
   countToolDefinitionTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,

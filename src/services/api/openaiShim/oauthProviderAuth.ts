@@ -17,20 +17,20 @@
  * a different path (`resolveRuntimeCodexCredentials`).
  */
 
-import { logForDebugging } from '../../../utils/debug.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
-} from '../../../utils/kimiCredentials.js'
-import { getKimiDeviceHeaders } from '../../../utils/kimiDeviceHeaders.js'
-import { getKimiUserAgent } from '../../../utils/kimiUserAgent.js'
+} from 'src/utils/kimiCredentials.js'
+import { getKimiDeviceHeaders } from 'src/utils/kimiDeviceHeaders.js'
+import { getKimiUserAgent } from 'src/utils/kimiUserAgent.js'
 import {
   readXaiCredentialsAsync,
   refreshXaiAccessTokenIfNeeded,
-} from '../../../utils/xaiCredentials.js'
-import { getXaiUserAgent } from '../../../utils/xaiUserAgent.js'
-import type { ResolvedProvider } from '../activeProvider.js'
-import { isKimiCodeBaseUrl, isXaiOAuthBaseUrl } from '../providerConfig.js'
+} from 'src/utils/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
+import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
+import { isKimiCodeBaseUrl, isXaiOAuthBaseUrl } from 'src/services/api/providerConfig.js'
 
 export type OAuthProviderAuth = {
   /** Rotated OAuth Bearer token, swapped in only when the profile has no static apiKey. */

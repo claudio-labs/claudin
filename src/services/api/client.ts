@@ -23,13 +23,13 @@ import { pickFetch } from './pickFetch.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
-} from '../../bootstrap/state.js'
-import { isDebugToStdErr, logForDebugging } from '../../utils/debug.js'
+} from 'src/bootstrap/state.js'
+import { isDebugToStdErr, logForDebugging } from 'src/utils/debug.js'
 import {
   getAWSRegion,
   getVertexRegionForModel,
   isEnvTruthy,
-} from '../../utils/envUtils.js'
+} from 'src/utils/envUtils.js'
 import { tryGetActiveProvider } from './activeProvider.js'
 
 const importRuntimeModule = new Function(

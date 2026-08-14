@@ -1,12 +1,12 @@
 import axios from 'axios'
 import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js'
-import { createCombinedAbortSignal } from '../combinedAbortSignal.js'
-import { logForDebugging } from '../debug.js'
-import { errorMessage } from '../errors.js'
-import { getProxyUrl, shouldBypassProxy } from '../proxy.js'
+import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { getProxyUrl, shouldBypassProxy } from 'src/utils/proxy.js'
 // Import as namespace so spyOn works in tests (direct imports bypass spies)
-import * as settingsModule from '../settings/settings.js'
-import type { HttpHook } from '../settings/types.js'
+import * as settingsModule from 'src/utils/settings/settings.js'
+import type { HttpHook } from 'src/utils/settings/types.js'
 import { ssrfGuardedLookup } from './ssrfGuard.js'
 
 const DEFAULT_HTTP_HOOK_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes (matches TOOL_HOOK_EXECUTION_TIMEOUT_MS)
@@ -21,7 +21,7 @@ const DEFAULT_HTTP_HOOK_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes (matches TOOL_
 async function getSandboxProxyConfig(): Promise<
   { host: string; port: number; protocol: string } | undefined
 > {
-  const { SandboxManager } = await import('../sandbox/sandbox-adapter.js')
+  const { SandboxManager } = await import('src/utils/sandbox/sandbox-adapter.js')
 
   if (!SandboxManager.isSandboxingEnabled()) {
     return undefined

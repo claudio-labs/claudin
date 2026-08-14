@@ -11,10 +11,10 @@
 
 import { statSync } from 'fs'
 import { join } from 'path'
-import { getProjectRoot, onSessionSwitch } from '../bootstrap/state.js'
+import { getProjectRoot, onSessionSwitch } from 'src/bootstrap/state.js'
 import {
   SCHEDULE_WAKEUP_TOOL_NAME,
-} from '../tools/ScheduleWakeupTool/prompt.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
 import { isENOENT } from './errors.js'

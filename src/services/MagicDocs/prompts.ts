@@ -1,6 +1,6 @@
 import { join } from 'path'
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { getFsImplementation } from '../../utils/fsOperations.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
 
 /**
  * Get the Magic Docs update prompt template

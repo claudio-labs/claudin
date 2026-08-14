@@ -1,35 +1,35 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { getMainLoopModelOverride } from '../../bootstrap/state.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { getCurrentProjectConfig } from '../config.js'
-import { getActiveProviderProfile } from '../providerProfiles.js'
+import { getMainLoopModelOverride } from 'src/bootstrap/state.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { getCurrentProjectConfig } from 'src/utils/config.js'
+import { getActiveProviderProfile } from 'src/utils/providerProfiles.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
   isMaxSubscriber,
   isProSubscriber,
   isTeamPremiumSubscriber,
-} from '../auth.js'
+} from 'src/utils/auth.js'
 import {
   has1mContext,
   is1mContextDisabled,
   modelSupports1M,
-} from '../context.js'
-import { isEnvTruthy } from '../envUtils.js'
-import { getPrimaryModel } from '../providerModels.js'
+} from 'src/utils/context.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getPrimaryModel } from 'src/utils/providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
 import {
   formatModelPricing,
   getOpus46CostTier,
   getOpus5CostTier,
-} from '../modelCost.js'
-import { getInitialSettings } from '../settings/settings.js'
-import type { PermissionMode } from '../permissions/PermissionMode.js'
+} from 'src/utils/modelCost.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js'
 import { getAPIProvider } from './providers.js'
-import { LIGHTNING_BOLT } from '../../constants/figures.js'
+import { LIGHTNING_BOLT } from 'src/constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
-import { capitalize } from '../stringUtils.js'
+import { capitalize } from 'src/utils/stringUtils.js'
 import { COPILOT_DISPLAY_NAMES } from './copilotModels.js'
 
 export type ModelShortName = string

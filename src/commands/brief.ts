@@ -1,20 +1,20 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
-import { getKairosActive, setUserMsgOptIn } from '../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+import { getKairosActive, setUserMsgOptIn } from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import type { ToolUseContext } from '../Tool.js'
-import { isBriefEntitled } from '../tools/BriefTool/BriefTool.js'
-import { BRIEF_TOOL_NAME } from '../tools/BriefTool/prompt.js'
+} from 'src/services/analytics/index.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { isBriefEntitled } from 'src/tools/BriefTool/BriefTool.js'
+import { BRIEF_TOOL_NAME } from 'src/tools/BriefTool/prompt.js'
 import type {
   Command,
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from '../types/command.js'
-import { lazySchema } from '../utils/lazySchema.js'
+} from 'src/types/command.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 
 // Zod guards against fat-fingered GB pushes (same pattern as pollConfig.ts /
 // cronScheduler.ts). A malformed config falls back to DEFAULT_BRIEF_CONFIG

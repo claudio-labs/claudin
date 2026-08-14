@@ -9,7 +9,7 @@
 // Fail-open: all rules are line-level strips; a malformed sample falls
 // back to raw passthrough via safeApply (no throws).
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // --- npm install / npm ci / npm i / npm add ----------------------------------
 

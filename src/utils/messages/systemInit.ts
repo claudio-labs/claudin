@@ -11,10 +11,10 @@ import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
-import { getAnthropicApiKeyWithSource } from '../auth.js'
-import { getCwd } from '../cwd.js'
-import { getFastModeState } from '../fastMode.js'
-import { getInitialSettings } from '../settings/settings.js'
+import { getAnthropicApiKeyWithSource } from 'src/utils/auth.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { getFastModeState } from 'src/utils/fastMode.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 
 // TODO(next-minor): remove this translation once SDK consumers have migrated
 // to the 'Agent' tool name. The wire name was renamed Task → Agent in #19647,

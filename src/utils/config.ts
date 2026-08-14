@@ -3,15 +3,15 @@ import { randomBytes } from 'crypto'
 import { unwatchFile, watchFile } from 'fs'
 import pickBy from 'lodash-es/pickBy.js'
 import { basename, dirname, join, resolve } from 'path'
-import { getOriginalCwd, getSessionTrustAccepted } from '../bootstrap/state.js'
-import { getAutoMemEntrypoint } from '../memdir/paths.js'
-import { logEvent } from '../services/analytics/index.js'
-import type { McpServerConfig } from '../services/mcp/types.js'
+import { getOriginalCwd, getSessionTrustAccepted } from 'src/bootstrap/state.js'
+import { getAutoMemEntrypoint } from 'src/memdir/paths.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { McpServerConfig } from 'src/services/mcp/types.js'
 import type {
   BillingType,
   ReferralEligibilityResponse,
-} from '../services/oauth/types.js'
-import { getCwd } from '../utils/cwd.js'
+} from 'src/services/oauth/types.js'
+import { getCwd } from 'src/utils/cwd.js'
 import { registerCleanup } from './cleanupRegistry.js'
 import { logForDebugging } from './debug.js'
 import { logForDiagnosticsNoPII } from './diagLogs.js'
@@ -37,10 +37,10 @@ import { PRIMARY_PROJECT_INSTRUCTION_FILE } from './projectInstructions.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('../memdir/teamMemPaths.js') as typeof import('../memdir/teamMemPaths.js'))
+  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 const ccrAutoConnect = feature('CCR_AUTO_CONNECT')
-  ? (require('../bridge/bridgeEnabled.js') as typeof import('../bridge/bridgeEnabled.js'))
+  ? (require('src/bridge/bridgeEnabled.js') as typeof import('src/bridge/bridgeEnabled.js'))
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -371,7 +371,7 @@ export type GlobalConfig = {
   }
 
   // /buddy companion soul — bones regenerated from userId on read. See src/buddy/.
-  companion?: import('../buddy/types.js').StoredCompanion
+  companion?: import('src/buddy/types.js').StoredCompanion
   companionMuted?: boolean
 
   // Feedback survey tracking

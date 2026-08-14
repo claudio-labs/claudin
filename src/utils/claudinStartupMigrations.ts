@@ -34,7 +34,7 @@ import {
   type ProviderProfile as StoredProviderProfile,
 } from './config.js'
 import { parseModelList } from './providerModels.js'
-import { KIMI_CODE_MODEL_LIST } from '../services/api/kimiOAuthShared.js'
+import { KIMI_CODE_MODEL_LIST } from 'src/services/api/kimiOAuthShared.js'
 
 const GITHUB_COPILOT_DEFAULT_BASE_URL = 'https://models.github.ai/inference'
 const GITHUB_COPILOT_DEFAULT_MODEL = 'github:copilot'

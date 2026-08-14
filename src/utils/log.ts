@@ -8,14 +8,14 @@ import type { QuerySource } from 'src/constants/querySource.js'
 import {
   setLastAPIRequest,
   setLastAPIRequestMessages,
-} from '../bootstrap/state.js'
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
-import { TICK_TAG } from '../constants/xml.js'
+} from 'src/bootstrap/state.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { TICK_TAG } from 'src/constants/xml.js'
 import {
   type LogOption,
   type SerializedMessage,
   sortLogs,
-} from '../types/logs.js'
+} from 'src/types/logs.js'
 import { CACHE_PATHS } from './cachePaths.js'
 import { stripDisplayTags, stripDisplayTagsAllowEmpty } from './displayTags.js'
 import { isEnvTruthy } from './envUtils.js'

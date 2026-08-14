@@ -9,13 +9,13 @@ import {
   normalizeMessagesForAPI,
 } from 'src/utils/messages.js'
 import type { ModelName } from 'src/utils/model/model.js'
-import { isAutoMemoryEnabled } from '../../memdir/paths.js'
+import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import { jsonParse } from '../../utils/slowOperations.js'
-import { asSystemPrompt } from '../../utils/systemPromptType.js'
+} from 'src/services/analytics/index.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 
 type GeneratedAgent = {
   identifier: string

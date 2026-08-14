@@ -1,9 +1,9 @@
 import { z } from 'zod/v4'
-import { ClaudeError } from '../../utils/errors.js'
-import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
-import { getBranch, getDefaultBranch, getIsGit } from '../../utils/git.js'
-import { logError } from '../../utils/log.js'
-import { jsonParse } from '../../utils/slowOperations.js'
+import { ClaudeError } from 'src/utils/errors.js'
+import { execFileNoThrow } from 'src/utils/execFileNoThrow.js'
+import { getBranch, getDefaultBranch, getIsGit } from 'src/utils/git.js'
+import { logError } from 'src/utils/log.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 
 export class AutofixPreconditionError extends ClaudeError {
   override name = 'Autofix PR failed'

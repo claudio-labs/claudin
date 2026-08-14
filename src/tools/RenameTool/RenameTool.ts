@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 
-import { buildTool, type ToolDef } from '../../Tool.js'
-import { lazySchema } from '../../utils/lazySchema.js'
+import { buildTool, type ToolDef } from 'src/Tool.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import { DESCRIPTION, RENAME_TOOL_NAME } from './prompt.js'
 import { renderToolResultMessage } from './UI.js'
 import {

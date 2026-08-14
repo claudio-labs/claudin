@@ -6,37 +6,37 @@ import type { RefObject } from 'react';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { every } from 'src/utils/set.js';
-import { getIsRemoteMode } from '../bootstrap/state.js';
-import type { Command } from '../commands.js';
-import { BLACK_CIRCLE } from '../constants/figures.js';
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
-import type { ScrollBoxHandle } from '../ink/components/ScrollBox.js';
-import { useTerminalNotification } from '../ink/useTerminalNotification.js';
-import { Box, Text } from '../ink.js';
-import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
-import type { Screen } from '../screens/REPL.js';
-import { useAppState } from '../state/AppState.js';
-import type { Tools } from '../Tool.js';
-import { findToolByName } from '../Tool.js';
-import type { AgentDefinitionsResult } from '../tools/AgentTool/loadAgentsDir.js';
-import type { Message as MessageType, NormalizedMessage, ProgressMessage as ProgressMessageType, RenderableMessage } from '../types/message.js';
-import { type AdvisorBlock, isAdvisorBlock } from '../utils/advisor.js';
-import { collapseBackgroundBashNotifications } from '../utils/collapseBackgroundBashNotifications.js';
-import { collapseHookSummaries } from '../utils/collapseHookSummaries.js';
-import { collapseReadSearchGroups } from '../utils/collapseReadSearch.js';
-import { collapseTeammateShutdowns } from '../utils/collapseTeammateShutdowns.js';
-import { getGlobalConfig } from '../utils/config.js';
-import { isEnvTruthy } from '../utils/envUtils.js';
-import { isFullscreenEnvEnabled } from '../utils/fullscreen.js';
-import { applyGrouping } from '../utils/groupToolUses.js';
-import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from '../utils/messages.js';
-import { plural } from '../utils/stringUtils.js';
-import { renderableSearchText } from '../utils/transcriptSearch.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import type { Command } from 'src/commands.js';
+import { BLACK_CIRCLE } from 'src/constants/figures.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import type { ScrollBoxHandle } from 'src/ink/components/ScrollBox.js';
+import { useTerminalNotification } from 'src/ink/useTerminalNotification.js';
+import { Box, Text } from 'src/ink.js';
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import type { Screen } from 'src/screens/REPL.js';
+import { useAppState } from 'src/state/AppState.js';
+import type { Tools } from 'src/Tool.js';
+import { findToolByName } from 'src/Tool.js';
+import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js';
+import type { Message as MessageType, NormalizedMessage, ProgressMessage as ProgressMessageType, RenderableMessage } from 'src/types/message.js';
+import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
+import { collapseBackgroundBashNotifications } from 'src/utils/collapseBackgroundBashNotifications.js';
+import { collapseHookSummaries } from 'src/utils/collapseHookSummaries.js';
+import { collapseReadSearchGroups } from 'src/utils/collapseReadSearch.js';
+import { collapseTeammateShutdowns } from 'src/utils/collapseTeammateShutdowns.js';
+import { getGlobalConfig } from 'src/utils/config.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { applyGrouping } from 'src/utils/groupToolUses.js';
+import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/utils/messages.js';
+import { plural } from 'src/utils/stringUtils.js';
+import { renderableSearchText } from 'src/utils/transcriptSearch.js';
 import { Divider } from './design-system/Divider.js';
 import type { UnseenDivider } from './FullscreenLayout.js';
 import { LogoV2 } from './LogoV2/LogoV2.js';
 import { StreamingMarkdown } from './Markdown.js';
-import { useStreamingTextValue } from '../hooks/useStreamingTextStore.js';
+import { useStreamingTextValue } from 'src/hooks/useStreamingTextStore.js';
 import { hasContentAfterIndex, MessageRow } from './MessageRow.js';
 import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedContext, type MessageActionsState } from './messageActions.js';
 import { AssistantThinkingMessage } from './messages/AssistantThinkingMessage.js';
@@ -85,7 +85,7 @@ const LogoHeader = React.memo(function LogoHeader(t0: LogoHeaderProps) {
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/index.js') : null;
-const BRIEF_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')).BRIEF_TOOL_NAME : null;
+const BRIEF_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')).BRIEF_TOOL_NAME : null;
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') ? (require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')).SEND_USER_FILE_TOOL_NAME : null;
 
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -259,11 +259,11 @@ type Props = {
   onSearchMatchesChange?: (count: number, current: number) => void;
   /** Paint an existing DOM subtree to fresh Screen, scan. Element comes
    *  from the main tree (all real providers). Message-relative positions. */
-  scanElement?: (el: import('../ink/dom.js').DOMElement) => import('../ink/render-to-screen.js').MatchPosition[];
+  scanElement?: (el: import('src/ink/dom.js').DOMElement) => import('src/ink/render-to-screen.js').MatchPosition[];
   /** Position-based CURRENT highlight. positions stable (msg-relative),
    *  rowOffset tracks scroll. null clears. */
   setPositions?: (state: {
-    positions: import('../ink/render-to-screen.js').MatchPosition[];
+    positions: import('src/ink/render-to-screen.js').MatchPosition[];
     rowOffset: number;
     currentIdx: number;
   } | null) => void;

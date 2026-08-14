@@ -1,6 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { CONTEXT_1M_BETA_HEADER } from '../constants/betas.js'
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+import { CONTEXT_1M_BETA_HEADER } from 'src/constants/betas.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { getGlobalConfig } from './config.js'
 import { isEnvTruthy } from './envUtils.js'
 import { getCanonicalName } from './model/model.js'

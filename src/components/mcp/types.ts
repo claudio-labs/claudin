@@ -10,7 +10,7 @@ import type {
   McpHTTPServerConfig,
   McpSSEServerConfig,
   McpStdioServerConfig,
-} from '../../services/mcp/types.js'
+} from 'src/services/mcp/types.js'
 
 type BaseServerInfo = {
   name: string

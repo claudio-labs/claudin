@@ -14,12 +14,12 @@ import { runDirectConnectBranch } from './directConnect.js';
 import { runSshRemoteBranch } from './sshRemote.js';
 import { runAssistantChatBranch } from './assistantChat.js';
 import { runResumeBranch } from './resume.js';
-import type { Root } from '../../ink.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import type { StatsStore } from '../../context/stats.js';
-import type { ThinkingConfig } from '../../utils/thinking.js';
-import type { BootContext } from '../bootContext.js';
-import type { ActionOptions } from '../action/parseOptions.js';
+import type { Root } from 'src/ink.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { StatsStore } from 'src/context/stats.js';
+import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { BootContext } from 'src/main/bootContext.js';
+import type { ActionOptions } from 'src/main/action/parseOptions.js';
 
 export type SessionConfig = {
   debug: boolean | undefined;

@@ -1,7 +1,7 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import type { Command } from '../../commands.js'
-import type { ToolUseContext } from '../../Tool.js'
-import { executeShellCommandsInPrompt } from '../../utils/promptShellExecution.js'
+import type { Command } from 'src/commands.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { executeShellCommandsInPrompt } from 'src/utils/promptShellExecution.js'
 import { buildAutofixPrompt } from './prompt.js'
 import { assertAutofixPreconditions } from './shared.js'
 

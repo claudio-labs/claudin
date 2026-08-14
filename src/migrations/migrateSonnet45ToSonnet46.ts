@@ -1,18 +1,18 @@
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   isMaxSubscriber,
   isProSubscriber,
   isTeamPremiumSubscriber,
-} from '../utils/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
-import { getAPIProvider } from '../utils/model/providers.js'
+} from 'src/utils/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../utils/settings/settings.js'
+} from 'src/utils/settings/settings.js'
 
 /**
  * Migrate Pro/Max/Team Premium first-party users off explicit Sonnet 4.5

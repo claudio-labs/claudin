@@ -11,12 +11,12 @@ import type {
   NormalizedMessage,
   NormalizedUserMessage,
   ProgressMessage,
-} from '../../types/message.js'
-import { count } from '../array.js'
+} from 'src/types/message.js'
+import { count } from 'src/utils/array.js'
 import {
   type HookAttachment,
   type HookPermissionDecisionAttachment,
-} from '../attachments.js'
+} from 'src/utils/attachments.js'
 import { EMPTY_STRING_SET } from './constants.js'
 import { isHookAttachmentMessage } from './normalize.js'
 import { getToolUseID } from './toolUseID.js'

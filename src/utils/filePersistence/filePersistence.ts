@@ -12,15 +12,15 @@ import { join, relative } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   type FilesApiConfig,
   uploadSessionFiles,
-} from '../../services/api/filesApi.js'
-import { getCwd } from '../cwd.js'
-import { errorMessage } from '../errors.js'
-import { logError } from '../log.js'
-import { getSessionIngressAuthToken } from '../sessionIngressAuth.js'
+} from 'src/services/api/filesApi.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { getSessionIngressAuthToken } from 'src/utils/sessionIngressAuth.js'
 import {
   findModifiedFiles,
   getEnvironmentKind,

@@ -3,11 +3,11 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
-} from '../../../utils/auth.js'
+} from 'src/utils/auth.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../analytics/index.js'
+} from 'src/services/analytics/index.js'
 
 /**
  * Fetch wrapper for claude.ai proxy connections. Attaches the OAuth bearer

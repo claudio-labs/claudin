@@ -22,8 +22,8 @@
  */
 import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk'
 import { tryGetActiveProvider } from './activeProvider.js'
-import { onGlobalConfigChange } from '../../utils/config.js'
-import { logForDebugging } from '../../utils/debug.js'
+import { onGlobalConfigChange } from 'src/utils/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
 
 // ---------------------------------------------------------------------------
 // Cache store

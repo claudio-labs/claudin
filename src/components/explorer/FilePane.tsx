@@ -1,6 +1,6 @@
 import React, { useRef } from 'react'
-import type { EditorHighlighter } from '../../native-ts/color-diff/index.js'
-import { Box, RawAnsi, Text } from '../../ink.js'
+import type { EditorHighlighter } from 'src/native-ts/color-diff/index.js'
+import { Box, RawAnsi, Text } from 'src/ink.js'
 import type { Cursor } from './editorState.js'
 
 const DIM = '\x1b[2m'

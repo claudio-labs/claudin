@@ -1,21 +1,21 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { UUID } from 'crypto'
-import { NO_CONTENT_MESSAGE } from '../../constants/messages.js'
+import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import {
   COMMAND_ARGS_TAG,
   COMMAND_NAME_TAG,
-} from '../../constants/xml.js'
-import { isAutoMemoryEnabled } from '../../memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
+} from 'src/constants/xml.js'
+import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import type {
   Message,
   MessageOrigin,
   NormalizedMessage,
   UserMessage,
-} from '../../types/message.js'
-import type { DeepImmutable } from '../../types/utils.js'
-import { stripIdeContextTags } from '../displayTags.js'
-import { escapeRegExp } from '../stringUtils.js'
+} from 'src/types/message.js'
+import type { DeepImmutable } from 'src/types/utils.js'
+import { stripIdeContextTags } from 'src/utils/displayTags.js'
+import { escapeRegExp } from 'src/utils/stringUtils.js'
 
 const MEMORY_CORRECTION_HINT =
   "\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions."

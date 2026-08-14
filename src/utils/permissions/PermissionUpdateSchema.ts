@@ -10,8 +10,8 @@ import z from 'zod/v4'
 import type {
   PermissionUpdate,
   PermissionUpdateDestination,
-} from '../../types/permissions.js'
-import { lazySchema } from '../lazySchema.js'
+} from 'src/types/permissions.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import { externalPermissionModeSchema } from './PermissionMode.js'
 import {
   permissionBehaviorSchema,

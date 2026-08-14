@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import type { ExecResult } from '../ShellCommand.js'
+import type { ExecResult } from 'src/utils/ShellCommand.js'
 import { readFullShellOutput } from './fullOutput.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'claudin-full-output-'))

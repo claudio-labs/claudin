@@ -1,4 +1,4 @@
-import { FRAME_INTERVAL_MS } from '../ink/constants.js'
+import { FRAME_INTERVAL_MS } from 'src/ink/constants.js'
 
 export type CoalescedUpdater<T> = {
   /** Queue a functional update. Order is preserved across flushes. */

@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from '../Tool.js'
-import type { Message } from '../types/message.js'
-import { getAttachments } from '../utils/attachments.js'
-import { createTask, getTaskListId, resetTaskList } from '../utils/tasks.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { Message } from 'src/types/message.js'
+import { getAttachments } from 'src/utils/attachments.js'
+import { createTask, getTaskListId, resetTaskList } from 'src/utils/tasks.js'
 
 const TASK_LIST_ID = 'reconcile-pipeline-test'
 let configDir: string

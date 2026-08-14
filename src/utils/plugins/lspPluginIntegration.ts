@@ -4,13 +4,13 @@ import { z } from 'zod/v4'
 import type {
   LspServerConfig,
   ScopedLspServerConfig,
-} from '../../services/lsp/types.js'
-import { expandEnvVarsInString } from '../../services/mcp/envExpansion.js'
-import type { LoadedPlugin, PluginError } from '../../types/plugin.js'
-import { logForDebugging } from '../debug.js'
-import { isENOENT, toError } from '../errors.js'
-import { logError } from '../log.js'
-import { jsonParse } from '../slowOperations.js'
+} from 'src/services/lsp/types.js'
+import { expandEnvVarsInString } from 'src/services/mcp/envExpansion.js'
+import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isENOENT, toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 import { getPluginDataDir } from './pluginDirectories.js'
 import {
   getPluginStorageId,

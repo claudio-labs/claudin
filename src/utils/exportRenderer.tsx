@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
 import stripAnsi from 'strip-ansi';
-import { Messages } from '../components/Messages.js';
-import { KeybindingProvider } from '../keybindings/KeybindingContext.js';
-import { loadKeybindingsSyncWithWarnings } from '../keybindings/loadUserBindings.js';
-import type { KeybindingContextName } from '../keybindings/types.js';
-import { AppStateProvider } from '../state/AppState.js';
-import type { Tools } from '../Tool.js';
-import type { Message } from '../types/message.js';
+import { Messages } from 'src/components/Messages.js';
+import { KeybindingProvider } from 'src/keybindings/KeybindingContext.js';
+import { loadKeybindingsSyncWithWarnings } from 'src/keybindings/loadUserBindings.js';
+import type { KeybindingContextName } from 'src/keybindings/types.js';
+import { AppStateProvider } from 'src/state/AppState.js';
+import type { Tools } from 'src/Tool.js';
+import type { Message } from 'src/types/message.js';
 import { renderToAnsiString } from './staticRender.js';
 
 /**

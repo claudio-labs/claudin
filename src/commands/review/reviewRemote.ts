@@ -10,25 +10,25 @@
  */
 
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import { fetchUltrareviewQuota } from '../../services/api/ultrareviewQuota.js'
-import { fetchUtilization } from '../../services/api/usage.js'
-import type { ToolUseContext } from '../../Tool.js'
+} from 'src/services/analytics/index.js'
+import { fetchUltrareviewQuota } from 'src/services/api/ultrareviewQuota.js'
+import { fetchUtilization } from 'src/services/api/usage.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import {
   checkRemoteAgentEligibility,
   formatPreconditionError,
   getRemoteTaskSessionUrl,
   registerRemoteAgentTask,
-} from '../../tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { isEnterpriseSubscriber, isTeamSubscriber } from '../../utils/auth.js'
-import { detectCurrentRepositoryWithHost } from '../../utils/detectRepository.js'
-import { execFileNoThrow } from '../../utils/execFileNoThrow.js'
-import { getDefaultBranch, gitExe } from '../../utils/git.js'
-import { teleportToRemote } from '../../utils/teleport.js'
+} from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'
+import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/utils/auth.js'
+import { detectCurrentRepositoryWithHost } from 'src/utils/detectRepository.js'
+import { execFileNoThrow } from 'src/utils/execFileNoThrow.js'
+import { getDefaultBranch, gitExe } from 'src/utils/git.js'
+import { teleportToRemote } from 'src/utils/teleport.js'
 
 // One-time session flag: once the user confirms overage billing via the
 // dialog, all subsequent /ultrareview invocations in this session proceed

@@ -4,7 +4,7 @@ import type { AssistantMessage } from 'src/types/message.js'
 import { createUserMessage } from 'src/utils/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'
-import { withVCR } from '../../vcr.js'
+import { withVCR } from 'src/services/vcr.js'
 import { queryModelWithoutStreaming } from './nonStreaming.js'
 import type { HaikuOptions, QueryWithModelOptions } from './types.js'
 

@@ -4,24 +4,24 @@ import { unlinkSync, writeFileSync } from 'fs'
 import { readFile, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { Box, RawAnsi, Text, useInput, useTheme } from '../../ink.js'
-import instances from '../../ink/instances.js'
-import { stringWidth } from '../../ink/stringWidth.js'
-import TextInput from '../TextInput.js'
-import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { getCwd } from '../../utils/cwd.js'
-import { logError } from '../../utils/log.js'
-import { editFileInEditor } from '../../utils/promptEditor.js'
-import { getTheme, themeColorToAnsi } from '../../utils/theme.js'
-import { truncateToWidth } from '../../utils/truncate.js'
+import { Box, RawAnsi, Text, useInput, useTheme } from 'src/ink.js'
+import instances from 'src/ink/instances.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import TextInput from 'src/components/TextInput.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logError } from 'src/utils/log.js'
+import { editFileInEditor } from 'src/utils/promptEditor.js'
+import { getTheme, themeColorToAnsi } from 'src/utils/theme.js'
+import { truncateToWidth } from 'src/utils/truncate.js'
 import {
   parseWorkflow,
   validateWorkflowAgents,
   validateWorkflowStructure,
-} from '../../tools/AgentWorkflow/loadWorkflows.js'
-import { getWorkflowsDir } from '../../tools/AgentWorkflow/paths.js'
-import { renameStep, serializeWorkflow } from '../../tools/AgentWorkflow/serializeWorkflow.js'
-import type { WorkflowDef } from '../../tools/AgentWorkflow/types.js'
+} from 'src/tools/AgentWorkflow/loadWorkflows.js'
+import { getWorkflowsDir } from 'src/tools/AgentWorkflow/paths.js'
+import { renameStep, serializeWorkflow } from 'src/tools/AgentWorkflow/serializeWorkflow.js'
+import type { WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
 
 const PHASES_WIDTH = 26
 const FIELDS_PANE_HEIGHT = 7
@@ -109,7 +109,7 @@ export function WorkflowEditor({
 
   // Dynamic import: the agent registry is heavy and this dialog is cold.
   useEffect(() => {
-    import('../../tools/AgentWorkflow/agentTypes.js')
+    import('src/tools/AgentWorkflow/agentTypes.js')
       .then(m => m.getKnownAgentTypes(getCwd()))
       .then(setKnownAgents)
       .catch(error => logError(error))

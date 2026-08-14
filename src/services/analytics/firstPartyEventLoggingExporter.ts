@@ -10,28 +10,28 @@ import { randomUUID } from 'crypto'
 import { appendFile, mkdir, readdir, unlink, writeFile } from 'fs/promises'
 import * as path from 'path'
 import type { CoreUserData } from 'src/utils/user.js'
-import { tryGetActiveProvider } from '../api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
-} from '../../bootstrap/state.js'
-import { ClaudeCodeInternalEvent } from '../../types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
-import { GrowthbookExperimentEvent } from '../../types/generated/events_mono/growthbook/v1/growthbook_experiment_event.js'
+} from 'src/bootstrap/state.js'
+import { ClaudeCodeInternalEvent } from 'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
+import { GrowthbookExperimentEvent } from 'src/types/generated/events_mono/growthbook/v1/growthbook_experiment_event.js'
 import {
   getClaudeAIOAuthTokens,
   hasProfileScope,
   isClaudeAISubscriber,
-} from '../../utils/auth.js'
-import { checkHasTrustDialogAccepted } from '../../utils/config.js'
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { errorMessage, isFsInaccessible, toError } from '../../utils/errors.js'
-import { getAuthHeaders } from '../../utils/http.js'
-import { readJSONLFile } from '../../utils/json.js'
-import { logError } from '../../utils/log.js'
-import { sleep } from '../../utils/sleep.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { getClaudeCodeUserAgent } from '../../utils/userAgent.js'
-import { isOAuthTokenExpired } from '../oauth/client.js'
+} from 'src/utils/auth.js'
+import { checkHasTrustDialogAccepted } from 'src/utils/config.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { errorMessage, isFsInaccessible, toError } from 'src/utils/errors.js'
+import { getAuthHeaders } from 'src/utils/http.js'
+import { readJSONLFile } from 'src/utils/json.js'
+import { logError } from 'src/utils/log.js'
+import { sleep } from 'src/utils/sleep.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { isOAuthTokenExpired } from 'src/services/oauth/client.js'
 import { stripProtoFields } from './index.js'
 import { type EventMetadata, to1PEventFormat } from './metadata.js'
 

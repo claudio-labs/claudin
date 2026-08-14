@@ -20,13 +20,13 @@
  */
 
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import { _resetAllClippedIdsForTesting } from '../services/compact/stableStubState.js'
+import { _resetAllClippedIdsForTesting } from 'src/services/compact/stableStubState.js'
 
 // Capture real modules before mocking so afterAll can restore them
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
-const realAnalytics = { ...(await import('../services/analytics/index.js')) }
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
+const realAnalytics = { ...(await import('src/services/analytics/index.js')) }
 const realDebug = { ...(await import('./debug.js')) }
-const realBootstrapState = { ...(await import('../bootstrap/state.js')) }
+const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
 const realEnvUtils = { ...(await import('./envUtils.js')) }
 const realFsOperations = { ...(await import('./fsOperations.js')) }
 const realLog = { ...(await import('./log.js')) }
@@ -34,7 +34,7 @@ const realSlowOperations = { ...(await import('./slowOperations.js')) }
 const realFile = { ...(await import('./file.js')) }
 
 // ── Shared mocks: silence telemetry/analytics/growthbook used by deep imports ──
-mock.module('../services/analytics/growthbook.js', () => ({
+mock.module('src/services/analytics/growthbook.js', () => ({
   getFeatureValue_CACHED_MAY_BE_STALE: () => false,
   getFeatureValue_CACHED_WITH_REFRESH: () => false,
   getFeatureValue_DEPRECATED: async () => false,
@@ -54,7 +54,7 @@ mock.module('../services/analytics/growthbook.js', () => ({
   initializeGrowthBook: async () => null,
   getAllGrowthBookFeatures: () => ({}),
 }))
-mock.module('../services/analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: () => {},
   logEventAsync: async () => {},
   attachAnalyticsSink: () => {},
@@ -68,7 +68,7 @@ describe('cache bounds invariants', () => {
       cachedLexer,
       __TEST_ONLY_getTokenCacheSize,
       __TEST_ONLY_resetTokenCache,
-    } = await import('../components/markdownTokenCache.js')
+    } = await import('src/components/markdownTokenCache.js')
 
     __TEST_ONLY_resetTokenCache()
     // Use markdown syntax (header marker) so cachedLexer takes the cache
@@ -95,7 +95,7 @@ describe('cache bounds invariants', () => {
 
   test('imageStore storedImagePaths FIFO cap = 200', async () => {
     mock.module('./debug.js', () => ({ logForDebugging: () => {} }))
-    mock.module('../bootstrap/state.js', () => ({
+    mock.module('src/bootstrap/state.js', () => ({
       ...realBootstrapState,
       getSessionId: () => 'test-session',
     }))
@@ -140,7 +140,7 @@ describe('cache bounds invariants', () => {
       markDiagnosticsAsDelivered,
       _getDeliveredDiagnosticsCountForTesting,
       _resetDeliveredDiagnosticsForTesting,
-    } = await import('../services/lsp/LSPDiagnosticRegistry.js')
+    } = await import('src/services/lsp/LSPDiagnosticRegistry.js')
 
     _resetDeliveredDiagnosticsForTesting()
     for (let i = 0; i < 1000; i++) {
@@ -188,13 +188,13 @@ describe('cache bounds invariants', () => {
 afterAll(() => {
   // Restore modules FIRST so getSessionId() is the real function when
   // _resetAllClippedIdsForTesting() syncs lastSeenSessionId below.
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('../services/analytics/index.js', () => realAnalytics)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/index.js', () => realAnalytics)
   mock.module('src/services/analytics/index.js', () => realAnalytics)
   mock.module('./debug.js', () => realDebug)
   mock.module('src/utils/debug.js', () => realDebug)
-  mock.module('../bootstrap/state.js', () => realBootstrapState)
+  mock.module('src/bootstrap/state.js', () => realBootstrapState)
   mock.module('src/bootstrap/state.js', () => realBootstrapState)
   mock.module('./envUtils.js', () => realEnvUtils)
   mock.module('src/utils/envUtils.js', () => realEnvUtils)

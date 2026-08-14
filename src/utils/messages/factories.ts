@@ -7,15 +7,15 @@ import type {
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { randomUUID, type UUID } from 'crypto'
 import type { SDKAssistantMessageError } from 'src/entrypoints/agentSdkTypes.js'
-import { NO_CONTENT_MESSAGE } from '../../constants/messages.js'
+import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import {
   COMMAND_ARGS_TAG,
   COMMAND_MESSAGE_TAG,
   COMMAND_NAME_TAG,
   LOCAL_COMMAND_CAVEAT_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
-} from '../../constants/xml.js'
-import type { Progress } from '../../Tool.js'
+} from 'src/constants/xml.js'
+import type { Progress } from 'src/Tool.js'
 import type {
   AssistantMessage,
   MessageOrigin,
@@ -39,10 +39,10 @@ import type {
   SystemTurnDurationMessage,
   ToolUseSummaryMessage,
   UserMessage,
-} from '../../types/message.js'
-import { logForDebugging } from '../debug.js'
-import { formatTokens } from '../format.js'
-import type { PermissionMode } from '../../types/permissions.js'
+} from 'src/types/message.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { formatTokens } from 'src/utils/format.js'
+import type { PermissionMode } from 'src/types/permissions.js'
 import {
   CANCEL_MESSAGE,
   INTERRUPT_MESSAGE,

@@ -1,16 +1,16 @@
 import figures from 'figures';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { CommandResultDisplay } from '../../commands.js';
-import { Box, color, Link, Text, useTheme } from '../../ink.js';
-import { useKeybinding } from '../../keybindings/useKeybinding.js';
-import { AuthenticationCancelledError, performMCPOAuthFlow } from '../../services/mcp/auth.js';
-import { capitalize } from '../../utils/stringUtils.js';
-import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
-import { Select } from '../CustomSelect/index.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
-import { Spinner } from '../Spinner.js';
+import type { CommandResultDisplay } from 'src/commands.js';
+import { Box, color, Link, Text, useTheme } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { AuthenticationCancelledError, performMCPOAuthFlow } from 'src/services/mcp/auth.js';
+import { capitalize } from 'src/utils/stringUtils.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/components/Spinner.js';
 import type { AgentMcpServerInfo } from './types.js';
 type Props = {
   agentServer: AgentMcpServerInfo;

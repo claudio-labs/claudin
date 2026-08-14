@@ -3,50 +3,50 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 // Dead code elimination: conditional import for COORDINATOR_MODE
 /* eslint-disable @typescript-eslint/no-require-imports */
-const coordinatorModule = feature('COORDINATOR_MODE') ? require('../../coordinator/coordinatorMode.js') as typeof import('../../coordinator/coordinatorMode.js') : undefined;
+const coordinatorModule = feature('COORDINATOR_MODE') ? require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js') : undefined;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { Box, Text, Link } from '../../ink.js';
+import { Box, Text, Link } from 'src/ink.js';
 import * as React from 'react';
 import figures from 'figures';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { VimMode, PromptInputMode } from '../../types/textInputTypes.js';
-import type { ToolPermissionContext } from '../../Tool.js';
+import type { VimMode, PromptInputMode } from 'src/types/textInputTypes.js';
+import type { ToolPermissionContext } from 'src/Tool.js';
 import { isVimModeEnabled } from './utils.js';
-import { useShortcutDisplay } from '../../keybindings/useShortcutDisplay.js';
-import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from '../../utils/permissions/PermissionMode.js';
-import { BackgroundTaskStatus } from '../tasks/BackgroundTaskStatus.js';
-import { footerTreeBaseIndex, getVisibleAgentTasks } from '../tasks/footerTaskGeometry.js';
-import { isPanelAgentTask } from '../../tasks/LocalAgentTask/LocalAgentTask.js';
-import { isBackgroundTask } from '../../tasks/types.js';
-import { count } from '../../utils/array.js';
-import { shouldHideTasksFooter } from '../tasks/taskStatusUtils.js';
-import { resolveFooterTreeRow } from '../tasks/footerSelection.js';
-import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
-import { TeamStatus } from '../teams/TeamStatus.js';
-import { isInProcessEnabled } from '../../utils/swarm/backends/registry.js';
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/utils/permissions/PermissionMode.js';
+import { BackgroundTaskStatus } from 'src/components/tasks/BackgroundTaskStatus.js';
+import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/components/tasks/footerTaskGeometry.js';
+import { isPanelAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
+import { isBackgroundTask } from 'src/tasks/types.js';
+import { count } from 'src/utils/array.js';
+import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
+import { resolveFooterTreeRow } from 'src/components/tasks/footerSelection.js';
+import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js';
+import { TeamStatus } from 'src/components/teams/TeamStatus.js';
+import { isInProcessEnabled } from 'src/utils/swarm/backends/registry.js';
 import { type AppState, useAppState, useAppStateStore } from 'src/state/AppState.js';
 
 /** One entry of AppState.teamContext.teammates. */
 type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
 /** One entry of AppState.tasks. */
 type AppTask = AppState['tasks'][string];
-import { getIsRemoteMode } from '../../bootstrap/state.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
 import HistorySearchInput from './HistorySearchInput.js';
-import { usePrStatus } from '../../hooks/usePrStatus.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
-import { Byline } from '../design-system/Byline.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { useTasksV2 } from '../../hooks/useTasksV2.js';
-import { formatDuration } from '../../utils/format.js';
+import { usePrStatus } from 'src/hooks/usePrStatus.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useTasksV2 } from 'src/hooks/useTasksV2.js';
+import { formatDuration } from 'src/utils/format.js';
 import { VoiceWarmupHint } from './VoiceIndicator.js';
-import { useVoiceEnabled } from '../../hooks/useVoiceEnabled.js';
-import { type VoiceState, useVoiceState } from '../../context/voice.js';
-import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
-import { isXtermJs } from '../../ink/terminal.js';
-import { useHasSelection, useSelection } from '../../ink/hooks/use-selection.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
-import { getPlatform } from '../../utils/platform.js';
-import { PrBadge } from '../PrBadge.js';
+import { useVoiceEnabled } from 'src/hooks/useVoiceEnabled.js';
+import { type VoiceState, useVoiceState } from 'src/context/voice.js';
+import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isXtermJs } from 'src/ink/terminal.js';
+import { useHasSelection, useSelection } from 'src/ink/hooks/use-selection.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getPlatform } from 'src/utils/platform.js';
+import { PrBadge } from 'src/components/PrBadge.js';
 
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */

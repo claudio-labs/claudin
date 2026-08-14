@@ -9,14 +9,14 @@
  * import from here (QueryEngine.ts, cli/print.ts).
  */
 
-import type { Command } from '../commands.js'
-import { getSystemPrompt } from '../constants/prompts.js'
-import { getSystemContext, getUserContext } from '../context.js'
-import type { MCPServerConnection } from '../services/mcp/types.js'
-import type { AppState } from '../state/AppStateStore.js'
-import type { Tools, ToolUseContext } from '../Tool.js'
-import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js'
-import type { Message } from '../types/message.js'
+import type { Command } from 'src/commands.js'
+import { getSystemPrompt } from 'src/constants/prompts.js'
+import { getSystemContext, getUserContext } from 'src/context.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import type { Tools, ToolUseContext } from 'src/Tool.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import type { Message } from 'src/types/message.js'
 import { createAbortController } from './abortController.js'
 import type { FileStateCache } from './fileStateCache.js'
 import type { CacheSafeParams } from './forkedAgent.js'

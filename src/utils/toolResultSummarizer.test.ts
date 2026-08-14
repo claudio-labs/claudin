@@ -2,12 +2,12 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { resetGlobalConfigForTests } from './config.js'
 
-const realAnalyticsMetadata = { ...(await import('../services/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
 
 afterAll(() => {
-  mock.module('../services/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
@@ -17,7 +17,7 @@ afterAll(() => {
 // DEFAULT_GLOBAL_CONFIG.toolResultSummarizerEnabled === true. Tests flip it via
 // saveGlobalConfig. This avoids mock.module pollution across test files in the
 // same run (config.js has 60+ exports; stubbing them all is fragile).
-mock.module('../services/analytics/metadata.js', () => ({
+mock.module('src/services/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
     name.startsWith('mcp__') ? 'mcp_tool' : name,
   // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
@@ -36,7 +36,7 @@ mock.module('../services/analytics/metadata.js', () => ({
 
 const loggedEvents: Array<{ name: string; metadata: Record<string, unknown> }> =
   []
-mock.module('../services/analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: (name: string, metadata: Record<string, unknown>) => {
     loggedEvents.push({ name, metadata })
   },
@@ -53,7 +53,7 @@ const {
   collapseDigitTemplates,
 } = await import('./toolResultSummarizer.js')
 const { saveGlobalConfig } = await import('./config.js')
-const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('../tools/AgentTool/constants.js')
+const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
 
 const AGENT_SUMMARIZE_THRESHOLD = 8_000
 const MCP_SUMMARIZE_THRESHOLD = 8_000

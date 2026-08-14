@@ -5,19 +5,19 @@
 // binary directly (e2e proxy test). Gated by feature('SSH_REMOTE').
 // Extracted from src/main.tsx (ROADMAP 11g Fase 5b).
 
-import { setCwdState, setDirectConnectServerUrl, setOriginalCwd } from '../../bootstrap/state.js';
-import type { Command } from '../../commands.js';
-import type { Root } from '../../ink.js';
-import { exitWithError, renderAndRun } from '../../interactiveHelpers.js';
-import { launchRepl } from '../../replLauncher.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
-import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
-import { createSystemMessage } from '../../utils/messages.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import type { StatsStore } from '../../context/stats.js';
-import type { ThinkingConfig } from '../../utils/thinking.js';
-import type { BootContext } from '../bootContext.js';
+import { setCwdState, setDirectConnectServerUrl, setOriginalCwd } from 'src/bootstrap/state.js';
+import type { Command } from 'src/commands.js';
+import type { Root } from 'src/ink.js';
+import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import { launchRepl } from 'src/replLauncher.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import { createSystemMessage } from 'src/utils/messages.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { StatsStore } from 'src/context/stats.js';
+import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { BootContext } from 'src/main/bootContext.js';
 
 export type SshRemoteBranchDeps = {
   root: Root;

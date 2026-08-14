@@ -1,7 +1,7 @@
-import { getOriginalCwd } from '../bootstrap/state.js'
-import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
-import type { Tool, ToolPermissionContext } from '../Tool.js'
-import type { AgentDefinitionsResult } from '../tools/AgentTool/loadAgentsDir.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import type { Tool, ToolPermissionContext } from 'src/Tool.js'
+import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { countMcpToolTokens } from './analyzeContext.js'
 import {
   getLargeMemoryFiles,

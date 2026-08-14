@@ -16,7 +16,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import {
   _resetDeferCacheMarkerForTesting,
   addCacheBreakpoints,
-} from '../paramBuilders.js'
+} from 'src/services/api/claude/paramBuilders.js'
 
 type AnyMsg = {
   type: 'user' | 'assistant'

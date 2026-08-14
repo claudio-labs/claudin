@@ -16,20 +16,20 @@ import {
   getInitializationStatus,
   getLspServerManager,
   waitForInitialization,
-} from '../../services/lsp/manager.js'
-import type { ValidationResult } from '../../Tool.js'
-import { buildTool, type ToolDef } from '../../Tool.js'
-import { uniq } from '../../utils/array.js'
-import { getCwd } from '../../utils/cwd.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { isENOENT, toError } from '../../utils/errors.js'
-import { execFileNoThrowWithCwd } from '../../utils/execFileNoThrow.js'
-import { getFsImplementation } from '../../utils/fsOperations.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { logError } from '../../utils/log.js'
-import { expandPath } from '../../utils/path.js'
-import { checkReadPermissionForTool } from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
+} from 'src/services/lsp/manager.js'
+import type { ValidationResult } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/Tool.js'
+import { uniq } from 'src/utils/array.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isENOENT, toError } from 'src/utils/errors.js'
+import { execFileNoThrowWithCwd } from 'src/utils/execFileNoThrow.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { logError } from 'src/utils/log.js'
+import { expandPath } from 'src/utils/path.js'
+import { checkReadPermissionForTool } from 'src/utils/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/utils/permissions/PermissionResult.js'
 import {
   formatDocumentSymbolResult,
   formatFindReferencesResult,

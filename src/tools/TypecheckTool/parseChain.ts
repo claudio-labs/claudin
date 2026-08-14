@@ -1,15 +1,15 @@
 import {
   parseDiagnostics,
   type ParseOutcome,
-} from '../shared/diagnostics/index.js'
-import { parseCargoJson } from '../shared/diagnostics/cargoJson.js'
-import { parseDartMachine } from '../shared/diagnostics/dartMachine.js'
-import { parseDenoText } from '../shared/diagnostics/denoText.js'
-import { parseGnuStyle } from '../shared/diagnostics/gnuStyle.js'
-import { parseMsvcStyle } from '../shared/diagnostics/msvcStyle.js'
-import { parsePhpstanJson, parsePsalmJson } from '../shared/diagnostics/phpJson.js'
-import { parseMypyJson, parsePyrightJson } from '../shared/diagnostics/pythonJson.js'
-import type { DiagnosticParser, ParseInput } from '../shared/diagnostics/types.js'
+} from 'src/tools/shared/diagnostics/index.js'
+import { parseCargoJson } from 'src/tools/shared/diagnostics/cargoJson.js'
+import { parseDartMachine } from 'src/tools/shared/diagnostics/dartMachine.js'
+import { parseDenoText } from 'src/tools/shared/diagnostics/denoText.js'
+import { parseGnuStyle } from 'src/tools/shared/diagnostics/gnuStyle.js'
+import { parseMsvcStyle } from 'src/tools/shared/diagnostics/msvcStyle.js'
+import { parsePhpstanJson, parsePsalmJson } from 'src/tools/shared/diagnostics/phpJson.js'
+import { parseMypyJson, parsePyrightJson } from 'src/tools/shared/diagnostics/pythonJson.js'
+import type { DiagnosticParser, ParseInput } from 'src/tools/shared/diagnostics/types.js'
 import type { Checker } from './types.js'
 
 /**

@@ -1,13 +1,13 @@
 import { z } from 'zod/v4'
-import type { Tool } from '../../Tool.js'
+import type { Tool } from 'src/Tool.js'
 import {
   SYNTHETIC_OUTPUT_TOOL_NAME,
   SyntheticOutputTool,
-} from '../../tools/SyntheticOutputTool/SyntheticOutputTool.js'
-import { substituteArguments } from '../argumentSubstitution.js'
-import { lazySchema } from '../lazySchema.js'
-import type { SetAppState } from '../messageQueueManager.js'
-import { hasSuccessfulToolCall } from '../messages.js'
+} from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
+import { substituteArguments } from 'src/utils/argumentSubstitution.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import type { SetAppState } from 'src/utils/messageQueueManager.js'
+import { hasSuccessfulToolCall } from 'src/utils/messages.js'
 import { addFunctionHook } from './sessionHooks.js'
 
 /**

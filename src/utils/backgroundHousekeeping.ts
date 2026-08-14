@@ -1,11 +1,11 @@
 import { feature } from 'bun:bundle'
-import { initAutoDream } from '../services/autoDream/autoDream.js'
-import { initMagicDocs } from '../services/MagicDocs/magicDocs.js'
+import { initAutoDream } from 'src/services/autoDream/autoDream.js'
+import { initMagicDocs } from 'src/services/MagicDocs/magicDocs.js'
 import { initSkillImprovement } from './hooks/skillImprovement.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('../services/extractMemories/extractMemories.js') as typeof import('../services/extractMemories/extractMemories.js'))
+  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
   : null
 const registerProtocolModule = feature('LODESTONE')
   ? (require('./deepLink/registerProtocol.js') as typeof import('./deepLink/registerProtocol.js'))
@@ -13,7 +13,7 @@ const registerProtocolModule = feature('LODESTONE')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-import { getIsInteractive, getLastInteractionTime } from '../bootstrap/state.js'
+import { getIsInteractive, getLastInteractionTime } from 'src/bootstrap/state.js'
 import { cleanupOldMessageFilesInBackground } from './cleanup.js'
 import { cleanupOldVersions } from './nativeInstaller/index.js'
 import { autoUpdateMarketplacesAndPluginsInBackground } from './plugins/pluginAutoupdate.js'

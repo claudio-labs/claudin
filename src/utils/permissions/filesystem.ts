@@ -12,33 +12,33 @@ import {
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
 import type { z } from 'zod/v4'
-import { getOriginalCwd, getSessionId } from '../../bootstrap/state.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import type { AnyObject, Tool, ToolPermissionContext } from '../../Tool.js'
-import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
-import { getCwd } from '../cwd.js'
-import { getClaudinConfigHomeDir } from '../envUtils.js'
+import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
+import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import type { AnyObject, Tool, ToolPermissionContext } from 'src/Tool.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import {
   getFsImplementation,
   getPathsForPermissionCheck,
-} from '../fsOperations.js'
+} from 'src/utils/fsOperations.js'
 import {
   containsPathTraversal,
   expandPath,
   getDirectoryForPath,
   sanitizePath,
-} from '../path.js'
-import { getPlansDirectory } from '../plans.js'
-import { getPlatform } from '../platform.js'
-import { getProjectDir } from '../sessionStorage.js'
-import { SETTING_SOURCES } from '../settings/constants.js'
+} from 'src/utils/path.js'
+import { getPlansDirectory } from 'src/utils/plans.js'
+import { getPlatform } from 'src/utils/platform.js'
+import { getProjectDir } from 'src/utils/sessionStorage.js'
+import { SETTING_SOURCES } from 'src/utils/settings/constants.js'
 import {
   getSettingsFilePathForSource,
   getSettingsRootPathForSource,
-} from '../settings/settings.js'
-import { containsVulnerableUncPath } from '../shell/readOnlyCommandValidation.js'
-import { getToolResultsDir } from '../toolResultStorage.js'
-import { windowsPathToPosixPath } from '../windowsPaths.js'
+} from 'src/utils/settings/settings.js'
+import { containsVulnerableUncPath } from 'src/utils/shell/readOnlyCommandValidation.js'
+import { getToolResultsDir } from 'src/utils/toolResultStorage.js'
+import { windowsPathToPosixPath } from 'src/utils/windowsPaths.js'
 import type {
   PermissionDecision,
   PermissionResult,

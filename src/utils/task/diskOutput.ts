@@ -8,11 +8,11 @@ import {
   unlink,
 } from 'fs/promises'
 import { join } from 'path'
-import { getSessionId } from '../../bootstrap/state.js'
-import { getErrnoCode } from '../errors.js'
-import { readFileRange, tailFile } from '../fsOperations.js'
-import { logError } from '../log.js'
-import { getProjectTempDir } from '../permissions/filesystem.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { getErrnoCode } from 'src/utils/errors.js'
+import { readFileRange, tailFile } from 'src/utils/fsOperations.js'
+import { logError } from 'src/utils/log.js'
+import { getProjectTempDir } from 'src/utils/permissions/filesystem.js'
 
 // SECURITY: O_NOFOLLOW prevents following symlinks when opening task output files.
 // Without this, an attacker in the sandbox could create symlinks in the tasks directory

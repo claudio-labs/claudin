@@ -1,8 +1,8 @@
-import type { Command } from '../../commands.js'
+import type { Command } from 'src/commands.js'
 import {
   isVoiceGrowthBookEnabled,
   isVoiceModeEnabled,
-} from '../../voice/voiceModeEnabled.js'
+} from 'src/voice/voiceModeEnabled.js'
 
 const voice = {
   type: 'local',

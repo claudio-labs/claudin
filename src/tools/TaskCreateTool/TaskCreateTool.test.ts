@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import {
   getTaskListId,
   isTodoV2Enabled,
   listTasks,
   resetTaskList,
-} from '../../utils/tasks.js'
+} from 'src/utils/tasks.js'
 import { TaskCreateTool } from './TaskCreateTool.js'
 
 // Pin task list ID + isolated config dir so each test sees a clean store.

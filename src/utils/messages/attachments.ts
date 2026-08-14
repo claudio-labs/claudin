@@ -3,44 +3,44 @@ import type {
   ContentBlockParam,
   TextBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { companionIntroText } from '../../buddy/prompt.js'
-import { OUTPUT_STYLE_CONFIG } from '../../constants/outputStyles.js'
-import { DiagnosticTrackingService } from '../../services/diagnosticTracking.js'
-import type { AnyObject } from '../../Tool.js'
+import { companionIntroText } from 'src/buddy/prompt.js'
+import { OUTPUT_STYLE_CONFIG } from 'src/constants/outputStyles.js'
+import { DiagnosticTrackingService } from 'src/services/diagnosticTracking.js'
+import type { AnyObject } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
 import {
   FileReadTool,
   type Output as FileReadToolOutput,
-} from '../../tools/FileReadTool/FileReadTool.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
 import {
   FILE_READ_TOOL_NAME,
   MAX_LINES_TO_READ,
 } from 'src/tools/FileReadTool/prompt.js'
-import { SEND_MESSAGE_TOOL_NAME } from '../../tools/SendMessageTool/constants.js'
-import { TASK_CREATE_TOOL_NAME } from '../../tools/TaskCreateTool/constants.js'
-import { TASK_OUTPUT_TOOL_NAME } from '../../tools/TaskOutputTool/constants.js'
-import { TASK_STOP_TOOL_NAME } from '../../tools/TaskStopTool/prompt.js'
-import { TASK_UPDATE_TOOL_NAME } from '../../tools/TaskUpdateTool/constants.js'
-import { buildTaskReconcileReminder } from '../../query/taskReconcile.js'
+import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
+import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
+import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
+import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
+import { buildTaskReconcileReminder } from 'src/query/taskReconcile.js'
 import type {
   MessageOrigin,
   UserMessage,
-} from '../../types/message.js'
-import { isAgentSwarmsEnabled } from '../agentSwarmsEnabled.js'
+} from 'src/types/message.js'
+import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
 import {
   type Attachment,
   memoryHeader,
-} from '../attachments.js'
-import { quote } from '../bash/shellQuote.js'
-import { logAntError } from '../debug.js'
-import { isEnvTruthy } from '../envUtils.js'
-import { formatFileSize, formatNumber } from '../format.js'
-import { logMCPDebug } from '../log.js'
-import { jsonStringify } from '../slowOperations.js'
-import { isTodoV2Enabled } from '../tasks.js'
-import type { Tool } from '../../Tool.js'
+} from 'src/utils/attachments.js'
+import { quote } from 'src/utils/bash/shellQuote.js'
+import { logAntError } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { formatFileSize, formatNumber } from 'src/utils/format.js'
+import { logMCPDebug } from 'src/utils/log.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isTodoV2Enabled } from 'src/utils/tasks.js'
+import type { Tool } from 'src/Tool.js'
 import { createUserMessage } from './factories.js'
 import { getAutoModeInstructions } from './autoMode.js'
 import { getPlanModeInstructions } from './planMode.js'
@@ -51,9 +51,9 @@ import {
 } from './text.js'
 
 // Lazy import to avoid circular dependency (teammateMailbox -> teammate -> ... -> messages)
-function getTeammateMailbox(): typeof import('../teammateMailbox.js') {
+function getTeammateMailbox(): typeof import('src/utils/teammateMailbox.js') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('../teammateMailbox.js')
+  return require('src/utils/teammateMailbox.js')
 }
 
 export function normalizeAttachmentForAPI(
@@ -793,7 +793,7 @@ You have exited auto mode. The user may now want to interact more directly. You 
       if (feature('HISTORY_SNIP')) {
         const { SNIP_NUDGE_TEXT } =
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          require('../../services/compact/snipCompact.js') as typeof import('../../services/compact/snipCompact.js')
+          require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js')
         return wrapMessagesInSystemReminder([
           createUserMessage({
             content: SNIP_NUDGE_TEXT,

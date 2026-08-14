@@ -8,16 +8,16 @@
  * all ink-free — so the wiring is testable in isolation.
  */
 
-import { APPLY_PATCH_TOOL_NAME } from '../../tools/ApplyPatchTool/prompt.js'
-import { applyPatchCacheInvalidationPaths } from '../../tools/ApplyPatchTool/applyPatch.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
-import { ENTER_WORKTREE_TOOL_NAME } from '../../tools/EnterWorktreeTool/constants.js'
-import { EXIT_WORKTREE_TOOL_NAME } from '../../tools/ExitWorktreeTool/constants.js'
-import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
-import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/constants.js'
-import { MONITOR_TOOL_NAME } from '../../tools/MonitorTool/toolName.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from '../../tools/NotebookEditTool/constants.js'
-import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
+import { applyPatchCacheInvalidationPaths } from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.js'
+import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
+import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { invalidateAll, invalidateForPath } from './toolResultCache.js'
 
 /**

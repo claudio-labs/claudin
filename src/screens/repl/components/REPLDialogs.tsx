@@ -33,20 +33,20 @@
 
 import * as React from 'react'
 import { feature } from 'bun:bundle'
-import { saveGlobalConfig } from '../../../utils/config.js'
-import { logEvent } from '../../../services/analytics/index.js'
-import { logError } from '../../../utils/log.js'
-import { CostThresholdDialog } from '../../../components/CostThresholdDialog.js'
-import { IdleReturnDialog } from '../../../components/IdleReturnDialog.js'
-import { ElicitationDialog } from '../../../components/mcp/ElicitationDialog.js'
-import { PromptDialog } from '../../../components/hooks/PromptDialog.js'
-import { WorkerPendingPermission } from '../../../components/permissions/WorkerPendingPermission.js'
+import { saveGlobalConfig } from 'src/utils/config.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import { logError } from 'src/utils/log.js'
+import { CostThresholdDialog } from 'src/components/CostThresholdDialog.js'
+import { IdleReturnDialog } from 'src/components/IdleReturnDialog.js'
+import { ElicitationDialog } from 'src/components/mcp/ElicitationDialog.js'
+import { PromptDialog } from 'src/components/hooks/PromptDialog.js'
+import { WorkerPendingPermission } from 'src/components/permissions/WorkerPendingPermission.js'
 import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
-import { applyPermissionUpdate, persistPermissionUpdate } from '../../../utils/permissions/PermissionUpdate.js'
+import { applyPermissionUpdate, persistPermissionUpdate } from 'src/utils/permissions/PermissionUpdate.js'
 import {
   sendSandboxPermissionResponseViaMailbox,
-} from '../../../utils/swarm/permissionSync.js'
-import { WEB_FETCH_TOOL_NAME } from '../../../tools/WebFetchTool/prompt.js'
+} from 'src/utils/swarm/permissionSync.js'
+import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 
 export type REPLDialogsDeps = {
   // gating
@@ -344,7 +344,7 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
         })
       }
       if (action === 'clear') {
-        const { clearConversation } = await import('../../../commands/clear/conversation.js')
+        const { clearConversation } = await import('src/commands/clear/conversation.js')
         await clearConversation({
           setMessages: deps.setMessages as never,
           readFileState: deps.readFileState.current as never,

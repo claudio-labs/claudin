@@ -8,12 +8,12 @@
 
 import { join } from 'path'
 import type { z } from 'zod/v4'
-import { getAdditionalDirectoriesForClaudeMd } from '../../bootstrap/state.js'
-import { parseSettingsFile } from '../settings/settings.js'
+import { getAdditionalDirectoriesForClaudeMd } from 'src/bootstrap/state.js'
+import { parseSettingsFile } from 'src/utils/settings/settings.js'
 import type {
   ExtraKnownMarketplaceSchema,
   SettingsJson,
-} from '../settings/types.js'
+} from 'src/utils/settings/types.js'
 
 type ExtraKnownMarketplace = z.infer<
   ReturnType<typeof ExtraKnownMarketplaceSchema>

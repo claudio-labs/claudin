@@ -4,25 +4,25 @@
  */
 
 import { resolve } from 'path'
-import type { ToolPermissionContext, ToolUseContext } from '../../Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from '../../types/permissions.js'
-import { getCwd } from '../../utils/cwd.js'
-import { isCurrentDirectoryBareGitRepo } from '../../utils/git.js'
-import type { PermissionRule } from '../../utils/permissions/PermissionRule.js'
-import type { PermissionUpdate } from '../../utils/permissions/PermissionUpdateSchema.js'
+} from 'src/types/permissions.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { isCurrentDirectoryBareGitRepo } from 'src/utils/git.js'
+import type { PermissionRule } from 'src/utils/permissions/PermissionRule.js'
+import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForToolName,
-} from '../../utils/permissions/permissions.js'
+} from 'src/utils/permissions/permissions.js'
 import {
   matchWildcardPattern,
   parsePermissionRule,
   type ShellPermissionRule,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
-} from '../../utils/permissions/shellRuleMatching.js'
+} from 'src/utils/permissions/shellRuleMatching.js'
 import {
   classifyCommandName,
   deriveSecurityFlags,
@@ -33,8 +33,8 @@ import {
   PS_TOKENIZER_DASH_CHARS,
   parsePowerShellCommand,
   stripModulePrefix,
-} from '../../utils/powershell/parser.js'
-import { containsVulnerableUncPath } from '../../utils/shell/readOnlyCommandValidation.js'
+} from 'src/utils/powershell/parser.js'
+import { containsVulnerableUncPath } from 'src/utils/shell/readOnlyCommandValidation.js'
 import { isDotGitPathPS, isGitInternalPathPS } from './gitSafety.js'
 import {
   checkPermissionMode,

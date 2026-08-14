@@ -1,4 +1,4 @@
-import type { CommandSpec } from '../registry.js'
+import type { CommandSpec } from 'src/utils/bash/registry.js'
 import alias from './alias.js'
 import nohup from './nohup.js'
 import pyright from './pyright.js'

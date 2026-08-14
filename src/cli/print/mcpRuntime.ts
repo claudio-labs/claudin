@@ -59,11 +59,11 @@ import {
 } from 'src/bootstrap/state.js'
 import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { randomUUID } from 'crypto'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { getCommands } from '../../commands.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { installPluginsForHeadless } from '../../utils/plugins/headlessPluginInstall.js'
-import { refreshActivePlugins } from '../../utils/plugins/refresh.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getCommands } from 'src/commands.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { installPluginsForHeadless } from 'src/utils/plugins/headlessPluginInstall.js'
+import { refreshActivePlugins } from 'src/utils/plugins/refresh.js'
 import { handleMcpSetServers } from 'src/cli/print/mcpReconcile.js'
 import type {
   HeadlessStreamingContext,

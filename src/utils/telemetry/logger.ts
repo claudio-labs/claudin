@@ -1,6 +1,6 @@
 import type { DiagLogger } from 'src/vendor/otel.js'
-import { logForDebugging } from '../debug.js'
-import { logError } from '../log.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
 export class ClaudeCodeDiagLogger implements DiagLogger {
   error(message: string, ..._: unknown[]) {
     logError(new Error(message))

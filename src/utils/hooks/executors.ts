@@ -19,7 +19,7 @@
  *   pre-split behavior so analytics events and OTEL spans don't change.
  */
 import { randomUUID } from 'crypto'
-import { getSessionId } from '../../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
@@ -28,19 +28,19 @@ import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js'
-import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from '../plugins/schemas.js'
+import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/utils/plugins/schemas.js'
 import {
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from '../../types/hooks.js'
+} from 'src/types/hooks.js'
 import type { HookEvent, HookInput } from 'src/entrypoints/agentSdkTypes.js'
-import { logForDebugging } from '../debug.js'
-import { logError } from '../log.js'
-import { createCombinedAbortSignal } from '../combinedAbortSignal.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
+import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
 import { execHttpHook } from './execHttpHook.js'
-import type { AppState } from '../../state/AppState.js'
-import { jsonStringify } from '../slowOperations.js'
-import { isEnvTruthy } from '../envUtils.js'
+import type { AppState } from 'src/state/AppState.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   isInternalHook,

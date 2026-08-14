@@ -6,21 +6,21 @@ import { parse, relative } from 'path'
 import {
   FileReadTool,
   MaxFileReadTokenExceededError,
-} from '../../tools/FileReadTool/FileReadTool.js'
-import { FileTooLargeError } from '../readFileInRange.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
+import { FileTooLargeError } from 'src/utils/readFileInRange.js'
 import { MAX_LINES_TO_READ } from 'src/tools/FileReadTool/prompt.js'
 import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
-import { getFsImplementation } from '../fsOperations.js'
-import { getPDFPageCount } from '../pdf.js'
-import { isPDFExtension } from '../pdfUtils.js'
-import { PDF_AT_MENTION_INLINE_THRESHOLD } from '../../constants/apiLimits.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { getPDFPageCount } from 'src/utils/pdf.js'
+import { isPDFExtension } from 'src/utils/pdfUtils.js'
+import { PDF_AT_MENTION_INLINE_THRESHOLD } from 'src/constants/apiLimits.js'
 import { getCwd } from 'src/utils/cwd.js'
-import { countCharInString } from '../stringUtils.js'
+import { countCharInString } from 'src/utils/stringUtils.js'
 import {
   getFileModificationTimeAsync,
   isFileWithinReadSizeLimit,
-} from '../file.js'
-import type { ToolUseContext } from '../../Tool.js'
+} from 'src/utils/file.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import type {
   FileAttachment,
   CompactFileReferenceAttachment,

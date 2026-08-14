@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Text } from '../../ink.js';
-import type { Theme } from '../../utils/theme.js';
+import { Text } from 'src/ink.js';
+import type { Theme } from 'src/utils/theme.js';
 type Props = {
   char: string;
   index: number;

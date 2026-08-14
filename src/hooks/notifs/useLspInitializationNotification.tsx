@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useInterval } from 'usehooks-ts';
-import { getIsRemoteMode, getIsScrollDraining } from '../../bootstrap/state.js';
-import { useNotifications } from '../../context/notifications.js';
-import { Text } from '../../ink.js';
-import { getInitializationStatus, getLspServerManager } from '../../services/lsp/manager.js';
-import type { PluginError } from '../../types/plugin.js';
-import { useSetAppState } from '../../state/AppState.js';
-import { logForDebugging } from '../../utils/debug.js';
-import { isEnvTruthy } from '../../utils/envUtils.js';
+import { getIsRemoteMode, getIsScrollDraining } from 'src/bootstrap/state.js';
+import { useNotifications } from 'src/context/notifications.js';
+import { Text } from 'src/ink.js';
+import { getInitializationStatus, getLspServerManager } from 'src/services/lsp/manager.js';
+import type { PluginError } from 'src/types/plugin.js';
+import { useSetAppState } from 'src/state/AppState.js';
+import { logForDebugging } from 'src/utils/debug.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
 const LSP_POLL_INTERVAL_MS = 5000;
 
 /**

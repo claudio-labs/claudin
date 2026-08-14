@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import { useEffect, useState } from 'react';
-import { Box, Text } from '../../ink.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
-import { getInitialSettings } from '../../utils/settings/settings.js';
-import { isVoiceModeEnabled } from '../../voice/voiceModeEnabled.js';
+import { Box, Text } from 'src/ink.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { getInitialSettings } from 'src/utils/settings/settings.js';
+import { isVoiceModeEnabled } from 'src/voice/voiceModeEnabled.js';
 import { AnimatedAsterisk } from './AnimatedAsterisk.js';
 import { shouldShowOpus1mMergeNotice } from './Opus1mMergeNotice.js';
 const MAX_SHOW_COUNT = 3;

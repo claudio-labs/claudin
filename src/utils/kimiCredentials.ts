@@ -10,7 +10,7 @@ import {
   getKimiOAuthClientId,
   KIMI_AUTH_HOST_USER_AGENT,
   KIMI_OAUTH_TOKEN_URL,
-} from '../services/api/kimiOAuthShared.js'
+} from 'src/services/api/kimiOAuthShared.js'
 
 export const KIMI_STORAGE_KEY = 'kimiCode' as const
 // Access tokens live only ~900s; refresh 60s ahead of expiry.

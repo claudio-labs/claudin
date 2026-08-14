@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Box } from '../../ink.js';
+import { Box } from 'src/ink.js';
 
 type Props = {
   children: React.ReactNode;

@@ -24,7 +24,7 @@
  * `.tsx` cannot be tested.
  */
 
-import type { Task } from '../../utils/tasks.js'
+import type { Task } from 'src/utils/tasks.js'
 
 /** Numeric where possible so #10 sorts after #9, lexicographic otherwise. */
 function byIdAsc(a: Task, b: Task): number {

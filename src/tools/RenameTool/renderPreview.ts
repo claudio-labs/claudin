@@ -3,7 +3,7 @@
 // outline uses — so the model can address a symbol here and expand it with
 // `Read(file_path, symbol=…)` without translating anything.
 
-import { rangeLabel } from '../shared/codeOutline/renderOutline.js'
+import { rangeLabel } from 'src/tools/shared/codeOutline/renderOutline.js'
 import type { FindSitesResult, RenameSite } from './findSites.js'
 
 /** Sites listed before the tail is summarized instead of enumerated. */

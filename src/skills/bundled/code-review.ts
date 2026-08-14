@@ -1,15 +1,15 @@
-import type { ToolUseContext } from '../../Tool.js'
-import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
-import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
-import { REPORT_FINDINGS_TOOL_NAME } from '../../tools/ReportFindingsTool/constants.js'
-import { TOOL_SEARCH_TOOL_NAME } from '../../tools/ToolSearchTool/constants.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { REPORT_FINDINGS_TOOL_NAME } from 'src/tools/ReportFindingsTool/constants.js'
+import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 import {
   EFFORT_LEVELS,
   type EffortLevel,
   convertEffortValueToLevel,
   resolveAppliedEffort,
-} from '../../utils/effort.js'
-import { registerBundledSkill } from '../bundledSkills.js'
+} from 'src/utils/effort.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
  * Port of the upstream Claude Code `/code-review` skill (v2.1.173), minus the

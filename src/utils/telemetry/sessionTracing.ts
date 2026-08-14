@@ -13,10 +13,10 @@
 import { feature } from 'bun:bundle'
 import { context as otelContext, type Span, trace } from 'src/vendor/otel.js'
 import { AsyncLocalStorage } from 'async_hooks'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import type { AssistantMessage, UserMessage } from '../../types/message.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from '../envUtils.js'
-import { getTelemetryAttributes } from '../telemetryAttributes.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import type { AssistantMessage, UserMessage } from 'src/types/message.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getTelemetryAttributes } from 'src/utils/telemetryAttributes.js'
 import {
   addBetaInteractionAttributes,
   addBetaLLMRequestAttributes,

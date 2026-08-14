@@ -1,11 +1,11 @@
 import { createHash, randomUUID, type UUID } from 'crypto'
 import { stat } from 'fs/promises'
 import { isAbsolute, join, relative, sep } from 'path'
-import { getOriginalCwd, getSessionId } from '../bootstrap/state.js'
+import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
 import type {
   AttributionSnapshotMessage,
   FileAttributionState,
-} from '../types/logs.js'
+} from 'src/types/logs.js'
 import { getCwd } from './cwd.js'
 import { logForDebugging } from './debug.js'
 import { execFileNoThrowWithCwd } from './execFileNoThrow.js'

@@ -28,7 +28,7 @@
  * idea — the content lives in the transcript once, not N times).
  */
 
-import { logEvent } from '../services/analytics/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
 import { djb2Hash } from './hash.js'
 
 /**

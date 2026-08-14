@@ -5,8 +5,8 @@ import { Box, Text } from 'src/ink.js';
 import { formatAPIError } from 'src/services/api/errorUtils.js';
 import type { SystemAPIErrorMessage } from 'src/types/message.js';
 import { useInterval } from 'usehooks-ts';
-import { CtrlOToExpand } from '../CtrlOToExpand.js';
-import { MessageResponse } from '../MessageResponse.js';
+import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
 const MAX_API_ERROR_CHARS = 1000;
 type Props = {
   message: SystemAPIErrorMessage;

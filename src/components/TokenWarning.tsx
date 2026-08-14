@@ -2,11 +2,11 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useSyncExternalStore } from 'react';
-import { Box, Text } from '../ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js';
-import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from '../services/compact/autoCompact.js';
-import { useCompactWarningSuppression } from '../services/compact/compactWarningHook.js';
-import { getUpgradeMessage } from '../utils/model/contextWindowUpgradeCheck.js';
+import { Box, Text } from 'src/ink.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/services/compact/autoCompact.js';
+import { useCompactWarningSuppression } from 'src/services/compact/compactWarningHook.js';
+import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js';
 type Props = {
   tokenUsage: number;
   model: string;
@@ -28,7 +28,7 @@ function CollapseLabel(t0: CollapseLabelProps) {
   } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = require("../services/contextCollapse/index.js");
+    t1 = require("src/services/contextCollapse/index.js");
     $[0] = t1;
   } else {
     t1 = $[0];
@@ -36,7 +36,7 @@ function CollapseLabel(t0: CollapseLabelProps) {
   const {
     getStats,
     subscribe
-  } = t1 as typeof import('../services/contextCollapse/index.js');
+  } = t1 as typeof import('src/services/contextCollapse/index.js');
   let t2: () => string;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => {
@@ -139,7 +139,7 @@ export function TokenWarning(t0: Props) {
   if (feature("CONTEXT_COLLAPSE")) {
     const {
       isContextCollapseEnabled
-    } = require("../services/contextCollapse/index.js") as typeof import('../services/contextCollapse/index.js');
+    } = require("src/services/contextCollapse/index.js") as typeof import('src/services/contextCollapse/index.js');
     if (isContextCollapseEnabled()) {
       collapseMode = true;
     }

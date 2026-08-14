@@ -1,10 +1,10 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { FilePathLink } from '../../components/FilePathLink.js'
-import { StructuredDiffList } from '../../components/StructuredDiffList.js'
-import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { Box, Text } from '../../ink.js'
-import { getDisplayPath } from '../../utils/file.js'
+import { FilePathLink } from 'src/components/FilePathLink.js'
+import { StructuredDiffList } from 'src/components/StructuredDiffList.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/ink.js'
+import { getDisplayPath } from 'src/utils/file.js'
 import type { RenameFileResult, RenameOutput } from './rename.js'
 
 /**

@@ -1,28 +1,28 @@
 import { feature } from 'bun:bundle'
-import type { QuerySource } from '../../constants/querySource.js'
-import { clearSystemPromptSections } from '../../constants/systemPromptSections.js'
-import { getUserContext } from '../../context.js'
-import type { Message } from '../../types/message.js'
-import { clearSpeculativeChecks } from '../../tools/BashTool/bashPermissions.js'
-import { resetSentBashGitInstructions } from '../../utils/attachments.js'
-import { clearClassifierApprovals } from '../../utils/classifierApprovals.js'
-import { resetGetMemoryFilesCache } from '../../utils/claudemd.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
+import { getUserContext } from 'src/context.js'
+import type { Message } from 'src/types/message.js'
+import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js'
+import { resetSentBashGitInstructions } from 'src/utils/attachments.js'
+import { clearClassifierApprovals } from 'src/utils/classifierApprovals.js'
+import { resetGetMemoryFilesCache } from 'src/utils/claudemd.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,
-} from '../../utils/toolResultStorage.js'
-import { resetPromptCacheBreakDetection } from '../../services/api/promptCacheBreakDetection.js'
-import { clearAllSessions } from '../../services/api/sessionIngress.js'
-import { diagnosticTracker } from '../../services/diagnosticTracking.js'
-import { clearSessionMessagesCache } from '../../utils/sessionStorage.js'
-import { clearBetaTracingState } from '../../utils/telemetry/betaSessionTracing.js'
+} from 'src/utils/toolResultStorage.js'
+import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
+import { clearAllSessions } from 'src/services/api/sessionIngress.js'
+import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { clearSessionMessagesCache } from 'src/utils/sessionStorage.js'
+import { clearBetaTracingState } from 'src/utils/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from './microCompact.js'
 import {
   bumpStandDownEpoch,
   pruneStaleClippedIds,
   pruneOrphanClippedIds,
 } from './stableStubState.js'
-import { clearSkippedTimestamps } from '../../history.js'
+import { clearSkippedTimestamps } from 'src/history.js'
 
 /**
  * Run cleanup of caches and tracking state after compaction.
@@ -121,7 +121,7 @@ export function runPostCompactCleanup(
     if (isMainThreadCompact) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       ;(
-        require('../contextCollapse/index.js') as typeof import('../contextCollapse/index.js')
+        require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
       ).resetContextCollapse()
       /* eslint-enable @typescript-eslint/no-require-imports */
     }

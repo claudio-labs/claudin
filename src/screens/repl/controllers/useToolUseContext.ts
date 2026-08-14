@@ -24,35 +24,35 @@
 
 import { useCallback, useEffect } from 'react';
 import { feature } from 'bun:bundle';
-import { sendNotification } from '../../../services/notifier.js';
-import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from '../../../utils/swarm/leaderPermissionBridge.js';
-import { type ResumeEntrypoint } from '../../../commands.js';
-import { type ToolUseConfirm } from '../../../components/permissions/PermissionRequest.js';
-import type { PromptRequest, PromptResponse } from '../../../types/hooks.js';
-import { getSystemPrompt } from '../../../constants/prompts.js';
-import { buildEffectiveSystemPrompt } from '../../../utils/systemPrompt.js';
-import { getSystemContext, getUserContext } from '../../../context.js';
-import useCanUseTool from '../../../hooks/useCanUseTool.js';
-import type { ToolPermissionContext, Tool } from '../../../Tool.js';
-import type { ThinkingConfig } from '../../../utils/thinking.js';
-import type { Message as MessageType } from '../../../types/message.js';
-import { mergeClients } from '../../../hooks/useMergedClients.js';
-import { getQuerySourceForREPL } from '../../../utils/promptCategory.js';
-import { mergeAndFilterTools } from '../../../utils/toolPool.js';
-import type { ScopedMcpServerConfig } from '../../../services/mcp/types.js';
-import { type IDESelection } from '../../../hooks/useIdeSelection.js';
-import { assembleToolPool } from '../../../tools.js';
-import type { AgentDefinition } from '../../../tools/AgentTool/loadAgentsDir.js';
-import { resolveAgentTools } from '../../../tools/AgentTool/agentToolUtils.js';
-import type { ProcessUserInputContext } from '../../../utils/processUserInput/processUserInput.js';
-import type { LogOption } from '../../../types/logs.js';
-import { type FileHistoryState } from '../../../utils/fileHistory.js';
-import { type AttributionState } from '../../../utils/commitAttribution.js';
-import { type IDEExtensionInstallationStatus, type IdeType } from '../../../utils/ide.js';
-import { type SetAppState, removeByFilter } from '../../../utils/messageQueueManager.js';
-import { startBackgroundSession } from '../../../tasks/LocalMainSessionTask.js';
+import { sendNotification } from 'src/services/notifier.js';
+import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from 'src/utils/swarm/leaderPermissionBridge.js';
+import { type ResumeEntrypoint } from 'src/commands.js';
+import { type ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import type { PromptRequest, PromptResponse } from 'src/types/hooks.js';
+import { getSystemPrompt } from 'src/constants/prompts.js';
+import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js';
+import { getSystemContext, getUserContext } from 'src/context.js';
+import useCanUseTool from 'src/hooks/useCanUseTool.js';
+import type { ToolPermissionContext, Tool } from 'src/Tool.js';
+import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { Message as MessageType } from 'src/types/message.js';
+import { mergeClients } from 'src/hooks/useMergedClients.js';
+import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
+import { mergeAndFilterTools } from 'src/utils/toolPool.js';
+import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import { type IDESelection } from 'src/hooks/useIdeSelection.js';
+import { assembleToolPool } from 'src/tools.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
+import type { ProcessUserInputContext } from 'src/utils/processUserInput/processUserInput.js';
+import type { LogOption } from 'src/types/logs.js';
+import { type FileHistoryState } from 'src/utils/fileHistory.js';
+import { type AttributionState } from 'src/utils/commitAttribution.js';
+import { type IDEExtensionInstallationStatus, type IdeType } from 'src/utils/ide.js';
+import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
+import { startBackgroundSession } from 'src/tasks/LocalMainSessionTask.js';
 import type { Theme } from 'src/utils/theme.js';
-import { createAttachmentMessage, getQueuedCommandAttachments } from '../../../utils/attachments.js';
+import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/utils/attachments.js';
 
 export interface UseToolUseContextDeps {
   // --- static-ish session inputs
@@ -71,25 +71,25 @@ export interface UseToolUseContextDeps {
   // `useTheme()` yields the theme NAME, not the palette. The palette type
   // (`Theme`) is only used for the `keyof Theme` spinner colours below.
   theme: ProcessUserInputContext['options']['theme'];
-  terminal: ReturnType<typeof import('../../../ink/useTerminalNotification.js').useTerminalNotification>;
+  terminal: ReturnType<typeof import('src/ink/useTerminalNotification.js').useTerminalNotification>;
   terminalTitle: string;
   mainLoopModel: string;
   toolPermissionContext: ToolPermissionContext;
   abortController: AbortController | null;
-  store: ReturnType<typeof import('../../../state/AppState.js').useAppStateStore>;
+  store: ReturnType<typeof import('src/state/AppState.js').useAppStateStore>;
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
-  readFileState: React.RefObject<ReturnType<typeof import('../../../utils/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
+  readFileState: React.RefObject<ReturnType<typeof import('src/utils/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
   discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
-  contentReplacementStateRef: { current: ReturnType<typeof import('../../../utils/toolResultStorage.js').provisionContentReplacementState> };
+  contentReplacementStateRef: { current: ReturnType<typeof import('src/utils/toolResultStorage.js').provisionContentReplacementState> };
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
   resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;
   reverify: () => void;
   onChangeDynamicMcpConfig: (config: Record<string, ScopedMcpServerConfig>) => void;
   syncToolResultReplacements: (replacements: ReadonlyMap<string, string>) => void;
-  addNotification: ReturnType<typeof import('../../../context/notifications.js').useNotifications>['addNotification'];
+  addNotification: ReturnType<typeof import('src/context/notifications.js').useNotifications>['addNotification'];
   setToolJSX: (args: {
     jsx: React.ReactNode | null;
     shouldHidePromptInput: boolean;
@@ -116,7 +116,7 @@ export interface UseToolUseContextDeps {
   setIDEToInstallExtension: React.Dispatch<React.SetStateAction<IdeType | null>>;
   setInProgressToolUseIDs: React.Dispatch<React.SetStateAction<Set<string>>>;
   setResponseLength: (f: (prev: number) => number) => void;
-  setStreamMode: React.Dispatch<React.SetStateAction<import('../../../components/Spinner.js').SpinnerMode>>;
+  setStreamMode: React.Dispatch<React.SetStateAction<import('src/components/Spinner.js').SpinnerMode>>;
   setSpinnerColor: React.Dispatch<React.SetStateAction<keyof Theme | null>>;
   setSpinnerShimmerColor: React.Dispatch<React.SetStateAction<keyof Theme | null>>;
   setSpinnerMessage: React.Dispatch<React.SetStateAction<string | null>>;

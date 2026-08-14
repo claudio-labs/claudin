@@ -1,10 +1,10 @@
 import axios from 'axios'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { getAdditionalModelOptionsCacheScope } from '../../services/api/providerConfig.js'
-import { logForDebugging } from '../debug.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { getAdditionalModelOptionsCacheScope } from 'src/services/api/providerConfig.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import type { ModelOption } from './modelOptions.js'
 import { getAPIProvider } from './providers.js'
-import { setActiveOpenAIModelOptionsCache } from '../providerProfiles.js'
+import { setActiveOpenAIModelOptionsCache } from 'src/utils/providerProfiles.js'
 
 const DISCOVERY_TIMEOUT_MS = 5000
 

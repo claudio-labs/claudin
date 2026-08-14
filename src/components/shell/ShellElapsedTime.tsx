@@ -1,8 +1,8 @@
 import * as React from 'react'
 
-import { useAnchoredElapsedSeconds } from '../../hooks/useElapsedTime.js'
-import { Text } from '../../ink.js'
-import { formatDuration } from '../../utils/format.js'
+import { useAnchoredElapsedSeconds } from 'src/hooks/useElapsedTime.js'
+import { Text } from 'src/ink.js'
+import { formatDuration } from 'src/utils/format.js'
 
 /**
  * How long a shell has to run before its elapsed time is worth showing. Below

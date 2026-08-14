@@ -3,10 +3,10 @@ import { join } from 'path'
 import {
   getActiveModelBytesPerToken,
   roughTokenCountEstimation,
-} from '../../services/tokenEstimation.js'
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { getErrnoCode, toError } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
+} from 'src/services/tokenEstimation.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getErrnoCode, toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
 
 const MAX_SECTION_LENGTH = 2000
 const MAX_TOTAL_SESSION_MEMORY_TOKENS = 12000

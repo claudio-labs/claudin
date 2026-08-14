@@ -22,22 +22,22 @@
 // table: every callback below resolves from the bag, never from a
 // destructured closure that could drift if React batched a re-render.
 
-import { Box } from '../../../ink.js'
+import { Box } from 'src/ink.js'
 import * as React from 'react'
-import { KeybindingSetup } from '../../../keybindings/KeybindingProviderSetup.js'
-import { GlobalKeybindingHandlers } from '../../../hooks/useGlobalKeybindings.js'
-import { CommandKeybindingHandlers } from '../../../hooks/useCommandKeybindings.js'
-import { CancelRequestHandler } from '../../../hooks/useCancelRequest.js'
-import { ScrollKeybindingHandler } from '../../../components/ScrollKeybindingHandler.js'
-import { Messages } from '../../../components/Messages.js'
-import { FullscreenLayout } from '../../../components/FullscreenLayout.js'
-import { AlternateScreen } from '../../../ink/components/AlternateScreen.js'
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
+import { GlobalKeybindingHandlers } from 'src/hooks/useGlobalKeybindings.js'
+import { CommandKeybindingHandlers } from 'src/hooks/useCommandKeybindings.js'
+import { CancelRequestHandler } from 'src/hooks/useCancelRequest.js'
+import { ScrollKeybindingHandler } from 'src/components/ScrollKeybindingHandler.js'
+import { Messages } from 'src/components/Messages.js'
+import { FullscreenLayout } from 'src/components/FullscreenLayout.js'
+import { AlternateScreen } from 'src/ink/components/AlternateScreen.js'
 import { SandboxViolationExpandedView } from 'src/components/SandboxViolationExpandedView.js'
-import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from '../../../utils/fullscreen.js'
+import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/utils/fullscreen.js'
 import { AnimatedTerminalTitle } from './AnimatedTerminalTitle.js'
 import { TranscriptSearchBar } from './TranscriptSearchBar.js'
 import { TranscriptModeFooter } from './TranscriptModeFooter.js'
-import type { JumpHandle } from '../../../components/VirtualMessageList.js'
+import type { JumpHandle } from 'src/components/VirtualMessageList.js'
 
 export type REPLTranscriptViewProps = {
   // identity-critical refs (see header)

@@ -5,7 +5,7 @@
 
 import { spawn } from 'cross-spawn'
 import path from 'node:path'
-import { getCwd } from '../utils/cwd.js'
+import { getCwd } from 'src/utils/cwd.js'
 import { logError } from './log.js'
 
 export { execSyncWithDefaults_DEPRECATED } from './execFileNoThrowPortable.js'

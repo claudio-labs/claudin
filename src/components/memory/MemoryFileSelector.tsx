@@ -5,31 +5,31 @@ import { mkdir } from 'fs/promises';
 import { basename, join } from 'path';
 import * as React from 'react';
 import { use, useEffect, useState } from 'react';
-import { getOriginalCwd } from '../../bootstrap/state.js';
-import { useExitOnCtrlCDWithKeybindings } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybinding } from '../../keybindings/useKeybinding.js';
-import { getAutoMemPath, isAutoMemoryEnabled } from '../../memdir/paths.js';
-import { logEvent } from '../../services/analytics/index.js';
-import { isAutoDreamEnabled } from '../../services/autoDream/config.js';
-import { readLastConsolidatedAt } from '../../services/autoDream/consolidationLock.js';
-import { useAppState } from '../../state/AppState.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import type { TaskState } from '../../tasks/types.js';
-import { getAgentMemoryDir } from '../../tools/AgentTool/agentMemory.js';
-import { openPath } from '../../utils/browser.js';
-import { getMemoryFiles, type MemoryFileInfo } from '../../utils/claudemd.js';
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js';
-import { getDisplayPath } from '../../utils/file.js';
-import { formatRelativeTimeAgo } from '../../utils/format.js';
-import { projectIsInGitRepo } from '../../utils/memory/versions.js';
-import { updateSettingsForSource } from '../../utils/settings/settings.js';
-import { Select } from '../CustomSelect/index.js';
-import { ListItem } from '../design-system/ListItem.js';
+import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import { isAutoDreamEnabled } from 'src/services/autoDream/config.js';
+import { readLastConsolidatedAt } from 'src/services/autoDream/consolidationLock.js';
+import { useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import type { TaskState } from 'src/tasks/types.js';
+import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js';
+import { openPath } from 'src/utils/browser.js';
+import { getMemoryFiles, type MemoryFileInfo } from 'src/utils/claudemd.js';
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
+import { getDisplayPath } from 'src/utils/file.js';
+import { formatRelativeTimeAgo } from 'src/utils/format.js';
+import { projectIsInGitRepo } from 'src/utils/memory/versions.js';
+import { updateSettingsForSource } from 'src/utils/settings/settings.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { ListItem } from 'src/components/design-system/ListItem.js';
 import { getProjectMemoryPathForSelector } from './memoryFileSelectorPaths.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM') ? require('../../memdir/teamMemPaths.js') as typeof import('../../memdir/teamMemPaths.js') : null;
+const teamMemPaths = feature('TEAMMEM') ? require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 interface ExtendedMemoryFileInfo extends MemoryFileInfo {

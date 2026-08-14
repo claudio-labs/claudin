@@ -1,34 +1,34 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { Box, Text, type TextProps } from '../../ink.js';
+import { Box, Text, type TextProps } from 'src/ink.js';
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useState } from 'react';
 import sample from 'lodash-es/sample.js';
-import { BLACK_CIRCLE, REFERENCE_MARK, TEARDROP_ASTERISK } from '../../constants/figures.js';
+import { BLACK_CIRCLE, REFERENCE_MARK, TEARDROP_ASTERISK } from 'src/constants/figures.js';
 import figures from 'figures';
 import { basename } from 'path';
-import { MessageResponse } from '../MessageResponse.js';
-import { FilePathLink } from '../FilePathLink.js';
-import { openPath } from '../../utils/browser.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
+import { FilePathLink } from 'src/components/FilePathLink.js';
+import { openPath } from 'src/utils/browser.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemSaved = feature('TEAMMEM') ? require('./teamMemSaved.js') as typeof import('./teamMemSaved.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { TURN_COMPLETION_VERBS } from '../../constants/turnCompletionVerbs.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemThinkingMessage, SystemMemorySavedMessage } from '../../types/message.js';
-import type { StopHookInfo } from '../../types/message.js';
+import { TURN_COMPLETION_VERBS } from 'src/constants/turnCompletionVerbs.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemThinkingMessage, SystemMemorySavedMessage } from 'src/types/message.js';
+import type { StopHookInfo } from 'src/types/message.js';
 import { SystemAPIErrorMessage } from './SystemAPIErrorMessage.js';
-import { formatDuration, formatNumber, formatSecondsShort } from '../../utils/format.js';
-import { getGlobalConfig } from '../../utils/config.js';
-import Link from '../../ink/components/Link.js';
-import ThemedText from '../design-system/ThemedText.js';
-import { CtrlOToExpand } from '../CtrlOToExpand.js';
-import { useAppStateStore } from '../../state/AppState.js';
-import { isBackgroundTask, type TaskState } from '../../tasks/types.js';
-import { getPillLabel } from '../../tasks/pillLabel.js';
-import { useSelectedMessageBg } from '../messageActions.js';
-import { HOOK_TIMING_DISPLAY_THRESHOLD_MS } from '../../services/tools/toolExecution.js';
+import { formatDuration, formatNumber, formatSecondsShort } from 'src/utils/format.js';
+import { getGlobalConfig } from 'src/utils/config.js';
+import Link from 'src/ink/components/Link.js';
+import ThemedText from 'src/components/design-system/ThemedText.js';
+import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { useAppStateStore } from 'src/state/AppState.js';
+import { isBackgroundTask, type TaskState } from 'src/tasks/types.js';
+import { getPillLabel } from 'src/tasks/pillLabel.js';
+import { useSelectedMessageBg } from 'src/components/messageActions.js';
+import { HOOK_TIMING_DISPLAY_THRESHOLD_MS } from 'src/services/tools/toolExecution.js';
 type Props = {
   message: SystemMessage;
   addMargin: boolean;

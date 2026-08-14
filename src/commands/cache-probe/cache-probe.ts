@@ -1,10 +1,10 @@
-import { getSessionId } from '../../bootstrap/state.js'
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
-import { resolveProviderRequest } from '../../services/api/providerConfig.js'
-import type { LocalCommandCall } from '../../types/command.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { hydrateGithubModelsTokenFromSecureStorage } from '../../utils/githubModelsCredentials.js'
-import { getMainLoopModel } from '../../utils/model/model.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { resolveProviderRequest } from 'src/services/api/providerConfig.js'
+import type { LocalCommandCall } from 'src/types/command.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { hydrateGithubModelsTokenFromSecureStorage } from 'src/utils/githubModelsCredentials.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 
 const COPILOT_HEADERS: Record<string, string> = {
   'User-Agent': 'GitHubCopilotChat/0.26.7',

@@ -18,7 +18,7 @@
 import omit from 'lodash-es/omit.js'
 import reject from 'lodash-es/reject.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
+import { errorMessage } from 'src/utils/errors.js'
 import {
   clearServerCache,
   reconnectMcpServerImpl,

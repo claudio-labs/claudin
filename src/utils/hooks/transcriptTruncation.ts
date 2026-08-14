@@ -7,12 +7,12 @@
  * dropping the oldest messages and prepending a synthetic notice telling the
  * judge that evidence may have been omitted.
  */
-import { roughTokenCountEstimation } from '../../services/tokenEstimation.js'
-import type { Message } from '../../types/message.js'
-import { getContextWindowForModel } from '../context.js'
-import { logError } from '../log.js'
-import { createUserMessage } from '../messages.js'
-import { jsonStringify } from '../slowOperations.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import type { Message } from 'src/types/message.js'
+import { getContextWindowForModel } from 'src/utils/context.js'
+import { logError } from 'src/utils/log.js'
+import { createUserMessage } from 'src/utils/messages.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 
 /** Fraction of the evaluator model's context window the transcript may use. */
 const TRANSCRIPT_BUDGET_FRACTION = 0.5

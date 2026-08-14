@@ -13,10 +13,10 @@ import {
   getCommandName,
   isBridgeSafeCommand,
   type LocalJSXCommandContext,
-} from '../../commands.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
-import type { IDESelection } from '../../hooks/useIdeSelection.js'
-import type { SetToolJSXFn, ToolUseContext } from '../../Tool.js'
+} from 'src/commands.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { IDESelection } from 'src/hooks/useIdeSelection.js'
+import type { SetToolJSXFn, ToolUseContext } from 'src/Tool.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -24,40 +24,40 @@ import type {
   ProgressMessage,
   SystemMessage,
   UserMessage,
-} from '../../types/message.js'
-import type { PermissionMode } from '../../types/permissions.js'
+} from 'src/types/message.js'
+import type { PermissionMode } from 'src/types/permissions.js'
 import {
   isValidImagePaste,
   type PromptInputMode,
-} from '../../types/textInputTypes.js'
+} from 'src/types/textInputTypes.js'
 import {
   type AgentMentionAttachment,
   createAttachmentMessage,
   getAttachmentMessages,
-} from '../attachments.js'
-import type { PastedContent } from '../config.js'
-import type { EffortValue } from '../effort.js'
-import { toArray } from '../generators.js'
+} from 'src/utils/attachments.js'
+import type { PastedContent } from 'src/utils/config.js'
+import type { EffortValue } from 'src/utils/effort.js'
+import { toArray } from 'src/utils/generators.js'
 import {
   executeUserPromptSubmitHooks,
   getUserPromptSubmitHookBlockingMessage,
-} from '../hooks.js'
+} from 'src/utils/hooks.js'
 import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBlock,
-} from '../imageResizer.js'
-import { storeImages } from '../imageStore.js'
+} from 'src/utils/imageResizer.js'
+import { storeImages } from 'src/utils/imageStore.js'
 import {
   createCommandInputMessage,
   createSystemMessage,
   createUserMessage,
-} from '../messages.js'
-import { queryCheckpoint } from '../queryProfiler.js'
-import { parseSlashCommand } from '../slashCommandParsing.js'
+} from 'src/utils/messages.js'
+import { queryCheckpoint } from 'src/utils/queryProfiler.js'
+import { parseSlashCommand } from 'src/utils/slashCommandParsing.js'
 import {
   hasUltraplanKeyword,
   replaceUltraplanKeyword,
-} from '../ultraplan/keyword.js'
+} from 'src/utils/ultraplan/keyword.js'
 import { processTextPrompt } from './processTextPrompt.js'
 export type ProcessUserInputContext = ToolUseContext & LocalJSXCommandContext
 

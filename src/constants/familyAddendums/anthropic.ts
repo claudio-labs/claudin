@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { isAntiNarrationEnabled } from '../steeringToggles.js'
+import { isAntiNarrationEnabled } from 'src/constants/steeringToggles.js'
 
 // Anthropic family addendum.
 //

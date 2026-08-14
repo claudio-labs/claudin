@@ -21,7 +21,7 @@ async function importHookChainsModule(options?: {
 }): Promise<HookChainsModule> {
   const allowRemoteSessions = options?.allowRemoteSessions ?? true
 
-  mock.module('../services/analytics/index.js', () => ({
+  mock.module('src/services/analytics/index.js', () => ({
     logEvent: () => {},
     stripProtoFields: <T,>(m: T) => m,
   }))
@@ -30,7 +30,7 @@ async function importHookChainsModule(options?: {
     logOTelEvent: async () => {},
   }))
 
-  mock.module('../services/policyLimits/index.js', () => ({
+  mock.module('src/services/policyLimits/index.js', () => ({
     isPolicyAllowed: () => allowRemoteSessions,
   }))
 
@@ -42,9 +42,9 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  mock.module('../services/analytics/index.js', () => ({}))
+  mock.module('src/services/analytics/index.js', () => ({}))
   mock.module('./telemetry/events.js', () => ({}))
-  mock.module('../services/policyLimits/index.js', () => ({}))
+  mock.module('src/services/policyLimits/index.js', () => ({}))
 
   if (originalHookChainsEnabled === undefined) {
     delete process.env.CLAUDE_CODE_ENABLE_HOOK_CHAINS

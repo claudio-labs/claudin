@@ -11,19 +11,19 @@ import {
 } from './tokenEstimation.js'
 import { invalidateClientCache } from './api/clientCache.js'
 
-const realModel = { ...(await import('../utils/model/model.js')) }
+const realModel = { ...(await import('src/utils/model/model.js')) }
 const realClient = { ...(await import('./api/client.js')) }
 const realActiveProvider = { ...(await import('./api/activeProvider.js')) }
 
 function setActiveModel(name: string): void {
-  mock.module('../utils/model/model.js', () => ({
+  mock.module('src/utils/model/model.js', () => ({
     ...realModel,
     getMainLoopModel: () => name,
   }))
 }
 
 function unsetActiveModel(): void {
-  mock.module('../utils/model/model.js', () => ({
+  mock.module('src/utils/model/model.js', () => ({
     ...realModel,
     getMainLoopModel: () => {
       throw new Error('no provider active')
@@ -32,7 +32,7 @@ function unsetActiveModel(): void {
 }
 
 function restoreModelModule(): void {
-  mock.module('../utils/model/model.js', () => realModel)
+  mock.module('src/utils/model/model.js', () => realModel)
 }
 
 afterEach(() => {
@@ -43,7 +43,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('../utils/model/model.js', () => realModel)
+  mock.module('src/utils/model/model.js', () => realModel)
   mock.module('./api/client.js', () => realClient)
   mock.module('./api/activeProvider.js', () => realActiveProvider)
 })
@@ -103,7 +103,7 @@ describe('roughTokenCountEstimation — model-aware', () => {
 
   it('memoizes ratio: getMainLoopModel called every call but family lookup runs once per name', () => {
     let getMainLoopCalls = 0
-    mock.module('../utils/model/model.js', () => ({
+    mock.module('src/utils/model/model.js', () => ({
       ...realModel,
       getMainLoopModel: () => {
         getMainLoopCalls += 1

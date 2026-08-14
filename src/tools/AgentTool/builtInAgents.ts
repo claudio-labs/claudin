@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
-import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from './built-in/claudeCodeGuideAgent.js'
 import { EXPLORE_AGENT } from './built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
@@ -36,7 +36,7 @@ export function getBuiltInAgents(): AgentDefinition[] {
     if (isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       const { getCoordinatorAgents } =
-        require('../../coordinator/workerAgent.js') as typeof import('../../coordinator/workerAgent.js')
+        require('src/coordinator/workerAgent.js') as typeof import('src/coordinator/workerAgent.js')
       /* eslint-enable @typescript-eslint/no-require-imports */
       return getCoordinatorAgents()
     }

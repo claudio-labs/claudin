@@ -1,12 +1,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { GlobalConfig, ProviderProfile } from '../../utils/config.js'
+import type { GlobalConfig, ProviderProfile } from 'src/utils/config.js'
 
 // Capture real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
-const realConfig = { ...(await import('../../utils/config.js')) }
-const realProviderProfiles = { ...(await import('../../utils/providerProfiles.js')) }
+const realConfig = { ...(await import('src/utils/config.js')) }
+const realProviderProfiles = { ...(await import('src/utils/providerProfiles.js')) }
 const realActiveProvider = { ...(await import('./activeProvider.js')) }
 
 // Defensive restore: another test file running earlier in the same process
@@ -30,7 +30,7 @@ const state: ConfigState = {
   activeProfile: undefined,
 }
 
-mock.module('../../utils/config.js', () => ({
+mock.module('src/utils/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => state.globalConfig,
 }))
@@ -41,14 +41,14 @@ mock.module('../../utils/config.js', () => ({
 // process may leak a partial mock of `providerProfiles.js` that drops or
 // shadows the real `getActiveProviderProfile` — explicit control here makes
 // this file order-independent.
-mock.module('../../utils/providerProfiles.js', () => ({
+mock.module('src/utils/providerProfiles.js', () => ({
   ...realProviderProfiles,
   getActiveProviderProfile: () => state.activeProfile,
 }))
 
 afterAll(() => {
-  mock.module('../../utils/config.js', () => realConfig)
-  mock.module('../../utils/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('src/utils/providerProfiles.js', () => realProviderProfiles)
 })
 
 const {

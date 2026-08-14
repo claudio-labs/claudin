@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync, unlinkSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { getSessionId, regenerateSessionId, switchSession } from '../bootstrap/state.js'
-import type { SessionId } from '../types/ids.js'
+import { getSessionId, regenerateSessionId, switchSession } from 'src/bootstrap/state.js'
+import type { SessionId } from 'src/types/ids.js'
 import {
   AUTONOMOUS_LOOP_DYNAMIC_SENTINEL,
   AUTONOMOUS_LOOP_SENTINEL,

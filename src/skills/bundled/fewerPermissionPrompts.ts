@@ -1,5 +1,5 @@
-import { getProjectsDir } from '../../utils/sessionStorage/pure/paths.js'
-import { registerBundledSkill } from '../bundledSkills.js'
+import { getProjectsDir } from 'src/utils/sessionStorage/pure/paths.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
  * `/fewer-permission-prompts` — scan recent transcripts and propose a

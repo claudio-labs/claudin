@@ -1,6 +1,6 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { createAbortController } from '../../../utils/abortController.js'
-import type { ConnectedMCPServer } from '../types.js'
+import { createAbortController } from 'src/utils/abortController.js'
+import type { ConnectedMCPServer } from 'src/services/mcp/types.js'
 import { callMCPTool } from './callTool.js'
 
 /**

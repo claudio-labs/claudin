@@ -3,11 +3,11 @@ import type {
   ImageBlockParam,
   TextBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   countMessagesTokensWithAPI,
   roughTokenCountEstimation,
-} from '../services/tokenEstimation.js'
+} from 'src/services/tokenEstimation.js'
 import { compressImageBlock } from './imageResizer.js'
 import { logError } from './log.js'
 

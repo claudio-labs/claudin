@@ -2,8 +2,8 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runWithCwdOverride } from '../../utils/cwd.js'
-import { invalidateSessionEnvCache } from '../../utils/sessionEnvironment.js'
+import { runWithCwdOverride } from 'src/utils/cwd.js'
+import { invalidateSessionEnvCache } from 'src/utils/sessionEnvironment.js'
 import {
   cleanupAllFakeGh,
   GH_NOT_AUTHENTICATED,

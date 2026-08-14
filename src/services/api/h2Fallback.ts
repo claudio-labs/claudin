@@ -1,4 +1,4 @@
-import { isProviderH1Only, markProviderH1Only } from '../../utils/proxy.js'
+import { isProviderH1Only, markProviderH1Only } from 'src/utils/proxy.js'
 
 // Errors that indicate HTTP/2 negotiation/protocol failure (not network or
 // app-level issues). When we see one of these for a provider's first contact

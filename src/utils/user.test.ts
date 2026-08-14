@@ -8,7 +8,7 @@ const originalEnv = { ...process.env }
 const realEnvUtilsForUserTest = { ...(await import('./envUtils.js')) }
 const realConfigForUserTest = { ...(await import('./config.js')) }
 const realAuthForUserTest = { ...(await import('./auth.js')) }
-const realBootstrapStateForUserTest = { ...(await import('../bootstrap/state.js')) }
+const realBootstrapStateForUserTest = { ...(await import('src/bootstrap/state.js')) }
 const realCwdForUserTest = { ...(await import('./cwd.js')) }
 const realEnvForUserTest = { ...(await import('./env.js')) }
 
@@ -20,7 +20,7 @@ function installCommonMocks(options?: {
   oauthEmail?: string
   gitEmail?: string
 }) {
-  mock.module('../bootstrap/state.js', () => ({
+  mock.module('src/bootstrap/state.js', () => ({
     getSessionId: () => 'session-test',
   }))
 
@@ -79,7 +79,7 @@ afterAll(() => {
   mock.module('./config.js', () => realConfigForUserTest)
   mock.module('./envUtils.js', () => realEnvUtilsForUserTest)
   mock.module('./auth.js', () => realAuthForUserTest)
-  mock.module('../bootstrap/state.js', () => realBootstrapStateForUserTest)
+  mock.module('src/bootstrap/state.js', () => realBootstrapStateForUserTest)
   mock.module('./cwd.js', () => realCwdForUserTest)
   mock.module('./env.js', () => realEnvForUserTest)
 })

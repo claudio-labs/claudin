@@ -15,14 +15,14 @@
  * pipeline (src/query/stopHooks.ts) drives iteration counting and the
  * one-time achievement notice.
  */
-import type { ActiveGoalState, AppState } from '../../state/AppStateStore.js'
-import type { Message } from '../../types/message.js'
-import { logForDebugging } from '../debug.js'
-import { getCurrentUsage } from '../tokens.js'
-import type { HookBlockingError, AggregatedHookResult } from '../hooks/types.js'
-import { addSessionHook, removeGoalStopHooks } from '../hooks/sessionHooks.js'
-import { markStopConditionJudge } from '../hooks/stopConditionJudge.js'
-import type { PromptHook } from '../settings/types.js'
+import type { ActiveGoalState, AppState } from 'src/state/AppStateStore.js'
+import type { Message } from 'src/types/message.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getCurrentUsage } from 'src/utils/tokens.js'
+import type { HookBlockingError, AggregatedHookResult } from 'src/utils/hooks/types.js'
+import { addSessionHook, removeGoalStopHooks } from 'src/utils/hooks/sessionHooks.js'
+import { markStopConditionJudge } from 'src/utils/hooks/stopConditionJudge.js'
+import type { PromptHook } from 'src/utils/settings/types.js'
 
 export const GOAL_MAX_CONDITION_LENGTH = 4000
 

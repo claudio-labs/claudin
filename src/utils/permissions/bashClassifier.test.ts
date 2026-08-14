@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { ToolPermissionContext } from '../../Tool.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
 import {
   createPromptRuleContent,
   extractPromptDescription,

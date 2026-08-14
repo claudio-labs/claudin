@@ -1,11 +1,11 @@
 import { useContext, useMemo, useSyncExternalStore } from 'react'
-import StdinContext from '../components/StdinContext.js'
-import instances from '../instances.js'
+import StdinContext from 'src/ink/components/StdinContext.js'
+import instances from 'src/ink/instances.js'
 import {
   type FocusMove,
   type SelectionState,
   shiftAnchor,
-} from '../selection.js'
+} from 'src/ink/selection.js'
 
 /**
  * Access to text selection operations on the Ink instance (fullscreen only).

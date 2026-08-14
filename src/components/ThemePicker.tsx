@@ -1,17 +1,17 @@
 import { feature } from 'bun:bundle';
 import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
-import { useExitOnCtrlCDWithKeybindings } from '../hooks/useExitOnCtrlCDWithKeybindings.js'
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
-import { Box, Text, usePreviewTheme, useTheme, useThemeSetting } from '../ink.js';
-import { useRegisterKeybindingContext } from '../keybindings/KeybindingContext.js';
-import { useKeybinding } from '../keybindings/useKeybinding.js';
-import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
-import { useAppState, useSetAppState } from '../state/AppState.js';
-import type { AppState } from '../state/AppStateStore.js';
-import { gracefulShutdown } from '../utils/gracefulShutdown.js';
-import { updateSettingsForSource } from '../utils/settings/settings.js';
-import type { ThemeSetting } from '../utils/theme.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { Box, Text, usePreviewTheme, useTheme, useThemeSetting } from 'src/ink.js';
+import { useRegisterKeybindingContext } from 'src/keybindings/KeybindingContext.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import { updateSettingsForSource } from 'src/utils/settings/settings.js';
+import type { ThemeSetting } from 'src/utils/theme.js';
 import { Select } from './CustomSelect/index.js';
 import { Byline } from './design-system/Byline.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';

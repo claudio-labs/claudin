@@ -1,11 +1,11 @@
 import { logForDebugging } from 'src/utils/debug.js'
 import { z } from 'zod/v4'
-import { lazySchema } from '../../utils/lazySchema.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
-} from '../analytics/growthbook.js'
-import { logEvent } from '../analytics/index.js'
+} from 'src/services/analytics/growthbook.js'
+import { logEvent } from 'src/services/analytics/index.js'
 import type { ConnectedMCPServer, MCPServerConnection } from './types.js'
 import { asMcpSchema } from './zodCompat.js'
 

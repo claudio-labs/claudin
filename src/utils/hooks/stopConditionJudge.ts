@@ -15,7 +15,7 @@
  * (src/utils/goal/goal.ts) sets it, on the in-memory session hook object,
  * which flows by reference through matching/dedup to execution.
  */
-import type { PromptHook } from '../settings/types.js'
+import type { PromptHook } from 'src/utils/settings/types.js'
 
 const STOP_CONDITION_JUDGE_MARKER: unique symbol = Symbol(
   'claudin.stopConditionJudge',

@@ -11,14 +11,14 @@
  * instructions, display messages, parsed elicitation response, env-cache
  * invalidation, etc).
  */
-import { invalidateSessionEnvCache } from '../sessionEnvironment.js'
-import { getSessionId } from '../../bootstrap/state.js'
-import { getRegisteredHooks } from '../../bootstrap/state.js'
+import { invalidateSessionEnvCache } from 'src/utils/sessionEnvironment.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { getRegisteredHooks } from 'src/bootstrap/state.js'
 import { getHooksConfigFromSnapshot } from './hooksConfigSnapshot.js'
 import { shouldAllowManagedHooksOnly } from './hooksConfigSnapshot.js'
-import { logForDebugging } from '../debug.js'
-import { extractTextContent } from '../messages.js'
-import { resetGoalStateForSessionEnd } from '../goal/goal.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { extractTextContent } from 'src/utils/messages.js'
+import { resetGoalStateForSessionEnd } from 'src/utils/goal/goal.js'
 import { clearSessionHooks } from './sessionHooks.js'
 import type {
   ConfigChangeHookInput,
@@ -35,9 +35,9 @@ import type {
   SessionEndHookInput,
   StopFailureHookInput,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { AssistantMessage } from '../../types/message.js'
-import type { AppState } from '../../state/AppState.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { AssistantMessage } from 'src/types/message.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import type {
   ConfigChangeSource,
   ElicitationHookResult,

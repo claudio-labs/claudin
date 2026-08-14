@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import {
   createTask,
   getTask,
@@ -11,7 +11,7 @@ import {
   isTodoV2Enabled,
   listTasks,
   resetTaskList,
-} from '../../utils/tasks.js'
+} from 'src/utils/tasks.js'
 import { TaskUpdateTool } from './TaskUpdateTool.js'
 
 let configDir: string

@@ -1,6 +1,6 @@
-import type { Command } from '../../commands.js'
-import { getSubscriptionType } from '../../utils/auth.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
+import type { Command } from 'src/commands.js'
+import { getSubscriptionType } from 'src/utils/auth.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 
 const upgrade = {
   type: 'local-jsx',

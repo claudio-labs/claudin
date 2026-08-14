@@ -1,9 +1,9 @@
 import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
-import { invalidateClientCache } from '../services/api/clientCache.js'
-import type { Tool } from '../Tool.js'
+import { invalidateClientCache } from 'src/services/api/clientCache.js'
+import type { Tool } from 'src/Tool.js'
 
-const realClient = { ...(await import('../services/api/client.js')) }
+const realClient = { ...(await import('src/services/api/client.js')) }
 const realModel = { ...(await import('./model/model.js')) }
 
 const {
@@ -15,7 +15,7 @@ const {
 // this is what getAnthropicClient returns for any OpenAI-compatible provider.
 function mockShimClient(): void {
   invalidateClientCache()
-  mock.module('../services/api/client.js', () => ({
+  mock.module('src/services/api/client.js', () => ({
     ...realClient,
     getAnthropicClient: async () => ({
       beta: {
@@ -49,13 +49,13 @@ const getToolPermissionContext = async () =>
   ({}) as never
 
 afterEach(() => {
-  mock.module('../services/api/client.js', () => realClient)
+  mock.module('src/services/api/client.js', () => realClient)
   mock.module('./model/model.js', () => realModel)
   invalidateClientCache()
 })
 
 afterAll(() => {
-  mock.module('../services/api/client.js', () => realClient)
+  mock.module('src/services/api/client.js', () => realClient)
   mock.module('./model/model.js', () => realModel)
   invalidateClientCache()
 })

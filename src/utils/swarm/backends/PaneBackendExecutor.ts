@@ -1,17 +1,17 @@
-import { getSessionId } from '../../../bootstrap/state.js'
-import type { ToolUseContext } from '../../../Tool.js'
-import { formatAgentId, parseAgentId } from '../../../utils/agentId.js'
-import { quote } from '../../../utils/bash/shellQuote.js'
-import { registerCleanup } from '../../../utils/cleanupRegistry.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
-import { writeToMailbox } from '../../../utils/teammateMailbox.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { formatAgentId, parseAgentId } from 'src/utils/agentId.js'
+import { quote } from 'src/utils/bash/shellQuote.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { writeToMailbox } from 'src/utils/teammateMailbox.js'
 import {
   buildInheritedCliFlags,
   buildInheritedEnvVars,
   getTeammateCommand,
-} from '../spawnUtils.js'
-import { assignTeammateColor } from '../teammateLayoutManager.js'
+} from 'src/utils/swarm/spawnUtils.js'
+import { assignTeammateColor } from 'src/utils/swarm/teammateLayoutManager.js'
 import { isInsideTmux } from './detection.js'
 import type {
   BackendType,

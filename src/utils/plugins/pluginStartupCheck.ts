@@ -1,13 +1,13 @@
 import { join } from 'path'
-import { getCwd } from '../cwd.js'
-import { logForDebugging } from '../debug.js'
-import { logError } from '../log.js'
-import type { SettingSource } from '../settings/constants.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
+import type { SettingSource } from 'src/utils/settings/constants.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from '../settings/settings.js'
+} from 'src/utils/settings/settings.js'
 import { getAddDirEnabledPlugins } from './addDirPluginSettings.js'
 import {
   getInMemoryInstalledPlugins,

@@ -3,9 +3,9 @@ import { PassThrough } from 'node:stream'
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot } from '../ink.js'
-import { AppStateProvider } from '../state/AppState.js'
-import { renderToString } from '../utils/staticRender.js'
+import { createRoot } from 'src/ink.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { renderToString } from 'src/utils/staticRender.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
 // banner reads from globalThis.MACRO at runtime. Mirror what other tests do.
@@ -14,7 +14,7 @@ import { renderToString } from '../utils/staticRender.js'
 // detectProvider reads from getActiveProvider(). Spread the real module so
 // other consumers' shapes survive Bun's process-global mock; restore in
 // afterAll to avoid leaks.
-const realActiveProvider = { ...(await import('../services/api/activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null
@@ -24,24 +24,24 @@ let resolvedOverride: ResolvedProvider = null
 // Anthropic-transport effort is driven by the /effort slider setting
 // (getInitialEffortSetting), not provider.extras — see #61. Override it here
 // so the "effort token" test can exercise a non-default level deterministically.
-const realEffort = { ...(await import('../utils/effort.js')) }
+const realEffort = { ...(await import('src/utils/effort.js')) }
 const realEffortSnapshot = { ...realEffort }
 let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
 
-mock.module('../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
 
-mock.module('../utils/effort.js', () => ({
+mock.module('src/utils/effort.js', () => ({
   ...realEffortSnapshot,
   getInitialEffortSetting: () =>
     effortOverride ?? realEffortSnapshot.getInitialEffortSetting(),
 }))
 
 afterAll(() => {
-  mock.module('../services/api/activeProvider.js', () => realActiveProviderSnapshot)
-  mock.module('../utils/effort.js', () => realEffortSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/utils/effort.js', () => realEffortSnapshot)
   mock.module('src/utils/effort.js', () => realEffortSnapshot)
 })
 
@@ -217,10 +217,10 @@ describe('<StartupBanner />', () => {
     // mounting the banner actually subscribes. If a future refactor
     // deletes the useEffect or the import, subscribeCalls stays 0 and
     // this test fails — unlike a string-equality "contract" check.
-    const realCache = { ...(await import('../utils/latestVersionCache.js')) }
+    const realCache = { ...(await import('src/utils/latestVersionCache.js')) }
     let subscribeCalls = 0
     let unsubscribeCalls = 0
-    mock.module('../utils/latestVersionCache.js', () => ({
+    mock.module('src/utils/latestVersionCache.js', () => ({
       ...realCache,
       subscribeLatestVersion: (_listener: unknown) => {
         subscribeCalls += 1
@@ -246,7 +246,7 @@ describe('<StartupBanner />', () => {
       // Restore by re-asserting the real shape. mock.restore() would also
       // dispose the activeProvider top-level mock (registered outside any
       // describe block) and break sibling tests in this file.
-      mock.module('../utils/latestVersionCache.js', () => realCache)
+      mock.module('src/utils/latestVersionCache.js', () => realCache)
     }
   })
 
@@ -258,11 +258,11 @@ describe('<StartupBanner />', () => {
     // again on the fresh mount) passed the assertion even when the
     // subscribe-listener body was deleted. Persistent root → mount once →
     // captured() → wait for re-render → assert.
-    const realCache = { ...(await import('../utils/latestVersionCache.js')) }
+    const realCache = { ...(await import('src/utils/latestVersionCache.js')) }
     const realScreen = { ...(await import('./StartupScreen.js')) }
     let captured: (() => void) | null = null
     let resolveReturn: { latest: string } | undefined
-    mock.module('../utils/latestVersionCache.js', () => ({
+    mock.module('src/utils/latestVersionCache.js', () => ({
       ...realCache,
       subscribeLatestVersion: (listener: () => void) => {
         captured = listener
@@ -352,7 +352,7 @@ describe('<StartupBanner />', () => {
       root.unmount()
       stdout.end()
       await Bun.sleep(0)
-      mock.module('../utils/latestVersionCache.js', () => realCache)
+      mock.module('src/utils/latestVersionCache.js', () => realCache)
       mock.module('./StartupScreen.js', () => realScreen)
     }
   })

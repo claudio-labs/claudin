@@ -8,44 +8,44 @@
  * AsyncHookRegistry.
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
-import { pathExists } from '../file.js'
-import { wrapSpawn, type ShellCommand } from '../ShellCommand.js'
-import { TaskOutput } from '../task/TaskOutput.js'
-import { getCwd } from '../cwd.js'
-import { formatShellPrefixCommand } from '../bash/shellPrefix.js'
-import { getHookEnvFilePath } from '../sessionEnvironment.js'
-import { subprocessEnv } from '../subprocessEnv.js'
-import { getPlatform } from '../platform.js'
-import { findGitBashPath, windowsPathToPosixPath } from '../windowsPaths.js'
-import { getCachedPowerShellPath } from '../shell/powershellDetection.js'
-import { DEFAULT_HOOK_SHELL } from '../shell/shellProvider.js'
-import { buildPowerShellArgs } from '../shell/powershellProvider.js'
+import { pathExists } from 'src/utils/file.js'
+import { wrapSpawn, type ShellCommand } from 'src/utils/ShellCommand.js'
+import { TaskOutput } from 'src/utils/task/TaskOutput.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { formatShellPrefixCommand } from 'src/utils/bash/shellPrefix.js'
+import { getHookEnvFilePath } from 'src/utils/sessionEnvironment.js'
+import { subprocessEnv } from 'src/utils/subprocessEnv.js'
+import { getPlatform } from 'src/utils/platform.js'
+import { findGitBashPath, windowsPathToPosixPath } from 'src/utils/windowsPaths.js'
+import { getCachedPowerShellPath } from 'src/utils/shell/powershellDetection.js'
+import { DEFAULT_HOOK_SHELL } from 'src/utils/shell/shellProvider.js'
+import { buildPowerShellArgs } from 'src/utils/shell/powershellProvider.js'
 import {
   loadPluginOptions,
   substituteUserConfigVariables,
-} from '../plugins/pluginOptionsStorage.js'
-import { getPluginDataDir } from '../plugins/pluginDirectories.js'
-import { getProjectRoot, getOriginalCwd } from '../../bootstrap/state.js'
+} from 'src/utils/plugins/pluginOptionsStorage.js'
+import { getPluginDataDir } from 'src/utils/plugins/pluginDirectories.js'
+import { getProjectRoot, getOriginalCwd } from 'src/bootstrap/state.js'
 import {
   promptRequestSchema,
   type PromptRequest,
   type PromptResponse,
   isAsyncHookJSONOutput,
-} from '../../types/hooks.js'
+} from 'src/types/hooks.js'
 import type {
   HookEvent,
   AsyncHookJSONOutput,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { HookCommand } from '../settings/types.js'
-import { logForDebugging } from '../debug.js'
-import { logForDiagnosticsNoPII } from '../diagLogs.js'
-import { firstLineOf } from '../stringUtils.js'
+import type { HookCommand } from 'src/utils/settings/types.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { firstLineOf } from 'src/utils/stringUtils.js'
 import { registerPendingAsyncHook } from './AsyncHookRegistry.js'
-import { enqueuePendingNotification } from '../messageQueueManager.js'
-import { wrapInSystemReminder } from '../messages.js'
+import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
+import { wrapInSystemReminder } from 'src/utils/messages.js'
 import { emitHookResponse, startHookProgressInterval } from './hookEvents.js'
-import { jsonStringify, jsonParse } from '../slowOperations.js'
-import { errorMessage, getErrnoCode } from '../errors.js'
+import { jsonStringify, jsonParse } from 'src/utils/slowOperations.js'
+import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
 import { TOOL_HOOK_EXECUTION_TIMEOUT_MS } from './shared.js'
 
 function executeInBackground({

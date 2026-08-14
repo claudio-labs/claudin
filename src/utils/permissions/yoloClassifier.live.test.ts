@@ -23,9 +23,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import type { ToolPermissionContext } from '../../Tool.js'
-import type { Message } from '../../types/message.js'
-import { enableConfigs } from '../config.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
+import type { Message } from 'src/types/message.js'
+import { enableConfigs } from 'src/utils/config.js'
 import {
   __setClassifierPromptsForTests,
   classifyYoloAction,

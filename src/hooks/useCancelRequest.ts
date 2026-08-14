@@ -12,27 +12,27 @@ import {
   useAppStateStore,
   useSetAppState,
 } from 'src/state/AppState.js'
-import { isVimModeEnabled } from '../components/PromptInput/utils.js'
-import type { ToolUseConfirm } from '../components/permissions/PermissionRequest.js'
-import type { SpinnerMode } from '../components/Spinner/types.js'
-import { useNotifications } from '../context/notifications.js'
-import { useIsOverlayActive } from '../context/overlayContext.js'
-import { useCommandQueue } from '../hooks/useCommandQueue.js'
-import { getShortcutDisplay } from '../keybindings/shortcutFormat.js'
-import { useKeybinding } from '../keybindings/useKeybinding.js'
-import type { Screen } from '../screens/REPL.js'
-import { exitTeammateView } from '../state/teammateViewHelpers.js'
+import { isVimModeEnabled } from 'src/components/PromptInput/utils.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { SpinnerMode } from 'src/components/Spinner/types.js'
+import { useNotifications } from 'src/context/notifications.js'
+import { useIsOverlayActive } from 'src/context/overlayContext.js'
+import { useCommandQueue } from 'src/hooks/useCommandQueue.js'
+import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { useKeybinding } from 'src/keybindings/useKeybinding.js'
+import type { Screen } from 'src/screens/REPL.js'
+import { exitTeammateView } from 'src/state/teammateViewHelpers.js'
 import {
   killAllRunningAgentTasks,
   markAgentsNotified,
-} from '../tasks/LocalAgentTask/LocalAgentTask.js'
-import type { PromptInputMode, VimMode } from '../types/textInputTypes.js'
+} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import type { PromptInputMode, VimMode } from 'src/types/textInputTypes.js'
 import {
   clearCommandQueue,
   enqueuePendingNotification,
   hasCommandsInQueue,
-} from '../utils/messageQueueManager.js'
-import { emitTaskTerminatedSdk } from '../utils/sdkEventQueue.js'
+} from 'src/utils/messageQueueManager.js'
+import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 
 /** Time window in ms during which a second press kills all background agents. */
 const KILL_AGENTS_CONFIRM_WINDOW_MS = 3000

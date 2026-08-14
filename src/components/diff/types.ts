@@ -1,6 +1,6 @@
 import type { StructuredPatchHunk } from 'diff'
-import type { DiffFile } from '../../hooks/useDiffData.js'
-import type { TurnDiff } from '../../hooks/useTurnDiffs.js'
+import type { DiffFile } from 'src/hooks/useDiffData.js'
+import type { TurnDiff } from 'src/hooks/useTurnDiffs.js'
 
 /** One git repo's working-tree changes, used for per-project grouping. */
 export type RepoGroup = {

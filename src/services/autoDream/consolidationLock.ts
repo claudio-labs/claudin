@@ -6,12 +6,12 @@
 
 import { mkdir, readFile, stat, unlink, utimes, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getOriginalCwd } from '../../bootstrap/state.js'
-import { getAutoMemPath } from '../../memdir/paths.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { isProcessRunning } from '../../utils/genericProcessUtils.js'
-import { listCandidates } from '../../utils/listSessionsImpl.js'
-import { getProjectDir } from '../../utils/sessionStorage.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getAutoMemPath } from 'src/memdir/paths.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isProcessRunning } from 'src/utils/genericProcessUtils.js'
+import { listCandidates } from 'src/utils/listSessionsImpl.js'
+import { getProjectDir } from 'src/utils/sessionStorage.js'
 
 const LOCK_FILE = '.consolidate-lock'
 

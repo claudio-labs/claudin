@@ -9,10 +9,10 @@ import { safeParseJSON } from 'src/utils/json.js'
 import { logError } from 'src/utils/log.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getAnthropicClient } from '../client.js'
-import { getCachedAnthropicClient } from '../clientCache.js'
+import { getAnthropicClient } from 'src/services/api/client.js'
+import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
 import { getExtraBodyParams } from './paramBuilders.js'
-import { CannotRetryError, withRetry } from '../withRetry.js'
+import { CannotRetryError, withRetry } from 'src/services/api/withRetry.js'
 
 // Define a type that represents valid JSON values (local to this module)
 type JsonValue = string | number | boolean | null | JsonObject | JsonArray

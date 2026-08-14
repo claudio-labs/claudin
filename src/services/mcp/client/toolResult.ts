@@ -7,33 +7,33 @@ import type {
   PromptMessage,
   ResourceLink,
 } from '@modelcontextprotocol/sdk/types.js'
-import { isEnvDefinedFalsy } from '../../../utils/envUtils.js'
-import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../../utils/errors.js'
-import { maybeResizeAndDownsampleImageBuffer } from '../../../utils/imageResizer.js'
-import { logMCPError } from '../../../utils/log.js'
+import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/utils/errors.js'
+import { maybeResizeAndDownsampleImageBuffer } from 'src/utils/imageResizer.js'
+import { logMCPError } from 'src/utils/log.js'
 import {
   getBinaryBlobSavedMessage,
   getFormatDescription,
   getLargeOutputInstructions,
   persistBinaryContent,
-} from '../../../utils/mcpOutputStorage.js'
+} from 'src/utils/mcpOutputStorage.js'
 import {
   getContentSizeEstimate,
   type MCPToolResult,
   mcpContentNeedsTruncation,
   truncateMcpContentIfNeeded,
-} from '../../../utils/mcpValidation.js'
-import { recursivelySanitizeUnicode } from '../../../utils/sanitization.js'
-import { jsonStringify } from '../../../utils/slowOperations.js'
+} from 'src/utils/mcpValidation.js'
+import { recursivelySanitizeUnicode } from 'src/utils/sanitization.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   isPersistError,
   persistToolResult,
-} from '../../../utils/toolResultStorage.js'
+} from 'src/utils/toolResultStorage.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../analytics/index.js'
-import { normalizeNameForMCP } from '../normalization.js'
+} from 'src/services/analytics/index.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',

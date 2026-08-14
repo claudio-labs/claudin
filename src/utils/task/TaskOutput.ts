@@ -1,9 +1,9 @@
 import { unlink } from 'fs/promises'
-import { CircularBuffer } from '../CircularBuffer.js'
-import { logForDebugging } from '../debug.js'
-import { readFileRange, tailFile } from '../fsOperations.js'
-import { getMaxOutputLength } from '../shell/outputLimits.js'
-import { safeJoinLines } from '../stringUtils.js'
+import { CircularBuffer } from 'src/utils/CircularBuffer.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { readFileRange, tailFile } from 'src/utils/fsOperations.js'
+import { getMaxOutputLength } from 'src/utils/shell/outputLimits.js'
+import { safeJoinLines } from 'src/utils/stringUtils.js'
 import { DiskTaskOutput, getTaskOutputPath } from './diskOutput.js'
 
 const DEFAULT_MAX_MEMORY = 8 * 1024 * 1024 // 8MB

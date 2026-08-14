@@ -30,7 +30,7 @@
  */
 import type { StructuredPatchHunk } from 'diff'
 
-import { parseGitDiff } from '../../../utils/gitDiff.js'
+import { parseGitDiff } from 'src/utils/gitDiff.js'
 
 /** Bodies at or above this many chars lose their hunks. */
 export const DIFF_PIVOT_CHARS = 6_000

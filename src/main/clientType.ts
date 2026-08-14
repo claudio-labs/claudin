@@ -6,8 +6,8 @@
 // Keeping them split lets tests assert the resolved value without mutating
 // global state.
 
-import { isEnvTruthy } from '../utils/envUtils.js';
-import { setClientType, setIsInteractive, setQuestionPreviewFormat, setSessionSource } from '../bootstrap/state.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { setClientType, setIsInteractive, setQuestionPreviewFormat, setSessionSource } from 'src/bootstrap/state.js';
 
 export type ClientType =
   | 'github-action'

@@ -3,7 +3,7 @@ import type { Tools } from 'src/Tool.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 import type { ThinkingConfig } from 'src/utils/thinking.js'
-import { withStreamingVCR } from '../../vcr.js'
+import { withStreamingVCR } from 'src/services/vcr.js'
 import { queryModel } from './streaming.js'
 import type { Options } from './types.js'
 

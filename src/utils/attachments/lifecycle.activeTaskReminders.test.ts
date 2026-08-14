@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { getActiveBackgroundTaskReminders } from './lifecycle.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 
 function makeContext(args: {
   agentId?: string

@@ -2,10 +2,10 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { statSync } from 'fs'
 import path from 'path'
 import { z } from 'zod/v4'
-import { buildTool, type ToolCallProgress, type ToolDef } from '../../Tool.js'
-import { getCwd } from '../../utils/cwd.js'
-import { lazySchema } from '../../utils/lazySchema.js'
-import { bashToolHasPermission } from '../BashTool/bashPermissions.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
 import { formatBuildResult } from './budget.js'
 import {
   applyQuietFlags,

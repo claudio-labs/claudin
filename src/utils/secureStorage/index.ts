@@ -3,7 +3,7 @@ import { macOsKeychainStorage } from './macOsKeychainStorage.js'
 import { linuxSecretStorage } from './linuxSecretStorage.js'
 import { windowsCredentialStorage } from './windowsCredentialStorage.js'
 import { plainTextStorage } from './plainTextStorage.js'
-import type { OAuthTokens } from '../../services/oauth/types.js'
+import type { OAuthTokens } from 'src/services/oauth/types.js'
 
 export interface SecureStorageData {
   /** The primary Anthropic web-login OAuth credentials. */

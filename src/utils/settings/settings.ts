@@ -7,22 +7,22 @@ import {
   getFlagSettingsPath,
   getOriginalCwd,
   getUseCoworkPlugins,
-} from '../../bootstrap/state.js'
-import { getRemoteManagedSettingsSyncFromCache } from '../../services/remoteManagedSettings/syncCacheState.js'
-import { uniq } from '../array.js'
-import { logForDebugging } from '../debug.js'
-import { logForDiagnosticsNoPII } from '../diagLogs.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from '../envUtils.js'
-import { getErrnoCode, isENOENT } from '../errors.js'
-import { writeFileSyncAndFlush } from '../file.js'
-import { readFileSync } from '../fileRead.js'
-import { getFsImplementation, safeResolvePath } from '../fsOperations.js'
-import { addFileGlobRuleToGitignore } from '../git/gitignore.js'
-import { safeParseJSON } from '../json.js'
-import { logError } from '../log.js'
-import { getPlatform } from '../platform.js'
-import { clone, jsonStringify } from '../slowOperations.js'
-import { profileCheckpoint } from '../startupProfiler.js'
+} from 'src/bootstrap/state.js'
+import { getRemoteManagedSettingsSyncFromCache } from 'src/services/remoteManagedSettings/syncCacheState.js'
+import { uniq } from 'src/utils/array.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getErrnoCode, isENOENT } from 'src/utils/errors.js'
+import { writeFileSyncAndFlush } from 'src/utils/file.js'
+import { readFileSync } from 'src/utils/fileRead.js'
+import { getFsImplementation, safeResolvePath } from 'src/utils/fsOperations.js'
+import { addFileGlobRuleToGitignore } from 'src/utils/git/gitignore.js'
+import { safeParseJSON } from 'src/utils/json.js'
+import { logError } from 'src/utils/log.js'
+import { getPlatform } from 'src/utils/platform.js'
+import { clone, jsonStringify } from 'src/utils/slowOperations.js'
+import { profileCheckpoint } from 'src/utils/startupProfiler.js'
 import {
   type EditableSettingSource,
   getEnabledSettingSources,

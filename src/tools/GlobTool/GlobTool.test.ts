@@ -9,7 +9,7 @@ import {
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import { GlobTool } from './GlobTool.js'
 
 let workDir: string

@@ -1,17 +1,17 @@
 import { describe, expect, test } from 'bun:test'
-import { getSessionId } from '../../bootstrap/state.js'
-import type { AppState } from '../../state/AppStateStore.js'
-import type { Message } from '../../types/message.js'
-import { executeSessionEndHooks } from '../hooks/events.js'
-import { createAssistantMessage } from '../messages/factories.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import type { AppState } from 'src/state/AppStateStore.js'
+import type { Message } from 'src/types/message.js'
+import { executeSessionEndHooks } from 'src/utils/hooks/events.js'
+import { createAssistantMessage } from 'src/utils/messages/factories.js'
 import {
   addFunctionHook,
   addSessionHook,
   removeGoalStopHooks,
   type SessionStore,
-} from '../hooks/sessionHooks.js'
-import { isStopConditionJudge } from '../hooks/stopConditionJudge.js'
-import type { AggregatedHookResult } from '../hooks/types.js'
+} from 'src/utils/hooks/sessionHooks.js'
+import { isStopConditionJudge } from 'src/utils/hooks/stopConditionJudge.js'
+import type { AggregatedHookResult } from 'src/utils/hooks/types.js'
 import {
   buildGoalDirective,
   buildGoalHook,

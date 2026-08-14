@@ -2,7 +2,7 @@ import {
   createOneShotMemo,
   createOutputTrimTailStripper,
   MEMO_LIMIT,
-} from '../shared/redirect.js'
+} from 'src/tools/shared/redirect.js'
 import { acceptsGitCommand } from './grammar.js'
 import { GIT_TOOL_NAME } from './prompt.js'
 

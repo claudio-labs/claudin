@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'path'
 
-import { optionForPermissionSaveDestination } from '../components/permissions/rules/AddPermissionRules.tsx'
+import { optionForPermissionSaveDestination } from 'src/components/permissions/rules/AddPermissionRules.tsx'
 import { isClaudeSettingsPath } from './permissions/filesystem.ts'
 import { getValidationTip } from './settings/validationTips.ts'
 

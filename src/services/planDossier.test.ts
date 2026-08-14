@@ -12,13 +12,13 @@ import { utimes, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const realPlans = await import('../utils/plans.js')
+const realPlans = await import('src/utils/plans.js')
 
 let testTempDir: string
 let testPlansDir: string
 let mockSlug = 'test-slug'
 
-mock.module('../utils/plans.js', () => ({
+mock.module('src/utils/plans.js', () => ({
   ...realPlans,
   getPlanFilePath: () => join(testPlansDir, `${mockSlug}.md`),
   getPlanSlug: () => mockSlug,
@@ -63,7 +63,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('../utils/plans.js', () => realPlans)
+  mock.module('src/utils/plans.js', () => realPlans)
 })
 
 function makeAssistantMessage(toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>) {

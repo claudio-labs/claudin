@@ -12,7 +12,7 @@
 //
 // See docs/tech/main-split/bootContext-fields.md for the inventory.
 
-import type { DownloadResult } from '../services/api/filesApi.js';
+import type { DownloadResult } from 'src/services/api/filesApi.js';
 import type { TeammateOptions } from './helpers.js';
 
 // The three pending slots are populated by argv pre-parsing inside

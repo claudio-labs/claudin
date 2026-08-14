@@ -8,7 +8,7 @@
  * used by callers to render blocking errors.
  */
 import { randomUUID } from 'crypto'
-import { getSessionId } from '../../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
@@ -16,7 +16,7 @@ import {
 import {
   getInitialSettings,
   getSettingsForSource,
-} from '../settings/settings.js'
+} from 'src/utils/settings/settings.js'
 import type {
   HookInput,
   PostToolUseHookInput,
@@ -35,23 +35,23 @@ import type {
   PermissionRequestHookInput,
   PermissionUpdate,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { StatusLineCommandInput } from '../../types/statusLine.js'
-import type { FileSuggestionCommandInput } from '../../types/fileSuggestion.js'
-import { logForDebugging } from '../debug.js'
+import type { StatusLineCommandInput } from 'src/types/statusLine.js'
+import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import type {
   HookCallback,
   PromptRequest,
   PromptResponse,
-} from '../../types/hooks.js'
-import type { Message } from '../../types/message.js'
-import type { ToolUseContext } from '../../Tool.js'
-import type { AgentId } from '../../types/ids.js'
-import { getAgentTranscriptPath } from '../sessionStorage.js'
+} from 'src/types/hooks.js'
+import type { Message } from 'src/types/message.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { AgentId } from 'src/types/ids.js'
+import { getAgentTranscriptPath } from 'src/utils/sessionStorage.js'
 import {
   getLastAssistantMessage,
   extractTextContent,
-} from '../messages.js'
-import { jsonStringify } from '../slowOperations.js'
+} from 'src/utils/messages.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   shouldSkipHookDueToTrust,

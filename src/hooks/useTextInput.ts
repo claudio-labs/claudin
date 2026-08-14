@@ -1,13 +1,13 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useNotifications } from 'src/context/notifications.js'
 import stripAnsi from 'strip-ansi'
-import { markBackslashReturnUsed } from '../commands/terminalSetup/terminalSetup.js'
-import { addToHistory } from '../history.js'
-import type { Key } from '../ink.js'
+import { markBackslashReturnUsed } from 'src/commands/terminalSetup/terminalSetup.js'
+import { addToHistory } from 'src/history.js'
+import type { Key } from 'src/ink.js'
 import type {
   InlineGhostText,
   TextInputState,
-} from '../types/textInputTypes.js'
+} from 'src/types/textInputTypes.js'
 import {
   Cursor,
   getLastKill,
@@ -17,11 +17,11 @@ import {
   resetYankState,
   updateYankLength,
   yankPop,
-} from '../utils/Cursor.js'
-import { env } from '../utils/env.js'
-import { isFullscreenEnvEnabled } from '../utils/fullscreen.js'
-import type { ImageDimensions } from '../utils/imageResizer.js'
-import { isModifierPressed, prewarmModifiers } from '../utils/modifiers.js'
+} from 'src/utils/Cursor.js'
+import { env } from 'src/utils/env.js'
+import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
+import type { ImageDimensions } from 'src/utils/imageResizer.js'
+import { isModifierPressed, prewarmModifiers } from 'src/utils/modifiers.js'
 import { useDoublePress } from './useDoublePress.js'
 
 type MaybeCursor = void | Cursor

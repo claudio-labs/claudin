@@ -1,4 +1,4 @@
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { logForDebugging } from './debug.js'
 import { isBareMode } from './envUtils.js'
 import { getSecureStorage } from './secureStorage/index.js'
@@ -9,7 +9,7 @@ import {
   getCodexOAuthClientId,
   parseChatgptAccountId,
   decodeJwtPayload,
-} from '../services/api/codexOAuthShared.js'
+} from 'src/services/api/codexOAuthShared.js'
 
 export const CODEX_STORAGE_KEY = 'codex' as const
 const CODEX_TOKEN_REFRESH_SKEW_MS = 60_000

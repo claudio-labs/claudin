@@ -1,6 +1,6 @@
 import { execa } from 'execa'
 import memoize from 'lodash-es/memoize.js'
-import { getSessionId } from '../bootstrap/state.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import {
   getOauthAccountInfo,
   getRateLimitTier,

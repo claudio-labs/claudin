@@ -4,23 +4,23 @@
  * Also tracks memdir file access via Read, Grep, Glob, Edit, and Write tools.
  */
 import { feature } from 'bun:bundle'
-import { registerHookCallbacks } from '../bootstrap/state.js'
-import type { HookInput, HookJSONOutput } from '../entrypoints/agentSdkTypes.js'
+import { registerHookCallbacks } from 'src/bootstrap/state.js'
+import type { HookInput, HookJSONOutput } from 'src/entrypoints/agentSdkTypes.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
-import { inputSchema as editInputSchema } from '../tools/FileEditTool/types.js'
-import { FileReadTool } from '../tools/FileReadTool/FileReadTool.js'
-import { FILE_READ_TOOL_NAME } from '../tools/FileReadTool/prompt.js'
-import { FileWriteTool } from '../tools/FileWriteTool/FileWriteTool.js'
-import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
-import { GlobTool } from '../tools/GlobTool/GlobTool.js'
-import { GLOB_TOOL_NAME } from '../tools/GlobTool/prompt.js'
-import { GrepTool } from '../tools/GrepTool/GrepTool.js'
-import { GREP_TOOL_NAME } from '../tools/GrepTool/prompt.js'
-import type { HookCallback } from '../types/hooks.js'
+} from 'src/services/analytics/index.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { inputSchema as editInputSchema } from 'src/tools/FileEditTool/types.js'
+import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { GlobTool } from 'src/tools/GlobTool/GlobTool.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import type { HookCallback } from 'src/types/hooks.js'
 import {
   detectSessionFileType,
   detectSessionPatternType,
@@ -30,10 +30,10 @@ import {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('../memdir/teamMemPaths.js') as typeof import('../memdir/teamMemPaths.js'))
+  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 const teamMemWatcher = feature('TEAMMEM')
-  ? (require('../services/teamMemorySync/watcher.js') as typeof import('../services/teamMemorySync/watcher.js'))
+  ? (require('src/services/teamMemorySync/watcher.js') as typeof import('src/services/teamMemorySync/watcher.js'))
   : null
 const memoryShapeTelemetry = feature('MEMORY_SHAPE_TELEMETRY')
   ? (require('../memdir/memoryShapeTelemetry.js') as typeof import('../memdir/memoryShapeTelemetry.js'))

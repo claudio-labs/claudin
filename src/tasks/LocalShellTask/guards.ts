@@ -2,9 +2,9 @@
 // Extracted from LocalShellTask.tsx so non-React consumers (stopTask.ts via
 // print.ts) don't pull React/ink into the module graph.
 
-import type { TaskStateBase } from '../../Task.js'
-import type { AgentId } from '../../types/ids.js'
-import type { ShellCommand } from '../../utils/ShellCommand.js'
+import type { TaskStateBase } from 'src/Task.js'
+import type { AgentId } from 'src/types/ids.js'
+import type { ShellCommand } from 'src/utils/ShellCommand.js'
 
 export type BashTaskKind = 'bash' | 'monitor'
 

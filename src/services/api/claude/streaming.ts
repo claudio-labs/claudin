@@ -185,15 +185,15 @@ import {
 } from "src/services/analytics/index.js";
 import { getInitializationStatus } from "src/services/lsp/manager.js";
 import { withStreamingVCR } from "src/services/vcr.js";
-import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "../client.js";
-import { getCachedAnthropicClient, invalidateClientCache } from "../clientCache.js";
+import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "src/services/api/client.js";
+import { getCachedAnthropicClient, invalidateClientCache } from "src/services/api/clientCache.js";
 import {
   API_ERROR_MESSAGE_PREFIX,
   CUSTOM_OFF_SWITCH_MESSAGE,
   getAssistantMessageFromError,
   getErrorMessageIfRefusal,
-} from "../errors.js";
-import { extractOpenAICategoryMarker } from "../openaiErrorClassification.js";
+} from "src/services/api/errors.js";
+import { extractOpenAICategoryMarker } from "src/services/api/openaiErrorClassification.js";
 import {
   EMPTY_USAGE,
   type GlobalCacheStrategy,
@@ -201,19 +201,19 @@ import {
   logAPIQuery,
   logAPISuccessAndDuration,
   type NonNullableUsage,
-} from "../logging.js";
+} from "src/services/api/logging.js";
 import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
   recordPromptState,
-} from "../promptCacheBreakDetection.js";
+} from "src/services/api/promptCacheBreakDetection.js";
 import {
   CannotRetryError,
   FallbackTriggeredError,
   is529Error,
   type RetryContext,
   withRetry,
-} from "../withRetry.js";
+} from "src/services/api/withRetry.js";
 import { should1hCacheTTL } from "./cacheControl.js";
 import {
   addCacheBreakpoints,

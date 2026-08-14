@@ -1,7 +1,7 @@
-import { getOriginalCwd } from '../../bootstrap/state.js'
-import { lintRuleFiles, relativeFindingPath } from '../../utils/rulesLint.js'
-import { getProjectDir } from '../../utils/sessionStorage/pure/paths.js'
-import { registerBundledSkill } from '../bundledSkills.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { lintRuleFiles, relativeFindingPath } from 'src/utils/rulesLint.js'
+import { getProjectDir } from 'src/utils/sessionStorage/pure/paths.js'
+import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
  * `/refresh-rules` — reconcile this project's navigation rule with what the

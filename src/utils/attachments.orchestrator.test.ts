@@ -4,8 +4,8 @@ import {
   getAttachmentMessages,
   getQueuedCommandAttachments,
 } from './attachments.js'
-import type { ToolUseContext } from '../Tool.js'
-import type { QueuedCommand } from '../types/textInputTypes.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { QueuedCommand } from 'src/types/textInputTypes.js'
 
 // The claude_md_delta attachment reads getUserContext().claudeMd, which is
 // discovered from the cwd's CLAUDE.md/AGENTS.md. That doc is present in a dev
@@ -13,7 +13,7 @@ import type { QueuedCommand } from '../types/textInputTypes.js'
 // "delta must fire" control tests below would flake on the environment rather
 // than the omit gate they mean to exercise. Pin a non-empty project doc via a
 // scoped getUserContext mock so the gate is what's under test, not the repo.
-const realContext = { ...(await import('../context.js')) }
+const realContext = { ...(await import('src/context.js')) }
 const HERMETIC_CLAUDE_MD = '# Test project doc\nHermetic claude_md content.\n'
 
 // Minimal context skeleton — the disabled path uses none of these fields,
@@ -90,7 +90,7 @@ describe('getAttachments — subagent context-omission gates', () => {
   // CLAUDE.md/rules/memory/gitStatus content isn't re-injected into agents
   // that deliberately stripped it (Explore, Plan, WebResearcher).
   beforeEach(() => {
-    mock.module('../context.js', () => ({
+    mock.module('src/context.js', () => ({
       ...realContext,
       getUserContext: async () => ({ claudeMd: HERMETIC_CLAUDE_MD }),
     }))
@@ -99,7 +99,7 @@ describe('getAttachments — subagent context-omission gates', () => {
   afterAll(() => {
     // mock.module is process-global and mock.restore() does not revert it;
     // re-install the real module so the stub never bleeds into sibling files.
-    mock.module('../context.js', () => realContext)
+    mock.module('src/context.js', () => realContext)
   })
 
   function makeSubagentContext(

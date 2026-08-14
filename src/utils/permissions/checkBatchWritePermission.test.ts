@@ -7,8 +7,8 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 
-import { getEmptyToolPermissionContext } from '../../Tool.js'
-import type { ToolPermissionContext } from '../../Tool.js'
+import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
 import { checkBatchWritePermission } from './filesystem.js'
 
 function withCwdContext(): ToolPermissionContext {

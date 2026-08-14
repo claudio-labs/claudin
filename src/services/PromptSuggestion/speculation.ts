@@ -2,48 +2,48 @@ import { randomUUID } from 'crypto'
 import { rm } from 'fs'
 import { appendFile, copyFile, mkdir } from 'fs/promises'
 import { dirname, isAbsolute, join, relative } from 'path'
-import { getCwdState } from '../../bootstrap/state.js'
-import type { CompletionBoundary } from '../../state/AppStateStore.js'
+import { getCwdState } from 'src/bootstrap/state.js'
+import type { CompletionBoundary } from 'src/state/AppStateStore.js'
 import {
   type AppState,
   IDLE_SPECULATION_STATE,
   type SpeculationResult,
   type SpeculationState,
-} from '../../state/AppStateStore.js'
-import { commandHasAnyCd } from '../../tools/BashTool/bashPermissions.js'
-import { checkReadOnlyConstraints } from '../../tools/BashTool/readOnlyValidation.js'
-import type { SpeculationAcceptMessage } from '../../types/logs.js'
-import type { Message } from '../../types/message.js'
-import { createChildAbortController } from '../../utils/abortController.js'
-import { count } from '../../utils/array.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
+} from 'src/state/AppStateStore.js'
+import { commandHasAnyCd } from 'src/tools/BashTool/bashPermissions.js'
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
+import type { SpeculationAcceptMessage } from 'src/types/logs.js'
+import type { Message } from 'src/types/message.js'
+import { createChildAbortController } from 'src/utils/abortController.js'
+import { count } from 'src/utils/array.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
 import {
   type FileStateCache,
   mergeReplacingLiveCache,
   READ_FILE_STATE_CACHE_SIZE,
-} from '../../utils/fileStateCache.js'
+} from 'src/utils/fileStateCache.js'
 import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from '../../utils/forkedAgent.js'
-import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
-import { logError } from '../../utils/log.js'
-import type { SetAppState } from '../../utils/messageQueueManager.js'
+} from 'src/utils/forkedAgent.js'
+import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+import { logError } from 'src/utils/log.js'
+import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import {
   createUserMessage,
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
-} from '../../utils/messages.js'
-import { getClaudeTempDir } from '../../utils/permissions/filesystem.js'
-import { extractReadFilesFromMessages } from '../../utils/queryHelpers.js'
-import { getTranscriptPath } from '../../utils/sessionStorage.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
+} from 'src/utils/messages.js'
+import { getClaudeTempDir } from 'src/utils/permissions/filesystem.js'
+import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
+import { getTranscriptPath } from 'src/utils/sessionStorage.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   generateSuggestion,
   getPromptVariant,

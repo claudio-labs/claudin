@@ -32,22 +32,22 @@ import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
 import { randomUUID, type UUID } from 'crypto';
 import type { ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-import type { Message as MessageType, UserMessage } from '../../../types/message.js';
-import type { PastedContent } from '../../../utils/config.js';
-import type { MessageActionCaps } from '../../../components/messageActions.js';
-import type { FileHistoryState } from '../../../utils/fileHistory.js';
-import type { PromptInputMode } from '../../../types/textInputTypes.js';
-import type { SetAppState } from '../../../utils/messageQueueManager.js';
-import type { useNotifications } from '../../../context/notifications.js';
+import type { Message as MessageType, UserMessage } from 'src/types/message.js';
+import type { PastedContent } from 'src/utils/config.js';
+import type { MessageActionCaps } from 'src/components/messageActions.js';
+import type { FileHistoryState } from 'src/utils/fileHistory.js';
+import type { PromptInputMode } from 'src/types/textInputTypes.js';
+import type { SetAppState } from 'src/utils/messageQueueManager.js';
+import type { useNotifications } from 'src/context/notifications.js';
 import {
   selectableUserMessagesFilter,
   messagesAfterAreOnlySynthetic,
-} from '../../../components/MessageSelector.js';
-import { textForResubmit } from '../../../utils/messages.js';
-import { resetMicrocompactState } from '../../../services/compact/microCompact.js';
-import { fileHistoryHasAnyChanges } from '../../../utils/fileHistory.js';
-import { setClipboard } from '../../../ink/termio/osc.js';
-import { logEvent } from '../../../services/analytics/index.js';
+} from 'src/components/MessageSelector.js';
+import { textForResubmit } from 'src/utils/messages.js';
+import { resetMicrocompactState } from 'src/services/compact/microCompact.js';
+import { fileHistoryHasAnyChanges } from 'src/utils/fileHistory.js';
+import { setClipboard } from 'src/ink/termio/osc.js';
+import { logEvent } from 'src/services/analytics/index.js';
 
 export interface UseMessageActionsControllerDeps {
   messages: MessageType[];
@@ -121,7 +121,7 @@ export function useMessageActionsController(
       // threshold crossing.
       /* eslint-disable @typescript-eslint/no-require-imports */
       ;
-      (require('../../../services/contextCollapse/index.js') as typeof import('../../../services/contextCollapse/index.js')).resetContextCollapse();
+      (require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')).resetContextCollapse();
       /* eslint-enable @typescript-eslint/no-require-imports */
     }
 

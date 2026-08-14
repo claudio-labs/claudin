@@ -17,7 +17,7 @@
 // contract by monkey-patching the SandboxManager export.
 
 import { afterEach, describe, expect, test } from 'bun:test'
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js'
+import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
 import { safeAnnotateStderrWithSandboxFailures } from './BashTool.js'
 
 const original = SandboxManager.annotateStderrWithSandboxFailures

@@ -2,10 +2,10 @@ import * as React from 'react'
 import { z } from 'zod/v4'
 import { BLACK_CIRCLE } from 'src/constants/figures.js'
 import { getModeColor } from 'src/utils/permissions/PermissionMode.js'
-import { Box, Text } from '../../ink.js'
-import { buildTool, type Tool, type ToolDef } from '../../Tool.js'
-import { EFFORT_LEVELS } from '../../utils/effort.js'
-import { lazySchema } from '../../utils/lazySchema.js'
+import { Box, Text } from 'src/ink.js'
+import { buildTool, type Tool, type ToolDef } from 'src/Tool.js'
+import { EFFORT_LEVELS } from 'src/utils/effort.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import {
   MAX_CATEGORY_CHARS,
   MAX_FINDINGS,

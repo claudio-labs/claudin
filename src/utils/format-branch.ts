@@ -1,5 +1,5 @@
 import chalk, { type ChalkInstance } from 'chalk'
-import { supportsHyperlinks } from '../ink/supports-hyperlinks.js'
+import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
 import { OSC8_START, OSC8_END } from './hyperlink.js'
 import { hasNerdFontGlyphs } from './terminalFont.js'
 import type { Theme } from './theme.js'

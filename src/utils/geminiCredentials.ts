@@ -1,4 +1,4 @@
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isBareMode } from './envUtils.js'
 import { getGeminiAuthMode } from './geminiAuth.js'
 import { getSecureStorage } from './secureStorage/index.js'

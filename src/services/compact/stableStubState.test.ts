@@ -28,8 +28,8 @@ import {
   getSessionId,
   regenerateSessionId,
   switchSession,
-} from '../../bootstrap/state.js'
-import type { SessionId } from '../../types/ids.js'
+} from 'src/bootstrap/state.js'
+import type { SessionId } from 'src/types/ids.js'
 
 type Block = Record<string, unknown>
 type Msg = {
@@ -221,7 +221,7 @@ test('sub-agent (different agentId) has its own isolated clipped set', async () 
   // getAgentId() under the hood. This is the actual mechanism in-process
   // teammates use (utils/swarm/inProcessRunner) and exercises the real
   // currentKey() composition.
-  const { runWithTeammateContext } = await import('../../utils/teammateContext.js')
+  const { runWithTeammateContext } = await import('src/utils/teammateContext.js')
 
   // Parent adds ids
   addClippedIds(['parent_a', 'parent_b'])
@@ -387,7 +387,7 @@ test('5.7 substitution: sub-agent applyStableStubs is no-op for parent-only clip
   // teammateContext; currentKey() composes (sessionId, agentId), so the
   // sub-agent's lookup misses the parent's set and applyStableStubs is a
   // pure identity no-op there.
-  const { runWithTeammateContext } = await import('../../utils/teammateContext.js')
+  const { runWithTeammateContext } = await import('src/utils/teammateContext.js')
 
   // Parent: clip an id and confirm substitution rewrites it
   addClippedIds(['parent_only'])
@@ -1887,7 +1887,7 @@ describe('review fixes', () => {
     const clipBytes = ((viaClip[1].content as Block[])[0] as { content: string }).content
     resetClippedIds()
     // Path 2: age prune with the SAME profile head setting
-    const { getCacheProfile } = require('../cache/cacheProfile.js')
+    const { getCacheProfile } = require('src/services/cache/cacheProfile.js')
     const viaPrune = pruneOldToolResults(
       [
         assistantToolUse('a', 'Read'),
@@ -1967,7 +1967,7 @@ describe('review fixes', () => {
   })
 
   test('CLAUDIN_STUB_HEAD_CHARS env override is clamped below the plausibility bound', () => {
-    const { getCacheProfile, _resetCacheProfileForTesting } = require('../cache/cacheProfile.js')
+    const { getCacheProfile, _resetCacheProfileForTesting } = require('src/services/cache/cacheProfile.js')
     process.env.CLAUDIN_STUB_HEAD_CHARS = '40000'
     _resetCacheProfileForTesting()
     expect(getCacheProfile().stubKeepHeadChars).toBeLessThanOrEqual(24_000)
@@ -2187,7 +2187,7 @@ describe('pinned tool_results', () => {
 
   test("a sub-agent's routine cleanup cannot drop the main thread's pins", async () => {
     const { runWithTeammateContext } = await import(
-      '../../utils/teammateContext.js'
+      'src/utils/teammateContext.js'
     )
     pinToolResult('toolu_parent')
 
@@ -2213,7 +2213,7 @@ describe('pinned tool_results', () => {
 
   test('the FIFO cap is per (session, agent), not shared across agents', async () => {
     const { runWithTeammateContext } = await import(
-      '../../utils/teammateContext.js'
+      'src/utils/teammateContext.js'
     )
     pinToolResult('toolu_parent')
 
@@ -2394,7 +2394,7 @@ describe('pinned tool_results', () => {
 
   test('pruneStaleClippedIds reclaims other keys pins, keeps the current one', async () => {
     const { runWithTeammateContext } = await import(
-      '../../utils/teammateContext.js'
+      'src/utils/teammateContext.js'
     )
     const ctx = teammateCtx('agent-pin-3')
     await runWithTeammateContext(ctx, async () => {
@@ -2413,7 +2413,7 @@ describe('pinned tool_results', () => {
 
   test('a session switch clears that session\u2019s sub-agent pins too', async () => {
     const { runWithTeammateContext } = await import(
-      '../../utils/teammateContext.js'
+      'src/utils/teammateContext.js'
     )
     const original = getSessionId()
     switchSession(original) // prime lastSeenSessionId
@@ -2438,7 +2438,7 @@ describe('pinned tool_results', () => {
 
   test('pruneStaleClippedIds from inside a sub-agent touches nothing', async () => {
     const { runWithTeammateContext } = await import(
-      '../../utils/teammateContext.js'
+      'src/utils/teammateContext.js'
     )
     pinToolResult('toolu_parent')
     addClippedIds(['clip_parent'])

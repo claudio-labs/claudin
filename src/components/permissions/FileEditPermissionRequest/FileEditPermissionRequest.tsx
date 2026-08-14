@@ -4,11 +4,11 @@ import React from 'react';
 import { FileEditToolDiff } from 'src/components/FileEditToolDiff.js';
 import { getCwd } from 'src/utils/cwd.js';
 import type { z } from 'zod/v4';
-import { Text } from '../../../ink.js';
-import { FileEditTool } from '../../../tools/FileEditTool/FileEditTool.js';
-import { FilePermissionDialog } from '../FilePermissionDialog/FilePermissionDialog.js';
-import { createSingleEditDiffConfig, type FileEdit, type IDEDiffSupport } from '../FilePermissionDialog/ideDiffConfig.js';
-import type { PermissionRequestProps } from '../PermissionRequest.js';
+import { Text } from 'src/ink.js';
+import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js';
+import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
+import { createSingleEditDiffConfig, type FileEdit, type IDEDiffSupport } from 'src/components/permissions/FilePermissionDialog/ideDiffConfig.js';
+import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
 type FileEditInput = z.infer<typeof FileEditTool.inputSchema>;
 const ideDiffSupport: IDEDiffSupport<FileEditInput> = {
   getConfig: (input: FileEditInput) => createSingleEditDiffConfig(input.file_path, input.old_string, input.new_string, input.replace_all),

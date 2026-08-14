@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo } from 'react';
-import { Box, Text, useTheme } from '../../../ink.js';
-import { WebFetchTool } from '../../../tools/WebFetchTool/WebFetchTool.js';
-import { shouldShowAlwaysAllowOptions } from '../../../utils/permissions/permissionsLoader.js';
-import { type OptionWithDescription, Select } from '../../CustomSelect/select.js';
-import { type UnaryEvent, usePermissionRequestLogging } from '../hooks.js';
-import { PermissionDialog } from '../PermissionDialog.js';
-import type { PermissionRequestProps } from '../PermissionRequest.js';
-import { PermissionRuleExplanation } from '../PermissionRuleExplanation.js';
-import { logUnaryPermissionEvent } from '../utils.js';
+import { Box, Text, useTheme } from 'src/ink.js';
+import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
+import { shouldShowAlwaysAllowOptions } from 'src/utils/permissions/permissionsLoader.js';
+import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
+import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
+import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
+import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js';
+import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js';
 type WebFetchOptionValue = 'yes' | 'yes-dont-ask-again-domain' | 'no';
 function inputToPermissionRuleContent(input: {
   [k: string]: unknown;

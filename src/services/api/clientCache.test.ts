@@ -21,16 +21,16 @@ mock.module('./activeProvider.js', () => ({
 
 // config.js registers an onGlobalConfigChange listener at import time; stub it
 // to a no-op so importing the module under test doesn't wire into real config.
-const realConfig = { ...(await import('../../utils/config.js')) }
+const realConfig = { ...(await import('src/utils/config.js')) }
 const realConfigSnapshot = { ...realConfig }
-mock.module('../../utils/config.js', () => ({
+mock.module('src/utils/config.js', () => ({
   ...realConfigSnapshot,
   onGlobalConfigChange: () => {},
 }))
 
 afterAll(() => {
   mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
-  mock.module('../../utils/config.js', () => realConfigSnapshot)
+  mock.module('src/utils/config.js', () => realConfigSnapshot)
 })
 
 const { getCachedAnthropicClient, invalidateClientCache } = await import('./clientCache.js')

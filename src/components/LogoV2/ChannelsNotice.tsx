@@ -7,14 +7,14 @@ import { c as _c } from "react-compiler-runtime";
 
 import * as React from 'react';
 import { useState } from 'react';
-import { type ChannelEntry, getAllowedChannels, getHasDevChannels } from '../../bootstrap/state.js';
-import { Box, Text } from '../../ink.js';
-import { isChannelsEnabled } from '../../services/mcp/channelAllowlist.js';
-import { getEffectiveChannelAllowlist } from '../../services/mcp/channelNotification.js';
-import { getMcpConfigsByScope } from '../../services/mcp/config.js';
-import { getClaudeAIOAuthTokens, getSubscriptionType } from '../../utils/auth.js';
-import { loadInstalledPluginsV2 } from '../../utils/plugins/installedPluginsManager.js';
-import { getSettingsForSource } from '../../utils/settings/settings.js';
+import { type ChannelEntry, getAllowedChannels, getHasDevChannels } from 'src/bootstrap/state.js';
+import { Box, Text } from 'src/ink.js';
+import { isChannelsEnabled } from 'src/services/mcp/channelAllowlist.js';
+import { getEffectiveChannelAllowlist } from 'src/services/mcp/channelNotification.js';
+import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
+import { getClaudeAIOAuthTokens, getSubscriptionType } from 'src/utils/auth.js';
+import { loadInstalledPluginsV2 } from 'src/utils/plugins/installedPluginsManager.js';
+import { getSettingsForSource } from 'src/utils/settings/settings.js';
 export function ChannelsNotice() {
   const $ = _c(32);
   const [t0] = useState(_temp);

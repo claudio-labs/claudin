@@ -1,6 +1,6 @@
-import { getClientType } from '../bootstrap/state.js'
-import { getRemoteSessionUrl, isRemoteSessionLocal } from '../constants/product.js'
-import type { AppState } from '../state/AppState.js'
+import { getClientType } from 'src/bootstrap/state.js'
+import { getRemoteSessionUrl, isRemoteSessionLocal } from 'src/constants/product.js'
+import type { AppState } from 'src/state/AppState.js'
 import { getInitialSettings } from './settings/settings.js'
 
 export type AttributionTexts = {

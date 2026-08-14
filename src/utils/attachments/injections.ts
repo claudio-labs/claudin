@@ -7,23 +7,23 @@
 // Extracted from src/utils/attachments.ts as part of the attachments split.
 import {
   logEvent,
-} from '../../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   toolMatchesName,
   type Tools,
   type ToolUseContext,
-} from '../../Tool.js'
-import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
+} from 'src/Tool.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   formatAgentLine,
   shouldInjectAgentListInMessages,
-} from '../../tools/AgentTool/prompt.js'
-import { filterAgentsByMcpRequirements } from '../../tools/AgentTool/loadAgentsDir.js'
-import { filterDeniedAgents } from '../permissions/permissions.js'
-import { getSubscriptionType } from '../auth.js'
-import { mcpInfoFromString } from '../../services/mcp/mcpStringUtils.js'
-import { getInitialSettings } from '../settings/settings.js'
-import { getLocalISODate } from '../../constants/common.js'
+} from 'src/tools/AgentTool/prompt.js'
+import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { filterDeniedAgents } from 'src/utils/permissions/permissions.js'
+import { getSubscriptionType } from 'src/utils/auth.js'
+import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { getLocalISODate } from 'src/constants/common.js'
 import {
   getLastEmittedDate,
   setLastEmittedDate,
@@ -32,11 +32,11 @@ import {
   getTotalOutputTokens,
   getTurnOutputTokens,
   getTotalCostUSD,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   hasUltrathinkKeyword,
   isUltrathinkEnabled,
-} from '../thinking.js'
+} from 'src/utils/thinking.js'
 import {
   getDeferredToolsDelta,
   isDeferredToolsDeltaActive,
@@ -45,25 +45,25 @@ import {
   isToolSearchToolAvailable,
   modelSupportsToolReference,
   type DeferredToolsDeltaScanContext,
-} from '../toolSearch.js'
+} from 'src/utils/toolSearch.js'
 import {
   getMcpInstructionsDelta,
   isMcpInstructionsDeltaEnabled,
-} from '../mcpInstructionsDelta.js'
-import type { MCPServerConnection } from '../../services/mcp/types.js'
-import { getClaudeMdDelta } from '../claudeMdDelta.js'
-import { getGitStatusDelta } from '../gitStatusDelta.js'
-import { getSystemContext, getUserContext } from '../../context.js'
+} from 'src/utils/mcpInstructionsDelta.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import { getClaudeMdDelta } from 'src/utils/claudeMdDelta.js'
+import { getGitStatusDelta } from 'src/utils/gitStatusDelta.js'
+import { getSystemContext, getUserContext } from 'src/context.js'
 import {
   getAgentName,
   getAgentId,
   getTeamName,
-} from '../teammate.js'
+} from 'src/utils/teammate.js'
 import {
   tokenCountFromLastAPIResponse,
-} from '../tokens.js'
-import { getEffectiveContextWindowSize } from '../../services/compact/autoCompact.js'
-import { isEnvTruthy, getClaudinConfigHomeDir } from '../envUtils.js'
+} from 'src/utils/tokens.js'
+import { getEffectiveContextWindowSize } from 'src/services/compact/autoCompact.js'
+import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from './types.js'
@@ -433,7 +433,7 @@ export function getContextEfficiencyAttachment(
   // isn't in the tool list. Lazy require keeps this file snip-string-free.
   const { isSnipRuntimeEnabled, shouldNudgeForSnips } =
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('../../services/compact/snipCompact.js') as typeof import('../../services/compact/snipCompact.js')
+    require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js')
   if (!isSnipRuntimeEnabled()) {
     return []
   }

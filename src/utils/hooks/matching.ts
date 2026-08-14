@@ -7,12 +7,12 @@
 import { basename } from 'path'
 import {
   getRegisteredHooks,
-} from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import {
   getHooksConfigFromSnapshot,
   shouldAllowManagedHooksOnly,
 } from './hooksConfigSnapshot.js'
-import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from '../plugins/schemas.js'
+import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/utils/plugins/schemas.js'
 import type {
   HookEvent,
   HookInput,
@@ -22,23 +22,23 @@ import type {
   HookCommand,
   PluginHookMatcher,
   SkillHookMatcher,
-} from '../settings/types.js'
-import { logForDebugging } from '../debug.js'
+} from 'src/utils/settings/types.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import {
   normalizeLegacyToolName,
   getLegacyToolNames,
   permissionRuleValueFromString,
-} from '../permissions/permissionRuleParser.js'
-import { findToolByName, type Tools } from '../../Tool.js'
-import type { HookCallbackMatcher } from '../../types/hooks.js'
+} from 'src/utils/permissions/permissionRuleParser.js'
+import { findToolByName, type Tools } from 'src/Tool.js'
+import type { HookCallbackMatcher } from 'src/types/hooks.js'
 import {
   getSessionHooks,
   getSessionFunctionHooks,
   type SessionDerivedHookMatcher,
   type FunctionHook,
 } from './sessionHooks.js'
-import type { AppState } from '../../state/AppState.js'
-import { DEFAULT_HOOK_SHELL } from '../shell/shellProvider.js'
+import type { AppState } from 'src/state/AppState.js'
+import { DEFAULT_HOOK_SHELL } from 'src/utils/shell/shellProvider.js'
 import type { MatchedHook } from './types.js'
 import { hookDedupKey } from './shared.js'
 

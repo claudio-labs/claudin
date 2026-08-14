@@ -1,33 +1,33 @@
-import { tryGetActiveProvider } from '../../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   isKimiCodeBaseUrl,
   isXaiOAuthBaseUrl,
   resolveProviderRequest,
-} from '../../services/api/providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 import {
   readXaiCredentialsAsync,
   refreshXaiAccessTokenIfNeeded,
-} from '../../utils/xaiCredentials.js'
-import { getXaiUserAgent } from '../../utils/xaiUserAgent.js'
+} from 'src/utils/xaiCredentials.js'
+import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
-} from '../../utils/kimiCredentials.js'
-import { getKimiUserAgent } from '../../utils/kimiUserAgent.js'
-import { getKimiDeviceHeaders } from '../../utils/kimiDeviceHeaders.js'
-import { getCurrentProjectConfig } from '../../utils/config.js'
-import { modelSupportsAutoMode } from '../../utils/betas.js'
-import { getMainLoopModel } from '../../utils/model/model.js'
+} from 'src/utils/kimiCredentials.js'
+import { getKimiUserAgent } from 'src/utils/kimiUserAgent.js'
+import { getKimiDeviceHeaders } from 'src/utils/kimiDeviceHeaders.js'
+import { getCurrentProjectConfig } from 'src/utils/config.js'
+import { modelSupportsAutoMode } from 'src/utils/betas.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getClassifierProbeKey,
   probeClassifierCapability,
-} from '../../utils/permissions/classifierProbe.js'
-import { parseModelList } from '../../utils/providerModels.js'
+} from 'src/utils/permissions/classifierProbe.js'
+import { parseModelList } from 'src/utils/providerModels.js'
 import {
   type OllamaGenerationReadiness,
   probeOllamaGenerationReadiness,
-} from '../../utils/providerDiscovery.js'
-import { resolveGeminiCredential } from '../../utils/geminiAuth.js'
+} from 'src/utils/providerDiscovery.js'
+import { resolveGeminiCredential } from 'src/utils/geminiAuth.js'
 import {
   getActiveProviderProfile,
   getGlobalActiveProviderProfileId,
@@ -35,8 +35,8 @@ import {
   getProviderProfiles,
   getRawProjectActiveProviderProfileId,
   hasProjectProviderProfileOverride,
-} from '../../utils/providerProfiles.js'
-import { redactUrlForDisplay } from '../../utils/urlRedaction.js'
+} from 'src/utils/providerProfiles.js'
+import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 
 type CheckResult = {
   ok: boolean

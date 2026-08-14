@@ -1,14 +1,14 @@
 import { feature } from 'bun:bundle'
 import z from 'zod/v4'
-import { PAUSE_ICON } from '../../constants/figures.js'
+import { PAUSE_ICON } from 'src/constants/figures.js'
 // Types extracted to src/types/permissions.ts to break import cycles
 import {
   EXTERNAL_PERMISSION_MODES,
   type ExternalPermissionMode,
   PERMISSION_MODES,
   type PermissionMode,
-} from '../../types/permissions.js'
-import { lazySchema } from '../lazySchema.js'
+} from 'src/types/permissions.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 
 // Re-export for backwards compatibility
 export {

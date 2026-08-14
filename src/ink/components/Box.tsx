@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
-import '../global.d.ts';
+import 'src/ink/global.d.ts';
 import React, { type PropsWithChildren } from 'react';
 import type { Except } from 'type-fest';
-import type { DOMElement } from '../dom.js';
-import type { ClickEvent } from '../events/click-event.js';
-import type { FocusEvent } from '../events/focus-event.js';
-import type { KeyboardEvent } from '../events/keyboard-event.js';
-import type { Styles } from '../styles.js';
-import * as warn from '../warn.js';
+import type { DOMElement } from 'src/ink/dom.js';
+import type { ClickEvent } from 'src/ink/events/click-event.js';
+import type { FocusEvent } from 'src/ink/events/focus-event.js';
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
+import type { Styles } from 'src/ink/styles.js';
+import * as warn from 'src/ink/warn.js';
 
 // 'ink-box' is a real host element recognized by the renderer. tsconfig uses
 // jsx:"react-jsx" (automatic runtime), which resolves the JSX namespace from

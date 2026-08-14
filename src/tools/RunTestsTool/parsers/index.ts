@@ -1,4 +1,4 @@
-import type { Framework, ParseInput, TestResult } from '../types.js'
+import type { Framework, ParseInput, TestResult } from 'src/tools/RunTestsTool/types.js'
 import { parseCargo } from './cargo.js'
 import { parseDart } from './dartTest.js'
 import { parseGoJson } from './goTest.js'

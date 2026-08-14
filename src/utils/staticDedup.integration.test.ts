@@ -32,7 +32,7 @@
  * breaks the dedup path.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { roughTokenCountEstimation } from '../services/tokenEstimation.js'
+import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from './api.js'
 import { getClaudeMdDelta } from './claudeMdDelta.js'
 import { getGitStatusDelta } from './gitStatusDelta.js'

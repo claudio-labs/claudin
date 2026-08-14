@@ -1,6 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { z } from 'zod/v4'
-import { lazySchema } from '../utils/lazySchema.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import {
   type HookEvent,
   HOOK_EVENTS,
@@ -16,8 +16,8 @@ import type { Message } from 'src/types/message.js'
 import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
 import { permissionBehaviorSchema } from 'src/utils/permissions/PermissionRule.js'
 import { permissionUpdateSchema } from 'src/utils/permissions/PermissionUpdateSchema.js'
-import type { AppState } from '../state/AppState.js'
-import type { AttributionState } from '../utils/commitAttribution.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { AttributionState } from 'src/utils/commitAttribution.js'
 
 
 // Prompt elicitation protocol types. The `prompt` key acts as discriminator

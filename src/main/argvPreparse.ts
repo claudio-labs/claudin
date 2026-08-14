@@ -65,10 +65,10 @@ export async function runDeepLinkArgvHandling(): Promise<void> {
 
   const handleUriIdx = process.argv.indexOf('--handle-uri');
   if (handleUriIdx !== -1 && process.argv[handleUriIdx + 1]) {
-    const { enableConfigs } = await import('../utils/config.js');
+    const { enableConfigs } = await import('src/utils/config.js');
     enableConfigs();
     const uri = process.argv[handleUriIdx + 1]!;
-    const { handleDeepLinkUri } = await import('../utils/deepLink/protocolHandler.js');
+    const { handleDeepLinkUri } = await import('src/utils/deepLink/protocolHandler.js');
     const exitCode = await handleDeepLinkUri(uri);
     process.exit(exitCode);
   }
@@ -81,9 +81,9 @@ export async function runDeepLinkArgvHandling(): Promise<void> {
     process.platform === 'darwin' &&
     process.env.__CFBundleIdentifier === 'com.anthropic.claude-code-url-handler'
   ) {
-    const { enableConfigs } = await import('../utils/config.js');
+    const { enableConfigs } = await import('src/utils/config.js');
     enableConfigs();
-    const { handleUrlSchemeLaunch } = await import('../utils/deepLink/protocolHandler.js');
+    const { handleUrlSchemeLaunch } = await import('src/utils/deepLink/protocolHandler.js');
     const urlSchemeResult = await handleUrlSchemeLaunch();
     process.exit(urlSchemeResult ?? 1);
   }

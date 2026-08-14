@@ -13,8 +13,8 @@
  * Reads `CLAUDIN_DISABLE_STRICT_TOOLS` env to skip strict mode at runtime.
  */
 
-import { isEnvTruthy } from '../../../utils/envUtils.js'
-import { sanitizeSchemaForOpenAICompat } from '../../../utils/schemaSanitizer.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { sanitizeSchemaForOpenAICompat } from 'src/utils/schemaSanitizer.js'
 import { isGeminiMode } from './providerModes.js'
 import type { OpenAITool } from './types.js'
 

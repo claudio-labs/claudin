@@ -2,8 +2,8 @@ import type { Buffer } from 'buffer'
 import { existsSync, readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
 import { dirname, join } from 'path'
-import { isInBundledMode } from '../../utils/bundledMode.js'
-import { logError } from '../../utils/log.js'
+import { isInBundledMode } from 'src/utils/bundledMode.js'
+import { logError } from 'src/utils/log.js'
 
 export type SharpInstance = {
   metadata(): Promise<{ width: number; height: number; format: string }>

@@ -1,13 +1,13 @@
 import { feature } from 'bun:bundle'
 import type { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import type { ToolPermissionContext, ToolUseContext } from '../../Tool.js'
-import type { PendingClassifierCheck } from '../../types/permissions.js'
-import { count } from '../../utils/array.js'
+} from 'src/services/analytics/index.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
+import type { PendingClassifierCheck } from 'src/types/permissions.js'
+import { count } from 'src/utils/array.js'
 import {
   checkSemantics,
   nodeTypeId,
@@ -15,45 +15,45 @@ import {
   parseForSecurityFromAst,
   type Redirect,
   type SimpleCommand,
-} from '../../utils/bash/ast.js'
+} from 'src/utils/bash/ast.js'
 import {
   type CommandPrefixResult,
   extractOutputRedirections,
   getCommandSubcommandPrefix,
   splitCommand_DEPRECATED,
-} from '../../utils/bash/commands.js'
-import { parseCommandRaw } from '../../utils/bash/parser.js'
-import { tryParseShellCommand } from '../../utils/bash/shellQuote.js'
-import { getCwd } from '../../utils/cwd.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { AbortError, isSdkApiUserAbortError } from '../../utils/errors.js'
+} from 'src/utils/bash/commands.js'
+import { parseCommandRaw } from 'src/utils/bash/parser.js'
+import { tryParseShellCommand } from 'src/utils/bash/shellQuote.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { AbortError, isSdkApiUserAbortError } from 'src/utils/errors.js'
 import type {
   ClassifierBehavior,
   ClassifierResult,
-} from '../../utils/permissions/bashClassifier.js'
+} from 'src/utils/permissions/bashClassifier.js'
 import {
   classifyBashCommand,
   getBashPromptAllowDescriptions,
   getBashPromptAskDescriptions,
   getBashPromptDenyDescriptions,
   isClassifierPermissionsEnabled,
-} from '../../utils/permissions/bashClassifier.js'
+} from 'src/utils/permissions/bashClassifier.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from '../../utils/permissions/PermissionResult.js'
+} from 'src/utils/permissions/PermissionResult.js'
 import type {
   PermissionRule,
   PermissionRuleValue,
-} from '../../utils/permissions/PermissionRule.js'
-import { extractRules } from '../../utils/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from '../../utils/permissions/PermissionUpdateSchema.js'
-import { permissionRuleValueToString } from '../../utils/permissions/permissionRuleParser.js'
+} from 'src/utils/permissions/PermissionRule.js'
+import { extractRules } from 'src/utils/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/utils/permissions/PermissionUpdateSchema.js'
+import { permissionRuleValueToString } from 'src/utils/permissions/permissionRuleParser.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForTool,
-} from '../../utils/permissions/permissions.js'
+} from 'src/utils/permissions/permissions.js'
 import {
   parsePermissionRule,
   type ShellPermissionRule,
@@ -61,11 +61,11 @@ import {
   permissionRuleExtractPrefix as sharedPermissionRuleExtractPrefix,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
   suggestionForPrefix as sharedSuggestionForPrefix,
-} from '../../utils/permissions/shellRuleMatching.js'
-import { getPlatform } from '../../utils/platform.js'
-import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { windowsPathToPosixPath } from '../../utils/windowsPaths.js'
+} from 'src/utils/permissions/shellRuleMatching.js'
+import { getPlatform } from 'src/utils/platform.js'
+import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { windowsPathToPosixPath } from 'src/utils/windowsPaths.js'
 import { BashTool } from './BashTool.js'
 import { checkCommandOperatorPermissions } from './bashCommandHelpers.js'
 import {

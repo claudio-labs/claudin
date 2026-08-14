@@ -1,13 +1,13 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
-import { SandboxSettingsSchema } from '../../entrypoints/sandboxTypes.js'
-import { isEnvTruthy } from '../envUtils.js'
-import { lazySchema } from '../lazySchema.js'
+import { SandboxSettingsSchema } from 'src/entrypoints/sandboxTypes.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
 import {
   EXTERNAL_PERMISSION_MODES,
   PERMISSION_MODES,
-} from '../permissions/PermissionMode.js'
-import { MarketplaceSourceSchema } from '../plugins/schemas.js'
+} from 'src/utils/permissions/PermissionMode.js'
+import { MarketplaceSourceSchema } from 'src/utils/plugins/schemas.js'
 import { CLAUDE_CODE_SETTINGS_SCHEMA_URL } from './constants.js'
 import { PermissionRuleSchema } from './permissionValidation.js'
 
@@ -20,12 +20,12 @@ export {
   type HooksSettings,
   type HttpHook,
   type PromptHook,
-} from '../../schemas/hooks.js'
+} from 'src/schemas/hooks.js'
 
 // Also import for use within this file
-import { type HookCommand, HooksSchema } from '../../schemas/hooks.js'
-import { AutoFixConfigSchema } from '../../services/autoFix/autoFixConfig.js'
-import { count } from '../array.js'
+import { type HookCommand, HooksSchema } from 'src/schemas/hooks.js'
+import { AutoFixConfigSchema } from 'src/services/autoFix/autoFixConfig.js'
+import { count } from 'src/utils/array.js'
 
 /**
  * Schema for environment variables

@@ -9,26 +9,26 @@
  * - Hook identity helpers: isInternalHook, hookDedupKey
  */
 import { feature } from 'bun:bundle'
-import { getCwd } from '../cwd.js'
+import { getCwd } from 'src/utils/cwd.js'
 import {
   getSessionId,
   getIsNonInteractiveSession,
   getMainThreadAgentType,
-} from '../../bootstrap/state.js'
-import { checkHasTrustDialogAccepted } from '../config.js'
-import { getTranscriptPathForSession } from '../sessionStorage.js'
-import { logForDebugging } from '../debug.js'
-import { errorMessage } from '../errors.js'
-import { createAssistantMessage } from '../messages.js'
-import { getAgentName, getTeamName, getTeammateColor } from '../teammate.js'
-import type { ToolUseContext } from '../../Tool.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+} from 'src/bootstrap/state.js'
+import { checkHasTrustDialogAccepted } from 'src/utils/config.js'
+import { getTranscriptPathForSession } from 'src/utils/sessionStorage.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { createAssistantMessage } from 'src/utils/messages.js'
+import { getAgentName, getTeamName, getTeammateColor } from 'src/utils/teammate.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type {
   HookChainOutcome,
   HookChainRuntimeContext,
   SpawnFallbackAgentRequest,
   SpawnFallbackAgentResponse,
-} from '../hookChains.js'
+} from 'src/utils/hookChains.js'
 import type { MatchedHook } from './types.js'
 
 export const TOOL_HOOK_EXECUTION_TIMEOUT_MS = 10 * 60 * 1000
@@ -109,7 +109,7 @@ async function launchFallbackAgentFromHookChains(
   canUseTool: CanUseToolFn,
 ): Promise<SpawnFallbackAgentResponse> {
   try {
-    const { AgentTool } = await import('../../tools/AgentTool/AgentTool.js')
+    const { AgentTool } = await import('src/tools/AgentTool/AgentTool.js')
     const normalizedModel = normalizeFallbackAgentModel(request.model)
     const result = await AgentTool.call(
       {
@@ -172,7 +172,7 @@ export async function dispatchHookChainFromHookRuntime(args: {
       return
     }
 
-    const { dispatchHookChainsForEvent } = await import('../hookChains.js')
+    const { dispatchHookChainsForEvent } = await import('src/utils/hookChains.js')
 
     const runtime: HookChainRuntimeContext = {
       signal: args.signal,

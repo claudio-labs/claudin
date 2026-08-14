@@ -46,8 +46,8 @@ describe('open-build default for tengu_glacier_2xr', () => {
 // ── Legacy-session compatibility latch ──────────────────────────────────
 // Force the runtime flag ON (the real growthbook module resolves false
 // under bun test — the open-build stub only exists in the bundle).
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
-mock.module('../services/analytics/growthbook.js', () => ({
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
+mock.module('src/services/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (key: string, def: unknown) =>
     key === 'tengu_glacier_2xr' ? true : def,
@@ -58,7 +58,7 @@ const {
   isDeferredToolsDeltaEnabled,
   maybeLatchLegacyDeferredAnnouncement,
 } = await import('./toolSearch.js')
-const { clearBetaHeaderLatches } = await import('../bootstrap/state.js')
+const { clearBetaHeaderLatches } = await import('src/bootstrap/state.js')
 
 type LooseMessage = {
   type: string
@@ -237,7 +237,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
 describe('session switch (in-REPL /resume, /branch)', () => {
   test('releases a carried-over latch — the incoming conversation re-evaluates', async () => {
     const { getSessionId, switchSession } = await import(
-      '../bootstrap/state.js'
+      'src/bootstrap/state.js'
     )
     const { randomUUID } = await import('node:crypto')
     const originalSession = getSessionId()
@@ -253,7 +253,7 @@ describe('session switch (in-REPL /resume, /branch)', () => {
 
   test('advances the epoch: a history written AFTER process start still latches on in-process resume', async () => {
     const { getSessionEpochMs, getSessionId, switchSession } = await import(
-      '../bootstrap/state.js'
+      'src/bootstrap/state.js'
     )
     const { randomUUID } = await import('node:crypto')
     const originalSession = getSessionId()
@@ -351,6 +351,6 @@ describe('getDeferredToolsDeltaAttachment settles the latch first', () => {
 })
 
 afterAll(() => {
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   clearBetaHeaderLatches()
 })

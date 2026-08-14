@@ -6,12 +6,12 @@ import { createConnection } from 'net'
 import { basename, dirname, join, sep as pathSeparator, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { logEvent } from 'src/services/analytics/index.js'
-import { getIsScrollDraining, getOriginalCwd } from '../bootstrap/state.js'
-import { callIdeRpc } from '../services/mcp/client.js'
+import { getIsScrollDraining, getOriginalCwd } from 'src/bootstrap/state.js'
+import { callIdeRpc } from 'src/services/mcp/client.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
-} from '../services/mcp/types.js'
+} from 'src/services/mcp/types.js'
 import { getGlobalConfig, saveGlobalConfig } from './config.js'
 import { env } from './env.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'

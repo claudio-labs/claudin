@@ -8,15 +8,15 @@ import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import type { UserMessage } from '../../types/message.js'
-import { getCurrentProjectConfig } from '../config.js'
-import { hasEmbeddedSearchTools } from '../embeddedTools.js'
+import type { UserMessage } from 'src/types/message.js'
+import { getCurrentProjectConfig } from 'src/utils/config.js'
+import { hasEmbeddedSearchTools } from 'src/utils/embeddedTools.js'
 import {
   getPewterLedgerVariant,
   getPlanModeV2AgentCount,
   getPlanModeV2ExploreAgentCount,
   isPlanModeInterviewPhaseEnabled,
-} from '../planModeV2.js'
+} from 'src/utils/planModeV2.js'
 import { createUserMessage } from './factories.js'
 import { wrapMessagesInSystemReminder } from './text.js'
 

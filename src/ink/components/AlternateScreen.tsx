@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type PropsWithChildren, useContext, useInsertionEffect } from 'react';
-import instances from '../instances.js';
-import { DISABLE_MOUSE_TRACKING, ENABLE_MOUSE_TRACKING, ENTER_ALT_SCREEN, EXIT_ALT_SCREEN } from '../termio/dec.js';
-import { TerminalWriteContext } from '../useTerminalNotification.js';
+import instances from 'src/ink/instances.js';
+import { DISABLE_MOUSE_TRACKING, ENABLE_MOUSE_TRACKING, ENTER_ALT_SCREEN, EXIT_ALT_SCREEN } from 'src/ink/termio/dec.js';
+import { TerminalWriteContext } from 'src/ink/useTerminalNotification.js';
 import Box from './Box.js';
 import { TerminalSizeContext } from './TerminalSizeContext.js';
 type Props = PropsWithChildren<{

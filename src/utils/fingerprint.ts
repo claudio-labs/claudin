@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import type { AssistantMessage, UserMessage } from '../types/message.js'
+import type { AssistantMessage, UserMessage } from 'src/types/message.js'
 
 /**
  * Hardcoded salt from backend validation.

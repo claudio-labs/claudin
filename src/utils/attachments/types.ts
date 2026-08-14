@@ -1,10 +1,10 @@
 // Pure-type module: zero runtime imports. All imports below must be `import type`
 // so this file participates in no module cycles and is erased at compile time.
-import type { Output as FileReadToolOutput } from '../../tools/FileReadTool/FileReadTool.js'
-import type { TodoList } from '../todo/types.js'
-import type { Task } from '../tasks.js'
-import type { MemoryFileInfo } from '../claudemd.js'
-import type { DiagnosticFile } from '../../services/diagnosticTracking.js'
+import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileReadTool.js'
+import type { TodoList } from 'src/utils/todo/types.js'
+import type { Task } from 'src/utils/tasks.js'
+import type { MemoryFileInfo } from 'src/utils/claudemd.js'
+import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
 import type { MessageOrigin } from 'src/types/message.js'
 import type { UUID } from 'crypto'
 import type {
@@ -19,8 +19,8 @@ import type {
   HookEvent,
   SyncHookJSONOutput,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { HookBlockingError } from '../hooks.js'
-import type { TaskType, TaskStatus } from '../../Task.js'
+import type { HookBlockingError } from 'src/utils/hooks.js'
+import type { TaskType, TaskStatus } from 'src/Task.js'
 
 export type FileAttachment = {
   type: 'file'

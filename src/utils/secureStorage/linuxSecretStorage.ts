@@ -1,5 +1,5 @@
 import { execaSync } from 'execa'
-import { jsonParse, jsonStringify } from '../slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import {
   CREDENTIALS_SERVICE_SUFFIX,
   getSecureStorageServiceName,

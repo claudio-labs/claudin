@@ -6,8 +6,8 @@
  * (which would defeat LODESTONE tree-shaking).
  */
 
-import { getGlobalConfig, saveGlobalConfig } from '../config.js'
-import { logForDebugging } from '../debug.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
 
 /**
  * Map TERM_PROGRAM env var values (lowercased) to the `app` name used by

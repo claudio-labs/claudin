@@ -4,37 +4,37 @@ import { getCwd } from 'src/utils/cwd.js'
 import {
   type ToolUseContext,
   type ToolPermissionContext,
-} from '../../Tool.js'
+} from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from './types.js'
-import type { FileStateCache } from '../fileStateCache.js'
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js'
+import type { FileStateCache } from 'src/utils/fileStateCache.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   type MemoryFileInfo,
   getManagedAndUserConditionalRules,
   getMemoryFilesForNestedDirectory,
   getConditionalRulesForCwdLevelDirectory,
-} from '../claudemd.js'
+} from 'src/utils/claudemd.js'
 import {
   hasInstructionsLoadedHook,
   executeInstructionsLoadedHooks,
   type InstructionsMemoryType,
-} from '../hooks.js'
-import { pathInAllowedWorkingPath } from '../permissions/filesystem.js'
-import { logError } from '../log.js'
+} from 'src/utils/hooks.js'
+import { pathInAllowedWorkingPath } from 'src/utils/permissions/filesystem.js'
+import { logError } from 'src/utils/log.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { isAbortError } from '../errors.js'
-import { createChildAbortController } from '../abortController.js'
-import { getOriginalCwd } from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { findRelevantMemories } from '../../memdir/findRelevantMemories.js'
-import { memoryAge, memoryFreshnessText } from '../../memdir/memoryAge.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from '../../memdir/paths.js'
-import { getAgentMemoryDir } from '../../tools/AgentTool/agentMemory.js'
+import { isAbortError } from 'src/utils/errors.js'
+import { createChildAbortController } from 'src/utils/abortController.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { findRelevantMemories } from 'src/memdir/findRelevantMemories.js'
+import { memoryAge, memoryFreshnessText } from 'src/memdir/memoryAge.js'
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 import { extractAgentMentions } from './mentions.js'
-import { readFileInRange } from '../readFileInRange.js'
-import { getUserMessageText } from '../messages.js'
-import { isHumanTurn } from '../messagePredicates.js'
+import { readFileInRange } from 'src/utils/readFileInRange.js'
+import { getUserMessageText } from 'src/utils/messages.js'
+import { isHumanTurn } from 'src/utils/messagePredicates.js'
 import { MAX_MEMORY_LINES, MAX_MEMORY_BYTES, RELEVANT_MEMORIES_CONFIG } from './config.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 

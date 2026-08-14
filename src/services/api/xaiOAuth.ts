@@ -8,7 +8,7 @@
  * a browser on some device.
  */
 
-import { getXaiUserAgent } from '../../utils/xaiUserAgent.js'
+import { getXaiUserAgent } from 'src/utils/xaiUserAgent.js'
 import {
   asTrimmedString,
   getXaiOAuthClientId,

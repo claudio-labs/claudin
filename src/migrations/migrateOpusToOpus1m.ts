@@ -1,15 +1,15 @@
-import { logEvent } from '../services/analytics/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
 import {
   getDefaultMainLoopModelSetting,
   getDefaultOpusModel,
   isNative1mModel,
   isOpus1mMergeEnabled,
   parseUserSpecifiedModel,
-} from '../utils/model/model.js'
+} from 'src/utils/model/model.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../utils/settings/settings.js'
+} from 'src/utils/settings/settings.js'
 
 /**
  * Migrate users with 'opus' pinned in their settings to 'opus[1m]' when they

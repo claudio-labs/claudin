@@ -8,7 +8,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getProjectRoot } from '../bootstrap/state.js'
+import { getProjectRoot } from 'src/bootstrap/state.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { isFsInaccessible } from './errors.js'

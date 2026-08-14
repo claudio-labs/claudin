@@ -6,8 +6,8 @@ import {
   suppressNextBashGitInstructions,
 } from './attachments.js'
 import { enableConfigs } from './config.js'
-import type { ToolUseContext } from '../Tool.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 // Build the smallest ToolUseContext shape getBashGitInstructionsAttachment
 // touches. Anything outside of `options.tools` and `agentId` is ignored by

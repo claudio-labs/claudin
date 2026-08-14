@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
 const realActiveProvider = {
-  ...(await import('../../services/api/activeProvider.js')),
+  ...(await import('src/services/api/activeProvider.js')),
 }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
@@ -11,14 +11,14 @@ type ResolvedProvider =
 
 let resolvedOverride: ResolvedProvider = null
 
-mock.module('../../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
 
 afterAll(() => {
   mock.module(
-    '../../services/api/activeProvider.js',
+    'src/services/api/activeProvider.js',
     () => realActiveProviderSnapshot,
   )
 })

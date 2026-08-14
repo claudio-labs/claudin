@@ -4,11 +4,11 @@ import {
 } from 'src/services/analytics/index.js'
 import { randomUUID } from 'crypto'
 import type { AttachmentMessage } from 'src/types/message.js'
-import { jsonStringify } from '../slowOperations.js'
-import { logError } from '../log.js'
-import { logAntError } from '../debug.js'
-import { matchingRuleForInput } from '../permissions/filesystem.js'
-import type { ToolPermissionContext } from '../../Tool.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { logError } from 'src/utils/log.js'
+import { logAntError } from 'src/utils/debug.js'
+import { matchingRuleForInput } from 'src/utils/permissions/filesystem.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
 import type { Attachment } from './types.js'
 
 export async function maybe<A>(

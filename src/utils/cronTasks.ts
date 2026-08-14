@@ -18,7 +18,7 @@ import {
   getProjectRoot,
   getSessionCronTasks,
   removeSessionCronTasks,
-} from '../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
 import { computeNextCronRun, parseCronExpression } from './cron.js'
 import { logForDebugging } from './debug.js'
 import { isFsInaccessible } from './errors.js'

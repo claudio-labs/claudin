@@ -1,10 +1,10 @@
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getGithubEndpointType,
   isLocalProviderUrl,
   resolveCodexApiCredentials,
   resolveProviderRequest,
-} from '../services/api/providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 import { isBareMode } from './envUtils.js'
 import {
   type GeminiResolvedCredential,

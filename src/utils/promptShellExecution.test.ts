@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
-import { getEmptyToolPermissionContext } from '../Tool.js'
-import { BashTool } from '../tools/BashTool/BashTool.js'
+import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { executeShellCommandsInPrompt } from './promptShellExecution.js'
 
 const originalCall = BashTool.call

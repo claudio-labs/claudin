@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
-import { CHANNEL_ARROW } from '../../constants/figures.js';
-import { CHANNEL_TAG } from '../../constants/xml.js';
-import { Box, Text } from '../../ink.js';
-import { truncateToWidth } from '../../utils/format.js';
+import { CHANNEL_ARROW } from 'src/constants/figures.js';
+import { CHANNEL_TAG } from 'src/constants/xml.js';
+import { Box, Text } from 'src/ink.js';
+import { truncateToWidth } from 'src/utils/format.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

@@ -39,7 +39,7 @@ import {
 import type { SystemPrompt } from "src/utils/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/services/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/types/message.js";
-import { logEvent } from "../../analytics/index.js";
+import { logEvent } from "src/services/analytics/index.js";
 import { getCacheControl } from "./cacheControl.js";
 import {
   assistantMessageToMessageParam,

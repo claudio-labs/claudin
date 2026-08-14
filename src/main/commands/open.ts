@@ -9,9 +9,9 @@
 
 import type { Command } from '@commander-js/extra-typings'
 import { feature } from 'bun:bundle'
-import type { PendingConnect } from '../bootContext.js'
-import { getOriginalCwd, setCwdState, setDirectConnectServerUrl, setOriginalCwd } from '../../bootstrap/state.js'
-import { createDirectConnectSession, DirectConnectError } from '../../server/createDirectConnectSession.js'
+import type { PendingConnect } from 'src/main/bootContext.js'
+import { getOriginalCwd, setCwdState, setDirectConnectServerUrl, setOriginalCwd } from 'src/bootstrap/state.js'
+import { createDirectConnectSession, DirectConnectError } from 'src/server/createDirectConnectSession.js'
 
 export function registerOpenCommand(program: Command, pendingConnect: PendingConnect | undefined): void {
   // claude connect — subcommand only handles -p (headless) mode.

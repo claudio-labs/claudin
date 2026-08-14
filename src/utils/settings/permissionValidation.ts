@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
-import { mcpInfoFromString } from '../../services/mcp/mcpStringUtils.js'
-import { lazySchema } from '../lazySchema.js'
-import { permissionRuleValueFromString } from '../permissions/permissionRuleParser.js'
-import { capitalize } from '../stringUtils.js'
+import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { permissionRuleValueFromString } from 'src/utils/permissions/permissionRuleParser.js'
+import { capitalize } from 'src/utils/stringUtils.js'
 import {
   getCustomValidation,
   isBashPrefixTool,

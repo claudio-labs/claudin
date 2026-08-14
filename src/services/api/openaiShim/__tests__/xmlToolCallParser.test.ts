@@ -17,7 +17,7 @@ import {
   recoverXmlToolCallsFromText,
   stripRanges,
   trailingXmlOpenerPrefixLen,
-} from '../xmlToolCallParser.js'
+} from 'src/services/api/openaiShim/xmlToolCallParser.js'
 
 describe('coerceXmlToolValue', () => {
   test('round-trips JSON scalars and objects', () => {

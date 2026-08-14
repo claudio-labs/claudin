@@ -117,9 +117,10 @@ describe('SAFE_ENV_VARS excludes credentials', () => {
 describe('WebFetch SSRF guard', () => {
   test('getWithPermittedRedirects uses ssrfGuardedLookup', async () => {
     const content = await file('tools/WebFetchTool/utils.ts').text()
-    expect(content).toContain(
-      "import { ssrfGuardedLookup } from '../../utils/hooks/ssrfGuard.js'",
-    )
+    // Matched on the module, not the specifier form, so a path normalization
+    // does not read as an SSRF regression.
+    expect(content).toContain('import { ssrfGuardedLookup } from')
+    expect(content).toContain('utils/hooks/ssrfGuard.js')
     // The axios.get call in getWithPermittedRedirects must include lookup
     const fnSection = content.slice(
       content.indexOf('export async function getWithPermittedRedirects('),

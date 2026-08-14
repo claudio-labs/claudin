@@ -8,37 +8,37 @@
 
 import { extname } from 'path'
 import memoize from 'lodash-es/memoize.js'
-import { env, getHostPlatformForAnalytics } from '../../utils/env.js'
-import { envDynamic } from '../../utils/envDynamic.js'
-import { getModelBetas } from '../../utils/betas.js'
-import { getMainLoopModel } from '../../utils/model/model.js'
+import { env, getHostPlatformForAnalytics } from 'src/utils/env.js'
+import { envDynamic } from 'src/utils/envDynamic.js'
+import { getModelBetas } from 'src/utils/betas.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getSessionId,
   getIsInteractive,
   getKairosActive,
   getClientType,
   getParentSessionId as getParentSessionIdFromState,
-} from '../../bootstrap/state.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { isOfficialMcpUrl } from '../mcp/officialRegistry.js'
-import { isClaudeAISubscriber, getSubscriptionType } from '../../utils/auth.js'
-import { getRepoRemoteHash } from '../../utils/git.js'
+} from 'src/bootstrap/state.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isOfficialMcpUrl } from 'src/services/mcp/officialRegistry.js'
+import { isClaudeAISubscriber, getSubscriptionType } from 'src/utils/auth.js'
+import { getRepoRemoteHash } from 'src/utils/git.js'
 import {
   getWslVersion,
   getLinuxDistroInfo,
   detectVcs,
-} from '../../utils/platform.js'
+} from 'src/utils/platform.js'
 import type { CoreUserData } from 'src/utils/user.js'
-import { getAgentContext } from '../../utils/agentContext.js'
-import type { EnvironmentMetadata } from '../../types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
-import type { PublicApiAuth } from '../../types/generated/events_mono/common/v1/auth.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
+import { getAgentContext } from 'src/utils/agentContext.js'
+import type { EnvironmentMetadata } from 'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
+import type { PublicApiAuth } from 'src/types/generated/events_mono/common/v1/auth.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   getAgentId,
   getParentSessionId as getTeammateParentSessionId,
   getTeamName,
   isTeammate,
-} from '../../utils/teammate.js'
+} from 'src/utils/teammate.js'
 import { feature } from 'bun:bundle'
 
 /**
@@ -130,7 +130,7 @@ const BUILTIN_MCP_SERVER_NAMES: ReadonlySet<string> = new Set(
   feature('CHICAGO_MCP')
     ? [
         (
-          require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js')
+          require('src/utils/computerUse/common.js') as typeof import('src/utils/computerUse/common.js')
         ).COMPUTER_USE_MCP_SERVER_NAME,
       ]
     : [],

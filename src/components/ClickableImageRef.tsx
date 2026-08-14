@@ -1,10 +1,10 @@
 import { pathToFileURL } from 'node:url'
 import type React from 'react'
-import Link from '../ink/components/Link.js'
-import { supportsHyperlinks } from '../ink/supports-hyperlinks.js'
-import { Text } from '../ink.js'
-import { getStoredImagePath } from '../utils/imageStore.js'
-import type { Theme } from '../utils/theme.js'
+import Link from 'src/ink/components/Link.js'
+import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
+import { Text } from 'src/ink.js'
+import { getStoredImagePath } from 'src/utils/imageStore.js'
+import type { Theme } from 'src/utils/theme.js'
 import { InlineImage } from './InlineImage.js'
 
 type Props = {

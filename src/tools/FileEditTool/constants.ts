@@ -18,4 +18,4 @@ export {
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,
   FILE_PARTIAL_VIEW_ERROR,
-} from '../shared/readBeforeEditMessages.js'
+} from 'src/tools/shared/readBeforeEditMessages.js'

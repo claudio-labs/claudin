@@ -11,7 +11,7 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 const TSC_MATCH = /^(?:npx tsc|yarn tsc|pnpm tsc|bunx tsc|tsc)\b/
 // Passthrough for diagnostics modes whose verbose output IS the signal.

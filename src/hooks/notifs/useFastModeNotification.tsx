@@ -5,7 +5,7 @@ import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { type CooldownReason, isFastModeEnabled, onCooldownExpired, onCooldownTriggered, onFastModeOverageRejection, onOrgFastModeChanged } from 'src/utils/fastMode.js';
 import { formatDuration } from 'src/utils/format.js';
-import { getIsRemoteMode } from '../../bootstrap/state.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
 const COOLDOWN_STARTED_KEY = 'fast-mode-cooldown-started';
 const COOLDOWN_EXPIRED_KEY = 'fast-mode-cooldown-expired';
 const ORG_CHANGED_KEY = 'fast-mode-org-changed';

@@ -1,14 +1,14 @@
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import type { OutputStyleConfig } from '../constants/outputStyles.js'
-import { logForDebugging } from '../utils/debug.js'
-import { coerceDescriptionToString } from '../utils/frontmatterParser.js'
-import { logError } from '../utils/log.js'
+import type { OutputStyleConfig } from 'src/constants/outputStyles.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { coerceDescriptionToString } from 'src/utils/frontmatterParser.js'
+import { logError } from 'src/utils/log.js'
 import {
   extractDescriptionFromMarkdown,
   loadMarkdownFilesForSubdir,
-} from '../utils/markdownConfigLoader.js'
-import { clearPluginOutputStyleCache } from '../utils/plugins/loadPluginOutputStyles.js'
+} from 'src/utils/markdownConfigLoader.js'
+import { clearPluginOutputStyleCache } from 'src/utils/plugins/loadPluginOutputStyles.js'
 
 /**
  * Loads markdown files from .claudin/output-styles directories throughout the project

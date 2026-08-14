@@ -22,14 +22,14 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { z } from 'zod/v4'
-import { getDefaultMaxRetries } from '../../services/api/withRetry.js'
-import type { ToolPermissionContext } from '../../Tool.js'
-import { errorMessage } from '../errors.js'
-import { lazySchema } from '../lazySchema.js'
-import { logForDebugging } from '../debug.js'
-import { getMainLoopModel } from '../model/model.js'
+import { getDefaultMaxRetries } from 'src/services/api/withRetry.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import { permissionRuleValueFromString } from './permissionRuleParser.js'
-import { sideQuery } from '../sideQuery.js'
+import { sideQuery } from 'src/utils/sideQuery.js'
 import {
   extractToolUseBlock,
   parseClassifierResponse,

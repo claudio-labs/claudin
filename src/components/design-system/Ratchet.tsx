@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { useTerminalViewport } from '../../ink/hooks/use-terminal-viewport.js';
-import { Box, type DOMElement, measureElement } from '../../ink.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useTerminalViewport } from 'src/ink/hooks/use-terminal-viewport.js';
+import { Box, type DOMElement, measureElement } from 'src/ink.js';
 type Props = {
   children: React.ReactNode;
   lock?: 'always' | 'offscreen';

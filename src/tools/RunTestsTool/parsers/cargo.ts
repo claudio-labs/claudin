@@ -1,4 +1,4 @@
-import type { ParseInput, TestFailure, TestResult } from '../types.js'
+import type { ParseInput, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Parser for `cargo test` / `cargo nextest` libtest text output. Structured

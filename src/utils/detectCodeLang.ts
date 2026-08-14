@@ -10,7 +10,7 @@
  * null). The cost of a false negative is the status-quo head/tail; the cost of
  * a false positive is a garbage outline, so the gates lean toward null.
  */
-import type { OutlineLang } from '../tools/shared/codeOutline/scanSymbols.js'
+import type { OutlineLang } from 'src/tools/shared/codeOutline/scanSymbols.js'
 
 // A uniform numeric line-number prefix as emitted by `cat -n` ("   12<TAB>"),
 // `grep -n` ("12:"), or a Read-style gutter ("12→"). Stripping it lets

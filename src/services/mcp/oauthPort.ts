@@ -4,7 +4,7 @@
  */
 import { createServer } from 'http'
 import { randomInt } from 'crypto'
-import { getPlatform } from '../../utils/platform.js'
+import { getPlatform } from 'src/utils/platform.js'
 
 // Windows dynamic port range 49152-65535 is reserved
 const REDIRECT_PORT_RANGE =

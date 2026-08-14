@@ -8,9 +8,9 @@
  * for UI reason/text only. If re-introduced, serve from downloads.claude.ai.
  */
 
-import { uninstallPluginOp } from '../../services/plugins/pluginOperations.js'
-import { logForDebugging } from '../debug.js'
-import { errorMessage } from '../errors.js'
+import { uninstallPluginOp } from 'src/services/plugins/pluginOperations.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
 import { loadInstalledPluginsV2 } from './installedPluginsManager.js'
 import {
   getMarketplace,

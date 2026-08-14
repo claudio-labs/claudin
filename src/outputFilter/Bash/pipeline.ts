@@ -4,7 +4,7 @@ import {
   collapseDigitTemplates,
   collapseIdenticalRuns,
 } from "src/utils/toolResultSummarizer.js";
-import type { RewriteContext } from "../types.js";
+import type { RewriteContext } from "src/outputFilter/types.js";
 import type { FilterSpec, PipelineResult } from "./types.js";
 
 // ---------------------------------------------------------------------------

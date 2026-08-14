@@ -8,7 +8,7 @@
  * `MACRO.DISPLAY_VERSION` constant which is undefined under `bun test`.
  */
 
-import { getKimiCliVersion } from '../services/api/kimiOAuthShared.js'
+import { getKimiCliVersion } from 'src/services/api/kimiOAuthShared.js'
 
 export function getKimiUserAgent(): string {
   return `kimi-code-cli/${getKimiCliVersion()}`

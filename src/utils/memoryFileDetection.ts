@@ -5,8 +5,8 @@ import {
   getMemoryBaseDir,
   isAutoMemoryEnabled,
   isAutoMemPath,
-} from '../memdir/paths.js'
-import { isAgentMemoryPath } from '../tools/AgentTool/agentMemory.js'
+} from 'src/memdir/paths.js'
+import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import { getClaudinConfigHomeDir } from './envUtils.js'
 import {
   posixPathToWindowsPath,
@@ -15,7 +15,7 @@ import {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('../memdir/teamMemPaths.js') as typeof import('../memdir/teamMemPaths.js'))
+  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

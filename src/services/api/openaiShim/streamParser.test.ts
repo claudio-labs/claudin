@@ -8,7 +8,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { openaiStreamToAnthropic } from './streamParser.js'
-import type { AnthropicStreamEvent } from '../codexShim.js'
+import type { AnthropicStreamEvent } from 'src/services/api/codexShim.js'
 
 function sseResponse(dataObjects: Array<Record<string, unknown>>): Response {
   const body = dataObjects.map(o => `data: ${JSON.stringify(o)}\n`).join('') + 'data: [DONE]\n'

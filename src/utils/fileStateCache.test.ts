@@ -10,7 +10,7 @@ import {
   _resetAllClippedIdsForTesting,
   isPinRegistered,
   pinToolResult,
-} from '../services/compact/stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 
 /**
  * Coverage for FileStateCache's PIN OWNERSHIP, which had none.

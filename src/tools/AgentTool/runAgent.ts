@@ -3,31 +3,31 @@ import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { getProjectRoot, getSessionId } from '../../bootstrap/state.js'
-import { getCommand, getSkillToolCommands, hasCommand } from '../../commands.js'
+import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
+import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands.js'
 import {
   DEFAULT_AGENT_PROMPT,
   enhanceSystemPromptWithEnvDetails,
-} from '../../constants/prompts.js'
-import type { QuerySource } from '../../constants/querySource.js'
-import { getSystemContext, getUserContext } from '../../context.js'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
-import { query } from '../../query.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { cleanupAgentTracking } from '../../services/api/promptCacheBreakDetection.js'
+} from 'src/constants/prompts.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import { getSystemContext, getUserContext } from 'src/context.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import { query } from 'src/query.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { cleanupAgentTracking } from 'src/services/api/promptCacheBreakDetection.js'
 import {
   connectToServer,
   fetchToolsForClient,
-} from '../../services/mcp/client.js'
-import { getMcpConfigByName } from '../../services/mcp/config.js'
+} from 'src/services/mcp/client.js'
+import { getMcpConfigByName } from 'src/services/mcp/config.js'
 import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
-} from '../../services/mcp/types.js'
-import type { Tool, Tools, ToolUseContext } from '../../Tool.js'
-import { killShellTasksForAgent } from '../../tasks/LocalShellTask/killShellTasks.js'
-import type { Command } from '../../types/command.js'
-import type { AgentId } from '../../types/ids.js'
+} from 'src/services/mcp/types.js'
+import type { Tool, Tools, ToolUseContext } from 'src/Tool.js'
+import { killShellTasksForAgent } from 'src/tasks/LocalShellTask/killShellTasks.js'
+import type { Command } from 'src/types/command.js'
+import type { AgentId } from 'src/types/ids.js'
 import type {
   AssistantMessage,
   Message,
@@ -38,53 +38,53 @@ import type {
   TombstoneMessage,
   ToolUseSummaryMessage,
   UserMessage,
-} from '../../types/message.js'
-import { createAttachmentMessage } from '../../utils/attachments.js'
-import { AbortError } from '../../utils/errors.js'
+} from 'src/types/message.js'
+import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { AbortError } from 'src/utils/errors.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from '../../utils/fileStateCache.js'
+} from 'src/utils/fileStateCache.js'
 import {
   type CacheSafeParams,
   createSubagentContext,
-} from '../../utils/forkedAgent.js'
-import { registerFrontmatterHooks } from '../../utils/hooks/registerFrontmatterHooks.js'
-import { clearSessionHooks } from '../../utils/hooks/sessionHooks.js'
-import { executeSubagentStartHooks } from '../../utils/hooks.js'
-import { createUserMessage } from '../../utils/messages.js'
-import { getAgentModel } from '../../utils/model/agent.js'
+} from 'src/utils/forkedAgent.js'
+import { registerFrontmatterHooks } from 'src/utils/hooks/registerFrontmatterHooks.js'
+import { clearSessionHooks } from 'src/utils/hooks/sessionHooks.js'
+import { executeSubagentStartHooks } from 'src/utils/hooks.js'
+import { createUserMessage } from 'src/utils/messages.js'
+import { getAgentModel } from 'src/utils/model/agent.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
   renderDossierForSubagent,
   revalidateDossier,
   setAgentPlanSlug,
-} from '../../services/planDossier.js'
-import type { ModelAlias } from '../../utils/model/aliases.js'
-import { getPlan, getPlanSlug } from '../../utils/plans.js'
+} from 'src/services/planDossier.js'
+import type { ModelAlias } from 'src/utils/model/aliases.js'
+import { getPlan, getPlanSlug } from 'src/utils/plans.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
   setAgentTranscriptSubdir,
   writeAgentMetadata,
-} from '../../utils/sessionStorage.js'
+} from 'src/utils/sessionStorage.js'
 import {
   isRestrictedToPluginOnly,
   isSourceAdminTrusted,
-} from '../../utils/settings/pluginOnlyPolicy.js'
+} from 'src/utils/settings/pluginOnlyPolicy.js'
 import {
   asSystemPrompt,
   type SystemPrompt,
-} from '../../utils/systemPromptType.js'
+} from 'src/utils/systemPromptType.js'
 import {
   isPerfettoTracingEnabled,
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
-} from '../../utils/telemetry/perfettoTracing.js'
-import type { ContentReplacementState } from '../../utils/toolResultStorage.js'
-import { createAgentId } from '../../utils/uuid.js'
+} from 'src/utils/telemetry/perfettoTracing.js'
+import type { ContentReplacementState } from 'src/utils/toolResultStorage.js'
+import { createAgentId } from 'src/utils/uuid.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
@@ -673,7 +673,7 @@ export async function* runAgent({
 
     // Load all skill contents concurrently and add to initial messages
     const { formatSkillLoadingMetadata } = await import(
-      '../../utils/processUserInput/processSlashCommand.js'
+      'src/utils/processUserInput/processSlashCommand.js'
     )
     const loaded = await Promise.all(
       validSkills.map(async ({ skillName, skill }) => ({
@@ -918,7 +918,7 @@ export async function* runAgent({
     /* eslint-disable @typescript-eslint/no-require-imports */
     if (feature('MONITOR_TOOL')) {
       const mcpMod =
-        require('../../tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('../../tasks/MonitorMcpTask/MonitorMcpTask.js')
+        require('src/tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('src/tasks/MonitorMcpTask/MonitorMcpTask.js')
       mcpMod.killMonitorMcpTasksForAgent(
         agentId,
         toolUseContext.getAppState,

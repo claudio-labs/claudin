@@ -9,25 +9,25 @@
 import {
   toolMatchesName,
   type ToolUseContext,
-} from '../../Tool.js'
-import { SKILL_TOOL_NAME } from '../../tools/SkillTool/constants.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
+} from 'src/Tool.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   getBashGitInstructionsBody,
   shouldInjectBashGitInstructionsInMessages,
-} from '../../tools/BashTool/prompt.js'
-import { shouldIncludeGitInstructions } from '../gitSettings.js'
+} from 'src/tools/BashTool/prompt.js'
+import { shouldIncludeGitInstructions } from 'src/utils/gitSettings.js'
 import {
   getSkillToolCommands,
   getMcpSkillCommands,
-} from '../../commands.js'
-import type { Command } from '../../types/command.js'
+} from 'src/commands.js'
+import type { Command } from 'src/types/command.js'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { getProjectRoot } from '../../bootstrap/state.js'
-import { formatCommandsWithinBudget } from '../../tools/SkillTool/prompt.js'
-import { getContextWindowForModel } from '../context.js'
-import { getSdkBetas } from '../../bootstrap/state.js'
-import { logForDebugging } from '../debug.js'
+import { getProjectRoot } from 'src/bootstrap/state.js'
+import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
+import { getContextWindowForModel } from 'src/utils/context.js'
+import { getSdkBetas } from 'src/bootstrap/state.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import { feature } from 'bun:bundle'
 import type { Attachment } from './types.js'
 

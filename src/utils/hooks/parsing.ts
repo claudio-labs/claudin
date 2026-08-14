@@ -2,15 +2,15 @@ import {
   hookJSONOutputSchema,
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from '../../types/hooks.js'
+} from 'src/types/hooks.js'
 import type {
   HookEvent,
   HookJSONOutput,
   SyncHookJSONOutput,
 } from 'src/entrypoints/agentSdkTypes.js'
-import { createAttachmentMessage } from '../attachments.js'
-import { logForDebugging } from '../debug.js'
-import { jsonParse, jsonStringify } from '../slowOperations.js'
+import { createAttachmentMessage } from 'src/utils/attachments.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import type {
   ElicitationResponse,
   HookBlockingError,

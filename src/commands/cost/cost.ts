@@ -1,7 +1,7 @@
-import { formatTotalCost } from '../../cost-tracker.js'
-import { currentLimits } from '../../services/claudeAiLimits.js'
-import type { LocalCommandCall } from '../../types/command.js'
-import { isClaudeAISubscriber } from '../../utils/auth.js'
+import { formatTotalCost } from 'src/cost-tracker.js'
+import { currentLimits } from 'src/services/claudeAiLimits.js'
+import type { LocalCommandCall } from 'src/types/command.js'
+import { isClaudeAISubscriber } from 'src/utils/auth.js'
 
 export const call: LocalCommandCall = async () => {
   if (isClaudeAISubscriber()) {

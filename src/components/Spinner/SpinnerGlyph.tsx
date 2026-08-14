@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text, useTheme } from '../../ink.js';
-import { getTheme, type Theme } from '../../utils/theme.js';
+import { Box, Text, useTheme } from 'src/ink.js';
+import { getTheme, type Theme } from 'src/utils/theme.js';
 import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, resolveStallColor, toRGBColor } from './utils.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 // No mirroring: the orbit is a directional rotation (see getDefaultCharacters).

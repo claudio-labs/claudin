@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Text } from '../../ink.js';
-import { extractMcpToolDisplayName, getMcpDisplayName } from '../../services/mcp/mcpStringUtils.js';
-import type { Tool } from '../../Tool.js';
-import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
-import { Dialog } from '../design-system/Dialog.js';
+import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Text } from 'src/ink.js';
+import { extractMcpToolDisplayName, getMcpDisplayName } from 'src/services/mcp/mcpStringUtils.js';
+import type { Tool } from 'src/Tool.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 import type { ServerInfo } from './types.js';
 type Props = {
   tool: Tool;

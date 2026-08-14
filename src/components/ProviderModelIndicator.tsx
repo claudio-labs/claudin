@@ -1,15 +1,15 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Box, Text } from '../ink.js';
+import { Box, Text } from 'src/ink.js';
 import { useTheme } from './design-system/ThemeProvider.js';
-import { onGlobalConfigChange } from '../utils/config.js';
-import type { ProviderProfile } from '../utils/config.js';
-import { getActiveProviderProfile } from '../utils/providerProfiles.js';
-import { getMainLoopModel, renderModelName } from '../utils/model/model.js';
-import { buildModelPill, buildProviderPill, resolveBranchBg } from '../utils/format-branch.js';
-import { getTheme } from '../utils/theme.js';
-import { logError } from '../utils/log.js';
-import { toError } from '../utils/errors.js';
+import { onGlobalConfigChange } from 'src/utils/config.js';
+import type { ProviderProfile } from 'src/utils/config.js';
+import { getActiveProviderProfile } from 'src/utils/providerProfiles.js';
+import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js';
+import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/utils/format-branch.js';
+import { getTheme } from 'src/utils/theme.js';
+import { logError } from 'src/utils/log.js';
+import { toError } from 'src/utils/errors.js';
 
 type Snapshot = {
   provider: string;

@@ -3,8 +3,8 @@ import type {
   TextBlockParam,
   ToolResultBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
-import { formatOutput } from '../tools/BashTool/utils.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { formatOutput } from 'src/tools/BashTool/utils.js'
 import type {
   NotebookCell,
   NotebookCellOutput,
@@ -12,7 +12,7 @@ import type {
   NotebookCellSourceOutput,
   NotebookContent,
   NotebookOutputImage,
-} from '../types/notebook.js'
+} from 'src/types/notebook.js'
 import { getFsImplementation } from './fsOperations.js'
 import { expandPath } from './path.js'
 import { jsonParse } from './slowOperations.js'

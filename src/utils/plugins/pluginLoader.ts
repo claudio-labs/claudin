@@ -46,43 +46,43 @@ import {
 } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, join, relative, resolve, sep } from 'path'
-import { getInlinePlugins } from '../../bootstrap/state.js'
+import { getInlinePlugins } from 'src/bootstrap/state.js'
 import {
   BUILTIN_MARKETPLACE_NAME,
   getBuiltinPlugins,
-} from '../../plugins/builtinPlugins.js'
+} from 'src/plugins/builtinPlugins.js'
 import type {
   LoadedPlugin,
   PluginComponent,
   PluginError,
   PluginLoadResult,
   PluginManifest,
-} from '../../types/plugin.js'
-import { logForDebugging } from '../debug.js'
-import { isEnvTruthy } from '../envUtils.js'
+} from 'src/types/plugin.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   errorMessage,
   getErrnoPath,
   isENOENT,
   isFsInaccessible,
   toError,
-} from '../errors.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from '../execFileNoThrow.js'
-import { pathExists } from '../file.js'
-import { getFsImplementation } from '../fsOperations.js'
-import { gitExe } from '../git.js'
-import { lazySchema } from '../lazySchema.js'
-import { logError } from '../log.js'
-import { getInitialSettings } from '../settings/settings.js'
+} from 'src/utils/errors.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/execFileNoThrow.js'
+import { pathExists } from 'src/utils/file.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { gitExe } from 'src/utils/git.js'
+import { lazySchema } from 'src/utils/lazySchema.js'
+import { logError } from 'src/utils/log.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
 import {
   clearPluginSettingsBase,
   getPluginSettingsBase,
   resetSettingsCache,
   setPluginSettingsBase,
-} from '../settings/settingsCache.js'
-import type { HooksSettings } from '../settings/types.js'
-import { SettingsSchema } from '../settings/types.js'
-import { jsonParse, jsonStringify } from '../slowOperations.js'
+} from 'src/utils/settings/settingsCache.js'
+import type { HooksSettings } from 'src/utils/settings/types.js'
+import { SettingsSchema } from 'src/utils/settings/types.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { getAddDirEnabledPlugins } from './addDirPluginSettings.js'
 import { verifyAndDemote } from './dependencyResolver.js'
 import { classifyFetchError, logPluginFetch } from './fetchTelemetry.js'

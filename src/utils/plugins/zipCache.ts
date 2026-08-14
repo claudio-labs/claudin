@@ -42,11 +42,11 @@ import {
 } from 'fs/promises'
 import { tmpdir } from 'os'
 import { basename, dirname, join } from 'path'
-import { logForDebugging } from '../debug.js'
-import { parseZipModes, unzipFile } from '../dxt/zip.js'
-import { isEnvTruthy } from '../envUtils.js'
-import { getFsImplementation } from '../fsOperations.js'
-import { expandTilde } from '../permissions/pathValidation.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { parseZipModes, unzipFile } from 'src/utils/dxt/zip.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { expandTilde } from 'src/utils/permissions/pathValidation.js'
 import type { MarketplaceSource } from './schemas.js'
 
 /**

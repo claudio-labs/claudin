@@ -6,12 +6,12 @@ import { getCwd } from 'src/utils/cwd.js';
 import { isENOENT } from 'src/utils/errors.js';
 import { detectEncodingForResolvedPath } from 'src/utils/fileRead.js';
 import { getFsImplementation } from 'src/utils/fsOperations.js';
-import { Text } from '../../../ink.js';
-import { BashTool } from '../../../tools/BashTool/BashTool.js';
-import { applySedSubstitution, type SedEditInfo } from '../../../tools/BashTool/sedEditParser.js';
-import type { FileEdit } from '../../../tools/FileEditTool/types.js';
-import { FilePermissionDialog } from '../FilePermissionDialog/FilePermissionDialog.js';
-import type { PermissionRequestProps } from '../PermissionRequest.js';
+import { Text } from 'src/ink.js';
+import { BashTool } from 'src/tools/BashTool/BashTool.js';
+import { applySedSubstitution, type SedEditInfo } from 'src/tools/BashTool/sedEditParser.js';
+import type { FileEdit } from 'src/tools/FileEditTool/types.js';
+import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
+import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
 type SedEditPermissionRequestProps = PermissionRequestProps & {
   sedInfo: SedEditInfo;
 };

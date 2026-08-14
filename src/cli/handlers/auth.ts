@@ -1,26 +1,26 @@
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handler intentionally exits */
 
-import { clearTrustedDeviceTokenCache } from '../../bridge/trustedDevice.js'
+import { clearTrustedDeviceTokenCache } from 'src/bridge/trustedDevice.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import { refreshGrowthBookAfterAuthChange } from '../../services/analytics/growthbook.js'
-import { getGroveNoticeConfig, getGroveSettings } from '../../services/api/grove.js'
-import { clearPolicyLimitsCache } from '../../services/policyLimits/index.js'
-import { clearRemoteManagedSettingsCache } from '../../services/remoteManagedSettings/index.js'
-import { getSSLErrorHint } from '../../services/api/errorUtils.js'
-import { fetchAndStoreClaudeCodeFirstTokenDate } from '../../services/api/firstTokenDate.js'
+} from 'src/services/analytics/index.js'
+import { refreshGrowthBookAfterAuthChange } from 'src/services/analytics/growthbook.js'
+import { getGroveNoticeConfig, getGroveSettings } from 'src/services/api/grove.js'
+import { clearPolicyLimitsCache } from 'src/services/policyLimits/index.js'
+import { clearRemoteManagedSettingsCache } from 'src/services/remoteManagedSettings/index.js'
+import { getSSLErrorHint } from 'src/services/api/errorUtils.js'
+import { fetchAndStoreClaudeCodeFirstTokenDate } from 'src/services/api/firstTokenDate.js'
 import {
   createAndStoreApiKey,
   fetchAndStoreUserRoles,
   refreshOAuthToken,
   shouldUseClaudeAIAuth,
   storeOAuthAccountInfo,
-} from '../../services/oauth/client.js'
-import { getOauthProfileFromOauthToken } from '../../services/oauth/getOauthProfile.js'
-import { OAuthService } from '../../services/oauth/index.js'
-import type { OAuthTokens } from '../../services/oauth/types.js'
+} from 'src/services/oauth/client.js'
+import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
+import { OAuthService } from 'src/services/oauth/index.js'
+import type { OAuthTokens } from 'src/services/oauth/types.js'
 import {
   clearOAuthTokenCache,
   getAnthropicApiKeyWithSource,
@@ -32,22 +32,22 @@ import {
   removeApiKey,
   saveOAuthTokensIfNeeded,
   validateForceLoginOrg,
-} from '../../utils/auth.js'
-import { clearBetasCaches } from '../../utils/betas.js'
-import { saveGlobalConfig } from '../../utils/config.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { errorMessage } from '../../utils/errors.js'
-import { logError } from '../../utils/log.js'
-import { getSecureStorage } from '../../utils/secureStorage/index.js'
-import { clearToolSchemaCache } from '../../utils/toolSchemaCache.js'
-import { resetUserCache } from '../../utils/user.js'
-import { getAPIProvider } from '../../utils/model/providers.js'
-import { getInitialSettings } from '../../utils/settings/settings.js'
-import { jsonStringify } from '../../utils/slowOperations.js'
+} from 'src/utils/auth.js'
+import { clearBetasCaches } from 'src/utils/betas.js'
+import { saveGlobalConfig } from 'src/utils/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { getSecureStorage } from 'src/utils/secureStorage/index.js'
+import { clearToolSchemaCache } from 'src/utils/toolSchemaCache.js'
+import { resetUserCache } from 'src/utils/user.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   buildAccountProperties,
   buildAPIProviderProperties,
-} from '../../utils/status.js'
+} from 'src/utils/status.js'
 
 export async function performLogout({
   clearOnboarding = false,
@@ -55,7 +55,7 @@ export async function performLogout({
   clearOnboarding?: boolean
 }): Promise<void> {
   // Flush telemetry BEFORE clearing credentials to prevent org data leakage
-  const { flushTelemetry } = await import('../../utils/telemetry/instrumentation.js')
+  const { flushTelemetry } = await import('src/utils/telemetry/instrumentation.js')
   await flushTelemetry()
   await removeApiKey()
 

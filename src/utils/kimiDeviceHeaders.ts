@@ -18,7 +18,7 @@ import {
   asTrimmedString,
   getKimiCliVersion,
   KIMI_MSH_PLATFORM,
-} from '../services/api/kimiOAuthShared.js'
+} from 'src/services/api/kimiOAuthShared.js'
 
 const KIMI_DEVICE_ID_KEY = 'kimiDeviceId' as const
 

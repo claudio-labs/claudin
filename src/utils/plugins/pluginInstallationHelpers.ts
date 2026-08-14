@@ -12,16 +12,16 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from '../../services/analytics/index.js'
-import { getCwd } from '../cwd.js'
-import { toError } from '../errors.js'
-import { getFsImplementation } from '../fsOperations.js'
-import { logError } from '../log.js'
+} from 'src/services/analytics/index.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { toError } from 'src/utils/errors.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { logError } from 'src/utils/log.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from '../settings/settings.js'
-import { buildPluginTelemetryFields } from '../telemetry/pluginTelemetry.js'
+} from 'src/utils/settings/settings.js'
+import { buildPluginTelemetryFields } from 'src/utils/telemetry/pluginTelemetry.js'
 import { clearAllCaches } from './cacheUtils.js'
 import {
   formatDependencyCountSuffix,

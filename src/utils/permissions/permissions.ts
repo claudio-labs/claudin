@@ -1,28 +1,28 @@
 import { feature } from 'bun:bundle'
-import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import {
   getToolNameForPermissionCheck,
   mcpInfoFromString,
-} from '../../services/mcp/mcpStringUtils.js'
-import type { Tool, ToolPermissionContext, ToolUseContext } from '../../Tool.js'
-import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js'
-import { shouldUseSandbox } from '../../tools/BashTool/shouldUseSandbox.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
-import { EXIT_PLAN_MODE_V2_TOOL_NAME } from '../../tools/ExitPlanModeTool/constants.js'
-import { POWERSHELL_TOOL_NAME } from '../../tools/PowerShellTool/toolName.js'
-import { REPL_TOOL_NAME } from '../../tools/REPLTool/constants.js'
-import type { AssistantMessage } from '../../types/message.js'
-import { extractOutputRedirections } from '../bash/commands.js'
-import { logForDebugging } from '../debug.js'
-import { AbortError, isSdkApiUserAbortError, toError } from '../errors.js'
-import { logError } from '../log.js'
-import { getPlanFilePath } from '../plans.js'
-import { SandboxManager } from '../sandbox/sandbox-adapter.js'
+} from 'src/services/mcp/mcpStringUtils.js'
+import type { Tool, ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
+import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
+import type { AssistantMessage } from 'src/types/message.js'
+import { extractOutputRedirections } from 'src/utils/bash/commands.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { AbortError, isSdkApiUserAbortError, toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { getPlanFilePath } from 'src/utils/plans.js'
+import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js'
 import {
   getSettingSourceDisplayNameLowercase,
   SETTING_SOURCES,
-} from '../settings/constants.js'
-import { plural } from '../stringUtils.js'
+} from 'src/utils/settings/constants.js'
+import { plural } from 'src/utils/stringUtils.js'
 import { permissionModeTitle } from './PermissionMode.js'
 import type {
   PermissionAskDecision,
@@ -70,28 +70,28 @@ import {
   getTotalCacheReadInputTokens,
   getTotalInputTokens,
   getTotalOutputTokens,
-} from '../../bootstrap/state.js'
-import { getFeatureValue_CACHED_WITH_REFRESH } from '../../services/analytics/growthbook.js'
+} from 'src/bootstrap/state.js'
+import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/services/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../../services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from '../../services/analytics/metadata.js'
+} from 'src/services/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import {
   clearClassifierChecking,
   setClassifierChecking,
-} from '../classifierApprovals.js'
-import { isInProtectedNamespace } from '../envUtils.js'
-import { executePermissionRequestHooks } from '../hooks.js'
+} from 'src/utils/classifierApprovals.js'
+import { isInProtectedNamespace } from 'src/utils/envUtils.js'
+import { executePermissionRequestHooks } from 'src/utils/hooks.js'
 import {
   AUTO_REJECT_MESSAGE,
   buildClassifierUnavailableMessage,
   buildYoloRejectionMessage,
   DONT_ASK_REJECT_MESSAGE,
-} from '../messages.js'
-import { calculateCostFromTokens } from '../modelCost.js'
+} from 'src/utils/messages.js'
+import { calculateCostFromTokens } from 'src/utils/modelCost.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { jsonStringify } from '../slowOperations.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   createDenialTrackingState,
   DENIAL_LIMITS,

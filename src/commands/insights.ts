@@ -9,28 +9,28 @@ import {
   writeFile,
 } from 'fs/promises'
 import { extname, join } from 'path'
-import type { Command } from '../commands.js'
-import { queryWithModel } from '../services/api/claude.js'
+import type { Command } from 'src/commands.js'
+import { queryWithModel } from 'src/services/api/claude.js'
 import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,
-} from '../tools/AgentTool/constants.js'
-import type { LogOption } from '../types/logs.js'
-import { getClaudinConfigHomeDir } from '../utils/envUtils.js'
-import { toError } from '../utils/errors.js'
-import { logError } from '../utils/log.js'
-import { extractTextContent } from '../utils/messages.js'
-import { getDefaultOpusModel } from '../utils/model/model.js'
+} from 'src/tools/AgentTool/constants.js'
+import type { LogOption } from 'src/types/logs.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { extractTextContent } from 'src/utils/messages.js'
+import { getDefaultOpusModel } from 'src/utils/model/model.js'
 import {
   getProjectsDir,
   getSessionFilesWithMtime,
   getSessionIdFromLog,
   loadAllLogsFromSessionFile,
-} from '../utils/sessionStorage.js'
-import { jsonParse, jsonStringify } from '../utils/slowOperations.js'
-import { countCharInString } from '../utils/stringUtils.js'
-import { asSystemPrompt } from '../utils/systemPromptType.js'
-import { escapeXmlAttr as escapeHtml } from '../utils/xml.js'
+} from 'src/utils/sessionStorage.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { countCharInString } from 'src/utils/stringUtils.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { escapeXmlAttr as escapeHtml } from 'src/utils/xml.js'
 
 // Model for facet extraction and summarization (Opus - best quality)
 function getAnalysisModel(): string {

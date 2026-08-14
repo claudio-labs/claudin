@@ -11,8 +11,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import * as React from 'react'
 
-import { renderToString } from '../utils/staticRender.js'
-import { AppStateProvider } from '../state/AppState.js'
+import { renderToString } from 'src/utils/staticRender.js'
+import { AppStateProvider } from 'src/state/AppState.js'
 import { REPL } from './REPL.js'
 import {
   mockReplProps,

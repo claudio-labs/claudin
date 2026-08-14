@@ -19,22 +19,22 @@
  */
 
 import { join } from 'path'
-import { logForDebugging } from '../../debug.js'
-import { logForDiagnosticsNoPII } from '../../diagLogs.js'
-import { readFileSync } from '../../fileRead.js'
-import { getFsImplementation } from '../../fsOperations.js'
-import { safeParseJSON } from '../../json.js'
-import { profileCheckpoint } from '../../startupProfiler.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { readFileSync } from 'src/utils/fileRead.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { safeParseJSON } from 'src/utils/json.js'
+import { profileCheckpoint } from 'src/utils/startupProfiler.js'
 import {
   getManagedFilePath,
   getManagedSettingsDropInDir,
-} from '../managedPath.js'
-import { type SettingsJson, SettingsSchema } from '../types.js'
+} from 'src/utils/settings/managedPath.js'
+import { type SettingsJson, SettingsSchema } from 'src/utils/settings/types.js'
 import {
   filterInvalidPermissionRules,
   formatZodError,
   type ValidationError,
-} from '../validation.js'
+} from 'src/utils/settings/validation.js'
 import {
   WINDOWS_REGISTRY_KEY_PATH_HKCU,
   WINDOWS_REGISTRY_KEY_PATH_HKLM,

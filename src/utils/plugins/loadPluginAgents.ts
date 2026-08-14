@@ -1,28 +1,28 @@
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import { isAutoMemoryEnabled } from '../../memdir/paths.js'
-import type { AgentColorName } from '../../tools/AgentTool/agentColorManager.js'
+import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
   type AgentMemoryScope,
   loadAgentMemoryPrompt,
-} from '../../tools/AgentTool/agentMemory.js'
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js'
-import { FILE_EDIT_TOOL_NAME } from '../../tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from '../../tools/FileWriteTool/prompt.js'
-import { getPluginErrorMessage } from '../../types/plugin.js'
-import { logForDebugging } from '../debug.js'
-import { EFFORT_LEVELS, parseEffortValue } from '../effort.js'
+} from 'src/tools/AgentTool/agentMemory.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { getPluginErrorMessage } from 'src/types/plugin.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { EFFORT_LEVELS, parseEffortValue } from 'src/utils/effort.js'
 import {
   coerceDescriptionToString,
   parseFrontmatter,
   parsePositiveIntFromFrontmatter,
-} from '../frontmatterParser.js'
-import { getFsImplementation, isDuplicatePath } from '../fsOperations.js'
+} from 'src/utils/frontmatterParser.js'
+import { getFsImplementation, isDuplicatePath } from 'src/utils/fsOperations.js'
 import {
   parseAgentToolsFromFrontmatter,
   parseSlashCommandToolsFromFrontmatter,
-} from '../markdownConfigLoader.js'
+} from 'src/utils/markdownConfigLoader.js'
 import { loadAllPluginsCacheOnly } from './pluginLoader.js'
 import {
   loadPluginOptions,

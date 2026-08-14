@@ -18,10 +18,10 @@
 
 import { bindSessionContext, type ComputerUseSessionContext, type CuCallToolResult, type CuPermissionRequest, type CuPermissionResponse, DEFAULT_GRANT_FLAGS, type ScreenshotDims } from '@ant/computer-use-mcp';
 import * as React from 'react';
-import { getSessionId } from '../../bootstrap/state.js';
-import { ComputerUseApproval } from '../../components/permissions/ComputerUseApproval/ComputerUseApproval.js';
-import type { Tool, ToolUseContext } from '../../Tool.js';
-import { logForDebugging } from '../debug.js';
+import { getSessionId } from 'src/bootstrap/state.js';
+import { ComputerUseApproval } from 'src/components/permissions/ComputerUseApproval/ComputerUseApproval.js';
+import type { Tool, ToolUseContext } from 'src/Tool.js';
+import { logForDebugging } from 'src/utils/debug.js';
 import { checkComputerUseLock, tryAcquireComputerUseLock } from './computerUseLock.js';
 import { registerEscHotkey } from './escHotkey.js';
 import { getChicagoCoordinateMode } from './gates.js';

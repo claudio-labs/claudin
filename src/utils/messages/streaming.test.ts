@@ -7,8 +7,8 @@
  * the side-effect callbacks (no return value), capturing the call order.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
-import { handleMessageFromStream } from '../messages.js'
-import { resetGlobalConfigForTests } from '../config.js'
+import { handleMessageFromStream } from 'src/utils/messages.js'
+import { resetGlobalConfigForTests } from 'src/utils/config.js'
 
 afterAll(() => {
   resetGlobalConfigForTests()

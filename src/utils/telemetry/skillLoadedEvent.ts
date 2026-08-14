@@ -1,10 +1,10 @@
-import { getSkillToolCommands } from '../../commands.js'
+import { getSkillToolCommands } from 'src/commands.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from '../../services/analytics/index.js'
-import { getCharBudget } from '../../tools/SkillTool/prompt.js'
+} from 'src/services/analytics/index.js'
+import { getCharBudget } from 'src/tools/SkillTool/prompt.js'
 
 /**
  * Logs a tengu_skill_loaded event for each skill available at session startup.

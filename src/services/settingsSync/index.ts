@@ -14,33 +14,33 @@ import axios from 'axios'
 import { mkdir, readFile, stat, writeFile } from 'fs/promises'
 import pickBy from 'lodash-es/pickBy.js'
 import { dirname } from 'path'
-import { getIsInteractive } from '../../bootstrap/state.js'
+import { getIsInteractive } from 'src/bootstrap/state.js'
 import {
   CLAUDE_AI_INFERENCE_SCOPE,
   getOauthConfig,
   OAUTH_BETA_HEADER,
-} from '../../constants/oauth.js'
+} from 'src/constants/oauth.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from '../../utils/auth.js'
-import { clearMemoryFileCaches } from '../../utils/claudemd.js'
-import { getMemoryPath } from '../../utils/config.js'
-import { logForDiagnosticsNoPII } from '../../utils/diagLogs.js'
-import { classifyAxiosError } from '../../utils/errors.js'
-import { getRepoRemoteHash } from '../../utils/git.js'
+} from 'src/utils/auth.js'
+import { clearMemoryFileCaches } from 'src/utils/claudemd.js'
+import { getMemoryPath } from 'src/utils/config.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { classifyAxiosError } from 'src/utils/errors.js'
+import { getRepoRemoteHash } from 'src/utils/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from '../../utils/model/providers.js'
-import { markInternalWrite } from '../../utils/settings/internalWrites.js'
-import { getSettingsFilePathForSource } from '../../utils/settings/settings.js'
-import { resetSettingsCache } from '../../utils/settings/settingsCache.js'
-import { sleep } from '../../utils/sleep.js'
-import { getClaudeCodeUserAgent } from '../../utils/userAgent.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../analytics/growthbook.js'
-import { logEvent } from '../analytics/index.js'
-import { getRetryDelay } from '../api/withRetry.js'
+} from 'src/utils/model/providers.js'
+import { markInternalWrite } from 'src/utils/settings/internalWrites.js'
+import { getSettingsFilePathForSource } from 'src/utils/settings/settings.js'
+import { resetSettingsCache } from 'src/utils/settings/settingsCache.js'
+import { sleep } from 'src/utils/sleep.js'
+import { getClaudeCodeUserAgent } from 'src/utils/userAgent.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import { getRetryDelay } from 'src/services/api/withRetry.js'
 import {
   type SettingsSyncFetchResult,
   type SettingsSyncUploadResult,

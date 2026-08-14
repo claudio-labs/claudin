@@ -1,17 +1,17 @@
 import React from 'react'
-import { getOriginalCwd } from '../../../bootstrap/state.js'
-import { Box, Text } from '../../../ink.js'
-import { sanitizeToolNameForAnalytics } from '../../../services/analytics/metadata.js'
-import { shouldShowAlwaysAllowOptions } from '../../../utils/permissions/permissionsLoader.js'
-import { usePermissionRequestLogging } from '../hooks.js'
-import { PermissionDialog } from '../PermissionDialog.js'
+import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { Box, Text } from 'src/ink.js'
+import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+import { shouldShowAlwaysAllowOptions } from 'src/utils/permissions/permissionsLoader.js'
+import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js'
+import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js'
 import {
   PermissionPrompt,
   type PermissionPromptOption,
-} from '../PermissionPrompt.js'
-import type { PermissionRequestProps } from '../PermissionRequest.js'
-import { PermissionRuleExplanation } from '../PermissionRuleExplanation.js'
-import { logUnaryPermissionEvent } from '../utils.js'
+} from 'src/components/permissions/PermissionPrompt.js'
+import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js'
+import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js'
+import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 

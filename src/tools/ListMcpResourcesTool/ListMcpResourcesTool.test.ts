@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 import { ListMcpResourcesTool } from './ListMcpResourcesTool.js'
 
 function ctxWithClients(mcpClients: unknown[]): ToolUseContext {

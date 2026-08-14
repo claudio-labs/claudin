@@ -1,15 +1,15 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback, useState } from 'react';
-import { useDoublePress } from '../hooks/useDoublePress.js';
-import { Box, Text } from '../ink.js';
-import { useKeybinding } from '../keybindings/useKeybinding.js';
-import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
-import { useAppState, useAppStateStore, useSetAppState } from '../state/AppState.js';
-import { backgroundAll, hasForegroundTasks } from '../tasks/LocalShellTask/LocalShellTask.js';
-import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
-import { env } from '../utils/env.js';
-import { isEnvTruthy } from '../utils/envUtils.js';
+import { useDoublePress } from 'src/hooks/useDoublePress.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
+import { backgroundAll, hasForegroundTasks } from 'src/tasks/LocalShellTask/LocalShellTask.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { env } from 'src/utils/env.js';
+import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 type Props = {
   onBackgroundSession: () => void;

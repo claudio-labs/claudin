@@ -4,7 +4,7 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // Match any of the four common code-search tools at the start of the command.
 const GREP_MATCH = /^(?:grep|rg|ag|ack|ack-grep)\b/

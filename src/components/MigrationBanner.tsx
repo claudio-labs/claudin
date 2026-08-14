@@ -1,12 +1,12 @@
 import * as React from 'react'
 
-import { Box, Text } from '../ink.js'
+import { Box, Text } from 'src/ink.js'
 import {
   formatMigrationReport,
   markMigrationSkipped,
   migrateLegacyClaudeDir,
   type MigrationReport,
-} from '../utils/claudinMigration.js'
+} from 'src/utils/claudinMigration.js'
 import { Select } from './CustomSelect/index.js'
 
 type Phase =

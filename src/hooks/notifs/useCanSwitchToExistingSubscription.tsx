@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { getOauthProfileFromApiKey } from 'src/services/oauth/getOauthProfile.js';
 import { isClaudeAISubscriber } from 'src/utils/auth.js';
-import type { Notification } from '../../context/notifications.js';
-import { Text } from '../../ink.js';
-import { logEvent } from '../../services/analytics/index.js';
-import type { GlobalConfig } from '../../utils/config.js';
-import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
+import type { Notification } from 'src/context/notifications.js';
+import { Text } from 'src/ink.js';
+import { logEvent } from 'src/services/analytics/index.js';
+import type { GlobalConfig } from 'src/utils/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
 import { useStartupNotification } from './useStartupNotification.js';
 const MAX_SHOW_COUNT = 3;
 

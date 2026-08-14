@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { detectOutlineLang, detectOutlineLangFromPath, scanSymbols } from '../shared/codeOutline/scanSymbols.js'
-import type { SymbolKind } from '../shared/codeOutline/scanSymbols.js'
+import { detectOutlineLang, detectOutlineLangFromPath, scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'
+import type { SymbolKind } from 'src/tools/shared/codeOutline/scanSymbols.js'
 
 // ---------------------------------------------------------------------------
 // Smoke: every NEW language from the plan produces ≥1 symbol on a realistic

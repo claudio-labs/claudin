@@ -1,4 +1,4 @@
-import type { ParseInput, TestFailure, TestResult } from '../types.js'
+import type { ParseInput, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Parser for `go test -json` — newline-delimited JSON events. Go has no useful

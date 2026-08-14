@@ -1,18 +1,18 @@
 import axios, { type AxiosResponse } from 'axios'
 import { LRUCache } from 'lru-cache'
-import { queryHaiku } from '../../services/api/claude.js'
-import { AbortError } from '../../utils/errors.js'
-import { getWebFetchUserAgent } from '../../utils/http.js'
-import { logError } from '../../utils/log.js'
-import { getAPIProvider } from '../../utils/model/providers.js'
+import { queryHaiku } from 'src/services/api/claude.js'
+import { AbortError } from 'src/utils/errors.js'
+import { getWebFetchUserAgent } from 'src/utils/http.js'
+import { logError } from 'src/utils/log.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isBinaryContentType,
   persistBinaryContent,
-} from '../../utils/mcpOutputStorage.js'
-import { getInitialSettings } from '../../utils/settings/settings.js'
-import { asSystemPrompt } from '../../utils/systemPromptType.js'
-import { ssrfGuardedLookup } from '../../utils/hooks/ssrfGuard.js'
-import { createTwoTierCache } from '../shared/twoTierCache.js'
+} from 'src/utils/mcpOutputStorage.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { ssrfGuardedLookup } from 'src/utils/hooks/ssrfGuard.js'
+import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
 import { isPreapprovedHost } from './preapproved.js'
 import { makeSecondaryModelPrompt } from './prompt.js'
 

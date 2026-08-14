@@ -1,5 +1,5 @@
 import { execaSync } from 'execa'
-import { getCwd } from '../utils/cwd.js'
+import { getCwd } from 'src/utils/cwd.js'
 import { slowLogging } from './slowOperations.js'
 
 const MS_IN_SECOND = 1000

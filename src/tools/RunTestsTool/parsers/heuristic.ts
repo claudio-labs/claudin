@@ -1,4 +1,4 @@
-import type { Framework, ParseInput, TestFailure, TestResult } from '../types.js'
+import type { Framework, ParseInput, TestFailure, TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Last-resort text parser. When no machine reporter was produced (wrapped

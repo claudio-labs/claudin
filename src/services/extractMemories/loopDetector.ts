@@ -11,15 +11,15 @@
  * be unit-tested without importing the ink/agent stack.
  */
 
-import { logError } from '../../utils/log.js'
+import { logError } from 'src/utils/log.js'
 import {
   CANCEL_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   REJECT_MESSAGE,
   REJECT_MESSAGE_WITH_REASON_PREFIX,
-} from '../../utils/messages/constants.js'
-import { isHumanTurn } from '../../utils/messagePredicates.js'
-import type { Message } from '../../types/message.js'
+} from 'src/utils/messages/constants.js'
+import { isHumanTurn } from 'src/utils/messagePredicates.js'
+import type { Message } from 'src/types/message.js'
 
 /** Minimal tool_result guard (inlined to keep this module dependency-light). */
 function isToolResultBlock(

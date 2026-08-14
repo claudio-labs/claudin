@@ -1,11 +1,11 @@
 import * as React from 'react';
 import type { z } from 'zod/v4';
-import { MessageResponse } from '../../components/MessageResponse.js';
-import { OutputLine } from '../../components/shell/OutputLine.js';
-import { Box, Text } from '../../ink.js';
-import type { ToolProgressData } from '../../Tool.js';
-import type { ProgressMessage } from '../../types/message.js';
-import { jsonStringify } from '../../utils/slowOperations.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
+import { OutputLine } from 'src/components/shell/OutputLine.js';
+import { Box, Text } from 'src/ink.js';
+import type { ToolProgressData } from 'src/Tool.js';
+import type { ProgressMessage } from 'src/types/message.js';
+import { jsonStringify } from 'src/utils/slowOperations.js';
 import type { inputSchema, Output } from './ReadMcpResourceTool.js';
 export function renderToolUseMessage(input: Partial<z.infer<ReturnType<typeof inputSchema>>>): React.ReactNode {
   if (!input.uri || !input.server) {

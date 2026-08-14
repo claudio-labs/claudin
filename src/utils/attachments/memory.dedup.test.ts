@@ -24,10 +24,10 @@
  * a different attachment shape would still be a second copy.
  */
 import { describe, expect, test } from 'bun:test'
-import type { ToolUseContext } from '../../Tool.js'
-import type { MemoryFileInfo } from '../claudemd.js'
-import { FileStateCache } from '../fileStateCache.js'
-import { normalizeAttachmentForAPI } from '../messages.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { MemoryFileInfo } from 'src/utils/claudemd.js'
+import { FileStateCache } from 'src/utils/fileStateCache.js'
+import { normalizeAttachmentForAPI } from 'src/utils/messages.js'
 import type { Attachment } from './types.js'
 import { memoryFilesToAttachments } from './memory.js'
 

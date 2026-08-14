@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
-import { Box, Text } from '../../ink.js';
-import { PromptInputHelpMenu } from '../PromptInput/PromptInputHelpMenu.js';
+import { Box, Text } from 'src/ink.js';
+import { PromptInputHelpMenu } from 'src/components/PromptInput/PromptInputHelpMenu.js';
 export function General() {
   const $ = _c(2);
   let t0;

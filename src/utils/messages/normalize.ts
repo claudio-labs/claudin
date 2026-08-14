@@ -25,22 +25,22 @@ import {
 } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import type { AgentId } from 'src/types/ids.js'
-import { NO_CONTENT_MESSAGE } from '../../constants/messages.js'
+import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
-} from '../../services/analytics/growthbook.js'
+} from 'src/services/analytics/growthbook.js'
 import {
   getImageTooLargeErrorMessage,
   getPdfInvalidErrorMessage,
   getPdfPasswordProtectedErrorMessage,
   getPdfTooLargeErrorMessage,
   getRequestTooLargeErrorMessage,
-} from '../../services/api/errors.js'
+} from 'src/services/api/errors.js'
 import {
   findToolByName,
   toolMatchesName,
   type Tools,
-} from '../../Tool.js'
+} from 'src/Tool.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -51,22 +51,22 @@ import type {
   SystemLocalCommandMessage,
   SystemMessage,
   UserMessage,
-} from '../../types/message.js'
-import type { HookAttachment } from '../attachments.js'
-import { isAdvisorBlock } from '../advisor.js'
-import { isConnectorTextBlock } from '../../types/connectorText.js'
-import { normalizeToolInput, normalizeToolInputForAPI } from '../api.js'
-import { logForDebugging } from '../debug.js'
-import { validateImagesForAPI } from '../imageValidation.js'
-import { safeParseJSON } from '../json.js'
-import { logError } from '../log.js'
-import { getAPIProvider } from '../model/providers.js'
-import { normalizeLegacyToolName } from '../permissions/permissionRuleParser.js'
-import { getStrictToolResultPairing } from '../../bootstrap/state.js'
+} from 'src/types/message.js'
+import type { HookAttachment } from 'src/utils/attachments.js'
+import { isAdvisorBlock } from 'src/utils/advisor.js'
+import { isConnectorTextBlock } from 'src/types/connectorText.js'
+import { normalizeToolInput, normalizeToolInputForAPI } from 'src/utils/api.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { validateImagesForAPI } from 'src/utils/imageValidation.js'
+import { safeParseJSON } from 'src/utils/json.js'
+import { logError } from 'src/utils/log.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
+import { normalizeLegacyToolName } from 'src/utils/permissions/permissionRuleParser.js'
+import { getStrictToolResultPairing } from 'src/bootstrap/state.js'
 import {
   isToolReferenceBlock,
   isToolSearchEnabledOptimistic,
-} from '../toolSearch.js'
+} from 'src/utils/toolSearch.js'
 import {
   SYNTHETIC_MODEL,
   SYNTHETIC_TOOL_RESULT_PLACEHOLDER,
@@ -1253,7 +1253,7 @@ export function normalizeMessagesForAPI(
   if (feature('HISTORY_SNIP') && process.env.NODE_ENV !== 'test') {
     const { isSnipRuntimeEnabled } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../services/compact/snipCompact.js') as typeof import('../../services/compact/snipCompact.js')
+      require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js')
     if (isSnipRuntimeEnabled()) {
       for (let i = 0; i < sanitized.length; i++) {
         if (sanitized[i]!.type === 'user') {
@@ -1323,7 +1323,7 @@ export function mergeUserMessages(a: UserMessage, b: UserMessage): UserMessage {
     // for all ants.
     const { isSnipRuntimeEnabled } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../services/compact/snipCompact.js') as typeof import('../../services/compact/snipCompact.js')
+      require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js')
     if (isSnipRuntimeEnabled()) {
       return {
         ...a,

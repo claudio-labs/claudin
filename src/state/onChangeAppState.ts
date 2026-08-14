@@ -1,27 +1,27 @@
-import { setMainLoopModelOverride } from '../bootstrap/state.js'
+import { setMainLoopModelOverride } from 'src/bootstrap/state.js'
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
   clearGcpCredentialsCache,
-} from '../utils/auth.js'
+} from 'src/utils/auth.js'
 import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
-} from '../utils/config.js'
-import { toError } from '../utils/errors.js'
-import { logError } from '../utils/log.js'
-import { applyConfigEnvironmentVariables } from '../utils/managedEnv.js'
-import { getActiveProviderProfile } from '../utils/providerProfiles.js'
+} from 'src/utils/config.js'
+import { toError } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
+import { applyConfigEnvironmentVariables } from 'src/utils/managedEnv.js'
+import { getActiveProviderProfile } from 'src/utils/providerProfiles.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
-} from '../utils/permissions/PermissionMode.js'
+} from 'src/utils/permissions/PermissionMode.js'
 import {
   notifyPermissionModeChanged,
   notifySessionMetadataChanged,
   type SessionExternalMetadata,
-} from '../utils/sessionState.js'
+} from 'src/utils/sessionState.js'
 import type { AppState } from './AppStateStore.js'
 
 // One-shot flag: when set, the next `mainLoopModel` diff handled by

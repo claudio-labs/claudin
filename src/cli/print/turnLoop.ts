@@ -67,20 +67,20 @@ import {
   hasActiveInProcessTeammates,
   hasWorkingInProcessTeammates,
   waitForTeammatesToBecomeIdle,
-} from '../../utils/teammate.js'
+} from 'src/utils/teammate.js'
 import {
   readUnreadMessages,
   markMessagesAsRead,
   isShutdownApproved,
-} from '../../utils/teammateMailbox.js'
-import { removeTeammateFromTeamFile } from '../../utils/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from '../../utils/tasks.js'
-import { getRunningTasks } from '../../utils/task/framework.js'
-import { isBackgroundTask } from '../../tasks/types.js'
-import { drainSdkEvents } from '../../utils/sdkEventQueue.js'
-import { errorMessage, toError } from '../../utils/errors.js'
-import { sleep } from '../../utils/sleep.js'
-import { isEnvDefinedFalsy } from '../../utils/envUtils.js'
+} from 'src/utils/teammateMailbox.js'
+import { removeTeammateFromTeamFile } from 'src/utils/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/utils/tasks.js'
+import { getRunningTasks } from 'src/utils/task/framework.js'
+import { isBackgroundTask } from 'src/tasks/types.js'
+import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
+import { errorMessage, toError } from 'src/utils/errors.js'
+import { sleep } from 'src/utils/sleep.js'
+import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import { reregisterChannelHandlerAfterReconnect } from 'src/cli/print/controlHandlers.js'
 import { canBatchWith, joinPromptValues } from 'src/cli/print/promptBatching.js'
 import { proactiveModule } from 'src/cli/print/headlessOptionalModules.js'

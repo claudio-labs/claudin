@@ -1,6 +1,6 @@
-import type { ToolUseContext } from '../../Tool.js'
-import type { PermissionResult } from '../../types/permissions.js'
-import { bashToolHasPermission } from '../BashTool/bashPermissions.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { PermissionResult } from 'src/types/permissions.js'
+import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
 
 /**
  * Permission delegation.

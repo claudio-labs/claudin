@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, isAbsolute, join } from 'path'
 
-import type { ToolPermissionContext } from '../Tool.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
 import { extractGlobBaseDirectory, glob } from './glob.js'
 
 const permissionContext = {

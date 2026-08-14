@@ -16,28 +16,28 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js'
 import { getDefaultAppState } from 'src/state/AppStateStore.js'
-import review from '../commands/review.js'
-import type { Command } from '../commands.js'
-import { getMcpToolsCommandsAndResources } from '../services/mcp/client.js'
-import type { MCPServerConnection } from '../services/mcp/types.js'
+import review from 'src/commands/review.js'
+import type { Command } from 'src/commands.js'
+import { getMcpToolsCommandsAndResources } from 'src/services/mcp/client.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import {
   findToolByName,
   getEmptyToolPermissionContext,
   type Tool as InternalTool,
   type ToolUseContext,
-} from '../Tool.js'
-import { getTools } from '../tools.js'
-import { createAbortController } from '../utils/abortController.js'
-import { createFileStateCacheWithSizeLimit } from '../utils/fileStateCache.js'
-import { logError } from '../utils/log.js'
-import { createAssistantMessage } from '../utils/messages.js'
-import { getMainLoopModel } from '../utils/model/model.js'
-import { hasPermissionsToUseTool } from '../utils/permissions/permissions.js'
-import { setCwd } from '../utils/Shell.js'
-import { jsonStringify } from '../utils/slowOperations.js'
-import { getErrorParts } from '../utils/toolErrors.js'
-import { stripPlaceholderOptionalFields } from '../utils/toolInputPlaceholders.js'
-import { zodToJsonSchema } from '../utils/zodToJsonSchema.js'
+} from 'src/Tool.js'
+import { getTools } from 'src/tools.js'
+import { createAbortController } from 'src/utils/abortController.js'
+import { createFileStateCacheWithSizeLimit } from 'src/utils/fileStateCache.js'
+import { logError } from 'src/utils/log.js'
+import { createAssistantMessage } from 'src/utils/messages.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
+import { hasPermissionsToUseTool } from 'src/utils/permissions/permissions.js'
+import { setCwd } from 'src/utils/Shell.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { getErrorParts } from 'src/utils/toolErrors.js'
+import { stripPlaceholderOptionalFields } from 'src/utils/toolInputPlaceholders.js'
+import { zodToJsonSchema } from 'src/utils/zodToJsonSchema.js'
 
 type ToolInput = Tool['inputSchema']
 type ToolOutput = Tool['outputSchema']

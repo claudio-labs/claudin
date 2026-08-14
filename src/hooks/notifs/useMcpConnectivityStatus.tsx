@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { logError } from '../../utils/log.js';
+import { logError } from 'src/utils/log.js';
 import { useEffect } from 'react';
 import { useNotifications } from 'src/context/notifications.js';
-import { getIsRemoteMode } from '../../bootstrap/state.js';
-import { Text } from '../../ink.js';
-import { hasClaudeAiMcpEverConnected } from '../../services/mcp/claudeai.js';
-import type { MCPServerConnection } from '../../services/mcp/types.js';
+import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import { Text } from 'src/ink.js';
+import { hasClaudeAiMcpEverConnected } from 'src/services/mcp/claudeai.js';
+import type { MCPServerConnection } from 'src/services/mcp/types.js';
 type Props = {
   mcpClients?: MCPServerConnection[];
 };

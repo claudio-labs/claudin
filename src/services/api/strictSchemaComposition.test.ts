@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import type { ZodType } from 'zod/v4'
-import { AgentTool } from '../../tools/AgentTool/AgentTool.js'
-import { FileReadTool } from '../../tools/FileReadTool/FileReadTool.js'
-import { GrepTool } from '../../tools/GrepTool/GrepTool.js'
-import { ReportFindingsTool } from '../../tools/ReportFindingsTool/ReportFindingsTool.js'
-import { stripPlaceholderOptionalFields } from '../../utils/toolInputPlaceholders.js'
-import { zodToJsonSchema } from '../../utils/zodToJsonSchema.js'
+import { AgentTool } from 'src/tools/AgentTool/AgentTool.js'
+import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
+import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
+import { ReportFindingsTool } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
+import { stripPlaceholderOptionalFields } from 'src/utils/toolInputPlaceholders.js'
+import { zodToJsonSchema } from 'src/utils/zodToJsonSchema.js'
 import { convertToolsToResponsesTools } from './codexShim.js'
 
 /**

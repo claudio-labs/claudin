@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
-import { AppStateProvider } from '../../state/AppState.js'
-import type { Tools } from '../../Tool.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import type { Tools } from 'src/Tool.js'
 import type {
   CollapsedReadSearchGroup,
   WriteFileStat,
-} from '../../types/message.js'
-import { renderToString } from '../../utils/staticRender.js'
+} from 'src/types/message.js'
+import { renderToString } from 'src/utils/staticRender.js'
 import { CollapsedReadSearchContent } from './CollapsedReadSearchContent.js'
 
 const EMPTY_GROUP = {

@@ -5,8 +5,8 @@ const realFsOperations = { ...(await import('./fsOperations.js')) }
 const realFileRead = { ...(await import('./fileRead.js')) }
 const realDebug = { ...(await import('./debug.js')) }
 const realLog = { ...(await import('./log.js')) }
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
-const realAnalytics = { ...(await import('../services/analytics/index.js')) }
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
+const realAnalytics = { ...(await import('src/services/analytics/index.js')) }
 const realCwd = { ...(await import('./cwd.js')) }
 const realPath = { ...(await import('./path.js')) }
 const realPlatform = { ...(await import('./platform.js')) }
@@ -48,11 +48,11 @@ mock.module('./log.js', () => ({
   logError: () => {},
 }))
 
-mock.module('../services/analytics/growthbook.js', () => ({
+mock.module('src/services/analytics/growthbook.js', () => ({
   getFeatureValue_CACHED_MAY_BE_STALE: () => false,
 }))
 
-mock.module('../services/analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: () => {},
 }))
 
@@ -215,9 +215,9 @@ afterAll(() => {
   mock.module('src/utils/debug.js', () => realDebug)
   mock.module('./log.js', () => realLog)
   mock.module('src/utils/log.js', () => realLog)
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('../services/analytics/index.js', () => realAnalytics)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/index.js', () => realAnalytics)
   mock.module('src/services/analytics/index.js', () => realAnalytics)
   mock.module('./cwd.js', () => realCwd)
   mock.module('src/utils/cwd.js', () => realCwd)

@@ -22,7 +22,7 @@
  * previously re-serialized every turn.
  */
 
-import { logEvent } from '../services/analytics/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
 
 /**
  * Key inside the system-context object (see `getSystemContext` in

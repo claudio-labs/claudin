@@ -1,6 +1,6 @@
-import { getIsNonInteractiveSession } from '../../../bootstrap/state.js'
-import { logForDebugging } from '../../../utils/debug.js'
-import { getPlatform } from '../../../utils/platform.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getPlatform } from 'src/utils/platform.js'
 import {
   isInITerm2,
   isInsideTmux,

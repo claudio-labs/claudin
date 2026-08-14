@@ -19,7 +19,7 @@
  */
 
 import { deflateSync } from 'zlib'
-import { stringWidth } from '../ink/stringWidth.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
 import {
   type AnsiColor,
   DEFAULT_BG,

@@ -2,8 +2,8 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import { relative } from 'path'
 import { getCwd } from 'src/utils/cwd.js'
-import { addInvokedSkill } from '../bootstrap/state.js'
-import { asSessionId } from '../types/ids.js'
+import { addInvokedSkill } from 'src/bootstrap/state.js'
+import { asSessionId } from 'src/types/ids.js'
 import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
@@ -11,13 +11,13 @@ import type {
   LogOption,
   PersistedWorktreeSession,
   SerializedMessage,
-} from '../types/logs.js'
+} from 'src/types/logs.js'
 import type {
   Message,
   NormalizedMessage,
   NormalizedUserMessage,
-} from '../types/message.js'
-import { PERMISSION_MODES } from '../types/permissions.js'
+} from 'src/types/message.js'
+import { PERMISSION_MODES } from 'src/types/permissions.js'
 import {
   suppressNextBashGitInstructions,
   suppressNextSkillListing,
@@ -60,13 +60,13 @@ import type { ContentReplacementRecord } from './toolResultStorage.js'
 const BRIEF_TOOL_NAME: string | null =
   feature('KAIROS') || feature('KAIROS_BRIEF')
     ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
       ).BRIEF_TOOL_NAME
     : null
 const LEGACY_BRIEF_TOOL_NAME: string | null =
   feature('KAIROS') || feature('KAIROS_BRIEF')
     ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
       ).LEGACY_BRIEF_TOOL_NAME
     : null
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')

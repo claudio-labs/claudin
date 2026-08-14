@@ -2,12 +2,12 @@ import {
   STATUS_TAG,
   SUMMARY_TAG,
   TASK_NOTIFICATION_TAG,
-} from '../constants/xml.js'
-import { BACKGROUND_BASH_SUMMARY_PREFIX } from '../tasks/LocalShellTask/LocalShellTask.js'
+} from 'src/constants/xml.js'
+import { BACKGROUND_BASH_SUMMARY_PREFIX } from 'src/tasks/LocalShellTask/LocalShellTask.js'
 import type {
   NormalizedUserMessage,
   RenderableMessage,
-} from '../types/message.js'
+} from 'src/types/message.js'
 import { isFullscreenEnvEnabled } from './fullscreen.js'
 import { extractTag } from './messages.js'
 

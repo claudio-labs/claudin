@@ -6,8 +6,8 @@ import { join } from 'path'
 import {
   detectOutlineLangFromPath,
   scanSymbols,
-} from '../shared/codeOutline/scanSymbols.js'
-import { renderOutline } from '../shared/codeOutline/renderOutline.js'
+} from 'src/tools/shared/codeOutline/scanSymbols.js'
+import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { findSites } from './findSites.js'
 import { renderPreview } from './renderPreview.js'
 

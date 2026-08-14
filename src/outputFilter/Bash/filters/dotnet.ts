@@ -14,7 +14,7 @@
 //
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
-import type { FilterSpec } from '../types.js'
+import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
 // Shared banner / restore noise --------------------------------------------
 const DOTNET_MSBUILD_BANNER = /^Microsoft \(R\) Build Engine/

@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useState } from 'react';
-import { Box, Text } from '../ink.js';
-import { useKeybinding } from '../keybindings/useKeybinding.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import TextInput from './TextInput.js';
 type Props = {
   initialLanguage: string | undefined;

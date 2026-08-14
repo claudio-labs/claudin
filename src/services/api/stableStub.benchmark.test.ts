@@ -26,7 +26,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bu
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
 }
-import { stableStringify } from '../../utils/stableStringify.js'
+import { stableStringify } from 'src/utils/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch
@@ -41,13 +41,13 @@ const originalEnv = {
 // Disable autocompact so the pipeline stays predictable. Spread into a plain
 // object so afterAll restores the original bindings, not the live ESM
 // namespace (which mock.module mutates in place).
-const realConfig = { ...(await import('../../utils/config.js')) }
-mock.module('../../utils/config.js', () => ({
+const realConfig = { ...(await import('src/utils/config.js')) }
+mock.module('src/utils/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => ({ autoCompactEnabled: false }),
 }))
-const realAutoCompact = { ...(await import('../compact/autoCompact.js')) }
-mock.module('../compact/autoCompact.js', () => ({
+const realAutoCompact = { ...(await import('src/services/compact/autoCompact.js')) }
+mock.module('src/services/compact/autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => 200_000,
 }))
@@ -57,7 +57,7 @@ const {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} = await import('../compact/stableStubState.js')
+} = await import('src/services/compact/stableStubState.js')
 const { createOpenAIShimClient } = await import('./openaiShim.js')
 const { convertAnthropicMessagesToResponsesInput } = await import('./codexShim.js')
 
@@ -279,8 +279,8 @@ afterAll(() => {
     else process.env[k] = v
   }
   globalThis.fetch = originalFetch
-  mock.module('../../utils/config.js', () => realConfig)
-  mock.module('../compact/autoCompact.js', () => realAutoCompact)
+  mock.module('src/utils/config.js', () => realConfig)
+  mock.module('src/services/compact/autoCompact.js', () => realAutoCompact)
 })
 
 afterEach(() => {

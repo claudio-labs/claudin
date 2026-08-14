@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { z } from 'zod/v4'
-import { getIsNonInteractiveSession, getSessionId } from '../bootstrap/state.js'
+import { getIsNonInteractiveSession, getSessionId } from 'src/bootstrap/state.js'
 import { uniq } from './array.js'
 import { logForDebugging } from './debug.js'
 import { getClaudinConfigHomeDir, getTeamsDir, isEnvTruthy } from './envUtils.js'

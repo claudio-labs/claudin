@@ -66,11 +66,11 @@ import { getMainThreadAgentType } from 'src/bootstrap/state.js'
 import type { AppState } from 'src/state/AppStateStore.js'
 import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
-import { jsonStringify } from '../../utils/slowOperations.js'
-import { isEnvTruthy } from '../../utils/envUtils.js'
-import { initializeGrowthBook } from '../../services/analytics/growthbook.js'
-import { errorMessage } from '../../utils/errors.js'
-import { isExtractModeActive } from '../../memdir/paths.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { initializeGrowthBook } from 'src/services/analytics/growthbook.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { isExtractModeActive } from 'src/memdir/paths.js'
 import { getCanUseToolFn } from 'src/cli/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/cli/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/cli/print/sessionLoad.js'
@@ -81,10 +81,10 @@ import { runHeadlessStreaming } from 'src/cli/print/runHeadlessStreaming.js'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('../../coordinator/coordinatorMode.js') as typeof import('../../coordinator/coordinatorMode.js'))
+  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
   : null
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('../../services/extractMemories/extractMemories.js') as typeof import('../../services/extractMemories/extractMemories.js'))
+  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

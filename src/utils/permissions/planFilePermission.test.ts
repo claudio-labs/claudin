@@ -7,10 +7,10 @@ import {
   getOriginalCwd,
   setCwdState,
   setOriginalCwd,
-} from '../../bootstrap/state.js'
-import { runWithCwdOverride } from '../cwd.js'
-import { getPlansDirectory, setPlanSlug } from '../plans.js'
-import { getSessionId } from '../../bootstrap/state.js'
+} from 'src/bootstrap/state.js'
+import { runWithCwdOverride } from 'src/utils/cwd.js'
+import { getPlansDirectory, setPlanSlug } from 'src/utils/plans.js'
+import { getSessionId } from 'src/bootstrap/state.js'
 import { checkEditableInternalPath } from './filesystem.js'
 
 // Regression coverage for the plan-mode "Only the plan file may be edited"

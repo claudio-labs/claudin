@@ -12,13 +12,13 @@ import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { calculateHorizontalScrollWindow } from 'src/utils/horizontalScroll.js';
-import { Box, Text } from '../../ink.js';
-import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from '../../tools/AgentTool/agentColorManager.js';
-import type { Theme } from '../../utils/theme.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
+import { Box, Text } from 'src/ink.js';
+import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
+import type { Theme } from 'src/utils/theme.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { shouldHideTasksFooter } from './taskStatusUtils.js';
-import { formatNumber } from '../../utils/format.js';
-import { useRampedNumber } from '../../hooks/useRampedNumber.js';
+import { formatNumber } from 'src/utils/format.js';
+import { useRampedNumber } from 'src/hooks/useRampedNumber.js';
 type Props = {
   tasksSelected: boolean;
   isViewingTeammate?: boolean;

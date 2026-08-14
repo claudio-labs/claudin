@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { DIAMOND_FILLED, DIAMOND_OPEN } from '../../constants/figures.js';
-import { NO_CONTENT_MESSAGE } from '../../constants/messages.js';
-import { Box, Text } from '../../ink.js';
-import { extractTag } from '../../utils/messages.js';
-import { Markdown } from '../Markdown.js';
-import FullWidthRow from '../design-system/FullWidthRow.js';
-import { MessageResponse } from '../MessageResponse.js';
+import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
+import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js';
+import { Box, Text } from 'src/ink.js';
+import { extractTag } from 'src/utils/messages.js';
+import { Markdown } from 'src/components/Markdown.js';
+import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
 type Props = {
   content: string;
 };

@@ -18,7 +18,7 @@ afterEach(() => {
 describe('prefetchOfficialMcpUrls', () => {
   test('does not fetch registry when using OpenAI mode', async () => {
     process.env.CLAUDE_CODE_USE_OPENAI = '1'
-    mock.module('../../utils/model/providers.js', () => ({
+    mock.module('src/utils/model/providers.js', () => ({
       getAPIProvider: () => 'openai',
     }))
     const getSpy = mock(() => Promise.resolve({ data: { servers: [] } }))
@@ -32,7 +32,7 @@ describe('prefetchOfficialMcpUrls', () => {
 
   test('does not fetch registry when using Gemini mode', async () => {
     process.env.CLAUDE_CODE_USE_GEMINI = '1'
-    mock.module('../../utils/model/providers.js', () => ({
+    mock.module('src/utils/model/providers.js', () => ({
       getAPIProvider: () => 'gemini',
     }))
     const getSpy = mock(() => Promise.resolve({ data: { servers: [] } }))
@@ -53,7 +53,7 @@ describe('prefetchOfficialMcpUrls', () => {
     // test can exercise the actual fetch path.
     process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC = '0'
 
-    mock.module('../../utils/model/providers.js', () => ({
+    mock.module('src/utils/model/providers.js', () => ({
       getAPIProvider: () => 'firstParty',
     }))
     const getSpy = mock(() =>

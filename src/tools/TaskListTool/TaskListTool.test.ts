@@ -8,7 +8,7 @@ import {
   getTaskListId,
   isTodoV2Enabled,
   resetTaskList,
-} from '../../utils/tasks.js'
+} from 'src/utils/tasks.js'
 import { TaskListTool } from './TaskListTool.js'
 
 let configDir: string

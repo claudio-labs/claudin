@@ -7,10 +7,10 @@
 //
 // NOT a `.test` file — it exports helpers, it does not register tests.
 
-import { applyBashFilterToStdout } from "../../index.js";
-import { findFilterForCommand } from "../../registry.js";
-import { builtInFilters } from "../index.js";
-import type { FilterSpec } from "../../types.js";
+import { applyBashFilterToStdout } from "src/outputFilter/Bash/index.js";
+import { findFilterForCommand } from "src/outputFilter/Bash/registry.js";
+import { builtInFilters } from "src/outputFilter/Bash/filters/index.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 
 /** Locate a registered built-in spec by its `name`. Throws if absent so a
  * typo in a test surfaces immediately rather than silently passing. */

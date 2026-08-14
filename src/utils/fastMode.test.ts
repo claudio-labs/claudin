@@ -9,9 +9,9 @@ const realEnvUtilsForFastMode = { ...(await import('./envUtils.js')) }
 const realConfigForFastMode = { ...(await import('./config.js')) }
 const realAuthForFastMode = { ...(await import('./auth.js')) }
 const realDebugForFastMode = { ...(await import('./debug.js')) }
-const realBootstrapStateForFastMode = { ...(await import('../bootstrap/state.js')) }
-const realAnalyticsForFastMode = { ...(await import('../services/analytics/index.js')) }
-const realGrowthbookForFastMode = { ...(await import('../services/analytics/growthbook.js')) }
+const realBootstrapStateForFastMode = { ...(await import('src/bootstrap/state.js')) }
+const realAnalyticsForFastMode = { ...(await import('src/services/analytics/index.js')) }
+const realGrowthbookForFastMode = { ...(await import('src/services/analytics/growthbook.js')) }
 const realBundledModeForFastMode = { ...(await import('./bundledMode.js')) }
 const realModelForFastMode = { ...(await import('./model/model.js')) }
 const realProvidersForFastMode = { ...(await import('./model/providers.js')) }
@@ -51,13 +51,13 @@ function installCommonMocks(options?: {
       defaultValue,
   }))
 
-  mock.module('../bootstrap/state.js', () => ({
+  mock.module('src/bootstrap/state.js', () => ({
     getIsNonInteractiveSession: () => false,
     getKairosActive: () => false,
     preferThirdPartyAuthentication: () => false,
   }))
 
-  mock.module('../services/analytics/index.js', () => ({
+  mock.module('src/services/analytics/index.js', () => ({
     logEvent: () => {},
   }))
 
@@ -134,9 +134,9 @@ afterAll(() => {
   mock.module('./envUtils.js', () => realEnvUtilsForFastMode)
   mock.module('./auth.js', () => realAuthForFastMode)
   mock.module('./debug.js', () => realDebugForFastMode)
-  mock.module('../bootstrap/state.js', () => realBootstrapStateForFastMode)
-  mock.module('../services/analytics/index.js', () => realAnalyticsForFastMode)
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbookForFastMode)
+  mock.module('src/bootstrap/state.js', () => realBootstrapStateForFastMode)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsForFastMode)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbookForFastMode)
   mock.module('./bundledMode.js', () => realBundledModeForFastMode)
   mock.module('./model/model.js', () => realModelForFastMode)
   mock.module('./model/providers.js', () => realProvidersForFastMode)

@@ -15,7 +15,7 @@
  * checked separately by tsc via the type import below.
  */
 import { describe, expect, test } from 'bun:test'
-import * as hooks from '../hooks.js'
+import * as hooks from 'src/utils/hooks.js'
 
 // Type-only import: if any of these names disappear after the split, tsc
 // will fail this file's compilation.
@@ -30,7 +30,7 @@ import type {
   InstructionsMemoryType,
   ElicitationHookResult,
   ElicitationResultHookResult,
-} from '../hooks.js'
+} from 'src/utils/hooks.js'
 
 // Reference each type so the import isn't tree-shaken away by tsc with
 // `noUnusedLocals` style strictness. The runtime cost is zero.

@@ -3,14 +3,14 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 const realSettings = { ...(await import('./settings/settings.js')) }
 const realAuth = { ...(await import('./auth.js')) }
 const realThinking = { ...(await import('./thinking.js')) }
-const realGrowthbook = { ...(await import('../services/analytics/growthbook.js')) }
+const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realProviders = { ...(await import('./model/providers.js')) }
 
 afterAll(() => {
   mock.module('./settings/settings.js', () => realSettings)
   mock.module('./auth.js', () => realAuth)
   mock.module('./thinking.js', () => realThinking)
-  mock.module('../services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('./model/providers.js', () => realProviders)
 })
 
@@ -33,7 +33,7 @@ async function importFreshEffortModule(options: {
   mock.module('./thinking.js', () => ({
     isUltrathinkEnabled: () => false,
   }))
-  mock.module('../services/analytics/growthbook.js', () => ({
+  mock.module('src/services/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => ({ enabled: false }),
   }))
   mock.module('./model/providers.js', () => ({

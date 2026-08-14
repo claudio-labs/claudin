@@ -1,15 +1,15 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { stopUltraplan } from '../../commands/ultraplan.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import { DreamTask } from '../../tasks/DreamTask/DreamTask.js';
-import { InProcessTeammateTask } from '../../tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { LocalAgentTask } from '../../tasks/LocalAgentTask/LocalAgentTask.js';
-import { LocalShellTask } from '../../tasks/LocalShellTask/LocalShellTask.js';
-import { MonitorMcpTask } from '../../tasks/MonitorMcpTask/MonitorMcpTask.js';
-import { RemoteAgentTask } from '../../tasks/RemoteAgentTask/RemoteAgentTask.js';
-import type { BackgroundTaskState } from '../../tasks/types.js';
-import { logForDebugging } from '../../utils/debug.js';
+import { stopUltraplan } from 'src/commands/ultraplan.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { DreamTask } from 'src/tasks/DreamTask/DreamTask.js';
+import { InProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
+import { LocalAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
+import { LocalShellTask } from 'src/tasks/LocalShellTask/LocalShellTask.js';
+import { MonitorMcpTask } from 'src/tasks/MonitorMcpTask/MonitorMcpTask.js';
+import { RemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
+import type { BackgroundTaskState } from 'src/tasks/types.js';
+import { logForDebugging } from 'src/utils/debug.js';
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void;
 

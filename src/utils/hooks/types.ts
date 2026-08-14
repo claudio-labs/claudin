@@ -1,11 +1,11 @@
 import type { ElicitResult } from '@modelcontextprotocol/sdk/types.js'
-import type { HookResultMessage } from '../../types/message.js'
+import type { HookResultMessage } from 'src/types/message.js'
 import type {
   HookCallback,
   PermissionRequestResult,
-} from '../../types/hooks.js'
-import type { HookCommand } from '../settings/types.js'
-import type { PermissionResult } from '../permissions/PermissionResult.js'
+} from 'src/types/hooks.js'
+import type { HookCommand } from 'src/utils/settings/types.js'
+import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
 import type { FunctionHook } from './sessionHooks.js'
 
 export interface HookBlockingError {

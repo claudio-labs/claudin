@@ -1,30 +1,30 @@
-import { getIsNonInteractiveSession } from '../../bootstrap/state.js'
-import type { AppState } from '../../state/AppState.js'
-import type { Message } from '../../types/message.js'
-import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js'
-import { count } from '../../utils/array.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from '../../utils/envUtils.js'
-import { toError } from '../../utils/errors.js'
+import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { Message } from 'src/types/message.js'
+import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
+import { count } from 'src/utils/array.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { toError } from 'src/utils/errors.js'
 import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from '../../utils/forkedAgent.js'
-import type { REPLHookContext } from '../../utils/hooks/postSamplingHooks.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { logError } from '../../utils/log.js'
+} from 'src/utils/forkedAgent.js'
+import type { REPLHookContext } from 'src/utils/hooks/postSamplingHooks.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/utils/log.js'
 import {
   createUserMessage,
   extractTextContent,
   getLastAssistantMessage,
-} from '../../utils/messages.js'
-import { getInitialSettings } from '../../utils/settings/settings.js'
-import { isTeammate } from '../../utils/teammate.js'
+} from 'src/utils/messages.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { isTeammate } from 'src/utils/teammate.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../analytics/index.js'
-import { currentLimits } from '../claudeAiLimits.js'
+} from 'src/services/analytics/index.js'
+import { currentLimits } from 'src/services/claudeAiLimits.js'
 import { endsWithFollowupOffer } from './followupOffer.js'
 import { isSpeculationEnabled, startSpeculation } from './speculation.js'
 

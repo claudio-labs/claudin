@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 async function importFreshInstallCommand() {
-  return import(`../commands/install.tsx?ts=${Date.now()}-${Math.random()}`)
+  return import(`src/commands/install.tsx?ts=${Date.now()}-${Math.random()}`)
 }
 
 async function importFreshInstaller() {
@@ -27,8 +27,8 @@ async function importFreshInstaller() {
 }
 
 test('install command displays ~/.local/bin/claudin on non-Windows', async () => {
-  const realEnv = await import('../utils/env.js')
-  mock.module('../utils/env.js', () => ({
+  const realEnv = await import('src/utils/env.js')
+  mock.module('src/utils/env.js', () => ({
     ...realEnv,
     env: { platform: 'darwin' },
   }))
@@ -39,8 +39,8 @@ test('install command displays ~/.local/bin/claudin on non-Windows', async () =>
 })
 
 test('install command displays claudin.exe path on Windows', async () => {
-  const realEnv = await import('../utils/env.js')
-  mock.module('../utils/env.js', () => ({
+  const realEnv = await import('src/utils/env.js')
+  mock.module('src/utils/env.js', () => ({
     ...realEnv,
     env: { platform: 'win32' },
   }))

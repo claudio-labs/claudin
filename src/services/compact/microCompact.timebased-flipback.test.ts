@@ -24,16 +24,16 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 // through to the cache-profile defaults regardless of what earlier test
 // files left in the module registry.
 const realGrowthbook = {
-  ...(await import('../analytics/growthbook.js')),
+  ...(await import('src/services/analytics/growthbook.js')),
 }
-mock.module('../analytics/growthbook.js', () => ({
+mock.module('src/services/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
 }))
 
-import type { Message } from '../../types/message.js'
+import type { Message } from 'src/types/message.js'
 const { createAssistantMessage, createUserMessage } = await import(
-  '../../utils/messages.js'
+  'src/utils/messages.js'
 )
 
 // Force the 'retain' cache profile BEFORE anything reads it: it is the
@@ -41,20 +41,20 @@ const { createAssistantMessage, createUserMessage } = await import(
 // (cacheProfile.ts RETAIN_PROFILE). Mode is memoized at module load, so
 // reset after setting the env.
 process.env.CLAUDIN_CACHE_PROFILE = 'retain'
-const { _resetCacheProfileForTesting } = await import('../cache/cacheProfile.js')
+const { _resetCacheProfileForTesting } = await import('src/services/cache/cacheProfile.js')
 _resetCacheProfileForTesting()
 
 // Same boundary mocks as microCompact.test.ts: pin the model + a huge
 // effective window so the SIZE-based trigger can never fire in these tests
 // (history here is tiny). Everything else is the real code path.
 const realAutoCompact = { ...(await import('./autoCompact.js')) }
-const realModel = { ...(await import('../../utils/model/model.js')) }
+const realModel = { ...(await import('src/utils/model/model.js')) }
 
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => 1_000_000,
 }))
-mock.module('../../utils/model/model.js', () => ({
+mock.module('src/utils/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
@@ -246,6 +246,6 @@ afterAll(() => {
   delete process.env.CLAUDIN_CACHE_PROFILE
   _resetCacheProfileForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
-  mock.module('../../utils/model/model.js', () => realModel)
-  mock.module('../analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
 })

@@ -1,6 +1,6 @@
-import { env } from '../../../utils/env.js'
-import { execFileNoThrow } from '../../../utils/execFileNoThrow.js'
-import { TMUX_COMMAND } from '../constants.js'
+import { env } from 'src/utils/env.js'
+import { execFileNoThrow } from 'src/utils/execFileNoThrow.js'
+import { TMUX_COMMAND } from 'src/utils/swarm/constants.js'
 
 /**
  * Captured at module load time to detect if the user started Claude from within tmux.

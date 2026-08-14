@@ -10,7 +10,7 @@
  *  - markDiagnosticsAsDelivered populates the LRU so the next checkForLSPDiagnostics dedups
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import type { DiagnosticFile } from '../diagnosticTracking.js'
+import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
 import {
   _getFileWaiterCountForTesting,
   _resetFileWaitersForTesting,

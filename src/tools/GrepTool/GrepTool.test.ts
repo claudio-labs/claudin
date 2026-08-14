@@ -3,12 +3,12 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
-import type { ToolUseContext } from '../../Tool.js'
-import { getCwdState, setCwdState } from '../../bootstrap/state.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
-import '../GlobTool/GlobTool.js'
+import 'src/tools/GlobTool/GlobTool.js'
 import { GrepTool, RG_LINE_RE, relativizeRgLine } from './GrepTool.js'
 
 // ---------------------------------------------------------------------------

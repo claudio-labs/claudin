@@ -3,12 +3,12 @@ import type {
   ContentBlock,
   ContentBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { roughTokenCountEstimation as countTokens } from '../services/tokenEstimation.js'
+import { roughTokenCountEstimation as countTokens } from 'src/services/tokenEstimation.js'
 import type {
   AssistantMessage,
   Message,
   UserMessage,
-} from '../types/message.js'
+} from 'src/types/message.js'
 import { normalizeMessagesForAPI } from './messages.js'
 import { jsonStringify } from './slowOperations.js'
 

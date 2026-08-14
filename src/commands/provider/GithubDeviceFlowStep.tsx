@@ -1,28 +1,28 @@
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { Select } from '../../components/CustomSelect/select.js'
-import { Spinner } from '../../components/Spinner.js'
-import TextInput from '../../components/TextInput.js'
-import { Box, Text } from '../../ink.js'
+import { Select } from 'src/components/CustomSelect/select.js'
+import { Spinner } from 'src/components/Spinner.js'
+import TextInput from 'src/components/TextInput.js'
+import { Box, Text } from 'src/ink.js'
 import {
   exchangeForCopilotToken,
   normalizeGithubEnterpriseDomain,
   openVerificationUri,
   pollAccessToken,
   requestDeviceCode,
-} from '../../services/github/deviceFlow.js'
-import type { LocalJSXCommandOnDone } from '../../types/command.js'
+} from 'src/services/github/deviceFlow.js'
+import type { LocalJSXCommandOnDone } from 'src/types/command.js'
 import {
   readGithubModelsToken,
   saveGithubModelsToken,
-} from '../../utils/githubModelsCredentials.js'
-import { prefetchCopilotModelCatalog } from '../../utils/model/copilotModelCatalog.js'
+} from 'src/utils/githubModelsCredentials.js'
+import { prefetchCopilotModelCatalog } from 'src/utils/model/copilotModelCatalog.js'
 import {
   addProviderProfile,
   getProviderProfiles,
   setActiveProviderProfile,
   updateProviderProfile,
-} from '../../utils/providerProfiles.js'
+} from 'src/utils/providerProfiles.js'
 
 const GITHUB_DEFAULT_MODEL = 'github:copilot'
 const GITHUB_DEFAULT_BASE_URL = 'https://api.githubcopilot.com'

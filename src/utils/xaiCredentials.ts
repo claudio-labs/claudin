@@ -9,7 +9,7 @@ import {
   decodeJwtPayload,
   getXaiOAuthClientId,
   XAI_OAUTH_TOKEN_URL,
-} from '../services/api/xaiOAuthShared.js'
+} from 'src/services/api/xaiOAuthShared.js'
 
 export const XAI_STORAGE_KEY = 'xai' as const
 // 120s skew mirrors opencode `plugin/xai.ts:45-46` (ACCESS_TOKEN_REFRESH_SKEW_MS).

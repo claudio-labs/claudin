@@ -12,8 +12,8 @@ import {
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,
 } from './attachments.js'
-import type { ToolUseContext } from '../Tool.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 const tempDirs: string[] = []
 const originalSimple = process.env.CLAUDE_CODE_SIMPLE

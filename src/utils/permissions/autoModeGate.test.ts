@@ -2,18 +2,18 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import type { ResolvedProvider } from '../../services/api/activeProvider.js'
+import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
 
-const realActiveProviderNS = { ...(await import('../../services/api/activeProvider.js')) }
-const realModelNS = { ...(await import('../model/model.js')) }
-const realBetasNS = { ...(await import('../betas.js')) }
+const realActiveProviderNS = { ...(await import('src/services/api/activeProvider.js')) }
+const realModelNS = { ...(await import('src/utils/model/model.js')) }
+const realBetasNS = { ...(await import('src/utils/betas.js')) }
 
 const state: { provider: ResolvedProvider | null; model: string } = {
   provider: null,
   model: 'gpt-5.4',
 }
 
-mock.module('../../services/api/activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderNS,
   tryGetActiveProvider: () => state.provider,
 }))
@@ -21,7 +21,7 @@ mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderNS,
   tryGetActiveProvider: () => state.provider,
 }))
-mock.module('../model/model.js', () => ({
+mock.module('src/utils/model/model.js', () => ({
   ...realModelNS,
   getMainLoopModel: () => state.model,
 }))
@@ -31,13 +31,13 @@ mock.module('src/utils/model/model.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('../../services/api/activeProvider.js', () => realActiveProviderNS)
   mock.module('src/services/api/activeProvider.js', () => realActiveProviderNS)
-  mock.module('../model/model.js', () => realModelNS)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderNS)
+  mock.module('src/utils/model/model.js', () => realModelNS)
   mock.module('src/utils/model/model.js', () => realModelNS)
 })
 
-const { __setAutoModeEnabledForTests } = await import('../betas.js')
+const { __setAutoModeEnabledForTests } = await import('src/utils/betas.js')
 const { __autoModeAllowedForModelForTests } = await import('./permissionSetup.js')
 const { getClassifierProbeKey } = await import('./classifierProbe.js')
 const {

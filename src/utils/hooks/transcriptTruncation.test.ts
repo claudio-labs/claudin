@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { Message } from '../../types/message.js'
-import { createUserMessage } from '../messages.js'
+import type { Message } from 'src/types/message.js'
+import { createUserMessage } from 'src/utils/messages.js'
 import {
   buildTruncationNotice,
   truncateTranscriptForHookEvaluator,

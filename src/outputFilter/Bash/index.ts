@@ -10,7 +10,7 @@ import {
 import { findFilterForCommand } from "./registry.js";
 import type { PipelineResult, PreExecPlan } from "./types.js";
 
-export type { MatchOutputRule, ReplaceRule, RewriteContext } from "../types.js";
+export type { MatchOutputRule, ReplaceRule, RewriteContext } from "src/outputFilter/types.js";
 export type { FilterSpec, PipelineResult, PreExecPlan } from "./types.js";
 
 // ---------------------------------------------------------------------------

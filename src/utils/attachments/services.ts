@@ -8,60 +8,60 @@
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from '../../services/analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   toolMatchesName,
   type ToolUseContext,
-} from '../../Tool.js'
+} from 'src/Tool.js'
 import {
   FileReadTool,
   readImageWithTokenBudget,
-} from '../../tools/FileReadTool/FileReadTool.js'
-import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
-import { expandPath } from '../path.js'
-import { getFsImplementation as _unusedGetFs } from '../fsOperations.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { expandPath } from 'src/utils/path.js'
+import { getFsImplementation as _unusedGetFs } from 'src/utils/fsOperations.js'
 import { readdir, stat } from 'fs/promises'
-import type { IDESelection } from '../../hooks/useIdeSelection.js'
-import { getConnectedIdeName } from '../ide.js'
+import type { IDESelection } from 'src/hooks/useIdeSelection.js'
+import { getConnectedIdeName } from 'src/utils/ide.js'
 import { relative, resolve } from 'path'
 import { getCwd } from 'src/utils/cwd.js'
-import { getViewedTeammateTask } from '../../state/selectors.js'
-import { logError } from '../log.js'
-import { isENOENT, toError } from '../errors.js'
-import { diagnosticTracker } from '../../services/diagnosticTracking.js'
+import { getViewedTeammateTask } from 'src/state/selectors.js'
+import { logError } from 'src/utils/log.js'
+import { isENOENT, toError } from 'src/utils/errors.js'
+import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
 import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
-import { cacheKeys } from '../fileStateCache.js'
+import { cacheKeys } from 'src/utils/fileStateCache.js'
 import {
   getFileModificationTimeAsync,
-} from '../file.js'
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js'
+} from 'src/utils/file.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   checkForAsyncHookResponses,
   removeDeliveredAsyncHooks,
-} from '../hooks/AsyncHookRegistry.js'
+} from 'src/utils/hooks/AsyncHookRegistry.js'
 import {
   checkForLSPDiagnostics,
   clearAllLSPDiagnostics,
-} from '../../services/lsp/LSPDiagnosticRegistry.js'
-import { isLspGloballyEnabled } from '../../services/lsp/userSettings.js'
-import { logForDebugging } from '../debug.js'
-import { isAgentSwarmsEnabled } from '../agentSwarmsEnabled.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
+import { isLspGloballyEnabled } from 'src/services/lsp/userSettings.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isAgentSwarmsEnabled } from 'src/utils/agentSwarmsEnabled.js'
 import {
   readUnreadMessages,
   markMessagesAsReadByPredicate,
   isShutdownApproved,
   isStructuredProtocolMessage,
   isIdleNotification,
-} from '../teammateMailbox.js'
+} from 'src/utils/teammateMailbox.js'
 import {
   getAgentName,
   getTeamName,
   isTeamLead,
-} from '../teammate.js'
-import { isInProcessTeammate } from '../teammateContext.js'
-import { removeTeammateFromTeamFile } from '../swarm/teamHelpers.js'
-import { unassignTeammateTasks } from '../tasks.js'
-import { jsonStringify } from '../slowOperations.js'
+} from 'src/utils/teammate.js'
+import { isInProcessTeammate } from 'src/utils/teammateContext.js'
+import { removeTeammateFromTeamFile } from 'src/utils/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/utils/tasks.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { Attachment } from './types.js'
 import { isFileReadDenied } from './shared.js'
 import {

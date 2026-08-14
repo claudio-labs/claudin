@@ -1,6 +1,6 @@
 import { useCallback, useContext, useLayoutEffect, useRef } from 'react'
-import { TerminalSizeContext } from '../components/TerminalSizeContext.js'
-import type { DOMElement } from '../dom.js'
+import { TerminalSizeContext } from 'src/ink/components/TerminalSizeContext.js'
+import type { DOMElement } from 'src/ink/dom.js'
 
 type ViewportEntry = {
   /**

@@ -1,19 +1,19 @@
 import axios from 'axios'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { getOrganizationUUID } from 'src/services/oauth/client.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../../services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   isClaudeAISubscriber,
-} from '../../auth.js'
-import { getCwd } from '../../cwd.js'
-import { logForDebugging } from '../../debug.js'
-import { detectCurrentRepository } from '../../detectRepository.js'
-import { errorMessage } from '../../errors.js'
-import { findGitRoot, getIsClean } from '../../git.js'
-import { getOAuthHeaders } from '../../teleport/api.js'
-import { fetchEnvironments } from '../../teleport/environments.js'
+} from 'src/utils/auth.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { detectCurrentRepository } from 'src/utils/detectRepository.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { findGitRoot, getIsClean } from 'src/utils/git.js'
+import { getOAuthHeaders } from 'src/utils/teleport/api.js'
+import { fetchEnvironments } from 'src/utils/teleport/environments.js'
 
 /**
  * Checks if user needs to log in with Claude.ai

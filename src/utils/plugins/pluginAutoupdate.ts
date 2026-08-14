@@ -10,11 +10,11 @@
  * but users can disable it per-marketplace.
  */
 
-import { updatePluginOp } from '../../services/plugins/pluginOperations.js'
-import { shouldSkipPluginAutoupdate } from '../config.js'
-import { logForDebugging } from '../debug.js'
-import { errorMessage } from '../errors.js'
-import { logError } from '../log.js'
+import { updatePluginOp } from 'src/services/plugins/pluginOperations.js'
+import { shouldSkipPluginAutoupdate } from 'src/utils/config.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { logError } from 'src/utils/log.js'
 import {
   getPendingUpdatesDetails,
   hasPendingUpdates,

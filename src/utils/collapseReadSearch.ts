@@ -2,23 +2,23 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import type { StructuredPatchHunk } from 'diff'
 import { isAbsolute } from 'path'
-import { findToolByName, type Tools } from '../Tool.js'
-import { parsePatch } from '../tools/ApplyPatchTool/patchFormat.js'
-import { APPLY_PATCH_TOOL_NAME } from '../tools/ApplyPatchTool/prompt.js'
-import { extractBashCommentLabel } from '../tools/BashTool/commentLabel.js'
-import { BASH_TOOL_NAME } from '../tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from '../tools/FileEditTool/constants.js'
-import { FILE_WRITE_TOOL_NAME } from '../tools/FileWriteTool/prompt.js'
-import { RENAME_TOOL_NAME } from '../tools/RenameTool/prompt.js'
-import { REPL_TOOL_NAME } from '../tools/REPLTool/constants.js'
-import { getReplPrimitiveTools } from '../tools/REPLTool/primitiveTools.js'
+import { findToolByName, type Tools } from 'src/Tool.js'
+import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
+import { extractBashCommentLabel } from 'src/tools/BashTool/commentLabel.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
+import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
+import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js'
 import {
   type BranchAction,
   type CommitKind,
   detectGitOperation,
   type PrAction,
-} from '../tools/shared/gitOperationTracking.js'
-import { TOOL_SEARCH_TOOL_NAME } from '../tools/ToolSearchTool/prompt.js'
+} from 'src/tools/shared/gitOperationTracking.js'
+import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import type {
   CollapsedReadSearchGroup,
   CollapsibleMessage,
@@ -27,7 +27,7 @@ import type {
   SystemStopHookSummaryMessage,
   WriteFileStat,
   WriteKind,
-} from '../types/message.js'
+} from 'src/types/message.js'
 import { getGlobalConfig } from './config.js'
 import { logForDebugging } from './debug.js'
 import { countAddDel } from './diffStat.js'

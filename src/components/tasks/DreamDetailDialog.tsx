@@ -1,16 +1,16 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import type { DeepImmutable } from 'src/types/utils.js';
-import { useElapsedTime } from '../../hooks/useElapsedTime.js';
-import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
-import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
-import { Box, Text } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import type { DreamTaskState } from '../../tasks/DreamTask/DreamTask.js';
-import { plural } from '../../utils/stringUtils.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
+import { useElapsedTime } from 'src/hooks/useElapsedTime.js';
+import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
+import { Box, Text } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import type { DreamTaskState } from 'src/tasks/DreamTask/DreamTask.js';
+import { plural } from 'src/utils/stringUtils.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 type Props = {
   task: DeepImmutable<DreamTaskState>;
   onDone: () => void;

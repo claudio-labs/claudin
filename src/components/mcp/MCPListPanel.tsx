@@ -1,17 +1,17 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useCallback, useState } from 'react';
-import type { CommandResultDisplay } from '../../commands.js';
-import { Box, color, Link, Text, useTheme } from '../../ink.js';
-import { useKeybindings } from '../../keybindings/useKeybinding.js';
-import type { ConfigScope } from '../../services/mcp/types.js';
-import { describeMcpConfigFilePath } from '../../services/mcp/utils.js';
-import { isDebugMode } from '../../utils/debug.js';
-import { plural } from '../../utils/stringUtils.js';
-import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
-import { Byline } from '../design-system/Byline.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
+import type { CommandResultDisplay } from 'src/commands.js';
+import { Box, color, Link, Text, useTheme } from 'src/ink.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import type { ConfigScope } from 'src/services/mcp/types.js';
+import { describeMcpConfigFilePath } from 'src/services/mcp/utils.js';
+import { isDebugMode } from 'src/utils/debug.js';
+import { plural } from 'src/utils/stringUtils.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { McpParsingWarnings } from './McpParsingWarnings.js';
 import type { AgentMcpServerInfo, ServerInfo } from './types.js';
 type Props = {

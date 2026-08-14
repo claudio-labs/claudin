@@ -1,6 +1,6 @@
-import { type ColorType, colorize } from '../../ink/colorize.js'
-import type { Color } from '../../ink/styles.js'
-import { getTheme, type Theme, type ThemeName } from '../../utils/theme.js'
+import { type ColorType, colorize } from 'src/ink/colorize.js'
+import type { Color } from 'src/ink/styles.js'
+import { getTheme, type Theme, type ThemeName } from 'src/utils/theme.js'
 
 /**
  * Curried theme-aware color function. Resolves theme keys to raw color

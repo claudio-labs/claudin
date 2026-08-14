@@ -10,7 +10,7 @@ let mockProviderProfile: ProviderProfile | null = null
 // the live ESM namespaces (which mock.module mutates after the fact).
 const realConfig = { ...(await import('./config.js')) }
 const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
-const realDeviceFlow = { ...(await import('../services/github/deviceFlow.js')) }
+const realDeviceFlow = { ...(await import('src/services/github/deviceFlow.js')) }
 const realSecureStorage = { ...(await import('./secureStorage/index.js')) }
 
 mock.module('./config.js', () => ({
@@ -29,7 +29,7 @@ mock.module('./providerProfiles.js', () => ({
 afterAll(() => {
   mock.module('./config.js', () => realConfig)
   mock.module('./providerProfiles.js', () => realProviderProfiles)
-  mock.module('../services/github/deviceFlow.js', () => realDeviceFlow)
+  mock.module('src/services/github/deviceFlow.js', () => realDeviceFlow)
   // beforeEach mocks ./secureStorage/index.js but nothing restored it, so the
   // final in-memory stub leaked into every later file's real getSecureStorage()
   // (credential save/read round-trips returned undefined). Restore both the
@@ -38,7 +38,7 @@ afterAll(() => {
   mock.module('src/utils/secureStorage/index.js', () => realSecureStorage)
 })
 
-import { invalidateActiveProviderCache } from '../services/api/activeProvider.js'
+import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'
 
 function mockActiveProvider(transport: 'github_copilot' | 'anthropic' = 'github_copilot') {
   // github_copilot transport requires provider:'openai' + extras.githubToken
@@ -60,7 +60,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
 
   beforeEach(() => {
     mock.module('./secureStorage/index.js', () => ({}))
-    mock.module('../services/github/deviceFlow.js', () => realDeviceFlow)
+    mock.module('src/services/github/deviceFlow.js', () => realDeviceFlow)
   })
 
   afterEach(() => {
@@ -95,7 +95,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       }),
     }))
 
-    mock.module('../services/github/deviceFlow.js', () => ({
+    mock.module('src/services/github/deviceFlow.js', () => ({
       ...realDeviceFlow,
       exchangeForCopilotToken: async () => ({
         token: `tid=fresh;exp=${futureExp};sku=free`,
@@ -142,7 +142,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
       }),
     }))
 
-    mock.module('../services/github/deviceFlow.js', () => ({
+    mock.module('src/services/github/deviceFlow.js', () => ({
       DEFAULT_GITHUB_DEVICE_SCOPE: 'read:user',
       exchangeForCopilotToken: exchangeSpy,
     }))

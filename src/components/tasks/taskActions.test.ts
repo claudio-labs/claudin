@@ -1,13 +1,13 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { AppState } from '../../state/AppStateStore.js';
-import type { BackgroundTaskState } from '../../tasks/types.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import type { BackgroundTaskState } from 'src/tasks/types.js';
 
 // Capture the real LocalAgentTask module *before* the mocks below land. The
 // mock factory replaces `isPanelAgentTask` with a stub that returns false,
 // which leaks across test files via Bun's shape-locked mock.module — sibling
 // tests like footerTaskGeometry.test.ts call getVisibleAgentTasks and see
 // zero agents. Restore in afterAll keeps the suite clean.
-const realLocalAgentTask = { ...(await import('../../tasks/LocalAgentTask/LocalAgentTask.js')) };
+const realLocalAgentTask = { ...(await import('src/tasks/LocalAgentTask/LocalAgentTask.js')) };
 
 // killBackgroundTask dispatches to each task class's static .kill — mock
 // every callee at the module boundary so we can assert "right kill fired,
@@ -21,31 +21,31 @@ const remoteAgentKill = mock(() => Promise.resolve());
 const stopUltraplanMock = mock(() => Promise.resolve());
 const debugMock = mock((_msg: string) => {});
 
-mock.module('../../tasks/LocalShellTask/LocalShellTask.js', () => ({
+mock.module('src/tasks/LocalShellTask/LocalShellTask.js', () => ({
   LocalShellTask: { kill: localShellKill },
 }));
-mock.module('../../tasks/LocalAgentTask/LocalAgentTask.js', () => ({
+mock.module('src/tasks/LocalAgentTask/LocalAgentTask.js', () => ({
   LocalAgentTask: { kill: localAgentKill },
   // isPanelAgentTask isn't called from taskActions, but other test files
   // share this module — keep the shape complete.
   isPanelAgentTask: () => false,
 }));
-mock.module('../../tasks/InProcessTeammateTask/InProcessTeammateTask.js', () => ({
+mock.module('src/tasks/InProcessTeammateTask/InProcessTeammateTask.js', () => ({
   InProcessTeammateTask: { kill: teammateKill },
 }));
-mock.module('../../tasks/MonitorMcpTask/MonitorMcpTask.js', () => ({
+mock.module('src/tasks/MonitorMcpTask/MonitorMcpTask.js', () => ({
   MonitorMcpTask: { kill: monitorMcpKill },
 }));
-mock.module('../../tasks/DreamTask/DreamTask.js', () => ({
+mock.module('src/tasks/DreamTask/DreamTask.js', () => ({
   DreamTask: { kill: dreamKill },
 }));
-mock.module('../../tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
+mock.module('src/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
   RemoteAgentTask: { kill: remoteAgentKill },
 }));
-mock.module('../../commands/ultraplan.js', () => ({
+mock.module('src/commands/ultraplan.js', () => ({
   stopUltraplan: stopUltraplanMock,
 }));
-mock.module('../../utils/debug.js', () => ({
+mock.module('src/utils/debug.js', () => ({
   logForDebugging: debugMock,
 }));
 
@@ -54,7 +54,7 @@ const { killBackgroundTask } = await import('./taskActions.js');
 afterAll(() => {
   // Re-pin the real LocalAgentTask so the next file's getVisibleAgentTasks
   // (and any other consumer of isPanelAgentTask) sees the genuine guard.
-  mock.module('../../tasks/LocalAgentTask/LocalAgentTask.js', () => realLocalAgentTask);
+  mock.module('src/tasks/LocalAgentTask/LocalAgentTask.js', () => realLocalAgentTask);
 });
 
 const setAppState = mock((_: (prev: AppState) => AppState) => {});

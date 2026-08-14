@@ -7,15 +7,15 @@
 // provides killMonitorMcpTasksForAgent for agent-scoped cleanup of
 // monitor-kind shell tasks.
 
-import type { AppState } from '../../state/AppState.js'
-import type { SetAppState, Task, TaskStateBase } from '../../Task.js'
-import type { AgentId } from '../../types/ids.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { dequeueAllMatching } from '../../utils/messageQueueManager.js'
-import { evictTaskOutput } from '../../utils/task/diskOutput.js'
-import { updateTaskState } from '../../utils/task/framework.js'
-import { isLocalShellTask } from '../LocalShellTask/guards.js'
-import { killTask } from '../LocalShellTask/killShellTasks.js'
+import type { AppState } from 'src/state/AppState.js'
+import type { SetAppState, Task, TaskStateBase } from 'src/Task.js'
+import type { AgentId } from 'src/types/ids.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { dequeueAllMatching } from 'src/utils/messageQueueManager.js'
+import { evictTaskOutput } from 'src/utils/task/diskOutput.js'
+import { updateTaskState } from 'src/utils/task/framework.js'
+import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
+import { killTask } from 'src/tasks/LocalShellTask/killShellTasks.js'
 
 export type MonitorMcpTaskState = TaskStateBase & {
   type: 'monitor_mcp'

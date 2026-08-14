@@ -10,10 +10,10 @@ import { c as _c } from "react-compiler-runtime";
  * away and preserve the user's existing input text (the prompt is not cleared).
  */
 import { useMemo } from 'react';
-import { useIsModalOverlayActive } from '../context/overlayContext.js';
-import { useOptionalKeybindingContext } from '../keybindings/KeybindingContext.js';
-import { useKeybindings } from '../keybindings/useKeybinding.js';
-import type { PromptInputHelpers } from '../utils/handlePromptSubmit.js';
+import { useIsModalOverlayActive } from 'src/context/overlayContext.js';
+import { useOptionalKeybindingContext } from 'src/keybindings/KeybindingContext.js';
+import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import type { PromptInputHelpers } from 'src/utils/handlePromptSubmit.js';
 type Props = {
   // onSubmit accepts additional parameters beyond what we pass here,
   // so we use a rest parameter to allow any additional args

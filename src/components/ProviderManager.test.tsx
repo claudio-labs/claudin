@@ -7,18 +7,18 @@ import stripAnsi from 'strip-ansi'
 import {
   resetGlobalConfigForTests,
   resetProjectConfigForTests,
-} from '../utils/config.js'
-import { createRoot } from '../ink.js'
-import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js'
+} from 'src/utils/config.js'
+import { createRoot } from 'src/ink.js'
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from './ProviderManager.js'
-import { AppStateProvider } from '../state/AppState.js'
-import { getDefaultMainLoopModel } from '../utils/model/model.js'
+import { AppStateProvider } from 'src/state/AppState.js'
+import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
 
 // Snapshot the real providerDiscovery module so the per-test mock can keep its
 // pure helpers (rankOllamaModels / recommendOllamaModel — used by the Ollama
 // model-selection flow) while overriding only the network probe. Without them
 // the partial mock left those exports undefined and the flow threw mid-render.
-const realProviderDiscovery = { ...(await import('../utils/providerDiscovery.js')) }
+const realProviderDiscovery = { ...(await import('src/utils/providerDiscovery.js')) }
 
 const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
@@ -165,13 +165,13 @@ async function navigateToPreset(
 // Bun's `await import` returns live bindings that mutate when the module is
 // re-mocked, so `() => realProviderProfilesForPm` would otherwise hand back
 // whatever the most recent mock factory installed instead of the real exports.
-const realProviderProfilesForPm = { ...(await import('../utils/providerProfiles.js')) }
-const realProviderProfileForPm = { ...(await import('../utils/providerProfile.js')) }
-const realSettingsForPm = { ...(await import('../utils/settings/settings.js')) }
-const realClaudinMigrationForPm = { ...(await import('../utils/claudinMigration.js')) }
-const realProviderDiscoveryForPm = { ...(await import('../utils/providerDiscovery.js')) }
-const realGithubModelsCredentialsForPm = { ...(await import('../utils/githubModelsCredentials.js')) }
-const realCodexCredentialsForPm = { ...(await import('../utils/codexCredentials.js')) }
+const realProviderProfilesForPm = { ...(await import('src/utils/providerProfiles.js')) }
+const realProviderProfileForPm = { ...(await import('src/utils/providerProfile.js')) }
+const realSettingsForPm = { ...(await import('src/utils/settings/settings.js')) }
+const realClaudinMigrationForPm = { ...(await import('src/utils/claudinMigration.js')) }
+const realProviderDiscoveryForPm = { ...(await import('src/utils/providerDiscovery.js')) }
+const realGithubModelsCredentialsForPm = { ...(await import('src/utils/githubModelsCredentials.js')) }
+const realCodexCredentialsForPm = { ...(await import('src/utils/codexCredentials.js')) }
 const realUseCodexOAuthFlowForPm = { ...(await import('./useCodexOAuthFlow.js')) }
 
 function mockProviderProfilesModule(options?: {
@@ -184,7 +184,7 @@ function mockProviderProfilesModule(options?: {
   updateProviderProfile?: (...args: unknown[]) => unknown
   setActiveProviderProfile?: (...args: unknown[]) => unknown
 }): void {
-  mock.module('../utils/providerProfiles.js', () => ({
+  mock.module('src/utils/providerProfiles.js', () => ({
     ...realProviderProfilesForPm,
     addProviderProfile: options?.addProviderProfile ?? (() => null),
     deleteProviderProfile: () => ({ removed: false, activeProfileId: null }),
@@ -307,7 +307,7 @@ function mockProviderManagerDependencies(
     setActiveProviderProfile: options?.setActiveProviderProfile,
   })
 
-  mock.module('../utils/providerDiscovery.js', () => ({
+  mock.module('src/utils/providerDiscovery.js', () => ({
     ...realProviderDiscovery,
     probeOllamaGenerationReadiness:
       options?.probeOllamaGenerationReadiness ??
@@ -322,11 +322,11 @@ function mockProviderManagerDependencies(
       options?.listOpenAICompatibleModels ?? (async () => null),
   }))
 
-  mock.module('../utils/githubModelsCredentials.js', () => ({
+  mock.module('src/utils/githubModelsCredentials.js', () => ({
     clearGithubModelsToken: () => ({ success: true }),
   }))
 
-  mock.module('../utils/codexCredentials.js', () => ({
+  mock.module('src/utils/codexCredentials.js', () => ({
     attachCodexProfileIdToStoredCredentials: () => ({ success: true }),
     clearCodexCredentials:
       options?.clearCodexCredentials ?? (() => ({ success: true })),
@@ -336,11 +336,11 @@ function mockProviderManagerDependencies(
       options?.codexAsyncRead ?? (async () => undefined),
   }))
 
-  mock.module('../utils/providerProfile.js', () => ({
+  mock.module('src/utils/providerProfile.js', () => ({
     ...realProviderProfileForPm,
   }))
 
-  mock.module('../utils/settings/settings.js', () => ({
+  mock.module('src/utils/settings/settings.js', () => ({
     ...realSettingsForPm,
     updateSettingsForSource: () => ({ error: null }),
   }))
@@ -359,7 +359,7 @@ function mockProviderManagerDependencies(
   // compete with the preset / menu Select for stdin in tests. Individual tests
   // that exercise the migration option override this mock after calling
   // mockProviderManagerDependencies().
-  mock.module('../utils/claudinMigration.js', () => ({
+  mock.module('src/utils/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     shouldShowMigrationBanner: () => false,
     legacyClaudeDirExists: () => false,
@@ -534,13 +534,13 @@ afterEach(() => {
 afterAll(() => {
   // Restore module mocks so they don't bleed into other test files.
   // mock.restore() does not reset mock.module() calls.
-  mock.module('../utils/claudinMigration.js', () => realClaudinMigrationForPm)
-  mock.module('../utils/providerProfiles.js', () => realProviderProfilesForPm)
-  mock.module('../utils/providerProfile.js', () => realProviderProfileForPm)
-  mock.module('../utils/settings/settings.js', () => realSettingsForPm)
-  mock.module('../utils/providerDiscovery.js', () => realProviderDiscoveryForPm)
-  mock.module('../utils/githubModelsCredentials.js', () => realGithubModelsCredentialsForPm)
-  mock.module('../utils/codexCredentials.js', () => realCodexCredentialsForPm)
+  mock.module('src/utils/claudinMigration.js', () => realClaudinMigrationForPm)
+  mock.module('src/utils/providerProfiles.js', () => realProviderProfilesForPm)
+  mock.module('src/utils/providerProfile.js', () => realProviderProfileForPm)
+  mock.module('src/utils/settings/settings.js', () => realSettingsForPm)
+  mock.module('src/utils/providerDiscovery.js', () => realProviderDiscoveryForPm)
+  mock.module('src/utils/githubModelsCredentials.js', () => realGithubModelsCredentialsForPm)
+  mock.module('src/utils/codexCredentials.js', () => realCodexCredentialsForPm)
   mock.module('./useCodexOAuthFlow.js', () => realUseCodexOAuthFlowForPm)
 })
 
@@ -1463,7 +1463,7 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
   // config.js (that mock leaks into toolResultSummarizer.test.ts).
-  mock.module('../utils/claudinMigration.js', () => ({
+  mock.module('src/utils/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => true,
     shouldShowMigrationBanner: () => false,
@@ -1488,7 +1488,7 @@ test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is abse
 
   mockProviderManagerDependencies()
 
-  mock.module('../utils/claudinMigration.js', () => ({
+  mock.module('src/utils/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => false,
     shouldShowMigrationBanner: () => false,

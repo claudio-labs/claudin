@@ -5,12 +5,12 @@ import { join } from 'node:path'
 
 const realTeammate = { ...(await import('./teammate.js')) }
 const realTeammateMailbox = { ...(await import('./teammateMailbox.js')) }
-const realAnalyticsIndex = { ...(await import('../services/analytics/index.js')) }
+const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
 const realTelemetryEvents = { ...(await import('./telemetry/events.js')) }
-const realPolicyLimits = { ...(await import('../services/policyLimits/index.js')) }
+const realPolicyLimits = { ...(await import('src/services/policyLimits/index.js')) }
 const realTeamHelpers = { ...(await import('./swarm/teamHelpers.js')) }
-const realReplBridgeHandle = { ...(await import('../bridge/replBridgeHandle.js')) }
-const realAgentTool = { ...(await import('../tools/AgentTool/AgentTool.js')) }
+const realReplBridgeHandle = { ...(await import('src/bridge/replBridgeHandle.js')) }
+const realAgentTool = { ...(await import('src/tools/AgentTool/AgentTool.js')) }
 const realEnvUtils = { ...(await import('./envUtils.js')) }
 
 type HookChainsModule = typeof import('./hookChains.js')
@@ -72,7 +72,7 @@ async function importHookChainsHarness(
     getClaudinConfigHomeDir: () => process.env.CLAUDIN_CONFIG_DIR ?? `${process.env.HOME ?? '~'}/.claudin`,
   }))
 
-  mock.module('../services/analytics/index.js', () => ({
+  mock.module('src/services/analytics/index.js', () => ({
     logEvent: () => {},
     stripProtoFields: <T,>(m: T) => m,
   }))
@@ -81,7 +81,7 @@ async function importHookChainsHarness(
     logOTelEvent: async () => {},
   }))
 
-  mock.module('../services/policyLimits/index.js', () => ({
+  mock.module('src/services/policyLimits/index.js', () => ({
     isPolicyAllowed: () => allowRemoteSessions,
   }))
 
@@ -106,13 +106,13 @@ async function importHookChainsHarness(
     getParentSessionId: () => undefined,
   }))
 
-  mock.module('../bridge/replBridgeHandle.js', () => ({
+  mock.module('src/bridge/replBridgeHandle.js', () => ({
     getReplBridgeHandle: () => replBridgeHandle,
   }))
 
   // Integration mock target requested in the task: fallback action can route
   // through this mocked tool launcher from runtime callback wiring.
-  mock.module('../tools/AgentTool/AgentTool.js', () => ({
+  mock.module('src/tools/AgentTool/AgentTool.js', () => ({
     AgentTool: {
       call: agentToolCallSpy,
     },
@@ -233,7 +233,7 @@ describe('hookChains integration dispatch', () => {
       },
       runtime: {
         onSpawnFallbackAgent: async request => {
-          const { AgentTool } = await import('../tools/AgentTool/AgentTool.js')
+          const { AgentTool } = await import('src/tools/AgentTool/AgentTool.js')
           await (AgentTool.call as unknown as (...args: unknown[]) => Promise<unknown>)({
             prompt: request.prompt,
             description: request.description,
@@ -383,16 +383,16 @@ afterAll(() => {
   mock.module('src/utils/teammateMailbox.js', () => realTeammateMailbox)
   mock.module('./envUtils.js', () => realEnvUtils)
   mock.module('src/utils/envUtils.js', () => realEnvUtils)
-  mock.module('../services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   mock.module('./telemetry/events.js', () => realTelemetryEvents)
   mock.module('src/utils/telemetry/events.js', () => realTelemetryEvents)
-  mock.module('../services/policyLimits/index.js', () => realPolicyLimits)
+  mock.module('src/services/policyLimits/index.js', () => realPolicyLimits)
   mock.module('src/services/policyLimits/index.js', () => realPolicyLimits)
   mock.module('./swarm/teamHelpers.js', () => realTeamHelpers)
   mock.module('src/utils/swarm/teamHelpers.js', () => realTeamHelpers)
-  mock.module('../bridge/replBridgeHandle.js', () => realReplBridgeHandle)
   mock.module('src/bridge/replBridgeHandle.js', () => realReplBridgeHandle)
-  mock.module('../tools/AgentTool/AgentTool.js', () => realAgentTool)
+  mock.module('src/bridge/replBridgeHandle.js', () => realReplBridgeHandle)
+  mock.module('src/tools/AgentTool/AgentTool.js', () => realAgentTool)
   mock.module('src/tools/AgentTool/AgentTool.js', () => realAgentTool)
 })

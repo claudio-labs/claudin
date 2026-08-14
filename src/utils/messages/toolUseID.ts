@@ -1,4 +1,4 @@
-import type { NormalizedMessage } from '../../types/message.js'
+import type { NormalizedMessage } from 'src/types/message.js'
 import { isHookAttachmentMessage } from './normalize.js'
 
 export function getToolUseID(message: NormalizedMessage): string | null {

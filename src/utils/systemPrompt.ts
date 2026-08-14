@@ -2,10 +2,10 @@ import { feature } from 'bun:bundle'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from '../services/analytics/index.js'
-import type { ToolUseContext } from '../Tool.js'
-import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js'
-import { isBuiltInAgent } from '../tools/AgentTool/loadAgentsDir.js'
+} from 'src/services/analytics/index.js'
+import type { ToolUseContext } from 'src/Tool.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isEnvTruthy } from './envUtils.js'
 import { asSystemPrompt, type SystemPrompt } from './systemPromptType.js'
 
@@ -67,7 +67,7 @@ export function buildEffectiveSystemPrompt({
     // Lazy require to avoid circular dependency at module load time
     const { getCoordinatorSystemPrompt } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../coordinator/coordinatorMode.js') as typeof import('../coordinator/coordinatorMode.js')
+      require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js')
     return asSystemPrompt([
       getCoordinatorSystemPrompt(),
       ...(appendSystemPrompt ? [appendSystemPrompt] : []),

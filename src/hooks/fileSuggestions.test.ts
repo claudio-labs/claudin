@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import * as path from 'path'
-import { getCwdState, setCwdState } from '../bootstrap/state.js'
+import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
 import { getProjectFilePaths } from './fileSuggestions.js'
 
 // Regression: getProjectFilePaths used to pass '.' as the ripgrep target, which

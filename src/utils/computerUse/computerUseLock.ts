@@ -1,11 +1,11 @@
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getSessionId } from '../../bootstrap/state.js'
-import { registerCleanup } from '../../utils/cleanupRegistry.js'
-import { logForDebugging } from '../../utils/debug.js'
-import { getClaudinConfigHomeDir } from '../../utils/envUtils.js'
-import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
-import { getErrnoCode } from '../errors.js'
+import { getSessionId } from 'src/bootstrap/state.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { getErrnoCode } from 'src/utils/errors.js'
 
 const LOCK_FILENAME = 'computer-use.lock'
 

@@ -5,16 +5,16 @@ import {
   getTotalCost,
   getTotalInputTokens,
   getTotalOutputTokens,
-} from '../cost-tracker.js';
-import { Box, Text } from '../ink.js';
-import { tryGetActiveProvider } from '../services/api/activeProvider.js';
-import { resolveCacheProvider } from '../services/api/cacheMetrics.js';
-import { getSessionCacheMetrics } from '../services/api/cacheStatsTracker.js';
-import { formatTokens } from '../utils/format.js';
-import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
-import { hasNerdFontGlyphs } from '../utils/terminalFont.js';
-import { getCurrentUsage } from '../utils/tokens.js';
-import type { Message } from '../types/message.js';
+} from 'src/cost-tracker.js';
+import { Box, Text } from 'src/ink.js';
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
+import { resolveCacheProvider } from 'src/services/api/cacheMetrics.js';
+import { getSessionCacheMetrics } from 'src/services/api/cacheStatsTracker.js';
+import { formatTokens } from 'src/utils/format.js';
+import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js';
+import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js';
+import { getCurrentUsage } from 'src/utils/tokens.js';
+import type { Message } from 'src/types/message.js';
 
 type Snapshot = {
   input: number;

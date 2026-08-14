@@ -6,7 +6,7 @@ import {
   _getSkillLatchSnapshotForTests,
   _seedSentSkillNamesForTests,
 } from './attachments.js'
-import type { Command } from '../commands.js'
+import type { Command } from 'src/commands.js'
 
 function cmd(name: string, loadedFrom: Command['loadedFrom']): Command {
   return { name, loadedFrom } as unknown as Command

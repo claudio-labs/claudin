@@ -3,7 +3,7 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import { NO_CONTENT_MESSAGE } from '../../constants/messages.js'
+import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import type {
   AssistantMessage,
   Message,
@@ -12,7 +12,7 @@ import type {
   NormalizedUserMessage,
   SystemCompactBoundaryMessage,
   SystemLocalCommandMessage,
-} from '../../types/message.js'
+} from 'src/types/message.js'
 import {
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   SYNTHETIC_MESSAGES,

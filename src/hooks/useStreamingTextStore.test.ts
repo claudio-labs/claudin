@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { streamingTextStore } from './useStreamingTextStore.js'
-import { FRAME_INTERVAL_MS } from '../ink/constants.js'
+import { FRAME_INTERVAL_MS } from 'src/ink/constants.js'
 
 // Real-timer waits: the store schedules with setTimeout(FRAME_INTERVAL_MS).
 const FLUSH_WAIT_MS = FRAME_INTERVAL_MS * 3

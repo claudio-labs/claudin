@@ -1,11 +1,11 @@
 import figures from 'figures';
 import { useEffect, useMemo } from 'react';
-import { Box, Text } from '../../ink.js';
-import { type BackgroundTaskState, isBackgroundTask, type TaskState } from '../../tasks/types.js';
-import { useAppState, useSetAppState } from '../../state/AppState.js';
-import type { AppState } from '../../state/AppStateStore.js';
-import { useTerminalSize } from '../../hooks/useTerminalSize.js';
-import { truncate } from '../../utils/format.js';
+import { Box, Text } from 'src/ink.js';
+import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/tasks/types.js';
+import { useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { truncate } from 'src/utils/format.js';
 import { footerTreeBaseIndex } from './footerTaskGeometry.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can

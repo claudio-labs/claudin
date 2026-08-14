@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { setIsInteractive } from '../../bootstrap/state.js'
-import { clearBundledSkills, getBundledSkills } from '../bundledSkills.js'
+import { setIsInteractive } from 'src/bootstrap/state.js'
+import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import {
   buildCodeReviewPrompt,
   parseCodeReviewArgs,

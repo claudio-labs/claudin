@@ -3,22 +3,22 @@
 // Dead-code in the open build. Extracted from src/main.tsx (ROADMAP 11g
 // Fase 5b).
 
-import { setIsRemoteMode, setKairosActive, setUserMsgOptIn } from '../../bootstrap/state.js';
-import { filterCommandsForRemoteMode } from '../../commands.js';
-import { launchAssistantInstallWizard, launchAssistantSessionChooser } from '../../dialogLaunchers.js';
-import type { Root } from '../../ink.js';
-import { exitWithError, exitWithMessage, renderAndRun } from '../../interactiveHelpers.js';
-import { createRemoteSessionConfig } from '../../remote/RemoteSessionManager.js';
-import { launchRepl } from '../../replLauncher.js';
-import { type AppState } from '../../state/AppStateStore.js';
-import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
-import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
-import type { FpsMetrics } from '../../utils/fpsTracker.js';
-import { createSystemMessage } from '../../utils/messages.js';
-import { prepareApiRequest } from '../../utils/teleport/api.js';
-import type { ThinkingConfig } from '../../utils/thinking.js';
-import type { BootContext } from '../bootContext.js';
-import type { StatsStore } from '../../context/stats.js';
+import { setIsRemoteMode, setKairosActive, setUserMsgOptIn } from 'src/bootstrap/state.js';
+import { filterCommandsForRemoteMode } from 'src/commands.js';
+import { launchAssistantInstallWizard, launchAssistantSessionChooser } from 'src/dialogLaunchers.js';
+import type { Root } from 'src/ink.js';
+import { exitWithError, exitWithMessage, renderAndRun } from 'src/interactiveHelpers.js';
+import { createRemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
+import { launchRepl } from 'src/replLauncher.js';
+import { type AppState } from 'src/state/AppStateStore.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { gracefulShutdown } from 'src/utils/gracefulShutdown.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import { createSystemMessage } from 'src/utils/messages.js';
+import { prepareApiRequest } from 'src/utils/teleport/api.js';
+import type { ThinkingConfig } from 'src/utils/thinking.js';
+import type { BootContext } from 'src/main/bootContext.js';
+import type { StatsStore } from 'src/context/stats.js';
 
 export type AssistantChatBranchDeps = {
   root: Root;
@@ -80,7 +80,7 @@ export async function runAssistantChatBranch(deps: AssistantChatBranchDeps): Pro
 
   // Auth — call prepareApiRequest() once for orgUUID, but use a
   // getAccessToken closure for the token so reconnects get fresh tokens.
-  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('../../utils/auth.js');
+  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('src/utils/auth.js');
   await checkAndRefreshOAuthTokenIfNeeded();
   let apiCreds;
   try {

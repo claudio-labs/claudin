@@ -2,7 +2,7 @@
  * /goal — set a session-scoped stopping condition.
  * Implementation is lazy-loaded from goal.ts to reduce startup time.
  */
-import type { Command } from '../../commands.js'
+import type { Command } from 'src/commands.js'
 
 const goal = {
   type: 'local-jsx',

@@ -3,16 +3,16 @@ import { feature } from 'bun:bundle';
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
 import type { ContentBlockParam, ImageBlockParam, TextBlockParam, ThinkingBlockParam, ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
-import type { Command } from '../commands.js';
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
-import { Box } from '../ink.js';
-import type { Tools } from '../Tool.js';
-import { type ConnectorTextBlock, isConnectorTextBlock } from '../types/connectorText.js';
-import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, CollapsedReadSearchGroup as CollapsedReadSearchGroupType, GroupedToolUseMessage as GroupedToolUseMessageType, NormalizedUserMessage, ProgressMessage, SystemMessage } from '../types/message.js';
-import { type AdvisorBlock, isAdvisorBlock } from '../utils/advisor.js';
-import { isFullscreenEnvEnabled } from '../utils/fullscreen.js';
-import { logError } from '../utils/log.js';
-import type { buildMessageLookups } from '../utils/messages.js';
+import type { Command } from 'src/commands.js';
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { Box } from 'src/ink.js';
+import type { Tools } from 'src/Tool.js';
+import { type ConnectorTextBlock, isConnectorTextBlock } from 'src/types/connectorText.js';
+import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, CollapsedReadSearchGroup as CollapsedReadSearchGroupType, GroupedToolUseMessage as GroupedToolUseMessageType, NormalizedUserMessage, ProgressMessage, SystemMessage } from 'src/types/message.js';
+import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
+import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { logError } from 'src/utils/log.js';
+import type { buildMessageLookups } from 'src/utils/messages.js';
 import { CompactSummary } from './CompactSummary.js';
 import { AdvisorMessage } from './messages/AdvisorMessage.js';
 import { AssistantRedactedThinkingMessage } from './messages/AssistantRedactedThinkingMessage.js';
@@ -252,7 +252,7 @@ function MessageImpl(t0: Props) {
           } = require("../services/compact/snipProjection.js") as typeof import('../services/compact/snipProjection.js');
           const {
             isSnipMarkerMessage
-          } = require("../services/compact/snipCompact.js") as typeof import('../services/compact/snipCompact.js');
+          } = require("src/services/compact/snipCompact.js") as typeof import('src/services/compact/snipCompact.js');
           if (isSnipBoundaryMessage(message)) {
             let t2;
             if ($[65] === Symbol.for("react.memo_cache_sentinel")) {

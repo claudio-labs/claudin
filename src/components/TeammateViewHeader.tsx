@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text } from '../ink.js';
-import { type AppState, useAppState } from '../state/AppState.js';
-import { getViewedTeammateTask } from '../state/selectors.js';
-import { toInkColor } from '../utils/ink.js';
+import { Box, Text } from 'src/ink.js';
+import { type AppState, useAppState } from 'src/state/AppState.js';
+import { getViewedTeammateTask } from 'src/state/selectors.js';
+import { toInkColor } from 'src/utils/ink.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 import { OffscreenFreeze } from './OffscreenFreeze.js';
 

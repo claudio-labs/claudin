@@ -1,8 +1,8 @@
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolUseContext } from 'src/Tool.js'
 
-import { logForDebugging } from '../debug.js'
-import { errorMessage } from '../errors.js'
-import { withResolvers } from '../withResolvers.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { withResolvers } from 'src/utils/withResolvers.js'
 import { isLockHeldLocally, releaseComputerUseLock } from './computerUseLock.js'
 import { unregisterEscHotkey } from './escHotkey.js'
 

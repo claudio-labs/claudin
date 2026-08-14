@@ -14,19 +14,19 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   getIsNonInteractiveSession,
   preferThirdPartyAuthentication,
-} from '../bootstrap/state.js'
-import { tryGetActiveProvider } from '../services/api/activeProvider.js'
+} from 'src/bootstrap/state.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getMockSubscriptionType,
   shouldUseMockSubscription,
-} from '../services/mockRateLimits.js'
+} from 'src/services/mockRateLimits.js'
 import {
   isOAuthTokenExpired,
   refreshOAuthToken,
   shouldUseClaudeAIAuth,
-} from '../services/oauth/client.js'
-import { getOauthProfileFromOauthToken } from '../services/oauth/getOauthProfile.js'
-import type { OAuthTokens, SubscriptionType } from '../services/oauth/types.js'
+} from 'src/services/oauth/client.js'
+import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
+import type { OAuthTokens, SubscriptionType } from 'src/services/oauth/types.js'
 import {
   getApiKeyFromFileDescriptor,
   getOAuthTokenFromFileDescriptor,

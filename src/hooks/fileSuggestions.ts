@@ -5,30 +5,30 @@ import {
   CLAUDE_CONFIG_DIRECTORIES,
   loadMarkdownFilesForSubdir,
 } from 'src/utils/markdownConfigLoader.js'
-import type { SuggestionItem } from '../components/PromptInput/PromptInputFooterSuggestions.js'
+import type { SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js'
 import {
   CHUNK_MS,
   FileIndex,
   yieldToEventLoop,
-} from '../native-ts/file-index/index.js'
-import { logEvent } from '../services/analytics/index.js'
-import type { FileSuggestionCommandInput } from '../types/fileSuggestion.js'
-import { getGlobalConfig } from '../utils/config.js'
-import { getCwd } from '../utils/cwd.js'
-import { logForDebugging } from '../utils/debug.js'
-import { errorMessage } from '../utils/errors.js'
-import { execFileNoThrowWithCwd } from '../utils/execFileNoThrow.js'
-import { getFsImplementation } from '../utils/fsOperations.js'
-import { findGitRoot, gitExe } from '../utils/git.js'
+} from 'src/native-ts/file-index/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
+import { getGlobalConfig } from 'src/utils/config.js'
+import { getCwd } from 'src/utils/cwd.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage } from 'src/utils/errors.js'
+import { execFileNoThrowWithCwd } from 'src/utils/execFileNoThrow.js'
+import { getFsImplementation } from 'src/utils/fsOperations.js'
+import { findGitRoot, gitExe } from 'src/utils/git.js'
 import {
   createBaseHookInput,
   executeFileSuggestionCommand,
-} from '../utils/hooks.js'
-import { logError } from '../utils/log.js'
-import { expandPath } from '../utils/path.js'
-import { ripGrep } from '../utils/ripgrep.js'
-import { getInitialSettings } from '../utils/settings/settings.js'
-import { createSignal } from '../utils/signal.js'
+} from 'src/utils/hooks.js'
+import { logError } from 'src/utils/log.js'
+import { expandPath } from 'src/utils/path.js'
+import { ripGrep } from 'src/utils/ripgrep.js'
+import { getInitialSettings } from 'src/utils/settings/settings.js'
+import { createSignal } from 'src/utils/signal.js'
 
 // Lazily constructed singleton
 let fileIndex: FileIndex | null = null

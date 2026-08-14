@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterEach, expect, test } from 'bun:test'
 
 // MACRO is replaced at build time by Bun.define but not in test mode.
 // Define it globally so tests that import modules using MACRO don't crash.
@@ -25,39 +25,21 @@ import { GEMINI_ADDENDUM } from './familyAddendums/gemini.js'
 import { GLM_ADDENDUM } from './familyAddendums/glm.js'
 import { KIMI_ADDENDUM } from './familyAddendums/kimi.js'
 import { OPENAI_REASONING_ADDENDUM } from './familyAddendums/openaiReasoning.js'
-import { CLAUDE_CODE_GUIDE_AGENT } from '../tools/AgentTool/built-in/claudeCodeGuideAgent.js'
-import { GENERAL_PURPOSE_AGENT } from '../tools/AgentTool/built-in/generalPurposeAgent.js'
-import { EXPLORE_AGENT } from '../tools/AgentTool/built-in/exploreAgent.js'
-import { PLAN_AGENT } from '../tools/AgentTool/built-in/planAgent.js'
+import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
+import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 
-// Provider isolation. The Claude-family recommendation + "Fast mode" env lines
-// are gated on getAPIProvider() === 'firstParty'. A cross-file mock.module leak
-// that leaves a non-firstParty provider active silently drops those lines and
-// fails the assertions below (many test files mock getAPIProvider /
-// tryGetActiveProvider, and Bun's mock.module is process-global). This whole
-// file only ever exercises the firstParty environment, so pin getAPIProvider —
-// the single decision point — to 'firstParty' and re-assert it before each test
-// so this file wins over whatever ran before it, regardless of which seam the
-// leaked mock targeted.
-const realProviders = { ...(await import('../utils/model/providers.js')) }
-const pinFirstParty = () =>
-  mock.module('../utils/model/providers.js', () => ({
-    ...realProviders,
-    getAPIProvider: () => 'firstParty',
-  }))
-pinFirstParty()
-
+// This file only ever exercises the firstParty environment, which is what
+// getAPIProvider() already returns with no provider profile configured. It used
+// to pin providers.js to 'firstParty' defensively, but Bun keys mock.module by
+// specifier and the FIRST file to claim one owns it for the whole run — the pin
+// could never defend against a leak, it only made this file the aggressor.
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
-
-beforeEach(pinFirstParty)
 
 afterEach(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
   clearSystemPromptSections()
-})
-
-afterAll(() => {
-  mock.module('../utils/model/providers.js', () => realProviders)
 })
 
 test('CLI identity prefixes describe Claudin instead of Claude Code', () => {
