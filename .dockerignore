@@ -7,7 +7,6 @@ dist
 !.env.example
 coverage
 reports
-vscode-extension
 python
 docs
 *.md

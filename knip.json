@@ -20,8 +20,7 @@
   "ignoreDependencies": [
     "@anthropic-ai/vertex-sdk",
     "@anthropic-ai/foundry-sdk",
-    "@opentelemetry/.+",
-    "vscode"
+    "@opentelemetry/.+"
   ],
   "ignoreBinaries": [
     "arecord",

@@ -3,9 +3,7 @@ import { execa } from 'execa'
 import capitalize from 'lodash-es/capitalize.js'
 import memoize from 'lodash-es/memoize.js'
 import { createConnection } from 'net'
-import { basename, dirname, join, sep as pathSeparator, resolve } from 'path'
-import { fileURLToPath } from 'url'
-import { logEvent } from 'src/services/analytics/index.js'
+import { basename, join, sep as pathSeparator, resolve } from 'path'
 import { getIsScrollDraining, getOriginalCwd } from 'src/bootstrap/state.js'
 import { callIdeRpc } from 'src/services/mcp/client.js'
 import type {
@@ -25,7 +23,6 @@ import { getAncestorPidsAsync } from 'src/utils/proc/genericProcessUtils.js'
 import { isJetBrainsPluginInstalledCached } from './jetbrains.js'
 import { logError } from 'src/utils/log.js'
 import { getPlatform } from 'src/utils/proc/platform.js'
-import { lt } from 'src/utils/semver.js'
 
 // Lazy: IdeOnboardingDialog.tsx pulls React/ink; only needed in interactive onboarding path
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -586,29 +583,31 @@ export interface IDEExtensionInstallationStatus {
   ideType: IdeType | null
 }
 
-export async function maybeInstallIDEExtension(
+// Claudin no longer bundles a vsix, so there is nothing to install: report
+// which version of the extension the IDE already has, if any.
+async function checkVSCodeExtensionStatus(
   ideType: IdeType,
-): Promise<IDEExtensionInstallationStatus | null> {
+): Promise<IDEExtensionInstallationStatus> {
   try {
-    // Install/update the extension
-    const installedVersion = await installIDEExtension(ideType)
-    // Only track successful installations
-    logEvent('tengu_ext_installed', {})
+    const command = await getVSCodeIDECommand(ideType)
+    const installedVersion = command
+      ? await getInstalledVSCodeExtensionVersion(command)
+      : null
 
     // Set diff tool config to auto if it has not been set already
-    const globalConfig = getGlobalConfig()
-    if (!globalConfig.diffTool) {
-      saveGlobalConfig(current => ({ ...current, diffTool: 'auto' }))
+    if (installedVersion) {
+      const globalConfig = getGlobalConfig()
+      if (!globalConfig.diffTool) {
+        saveGlobalConfig(current => ({ ...current, diffTool: 'auto' }))
+      }
     }
     return {
-      installed: true,
+      installed: installedVersion !== null,
       error: null,
       installedVersion,
       ideType: ideType,
     }
   } catch (error) {
-    logEvent('tengu_ext_install_error', {})
-    // Handle installation errors
     const errorMessage = error instanceof Error ? error.message : String(error)
     logError(error as Error)
     return {
@@ -845,16 +844,6 @@ export function hasAccessToIDEExtensionDiffFeature(
 
 const EXTENSION_ID = 'devnull-bootloader.claudin-vscode'
 
-const LEGACY_EXTENSION_IDS = ['anthropic.claude-code', 'anthropic.claude-code-internal']
-
-declare const MACRO: { IDE_EXTENSION_VERSION: string }
-
-function getBundledIdeExtensionVsixPath(): string {
-  // dist/cli.mjs has dist/claudin-vscode.vsix as a sibling after a release build.
-  const cliDir = dirname(fileURLToPath(import.meta.url))
-  return join(cliDir, 'claudin-vscode.vsix')
-}
-
 export async function isIDEExtensionInstalled(
   ideType: IdeType,
 ): Promise<boolean> {
@@ -880,59 +869,6 @@ export async function isIDEExtensionInstalled(
     return await isJetBrainsPluginInstalledCached(ideType)
   }
   return false
-}
-
-async function installIDEExtension(ideType: IdeType): Promise<string | null> {
-  if (isVSCodeIde(ideType)) {
-    const command = await getVSCodeIDECommand(ideType)
-
-    if (command) {
-      const bundledVersion = MACRO.IDE_EXTENSION_VERSION
-      let version = await getInstalledVSCodeExtensionVersion(command)
-      // Install the bundled vsix if missing or older than what we ship.
-      if (!version || lt(version, bundledVersion)) {
-        const vsixPath = getBundledIdeExtensionVsixPath()
-        const vsixExists = await getFsImplementation()
-          .stat(vsixPath)
-          .then(() => true, () => false)
-        if (!vsixExists) {
-          throw new Error(
-            `Bundled IDE extension not found at ${vsixPath}. ` +
-              `Run "bun run build:release" to package the vsix.`,
-          )
-        }
-        // `code` may crash when invoked too quickly in succession
-        await sleep(500)
-        const result = await execFileNoThrowWithCwd(
-          command,
-          ['--force', '--install-extension', vsixPath],
-          {
-            env: getInstallationEnv(),
-          },
-        )
-        if (result.code !== 0) {
-          throw new Error(`${result.code}: ${result.error} ${result.stderr}`)
-        }
-        version = bundledVersion
-        // Best-effort: remove the upstream Anthropic extension if present so
-        // the two MCP-IDE servers don't compete for the same workspace's CLI.
-        for (const legacyId of LEGACY_EXTENSION_IDS) {
-          await execFileNoThrowWithCwd(
-            command,
-            ['--uninstall-extension', legacyId],
-            { env: getInstallationEnv() },
-          ).catch(() => {
-            /* not installed — fine */
-          })
-        }
-      }
-      return version
-    }
-  }
-  // No automatic installation for JetBrains IDEs as it is not supported in native
-  // builds. We show a prominent notice for them to download from the marketplace
-  // instead.
-  return null
 }
 
 function getInstallationEnv(): NodeJS.ProcessEnv | undefined {
@@ -1293,11 +1229,11 @@ export async function closeOpenDiffs(
 }
 
 /**
- * Initializes IDE detection and extension installation, then calls the provided callback
- * with the detected IDE information and installation status.
- * @param ideToInstallExtension The ide to install the extension to (if installing from external terminal)
+ * Initializes IDE detection and extension detection, then calls the provided callback
+ * with the detected IDE information and extension status.
+ * @param ideToInstallExtension The ide to check the extension on (if launched from an external terminal)
  * @param onIdeDetected Callback to be called when an IDE is detected (including null)
- * @param onInstallationComplete Callback to be called when extension installation is complete
+ * @param onInstallationComplete Callback to be called with the detected extension status
  */
 export async function initializeIdeIntegration(
   onIdeDetected: (ide: DetectedIDEInfo | null) => void,
@@ -1318,33 +1254,15 @@ export async function initializeIdeIntegration(
     const ideType = ideToInstallExtension ?? getTerminalIdeType()
     if (ideType) {
       if (isVSCodeIde(ideType)) {
-        void isIDEExtensionInstalled(ideType).then(async isAlreadyInstalled => {
-          void maybeInstallIDEExtension(ideType)
-            .catch(error => {
-              const ideInstallationStatus: IDEExtensionInstallationStatus = {
-                installed: false,
-                error: error.message || 'Installation failed',
-                installedVersion: null,
-                ideType: ideType,
-              }
-              return ideInstallationStatus
-            })
-            .then(status => {
-              onInstallationComplete(status)
+        void checkVSCodeExtensionStatus(ideType).then(status => {
+          onInstallationComplete(status)
 
-              if (status?.installed) {
-                // If we installed and don't yet have an IDE, search again.
-                void findAvailableIDE().then(onIdeDetected)
-              }
-
-              if (
-                !isAlreadyInstalled &&
-                status?.installed === true &&
-                !ideOnboardingDialog().hasIdeOnboardingDialogBeenShown()
-              ) {
-                onShowIdeOnboarding()
-              }
-            })
+          if (
+            status.installed &&
+            !ideOnboardingDialog().hasIdeOnboardingDialogBeenShown()
+          ) {
+            onShowIdeOnboarding()
+          }
         })
       } else if (isJetBrainsIde(ideType)) {
         // Always check installation to populate the sync cache used by status notices
