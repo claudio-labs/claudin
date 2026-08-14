@@ -579,6 +579,11 @@ export const SeverityNumber = {};
               const full = pathMod.join(dir, ent.name)
               if (ent.isDirectory()) { walk(full); continue }
               if (!/\.(ts|tsx)$/.test(ent.name)) continue
+              // Test files never reach the bundle, and their fixture strings
+              // (`'import { cfg } from "./a.js"'`) look like real imports to the
+              // regex scanner below — one such path was being stubbed and
+              // baselined as if it were a missing subsystem.
+              if (/\.test\.tsx?$/.test(ent.name)) continue
               const rawCode: string = fs.readFileSync(full, 'utf-8')
               const fileDir = pathMod.dirname(full)
 
@@ -639,10 +644,14 @@ export const SeverityNumber = {};
           const added = found.filter((s: string) => !known.has(s))
           const gone = baseline.filter((s: string) => !missingImportSites.has(s))
 
+          // A count that matches the baseline is this fork's expected steady
+          // state, not a warning — say so, so the line does not read as one.
           console.log(
             `🔗 ${found.length} unresolved import(s) stubbed to noop` +
-              (added.length ? `, ${added.length} NOT in the baseline` : '') +
-              (gone.length ? `, ${gone.length} baselined no longer present` : ''),
+              (added.length || gone.length
+                ? (added.length ? `, ${added.length} NOT in the baseline` : '') +
+                  (gone.length ? `, ${gone.length} baselined no longer present` : '')
+                : ' (all baselined — subsystems this fork never received)'),
           )
 
           if (mode === '1' && added.length > 0) {
